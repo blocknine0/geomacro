@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../lib/intelligence-publication-authority.mjs";
 // Issue #2124: read-only B2 gzip+proof vs D1 current-hot independent audit.
 // No Supabase, B2 PUT, D1 mutation, source payload logging or payment.
 import {createHash} from "node:crypto";
@@ -41,8 +42,8 @@ function contentValid(p,value,proof,now) {
     }))return false;
     return categories.size===3 &&
       proof?.commercial_multi_source_verified===true &&
-      proof?.current_source_id==="qualified_independent_original_publishers_v1" &&
-      proof?.current_evidence_contract==="geomacro.qualified-original-event-claims.v1";
+      isIntelligenceSourceContract(proof) &&
+      (proof.schema!==MACHINE_INTELLIGENCE_PROOF_SCHEMA || Date.parse(proof.qualified_until)>now);
   }
   const data=value?.data;
   if(data?.verificationStatus!=="verified")return false;
@@ -70,7 +71,7 @@ export async function auditOne(p,{get,fetchImpl=fetch,now=Date.now()}) {
     raw=gunzipSync(compressed,{maxOutputLength:12000000}).toString("utf8");
     payload=JSON.parse(raw);
   }catch{return bad("B2_EXACT_GZIP_RESTORE_INVALID");}
-  if(proof?.schema!==p.proof||proof.live_key!==p.live||
+  if(!(proof?.schema===p.proof || p.name==="intelligence" && isIntelligenceProofSchema(proof?.schema))||proof.live_key!==p.live||
      proof.compressed_sha256!==packedHash||
      proof.compressed_bytes!==compressed.length||
      proof.full_b2_readback_verified!==true||
@@ -100,7 +101,7 @@ export async function auditOne(p,{get,fetchImpl=fetch,now=Date.now()}) {
   const rawHash=sha(Buffer.from(raw));
   // Exact byte and original clock equality: neither poll nor restore can mint freshness.
   const match=status===200&&hot?.ok===true&&hot.product===p.name&&
-    hot.schema===p.schema&&hot.proof_schema===p.proof&&
+    hot.schema===p.schema&&hot.proof_schema===proof.schema&&
     hot.b2_object_key===p.live&&hot.b2_sha256===packedHash&&
     hot.payload_sha256===rawHash&&hot.payload_json===raw&&
     Date.parse(hot.source_as_of)===source&&

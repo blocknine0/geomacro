@@ -93,3 +93,15 @@ test('accepts the actual Worker public serving contract without requiring privat
   assert.equal(result.d1_public_readback_verified,true);
  }finally{Date.now=originalNow;}
 });
+
+test('machine readback binds the distinct schema and cannot claim external review',async()=>{
+ const schema='geomacro.public-intelligence-machine-live-proof.v1';
+ const machineReceipt={...receipt,proof_schema:schema};
+ const result=await verifyPublishedIntelligenceReadback(machineReceipt,{...options,
+  fetchImpl:async()=>Response.json({...live,proof_schema:schema})});
+ assert.equal(result.schema,'geomacro.machine-intelligence-public-readback.v1');
+ await assert.rejects(verifyPublishedIntelligenceReadback(machineReceipt,{...options,
+  fetchImpl:async()=>Response.json(live)}),/READBACK_UNVERIFIED/);
+ await assert.rejects(verifyPublishedIntelligenceReadback(receipt,{...options,
+  fetchImpl:async()=>Response.json({...live,proof_schema:schema})}),/READBACK_UNVERIFIED/);
+});

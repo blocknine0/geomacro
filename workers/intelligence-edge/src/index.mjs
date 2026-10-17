@@ -1,3 +1,4 @@
+import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
 import continuity from "./continuity.mjs";
 import { reserveB2AccountQuota } from "../../control-plane/src/b2-account-quota.mjs";
 import { b2OriginFailureCacheKey, failedB2OriginRecently, rememberFailedB2Origin } from "../../shared/b2-origin-negative-cache.mjs";
@@ -243,7 +244,7 @@ async function readD1HotSnapshot(env) {
       snapshot?.ok !== true ||
       snapshot?.product !== "intelligence" ||
       snapshot?.schema !== "geomacro.public-intelligence-live.v1" ||
-      snapshot?.proof_schema !== "geomacro.public-intelligence-live-proof.v1" ||
+      !isIntelligenceProofSchema(snapshot?.proof_schema) ||
       snapshot?.b2_object_key !== LIVE_KEY ||
       !/^[0-9a-f]{64}$/.test(String(snapshot?.b2_sha256 ?? "")) ||
       !/^[0-9a-f]{64}$/.test(String(snapshot?.payload_sha256 ?? "")) ||
@@ -277,6 +278,8 @@ async function readD1HotSnapshot(env) {
         "x-geomacro-continuity": "d1-b2-readback-verified-hot-snapshot",
         "x-geomacro-serving-store": "cloudflare-d1",
         "x-geomacro-source-as-of": snapshot.source_as_of,
+        ...(snapshot.proof_schema===MACHINE_INTELLIGENCE_PROOF_SCHEMA
+          ? {"x-geomacro-qualified-until":snapshot.expires_at,"cache-control":"no-store"} : {}),
         "x-geomacro-b2-sha256": snapshot.b2_sha256,
         "x-geomacro-d1-payload-sha256": snapshot.payload_sha256,
         "x-geomacro-b2-verification": "full-readback-hash-exact-restore",
@@ -392,7 +395,9 @@ async function buildResponse(env) {
     : 0;
 
   if (
-    proof?.schema !== "geomacro.public-intelligence-live-proof.v1" ||
+    !isIntelligenceProofSchema(proof?.schema) ||
+    (proof?.schema===MACHINE_INTELLIGENCE_PROOF_SCHEMA &&
+      (!isIntelligenceSourceContract(proof)||!(Date.parse(proof.qualified_until)>Date.now()))) ||
     proof?.source_project !== PROJECT_REF ||
     proof?.live_key !== LIVE_KEY ||
     proof?.compressed_sha256 !== liveDigest ||
@@ -420,6 +425,8 @@ async function buildResponse(env) {
       "x-content-type-options": "nosniff",
       "x-geomacro-authority": "backblaze-b2-intelligence-edge",
       "x-geomacro-b2-sha256": proof.compressed_sha256,
+      ...(proof.schema===MACHINE_INTELLIGENCE_PROOF_SCHEMA
+        ? {"x-geomacro-qualified-until":proof.qualified_until,"cache-control":"no-store"} : {}),
       "x-geomacro-current-overlay": projected.used ? "cloudflare-d1-hot" : "none",
       "access-control-allow-origin": "*",
       "access-control-expose-headers": "x-geomacro-authority, x-geomacro-current-overlay",
@@ -428,6 +435,9 @@ async function buildResponse(env) {
 }
 
 async function projectCachedResponse(cached, env) {
+  const deadline=cached.headers.get("x-geomacro-qualified-until");
+  if(deadline!==null&&!(Date.parse(deadline)>Date.now()))
+    throw Error("INTELLIGENCE_MACHINE_CACHED_QUALIFICATION_EXPIRED");
   let live;
   try {
     live = await cached.clone().json();

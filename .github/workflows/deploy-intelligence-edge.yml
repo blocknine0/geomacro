@@ -9,6 +9,7 @@ on:
     branches:
       - main
     paths:
+      - "lib/intelligence-publication-authority.mjs"
       - "workers/intelligence-edge/**"
       - "workers/control-plane/src/b2-account-quota.mjs"
       - ".github/workflows/deploy-intelligence-edge.yml"

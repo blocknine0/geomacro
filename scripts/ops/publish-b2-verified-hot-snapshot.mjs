@@ -1,3 +1,4 @@
+import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../lib/intelligence-publication-authority.mjs";
 import { createHash, createHmac } from "node:crypto";
 import { qualifyIndependentSameEvent } from "../lib/independent-same-event-qualification.mjs";
 
@@ -33,7 +34,7 @@ export async function publishB2VerifiedHotSnapshot({ product, value, proof, priv
     throw new Error("HOT_SNAPSHOT_INPUT_INVALID");
   }
   if (
-    proof.schema !== expected.proof ||
+    !(proof.schema === expected.proof || product === "intelligence" && isIntelligenceProofSchema(proof.schema)) ||
     proof.live_key !== expected.key ||
     proof.full_b2_readback_verified !== true ||
     proof.exact_gzip_restore_verified !== true ||
@@ -45,18 +46,23 @@ export async function publishB2VerifiedHotSnapshot({ product, value, proof, priv
   // duplicates or raw GDELT observations. Check private source evidence
   // before using credentials or sending a D1 publication request.
   if(product==="intelligence"){
-    if(proof.current_source_id!=="qualified_independent_original_publishers_v1"||
-       proof.current_evidence_contract!=="geomacro.qualified-original-event-claims.v1")
+    if(!isIntelligenceSourceContract(proof))
       throw Error("HOT_SNAPSHOT_ORIGINAL_PUBLISHER_CONTRACT_REQUIRED");
     const attestedAt=Date.parse(String(proof.commercial_multi_source_checked_at??""));
     if(!Number.isFinite(attestedAt)||Math.abs(Date.now()-attestedAt)>5*60_000)
       throw Error("HOT_SNAPSHOT_MULTI_SOURCE_ATTESTATION_STALE");
-    const result=qualifyIndependentSameEvent({
+    const machine=proof.schema===MACHINE_INTELLIGENCE_PROOF_SCHEMA;
+    const result=machine
+      ? await (await import("../../src/lib/machine-intelligence-publication.server.ts"))
+        .qualifyMachineIntelligenceBatch({rows:value.rows,eventPackages:privateEventPackages,
+          now:new Date(),receiptTime:new Date(attestedAt)})
+      : qualifyIndependentSameEvent({
       rows:value.rows,eventPackages:privateEventPackages,
       now:new Date(attestedAt),
       trustedReviewerPublicKeyPem:process.env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM,
     });
-    if(proof.commercial_multi_source_verified!==true||
+    if((machine && proof.qualified_until!==result.qualified_until)||
+       proof.commercial_multi_source_verified!==true||
        proof.commercial_multi_source_receipt_sha256!==result.receipt_sha256||
        proof.commercial_multi_source_qualified_count!==value.rows.length||
        result.receipt.qualified_event_count!==value.rows.length||

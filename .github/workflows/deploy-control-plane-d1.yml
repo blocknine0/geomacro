@@ -6,6 +6,7 @@ on:
     branches:
       - main
     paths:
+      - "lib/intelligence-publication-authority.mjs"
       - "workers/control-plane/**"
       - ".github/workflows/deploy-control-plane-d1.yml"
       - "src/__tests__/cloudflare-d1-bootstrap-static.test.ts"

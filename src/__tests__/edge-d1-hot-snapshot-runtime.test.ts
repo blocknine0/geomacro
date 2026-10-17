@@ -108,6 +108,34 @@ function hotSnapshot(product: string, validHash = true) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("B2 cap resilient public edge reads", () => {
+  it("serves a distinct machine hot proof with its qualification deadline and no stale cache allowance",async()=>{
+    const snapshot=hotSnapshot("intelligence");
+    snapshot.proof_schema="geomacro.public-intelligence-machine-live-proof.v1";
+    snapshot.expires_at=new Date(now+60_000).toISOString();
+    vi.stubGlobal("caches",{default:{match:async()=>null,put:async()=>undefined}});
+    vi.stubGlobal("fetch",async(input:RequestInfo|URL)=>String(input).includes("/v1/public/hot-snapshot/")
+      ?Response.json(snapshot):Response.json({ok:false},{status:503}));
+    const response=await intelligenceWorker.fetch(new Request("https://edge.test/intelligence"),{
+      CONTROL_PLANE:{fetch:(request:Request)=>fetch(request.url)},
+    },{waitUntil:()=>undefined});
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-geomacro-qualified-until")).toBe(snapshot.expires_at);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+  it("refuses an expired machine response even when a POP retains its cached bytes",async()=>{
+    const cached=new Response(JSON.stringify(livePackage("intelligence")),{
+      headers:{"x-geomacro-qualified-until":new Date(now-60_000).toISOString(),
+        "x-geomacro-b2-sha256":b2Sha}});
+    vi.stubGlobal("caches",{default:{match:async()=>cached.clone(),put:async()=>undefined}});
+    vi.stubGlobal("fetch",async()=>Response.json({ok:false},{status:503}));
+    const response=await intelligenceWorker.fetch(new Request("https://edge.test/intelligence"),{
+      CONTROL_PLANE:{fetch:(request:Request)=>fetch(request.url)},
+    },{waitUntil:()=>undefined});
+    // Historical continuity may remain readable; expired machine rows must not.
+    const body=await response.json();
+    expect(body.rows?.some((r:{id:string})=>r.id==="row-geopolitics")??false).toBe(false);
+  });
+
   it.each([
     ["intelligence", intelligenceWorker, "/intelligence"],
     ["global-risk", globalRiskWorker, "/global-risk"],

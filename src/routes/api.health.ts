@@ -1,3 +1,4 @@
+import {isIntelligenceProofSchema} from "../../lib/intelligence-publication-authority.mjs";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   readB2PublicIntelligence,
@@ -103,7 +104,7 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
       snapshot.proof_schema === GLOBAL_RISK_CURRENT_PROOF_SCHEMA &&
       snapshot.verification_mode === GLOBAL_RISK_CURRENT_PROOF_MODE;
     const directB2 =
-      snapshot.proof_schema === probe.proofSchema &&
+      (snapshot.proof_schema === probe.proofSchema || probe.product === "intelligence" && isIntelligenceProofSchema(snapshot.proof_schema)) &&
       snapshot.full_b2_readback_verified === true &&
       snapshot.exact_gzip_restore_verified === true &&
       snapshot.current_b2_readback_verified !== false &&
@@ -115,6 +116,7 @@ async function verifyHotSnapshot(probe: (typeof HOT_SNAPSHOT_PROBES)[number]) {
       snapshot.schema !== probe.schema ||
       !(
         snapshot.proof_schema === probe.proofSchema ||
+        probe.product === "intelligence" && isIntelligenceProofSchema(snapshot.proof_schema) ||
         probe.product === "global-risk" &&
           snapshot.proof_schema === GLOBAL_RISK_CURRENT_PROOF_SCHEMA &&
           snapshot.verification_mode === GLOBAL_RISK_CURRENT_PROOF_MODE
