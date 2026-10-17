@@ -2,6 +2,8 @@ name: Stateless Live Structured No-Funds Acceptance
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "37 */6 * * *"
 
 permissions:
   contents: read
