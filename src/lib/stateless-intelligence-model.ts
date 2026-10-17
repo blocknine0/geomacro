@@ -221,6 +221,9 @@ const AU_RESOURCES_TRADE_TOPIC = {
   name: "resources and energy export outlook",
   implication: "A dated government resources export release informs trade context only; no export value, FX movement or risk score is inferred.",
 };
+export function australianResourcesMacroMatches(title: string): boolean {
+  return AU_RESOURCES_TRADE_TOPIC.test.test(title);
+}
 const STATCAN_FEED_IDS = new Set([
   "statcan_prices", "statcan_accounts", "statcan_trade", "statcan_labour",
 ]);
