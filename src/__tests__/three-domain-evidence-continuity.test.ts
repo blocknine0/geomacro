@@ -127,6 +127,16 @@ describe("continuous three-category source observations backed by D1",()=>{
    expect(data.categories.rare_earth.data_present).toBe(false);
    expect(data.three_domains_returned).toBe(true);
  });
+ it("does not return misleading HTTP 200 when all D1 readers fail",async()=>{
+   const f=env({journalFail:true,pulseFail:true,checkpointFail:true});
+   const r=await threeDomainEvidenceContinuity(f,NOW);
+   expect(r.status).toBe(503);
+   const body=await r.json();
+   expect(body).toMatchObject({ok:false,chargeable:false,
+     error:"CONTINUITY_ALL_READBACKS_UNAVAILABLE"});
+   expect(body).not.toHaveProperty("available");
+ });
+
  it("source runtime older than 14 days becomes unavailable, never renewed",async()=>{
    const at=new Date(NOW-15*86_400_000).toISOString();
    const f=env({ctx:Object.fromEntries(domains.map(d=>[d,sample(d,at)]))});

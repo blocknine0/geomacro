@@ -118,6 +118,13 @@ export async function threeDomainEvidenceContinuity(env,now=Date.now()){
       }catch{return null}
     })),
   ]);
+  // If the journal, historical contexts AND pulse readback all fail, don't
+  // disguise a D1 outage as a healthy empty data day.
+  const anyPulseVerified=DOMAIN_SCOPES.some(d=>
+    pulse.categories[d.domain]?.status==="SOURCE_NATIVE_OBSERVED");
+  if(!journal.complete&&!contexts.some(Boolean)&&!anyPulseVerified)
+    return json({ok:false,error:"CONTINUITY_ALL_READBACKS_UNAVAILABLE",
+      chargeable:false,three_domains_returned:false},503);
   const categories={};
   for(let i=0;i<DOMAIN_SCOPES.length;i++){
     const d=DOMAIN_SCOPES[i],result=emptyDomain(d),snapshot=contexts[i];
