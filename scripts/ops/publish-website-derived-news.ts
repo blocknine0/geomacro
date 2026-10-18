@@ -106,7 +106,7 @@ try {
   const queue=buildMaterialGriNewsReviewQueue(reports,Date.now());
   mkdirSync("artifacts/derived-news",{recursive:true});
   writeFileSync("artifacts/derived-news/material-gri-review.json",
-    JSON.stringify(queue,null,2)+"\\n",{encoding:"utf8",mode:0o600});
+    JSON.stringify(queue,null,2),{encoding:"utf8",mode:0o600});
   console.log(JSON.stringify({schema:"geomacro.material-gri-review-health.v1",
     categories:queue.categories.map(c=>({category:c.category,candidates:c.candidates_count})),
     destination:queue.destination,retention_hours:72,
