@@ -15,6 +15,8 @@ function extract(chunk,tag) {
 }
 export function classifyEiaLink(raw){
   if(typeof raw!=="string"||raw.length>800)return "bad";
+  if(PRESS.test(raw))return "relative_exact_press";
+  if(raw.startsWith("/")&&!raw.startsWith("//"))return "relative_other";
   try{
     const u=new URL(raw);
     if(u.username||u.password||u.port||u.hash||u.hostname!=="www.eia.gov")return "foreign_or_unsafe";
@@ -41,7 +43,7 @@ export async function probeEiaPressRss({
   if(content.length>MAX||!/^\s*<\?xml|<rss(?:\s|>)/iu.test(content)||/<!DOCTYPE|<!ENTITY/iu.test(content))
     return {ok:false,reason:"EIA_FEED_XML_REJECTED"};
   const rows=[...content.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,24);
-  const types={https_exact_press:0,http_exact_press:0,query_press:0,other_pressroom:0,other_eia:0,foreign_or_unsafe:0,bad:0};
+  const types={https_exact_press:0,http_exact_press:0,relative_exact_press:0,relative_other:0,query_press:0,other_pressroom:0,other_eia:0,foreign_or_unsafe:0,bad:0};
   const tags={link_element_present:0,link_empty:0,link_https:0,link_http:0,
     link_relative:0,link_other_nonempty:0,guid_tag_present:0,
     guid_marked_permalink_true:0,guid_https:0,guid_http:0,guid_other:0,
@@ -67,7 +69,7 @@ export async function probeEiaPressRss({
   }
   return {schema:"geomacro.eia-native-original-rss-shape.v1",
     ok:true,item_count:rows.length,link_class_counts:types,tag_shape_counts:tags,
-    original_path_confirmed:types.https_exact_press+types.http_exact_press>0,
+    original_path_confirmed:types.https_exact_press+types.relative_exact_press>0,
     commercial_approved:false,source_native_current_verified:false,
     score_generated:false,source_urls_exposed:false,raw_material_exposed:false,
     b2_requests:0,d1_writes:0,supabase_writes:0,payments:0};
