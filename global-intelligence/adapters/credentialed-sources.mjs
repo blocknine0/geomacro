@@ -55,10 +55,12 @@ export async function probeCredentialedSource(sourceId) {
       category: "MACRO", countryIso3: "USA", env: "EIA_API_KEY",
       build: key => `https://api.eia.gov/v2/electricity/retail-sales/data/?api_key=${encodeURIComponent(key)}&frequency=monthly&data[]=price&facets[stateid][]=CO&sort[0][column]=period&sort[0][direction]=desc&length=1`,
       validate: x => Array.isArray(x?.response?.data) && x.response.data.length===1 &&
-        /^\\d{4}-(0[1-9]|1[0-2])$/.test(x.response.data[0]?.period??"") &&
+        /^\d{4}-(0[1-9]|1[0-2])$/.test(x.response.data[0]?.period??"") &&
         x.response.data[0]?.stateid==="CO" &&
         Number.isFinite(Number(x.response.data[0]?.price)) &&
-        x.response.data[0]?.price!==null
+        x.response.data[0]?.price!==null &&
+        x.response.data[0]?.price!==undefined &&
+        String(x.response.data[0]?.price).trim()!==""
     },
     noaa_ncei: {
       category: "GEOPOLITICS", countryIso3: "USA", env: "NOAA_NCEI_TOKEN",
