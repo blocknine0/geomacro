@@ -96,3 +96,26 @@ test("do not treat absent events as zero real-world risk, keep three categories"
   assert.throws(()=>buildMaterialGriCountryEvidenceWorklist(
     {...empty,categories:empty.categories.slice(0,2)},registry,now));
 });
+
+test("hourly primary, Auto Ingest and recovery all hand off only unscored country review",()=>{
+  for(const path of [
+    ".github/workflows/auto-ingest-news.yml",
+    ".github/workflows/website-derived-news-continuity.yml",
+    ".github/workflows/website-derived-news-cadence-backstop.yml",
+  ]){
+    const workflow=readFileSync(path,"utf8");
+    assert.ok(workflow.includes(
+      "node scripts/ops/build-material-gri-country-worklist.mjs"),path);
+    assert.ok(workflow.includes(
+      "material-gri-country-evidence-worklist.json"),path);
+    assert.ok(workflow.includes("retention-days: 3"),path);
+    assert.ok(!workflow.includes("gri_reviewed_current_ready"),path);
+    assert.ok(!workflow.includes("publish-supabase-free-global-risk.mjs"),path);
+  }
+  const publisher=readFileSync(
+    ".github/workflows/gri-v12-supabase-free-reviewed-current.yml","utf8");
+  assert.ok(publisher.includes("types: [gri_reviewed_current_ready]"));
+  assert.ok(publisher.includes("CURRENT_GRI_IMMUTABLE_INPUT_KEY_SHA_NOT_BOUND"));
+  assert.ok(publisher.includes("REVIEWED_CERTIFICATES_B2_SHA256"));
+  assert.ok(publisher.includes("publish-supabase-free-global-risk.mjs --verified-current"));
+});
