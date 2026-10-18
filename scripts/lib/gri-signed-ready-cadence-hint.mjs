@@ -51,3 +51,65 @@ export function assertGriDispatchTarget(target){
     throw Error("ONLY_CANONICAL_SIGNED_GRI_PUBLISHER_ALLOWED");
   return target;
 }
+
+
+/**
+ * Operational transparency: distinguish "scheduler ran" from genuine signed
+ * numerical GRI recovery. This is a pure, zero-network/zero-credentials report.
+ * Never prints any signed SHA, source URL, private reviewer material or secret.
+ */
+export function explainGriSignedInputBlockers({reviewedSha,certificatesSha,readyAt,
+  now=new Date()}={}){
+  const ready=prepareGriSignedReadyCadenceHint({
+    reviewedSha,certificatesSha,readyAt,now,
+  });
+  const shaOk=v=>typeof v==="string"&&HEX.test(v);
+  return Object.freeze({
+    schema:"geomacro.gri-v12-signed-input-blockers.v1",
+    current_numerical_score_verified:false,
+    reviewed_signed_input_pointer_valid:shaOk(reviewedSha),
+    independent_country_certificates_pointer_valid:shaOk(certificatesSha)&&
+      certificatesSha!==reviewedSha,
+    externally_approved_fresh_hint_valid:ready.eligible,
+    admission_reason:ready.reason,
+    missing_requirements:Object.freeze([
+      ...(!shaOk(reviewedSha)?["REAL_INDEPENDENTLY_REVIEWER_SIGNED_GRI_INPUT"]:[]),
+      ...(!shaOk(certificatesSha)||certificatesSha===reviewedSha?
+        ["SEPARATE_SIGNED_COUNTRY_CATEGORY_CERTIFICATES"]:[]),
+      ...(!ready.eligible?["RECENT_AUTHENTIC_REVIEW_APPROVAL_WINDOW"]:[]),
+    ]),
+    news_selection_is_not_signed_evidence:true,
+    geomacro_owned_output_license_is_not_upstream_source_rights:true,
+    genuine_source_and_commercial_rights_still_mandatory:true,
+    publisher_dispatch_authorized_by_this_report:false,
+    signed_gri_published:false,
+    numerical_score_changed:false,
+    b2_requests:0,d1_writes:0,supabase_writes:0,payments:0,
+  });
+}
+export function safeGriBlockerJobSummary(report){
+  if(report?.schema!=="geomacro.gri-v12-signed-input-blockers.v1")
+    throw Error("GRI_SIGNED_BLOCKER_REPORT_INVALID");
+  const allowed=new Set([
+    "REAL_INDEPENDENTLY_REVIEWER_SIGNED_GRI_INPUT",
+    "SEPARATE_SIGNED_COUNTRY_CATEGORY_CERTIFICATES",
+    "RECENT_AUTHENTIC_REVIEW_APPROVAL_WINDOW",
+  ]);
+  if(!Array.isArray(report.missing_requirements)||
+     report.missing_requirements.some(x=>!allowed.has(x)))
+    throw Error("GRI_SIGNED_BLOCKER_REPORT_INVALID");
+  return [
+    "### GRI v1.2 — current signed numerical recovery",
+    "",
+    "**Status: NOT VERIFIED.** Successful ingestion/backstop execution is not a signed numerical GRI v1.2 update.",
+    "",
+    "The following genuine inputs must already exist and independently pass protected publication:",
+    ...report.missing_requirements.map(x=>"- Missing: "+x),
+    ...(report.missing_requirements.length===0?
+      ["- Pointers look structurally valid; real signatures, source rights, native clocks, canonical scoring, B2 readback and D1 must still be checked by the publisher."]:[]),
+    "",
+    "No third-party publisher rights are granted by Geomacro's owned-output licence.",
+    "No old score was refreshed; no raw data, B2 read, D1 write, Supabase or USDC payment occurred in this diagnostic.",
+    "",
+  ].join("\n");
+}
