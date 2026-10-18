@@ -41,6 +41,7 @@ jobs:
     timeout-minutes: 8
     environment: production
     env:
+      EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
@@ -58,6 +59,23 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "22"
+      - name: Fail closed on nonmatching protected main or funds/Supabase config
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "blocknine0/geomacro"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$EXPECTED_CANONICAL_MAIN_SHA" = "$(git rev-parse HEAD)" || {
+            echo "::error::GRI_HISTORY_SOURCE_SHA_NOT_MAIN"; exit 2;
+          }
+          test "$B2_ACCOUNT_QUOTA_REQUIRED" = "1"
+          test "$B2_ACCOUNT_QUOTA_WORKFLOW_ID" = "historical_gri_version_recovery"
+          test "$B2_REQUEST_BUDGET" = "4"
+          for key in SUPABASE_URL SUPABASE_DB_URL APP_SUPABASE_URL APP_SUPABASE_DB_URL SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_SERVICE_ROLE_KEY COINBASE_API_KEY COINBASE_X402_MAINNET_ACK GEOMACRO_COMMERCIAL_LAUNCH_ACK; do
+            test -z "$(printenv "$key" || true)" || {
+              echo "::error::GRI_HISTORY_NO_FUNDS_AND_NO_SUPABASE_REQUIRED"; exit 2;
+            }
+          done
       - name: Resolve the existing D1 account-wide quota ledger
         run: |
           node --input-type=module <<'JS'
