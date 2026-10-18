@@ -11,6 +11,7 @@ import {
 } from "./gri-engine-v12.js";
 import { GRI_DISPOSITION, buildSourceDisposition } from "./gri-disposition-v12.js";
 import { reviewedNumericalGriDelta } from "./gri-reviewed-numerical-delta.mjs";
+import {reviewedGriPortfolioProfile,GRI_RETAINED_MAX_AGE_MS} from "./gri-reviewed-source-window.mjs";
 import { buildPortableGriProofBundle, verifyPortableGriProofBundle } from "./gri-portable-proof-v12.js";
 import { qualifyIndependentSameEvent } from "./independent-same-event-qualification.mjs";
 import { assemblePublicGlobalRisk } from "../../src/lib/global-risk-assemble.ts";
@@ -98,6 +99,8 @@ function checkReviewedInput(signed, nowMs) {
     signed.events.length === signed.customerRows.length &&
     signed.events.length === signed.eventPackages.length,
   "REVIEWED_CURRENT_INPUT_REQUIRED");
+  const retained=reviewedGriPortfolioProfile(signed);
+  const originalWindow=retained?GRI_RETAINED_MAX_AGE_MS:MAX_AGE;
   const at = Date.parse(signed.as_of);
   const reviewedAt = Date.parse(signed.reviewed_at);
   assert(Number.isFinite(at) && Number.isFinite(reviewedAt) &&
@@ -126,15 +129,20 @@ function checkReviewedInput(signed, nowMs) {
     const observed = Date.parse(event.created_at);
     assert(Number.isFinite(original) && Number.isFinite(observed) &&
       original <= observed && observed <= at &&
-      original <= nowMs + FUTURE_SKEW && nowMs - original <= MAX_AGE &&
-      nowMs - observed <= MAX_AGE,
+      original <= nowMs + FUTURE_SKEW && nowMs - original <= originalWindow &&
+      nowMs - observed <= originalWindow,
     "EVENT_ORIGINAL_TIME_STALE_OR_INVALID");
     byId.set(event.id, event);
     latest.set(event.category, Math.max(latest.get(event.category) ?? 0, original));
   }
   assert(GRI_CATEGORIES.every(category =>
-    latest.has(category) && nowMs - latest.get(category) <= MAX_AGE),
+    latest.has(category) && nowMs - latest.get(category) <= originalWindow),
   "THREE_DOMAIN_ORIGINAL_FRESHNESS_MISSING");
+  // An unchanged reviewed baseline may be retained within canonical GRI 72h
+  // recency decay, but at least ONE real source-native original must have
+  // arrived within 90 minutes. No rescore solely by advancing reviewed_at.
+  if(retained)assert([...latest.values()].some(at=>nowMs-at<=MAX_AGE),
+    "RETAINED_PORTFOLIO_NO_NEW_ORIGINAL_EVENT");
   const seen = new Set();
   for (const row of signed.customerRows) {
     const event = byId.get(row?.id);
@@ -176,6 +184,7 @@ export function computeReviewedCurrentGlobalRisk({
     rows: input.customerRows,
     eventPackages: input.eventPackages,
     now, trustedReviewerPublicKeyPem,
+    griRetainedPortfolio:reviewedGriPortfolioProfile(input),
   });
   assert(qualified.receipt.qualified_event_count === input.events.length &&
     qualified.receipt.commercial_event_admission === true,
@@ -280,6 +289,10 @@ export function computeReviewedCurrentGlobalRisk({
       verified_previous_snapshot_id:movement.verified_previous_snapshot_id,
       observed_numeric_delta_points:movement.change_points,
       numerical_change_not_event_attribution:true,
+      // Provenance-only: signed reviewer intentionally retained real
+      // source-native events under the *unchanged* 72h v1.2 scoring formula.
+      retained_source_portfolio_review:reviewedGriPortfolioProfile(input),
+      source_lookback_hours:reviewedGriPortfolioProfile(input)?72:1.5,
     },
     portableProof: portable, // RETURNED PRIVATE: NEVER WRITE TO D1/PUBLIC B2
   };
@@ -303,6 +316,7 @@ export function preflightReviewedCurrentGlobalRisk({
   const sourceQualification = qualifyIndependentSameEvent({
     rows: signed.customerRows, eventPackages: signed.eventPackages,
     now, trustedReviewerPublicKeyPem,
+    griRetainedPortfolio:reviewedGriPortfolioProfile(signed),
   });
   assert(sourceQualification.receipt.qualified_event_count === signed.events.length &&
     sourceQualification.receipt.commercial_event_admission === true,
