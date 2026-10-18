@@ -1,0 +1,76 @@
+name: Risk Indices Verified GRI Parent Repair Backstop (No Funds)
+
+# Guarantees a missed GRI->indices workflow_run trigger can recover while
+# the genuine signed GRI parent is STILL current. No news score, no signatures,
+# no Supabase, no B2, no customer payment in this scheduler.
+on:
+  schedule:
+    - cron: "11,41 * * * *"
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/risk-indices-verified-parent-backstop.yml"
+      - "scripts/ops/risk-indices-verified-parent-backstop.mjs"
+      - "scripts/lib/risk-indices-verified-parent-backstop.test.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/risk-indices-verified-parent-backstop.yml"
+      - "scripts/ops/risk-indices-verified-parent-backstop.mjs"
+      - "scripts/lib/risk-indices-verified-parent-backstop.test.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-verified-gri-parent-indices-backstop
+  cancel-in-progress: false
+
+jobs:
+  source-and-negative-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Verify no-score, no-funds, valid-parent-only backstop
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/risk-indices-verified-parent-backstop.mjs
+          node --test scripts/lib/risk-indices-verified-parent-backstop.test.mjs
+
+  dispatch-only-after-verified-parent:
+    needs: source-and-negative-tests
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    env:
+      EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Recheck protected exact SHA without source or B2 reads
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_CANONICAL_MAIN_SHA" = "$(git rev-parse HEAD)"
+          test -f .github/workflows/risk-indices-verified-d1-parent.yml
+          grep -Fq "publish-risk-indices-from-verified-global-risk.mjs --verified-d1-parent-only" \
+            .github/workflows/risk-indices-verified-d1-parent.yml
+      - name: Dispatch existing governed indices publisher ONLY for verified current GRI with missing indices
+        run: node scripts/ops/risk-indices-verified-parent-backstop.mjs
