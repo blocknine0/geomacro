@@ -49,21 +49,21 @@ export async function probeEiaPressRss({
   for(const m of rows){
     const xml=m[1], link=extract(xml,"link"),guid=extract(xml,"guid");
     types[classifyEiaLink(link)]++;
-    if(/<link(?:\\s|>)/iu.test(xml))tags.link_element_present++;
+    if(/<link(?:\s|>)/iu.test(xml))tags.link_element_present++;
     if(!link)tags.link_empty++;
     else if(link.startsWith("https://"))tags.link_https++;
     else if(link.startsWith("http://"))tags.link_http++;
     else if(link.startsWith("/"))tags.link_relative++;
     else tags.link_other_nonempty++;
-    if(/<guid(?:\\s|>)/iu.test(xml))tags.guid_tag_present++;
-    if(/<guid\\b[^>]*isPermaLink=["']true["']/iu.test(xml))tags.guid_marked_permalink_true++;
+    if(/<guid(?:\s|>)/iu.test(xml))tags.guid_tag_present++;
+    if(/<guid\b[^>]*isPermaLink=["']true["']/iu.test(xml))tags.guid_marked_permalink_true++;
     if(guid.startsWith("https://"))tags.guid_https++;
     else if(guid.startsWith("http://"))tags.guid_http++;
     else if(guid)tags.guid_other++;
     if(["https_exact_press","http_exact_press"].includes(classifyEiaLink(guid)))
       tags.guid_exact_press++;
-    if(/<link>\\s*<!\\[CDATA\\[/iu.test(xml))tags.encoded_link_cdata++;
-    if(/<link\\s+[^>]*href=/iu.test(xml))tags.raw_link_attribute++;
+    if(/<link>\s*<!\[CDATA\[/iu.test(xml))tags.encoded_link_cdata++;
+    if(/<link\s+[^>]*href=/iu.test(xml))tags.raw_link_attribute++;
   }
   return {schema:"geomacro.eia-native-original-rss-shape.v1",
     ok:true,item_count:rows.length,link_class_counts:types,tag_shape_counts:tags,
