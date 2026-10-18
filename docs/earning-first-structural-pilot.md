@@ -50,3 +50,36 @@ Other supported pilot topics: `sovereign_risk`, `fx_external_risk`, `critical_mi
 - [ ] Verify Coinbase settlement on Base and idempotent ledger replay; then earn and expand gradually.
 
 The large signed GRO/GRI B2/D1 hot recovery remains a separate blocker for **signed risk products**. Structural_baseline does not pretend it solved #2124.
+
+
+## Scoped reduced-friction commercial baseline (2026-10-18)
+
+The opt-in `delivery_tier: "structural_baseline"` now checks **exactly
+one** source-native, commercial-rights-eligible structural module for
+the single explicitly requested country/topic:
+
+| Topic | Required single module |
+|---|---|
+| `macro_risk` | `macro_monetary` |
+| `fx_external_risk` | `external_fx` |
+| `sovereign_risk` | `sovereign_fiscal` |
+| `conflict_geopolitics` | `geopolitical_security` |
+| `critical_minerals` | `critical_minerals` |
+
+This is an **individual baseline dimension**, not an overall geopolitical,
+macroeconomic or risk score. It needs neither signed GRO nor GRI, but DOES
+require native-date observation evidence, rights, freshness, exact source
+module, quote-bound prepared output and the unchanged Coinbase x402 ledger,
+settlement and owner authorizations. Pricing remains `structural_country_digest
+= 0.02 USDC`, as previously locked. All signed product module requirements
+and their existing query-plan hashes remain unchanged.
+
+The free `?view=structural-72h` response additionally returns a stable
+`availability_by_category` status and `generated_at` for ALL three
+categories, including honest `NO_QUALIFIED_RELEASE_IN_72H` when no retained
+qualifying original exists. `generated_at` is response compilation time,
+never a news publication or source-polling claim. Journal remains bounded
+and available only when D1 and website deployment are actually healthy.
+
+No paid query may use the generic free news-card records as proof of paid
+eligibility. No source licensing or payment-safety restriction is relaxed.

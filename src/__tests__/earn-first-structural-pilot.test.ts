@@ -58,9 +58,36 @@ describe("earn-first original-dated structural baseline pilot", () => {
     expect(after.required_modules).toEqual(before.required_modules);
     expect(baseline.query_plan_hash).not.toBe(before.query_plan_hash);
     expect(baseline.delivery_tier).toBe("structural_baseline");
-    expect(baseline.required_modules).toEqual(before.required_modules);
+    // Paid baseline needs only its OWN verifiable structural module; signed
+    // risk product continues requiring all prior modules.
+    expect(baseline.required_modules).toEqual(["macro_monetary"]);
     expect(baseline.required_modules).not.toContain("signed_risk_object");
     expect(baseline.required_modules).not.toContain("hot_topics");
+  });
+
+  it("does not demand an unrelated second module for one licensed, current baseline", () => {
+    const expected = {
+      sovereign_risk: "sovereign_fiscal",
+      macro_risk: "macro_monetary",
+      fx_external_risk: "external_fx",
+      conflict_geopolitics: "geopolitical_security",
+      critical_minerals: "critical_minerals",
+    } as const;
+    for (const [topic, module] of Object.entries(expected)) {
+      const lean = buildAgentQueryPlan({...pilot,topics:[topic]});
+      expect(lean.required_modules).toEqual([module]);
+      expect(lean.required_modules).not.toContain("signed_risk_object");
+      expect(lean.required_modules).not.toContain("hot_topics");
+      expect(lean.query_plan_hash).not.toBe(buildAgentQueryPlan({
+        topics:[topic],subjects:pilot.subjects
+      }).query_plan_hash);
+    }
+    // Failure in any unrelated broad signed module cannot be used to claim
+    // that the narrower licensed data is missing, or vice versa.
+    const macro = buildAgentQueryPlan(pilot);
+    const signed = buildAgentQueryPlan({topics:["macro_risk"],subjects:pilot.subjects});
+    expect(macro.required_modules).toEqual(["macro_monetary"]);
+    expect(signed.required_modules).toEqual(["macro_monetary","sovereign_fiscal"]);
   });
 
   it("requires one explicit country/topic, disallows live/signed risk and keeps legacy behavior", () => {
@@ -90,7 +117,7 @@ describe("earn-first original-dated structural baseline pilot", () => {
       ...pilot, question: "What is the inflation baseline for this country?",
     });
     expect(validQuestion.delivery_tier).toBe("structural_baseline");
-    expect(validQuestion.required_modules).toEqual(["macro_monetary","sovereign_fiscal"]);
+    expect(validQuestion.required_modules).toEqual(["macro_monetary"]);
     // Legacy default remains compatible with valid historical signed queries.
     expect(buildAgentQueryPlan({
       subjects: [{ type: "country", country_iso3: "USA" }],
@@ -129,7 +156,7 @@ describe("earn-first original-dated structural baseline pilot", () => {
     });
     expect(body.query_plan_hash).toBe(buildAgentQueryPlan(pilot).query_plan_hash);
     expect(body.availability.subjects[0].available_modules)
-      .toEqual(["macro_monetary", "sovereign_fiscal"]);
+      .toEqual(["macro_monetary"]);
     expect(check).toHaveBeenCalledOnce();
     expect(JSON.stringify(body)).not.toContain("PRIVATE_PROVENANCE_DO_NOT_RETURN");
     expect(JSON.stringify(body)).not.toContain("source_contracts");

@@ -109,6 +109,17 @@ export function assertStructuralBaselinePilot(input: AgentAdaptiveQuery) {
   }
 }
 
+/** An explicit single-country structural digest describes ONE measured module,
+ * never an entire multi-dimensional country risk state. The current signed
+ * intelligence tier retains the wider original module requirements and plan
+ * hashes without modification. This is scope reduction, NOT rights waiver. */
+const BASELINE_MODULE_BY_TOPIC: Partial<Record<AgentQueryTopic, string>> = {
+  sovereign_risk:"sovereign_fiscal",
+  macro_risk:"macro_monetary",
+  fx_external_risk:"external_fx",
+  conflict_geopolitics:"geopolitical_security",
+  critical_minerals:"critical_minerals",
+};
 const TOPIC_MODULES: Record<AgentQueryTopic, readonly string[]> = {
   sovereign_risk: ["sovereign_fiscal", "political_governance"],
   macro_risk: ["macro_monetary", "sovereign_fiscal"],
@@ -358,7 +369,10 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   if (topics.length === 0) throw new Error("UNSUPPORTED_OR_AMBIGUOUS_AGENT_QUESTION");
   validateIntent(parsed, intent, subjects, topics);
 
-  const requiredModules = [...new Set(topics.flatMap((topic) => TOPIC_MODULES[topic]))].sort();
+  const requiredModules = parsed.delivery_tier === "structural_baseline"
+    ? [BASELINE_MODULE_BY_TOPIC[topics[0]]].filter((m):m is string=>typeof m==="string")
+    : [...new Set(topics.flatMap((topic) => TOPIC_MODULES[topic]))].sort();
+  if(requiredModules.length===0)throw Error("STRUCTURAL_BASELINE_MODULE_NOT_AVAILABLE");
   if (parsed.as_of && requiredModules.some((module) => !HISTORICAL_COMPATIBLE_MODULES.has(module))) {
     throw new Error("HISTORICAL_AS_OF_UNSUPPORTED_FOR_REQUESTED_MODULES");
   }
