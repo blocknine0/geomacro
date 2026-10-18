@@ -3,6 +3,7 @@
 import { spawn } from "node:child_process";
 import { createD1ControlPlaneStateClient } from "./lib/d1-control-plane-state.mjs";
 import { officialSourcePollCursorOutcome } from "./lib/official-source-poll-cursor.mjs";
+import { recognizeDegradedOfficialMeshObservation } from "./lib/scheduled-official-mesh-observation.mjs";
 import {
   DEFAULT_HEARTBEAT_BUDGET_MS,
   DEFAULT_HEARTBEAT_RESERVE_MS,
@@ -75,11 +76,13 @@ const TASKS = [
     ],
   },
   {
-    // Original publisher pubDate, no processing-time laundering. Safe lane:
-    // all eleven active official HTTPS transports; three blocked routes\n    // quarantined. No Supabase/B2/paid API/public scoring.
+    // Publisher-native dates, no processing-time laundering. This complete
+    // 15-source / 3-quarantine transport census is intentionally SIX-HOURLY;
+    // the separate three-domain 30-minute source pulse is the fast path.
+    // Never equate an observed degraded source with a fresh/signed event.
     key: "official_native_rss",
     restrictedDirectPostgresSafe: true,
-    cadenceSeconds: 3600,
+    cadenceSeconds: 21600,
     offsetSeconds: 120,
     priority: 8,
     timeoutMs: 75_000,
@@ -406,6 +409,15 @@ async function runTask(task) {
         const result = await runStep(step, timeoutMs);
         stepResults.push(result);
         if (!result.ok) {
+          const degraded = task.key === "official_native_rss"
+            ? recognizeDegradedOfficialMeshObservation(result) : null;
+          if (degraded) {
+            // Exit 3 + exact red source receipt is a completed measurement,
+            // NOT a healthy source, current event, commercial grant or score.
+            return {ok:true,observation_degraded:true,
+              source_transport_failures:degraded.active_transport_failures,
+              attempts:attempt,steps:stepResults};
+          }
           attemptOk = false;
           break;
         }
@@ -474,6 +486,7 @@ async function main() {
     project_ref: PROJECT_REF,
     started_at: new Date(startMs).toISOString(),
     selected: [],
+    degraded_source_observations: [],
     skipped: disabled,
     bootstrap_seeds_are_immediately_due: true,
     task_allowlist: [...TASK_ALLOWLIST].sort(),
@@ -524,13 +537,26 @@ async function main() {
     }
 
     const result = await runTask(task);
-    const success = result.ok;
-    state.cursor.next_due_at = nextDueFrom(task, attemptMs, success);
-    state.cursor.last_error = success ? null : "task_failed";
-    state.cursor.retry_pending = !success;
+    const observationDegraded = task.key === "official_native_rss" &&
+      result.ok === true && result.observation_degraded === true;
+    const success = result.ok && !observationDegraded;
+    // A signed-proof-free degraded transport census is an OBSERVATION, so
+    // retry on the regular bounded cadence, never a 5-minute retry storm.
+    // Actual fatal failures still retry/fail closed as before.
+    state.cursor.next_due_at = nextDueFrom(task, attemptMs, result.ok);
+    state.cursor.last_error = success ? null : observationDegraded
+      ? "official_native_transport_degraded" : "task_failed";
+    state.cursor.retry_pending = !result.ok;
     state.cursor.consecutive_failures = success
       ? 0
       : Number(state.cursor.consecutive_failures ?? 0) + 1;
+    if (observationDegraded) {
+      summary.degraded_source_observations.push({
+        task: task.key,transport_failures:result.source_transport_failures,
+        source_status:"degraded",current_signed_event_verified:false,
+        commercial_eligible:false,
+      });
+    }
     if (task.key === "official_native_rss") {
       // A failed publisher poll must never leave the persistent D1 cursor
       // advertising the prior healthy observation or a successful heartbeat.
@@ -557,8 +583,13 @@ async function main() {
       last_success_at: success ? new Date().toISOString() : null,
       cursor: state.cursor,
     });
-    summary.ok = summary.ok && success;
-    summary.selected.push({ task: task.key, ok: success, attempts: result.attempts });
+    // Scheduler execution is complete if it truthfully records a degraded
+    // transport census. Public data readiness remains explicitly FALSE.
+    summary.ok = summary.ok && result.ok;
+    summary.selected.push({ task: task.key, ok: success,
+      observation_accepted: result.ok,
+      source_transport_degraded: observationDegraded,
+      attempts: result.attempts });
     completed += 1;
   }
 
