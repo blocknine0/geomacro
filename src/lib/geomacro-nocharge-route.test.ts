@@ -6,7 +6,7 @@ describe("no-charge v1 integration preserves canonical x402 safety",()=>{
   const route=readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts","utf8");
   expect(route).toContain('import {makeGeomacroNoChargeResponse} from "./geomacro-nocharge"');
   const start=route.indexOf('if (!availability.deliverable) {');
-  const payment=route.indexOf('const paymentHeader = request.headers.get("payment-signature")');
+  const payment=route.indexOf('if (!paymentHeader) {',start);
   expect(start).toBeGreaterThan(0);
   expect(payment).toBeGreaterThan(start);
   const negative=route.slice(start,payment);

@@ -6,6 +6,7 @@ const implementation = readFileSync(
   "src/lib/mainnet-intelligence-endpoint.server.ts",
   "utf8",
 );
+const offer = readFileSync("src/lib/capability-x402-offer.server.ts", "utf8");
 const canonicalRoute = readFileSync(
   "src/routes/api.v1.intelligence.query.ts",
   "utf8",
@@ -49,7 +50,7 @@ describe("Geomacro Mainnet Intelligence API v1", () => {
       "delivered_product_hash",
       "execution_authorized: false",
     ]) {
-      expect(implementation).toContain(invariant);
+      expect(implementation + offer).toContain(invariant);
     }
     expect(implementation).toContain(
       'CANONICAL_MAINNET_INTELLIGENCE_PATH = "/api/v1/intelligence/query"',
@@ -66,11 +67,11 @@ describe("Geomacro Mainnet Intelligence API v1", () => {
     expect(implementation).toContain('import { resolveEligibleCoinbaseCapabilityConfig }');
     expect(implementation).toContain('config = resolveEligibleCoinbaseCapabilityConfig(plan, availability, config)');
     expect(implementation).toContain('finalConfig.amountAtomic !== config.amountAtomic');
-    expect(implementation).toContain('coinbaseX402PaymentRequirements(config)');
-    expect(implementation).toContain('assertCoinbasePaymentBinding(paymentPayload, config)');
-    expect(implementation).toContain('claimCoinbaseX402Delivery({ paymentFingerprint, requestFingerprint, clientRequestId: parsed.client_request_id ?? null, config })');
+    expect(implementation).toContain('coinbaseRequirementsForCapabilityQuote(config,quote)');
+    expect(implementation).toContain('assertCoinbasePaymentBinding(paymentPayload,config)');
+    expect(implementation).toContain('claimCoinbaseX402Delivery({ paymentFingerprint, requestFingerprint:ledgerRequestFingerprint, clientRequestId: parsed.client_request_id ?? null, config })');
     expect(implementation).toContain('reserveCoinbaseX402AgentUsage({ paymentFingerprint, payer: verified.payer, config })');
-    expect(implementation).toContain('priceUsdc: config.priceUsdc');
+    expect(offer).toContain('priceUsdc:price.amount_usdc');
     expect(implementation).toContain('settleCoinbaseX402(paymentPayload, config)');
     expect(implementation).toContain('CAPABILITY_PRICE_UNVERIFIED_NO_CHARGE');
     expect(implementation).toContain('FINAL_CAPABILITY_PRICE_UNVERIFIED');

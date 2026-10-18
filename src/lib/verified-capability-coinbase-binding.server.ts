@@ -16,12 +16,11 @@ import {
  * country digest is explicitly historical/derived and must NEVER pretend to
  * include a current signed GRO.
  */
-export function resolveEligibleCoinbaseCapabilityConfig(
+export function resolveEligiblePublishedCapabilityPrice(
   plan: AgentQueryPlan,
   availability: AgentQueryDeliverability,
-  config: CoinbaseX402Config,
   now: Date = new Date(),
-): CoinbaseX402Config {
+) {
   if (plan.fulfillment_mode !== "published_only" ||
       !availability || availability.deliverable !== true ||
       availability.code !== "AVAILABLE" ||
@@ -51,7 +50,7 @@ export function resolveEligibleCoinbaseCapabilityConfig(
   if (structural && (
     rights.length === 0 ||
     rights.some(source => !["COMMERCIAL_OK", "DERIVED_ONLY"]
-      .includes(source.commercial_usage_status) ||
+      .includes(source.commercial_usage_status??"") ||
       source.attribution_required !== false)
   )) throw Error("CAPABILITY_PRICE_STRUCTURAL_RIGHTS_UNVERIFIED");
 
@@ -75,5 +74,13 @@ export function resolveEligibleCoinbaseCapabilityConfig(
     change_attribution_verified: signed && plan.intent === "change_since",
   };
   const price = resolveVerifiedPublishedPlanPrice(plan, proof);
+  return price;
+}
+
+export function resolveEligibleCoinbaseCapabilityConfig(
+  plan: AgentQueryPlan, availability: AgentQueryDeliverability,
+  config: CoinbaseX402Config, now = new Date(),
+): CoinbaseX402Config {
+  const price = resolveEligiblePublishedCapabilityPrice(plan, availability, now);
   return { ...config, priceUsdc: price.amount_usdc, amountAtomic: price.amount_atomic };
 }

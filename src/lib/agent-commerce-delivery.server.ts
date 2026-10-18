@@ -80,13 +80,14 @@ function durableLedgerConfig() {
   return { url: url.toString().replace(/\/$/, ""), token };
 }
 
-async function callDurableLedger<T>(
-  action: "claim" | "prepare" | "complete" | "release",
+export async function callDurableLedger<T>(
+  action: "claim" | "prepare" | "complete" | "release" | "replay" |
+    "capability-prequote-freeze" | "capability-prequote-readback",
   payload: Record<string, unknown>,
 ): Promise<T> {
   const cfg = durableLedgerConfig();
   const response = await fetch(`${cfg.url}/v1/delivery/${action}`, {
-    method: "POST",
+    method: "POST", redirect: "error", cache: "no-store",
     headers: {
       Authorization: `Bearer ${cfg.token}`,
       "Content-Type": "application/json",

@@ -32,8 +32,10 @@ describe("#1414 directional corridor x402 contract", () => {
 
     expect(paid).toContain("agentAdaptiveQuerySchema.parse(raw)");
     expect(paid).toContain("buildAgentQueryPlan(parsed)");
-    expect(paid).toContain("assembleAgentQueryResponse");
-    expect(paid).toContain("sanitizeAndRehashPaidPreparedResponse");
+    expect(paid).toContain("prepareVerifiedCapabilityOffer");
+    const offer=read("src/lib/capability-x402-offer.server.ts");
+    expect(offer).toContain("assembleAgentQueryResponse");
+    expect(offer).toContain("sanitizeAndRehashPaidPreparedResponse");
     expect(paid).toContain('delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY"');
     expect(paid).toContain("raw_data_delivered: false");
     expect(paid).toContain("source_identity_delivered: false");
