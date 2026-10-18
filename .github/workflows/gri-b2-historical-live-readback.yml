@@ -43,7 +43,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
       - name: Validate strict no-funds one-object GET contract
@@ -72,7 +72,7 @@ jobs:
           ref: main
           persist-credentials: false
       - name: Setup Node 22
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
       - name: Classify authenticated D1 original anchor without B2, Supabase or funds
@@ -105,7 +105,7 @@ jobs:
           ref: main
           persist-credentials: false
       - name: Setup Node 22
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
       - name: Require credentials and no Supabase fallback
@@ -140,7 +140,7 @@ jobs:
           node scripts/ops/verify-global-risk-b2-historical-readback.mjs --governed-read-only
       - name: Upload only SHA-bound historical readback metadata
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: global-risk-historical-b2-readback-${{ github.run_id }}
           path: artifacts/gri-b2-history/verified-readback.json

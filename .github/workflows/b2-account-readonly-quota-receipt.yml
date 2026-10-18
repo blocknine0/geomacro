@@ -39,7 +39,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Node 22
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v4
         with:
           node-version: '22'
       - name: Validate zero-write D1 ledger report syntax
@@ -60,7 +60,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Node.js 22
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v4
         with:
           node-version: '22'
       - name: Inspect actual Cloudflare account-wide D1 billing rows via GraphQL read only
@@ -94,7 +94,7 @@ jobs:
           node scripts/ops/report-b2-account-ledger-readonly.mjs < "$raw"
       - name: Archive sanitized D1 ledger receipt only
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
         with:
           name: b2-account-readonly-quota-${{ github.run_id }}
           path: |

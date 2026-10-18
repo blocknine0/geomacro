@@ -518,7 +518,7 @@ jobs:
 
       - name: Upload production Intelligence diagnostic
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
         with:
           name: production-intelligence-health-${{ github.run_id }}
           path: /tmp/production-website-health/intelligence.json
@@ -675,7 +675,7 @@ jobs:
 
       - name: Upload independent website surface diagnostics
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
         with:
           name: production-website-surfaces-${{ github.run_id }}
           path: |
@@ -759,7 +759,7 @@ jobs:
           cat artifacts/section11-production-website/acceptance.json
 
       - name: Upload Section 11 production deployment evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
         with:
           name: section11-production-deployment-${{ github.run_id }}
           path: artifacts/section11-production-website/acceptance.json

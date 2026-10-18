@@ -117,7 +117,7 @@ jobs:
           ref: ${{ inputs.candidate_sha }}
           persist-credentials: false
       - name: Setup Node 22
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '22'
       - name: Prove this generator is load-ready without traffic
@@ -147,7 +147,7 @@ jobs:
           fs.writeFileSync(`artifacts/readiness/ready-${record.shard_index}.json`, JSON.stringify(record, null, 2) + '\n');
           NODE
       - name: Upload readiness while keeping runner occupied
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: distributed-ready-${{ needs.burst-preflight.outputs.run_group_id }}-${{ matrix.shard }}
           path: artifacts/readiness/ready-${{ matrix.shard }}.json
@@ -164,7 +164,7 @@ jobs:
         run: node scripts/scale/run-million-agent-distributed-shard.mjs
       - name: Upload burst shard evidence
         if: success()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: distributed-result-${{ needs.burst-preflight.outputs.run_group_id }}-${{ matrix.shard }}
           path: artifacts/distributed-40k-million_burst_40k-shard-${{ matrix.shard }}.json
@@ -182,11 +182,11 @@ jobs:
           ref: ${{ inputs.candidate_sha }}
           persist-credentials: false
       - name: Setup Node 22
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '22'
       - name: Download all 40 burst shard summaries
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           pattern: distributed-result-${{ needs.burst-preflight.outputs.run_group_id }}-*
           path: artifacts/distributed-million_burst_40k
@@ -200,7 +200,7 @@ jobs:
           RISK_GATE_DISTRIBUTED_EXPECTED_RUN_GROUP_ID: ${{ needs.burst-preflight.outputs.run_group_id }}
         run: node scripts/scale/validate-million-agent-distributed-results.mjs
       - name: Upload validated burst evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: distributed-validation-${{ needs.burst-preflight.outputs.run_group_id }}
           path: artifacts/distributed-40k-validation-million_burst_40k.json
@@ -274,7 +274,7 @@ jobs:
           ref: ${{ inputs.candidate_sha }}
           persist-credentials: false
       - name: Setup Node 22
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '22'
       - name: Prove this generator is load-ready without traffic
@@ -304,7 +304,7 @@ jobs:
           fs.writeFileSync(`artifacts/readiness/ready-${record.shard_index}.json`, JSON.stringify(record, null, 2) + '\n');
           NODE
       - name: Upload readiness while keeping runner occupied
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: distributed-ready-${{ needs.soak-preflight.outputs.run_group_id }}-${{ matrix.shard }}
           path: artifacts/readiness/ready-${{ matrix.shard }}.json
@@ -321,7 +321,7 @@ jobs:
         run: node scripts/scale/run-million-agent-distributed-shard.mjs
       - name: Upload soak shard evidence
         if: success()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: distributed-result-${{ needs.soak-preflight.outputs.run_group_id }}-${{ matrix.shard }}
           path: artifacts/distributed-40k-soak_40k_5m-shard-${{ matrix.shard }}.json
@@ -339,11 +339,11 @@ jobs:
           ref: ${{ inputs.candidate_sha }}
           persist-credentials: false
       - name: Setup Node 22
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '22'
       - name: Download all 40 soak shard summaries
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           pattern: distributed-result-${{ needs.soak-preflight.outputs.run_group_id }}-*
           path: artifacts/distributed-soak_40k_5m
@@ -357,7 +357,7 @@ jobs:
           RISK_GATE_DISTRIBUTED_EXPECTED_RUN_GROUP_ID: ${{ needs.soak-preflight.outputs.run_group_id }}
         run: node scripts/scale/validate-million-agent-distributed-results.mjs
       - name: Upload validated soak evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: distributed-validation-${{ needs.soak-preflight.outputs.run_group_id }}
           path: artifacts/distributed-40k-validation-soak_40k_5m.json
@@ -370,7 +370,7 @@ jobs:
     timeout-minutes: 8
     steps:
       - name: Download validated burst and soak evidence
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           pattern: distributed-validation-*
           path: artifacts/validated
@@ -429,7 +429,7 @@ jobs:
           console.log('PASS: exact same-release 40k burst and five-minute soak capacity evidence closed.');
           NODE
       - name: Upload final 40k capacity evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: distributed-40k-capacity-pass-${{ github.run_id }}
           path: artifacts/distributed-40k-capacity-pass.json

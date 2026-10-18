@@ -169,7 +169,7 @@ jobs:
 
       - name: Save sanitized hourly three-category source health receipt
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: derived-news-source-health-${{ github.run_id }}
           path: artifacts/derived-news/source-health.json
@@ -178,7 +178,7 @@ jobs:
 
       - name: Save canonical country-scoped GRI evidence worklist
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: primary-gri-country-review-${{ github.run_id }}
           path: artifacts/derived-news/material-gri-country-evidence-worklist.json
@@ -187,7 +187,7 @@ jobs:
 
       - name: Save bounded high-impact GRI evidence-review candidates (no scoring)
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: material-gri-original-review-${{ github.run_id }}
           path: artifacts/derived-news/material-gri-review.json
