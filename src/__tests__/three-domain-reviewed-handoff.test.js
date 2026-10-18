@@ -7,6 +7,7 @@ import {
 } from "../../scripts/lib/independent-same-event-qualification.mjs";
 import {verifyThreeDomainReviewerHandoff}
   from "../../scripts/lib/three-domain-reviewed-handoff.mjs";
+import {GRI_RETAINED_PORTFOLIO_PROFILE} from "../../scripts/lib/gri-reviewed-source-window.mjs";
 
 // Synthetic fixtures ONLY; no production issuer facts, rights, or reviewer
 // approvals are asserted by these unit tests.
@@ -28,17 +29,18 @@ const sources=[
     ["www.usgs.gov","usgs","usgs_minerals_original_news_rss_review","/news/example"],
     ["www.canada.ca","natural_resources_canada","nrcan_government_news_original_atom_review","/en/natural-resources-canada/news/example"]],
 ];
-function fixture(){
+function fixture(retainedMinutes){
   const rows=sources.map(([category],i)=>({
     id:"reviewed-fixture-"+i,category,public_status:"verified_b2",
-    severity:50+i,delta:null,created_at:time(20),published_at:time(24),
+    severity:50+i,delta:null,
+    created_at:time((retainedMinutes?.[i]??24)-4),published_at:time(retainedMinutes?.[i]??24),
     source_title:"Geomacro finds derived risk from independently verified "+category,
     summary:"Derived structural evidence about a specific independently reviewed event",
   }));
   const eventPackages=sources.map(([category,eventType,first,second],i)=>{
     const row=rows[i],claimEvent={country_iso3:"USA",event_type:eventType,
       actor_id:"issuer_one",target_id:"target_two",
-      location_id:"event_site",occurred_at:time(30)};
+      location_id:"event_site",occurred_at:time((retainedMinutes?.[i]??24)+6)};
     const claim=sameEventClaimHash(category,claimEvent);
     const base={schema:SAME_EVENT_QUALIFICATION_SCHEMA,
       event_id:row.id,category,event:claimEvent,
@@ -59,7 +61,7 @@ function fixture(){
         originating_reporting_organization_id:org,
         source_registry_id:id,
         native_published_at_verified:true,
-        original_published_at:time(j===0?24:23),
+        original_published_at:time((retainedMinutes?.[i]??24)-(j===0?0:1)),
         original_article_content_verified:true,
         original_article_sha256:hash("original bytes "+i+j),
         independent_review_sha256:hash("article review "+i+j),
@@ -99,6 +101,10 @@ function fixture(){
     commercial_derived_rights_verified:true,
     historical_lineage_reviewed:true,
     as_of:time(10),reviewed_at:time(8),
+    ...(retainedMinutes?{
+      source_freshness_profile:GRI_RETAINED_PORTFOLIO_PROFILE,
+      retained_originals_current_review_completed:true,
+    }:{}),
     customerRows:rows,eventPackages,events,
     history_b2_key:"geomacro-evidence/v1/history/global-risk/gri-v1.2.0/11111111-1111-4111-8111-111111111111.json.gz",
     history_b2_sha256:hash(compressed),
@@ -162,5 +168,40 @@ describe("strict independently reviewer-signed dual publisher handoff",()=>{
     const missing=fixture();
     missing.countryCategoryCertificates.pop();
     expect(()=>verifyThreeDomainReviewerHandoff(missing)).toThrow(/COUNTRY_CATEGORY_CERTIFICATION_MISSING/);
+  });
+});
+
+describe("reviewer-signed v1.2 retained original portfolio country certifications",()=>{
+  it("accepts genuinely current reviewed single-domain news with signed 72h original state in other domains",()=>{
+    const f=fixture([24,20*60,35*60]);
+    const result=verifyThreeDomainReviewerHandoff(f);
+    expect(result.receipt.retained_source_portfolio_review).toBe(true);
+    expect(result.receipt.original_source_lookback_hours).toBe(72);
+    expect(result.receipt.signed_country_category_cells).toBe(3);
+    expect(result.receipt.qualified_event_count).toBe(3);
+    expect(result.receipt.historical_b2_bytes_verified).toBe(true);
+    expect(JSON.stringify(result.receipt)).not.toContain("federalreserve.gov");
+  });
+  it("rejects no new original even with freshly re-signed reviewer and certificates",()=>{
+    const f=fixture([8*60,20*60,35*60]);
+    expect(()=>verifyThreeDomainReviewerHandoff(f)).toThrow(/RETAINED_PORTFOLIO_NO_NEW_ORIGINAL_EVENT/);
+  });
+  it("rejects stale >72h evidence and old exact original in strict profile",()=>{
+    const old=fixture([24,20*60,73*60]);
+    expect(()=>verifyThreeDomainReviewerHandoff(old)).toThrow();
+    const strict=fixture([24,20*60,35*60]);
+    delete strict.reviewedGri.signed_input.source_freshness_profile;
+    delete strict.reviewedGri.signed_input.retained_originals_current_review_completed;
+    strict.reviewedGri=signed(strict.reviewedGri.signed_input);
+    expect(()=>verifyThreeDomainReviewerHandoff(strict)).toThrow();
+  });
+  it("never accepts an unsigned portfolio opt-in or a stale country certificate",()=>{
+    const f=fixture([24,20*60,35*60]);
+    f.reviewedGri.signed_input.source_freshness_profile="other-profile";
+    expect(()=>verifyThreeDomainReviewerHandoff(f)).toThrow(/REVIEW_SIGNATURE_INVALID/);
+    const c=fixture([24,20*60,35*60]);
+    c.countryCategoryCertificates[1].signed_input.verified_at=time(160);
+    c.countryCategoryCertificates[1]=signed(c.countryCategoryCertificates[1].signed_input);
+    expect(()=>verifyThreeDomainReviewerHandoff(c)).toThrow(/COUNTRY_CATEGORY_UNCERTIFIED_OR_STALE/);
   });
 });
