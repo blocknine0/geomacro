@@ -41,8 +41,10 @@ test("current replacement records still require same-domain identity and indepen
 });
 test("ineligible future/invalid timestamps cannot become current",()=>{
   for(const age of [-5,NaN]){
-    const rows=[item("a","geopolitics",20),item("b","macro",40),
-      item("c","rare_earth",age)];
+    const invalid=item("c","rare_earth",60);
+    if(Number.isNaN(age))invalid.published_at="invalid-native-clock";
+    else invalid.published_at=new Date(now.getTime()-age*60_000).toISOString();
+    const rows=[item("a","geopolitics",20),item("b","macro",40),invalid];
     assert.equal(selectFreshIntelligenceFromReviewedGri(signed(rows),now).ready,false);
   }
 });
