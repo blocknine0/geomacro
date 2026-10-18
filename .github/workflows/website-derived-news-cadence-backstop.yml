@@ -27,6 +27,9 @@ on:
       - "scripts/tests/derived-news-source-health.test.mjs"
       - "scripts/lib/material-gri-news-review.mjs"
       - "scripts/tests/material-gri-news-review.test.mjs"
+      - "scripts/lib/material-gri-country-evidence-worklist.mjs"
+      - "scripts/ops/build-material-gri-country-worklist.mjs"
+      - "scripts/tests/material-gri-country-evidence-worklist.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/website-derived-news-cadence-backstop.yml"
@@ -39,6 +42,9 @@ on:
       - "scripts/tests/derived-news-source-health.test.mjs"
       - "scripts/lib/material-gri-news-review.mjs"
       - "scripts/tests/material-gri-news-review.test.mjs"
+      - "scripts/lib/material-gri-country-evidence-worklist.mjs"
+      - "scripts/ops/build-material-gri-country-worklist.mjs"
+      - "scripts/tests/material-gri-country-evidence-worklist.test.mjs"
 
 permissions:
   contents: read
@@ -64,7 +70,7 @@ jobs:
         run: |
           node --check scripts/lib/website-derived-news-failover.mjs
           node --check scripts/ops/check-website-derived-news-cadence.mjs
-          node --test scripts/tests/website-derived-news-failover.test.mjs scripts/tests/automated-finds-run-health.test.mjs scripts/tests/derived-news-source-health.test.mjs scripts/tests/material-gri-news-review.test.mjs
+          node --test scripts/tests/website-derived-news-failover.test.mjs scripts/tests/automated-finds-run-health.test.mjs scripts/tests/derived-news-source-health.test.mjs scripts/tests/material-gri-news-review.test.mjs scripts/tests/material-gri-country-evidence-worklist.test.mjs
 
   catch-up-derived-only:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && contains(fromJSON('["success","failure","timed_out"]'), github.event.workflow_run.conclusion)))
@@ -138,6 +144,9 @@ jobs:
             exit 2
           }
           bun scripts/ops/publish-website-derived-news.ts
+      - name: Prepare source-free GRI country evidence tasks after genuine recovered publication
+        if: steps.decide.outputs.should_run == 'true'
+        run: node scripts/ops/build-material-gri-country-worklist.mjs
       - name: Independently verify signed Finds across combined and category reads
         if: always() && steps.decide.outputs.should_run == 'true'
         shell: bash
@@ -221,6 +230,14 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Save recovered GRI country/category review tasks
+        if: always() && steps.decide.outputs.should_run == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: recovered-gri-country-review-${{ github.run_id }}
+          path: artifacts/derived-news/material-gri-country-evidence-worklist.json
+          if-no-files-found: warn
+          retention-days: 3
       - name: Save bounded high-impact GRI evidence-review candidates (no scoring)
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
