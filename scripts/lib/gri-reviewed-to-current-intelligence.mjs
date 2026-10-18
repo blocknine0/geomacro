@@ -68,3 +68,48 @@ export function qualifySignedGriForCurrentIntelligence({
     original_source_count_claimed:verified.receipt.qualified_event_count,
     qualifying_receipt_sha256:verified.receipt_sha256};
 }
+
+
+/**
+ * Fail-closed B2 overwrite guard. A later reviewed GRI portfolio can have
+ * older native events than already-public Intelligence. Do not overwrite its
+ * latest.json.gz pointer before D1 can reject a backwards source clock.
+ * D1 serves 503/404 only when current signed Intelligence is unavailable.
+ */
+export async function mayPromoteNewerReviewedIntelligence({
+  rows,fetchImpl=fetch,
+}={}){
+  if(!Array.isArray(rows)||rows.length<3)
+    throw Error("GRI_INTELLIGENCE_EXISTING_HOT_GUARD_INPUT_INVALID");
+  const incoming=Math.max(...rows.map(r=>Date.parse(r?.published_at??"")));
+  if(!Number.isFinite(incoming))
+    throw Error("GRI_INTELLIGENCE_EXISTING_HOT_GUARD_CLOCK_INVALID");
+  const endpoint="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/hot-snapshot/intelligence";
+  let response;
+  try{
+    response=await fetchImpl(endpoint,{
+      headers:{"Accept":"application/json","Cache-Control":"no-cache"},
+      signal:AbortSignal.timeout(12000),
+    });
+  }catch{
+    throw Error("GRI_INTELLIGENCE_EXISTING_HOT_GUARD_READ_UNAVAILABLE");
+  }
+  if([404,503].includes(response.status))
+    return Object.freeze({canPublish:true,reason:"NO_CURRENT_VERIFIED_INTELLIGENCE"});
+  if(response.status!==200||response.ok!==true)
+    throw Error("GRI_INTELLIGENCE_EXISTING_HOT_GUARD_HTTP_INVALID");
+  let existing;
+  try{existing=await response.json()}
+  catch{throw Error("GRI_INTELLIGENCE_EXISTING_HOT_GUARD_INVALID_JSON")}
+  const source=Date.parse(existing?.source_as_of??"");
+  if(existing?.ok!==true||existing?.product!=="intelligence"||
+     !Number.isFinite(source)||source>Date.now()+5*60_000||
+     existing.full_b2_readback_verified!==true||
+     existing.exact_gzip_restore_verified!==true)
+    throw Error("GRI_INTELLIGENCE_EXISTING_HOT_GUARD_PROOF_INVALID");
+  return Object.freeze({
+    canPublish:incoming>source,
+    reason:incoming>source?"NEWER_REVIEWED_ORIGINAL":
+      "CURRENT_INTELLIGENCE_HAS_EQUAL_OR_NEWER_ORIGINAL",
+  });
+}
