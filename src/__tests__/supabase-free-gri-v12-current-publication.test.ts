@@ -215,6 +215,38 @@ describe("Supabase-free Global Risk GRI v1.2 signed hot publisher",()=>{
   });
 });
 
+describe("reviewed events must postdate historical snapshot",()=>{
+  const reanchor=(f:ReturnType<typeof fixture>,ago:number)=>{
+    const prev=f.history.verified_snapshot_rows[0];
+    prev.as_of=time(ago);
+    f.history.snapshot_as_of=prev.as_of;
+    f.history.data=assemblePublicGlobalRisk(
+      f.history.verified_snapshot_rows,[],Date.parse(prev.as_of));
+    return f;
+  };
+  it("rejects reviewed replay of strictly earlier original after verified historical publication",()=>{
+    const f=reanchor(fixture(),20);
+    expect(()=>run(f)).toThrow(
+      "GRI_PUBLIC_NO_NEW_ORIGINAL_AFTER_VERIFIED_HISTORICAL_SNAPSHOT");
+  });
+  it("rejects retained 72h portfolio with no actual post-historical original",()=>{
+    const f=reanchor(fixture([30,20*60,35*60]),20);
+    expect(()=>run(f)).toThrow(
+      "GRI_PUBLIC_NO_NEW_ORIGINAL_AFTER_VERIFIED_HISTORICAL_SNAPSHOT");
+  });
+  it("allows native new reviewed event after the historical snapshot, while quiet domains remain 72h retained",()=>{
+    const f=reanchor(fixture([30,20*60,35*60]),40);
+    const product=run(f);
+    expect(product.reviewProof.new_native_original_after_historical_anchor_verified).toBe(true);
+    expect(product.reviewProof.newly_verified_original_count).toBe(1);
+    expect(product.reviewProof.prior_verified_snapshot_at).toBe(f.history.snapshot_as_of);
+    expect(product.liveValue.data.previousRaw).toBe(42);
+    expect(product.historyValue.verified_snapshot_rows[0].change_points)
+      .toBeCloseTo(product.liveValue.data.rawScore-42,10);
+    expect(product.historyValue.verified_snapshot_rows[0].change_attribution).toBeNull();
+  });
+});
+
 describe("v1.2 reviewed high-impact news with 72h retained sources",()=>{
   it("recomputes the exact canonical numerical score from a NEW verified original and separately re-reviewed retained other two domains",()=>{
     const f=fixture([30,20*60,35*60]);
