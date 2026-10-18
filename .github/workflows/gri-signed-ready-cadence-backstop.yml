@@ -5,7 +5,10 @@ name: GRI v1.2 Genuine Signed Ready Cadence Backstop (No Funds)
 # signatures and canonical scoring are checked independently downstream.
 on:
   schedule:
-    - cron: "13,43 * * * *"
+    # Every 15m, because authentic independently approved hints expire
+    # after 28m; a 30m-only cadence could entirely miss a real signed pair.
+    # This runs metadata-only until real immutable SHA pointers are present.
+    - cron: "13,28,43,58 * * * *"
   workflow_dispatch: {}
   # Event-driven continuation of the ALREADY working free news ingestion.
   # This event is just a wakeup: independently approved pinned signed GRI
