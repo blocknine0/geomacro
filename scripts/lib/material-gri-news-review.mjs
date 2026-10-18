@@ -43,7 +43,7 @@ function eligible(signal,category,now){
      signal.status!=="official_release_observed_unscored"||
      signal.same_event_corrob_verified!==false||signal.severity!==null||
      signal.observed_release_count!==1||
-     !ID_PATTERN.test(signal.id??"")||
+     !ID_PATTERN.test(signal.id??"")||!signal.id.startsWith(category+"-")||
      !KIND_PATTERN.test(signal.development_type??"")||
      typeof signal.published_at!=="string"||!ISO.test(signal.published_at)||
      (signal.date_precision!=="exact"&&signal.date_precision!=="day"))return false;
