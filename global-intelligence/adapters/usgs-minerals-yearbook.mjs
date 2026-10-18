@@ -71,8 +71,9 @@ function normalizeProductionRow(row,{countryIso3=null,releaseUrl=DEFAULT_RELEASE
       sourceId:"usgs_myb_international",
       category:"CRITICAL_MINERALS",
       countryIso3:country.iso3,
-      publishedAt:"2026-08-31T00:00:00Z",
-      observedAt:`${yearKey}-12-31T00:00:00Z`,
+      // A reference year and formerly hardcoded date cannot attest a release.
+      publishedAt:null,
+      observedAt:null,
       title:`USGS mineral production: ${clean(row[mineralKey])}`,
       summary:`${clean(row[mineralKey])}: ${value} ${unitKey ? clean(row[unitKey]) : ""}`,
       url:releaseUrl,
@@ -106,7 +107,8 @@ export function parseUsGSMineralsYearbookFacilitiesCsv(csvText,{countryIso3=null
       sourceId:"usgs_myb_international",
       category:"CRITICAL_MINERALS",
       countryIso3:country.iso3,
-      publishedAt:"2026-08-31T00:00:00Z",
+      // Facility release time is not verified by this historical CSV.
+      publishedAt:null,
       observedAt:null,
       title:`USGS mineral facility: ${clean(row[facilityKey])}`,
       summary:`${clean(row[mineralKey])} facility ${clean(row[facilityKey])}`,

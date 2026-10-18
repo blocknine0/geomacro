@@ -27,7 +27,11 @@ function decodeJsonStat(data) {
     throw new Error("Unsupported or incomplete Eurostat JSON-stat response");
   }
   const dims = data.id.map(id => ({id, values: dimensionValues(data.dimension[id])}));
+  if(data.id.length!==data.size.length || data.size.some(n=>!Number.isSafeInteger(n)||n<1) ||
+    data.id.some((id,i)=>dims[i].values.length!==data.size[i]))
+    throw Error("EUROSTAT_DIMENSION_INVALID");
   const total = data.size.reduce((a,b) => a*b, 1);
+  if(!Number.isSafeInteger(total)||total>25000)throw Error("EUROSTAT_DATASET_TOO_LARGE");
   const values = Array.isArray(data.value)
     ? data.value
     : Array.from({length: total}, (_, i) => data.value?.[String(i)] ?? null);
@@ -90,13 +94,22 @@ export async function fetchEurostatDataset(datasetCode, options={}) {
 
 export async function fetchEurostat(url, countryIso3) {
   const data = await getJson(url);
-  return decodeJsonStat(data).map(row => observation({
+  const expectedGeo=eurostatGeoForCountry(countryIso3);
+  if(!expectedGeo)return [];
+  // An unfiltered API response must not attribute other geographies to this ISO3.
+  return decodeJsonStat(data).filter(row=>row.geo===expectedGeo).map(row => observation({
     sourceId: "eurostat",
     category: "MACRO",
     countryIso3,
-    publishedAt: row.TIME_PERIOD || null,
+    // Statistical time period does not certify a publisher's news-release clock.
+    publishedAt: null,
     title: "Eurostat " + (row.indic || "dataset"),
-    summary: JSON.stringify({value:row.value, unit:row.unit || null, freq:row.freq || null, geo:row.geo || null}),
+    summary: JSON.stringify({
+      value:row.value, unit:row.unit || null, freq:row.freq || null,
+      geo:row.geo, reference_period:row.time ?? row.TIME_PERIOD ?? null,
+      dataset_updated_at:data.updated ?? null, historical_reference_only:true,
+      native_original_publication_proven:false
+    }),
     url,
     confidence: 0.7,
     raw: row
