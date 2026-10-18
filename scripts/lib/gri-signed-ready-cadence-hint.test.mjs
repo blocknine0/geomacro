@@ -171,7 +171,7 @@ test("scheduled backstop is separate from original GRI proof, no Supabase or pay
   const w=readFileSync(".github/workflows/gri-signed-ready-cadence-backstop.yml","utf8");
   const protectedGri=readFileSync(".github/workflows/gri-v12-supabase-free-reviewed-current.yml","utf8");
   const code=readFileSync("scripts/ops/dispatch-gri-signed-ready-cadence.mjs","utf8");
-  assert.match(w,/cron: "13,43 \* \* \* \*"/u);
+  assert.match(w,/cron: "13,28,43,58 \* \* \* \*"/u);
   assert.match(w,/workflows: \["Auto Ingest News"\]/u);
   assert.match(w,/github.event.workflow_run.conclusion == 'success'/u);
   assert.match(w,/github.event.workflow_run.head_sha == github.sha/u);
