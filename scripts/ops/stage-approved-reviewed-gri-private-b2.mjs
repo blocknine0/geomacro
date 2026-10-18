@@ -61,6 +61,7 @@ async function main(){
   const b2=createB2Client({endpointUrl:"https://s3.us-east-005.backblazeb2.com",
     bucket:"geomacro-private-archive",accessKey:process.env.B2_KEY_ID,
     secretKey:process.env.B2_APPLICATION_KEY});
+  let writes=0;
   for(const item of stage.uploadFiles){
     // Read first: a content-addressed immutable key must never overwrite
     // any existing different bytes, even when B2 allows PUT overwrite.
@@ -70,6 +71,7 @@ async function main(){
         fail("IMMUTABLE_SIGNED_OBJECT_COLLISION");
     }else{
       await b2.put(item.key,item.bytes);
+      writes++;
     }
     const actual=Buffer.from(await b2.get(item.key));
     if(!actual.equals(item.bytes)||sha(actual)!==item.sha256)
@@ -81,10 +83,32 @@ async function main(){
   for(let i=0;i<2;i++)
     if(final.uploadFiles[i].sha256!==stage.uploadFiles[i].sha256)
       fail("SIGNED_INPUT_CHANGED_DURING_PUBLICATION");
+  let dispatched=false;
+  if(process.env.GRI_SIGNED_READY_DISPATCH_ACK==="YES_NO_FUNDS"){
+    const token=process.env.GITHUB_TOKEN;
+    if(!token||token.length<30)fail("GITHUB_DISPATCH_TOKEN_MISSING");
+    const response=await fetch("https://api.github.com/repos/blocknine0/geomacro/dispatches",{
+      method:"POST",redirect:"error",
+      headers:{accept:"application/vnd.github+json",authorization:"Bearer "+token,
+        "content-type":"application/json","x-github-api-version":"2022-11-28"},
+      body:JSON.stringify({event_type:"gri_reviewed_current_ready",client_payload:{
+        schema:"geomacro.signed-reviewed-gri-ready.v1",
+        reviewed_b2_key:final.receipt.reviewed_b2_key,
+        reviewed_b2_sha256:final.receipt.reviewed_b2_sha256,
+        reviewed_certificates_b2_key:final.receipt.reviewed_certificates_b2_key,
+        reviewed_certificates_b2_sha256:final.receipt.reviewed_certificates_b2_sha256,
+      }}),signal:AbortSignal.timeout(15000),
+    });
+    if(response.status!==204)fail("PROTECTED_GRI_PUBLISHER_DISPATCH_REJECTED");
+    dispatched=true;
+  }
   return Object.freeze({
     ...final.receipt,
     immutable_b2_readback_verified:true,
-    b2_writes:b2.usage().requests_started>0?null:0,
+    b2_writes:writes,
+    publisher_dispatch_accepted:dispatched,
+    public_gri_d1_readback_verified:false,
+    funds_spent_usdc:0,
     b2_requests_started:b2.usage().requests_started,
     ready_for_protected_gri_publisher:true,
     // This is NOT a real published GRI and not customer billability.
