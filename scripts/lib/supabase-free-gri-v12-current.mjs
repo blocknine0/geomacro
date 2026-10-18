@@ -77,6 +77,20 @@ function assertHistoricalArchive(history, signedInput, readbackSha) {
       row.methodology_version === GRI_METHOD_VERSION &&
       Number.isFinite(Date.parse(row.as_of)) && Date.parse(row.as_of) <= past),
   "HISTORY_UNVERIFIED_OR_RELABELED");
+  // A two-row list is not multi-snapshot history if both records point to
+  // the SAME version or same source-native clock. The B2 SHA pins the entire
+  // archive, but does not itself prove distinct historical snapshots.
+  const historicalIds = new Set();
+  let priorAsOf = Infinity;
+  for (const row of history.verified_snapshot_rows) {
+    const clock = Date.parse(row.as_of);
+    assert(typeof row.id === "string" && row.id.length >= 8 &&
+      !historicalIds.has(row.id) &&
+      Number.isFinite(clock) && clock < priorAsOf,
+    "HISTORY_MULTI_SNAPSHOT_DISTINCT_LINEAGE_REQUIRED");
+    historicalIds.add(row.id);
+    priorAsOf = clock;
+  }
   // Judge historical continuity at its *original* timestamp, never now.
   // A historical proof is not a current proof.
   const verification = validateGlobalRiskContinuity(history.data, past);
