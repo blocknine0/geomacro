@@ -129,3 +129,39 @@ export function buildMaterialGriNewsReviewQueue(reports,now=Date.now()){
     payments:0,
   });
 }
+
+/**
+ * Auto Ingest read-only watcher: the canonical D1 journal contains ONLY
+ * Geomacro-derived news from a previously signed/checked publication.
+ * Reading it does NOT verify the issuer a second time. Do not fabricate a
+ * healthy source report from a D1 GET: this has a distinct provenance.
+ */
+export function buildMaterialGriReviewFromDerivedD1(feed,now=Date.now()){
+  if(!feed||feed.ok!==true||
+     feed.schema!=="geomacro.website-derived-news-feed.v1"||
+     feed.retention_hours!==72||feed.retention_days!==3||
+     feed.delivery_scope!=="free_website_only"||
+     feed.original_release_delay_minutes!==15||
+     !Array.isArray(feed.signals)||feed.signals.length>250||
+     !Number.isFinite(now))throw Error("MATERIAL_GRI_D1_DERIVED_ONLY_SOURCE_REQUIRED");
+  const categories=CATEGORIES.map(category=>{
+    const candidates=candidatesForCategory(category,
+      feed.signals.filter(s=>s?.category===category),now);
+    return Object.freeze({category,candidates_count:candidates.length,candidates});
+  });
+  return Object.freeze({
+    schema:MATERIAL_GRI_REVIEW_SCHEMA,
+    generated_at:new Date(now).toISOString(),
+    retention_hours:72,
+    selection:"ISSUER_ORIGINAL_MATERIAL_DEVELOPMENT_REVIEW",
+    categories,
+    destination:"PRIVATE_GRI_EVIDENCE_REVIEW_ONLY",
+    original_source_reverified_in_this_run:false,
+    provenance:"PREVIOUSLY_COLLECTED_D1_DERIVED_NEWS",
+    gri_promotion_status:"BLOCKED_PENDING_INDEPENDENT_EVIDENCE_RIGHTS_AND_SIGNED_CERTIFICATION",
+    any_scored_risk:false,is_prediction_market:false,
+    third_party_news_or_licenses_redistributed:false,
+    raw_source_storage:false,customer_chargeable:false,
+    writes_to_supabase:0,writes_to_gri:0,payments:0,
+  });
+}
