@@ -1,5 +1,7 @@
 import {fileURLToPath} from "node:url";
-import {prepareGriSignedReadyCadenceHint,assertGriDispatchTarget} from
+import {appendFileSync} from "node:fs";
+import {prepareGriSignedReadyCadenceHint,assertGriDispatchTarget,
+  explainGriSignedInputBlockers,safeGriBlockerJobSummary} from
   "../lib/gri-signed-ready-cadence-hint.mjs";
 
 const TARGET=assertGriDispatchTarget("gri-v12-supabase-free-reviewed-current.yml");
@@ -144,6 +146,24 @@ if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
   try{
     const result=await requestGriSignedReadyCadence();
     console.log(JSON.stringify(result));
+    // Even a successful metadata-only Actions run MUST say explicitly
+    // whether this run actually published a signed numerical index.
+    const report=explainGriSignedInputBlockers({
+      reviewedSha:process.env.GRI_READY_REVIEWED_SHA256,
+      certificatesSha:process.env.GRI_READY_CERTIFICATES_SHA256,
+      readyAt:process.env.GRI_READY_APPROVED_AT,
+    });
+    if(process.env.GITHUB_STEP_SUMMARY){
+      try{appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+        safeGriBlockerJobSummary(report),"utf8");}
+      catch{console.error("GRI_SIGNED_RECOVERY_SUMMARY_UNAVAILABLE");}
+    }
+    if(!report.externally_approved_fresh_hint_valid)
+      console.log(JSON.stringify({schema:report.schema,
+        current_numerical_score_verified:false,
+        missing_requirements:report.missing_requirements,
+        reason:report.admission_reason,
+        b2_requests:0,d1_writes:0,payments:0}));
   }catch{
     // Never emit unsigned candidate keys, reviewer content, secrets, or
     // raw API errors. GitHub job correctly FAILS for transport/auth trouble.

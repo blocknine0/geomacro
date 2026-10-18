@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {prepareGriSignedReadyCadenceHint,assertGriDispatchTarget} from
+import {prepareGriSignedReadyCadenceHint,assertGriDispatchTarget,
+  explainGriSignedInputBlockers,safeGriBlockerJobSummary} from
   "./gri-signed-ready-cadence-hint.mjs";
 import {requestGriSignedReadyCadence,decideGriSignedPublisherRetry} from
   "../ops/dispatch-gri-signed-ready-cadence.mjs";
@@ -256,4 +257,53 @@ test("pure retry policy never treats a different commit or pre-approval failed r
     headSha:env.GITHUB_SHA,approvedAt:env.GRI_READY_APPROVED_AT,now:date,
   });
   assert.equal(b.dispatch,true);
+});
+
+test("missing real GRI reviewer/cert pointers clearly block numeric recovery, without B2/payment",()=>{
+  const report=explainGriSignedInputBlockers({now:date});
+  assert.equal(report.current_numerical_score_verified,false);
+  assert.equal(report.signed_gri_published,false);
+  assert.equal(report.numerical_score_changed,false);
+  assert.equal(report.b2_requests,0);
+  assert.equal(report.d1_writes,0);
+  assert.equal(report.payments,0);
+  assert.deepEqual(report.missing_requirements,[
+    "REAL_INDEPENDENTLY_REVIEWER_SIGNED_GRI_INPUT",
+    "SEPARATE_SIGNED_COUNTRY_CATEGORY_CERTIFICATES",
+    "RECENT_AUTHENTIC_REVIEW_APPROVAL_WINDOW",
+  ]);
+  const summary=safeGriBlockerJobSummary(report);
+  assert.match(summary,/NOT VERIFIED/u);
+  assert.match(summary,/No old score was refreshed/u);
+  assert.equal(summary.includes("a".repeat(64)),false);
+});
+test("valid SHA hints never become proof of a current numeric GRI or source rights",()=>{
+  const report=explainGriSignedInputBlockers({
+    reviewedSha:input,certificatesSha:cert,
+    readyAt:"2026-10-18T11:15:00.000Z",now:date,
+  });
+  assert.equal(report.externally_approved_fresh_hint_valid,true);
+  assert.deepEqual(report.missing_requirements,[]);
+  assert.equal(report.current_numerical_score_verified,false);
+  assert.equal(report.genuine_source_and_commercial_rights_still_mandatory,true);
+  assert.equal(report.publisher_dispatch_authorized_by_this_report,false);
+  const s=safeGriBlockerJobSummary(report);
+  assert.match(s,/real signatures, source rights/u);
+  assert.equal(s.includes(input),false);
+  assert.equal(s.includes(cert),false);
+});
+test("forged or stale reviewed pointers cannot give green numerical recovery",()=>{
+  for(const args of [
+    {reviewedSha:input,certificatesSha:input,readyAt:"2026-10-18T11:15:00.000Z"},
+    {reviewedSha:input,certificatesSha:cert,readyAt:"2026-10-18T10:00:00.000Z"},
+    {reviewedSha:"bad",certificatesSha:cert,readyAt:"2026-10-18T11:15:00.000Z"},
+  ]){
+    const report=explainGriSignedInputBlockers({...args,now:date});
+    assert.equal(report.externally_approved_fresh_hint_valid,false);
+    assert.equal(report.signed_gri_published,false);
+    assert.ok(report.missing_requirements.length>0);
+    assert.equal(report.b2_requests+report.d1_writes+report.payments,0);
+  }
+  assert.throws(()=>safeGriBlockerJobSummary({schema:"malicious",missing_requirements:[]}));
+  assert.throws(()=>safeGriBlockerJobSummary({schema:"geomacro.gri-v12-signed-input-blockers.v1",missing_requirements:["LEAK_ARTICLE"]}));
 });
