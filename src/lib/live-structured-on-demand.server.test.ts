@@ -125,4 +125,25 @@ describe("stateless live structured open-data output",()=>{
    expect(out.statusCode).toBe(422);
    expect((out.body as any).observations).toEqual([]);
   });
+ it("returns a native calendar day without synthesizing an exact time",async()=>{
+  const reader=vi.fn(async()=>({summary:"Derived mineral-policy observation.",what_changed:"An update was published.",
+    why_it_matters:"Monitor supply policy.",insufficient_evidence:false,source_identity_exposed:false,
+    durable_live_storage_write:false,signed_gro_generated:false,latest_original_published_at:"2026-10-14",
+    latest_original_date_precision:"day"})) as unknown as typeof answerFromOriginalPlan;
+  const out=await liveStructuredData({country_iso3:"CAN",category:"critical-minerals",lookback_days:7},
+    {now,originalReader:reader});
+  expect(out.statusCode).toBe(200);
+  expect(out.body).toMatchObject({observation_period:"2026-10-14",clock_semantics:"original_publication_day",
+    original_date_precision:"day",original_publication_time_verified:false,chargeable:false,
+    source_commercial_rights_verified:false});
+  expect(JSON.stringify(out.body)).not.toContain("2026-10-14T");
+ });
+ it("does not expose a day-only release before the conservative availability boundary",async()=>{
+  const reader=vi.fn(async()=>({insufficient_evidence:false,source_identity_exposed:false,
+    durable_live_storage_write:false,signed_gro_generated:false,latest_original_published_at:"2026-10-16",
+    latest_original_date_precision:"day"})) as unknown as typeof answerFromOriginalPlan;
+  const out=await liveStructuredData({country_iso3:"CAN",category:"critical-minerals",lookback_days:7},
+    {now,originalReader:reader});
+  expect(out.statusCode).toBe(422); // 17 Oct 12:00 precedes 12:15 conservative bound.
+ });
 });

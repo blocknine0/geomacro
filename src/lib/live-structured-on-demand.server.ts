@@ -3,6 +3,7 @@ import {OPEN_CONTEXT_CATEGORIES} from "./category-open-data-contract";
 import {answerOfficialNumeric,planAskOfficialNumeric} from "./ask-official-numeric.server";
 import {answerFromOriginalPlan,type AskOriginalPlan} from "./ask-on-demand-original.server";
 import {country195ByIso3} from "./canonical-country-registry-195";
+import {conservativeDayReleaseMs} from "./stateless-intelligence-model";
 
 /** Stateless request-time observations only. No paid rights are implied by access. */
 type Category=(typeof OPEN_CONTEXT_CATEGORIES)[number];
@@ -76,9 +77,16 @@ export async function liveStructuredData(raw:unknown,dep:Dependencies={}){
     {now:new Date(at),websiteDelay:false});}
   catch{return {statusCode:503,body:denied(at,"ORIGINAL_PUBLISHER_FETCH_UNAVAILABLE")};}
   const stamp=Date.parse(answer?.latest_original_published_at??"");
+  const precision=answer?.latest_original_date_precision??"exact";
+  const day=answer?.latest_original_published_at??"";
+  const dayAvailableAt=precision==="day"?conservativeDayReleaseMs(day):null;
+  const precisionValid=precision==="exact"
+    ? /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u.test(day)
+    : precision==="day"&&/^\d{4}-\d{2}-\d{2}$/u.test(day)&&
+      dayAvailableAt!==null&&dayAvailableAt<=Date.parse(at);
   const valid=answer&&answer.insufficient_evidence===false&&
     answer.source_identity_exposed===false&&answer.durable_live_storage_write===false&&
-    answer.signed_gro_generated===false&&Number.isFinite(stamp)&&stamp<=Date.parse(at)&&
+    answer.signed_gro_generated===false&&precisionValid&&Number.isFinite(stamp)&&stamp<=Date.parse(at)&&
     stamp>=Date.parse(at)-input.lookback_days*86400_000;
   if(!answer||!valid)return {statusCode:422,body:{...denied(at,"NO_CURRENT_COUNTRY_TOPIC_ORIGINAL"),
     category:input.category,country_iso3:input.country_iso3,lookback_days:input.lookback_days}};
@@ -90,7 +98,9 @@ export async function liveStructuredData(raw:unknown,dep:Dependencies={}){
     coverage:"COUNTRY_TOPIC_MATCHED_OBSERVATION_NOT_GLOBAL_COVERAGE",
     source_mode:"DIRECT_ORIGINAL_PUBLISHERS",checked_at:at,source_checked_at:at,
     observation_period:answer.latest_original_published_at,
-    clock_semantics:"original_publication",source_period_is_not_retrieval_time:true,
+    clock_semantics:precision==="day"?"original_publication_day":"original_publication",
+    original_date_precision:precision,original_publication_time_verified:precision==="exact",
+    source_period_is_not_retrieval_time:true,
     observations:[{finding:answer.summary,change:answer.what_changed,
       why_it_matters:answer.why_it_matters,score:null}],observation_count:1,
     independent_same_event_verified:false,source_commercial_rights_verified:false,
