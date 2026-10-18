@@ -53,6 +53,17 @@ describe("EIA first-party press releases: derived-only original clock",()=>{
     ];
     changed.forEach(row=>expect(parseFirstPartyFeed(row,source,now).dated).toHaveLength(0));
     expect(acceptedOriginalArticleLink(article,source)).toBe(article);
+    expect(acceptedOriginalArticleLink("/pressroom/releases/press593.php",source))
+      .toBe(article);
+    expect(acceptedOriginalArticleLink("//www.eia.gov/pressroom/releases/press593.php",source)).toBeNull();
+    expect(acceptedOriginalArticleLink("/pressroom/releases/press593.php?modified=1",source)).toBeNull();
+    expect(acceptedOriginalArticleLink("/pressroom/releases/../releases/press593.php",source)).toBeNull();
+    expect(acceptedOriginalArticleLink("/pressroom/releases/press593.php#top",source)).toBeNull();
+    const relativeFeed=parseFirstPartyFeed(
+      fixture("Sun, 18 Oct 2026 10:00:00 GMT",undefined as unknown as string,
+        "/pressroom/releases/press593.php"),source,now);
+    expect(relativeFeed.dated).toHaveLength(1);
+    expect(relativeFeed.dated[0].articleUrl).toBe(article);
     const rss='<rss version="2.0"><channel><item><title>EIA expects fuel costs</title>'+
       '<link>'+article+'</link><updated>2026-10-18T10:00:00Z</updated></item></channel></rss>';
     expect(parseFirstPartyFeed(rss,source,now).dated).toHaveLength(0);
