@@ -238,7 +238,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "eligible=false" >> "$GITHUB_OUTPUT"
           if env -u B2_KEY_ID -u B2_APPLICATION_KEY \
               -u CLOUDFLARE_API_TOKEN -u GEOMACRO_COMMERCE_LEDGER_TOKEN \
               -u SUPABASE_DB_URL -u SUPABASE_SERVICE_ROLE_KEY \
@@ -267,6 +266,7 @@ jobs:
           console.log("PRIVATE_GRI_THREE_DOMAIN_SINGLETON_READY_NO_COMMERCIAL_RIGHTS");
           NODE
           else
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
             echo "PRIVATE_GRI_NOT_READY_THREE_GENUINE_SINGLETON_ORIGINALS_REQUIRED"
           fi
 
