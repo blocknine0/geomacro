@@ -2,12 +2,17 @@ name: GRI Pinned Historical Version Recovery
 # Owner-authorized B2 read-only recovery + one existing D1 historical-ring insert.
 # No cron, B2 mutation, current hot promotion or source-clock refresh.
 on:
+  # One retry per UTC day, after the account-wide B2 quota rolls over.
+  # The preflight does not reserve B2 tickets or read provider data.
+  schedule:
+    - cron: "17 0 * * *"
   workflow_dispatch: {}
   push:
     branches: [main]
     paths:
       - "scripts/ops/recover-gri-pinned-b2-version.mjs"
       - "scripts/ops/restore-gri-verified-version-to-d1.mjs"
+      - "scripts/ops/preflight-gri-historical-shared-quota.mjs"
       - ".github/workflows/gri-pinned-version-recovery.yml"
   pull_request:
     paths:
@@ -15,6 +20,8 @@ on:
       - "scripts/ops/restore-gri-verified-version-to-d1.mjs"
       - "src/__tests__/gri-pinned-version-recovery.test.ts"
       - "src/__tests__/gri-verified-version-d1-restore.test.ts"
+      - "scripts/ops/preflight-gri-historical-shared-quota.mjs"
+      - "src/__tests__/gri-historical-quota-aware-recovery.test.ts"
       - ".github/workflows/gri-pinned-version-recovery.yml"
 permissions:
   contents: read
@@ -33,7 +40,7 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile --ignore-scripts
-      - run: bunx vitest run src/__tests__/gri-pinned-version-recovery.test.ts src/__tests__/gri-b2-historical-live-readback.test.ts src/__tests__/gri-verified-version-d1-restore.test.ts
+      - run: bunx vitest run src/__tests__/gri-pinned-version-recovery.test.ts src/__tests__/gri-b2-historical-live-readback.test.ts src/__tests__/gri-verified-version-d1-restore.test.ts src/__tests__/gri-historical-quota-aware-recovery.test.ts
   pinned-original-version:
     needs: contract
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -89,7 +96,16 @@ jobs:
           if(rows.length!==1||!/^[a-f0-9-]{36}$/.test(rows[0].uuid??''))throw Error('GRI_VERSION_D1_LEDGER_REQUIRED');
           appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+rows[0].uuid+'\n');
           JS
+      - name: Preflight authenticated D1 account-wide B2 quota without using any B2 ticket
+        id: gri_history_quota
+        run: node scripts/ops/preflight-gri-historical-shared-quota.mjs
+      - name: Disclose quota-held historical recovery without claiming restored lineage
+        if: steps.gri_history_quota.outputs.ready != 'true'
+        run: |
+          echo "::notice::GRI_HISTORY_SHARED_QUOTA_HELD_NO_RESTORE"
+          echo "GRI historical B2 immutable version was NOT read. No current product was promoted." >> "$GITHUB_STEP_SUMMARY"
       - name: Restore the exact pinned original to D1 history and independently verify the historical website view
+        if: steps.gri_history_quota.outputs.ready == 'true'
         run: node scripts/ops/restore-gri-verified-version-to-d1.mjs
       - name: Preserve only sanitized historical readback metadata
         if: always()
