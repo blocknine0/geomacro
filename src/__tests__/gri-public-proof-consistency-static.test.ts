@@ -55,7 +55,7 @@ describe("GRI public proof consistency evidence", () => {
     expect(workflow).toContain("verify-gri-snapshot-v12.js --snapshot-id");
     expect(workflow).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
     expect(workflow).toContain("bun install --frozen-lockfile --ignore-scripts");
-    expect(workflow).toContain("actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
+    expect(workflow).toContain("actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9");
     expect(publicProofJob).not.toContain("npm install --no-save");
     expect(publicProofJob).not.toContain("compute-gri-v12.js");
     expect(publicProofJob).not.toContain("cluster-gri-stories-v12.js");

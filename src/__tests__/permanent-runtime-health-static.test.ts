@@ -73,6 +73,6 @@ describe("permanent runtime health acceptance", () => {
     expect(workflow).not.toContain("x402/intelligence");
     expect(workflow).not.toContain("storage.objects");
     expect(workflow).toContain("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1");
-    expect(workflow).toContain("actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
+    expect(workflow).toContain("actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9");
   });
 });
