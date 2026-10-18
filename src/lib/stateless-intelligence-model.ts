@@ -479,8 +479,13 @@ export function deriveStatelessSignals(
     const family = item.sourceId.startsWith("statcan_") ? "statcan_daily"
       : item.sourceId.startsWith("un_news") ? "un_news" : item.sourceId;
     const fingerprint = family + "|" + url.href;
-    if (unique.has(fingerprint)) continue;
-    unique.add(fingerprint);
+    // Delivery identity is category + exact admitted original URL. A source
+    // can expose the same article through RSS and its HTML index; feed-lane
+    // IDs must not turn one release into two findings. Keep the historical
+    // fingerprint above solely for stable public IDs of the selected lane.
+    const deliveryIdentity = item.category + "|" + url.href;
+    if (unique.has(deliveryIdentity)) continue;
+    unique.add(deliveryIdentity);
     const focus = SAFE_FOCUS[item.category].find(rule => rule.test.test(item.title))?.label ?? topic.name;
     const geography = geographyMention(item.title);
     const kind = developmentKind(item.title);
