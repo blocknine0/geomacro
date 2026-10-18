@@ -43,6 +43,10 @@ on:
       - "src/lib/capability-pricing-verified-plan.server.ts"
       - "src/lib/capability-pricing-catalog.ts"
       - ".github/workflows/earn-first-live-no-funds-acceptance.yml"
+  # Best-effort read-only earning readiness heartbeat: four small buyer
+  # preflights/day, no x402 PAYMENT-SIGNATURE, no source spider, no funds.
+  schedule:
+    - cron: "7 */6 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -76,7 +80,16 @@ jobs:
         # pilot. No double probing, no 195-country enumeration, no wallets.
         run: node scripts/agentic/verify-earn-first-live-no-funds.mjs --diagnostic-only --alternate-country-probe
       - name: Verify exact deployed build, 3 category preflights, no funds
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event_name != 'schedule'
         env:
           EXPECTED_CANONICAL_SHA: ${{ github.sha }}
         run: node scripts/agentic/verify-earn-first-live-no-funds.mjs
+
+      # Schedule may run against a stale published SHA. Observe that honestly
+      # instead of failing due to unavailable categories or silently accepting
+      # payable evidence. Only normal main-push exact-SHA job is an acceptance.
+      - name: Six-hourly no-funds 3-category buyer availability observation
+        if: github.event_name == 'schedule'
+        env:
+          EXPECTED_CANONICAL_SHA: ${{ github.sha }}
+        run: node scripts/agentic/verify-earn-first-live-no-funds.mjs --diagnostic-only

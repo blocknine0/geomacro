@@ -279,5 +279,9 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     const workflow=readFileSync(".github/workflows/earn-first-live-no-funds-acceptance.yml","utf8");
     expect(workflow).toContain("EXPECTED_CANONICAL_SHA:");
     expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain('cron: "7 */6 * * *"');
+    expect(workflow).toContain("github.event_name == 'schedule'");
+    expect(workflow).toContain("verify-earn-first-live-no-funds.mjs --diagnostic-only");
+    expect(workflow).toContain("github.event_name != 'pull_request' && github.event_name != 'schedule'");
   });
 });
