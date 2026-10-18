@@ -14,15 +14,15 @@ const safeName=(value:string)=>value.normalize("NFKC")
   .replace(/[\u2019\u02bc\u02bb]/gu,"'").replace(/\s+/gu," ").trim();
 const escapePattern=(s:string)=>[...s].map(char=>
   ".*+?^$()|[]{}\\".includes(char)?"\\"+char:char).join("");
-type CountryMention=Readonly<{iso3:string;name:string;start:number;end:number}>;
+type CountryMention=Readonly<{iso3:string;name:string;start:number;end:number;ambiguous:boolean}>;
 const MATCHERS=Object.freeze(COUNTRIES_195.flatMap(country=>
   [country.name,...country.aliases]
     .map(raw=>safeName(raw))
     .filter(label=>label.length>=4 &&
-      !AMBIGUOUS_COUNTRY_NAMES.has(label.toLowerCase()) &&
       /^[\p{L}][\p{L}\p{M}\p{N} .,'’()\-]{3,79}$/u.test(label))
     .map(label=>({
       iso3:country.iso3,name:country.name,label,
+      ambiguous:AMBIGUOUS_COUNTRY_NAMES.has(label.toLowerCase()),
       pattern:new RegExp(
         "(?<![\\p{L}\\p{M}\\p{N}])"+escapePattern(label)+
         "(?![\\p{L}\\p{M}\\p{N}])","giu"),
@@ -41,7 +41,7 @@ export function exactCanonicalCountryMentionFromOriginalTitle(title:string):stri
     let match:RegExpExecArray|null;
     while((match=m.pattern.exec(normalized))!==null){
       hits.push({iso3:m.iso3,name:m.name,start:match.index,
-        end:match.index+match[0].length});
+        end:match.index+match[0].length,ambiguous:m.ambiguous});
       if(hits.length>24)return null;
     }
   }
@@ -55,6 +55,9 @@ export function exactCanonicalCountryMentionFromOriginalTitle(title:string):stri
     if(selected.some(s=>hit.start<s.end&&s.start<hit.end))return null;
     selected.push(hit);
   }
+  // A title involving an ambiguous country/common person name must never
+  // route another country as if it were the ONLY subject. Review it instead.
+  if(selected.some(x=>x.ambiguous))return null;
   const unique=new Set(selected.map(x=>x.iso3));
   return unique.size===1?selected[0].name:null;
 }
