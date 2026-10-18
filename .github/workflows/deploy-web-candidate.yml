@@ -89,8 +89,10 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           [[ "$CLOUDFLARE_ACCOUNT_ID" =~ ^[a-f0-9]{32}$ ]]
-          # Existing candidate secrets/bindings must never be inherited.
+          # Only the candidate's own anonymous-client fingerprint pepper is
+          # permitted. No shared authority/archive/payment/ledger keys.
           node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
           const account=process.env.CLOUDFLARE_ACCOUNT_ID;
           const headers={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
           const api='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers/scripts';
@@ -102,15 +104,26 @@ jobs:
           };
           const workers=await request(api);
           if(!Array.isArray(workers))throw Error('CANDIDATE_WORKER_LIST_INVALID');
+          let pepperPresent=false;
           if(workers.some(w=>w.id==='geomacro-web-candidate')){
             const settings=await request(api+'/geomacro-web-candidate/settings');
             if(!Array.isArray(settings.bindings)||settings.bindings.some(b=>
               !(b.type==='assets'&&b.name==='ASSETS')&&
-              !(b.type==='plain_text'&&b.name==='GEOMACRO_SUPABASE_RUNTIME_MODE'&&b.text==='standby')))
+              !(b.type==='plain_text'&&b.name==='GEOMACRO_SUPABASE_RUNTIME_MODE'&&b.text==='standby')&&
+              !(b.type==='secret_text'&&b.name==='GEOMACRO_SECURITY_FINGERPRINT_PEPPER')))
               throw Error('CANDIDATE_PRIVATE_OR_UNKNOWN_BINDING_PRESENT');
+            pepperPresent=settings.bindings.some(b=>b.type==='secret_text'&&b.name==='GEOMACRO_SECURITY_FINGERPRINT_PEPPER');
           }
-          console.log('CANDIDATE_NO_PRIVATE_BINDINGS_VERIFIED');
+          writeFileSync('/tmp/geomacro-candidate-pepper-present',pepperPresent?'1':'0',{mode:0o600});
+          console.log('CANDIDATE_SCOPED_BINDINGS_VERIFIED');
           NODE
+          if [[ "$(cat /tmp/geomacro-candidate-pepper-present)" == 0 ]]; then
+            # Never print/persist the generated value in the checkout, build,
+            # artifacts, GitHub outputs or shell arguments. Existing candidate
+            # pepper is retained on subsequent deployments.
+            node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))' |
+              npx -y wrangler@4.136.3 secret put GEOMACRO_SECURITY_FINGERPRINT_PEPPER --config .output/server/candidate-wrangler.json >/tmp/geomacro-candidate-pepper-provision.log
+          fi
           npx -y wrangler@4.136.3 deploy --config .output/server/candidate-wrangler.json --keep-vars
       - name: Verify exact build and source health; retain real legacy 503
         env:

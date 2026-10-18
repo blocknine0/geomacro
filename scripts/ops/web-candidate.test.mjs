@@ -30,6 +30,18 @@ test("candidate HEAD has no body and preserves failure status",async()=>{
  const result=await guard.fetch(new Request("https://candidate.invalid/api/health",{method:"HEAD"}));
  assert.equal(result.status,503);assert.equal(await result.text(),"");
 });
+test("post-build marker uses the public asset binding behind the same request fence",async()=>{
+ let appCalls=0,assetCalls=0;
+ const guard=readOnlyCandidate({fetch:async()=>{appCalls++;return new Response("not found",{status:404})}});
+ const env={ASSETS:{fetch:async()=>{assetCalls++;return Response.json({canonical_main_sha:"a".repeat(40)})}}};
+ const url="https://candidate.invalid/.well-known/geomacro-build.json";
+ const marker=await guard.fetch(new Request(url),env);
+ assert.equal(marker.status,200);assert.equal((await marker.json()).canonical_main_sha,"a".repeat(40));
+ assert.equal(marker.headers.get("X-Geomacro-Candidate-Mode"),"read-only-no-funds");
+ assert.equal((await guard.fetch(new Request(url,{method:"POST"}),env)).status,405);
+ assert.equal((await guard.fetch(new Request(url,{headers:{authorization:"synthetic"}}),env)).status,405);
+ assert.equal(appCalls,0);assert.equal(assetCalls,1);
+});
 test("build preparation discards inherited production routes and bindings and pins exact SHA",()=>{
  const root=mkdtempSync(resolve(tmpdir(),"geomacro-web-candidate-"));
  try{
