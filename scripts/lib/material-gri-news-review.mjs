@@ -73,7 +73,8 @@ function candidatesForCategory(category,signals,now){
       original_published_at:signal.published_at,
       original_date_precision:signal.date_precision,
       geography:typeof signal.geography==="string"&&
-        /^[A-Za-z .-]{2,56}$/u.test(signal.geography)?signal.geography:null,
+        /^[\p{L}\p{M}][\p{L}\p{M}\p{N} .,\x27’()\-]{1,69}$/u.test(signal.geography)&&
+        signal.geography.length<=70?signal.geography:null,
       follow_up_verification_focus:rule.watch,
       evidence_class:"SINGLE_OFFICIAL_RELEASE_OBSERVED_UNSCORED",
       independent_originals_verified:false,

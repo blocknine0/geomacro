@@ -13,7 +13,7 @@ const KINDS=new Set([
 const ID=/^(geopolitics|macro|rare_earth)-[a-z0-9-]{4,100}$/u;
 const UTC=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u;
 const CAL_DAY=/^\d{4}-\d\d-\d\d$/u;
-const normalize=x=>x.trim().normalize("NFKC").replace(/\s+/gu," ").toLowerCase();
+const normalize=x=>x.trim().normalize("NFKC").replace(/[’ʼʻ]/gu,"\x27").replace(/\s+/gu," ").toLowerCase();
 
 /**
  * Derive an offline 195-country EXACT lookup from the repository's audited
@@ -42,6 +42,43 @@ export function canonicalMaterialGriCountryLookup(countryRegistrySource){
       lookup.set(label,fields[0]);
     }
   }
+  // Consume the canonical registry's explicitly reviewed EXACT_ALIASES
+  // rather than silently discarding them when producing the GRI worklist.
+  // Only parse static JSON string arrays bound to known ISO3 rows; never
+  // evaluate TS source or infer fuzzy/substring matches.
+  const block=countryRegistrySource.match(
+    /const EXACT_ALIASES[^\n]{0,200}Object\.freeze\(\{([\s\S]{100,3500}?)\}\);/u
+  );
+  if(!block)throw Error("MATERIAL_GRI_COUNTRY_ALIASES_REQUIRED");
+  const aliasPattern=/([A-Z]{3}):(\[[^\]]{1,900}\])/gu;
+  const matches=[...block[1].matchAll(aliasPattern)];
+  if(matches.length<20||matches.length>70||
+     block[1].replace(aliasPattern,"").replace(/[\s,]/gu,"")!=="")
+    throw Error("MATERIAL_GRI_COUNTRY_ALIASES_INVALID");
+  const keys=new Set();
+  for(const entry of matches){
+    const key=entry[1];
+    if(keys.has(key)||!iso3.has(key))
+      throw Error("MATERIAL_GRI_COUNTRY_ALIASES_INVALID");
+    keys.add(key);
+    let aliases;
+    try{aliases=JSON.parse(entry[2]);}
+    catch{throw Error("MATERIAL_GRI_COUNTRY_ALIASES_INVALID");}
+    if(!Array.isArray(aliases)||aliases.length<1||aliases.length>12)
+      throw Error("MATERIAL_GRI_COUNTRY_ALIASES_INVALID");
+    for(const word of aliases){
+      if(typeof word!=="string"||word.length<2||word.length>70||
+         !/^[\p{L}\p{M}][\p{L}\p{M}\p{N} .,'’()\-]{1,69}$/u.test(word))
+        throw Error("MATERIAL_GRI_COUNTRY_ALIASES_INVALID");
+      const name=normalize(word),existing=lookup.get(name);
+      if(existing&&existing!==key)
+        throw Error("MATERIAL_GRI_COUNTRY_ALIAS_COLLISION");
+      lookup.set(name,key);
+    }
+  }
+  if(!keys.has("USA")||!keys.has("GBR")||!keys.has("CIV")||
+     !keys.has("TUR")||!keys.has("PSE")||!keys.has("VAT"))
+    throw Error("MATERIAL_GRI_COUNTRY_ALIASES_INCOMPLETE");
   if(!iso3.has("IND")||!iso3.has("USA")||!iso3.has("PSE")||
      !iso3.has("VAT")||iso3.has("TWN"))
     throw Error("MATERIAL_GRI_COUNTRY_DENOMINATOR_INVALID");
