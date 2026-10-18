@@ -139,6 +139,19 @@ const run=(f:ReturnType<typeof fixture>,historySha=f.reviewed.signed_input.histo
   computeReviewedCurrentGlobalRisk({reviewed:f.reviewed,history:f.history,
     verifiedHistoryB2Sha256:historySha,trustedReviewerPublicKeyPem:pem,now});
 
+describe("independent multi-snapshot B2 historical lineage",()=>{
+  it("rejects duplicate historical IDs even when archive is syntactically verified",()=>{
+    const q=fixture();
+    q.history.verified_snapshot_rows[1].id=q.history.verified_snapshot_rows[0].id;
+    expect(()=>run(q)).toThrow("GRI_PUBLIC_HISTORY_MULTI_SNAPSHOT_DISTINCT_LINEAGE_REQUIRED");
+  });
+  it("rejects same native time repeated as two historical snapshots",()=>{
+    const q=fixture();
+    q.history.verified_snapshot_rows[1].as_of=q.history.verified_snapshot_rows[0].as_of;
+    expect(()=>run(q)).toThrow("GRI_PUBLIC_HISTORY_MULTI_SNAPSHOT_DISTINCT_LINEAGE_REQUIRED");
+  });
+});
+
 describe("Supabase-free Global Risk GRI v1.2 signed hot publisher",()=>{
   it("uses canonical scoring + real historical continuity, excludes private evidence from public B2/D1",()=>{
     const f=fixture();
