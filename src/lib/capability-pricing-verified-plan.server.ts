@@ -8,7 +8,7 @@ import { resolveGeomacroCapabilityPrice, type CapabilityPrice } from "./capabili
 export type VerifiedCapabilityPriceProof = Readonly<{
   evidence_verified: true;
   rights_verified: true;
-  signing_verified: true;
+  signing_verified: boolean;
   deliverable: true;
   signed_object_lifecycle: "existing" | "new" | "none";
   change_attribution_verified: boolean;

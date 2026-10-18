@@ -203,11 +203,14 @@ describe("source-free paid output boundary", () => {
   it("wires sanitation before durable x402 preparation and on replay", async () => {
     const fs = await import("node:fs/promises");
     const route = await fs.readFile("src/lib/mainnet-intelligence-endpoint.server.ts", "utf8");
-    expect(route).toContain("sanitizeAndRehashPaidPreparedResponse(\n            assembled");
-    expect(route).toContain("{ rejectEmbeddedLinks: true }");
-    expect(route).toContain("availability: publicAgentQueryAvailability(finalAvailability)");
+    const offer=await fs.readFile("src/lib/capability-x402-offer.server.ts","utf8");
+    expect(offer).toContain("sanitizeAndRehashPaidPreparedResponse(assembled,{rejectEmbeddedLinks:true})");
+    expect(offer).toContain("availability:publicAgentQueryAvailability(input.availability)");
     expect(route).not.toContain("availability: finalAvailability,");
-    expect(route).toContain("assertPublicPaidOutputBoundary(prepared)");
-    expect(route).toContain("const safePrepared = sanitizeAndRehashPaidPreparedResponse(prepared)");
+    expect(route).toContain("assertFrozenCapabilityResponse(prepared)");
+    expect(route).toContain("assertFrozenCapabilityResponse(prior.response)");
+    expect(route).toContain("sendFrozenCapabilityHttpBody");
+    // A replay may validate, but must never rewrite the quoted body.
+    expect(route).not.toContain("sanitizeAndRehashPaidPreparedResponse");
   });
 });

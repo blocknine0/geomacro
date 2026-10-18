@@ -253,7 +253,7 @@ describe("earn-first original-dated structural baseline pilot", () => {
     for (const required of [
       "checkAgentQueryDeliverability(plan",
       "prepareCoinbaseX402Delivery",
-      "assertPublicPaidOutputBoundary(prepared)",
+      "assertFrozenCapabilityResponse(prepared)",
       "settleCoinbaseX402(paymentPayload, config)",
       "claimCoinbaseX402Delivery",
       "X402_PAYMENT_REPLAY_CONFLICT",

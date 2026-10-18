@@ -543,6 +543,7 @@ export async function claimCoinbaseX402Delivery(input: {
     disposition: row.disposition,
     claim_token: row.claim_token,
     response_payload: row.response_payload,
+    response_sha256: row.response_sha256,
     settlement_tx: row.settlement_reference,
     settlement_network: row.settlement_network,
   };

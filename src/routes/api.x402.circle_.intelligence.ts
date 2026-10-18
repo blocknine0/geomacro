@@ -1,15 +1,23 @@
-import { randomUUID } from "node:crypto";
+import {resolveEligiblePublishedCapabilityPrice} from "../lib/verified-capability-coinbase-binding.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
 
 import { agentAdaptiveQuerySchema, buildAgentQueryPlan } from "../lib/agent-query-plan";
-import { checkAgentQueryDeliverability } from "../lib/agent-query-deliverability.server";
+import { checkAgentQueryDeliverability, publicAgentQueryAvailability } from "../lib/agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "../lib/agent-query-external-modules.server";
-import { assembleAgentQueryResponse } from "../lib/agent-query-response.server";
+import {prepareVerifiedCapabilityOffer,assertFrozenCapabilityResponse,assertFrozenCapabilityCurrentForSettlement} from "../lib/capability-x402-offer.server";
+import {readVerifiedCapabilityAnswer} from "../lib/capability-x402-prequote.server";
+import {readAlreadyDeliveredCapabilityReplay} from "../lib/capability-x402-replay.server";
+import {assertAcceptedCapabilityQuote,assertCapabilityPaymentBinding,
+  capabilityQuoteFromPaymentPayload,capabilityLedgerRequestFingerprint,
+  circleRequirementsForCapabilityQuote} from "../lib/capability-x402-payment-contract.server";
+import type {PreparedCapabilityQuote as CapabilityQuote} from "../lib/capability-prepared-quote.server";
+import {freezeCanonicalCapabilityHttpBody,sendFrozenCapabilityHttpBody,
+  type FrozenCapabilityHttpBody} from "../lib/capability-x402-exact-http-body.server";
+import {GEOMACRO_STRUCTURED_LICENSE_HEADERS} from "../lib/geomacro-structured-commercial-license";
 import {
   claimAgentCommerceDelivery,
   commerceFingerprint,
-  commerceSha256,
   completeAgentCommerceDelivery,
   prepareAgentCommerceDelivery,
   releaseAgentCommerceDelivery,
@@ -37,7 +45,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, PAYMENT-SIGNATURE, payment-signature",
-  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE",
+  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, X-Geomacro-Delivery-SHA256, X-Geomacro-Quote-ID, X-Geomacro-Output-License, X-Geomacro-Raw-Data-Delivered, Link",
   "Access-Control-Max-Age": "600",
 };
 
@@ -97,7 +105,7 @@ function paymentRequiredDocument(request: Request, requirement: CircleGatewayPay
     resource: {
       url: new URL("/api/x402/circle/intelligence", request.url).toString(),
       description:
-        "Geomacro adaptive geopolitical and macro risk intelligence with non-executing Risk Gate context",
+        "Geomacro structured derived geopolitical, macro/FX and critical-minerals intelligence",
       mimeType: "application/json",
     },
     accepts: [requirement],
@@ -165,28 +173,6 @@ async function configuredCircleRequirement(request: Request) {
   }
 }
 
-function replayResponse(
-  prepared: Record<string, unknown>,
-  settlementReference: string | null,
-  settlementNetwork: string | null,
-) {
-  const priorPayment =
-    prepared.payment && typeof prepared.payment === "object" && !Array.isArray(prepared.payment)
-      ? (prepared.payment as Record<string, unknown>)
-      : {};
-  return {
-    ...prepared,
-    payment: {
-      ...priorPayment,
-      settled: true,
-      provider: "circle_gateway_x402",
-      settlement_reference: settlementReference,
-      settlement_network: settlementNetwork,
-      idempotent_replay: true,
-    },
-  };
-}
-
 export const Route = createFileRoute("/api/x402/circle/intelligence")({
   server: {
     handlers: {
@@ -205,7 +191,8 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           scheme: configured.requirement.scheme,
           network: configured.requirement.network,
           asset: configured.requirement.asset,
-          price_usdc: configured.config.priceUsdc,
+          exact_price_usdc: null,
+          pricing_policy: "SERVER_VERIFIED_CAPABILITY_AND_VARIANT",
           launch_state: "coordinated_launch_only",
           coverage: "data-driven; only currently deliverable and commercially eligible requests are payable",
           reconciliation_required: true,
@@ -233,7 +220,8 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
 
         const configured = await configuredCircleRequirement(request);
         if ("error" in configured) return configured.error;
-        const { config, requirement, paymentRequired } = configured;
+        const { config } = configured;
+        let requirement=configured.requirement;
 
         if (
           !allowPublicDemoRequest(request, {
@@ -291,6 +279,32 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           );
         }
 
+        const requestFingerprint=commerceFingerprint({product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,request:parsed});
+        const paymentToken=request.headers.get("payment-signature")?.trim()??"";
+        let paymentPayload:unknown;
+        let proposed:CapabilityQuote;
+        if(paymentToken) {
+          if(new TextEncoder().encode(paymentToken).byteLength>MAX_PAYMENT_HEADER_BYTES)
+            return json({ok:false,chargeable:false,error:{code:"PAYMENT_SIGNATURE_HEADER_TOO_LARGE"}},400);
+          try {
+            paymentPayload=decodePaymentHeader(paymentToken);
+            proposed=capabilityQuoteFromPaymentPayload(paymentPayload);
+            const prior=await readAlreadyDeliveredCapabilityReplay({quote:proposed,paymentPayload,
+              paymentFingerprint:commerceFingerprint(paymentPayload),requestFingerprint,
+              config,circleRequirement:requirement});
+            if(prior) {
+              assertFrozenCapabilityResponse(prior.response);
+              return sendFrozenCapabilityHttpBody(freezeCanonicalCapabilityHttpBody(prior.response),prior.responseSha256,{
+                ...corsHeaders,...GEOMACRO_STRUCTURED_LICENSE_HEADERS,
+                "X-Geomacro-Quote-ID":proposed.quote_id,
+                "PAYMENT-RESPONSE":encodePaymentHeader({success:true,settlement_reference:prior.settlementReference,network:prior.settlementNetwork}),
+              });
+            }
+          } catch {
+            return json({ok:false,chargeable:false,error:{code:"X402_DELIVERED_REPLAY_PROOF_INVALID_OR_UNAVAILABLE"},execution_authorized:false},409);
+          }
+        }
+
         let availability;
         try {
           availability = await checkAgentQueryDeliverability(plan, {
@@ -317,7 +331,7 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
               ok: false,
               chargeable: false,
               payment_required_now: false,
-              availability,
+              availability:publicAgentQueryAvailability(availability),
               error: {
                 code: availability.code,
                 message: "Requested intelligence is not currently fully deliverable; no payment is accepted.",
@@ -328,57 +342,37 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           );
         }
 
-        const paymentToken = request.headers.get("payment-signature")?.trim() ?? "";
         if (!paymentToken) {
-          return json(
-            {
-              ok: false,
-              payment_required: true,
-              price: `${config.priceUsdc} USDC`,
-              network: requirement.network,
-              asset: requirement.asset,
-              execution_authorized: false,
-            },
-            402,
-            { "PAYMENT-REQUIRED": encodePaymentHeader(paymentRequired) },
-          );
+          if(!allowPublicDemoRequest(request,{namespace:"capability-prequote-offer",windowMs:60_000,maxPerClient:2,maxGlobal:12}))
+            return json({ok:false,chargeable:false,error:{code:"CAPABILITY_PREQUOTE_RATE_LIMITED"},execution_authorized:false},429);
+          try {
+            const offered=await prepareVerifiedCapabilityOffer({plan,availability,
+              clientRequestId:parsed.client_request_id??null,requestFingerprint,
+              rail:"circle_gateway_x402",network:requirement.network,asset:requirement.asset,recipient:requirement.payTo});
+            const priced=circleRequirementsForCapabilityQuote(config,requirement,offered.quote);
+            const required={...paymentRequiredDocument(request,priced),
+              extensions:{geomacro:{info:{capability_quote:offered.quote}}}};
+            return json(required,402,{...GEOMACRO_STRUCTURED_LICENSE_HEADERS,"PAYMENT-REQUIRED":encodePaymentHeader(required)});
+          } catch {
+            return json({ok:false,chargeable:false,payment_required_now:false,
+              error:{code:"CAPABILITY_SIGNED_PREQUOTE_UNAVAILABLE"},execution_authorized:false},422);
+          }
         }
-        if (new TextEncoder().encode(paymentToken).byteLength > MAX_PAYMENT_HEADER_BYTES) {
-          return json(
-            {
-              ok: false,
-              chargeable: false,
-              error: { code: "PAYMENT_SIGNATURE_HEADER_TOO_LARGE", message: "Payment proof is too large." },
-              execution_authorized: false,
-            },
-            400,
-          );
-        }
-
-        let paymentPayload: unknown;
+        let capabilityQuote:CapabilityQuote;
+        let frozenIntelligence:Record<string,unknown>;
         try {
-          paymentPayload = decodePaymentHeader(paymentToken);
-        } catch (error) {
-          return json(
-            {
-              ok: false,
-              chargeable: false,
-              error: {
-                code: error instanceof Error ? error.message : "PAYMENT_SIGNATURE_INVALID",
-                message: "Payment proof is not valid x402 JSON.",
-              },
-              execution_authorized: false,
-            },
-            400,
-          );
+          const frozen=await readVerifiedCapabilityAnswer({quote:proposed!,requestFingerprint});
+          capabilityQuote=frozen.quote;frozenIntelligence=frozen.intelligence;
+          const price=resolveEligiblePublishedCapabilityPrice(plan,availability);
+          if(price.capability!==capabilityQuote.capability || price.variant!==capabilityQuote.variant ||
+             price.amount_atomic!==capabilityQuote.amount_atomic) throw Error("CAPABILITY_CLASS_CHANGED");
+          requirement=circleRequirementsForCapabilityQuote(config,requirement,capabilityQuote);
+          assertCapabilityPaymentBinding(paymentPayload,capabilityQuote,requirement);
+        } catch {
+          return json({ok:false,chargeable:false,error:{code:"X402_CAPABILITY_QUOTE_OR_PAYMENT_BINDING_INVALID"},execution_authorized:false},402);
         }
-
-        const paymentFingerprint = commerceSha256(paymentToken);
-        const requestFingerprint = commerceFingerprint({
-          product: PRODUCT_ID,
-          query_plan_hash: plan.query_plan_hash,
-          request: parsed,
-        });
+        const paymentFingerprint=commerceFingerprint(paymentPayload);
+        const ledgerRequestFingerprint=capabilityLedgerRequestFingerprint(capabilityQuote);
 
         let claim;
         try {
@@ -386,7 +380,7 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             provider: "circle_gateway_x402",
             providerEnvironment: config.environment,
             paymentFingerprint,
-            requestFingerprint,
+            requestFingerprint:ledgerRequestFingerprint,
             productId: PRODUCT_ID,
             clientRequestId: parsed.client_request_id ?? null,
             sourceChannel: "circle_gateway_x402",
@@ -443,14 +437,14 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           );
         }
         if (claim.disposition === "REPLAY" && claim.response_payload) {
-          return json(
-            replayResponse(
-              claim.response_payload as Record<string, unknown>,
-              claim.settlement_reference,
-              claim.settlement_network,
-            ),
-            200,
-          );
+          const response=claim.response_payload as Record<string,unknown>;
+          assertFrozenCapabilityResponse(response);
+          if(claim.response_sha256!==capabilityQuote.prepared_answer_sha256)
+            return json({ok:false,chargeable:false,error:{code:"X402_REPLAY_IMMUTABLE_BYTES_MISMATCH"}},409);
+          return sendFrozenCapabilityHttpBody(freezeCanonicalCapabilityHttpBody(response),claim.response_sha256,{
+            ...corsHeaders,...GEOMACRO_STRUCTURED_LICENSE_HEADERS,"X-Geomacro-Quote-ID":capabilityQuote.quote_id,
+            "PAYMENT-RESPONSE":encodePaymentHeader({success:true,settlement_reference:claim.settlement_reference,network:claim.settlement_network}),
+          });
         }
         if (claim.disposition !== "CLAIMED" || !claim.claim_token) {
           return json(
@@ -503,7 +497,6 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
               execution_authorized: false,
             },
             402,
-            { "PAYMENT-REQUIRED": encodePaymentHeader(paymentRequired) },
           );
         }
 
@@ -557,32 +550,25 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           );
         }
 
-        const requestId = randomUUID();
-        let responsePayload: Record<string, unknown>;
         try {
-          const assembled = await assembleAgentQueryResponse({
-            plan,
-            requestId,
-            clientRequestId: parsed.client_request_id ?? null,
-            priceUsdc: config.priceUsdc,
-          });
-          responsePayload = {
-            ...assembled,
-            payment: {
-              provider: "circle_gateway_x402",
-              settled: false,
-              amount_atomic: requirement.amount,
-              amount_usdc: config.priceUsdc,
-              asset: "USDC",
-              asset_contract: CIRCLE_X402_BASE_MAINNET_USDC,
-              network: requirement.network,
-              recipient: requirement.payTo,
-              accounting_state: "pending_settlement",
-              reconciliation_required: true,
-              idempotent_replay: false,
-            },
-            execution_authorized: false,
-          };
+          const price=resolveEligiblePublishedCapabilityPrice(plan,finalAvailability);
+          if(price.capability!==capabilityQuote.capability || price.variant!==capabilityQuote.variant ||
+             price.amount_atomic!==capabilityQuote.amount_atomic) throw Error("FINAL_CAPABILITY_CLASS_CHANGED");
+        } catch {
+          await releaseAgentCommerceDelivery({provider:"circle_gateway_x402",providerEnvironment:config.environment,
+            paymentFingerprint,claimToken,failureCode:"FINAL_CAPABILITY_PRICE_UNVERIFIED"});
+          return json({ok:false,chargeable:false,error:{code:"FINAL_CAPABILITY_PRICE_UNVERIFIED"},execution_authorized:false},409);
+        }
+
+        const requestId=String(frozenIntelligence.request_id);
+        let responsePayload:Record<string,unknown>;
+        let frozenHttpBody:FrozenCapabilityHttpBody;
+        try {
+          responsePayload=frozenIntelligence;
+          assertFrozenCapabilityResponse(responsePayload);
+          frozenHttpBody=freezeCanonicalCapabilityHttpBody(responsePayload);
+          if(frozenHttpBody.sha256!==capabilityQuote.prepared_answer_sha256)
+            throw Error("X402_PREQUOTE_BODY_MISMATCH");
         } catch (error) {
           await releaseAgentCommerceDelivery({
             provider: "circle_gateway_x402",
@@ -615,6 +601,8 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             claimToken,
             responsePayload,
           });
+          if(prepared.responseSha256!==frozenHttpBody.sha256)
+            throw Error("X402_FINAL_HTTP_LEDGER_BODY_HASH_MISMATCH");
         } catch (error) {
           await releaseAgentCommerceDelivery({
             provider: "circle_gateway_x402",
@@ -635,6 +623,11 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           );
         }
 
+        try {assertAcceptedCapabilityQuote(capabilityQuote);assertFrozenCapabilityCurrentForSettlement(responsePayload);} catch {
+          await releaseAgentCommerceDelivery({provider:"circle_gateway_x402",providerEnvironment:config.environment,
+            paymentFingerprint,claimToken,failureCode:"CAPABILITY_QUOTE_EXPIRED_BEFORE_SETTLEMENT"});
+          return json({ok:false,chargeable:false,error:{code:"CAPABILITY_QUOTE_EXPIRED_BEFORE_SETTLEMENT"},execution_authorized:false},409);
+        }
         let settlement;
         try {
           settlement = await settleCircleGatewayProduction(paymentPayload, requirement);
@@ -730,15 +723,6 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           );
         }
 
-        responsePayload.payment = {
-          ...(responsePayload.payment as Record<string, unknown>),
-          settled: true,
-          accounting_state: "commercial_pending_accounting",
-          settlement_reference: settlement.settlement_reference,
-          settlement_network: settlement.network,
-          payer: settlement.payer,
-        };
-
         let paymentEventId: string | null = null;
         try {
           paymentEventId = await recordCommercialPaymentEvent({
@@ -757,7 +741,7 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             asset_symbol: "USDC",
             asset_contract: CIRCLE_X402_BASE_MAINNET_USDC,
             amount_atomic: requirement.amount,
-            amount_decimal: Number(config.priceUsdc),
+            amount_decimal: Number(capabilityQuote.amount_usdc),
             payer_reference: settlement.payer,
             recipient_reference: requirement.payTo,
             settled_at: new Date().toISOString(),
@@ -791,7 +775,9 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
           console.error("[circle-x402] commercial telemetry persistence failed", error);
         }
 
-        return json(responsePayload, 200, {
+        return sendFrozenCapabilityHttpBody(frozenHttpBody,prepared.responseSha256,{
+          ...corsHeaders,...GEOMACRO_STRUCTURED_LICENSE_HEADERS,
+          "X-Geomacro-Quote-ID":capabilityQuote.quote_id,
           "PAYMENT-RESPONSE": encodePaymentHeader({
             success: true,
             provider: "circle_gateway_x402",
