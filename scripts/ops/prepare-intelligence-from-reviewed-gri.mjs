@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import {readFileSync,writeFileSync,mkdirSync,statSync,appendFileSync} from "node:fs";
 import {createHash} from "node:crypto";
-import {qualifySignedGriForCurrentIntelligence} from "../lib/gri-reviewed-to-current-intelligence.mjs";
+import {qualifySignedGriForCurrentIntelligence,mayPromoteNewerReviewedIntelligence} from "../lib/gri-reviewed-to-current-intelligence.mjs";
 import {approvedIndependentReviewerFromEnv} from "../../src/lib/independent-reviewer-authority.server.ts";
 
 const digest=bytes=>createHash("sha256").update(bytes).digest("hex");
@@ -30,11 +30,17 @@ try{
     reviewed:JSON.parse(raw.toString("utf8")),
     now:new Date(),trustedReviewerPublicKeyPem:publicKey,
   });
+  // Prevent a later GRI batch with older original events from overwriting a
+  // newer already-published Intelligence latest B2 pointer.
+  const published=result.ready
+    ? await mayPromoteNewerReviewedIntelligence({rows:result.rows})
+    : {canPublish:false,reason:result.reason};
+  const publishReady=result.ready&&published.canPublish;
   // Only a minimal NOT-READY code is printed; source titles/URLs, reviewer
   // details, signatures and rights papers are never echoed.
-  if(!result.ready){
+  if(!publishReady){
     console.log(JSON.stringify({schema:"geomacro.reviewed-gri-to-intelligence.v1",
-      ready:false,reason:result.reason,payment_executed:false,
+      ready:false,reason:published.reason,payment_executed:false,
       b2_writes:0,d1_writes:0,supabase_requests:0}));
     if(process.env.GITHUB_OUTPUT)appendFileSync(process.env.GITHUB_OUTPUT,"ready=false\n");
   }else{
