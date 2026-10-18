@@ -77,6 +77,12 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   { id: "eurostat_economy_release", category: "macro", media: "atom",
     url: "https://ec.europa.eu/eurostat/en/search?_estatsearchportlet_WAR_estatsearchportlet_collection=CAT_PREREL&_estatsearchportlet_WAR_estatsearchportlet_theme=PER_ECOFIN&p_p_id=estatsearchportlet_WAR_estatsearchportlet&p_p_lifecycle=2&p_p_mode=view&p_p_resource_id=atom&p_p_state=maximized",
     allowedHosts: ["ec.europa.eu"], credit: "Eurostat" },
+  // Bank of Canada's first-party Press Releases RSS (official RSS directory).
+  // Issuer-native RSS pubDate is an observation clock, not article rights,
+  // independent same-event corroboration, or a commercial signed GRI input.
+  { id: "boc_policy_press", category: "macro", media: "rss",
+    url: "https://www.bankofcanada.ca/content_type/press-releases/feed/",
+    allowedHosts: ["www.bankofcanada.ca"], credit: "Bank of Canada" },
   // An additional independent central-bank cooperation and regulatory publisher,
   // using its officially documented first-party RSS native publication clock.
   // Do not use the provider's fetch time or its landing-page modification time.
