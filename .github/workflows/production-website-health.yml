@@ -7,6 +7,16 @@ on:
       - main
   schedule:
     - cron: "11 */6 * * *"
+  # Final release acceptance follows actual backend publication. A stale
+  # website still FAILS here, without stranding or repeating signed B2 writes.
+  workflow_run:
+    workflows:
+      - GRI v1.2 Supabase-Free Current Promotion
+      - Supabase-Free Reviewed Intelligence Publication
+      - Machine Dual-Authority Intelligence Publication
+      - Risk Indices from Verified D1 Global Risk (No Funds)
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -17,6 +27,18 @@ concurrency:
 
 jobs:
   public-production-smoke:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_sha == github.sha &&
+        (github.event.workflow_run.event == 'workflow_dispatch' ||
+         github.event.workflow_run.event == 'repository_dispatch' ||
+         (github.event.workflow_run.name == 'Risk Indices from Verified D1 Global Risk (No Funds)' &&
+          github.event.workflow_run.event == 'workflow_run'))))
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:

@@ -37,6 +37,7 @@ Without the extra dispatch approval, manually pass the returned two exact key/SH
 
 - Raw source bytes/URLs, licensed articles, private keys and reviewed/certified JSON are NEVER sent to public B2, website, customer API or GitHub build artifacts.
 - Geomacro's owner-created structured-output licence cannot authorize use of other rightsholders' articles, third-party datasets or bypass legally required attribution.
-- Missing source licence, reviewer or certificate, no new native original, stale reviewer, insufficient prior B2 history, B2 quota cap, SHA mismatch, wrong production SHA and missing D1 readback all remain fail-closed.
+- Missing source licence, reviewer or certificate, no new native original, stale reviewer, insufficient prior B2 history, B2 quota cap, SHA mismatch, wrong current canonical code SHA and missing D1 readback all remain fail-closed.
 - No fake historical timestamp, no self-certified independent original, no synthetic commercial score, no automatic USDC settlement or Supabase reactivation.
 - A staged input is not production acceptance. Check live numerical GRI and Risk Indices plus HTTP deep-health independently.
+- Backend recovery precedes exact website deployment acceptance; the unchanged exact website/mirror/deep-health gate runs after successful publication. See `SIGNED_DATA_PUBLICATION_RELEASE_ORDER.md`.

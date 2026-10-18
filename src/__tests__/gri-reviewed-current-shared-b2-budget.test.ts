@@ -30,7 +30,7 @@ describe("verified GRI B2 request envelope",()=>{
   it("preserves external signed inputs, immutable original clocks and no-funds gates",()=>{
     expect(workflow).toContain("REVIEWED_CERTIFICATES_B2_SHA256");
     expect(workflow).toContain("GEOMACRO_GRI_REVIEWED_INPUT_SHA256");
-    expect(workflow).toContain("PRODUCTION_SOURCE_SHA_NOT_DEPLOYED");
+    expect(workflow).toContain("node scripts/ops/assert-backend-publication-main.mjs");
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("github.event_name == 'workflow_dispatch'");
     expect(workflow).not.toContain("COINBASE_API_KEY: \u0024{{ secrets.");

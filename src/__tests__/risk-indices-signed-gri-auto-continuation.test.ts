@@ -28,9 +28,9 @@ describe("P0 no-funds signed GRI -> Risk Indices operational continuation", () =
     ]) expect(publish).toContain(boundary);
   });
 
-  it("retains existing strict exact-deployed-SHA, verified-parent, B2/D1 and no-money barriers",()=>{
+  it("requires current canonical source, verified parent, B2/D1 and no-money barriers",()=>{
     for(const boundary of [
-      "INDICES_EXACT_PRODUCTION_DEPLOYMENT_SHA_MISMATCH",
+      "node scripts/ops/assert-backend-publication-main.mjs",
       "test \"$EXPECTED_SHA\" = \"$(git rev-parse HEAD)\"",
       "B2_ACCOUNT_QUOTA_REQUIRED: \"1\"",
       "B2_ACCOUNT_QUOTA_WORKFLOW_ID: risk_indices_d1_parent",
