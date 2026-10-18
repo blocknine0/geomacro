@@ -18,6 +18,9 @@ on:
       - "scripts/lib/material-gri-news-review.mjs"
       - "scripts/ops/export-material-gri-review-from-d1.mjs"
       - "scripts/tests/material-gri-news-review.test.mjs"
+      - "scripts/lib/material-gri-country-evidence-worklist.mjs"
+      - "scripts/ops/build-material-gri-country-worklist.mjs"
+      - "scripts/tests/material-gri-country-evidence-worklist.test.mjs"
 
 permissions:
   contents: read
@@ -62,9 +65,20 @@ jobs:
         with:
           node-version: "22"
       - name: Test exact 72-hour source-free event review policy
-        run: node --test scripts/tests/material-gri-news-review.test.mjs
+        run: node --test scripts/tests/material-gri-news-review.test.mjs scripts/tests/material-gri-country-evidence-worklist.test.mjs
       - name: Select material developments from actual D1-derived readback
         run: node scripts/ops/export-material-gri-review-from-d1.mjs
+      - name: Build 195-country GRI source-qualification worklist (no scoring or signed claims)
+        run: node scripts/ops/build-material-gri-country-worklist.mjs
+      - name: Preserve bounded private GRI country worklist
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: auto-ingest-gri-country-review-${{ github.run_id }}
+          path: artifacts/derived-news/material-gri-country-evidence-worklist.json
+          if-no-files-found: warn
+          retention-days: 3
+
       - name: Save private 72-hour GRI review candidates
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
