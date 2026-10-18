@@ -27,7 +27,7 @@ mkdirSync(artifactDir, { recursive: true });
 const GOVERNED_SOURCE_CONTRACTS = Object.freeze({
   eia_api_v2: Object.freeze({
     source_id: "eia_api_v2",
-    category: "CRITICAL_MINERALS",
+    category: "MACRO",
     enabled_for_ingestion: true,
     enabled_for_commercial_signals: false,
     commercial_usage_status: "COMMERCIAL_OK",
