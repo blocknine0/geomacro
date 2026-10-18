@@ -42,7 +42,9 @@ describe("Machine Intelligence typed signed-ready repository dispatch", () => {
     ]) expect(workflow).toContain(marker);
     expect(workflow).not.toContain("RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64:");
     expect(workflow).not.toContain("COINBASE_API_KEY: ");
-    expect(publisher).toContain("qualifyMachineIntelligenceBatch");
+    expect(publisher).toContain("publishMachineIntelligence");
+    expect(publisher).toContain("MACHINE_INTELLIGENCE_INPUT_HASH_MISMATCH");
+    expect(publisher).toContain("machineCommercialAuthorityConfigurationValid()");
   });
 
   it("a news hint cannot certify upstream source rights or authorize money", () => {
