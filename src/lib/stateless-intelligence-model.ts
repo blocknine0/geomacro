@@ -70,7 +70,7 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Official prudential rulemaking can affect bank funding and cross-border credit conditions; any implemented capital requirements or market effects must be verified separately." },
     { test: /\b(gross domestic product|economic accounts|national accounts|retail trade|retail sales|employment|labour force survey|labor force survey|wages?|average weekly earnings|business conditions)\b/i, name: "official economic statistics",
       implication: "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table." },
-    { test: /\b(interest rates?|federal funds|discount rate|monetary policy|FOMC)\b/i, name: "monetary policy",
+    { test: /\b(interest rates?|policy rates?|overnight rate|federal funds|discount rate|monetary policy|FOMC)\b/i, name: "monetary policy",
       implication: "A monetary-policy release can influence financing conditions and FX expectations; no specific rate direction or market outcome is inferred from this signal." },
     { test: /\b(inflation|consumer prices?|producer prices?|price index|cost of living)\b/i, name: "inflation and prices",
       implication: "Price developments can affect purchasing power, central-bank decisions and currency-risk context; verify the actual published figures before quantifying impact." },
@@ -139,6 +139,11 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
     if (source.govContentApi &&
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
+    // Fixed Bank of Canada issuer RSS. Only its dated WordPress original
+    // article permalinks qualify, not tagged/search/feed/home pages, /multimedia
+    // or off-issuer mirrors. Never infer a new clock from fetch/updated time.
+    if (source.id === "boc_policy_press" &&
+        (link.search || !/^\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9][a-z0-9-]{4,180}\/?$/u.test(link.pathname))) return null;
     // Australian Industry minister: admit ONLY original issuer media articles.
     // This private first-party RSS is NOT a second independent corroborator,
     // commercial permission, GRO, or authorized current risk score.
