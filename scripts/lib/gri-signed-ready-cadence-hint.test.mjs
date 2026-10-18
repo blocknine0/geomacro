@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {prepareGriSignedReadyCadenceHint,assertGriDispatchTarget} from
   "./gri-signed-ready-cadence-hint.mjs";
-import {requestGriSignedReadyCadence} from
+import {requestGriSignedReadyCadence,decideGriSignedPublisherRetry} from
   "../ops/dispatch-gri-signed-ready-cadence.mjs";
 
 const date=new Date("2026-10-18T11:30:00.000Z");
@@ -142,7 +142,7 @@ test("same approved SHA is NOT repeatedly dispatched on two cadences or news com
   });
   assert.equal(calls,1);
   assert.equal(res.scheduled,false);
-  assert.equal(res.status,"ALREADY_ENQUEUED_EXACT_MAIN_AFTER_SIGNED_APPROVAL");
+  assert.equal(res.status,"SIGNED_GRI_PUBLISHER_ALREADY_RUNNING_OR_UNKNOWN");
   assert.equal(res.b2_gets,0);
   assert.equal(res.payments,0);
 });
@@ -175,7 +175,7 @@ test("scheduled backstop is separate from original GRI proof, no Supabase or pay
   assert.match(w,/workflows: \["Auto Ingest News"\]/u);
   assert.match(w,/github.event.workflow_run.conclusion == 'success'/u);
   assert.match(w,/github.event.workflow_run.head_sha == github.sha/u);
-  assert.match(code,/ALREADY_ENQUEUED_EXACT_MAIN_AFTER_SIGNED_APPROVAL/u);
+  assert.match(code,/SIGNED_GRI_PUBLISHER_ALREADY_RUNNING_OR_UNKNOWN/u);
   assert.match(w,/actions: write/u);
   assert.match(w,/github.ref == 'refs\/heads\/main'/u);
   assert.match(w,/vars.GRI_READY_REVIEWED_SHA256/u);
@@ -185,4 +185,75 @@ test("scheduled backstop is separate from original GRI proof, no Supabase or pay
   assert.match(protectedGri,/CURRENT_GRI_IMMUTABLE_INPUT_KEY_SHA_NOT_BOUND/u);
   assert.match(protectedGri,/preflightReviewedCurrentGlobalRisk|publish-supabase-free-global-risk.mjs/u);
   for(const banned of ["publishB2VerifiedHotSnapshot(","settleCoinbaseX402(","SUPABASE_SERVICE_ROLE_KEY","signed-original-news"])assert.equal(code.includes(banned),false);
+});
+
+test("failed genuine GRI run retries once after cooldown while external approval is still fresh",async()=>{
+  const prior={
+    head_sha:env.GITHUB_SHA,head_branch:"main",event:"workflow_dispatch",
+    status:"completed",conclusion:"failure",created_at:"2026-10-18T11:17:00.000Z",
+  };
+  const calls=[];
+  const r=await requestGriSignedReadyCadence({
+    env,now:date,fetchImpl:async(url,opts)=>{
+      calls.push(opts.method);
+      return opts.method==="GET"?
+        {status:200,json:async()=>({workflow_runs:[prior]})}:{status:204};
+    },
+  });
+  assert.equal(r.scheduled,true);
+  assert.equal(r.published,false);
+  assert.equal(r.status,"DISPATCHED_SINGLE_BOUNDED_RETRY_REQUIRES_SIGNED_GRI_PROOF");
+  assert.deepEqual(calls,["GET","POST"]);
+  assert.equal(r.b2_gets,0);
+  assert.equal(r.payments,0);
+});
+test("no repeated B2 attempt while live, successful, unreviewed, cooling down or already retried",async()=>{
+  const base={head_sha:env.GITHUB_SHA,head_branch:"main",
+    event:"repository_dispatch",status:"completed",conclusion:"failure",
+    created_at:"2026-10-18T11:17:00.000Z"};
+  for(const {runs,status} of [
+    {runs:[{...base,status:"in_progress",conclusion:null}],
+      status:"SIGNED_GRI_PUBLISHER_ALREADY_RUNNING_OR_UNKNOWN"},
+    {runs:[{...base,status:"waiting",conclusion:null}],
+      status:"SIGNED_GRI_PUBLISHER_ALREADY_RUNNING_OR_UNKNOWN"},
+    {runs:[{...base,conclusion:"success"}],
+      status:"SIGNED_GRI_PUBLISHER_SUCCEEDED_NO_REPEAT"},
+    {runs:[{...base,conclusion:"action_required"}],
+      status:"SIGNED_GRI_PUBLISHER_RESULT_NOT_RETRYABLE"},
+    {runs:[{...base,created_at:"2026-10-18T11:26:00.000Z"}],
+      status:"SIGNED_GRI_PUBLISHER_FAILED_COOLDOWN"},
+    {runs:[base,{...base,created_at:"2026-10-18T11:24:00.000Z"}],
+      status:"SIGNED_GRI_PUBLISHER_RETRY_LIMIT_REACHED"},
+    {runs:[{...base,status:undefined,conclusion:undefined}],
+      status:"SIGNED_GRI_PUBLISHER_ALREADY_RUNNING_OR_UNKNOWN"},
+  ]){
+    let requests=0;
+    const result=await requestGriSignedReadyCadence({
+      env,now:date,fetchImpl:async(url,opts)=>{
+        requests++;
+        assert.equal(opts.method,"GET");
+        return {status:200,json:async()=>({workflow_runs:runs})};
+      },
+    });
+    assert.equal(result.scheduled,false,status);
+    assert.equal(result.status,status);
+    assert.equal(requests,1);
+    assert.equal(result.payments,0);
+  }
+});
+test("pure retry policy never treats a different commit or pre-approval failed run as same signed package",()=>{
+  const old={head_sha:"f".repeat(40),head_branch:"main",
+    event:"workflow_dispatch",status:"completed",conclusion:"failure",
+    created_at:"2026-10-18T11:20:00.000Z"};
+  const a=decideGriSignedPublisherRetry({
+    runs:[old],headSha:env.GITHUB_SHA,
+    approvedAt:env.GRI_READY_APPROVED_AT,now:date,
+  });
+  assert.equal(a.dispatch,true);
+  const b=decideGriSignedPublisherRetry({
+    runs:[{...old,head_sha:env.GITHUB_SHA,
+      created_at:"2026-10-18T11:12:00.000Z"}],
+    headSha:env.GITHUB_SHA,approvedAt:env.GRI_READY_APPROVED_AT,now:date,
+  });
+  assert.equal(b.dispatch,true);
 });
