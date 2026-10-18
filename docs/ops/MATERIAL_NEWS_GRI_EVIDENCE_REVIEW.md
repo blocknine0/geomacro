@@ -57,3 +57,47 @@ To verify: run `node --test scripts/tests/material-gri-news-review.test.mjs`,
 then inspect `material-gri-original-review-<run>.json` or
 `auto-ingest-material-gri-review-<run>.json` among GitHub Actions artifacts.
 A pass means source-free material *triage* was produced, not commercial GRI 200.
+
+## 195-country source-to-GRI review worklist (2026-10-18)
+
+Primary hourly publisher, secondary catch-up and `Auto Ingest News` now convert
+their current 72-hour **Geomacro-derived-only** material queue into
+`geomacro.material-gri-country-evidence-worklist.v1`. The worklist uses an
+**exact** canonical 195-country name/ISO lookup read from the existing
+`src/lib/canonical-country-registry-195.ts`, never substring inference.
+Unresolved cross-border/geographic wording is retained with `country_iso3:null`
+and requires proper country-level certification rather than guessing.
+
+For every candidate the worklist records only opaque Geomacro-derived ID,
+category, event kind, native source date, optional exact ISO3 and explicit
+requirements: reread the genuine first-party original bytes, verify issuer
+clock and independent same-event sources when the chosen product methodology
+requires them, establish actual lawful source use and separately sign both
+the country/category certificate and canonical GRI scored review. A ≤6h
+`candidate_within_6h_original_recheck_window` flag is **only** an
+operational check hint, NOT a GRI freshness/rights/impact certificate.
+No original URL, article body/title, publisher source identity or estimated
+risk score is included. Retention is **three days** in Actions private artifacts.
+
+The only numerical GRI v1.2 publication path remains the existing protected
+`gri-v12-supabase-free-reviewed-current.yml`. Its
+`gri_reviewed_current_ready` event requires genuine independently pinned
+signed B2 reviewed evidence and independently signed country-category
+certificates; the GRI workflow independently verifies original native time,
+rights, scoring, GRI v1.2 methodology, B2 historical continuity and live
+B2/D1 hash/readback. Its successful `workflow_run` then wakes the existing
+verified-parent Risk Indices workflow. The **news workflow never issues that
+trusted ready event**, signs authority grants, writes GRI/Indices, or pays.
+
+**Remaining external dependencies:** Genuine source-specific rights (an
+owner's Geomacro-output licence cannot confer upstream article permission),
+independent facts/reviewed-GRI and signed country certificates, previously
+pinned verified historical B2 anchor, current production source SHA and free
+B2 quota. Quiet news periods must keep source-native clocks and last verified
+scores truthful, rather than producing invented numerical changes or
+extending old snapshot freshness.
+
+Acceptance: `node --test scripts/tests/material-gri-news-review.test.mjs
+scripts/tests/material-gri-country-evidence-worklist.test.mjs`. GitHub
+artifacts: `primary-gri-country-review-*`,
+`recovered-gri-country-review-*`, and `auto-ingest-gri-country-review-*`.
