@@ -46,6 +46,9 @@ test("private uploader refuses funds and signed-object mutation before B2 and sp
     'process.env.B2_REQUEST_BUDGET!=="6"',
     'approvedIndependentReviewerFromEnv()',
     'prepareImmutableReviewedGriHandoff({...input,now:new Date()})',
+    "computeReviewedCurrentGlobalRisk({",
+    "new_native_original_after_historical_anchor_verified",
+    "CANONICAL_REVIEWED_NUMERICAL_PREFLIGHT_UNVERIFIED",
     "const existing=await b2.getOptional(item.key)",
     "IMMUTABLE_SIGNED_OBJECT_COLLISION",
     "await b2.put(item.key,item.bytes)",
@@ -54,6 +57,8 @@ test("private uploader refuses funds and signed-object mutation before B2 and sp
     "SIGNED_INPUT_CHANGED_DURING_PUBLICATION",
   ])assert.ok(uploader.includes(field),field);
   assert.ok(uploader.indexOf("const stage=prepareImmutableReviewedGriHandoff")<
+    uploader.indexOf("const b2=createB2Client"));
+  assert.ok(uploader.indexOf("const checked=computeReviewedCurrentGlobalRisk")<
     uploader.indexOf("const b2=createB2Client"));
   assert.ok(uploader.indexOf("const actual=Buffer.from(await b2.get(item.key))")<
     uploader.indexOf("let dispatched=false"));
