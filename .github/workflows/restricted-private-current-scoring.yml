@@ -20,6 +20,11 @@ on:
         description: "Extra guarded private 3-domain GRI v1.2 singleton canary (no public release)"
         type: boolean
         default: false
+  pull_request:
+    paths:
+      - ".github/workflows/restricted-private-current-scoring.yml"
+      - "scripts/ops/preflight-private-griv12-singleton.mjs"
+      - "scripts/tests/auto-private-gri-no-funds-continuation.test.mjs"
   push:
     branches: [main]
     paths:
