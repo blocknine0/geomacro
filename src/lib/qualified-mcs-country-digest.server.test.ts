@@ -23,6 +23,18 @@ describe("scoped original CC0 mineral structural digest", () => {
     expect(result[0].row_hashes.every(v => /^[a-f0-9]{64}$/.test(v))).toBe(true);
     expect(JSON.stringify(result)).not.toContain('"value":');
   });
+  it("supports all 195 routing countries only when exact USGS country rows exist", () => {
+    const india = [row("2024", "200", "India"), row("2025", "250", "India")];
+    expect(deriveMcsProductionChanges(india, "IND", now)).toHaveLength(1);
+    expect(deriveMcsProductionChanges(india, "IND", now)[0].change_pct).toBe(25);
+    expect(deriveMcsProductionChanges(india, "CHN", now)).toEqual([]);
+    expect(deriveMcsProductionChanges(india, "ZZZ", now)).toEqual([]);
+    // Even a geopolitical label/alias in a USGS row cannot be guessed to
+    // match another sovereign country without an approved exact source name.
+    expect(deriveMcsProductionChanges([
+      row("2024", "100", "Congo"), row("2025", "140", "Congo")
+    ], "COD", now)).toEqual([]);
+  });
   it("rejects foreign country, absent comparable year, zero denominator and stale annual periods", () => {
     expect(deriveMcsProductionChanges([row("2024", "100"), row("2025", "125")], "USA", now)).toEqual([]);
     expect(deriveMcsProductionChanges([row("2025", "125")], "CHN", now)).toEqual([]);
@@ -48,7 +60,7 @@ describe("scoped original CC0 mineral structural digest", () => {
   it("access denial never creates evidence, source rights or an AVAILABLE context", async () => {
     let calls = 0;
     const fetchImpl = (async () => { calls++; return new Response("denied", { status: 403 }); }) as typeof fetch;
-    expect(await loadQualifiedMcsCountryContext("GBR", { fetchImpl, now, noCache: true })).toBeNull();
+    expect(await loadQualifiedMcsCountryContext("ZZZ", { fetchImpl, now, noCache: true })).toBeNull();
     expect(calls).toBe(0);
     expect(await loadQualifiedMcsCountryContext("USA", { fetchImpl, now, noCache: true })).toBeNull();
     expect(calls).toBe(1);
