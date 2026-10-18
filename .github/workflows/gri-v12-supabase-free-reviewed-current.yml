@@ -1,7 +1,11 @@
 name: GRI v1.2 Supabase-Free Current Promotion
 
-# Never cron/push-trigger; existing protected environment must authorize it.
+# Never cron/push-trigger. Production-authorized independent signed B2
+# evidence can wake publication through a narrowly scoped repository_dispatch.
+# The source triage/news queue itself cannot dispatch or authorize GRI scoring.
 on:
+  repository_dispatch:
+    types: [gri_reviewed_current_ready]
   workflow_dispatch:
     inputs:
       reviewed_b2_key:
@@ -30,16 +34,22 @@ concurrency:
 
 jobs:
   verified-current:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'repository_dispatch' &&
+        github.event.action == 'gri_reviewed_current_ready' &&
+        github.event.client_payload.schema == 'geomacro.signed-reviewed-gri-ready.v1'))
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     environment: production
     env:
       EXPECTED_SHA: ${{ github.sha }}
-      REVIEWED_B2_KEY: ${{ inputs.reviewed_b2_key }}
-      REVIEWED_B2_SHA256: ${{ inputs.reviewed_b2_sha256 }}
-      REVIEWED_CERTIFICATES_B2_KEY: ${{ inputs.reviewed_certificates_b2_key }}
-      REVIEWED_CERTIFICATES_B2_SHA256: ${{ inputs.reviewed_certificates_b2_sha256 }}
+      REVIEWED_B2_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.reviewed_b2_key || github.event.client_payload.reviewed_b2_key }}
+      REVIEWED_B2_SHA256: ${{ github.event_name == 'workflow_dispatch' && inputs.reviewed_b2_sha256 || github.event.client_payload.reviewed_b2_sha256 }}
+      REVIEWED_CERTIFICATES_B2_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.reviewed_certificates_b2_key || github.event.client_payload.reviewed_certificates_b2_key }}
+      REVIEWED_CERTIFICATES_B2_SHA256: ${{ github.event_name == 'workflow_dispatch' && inputs.reviewed_certificates_b2_sha256 || github.event.client_payload.reviewed_certificates_b2_sha256 }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
@@ -73,6 +83,22 @@ jobs:
         run: |
           set -euo pipefail
           test "$EXPECTED_SHA" = "$(git rev-parse HEAD)"
+          # Reject forged or swapped immutable object paths BEFORE any B2 GET.
+          # A public news triage token, unsigned input or other B2 object
+          # can never become a current reviewed GRI publication input.
+          bun --eval '
+            const s=process.env;
+            const sha=/^[a-f0-9]{64}$/;
+            const pair=(key,pin,prefix)=>sha.test(pin||"") &&
+              key===prefix+pin+".json";
+            if(!pair(s.REVIEWED_B2_KEY,s.REVIEWED_B2_SHA256,
+              "geomacro-evidence/v1/private/reviewed-gri-current/")||
+               !pair(s.REVIEWED_CERTIFICATES_B2_KEY,
+              s.REVIEWED_CERTIFICATES_B2_SHA256,
+              "geomacro-evidence/v1/private/reviewed-country-certification/"))
+              throw Error("CURRENT_GRI_IMMUTABLE_INPUT_KEY_SHA_NOT_BOUND");
+          '
+
           for key in SUPABASE_DB_URL SUPABASE_URL APP_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_SERVICE_ROLE_KEY; do
             test -z "$(printenv "$key" || true)" || { echo "::error::SUPABASE_CREDENTIAL_FORBIDDEN"; exit 2; }
           done
