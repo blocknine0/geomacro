@@ -78,11 +78,12 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Require exact public deployment SHA and Supabase freeze before B2
+      - name: Require exact current canonical main and Supabase freeze before B2
         shell: bash
         run: |
           set -euo pipefail
           test "$EXPECTED_SHA" = "$(git rev-parse HEAD)"
+          node scripts/ops/assert-backend-publication-main.mjs
           # Reject forged or swapped immutable object paths BEFORE any B2 GET.
           # A public news triage token, unsigned input or other B2 object
           # can never become a current reviewed GRI publication input.
@@ -102,16 +103,9 @@ jobs:
           for key in SUPABASE_DB_URL SUPABASE_URL APP_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_SERVICE_ROLE_KEY; do
             test -z "$(printenv "$key" || true)" || { echo "::error::SUPABASE_CREDENTIAL_FORBIDDEN"; exit 2; }
           done
-          curl -fsS --max-time 15 https://geomacro.live/.well-known/geomacro-build.json -o /tmp/gri-build.json
-          node --input-type=module <<'NODE'
-          import {readFileSync} from 'node:fs';
-          const m=JSON.parse(readFileSync('/tmp/gri-build.json','utf8'));
-          if(m.schema_version!=='geomacro.deployment-build.v1' ||
-             m.canonical_repository!=='blocknine0/geomacro' ||
-             m.canonical_main_sha!==process.env.EXPECTED_SHA)
-            throw Error('PRODUCTION_SOURCE_SHA_NOT_DEPLOYED');
-          console.log('Verified exact live canonical SHA');
-          NODE
+          # Signed B2/D1 data recovery precedes final website acceptance.
+          # Production Website Health independently requires the exact live
+          # website SHA and all real product proofs after publication.
 
       - name: Resolve shared D1 quota governor before any private B2 GET
         shell: bash

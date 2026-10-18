@@ -22,7 +22,7 @@ describe("signed approved B2-ready GRI producer -> real numerical GRI -> risk in
       "geomacro-evidence/v1/private/reviewed-gri-current/",
       "geomacro-evidence/v1/private/reviewed-country-certification/",
       'key===prefix+pin+".json"',
-      "PRODUCTION_SOURCE_SHA_NOT_DEPLOYED",
+      "node scripts/ops/assert-backend-publication-main.mjs",
     ])expect(head).toContain(marker);
     const inputStage=gri.split("Read exact pinned signed current evidence from quota-governed B2")[1];
     expect(inputStage).toContain("REVIEWED_INPUT_B2_READBACK_MISMATCH");
@@ -53,7 +53,7 @@ describe("signed approved B2-ready GRI producer -> real numerical GRI -> risk in
     expect(indices).toContain("github.event.workflow_run.head_branch == 'main'");
     expect(indices).toContain("github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'");
     expect(indices).toContain("publish-risk-indices-from-verified-global-risk.mjs --verified-d1-parent-only");
-    expect(indices).toContain("INDICES_EXACT_PRODUCTION_DEPLOYMENT_SHA_MISMATCH");
+    expect(indices).toContain("node scripts/ops/assert-backend-publication-main.mjs");
     expect(indices).not.toContain("SUPABASE_DB_URL: ${{ secrets.");
   });
 });

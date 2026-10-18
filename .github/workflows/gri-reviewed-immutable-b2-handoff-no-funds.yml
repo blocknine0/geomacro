@@ -11,6 +11,8 @@ on:
       - 'src/__tests__/three-domain-reviewed-handoff.test.js'
       - 'scripts/tests/gri-reviewed-immutable-b2-stage-guard.test.mjs'
       - '.github/workflows/gri-reviewed-immutable-b2-handoff-no-funds.yml'
+      - 'scripts/ops/assert-backend-publication-main.mjs'
+      - 'src/__tests__/backend-publication-release-order.test.ts'
   push:
     branches: [main]
     paths:
@@ -20,6 +22,8 @@ on:
       - 'src/__tests__/three-domain-reviewed-handoff.test.js'
       - 'scripts/tests/gri-reviewed-immutable-b2-stage-guard.test.mjs'
       - '.github/workflows/gri-reviewed-immutable-b2-handoff-no-funds.yml'
+      - 'scripts/ops/assert-backend-publication-main.mjs'
+      - 'src/__tests__/backend-publication-release-order.test.ts'
   workflow_dispatch: {}
 
 permissions:
@@ -42,7 +46,7 @@ jobs:
           bun-version: '1.4.2'
       - run: bun install --frozen-lockfile --ignore-scripts
       - name: Verify signed JSON handoff and source/rights/cert/reviewer negative cases
-        run: bunx vitest run src/__tests__/three-domain-reviewed-handoff.test.js
+        run: bunx vitest run src/__tests__/three-domain-reviewed-handoff.test.js src/__tests__/backend-publication-release-order.test.ts
       - name: Verify offline stage and B2 authorizations remain fail-closed
         run: |
           set -euo pipefail
