@@ -7,6 +7,8 @@
  */
 import {readFileSync,statSync} from "node:fs";
 import {createHash} from "node:crypto";
+import {gunzipSync} from "node:zlib";
+import {computeReviewedCurrentGlobalRisk} from "../lib/supabase-free-gri-v12-current.mjs";
 import {approvedIndependentReviewerFromEnv} from
   "../../src/lib/independent-reviewer-authority.server.ts";
 import {prepareImmutableReviewedGriHandoff} from
@@ -58,6 +60,25 @@ async function main(){
   const input={reviewedGri,countryCategoryCertificates,
     historicalB2Bytes,trustedReviewerPublicKeyPem:pem};
   const stage=prepareImmutableReviewedGriHandoff({...input,now:new Date()});
+  // The separate protected publisher will recompute again after its own
+  // fresh B2 history readback. This PRE-upload pure computation prevents
+  // wasting scarce B2 operations on a source replay, invalid historical
+  // lineage or scoring/portable-proof mismatch.
+  let historical;
+  try {
+    historical=JSON.parse(gunzipSync(historicalB2Bytes,{
+      maxOutputLength:12*1024*1024,
+    }).toString("utf8"));
+  } catch { fail("REAL_HISTORY_GZIP_RESTORE_INVALID"); }
+  const checked=computeReviewedCurrentGlobalRisk({
+    reviewed:reviewedGri,history:historical,
+    verifiedHistoryB2Sha256:sha(historicalB2Bytes),
+    trustedReviewerPublicKeyPem:pem,now:new Date(),
+  });
+  if(checked.reviewProof.new_native_original_after_historical_anchor_verified!==true||
+     checked.reviewProof.historical_b2_sha256!==stage.receipt.historical_source_bytes_sha256||
+     checked.liveValue.data?.verificationStatus!=="verified")
+    fail("CANONICAL_REVIEWED_NUMERICAL_PREFLIGHT_UNVERIFIED");
   const b2=createB2Client({endpointUrl:"https://s3.us-east-005.backblazeb2.com",
     bucket:"geomacro-private-archive",accessKey:process.env.B2_KEY_ID,
     secretKey:process.env.B2_APPLICATION_KEY});
@@ -111,6 +132,8 @@ async function main(){
     funds_spent_usdc:0,
     b2_requests_started:b2.usage().requests_started,
     ready_for_protected_gri_publisher:true,
+    canonical_prepublication_numerical_recomputation_verified:true,
+    genuinely_new_original_after_historical_snapshot_verified:true,
     // This is NOT a real published GRI and not customer billability.
     canonical_numerical_score_published:false,
     risk_indices_published:false,
