@@ -19,6 +19,10 @@ const categories=["geopolitics","macro-fx","critical-minerals"];
 if(live.res.status!==200||live.json.schema!=="geomacro.product-scoped-deep-health.v1"||
  live.json.ok!==true||live.json.x402_payment_authorized!==false||
  live.json.fresh_signed_snapshot_readiness_attested!==false||
+ live.json.all_195_countries_fresh_news_verified!==false||
+ !Number.isFinite(Date.parse(live.json.checked_at))||
+ Date.now()-Date.parse(live.json.checked_at)>120000||
+ Date.parse(live.json.checked_at)>Date.now()+5000||
  live.json.legacy_signed_intelligence_gri_risk_indices!=="NOT_EVALUATED_IN_THIS_PROFILE"||
  !categories.every(c=>live.json.categories?.[c]?.source_fetch_accepted===true))
  throw Error("CANDIDATE_THREE_CATEGORY_SOURCE_HEALTH_FAILED");
@@ -26,8 +30,16 @@ const legacy=await get("/api/health?deep=1");
 if(![200,503].includes(legacy.res.status)||legacy.json.ok!==(legacy.res.status===200)||
  legacy.json.public_production?.deep_checked!==true)
  throw Error("CANDIDATE_LEGACY_HEALTH_CONTRACT_INVALID");
+for(const path of ["/","/intelligence"]){
+ const page=await fetch(base+path,{redirect:"error",signal:AbortSignal.timeout(20000)});
+ if(page.status!==200||page.headers.get("X-Geomacro-Candidate-Mode")!=="read-only-no-funds"||
+  !(page.headers.get("content-type")??"").includes("text/html"))
+  throw Error("CANDIDATE_PUBLIC_PAGE_UNAVAILABLE");
+ await page.body?.cancel();
+}
 console.log(JSON.stringify({schema:"geomacro.web-candidate-readback.v1",canonical_main_sha:expected,
  exact_sha_verified:true,source_categories_accepted:categories.length,
+ public_pages_http_200:2,
  legacy_deep_health_status:legacy.res.status,legacy_signed_products_ready:legacy.json.ok===true,
  deployment_mode:"read-only-no-funds",production_domain_changed:false,
  commercial_launch_ready:false,payment_attempts:0}));
