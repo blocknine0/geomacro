@@ -50,6 +50,9 @@ jobs:
           mkdir -p artifacts
           bun run test:app 2>&1 | tee artifacts/product-ci-tests.log
 
+      - name: Official macro and minerals source-clock integrity (no network)
+        run: node --test global-intelligence/scripts/test-statistical-source-clocks.test.mjs
+
       - name: Setup Node 24 for shared TypeScript contract verification
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
