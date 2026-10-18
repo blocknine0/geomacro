@@ -7,6 +7,8 @@ import {
 } from "../../scripts/lib/independent-same-event-qualification.mjs";
 import {verifyThreeDomainReviewerHandoff}
   from "../../scripts/lib/three-domain-reviewed-handoff.mjs";
+import {prepareImmutableReviewedGriHandoff}
+  from "../../scripts/lib/gri-reviewed-immutable-b2-handoff.mjs";
 import {GRI_RETAINED_PORTFOLIO_PROFILE} from "../../scripts/lib/gri-reviewed-source-window.mjs";
 
 // Synthetic fixtures ONLY; no production issuer facts, rights, or reviewer
@@ -80,6 +82,8 @@ function fixture(retainedMinutes){
     id:r.id,category:r.category,severity:r.severity,confidence:80,
     published_at:r.published_at,created_at:r.created_at,
     story_cluster_id:"approved-cross-run-"+i,
+    classification_input_hash:hash("classifier input "+i),
+    story_clustering_input_hash:hash("clustering input "+i),
   }));
   const old=[
     {id:"11111111-1111-4111-8111-111111111111",as_of:time(45),
@@ -203,5 +207,70 @@ describe("reviewer-signed v1.2 retained original portfolio country certification
     c.countryCategoryCertificates[1].signed_input.verified_at=time(160);
     c.countryCategoryCertificates[1]=signed(c.countryCategoryCertificates[1].signed_input);
     expect(()=>verifyThreeDomainReviewerHandoff(c)).toThrow(/COUNTRY_CATEGORY_UNCERTIFIED_OR_STALE/);
+  });
+});
+
+describe("genuine reviewed GRI signed B2 handoff (synthetic fixtures only)",()=>{
+  it("stages EXACT signed reviewer JSON and independently signed cell certificates with content-addressed keys",()=>{
+    const f=fixture();
+    const stage=prepareImmutableReviewedGriHandoff({
+      reviewedGri:f.reviewedGri,
+      countryCategoryCertificates:f.countryCategoryCertificates,
+      historicalB2Bytes:f.historicalB2Bytes,
+      trustedReviewerPublicKeyPem:f.trustedReviewerPublicKeyPem,
+      now:f.now,
+    });
+    const x=stage.receipt;
+    expect(x.schema).toBe("geomacro.gri-reviewed-immutable-b2-handoff.v1");
+    expect(x.private_reviewer_signed_input_preflight_verified).toBe(true);
+    expect(x.distinct_country_category_certifications_verified).toBe(true);
+    expect(x.qualified_events).toBe(3);
+    expect(x.certified_country_category_cells).toBe(3);
+    expect(x.historical_source_bytes_sha256).toBe(hash(f.historicalB2Bytes));
+    expect(stage.uploadFiles).toHaveLength(2);
+    expect(stage.uploadFiles[0].key).toBe(x.reviewed_b2_key);
+    expect(stage.uploadFiles[1].key).toBe(x.reviewed_certificates_b2_key);
+    for (const file of stage.uploadFiles) {
+      expect(file.key).toMatch(/\.json$/u);
+      expect(file.key).toContain(file.sha256);
+      expect(file.sha256).toBe(hash(file.bytes));
+    }
+    expect(JSON.parse(stage.uploadFiles[0].bytes.toString())).toEqual(f.reviewedGri);
+    expect(JSON.parse(stage.uploadFiles[1].bytes.toString())).toEqual(f.countryCategoryCertificates);
+    expect(x.immutable_b2_readback_verified).toBe(false);
+    expect(x.real_source_rights_checked_by_this_packager).toBe(false);
+    expect(x.canonical_numerical_score_published).toBe(false);
+    expect(x.x402_charge_authorized).toBe(false);
+    expect(x.b2_writes+x.d1_writes+x.payments).toBe(0);
+    expect(JSON.stringify(x)).not.toContain("federalreserve.gov");
+    expect(JSON.stringify(x)).not.toContain("synthetic review");
+  });
+  it("refuses forged reviewer, unsigned cells, stale 72h portfolio or wrong B2 original bytes BEFORE staging",()=>{
+    const original=fixture();
+    original.reviewedGri.review_signature_base64="A".repeat(86)+"==";
+    expect(()=>prepareImmutableReviewedGriHandoff({
+      reviewedGri:original.reviewedGri,countryCategoryCertificates:original.countryCategoryCertificates,
+      historicalB2Bytes:original.historicalB2Bytes,
+      trustedReviewerPublicKeyPem:original.trustedReviewerPublicKeyPem,now:original.now,
+    })).toThrow();
+    const noCell=fixture();
+    noCell.countryCategoryCertificates[1].review_signature_base64="A".repeat(86)+"==";
+    expect(()=>prepareImmutableReviewedGriHandoff({
+      reviewedGri:noCell.reviewedGri,countryCategoryCertificates:noCell.countryCategoryCertificates,
+      historicalB2Bytes:noCell.historicalB2Bytes,
+      trustedReviewerPublicKeyPem:noCell.trustedReviewerPublicKeyPem,now:noCell.now,
+    })).toThrow();
+    const falseHistory=fixture();
+    expect(()=>prepareImmutableReviewedGriHandoff({
+      reviewedGri:falseHistory.reviewedGri,countryCategoryCertificates:falseHistory.countryCategoryCertificates,
+      historicalB2Bytes:Buffer.from("fake data"),
+      trustedReviewerPublicKeyPem:falseHistory.trustedReviewerPublicKeyPem,now:falseHistory.now,
+    })).toThrow();
+    const old=fixture([8*60,20*60,35*60]);
+    expect(()=>prepareImmutableReviewedGriHandoff({
+      reviewedGri:old.reviewedGri,countryCategoryCertificates:old.countryCategoryCertificates,
+      historicalB2Bytes:old.historicalB2Bytes,
+      trustedReviewerPublicKeyPem:old.trustedReviewerPublicKeyPem,now:old.now,
+    })).toThrow();
   });
 });

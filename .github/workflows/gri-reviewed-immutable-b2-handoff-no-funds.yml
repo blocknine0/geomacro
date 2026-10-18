@@ -1,0 +1,57 @@
+name: GRI Reviewed Immutable B2 Handoff Contract (No Funds)
+
+# Contract tests only; genuine reviewer signatures and real country
+# certificates are created by distinct external authorities, not by CI.
+on:
+  pull_request:
+    paths:
+      - 'scripts/lib/gri-reviewed-immutable-b2-handoff.mjs'
+      - 'scripts/ops/stage-approved-reviewed-gri-private-b2.mjs'
+      - 'scripts/ops/verify-three-domain-reviewed-handoff.mjs'
+      - 'src/__tests__/three-domain-reviewed-handoff.test.js'
+      - 'scripts/tests/gri-reviewed-immutable-b2-stage-guard.test.mjs'
+      - '.github/workflows/gri-reviewed-immutable-b2-handoff-no-funds.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/lib/gri-reviewed-immutable-b2-handoff.mjs'
+      - 'scripts/ops/stage-approved-reviewed-gri-private-b2.mjs'
+      - 'scripts/ops/verify-three-domain-reviewed-handoff.mjs'
+      - 'src/__tests__/three-domain-reviewed-handoff.test.js'
+      - 'scripts/tests/gri-reviewed-immutable-b2-stage-guard.test.mjs'
+      - '.github/workflows/gri-reviewed-immutable-b2-handoff-no-funds.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-gri-reviewed-input-b2-no-funds-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  independently-signed-input-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify signed JSON handoff and source/rights/cert/reviewer negative cases
+        run: bunx vitest run src/__tests__/three-domain-reviewed-handoff.test.js
+      - name: Verify offline stage and B2 authorizations remain fail-closed
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/gri-reviewed-immutable-b2-handoff.mjs
+          node --check scripts/ops/stage-approved-reviewed-gri-private-b2.mjs
+          node --check scripts/ops/verify-three-domain-reviewed-handoff.mjs
+          node --test scripts/tests/gri-reviewed-immutable-b2-stage-guard.test.mjs
+      - name: Build private approved input staging without network calls
+        run: |
+          set -euo pipefail
+          bun build scripts/ops/stage-approved-reviewed-gri-private-b2.mjs --target=bun --outfile=/tmp/geomacro-gri-reviewed-b2-stage.js
+          test -s /tmp/geomacro-gri-reviewed-b2-stage.js
