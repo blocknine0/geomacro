@@ -1273,8 +1273,15 @@ export default {
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
       return renderDerivedStoriesHtml(env);
     }
-    if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news" && !url.search) {
-      return readDerivedStories(env);
+    if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news") {
+      // Only deterministic 250-row read pages of the existing 600-row D1
+      // journal. No arbitrary SQL offsets or raw publisher payloads.
+      const q=url.searchParams;
+      if(q.size===0)return readDerivedStories(env);
+      if(q.size!==1||q.getAll("offset").length!==1||
+         !["250","500"].includes(q.get("offset")))
+        return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID",chargeable:false},400);
+      return readDerivedStories(env,Date.now(),Number(q.get("offset")));
     }
     if (request.method === "GET" && url.pathname === "/v1/public/source-pulse-30m") {
       return getPublicThreeDomain30MinSourcePulse(env);
