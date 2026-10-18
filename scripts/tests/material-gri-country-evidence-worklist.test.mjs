@@ -34,6 +34,20 @@ test("maps 195 exact country names with no substring, unknown or fabricated geog
   assert.equal(map.resolve("PSE"),"PSE");
   assert.equal(map.resolve("Holy See"),"VAT");
   assert.equal(map.resolve("uS"),"USA");
+  // Match only source-reviewed aliases from the SAME canonical 195-country
+  // country table; never create approximate or substring country matches.
+  assert.equal(map.resolve("Turkey"),"TUR");
+  assert.equal(map.resolve("U.S.A."),"USA");
+  assert.equal(map.resolve("United States of America"),"USA");
+  assert.equal(map.resolve("Ivory Coast"),"CIV");
+  assert.equal(map.resolve("Côte d'Ivoire"),"CIV");
+  assert.equal(map.resolve("Côte d’Ivoire"),"CIV");
+  assert.equal(map.resolve("DR Congo"),"COD");
+  assert.equal(map.resolve("DRC"),"COD");
+  assert.equal(map.resolve("Vatican City"),"VAT");
+  assert.equal(map.resolve("West Bank and Gaza"),"PSE");
+  assert.equal(map.resolve("Russian Federation"),"RUS");
+  assert.equal(map.resolve("Türkiye"),"TUR");
   for(const wrong of ["IndiaMart","United States / Mexico","Asia","Global","EU",
     "Republic of Atlantis","TWN","UNK","India, Pakistan"])
     assert.equal(map.resolve(wrong),null,wrong);
@@ -180,4 +194,41 @@ test("calendar-day releases and timestamps within 15-minute embargo cannot trigg
   assert.equal(w.categories[0].within_6h_original_recheck_window,0);
   assert.equal(w.categories[0].review_targets.length,1);
   assert.equal(w.categories[0].review_targets[0].materiality_review_priority,"HISTORICAL_REVIEW_ONLY");
+});
+
+test("D1-derived material events preserve accents and canonical country aliases without original source disclosure",()=>{
+  const original=cat.map(category=>({
+    category,checked_at:new Date(now).toISOString(),healthy_feed_count:1,
+    signals:category==="geopolitics"?
+      [signal(category,"accent01","Côte d’Ivoire","2026-10-18T09:15:00Z")]:
+      category==="macro"?
+      [signal(category,"alias01","Turkey","2026-10-18T09:00:00Z")]:
+      [signal(category,"alias02","Ivory Coast","2026-10-18T08:00:00Z")],
+  }));
+  const reviewed=buildMaterialGriNewsReviewQueue(original,now);
+  const result=buildMaterialGriCountryEvidenceWorklist(reviewed,registry,now);
+  assert.deepEqual(result.categories.map(c=>c.review_targets[0].country_iso3),
+    ["CIV","TUR","CIV"]);
+  assert.equal(result.current_native_original_90m_country_mapped_targets,2);
+  assert.equal(result.numerical_gri_recomputed,false);
+  assert.equal(result.public_gri_or_indices_written,false);
+  const raw=JSON.stringify(result);
+  for(const forbidden of ["publishers.invalid","sourceUrl","raw_article_html",
+    "SECRET ARTICLE","RESTRICTED publisher"])
+    assert.equal(raw.includes(forbidden),false);
+});
+test("canonical country aliases fail closed on unknown country, reassignment or inserted JS",()=>{
+  const map=canonicalMaterialGriCountryLookup(registry);
+  for(const no of ["South Asia","India, Pakistan","Atlantis","EU",
+    "Türkiye and Greece","Congo","U.S.A. / Mexico"])
+    assert.equal(map.resolve(no),null,no);
+  assert.throws(()=>canonicalMaterialGriCountryLookup(
+    registry.replace('TUR:["Turkey"]','TUR:["Ivory Coast"]')),
+    /COUNTRY_ALIAS_COLLISION/);
+  assert.throws(()=>canonicalMaterialGriCountryLookup(
+    registry.replace('TUR:["Turkey"]','TUR:[process.env.PRIVATE_KEY]')),
+    /COUNTRY_ALIASES_INVALID/);
+  assert.throws(()=>canonicalMaterialGriCountryLookup(
+    registry.replace('TUR:["Turkey"]','XXX:["Turkey"]')),
+    /COUNTRY_ALIASES_INVALID/);
 });
