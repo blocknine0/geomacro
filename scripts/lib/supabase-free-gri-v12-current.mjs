@@ -205,6 +205,16 @@ export function computeReviewedCurrentGlobalRisk({
   "SIGNED_ORIGINAL_EVIDENCE_NOT_QUALIFIED");
   const historicalRows = assertHistoricalArchive(history, input, verifiedHistoryB2Sha256);
   assert(Date.parse(historicalRows[0].as_of) < at, "HISTORY_NOT_PRIOR_TO_CURRENT");
+  // A source published before the prior verified GRI snapshot cannot be
+  // replayed as new risk by merely advancing review/as_of timestamps.
+  const previousSnapshotAt=Date.parse(historicalRows[0].as_of);
+  const newlyObservedOriginals=input.events.filter(event=>{
+    const original=Date.parse(event.published_at);
+    return Number.isFinite(original)&&original>previousSnapshotAt&&
+      original<=at&&nowMs-original<=MAX_AGE;
+  });
+  assert(newlyObservedOriginals.length>0,
+    "NO_NEW_ORIGINAL_AFTER_VERIFIED_HISTORICAL_SNAPSHOT");
 
   // Existing unchanged v1.2 canonical scoring, disposition and portable
   // replay verifier. No synthetic scores or guessed cross-run attribution.
@@ -300,6 +310,9 @@ export function computeReviewedCurrentGlobalRisk({
       portable_proof_hash: p.proofHash,
       portable_bundle_hash: portable.bundleHash,
       historical_numeric_comparison:movement.comparison_method,
+      new_native_original_after_historical_anchor_verified:true,
+      newly_verified_original_count:newlyObservedOriginals.length,
+      prior_verified_snapshot_at:historicalRows[0].as_of,
       verified_previous_snapshot_id:movement.verified_previous_snapshot_id,
       observed_numeric_delta_points:movement.change_points,
       numerical_change_not_event_attribution:true,
