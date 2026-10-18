@@ -9,7 +9,7 @@ export const CREDENTIALED_SOURCE_ACCOUNTS = Object.freeze([
   Object.freeze({id:"bls",category:"MACRO",env:"BLS_API_KEY"}),
   Object.freeze({id:"bea",category:"MACRO",env:"BEA_API_KEY"}),
   Object.freeze({id:"alpha_vantage",category:"MACRO",env:"ALPHA_VANTAGE_API_KEY"}),
-  Object.freeze({id:"eia_api_v2",category:"CRITICAL_MINERALS",env:"EIA_API_KEY"}),
+  Object.freeze({id:"eia_api_v2",category:"MACRO",env:"EIA_API_KEY"}),
   Object.freeze({id:"noaa_ncei",category:"GEOPOLITICS",env:"NOAA_NCEI_TOKEN"}),
   Object.freeze({id:"wto_timeseries",category:"MACRO",env:"WTO_API_KEY"}),
   Object.freeze({id:"ucdp_ged",category:"GEOPOLITICS",env:"UCDP_API_TOKEN"}),

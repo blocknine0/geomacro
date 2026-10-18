@@ -1,5 +1,6 @@
 import {describe,it,expect,vi} from "vitest";
 import {readFileSync} from "node:fs";
+import {fetchCredentialedObservation,probeCredentialedSource} from "../../global-intelligence/adapters/credentialed-sources.mjs";
 import {
   CREDENTIALED_SOURCE_ACCOUNTS,
   probeConfiguredCredentialedSources,
@@ -17,7 +18,7 @@ const validProbe=vi.fn(async id=>{
 describe("#1827 independently activate configured credentialed sources",()=>{
   it("uses one bounded 30s BEA/UCDP read while other providers keep 15s",()=>{
     const adapter=readFileSync("global-intelligence/adapters/credentialed-sources.mjs","utf8");
-    expect(adapter).toContain('sourceId==="bea"?30000:sourceId==="ucdp_ged"?30000:15000');
+    expect(adapter).toContain('["bea","ucdp_ged","eia_api_v2","wto_timeseries"].includes(sourceId)?30000:15000');
     expect(adapter).toContain("method=GetDataSetList&ResultFormat=JSON");
     expect(adapter).toContain('const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs,maxBytes:256*1024,redirect:"error",fetchImpl:sourceId==="wto_timeseries"?fetchWtoCanonical:fetch})');
   });
@@ -36,9 +37,12 @@ describe("#1827 independently activate configured credentialed sources",()=>{
     expect(receipt.configured_failed).toBe(0);
     expect(receipt.results.find((r:any)=>r.source_id==="bea").status).toBe("CREDENTIAL_NOT_CONFIGURED");
     expect(receipt.per_domain.GEOPOLITICS.working).toBe(3);
-    expect(receipt.per_domain.CRITICAL_MINERALS.working).toBe(1);
+    expect(receipt.per_domain.CRITICAL_MINERALS.working).toBe(0);
+    expect(receipt.per_domain.MACRO.working).toBe(4);
+    // EIA electricity pricing cannot certify any current mineral event.
     expect(receipt.b2_requests+receipt.d1_writes+receipt.supabase_writes).toBe(0);
     expect(receipt.commercial_eligible).toBe(false);
+    expect(CREDENTIALED_SOURCE_ACCOUNTS.find(x=>x.id==="eia_api_v2")?.category).toBe("MACRO");
   });
   it("records every configured upstream failure and never exposes a secret URL, key or body",async()=>{
     const receipt=await probeConfiguredCredentialedSources({
@@ -117,5 +121,56 @@ describe("#1827 independently activate configured credentialed sources",()=>{
       probe:async id=>({source_id:id,category:"INVALID"}),now:when});
     expect(wrong.configured_failed).toBe(8);
     expect(wrong.working).toBe(0);
+  });
+});
+
+describe("source-native credentialed EIA metadata cannot become fake minerals GRI proof",()=>{
+  it("preserves exact source identity and a native month, never turns fetch clock into publication",async()=>{
+    const original=globalThis.fetch,old=process.env.EIA_API_KEY;
+    process.env.EIA_API_KEY="synthetic-eia-key-do-not-log";
+    const urls:string[]=[];
+    try{
+      globalThis.fetch=(async (url:any, init:any)=>{
+        urls.push(String(url));
+        expect(init.redirect).toBe("error");
+        expect(url).toContain("sort[0][column]=period");
+        expect(url).toContain("sort[0][direction]=desc");
+        expect(url).toContain("length=1");
+        return Response.json({response:{data:[{period:"2026-07",stateid:"CO",price:"12.34"}]}});
+      }) as any;
+      const row=await fetchCredentialedObservation("eia_api_v2");
+      expect(row.source_id).toBe("eia_api_v2");
+      expect(row.category).toBe("MACRO");
+      expect(row.country_iso3).toBe("USA");
+      expect(row.observed_at).toMatch(/^\d{4}-/);
+      expect(row.published_at).toBeNull();
+      expect(row.confidence).toBe(0.85);
+      expect(row.raw.response.data[0].period).toBe("2026-07");
+      expect(urls).toHaveLength(1);
+    }finally{
+      globalThis.fetch=original;
+      if(old===undefined)delete process.env.EIA_API_KEY;
+      else process.env.EIA_API_KEY=old;
+    }
+  });
+  it("rejects EIA responses without genuine provider month/number/scope",async()=>{
+    const original=globalThis.fetch,old=process.env.EIA_API_KEY;
+    process.env.EIA_API_KEY="synthetic-eia-key";
+    try{
+      for(const row of [
+        {period:"2026-07",stateid:"NY",price:1},
+        {period:"2026-13",stateid:"CO",price:1},
+        {period:"2026-07",stateid:"CO",price:null},
+        {period:"2026-07",stateid:"CO",price:""},
+      ]){
+        globalThis.fetch=(async()=>Response.json({response:{data:[row]}})) as any;
+        await expect(probeCredentialedSource("eia_api_v2"))
+          .rejects.toThrow("Unexpected response shape for eia_api_v2");
+      }
+    }finally{
+      globalThis.fetch=original;
+      if(old===undefined)delete process.env.EIA_API_KEY;
+      else process.env.EIA_API_KEY=old;
+    }
   });
 });
