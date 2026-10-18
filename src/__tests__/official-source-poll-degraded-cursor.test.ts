@@ -28,7 +28,11 @@ describe("#1827 read-only 90-minute official publisher failure truth", () => {
     expect(source).toContain("state.cursor.status = sourceOutcome.status");
     expect(source).toContain("state.cursor.failure_class = sourceOutcome.failure_class");
     expect(source).toContain("await persistState(task, state");
-    expect(source).toContain("summary.ok = summary.ok && success");
+    // The scheduler itself may complete an authentic red SOURCE observation,
+    // but D1 native transport state remains degraded and last_success stays unset.
+    expect(source).toContain("summary.ok = summary.ok && result.ok");
+    expect(source).toContain("source_transport_degraded: observationDegraded");
+    expect(source).toContain('last_success_at: success ? new Date().toISOString() : null');
     expect(source).toContain("if (!summary.ok) process.exitCode = 1");
     expect(source).toContain("restrictedDataPlane && task.restrictedDirectPostgresSafe !== true");
     expect(source).toContain('key: "official_native_rss"');
