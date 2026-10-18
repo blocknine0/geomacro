@@ -17,8 +17,9 @@ describe("hybrid human/machine delivery boundaries", () => {
     }
     const machine = read("src/lib/mainnet-intelligence-endpoint.server.ts");
     expect(machine).toContain("checkAgentQueryDeliverability");
-    expect(machine).toContain("assertPublicPaidOutputBoundary");
-    expect(machine).toContain("coinbaseX402PaymentRequirements");
+    expect(machine).toContain("assertFrozenCapabilityResponse");
+    expect(readFileSync("src/lib/capability-x402-offer.server.ts","utf8")).toContain("assertPublicPaidOutputBoundary");
+    expect(machine).toContain("coinbaseRequirementsForCapabilityQuote");
     expect(machine).toContain("settleCoinbaseX402");
     expect(machine).toContain("prepareCoinbaseX402Delivery");
     expect(machine).toContain("query_plan_hash");
