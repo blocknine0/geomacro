@@ -42,7 +42,7 @@ describe("#1827 independently activate configured credentialed sources",()=>{
     // EIA electricity pricing cannot certify any current mineral event.
     expect(receipt.b2_requests+receipt.d1_writes+receipt.supabase_writes).toBe(0);
     expect(receipt.commercial_eligible).toBe(false);
-    expect(CREDENTIALED_SOURCE_ACCOUNTS.find(x=>x.id===\"eia_api_v2\")?.category).toBe(\"MACRO\");
+    expect(CREDENTIALED_SOURCE_ACCOUNTS.find(x=>x.id==="eia_api_v2")?.category).toBe("MACRO");
   });
   it("records every configured upstream failure and never exposes a secret URL, key or body",async()=>{
     const receipt=await probeConfiguredCredentialedSources({
