@@ -27,9 +27,12 @@ concurrency:
 
 jobs:
   publish:
+    # RETIRED: full B2 live-public publisher reads from frozen Supabase
+    # and has no source-freshness/legal-rights acceptance. Explicitly
+    # impossible to dispatch; the rights-only D1-governed lane stays intact.
     # Frozen-Supabase recovery is an explicitly approved, main-only action.
     # Do not re-run legacy public snapshot writes for source-code pushes.
-    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.mode == 'live-public' }}
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.mode == 'live-public' && false }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     environment: production
@@ -39,6 +42,11 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      # Safety in depth: even if someone edits the above retired condition,
+      # the canonical B2 client requires a working D1 quota ledger.
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: legacy_public_snapshot_retired
+      B2_REQUEST_BUDGET: "12"
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
