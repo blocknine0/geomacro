@@ -50,9 +50,15 @@ export async function probeCredentialedSource(sourceId) {
       validate: x => Boolean(x?.["Time Series (Daily)"] && Object.keys(x["Time Series (Daily)"]).length > 0)
     },
     eia_api_v2: {
-      category: "CRITICAL_MINERALS", countryIso3: "USA", env: "EIA_API_KEY",
-      build: key => `https://api.eia.gov/v2/electricity/retail-sales/data/?api_key=${encodeURIComponent(key)}&frequency=monthly&data[]=price&facets[stateid][]=CO&length=1`,
-      validate: x => Array.isArray(x?.response?.data) && x.response.data.length > 0
+      // EIA electricity retail-price measurement is MACRO energy-cost
+      // context. It is NOT a direct critical-mineral reserve or supply event.
+      category: "MACRO", countryIso3: "USA", env: "EIA_API_KEY",
+      build: key => `https://api.eia.gov/v2/electricity/retail-sales/data/?api_key=${encodeURIComponent(key)}&frequency=monthly&data[]=price&facets[stateid][]=CO&sort[0][column]=period&sort[0][direction]=desc&length=1`,
+      validate: x => Array.isArray(x?.response?.data) && x.response.data.length===1 &&
+        /^\\d{4}-(0[1-9]|1[0-2])$/.test(x.response.data[0]?.period??"") &&
+        x.response.data[0]?.stateid==="CO" &&
+        Number.isFinite(Number(x.response.data[0]?.price)) &&
+        x.response.data[0]?.price!==null
     },
     noaa_ncei: {
       category: "GEOPOLITICS", countryIso3: "USA", env: "NOAA_NCEI_TOKEN",
@@ -93,7 +99,7 @@ export async function probeCredentialedSource(sourceId) {
   // HTTP deadline, even with the official JSON method. The low-frequency
   // six-hour status probe permits ONE 30s BEA/UCDP request without retries,
   // quotas/paid data change, or extra query fanout.
-  const timeoutMs=sourceId==="bea"?30000:sourceId==="ucdp_ged"?30000:15000;
+  const timeoutMs=["bea","ucdp_ged","eia_api_v2","wto_timeseries"].includes(sourceId)?30000:15000;
   const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs,maxBytes:256*1024,redirect:"error",fetchImpl:sourceId==="wto_timeseries"?fetchWtoCanonical:fetch});
   if (!config.validate(raw)) throw new Error(`Unexpected response shape for ${sourceId}`);
 
@@ -110,5 +116,16 @@ export async function probeCredentialedSource(sourceId) {
 }
 
 export async function fetchCredentialedObservation(sourceId) {
-  return observation(await probeCredentialedSource(sourceId));
+  const row=await probeCredentialedSource(sourceId);
+  // probeCredentialedSource uses snake_case while the canonical observation
+  // constructor accepts camelCase. Explicit mapping prevents silently lost
+  // source ID, native country and observed_at in downstream evidence.
+  // Provider fetch time remains observed_at, NEVER original published_at.
+  return observation({
+    sourceId:row.source_id,category:row.category,
+    countryIso3:row.country_iso3,
+    observedAt:row.observed_at,publishedAt:null,
+    title:row.title,summary:row.summary,
+    confidence:row.confidence,raw:row.raw,
+  });
 }
