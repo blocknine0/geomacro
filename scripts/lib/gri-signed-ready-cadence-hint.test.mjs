@@ -72,18 +72,21 @@ test("new SHA-ready hint requests canonical workflow_dispatch, never calls sourc
   const result=await requestGriSignedReadyCadence({
     env,now:date,fetchImpl:async(url,options)=>{
       calls.push({url,options});
-      return {status:204};
+      return options.method==="GET"?
+        {status:200,json:async()=>({workflow_runs:[]})}:{status:204};
     },
   });
-  assert.equal(calls.length,1);
+  assert.equal(calls.length,2);
+  assert.match(calls[0].url,/\/actions\/workflows\/gri-v12-supabase-free-reviewed-current.yml\/runs\?per_page=20$/u);
+  assert.equal(calls[0].options.method,"GET");
   assert.equal(result.scheduled,true);
   assert.equal(result.published,false);
   assert.equal(result.gri_score_recomputed,false);
   assert.equal(result.payments,0);
-  assert.match(calls[0].url,/\/actions\/workflows\/gri-v12-supabase-free-reviewed-current.yml\/dispatches$/);
-  assert.equal(calls[0].options.method,"POST");
-  assert.equal(calls[0].options.redirect,"error");
-  const payload=JSON.parse(calls[0].options.body);
+  assert.match(calls[1].url,/\/actions\/workflows\/gri-v12-supabase-free-reviewed-current.yml\/dispatches$/);
+  assert.equal(calls[1].options.method,"POST");
+  assert.equal(calls[1].options.redirect,"error");
+  const payload=JSON.parse(calls[1].options.body);
   assert.equal(payload.ref,"main");
   assert.equal(payload.inputs.reviewed_b2_sha256,input);
   assert.equal(payload.inputs.reviewed_certificates_b2_sha256,cert);
@@ -105,19 +108,74 @@ test("unauthorized caller, mismatched main, and missing token fail closed before
     assert.equal(calls,0);
   }
 });
-test("GitHub 403/429 or network failure never claims a publication",async()=>{
-  await assert.rejects(()=>requestGriSignedReadyCadence({
-    env,now:date,fetchImpl:async()=>({status:403}),
-  }),/DISPATCH_REJECTED/);
+test("GitHub metadata denial, malformed runs or network failure never authorizes B2 dispatch",async()=>{
+  for(const response of [
+    {status:403},
+    {status:429},
+    {status:200,json:async()=>({workflow_runs:"malformed"})},
+    {status:200,json:async()=>({workflow_runs:Array(21).fill({})})},
+  ]){
+    await assert.rejects(()=>requestGriSignedReadyCadence({
+      env,now:date,fetchImpl:async()=>response,
+    }),/RECENT_RUN_LOOKUP_FAILED/);
+  }
   await assert.rejects(()=>requestGriSignedReadyCadence({
     env,now:date,fetchImpl:async()=>{throw Error("secret")},
-  }),/DISPATCH_TRANSPORT_FAILED/);
+  }),/RECENT_RUN_LOOKUP_FAILED/);
+  await assert.rejects(()=>requestGriSignedReadyCadence({
+    env,now:date,fetchImpl:async(_,options)=>
+      options.method==="GET"?{status:200,json:async()=>({workflow_runs:[]})}:{status:403},
+  }),/DISPATCH_REJECTED/);
 });
+test("same approved SHA is NOT repeatedly dispatched on two cadences or news completion",async()=>{
+  let calls=0;
+  const prior={
+    head_sha:env.GITHUB_SHA,head_branch:"main",event:"workflow_dispatch",
+    created_at:"2026-10-18T11:17:00Z",
+  };
+  const res=await requestGriSignedReadyCadence({
+    env,now:date,fetchImpl:async(url,opts)=>{
+      calls++;
+      assert.equal(opts.method,"GET");
+      return {status:200,json:async()=>({workflow_runs:[prior]})};
+    },
+  });
+  assert.equal(calls,1);
+  assert.equal(res.scheduled,false);
+  assert.equal(res.status,"ALREADY_ENQUEUED_EXACT_MAIN_AFTER_SIGNED_APPROVAL");
+  assert.equal(res.b2_gets,0);
+  assert.equal(res.payments,0);
+});
+test("newly approved same-source review wakes after successful Auto Ingest workflow_run",async()=>{
+  const calls=[];
+  const res=await requestGriSignedReadyCadence({
+    env:{...env,GITHUB_EVENT_NAME:"workflow_run",GRI_SOURCE_WORKFLOW_VERIFIED:"1"},
+    now:date,fetchImpl:async(url,opts)=>{
+      calls.push(opts.method);
+      return opts.method==="GET"?
+        {status:200,json:async()=>({workflow_runs:[
+          {head_sha:"d".repeat(40),head_branch:"main",
+           event:"workflow_dispatch",created_at:"2026-10-18T11:18:00Z"},
+        ]})}:{status:204};
+    },
+  });
+  assert.equal(res.scheduled,true);
+  assert.deepEqual(calls,["GET","POST"]);
+  await assert.rejects(()=>requestGriSignedReadyCadence({
+    env:{...env,GITHUB_EVENT_NAME:"workflow_run",GRI_SOURCE_WORKFLOW_VERIFIED:"0"},
+    now:date,fetchImpl:async()=>{throw Error("unexpected")},
+  }),/PROTECTED_RUN_REQUIRED/);
+});
+
 test("scheduled backstop is separate from original GRI proof, no Supabase or payment",()=>{
   const w=readFileSync(".github/workflows/gri-signed-ready-cadence-backstop.yml","utf8");
   const protectedGri=readFileSync(".github/workflows/gri-v12-supabase-free-reviewed-current.yml","utf8");
   const code=readFileSync("scripts/ops/dispatch-gri-signed-ready-cadence.mjs","utf8");
   assert.match(w,/cron: "13,43 \* \* \* \*"/u);
+  assert.match(w,/workflows: \["Auto Ingest News"\]/u);
+  assert.match(w,/github.event.workflow_run.conclusion == 'success'/u);
+  assert.match(w,/github.event.workflow_run.head_sha == github.sha/u);
+  assert.match(code,/ALREADY_ENQUEUED_EXACT_MAIN_AFTER_SIGNED_APPROVAL/u);
   assert.match(w,/actions: write/u);
   assert.match(w,/github.ref == 'refs\/heads\/main'/u);
   assert.match(w,/vars.GRI_READY_REVIEWED_SHA256/u);
