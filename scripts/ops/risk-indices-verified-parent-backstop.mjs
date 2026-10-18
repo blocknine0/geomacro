@@ -73,6 +73,46 @@ export function classifyRiskIndicesRepair({griSnapshot,indicesSnapshot,now=Date.
   });
 }
 
+/**
+ * The cron and workflow_run triggers can race the same already signed GRI
+ * parent. Inspect ONLY authenticated GitHub run metadata, never B2 or source
+ * bytes. A failed attempt may retry once after 8 minutes, only while the
+ * original signed parent is STILL current. Never repeat active/success jobs.
+ */
+export function decideVerifiedIndicesPublisherRetry({
+  runs,headSha,parentSourceAsOf,now,
+}={}){
+  if(!Array.isArray(runs)||runs.length>20||!SHA.test(headSha??"")||
+     !Number.isFinite(Date.parse(parentSourceAsOf??""))||
+     !(now instanceof Date)||!Number.isFinite(now.getTime()))
+    throw Error("INDICES_REPAIR_RUN_METADATA_INVALID");
+  const since=Date.parse(parentSourceAsOf);
+  if(since>now.getTime()||now.getTime()-since>90*60_000)
+    throw Error("INDICES_REPAIR_VERIFIED_PARENT_TIME_INVALID");
+  const matching=runs.filter(run=>
+    run?.head_sha===headSha&&run.head_branch==="main"&&
+    ["workflow_dispatch","workflow_run"].includes(run.event)&&
+    typeof run.created_at==="string"&&
+    Number.isFinite(Date.parse(run.created_at))&&
+    Date.parse(run.created_at)>=since&&
+    Date.parse(run.created_at)<=now.getTime()+5*60_000);
+  if(matching.length===0)
+    return Object.freeze({dispatch:true,status:"FIRST_VERIFIED_PARENT_REPAIR_ATTEMPT"});
+  if(matching.some(run=>!run.status||
+     ["queued","in_progress","waiting","requested","pending"].includes(run.status)||
+     run.status!=="completed"))
+    return Object.freeze({dispatch:false,status:"VERIFIED_PARENT_REPAIR_IN_PROGRESS_OR_UNKNOWN"});
+  if(matching.some(run=>run.conclusion==="success"))
+    return Object.freeze({dispatch:false,status:"VERIFIED_PARENT_REPAIR_ALREADY_SUCCEEDED"});
+  if(matching.some(run=>!["failure","timed_out","cancelled"].includes(run.conclusion)))
+    return Object.freeze({dispatch:false,status:"VERIFIED_PARENT_REPAIR_RESULT_NOT_RETRYABLE"});
+  if(matching.length>=2)
+    return Object.freeze({dispatch:false,status:"VERIFIED_PARENT_REPAIR_RETRY_LIMIT_REACHED"});
+  if(now.getTime()-Date.parse(matching[0].created_at)<8*60_000)
+    return Object.freeze({dispatch:false,status:"VERIFIED_PARENT_REPAIR_COOLDOWN"});
+  return Object.freeze({dispatch:true,status:"VERIFIED_PARENT_REPAIR_SINGLE_RETRY"});
+}
+
 export async function runRiskIndicesVerifiedParentBackstop({
   env=process.env,fetchImpl=fetch,now=new Date(),
 }={}){
@@ -103,6 +143,40 @@ export async function runRiskIndicesVerifiedParentBackstop({
   if(!decision.eligible)return decision;
   if(typeof env.GITHUB_TOKEN!=="string"||env.GITHUB_TOKEN.length<20)
     throw Error("INDICES_REPAIR_GITHUB_ACTIONS_DISPATCH_TOKEN_REQUIRED");
+  // GET verified deployment+parent+child first, THEN check dedupe metadata.
+  // This public-health read never grants authorization to score a GRI.
+  const recentUrl="https://api.github.com/repos/"+REPO+
+    "/actions/workflows/"+TARGET+"/runs?per_page=20";
+  let recentResponse;
+  try{
+    recentResponse=await fetchImpl(recentUrl,{
+      method:"GET",redirect:"error",signal:AbortSignal.timeout(15000),
+      headers:{
+        authorization:"Bearer "+env.GITHUB_TOKEN,
+        accept:"application/vnd.github+json",
+        "x-github-api-version":"2022-11-28",
+        "user-agent":"Geomacro-Verified-Indices-Backstop/1.0",
+      },
+    });
+  }catch{throw Error("INDICES_REPAIR_RUN_LOOKUP_FAILED");}
+  if(recentResponse?.status!==200||recentResponse.redirected)
+    throw Error("INDICES_REPAIR_RUN_LOOKUP_FAILED");
+  let recentRuns;
+  try{
+    const data=await recentResponse.json();
+    if(!Array.isArray(data?.workflow_runs)||data.workflow_runs.length>20)
+      throw Error("INDICES_REPAIR_RUNS_INVALID");
+    recentRuns=data.workflow_runs;
+  }catch{throw Error("INDICES_REPAIR_RUN_LOOKUP_FAILED");}
+  const retry=decideVerifiedIndicesPublisherRetry({
+    runs:recentRuns,headSha:env.GITHUB_SHA,
+    parentSourceAsOf:gri.value.source_as_of,now,
+  });
+  if(!retry.dispatch)return Object.freeze({
+    ...decision,status:retry.status,eligible:false,
+    dispatch_requested:false,
+    reason:"VERIFIED_GRI_PARENT_REPAIR_DEDUPED_NO_ADDITIONAL_B2",
+  });
   let response;
   try{
     response=await fetchImpl("https://api.github.com/repos/"+REPO+
@@ -121,7 +195,9 @@ export async function runRiskIndicesVerifiedParentBackstop({
   if(response?.status!==204||response?.redirected)
     throw Error("INDICES_REPAIR_PROTECTED_DISPATCH_REJECTED");
   return Object.freeze({
-    ...decision,status:"PROTECTED_INDICES_REPAIR_DISPATCHED",
+    ...decision,status:retry.status==="VERIFIED_PARENT_REPAIR_SINGLE_RETRY"
+      ?"PROTECTED_INDICES_REPAIR_SINGLE_RETRY_DISPATCHED"
+      :"PROTECTED_INDICES_REPAIR_DISPATCHED",
     reason:"DOWNSTREAM_RECHECKS_LIVE_GRI_B2_D1_AND_SHA",
     dispatch_requested:true,source_readback_requests:2,
   });
