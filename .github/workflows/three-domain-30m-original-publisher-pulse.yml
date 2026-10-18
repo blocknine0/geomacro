@@ -243,6 +243,35 @@ jobs:
           node scripts/ops/write-30min-source-pulse-d1.mjs
           # New source-native fingerprints justify PRIVATE scoring only.
           node scripts/lib/auto-private-scoring-trigger.mjs
+      - name: Verify direct three-domain continuity Worker status (no funds)
+        if: github.event_name == 'schedule'
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(mktemp)"
+          trap 'rm -f "$payload"' EXIT
+          code="$(curl -fsS --max-time 12 -o "$payload" -w '%{http_code}' https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/three-domain-continuity || true)"
+          if test "$code" != "200"; then
+            echo "::error::THREE_DOMAIN_CONTINUITY_UNAVAILABLE"
+            exit 3
+          fi
+          node - "$payload" <<'NODE'
+          const fs=require('fs'),v=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if(v.schema!=='geomacro.three-domain-evidence-continuity.v1'||
+            v.three_domains_returned!==true||v.chargeable!==false||
+            v.upstream_new_event_guaranteed!==false||
+            JSON.stringify(Object.keys(v.categories).sort())!==
+              JSON.stringify(['geopolitics','macro','rare_earth'].sort()))
+            throw Error('THREE_DOMAIN_CONTINUITY_CONTRACT_INVALID');
+          console.log(JSON.stringify({
+            schema:'geomacro.three-domain-continuity-canary.v1',
+            all_categories_have_observation:v.all_categories_have_observation,
+            all_categories_source_check_current:v.all_categories_source_check_current,
+            per_category:Object.fromEntries(Object.entries(v.categories).map(([k,s])=>
+              [k,{service_state:s.service_state,news_72h:s.native_news_event_count_72h}])),
+            real_money_touched:false,
+          }));
+          NODE
       - name: Preserve two-day source-native counts, never raw news or session tokens
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
