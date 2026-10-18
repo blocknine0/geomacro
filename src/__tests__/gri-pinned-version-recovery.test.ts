@@ -1,5 +1,6 @@
 import {describe,it,expect,vi} from 'vitest';
 import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import {gzipSync} from 'node:zlib';
 import {recoverPinnedGriVersion,selectPinnedHistoricalVersion} from '../../scripts/ops/recover-gri-pinned-b2-version.mjs';
 const now=new Date('2026-10-16T19:00:00.000Z'),KEY='geomacro-evidence/v1/live/global-risk/latest.json.gz';
@@ -63,4 +64,26 @@ describe('bounded historical B2 immutable version recovery',()=>{
  it('does not inherit frozen database/payment credentials or allow a larger request budget',async()=>{
   const f=fixture();for(const patch of [{SUPABASE_URL:'never-call'},{COINBASE_API_KEY:'never-call'},{B2_REQUEST_BUDGET:'5'}])await expect(recoverPinnedGriVersion({...f,env:{...env,...patch}})).rejects.toThrow();expect(f.fetcher).not.toHaveBeenCalled();
  });
+});
+
+describe('protected main historical B2 recovery execution gate',()=>{
+  it('uses immutable main, quota-governed B2 file version and no-funds without current product promotion',()=>{
+    const w=readFileSync('.github/workflows/gri-pinned-version-recovery.yml','utf8');
+    const server=readFileSync('scripts/ops/restore-gri-verified-version-to-d1.mjs','utf8');
+    expect(w).toContain('github.ref == \'refs/heads/main\'');
+    expect(w).toContain('EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}');
+    expect(w).toContain('test "$EXPECTED_CANONICAL_MAIN_SHA" = "$(git rev-parse HEAD)"');
+    expect(w).toContain('GRI_HISTORY_NO_FUNDS_AND_NO_SUPABASE_REQUIRED');
+    expect(w).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+    expect(w).toContain('B2_ACCOUNT_QUOTA_WORKFLOW_ID: historical_gri_version_recovery');
+    expect(w).toContain('B2_REQUEST_BUDGET: "4"');
+    expect(w).toContain('ref: ${{ github.sha }}');
+    expect(w).toContain('historical-d1-restore.json');
+    expect(w).toContain('environment: production');
+    expect(w).not.toContain('RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64:');
+    expect(w).not.toContain('COINBASE_API_KEY: ${{ secrets.');
+    expect(server).toContain('current_hot_snapshot_written:false');
+    expect(server).toContain('current_gri_qualified:false');
+    expect(server).toContain('website_only:true,historical_only:true');
+  });
 });
