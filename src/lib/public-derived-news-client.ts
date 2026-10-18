@@ -94,3 +94,46 @@ export async function fetchDirectDerivedNews(
   if (text.length > 512_000) throw Error("DERIVED_NEWS_PUBLIC_TOO_LARGE");
   return checkedDerivedNews(JSON.parse(text), now);
 }
+
+/**
+ * Read every currently retained row of the SAME 72h D1 journal (at most 600),
+ * in strict 250-row pages. This does not scan any extra issuer, mutate storage,
+ * promote commercial rights or request a payment. Fail closed if a page is
+ * missing, duplicated or served by a stale non-paginated Worker.
+ */
+export async function fetchAllDerivedNews(
+  fetchImpl:typeof fetch=fetch,now=Date.now(),
+):Promise<StatelessIntelligenceSignal[]> {
+  if(!Number.isFinite(now))throw Error("DERIVED_NEWS_PAGE_CLOCK_INVALID");
+  const collected:StatelessIntelligenceSignal[]=[];
+  const seen=new Set<string>();
+  for(const offset of [0,250,500]){
+    const url=GEOMACRO_DERIVED_JOURNAL_URL+
+      (offset===0?"":"?offset="+offset);
+    const response=await fetchWithoutRedirectUsing(fetchImpl,url,{
+      method:"GET",redirect:"error",cache:"no-store",
+      headers:{Accept:"application/json"},signal:AbortSignal.timeout(8_000),
+    });
+    if(!response.ok || Number(response.headers.get("content-length")??0)>512_000)
+      throw Error("DERIVED_NEWS_PAGE_UNAVAILABLE");
+    const body=await response.text();
+    if(body.length>512_000)throw Error("DERIVED_NEWS_PAGE_TOO_LARGE");
+    const doc=JSON.parse(body) as Record<string,unknown>;
+    if(doc.page_offset!==offset||doc.page_size!==250||
+       typeof doc.has_more!=="boolean")
+      throw Error("DERIVED_NEWS_PAGE_CONTRACT_INVALID");
+    const rows=checkedDerivedNews(doc,now);
+    for(const row of rows){
+      if(seen.has(row.id))throw Error("DERIVED_NEWS_PAGE_DUPLICATE_ID");
+      seen.add(row.id);collected.push(row);
+    }
+    if(doc.has_more===false){
+      if(doc.next_offset!==null)return Promise.reject(
+        Error("DERIVED_NEWS_PAGE_CURSOR_INVALID"));
+      return collected;
+    }
+    if(offset===500||doc.next_offset!==offset+250)
+      throw Error("DERIVED_NEWS_PAGE_CURSOR_INVALID");
+  }
+  throw Error("DERIVED_NEWS_PAGINATION_INCOMPLETE");
+}
