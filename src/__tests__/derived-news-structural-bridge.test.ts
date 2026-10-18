@@ -1,0 +1,140 @@
+import {describe,expect,it,vi} from "vitest";
+import {readFileSync} from "node:fs";
+import {buildDerivedNewsStructural} from "../lib/derived-news-structural-bridge";
+import {derivedNewsStructuralResponse} from "../lib/derived-news-structural-response.server";
+import {fetchAllDerivedNews} from "../lib/public-derived-news-client";
+import {readDerivedStories} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
+import type {StatelessIntelligenceSignal} from "../lib/stateless-intelligence-model";
+
+const NOW=Date.parse("2026-10-18T18:00:00.000Z");
+const domains=["geopolitics","macro","rare_earth"] as const;
+const topics=["foreign policy","monetary policy","rare-earth supply"];
+const story=(index:number):StatelessIntelligenceSignal=>{
+  const category=domains[index%3];
+  return {id:category+"-"+index.toString(16).padStart(8,"0"),category,
+    title:"Geomacro finds original official policy change in the observed sector",
+    what_changed:"An official publisher released a new statement about a policy development in the observed sector.",
+    why_it_matters:"This release may affect regional operating assumptions but actual consequences require independent confirmation.",
+    topic:topics[index%3],development_type:"policy update",geography:null,
+    published_at:"2026-10-18T16:00:00.000Z",date_precision:"exact",
+    observed_release_count:1,sources_credited:[],
+    status:"official_release_observed_unscored",same_event_corrob_verified:false,severity:null};
+};
+const feed=(signals:unknown[],offset=0,has_more=false)=>({
+  ok:true,schema:"geomacro.website-derived-news-feed.v1",
+  original_release_delay_minutes:15,retention_days:3,retention_hours:72,
+  delivery_scope:"free_website_only",page_offset:offset,page_size:250,
+  has_more,next_offset:has_more?offset+250:null,signals,
+});
+describe("source-neutral three-domain 72h news -> structural output bridge",()=>{
+ it("maps each distinct eligible first-party derived observation, never promotes unreviewed evidence",()=>{
+   const rows=buildDerivedNewsStructural(Array.from({length:60},(_,i)=>story(i)),NOW);
+   expect(rows).toHaveLength(60);
+   expect(new Set(rows.map(r=>r.id)).size).toBe(60);
+   expect(new Set(rows.map(r=>r.category))).toEqual(new Set(domains));
+   for(const item of rows){
+     expect(item.schema).toBe("geomacro.derived-news-structural.v1");
+     expect(item.observed_change).toContain("official publisher");
+     expect(item.event_detail_verified).toBe(false);
+     expect(item.country_subject_verified).toBe(false);
+     expect(item.independent_same_event_verified).toBe(false);
+     expect(item.commercial_derived_rights_verified).toBe(false);
+     expect(item.signed_product_verified).toBe(false);
+     expect(item.payable).toBe(false);
+     expect(item.raw_upstream_delivered).toBe(false);
+   }
+   expect(JSON.stringify(rows)).not.toMatch(/(?:https?:\/\/|publisher_id|source_url|original_title|raw_html)/iu);
+ });
+ it("rejects attribution-hidden releases and stale, early, future, scored and forged rows",()=>{
+   const good=story(4);
+   const bad=[
+     {...story(3),sources_credited:["Attribution required"]},
+     {...story(5),published_at:"2026-10-10T12:00:00.000Z"},
+     {...story(6),published_at:"2026-10-18T17:59:00.000Z"},
+     {...story(7),published_at:"2026-10-19T00:00:00.000Z"},
+     {...story(8),severity:80},
+     {...story(9),source_url:"https://upstream.invalid"},
+   ];
+   expect(buildDerivedNewsStructural([good,...bad] as StatelessIntelligenceSignal[],NOW))
+     .toHaveLength(1);
+   expect(buildDerivedNewsStructural([good,good],NOW)).toHaveLength(1);
+   expect(()=>buildDerivedNewsStructural([good,{...good,topic:"foreign policy"}],NOW))
+     .toThrow("DERIVED_NEWS_ID_COLLISION");
+ });
+ it("reads all three bounded pages, covers every retained eligible event, and leaves paid API untouched",async()=>{
+   const signals=Array.from({length:520},(_,i)=>story(i));
+   const mock=vi.fn(async (input:RequestInfo|URL)=>{
+     const url=new URL(String(input));
+     const offset=Number(url.searchParams.get("offset")||0);
+     const batch=signals.slice(offset,offset+250);
+     return Response.json(feed(batch,offset,offset+250<signals.length));
+   });
+   const all=await fetchAllDerivedNews(mock as typeof fetch,NOW);
+   expect(all).toHaveLength(520);
+   expect(mock).toHaveBeenCalledTimes(3);
+   const r=await derivedNewsStructuralResponse(
+     new Request("https://geomacro.live/api/v1/intelligence/query?view=structural-72h&domain=macro"),
+     mock as typeof fetch,NOW);
+   expect(r.status).toBe(200);
+   const body=await r.json();
+   expect(body.items).toHaveLength(173);
+   expect(body.counts).toEqual({geopolitics:174,macro:173,rare_earth:173});
+   expect(body.chargeable).toBe(false);
+   expect(body.exhaustive_all_global_sources).toBe(false);
+   expect(body.source_scope).toBe("ELIGIBLE_RELEASES_PRESENT_IN_BOUNDED_D1_JOURNAL");
+   expect(JSON.stringify(body)).not.toContain("source_url");
+ });
+ it("fails closed on broken cursor, duplicate IDs, forged extra source metadata and unpaged old Workers",async()=>{
+   const cases=[
+     feed([story(0)],0,true),
+     {...feed([story(0)]),page_offset:250},
+     {...feed([story(0)]),page_size:600},
+     {...feed([story(0)]),has_more:"yes"},
+     {...feed([story(0)]),signals:[{...story(0),raw_article:"bad"}]},
+   ];
+   for(const item of cases.slice(0,4)){
+     const f=vi.fn(async()=>Response.json(item));
+     await expect(fetchAllDerivedNews(f as typeof fetch,NOW)).rejects.toThrow();
+   }
+   const old=vi.fn(async()=>Response.json({
+     ...feed([story(0)]),page_offset:undefined,page_size:undefined,
+     has_more:undefined,next_offset:undefined,
+   }));
+   const r=await derivedNewsStructuralResponse(
+     new Request("https://geomacro.live/api/v1/intelligence/query?view=structural-72h"),
+     old as typeof fetch,NOW);
+   expect(r.status).toBe(503);
+   for(const invalid of ["?view=structural-72h&domain=other",
+       "?view=structural-72h&view=structural-72h","?view=structural-72h&payment=1"]){
+     const result=await derivedNewsStructuralResponse(new Request(
+       "https://geomacro.live/api/v1/intelligence/query"+invalid),old as typeof fetch,NOW);
+     expect(result.status).toBe(400);
+   }
+ });
+ it("keeps old D1 reader compatible and exposes strict 250/500 pages",async()=>{
+   const signals=Array.from({length:520},(_,i)=>story(i));
+   const env={DB:{prepare:()=>({bind:(_a:string,_b:string,offset=0)=>({
+     all:async()=>({results:signals.slice(offset,offset+251).map(s=>({story_json:JSON.stringify(s)}))}),
+   })})}};
+   const page0=await (await readDerivedStories(env,NOW)).json();
+   const page250=await (await readDerivedStories(env,NOW,250)).json();
+   const page500=await (await readDerivedStories(env,NOW,500)).json();
+   expect([page0.signals.length,page250.signals.length,page500.signals.length])
+     .toEqual([250,250,20]);
+   expect([page0.has_more,page250.has_more,page500.has_more]).toEqual([true,true,false]);
+   expect([page0.next_offset,page250.next_offset,page500.next_offset]).toEqual([250,500,null]);
+   expect((await readDerivedStories(env,NOW,1)).status).toBe(400);
+ });
+ it("uses one source pipeline, idempotent bounded D1 batches and the existing canonical paid safety gate",()=>{
+   const source=readFileSync("src/lib/stateless-public-intelligence.server.ts","utf8");
+   const publish=readFileSync("scripts/ops/publish-website-derived-news.ts","utf8");
+   const route=readFileSync("src/routes/api.v1.intelligence.query.ts","utf8");
+   const paid=readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts","utf8");
+   expect(source).toContain("deriveStatelessSignals(originalCandidates, now,{maxSignals})");
+   expect(publish).toContain("privateOriginals.push(...candidates),200");
+   expect(publish).toContain("signals.slice(i*40,(i+1)*40)");
+   expect(route).toContain("derivedNewsStructuralResponse(request)");
+   expect(paid).toContain("auto_ingest_72h_drafts_commercially_eligible:false");
+   expect(paid).toContain("const finalConfig = resolveEligibleCoinbaseCapabilityConfig");
+ });
+});
