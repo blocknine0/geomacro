@@ -226,3 +226,117 @@ jobs:
             snapshot_as_of:r.snapshot_as_of,payload_sha256:r.payload_sha256,
             d1_public_readback_verified:true,usdc_spent:0}));
           NODE
+
+  independent-intelligence-continuation:
+    # Optional SECOND product only after actual current, independently signed
+    # GRI B2/D1 publication. Never suppress/fail the successful GRI and its
+    # existing Risk Indices workflow_run continuation when older 72h events
+    # cannot qualify for stricter six-hour signed Intelligence.
+    needs: [verified-current]
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      needs.verified-current.result == 'success'
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    env:
+      EXPECTED_SHA: ${{ github.sha }}
+      REVIEWED_B2_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.reviewed_b2_key || github.event.client_payload.reviewed_b2_key }}
+      REVIEWED_B2_SHA256: ${{ github.event_name == 'workflow_dispatch' && inputs.reviewed_b2_sha256 || github.event.client_payload.reviewed_b2_sha256 }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: gri_intelligence_continuation
+      B2_REQUEST_BUDGET: "12"
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256 }}
+    steps:
+      - name: Checkout exact protected main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Enforce actual successful GRI, exact signed source and frozen Supabase/funds
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SHA" = "$(git rev-parse HEAD)"
+          bun --eval '
+            const s=process.env,p=/^[a-f0-9]{64}$/;
+            if(!p.test(s.REVIEWED_B2_SHA256??"")||
+               s.REVIEWED_B2_KEY!=="geomacro-evidence/v1/private/reviewed-gri-current/"+s.REVIEWED_B2_SHA256+".json")
+              throw Error("GRI_INTELLIGENCE_SOURCE_NOT_SHA_PINNED");
+          '
+          for k in SUPABASE_URL SUPABASE_DB_URL APP_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_SERVICE_ROLE_KEY COINBASE_API_KEY COINBASE_X402_MAINNET_ACK; do
+            test -z "$(printenv "$k" || true)" || { echo "::error::NO_FUNDS_AND_NO_SUPABASE_REQUIRED"; exit 2; }
+          done
+      - name: Resolve shared D1 account B2 quota governor
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$B2_ACCOUNT_QUOTA_REQUIRED" = "1"
+          test -n "$CLOUDFLARE_ACCOUNT_ID" && test -n "$CLOUDFLARE_API_TOKEN"
+          json="$(npx -y wrangler@4.136.3 d1 list --json)"
+          id="$(printf '%s' "$json" | node -e 'let s="";process.stdin.on("data",x=>s+=x);process.stdin.on("end",()=>{const r=JSON.parse(s).find(v=>v.name==="geomacro-control-plane");process.stdout.write(r?.uuid??r?.id??"")})')"
+          test -n "$id" || { echo "::error::GRI_INTELLIGENCE_D1_QUOTA_GOVERNOR_MISSING"; exit 2; }
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+      - name: Read exactly pinned external signed GRI input with bounded quota
+        env:
+          B2_REQUEST_BUDGET: "4"
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p artifacts/private-gri-intelligence
+          chmod 700 artifacts/private-gri-intelligence
+          bun --eval '
+            import {createHash} from "node:crypto";
+            import {writeFileSync} from "node:fs";
+            import {createB2Client} from "./scripts/ops/b2-s3-client.mjs";
+            const b2=createB2Client({endpointUrl:"https://s3.us-east-005.backblazeb2.com",
+              bucket:"geomacro-private-archive",accessKey:process.env.B2_KEY_ID,
+              secretKey:process.env.B2_APPLICATION_KEY});
+            const raw=Buffer.from(await b2.get(process.env.REVIEWED_B2_KEY));
+            if(raw.length<100||raw.length>1024*1024||
+               createHash("sha256").update(raw).digest("hex")!==process.env.REVIEWED_B2_SHA256)
+              throw Error("GRI_INTELLIGENCE_REVIEWED_B2_SHA_MISMATCH");
+            writeFileSync("artifacts/private-gri-intelligence/reviewed.json",raw,
+              {flag:"wx",mode:0o600});
+          '
+          echo "GEOMACRO_GRI_REVIEWED_INPUT=artifacts/private-gri-intelligence/reviewed.json" >> "$GITHUB_ENV"
+          echo "GEOMACRO_GRI_REVIEWED_INPUT_SHA256=$REVIEWED_B2_SHA256" >> "$GITHUB_ENV"
+      - name: Reverify source-native 6h originals reviewer signature and derived rights
+        id: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/prepare-intelligence-from-reviewed-gri.mjs --after-verified-gri
+      - name: Publish independently eligible scored Intelligence via existing B2 D1 engine
+        if: steps.candidate.outputs.ready == 'true'
+        env:
+          B2_REQUEST_BUDGET: "8"
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/publish-supabase-free-public-intelligence.mjs --verified-publication > /tmp/gri-intel-publication-receipt.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {verifyPublishedIntelligenceReadback} from './scripts/lib/published-intelligence-readback.mjs';
+          const receipt=JSON.parse(readFileSync('/tmp/gri-intel-publication-receipt.json','utf8'));
+          const result=await verifyPublishedIntelligenceReadback(receipt);
+          console.log(JSON.stringify({schema:"geomacro.post-gri-current-intelligence-continuation.v1",
+            result, independently_verified:true,payment_executed:false,
+            supabase_requests:0}));
+          NODE
