@@ -46,7 +46,8 @@ test("build preparation discards inherited production routes and bindings and pi
   const out=JSON.parse(readFileSync(resolve(root,".output/server/candidate-wrangler.json"),"utf8"));
   assert.equal(out.name,"geomacro-web-candidate");assert.equal(out.routes,undefined);
   assert.equal(out.d1_databases,undefined);assert.deepEqual(out.vars,{GEOMACRO_SUPABASE_RUNTIME_MODE:"standby"});
-  assert.equal(out.limits.cpu_ms,10);assert.equal(out.assets.run_worker_first,true);
+  assert.equal(out.limits,undefined);assert.equal(out.usage_model,undefined);
+  assert.equal(out.assets.run_worker_first,true);
   const marker=JSON.parse(readFileSync(resolve(root,".output/public/.well-known/geomacro-build.json"),"utf8"));
   assert.equal(marker.canonical_main_sha,"a".repeat(40));assert.equal(marker.production_activation_performed,false);
   writeFileSync(path,JSON.stringify({...config,main:"unknown.mjs"}));
