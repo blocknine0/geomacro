@@ -1,6 +1,7 @@
 import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,verifiedGlobalRdfFeed,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { createHash } from "node:crypto";
+import {indexedHeadlineMatchesOriginalPage,indexedPublisherHasOriginalMetaOutsideScripts} from "./on-demand-index-original-title.server";
 import {fetchGdeltDocWithBudget,gdeltRetryAfterMs} from "../../scripts/lib/gdelt-doc-request-gate.mjs";
 import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
@@ -50,6 +51,8 @@ export type PrivateOriginalCandidate = {
   // official original article pages may rescue an undated Atom lead.
   undated_atom_original_page_pending?: true;
   search_index_original_page_pending?: true;
+  // An external index is only a private lead, never an original clock.
+  index_original_page_pending?: true;
   official_archive_release_day?: string; // official issuer index day, never exact clock
   article_identity_sha256: string;
   first_party_article_url_verified: true;
@@ -317,7 +320,7 @@ async function gdelt(
   category: OnDemandCategory, countryNameValue: string, fetchImpl: typeof fetch,
   mineral: OnDemandMineral | null, topics:readonly string[]=[], countryIso3="",
   maxAgeMs=ONE_DAY_MS, deadlineMs=Date.now()+12_000,
-): Promise<SourceProbe> {
+): Promise<OriginalFeedResult> {
   // GDELT is a discovery INDEX. Its "seendate" is NEVER original publication
   // and third-party discovery NEVER proves independent event corroboration.
   const scopedTerms=category==="geopolitics" && topics.includes("sanctions_restrictions")
@@ -359,6 +362,7 @@ async function gdelt(
   // Repeated index entries for an identical publisher URL are one lead.
   // Keep publisher path/query identity; never infer event corroboration.
   const uniqueUrls = new Set<string>();
+  const candidates:PrivateOriginalCandidate[]=[];
   for (const value of articles) {
     if (!value || typeof value !== "object") continue;
     const row = value as {url?:unknown,title?:unknown};
@@ -375,9 +379,30 @@ async function gdelt(
            !MINERAL_TERMS.some(term=>term.value===mineral&&term.pattern.test(row.title)))))
         continue;
       uniqueUrls.add(uri.href);
+      // Reuse pinned issuer paths; third-party reports remain discovery counts.
+      // Index headlines and seendate cannot authorize a dated original.
+      const publisher=[...ORIGINAL_FALLBACK_FEEDS,...INTERNATIONAL_ORIGINAL_FEEDS]
+        .find(def=>def.domain===category && originalArticleUrl(uri.href,def)!==null &&
+          def.topic.test(row.title as string));
+      if(uri.search || !publisher || candidates.length>=4 ||
+         !originalHeadlineMentionsCountry(row.title,countryIso3,countryNameValue) ||
+         !matchesRequestedTopic(row.title,category,topics) ||
+         (category==="rare_earth" && mineral!==null &&
+          !MINERAL_TERMS.some(t=>t.value===mineral&&t.pattern.test(row.title as string))))continue;
+      const article_url=originalArticleUrl(uri.href,publisher);
+      if(!article_url)continue;
+      const article_identity_sha256=digest(publisher.family+"|"+article_url);
+      if(candidates.some(c=>c.article_identity_sha256===article_identity_sha256))continue;
+      candidates.push({domain:category,publisher_family:publisher.family,article_url,
+        article_title:row.title.trim().slice(0,300),feed_item_published_at:null,
+        index_original_page_pending:true,article_identity_sha256,
+        first_party_article_url_verified:true,source_native_feed_publication_date_verified:false,
+        publisher_article_page_date_verified:false,independent_same_event_verified:false,
+        derived_commercial_rights_verified:false,score_verified:false,
+        signed_gro_verified:false,paid_delivery_allowed:false});
     } catch { /* Reject an invalid upstream article URL. */ }
   }
-  return probe("gdelt_doc_discovery",uniqueUrls.size,false);
+  return {probe:probe("gdelt_doc_discovery",uniqueUrls.size,false),private_candidates:candidates};
 }
 
 /** ReliefWeb demands an operator-requested, provider-approved appname.
@@ -949,6 +974,11 @@ export function deduplicateOnDemandOriginalHeadlines(
       item.undated_atom_original_page_pending===true &&
       item.feed_item_published_at===null &&
       item.source_native_feed_publication_date_verified===false;
+    const indexedReview=item.index_original_page_pending===true &&
+      item.undated_atom_original_page_pending!==true &&
+      item.search_index_original_page_pending!==true &&
+      item.feed_item_published_at===null &&
+      item.source_native_feed_publication_date_verified===false;
     const searchReview=def?.media==="search" &&
       item.search_index_original_page_pending===true &&
       item.feed_item_published_at===null &&
@@ -965,7 +995,7 @@ export function deduplicateOnDemandOriginalHeadlines(
     // Enforce fixed issuer/host/path and exact SHA binding additionally ONLY
     // on the new missing-<published> GOV.UK Atom rescue path.
     const reviewedUndated=(undatedReview===true || searchReview===true ||
-      archiveReview===true) && !!def &&
+      archiveReview===true || indexedReview) && !!def &&
       originalArticleUrl(item.article_url,def)===item.article_url &&
       item.article_identity_sha256===digest(def.family+"|"+item.article_url);
     if((!nativeDated&&!reviewedUndated)||
@@ -1239,7 +1269,7 @@ async function discoverOnDemandImpl(
       const originalPresent=settled.some(result=>
         result.status==="fulfilled" &&
         "private_candidates" in result.value &&
-        result.value.private_candidates.some(item=>item.domain===category));
+        result.value.private_candidates.some(item=>item.domain===category && item.index_original_page_pending!==true));
       if(originalPresent)continue;
       const def=GOVUK_SEARCH_FALLBACKS.find(item=>item.domain===category)!;
       searchedGovukCategories.add(category);
@@ -1262,8 +1292,8 @@ async function discoverOnDemandImpl(
       const hasOriginal=()=>settled.some(result=>
         result.status==="fulfilled" &&
         "private_candidates" in result.value &&
-        result.value.private_candidates.some(item=>item.domain===category)) ||
-        fallbackIssuerGroups.some(group=>group.some(item=>item.domain===category));
+        result.value.private_candidates.some(item=>item.domain===category && item.index_original_page_pending!==true)) ||
+        fallbackIssuerGroups.some(group=>group.some(item=>item.domain===category && item.index_original_page_pending!==true));
       if(hasOriginal()||networkAttempts>=12)continue;
       const alternates=tasks.filter(t=>
         t.category===category && !selected.includes(t) &&
@@ -1293,7 +1323,7 @@ async function discoverOnDemandImpl(
      !settled.some(result=>result.status==="fulfilled" &&
        "private_candidates" in result.value &&
        result.value.private_candidates.some(x=>
-         x.publisher_family==="us_federal_reserve_original_publisher"))){
+         x.publisher_family==="us_federal_reserve_original_publisher" && x.index_original_page_pending!==true))){
     const def=ORIGINAL_FALLBACK_FEEDS.find(x=>
       x.family==="us_federal_reserve_original_publisher")!;
     try{
@@ -1337,8 +1367,8 @@ async function discoverOnDemandImpl(
     const originalPresent=settled.some(result=>
       result.status==="fulfilled" &&
       "private_candidates" in result.value &&
-      result.value.private_candidates.some(item=>item.domain===category)) ||
-      fallbackIssuerGroups.some(group=>group.some(item=>item.domain===category));
+      result.value.private_candidates.some(item=>item.domain===category && item.index_original_page_pending!==true)) ||
+      fallbackIssuerGroups.some(group=>group.some(item=>item.domain===category && item.index_original_page_pending!==true));
     if(originalPresent || searchedGovukCategories.has(category) ||
        networkAttempts>=12)continue;
     const def=GOVUK_SEARCH_FALLBACKS.find(item=>item.domain===category)!;
@@ -1354,11 +1384,15 @@ async function discoverOnDemandImpl(
   // Never persist, log, or expose raw first-party titles/articles here.
   // Every candidate requires the later governed article-page/rights/signing
   // stages; each source institution stays independently identified.
-  const issuerCandidateGroups=[
+  const allIssuerCandidateGroups=[
     ...settled.flatMap(result=>
       result.status==="fulfilled" && "private_candidates" in result.value
         ? [result.value.private_candidates] : []),
     ...fallbackIssuerGroups,
+  ];
+  const candidateTiers=[
+    allIssuerCandidateGroups.map(group=>group.filter(x=>x.index_original_page_pending!==true)),
+    allIssuerCandidateGroups.map(group=>group.filter(x=>x.index_original_page_pending===true)),
   ];
   const private_macro_changes=settled.flatMap(result=>
     result.status==="fulfilled" && "private_macro_changes" in result.value
@@ -1370,10 +1404,14 @@ async function discoverOnDemandImpl(
   // Round-robin preserves distinct publisher families and all 3 categories
   // under heavy news flow; a dominant feed cannot starve a later independent
   // original source of the 16-entry bounded producer budget.
-  for(let i=0;i<4 && private_candidates.length<16;i++) {
-    for(const issuer of issuerCandidateGroups) {
-      if(private_candidates.length>=16)break;
-      if(issuer[i])private_candidates.push(issuer[i]);
+  // Fill the existing budget from native/issuer leads first. External-index
+  // leads only use leftover capacity, never displacing original feed evidence.
+  for(const issuerCandidateGroups of candidateTiers){
+    for(let i=0;i<4 && private_candidates.length<16;i++) {
+      for(const issuer of issuerCandidateGroups) {
+        if(private_candidates.length>=16)break;
+        if(issuer[i])private_candidates.push(issuer[i]);
+      }
     }
   }
   // The same GDELT producer searched for 3 different topics is ONE family,
@@ -1471,6 +1509,11 @@ export async function verifyOnDemandOriginalArticlePages(
       candidate.article_identity_sha256===digest(def.family+"|"+candidate.article_url) &&
       candidate.first_party_article_url_verified===true &&
       (
+        (candidate.index_original_page_pending===true &&
+         candidate.undated_atom_original_page_pending!==true &&
+         candidate.search_index_original_page_pending!==true &&
+         candidate.source_native_feed_publication_date_verified===false &&
+         candidate.feed_item_published_at===null) ||
         (candidate.source_native_feed_publication_date_verified===true &&
          candidate.feed_item_published_at!==null &&
          freshPublished(candidate.feed_item_published_at,now,maxAgeMs) &&
@@ -1493,6 +1536,7 @@ export async function verifyOnDemandOriginalArticlePages(
           /^20\d{2}-\d{2}-\d{2}$/u.test(candidate.official_archive_release_day))
       );
   });
+  eligible.sort((a,b)=>Number(a.index_original_page_pending===true)-Number(b.index_original_page_pending===true));
   const chosen:PrivateOriginalCandidate[]=[];
   const used=new Set<string>();
   const add=(candidate:PrivateOriginalCandidate)=>{
@@ -1552,6 +1596,9 @@ export async function verifyOnDemandOriginalArticlePages(
          Math.abs(Date.parse(precise)-Date.parse(boardRelease.publication_utc))>60_000
         ? null : (precise??(boardBodyTimeAdmissible?boardRelease?.publication_utc:null)??null);
       if(originalDate && freshPublished(originalDate,now,maxAgeMs) &&
+          (candidate.index_original_page_pending!==true ||
+           (indexedHeadlineMatchesOriginalPage(candidate.article_title,html) &&
+            indexedPublisherHasOriginalMetaOutsideScripts(html))) &&
           (!isCanada || originalDate.slice(0,10)===canadaDay) &&
           (!candidate.official_archive_release_day ||
            originalDate.slice(0,10)===candidate.official_archive_release_day) &&
