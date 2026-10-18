@@ -125,6 +125,13 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
   if (!raw || raw.length > 1600) return null;
   try {
     let normalized = unescapeXml(raw);
+    // EIA's own Press Releases RSS emits root-relative original article
+    // links. Resolve ONLY the exact preapproved original pressNNN.php path
+    // to the fixed issuer origin. No user-controlled base, off-host scheme,
+    // query, fragment, double slash or generic same-host article fallback.
+    if (source.id === "eia_press_macro" &&
+        /^\/pressroom\/releases\/press[1-9][0-9]{1,5}\.php$/u.test(normalized))
+      normalized = "https://www.eia.gov" + normalized;
     const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((s:{id:string})=>s.id===source.id);
     if(global)return globalOriginalArticleUrl(normalized,global);
     // Official ECB first-party feeds are known to emit a second slash
@@ -139,6 +146,12 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
     if (source.govContentApi &&
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
+    // EIA Press Room's numbered original release article, not the source
+    // landing/search page, Today-in-Energy, RSS feed or mirror. An issuer
+    // release URL does NOT certify source rights or signed GRI eligibility.
+    if (source.id === "eia_press_macro" &&
+        (link.search || !/^\/pressroom\/releases\/press[1-9][0-9]{1,5}\.php$/u.test(link.pathname)))
+      return null;
     // Australian Industry minister: admit ONLY original issuer media articles.
     // This private first-party RSS is NOT a second independent corroborator,
     // commercial permission, GRO, or authorized current risk score.
@@ -213,6 +226,11 @@ export function selectOfficialTopic(title: string, category: StatelessCategory) 
 // article day may receive this conservative unscored publication fallback.
 // Only issuer-verified original article dates may enable a day-only AU
 // Resources observation; retrieval and modified clocks remain ineligible.
+const EIA_MACRO_ENERGY_TOPIC = {
+  test: /\b(?:energy prices?|oil prices?|crude oil|oil production|fuel costs?|winter fuels?|electricity generation|natural gas|Short-Term Energy Outlook|energy security)\b/iu,
+  name: "energy supply and cost outlook",
+  implication: "Original U.S. energy supply and cost releases may inform macroeconomic conditions; actual values, energy-price direction and risk scoring require separately checked evidence.",
+};
 const AU_RESOURCES_DAY_SOURCE_IDS = new Set([
   "au_resources_macro_index", "au_resources_minerals_index",
 ]);
@@ -236,6 +254,8 @@ function topicForOriginal(
   title: string, category: StatelessCategory, sourceId: string, dayVerified: boolean,
 ) {
   return selectOfficialTopic(title, category) ??
+    (category === "macro" && sourceId === "eia_press_macro" &&
+      EIA_MACRO_ENERGY_TOPIC.test.test(title) ? EIA_MACRO_ENERGY_TOPIC : null) ??
     (category === "macro" && dayVerified && sourceId === "au_resources_macro_index" &&
       AU_RESOURCES_TRADE_TOPIC.test.test(title) ? AU_RESOURCES_TRADE_TOPIC : null) ??
     (category === "macro" && dayVerified && STATCAN_FEED_IDS.has(sourceId)
