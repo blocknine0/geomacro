@@ -65,8 +65,8 @@ describe("full source production alignment", () => {
     expect(workflow).toContain("EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx");
     expect(workflow).toContain("SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}");
     expect(workflow).toContain("uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1");
-    expect(workflow).toContain("uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020");
-    expect(workflow).toContain("uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
+    expect(workflow).toContain("uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1");
+    expect(workflow).toContain("uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9");
   });
 
   it("does not enable payment, settlement or mainnet", () => {

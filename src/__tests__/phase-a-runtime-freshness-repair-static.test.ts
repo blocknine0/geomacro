@@ -89,7 +89,7 @@ describe("Phase A runtime freshness repair", () => {
     expect(workflow).not.toContain("\n  push:\n");
     expect(workflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
     expect(workflow).toContain("FROZEN_SUPABASE_LEGACY_RECOVERY_QUOTA_HELD");
-    expect(workflow).toContain("uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
+    expect(workflow).toContain("uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9");
   });
 
   it("fails unless every registry x domain cell is genuinely READY", () => {

@@ -47,7 +47,7 @@ jobs:
           [[ "${CANDIDATE_SHA,,}" == "${DISPATCH_SHA,,}" ]]
 
       - name: Verify independent marketplace observation happened first
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v8
         env:
           EXPECTED_SHA: ${{ inputs.candidate_sha }}
           MARKETPLACE_RUN: ${{ inputs.marketplace_observation_run_id }}
@@ -66,7 +66,7 @@ jobs:
         run: node scripts/commerce/post-listing-health.mjs
 
       - name: Upload sanitized post-listing health evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: post-listing-health-${{ github.run_id }}
           path: /tmp/post-listing-health.json

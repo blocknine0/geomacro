@@ -62,7 +62,7 @@ jobs:
           NODE
       - name: Preserve sanitized source-only acceptance (no customer/source bytes)
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: first-qualified-digest-source-only-${{ github.run_id }}
           path: artifacts/first-qualified-structural-digest-receipt.json
@@ -103,7 +103,7 @@ jobs:
         run: bun scripts/ops/prepare-first-qualified-country-digest.ts --archive-private
       - name: Retain sanitized result only, never source or customer bytes
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: first-qualified-country-digest-receipt
           path: artifacts/first-qualified-structural-digest-receipt.json
