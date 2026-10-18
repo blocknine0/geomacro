@@ -130,7 +130,9 @@ export async function requestGriSignedReadyCadence({
     throw Error("GRI_SIGNED_READY_DISPATCH_REJECTED");
   return {
     schema:"geomacro.gri-signed-ready-backstop.v1",
-    status:retry.status==="SIGNED_GRI_PUBLISHER_RETRY_ONCE_AFTER_FAILURE"\n      ?"DISPATCHED_SINGLE_BOUNDED_RETRY_REQUIRES_SIGNED_GRI_PROOF"\n      :"DISPATCHED_REQUIRES_INDEPENDENT_SIGNED_GRI_PROOF",
+    status:retry.status==="SIGNED_GRI_PUBLISHER_RETRY_ONCE_AFTER_FAILURE"
+      ?"DISPATCHED_SINGLE_BOUNDED_RETRY_REQUIRES_SIGNED_GRI_PROOF"
+      :"DISPATCHED_REQUIRES_INDEPENDENT_SIGNED_GRI_PROOF",
     reason:ready.reason,
     scheduled:true,published:false,
     reviewed_input_verified:false,
