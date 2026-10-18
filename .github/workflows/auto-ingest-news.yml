@@ -8,6 +8,11 @@ name: Auto Ingest News
 
 on:
   workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/auto-ingest-news.yml"
+      - "scripts/ops/report-gri-four-gates-readiness.mjs"
+      - "scripts/lib/gri-four-gates-readiness.test.mjs"
   schedule:
     - cron: "37 * * * *"
   push:
@@ -21,6 +26,8 @@ on:
       - "scripts/lib/material-gri-country-evidence-worklist.mjs"
       - "scripts/ops/build-material-gri-country-worklist.mjs"
       - "scripts/tests/material-gri-country-evidence-worklist.test.mjs"
+      - "scripts/ops/report-gri-four-gates-readiness.mjs"
+      - "scripts/lib/gri-four-gates-readiness.test.mjs"
 
 permissions:
   contents: read
@@ -31,6 +38,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  four-gate-contract-tests:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Test independent GRI gates and protected original/rights invariants (no credentials)
+        run: |
+          node --check scripts/ops/report-gri-four-gates-readiness.mjs
+          node --test scripts/lib/gri-four-gates-readiness.test.mjs
+
   ingest-supabase-free-derived-news:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     # Reuse the audited backstop, its 70-minute signed-publication proof,
@@ -70,6 +95,25 @@ jobs:
         run: node scripts/ops/export-material-gri-review-from-d1.mjs
       - name: Build 195-country GRI source-qualification worklist (no scoring or signed claims)
         run: node scripts/ops/build-material-gri-country-worklist.mjs
+      - name: Verify all four independent GRI eligibility gates without funds or publisher data
+        env:
+          GRI_READY_REVIEWED_SHA256: ${{ vars.GRI_READY_REVIEWED_SHA256 }}
+          GRI_READY_CERTIFICATES_SHA256: ${{ vars.GRI_READY_CERTIFICATES_SHA256 }}
+          GRI_READY_APPROVED_AT: ${{ vars.GRI_READY_APPROVED_AT }}
+        run: |
+          set -euo pipefail
+          node --test scripts/lib/gri-four-gates-readiness.test.mjs
+          node scripts/ops/report-gri-four-gates-readiness.mjs
+
+      - name: Preserve sanitized four-gate readiness status for diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: auto-ingest-gri-four-gate-status-${{ github.run_id }}
+          path: artifacts/derived-news/gri-four-gates-readiness.json
+          if-no-files-found: warn
+          retention-days: 3
+
       - name: Preserve bounded private GRI country worklist
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
