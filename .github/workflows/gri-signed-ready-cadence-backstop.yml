@@ -1,0 +1,78 @@
+name: GRI v1.2 Genuine Signed Ready Cadence Backstop (No Funds)
+
+# Missed-dispatch safety net, NOT an unreviewed ingestion-to-GRI bridge.
+# Repository variables carry immutable *hints* only; private reviewer
+# signatures and canonical scoring are checked independently downstream.
+on:
+  schedule:
+    - cron: "13,43 * * * *"
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/gri-signed-ready-cadence-backstop.yml"
+      - "scripts/lib/gri-signed-ready-cadence-hint.mjs"
+      - "scripts/lib/gri-signed-ready-cadence-hint.test.mjs"
+      - "scripts/ops/dispatch-gri-signed-ready-cadence.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/gri-signed-ready-cadence-backstop.yml"
+      - "scripts/lib/gri-signed-ready-cadence-hint.mjs"
+      - "scripts/lib/gri-signed-ready-cadence-hint.test.mjs"
+      - "scripts/ops/dispatch-gri-signed-ready-cadence.mjs"
+
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-gri-signed-ready-cadence-backstop
+  cancel-in-progress: false
+
+jobs:
+  admission-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Fail-closed immutable reviewed input hint tests
+        run: node --test scripts/lib/gri-signed-ready-cadence-hint.test.mjs
+
+  enqueue-approved-review:
+    needs: admission-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    env:
+      EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
+      GRI_READY_REVIEWED_SHA256: ${{ vars.GRI_READY_REVIEWED_SHA256 }}
+      GRI_READY_CERTIFICATES_SHA256: ${{ vars.GRI_READY_CERTIFICATES_SHA256 }}
+      GRI_READY_APPROVED_AT: ${{ vars.GRI_READY_APPROVED_AT }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Require protected exact main and strict canonical GRI target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_CANONICAL_MAIN_SHA" = "$(git rev-parse HEAD)"
+          test -f .github/workflows/gri-v12-supabase-free-reviewed-current.yml
+          grep -Fq 'types: [gri_reviewed_current_ready]' .github/workflows/gri-v12-supabase-free-reviewed-current.yml
+          grep -Fq 'CURRENT_GRI_IMMUTABLE_INPUT_KEY_SHA_NOT_BOUND' .github/workflows/gri-v12-supabase-free-reviewed-current.yml
+      - name: Enqueue only recent pinned signed review if available, without reading B2
+        run: node scripts/ops/dispatch-gri-signed-ready-cadence.mjs
