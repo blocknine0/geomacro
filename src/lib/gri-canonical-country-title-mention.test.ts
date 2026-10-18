@@ -106,3 +106,21 @@ describe("first-party literal countries remain country-routable in 90m private G
     expect(JSON.stringify(work)).not.toContain("example.org");
   });
 });
+
+describe("Gaza original-name routing into canonical Palestinian-territories geography",()=>{
+  it("maps existing derived Palestinian territories wording to the canonical PSE ISO3 without changing sovereignty claims",()=>{
+    const signals=a("geopolitics","Security ceasefire announcement in Gaza");
+    expect(signals).toHaveLength(1);
+    expect(signals[0].geography).toBe("Palestinian territories");
+    const q=buildMaterialGriNewsReviewQueue([
+      {category:"geopolitics",checked_at:new Date(NOW).toISOString(),healthy_feed_count:1,signals},
+      {category:"macro",checked_at:new Date(NOW).toISOString(),healthy_feed_count:1,signals:[]},
+      {category:"rare_earth",checked_at:new Date(NOW).toISOString(),healthy_feed_count:1,signals:[]},
+    ],NOW);
+    const original=readFileSync("src/lib/canonical-country-registry-195.ts","utf8");
+    const w=buildMaterialGriCountryEvidenceWorklist(q,original,NOW);
+    expect(w.categories[0].review_targets[0].country_iso3).toBe("PSE");
+    expect(w.categories[0].review_targets[0].gri_score).toBeNull();
+    expect(w.public_gri_or_indices_written).toBe(false);
+  });
+});
