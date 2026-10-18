@@ -125,6 +125,13 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
   if (!raw || raw.length > 1600) return null;
   try {
     let normalized = unescapeXml(raw);
+    // EIA's own Press Releases RSS emits root-relative original article
+    // links. Resolve ONLY the exact preapproved original pressNNN.php path
+    // to the fixed issuer origin. No user-controlled base, off-host scheme,
+    // query, fragment, double slash or generic same-host article fallback.
+    if (source.id === "eia_press_macro" &&
+        /^\/pressroom\/releases\/press[1-9][0-9]{1,5}\.php$/u.test(normalized))
+      normalized = "https://www.eia.gov" + normalized;
     const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((s:{id:string})=>s.id===source.id);
     if(global)return globalOriginalArticleUrl(normalized,global);
     // Official ECB first-party feeds are known to emit a second slash
