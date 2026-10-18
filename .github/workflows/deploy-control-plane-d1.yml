@@ -215,6 +215,50 @@ jobs:
           test "$CODE" = "200" || { echo "Authenticated control-plane write failed: HTTP $CODE"; cat /tmp/auth.json; exit 9; }
           grep -q '"ok":true' /tmp/auth.json || { echo "Authenticated response missing ok=true"; exit 9; }
 
+      - name: Verify three-domain continuity direct Worker readback (no funds)
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          trap 'rm -f "$body"' EXIT
+          http=''
+          for attempt in 1 2 3 4 5 6; do
+            http="$(curl -sS --max-time 12 -o "$body" -w '%{http_code}' "$CONTROL_PLANE_URL/v1/public/three-domain-continuity" || true)"
+            if test "$http" = 200 && jq -e '
+              .ok==true and
+              .schema=="geomacro.three-domain-evidence-continuity.v1" and
+              .three_domains_returned==true and
+              .chargeable==false and
+              .x402_payment_required==false and
+              .upstream_new_event_guaranteed==false and
+              .commercial_rights_verified==false and
+              .signed_gro_verified==false and
+              .raw_upstream_delivered==false and
+              ((.categories|keys|sort)==(["geopolitics","macro","rare_earth"]|sort)) and
+              ([.categories[] |
+                (.category|type)=="string" and
+                (.source_check_current|type)=="boolean" and
+                .commercial_rights_verified==false and
+                .chargeable==false and .current_news_guaranteed==false] | all)
+            ' "$body" >/dev/null 2>&1; then
+              jq -c '{schema:"geomacro.continuity-live-deploy-acceptance.v1",
+                category_states:(.categories|with_entries(.value={
+                  service_state:.value.service_state,
+                  source_check_current:.value.source_check_current,
+                  derived_news_last_72h:.value.native_news_event_count_72h
+                })),
+                source_monitoring_schedule_guaranteed,
+                all_categories_have_observation, all_categories_source_check_current,
+                raw_upstream_delivered:false,chargeable:false,payments:0}' "$body"
+              exit 0
+            fi
+            sleep "$attempt"
+          done
+          echo "::error::THREE_DOMAIN_CONTINUITY_DIRECT_D1_LIVE_READBACK_FAILED"
+          exit 10
+
       - name: Verify authenticated D1 central security budgets without B2 or payment
         run: node scripts/ops/verify-d1-central-security-budget.mjs
 
