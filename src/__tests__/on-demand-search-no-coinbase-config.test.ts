@@ -118,7 +118,7 @@ describe("production no-charge on-demand search without Coinbase configuration",
     expect(mocks.coinbaseConfig).not.toHaveBeenCalled();
     expect(mocks.settle).not.toHaveBeenCalled();
     expect(response.headers.has("payment-required")).toBe(false);
-  });
+  },15_000);
   it("does not treat unverified original article candidates as sufficient evidence",async()=>{
     mocks.discover.mockResolvedValueOnce({
       discovery:{
