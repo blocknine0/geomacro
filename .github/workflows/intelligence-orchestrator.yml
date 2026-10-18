@@ -114,7 +114,9 @@ jobs:
       BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
       TELEGRAM_ENABLED: "false"
       BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
-      INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: "8"
+      # Two actual Supabase-free D1 tasks only: one runtime and one bounded
+      # six-hourly source audit. Never spawn 8 simultaneous/queued probes.
+      INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: "2"
 
     steps:
       - name: Checkout canonical main
