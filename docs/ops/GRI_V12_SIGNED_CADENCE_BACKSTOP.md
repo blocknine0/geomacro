@@ -34,6 +34,41 @@ A valid recent pointer causes one narrowly targeted GitHub Actions workflow_disp
 
 Never dispatch on unscored material news, raw publisher content, self-granted third-party source permission or a mere website heartbeat. Never unfreeze Supabase, backdate data, create fake independent originals, or enable USDC.
 
+## Genuine current signed GRI blockage — operationally explicit
+
+The backstop now writes a **no-funds, metadata-only** GitHub Actions Job Summary
+on every run. An action marked successful only indicates that the scheduled
+gate actually executed. If any of the separately approved B2 reviewed-input
+SHA, current country/category certification SHA, or authentic approval clock
+is absent/stale, the summary explicitly says **NOT VERIFIED** and identifies
+which prerequisite is missing. No signed B2 SHA, publisher article, reviewer
+secret or private evidence is printed. A structurally valid hint still has
+`current_numerical_score_verified=false` until the separate protected
+publisher completes actual independent signature, original byte/clock,
+lawful upstream source-use, scoring, B2 history/gzip readback, D1 promotion
+and public readback. This prevents “auto-ingest is green” from being confused
+with “new genuine signed numerical GRI v1.2 is live.”
+
+### Current externally observed blocker (2026-10-18 UTC)
+
+The GRI signed-ready backstop run `39155120555` completed successfully,
+but the three approved pointer variables were **all empty**. It emitted
+`SKIPPED_NO_CURRENT_EXTERNALLY_REVIEWED_INPUT` and
+`NO_EXTERNALLY_APPROVED_SIGNED_INPUT_POINTER` with zero B2/D1/Supabase/USDC
+operations. This is not a GRI scoring bug: there was no independent
+reviewer-signed commercial scored package or current country/category
+certification submitted. Public D1 Hot Serving Root Cause run
+`39155263765` confirms all three legacy signed products have rejected,
+old/expired metadata. Owner licensing of Geomacro-original structured output
+does **not** confer rights to original third-party articles.
+
+The only valid permanent data recovery is supplying a genuine, current
+country/domain scoped and independently approved scored reviewer package
+and matching signed certificates plus pinned B2 history, followed by the
+existing guarded publisher and Risk Indices continuation. No protected
+workflow should manufacture a score from the source-free high-impact
+shortlist.
+
 ## Acceptance
 
 1. node --test scripts/lib/gri-signed-ready-cadence-hint.test.mjs
