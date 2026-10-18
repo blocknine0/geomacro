@@ -24,7 +24,10 @@ export function decideGriHistoryQuotaAdmission({rows,now=new Date()}={}){
    throw Error("GRI_HISTORY_QUOTA_DATE_OR_FIELDS_INVALID");
  const counters={};
  for(let i=0;i<NUM_FIELDS.length;i++){
-   const field=NUM_FIELDS[i],name=COUNTER_COLUMNS[i],v=rows.length===0?0:Number(record[field]);
+   const field=NUM_FIELDS[i],name=COUNTER_COLUMNS[i];
+   if(rows.length===1&&(record[field]===null||record[field]===undefined))
+     throw Error("GRI_HISTORY_QUOTA_COUNTER_INVALID");
+   const v=rows.length===0?0:Number(record[field]);
    if(!Number.isSafeInteger(v)||v<0||v>LIMITS[name])
      throw Error("GRI_HISTORY_QUOTA_COUNTER_INVALID");
    counters[name]=v;
