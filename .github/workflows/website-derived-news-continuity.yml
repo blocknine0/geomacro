@@ -24,6 +24,8 @@ on:
       - "scripts/ops/publish-automated-finds.ts"
       - "scripts/lib/automated-finds-run-health.mjs"
       - "scripts/lib/derived-news-source-health.mjs"
+      - "scripts/lib/material-gri-news-review.mjs"
+      - "scripts/tests/material-gri-news-review.test.mjs"
   schedule:
     - cron: "7 * * * *"
 
@@ -166,3 +168,12 @@ jobs:
           path: artifacts/derived-news/source-health.json
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Save bounded high-impact GRI evidence-review candidates (no scoring)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: material-gri-original-review-${{ github.run_id }}
+          path: artifacts/derived-news/material-gri-review.json
+          if-no-files-found: warn
+          retention-days: 3
