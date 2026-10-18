@@ -15,6 +15,9 @@ on:
     paths:
       - ".github/workflows/auto-ingest-news.yml"
       - ".github/workflows/website-derived-news-cadence-backstop.yml"
+      - "scripts/lib/material-gri-news-review.mjs"
+      - "scripts/ops/export-material-gri-review-from-d1.mjs"
+      - "scripts/tests/material-gri-news-review.test.mjs"
 
 permissions:
   contents: read
@@ -36,6 +39,40 @@ jobs:
       contents: read
       actions: read
     secrets: inherit
+
+  material-gri-derived-review:
+    # Runs on every :37/manual/push invocation, including legitimate no-op
+    # recovery when the :07 primary is current. Read ONLY the derived D1
+    # journal: no duplicate raw collection, quota-heavy B2, or inferred odds.
+    # This is a private evidence-review queue, not GRI scoring/publication.
+    needs: ingest-supabase-free-derived-news
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.ingest-supabase-free-derived-news.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout canonical event-classification policy
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Test exact 72-hour source-free event review policy
+        run: node --test scripts/tests/material-gri-news-review.test.mjs
+      - name: Select material developments from actual D1-derived readback
+        run: node scripts/ops/export-material-gri-review-from-d1.mjs
+      - name: Save private 72-hour GRI review candidates
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: auto-ingest-material-gri-review-${{ github.run_id }}
+          path: artifacts/derived-news/material-gri-review.json
+          if-no-files-found: warn
+          retention-days: 3
 
   recover-news-ingest:
     # Legacy Supabase recovery retired: never execute from manual dispatch,
