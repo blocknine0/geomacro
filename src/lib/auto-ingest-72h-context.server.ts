@@ -1,5 +1,5 @@
 import {country195ByIso3} from "./canonical-country-registry-195";
-import {fetchDirectDerivedNews} from "./public-derived-news-client";
+import {fetchDirectDerivedNews,fetchAllDerivedNews} from "./public-derived-news-client";
 import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
 
 type Domain="geopolitics"|"macro"|"rare_earth";
@@ -32,7 +32,7 @@ export function buildAutoIngest72hStructuredDrafts(
 ):AutoIngestStructuredDraft[]{
   const country=country195ByIso3(iso3);
   if(!country||!Number.isFinite(now)||!Array.isArray(signals)||
-     signals.length>250||!Array.isArray(categories)||categories.length<1||
+     signals.length>600||!Array.isArray(categories)||categories.length<1||
      categories.length>3||categories.some(c=>!["geopolitics","macro","rare_earth"].includes(c)))
     return [];
   // The original title's finite-vocabulary geography flag cannot be
@@ -60,7 +60,7 @@ export function buildAutoIngest72hStructuredDrafts(
       commercial_derived_rights_verified:false,signed_product_verified:false,
       payable:false,
     });
-    if(drafts.length>=16)break;
+    if(drafts.length>=64)break;
   }
   return drafts;
 }
@@ -76,4 +76,20 @@ export async function readAutoIngest72hStructuredDrafts(
     const signals=await fetchDirectDerivedNews(fetchImpl,now);
     return buildAutoIngest72hStructuredDrafts(signals,iso3,categories,now);
   }catch{return [];}
+}
+
+/** Complete bounded multi-page D1 research context for paid API discovery.
+ * This never authorizes commercial output, evidence signing or a charge.
+ * During older Worker deploys we preserve the safe previous 250-row reader.
+ */
+export async function readAllAutoIngest72hStructuredDrafts(
+  iso3:string,categories:readonly Domain[],fetchImpl:typeof fetch=fetch,
+  now=Date.now(),
+):Promise<AutoIngestStructuredDraft[]>{
+  try{
+    return buildAutoIngest72hStructuredDrafts(
+      await fetchAllDerivedNews(fetchImpl,now),iso3,categories,now);
+  }catch{
+    return readAutoIngest72hStructuredDrafts(iso3,categories,fetchImpl,now);
+  }
 }
