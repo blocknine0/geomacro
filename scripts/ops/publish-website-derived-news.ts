@@ -8,6 +8,7 @@
 import { createHmac } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { summarizeDerivedSourceHealth } from "../lib/derived-news-source-health.mjs";
+import { buildMaterialGriNewsReviewQueue } from "../lib/material-gri-news-review.mjs";
 import { readStatelessWebsiteIntelligence } from "../../src/lib/stateless-public-intelligence.server";
 import {
   conservativeDayReleaseMs,reconcilePrivateDerivedSourceRefs,
@@ -96,6 +97,25 @@ for (const category of categories) {
     console.error("::error::WEBSITE_DERIVED_NEWS_INGEST_"+category.toUpperCase()+"_UNAVAILABLE");
   }
 }
+// High-impact / prediction-market-like event triage is derived only from
+// the already validated issuer-release *structured* cards. No raw source
+// data, odds, article bodies, inferred outcomes, risk scores or publisher IDs
+// leave this process. A candidate NEVER authorizes GRI/Indices recomputation.
+// The bounded 72h review receipt is useful for a separate signed-evidence gate.
+try {
+  const queue=buildMaterialGriNewsReviewQueue(reports,Date.now());
+  mkdirSync("artifacts/derived-news",{recursive:true});
+  writeFileSync("artifacts/derived-news/material-gri-review.json",
+    JSON.stringify(queue,null,2)+"\\n",{encoding:"utf8",mode:0o600});
+  console.log(JSON.stringify({schema:"geomacro.material-gri-review-health.v1",
+    categories:queue.categories.map(c=>({category:c.category,candidates:c.candidates_count})),
+    destination:queue.destination,retention_hours:72,
+    gri_writes:0,rights_verified:false,payments:0}));
+}catch{
+  success=false;
+  console.error("::error::MATERIAL_GRI_PRIVATE_REVIEW_CANDIDATES_UNAVAILABLE");
+}
+
 // An ephemeral, sanitized hourly source-health artifact helps identify outages
 // without storing raw feeds, article links or publisher names. Derived signals
 // are already persisted and deduplicated in D1 with a strict 72h/600-row cap.
