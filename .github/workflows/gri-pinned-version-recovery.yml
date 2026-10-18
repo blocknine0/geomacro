@@ -13,6 +13,7 @@ on:
       - "scripts/ops/recover-gri-pinned-b2-version.mjs"
       - "scripts/ops/restore-gri-verified-version-to-d1.mjs"
       - "scripts/ops/preflight-gri-historical-shared-quota.mjs"
+      - "scripts/ops/preflight-gri-historical-existing-d1.mjs"
       - ".github/workflows/gri-pinned-version-recovery.yml"
   pull_request:
     paths:
@@ -22,6 +23,7 @@ on:
       - "src/__tests__/gri-verified-version-d1-restore.test.ts"
       - "scripts/ops/preflight-gri-historical-shared-quota.mjs"
       - "src/__tests__/gri-historical-quota-aware-recovery.test.ts"
+      - "src/__tests__/gri-historical-d1-idempotent-before-b2.test.ts"
       - ".github/workflows/gri-pinned-version-recovery.yml"
 permissions:
   contents: read
@@ -40,7 +42,7 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile --ignore-scripts
-      - run: bunx vitest run src/__tests__/gri-pinned-version-recovery.test.ts src/__tests__/gri-b2-historical-live-readback.test.ts src/__tests__/gri-verified-version-d1-restore.test.ts src/__tests__/gri-historical-quota-aware-recovery.test.ts
+      - run: bunx vitest run src/__tests__/gri-pinned-version-recovery.test.ts src/__tests__/gri-b2-historical-live-readback.test.ts src/__tests__/gri-verified-version-d1-restore.test.ts src/__tests__/gri-historical-quota-aware-recovery.test.ts src/__tests__/gri-historical-d1-idempotent-before-b2.test.ts
   pinned-original-version:
     needs: contract
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -96,16 +98,25 @@ jobs:
           if(rows.length!==1||!/^[a-f0-9-]{36}$/.test(rows[0].uuid??''))throw Error('GRI_VERSION_D1_LEDGER_REQUIRED');
           appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+rows[0].uuid+'\n');
           JS
+      - name: Check whether the exact D1-pinned historical proof is already recorded
+        id: gri_history_existing
+        run: node scripts/ops/preflight-gri-historical-existing-d1.mjs
+      - name: Avoid replaying an already recorded historical B2 version
+        if: steps.gri_history_existing.outputs.already_restored == 'true'
+        run: |
+          echo "::notice::GRI_HISTORY_PINNED_D1_ALREADY_RESTORED_NO_B2_REPLAY"
+          echo "Exact prior D1 historical anchor recorded; B2 re-read not attempted. No current signed GRI claim." >> "$GITHUB_STEP_SUMMARY"
       - name: Preflight authenticated D1 account-wide B2 quota without using any B2 ticket
+        if: steps.gri_history_existing.outputs.already_restored != 'true'
         id: gri_history_quota
         run: node scripts/ops/preflight-gri-historical-shared-quota.mjs
       - name: Disclose quota-held historical recovery without claiming restored lineage
-        if: steps.gri_history_quota.outputs.ready != 'true'
+        if: steps.gri_history_existing.outputs.already_restored != 'true' && steps.gri_history_quota.outputs.ready != 'true'
         run: |
           echo "::notice::GRI_HISTORY_SHARED_QUOTA_HELD_NO_RESTORE"
           echo "GRI historical B2 immutable version was NOT read. No current product was promoted." >> "$GITHUB_STEP_SUMMARY"
       - name: Restore the exact pinned original to D1 history and independently verify the historical website view
-        if: steps.gri_history_quota.outputs.ready == 'true'
+        if: steps.gri_history_existing.outputs.already_restored != 'true' && steps.gri_history_quota.outputs.ready == 'true'
         run: node scripts/ops/restore-gri-verified-version-to-d1.mjs
       - name: Preserve only sanitized historical readback metadata
         if: always()
