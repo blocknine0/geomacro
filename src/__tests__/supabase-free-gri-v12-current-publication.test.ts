@@ -143,6 +143,22 @@ describe("Supabase-free Global Risk GRI v1.2 signed hot publisher",()=>{
     expect(result.liveValue.data.verificationStatus).toBe("verified");
     expect(result.liveValue.data.methodologyVersion).toBe("gri-v1.2.0");
     expect(result.liveValue.data.coverage).toBe(1);
+    // The independently pinned historical B2 anchor is a REAL numeric
+    // comparison, never a fabricated current news score or event attribution.
+    expect(result.liveValue.data.previousRaw).toBe(42);
+    expect(result.liveValue.data.previous).toBe(42);
+    expect(result.liveValue.data.rawScore).toBeGreaterThan(42);
+    expect(result.historyValue.verified_snapshot_rows[0].previous_as_of)
+      .toBe(f.history.snapshot_as_of);
+    expect(result.historyValue.verified_snapshot_rows[0].previous_raw_score).toBe(42);
+    expect(result.historyValue.verified_snapshot_rows[0].change_points)
+      .toBeCloseTo(result.liveValue.data.rawScore - 42,10);
+    expect(result.historyValue.verified_snapshot_rows[0].change_hash).toBeNull();
+    expect(result.historyValue.verified_snapshot_rows[0].change_attribution).toBeNull();
+    expect(result.reviewProof.historical_numeric_comparison)
+      .toBe("VERIFIED_HISTORICAL_RAW_SCORE_DIFFERENCE_ONLY");
+    expect(result.reviewProof.numerical_change_not_event_attribution).toBe(true);
+
     expect(result.liveValue.data.domainIndices.macro.series["7D"].buckets.length).toBeGreaterThanOrEqual(2);
     expect(result.reviewProof.portable_proof_hash).toBe(result.liveValue.data.proofHash);
     expect(result.liveValue.data.recentEvents).toEqual([]);
