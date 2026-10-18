@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {selectFreshIntelligenceFromReviewedGri} from "./gri-reviewed-to-current-intelligence.mjs";
+import {selectFreshIntelligenceFromReviewedGri,mayPromoteNewerReviewedIntelligence} from "./gri-reviewed-to-current-intelligence.mjs";
 
 const now=new Date("2026-10-18T10:00:00Z");
 const item=(id,category,ageMin)=>({
@@ -66,4 +66,34 @@ test("publisher continuation rechecks signed GRI and independent source qualific
   assert.ok(cli.includes("payment_executed:false"));
   assert.ok(!cli.includes("settleCoinbaseX402("));
   assert.ok(!cli.includes("RISK_OBJECT_SIGNING_PRIVATE_KEY"));
+});
+
+test("never overwrite an already newer current verified Intelligence B2 pointer",async()=>{
+  const clock=new Date();
+  const old=new Date(clock.getTime()-25*60_000).toISOString();
+  const latest=new Date(clock.getTime()-10*60_000).toISOString();
+  const rows=[item("a","geopolitics",30),item("b","macro",50),item("c","rare_earth",90)]
+    .map(x=>({...x,published_at:old}));
+  const result=await mayPromoteNewerReviewedIntelligence({rows,fetchImpl:async()=>new Response(
+    JSON.stringify({ok:true,product:"intelligence",source_as_of:latest,
+      full_b2_readback_verified:true,exact_gzip_restore_verified:true}),{status:200,
+        headers:{"content-type":"application/json"}})});
+  assert.equal(result.canPublish,false);
+  assert.equal(result.reason,"CURRENT_INTELLIGENCE_HAS_EQUAL_OR_NEWER_ORIGINAL");
+});
+test("missing old D1 hot Intelligence allows genuinely eligible new verified batch",async()=>{
+  const rows=[{published_at:new Date().toISOString()},
+    {published_at:new Date().toISOString()},{published_at:new Date().toISOString()}];
+  const result=await mayPromoteNewerReviewedIntelligence({rows,
+    fetchImpl:async()=>new Response(JSON.stringify({error:"HOT_SNAPSHOT_STALE_OR_INVALID"}),{status:503})});
+  assert.equal(result.canPublish,true);
+  assert.equal(result.reason,"NO_CURRENT_VERIFIED_INTELLIGENCE");
+});
+test("untrusted 200 and transport failure fail closed before a B2 overwrite",async()=>{
+  const rows=[{published_at:new Date().toISOString()},
+    {published_at:new Date().toISOString()},{published_at:new Date().toISOString()}];
+  await assert.rejects(()=>mayPromoteNewerReviewedIntelligence({rows,
+    fetchImpl:async()=>new Response("{}",{status:200})}),/PROOF_INVALID/u);
+  await assert.rejects(()=>mayPromoteNewerReviewedIntelligence({rows,
+    fetchImpl:async()=>{throw Error("blocked")}}),/READ_UNAVAILABLE/u);
 });
