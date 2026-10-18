@@ -44,7 +44,7 @@ for (const category of categories) {
     const report=await readStatelessWebsiteIntelligence(category,Date.now(),
       (index, diagnostics)=>lanes.push({index,transport_ok:diagnostics.transport_ok,
         failure_class:diagnostics.transport_failure_class}),
-      candidates=>privateOriginals.push(...candidates));
+      candidates=>privateOriginals.push(...candidates),200);
     const health=summarizeDerivedSourceHealth(category,report.feed_count,report.healthy_feed_count,lanes);
     sourceHealthReceipts.push(health);
     if(health.sources_unavailable>0 || !health.diagnostics_complete)
@@ -65,22 +65,29 @@ for (const category of categories) {
         signal.severity===null && signal.same_event_corrob_verified===false &&
         signal.sources_credited.every(v=>typeof v==="string");
     });
-    // Always send a bounded authenticated heartbeat, including EMPTY batches.
-    // This prunes expired D1 records during quiet issuer hours.
-    {
-      // The content is transmitted only to OUR authenticated Cloudflare
-      // control plane. Never log request or response body.
+    // Existing D1 journal remains capped at 600 rows; each source-neutral
+    // eligible release is processed, with 40-row chunks under the control
+    // plane's strict 64KiB authenticated request limit. No upstream bytes.
+    // EMPTY batches remain required for truthful retention sweeps.
+    const chunks=signals.length
+      ?Array.from({length:Math.ceil(signals.length/40)},(_,i)=>signals.slice(i*40,(i+1)*40))
+      :[[]];
+    let acknowledged=0;
+    for(const chunk of chunks){
       const reply=await fetch(ENDPOINT,{
         method:"PUT",redirect:"error",cache:"no-store",
         headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},
-        body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals}),
+        body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:chunk}),
         signal:AbortSignal.timeout(12_000),
       });
-      if (!reply.ok) throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_REJECTED_"+reply.status);
-      const acknowledgment=await reply.json() as {ok?:boolean;accepted?:number};
-      if(acknowledgment.ok!==true || acknowledgment.accepted!==signals.length)
+      if(!reply.ok)throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_REJECTED_"+reply.status);
+      const receipt=await reply.json() as {ok?:boolean;accepted?:number};
+      if(receipt.ok!==true||receipt.accepted!==chunk.length)
         throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_ACK_INVALID");
+      acknowledged+=chunk.length;
     }
+    if(acknowledged!==signals.length)
+      throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_PARTIAL");
     console.log(JSON.stringify({
       schema:"geomacro.website-derived-news-ingest-metrics.v1",category,
       source_feeds_healthy:report.healthy_feed_count,

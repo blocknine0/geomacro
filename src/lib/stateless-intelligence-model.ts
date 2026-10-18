@@ -445,9 +445,11 @@ function viewIdentifier(input: string): string {
 export function deriveStatelessSignals(
   candidates: readonly StatelessSourceCandidate[],
   now = Date.now(),
-  options: {websiteDelay?:boolean} = {},
+  options: {websiteDelay?:boolean;maxSignals?:number} = {},
 ): StatelessIntelligenceSignal[] {
   if (!Number.isFinite(now)) return [];
+  const maxSignals=options.maxSignals===undefined?50:options.maxSignals;
+  if(!Number.isSafeInteger(maxSignals)||maxSignals<1||maxSignals>200)return [];
   const cutoff = now - (options.websiteDelay===false?0:STATELESS_WEBSITE_DELAY_MS);
   const unique = new Set<string>();
   const result: StatelessIntelligenceSignal[] = [];
@@ -512,7 +514,7 @@ export function deriveStatelessSignals(
   // unearned independent same-event corroboration.
   return result.sort((a, b) =>
     b.published_at.localeCompare(a.published_at) || a.id.localeCompare(b.id)
-  ).slice(0, 50);
+  ).slice(0, maxSignals);
 }
 
 // PRIVATE, in-memory original-reference recovery from a successful existing
