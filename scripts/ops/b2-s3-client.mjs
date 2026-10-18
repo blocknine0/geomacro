@@ -61,6 +61,17 @@ function normalizeAllowedPrefixes(allowedKeyPrefixes) {
   return Object.freeze([...new Set(normalized)]);
 }
 
+// All production GitHub Actions using the canonical B2 client MUST reserve
+// each network attempt in the shared D1 ledger. Vitest-only execution uses
+// synthetic credentials and has no production network rights; live workflows
+// cannot opt out merely by omitting the legacy rollout environment flag.
+export function assertGitHubActionsB2AccountGovernor(env = process.env) {
+  if (env.GITHUB_ACTIONS === "true" && env.VITEST !== "true" &&
+      env.B2_ACCOUNT_QUOTA_REQUIRED !== "1") {
+    throw new Error("B2_ACTIONS_ACCOUNT_GOVERNOR_REQUIRED");
+  }
+}
+
 export function createB2Client({
   endpointUrl,
   accessKey,
@@ -70,6 +81,7 @@ export function createB2Client({
   readSecretKey,
   allowedKeyPrefixes = null,
 }) {
+  assertGitHubActionsB2AccountGovernor();
   const endpoint = parseB2Endpoint(endpointUrl);
   if (endpoint.endpoint !== "https://s3.us-east-005.backblazeb2.com" ||
       bucket !== "geomacro-private-archive" || !accessKey || !secretKey) throw new Error("B2_ARCHIVE_CONFIG_INVALID");
