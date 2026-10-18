@@ -25,6 +25,8 @@ on:
       - "scripts/tests/automated-finds-run-health.test.mjs"
       - "scripts/lib/derived-news-source-health.mjs"
       - "scripts/tests/derived-news-source-health.test.mjs"
+      - "scripts/lib/material-gri-news-review.mjs"
+      - "scripts/tests/material-gri-news-review.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/website-derived-news-cadence-backstop.yml"
@@ -35,6 +37,8 @@ on:
       - "scripts/tests/automated-finds-run-health.test.mjs"
       - "scripts/lib/derived-news-source-health.mjs"
       - "scripts/tests/derived-news-source-health.test.mjs"
+      - "scripts/lib/material-gri-news-review.mjs"
+      - "scripts/tests/material-gri-news-review.test.mjs"
 
 permissions:
   contents: read
@@ -60,7 +64,7 @@ jobs:
         run: |
           node --check scripts/lib/website-derived-news-failover.mjs
           node --check scripts/ops/check-website-derived-news-cadence.mjs
-          node --test scripts/tests/website-derived-news-failover.test.mjs scripts/tests/automated-finds-run-health.test.mjs scripts/tests/derived-news-source-health.test.mjs
+          node --test scripts/tests/website-derived-news-failover.test.mjs scripts/tests/automated-finds-run-health.test.mjs scripts/tests/derived-news-source-health.test.mjs scripts/tests/material-gri-news-review.test.mjs
 
   catch-up-derived-only:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && contains(fromJSON('["success","failure","timed_out"]'), github.event.workflow_run.conclusion)))
@@ -216,3 +220,12 @@ jobs:
           path: artifacts/derived-news/source-health.json
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Save bounded high-impact GRI evidence-review candidates (no scoring)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: material-gri-original-review-${{ github.run_id }}
+          path: artifacts/derived-news/material-gri-review.json
+          if-no-files-found: warn
+          retention-days: 3
