@@ -3,6 +3,7 @@ import { gzipSync, gunzipSync } from "node:zlib";
 import { writeFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import { createB2Client } from "./ops/b2-s3-client.mjs";
+import { requireGdeltB2RecoveryHeadroom } from "./lib/gdelt-b2-shared-quota-guard.mjs";
 
 const AUTHORITATIVE_PROJECT_REF = "ldpwajisioljyjtojvfx";
 const SOURCE_KEY = "gdelt_gal";
@@ -168,11 +169,21 @@ async function emit(result) {
 }
 
 async function main() {
+  // Direct CLI invocation must honor the same frozen-database boundary as the
+  // retired workflow and cycle wrapper, before source/D1/B2/network activity.
+  if (String(process.env.GEOMACRO_SUPABASE_RESTRICTED_MODE ?? "")
+      .trim().toLowerCase() === "true")
+    throw Error("GDELT_GAL_SUPABASE_FREE_TIER_RESTRICTED_NO_WRITES");
   const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
   const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
   if (!url || !key) throw new Error("Authoritative Supabase server credentials are required");
   if (projectRef(url) !== AUTHORITATIVE_PROJECT_REF) throw new Error("Supabase URL is not the authoritative Geomacro project");
 
+  // Direct invocations have the same fail-closed quota admission as the
+  // canonical wrapper. Source probing cannot precede this check.
+  if (process.env.B2_GDELT_PRIMARY === "1") {
+    await requireGdeltB2RecoveryHeadroom();
+  }
   const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const now = new Date();
   const nowIso = now.toISOString();
