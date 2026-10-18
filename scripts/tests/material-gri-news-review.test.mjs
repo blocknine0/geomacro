@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import {strict as assert} from "node:assert";
-import {buildMaterialGriNewsReviewQueue} from "../lib/material-gri-news-review.mjs";
+import {buildMaterialGriNewsReviewQueue,buildMaterialGriReviewFromDerivedD1} from "../lib/material-gri-news-review.mjs";
 const now=Date.parse("2026-10-18T10:00:00.000Z");
 const categories=["geopolitics","macro","rare_earth"];
 const base=(category,kind,at="2026-10-18T08:00:00.000Z")=>({
@@ -76,4 +76,31 @@ test("reject missing full three-domain report or stale source-health read",()=>{
   assert.throws(()=>buildMaterialGriNewsReviewQueue(d,now),/CURRENT_OFFICIAL/);
   const old=reports();old[1].checked_at="2026-10-18T09:30:00.000Z";
   assert.throws(()=>buildMaterialGriNewsReviewQueue(old,now),/CURRENT_OFFICIAL/);
+});
+
+test("Auto Ingest read-only D1 path never claims reverified issuer or scored GRI",()=>{
+  const doc={ok:true,schema:"geomacro.website-derived-news-feed.v1",
+    delivery_scope:"free_website_only",retention_days:3,retention_hours:72,
+    original_release_delay_minutes:15,
+    signals:[base("geopolitics","security"),base("macro","price data"),
+      base("rare_earth","trade restriction")]};
+  const q=buildMaterialGriReviewFromDerivedD1(doc,now);
+  assert.deepEqual(q.categories.map(x=>x.candidates_count),[1,1,1]);
+  assert.equal(q.original_source_reverified_in_this_run,false);
+  assert.equal(q.provenance,"PREVIOUSLY_COLLECTED_D1_DERIVED_NEWS");
+  assert.equal(q.writes_to_gri,0);
+  assert.equal(q.payments,0);
+  const value=JSON.stringify(q);
+  assert.equal(value.includes("secret.invalid"),false);
+  assert.equal(value.includes("Publisher quote"),false);
+});
+test("Auto Ingest fails closed if D1 journal is not 72h derived-only",()=>{
+  for(const field of [{retention_hours:720},{retention_days:30},
+    {delivery_scope:"raw_article"},{original_release_delay_minutes:0},
+    {signals:new Array(251).fill(base("macro","price data"))}]){
+    const doc={ok:true,schema:"geomacro.website-derived-news-feed.v1",
+      delivery_scope:"free_website_only",retention_days:3,retention_hours:72,
+      original_release_delay_minutes:15,signals:[],...field};
+    assert.throws(()=>buildMaterialGriReviewFromDerivedD1(doc,now),/DERIVED_ONLY/);
+  }
 });
