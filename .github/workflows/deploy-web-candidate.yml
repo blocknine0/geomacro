@@ -1,0 +1,118 @@
+name: Deploy Canonical Read-Only Web Candidate
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/deploy-web-candidate.yml'
+      - 'workers/web-candidate/**'
+      - 'scripts/ops/*web-candidate*'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'server/**'
+      - 'public/**'
+      - 'lib/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'vite.config.ts'
+      - 'nitro.config.ts'
+      - '.github/workflows/deploy-web-candidate.yml'
+      - 'workers/web-candidate/**'
+      - 'scripts/ops/*web-candidate*'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: geomacro-read-only-web-candidate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fence-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - run: node --test scripts/ops/web-candidate.test.mjs
+
+  deploy-candidate:
+    needs: fence-tests
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Build exact canonical app without private runtime credentials
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build
+          node scripts/ops/prepare-web-candidate.mjs
+      - name: Require same-head Product CI success and current main before deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          for attempt in $(seq 1 24); do
+            test "$(gh api repos/blocknine0/geomacro/git/ref/heads/main --jq .object.sha)" = "$GITHUB_SHA" || { echo 'CANDIDATE_SUPERSEDED_MAIN'; exit 2; }
+            conclusion="$(gh api "repos/blocknine0/geomacro/actions/workflows/product-ci.yml/runs?event=push&head_sha=$GITHUB_SHA&per_page=10" --jq '[.workflow_runs[] | select(.head_sha == env.GITHUB_SHA and .head_branch == "main")][0].conclusion // "pending"')"
+            if [[ "$conclusion" == success ]]; then exit 0; fi
+            if [[ "$conclusion" != pending ]]; then echo 'CANDIDATE_PRODUCT_CI_NOT_PASSED'; exit 2; fi
+            if [[ "$attempt" -lt 24 ]]; then sleep 20; fi
+          done
+          echo 'CANDIDATE_PRODUCT_CI_NOT_YET_VERIFIED'
+          exit 2
+      - name: Deploy isolated read-only candidate without domain or private binding changes
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          [[ "$CLOUDFLARE_ACCOUNT_ID" =~ ^[a-f0-9]{32}$ ]]
+          # Existing candidate secrets/bindings must never be inherited.
+          node --input-type=module <<'NODE'
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const headers={Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN};
+          const api='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers/scripts';
+          const request=async url=>{
+            const res=await fetch(url,{headers,redirect:'error',signal:AbortSignal.timeout(15000)});
+            const j=await res.json();
+            if(res.status!==200||j.success!==true)throw Error('CANDIDATE_WORKER_METADATA_UNVERIFIED');
+            return j.result;
+          };
+          const workers=await request(api);
+          if(!Array.isArray(workers))throw Error('CANDIDATE_WORKER_LIST_INVALID');
+          if(workers.some(w=>w.id==='geomacro-web-candidate')){
+            const settings=await request(api+'/geomacro-web-candidate/settings');
+            if(!Array.isArray(settings.bindings)||settings.bindings.some(b=>
+              !(b.type==='assets'&&b.name==='ASSETS')&&
+              !(b.type==='plain_text'&&b.name==='GEOMACRO_SUPABASE_RUNTIME_MODE'&&b.text==='standby')))
+              throw Error('CANDIDATE_PRIVATE_OR_UNKNOWN_BINDING_PRESENT');
+          }
+          console.log('CANDIDATE_NO_PRIVATE_BINDINGS_VERIFIED');
+          NODE
+          npx -y wrangler@4.136.3 deploy --config .output/server/candidate-wrangler.json --keep-vars
+      - name: Verify exact build and source health; retain real legacy 503
+        env:
+          EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
+        run: node scripts/ops/verify-web-candidate.mjs
