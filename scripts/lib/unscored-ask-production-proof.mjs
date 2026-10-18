@@ -16,6 +16,21 @@ export function inspectPublishedBuild(marker, expectedSha) {
     status: good ? "EXACT_PUBLISHED_SHA" : "PUBLISHED_SHA_MISMATCH_OR_INVALID" };
 }
 
+// Context routing is a separate proof, never evidence that the answer is
+// current, independently verified, signed, or commercially deliverable.
+export function inspectBoundedFollowUp(body) {
+  const data = body?.data;
+  const contextValid = body?.ok === true && body?.context?.mode === "bounded_follow_up" &&
+    body.context.resolved_question === "What is the current geopolitical risk in India?";
+  const sourcePrivate = !!data && typeof data === "object" && !Array.isArray(data) &&
+    data.source_identity_exposed === false &&
+    !/(?:https?:\/\/|www\.|source_url|publisher_name|raw_payload)/iu.test(JSON.stringify(data));
+  return { ok: contextValid && sourcePrivate, context_valid: contextValid,
+    source_private: sourcePrivate, evidence_acceptance_claimed: false,
+    status: contextValid && sourcePrivate ? "BOUNDED_FOLLOW_UP_CONTEXT_ONLY"
+      : "BOUNDED_FOLLOW_UP_CONTRACT_INVALID" };
+}
+
 export function inspectUnscoredAsk(body, category, now = Date.now()) {
   const data = body?.data;
   const basic = body?.ok === true && data && typeof data === "object" &&
