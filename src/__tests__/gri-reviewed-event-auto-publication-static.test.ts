@@ -2,6 +2,7 @@ import {describe,expect,it} from "vitest";
 import {readFileSync} from "node:fs";
 const gri=readFileSync(".github/workflows/gri-v12-supabase-free-reviewed-current.yml","utf8");
 const indices=readFileSync(".github/workflows/risk-indices-verified-d1-parent.yml","utf8");
+const publisher=readFileSync("scripts/ops/publish-supabase-free-global-risk.mjs","utf8");
 describe("signed approved B2-ready GRI producer -> real numerical GRI -> risk indices",()=>{
   it("only manual or explicit approved evidence event, no ingestion/cron trigger",()=>{
     expect(gri).toContain("repository_dispatch:");
@@ -35,11 +36,12 @@ describe("signed approved B2-ready GRI producer -> real numerical GRI -> risk in
       "github.event.action == 'gri_reviewed_current_ready'",
       "inputs.reviewed_b2_key || github.event.client_payload.reviewed_b2_key",
       "inputs.reviewed_certificates_b2_sha256 || github.event.client_payload.reviewed_certificates_b2_sha256",
-      "preflightReviewedCurrentGlobalRisk",
       "publish-supabase-free-global-risk.mjs --verified-current",
       "GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM",
       "GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256",
     ])expect(gri).toContain(v);
+    expect(publisher).toContain("preflightReviewedCurrentGlobalRisk");
+    expect(publisher).toContain("verifyThreeDomainReviewerHandoff");
     expect(gri).not.toContain("auto-ingest-news");
     expect(gri).not.toContain("material-gri-review.json");
     expect(gri).not.toContain("computeRiskFromUnscoredNews");
