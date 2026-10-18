@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { parseUsGSMcsCsv } from "../../global-intelligence/adapters/usgs-mcs-2026.mjs";
 import { canonicalJson } from "./canonical-json";
+import { country195ByIso3 } from "./canonical-country-registry-195";
 import type { StructuralContext, StructuralObservation } from "./structural-context.server";
 import type { SourceRightsRow } from "./commercial-source-eligibility.server";
 
@@ -13,7 +14,10 @@ const ITEM = "696a75d5d4be0228872d3bf8";
 const ITEMS = ["69837e43b66b01367d7ec7c7", ITEM];
 const FILE = "MCS2026_Commodities_Data.csv";
 const DATACITE = "https://api.datacite.org/dois/10.5066/P1WKQ63T";
-const COUNTRIES: Record<string, string> = { USA: "UNITED STATES", CHN: "CHINA" };
+// Canonical country name is the only admissible join to the exact pinned
+// USGS source rows. No fuzzy country/territory inference, aliases or joins.
+const mcsCanonicalCountryName = (iso3: string): string | null =>
+  country195ByIso3(iso3)?.name.toUpperCase() ?? null;
 const METHOD = "geomacro.mcs-annual-production-change.v1";
 const MAX_BYTES = 16_000_000;
 const TTL = 10 * 60_000;
@@ -121,7 +125,7 @@ export async function loadQualifiedMcsRelease(options: { fetchImpl?: typeof fetc
 /** Pure transformation only. The acquisition path above independently pins
  * actual original bytes and dataset-specific CC0 before invoking this method. */
 export function deriveMcsProductionChanges(rows: Record<string, string>[], iso3: string, now: Date) {
-  const name = COUNTRIES[iso3]; if (!name) return [];
+  const name = mcsCanonicalCountryName(iso3); if (!name) return [];
   const groups = new Map<string, Map<number, { value: number; rowHash: string }>>();
   for (const row of rows) {
     if (String(row.Country ?? "").trim().toUpperCase() !== name ||
@@ -150,7 +154,7 @@ export function deriveMcsProductionChanges(rows: Record<string, string>[], iso3:
 }
 
 export async function loadQualifiedMcsCountryContext(iso3: string, options: Parameters<typeof loadQualifiedMcsRelease>[0] = {}): Promise<StructuralContext | null> {
-  if (!Object.hasOwn(COUNTRIES, iso3)) return null;
+  if (!mcsCanonicalCountryName(iso3)) return null;
   const release = await loadQualifiedMcsRelease(options); if (!release) return null;
   const now = options.now ?? new Date();
   let changes;
