@@ -2,6 +2,34 @@ import {fetchAllDerivedNews} from "./public-derived-news-client";
 import {buildDerivedNewsStructural,NEWS_STRUCTURAL_SCHEMA} from "./derived-news-structural-bridge";
 
 const CATEGORIES=["geopolitics","macro","rare_earth"] as const;
+type Domain = typeof CATEGORIES[number];
+/** Publication clock, not polling clock. A zero-news day is an honest empty
+ * structural window; it never becomes a synthetic real-time event. */
+export function structuralNewsAvailability(
+  rows:readonly {category:Domain;original_published_at:string;date_precision:"day"|"exact"}[],
+  now:number,
+){
+  if(!Number.isFinite(now))throw Error("STRUCTURAL_AVAILABILITY_CLOCK_INVALID");
+  return Object.fromEntries(CATEGORIES.map(category=>{
+    const relevant=rows.filter(r=>r.category===category);
+    const latest=relevant[0]??null;
+    const n24=relevant.filter(r=>{
+      const ms=Date.parse(r.original_published_at);
+      return Number.isFinite(ms)&&ms<=now&&now-ms<=86_400_000;
+    }).length;
+    return [category,{
+      status:relevant.length===0?"NO_QUALIFIED_RELEASE_IN_72H":
+        n24>0?"RECENT_OFFICIAL_RELEASE_IN_24H":"RECENT_OFFICIAL_RELEASE_IN_72H",
+      latest_original_published_at:latest?.original_published_at??null,
+      latest_original_date_precision:latest?.date_precision??null,
+      observed_derived_records_24h:n24,
+      observed_derived_records_72h:relevant.length,
+      producer_run_freshness_verified:false,
+      real_time_commercial_event_certified:false,
+      gaps_may_exist:true,
+    }];
+  }));
+}
 const HEADERS={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
   "Access-Control-Allow-Origin":"*","Referrer-Policy":"no-referrer"};
 /** GET /api/v1/intelligence/query?view=structural-72h[&domain=macro]
@@ -34,6 +62,8 @@ export async function derivedNewsStructuralResponse(
       independent_same_event_verified:false,commercial_rights_verified:false,
       scored:false,signed:false,chargeable:false,payment_required_now:false,
       raw_upstream_delivered:false,
+      generated_at:new Date(now).toISOString(),
+      availability_by_category:structuralNewsAvailability(all,now),
       counts,items:rows,
     },{headers:HEADERS});
   }catch{

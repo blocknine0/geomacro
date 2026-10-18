@@ -1,7 +1,7 @@
 import {describe,expect,it,vi} from "vitest";
 import {readFileSync} from "node:fs";
 import {buildDerivedNewsStructural} from "../lib/derived-news-structural-bridge";
-import {derivedNewsStructuralResponse} from "../lib/derived-news-structural-response.server";
+import {derivedNewsStructuralResponse,structuralNewsAvailability} from "../lib/derived-news-structural-response.server";
 import {fetchAllDerivedNews} from "../lib/public-derived-news-client";
 import {readDerivedStories} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import type {StatelessIntelligenceSignal} from "../lib/stateless-intelligence-model";
@@ -79,11 +79,42 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    const body=await r.json();
    expect(body.items).toHaveLength(173);
    expect(body.counts).toEqual({geopolitics:174,macro:173,rare_earth:173});
+   expect(body.generated_at).toBe(new Date(NOW).toISOString());
+   expect(Object.keys(body.availability_by_category).sort()).toEqual([...domains].sort());
+   for(const category of domains){
+     expect(body.availability_by_category[category].status).toBe("RECENT_OFFICIAL_RELEASE_IN_24H");
+     expect(body.availability_by_category[category].real_time_commercial_event_certified).toBe(false);
+     expect(body.availability_by_category[category].gaps_may_exist).toBe(true);
+   }
    expect(body.chargeable).toBe(false);
    expect(body.exhaustive_all_global_sources).toBe(false);
    expect(body.source_scope).toBe("ELIGIBLE_RELEASES_PRESENT_IN_BOUNDED_D1_JOURNAL");
    expect(JSON.stringify(body)).not.toContain("source_url");
  });
+ it("keeps a stable 3-category status even when no official release is qualified",async()=>{
+   const f=vi.fn(async()=>Response.json(feed([],0,false)));
+   const result=await derivedNewsStructuralResponse(new Request(
+     "https://geomacro.live/api/v1/intelligence/query?view=structural-72h"
+   ),f as typeof fetch,NOW);
+   expect(result.status).toBe(200);
+   const data=await result.json();
+   expect(data.items).toEqual([]);
+   expect(data.counts).toEqual({geopolitics:0,macro:0,rare_earth:0});
+   for(const category of domains){
+     expect(data.availability_by_category[category]).toMatchObject({
+       status:"NO_QUALIFIED_RELEASE_IN_72H",
+       latest_original_published_at:null,
+       observed_derived_records_24h:0,
+       observed_derived_records_72h:0,
+       producer_run_freshness_verified:false,
+       real_time_commercial_event_certified:false,
+     });
+   }
+   expect(structuralNewsAvailability([],NOW)).toEqual(data.availability_by_category);
+   expect(data.payment_required_now).toBe(false);
+   expect(data.chargeable).toBe(false);
+ });
+
  it("fails closed on broken cursor, duplicate IDs, forged extra source metadata and unpaged old Workers",async()=>{
    const cases=[
      feed([story(0)],0,true),

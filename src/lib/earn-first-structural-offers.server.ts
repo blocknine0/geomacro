@@ -18,10 +18,10 @@ const cors = {
 };
 
 const templates = [
-  { category: "Geopolitics", topics: ["conflict_geopolitics"] },
-  { category: "Macro/FX", topics: ["macro_risk"] },
-  { category: "Macro/FX", topics: ["fx_external_risk"] },
-  { category: "Critical Minerals", topics: ["critical_minerals"] },
+  { category: "Geopolitics", topics: ["conflict_geopolitics"], module_scope: "geopolitical_security" },
+  { category: "Macro/FX", topics: ["macro_risk"], module_scope: "macro_monetary" },
+  { category: "Macro/FX", topics: ["fx_external_risk"], module_scope: "external_fx" },
+  { category: "Critical Minerals", topics: ["critical_minerals"], module_scope: "critical_minerals" },
 ] as const;
 
 function response(body: unknown, status = 200) {
@@ -45,6 +45,11 @@ export const earnFirstStructuralOfferHandlers = {
     product_scope: "HISTORICAL_STRUCTURAL_BASELINE_ONLY",
     signed_current_risk_object: false,
     current_event_or_risk_score_promised: false,
+    independently_signed_gri_required_for_baseline: false,
+    source_native_verified_observation_required: true,
+    commercial_derived_use_rights_required: true,
+    full_country_risk_assessment_included: false,
+    no_new_release_is_not_a_live_event: true,
     purchase_endpoint: PURCHASE_PATH,
     availability_endpoint: "/api/v1/intelligence/availability",
     offers: templates,
