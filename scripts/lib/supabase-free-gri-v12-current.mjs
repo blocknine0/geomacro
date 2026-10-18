@@ -10,6 +10,7 @@ import {
   GRI_STORY_CORRELATION_VERSION, GRI_STORY_CORRELATION_PROMPT_VERSION,
 } from "./gri-engine-v12.js";
 import { GRI_DISPOSITION, buildSourceDisposition } from "./gri-disposition-v12.js";
+import { reviewedNumericalGriDelta } from "./gri-reviewed-numerical-delta.mjs";
 import { buildPortableGriProofBundle, verifyPortableGriProofBundle } from "./gri-portable-proof-v12.js";
 import { qualifyIndependentSameEvent } from "./independent-same-event-qualification.mjs";
 import { assemblePublicGlobalRisk } from "../../src/lib/global-risk-assemble.ts";
@@ -208,6 +209,9 @@ export function computeReviewedCurrentGlobalRisk({
   "PORTABLE_PROOF_REPRODUCTION_FAILED");
   const p = portable.proof;
   const snapshotId = immutableSnapshotId(p.proofHash);
+  // Genuine signed input -> canonical v1.2 score -> verified previous B2
+  // historical score. A triage-only news item can NEVER pass this stage.
+  const movement = reviewedNumericalGriDelta(calculation,historicalRows);
   const latest = {
     id: snapshotId, as_of: new Date(at).toISOString(),
     methodology_version: GRI_METHOD_VERSION,
@@ -226,8 +230,12 @@ export function computeReviewedCurrentGlobalRisk({
     story_correlation_version: GRI_STORY_CORRELATION_VERSION,
     story_correlation_prompt_version: GRI_STORY_CORRELATION_PROMPT_VERSION,
     category_breakdown: calculation.categories,
-    previous_as_of: null, previous_raw_score: null, previous_display_score: null,
-    change_points: null, change_hash: null, change_attribution: null,
+    previous_as_of: movement.previous_as_of,
+    previous_raw_score: movement.previous_raw_score,
+    previous_display_score: movement.previous_display_score,
+    change_points: movement.change_points,
+    change_hash: movement.change_hash,
+    change_attribution: movement.change_attribution,
     // Explanation in private portable proof contains original article metadata.
     // Never serialize it into public D1/B2 projection.
     explanation: null, status: "published",
@@ -268,6 +276,10 @@ export function computeReviewedCurrentGlobalRisk({
       historical_b2_sha256: verifiedHistoryB2Sha256,
       portable_proof_hash: p.proofHash,
       portable_bundle_hash: portable.bundleHash,
+      historical_numeric_comparison:movement.comparison_method,
+      verified_previous_snapshot_id:movement.verified_previous_snapshot_id,
+      observed_numeric_delta_points:movement.change_points,
+      numerical_change_not_event_attribution:true,
     },
     portableProof: portable, // RETURNED PRIVATE: NEVER WRITE TO D1/PUBLIC B2
   };
