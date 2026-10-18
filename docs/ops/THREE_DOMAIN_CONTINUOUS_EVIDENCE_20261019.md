@@ -35,3 +35,11 @@ runtime or GitHub cron fails, the service **must** report degraded rather
 than manufacture current records. For actual commercial earning, the
 separate evidence, rights, source-native time, exact price and x402
 settlement conditions still apply.
+
+Additional canonical website-side route (after exact Lovable publish):
+`GET https://geomacro.live/api/v1/intelligence/query?view=continuous`
+This is a fixed-origin, no-funds proxy with a strict three-domain response
+contract. If the website cannot serve its SSR route, clients can continue
+to use the independently deployed direct Worker URL. The two GETs expose
+the same truthfully labeled D1-derived source measurements, never x402
+readiness or paid fulfillment.

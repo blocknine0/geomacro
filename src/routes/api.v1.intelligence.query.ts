@@ -4,6 +4,7 @@ import { unifiedThreeDomainSourceObservation } from "../lib/unified-three-domain
 import {automatedFindsResponse} from "../lib/automated-finds-reader.server";
 import {publicFindCardsResponse} from "../lib/public-find-card-feed.server";
 import {derivedNewsStructuralResponse} from "../lib/derived-news-structural-response.server";
+import {publicThreeDomainContinuityResponse} from "../lib/three-domain-evidence-continuity-client";
 
 export const Route = createFileRoute("/api/v1/intelligence/query")({
   server: {
@@ -18,6 +19,8 @@ export const Route = createFileRoute("/api/v1/intelligence/query")({
         if(url.searchParams.get("view")==="finds")return automatedFindsResponse(request);
         if(url.searchParams.get("view")==="structural-72h")
           return derivedNewsStructuralResponse(request);
+        if(url.searchParams.get("view")==="continuous")
+          return publicThreeDomainContinuityResponse(request);
         // Auto Ingest's original-dated rolling 72h D1 data is available on
         // the same canonical machine API as explicit no-charge structured
         // research cards. This is NOT an x402 capability quote or verified GRO.
