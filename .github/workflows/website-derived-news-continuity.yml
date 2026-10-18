@@ -26,6 +26,9 @@ on:
       - "scripts/lib/derived-news-source-health.mjs"
       - "scripts/lib/material-gri-news-review.mjs"
       - "scripts/tests/material-gri-news-review.test.mjs"
+      - "scripts/lib/material-gri-country-evidence-worklist.mjs"
+      - "scripts/ops/build-material-gri-country-worklist.mjs"
+      - "scripts/tests/material-gri-country-evidence-worklist.test.mjs"
   schedule:
     - cron: "7 * * * *"
 
@@ -98,6 +101,10 @@ jobs:
       - name: Read three domains and write only derived news to existing D1
         shell: bash
         run: bun scripts/ops/publish-website-derived-news.ts
+      - name: Produce country-scoped high-impact GRI evidence worklist (zero scoring)
+        run: |
+          node --test scripts/tests/material-gri-country-evidence-worklist.test.mjs
+          node scripts/ops/build-material-gri-country-worklist.mjs
       - name: Independently verify signed Finds across combined and category reads
         if: always()
         shell: bash
@@ -168,6 +175,15 @@ jobs:
           path: artifacts/derived-news/source-health.json
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Save canonical country-scoped GRI evidence worklist
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: primary-gri-country-review-${{ github.run_id }}
+          path: artifacts/derived-news/material-gri-country-evidence-worklist.json
+          if-no-files-found: warn
+          retention-days: 3
 
       - name: Save bounded high-impact GRI evidence-review candidates (no scoring)
         if: always()
