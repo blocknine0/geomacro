@@ -1,6 +1,6 @@
 import {createHash} from "node:crypto";
 import {fileURLToPath} from "node:url";
-import {assertVerifiedCurrentGlobalRiskD1Parent} from "./risk-indices-verified-d1-parent.mjs";
+import {assertVerifiedCurrentGlobalRiskD1Parent} from "../lib/risk-indices-verified-d1-parent.mjs";
 
 const REPO="blocknine0/geomacro";
 const CONTROL="https://geomacro-control-plane.daspallab202391.workers.dev";
