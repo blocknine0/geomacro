@@ -13,6 +13,9 @@ on:
       - ".github/workflows/auto-ingest-news.yml"
       - "scripts/ops/report-gri-four-gates-readiness.mjs"
       - "scripts/lib/gri-four-gates-readiness.test.mjs"
+      - "src/lib/gri-canonical-country-title-mention.ts"
+      - "src/lib/gri-canonical-country-title-mention.test.ts"
+      - "src/lib/stateless-intelligence-model.ts"
   schedule:
     - cron: "37 * * * *"
   push:
@@ -28,6 +31,9 @@ on:
       - "scripts/tests/material-gri-country-evidence-worklist.test.mjs"
       - "scripts/ops/report-gri-four-gates-readiness.mjs"
       - "scripts/lib/gri-four-gates-readiness.test.mjs"
+      - "src/lib/gri-canonical-country-title-mention.ts"
+      - "src/lib/gri-canonical-country-title-mention.test.ts"
+      - "src/lib/stateless-intelligence-model.ts"
 
 permissions:
   contents: read

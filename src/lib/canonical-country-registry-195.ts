@@ -207,7 +207,7 @@ export type Country195=Readonly<{
  observer_state:boolean;
 }>;
 const EXACT_ALIASES:Readonly<Record<string,readonly string[]>>=Object.freeze({
- PSE:["Palestine","Palestinian","Occupied Palestinian Territory","West Bank and Gaza","Gaza","West Bank"],
+ PSE:["Palestine","Palestinian","Occupied Palestinian Territory","Palestinian territories","West Bank and Gaza","Gaza","West Bank"],
  VAT:["Vatican City","Vatican","Holy See"],
  USA:["United States of America","U.S.A."],
  GBR:["Britain","Great Britain","U.K.","UK"],

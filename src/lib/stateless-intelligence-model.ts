@@ -1,5 +1,6 @@
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,verifiedGlobalRdfFeed} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { visiblePublisherText } from "./stateless-publisher-text";
+import { exactCanonicalCountryMentionFromOriginalTitle } from "./gri-canonical-country-title-mention";
 
 /**
  * Non-persistent, per-request Intelligence signal classification.
@@ -422,7 +423,11 @@ const DEVELOPMENTS: readonly [RegExp, string][] = [
   [/\b(?:strategy|plan|proposal|policy|framework|regulation)\b/i, "policy update"],
 ];
 function geographyMention(title: string): string | null {
-  return GEOGRAPHIES.find(([pattern]) => pattern.test(title))?.[1] ?? null;
+  // Preserve explicitly reviewed legacy demonyms/regions. For any other
+  // issuer title, use the same fixed 195-country registry as GRI country
+  // evidence routing. No fuzzy aliases, hostname inference or guessing.
+  return GEOGRAPHIES.find(([pattern]) => pattern.test(title))?.[1] ??
+    exactCanonicalCountryMentionFromOriginalTitle(title);
 }
 function developmentKind(title: string): string {
   return DEVELOPMENTS.find(([pattern]) => pattern.test(title))?.[1] ?? "official update";
