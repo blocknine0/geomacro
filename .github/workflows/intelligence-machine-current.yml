@@ -1,8 +1,13 @@
 name: Machine Dual-Authority Intelligence Publication
 
 # Input must contain real independently facts/rights signed event packages.
-# Manual, immutable private B2 handoff only. No signing or key creation here.
+# Immutable private B2 handoff from manual owner OR authorized source issuer
+# repository_dispatch. GitHub event is only a hint; pin, signatures, source
+# rights and exact public B2/D1 proofs are rechecked in this workflow.
+# No signing or key creation by a news/social feed.
 on:
+  repository_dispatch:
+    types: [machine_intelligence_dual_signed_ready]
   workflow_dispatch:
     inputs:
       machine_b2_key:
@@ -23,14 +28,20 @@ concurrency:
 
 jobs:
   verified-publication:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'repository_dispatch' &&
+        github.event.action == 'machine_intelligence_dual_signed_ready' &&
+        github.event.client_payload.schema == 'geomacro.machine-intelligence-dual-signed-ready.v1'))
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     environment: production
     env:
       EXPECTED_SHA: ${{ github.sha }}
-      MACHINE_B2_KEY: ${{ inputs.machine_b2_key }}
-      MACHINE_B2_SHA256: ${{ inputs.machine_b2_sha256 }}
+      MACHINE_B2_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.machine_b2_key || github.event.client_payload.machine_b2_key }}
+      MACHINE_B2_SHA256: ${{ github.event_name == 'workflow_dispatch' && inputs.machine_b2_sha256 || github.event.client_payload.machine_b2_sha256 }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
