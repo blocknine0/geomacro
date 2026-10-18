@@ -57,7 +57,7 @@ import { upsertCoinbaseX402ProductAudit } from "./coinbase-x402-product-audit.se
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import { lookupTelegramFallback } from "./on-demand-telegram-fallback.server";
 import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
-import {readAutoIngest72hStructuredDrafts} from "./auto-ingest-72h-context.server";
+import {readAllAutoIngest72hStructuredDrafts} from "./auto-ingest-72h-context.server";
 import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
   inferOnDemandFreshnessSeconds, verifyOnDemandOriginalArticlePages, type OnDemandCategory,
@@ -381,7 +381,7 @@ export const mainnetIntelligenceHandlers = {
           // A publisher-title country mention is just a lead, not verified
           // article relevance, corroboration, commercial reuse or payment.
           // Never copy drafts into paid evidence or the public 422 payload.
-          const autoIngestDrafts=await readAutoIngest72hStructuredDrafts(
+          const autoIngestDrafts=await readAllAutoIngest72hStructuredDrafts(
             subject.country_iso3,categories);
           const autoIngestCandidateTopicCount=new Set(
             autoIngestDrafts.map(d=>d.topic)).size;
