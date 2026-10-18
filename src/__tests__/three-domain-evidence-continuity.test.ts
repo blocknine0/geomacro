@@ -67,6 +67,32 @@ describe("continuous three-category source observations backed by D1",()=>{
    expect(data.commercial_rights_verified).toBe(false);
    expect(data.upstream_new_event_guaranteed).toBe(false);
  });
+ it("keeps three different real publisher-clock news observations distinct from baseline",async()=>{
+   const published=new Date(NOW-65*60_000).toISOString();
+   const signals=domains.map((category,i)=>({
+     id:category+"-"+(i+1).toString(16).padStart(8,"0"),category,
+     title:"Geomacro finds an official source release in the relevant domain",
+     what_changed:"An official publisher released a statement relevant to this monitored category.",
+     why_it_matters:"The release may affect operating conditions but no causal impact is verified.",
+     topic:["foreign policy","monetary policy","rare-earth supply"][i],
+     development_type:"policy update",geography:null,
+     published_at:published,date_precision:"exact",observed_release_count:1,
+     sources_credited:[],status:"official_release_observed_unscored",
+     same_event_corrob_verified:false,severity:null,
+   }));
+   const f=env({news:{...journal(0),signals}});
+   const data=await (await threeDomainEvidenceContinuity(f,NOW)).json();
+   expect(data.journal_complete).toBe(true);
+   for(const d of domains){
+     expect(data.categories[d].native_news_event_count_72h).toBe(1);
+     expect(data.categories[d].latest_native_news_published_at).toBe(published);
+     expect(data.categories[d].source_neutral_news[0].id).toMatch(/^[a-z_]+-[0-9a-f]{8}$/);
+     expect(data.categories[d].source_neutral_news[0]).not.toHaveProperty("sources_credited");
+     expect(data.categories[d].source_neutral_news[0]).not.toHaveProperty("source_url");
+     expect(data.categories[d].source_neutral_news[0].date_precision).toBe("exact");
+     expect(data.categories[d].commercial_rights_verified).toBe(false);
+   }
+ });
  it("keeps a previous measured baseline with OLD source clock after cron lapse",async()=>{
    const older=new Date(NOW-6*3_600_000).toISOString();
    const f=env({ctx:Object.fromEntries(domains.map(d=>[d,sample(d,older)]))});
