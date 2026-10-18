@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {
   classifyRiskIndicesRepair,runRiskIndicesVerifiedParentBackstop,
+  decideVerifiedIndicesPublisherRetry,
 } from "../ops/risk-indices-verified-parent-backstop.mjs";
 
 const AT=new Date("2026-10-18T11:00:00.000Z");
@@ -69,13 +70,16 @@ const build={schema_version:"geomacro.deployment-build.v1",
 const response=(body,status=200)=>new Response(JSON.stringify(body),
   {status,headers:{"content-type":"application/json"}});
 function mock({gri=parent(),child=indices(gri),site=build,
-  griStatus=200,childStatus=200,postStatus=204}={}){
+  griStatus=200,childStatus=200,postStatus=204,
+  existingRuns=[],metadataStatus=200}={}){
   const calls=[];
   const fetchImpl=async(url,options)=>{
     calls.push({url,method:options.method});
     if(String(url).includes("geomacro-build.json"))return response(site);
     if(String(url).endsWith("/global-risk"))return response(gri,griStatus);
     if(String(url).endsWith("/risk-indices"))return response(child,childStatus);
+    if(String(url).endsWith("/runs?per_page=20"))
+      return response({workflow_runs:existingRuns},metadataStatus);
     if(String(url).endsWith("/dispatches"))return new Response(null,{status:postStatus});
     throw Error("UNEXPECTED_NETWORK_URL");
   };
@@ -155,4 +159,71 @@ test("missing GitHub Action write token does not fake a dispatch",async()=>{
     env:{...env,GITHUB_TOKEN:""},now:AT,fetchImpl:f.fetchImpl,
   }),/DISPATCH_TOKEN_REQUIRED/);
   assert.equal(f.calls.filter(x=>x.method==="POST").length,0);
+});
+
+const repoRun=(overrides={})=>({
+  head_sha:gitSha,head_branch:"main",event:"workflow_dispatch",
+  status:"completed",conclusion:"failure",
+  created_at:new Date(AT.getTime()-9*60_000).toISOString(),...overrides,
+});
+test("one parent can dispatch only once while publisher runs or has succeeded",async()=>{
+  for(const attempt of [
+    repoRun({status:"in_progress",conclusion:null}),
+    repoRun({status:"completed",conclusion:"success"}),
+    repoRun({status:"queued",conclusion:null}),
+    repoRun({status:"unknown_future_state",conclusion:null}),
+  ]){
+    const f=mock({childStatus:503,existingRuns:[attempt]});
+    const result=await runRiskIndicesVerifiedParentBackstop({env,now:AT,fetchImpl:f.fetchImpl});
+    assert.equal(result.dispatch_requested,false);
+    assert.equal(result.eligible,false);
+    assert.equal(f.calls.filter(x=>x.method==="POST").length,0);
+    assert.equal(result.b2_requests,0);
+  }
+});
+test("failed publisher retries only once after cooldown while source stays current",async()=>{
+  const first=repoRun();
+  const good=mock({childStatus:503,existingRuns:[first]});
+  const receipt=await runRiskIndicesVerifiedParentBackstop({env,now:AT,fetchImpl:good.fetchImpl});
+  assert.equal(receipt.status,"PROTECTED_INDICES_REPAIR_SINGLE_RETRY_DISPATCHED");
+  assert.equal(receipt.dispatch_requested,true);
+  assert.equal(good.calls.filter(x=>x.method==="POST").length,1);
+  for(const runs of [
+    [repoRun({created_at:new Date(AT.getTime()-2*60_000).toISOString()})],
+    [first,repoRun({created_at:new Date(AT.getTime()-3*60_000).toISOString()})],
+  ]){
+    const f=mock({childStatus:503,existingRuns:runs});
+    const r=await runRiskIndicesVerifiedParentBackstop({env,now:AT,fetchImpl:f.fetchImpl});
+    assert.equal(r.dispatch_requested,false);
+    assert.equal(f.calls.filter(x=>x.method==="POST").length,0);
+  }
+});
+test("unrelated earlier or foreign SHA run never suppresses a new verified parent",async()=>{
+  const unrelated=repoRun({head_sha:"b".repeat(40)});
+  const f=mock({childStatus:503,existingRuns:[unrelated]});
+  const receipt=await runRiskIndicesVerifiedParentBackstop({env,now:AT,fetchImpl:f.fetchImpl});
+  assert.equal(receipt.status,"PROTECTED_INDICES_REPAIR_DISPATCHED");
+  assert.equal(receipt.dispatch_requested,true);
+});
+test("GitHub metadata outage or malformed records fails closed before dispatch",async()=>{
+  for(const status of [403,503]){
+    const f=mock({childStatus:503,metadataStatus:status});
+    await assert.rejects(()=>runRiskIndicesVerifiedParentBackstop({
+      env,now:AT,fetchImpl:f.fetchImpl,
+    }),/INDICES_REPAIR_RUN_LOOKUP_FAILED/);
+    assert.equal(f.calls.filter(x=>x.method==="POST").length,0);
+  }
+  const f=mock({childStatus:503,existingRuns:Array.from({length:21},()=>repoRun())});
+  await assert.rejects(()=>runRiskIndicesVerifiedParentBackstop({
+    env,now:AT,fetchImpl:f.fetchImpl,
+  }),/INDICES_REPAIR_RUN_LOOKUP_FAILED/);
+});
+test("run reconciliation rejects forged clock or head before any retry",()=>{
+  assert.throws(()=>decideVerifiedIndicesPublisherRetry({
+    runs:[],headSha:"bad",parentSourceAsOf:asOf,now:AT,
+  }),/METADATA_INVALID/);
+  assert.throws(()=>decideVerifiedIndicesPublisherRetry({
+    runs:[],headSha:gitSha,
+    parentSourceAsOf:new Date(AT.getTime()-3*3600_000).toISOString(),now:AT,
+  }),/PARENT_TIME_INVALID/);
 });
