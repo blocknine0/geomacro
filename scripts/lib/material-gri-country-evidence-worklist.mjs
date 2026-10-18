@@ -93,8 +93,26 @@ export function buildMaterialGriCountryEvidenceWorklist(queue,registrySource,now
       const iso=country.resolve(candidate.geography);
       // A 6-hour factual candidate is only a CHECK target, never evidence
       // of commercial rights, independent originals or current score.
-      const mayCheckOriginal=exact&&now-published<=6*3600_000&&
-        now-published>=15*60_000;
+      const elapsed=now-published;
+      const mayCheckOriginal=exact&&elapsed<=6*3600_000&&
+        elapsed>=15*60_000;
+      // The canonical signed GRI reviewed-current acceptance only admits a
+      // NEW native original no older than 90 minutes after the 15m embargo.
+      // A source can remain an eligible private original recheck for six hours
+      // while already being too old to independently trigger a GRI rescore.
+      const inNewGriWindow=mayCheckOriginal&&elapsed<=90*60_000;
+      const priority=inNewGriWindow?
+        (iso?"IMMEDIATE_NATIVE_GRI_REVIEW":"URGENT_COUNTRY_RESOLUTION"):
+        mayCheckOriginal?
+        (iso?"SOURCE_RECHECK_ONLY":"COUNTRY_RESOLUTION_FOR_RECHECK"):
+        "HISTORICAL_REVIEW_ONLY";
+      const nextAction=!iso?
+        "RESOLVE_ISO3_ONLY_FROM_EXACT_FIRST_PARTY_ORIGINAL":
+        inNewGriWindow?
+        "REVERIFY_NATIVE_BYTES_RIGHTS_AND_INDEPENDENT_SIGNED_CERTIFICATION":
+        mayCheckOriginal?
+        "SOURCE_RECHECK_ALLOWED_BUT_NEW_90M_GRI_EVENT_REQUIRED":
+        "AWAIT_NEW_NATIVE_PUBLISHED_ORIGINAL_FOR_CURRENT_GRI";
       return Object.freeze({
         derived_event_id:candidate.derived_event_id,
         category:row.category,event_kind:candidate.event_kind,
@@ -109,16 +127,36 @@ export function buildMaterialGriCountryEvidenceWorklist(queue,registrySource,now
         reviewed_canonical_gri_event_required:true,
         materiality_or_impact_verified:false,
         candidate_within_6h_recheck_window:mayCheckOriginal,
+        candidate_within_90m_new_gri_window:inNewGriWindow,
+        materiality_review_priority:priority,
+        next_safe_review_action:nextAction,
+        // Windows route a reviewer. No score, rights, signer or commercial
+        // certification can be derived from window presence alone.
+        can_promote_from_worklist:false,
         gri_score:null,
         signed_gri_input_available:false,
         public_gri_promotion_authorized:false,
         status:iso?"COUNTRY_MAPPED_REVIEW_REQUIRED":"GEOGRAPHY_UNRESOLVED_REVIEW_REQUIRED",
       });
     });
-    return Object.freeze({category:row.category,review_targets:worklist,
-      country_mapped:worklist.filter(x=>x.country_iso3!==null).length,
-      geography_unresolved:worklist.filter(x=>x.country_iso3===null).length,
-      within_6h_original_recheck_window:worklist.filter(x=>x.candidate_within_6h_recheck_window).length,
+    // Do not drop historical records: retain all 72h for research while
+    // routing the 90-minute CURRENT qualification window first.
+    const ranked=worklist.sort((a,b)=>
+      Number(b.candidate_within_90m_new_gri_window)-
+        Number(a.candidate_within_90m_new_gri_window) ||
+      Number(b.candidate_within_6h_recheck_window)-
+        Number(a.candidate_within_6h_recheck_window) ||
+      b.original_published_at.localeCompare(a.original_published_at) ||
+      a.derived_event_id.localeCompare(b.derived_event_id));
+    return Object.freeze({category:row.category,review_targets:ranked,
+      country_mapped:ranked.filter(x=>x.country_iso3!==null).length,
+      geography_unresolved:ranked.filter(x=>x.country_iso3===null).length,
+      within_6h_original_recheck_window:ranked.filter(x=>x.candidate_within_6h_recheck_window).length,
+      within_90m_new_gri_window:ranked.filter(x=>x.candidate_within_90m_new_gri_window).length,
+      within_90m_and_country_mapped:ranked.filter(x=>
+        x.candidate_within_90m_new_gri_window&&x.country_iso3!==null).length,
+      historical_review_only:ranked.filter(x=>
+        x.materiality_review_priority==="HISTORICAL_REVIEW_ONLY").length,
     });
   });
   const worklist={
@@ -135,6 +173,11 @@ export function buildMaterialGriCountryEvidenceWorklist(queue,registrySource,now
     required_ready_event:"gri_reviewed_current_ready",
     trigger_only_after_verified_signed_inputs:true,
     promotion_status:"WAITING_FOR_SEPARATELY_SIGNED_THREE_DOMAIN_GRI_INPUTS",
+    current_native_original_90m_review_targets:categories.reduce((n,c)=>
+      n+c.within_90m_new_gri_window,0),
+    current_native_original_90m_country_mapped_targets:categories.reduce((n,c)=>
+      n+c.within_90m_and_country_mapped,0),
+    real_signed_gri_scoring_permission_inferred:false,
     numerical_gri_recomputed:false,
     signed_gri_or_country_certificate_created:false,
     public_gri_or_indices_written:false,

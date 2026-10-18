@@ -119,3 +119,65 @@ test("hourly primary, Auto Ingest and recovery all hand off only unscored countr
   assert.ok(publisher.includes("REVIEWED_CERTIFICATES_B2_SHA256"));
   assert.ok(publisher.includes("publish-supabase-free-global-risk.mjs --verified-current"));
 });
+
+test("90m verified-native review triage is distinct from 6h recheck and stale 72h backlog",()=>{
+  const reports=cat.map(category=>({
+    category,checked_at:new Date(now).toISOString(),healthy_feed_count:1,signals:[],
+  }));
+  const by=Object.fromEntries(reports.map(x=>[x.category,x]));
+  by.geopolitics.signals=[
+    signal("geopolitics","fresh01","India","2026-10-18T09:15:00Z"),
+    signal("geopolitics","fresh02","Global","2026-10-18T09:30:00Z"),
+    // Exact timestamp still satisfies private 6-hour recheck but cannot
+    // initiate a NEW 90-minute current GRI numerical computation.
+    signal("geopolitics","older01","India","2026-10-18T07:00:00Z"),
+  ];
+  by.macro.signals=[signal("macro","older01","India","2026-10-18T07:55:00Z")];
+  by.rare_earth.signals=[signal("rare_earth","older01","Australia","2026-10-18T02:30:00Z")];
+  const input=buildMaterialGriNewsReviewQueue(cat.map(x=>by[x]),now);
+  const w=buildMaterialGriCountryEvidenceWorklist(input,registry,now);
+  assert.equal(w.current_native_original_90m_review_targets,2);
+  assert.equal(w.current_native_original_90m_country_mapped_targets,1);
+  assert.equal(w.categories[0].within_90m_new_gri_window,2);
+  assert.equal(w.categories[0].within_90m_and_country_mapped,1);
+  assert.deepEqual(w.categories.map(x=>x.within_90m_new_gri_window),[2,0,0]);
+  assert.equal(w.categories[0].within_6h_original_recheck_window,3);
+  const index=Object.fromEntries(w.categories.flatMap(x=>x.review_targets).map(x=>[x.derived_event_id,x]));
+  assert.equal(index["geopolitics-fresh01"].materiality_review_priority,"IMMEDIATE_NATIVE_GRI_REVIEW");
+  assert.equal(index["geopolitics-fresh01"].can_promote_from_worklist,false);
+  assert.equal(index["geopolitics-fresh01"].gri_score,null);
+  assert.equal(index["geopolitics-fresh02"].materiality_review_priority,"URGENT_COUNTRY_RESOLUTION");
+  assert.equal(index["geopolitics-fresh02"].country_iso3,null);
+  assert.equal(index["geopolitics-older01"].materiality_review_priority,"SOURCE_RECHECK_ONLY");
+  assert.equal(index["geopolitics-older01"].candidate_within_90m_new_gri_window,false);
+  assert.equal(index["geopolitics-older01"].candidate_within_6h_recheck_window,true);
+  assert.equal(index["macro-older01"].materiality_review_priority,"SOURCE_RECHECK_ONLY");
+  assert.equal(index["rare_earth-older01"].materiality_review_priority,"HISTORICAL_REVIEW_ONLY");
+  assert.equal(index["rare_earth-older01"].candidate_within_6h_recheck_window,false);
+  assert.equal(w.real_signed_gri_scoring_permission_inferred,false);
+  assert.equal(w.numerical_gri_recomputed,false);
+  assert.equal(w.signed_gri_or_country_certificate_created,false);
+  assert.equal(w.public_gri_or_indices_written,false);
+  assert.ok(w.categories[0].review_targets[0].candidate_within_90m_new_gri_window);
+  const serialized=JSON.stringify(w);
+  for(const forbidden of ["SECRET ARTICLE","publishers.invalid","sourceUrl","raw_article_html"])
+    assert.equal(serialized.includes(forbidden),false);
+});
+
+test("calendar-day releases and timestamps within 15-minute embargo cannot trigger numerical GRI",()=>{
+  const signals=[
+    signal("geopolitics","embargo1","India","2026-10-18T09:50:00Z"),
+    {...signal("geopolitics","daytime","India","2026-10-16T00:00:00Z"),
+      date_precision:"day",published_at:"2026-10-16"},
+  ];
+  const input=buildMaterialGriNewsReviewQueue(cat.map(category=>({
+    category,checked_at:new Date(now).toISOString(),healthy_feed_count:1,
+    signals:category==="geopolitics"?signals:[],
+  })),now);
+  const w=buildMaterialGriCountryEvidenceWorklist(input,registry,now);
+  assert.equal(w.current_native_original_90m_review_targets,0);
+  assert.equal(w.categories[0].within_90m_new_gri_window,0);
+  assert.equal(w.categories[0].within_6h_original_recheck_window,0);
+  assert.equal(w.categories[0].review_targets.length,1);
+  assert.equal(w.categories[0].review_targets[0].materiality_review_priority,"HISTORICAL_REVIEW_ONLY");
+});
