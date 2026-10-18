@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createB2D1AccountGovernor } from "../../scripts/ops/b2-d1-account-governor.mjs";
-import { createB2Client } from "../../scripts/ops/b2-s3-client.mjs";
+import { createB2Client,assertGitHubActionsB2AccountGovernor } from "../../scripts/ops/b2-s3-client.mjs";
 
 const env = {
   CLOUDFLARE_ACCOUNT_ID: "1234567890abcdef1234567890abcdef",
@@ -119,5 +119,21 @@ describe("#1827 D1-account B2 preflight bridge",()=>{
     delete process.env.B2_ACCOUNT_QUOTA_REQUIRED;
     const b2=makeClient();
     expect(b2.usage().global_account_quota_guard_enabled).toBe(false);
+  });
+  it("blocks canonical B2 client in real Actions without the shared D1 ledger flag",()=>{
+    const actions={GITHUB_ACTIONS:"true",VITEST:"false",B2_ACCOUNT_QUOTA_REQUIRED:""};
+    expect(()=>assertGitHubActionsB2AccountGovernor(actions)).toThrow(
+      "B2_ACTIONS_ACCOUNT_GOVERNOR_REQUIRED");
+    expect(()=>assertGitHubActionsB2AccountGovernor({
+      ...actions,B2_ACCOUNT_QUOTA_REQUIRED:"0"})).toThrow(
+      "B2_ACTIONS_ACCOUNT_GOVERNOR_REQUIRED");
+    expect(()=>assertGitHubActionsB2AccountGovernor({
+      ...actions,B2_ACCOUNT_QUOTA_REQUIRED:"1"})).not.toThrow();
+    expect(()=>assertGitHubActionsB2AccountGovernor({
+      ...actions,GITHUB_ACTIONS:"false"})).not.toThrow();
+    // Vitest-only unit tests construct local synthetic clients; they are
+    // isolated from production credentials and network activity.
+    expect(()=>assertGitHubActionsB2AccountGovernor({
+      ...actions,VITEST:"true"})).not.toThrow();
   });
 });
