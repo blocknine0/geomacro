@@ -30,3 +30,8 @@ Derived machine-readable JSON only: no raw news HTML, headlines, publisher names
 **Commercial fail closed:** A listed price is not an available or payable offer. Signed/current product proofs, rights, exact SHA readback, verified answer preparation and ledger/x402 eligibility must all pass. Unavailable requests do not charge. No automatic price tier upgrade. Source-independent risk scores are never inferred from unscored source evidence.
 
 Prices are identical on Base, Arc and Polygon native USDC discovery. Listing those networks does not authorize real settlement. Supabase remains frozen and no funds are enabled by these output specifications.
+## Adaptive response metadata: never infer a price from the old flat launch offer
+
+Newly assembled responses use `methodology.pricing_phase=CAPABILITY_USDC_V1`. When a genuinely verified quote's exact variant amount has not been supplied, `methodology.price_usdc=null`—not `0.05`. The original `EARLY_ADOPTION_10K` response phase is accepted by the JSON schema solely so exact older settled bytes can still be inspected/replayed. It does not authorize the historical flat schedule for new transactions.
+
+Actual x402 prices must originate in `resolveGeomacroCapabilityPrice(capability,variant)` after full live source/rights/current-output qualification, and the payment adapter must revalidate the exact same amount before settlement. Catalog, preview or metadata alone never constitute a payable 402.
