@@ -7,6 +7,13 @@ on:
   schedule:
     - cron: "13,43 * * * *"
   workflow_dispatch: {}
+  # Event-driven continuation of the ALREADY working free news ingestion.
+  # This event is just a wakeup: independently approved pinned signed GRI
+  # inputs remain mandatory before the protected publisher can run.
+  workflow_run:
+    workflows: ["Auto Ingest News"]
+    types: [completed]
+    branches: [main]
   pull_request:
     paths:
       - ".github/workflows/gri-signed-ready-cadence-backstop.yml"
@@ -46,7 +53,15 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_sha == github.sha &&
+        (github.event.workflow_run.event == 'schedule' ||
+         github.event.workflow_run.event == 'workflow_dispatch' ||
+         github.event.workflow_run.event == 'push')))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -57,6 +72,7 @@ jobs:
       GRI_READY_REVIEWED_SHA256: ${{ vars.GRI_READY_REVIEWED_SHA256 }}
       GRI_READY_CERTIFICATES_SHA256: ${{ vars.GRI_READY_CERTIFICATES_SHA256 }}
       GRI_READY_APPROVED_AT: ${{ vars.GRI_READY_APPROVED_AT }}
+      GRI_SOURCE_WORKFLOW_VERIFIED: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_sha == github.sha && '1' || '0' }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -74,5 +90,7 @@ jobs:
           test -f .github/workflows/gri-v12-supabase-free-reviewed-current.yml
           grep -Fq 'types: [gri_reviewed_current_ready]' .github/workflows/gri-v12-supabase-free-reviewed-current.yml
           grep -Fq 'CURRENT_GRI_IMMUTABLE_INPUT_KEY_SHA_NOT_BOUND' .github/workflows/gri-v12-supabase-free-reviewed-current.yml
-      - name: Enqueue only recent pinned signed review if available, without reading B2
+      - name: Resume only recently approved independently signed GRI inputs after actual news completion or cadence
+        # Metadata-only GitHub recent-run check prevents repeat B2 publication
+        # attempts for the same main SHA and external approval timestamp.
         run: node scripts/ops/dispatch-gri-signed-ready-cadence.mjs
