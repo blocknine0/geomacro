@@ -42,9 +42,31 @@ export async function probeEiaPressRss({
     return {ok:false,reason:"EIA_FEED_XML_REJECTED"};
   const rows=[...content.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0,24);
   const types={https_exact_press:0,http_exact_press:0,query_press:0,other_pressroom:0,other_eia:0,foreign_or_unsafe:0,bad:0};
-  for(const m of rows)types[classifyEiaLink(extract(m[1],"link"))]++;
+  const tags={link_element_present:0,link_empty:0,link_https:0,link_http:0,
+    link_relative:0,link_other_nonempty:0,guid_tag_present:0,
+    guid_marked_permalink_true:0,guid_https:0,guid_http:0,guid_other:0,
+    guid_exact_press:0,encoded_link_cdata:0,raw_link_attribute:0};
+  for(const m of rows){
+    const xml=m[1], link=extract(xml,"link"),guid=extract(xml,"guid");
+    types[classifyEiaLink(link)]++;
+    if(/<link(?:\\s|>)/iu.test(xml))tags.link_element_present++;
+    if(!link)tags.link_empty++;
+    else if(link.startsWith("https://"))tags.link_https++;
+    else if(link.startsWith("http://"))tags.link_http++;
+    else if(link.startsWith("/"))tags.link_relative++;
+    else tags.link_other_nonempty++;
+    if(/<guid(?:\\s|>)/iu.test(xml))tags.guid_tag_present++;
+    if(/<guid\\b[^>]*isPermaLink=["']true["']/iu.test(xml))tags.guid_marked_permalink_true++;
+    if(guid.startsWith("https://"))tags.guid_https++;
+    else if(guid.startsWith("http://"))tags.guid_http++;
+    else if(guid)tags.guid_other++;
+    if(["https_exact_press","http_exact_press"].includes(classifyEiaLink(guid)))
+      tags.guid_exact_press++;
+    if(/<link>\\s*<!\\[CDATA\\[/iu.test(xml))tags.encoded_link_cdata++;
+    if(/<link\\s+[^>]*href=/iu.test(xml))tags.raw_link_attribute++;
+  }
   return {schema:"geomacro.eia-native-original-rss-shape.v1",
-    ok:true,item_count:rows.length,link_class_counts:types,
+    ok:true,item_count:rows.length,link_class_counts:types,tag_shape_counts:tags,
     original_path_confirmed:types.https_exact_press+types.http_exact_press>0,
     commercial_approved:false,source_native_current_verified:false,
     score_generated:false,source_urls_exposed:false,raw_material_exposed:false,
