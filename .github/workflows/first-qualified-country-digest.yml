@@ -5,6 +5,16 @@ on:
       - src/lib/qualified-mcs-country-digest.server.ts
       - scripts/ops/prepare-first-qualified-country-digest.ts
       - .github/workflows/first-qualified-country-digest.yml
+  push:
+    branches: [main]
+    paths:
+      - src/lib/qualified-mcs-country-digest.server.ts
+      - scripts/ops/prepare-first-qualified-country-digest.ts
+      - .github/workflows/first-qualified-country-digest.yml
+  # One bounded, source-native CC0 + canonical customer-byte recheck daily.
+  # Failures are observable, not transformed into new articles or risk scores.
+  schedule:
+    - cron: "23 3 * * *"
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -13,7 +23,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   real-source-no-secrets:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || (github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -28,7 +38,36 @@ jobs:
         env:
           NODE_ENV: production
           GEOMACRO_SUPABASE_RUNTIME_MODE: standby
+          GEOMACRO_FIRST_DIGEST_COUNTRY: CHN
         run: bun scripts/ops/prepare-first-qualified-country-digest.ts
+      - name: Assert genuine structured customer bytes proof without funds
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const {readFileSync}=require("node:fs");
+          const r=JSON.parse(readFileSync("artifacts/first-qualified-structural-digest-receipt.json","utf8"));
+          if(r.schema!=="geomacro.first-qualified-structural-digest-receipt.v1"||
+             r.capability!=="structural_country_digest"||r.amount_usdc!=="0.02"||
+             r.country_iso3!=="CHN"||r.source_rights_verified!==true||
+             r.original_file_sha256_verified!==true||
+             r.canonical_engine_deliverable!==true||
+             r.private_vault_admission_validated!==true||
+             r.current_news_or_risk_score!==false||
+             !/^[a-f0-9]{64}$/.test(r.prepared_customer_bytes_sha256)||
+             r.payable_offer_issued!==false||r.merchant_acceptance_verified!==false||
+             r.settlement_attempts!==0||r.execution_authorized!==false)
+            throw Error("FIRST_DIGEST_GENUINE_NO_FUNDS_ACCEPTANCE_FAILED");
+          console.log("PASS: exact CC0 source, real derived customer bytes, 0.02 USDC catalog and zero settlement");
+          NODE
+      - name: Preserve sanitized source-only acceptance (no customer/source bytes)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: first-qualified-digest-source-only-${{ github.run_id }}
+          path: artifacts/first-qualified-structural-digest-receipt.json
+          if-no-files-found: ignore
+          retention-days: 3
   qualify-and-archive:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
