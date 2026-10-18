@@ -1,5 +1,5 @@
 import {describe,expect,it,vi} from "vitest";
-import {answerFromCurrentOriginals,planAskOriginalQuestion} from "./ask-on-demand-original.server";
+import {answerFromCurrentOriginals,answerFromOriginalPlan,planAskOriginalQuestion} from "./ask-on-demand-original.server";
 const now=new Date("2026-10-17T12:00:00.000Z");
 const published="2026-10-17T11:00:00.000Z";
 const original={
@@ -62,5 +62,35 @@ describe("Ask question-driven original publisher retrieval",()=>{
   expect(await answerFromCurrentOriginals("China latest lithium news",{now,discover,verifyPages:recent})).toBeNull();
   expect(await answerFromCurrentOriginals("China latest lithium news",{now,discover,verifyPages:recent,websiteDelay:false}))
    .toMatchObject({latest_original_published_at:"2026-10-17T11:58:00.000Z",signed_gro_generated:false});
+ });
+ it("uses a verified matching Canada publication day only as unsigned day-precision observation",async()=>{
+  const canadian={...original,country_iso3:"CAN",publisher_family:"canada_nrcan_original_publisher",
+    article_title:"Canada announces lithium critical minerals investment",
+    article_url:"https://www.canada.ca/en/natural-resources-canada/news/2026/10/canada-lithium-investment.html",
+    feed_item_published_at:null,source_native_feed_publication_date_verified:false};
+  const privateRead=vi.fn(async()=>({private_candidates:[canadian]})) as never;
+  const calendarProof={publisher_family:"canada_nrcan_original_publisher",
+    article_identity_sha256:canadian.article_identity_sha256,page_original_publication_day:"2026-10-14",
+    original_clock_precision:"day",original_issuer_page_verified:true,
+    article_commercial_rights_verified:false,signed_customer_answer_verified:false};
+  const pageRead=vi.fn(async()=>({attempted:1,verified:0,verified_candidates:[],day_only_originals:[calendarProof]})) as never;
+  const plan={country_iso3:"CAN",country_name:"Canada",categories:["rare_earth" as const],
+    topics:["critical_minerals"],mineral:"lithium" as const,max_age_seconds:7*86400};
+  const out=await answerFromOriginalPlan(plan,{now,discover:privateRead,verifyPages:pageRead,websiteDelay:false});
+  expect(out).toMatchObject({latest_original_published_at:"2026-10-14",
+    latest_original_date_precision:"day",signed_gro_generated:false,independent_same_event_verification:false});
+  expect(out?.summary).toContain("publication time unavailable");
+  expect(JSON.stringify(out)).not.toContain("2026-10-14T");
+  expect(JSON.stringify(out)).not.toContain(canadian.article_title);
+  expect(JSON.stringify(out)).not.toContain(canadian.article_url);
+  for(const invalid of [
+    {...calendarProof,article_identity_sha256:"b".repeat(64)},
+    {...calendarProof,original_issuer_page_verified:false},
+    {...calendarProof,page_original_publication_day:"2026-10-17"},
+    {...calendarProof,page_original_publication_day:"2026-09-01"},
+  ]){
+    const invalidPage=vi.fn(async()=>({attempted:1,verified:0,verified_candidates:[],day_only_originals:[invalid]})) as never;
+    expect(await answerFromOriginalPlan(plan,{now,discover:privateRead,verifyPages:invalidPage,websiteDelay:false})).toBeNull();
+  }
  });
 });

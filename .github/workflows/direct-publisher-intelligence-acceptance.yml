@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/direct-publisher-intelligence-acceptance.yml'
       - 'scripts/ops/verify-direct-publisher-intelligence.ts'
+      - 'scripts/ops/verify-direct-canada-day-observation.ts'
       - 'src/lib/live-structured-on-demand.server.ts'
       - 'src/lib/ask-on-demand-original.server.ts'
       - 'src/lib/direct-publisher-intelligence.test.ts'
@@ -13,6 +14,7 @@ on:
     paths:
       - '.github/workflows/direct-publisher-intelligence-acceptance.yml'
       - 'scripts/ops/verify-direct-publisher-intelligence.ts'
+      - 'scripts/ops/verify-direct-canada-day-observation.ts'
       - 'src/lib/live-structured-on-demand.server.ts'
       - 'src/lib/ask-on-demand-original.server.ts'
 permissions:
@@ -34,14 +36,18 @@ jobs:
           bun-version: '1.4.2'
       - run: bun install --frozen-lockfile --ignore-scripts
       - name: Offline routing and output checks
-        run: bun x vitest run src/lib/direct-publisher-intelligence.test.ts src/lib/live-structured-on-demand.server.test.ts src/lib/ask-on-demand-original.test.ts src/lib/live-structured-deep-health.server.test.ts
+        run: bun x vitest run src/lib/direct-publisher-intelligence.test.ts src/lib/live-structured-on-demand.server.test.ts src/lib/ask-on-demand-original.test.ts src/lib/on-demand-nrcan-day-only-rescue.test.ts src/lib/live-structured-deep-health.server.test.ts
       - name: Read actual originals and generate own structured observations
         run: bun scripts/ops/verify-direct-publisher-intelligence.ts
+      - name: Verify actual Canada calendar-day observation without inventing time
+        run: bun scripts/ops/verify-direct-canada-day-observation.ts
       - name: Save sanitized proof only
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: direct-publisher-structured-receipt
-          path: artifacts/direct-publisher-intelligence-receipt.json
+          path: |
+            artifacts/direct-publisher-intelligence-receipt.json
+            artifacts/direct-canada-day-observation-receipt.json
           if-no-files-found: error
           retention-days: 3

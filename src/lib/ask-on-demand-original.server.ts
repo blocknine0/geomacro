@@ -128,28 +128,54 @@ export async function answerFromOriginalPlan(plan:AskOriginalPlan,options:Origin
       (plan.mineral==="rare earth"
         ? /\brare[- ]earths?\b/iu.test(item.article_title)
         : item.article_title.toLocaleLowerCase().split(/[^a-z]+/u).includes(plan.mineral))));
-  const signals=deriveStatelessSignals(eligible.map(item=>({
+  // The existing verifier separately proves Canada.ca calendar-day originals.
+  // They can inform this unsigned observation lane as DAYS only; they never
+  // enter verified_candidates, the signed evidence qualifier or paid delivery.
+  const dayCandidates=(pages.day_only_originals??[]).flatMap(proof=>{
+    if(plan.country_iso3!=="CAN"||proof.publisher_family!=="canada_nrcan_original_publisher"||
+       proof.original_clock_precision!=="day"||proof.original_issuer_page_verified!==true||
+       proof.article_commercial_rights_verified!==false||proof.signed_customer_answer_verified!==false)
+      return [];
+    const item=candidates.find(candidate=>
+      candidate.publisher_family===proof.publisher_family&&
+      candidate.article_identity_sha256===proof.article_identity_sha256&&
+      candidate.domain==="rare_earth"&&candidate.country_iso3==="CAN"&&
+      candidate.first_party_article_url_verified===true&&
+      matchesRequestedTopic(candidate.article_title,candidate.domain,plan.topics)&&
+      (plan.mineral===null||(plan.mineral==="rare earth"
+        ? /\brare[- ]earths?\b/iu.test(candidate.article_title)
+        : candidate.article_title.toLocaleLowerCase().split(/[^a-z]+/u).includes(plan.mineral))));
+    return item?[{title:item.article_title,articleUrl:item.article_url,
+      publishedAt:proof.page_original_publication_day,datePrecision:"day" as const,
+      sourceId:"nrcan_releases",category:item.domain,credit:null}]:[];
+  });
+  const signals=deriveStatelessSignals([...eligible.map(item=>({
     title:item.article_title,articleUrl:item.article_url,
     publishedAt:item.page_original_published_at,sourceId:item.publisher_family,
     category:item.domain,credit:null,
-  })),now.getTime(),{websiteDelay:options.websiteDelay}).filter(item=>{
+  })),...dayCandidates],now.getTime(),{websiteDelay:options.websiteDelay}).filter(item=>{
     const at=Date.parse(item.published_at);
     return Number.isFinite(at) && at<=now.getTime()-(options.websiteDelay===false?0:15*60_000) &&
       at>=now.getTime()-plan.max_age_seconds*1000;
   }).slice(0,3);
   if(!signals.length)return null;
-  const newest=signals.map(item=>item.published_at).sort().at(-1)!;
+  const latest=signals.reduce((a,b)=>a.published_at>b.published_at?a:b);
+  const newest=latest.published_at;
   return {
     summary:"For "+plan.country_name+": "+signals[0].what_changed+
-      " Original release dated "+newest+".",
+      " Original release dated "+newest+(latest.date_precision==="day"
+        ? " (day precision; publication time unavailable).":"."),
     what_changed:"For "+plan.country_name+": "+signals.map(item=>item.what_changed).join(" "),
     why_it_matters:signals.map(item=>item.why_it_matters).join(" "),
     geomacro_view:"Country/topic-matched original article release dates verified. These are unscored observations, not independently confirmed effects, a numeric reading, a forecast or a signed risk object.",
     evidence:signals.map(item=>({eventId:"live:official:"+item.id,title:item.title,relevance:100})),
     insufficient_evidence:false,mean_relevance:null,low_confidence:true,gri:null,
     generatedAt:now.toISOString(),latest_original_published_at:newest,
+    latest_original_date_precision:latest.date_precision,
     data_mode:"ephemeral_live",cache_status:"bypassed",source_identity_exposed:false,
-    durable_live_storage_write:false,real_time_message:"Original dated official release; independent event corroboration absent.",
+    durable_live_storage_write:false,real_time_message:latest.date_precision==="day"
+      ? "Original calendar day verified; exact publication time unavailable; independent event corroboration absent."
+      : "Original dated official release; independent event corroboration absent.",
     intelligence_tier:"official_observation_unscored",
     signed_gro_generated:false,independent_same_event_verification:false,
   };

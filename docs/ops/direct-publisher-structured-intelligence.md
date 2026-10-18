@@ -38,3 +38,18 @@ bounded GBR/three-category sample, verifies pages and generates the actual
 API JSON in memory. It saves counts, original publication times and customer
 JSON hashes only. At least one genuine derived category output is required;
 success is never all-country coverage or merchant/payment acceptance.
+
+Canada.ca originals with an independently verified first-publication calendar
+day may now inform the same unsigned observation lane without pretending an
+exact hour exists. Matching private article hashes, original issuer, country,
+topic and the existing conservative day-availability boundary are required.
+The response preserves `YYYY-MM-DD`, `original_date_precision: day`,
+`clock_semantics: original_publication_day` and
+`original_publication_time_verified: false`. It remains unqualified for paid or signed delivery; day-only records never enter the exact-clock/signed evidence list.
+An original day outside the requested window still produces 422.
+
+The existing no-secrets acceptance job additionally checks one CAN/minerals
+request (its own <=12 discovery and <=4 page reads). It requires any genuinely
+eligible day to survive into structured output, but never invents a current
+release merely to force a positive result. Only sanitized precision, dates,
+counts and output hashes are saved.

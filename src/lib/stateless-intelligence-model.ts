@@ -409,8 +409,15 @@ function developmentKind(title: string): string {
 }
 function developmentSummary(focus: string, kind: string, geography: string | null): string {
   const context = geography ? " mentioning " + geography : "";
-  return "An official publisher issued a " + kind + " concerning " + focus +
-    context + ". This is a release-based finding; its real-world effect is not yet independently confirmed.";
+  const description:Readonly<Record<string,string>>={
+    "trade restriction":"a trade-restriction update",agreement:"an agreement-related update",
+    funding:"a funding update",approval:"an approval-related update",production:"a production-related update",
+    "trade policy":"a trade-policy update","monetary policy":"a monetary-policy update",
+    "price data":"a price-data release",security:"a security-related update",research:"a research release",
+    announcement:"an announcement","risk update":"a risk update","policy update":"a policy update",
+  };
+  return "An official publisher released " + (description[kind]??"an official update") +
+    " about " + focus + context + ". Its real-world effects are not independently confirmed.";
 }
 /**
  * Conservative release eligibility for a first-party calendar DAY when a

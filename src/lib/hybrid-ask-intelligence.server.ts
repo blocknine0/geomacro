@@ -54,6 +54,8 @@ export type HybridAskAnswer = AskAnswer & {
   independent_same_event_verification?: false;
   /** Native timestamp of the newest publisher release, never the fetch clock. */
   latest_original_published_at?: string;
+  /** Calendar-day originals retain YYYY-MM-DD; never invent a UTC instant. */
+  latest_original_date_precision?: "exact" | "day";
 };
 
 type StoredEvent = {
