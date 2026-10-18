@@ -49,6 +49,15 @@ describe("isolated commercial source-rights snapshot recovery",()=>{
     expect(workflow).toContain("D1_DATABASE_ID=$id");
     expect(workflow).toContain("run: bun scripts/ops/publish-b2-live-snapshots.ts rights-only");
     expect(workflow).not.toContain("schedule:");
+    // No manual dispatch can reactivate frozen Supabase-backed public hot
+    // snapshots. The independently governed source-rights reader is separate.
+    const legacyJob=workflow.slice(workflow.indexOf("  publish:\n"),
+      workflow.indexOf("  rights-only:\n"));
+    expect(legacyJob).toContain("inputs.mode == 'live-public' && false");
+    expect(legacyJob).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+    expect(legacyJob).toContain("B2_ACCOUNT_QUOTA_WORKFLOW_ID: legacy_public_snapshot_retired");
+    expect(legacyJob).not.toContain("D1_DATABASE_ID=");
+
   });
 
   it("routes rights-only inventory reads through existing project-locked SELECT-only Postgres client",()=>{
