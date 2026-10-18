@@ -18,7 +18,9 @@ export function prepareWebCandidate({root=process.cwd(),sha=process.env.GITHUB_S
     compatibility_flags:["nodejs_compat","global_fetch_strictly_public"],
     no_bundle:true,rules:[{type:"ESModule",globs:["**/*.mjs","**/*.js"]}],
     assets:{binding:"ASSETS",directory:"../public",run_worker_first:true},
-    workers_dev:true,preview_urls:false,limits:{cpu_ms:10},
+    // Workers Free enforces its own CPU ceiling and rejects any cpu_ms
+    // override (100328). Never turn this into a paid-plan upgrade.
+    workers_dev:true,preview_urls:false,
     vars:{GEOMACRO_SUPABASE_RUNTIME_MODE:"standby"},
     observability:{enabled:false}};
   // Conservative ceiling, below the currently documented Worker bundle cap.
