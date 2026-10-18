@@ -8,6 +8,7 @@ import {createHash,createPublicKey,verify as verifySignature} from "node:crypto"
 import {gunzipSync} from "node:zlib";
 import {qualifyIndependentSameEvent} from "./independent-same-event-qualification.mjs";
 import {GRI_CATEGORIES} from "./gri-engine-v12.js";
+import {reviewedGriPortfolioProfile,GRI_RETAINED_MAX_AGE_MS} from "./gri-reviewed-source-window.mjs";
 
 const SHA=/^[a-f0-9]{64}$/u;
 const DOMAINS=new Set(GRI_CATEGORIES);
@@ -39,10 +40,10 @@ function approvedKey(pem) {
   need(key.asymmetricKeyType==="ed25519","APPROVED_REVIEWER_KEY_INVALID");
   return key;
 }
-function originalClock(value,now) {
+function originalClock(value,now,maxAge=MAX_CURRENT_MS) {
   const t=Date.parse(value);
   return typeof value==="string"&&Number.isFinite(t)&&
-    /Z$/u.test(value)&&t<=now+5*60_000&&now-t<=MAX_CURRENT_MS;
+    /Z$/u.test(value)&&t<=now+5*60_000&&now-t<=maxAge;
 }
 
 /**
@@ -64,16 +65,22 @@ export function verifyThreeDomainReviewerHandoff({
     intelligence.rows.length>=3&&
     intelligence.rows.length<=80,"INTELLIGENCE_INPUT_INVALID");
   const {rows,eventPackages}=intelligence;
+  // Authenticate the exact current signed GRI profile BEFORE considering
+  // the wider original lookback. Neither the free news queue nor any public
+  // caller can select this path without the independent reviewer key.
+  const gri=signedObject(reviewedGri,key);
+  const retained=reviewedGriPortfolioProfile(gri);
+  const originalWindow=retained?GRI_RETAINED_MAX_AGE_MS:MAX_CURRENT_MS;
   need(rows.length===eventPackages.length &&
     GRI_CATEGORIES.every(c=>rows.some(r=>r?.category===c)),
   "THREE_DOMAIN_REVIEW_REQUIRED");
   const qualified=qualifyIndependentSameEvent({
     rows,eventPackages,now,trustedReviewerPublicKeyPem,
+    griRetainedPortfolio:retained,
   });
   need(qualified.receipt?.commercial_event_admission===true &&
     qualified.receipt.qualified_event_count===rows.length,
   "ORIGINAL_REVIEW_NOT_QUALIFIED");
-  const gri=signedObject(reviewedGri,key);
   need(gri.schema===GRI_SCHEMA&&gri.private_only===false&&
     gri.publication_review_authorized===true&&
     gri.original_sources_independently_verified===true&&
@@ -91,12 +98,15 @@ export function verifyThreeDomainReviewerHandoff({
     need(event&&typeof event.id==="string"&&!scoreById.has(event.id)&&
       DOMAINS.has(event.category)&&
       Number.isInteger(event.severity)&&event.severity>=0&&event.severity<=100&&
-      originalClock(event.published_at,time)&&
-      originalClock(event.created_at,time)&&
+      originalClock(event.published_at,time,originalWindow)&&
+      originalClock(event.created_at,time,originalWindow)&&
       !String(event.story_cluster_id??"").startsWith("private-singleton:"),
     "GRI_EVENT_CLOCK_SCORE_OR_STORY_INVALID");
     scoreById.set(event.id,event);
   }
+  if(retained)need([...scoreById.values()].some(event=>
+    originalClock(event.published_at,time)),
+  "RETAINED_PORTFOLIO_NO_NEW_ORIGINAL_EVENT");
   for(const row of rows){
     const event=scoreById.get(row.id);
     need(event&&event.category===row.category&&event.severity===row.severity&&
@@ -176,6 +186,8 @@ export function verifyThreeDomainReviewerHandoff({
       current_three_domain_originals_verified:true,
       signed_country_category_cells:certified.size,
       qualified_event_count:rows.length,
+      retained_source_portfolio_review:retained,
+      original_source_lookback_hours:retained?72:1.5,
       independent_event_receipt_sha256:qualified.receipt_sha256,
       intelligence_input_sha256:digest(intelligenceBytes),
       gri_input_sha256:digest(griBytes),

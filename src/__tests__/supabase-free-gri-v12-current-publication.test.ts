@@ -9,6 +9,7 @@ import {
   qualificationReviewSigningBytes, SAME_EVENT_QUALIFICATION_SCHEMA,
 } from "../../scripts/lib/independent-same-event-qualification.mjs";
 import { assemblePublicGlobalRisk } from "../lib/global-risk-assemble";
+import {GRI_RETAINED_PORTFOLIO_PROFILE} from "../../scripts/lib/gri-reviewed-source-window.mjs";
 import { validateGlobalRiskContinuity } from "../lib/global-risk-continuity";
 
 const now = new Date("2026-10-15T10:35:00.000Z");
@@ -24,9 +25,9 @@ const domains = [
 ] as const;
 const hex = "a".repeat(64);
 
-function sourcePackage(row:any,d:any) {
+function sourcePackage(row:any,d:any,ageMinutes=30) {
   const identity={country_iso3:"USA",event_type:d[1],actor_id:"original_actor",
-    target_id:"original_target",location_id:"original_location",occurred_at:time(38)};
+    target_id:"original_target",location_id:"original_location",occurred_at:time(ageMinutes+8)};
   const claim=sameEventClaimHash(d[0],identity);
   const candidate={
     schema:SAME_EVENT_QUALIFICATION_SCHEMA,event_id:row.id,category:row.category,
@@ -44,7 +45,7 @@ function sourcePackage(row:any,d:any) {
       original_article_sha256:sha(row.id+"bytes"+i),
       rights_receipt_sha256:sha(row.id+"rights"+i),
       independent_review_sha256:sha(row.id+"originalreview"+i),
-      original_published_at:time(i===0?30:28),
+      original_published_at:time(ageMinutes-(i===0?0:2)),
       native_published_at_verified:true,original_article_content_verified:true,
       independently_authored_reporting_verified:true,
       commercial_derived_use_rights_verified:true,reporting_position:"confirms",
@@ -78,7 +79,7 @@ function historicalSnapshot(i:number,ago:number):any {
   };
 }
 
-function fixture() {
+function fixture(retainedMinutes?:number[]) {
   const old=[historicalSnapshot(2,90),historicalSnapshot(1,150)];
   const data=assemblePublicGlobalRisk(old,[],Date.parse(old[0].as_of));
   const history={schema:"geomacro.public-global-risk-history.v1",
@@ -89,7 +90,9 @@ function fixture() {
     id:"reviewed-event-"+i,category:d[0],
     source_title:"Geomacro finds verified risk in "+d[0]+" original developments",
     summary:"Independently reviewed original reporting reveals material global risk",
-    severity:51+i,delta:null,created_at:time(20),published_at:time(30),
+    severity:51+i,delta:null,
+    created_at:time((retainedMinutes?.[i]??30)-10),
+    published_at:time(retainedMinutes?.[i]??30),
     public_status:"verified_b2",
   }));
   const events=customerRows.map((row,i)=>({
@@ -123,8 +126,12 @@ function fixture() {
     as_of:time(10),reviewed_at:time(9),
     history_b2_key:"geomacro-evidence/v1/history/global-risk/gri-v1.2.0/"+old[0].id+".json.gz",
     history_b2_sha256:sha("exact historical B2 readback"),
+    ...(retainedMinutes?{
+      source_freshness_profile:GRI_RETAINED_PORTFOLIO_PROFILE,
+      retained_originals_current_review_completed:true,
+    }:{}),
     customerRows,events,
-    eventPackages:customerRows.map((row,i)=>sourcePackage(row,domains[i])),
+    eventPackages:customerRows.map((row,i)=>sourcePackage(row,domains[i],retainedMinutes?.[i]??30)),
   };
   return {reviewed:{signed_input,review_signature_base64:signJson(signed_input)},history};
 }
@@ -192,5 +199,48 @@ describe("Supabase-free Global Risk GRI v1.2 signed hot publisher",()=>{
     const missing=fixture();
     missing.history.verified_snapshot_rows.pop();
     expect(()=>run(missing)).toThrow("GRI_PUBLIC_HISTORY_ARCHIVE_CONTRACT_INVALID");
+  });
+});
+
+describe("v1.2 reviewed high-impact news with 72h retained sources",()=>{
+  it("recomputes the exact canonical numerical score from a NEW verified original and separately re-reviewed retained other two domains",()=>{
+    const f=fixture([30,20*60,35*60]);
+    const verified=preflightReviewedCurrentGlobalRisk({
+      reviewed:f.reviewed,trustedReviewerPublicKeyPem:pem,now,
+    });
+    expect(verified.qualified_receipt_sha256).toMatch(/^[a-f0-9]{64}$/u);
+    const product=run(f);
+    const latest=product.historyValue.verified_snapshot_rows[0];
+    expect(latest.methodology_version).toBe("gri-v1.2.0");
+    expect(latest.coverage).toBe(1);
+    expect(latest.active_categories).toEqual(["geopolitics","macro","rare_earth"]);
+    expect(latest.raw_score).toBeGreaterThan(0);
+    expect(latest.change_points).toBeCloseTo(latest.raw_score-42,10);
+    expect(latest.change_attribution).toBeNull();
+    expect(product.reviewProof.retained_source_portfolio_review).toBe(true);
+    expect(product.reviewProof.source_lookback_hours).toBe(72);
+    // The issuer publication timestamps must remain 20h/35h old; only the
+    // new geopolitics original is within 90 minutes.
+    expect(f.reviewed.signed_input.customerRows[1].published_at).toBe(time(20*60));
+    expect(f.reviewed.signed_input.customerRows[2].published_at).toBe(time(35*60));
+    expect(JSON.stringify(product.liveValue)).not.toContain("federalreserve.gov");
+    expect(product.liveValue.data.recentEvents).toEqual([]);
+  });
+  it("retains strict 90min 3-domain freshness for legacy signed current inputs",()=>{
+    const f=fixture([30,20*60,35*60]);
+    delete (f.reviewed.signed_input as any).source_freshness_profile;
+    delete (f.reviewed.signed_input as any).retained_originals_current_review_completed;
+    f.reviewed.review_signature_base64=signJson(f.reviewed.signed_input);
+    expect(()=>run(f)).toThrow(/GRI_PUBLIC_(EVENT_ORIGINAL_TIME_STALE_OR_INVALID|THREE_DOMAIN_ORIGINAL_FRESHNESS_MISSING)/u);
+  });
+  it("rejects all-retained/no genuinely NEW event, >72h old issuer sources, or absent signed fresh re-review",()=>{
+    const withoutNew=fixture([8*60,20*60,35*60]);
+    expect(()=>run(withoutNew)).toThrow("GRI_PUBLIC_RETAINED_PORTFOLIO_NO_NEW_ORIGINAL_EVENT");
+    const tooOld=fixture([30,20*60,73*60]);
+    expect(()=>run(tooOld)).toThrow("GRI_PUBLIC_EVENT_ORIGINAL_TIME_STALE_OR_INVALID");
+    const noReapproval=fixture([30,20*60,35*60]);
+    (noReapproval.reviewed.signed_input as any).retained_originals_current_review_completed=false;
+    noReapproval.reviewed.review_signature_base64=signJson(noReapproval.reviewed.signed_input);
+    expect(()=>run(noReapproval)).toThrow("GRI_PORTFOLIO_EXPLICIT_FRESH_REVIEW_REQUIRED");
   });
 });

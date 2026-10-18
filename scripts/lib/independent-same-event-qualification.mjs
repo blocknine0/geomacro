@@ -19,6 +19,9 @@ const HASH=/^[0-9a-f]{64}$/u;
 const ISO3=/^[A-Z]{3}$/u;
 const TOKEN=/^[a-z][a-z0-9_-]{2,79}$/u;
 const MAX_SOURCE_AGE=6*60*60*1000;
+// GRI v1.2's original 72h source lookback is available ONLY for a freshly
+// reviewer-signed retained-evidence portfolio. Strict paid events stay 6h.
+export const GRI_RETAINED_ORIGINAL_MAX_AGE_MS=72*60*60*1000;
 const MAX_EVENT_SPREAD=90*60*1000;
 const DOMAINS=new Set(["geopolitics","macro","rare_earth"]);
 const PUBLISHER_REGISTRY=Object.freeze({
@@ -140,11 +143,11 @@ export function registeredOriginalPublisherOrganization(hostname) {
   return Object.hasOwn(PUBLISHER_REGISTRY,hostname.toLowerCase())
     ? PUBLISHER_REGISTRY[hostname.toLowerCase()] : null;
 }
-function nativeTime(s,now){
+function nativeTime(s,now,maxAgeMs=MAX_SOURCE_AGE){
   if(typeof s!=="string"||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u.test(s))
     err("NATIVE_PUBLICATION_TIME_INVALID");
   const ms=Date.parse(s);
-  if(!Number.isFinite(ms)||ms>now+5*60000||now-ms>MAX_SOURCE_AGE||now-ms<0)
+  if(!Number.isFinite(ms)||ms>now+5*60000||now-ms>maxAgeMs||now-ms<0)
     err("NATIVE_PUBLICATION_TIME_OUTSIDE_WINDOW");
   return ms;
 }
@@ -176,7 +179,7 @@ function checkedCounterevidenceReview(review,nowMs,maxOriginalMs,evidenceCount){
     err("COUNTEREVIDENCE_REVIEW_STALE");
 }
 
-function verifiedArticle(e,claim,now){
+function verifiedArticle(e,claim,now,maxAgeMs=MAX_SOURCE_AGE){
   if(!e||typeof e!=="object"||Array.isArray(e)||
      !HASH.test(e.original_article_sha256)||!HASH.test(e.rights_receipt_sha256)||
      !HASH.test(e.independent_review_sha256)||
@@ -207,7 +210,7 @@ function verifiedArticle(e,claim,now){
     (uri.hostname==="www.canada.ca" &&
      !uri.pathname.startsWith("/en/natural-resources-canada/")))
     err("UNREGISTERED_ORIGINATING_ORGANIZATION");
-  const ms=nativeTime(e.original_published_at,now);
+  const ms=nativeTime(e.original_published_at,now,maxAgeMs);
   return {ms,organization:e.originating_reporting_organization_id,
     content:e.original_article_sha256,review:e.independent_review_sha256,
     host:uri.hostname};
@@ -227,8 +230,11 @@ export function qualificationReviewSigningBytes(value){
 }
 export function qualifyIndependentSameEvent({
   rows,eventPackages,now=new Date(),trustedReviewerPublicKeyPem,
+  griRetainedPortfolio=false,
 }={}) {
   const nowMs=now instanceof Date?now.getTime():NaN;
+  if(typeof griRetainedPortfolio!=="boolean")err("REVIEW_PROFILE_INVALID");
+  const sourceAgeMs=griRetainedPortfolio?GRI_RETAINED_ORIGINAL_MAX_AGE_MS:MAX_SOURCE_AGE;
   if(!Number.isFinite(nowMs)||!Array.isArray(rows)||!Array.isArray(eventPackages)||
     rows.length<1||rows.length>80||rows.length!==eventPackages.length)
     err("INPUT_INVALID");
@@ -264,19 +270,19 @@ export function qualifyIndependentSameEvent({
     if(seenEventClaims.has(identityHash))
       err("DUPLICATE_CANONICAL_EVENT_CLAIM");
     seenEventClaims.add(identityHash);
-    const when=nativeTime(identity.occurred_at,nowMs);
+    const when=nativeTime(identity.occurred_at,nowMs,sourceAgeMs);
     const reviewedRowHash=derivedCustomerRowSha256(row);
     // Reviewed output must be bound into the trusted Ed25519 event package;
     // an original article cannot authorize an unrelated severity or gist.
     if(!HASH.test(pkg.reviewed_derived_row_sha256)||
        pkg.reviewed_derived_row_sha256!==reviewedRowHash)
       err("DERIVED_ROW_REVIEW_BINDING_INVALID");
-    const sources=pkg.evidence.map(e=>verifiedArticle(e,identityHash,nowMs));
+    const sources=pkg.evidence.map(e=>verifiedArticle(e,identityHash,nowMs,sourceAgeMs));
     // The customer-facing published clock must describe the original
     // event or a first-party reviewed article publication, NEVER this
     // publisher's B2 upload/restore/deployment timestamp.
     const publishedAt=Date.parse(row.published_at);
-    if(publishedAt>nowMs || nowMs-publishedAt>MAX_SOURCE_AGE ||
+    if(publishedAt>nowMs || nowMs-publishedAt>sourceAgeMs ||
        ![when,...sources.map(s=>s.ms)].includes(publishedAt))
       err("DERIVED_ROW_ORIGINAL_TIME_MISMATCH");
     if(sources.some(s=>s.ms<when-5*60000)||
@@ -331,6 +337,7 @@ export function qualifyIndependentSameEvent({
       counterevidence_review_signed:true,
       unresolved_material_conflicts:0,retractions_detected:0,
       source_native_freshness_verified:true,
+       original_source_lookback_hours:sourceAgeMs/(60*60*1000),
       same_event_structured_identity_verified:true,
       review_and_derived_use_rights_receipts_present:true,
       source_bytes_private_only:true,
@@ -340,6 +347,7 @@ export function qualifyIndependentSameEvent({
     schema:"geomacro.commercial-independent-event-admission.v1",
     generated_at:now.toISOString(),commercial_event_admission:true,
     qualified_event_count:qualified.length,
+     retained_original_portfolio_review:griRetainedPortfolio,
     per_domain:Object.fromEntries([...DOMAINS].map(d=>[
       d,qualified.filter(q=>q.category===d).length])),
     qualified,
