@@ -1,0 +1,37 @@
+name: EIA First-Party Press Original RSS Shape Acceptance (No Funds)
+on:
+  pull_request:
+    paths:
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - "src/lib/stateless-intelligence-model.ts"
+      - "scripts/ops/probe-eia-native-original-rss.mjs"
+      - ".github/workflows/eia-firstparty-press-rss-acceptance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - "src/lib/stateless-intelligence-model.ts"
+      - "scripts/ops/probe-eia-native-original-rss.mjs"
+      - ".github/workflows/eia-firstparty-press-rss-acceptance.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-eia-press-source-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  eia-native-press-original:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Observe exact issuer-native press permalink shape with zero customer source leakage
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/probe-eia-native-original-rss.mjs
+          node scripts/ops/probe-eia-native-original-rss.mjs
