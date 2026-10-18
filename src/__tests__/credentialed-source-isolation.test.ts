@@ -17,7 +17,7 @@ const validProbe=vi.fn(async id=>{
 describe("#1827 independently activate configured credentialed sources",()=>{
   it("uses one bounded 30s BEA/UCDP read while other providers keep 15s",()=>{
     const adapter=readFileSync("global-intelligence/adapters/credentialed-sources.mjs","utf8");
-    expect(adapter).toContain('sourceId==="bea"?30000:sourceId==="ucdp_ged"?30000:15000');
+    expect(adapter).toContain('["bea","ucdp_ged","eia_api_v2","wto_timeseries"].includes(sourceId)?30000:15000');
     expect(adapter).toContain("method=GetDataSetList&ResultFormat=JSON");
     expect(adapter).toContain('const raw = await getJson(url, {headers: config.headers?.(key) || {},timeoutMs,maxBytes:256*1024,redirect:"error",fetchImpl:sourceId==="wto_timeseries"?fetchWtoCanonical:fetch})');
   });
@@ -36,9 +36,12 @@ describe("#1827 independently activate configured credentialed sources",()=>{
     expect(receipt.configured_failed).toBe(0);
     expect(receipt.results.find((r:any)=>r.source_id==="bea").status).toBe("CREDENTIAL_NOT_CONFIGURED");
     expect(receipt.per_domain.GEOPOLITICS.working).toBe(3);
-    expect(receipt.per_domain.CRITICAL_MINERALS.working).toBe(1);
+    expect(receipt.per_domain.CRITICAL_MINERALS.working).toBe(0);
+    expect(receipt.per_domain.MACRO.working).toBe(4);
+    // EIA electricity pricing cannot certify any current mineral event.
     expect(receipt.b2_requests+receipt.d1_writes+receipt.supabase_writes).toBe(0);
     expect(receipt.commercial_eligible).toBe(false);
+    expect(CREDENTIALED_SOURCE_ACCOUNTS.find(x=>x.id===\"eia_api_v2\")?.category).toBe(\"MACRO\");
   });
   it("records every configured upstream failure and never exposes a secret URL, key or body",async()=>{
     const receipt=await probeConfiguredCredentialedSources({
