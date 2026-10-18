@@ -215,6 +215,44 @@ describe("Supabase-free Global Risk GRI v1.2 signed hot publisher",()=>{
   });
 });
 
+describe("verified new original since historical snapshot",()=>{
+  const advanceHistoricalSnapshot=(f:ReturnType<typeof fixture>,agoMinutes:number)=>{
+    const first=f.history.verified_snapshot_rows[0];
+    // Independent pinned B2 snapshot is NEWER than the underlying events
+    // but OLDER than the review's actual as_of. All dates are native/real
+    // fixture timestamps, never changed on source evidence itself.
+    first.as_of=time(agoMinutes);
+    f.history.snapshot_as_of=first.as_of;
+    f.history.data=assemblePublicGlobalRisk(
+      f.history.verified_snapshot_rows,[],Date.parse(first.as_of));
+    return f;
+  };
+  it("rejects replaying the same previously published 90-minute source inputs with a later review timestamp",()=>{
+    const f=advanceHistoricalSnapshot(fixture(),20);
+    expect(f.reviewed.signed_input.events.every((e:any)=>
+      Date.parse(e.published_at)<Date.parse(f.history.snapshot_as_of))).toBe(true);
+    expect(()=>run(f)).toThrow(
+      "GRI_PUBLIC_NO_NEW_ORIGINAL_AFTER_VERIFIED_HISTORICAL_SNAPSHOT");
+  });
+  it("rejects 72-hour retained portfolio with a 30-minute event already in the historical snapshot",()=>{
+    const f=advanceHistoricalSnapshot(fixture([30,20*60,35*60]),20);
+    expect(()=>run(f)).toThrow(
+      "GRI_PUBLIC_NO_NEW_ORIGINAL_AFTER_VERIFIED_HISTORICAL_SNAPSHOT");
+  });
+  it("allows canonical numerical delta only when actual signed native new original postdates prior verified B2 clock",()=>{
+    const f=advanceHistoricalSnapshot(fixture([30,20*60,35*60]),40);
+    const result=run(f);
+    expect(result.reviewProof.new_native_original_after_historical_anchor_verified).toBe(true);
+    expect(result.reviewProof.newly_verified_original_count).toBe(1);
+    expect(result.reviewProof.prior_verified_snapshot_at).toBe(f.history.snapshot_as_of);
+    expect(result.liveValue.data.previousRaw).toBe(42);
+    expect(result.historyValue.verified_snapshot_rows[0].change_points)
+      .toBeCloseTo(result.liveValue.data.rawScore-42,10);
+    expect(result.historyValue.verified_snapshot_rows[0].change_attribution).toBeNull();
+    expect(result.liveValue.data.recentEvents).toEqual([]);
+  });
+});
+
 describe("v1.2 reviewed high-impact news with 72h retained sources",()=>{
   it("recomputes the exact canonical numerical score from a NEW verified original and separately re-reviewed retained other two domains",()=>{
     const f=fixture([30,20*60,35*60]);
