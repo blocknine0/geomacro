@@ -8,6 +8,11 @@ name: Auto Ingest News
 
 on:
   workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/auto-ingest-news.yml"
+      - "scripts/ops/report-gri-four-gates-readiness.mjs"
+      - "scripts/lib/gri-four-gates-readiness.test.mjs"
   schedule:
     - cron: "37 * * * *"
   push:
@@ -33,6 +38,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  four-gate-contract-tests:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Test independent GRI gates and protected original/rights invariants (no credentials)
+        run: |
+          node --check scripts/ops/report-gri-four-gates-readiness.mjs
+          node --test scripts/lib/gri-four-gates-readiness.test.mjs
+
   ingest-supabase-free-derived-news:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     # Reuse the audited backstop, its 70-minute signed-publication proof,
