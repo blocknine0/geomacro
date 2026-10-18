@@ -102,14 +102,16 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
     return json({ok:false,error:"DERIVED_NEWS_D1_WRITE_UNAVAILABLE"},503);
   }
 }
-export async function readDerivedStories(env,now=Date.now()) {
+export async function readDerivedStories(env,now=Date.now(),offset=0) {
+  if(!Number.isSafeInteger(offset)||![0,250,500].includes(offset))
+    return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID"},400);
   try {
     const {results=[]}=await env.DB.prepare(
-      "SELECT story_json FROM website_derived_intelligence WHERE published_at>=? AND first_seen_at>=? ORDER BY published_at DESC, id DESC LIMIT 250"
+      "SELECT story_json FROM website_derived_intelligence WHERE published_at>=? AND first_seen_at>=? ORDER BY published_at DESC, id DESC LIMIT 251 OFFSET ?"
     ).bind(new Date(now-AUTO_INGEST_RETENTION_MS).toISOString().slice(0,10),
-      new Date(now-AUTO_INGEST_RETENTION_MS).toISOString()).all();
+      new Date(now-AUTO_INGEST_RETENTION_MS).toISOString(),offset).all();
     const signals=[];
-    for (const row of results) {
+    for (const row of results.slice(0,250)) {
       try {
         const signal=JSON.parse(row.story_json);
         if (verifyDerivedStory(signal,now) &&
@@ -123,6 +125,8 @@ export async function readDerivedStories(env,now=Date.now()) {
       retention_days:3,retention_hours:72,
       delivery_scope:"free_website_only",
       scored:false,chargeable:false,supabase_dependency:false,
+      page_offset:offset,page_size:250,has_more:results.length>250,
+      next_offset:results.length>250&&offset<500?offset+250:null,
       signals},200);
   } catch {
     return json({ok:false,error:"DERIVED_NEWS_FEED_UNAVAILABLE",
