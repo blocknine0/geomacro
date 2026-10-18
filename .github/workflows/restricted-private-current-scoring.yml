@@ -25,6 +25,8 @@ on:
     paths:
       - ".github/workflows/restricted-private-current-scoring.yml"
       - "scripts/ingest-news.js"
+      - "scripts/tests/auto-private-gri-no-funds-continuation.test.mjs"
+      - "scripts/ops/preflight-private-griv12-singleton.mjs"
       - "scripts/lib/official-native-rss.mjs"
       - "scripts/lib/official-native-alternates.mjs"
       - "scripts/lib/official-native-third-fallback.mjs"
@@ -37,6 +39,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  private-gri-auto-continuation-contract:
+    # Verify the protected no-funds gating on PRs as well as on production
+    # source changes; this job never obtains source/provider secrets.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify auto GRI continuation never promotes private news to public signed score
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/preflight-private-griv12-singleton.mjs
+          node --test scripts/tests/auto-private-gri-no-funds-continuation.test.mjs
+
   private-stage:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
