@@ -13,13 +13,18 @@ export function structuralNewsAvailability(
   return Object.fromEntries(CATEGORIES.map(category=>{
     const relevant=rows.filter(r=>r.category===category);
     const latest=relevant[0]??null;
+    const classified=relevant.filter(r=>
+      (r as {qualifying_topic_release_verified?:boolean}).qualifying_topic_release_verified!==false).length;
     const n24=relevant.filter(r=>{
       const ms=Date.parse(r.original_published_at);
       return Number.isFinite(ms)&&ms<=now&&now-ms<=86_400_000;
     }).length;
     return [category,{
       status:relevant.length===0?"NO_QUALIFIED_RELEASE_IN_72H":
+        classified===0?"UNCLASSIFIED_DATED_SOURCE_CANDIDATES_ONLY":
         n24>0?"RECENT_OFFICIAL_RELEASE_IN_24H":"RECENT_OFFICIAL_RELEASE_IN_72H",
+      classified_topic_releases_72h:classified,
+      unclassified_source_candidates_72h:relevant.length-classified,
       latest_original_published_at:latest?.original_published_at??null,
       latest_original_date_precision:latest?.date_precision??null,
       observed_derived_records_24h:n24,

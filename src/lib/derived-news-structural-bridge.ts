@@ -21,7 +21,11 @@ export type DerivedNewsStructural={
   original_published_at:string;date_precision:"day"|"exact";
   geography_mentioned:string|null;
   headline:string;observed_change:string;potential_relevance:string;
-  confidence_state:"OFFICIAL_RELEASE_OBSERVED_UNSCORED";
+  confidence_state:"OFFICIAL_RELEASE_OBSERVED_UNSCORED"|
+    "DATED_OFFICIAL_FEED_CANDIDATE_UNCLASSIFIED";
+  topical_match_verified:boolean;
+  qualifying_topic_release_verified:boolean;
+  further_validation_required:true;
   event_detail_verified:false;country_subject_verified:false;
   independent_same_event_verified:false;commercial_derived_rights_verified:false;
   signed_product_verified:false;numeric_impact_established:false;
@@ -49,17 +53,24 @@ export function buildDerivedNewsStructural(
       continue;
     }
     seen.set(signal.id,canonical);
+    const candidateOnly=signal.status==="official_feed_candidate_unscored";
     rows.push(Object.freeze({
       schema:NEWS_STRUCTURAL_SCHEMA,id:signal.id,category:signal.category,
       event_family:EVENT_FAMILIES[signal.category],
       development_type:signal.development_type,topic:signal.topic,
       original_published_at:signal.published_at,date_precision:signal.date_precision,
       geography_mentioned:signal.geography,
-      headline:"Official "+signal.topic+" release observed",
+      headline:candidateOnly?"Official-source candidate; relevance not verified":
+        "Official "+signal.topic+" release observed",
       // Already Geomacro-authored bounded derived prose, NOT upstream text.
       observed_change:signal.what_changed,
       potential_relevance:signal.why_it_matters,
-      confidence_state:"OFFICIAL_RELEASE_OBSERVED_UNSCORED",
+      confidence_state:candidateOnly?
+        "DATED_OFFICIAL_FEED_CANDIDATE_UNCLASSIFIED":
+        "OFFICIAL_RELEASE_OBSERVED_UNSCORED",
+      topical_match_verified:!candidateOnly,
+      qualifying_topic_release_verified:!candidateOnly,
+      further_validation_required:true,
       event_detail_verified:false,country_subject_verified:false,
       independent_same_event_verified:false,
       commercial_derived_rights_verified:false,signed_product_verified:false,

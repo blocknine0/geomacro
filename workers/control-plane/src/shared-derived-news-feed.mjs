@@ -52,6 +52,12 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
     if(!complete)throw Error("SHARED_NEWS_INCOMPLETE");
     const all=buildDerivedNewsStructural(signals,now);
     const producerChecks=await getNewsProducerChecks(env,now);
+    const qualified=Object.fromEntries(CATEGORIES.map(c=>[
+      c,all.filter(row=>row.category===c && row.qualifying_topic_release_verified).length
+    ]));
+    const candidates=Object.fromEntries(CATEGORIES.map(c=>[
+      c,all.filter(row=>row.category===c && !row.qualifying_topic_release_verified).length
+    ]));
     const observed=Object.fromEntries(CATEGORIES.map(c=>[c,
       signals.filter(s=>s.category===c).length]));
     const creditHeld=Object.fromEntries(CATEGORIES.map(c=>[c,
@@ -70,7 +76,11 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
       }).length;
       return [c,{
         status:matching.length===0?"NO_QUALIFIED_RELEASE_IN_72H":
+          qualified[c]===0?"UNCLASSIFIED_DATED_SOURCE_CANDIDATES_ONLY":
           count24>0?"RECENT_OFFICIAL_RELEASE_IN_24H":"RECENT_OFFICIAL_RELEASE_IN_72H",
+        classified_topic_releases_72h:qualified[c],
+        unclassified_source_candidates_72h:candidates[c],
+        candidate_is_not_qualified_topic_or_commercial_event:true,
         latest_original_published_at:last?.original_published_at??null,
         latest_original_date_precision:last?.date_precision??null,
         observed_derived_records_24h:count24,
@@ -109,6 +119,10 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
       raw_upstream_delivered:false,
       generated_at:new Date(now).toISOString(),
       availability_by_category,counts,items,
+      unclassified_source_candidates_72h:Object.values(candidates).reduce((a,b)=>a+b,0),
+      classified_topic_releases_72h:Object.values(qualified).reduce((a,b)=>a+b,0),
+      pilot_evaluation_only:true,pilot_window_days:90,
+      partner_api_payment_required:false,pilot_sla_guaranteed:false,
       producer_observations_separate_from_original_release_clocks:true,
     });
   }catch{

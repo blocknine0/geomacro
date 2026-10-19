@@ -27,7 +27,14 @@ function safeSignal(value: unknown, now: number): value is StatelessIntelligence
       typeof s.development_type!=="string" || s.development_type.length>80 ||
       typeof s.what_changed !== "string" || s.what_changed.length < 30 || s.what_changed.length>650 ||
       typeof s.why_it_matters !== "string" || s.why_it_matters.length < 30 || s.why_it_matters.length>700 ||
-      s.status !== "official_release_observed_unscored" ||
+      !((s.status==="official_release_observed_unscored" &&
+          !String(s.topic).endsWith(" publisher candidate")) ||
+        (s.status==="official_feed_candidate_unscored" &&
+          ((s.category==="geopolitics"&&s.topic==="geopolitical publisher candidate")||
+           (s.category==="macro"&&s.topic==="macro publisher candidate")||
+           (s.category==="rare_earth"&&s.topic==="minerals publisher candidate")) &&
+          s.development_type==="unclassified publisher update" &&
+          s.geography===null)) ||
       s.same_event_corrob_verified !== false || s.severity !== null ||
       s.observed_release_count !== 1 ||
       !Array.isArray(s.sources_credited) ||
