@@ -29,6 +29,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
       RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
@@ -145,7 +146,24 @@ jobs:
           echo "CONTROL_PLANE_TOKEN=$CONTROL_PLANE_TOKEN" >> "$GITHUB_ENV"
           # Distinct HMAC namespace: sharing Predge's research token never
           # shares the control-plane admin or commercial ledger secret.
-          PREDGE_RESEARCH_NEWS_TOKEN="$(node -e "const c=require('node:crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-72h-research-only-v1').digest('hex'))")"
+          # Prefer a purpose-only, externally shareable 32-byte random token
+          # owned by the founder and set in the protected production secret.
+          # This avoids ever retrieving/exposing the commerce root secret.
+          # Existing HMAC namespace remains the zero-config fallback for
+          # deployments which have not enrolled a dedicated partner token.
+          if test -n "${PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE:-}"; then
+            PREDGE_RESEARCH_NEWS_TOKEN="$PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE"
+            if ! [[ "$PREDGE_RESEARCH_NEWS_TOKEN" =~ ^[a-f0-9]{64}$ ]]; then
+              echo "::error::PREDGE_RESEARCH_OVERRIDE_INVALID"; exit 5
+            fi
+            if test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$CONTROL_PLANE_TOKEN"; then
+              echo "::error::PREDGE_RESEARCH_ADMIN_TOKEN_REUSE_FORBIDDEN"; exit 5
+            fi
+            echo "PREDGE_RESEARCH_DEDICATED_GRANT_MODE=production-secret-override" >> "$GITHUB_ENV"
+          else
+            PREDGE_RESEARCH_NEWS_TOKEN="$(node -e "const c=require('node:crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-72h-research-only-v1').digest('hex'))")"
+            echo "PREDGE_RESEARCH_DEDICATED_GRANT_MODE=protected-hmac-fallback" >> "$GITHUB_ENV"
+          fi
           test "${#PREDGE_RESEARCH_NEWS_TOKEN}" -eq 64
           echo "::add-mask::$PREDGE_RESEARCH_NEWS_TOKEN"
           echo "PREDGE_RESEARCH_NEWS_TOKEN=$PREDGE_RESEARCH_NEWS_TOKEN" >> "$GITHUB_ENV"
