@@ -170,7 +170,7 @@ if(process.env.GEOMACRO_AUTOMATED_FINDS_PUBLICATION==="1"){
     const message=error instanceof Error?error.message:"";
     const reason=/^AUTOMATED_FINDS_[A-Z0-9_]+$/.test(message)?message:
       "AUTOMATED_FINDS_SIGNED_ARCHIVE_PUBLICATION_UNAVAILABLE";
-    console.error("::error::"+reason);
+    console.warn("::warning::"+reason);
   }
 }
 
