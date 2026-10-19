@@ -43,7 +43,7 @@ describe("October 11–13 original-publisher news gap recovery",()=>{
  it("production SSR reads the public journal directly even without a working server-function transport",()=>{
    const route=readFileSync("src/routes/intelligence.tsx","utf8");
    const txt=route.slice(route.indexOf('loader: async () =>'),route.indexOf("  head: () =>"));
-   expect(txt).toContain("fetchDirectDerivedNews()");
+   expect(txt).toContain("fetchAllDerivedNews()");
    expect(txt).not.toContain("getWebsiteDerivedNews()");
    expect(txt).toContain('journal: history.status === "fulfilled"');
  });

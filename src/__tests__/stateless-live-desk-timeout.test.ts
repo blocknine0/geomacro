@@ -16,7 +16,7 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).toContain('getWebsiteDerivedNews(),\n            9_000');
     expect(desk).toContain("setErrors(previous => ({ ...previous, ...nextErrors }))");
     expect(desk).toContain("setJournalUnavailable(true)");
-    expect(desk).toContain("fetchDirectDerivedNews()");
+    expect(desk).toContain("fetchAllDerivedNews()");
     expect(desk).toContain("initialJournal = []");
     expect(desk).toContain("Previously received in-tab findings may be out of date");
     expect(desk).toContain("https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-html");

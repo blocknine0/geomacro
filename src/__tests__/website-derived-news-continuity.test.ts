@@ -168,7 +168,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const desk=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
     const fetcher=readFileSync("src/lib/public-derived-news-client.ts","utf8");
     expect(fetcher).toContain("Promise<StatelessIntelligenceSignal[]>");
-    expect(route).toContain('fetchDirectDerivedNews()');
+    expect(route).toContain('fetchAllDerivedNews()');
     expect(route).toContain('journal: history.status === "fulfilled" && Array.isArray(history.value)');
     expect(route).toContain('? history.value : []');
     expect(route).not.toContain("history.value.signals");

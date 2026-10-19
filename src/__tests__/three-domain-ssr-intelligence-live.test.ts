@@ -62,7 +62,7 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
     expect(route).toContain("const [geopolitics, macro, minerals, history] = await Promise.allSettled");
     expect(route).toContain("statelessFeeds:");
     expect(route).toContain("initialFeeds={loader.statelessFeeds}");
-    expect(route).toContain("fetchDirectDerivedNews()");
+    expect(route).toContain("fetchAllDerivedNews()");
     expect(route).not.toContain("history.value.signals");
     expect(desk).toContain("const missingAtSsr = DOMAINS.map(domain => domain.key)");
     expect(desk).toContain("if (missingAtSsr.length > 0) void refresh(missingAtSsr)");

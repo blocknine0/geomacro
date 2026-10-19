@@ -234,7 +234,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(page).toContain('initialFeeds={loader.statelessFeeds}');
     expect(active).not.toContain("getPublicIntelligenceSeo(");
     expect(page).toContain("component: StatelessWebsiteIntelligencePage");
-    expect(active).toContain("fetchDirectDerivedNews()");
+    expect(active).toContain("fetchAllDerivedNews()");
     expect(active).toContain("Promise.allSettled");
     expect(active).toContain('journal: history.status === "fulfilled" && Array.isArray(history.value)');
     expect(page).toContain("initialJournal={loader.journal}");
