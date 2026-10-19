@@ -10,6 +10,15 @@ export const B2_DAILY_LIMITS = Object.freeze({
 // reservations, so producer use can only make the public allocation smaller;
 // it can never let a public Worker exhaust producer headroom.
 export const B2_PUBLIC_EDGE_GLOBAL_GET_CEILING = 10;
+// The provider account may still have a much smaller, independently enforced
+// cap. These are conservative *shared-ledger* admission ceilings, NOT claimed
+// new Backblaze allowance. App fallbacks may never exhaust all GET tickets
+// before the protected historical-version and signed publishers can run.
+export const B2_APP_STRUCTURAL_SHARED_GET_CEILING = 10;
+export const B2_APP_PRIVATE_METADATA_SHARED_GET_CEILING = 18;
+const APP_PRIVATE_METADATA_WORKFLOWS = new Set([
+  "app_private_source_rights","app_private_source_status",
+]);
 const PUBLIC_B2_READ_WORKFLOWS = new Set([
   "intelligence_public_edge",
   "global_risk_public_edge",
@@ -74,12 +83,22 @@ export async function reserveB2AccountQuota(db, body, {now = new Date()} = {}) {
   const { day, iso } = clock(now);
   if (!db?.prepare) throw new Error("B2_QUOTA_D1_UNAVAILABLE");
   const increments = KINDS.map(k => Number(k === kind));
+  // This is evaluated within the SAME atomic quota UPSERT, not as a racy
+  // SELECT or user-provided priority. Recovery workers never inherit this
+  // low-priority app ceiling; the account's 25-GET hard safety cap persists.
+  const getCeiling = kind !== "GET" ? null
+    : workflowId === "app_private_structural_serving"
+      ? B2_APP_STRUCTURAL_SHARED_GET_CEILING
+      : APP_PRIVATE_METADATA_WORKFLOWS.has(workflowId)
+        ? B2_APP_PRIVATE_METADATA_SHARED_GET_CEILING
+        : PUBLIC_B2_READ_WORKFLOWS.has(workflowId)
+          ? B2_PUBLIC_EDGE_GLOBAL_GET_CEILING : null;
   const row = await db.prepare(ATOMIC_B2_QUOTA_SQL).bind(
     day, ...increments, iso,
     B2_DAILY_LIMITS.total,B2_DAILY_LIMITS.GET,B2_DAILY_LIMITS.PUT,
     B2_DAILY_LIMITS.HEAD,B2_DAILY_LIMITS.NATIVE_AUTH,
-    kind === "GET" && PUBLIC_B2_READ_WORKFLOWS.has(workflowId) ? 1 : 0,
-    B2_PUBLIC_EDGE_GLOBAL_GET_CEILING,
+    getCeiling === null ? 0 : 1,
+    getCeiling ?? B2_DAILY_LIMITS.GET,
   ).first();
   // If the UPSERT's WHERE failed, *no B2 operation* is authorized.
   if (!row) return {

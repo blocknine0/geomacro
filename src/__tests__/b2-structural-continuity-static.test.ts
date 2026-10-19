@@ -1,9 +1,35 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { structuralB2ProviderDenialPolicy } from "../lib/b2-structural.server";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("verified B2 structural serving continuity", () => {
+  it("bounded verified snapshot/proof caching eliminates repeat GET without re-dating any source",()=>{
+    const code=read("src/lib/b2-structural.server.ts");
+    expect(code).toContain("const CACHE_TTL_MS = 15 * 60_000");
+    expect(code).toContain("cached.expiresAt > Date.now()");
+    expect(code).toContain("cached.expiresAt > Date.now()");
+    expect(code).toContain("(await sha256(compressed)) !== String(proof.compressed_sha256)");
+    expect(code).toContain("payload.generated_at !== proof.generated_at");
+    expect(code).toContain("!recentEnough(payload.generated_at)");
+    expect(code).toContain("reservePrivateB2Read(key)");
+    expect(code).not.toContain("staleWhileRevalidate");
+  });
+  it("never retries an account-wide provider hard cap with another key or credential",()=>{
+    const now=Date.parse("2026-10-19T15:00:00.000Z");
+    for(const code of ["transaction_cap_exceeded","download_cap_exceeded"]){
+      const decision=structuralB2ProviderDenialPolicy(403,"<Code>"+code+"</Code>",now);
+      expect(decision.providerHardCap).toBe(true);
+      expect(decision.mayTryOtherCredential).toBe(false);
+      expect(decision.cooldownUntil).toBe(Date.parse("2026-10-20T00:00:00.000Z"));
+    }
+    expect(structuralB2ProviderDenialPolicy(403,"AccessDenied",now).mayTryOtherCredential)
+      .toBe(true);
+    expect(structuralB2ProviderDenialPolicy(429,"TooManyRequests",now).cooldownUntil)
+      .toBe(now+15*60_000);
+    expect(structuralB2ProviderDenialPolicy(500,"ServerError",now).cooldownUntil).toBe(0);
+  });
   it("keeps historical Supabase primary and uses B2 only for outage continuity", () => {
     const source = read("src/lib/structural-context.server.ts");
     expect(source).toContain("const db = getHistoricalClient()");

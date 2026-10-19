@@ -4,6 +4,7 @@ import worker from "../../workers/control-plane/src/index.mjs";
 import {
   reserveB2AccountQuota, readB2AccountQuota, B2_DAILY_LIMITS,
   ATOMIC_B2_QUOTA_SQL,B2_PUBLIC_EDGE_GLOBAL_GET_CEILING,
+  B2_APP_STRUCTURAL_SHARED_GET_CEILING,B2_APP_PRIVATE_METADATA_SHARED_GET_CEILING,
 } from "../../workers/control-plane/src/b2-account-quota.mjs";
 
 const TOKEN = "t".repeat(64);
@@ -71,6 +72,8 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     expect(ATOMIC_B2_QUOTA_SQL).not.toContain("DELETE");
     expect(ATOMIC_B2_QUOTA_SQL).toContain("b2_account_daily_request_quota.get_requests + excluded.get_requests <= ?");
     expect(B2_PUBLIC_EDGE_GLOBAL_GET_CEILING).toBe(10);
+    expect(B2_APP_STRUCTURAL_SHARED_GET_CEILING).toBe(10);
+    expect(B2_APP_PRIVATE_METADATA_SHARED_GET_CEILING).toBe(18);
     expect(B2_DAILY_LIMITS).toEqual({total:80,GET:25,PUT:55,HEAD:10,NATIVE_AUTH:10});
   });
 
@@ -144,6 +147,41 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     }
     expect(counters.get("2026-10-09")?.get_requests).toBe(25);
     expect(byWorkflow.get("2026-10-09|restricted_private_scoring|GET")).toBe(15);
+  });
+
+  it("protects historical/signed recovery GET budget from structural app fallback storms",async()=>{
+    const {db,counters,byWorkflow}=fakeD1();
+    const structural=await Promise.all(Array.from({length:30},()=>reserveB2AccountQuota(db,{
+      kind:"GET",workflow_id:"app_private_structural_serving"},{now:date})));
+    expect(structural.filter(x=>x.ok)).toHaveLength(10);
+    expect(structural.filter(x=>!x.ok)).toHaveLength(20);
+    expect(counters.get("2026-10-09")?.get_requests).toBe(10);
+    // A historical original-version recovery still has its bounded 3 GETs.
+    const historical=await Promise.all(Array.from({length:3},()=>reserveB2AccountQuota(db,{
+      kind:"GET",workflow_id:"historical_gri_version_recovery"},{now:date})));
+    expect(historical.every(x=>x.ok)).toBe(true);
+    expect(byWorkflow.get("2026-10-09|historical_gri_version_recovery|GET")).toBe(3);
+    // Other admitted producers retain the original 25-GET HARD cap.
+    const producer=await Promise.all(Array.from({length:20},()=>reserveB2AccountQuota(db,{
+      kind:"GET",workflow_id:"gri_reviewed_current"},{now:date})));
+    expect(producer.filter(x=>x.ok)).toHaveLength(12);
+    expect(counters.get("2026-10-09")?.get_requests).toBe(25);
+    expect((await reserveB2AccountQuota(db,{kind:"GET",
+      workflow_id:"historical_gri_version_recovery"},{now:date})).ok).toBe(false);
+  });
+
+  it("caps fallback rights/status reads independently without weakening rights checks",async()=>{
+    const {db,counters}=fakeD1();
+    const get=async(workflow_id:string)=>reserveB2AccountQuota(db,{kind:"GET",workflow_id},{now:date});
+    for(let i=0;i<18;i++)
+      expect((await get(i%2?"app_private_source_status":"app_private_source_rights")).ok).toBe(true);
+    expect((await get("app_private_source_rights")).ok).toBe(false);
+    expect((await get("app_private_source_status")).ok).toBe(false);
+    // Real signed publishing and historical recovery still get per-operation
+    // tickets up to the original account hard ceiling, never without a ticket.
+    for(let i=0;i<7;i++)expect((await get("historical_gri_version_recovery")).ok).toBe(true);
+    expect(counters.get("2026-10-09")?.get_requests).toBe(25);
+    expect((await get("historical_gri_version_recovery")).ok).toBe(false);
   });
 
   it("rejects untrusted identifiers, bogus counts, malformed clock and missing D1", async () => {

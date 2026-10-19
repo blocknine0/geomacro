@@ -14,7 +14,28 @@ const HISTORICAL_PROJECT_REF = "nqvpcbnnvjsrlvyxxevk";
 const MAX_COMPRESSED_BYTES = 12_000_000;
 const MAX_DECOMPRESSED_BYTES = 40_000_000;
 const REQUEST_TIMEOUT_MS = 3_500;
-const CACHE_TTL_MS = 120_000;
+// A pair of SHA-bound, immutable-in-request original bytes are reused within
+// one server isolate for at most 15 minutes. Full proof validation, expiry,
+// source identity and country rights gates below still run on EVERY read.
+// This increases effective queries/GET without raising any provider cap.
+const CACHE_TTL_MS = 15 * 60_000;
+const PROVIDER_TRANSIENT_BACKOFF_MS = 15 * 60_000;
+let providerQuotaCooldownUntil = 0;
+export function structuralB2ProviderDenialPolicy(
+  status: number, errorBody: string, nowMs: number,
+): { providerHardCap: boolean; cooldownUntil: number; mayTryOtherCredential: boolean } {
+  if (!Number.isFinite(nowMs)) throw Error("STRUCTURAL_PROVIDER_CLOCK_INVALID");
+  const hardCap = status === 403 &&
+    /(?:transaction_cap_exceeded|download_cap_exceeded)/i.test(errorBody.slice(0,4096));
+  const nextUtc = Date.UTC(new Date(nowMs).getUTCFullYear(),
+    new Date(nowMs).getUTCMonth(),new Date(nowMs).getUTCDate()+1);
+  return {
+    providerHardCap: hardCap,
+    cooldownUntil: hardCap ? nextUtc
+      : status === 429 ? nowMs + PROVIDER_TRANSIENT_BACKOFF_MS : 0,
+    mayTryOtherCredential: status === 403 && !hardCap,
+  };
+}
 const FAILURE_THRESHOLD = 3;
 const CIRCUIT_OPEN_MS = 30_000;
 export const STRUCTURAL_B2_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -119,7 +140,7 @@ async function signedGet(key: string): Promise<Uint8Array | null> {
 
 async function signedGetOnce(key: string): Promise<Uint8Array | null> {
   const candidates = config();
-  if (!candidates || circuitOpen()) return null;
+  if (!candidates || circuitOpen() || providerQuotaCooldownUntil > Date.now()) return null;
   const cached = cache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.bytes;
 
@@ -158,7 +179,16 @@ async function signedGetOnce(key: string): Promise<Uint8Array | null> {
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
       if (!response.ok) {
-        if (response.status === 403 && index < candidates.length - 1) continue;
+        // An account-wide provider cap cannot be evaded using a second
+        // credential on that SAME account. Avoid wasting the next D1 ticket.
+        if (response.status === 403 || response.status === 429) {
+          const message=(await response.text().catch(()=>"")).slice(0,4096);
+          const policy=structuralB2ProviderDenialPolicy(response.status,message,Date.now());
+          providerQuotaCooldownUntil=Math.max(
+            providerQuotaCooldownUntil,policy.cooldownUntil);
+          if(policy.providerHardCap) { noteFailure(); return null; }
+          if(policy.mayTryOtherCredential && index<candidates.length-1)continue;
+        }
         noteFailure();
         return null;
       }
