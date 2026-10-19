@@ -137,9 +137,16 @@ jobs:
           if bun scripts/ops/prepare-first-qualified-country-digest.ts --freeze-private; then
             echo "Verified annual minerals candidate frozen and read back."
           else
-            echo "Original minerals qualification failed; trying distinct reviewed quarterly FX profile. No minerals success is asserted."
-            bun scripts/ops/prepare-treasury-country-digest.ts --freeze-private
+            echo "Original minerals qualification failed. The following distinct quarterly FX acceptance is mandatory; no minerals success is asserted."
           fi
+
+      - name: Freeze genuine quarterly FX digest and read exact private bytes twice (no funds)
+        env:
+          NODE_ENV: production
+          GEOMACRO_SUPABASE_RUNTIME_MODE: standby
+          GEOMACRO_COMMERCE_LEDGER_URL: ${{ steps.origin.outputs.url }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: bun scripts/ops/prepare-treasury-country-digest.ts --freeze-private
 
       - name: Keep sanitized genuine digest receipt only
         if: always()
