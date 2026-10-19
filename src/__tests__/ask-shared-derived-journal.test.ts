@@ -40,7 +40,8 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
    });
    expect(result.signals).toHaveLength(3);
    expect(result.live_categories_queried).toEqual(["rare_earth"]);
-   expect(readLive).toHaveBeenCalledExactlyOnceWith("rare_earth");
+   expect(readLive).toHaveBeenCalledTimes(1);
+   expect(readLive).toHaveBeenCalledWith("rare_earth");
  });
  it("does not suppress a proper live check on journal failure or attribution-only rows",async()=>{
    const readLive=vi.fn(async(c:StatelessCategory)=>({

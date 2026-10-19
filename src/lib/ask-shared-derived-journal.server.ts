@@ -58,8 +58,9 @@ export async function collectSharedOfficialNews(
  }
  const live=await Promise.allSettled(missing.map(c=>readLive(c)));
  for(let i=0;i<live.length;i++){
-   if(live[i].status!=="fulfilled")continue;
-   const records=live[i].value?.signals;
+   const outcome=live[i];
+   if(outcome.status!=="fulfilled")continue;
+   const records=outcome.value?.signals;
    if(!Array.isArray(records))continue;
    const category=missing[i];
    const checked=records.filter(s=>s.category===category&&eligible(s,now))
