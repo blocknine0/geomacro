@@ -66,7 +66,7 @@ rights flags unchanged. **Never relabel these fixtures as production signatures.
 ## Before actual 90-day driver kickoff
 
 Predge must confirm its **own** server-enforced partner quota and credential
-header: target ~100 checks/day, HARD maximum 500/day. They must provide
+header: suggested target 100 checks/day, HARD maximum 500/day. They must provide
 settlement-risk endpoint specification, current signing key, independent live
 networked PUBLIC_SANDBOX signed sample and signed/countersigned LOI v2 with
 email-agreed kickoff date. Geomacro verifies signature, clock, numeric ID,
