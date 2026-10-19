@@ -106,6 +106,8 @@ describe("#1827 bounded B2 D1 reservation-account audit", () => {
     expect(workflow).toContain("LIMIT 101;");
     expect(workflow).toContain("d1 execute geomacro-control-plane");
     expect(workflow).toContain("node scripts/ops/report-b2-account-ledger-readonly.mjs");
+    expect(workflow).toContain("node scripts/ops/print-p0-hot503-quota-decision.mjs");
+    expect(workflow).not.toContain("node --input-type=module <<\u0027NODE\u0027");
     expect(workflow).not.toContain("secrets.B2_");
     expect(workflow).not.toContain("secrets.SUPABASE");
     expect(workflow).not.toContain("d1 migrations apply");
