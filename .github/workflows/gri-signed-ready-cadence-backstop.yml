@@ -23,6 +23,9 @@ on:
       - "scripts/lib/gri-signed-ready-cadence-hint.mjs"
       - "scripts/lib/gri-signed-ready-cadence-hint.test.mjs"
       - "scripts/ops/dispatch-gri-signed-ready-cadence.mjs"
+      - "scripts/lib/machine-intelligence-signed-ready-hint.mjs"
+      - "scripts/lib/machine-intelligence-signed-ready-hint.test.mjs"
+      - "scripts/ops/dispatch-machine-intelligence-signed-ready.mjs"
   push:
     branches: [main]
     paths:
@@ -30,6 +33,9 @@ on:
       - "scripts/lib/gri-signed-ready-cadence-hint.mjs"
       - "scripts/lib/gri-signed-ready-cadence-hint.test.mjs"
       - "scripts/ops/dispatch-gri-signed-ready-cadence.mjs"
+      - "scripts/lib/machine-intelligence-signed-ready-hint.mjs"
+      - "scripts/lib/machine-intelligence-signed-ready-hint.test.mjs"
+      - "scripts/ops/dispatch-machine-intelligence-signed-ready.mjs"
 
 permissions:
   contents: read
@@ -50,6 +56,8 @@ jobs:
           node-version: "22"
       - name: Fail-closed immutable reviewed input hint tests
         run: node --test scripts/lib/gri-signed-ready-cadence-hint.test.mjs
+      - name: Fail-closed machine dual-authority input hints and no-funds dispatch tests
+        run: node --test scripts/lib/machine-intelligence-signed-ready-hint.test.mjs
 
   enqueue-approved-review:
     needs: admission-contract
@@ -76,6 +84,12 @@ jobs:
       GRI_READY_CERTIFICATES_SHA256: ${{ vars.GRI_READY_CERTIFICATES_SHA256 }}
       GRI_READY_APPROVED_AT: ${{ vars.GRI_READY_APPROVED_AT }}
       GRI_SOURCE_WORKFLOW_VERIFIED: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_sha == github.sha && '1' || '0' }}
+      # Repository variables are immutable, short-lived externally approved
+      # SHA hints only. The machine publisher independently verifies exact
+      # separate Facts/Rights signatures before ANY B2/D1 promotion.
+      MACHINE_INTELLIGENCE_READY_INPUT_SHA256: ${{ vars.MACHINE_INTELLIGENCE_READY_INPUT_SHA256 }}
+      MACHINE_INTELLIGENCE_READY_APPROVED_AT: ${{ vars.MACHINE_INTELLIGENCE_READY_APPROVED_AT }}
+      MACHINE_SOURCE_WORKFLOW_VERIFIED: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_sha == github.sha && '1' || '0' }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -97,3 +111,14 @@ jobs:
         # Metadata-only GitHub recent-run check prevents repeat B2 publication
         # attempts for the same main SHA and external approval timestamp.
         run: node scripts/ops/dispatch-gri-signed-ready-cadence.mjs
+      - name: Recover missed publisher dispatch ONLY after already approved dual-signed machine B2 input
+        # Reuse this existing 15m cadence; no extra cron, B2 GET, signing,
+        # source scrape, paid action or new D1 storage in this job.
+        # Missing/stale externally approved SHA short-circuits with zero calls.
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_CANONICAL_MAIN_SHA" = "$(git rev-parse HEAD)"
+          test -f .github/workflows/intelligence-machine-current.yml
+          grep -Fq 'types: [machine_intelligence_dual_signed_ready]' .github/workflows/intelligence-machine-current.yml
+          grep -Fq 'MACHINE_INTELLIGENCE_AUTHORITY_OR_PIN_INVALID' .github/workflows/intelligence-machine-current.yml
+          node scripts/ops/dispatch-machine-intelligence-signed-ready.mjs
