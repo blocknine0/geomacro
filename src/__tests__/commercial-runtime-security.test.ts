@@ -27,7 +27,7 @@ function expectPinnedActions(path: string) {
       // A same-commit local reusable workflow is bound to the checked-out
       // commit; GitHub does not allow an @SHA on relative reusable paths.
       expect(line, `${path}: ${line}`).toContain(
-        "uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+        "website-derived-news-cadence-backstop.yml/dispatches");
     } else {
       expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
     }
@@ -110,7 +110,7 @@ describe("commercial runtime security baseline", () => {
 
     expect(ingestRecovery).toContain("workflow_dispatch");
     expect(ingestRecovery).toContain('cron: "37 * * * *"');
-    expect(ingestRecovery).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+    expect(ingestRecovery).toContain("website-derived-news-cadence-backstop.yml/dispatches");
     expect(ingestRecovery).toContain("  recover-news-ingest:\n    # Legacy Supabase recovery retired:");
     expect(ingestRecovery).toContain("    if: ${{ false }}");
     expect(ingestRecovery).toContain("group: geomacro-auto-ingest-news-recovery");

@@ -189,11 +189,15 @@ if(process.env.GEOMACRO_AUTOMATED_FINDS_PUBLICATION==="1"){
     const {publishCollectedAutomatedFinds}=await import("./publish-automated-finds");
     await publishCollectedAutomatedFinds(reports);
   }catch(error){
-    process.exitCode=2;
+    // The free 72h D1 journal was independently written before this optional
+    // archive path. Archive/signing errors must never turn a *successful*
+    // public free collection into an ingest outage or force extra provider
+    // polling. Separately report signed Finds unavailable; paid gates stay off.
+    // Source/derived-D1 failures still set process.exitCode=2 above.
     const message=error instanceof Error?error.message:"";
     const reason=/^AUTOMATED_FINDS_[A-Z0-9_]+$/.test(message)?message:
       "AUTOMATED_FINDS_SIGNED_ARCHIVE_PUBLICATION_UNAVAILABLE";
-    console.error("::error::"+reason);
+    console.warn("::warning::"+reason);
   }
 }
 

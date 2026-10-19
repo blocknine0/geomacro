@@ -49,7 +49,8 @@ export function verifiedBackstopPublicationTime(run,jobs,now=Date.now()) {
       !Array.isArray(jobs) || !Number.isFinite(now)) return null;
   const expected=[
     "Publish bounded 3-domain derived news to existing D1 (idempotent)",
-    "Independently verify signed Finds across combined and category reads",
+    // Signed Finds/B2 is a separate capability. A quota-held archive must
+    // never invalidate a genuine, verified free-only D1 publication clock.
     "Independently prove private-source-free D1 readback after recovery",
   ];
   for (const job of jobs) {

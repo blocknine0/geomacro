@@ -121,7 +121,7 @@ describe("permanent intelligence orchestration contract", () => {
     const workflow = read(".github/workflows/auto-ingest-news.yml");
     expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).toContain('cron: "37 * * * *"');
-    expect(workflow).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+    expect(workflow).toContain("website-derived-news-cadence-backstop.yml/dispatches");
     expect(workflow).toContain("    if: ${{ false }}");
     expect(workflow).toContain('      - ".github/workflows/auto-ingest-news.yml"');
     expect(workflow).toContain("group: geomacro-auto-ingest-news-recovery");

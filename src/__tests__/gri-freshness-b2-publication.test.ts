@@ -31,7 +31,7 @@ describe("GRI freshness publication boundary", () => {
 
     expect(recovery).toContain("workflow_dispatch");
     expect(recovery).toContain('cron: "37 * * * *"');
-    expect(recovery).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+    expect(recovery).toContain("website-derived-news-cadence-backstop.yml/dispatches");
     expect(recovery).toContain("    if: ${{ false }}");
     expect(recovery).not.toContain("compute-gri-v12.js");
     expect(recovery).not.toContain("publish-b2-global-risk-direct-postgres.mjs");

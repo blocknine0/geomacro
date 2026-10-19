@@ -95,8 +95,9 @@ test("hourly Cloudflare collection and +15m recovery retain single-writer and th
   assert.ok(legacy.includes("if: " + "$" + "{{ false }}"));
   assert.ok(legacy.includes('cron: "37 * * * *"'));
   assert.ok(legacy.includes("ingest-supabase-free-derived-news:"));
-  assert.ok(legacy.includes("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml"));
-  assert.ok(legacy.includes("secrets: inherit"));
+  assert.ok(legacy.includes("website-derived-news-cadence-backstop.yml/dispatches"));
+  assert.ok(legacy.includes("actions: write"));
+  assert.ok(legacy.includes("CANONICAL_D1_RECOVERY_DISPATCH_REJECTED_"));
   assert.ok(backstop.includes("workflow_call: {}"));
   assert.ok(legacy.includes("actions: read"));
   assert.ok(legacy.includes("cancel-in-progress: false"));
@@ -128,7 +129,24 @@ test("a green but skipped recovery never resets the writer freshness clock",()=>
   assert.equal(verifiedBackstopPublicationTime({...run,id:0},[actual],NOW),null);
   assert.equal(verifiedBackstopPublicationTime(run,[{...actual,completed_at:"2026-10-14T00:00:00Z"}],NOW),null);
 });
-test("hourly cadence CLI counts only real signed-and-readback recovery when primary missed",async()=>{
+test("B2/signature outage cannot erase a genuine free D1 publication clock",()=>{
+  const run={id:123,head_branch:"main",status:"completed",conclusion:"success",
+    updated_at:"2026-10-13T08:20:00Z"};
+  const recovery=finishedRecovery("2026-10-13T08:19:00Z");
+  const signingHeld={...recovery,steps:recovery.steps.map(step=>
+    step.name.includes("signed Finds")
+      ?{...step,conclusion:"failure"}:step)};
+  assert.equal(verifiedBackstopPublicationTime(run,[signingHeld],NOW),
+    "2026-10-13T08:19:00.000Z");
+  const missingSign={...recovery,
+    steps:recovery.steps.filter(step=>!step.name.includes("signed Finds"))};
+  assert.equal(verifiedBackstopPublicationTime(run,[missingSign],NOW),
+    "2026-10-13T08:19:00.000Z");
+  const noD1={...recovery,steps:recovery.steps.filter(step=>!step.name.includes("D1 readback"))};
+  assert.equal(verifiedBackstopPublicationTime(run,[noD1],NOW),null);
+});
+
+test("hourly cadence CLI counts only real D1-writer-and-readback recovery when primary missed",async()=>{
   const {mkdtempSync,readFileSync,rmSync}=await import("node:fs");
   const {tmpdir}=await import("node:os");
   const {join}=await import("node:path");
