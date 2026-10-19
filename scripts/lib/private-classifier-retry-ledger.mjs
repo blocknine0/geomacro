@@ -82,9 +82,13 @@ export function pickPrivateClassifierWork({
     if(old?.status==="ACKED_CLASSIFIED"||old?.status==="EXHAUSTED")continue;
     if(old && (old.attempts>=2 ||
        now-time(old.claimed_at)<MIN_RETRY_DELAY_MS))continue;
+    // The D1 original-observation ledger is NOT the classifier-attempt
+    // ledger. If a quota preflight held BEFORE claim, that exact SHA can be
+    // reobserved as non-novel next poll without any classifier ever running.
+    // Attempt numbers and retries must come exclusively from the durable
+    // classifier claim/ACK ledger, never from source novelty.
     eligible.push({article_sha256:id,native_published_at:clock,
-      next_attempts:old?2:(novel.has(id)?1:2),
-      retry:!!old||!novel.has(id)});
+      next_attempts:old?2:1,retry:!!old});
   }
   eligible.sort((a,b)=>b.native_published_at.localeCompare(a.native_published_at)||
     a.article_sha256.localeCompare(b.article_sha256));
@@ -102,7 +106,8 @@ export function claimPrivateClassifierWork({domain,ledger,work,now,runId}={}){
        existing.status!=="CLAIMED"||
        existing.attempts!==work.next_attempts-1 ||
        time(now)-time(existing.claimed_at)<MIN_RETRY_DELAY_MS)fail();
-  } else if(work.next_attempts===1 && work.retry===true)fail();
+    if(work.retry!==true)fail();
+  } else if(work.next_attempts!==1 || work.retry!==false)fail();
   const next={domain,article_sha256:work.article_sha256,
     native_published_at:work.native_published_at,
     attempts:work.next_attempts,status:"CLAIMED",
