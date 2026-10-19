@@ -43,6 +43,26 @@ export function decideWebsiteNewsBackstop(runs, now=Date.now(), limit=BACKSTOP_A
  * or news timestamps, is the verified successful recovery time.
  */
 export const WEBSITE_BACKSTOP_WORKFLOW = "website-derived-news-cadence-backstop.yml";
+/** A successful workflow run may contain a skipped primary writer. Only
+ * real three-domain D1 publish + actual D1 journal readback counts. */
+export function verifiedPrimaryPublicationTime(run,jobs,now=Date.now()){
+  if(!run||run.status!=="completed"||run.conclusion!=="success"||
+    run.head_branch!=="main"||!Number.isSafeInteger(run.id)||run.id<=0||
+    !Array.isArray(jobs)||!Number.isFinite(now))return null;
+  const steps=["Read three domains and write only derived news to existing D1",
+    "Independently verify public derived-news journal"];
+  for(const j of jobs){
+    if(j?.name!=="refresh-derived-news"||j.status!=="completed"||
+      j.conclusion!=="success"||!Array.isArray(j.steps))continue;
+    if(!steps.every(name=>j.steps.some(s=>s.name===name&&
+      s.status==="completed"&&s.conclusion==="success")))continue;
+    const at=Date.parse(j.completed_at),updated=Date.parse(run.updated_at);
+    if(Number.isFinite(at)&&Number.isFinite(updated)&&at<=now+60_000&&
+      at<=updated+60_000)return new Date(at).toISOString();
+  }
+  return null;
+}
+
 export function verifiedBackstopPublicationTime(run,jobs,now=Date.now()) {
   if (!run || run.status!=="completed" || run.conclusion!=="success" ||
       run.head_branch!=="main" || !Number.isSafeInteger(run.id) || run.id<=0 ||

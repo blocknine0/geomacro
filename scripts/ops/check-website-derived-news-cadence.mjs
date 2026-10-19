@@ -8,6 +8,7 @@ import { appendFileSync } from "node:fs";
 import {
   WEBSITE_PUBLISHER_WORKFLOW,WEBSITE_BACKSTOP_WORKFLOW,
   decideWebsiteNewsBackstop,verifiedBackstopPublicationTime,
+  verifiedPrimaryPublicationTime,
 } from "../lib/website-derived-news-failover.mjs";
 const repo=process.env.GITHUB_REPOSITORY??"";
 const token=process.env.GITHUB_TOKEN??"";
@@ -38,8 +39,24 @@ if(!Array.isArray(data.workflow_runs))
 // A primary push canary already collects news. Do not force a duplicate
 // just because workflow YAML changed or a skipped recovery was green.
 const force=process.env.GITHUB_EVENT_NAME==="workflow_dispatch";
-const primary=decideWebsiteNewsBackstop(data.workflow_runs);
-let decision=primary,successProof="PRIMARY_WRITER";
+// A green GitHub workflow without its actual completed publisher must
+// not suppress recovery. Read only a bounded number of job-step summaries.
+const genuine=[];
+const checkedNow=Date.now();
+for(const run of data.workflow_runs.slice(0,10)){
+  if(run?.status!=="completed"||run.conclusion!=="success"||
+    run.head_branch!=="main"||!Number.isSafeInteger(run.id)||run.id<=0)continue;
+  const at=Date.parse(run.updated_at);
+  if(!Number.isFinite(at)||at<checkedNow-6*60*60_000||at>checkedNow+60_000)continue;
+  const jobs=await githubRead("runs/"+run.id+"/jobs?per_page=25","PRIMARY_JOBS");
+  if(!Array.isArray(jobs.jobs))throw Error("NEWS_BACKSTOP_PRIMARY_JOBS_INVALID");
+  const completed=verifiedPrimaryPublicationTime(run,jobs.jobs,checkedNow);
+  if(completed)genuine.push({status:"completed",conclusion:"success",
+    head_branch:"main",updated_at:completed});
+}
+const primary=decideWebsiteNewsBackstop(genuine,checkedNow);
+let decision=primary,successProof=genuine.length?
+  "VERIFIED_PRIMARY_D1_WRITER":"NO_VERIFIED_PRIMARY_D1_WRITER";
 if(primary.should_run&&!force){
   // Recovery can complete without an hourly primary. A successful backstop
   // run by itself is not proof: skipped/no-op backstops also report success.

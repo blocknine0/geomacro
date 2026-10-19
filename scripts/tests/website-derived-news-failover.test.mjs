@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import {strict as assert} from "node:assert";
-import {decideWebsiteNewsBackstop,verifiedBackstopPublicationTime,BACKSTOP_AFTER_MS} from "../lib/website-derived-news-failover.mjs";
+import {decideWebsiteNewsBackstop,verifiedBackstopPublicationTime,verifiedPrimaryPublicationTime,BACKSTOP_AFTER_MS} from "../lib/website-derived-news-failover.mjs";
 const NOW=Date.parse("2026-10-13T08:22:00.000Z");
 const success=(at)=>({
   status:"completed", conclusion:"success",head_branch:"main",updated_at:at,
@@ -63,7 +63,23 @@ test('actual cadence CLI coalesces a recent primary on push but preserves manual
   try{
     for(const [event,minutes,expected] of [['push',5,false],['workflow_run',10,false],['schedule',69,false],['schedule',71,true],['workflow_run',80,true],['workflow_dispatch',5,true]]){
       const output=join(temp,event+'-'+minutes);
-      const code=`globalThis.fetch=async()=>Response.json({workflow_runs:[{status:'completed',conclusion:'success',head_branch:'main',updated_at:new Date(Date.now()-${minutes}*60000).toISOString()}]});await import(${JSON.stringify(script)});`;
+      const code=`globalThis.fetch=async u=>{
+        const path=new URL(u).pathname;
+        const at=new Date(Date.now()-${minutes}*60000).toISOString();
+        if(path.endsWith("/website-derived-news-continuity.yml/runs"))
+          return Response.json({workflow_runs:[{id:201,status:"completed",conclusion:"success",
+            head_branch:"main",updated_at:at}]});
+        if(path.endsWith("/runs/201/jobs"))return Response.json({jobs:[{
+          name:"refresh-derived-news",status:"completed",conclusion:"success",
+          completed_at:at,
+          steps:["Read three domains and write only derived news to existing D1",
+            "Independently verify public derived-news journal"].map(name=>
+             ({name,status:"completed",conclusion:"success"}))
+        }]});
+        if(path.endsWith("/website-derived-news-cadence-backstop.yml/runs"))
+          return Response.json({workflow_runs:[]});
+        throw Error("UNEXPECTED_TEST_GITHUB_API_PATH");
+      };await import(${JSON.stringify(script)});`;
       const result=spawnSync(process.execPath,['--input-type=module','-e',code],{encoding:'utf8',env:{...process.env,
         GITHUB_REPOSITORY:'blocknine0/geomacro',GITHUB_TOKEN:'synthetic-token',GITHUB_OUTPUT:output,GITHUB_EVENT_NAME:event}});
       assert.equal(result.status,0,result.stderr);
@@ -111,6 +127,22 @@ const finishedRecovery=(completedAt)=>({
     "Independently verify signed Finds across combined and category reads",
     "Independently prove private-source-free D1 readback after recovery",
   ].map(name=>({name,status:"completed",conclusion:"success"})),
+});
+test("green-but-skipped primary cannot hide missed ingestion",()=>{
+  const run={id:201,status:"completed",conclusion:"success",
+    head_branch:"main",updated_at:"2026-10-13T08:20:00Z"};
+  const job={name:"refresh-derived-news",status:"completed",conclusion:"success",
+    completed_at:"2026-10-13T08:19:00Z",
+    steps:["Read three domains and write only derived news to existing D1",
+      "Independently verify public derived-news journal"].map(name=>
+      ({name,status:"completed",conclusion:"success"}))};
+  assert.equal(verifiedPrimaryPublicationTime(run,[job],NOW),
+    "2026-10-13T08:19:00.000Z");
+  assert.equal(verifiedPrimaryPublicationTime(run,[{...job,
+    steps:job.steps.map(s=>({...s,conclusion:"skipped"}))}],NOW),null);
+  assert.equal(verifiedPrimaryPublicationTime(run,[{...job,
+    steps:job.steps.slice(0,1)}],NOW),null);
+  assert.equal(verifiedPrimaryPublicationTime({...run,head_branch:"other"},[job],NOW),null);
 });
 test("a green but skipped recovery never resets the writer freshness clock",()=>{
   const run={id:123,head_branch:"main",status:"completed",conclusion:"success",
@@ -168,7 +200,15 @@ test("hourly cadence CLI counts only real D1-writer-and-readback recovery when p
         const url=new URL(u);
         if(url.pathname.endsWith("/website-derived-news-continuity.yml/runs"))
           return Response.json({workflow_runs:[{status:"completed",conclusion:"success",
-            head_branch:"main",updated_at:new Date(Date.now()-${minutes}*60000).toISOString()}]});
+            id:201,head_branch:"main",updated_at:new Date(Date.now()-${minutes}*60000).toISOString()}]});
+        if(url.pathname.endsWith("/runs/201/jobs")){
+          const at=new Date(Date.now()-${minutes}*60000).toISOString();
+          return Response.json({jobs:[{name:"refresh-derived-news",status:"completed",
+            conclusion:"success",completed_at:at,
+            steps:["Read three domains and write only derived news to existing D1",
+              "Independently verify public derived-news journal"].map(name=>
+              ({name,status:"completed",conclusion:"success"}))}]});
+        }
         if(url.pathname.endsWith("/website-derived-news-cadence-backstop.yml/runs"))
           return ${JSON.stringify(mode)}==="proof_http_failed"
             ?new Response("",{status:503}):Response.json({workflow_runs:${JSON.stringify([recovered])}});
