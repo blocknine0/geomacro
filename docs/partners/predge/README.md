@@ -81,3 +81,33 @@ Relevant canonical sources:
 `schemas/gro-1.1.schema.json`, `src/lib/risk-gate-contract.ts`,
 `src/lib/risk-gate-api.server.ts`,
 `docs/ops/PREDGE_SHARED_72H_DERIVED_NEWS_FEED_20261019.md`.
+
+## One-token automatic *private* research delivery (pilot-only)
+
+After the protected D1 Worker deploy the authenticated route is:
+`GET https://geomacro-control-plane.daspallab202391.workers.dev/v1/partner/predge/derived-structural-72h`.
+Use `Authorization: Bearer <dedicated-research-token>`. The dedicated token
+is HMAC-derived *server-side only* from the existing production ledger secret,
+under a different domain-separated label than the administration token.
+**Never disclose** the root/admin secret to Predge. Share the single dedicated
+token through an agreed secure partner channel; it is not returned in GitHub
+Actions or this repository.
+
+No partner-scope receipt, per-item rights-review receipt or individual item
+ID allowlist is needed for **private non-commercial research evaluation**:
+the feed automatically returns exactly the same up-to-600 **public-eligible**
+72-hour derived item IDs as Geomacro Intelligence. Predge deduplicates by
+`id` while polling, and sees source-native clocks and unclassified flags.
+No new D1 table, B2 downloads, Supabase, payment or private-publisher scrape.
+
+The pilot-only path never allows paid use, public or customer-facing resale,
+unreviewed third-party material, credited items requiring visibly disclosed
+publisher attribution, signed GRO or automated Risk Gate approval. Treat
+the records as **driver candidates**, not Risk Gate decisions: Predge's
+`risk-gate-1.0` still requires a separately verified current `gro-1.1`
+and a policy evaluation. `execution_authorized=false` always.
+
+Maximum provisional pilot expiry is **2027-01-17T00:00:00Z** (90 days
+from proposed Oct 19 UTC kickoff). This does not assert a countersigned
+LOI or give rights beyond the separately written pilot agreement; if
+the actual agreed kickoff differs, reconfigure before any extension.

@@ -143,6 +143,12 @@ jobs:
           test "${#CONTROL_PLANE_TOKEN}" -eq 64 || { echo "Control-plane token derivation failed"; exit 5; }
           echo "::add-mask::$CONTROL_PLANE_TOKEN"
           echo "CONTROL_PLANE_TOKEN=$CONTROL_PLANE_TOKEN" >> "$GITHUB_ENV"
+          # Distinct HMAC namespace: sharing Predge's research token never
+          # shares the control-plane admin or commercial ledger secret.
+          PREDGE_RESEARCH_NEWS_TOKEN="$(node -e "const c=require('node:crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-72h-research-only-v1').digest('hex'))")"
+          test "${#PREDGE_RESEARCH_NEWS_TOKEN}" -eq 64
+          echo "::add-mask::$PREDGE_RESEARCH_NEWS_TOKEN"
+          echo "PREDGE_RESEARCH_NEWS_TOKEN=$PREDGE_RESEARCH_NEWS_TOKEN" >> "$GITHUB_ENV"
 
       - name: Deploy D1 control-plane Worker with pinned Wrangler
         id: deploy
@@ -155,6 +161,7 @@ jobs:
           DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
           test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev deployment URL"; exit 6; }
           printf '%s' "$CONTROL_PLANE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put CONTROL_PLANE_TOKEN --config wrangler.runtime.jsonc >/tmp/d1-secret-put.log
+          printf '%s' "$PREDGE_RESEARCH_NEWS_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_RESEARCH_NEWS_TOKEN --config wrangler.runtime.jsonc >/tmp/predge-research-secret-put.log
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
           echo "D1 control-plane Worker deployed and server-only secret configured."
 
@@ -262,6 +269,14 @@ jobs:
       - name: Verify Predge structured feed matches three-domain website D1 journal
         shell: bash
         run: node scripts/ops/verify-shared-derived-news-live.mjs
+
+      - name: Verify dedicated authenticated Predge pilot route reuses same D1 IDs (no funds)
+        shell: bash
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-predge-auth-research-delivery.mjs
 
       - name: Verify authenticated D1 central security budgets without B2 or payment
         run: node scripts/ops/verify-d1-central-security-budget.mjs
