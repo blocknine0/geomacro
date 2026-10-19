@@ -20,3 +20,19 @@ remain the single distribution source for user website, Ask and API,
 subject to source-specific commercial rights for PAID endpoints. This
 patch doesn't authorize signed GRO, numeric GRI/Indices or commercial
 settlement, nor recover expired B2 current hot pointers.
+
+## Three-domain explicitly topic-gated reuse
+
+The same exact first-party index and article are now also inspected by the
+Geopolitics source lane, reusing the same two network responses during one
+hourly ingestion run. An unrelated resources export announcement is NOT a
+geopolitical original: the existing geopolitical topic selection must match
+real diplomatic, sanctions, embargo or security terms before the article's
+native day and H1 are checked. An actual cross-domain title can produce up
+to three separately scoped *unscored* Geomacro observations with distinct
+category IDs; one original is never represented as three independent
+publishers or approved commercial evidence.
+
+The shared original can only reach the website, Ask and free API through
+the existing canonical derived-news journal and bounded continuity view.
+Private review/certification and paid x402 gates remain unchanged.

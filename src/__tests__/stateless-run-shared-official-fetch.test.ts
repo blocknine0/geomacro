@@ -9,6 +9,7 @@ const article=root+"/king/media/rare-earth-export-supply-agreement";
 // Native publisher only supplies a day, so respect 36h+15m release delay.
 const now=Date.parse("2026-10-20T15:00:00.000Z");
 const title="Rare earths project supports resources and energy exports";
+const crossTitle="Australian rare earth export sanctions affect resources and energy exports";
 const indexHtml='<div class="views-row">18 October 2026 <a href="'+article+'">'+title+'</a></div>';
 const articleHtml="<h1>"+title+"</h1><time>18 October 2026</time><p>Official ministerial statement.</p>";
 function fixture(){
@@ -34,6 +35,38 @@ describe("one validated upstream source reusable in multiple categories",()=>{
    expect(JSON.stringify(derived)).not.toContain(title);
    expect(fetchImpl).toHaveBeenCalledTimes(2);
    expect(shared.stats()).toEqual({unique_documents_read:2,repeat_requests_reused:2});
+ });
+ it("projects ONE official original into all three categories ONLY with distinct topic relevance",async()=>{
+   const f=vi.fn(async(url:RequestInfo|URL)=>new Response(
+     String(url)===index
+       ?'<div class="views-row">18 October 2026 <a href="'+article+'">'+crossTitle+'</a></div>'
+       :'<h1>'+crossTitle+'</h1><time>18 October 2026</time><p>Official release.</p>',
+     {headers:{"content-type":"text/html"}}));
+   const cache=createRunScopedAustralianResourcesFetch(f as typeof fetch);
+   const docs=await Promise.all(["geopolitics","macro","rare_earth"].map(()=>cache.fetch(index)));
+   const candidates=(await Promise.all(docs.map(d=>d.text()))).flatMap(
+     (html,i)=>australianResourcesIndexCandidates(html,
+       ["geopolitics","macro","rare_earth"][i] as "geopolitics"|"macro"|"rare_earth",now));
+   expect(candidates).toHaveLength(3);
+   const originals=await Promise.all(candidates.map(c=>cache.fetch(c.articleUrl)));
+   for(let i=0;i<originals.length;i++)
+     expect(verifyAustralianResourcesOriginalArticle(await originals[i].text(),candidates[i],now)).toBe(true);
+   const derived=deriveStatelessSignals(candidates,now);
+   expect(derived.map(x=>x.category).sort()).toEqual(["geopolitics","macro","rare_earth"]);
+   expect(new Set(derived.map(x=>x.id)).size).toBe(3);
+   expect(f).toHaveBeenCalledTimes(2);
+   expect(cache.stats()).toEqual({unique_documents_read:2,repeat_requests_reused:4});
+   expect(JSON.stringify(derived)).not.toContain(article);
+   expect(JSON.stringify(derived)).not.toContain(crossTitle);
+   expect(derived.every(x=>x.same_event_corrob_verified===false)).toBe(true);
+ });
+ it("rejects unrelated resources headlines from geopolitics while retaining valid macro and minerals",()=>{
+   const geo=australianResourcesIndexCandidates(indexHtml,"geopolitics",now);
+   const macro=australianResourcesIndexCandidates(indexHtml,"macro",now);
+   const rare=australianResourcesIndexCandidates(indexHtml,"rare_earth",now);
+   expect(geo).toHaveLength(0);
+   expect(macro).toHaveLength(1);
+   expect(rare).toHaveLength(1);
  });
  it("has no cache between different runs",async()=>{
    const f=fixture();
@@ -71,5 +104,8 @@ describe("one validated upstream source reusable in multiple categories",()=>{
    expect(s).toContain("sharedResources.fetch(source.url)");
    expect(s).toContain("sharedResources.fetch(candidate.articleUrl)");
    expect(s).toContain("sharedResources?: RunScopedAustralianResourcesFetch");
+   expect(s).toContain('id: "au_resources_geopolitics_index"');
+   const au=readFileSync("src/lib/stateless-au-resources-original.server.ts","utf8");
+   expect(au).toContain('category === "geopolitics" ? "au_resources_geopolitics_index"');
  });
 });

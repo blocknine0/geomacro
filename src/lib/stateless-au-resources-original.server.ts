@@ -54,7 +54,7 @@ export function australianResourcesIndexCandidates(
   html: string, category: StatelessCategory, now = Date.now(),
 ): StatelessSourceCandidate[] {
   if (typeof html !== "string" || html.length > MAX_INDEX ||
-      !Number.isFinite(now) || !["macro","rare_earth"].includes(category) ||
+      !Number.isFinite(now) || !["geopolitics","macro","rare_earth"].includes(category) ||
       /<!DOCTYPE\s+[^>]*\[/iu.test(html)) return [];
   const matched = [...html.matchAll(LINK)].slice(0,150);
   const findings: StatelessSourceCandidate[] = [];
@@ -83,6 +83,7 @@ export function australianResourcesIndexCandidates(
     if (!publishedAt) continue;
     seen.add(link);
     findings.push({ sourceId:category === "macro" ? "au_resources_macro_index"
+      : category === "geopolitics" ? "au_resources_geopolitics_index"
       : "au_resources_minerals_index",category,title,articleUrl:link,
       publishedAt,datePrecision:"day",credit:null });
   }

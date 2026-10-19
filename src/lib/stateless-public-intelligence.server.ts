@@ -20,6 +20,12 @@ import { verifiedStatcanOriginalReleaseDay } from "./stateless-statcan-original.
 
 const OGL_CREDIT = "Contains public sector information licensed under the Open Government Licence v3.0.";
 const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
+  // Shared official resources originals enter geopolitics ONLY when the
+  // independently evaluated title matches an existing geopolitical policy
+  // rule. Ordinary minerals/export headlines cannot leak into this lane.
+  { id: "au_resources_geopolitics_index", category: "geopolitics", media: "html_index",
+    url: "https://www.minister.industry.gov.au/king/media?type=media_releases",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   // Additional independent foreign-affairs jurisdiction, source URL from
   // the Government of Canada's published Global Affairs RSS/Atom directory.
   { id: "canada_foreign_statements", category: "geopolitics", media: "atom",
@@ -484,7 +490,8 @@ async function readSource(source: StatelessSourceSpec, now: number,
   }
 
   if ((source.id === "au_resources_macro_index" ||
-       source.id === "au_resources_minerals_index") &&
+       source.id === "au_resources_minerals_index" ||
+       source.id === "au_resources_geopolitics_index") &&
       source.media === "html_index") {
     try {
       const response = sharedResources
