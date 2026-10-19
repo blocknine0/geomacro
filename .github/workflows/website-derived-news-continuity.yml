@@ -160,7 +160,14 @@ jobs:
                const at=Date.parse(s.published_at);
                return !Number.isFinite(at) || at>now || now-at>retentionMs ||
                  s.severity!==null||s.same_event_corrob_verified!==false||
-                 s.status!=="official_release_observed_unscored" ||
+                 !((s.status==="official_release_observed_unscored"&&
+                      !s.topic.endsWith(" publisher candidate")) ||
+                    (s.status==="official_feed_candidate_unscored"&&
+                      s.development_type==="unclassified publisher update"&&
+                      s.geography===null&&
+                      ((s.category==="geopolitics"&&s.topic==="geopolitical publisher candidate")||
+                       (s.category==="macro"&&s.topic==="macro publisher candidate")||
+                       (s.category==="rare_earth"&&s.topic==="minerals publisher candidate")))) ||
                  /https?:\/\/|www\./iu.test(JSON.stringify(s));
              }))
             throw Error("DERIVED_NEWS_72H_ORIGINAL_OR_PRIVACY_READBACK_MISMATCH");

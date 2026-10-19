@@ -54,6 +54,10 @@ export async function verifySharedNewsLive(fetcher=fetch){
     original.published_at!==row.original_published_at||
     original.what_changed!==row.observed_change||
     original.why_it_matters!==row.potential_relevance||
+    row.qualifying_topic_release_verified!==(original.status==="official_release_observed_unscored")||
+    row.topical_match_verified!==(original.status==="official_release_observed_unscored")||
+    row.confidence_state!==(original.status==="official_feed_candidate_unscored"?
+      "DATED_OFFICIAL_FEED_CANDIDATE_UNCLASSIFIED":"OFFICIAL_RELEASE_OBSERVED_UNSCORED")||
     row.payable!==false||row.commercial_derived_rights_verified!==false)
    throw Error("D1_SHARED_NEWS_SOURCE_PARITY_MISMATCH");
   used.add(row.id);
