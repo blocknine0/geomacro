@@ -18,6 +18,8 @@ export function verifyPrivateScoringD1Checkpoint(checkpoint, {
     checkpoint?.payload?.task !== "private_stage" ||
     cursor?.status !== "verified_private_staging" ||
     cursor?.publication_authorized !== false ||
+    (cursor?.archive_format !== undefined &&
+     cursor?.archive_format !== PRIVATE_COMBINED_ARCHIVE_SCHEMA) ||
     cursor?.classifier_version !== CANONICAL_CLASSIFIER_VERSION ||
     checkpoint?.last_success_at !== lastSuccessAt ||
     !Number.isFinite(Date.parse(String(lastSuccessAt ?? ""))) ||
