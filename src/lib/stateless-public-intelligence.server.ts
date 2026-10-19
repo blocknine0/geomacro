@@ -1,4 +1,5 @@
 import {fetchWithoutRedirect} from "./fetch-without-redirect";
+import type {RunScopedAustralianResourcesFetch} from "./stateless-run-shared-official-fetch";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 /**
  * On-demand website Intelligence reader. No B2/D1/Supabase/KV/files/queues,
@@ -19,6 +20,12 @@ import { verifiedStatcanOriginalReleaseDay } from "./stateless-statcan-original.
 
 const OGL_CREDIT = "Contains public sector information licensed under the Open Government Licence v3.0.";
 const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
+  // Shared official resources originals enter geopolitics ONLY when the
+  // independently evaluated title matches an existing geopolitical policy
+  // rule. Ordinary minerals/export headlines cannot leak into this lane.
+  { id: "au_resources_geopolitics_index", category: "geopolitics", media: "html_index",
+    url: "https://www.minister.industry.gov.au/king/media?type=media_releases",
+    allowedHosts: ["www.minister.industry.gov.au"], credit: null },
   // Additional independent foreign-affairs jurisdiction, source URL from
   // the Government of Canada's published Global Affairs RSS/Atom directory.
   { id: "canada_foreign_statements", category: "geopolitics", media: "atom",
@@ -397,7 +404,8 @@ type LaneMetrics = {
   canada_original_not_future?: number;
   canada_original_within_30d?: number;
 };
-async function readSource(source: StatelessSourceSpec, now: number): Promise<{
+async function readSource(source: StatelessSourceSpec, now: number,
+  sharedResources?: RunScopedAustralianResourcesFetch): Promise<{
   candidates: StatelessSourceCandidate[]; healthy: boolean;
   metrics?: LaneMetrics;
 }> {
@@ -482,13 +490,16 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
   }
 
   if ((source.id === "au_resources_macro_index" ||
-       source.id === "au_resources_minerals_index") &&
+       source.id === "au_resources_minerals_index" ||
+       source.id === "au_resources_geopolitics_index") &&
       source.media === "html_index") {
     try {
-      const response = await fetchWithoutRedirect(source.url, {
-        method: "GET", redirect: "error", cache: "no-store",
-        headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
+      const response = sharedResources
+        ? await sharedResources.fetch(source.url)
+        : await fetchWithoutRedirect(source.url, {
+          method: "GET", redirect: "error", cache: "no-store",
+          headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
+        });
       if (!response.ok) return failed(response.status >= 500 ? "http_5xx" : "http_4xx");
       if (!/^text\/html(?:;|$)/iu.test(response.headers.get("content-type") ?? ""))
         return failed("mime");
@@ -497,10 +508,12 @@ async function readSource(source: StatelessSourceSpec, now: number): Promise<{
       const indexed = australianResourcesIndexCandidates(html, source.category, now);
       const verified = await Promise.all(indexed.map(async candidate => {
         try {
-          const article = await fetchWithoutRedirect(candidate.articleUrl, {
-            method: "GET", redirect: "error", cache: "no-store",
-            headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
-          });
+          const article = sharedResources
+            ? await sharedResources.fetch(candidate.articleUrl)
+            : await fetchWithoutRedirect(candidate.articleUrl, {
+              method: "GET", redirect: "error", cache: "no-store",
+              headers: { Accept: "text/html" }, signal: AbortSignal.timeout(TIMEOUT_MS),
+            });
           if (!article.ok ||
               !/^text\/html(?:;|$)/iu.test(article.headers.get("content-type") ?? ""))
             return null;
@@ -639,6 +652,7 @@ export async function readStatelessWebsiteIntelligence(
   onLaneDiagnostic?: (index: number, diagnostics: LaneMetrics) => void,
   onPrivateOriginals?: (candidates:readonly StatelessSourceCandidate[])=>void,
   maxSignals=50,
+  sharedResources?: RunScopedAustralianResourcesFetch,
 ): Promise<StatelessIntelligenceResult> {
   if (!["geopolitics", "macro", "rare_earth"].includes(category) ||
       !Number.isFinite(now)) throw Error("STATELESS_INTELLIGENCE_CATEGORY_OR_CLOCK_INVALID");
@@ -651,8 +665,8 @@ export async function readStatelessWebsiteIntelligence(
   const blsIds = new Set(["bls_cpi","bls_employment","bls_external_prices"]);
   let previousBls:Promise<void> = Promise.resolve();
   const batch = await Promise.all(sourceGroup.map(source => {
-    if(!blsIds.has(source.id))return readSource(source,now);
-    const next=previousBls.then(()=>readSource(source,now));
+    if(!blsIds.has(source.id))return readSource(source,now,sharedResources);
+    const next=previousBls.then(()=>readSource(source,now,sharedResources));
     previousBls=next.then(()=>undefined);
     return next;
   }));

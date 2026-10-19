@@ -234,6 +234,7 @@ const EIA_MACRO_ENERGY_TOPIC = {
 };
 const AU_RESOURCES_DAY_SOURCE_IDS = new Set([
   "au_resources_macro_index", "au_resources_minerals_index",
+  "au_resources_geopolitics_index",
 ]);
 const AU_RESOURCES_TRADE_TOPIC = {
   test: /\b(?:resources? and energy exports?|resources? exports?|energy exports?|export earnings|export forecasts?)\b/iu,
