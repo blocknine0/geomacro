@@ -12,7 +12,7 @@ describe("canonical Auto Ingest News recovery", () => {
   it("recurs only through the proven derived-D1 backstop; frozen legacy Postgres task stays retired", () => {
     expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).toContain('cron: "37 * * * *"');
-    expect(workflow).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+    expect(workflow).toContain("website-derived-news-cadence-backstop.yml/dispatches");
     expect(workflow).toContain("    if: ${{ false }}");
     expect(workflow).toContain('      - ".github/workflows/auto-ingest-news.yml"');
     expect(workflow).toContain("group: geomacro-auto-ingest-news-recovery");
