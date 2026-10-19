@@ -1,5 +1,15 @@
 // Same server-owned limits in Nitro and the authenticated D1 budget service.
 export const CENTRAL_SECURITY_POLICIES = {
+  // One purpose-scoped Predge research bearer, hard 500 GETs per UTC day.
+  // Existing atomic D1 security-budget table; no new migration or cron.
+  predge_research_news: {
+    windowSeconds: 86400,
+    perClient: 500,
+    global: 500,
+    maxBodyBytes: 0,
+    distributed: true,
+    failClosed: true,
+  },
   public_api: {
     windowSeconds: 60,
     perClient: 240,

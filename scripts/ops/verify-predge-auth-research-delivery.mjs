@@ -24,6 +24,8 @@ try{
     auth.body?.per_item_approval_ids_required!==false||
     auth.body?.partner_resale_or_commercial_redistribution_authorized!==false||
     auth.body?.execution_authorized!==false||
+    auth.body?.daily_utc_request_hard_cap!==500||
+    auth.body?.distributed_rate_governor!=="ATOMIC_CLOUDFLARE_D1_FAIL_CLOSED"||
     auth.body?.chargeable!==false||
     JSON.stringify(auth.body.items)!==JSON.stringify(pub.body.items)||
     JSON.stringify(auth.body.counts)!==JSON.stringify(pub.body.counts))
@@ -35,6 +37,7 @@ try{
    individual_item_approval_needed:false,
    commercial_resale_authorized:false,source_licensing_waived:false,
    signed_gro_issued:false,partner_token_shared_with_predge_not_asserted:true,
+   d1_atomic_utc_daily_cap:500,fail_closed_on_governor_outage:true,
    payments:0,supabase_writes:0,b2_operations:0}));
 }catch{
  console.error("::error::PREDGE_AUTH_RESEARCH_DELIVERY_NOT_VERIFIED");
