@@ -158,21 +158,24 @@ describe("#1827 private original-publisher title lineage to canonical GRI",()=>{
     },opts)).toThrow("PRIVATE_GRI_COMPANION_D1_READBACK_INVALID");
   });
 
-  it("production writer requires 2 independent B2 restores BEFORE source-free D1 cursor",()=>{
+  it("production writer makes ONE B2 PUT+full GET then independently validates BOTH logical members before source-free D1",()=>{
     const ingest=readFileSync("scripts/ingest-news.js","utf8");
     const archive=readFileSync("scripts/ops/archive-restricted-private-scored-stage.mjs","utf8");
     const workflow=readFileSync(".github/workflows/restricted-private-current-scoring.yml","utf8");
     expect(ingest).toContain("capturePrivateGriSourceCompanion");
     expect(ingest).toContain("privateGriSourceRows.push(source)");
     expect(ingest).toContain("${domain}-source.json");
-    expect(archive).toContain("validatePrivateGriCompanionBundle(restoredSource, stage)");
-    expect(archive).toContain("PRIVATE_GRI_COMPANION_B2_READBACK_PROOF_INVALID");
-    expect(archive.indexOf("sourceCompanionReceipt=await b2.putWithMetadataVerification"))
+    expect(archive).toContain("verifyPrivateStageCompanionB2Bundle(readback,bundle)");
+    expect(archive).toContain("PRIVATE_SCORING_BUNDLED_B2_READBACK_PROOF_INVALID");
+    expect(archive.match(/putWithMetadataVerification/g)).toHaveLength(1);
+    expect(archive.indexOf("const b2Receipt=await b2.putWithMetadataVerification"))
       .toBeLessThan(archive.indexOf("await control.persist"));
+    expect(archive).toContain("stage_logical_sha256:bundle.stageSha256");
+    expect(archive).toContain("source_companion_logical_sha256:bundle.companionSha256");
     expect(archive).toContain("source_companion_full_readback_verified: true");
     expect(archive).toContain("sourceCompanion: {");
     expect(archive).toContain('B2_ACCOUNT_QUOTA_REQUIRED !== "1"');
-    expect(workflow).toContain('B2_REQUEST_BUDGET: "6"');
+    expect(workflow).toContain('B2_REQUEST_BUDGET: "4"');
     expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
     expect(workflow).toContain("archive-proof.json");
     expect(workflow).not.toContain("-source.json");
