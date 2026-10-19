@@ -29,7 +29,6 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
-      PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
       RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
@@ -137,6 +136,10 @@ jobs:
           printf '%s' "$OUT" | grep -q '1' || { echo "D1 schema verification failed"; exit 4; }
 
       - name: Derive domain-separated control-plane token
+        # Limit the partner-only override secret to this protected derivation
+        # step, not the whole deploy job's bootstrap/migration process.
+        env:
+          PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
         shell: bash
         run: |
           set -euo pipefail
