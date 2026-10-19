@@ -1,5 +1,11 @@
 // Same server-owned limits in Nitro and the authenticated D1 budget service.
 export const CENTRAL_SECURITY_POLICIES = {
+  // D1 existing atomic global/client buckets: one partner, no per-item ACL.
+  // This is only pilot GET frequency, not settlement Risk Gate authorization.
+  predge_news_pilot: {
+    windowSeconds:86400,perClient:500,global:500,maxBodyBytes:0,
+    distributed:true,failClosed:true,
+  },
   public_api: {
     windowSeconds: 60,
     perClient: 240,

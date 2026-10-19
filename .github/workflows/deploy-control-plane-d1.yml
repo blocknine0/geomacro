@@ -144,6 +144,16 @@ jobs:
           echo "::add-mask::$CONTROL_PLANE_TOKEN"
           echo "CONTROL_PLANE_TOKEN=$CONTROL_PLANE_TOKEN" >> "$GITHUB_ENV"
 
+      - name: Derive dedicated Predge news research token without exposing root
+        shell: bash
+        run: |
+          set -euo pipefail
+          PREDGE_NEWS_PILOT_TOKEN="$(node -e "const c=require('crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-news-research-v1').digest('hex'))")"
+          test "${#PREDGE_NEWS_PILOT_TOKEN}" -eq 64 || exit 5
+          test "$PREDGE_NEWS_PILOT_TOKEN" != "$CONTROL_PLANE_TOKEN" || exit 5
+          echo "::add-mask::$PREDGE_NEWS_PILOT_TOKEN"
+          echo "PREDGE_NEWS_PILOT_TOKEN=$PREDGE_NEWS_PILOT_TOKEN" >> "$GITHUB_ENV"
+
       - name: Deploy D1 control-plane Worker with pinned Wrangler
         id: deploy
         working-directory: workers/control-plane
@@ -155,6 +165,7 @@ jobs:
           DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
           test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev deployment URL"; exit 6; }
           printf '%s' "$CONTROL_PLANE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put CONTROL_PLANE_TOKEN --config wrangler.runtime.jsonc >/tmp/d1-secret-put.log
+          printf '%s' "$PREDGE_NEWS_PILOT_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_NEWS_PILOT_TOKEN --config wrangler.runtime.jsonc >/tmp/predge-secret-put.log
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
           echo "D1 control-plane Worker deployed and server-only secret configured."
 
@@ -258,6 +269,50 @@ jobs:
           done
           echo "::error::THREE_DOMAIN_CONTINUITY_DIRECT_D1_LIVE_READBACK_FAILED"
           exit 10
+
+      - name: Verify authenticated Predge pilot exact shared D1 news readback
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(mktemp)"; reject="$(mktemp)"
+          trap 'rm -f "$output" "$reject"' EXIT
+          code=''
+          for attempt in 1 2 3 4 5; do
+            code="$(curl -sS --max-time 15 -o "$output" -w '%{http_code}' \
+              -H "Authorization: Bearer $PREDGE_NEWS_PILOT_TOKEN" \
+              "$CONTROL_PLANE_URL/v1/partner/predge/derived-structural-72h" || true)"
+            if test "$code" = '200' && jq -e '
+              .ok==true and
+              .schema=="geomacro.derived-news-structural-feed.v1" and
+              .journal_origin=="SAME_D1_ROWS_AS_GEOMACRO_INTELLIGENCE" and
+              .authenticated_partner_delivery==true and .partner=="predge" and
+              .individually_approved_item_ids_required==false and
+              .per_record_manual_review_receipt_required==false and
+              .commercial_rights_verified==false and
+              .downstream_commercial_redistribution_authorized==false and
+              .max_requests_per_utc_day==500 and .chargeable==false and
+              (.counts | keys|sort)==(["geopolitics","macro","rare_earth"]|sort) and
+              (.items|type=="array") and
+              ([.items[]|(.payable==false and .raw_upstream_delivered==false)]|all)
+            ' "$output" >/dev/null 2>&1; then
+              break
+            fi
+            sleep "$attempt"
+          done
+          test "$code" = 200 || { echo "::error::PREDGE_AUTH_PILOT_READBACK_UNAVAILABLE"; exit 10; }
+          jq -e '.ok and .authenticated_partner_delivery and .partner=="predge"' "$output" >/dev/null || {
+            echo "::error::PREDGE_AUTH_PILOT_CONTRACT_INVALID"; exit 10;
+          }
+          bad="$(curl -sS --max-time 10 -o "$reject" -w '%{http_code}' \
+            "$CONTROL_PLANE_URL/v1/partner/predge/derived-structural-72h" || true)"
+          test "$bad" = 401 || { echo "::error::PREDGE_PILOT_UNAUTHENTICATED_ROUTE_NOT_CLOSED"; exit 10; }
+          jq -c '{schema:"geomacro.predge-pilot-live-acceptance.v1",
+            partner,authenticated_partner_delivery,
+            approved_ids_required:.individually_approved_item_ids_required,
+            counts,items_read:(.items|length),source_neutral:true,
+            commercially_redistributable:false,chargeable:false,payments:0}' "$output"
 
       - name: Verify Predge structured feed matches three-domain website D1 journal
         shell: bash

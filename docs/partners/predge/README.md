@@ -81,3 +81,40 @@ Relevant canonical sources:
 `schemas/gro-1.1.schema.json`, `src/lib/risk-gate-contract.ts`,
 `src/lib/risk-gate-api.server.ts`,
 `docs/ops/PREDGE_SHARED_72H_DERIVED_NEWS_FEED_20261019.md`.
+
+
+## Authenticated private news feed — no per-item approval, same D1 records
+
+After protected deployment, the server-only private **pilot research** route is
+`GET https://geomacro-control-plane.daspallab202391.workers.dev/v1/partner/predge/derived-structural-72h`.
+
+It returns the exact `geomacro.derived-news-structural-feed.v1` items and
+original publication clocks from the public website's shared D1 journal,
+plus `geomacro.predge-derived-news-pilot.v1` delivery metadata:
+`authenticated_partner_delivery:true`,
+`individually_approved_item_ids_required:false`, and
+`per_record_manual_review_receipt_required:false`. **No item ID allowlist,
+second database, Supabase, B2 or per-item manual source review is needed**
+for *public-eligible, non-redistributable pilot research observations*.
+Both classified and clearly labeled unclassified first-party source
+candidates may be included. Mandatory-credited or unsupported upstream
+records remain withheld, as on the free Geomacro public feed.
+
+One dedicated Bearer token is HMAC-derived from the *already configured*
+production ledger-root secret with purpose `geomacro-predge-news-research-v1`;
+it is separately masked and installed as a Cloudflare Worker secret on each
+main deployment. The root token, the general control-plane credential and
+private keys are never issued to Predge. **Partner token must be conveyed
+through an actual secure authorized channel**, not GitHub, logs or website.
+The production acceptance makes one authenticated call and checks that
+unauthenticated calls receive HTTP 401; any missing key denies HTTP 503.
+Rotate the root secret / domain-specific version and re-deploy to revoke
+the credential.
+
+Atomic existing D1 `central_security_budget` enforces **500 authenticated
+news GETs per UTC day**, with 100/day suggested. Limit concerns news
+research polling, not Predge's distinct external Risk Gate settlement checks.
+The response is free/no-funds, not a signed `gro-1.1` or Predge
+`settlement-risk` signature. Rights-review and a signed LOI remain necessary
+for downstream commercial customer redistribution; the research pilot does
+not quietly grant those rights or claim a signed kickoff.
