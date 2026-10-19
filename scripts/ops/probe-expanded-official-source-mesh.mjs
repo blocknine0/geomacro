@@ -418,15 +418,21 @@ function atomDateCounts(xml,now,topic,hosts,source=null) {
     if(at>now.getTime()){
       invalidOrFutureDate++;futureNativeDate++;continue;
     }
-    const tag=[...item.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)]
-      .map(x=>x[1]).find(attr=>{
-        const rel=attr.match(/\brel\s*=\s*["']([^"']+)["']/iu)?.[1]??"alternate";
-        return rel==="alternate"||rel==="canonical";
-      })??"";
-    const href=tag.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1]??"";
-    if(!originalHref(href,hosts,source)){
+    // A dated Atom article may include multiple rel=alternate links.
+    // The undated-page verifier already walks them all; do the same before
+    // declaring the original link rejected. Never trust an unapproved host.
+    let href="",firstRejected="";
+    for(const [,attrs] of item.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)){
+      const rel=attrs.match(/\brel\s*=\s*["']([^"']+)["']/iu)?.[1]??"alternate";
+      if(rel!=="alternate"&&rel!=="canonical")continue;
+      const candidate=attrs.match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1]??"";
+      if(!candidate)continue;
+      if(!firstRejected)firstRejected=candidate;
+      if(originalHref(candidate,hosts,source)){href=candidate;break;}
+    }
+    if(!href){
       rejectedOriginalLink++;
-      const why=originalLinkRejectionKind(href,hosts,source);
+      const why=originalLinkRejectionKind(firstRejected,hosts,source);
       if(why==="publisher_host_mismatch")wrongPublisherHost++;
       else if(why==="original_article_path_mismatch")wrongOriginalPath++;
       else unsafeOrMalformedLink++;
