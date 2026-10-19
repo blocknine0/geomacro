@@ -361,7 +361,7 @@ function IntelligencePage() {
                 <article key={event.id} className="rounded-xl border border-border/70 bg-card/40 p-4">
                   <p className="font-mono text-[10px] uppercase tracking-wider text-primary">{prettyCategory(event.category ?? "")} · Verified observation</p>
                   <h3 className="mt-2 text-sm font-semibold leading-6">{publicHeadline(event.title)}</h3>
-                  {event.summary ? <p className="mt-2 text-xs leading-5 text-muted-foreground">{event.summary}</p> : null}
+                  {event.summary ? <p className="mt-2 text-xs leading-5 text-muted-foreground">{event.summary.replace(/\s*\u2014\s*/gu, "; ")}</p> : null}
                   <p className="mt-3 text-xs text-muted-foreground">
                     Observed {formatDate(event.publishedAt ?? event.createdAt)} · Severity pending independent verification
                   </p>
@@ -518,7 +518,7 @@ function IntelCard({ event }: { event: IntelEvent }) {
       <h3 className="mt-3 text-lg font-semibold leading-snug">
         <Link to="/event/$eventId" params={{ eventId: event.id }} className="hover:text-primary">{publicHeadline(event.title)}</Link>
       </h3>
-      {event.summary && <p className="mt-2 text-sm leading-6 text-muted-foreground">{event.summary}</p>}
+      {event.summary && <p className="mt-2 text-sm leading-6 text-muted-foreground">{event.summary.replace(/\s*\u2014\s*/gu, "; ")}</p>}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-3 text-xs text-muted-foreground">
         <span>{event.isCurrent ? "Current verified assessment" : "Historical verified assessment"} · {event.publishedAt ? formatDate(event.publishedAt) : "Original publication time unavailable"}</span>
         <div className="flex items-center gap-3">

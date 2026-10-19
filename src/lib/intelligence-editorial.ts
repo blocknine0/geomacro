@@ -37,7 +37,7 @@ export function scoredNews(events: IntelEvent[], now = Date.now()): IntelEvent[]
  * geographic granularity while preserving the source's factual meaning.
  */
 export function publicHeadline(title: string): string {
-  const withoutPrefix = title.replace(/^Geomacro (?:finds|observes)\s+/iu, "").trim();
+  const withoutPrefix = title.replace(/\s*\u2014\s*/gu, "; ").replace(/^Geomacro (?:finds|observes)\s+/iu, "").trim();
   const lastLocation = /^(.*?\b(?:in|from|near|across)\s+)([^.!?]+)$/iu.exec(withoutPrefix);
   if (!lastLocation) return withoutPrefix;
   const location = lastLocation[2];

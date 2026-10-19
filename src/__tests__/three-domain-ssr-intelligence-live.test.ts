@@ -39,7 +39,7 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
       initialJournal:[],
     }));
     for(const category of ["geopolitics","macro","rare_earth"] as const)
-      expect(html).toContain(headline[category]);
+      expect(html).toContain(headline[category].replace(/^Geomacro finds /u,""));
     expect(html).toContain("Across all three domains");
     expect(html).not.toContain("Loading Macro / FX, Critical Minerals");
     expect(html).toContain("Earlier original releases");
@@ -50,10 +50,24 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
     const html=renderToStaticMarkup(createElement(StatelessLiveDesk,{
       initial:geo,initialFeeds:{geopolitics:geo},initialJournal:[],
     }));
-    expect(html).toContain(headline.geopolitics);
-    expect(html).not.toContain(headline.macro);
-    expect(html).not.toContain(headline.rare_earth);
+    expect(html).toContain(headline.geopolitics.replace(/^Geomacro finds /u,""));
+    expect(html).not.toContain(headline.macro.replace(/^Geomacro finds /u,""));
+    expect(html).not.toContain(headline.rare_earth.replace(/^Geomacro finds /u,""));
     expect(html).toContain("Loading Macro / FX, Critical Minerals");
+  });
+  it("shows the supplied country and actual derived change without em dashes",()=>{
+    const geo=state("geopolitics");
+    geo.signals[0]={...geo.signals[0],geography:"Sudan",
+      title:"Geomacro finds Call for a ceasefire — Sudan",
+      what_changed:"A ceasefire was requested — implementation is unconfirmed."};
+    const html=renderToStaticMarkup(createElement(StatelessLiveDesk,{
+      initial:geo,initialFeeds:{geopolitics:geo},initialJournal:[],
+    }));
+    expect(html).toContain("Country or region: Sudan");
+    expect(html).toContain("Call for a ceasefire; Sudan");
+    expect(html).toContain("A ceasefire was requested; implementation is unconfirmed.");
+    expect(html).not.toContain("\u2014");
+    expect(html).not.toContain("Official publisher issues");
   });
   it("forces first-paint routes to ask all three official source families in parallel",()=>{
     const route=readFileSync("src/routes/intelligence.tsx","utf8");
