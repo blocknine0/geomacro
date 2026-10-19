@@ -299,6 +299,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Canonical classifiers can correctly return ZERO event scores.
+          # Never fail an empty stage by trying to archive nonexistent data
+          # or consume any unnecessary B2 GET/PUT ticket. Every nonempty
+          # stage must still pass the same readback + D1 checkpoint.
+          STAGED_COUNT="$(node scripts/ops/check-private-stage-archive-admission.mjs)"
+          if [[ "$STAGED_COUNT" == "0" ]]; then
+            echo "PRIVATE_SCORING_NO_ELIGIBLE_SCORE_NO_B2_ARCHIVE_NO_PUBLIC_PROMOTION"
+            exit 0
+          fi
           node scripts/ops/archive-restricted-private-scored-stage.mjs --private-stage-only
           if [[ "${GEOMACRO_AUTOMATIC_D1_PULSE_STAGE}" == "true" ]]; then
             for domain in geopolitics macro rare_earth; do
