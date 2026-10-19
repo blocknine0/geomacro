@@ -22,7 +22,7 @@ const ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const BUCKET = "geomacro-private-archive";
 const ARTIFACT_DIR = "artifacts/restricted-current-scoring";
 const MAX_INPUT_BYTES = 80 * 1024;
-const MAX_B2_REQUESTS = 6;
+const MAX_B2_REQUESTS = 4;
 const ALLOWED_MODE = "--private-stage-only";
 
 function ensureConfig() {
