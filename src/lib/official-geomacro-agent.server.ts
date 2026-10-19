@@ -143,8 +143,7 @@ export function officialGeomacroAgentOpenApi(){
       examples:Object.fromEntries(GEOMACRO_AGENT_TOOLS.filter(t=>t.paid).map(t=>[
        t.name,{summary:t.description,value:{tool:t.name,arguments:t.example}},
       ])),
-     }}},
-   },
+     }}}},
    [endpoints.canonical_intelligence]:{post:op("Query canonical Geomacro paid intelligence","post")},
    [endpoints.geopolitics]:{post:op("Query geopolitics scoped intelligence","post")},
    [endpoints.macro_fx]:{post:op("Query macro FX scoped intelligence","post")},
