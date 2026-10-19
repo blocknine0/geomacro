@@ -59,6 +59,7 @@ describe("official Geomacro API and AI Agent v1",()=>{
   expect(openapi.paths["/api/v1/agent"].post.responses).toHaveProperty("429");
   expect(d.buyer_integration.preflight_does_not_charge).toBe(true);
   expect(d.buyer_integration.no_automatic_payment_retry).toBe(true);
+  expect(d.buyer_integration.baseline_preflight_scope).toBe("structural_baseline_only");
   expect(openapi["x-geomacro"].execution_authorized).toBe(false);
  });
  it.each(["country_risk","corridor_risk","change_since_last_verified",
