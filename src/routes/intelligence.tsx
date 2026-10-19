@@ -16,7 +16,7 @@ import {
 } from "@/lib/use-intelligence";
 import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
-import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
 import { StatelessLiveDesk } from "@/components/intelligence/stateless-live-desk";
 import { useRiskIndices } from "@/lib/use-risk-indices";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/intelligence")({
     // server-rendered HTML when their independent source readers succeed.
     // Previously only geopolitics was SSR-loaded, so no-JS clients and search
     // indexing always saw misleading "Macro 0 / Critical Minerals 0".
-    // Keep the bounded direct D1 30-day journal in parallel for continuity.
+    // Keep the bounded 72-hour D1 journal in parallel for continuity.
     // The three category checks are independent: one timeout must never hide
     // another category's valid original-dated releases.
     const domains = ["geopolitics", "macro", "rare_earth"] as const;
@@ -50,7 +50,7 @@ export const Route = createFileRoute("/intelligence")({
         "Original publisher Intelligence source check timed out.",
       )),
       withPublicRuntimeTimeout(
-        fetchDirectDerivedNews(),
+        fetchAllDerivedNews(),
         9_000,
         "Derived Intelligence journal read timed out.",
       ),
@@ -67,7 +67,7 @@ export const Route = createFileRoute("/intelligence")({
         ...(accepted[1] ? { macro: accepted[1] } : {}),
         ...(accepted[2] ? { rare_earth: accepted[2] } : {}),
       },
-      // fetchDirectDerivedNews() already returns checked Signal[] directly,
+      // fetchAllDerivedNews() returns up to 600 verified deduplicated Signals,
       // NOT {signals}. A successful journal is combined with actual live
       // issuer answers; neither supplies a canonical signed risk score.
       journal: history.status === "fulfilled" && Array.isArray(history.value)

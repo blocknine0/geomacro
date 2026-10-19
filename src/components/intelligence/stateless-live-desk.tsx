@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Clock3, RefreshCw, Search } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
-import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
 import { findCardFromObservedRelease } from "@/lib/find-card-v1";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
@@ -185,7 +185,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
     };
   }, [initial, initialFeeds]);
 
-  // Durable derived-only 30-day D1 journal independent of visitor activity.
+  // Derived-only 72-hour D1 journal independent of visitor activity.
   useEffect(() => {
     let alive = true;
     let pending = false;
@@ -196,7 +196,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
       // Browser-direct D1 is crucial when a Lovable server-function roundtrip
       // fails despite the verified, public, source-private D1 journal.
       try {
-        const signals = await fetchDirectDerivedNews();
+        const signals = await fetchAllDerivedNews();
         if (alive) { setJournal(signals); setJournalUnavailable(false); }
       } catch {
         // The legacy server function is only a secondary fallback; preserve
