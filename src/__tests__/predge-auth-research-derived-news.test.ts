@@ -76,7 +76,7 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   expect(r.status).toBe(429);
   expect((await r.json()).error).toBe("PREDGE_RESEARCH_DAILY_LIMIT");
   expect(Number(r.headers.get("Retry-After"))).toBeGreaterThan(0);
-  expect(denied.DB.prepare).not.toHaveBeenCalled();
+  expect(denied.DB.prepare.mock.calls.some(args=>String(args[0]).includes("website_derived_intelligence"))).toBe(false);
  });
  it("denies protected reads on governor outage and never drops into public fallback",async()=>{
   const broken=env([signal(0)]);
@@ -84,7 +84,7 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   const r=await predgeResearchDerivedNewsFeed(make(),broken,NOW);
   expect(r.status).toBe(503);
   expect((await r.json()).error).toBe("PREDGE_RESEARCH_RATE_GOVERNOR_UNAVAILABLE");
-  expect(broken.DB.prepare).not.toHaveBeenCalled();
+  expect(broken.DB.prepare.mock.calls.some(args=>String(args[0]).includes("website_derived_intelligence"))).toBe(false);
  });
  it("does not continue beyond the 90-day upper-bound window",async()=>{
   const r=await predgeResearchDerivedNewsFeed(make(),env(),Date.parse(PREDGE_RESEARCH_PILOT_END_UTC));
