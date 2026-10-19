@@ -57,7 +57,7 @@ function parseBounded(file){
   try{return JSON.parse(bytes.toString("utf8"))}
   catch{fail()}
 }
-if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url).pathname){
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   try{
     if(process.argv.length!==2)fail();
     const dir="artifacts/restricted-current-scoring";
