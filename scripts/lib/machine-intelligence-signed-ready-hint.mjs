@@ -5,7 +5,7 @@
  * Ed25519 approvals, real original bytes, B2 pin, D1 readback and clocks.
  */
 const HEX=/^[a-f0-9]{64}$/u;
-const UTC=/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,3})?Z$/u;
+const UTC=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u;
 const MAX_AGE_MS=28*60_000;
 const PREFIX="geomacro-evidence/v1/private/machine-intelligence-current/";
 const NONE=(reason)=>Object.freeze({
