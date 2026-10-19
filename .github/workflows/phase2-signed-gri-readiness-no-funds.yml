@@ -5,6 +5,11 @@ name: Phase 2 Signed GRI Historical Input Readiness (No Funds)
 # current signed products. No new cron or B2 operations.
 on:
   workflow_dispatch: {}
+  pull_request:
+    paths:
+      - '.github/workflows/phase2-signed-gri-readiness-no-funds.yml'
+      - 'scripts/ops/phase2-gri-recovery-readiness.mjs'
+      - 'scripts/tests/phase2-gri-recovery-readiness.test.mjs'
   push:
     branches: [main]
     paths:
