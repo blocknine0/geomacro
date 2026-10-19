@@ -1,0 +1,114 @@
+name: Phase 2 Signed GRI Historical Input Readiness (No Funds)
+
+# One-shot real protected production D1 history/quota and externally approved
+# hint readback, using ONLY existing sources. NOT a publisher or verifier of
+# current signed products. No new cron or B2 operations.
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - '.github/workflows/phase2-signed-gri-readiness-no-funds.yml'
+      - 'scripts/ops/phase2-gri-recovery-readiness.mjs'
+      - 'scripts/tests/phase2-gri-recovery-readiness.test.mjs'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/phase2-signed-gri-readiness-no-funds.yml'
+      - 'scripts/ops/phase2-gri-recovery-readiness.mjs'
+      - 'scripts/tests/phase2-gri-recovery-readiness.test.mjs'
+  workflow_run:
+    workflows: ['GRI Pinned Historical Version Recovery']
+    types: [completed]
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-phase2-signed-input-readiness
+  cancel-in-progress: false
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Reject invalid inputs and fake signed evidence offline
+        run: |
+          node --check scripts/ops/phase2-gri-recovery-readiness.mjs
+          node --test scripts/tests/phase2-gri-recovery-readiness.test.mjs
+
+  production-readiness:
+    needs: source-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'push' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+          github.event.workflow_run.head_sha == github.sha
+        )
+      )
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GRI_READY_REVIEWED_SHA256: ${{ vars.GRI_READY_REVIEWED_SHA256 }}
+      GRI_READY_CERTIFICATES_SHA256: ${{ vars.GRI_READY_CERTIFICATES_SHA256 }}
+      GRI_READY_APPROVED_AT: ${{ vars.GRI_READY_APPROVED_AT }}
+      GEOMACRO_GRI_RESTORE_WEBSITE_HISTORY: '1'
+      B2_ACCOUNT_QUOTA_REQUIRED: '1'
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: historical_gri_version_recovery
+      B2_REQUEST_BUDGET: '4'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Require exact protected main and forbid any payment/Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'blocknine0/geomacro'
+          test "$GITHUB_REF" = 'refs/heads/main'
+          test "$EXPECTED_CANONICAL_MAIN_SHA" = "$(git rev-parse HEAD)"
+          for k in SUPABASE_URL SUPABASE_DB_URL APP_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_SERVICE_ROLE_KEY COINBASE_API_KEY COINBASE_X402_MAINNET_ACK GEOMACRO_COMMERCIAL_LAUNCH_ACK; do
+            test -z "${!k:-}" || { echo "::error::PHASE2_NO_FUNDS_OR_SUPABASE_REQUIRED"; exit 2; }
+          done
+      - name: Resolve current canonical D1 quota/history database ID (metadata-only)
+        run: |
+          node --input-type=module <<'JS'
+          import {appendFileSync} from 'node:fs';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!/^[a-f0-9]{32}$/.test(account??'')||!token)throw Error('PHASE2_D1_AUTH_MISSING');
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database?per_page=100',{
+            headers:{Authorization:'Bearer '+token},redirect:'error',signal:AbortSignal.timeout(15000)});
+          if(!r.ok)throw Error('PHASE2_D1_DISCOVERY_UNAVAILABLE');
+          const d=await r.json();const rows=d.success===true&&Array.isArray(d.result)?d.result.filter(x=>x.name==='geomacro-control-plane'):[];
+          if(rows.length!==1||!/^[a-f0-9-]{36}$/.test(rows[0].uuid??''))throw Error('PHASE2_D1_NOT_UNIQUE');
+          appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+rows[0].uuid+'\n');
+          JS
+      - name: Assess genuine pinned history, shared GET quota, and external signer/certificate admission
+        run: node scripts/ops/phase2-gri-recovery-readiness.mjs
+      - name: Preserve safe no-funds Phase 2 readiness receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: phase2-gri-recovery-readiness-${{ github.run_id }}
+          path: artifacts/phase2-readiness/readiness.json
+          if-no-files-found: warn
+          retention-days: 7
