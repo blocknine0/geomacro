@@ -17,9 +17,25 @@ describe('private current-source recovery: free quota and official MCS fallback'
    const governor={status:vi.fn(async()=>status({}))};
    const x=await checkPrivateScoringB2Headroom({governor,now:today});
    expect(governor.status).toHaveBeenCalledTimes(1);
-   expect(x).toMatchObject({admitted:true,required_get_tickets:3,
-     required_put_tickets:3,b2_requests:0,current_event_verified:false,
+   expect(x).toMatchObject({admitted:true,required_get_tickets:1,
+     required_put_tickets:1,b2_requests:0,current_event_verified:false,
      commercial_eligible:false,guaranteed_future_b2_reservations:false});
+ });
+ it('admits the last one GET + one PUT for a single bundled B2 write and full readback',async()=>{
+   const near=status({total:78,GET:24,PUT:54});
+   const x=await checkPrivateScoringB2Headroom({
+     governor:{status:async()=>near},now:today});
+   expect(x).toMatchObject({
+     admitted:true,required_get_tickets:1,required_put_tickets:1,
+     archive_mode:'single_b2_bundle_with_independent_logical_sha256_v1',
+     guaranteed_future_b2_reservations:false,
+     existing_atomic_reservations_still_required:true,
+     b2_requests:0,payments:0,
+   });
+   expect((await checkPrivateScoringB2Headroom({
+     governor:{status:async()=>status({total:79,GET:25,PUT:54})},
+     now:today,
+   })).admitted).toBe(false);
  });
  it('quota exhaustion holds before classifier and cannot be passed off as readiness',async()=>{
    const x=await checkPrivateScoringB2Headroom({
