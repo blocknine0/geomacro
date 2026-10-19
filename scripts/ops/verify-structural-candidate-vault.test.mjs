@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import worker,{CommerceLedger} from '../../workers/commerce-ledger/src/index.mjs';
 import {canonicalJson} from '../../src/lib/canonical-json.ts';
 import {MCS_DIGEST_CSV_SHA256} from '../../src/lib/mcs-digest-source-identity.ts';
+import {TREASURY_TERMS_SHA256} from '../../src/lib/treasury-fx-source-identity.ts';
 import {STRUCTURAL_CANDIDATE_SCOPE as scope,STRUCTURAL_CANDIDATE_VERSION,
  structuralCandidateHash,hashText} from '../../workers/commerce-ledger/src/structural-candidate.mjs';
 const NOW=Date.parse('2026-10-18T00:00:00.000Z');
@@ -33,6 +34,42 @@ async function post(ledger,action,fields){
  const r=await ledger.fetch(new Request('https://internal/'+action,{method:'POST',body:JSON.stringify({...scope,...fields})}));
  return {status:r.status,body:await r.json()};
 }
+async function quarterlyFixture(){
+ const f=await fixture('quarterly'),{delivered_product_hash:_old,...core}=JSON.parse(f.customerBytes);
+ core.subjects=[{type:'country',country_iso3:'IND'}];
+ core.question_interpretation.topics=['fx_external_risk'];core.question_interpretation.required_modules=['external_fx'];
+ f.customerBytes=canonicalJson({...core,delivered_product_hash:await hashText(canonicalJson(core))});
+ Object.assign(f.candidate,{country_iso3:'IND',topic:'fx_external_risk',source_file_sha256:await hashText('synthetic-quarterly-response-test-only'),
+  rights_metadata_sha256:TREASURY_TERMS_SHA256,source_period_end:'2026-09-30T23:59:59.000Z',answer_sha256:await hashText(f.customerBytes)});
+ f.candidate.binding_hash=await structuralCandidateHash(f.candidate);return f;
+}
+test('distinct quarterly India profile freezes exact bytes and independently reads twice with no payment state',async()=>{
+ const {ledger,map}=vault(),f=await quarterlyFixture();
+ assert.equal((await post(ledger,'structural-candidate-freeze',f)).body.disposition,'FROZEN');
+ for(let i=0;i<2;i++){
+  const r=await post(ledger,'structural-candidate-readback',{bindingHash:f.candidate.binding_hash});
+  assert.equal(r.status,200);assert.equal(r.body.customerBytes,f.customerBytes);
+  assert.equal(r.body.payment_authorized,false);assert.equal(r.body.settlement_attempted,false);
+ }
+ assert.equal((await post(ledger,'structural-candidate-freeze',f)).body.disposition,'EXACT_REPLAY');
+ assert.equal(map.size,1);assert.ok([...map.keys()].every(k=>k.startsWith('structural-candidate:')));
+});
+test('quarterly profile cannot borrow annual rights, another country, false clocks or signed modules',async()=>{
+ for(const edit of [f=>f.candidate.rights_metadata_sha256='a'.repeat(64),
+  f=>f.candidate.country_iso3='USA',f=>f.candidate.source_period_end='2026-09-29T23:59:59.000Z',
+  f=>f.candidate.source_period_end='2025-09-30T23:59:59.000Z',
+  f=>f.candidate.topic='critical_minerals',f=>f.candidate.expires_at='2026-10-20T00:00:00.000Z']){
+  const {ledger,map}=vault(),f=await quarterlyFixture();edit(f);
+  f.candidate.binding_hash=await structuralCandidateHash(f.candidate);
+  assert.equal((await post(ledger,'structural-candidate-freeze',f)).status,409);assert.equal(map.size,0);
+ }
+ const {ledger,map}=vault(),f=await quarterlyFixture();
+ const {delivered_product_hash:_old,...core}=JSON.parse(f.customerBytes);
+ core.question_interpretation.required_modules=['signed_risk_object'];
+ f.customerBytes=canonicalJson({...core,delivered_product_hash:await hashText(canonicalJson(core))});
+ f.candidate.answer_sha256=await hashText(f.customerBytes);f.candidate.binding_hash=await structuralCandidateHash(f.candidate);
+ assert.equal((await post(ledger,'structural-candidate-freeze',f)).status,409);assert.equal(map.size,0);
+});
 test('exact private candidate bytes freeze, independently read twice and replay without any payment record',async()=>{
  const {ledger,map}=vault();const f=await fixture();
  assert.equal((await post(ledger,'structural-candidate-freeze',f)).body.disposition,'FROZEN');

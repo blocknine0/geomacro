@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - 'src/lib/qualified-treasury-fx.server*'
+      - 'src/lib/treasury-fx-source-identity.ts'
+      - 'workers/commerce-ledger/src/structural-candidate.mjs'
+      - 'scripts/ops/verify-structural-candidate-vault.test.mjs'
       - 'src/lib/structural-context.server.ts'
       - 'src/lib/commercial-source-eligibility.server.ts'
       - 'src/lib/agent-query-response.server.ts'
@@ -13,6 +16,8 @@ on:
     branches: [main]
     paths:
       - 'src/lib/qualified-treasury-fx.server*'
+      - 'src/lib/treasury-fx-source-identity.ts'
+      - 'workers/commerce-ledger/src/structural-candidate.mjs'
       - 'scripts/ops/prepare-treasury-country-digest.ts'
       - '.github/workflows/treasury-structural-digest.yml'
   workflow_dispatch: {}

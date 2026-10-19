@@ -5,8 +5,8 @@ import type {SourceRightsRow} from "./commercial-source-eligibility.server";
 
 // Published API permission for analysis services; no independent-reviewer or
 // government endorsement claim. Scope is numerical India reporting FX only.
-export const TREASURY_FX_SOURCE_ID="treasury_ind_quarterly_reporting_fx_v1";
-export const TREASURY_TERMS_SHA256="de0785dc195f2b2112c67af99261950bddbcdc32aac8b0f99d73889e03e19e15";
+import {TREASURY_FX_SOURCE_ID,TREASURY_TERMS_SHA256} from "./treasury-fx-source-identity";
+export {TREASURY_FX_SOURCE_ID,TREASURY_TERMS_SHA256} from "./treasury-fx-source-identity";
 export const TREASURY_TERMS_URL="https://treasurydirect.gov/legal-information/developers/web-api-terms/";
 export const TREASURY_FX_URL="https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/rates_of_exchange?filter=country_currency_desc:eq:India-Rupee&sort=-record_date&page[size]=2";
 const DAY=86400_000, TTL=5*60_000;
