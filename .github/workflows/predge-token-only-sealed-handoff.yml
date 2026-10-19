@@ -21,6 +21,9 @@ jobs:
     environment: production
     env:
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      # Match exact live Worker grant when founder has explicitly configured
+      # Predge's preexisting dedicated research token. Optional otherwise.
+      PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
       RECIPIENT_RSA_PUBKEY_B64: ${{ inputs.recipient_rsa_public_key_base64 }}
     steps:
       - name: Checkout immutable canonical main (no stored credentials)

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {generateKeyPairSync,privateDecrypt,constants,createHmac} from "node:crypto";
 import {readFileSync} from "node:fs";
 import {
- derivePredgeResearchBearer,decodeRecipientPublicKey,sealPredgeResearchBearer,
+ derivePredgeResearchBearer,resolvePredgeResearchBearer,decodeRecipientPublicKey,sealPredgeResearchBearer,
  verifyPredgeLiveBearer,PREDGE_HMAC_DOMAIN,PREDGE_OAEP_LABEL,
  PREDGE_RESEARCH_URL,
 } from "./predge-sealed-token-handoff.mjs";
@@ -24,6 +24,36 @@ test("Owner alone decrypts dedicated Predge token; root and admin tokens never d
  assert.ok(!ciphertext.includes(Buffer.from(root)));
  assert.notEqual(derived,createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex"));
  assert.equal(decodeRecipientPublicKey(b64).asymmetricKeyType,"rsa");
+});
+test("Predge's already-issued dedicated research token is the same bearer sealed for owner and checked live",async()=>{
+  const override="b".repeat(64),ciphertext=sealPredgeResearchBearer({
+    root,override,recipientPublicKeyB64:b64,
+  });
+  const opened=privateDecrypt({key:privateKey,
+    padding:constants.RSA_PKCS1_OAEP_PADDING,oaepHash:"sha256",
+    oaepLabel:Buffer.from(PREDGE_OAEP_LABEL)},ciphertext).toString("utf8");
+  assert.equal(opened,override);
+  assert.notEqual(opened,derivePredgeResearchBearer(root));
+  const calls=[];
+  const fetchImpl=async(_url,options)=>{
+    calls.push(options.headers?.authorization??null);
+    return Response.json(options.headers?.authorization
+      ?{ok:true,partner_delivery_schema:"geomacro.predge.research-news-delivery.v1",
+        partner_delivery_scope:"PRIVATE_NONCOMMERCIAL_RESEARCH_PILOT",
+        partner_resale_or_commercial_redistribution_authorized:false,
+        source_licensing_waived:false,chargeable:false,gro_signed:false,items:[]}
+      :{ok:false},{status:options.headers?.authorization?200:401});
+  };
+  const evidence=await verifyPredgeLiveBearer({root,override,fetchImpl});
+  assert.equal(evidence.authenticated_research_verified,true);
+  assert.deepEqual(calls,[null,"Bearer "+override]);
+});
+test("Never accept random format, root or admin token as partner research override",()=>{
+  const privileged=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
+  for(const override of ["short","X".repeat(64),"e".repeat(65),root,privileged]){
+    assert.throws(()=>resolvePredgeResearchBearer({root,override}));
+  }
+  assert.equal(resolvePredgeResearchBearer({root,override:""}),derivePredgeResearchBearer(root));
 });
 test("Wrong owner's private key cannot retrieve a plaintext handoff",()=>{
  const other=generateKeyPairSync("rsa",{modulusLength:3072});
@@ -67,6 +97,7 @@ test("Only manual protected production workflow can create encrypted artifact",(
  assert.doesNotMatch(y,/^  schedule:|^  push:|^  pull_request:/m);
  assert.match(y,/environment: production/);
  assert.match(y,/secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN/);
+ assert.match(y,/secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE/);
  assert.match(y,/retention-days: 1/);
  assert.match(y,/ref: \$\{\{ github.sha \}\}/);
  assert.match(y,/persist-credentials: false/);

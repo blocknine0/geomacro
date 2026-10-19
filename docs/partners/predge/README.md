@@ -158,3 +158,34 @@ with `Authorization: Bearer <token>` (no token in URL).
 Predge gets the same public-eligible derived D1 items, not raw publisher
 articles or signed paid GRO. The provisional research expiry is
 2027-01-17T00:00:00Z and does **not** itself grant commercial redistribution.
+
+## Reusing an already-issued Predge research Bearer (optional)
+
+If Predge already generated an **independent, purpose-scoped research token**
+that is exactly 64 lowercase hexadecimal characters, the founder may retain
+that value rather than replacing it. Set it privately as the
+`PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE` **production environment secret** in
+GitHub (not in chat, README, PR, an issue, or a workflow input), then deploy
+the existing D1 control-plane workflow on protected main. The deploy rejects
+invalid format and attempts to reuse Geomacro admin/root credentials, then
+requires existing live 401/200 + shared 72-hour D1 ID parity acceptance.
+
+The owner-only RSA-OAEP encrypted handoff workflow now uses the *same active
+token source* as the deploy: optional protected override, otherwise original
+separate domain HMAC. It verifies the actual live endpoint **before** sealing
+the token. No root or token is printed or made publicly readable.
+
+**Crucial distinction:** A token issued by Predge to call **Predge's own
+settlement-risk API** does **not** automatically authorize Geomacro's research
+endpoint and should not be reused across the two services. The existing
+Predge-facing Geomacro token must be purpose-scoped explicitly for this
+Geomacro feed. If the prior credential has a different opaque format, it
+requires a separate validated integration and cannot be pasted into this
+64-hex Worker contract. No automatic conversion, source-rights bypass or
+public partner commercial grant.
+
+To rotate or revoke an enrolled token, use a replacement 64-hex protected
+secret and redeploy. **Deleting the override alone reactivates the preexisting
+HMAC fallback**, which is not an effective revocation if that fallback has
+previously been shared. Partner acknowledgments and actual 200 requests must
+be verified independently; green CI alone does not prove recipient access.
