@@ -1,0 +1,46 @@
+name: Treasury India Structural Digest (No Funds)
+on:
+  pull_request:
+    paths:
+      - 'src/lib/qualified-treasury-fx.server*'
+      - 'src/lib/structural-context.server.ts'
+      - 'src/lib/commercial-source-eligibility.server.ts'
+      - 'src/lib/agent-query-response.server.ts'
+      - 'src/lib/agent-query-deliverability.server.ts'
+      - 'scripts/ops/prepare-treasury-country-digest.ts'
+      - '.github/workflows/treasury-structural-digest.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/lib/qualified-treasury-fx.server*'
+      - 'scripts/ops/prepare-treasury-country-digest.ts'
+      - '.github/workflows/treasury-structural-digest.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      GEOMACRO_SUPABASE_RUNTIME_MODE: standby
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Reject wrong country, source clocks, rates and changed permission terms
+        run: bunx vitest run src/lib/qualified-treasury-fx.server.test.ts src/__tests__/earn-first-structural-pilot.test.ts src/lib/qualified-mcs-country-digest.server.test.ts
+      - name: Real publisher and exact terms through the canonical response engine
+        run: bun scripts/ops/prepare-treasury-country-digest.ts
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: treasury-digest-sanitized-receipt
+          path: artifacts/treasury-structural-digest-receipt.json
+          if-no-files-found: ignore
+          retention-days: 3

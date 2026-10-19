@@ -186,7 +186,9 @@ export async function checkAgentQueryDeliverability(
 
   for (const subject of plan.subjects) {
     const context = await loadStructuralContext(subject, {
-      allowQualifiedRelease: plan.delivery_tier === "structural_baseline" && plan.topics.includes("critical_minerals"),
+      allowQualifiedRelease: plan.delivery_tier === "structural_baseline" && plan.topics.length === 1 &&
+        ["critical_minerals", "fx_external_risk"].includes(plan.topics[0]),
+      qualifiedReleaseTopic: plan.topics[0],
     });
     const available = structuralModulesFor(context);
     const structuralModulesUsed = new Set<string>();

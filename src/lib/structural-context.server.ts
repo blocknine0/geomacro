@@ -6,6 +6,7 @@ import {
 } from "./b2-structural.server";
 import { supabaseReadFallbackAllowed } from "./supabase-runtime-mode.server";
 import { loadQualifiedMcsCountryContext } from "./qualified-mcs-country-digest.server";
+import { loadQualifiedTreasuryFxCountryContext } from "./qualified-treasury-fx.server";
 
 export const STRUCTURAL_METHODOLOGY_STATUS =
   "EVIDENCE_ONLY_NOT_IN_GRI_V1_2" as const;
@@ -503,14 +504,16 @@ function unavailableContext(subject: StructuralSubject): StructuralContext {
 
 export async function loadStructuralContext(
   requestedSubject: StructuralSubject,
-  options: { allowQualifiedRelease?: boolean } = {},
+  options: { allowQualifiedRelease?: boolean; qualifiedReleaseTopic?: string } = {},
 ): Promise<StructuralContext> {
   const subject = normalizeSubject(requestedSubject);
   const db = getHistoricalClient();
 
   if (!db) {
     if (options.allowQualifiedRelease === true && subject.type === "country") {
-      const qualified = await loadQualifiedMcsCountryContext(subject.country_iso3);
+      const qualified = options.qualifiedReleaseTopic === "fx_external_risk"
+        ? await loadQualifiedTreasuryFxCountryContext(subject.country_iso3)
+        : await loadQualifiedMcsCountryContext(subject.country_iso3);
       if (qualified) return qualified;
     }
     const b2 = await loadB2StructuralContext(subject);

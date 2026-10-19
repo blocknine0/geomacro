@@ -2,6 +2,7 @@ import { readB2CommercialSourceRights, type B2CommercialSourceRight } from "./b2
 import { requireRiskSupabase } from "./risk-supabase.server";
 import { supabaseReadFallbackAllowed } from "./supabase-runtime-mode.server";
 import { MCS_DIGEST_SOURCE_ID, qualifiedMcsSourceRights } from "./qualified-mcs-country-digest.server";
+import { TREASURY_FX_SOURCE_ID, qualifiedTreasuryFxSourceRights } from "./qualified-treasury-fx.server";
 
 export type CommercialSourceEligibility = {
   eligible: boolean;
@@ -134,6 +135,7 @@ export async function readCommercialSourceRightsRow(
   const normalized = sourceId.trim();
   if (!normalized) return null;
   if (normalized === MCS_DIGEST_SOURCE_ID) return qualifiedMcsSourceRights(normalized);
+  if (normalized === TREASURY_FX_SOURCE_ID) return qualifiedTreasuryFxSourceRights(normalized);
 
   const b2 = await readB2CommercialSourceRights();
   if (b2) {
