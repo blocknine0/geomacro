@@ -95,6 +95,13 @@ describe("independent verified Risk Indices edge", () => {
     expect(deploy).toContain("exit 13");
     expect(deploy).toContain("FULL_B2_READBACK_PROOF_REQUIRED_FOR_SOURCE_RUN_OR_MANUAL_DEPLOY");
     expect(deploy).toContain('test "$CODE" = "200" ||');
+    expect(deploy).toContain("if: steps.continuity.outputs.code_only != 'true'");
+    expect(deploy).toContain("RISK_INDICES_CODE_ONLY_DEPLOYED_HOT_SIGNED_DATA_NOT_VERIFIED");
+    expect(deploy).toContain("HISTORICAL_INDICES_CONTEXT_VERIFIED_ONLY_NOT_CURRENT");
+    const safety = readFileSync(".github/workflows/deploy-b2-shared-quota-safety.yml","utf8");
+    expect(safety).toContain("RISK_INDICES_SAFE_CODE_ONLY_NO_SIGNED_CURRENT_PROOF");
+    expect(safety).toContain("PRESERVE_VERIFIED_CURRENT_EDGE");
+    expect(safety).toContain("assess-risk-indices-code-deploy.mjs");
     expect(deploy).toContain("Risk Indices edge acceptance failed: HTTP $CODE");
     expect(deploy).toContain("prepare-edge-continuity.sh");
     expect(deploy).toContain("risk-indices-realtime-direct-postgres.yml");

@@ -74,6 +74,7 @@ jobs:
           test -n "$B2_ARCHIVE_READ_APPLICATION_KEY" || { echo "B2_ARCHIVE_READ_APPLICATION_KEY is required"; exit 2; }
 
       - name: Materialize latest B2-readback-verified Risk Indices continuity
+        id: continuity
         # The triggering successful source run is mandatory for workflow_run,
         # avoiding fallback to a different/stale artifact on production re-deploy.
         env:
@@ -88,6 +89,7 @@ jobs:
             geomacro.public-risk-indices-direct-postgres-publish.v1 \
             workers/risk-indices-edge/src/continuity.mjs; then
             echo "VERIFIED_RISK_INDICES_CONTINUITY_MATERIALIZED"
+            echo "code_only=false" >> "$GITHUB_OUTPUT"
           elif [ "$TRIGGER_EVENT" = "push" ]; then
             # Do not accidentally overwrite a still healthy previously
             # materialized static continuity package with null when the
@@ -115,7 +117,8 @@ jobs:
             # returns 503, never manufactured risk nor payable data.
             printf 'export default null;\n' > workers/risk-indices-edge/src/continuity.mjs
             test "$(cat workers/risk-indices-edge/src/continuity.mjs)" = 'export default null;'
-            echo "SAFE_CODE_ONLY_DEPLOY_WITH_NO_STATIC_CONTINUITY; live proof acceptance stays mandatory"
+            echo "SAFE_CODE_ONLY_DEPLOY_WITH_NO_STATIC_CONTINUITY; hot proof remains unavailable"
+            echo "code_only=true" >> "$GITHUB_OUTPUT"
           else
             echo "FULL_B2_READBACK_PROOF_REQUIRED_FOR_SOURCE_RUN_OR_MANUAL_DEPLOY"
             exit 12
@@ -173,6 +176,7 @@ jobs:
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
       - name: Verify deployed Risk Indices code separately from signed-product availability
+        if: steps.continuity.outputs.code_only != 'true'
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
         shell: bash
@@ -186,6 +190,7 @@ jobs:
           echo "PASS: deployed Worker code verified; the next signed-product step remains independently fail-closed."
 
       - name: Require verified package through Risk Indices edge
+        if: steps.continuity.outputs.code_only != 'true'
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
         shell: bash
@@ -219,6 +224,7 @@ jobs:
           NODE
 
       - name: Verify actual source freshness and new Worker revision
+        if: steps.continuity.outputs.code_only != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -241,6 +247,46 @@ jobs:
             throw Error("INDICES_EXPIRED_CDN_REPLAY_ENABLED");
           console.log("PASS: current native Risk Indices source, new Worker code and B2/D1 proof");
           NODE
+
+      - name: Verify code-only serving boundary without hot B2 GET
+        if: steps.continuity.outputs.code_only == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for entry in 'GET /not-allowed 404' 'POST /risk-indices 405'; do
+            read -r method route expected <<< "$entry"
+            code="$(curl -sS -X "$method" -D /tmp/indices-code.headers -o /tmp/indices-code.json -w '%{http_code}' --max-time 12 "$EXPECTED_URL$route" || true)"
+            test "$code" = "$expected" || { echo "::error::INDICES_CODE_ONLY_ROUTE_UNVERIFIED"; exit 4; }
+            grep -qi '^x-geomacro-worker-code-contract: source-clock-guard-v1' /tmp/indices-code.headers ||
+              { echo "::error::INDICES_DEPLOYED_CLOCK_GUARD_MISSING"; exit 4; }
+          done
+          echo "::notice::RISK_INDICES_CODE_ONLY_DEPLOYED_HOT_SIGNED_DATA_NOT_VERIFIED"
+          echo "Worker code deployed, no B2 GET or signed-product HTTP 200 asserted." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check historical-only D1 Risk Indices metadata independently
+        if: steps.continuity.outputs.code_only == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          history="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/historical-continuity/risk-indices"
+          code="$(curl -sS --max-time 12 -o /tmp/indices-history.json -w '%{http_code}' "$history" || true)"
+          if [ "$code" = "200" ]; then
+            node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const v=JSON.parse(fs.readFileSync('/tmp/indices-history.json','utf8'));
+          if(v.schema!=='geomacro.public-risk-indices-historical-continuity.v1'||
+             v.product!=='risk-indices'||v.historical_only!==true||
+             v.current_snapshot_available!==false||v.commercial_eligible!==false||
+             v.x402_chargeable!==false||v.independently_rechecked_b2_now!==false)
+            throw Error('HISTORICAL_INDICES_CONTRACT_INVALID');
+          console.log('HISTORICAL_INDICES_CONTEXT_VERIFIED_ONLY_NOT_CURRENT');
+          NODE
+          elif [ "$code" = "503" ]; then
+            echo "::notice::HISTORICAL_INDICES_READBACK_NOT_AVAILABLE; current signed indices remain 503"
+          else
+            echo "::error::HISTORICAL_INDICES_ROUTE_TRANSPORT_UNVERIFIED"
+            exit 4
+          fi
 
       - name: Confirm narrow non-destructive serving boundary
         shell: bash
