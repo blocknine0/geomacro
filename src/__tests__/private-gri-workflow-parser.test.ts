@@ -27,7 +27,7 @@ describe("#1827 private GRI one-time canary workflow structural guard",()=>{
 
   it("does not produce unbounded B2 requests, payment access or leak source/proof artifacts",()=>{
     expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
-    expect(workflow).toContain('B2_REQUEST_BUDGET: "6"');
+    expect(workflow).toContain('B2_REQUEST_BUDGET: "4"');
     expect(workflow).toContain('B2_REQUEST_BUDGET: "2"');
     expect(workflow).toContain("preflight-private-griv12-singleton.mjs");
     expect(workflow).toContain("archive-supabase-free-private-gri-v12.mjs");
