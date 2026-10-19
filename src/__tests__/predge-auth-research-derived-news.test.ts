@@ -1,4 +1,5 @@
-import {describe,it,expect} from "vitest";
+import {describe,it,expect,vi} from "vitest";
+import {CENTRAL_SECURITY_POLICIES} from "../../workers/control-plane/src/central-security-policies.mjs";
 import {readFileSync} from "node:fs";
 import {predgeResearchDerivedNewsFeed,PREDGE_RESEARCH_PILOT_END_UTC}
  from "../../workers/control-plane/src/predge-research-derived-news.mjs";
@@ -19,10 +20,16 @@ function signal(i:number){
  status:"official_release_observed_unscored",
  same_event_corrob_verified:false,severity:null};
 }
-const env=(rows:unknown[]=[])=>({PREDGE_RESEARCH_NEWS_TOKEN:TOKEN,
- DB:{prepare:()=>({bind:(_since:any,_first:any,offset:number)=>({
- all:async()=>({results:rows.slice(offset||0,(offset||0)+251).map(story=>({story_json:JSON.stringify(story)}))})
- })})}});
+const env=(rows:unknown[]=[],count=1)=>({PREDGE_RESEARCH_NEWS_TOKEN:TOKEN,
+ DB:{
+  batch:vi.fn(async()=>[
+   {success:true,results:[{request_count:count}]},
+   {success:true,results:[{request_count:count}]},
+  ]),
+  prepare:vi.fn(()=>({bind:(_since:any,_first:any,offset:number)=>({
+   all:async()=>({results:rows.slice(offset||0,(offset||0)+251).map(story=>({story_json:JSON.stringify(story)}))})
+  })})),
+ }});
 describe("one grant for all qualifying Predge research news, still no resale",()=>{
  it("is authenticated and returns exactly the same D1 IDs without per-item approvals",async()=>{
   const rows=Array.from({length:63},(_,i)=>signal(i));
@@ -43,6 +50,9 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   expect(response.headers.get("access-control-allow-origin")).toBeNull();
   expect(response.headers.get("cache-control")).toBe("private, no-store");
   expect(response.headers.get("vary")).toBe("Authorization");
+  expect(data.daily_utc_request_hard_cap).toBe(500);
+  expect(data.distributed_rate_governor).toBe("ATOMIC_CLOUDFLARE_D1_FAIL_CLOSED");
+  expect(env(rows).DB.batch).toBeDefined();
  });
  it("gates invalid/missing token, malformed key and missing config",async()=>{
   const e=env([signal(0)]);
@@ -53,6 +63,28 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   }
   const none=await predgeResearchDerivedNewsFeed(make(),{...e,PREDGE_RESEARCH_NEWS_TOKEN:""},NOW);
   expect(none.status).toBe(503);
+  expect(e.DB.batch).not.toHaveBeenCalled();
+ });
+ it("limits authenticated reads atomically to 500 per UTC day before journal SELECT",async()=>{
+  expect(CENTRAL_SECURITY_POLICIES.predge_research_news).toMatchObject({
+    windowSeconds:86400,perClient:500,global:500,failClosed:true,
+  });
+  const allowed=env([signal(0)],500);
+  expect((await predgeResearchDerivedNewsFeed(make(),allowed,NOW)).status).toBe(200);
+  const denied=env([signal(0)],501);
+  const r=await predgeResearchDerivedNewsFeed(make(),denied,NOW);
+  expect(r.status).toBe(429);
+  expect((await r.json()).error).toBe("PREDGE_RESEARCH_DAILY_LIMIT");
+  expect(Number(r.headers.get("Retry-After"))).toBeGreaterThan(0);
+  expect(denied.DB.prepare).not.toHaveBeenCalled();
+ });
+ it("denies protected reads on governor outage and never drops into public fallback",async()=>{
+  const broken=env([signal(0)]);
+  broken.DB.batch=vi.fn(async()=>{throw Error("D1 quota outage")});
+  const r=await predgeResearchDerivedNewsFeed(make(),broken,NOW);
+  expect(r.status).toBe(503);
+  expect((await r.json()).error).toBe("PREDGE_RESEARCH_RATE_GOVERNOR_UNAVAILABLE");
+  expect(broken.DB.prepare).not.toHaveBeenCalled();
  });
  it("does not continue beyond the 90-day upper-bound window",async()=>{
   const r=await predgeResearchDerivedNewsFeed(make(),env(),Date.parse(PREDGE_RESEARCH_PILOT_END_UTC));
@@ -69,8 +101,10 @@ describe("one grant for all qualifying Predge research news, still no resale",()
  });
  it("rejects query-token or item ID bypass while keeping category support",async()=>{
   for(const suffix of ["?token=aaa","?approved_item_ids=all","?domain=macro&wallet=usd"]){
-   const r=await predgeResearchDerivedNewsFeed(make(suffix),env([signal(0)]),NOW);
+   const e=env([signal(0)]);
+   const r=await predgeResearchDerivedNewsFeed(make(suffix),e,NOW);
    expect(r.status).toBe(400);
+   expect(e.DB.batch).not.toHaveBeenCalled();
   }
   const r=await predgeResearchDerivedNewsFeed(make("?domain=macro"),env([signal(0),signal(1)]),NOW);
   const data=await r.json();
