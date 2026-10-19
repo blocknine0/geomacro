@@ -145,10 +145,12 @@ jobs:
           echo "CONTROL_PLANE_TOKEN=$CONTROL_PLANE_TOKEN" >> "$GITHUB_ENV"
 
       - name: Derive dedicated Predge news research token without exposing root
+        env:
+          PREDGE_NEWS_PILOT_VERSION: ${{ vars.PREDGE_NEWS_PILOT_VERSION }}
         shell: bash
         run: |
           set -euo pipefail
-          PREDGE_NEWS_PILOT_TOKEN="$(node -e "const c=require('crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-news-research-v1').digest('hex'))")"
+          PREDGE_NEWS_PILOT_TOKEN="$(node -e "const c=require('crypto');const v=process.env.PREDGE_NEWS_PILOT_VERSION||'1';if(!/^[0-9]{1,5}$/.test(v))throw Error('PREDGE_NEWS_PILOT_VERSION_INVALID');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-news-research-v1:'+v).digest('hex'))")"
           test "${#PREDGE_NEWS_PILOT_TOKEN}" -eq 64 || exit 5
           test "$PREDGE_NEWS_PILOT_TOKEN" != "$CONTROL_PLANE_TOKEN" || exit 5
           echo "::add-mask::$PREDGE_NEWS_PILOT_TOKEN"

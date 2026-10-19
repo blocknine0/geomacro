@@ -108,8 +108,9 @@ private keys are never issued to Predge. **Partner token must be conveyed
 through an actual secure authorized channel**, not GitHub, logs or website.
 The production acceptance makes one authenticated call and checks that
 unauthenticated calls receive HTTP 401; any missing key denies HTTP 503.
-Rotate the root secret / domain-specific version and re-deploy to revoke
-the credential.
+Rotate only repository production variable `PREDGE_NEWS_PILOT_VERSION`
+(default `1`; increase the numeric version) and re-deploy to revoke
+a partner credential **without rotating the commerce/control-plane root**.
 
 Atomic existing D1 `central_security_budget` enforces **500 authenticated
 news GETs per UTC day**, with 100/day suggested. Limit concerns news
