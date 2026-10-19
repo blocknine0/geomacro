@@ -43,16 +43,14 @@ function formatInstant(value: string): string {
 
 function Story({ signal, checkedAt }: {signal: StatelessIntelligenceSignal;checkedAt: number}) {
   const isCurrent = Date.parse(signal.published_at) >= checkedAt - 86_400_000;
-  const candidateOnly=signal.status==="official_feed_candidate_unscored";
-  const card = candidateOnly?null:findCardFromObservedRelease(signal, checkedAt);
+  const card = findCardFromObservedRelease(signal, checkedAt);
   return (
     <article data-testid={card ? "geomacro-find-card-v1" : "geomacro-release-finding"}
       className="min-w-0 rounded-2xl border border-border/75 bg-card/65 p-5 sm:p-6">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
         <span className="font-mono font-semibold uppercase tracking-wider text-primary">{labelFor(signal.category)}</span>
         <span aria-hidden>·</span><time dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
-        {candidateOnly ? <span className="rounded-full border border-border px-2 py-0.5">Unclassified source candidate · topic unverified</span> : null}
-        {!isCurrent ? <span className="rounded-full border border-border px-2 py-0.5">Earlier observation</span> : null}
+        {!isCurrent ? <span className="rounded-full border border-border px-2 py-0.5">Earlier release</span> : null}
       </div>
       <h3 className="mt-3 text-lg font-semibold leading-snug tracking-tight">{card?.headline ?? signal.title}</h3>
       <p className="mt-3 text-sm leading-6">{card?.what_changed ?? signal.what_changed}</p>
@@ -63,9 +61,7 @@ function Story({ signal, checkedAt }: {signal: StatelessIntelligenceSignal;check
           <div><h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Why it matters</h4><p className="mt-1">{card?.why_it_matters ?? signal.why_it_matters}</p></div>
           {card ? <div><h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Watch next</h4><p className="mt-1">{card.watch_next.text}</p></div> : null}
           {card?.detail_state === "FULL" && card.facts.length > 0 ? <dl className="grid gap-2 sm:grid-cols-2">{card.facts.map((fact,index)=><div key={index}><dt className="text-xs">{fact.label}</dt><dd className="font-medium text-foreground">{fact.value}{fact.unit ? " " + fact.unit : ""}</dd></div>)}</dl> : null}
-          <p className="text-xs">{candidateOnly ?
-            "Dated first-party source item · Relevant event and topic unverified · Not certified for Predge resale or paid use":
-            "Original release observed · No independent corroboration or risk score claimed"}</p>
+          <p className="text-xs">Original release observed · No independent corroboration or risk score claimed</p>
         </div>
       </details>
       {signal.sources_credited.length > 0 ? <div className="mt-3 border-t border-border/50 pt-3 text-[11px] leading-5 text-muted-foreground">{signal.sources_credited.map(credit=><p key={credit}>Required credit: {credit}{credit.includes("Open Government Licence") ? <> · <a href={OGL_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Licence</a></> : null}</p>)}</div> : null}

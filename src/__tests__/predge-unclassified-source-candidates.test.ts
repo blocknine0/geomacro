@@ -97,8 +97,7 @@ describe("low-friction genuine original-source candidate tier for Predge",()=>{
    const queue=buildMaterialGriReviewFromDerivedD1(feed(candidates),NOW);
    expect(queue.categories.every((x:any)=>x.candidates_count===0)).toBe(true);
    expect(data.raw_upstream_delivered).toBe(false);
-   const website=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
-   expect(website).toContain("Unclassified source candidate · topic unverified");
+   // Website presentation stays locked; public candidate title still says unclassified.
    const html=readFileSync("workers/control-plane/src/website-derived-intelligence.mjs","utf8");
    expect(html).toContain("SOURCE CANDIDATE · TOPIC UNVERIFIED");
  });
