@@ -24,6 +24,32 @@ eligibility to unclassified candidates. Records explicitly mark
 `commercial_derived_rights_verified:false`, `signed_product_verified:false`,
 `payable:false`, and no source-neutral redistribution rights.
 
+## Confirmed free research feed: no private partner gate
+
+The **existing public** `derived-structural-72h` GET may be read for the
+90-day internal **testing and validation** scope, with zero payment, no new
+partner key and no per-item private approval receipt. The source-neutral
+journal validator and upstream content-rights exclusions still apply. In
+particular, there is **no claim of a new authenticated partner delivery
+channel**; a partner's private credential, quota receipt or signed GRO
+verification is *not* a prerequisite to reading this already-public feed.
+
+Use the *same* D1-derived observation `id`, original publication clock,
+category, candidate-vs-classified state and Geomacro context across the
+Intelligence website and Predge driver. Observations are advisory. No
+record from this free endpoint can authorize an order, a trade, a settlement,
+a risk-gate `CONTINUE`, downstream redistribution or a claimed signed score.
+The original 72h window, publishing delay, producer-freshness signals and
+mandatory-source-credit withholding remain enforced.
+
+Predge's market-specific `market_id`, `condition_id`, signed market state,
+`risk_level`, `uma_state`, `dispute_count` and resolution status **must
+come from Predge's independently verified market feed**. These are NOT
+fields guaranteed by Geomacro's unscored news observation response. Merge
+only after verifying Predge's published signing key, message hash, numeric
+market identity and timestamp. Missing or unsigned market fields remain
+unknown, never inferred from Geomacro context.
+
 ## Driver fields (actual implementation contracts)
 
 A Risk Gate v1 request needs `request_id`,
@@ -63,19 +89,24 @@ For real GRO delivery request an independently signed and unexpired
 `gro-1.1` object with its `integrity`, `verification`, evidence and
 rights flags unchanged. **Never relabel these fixtures as production signatures.**
 
-## Before actual 90-day driver kickoff
+## For separately gated signed-market driver acceptance
 
-Predge must confirm its **own** server-enforced partner quota and credential
-header: target ~100 checks/day, HARD maximum 500/day. They must provide
+For the separately gated signed-market driver, Predge must confirm its
+**own** server-enforced partner quota and credential header: target ~100
+checks/day, HARD maximum 500/day. **Neither quota nor credential is
+required for the existing free public research news GET.** They must provide
 settlement-risk endpoint specification, current signing key, independent live
-networked PUBLIC_SANDBOX signed sample and signed/countersigned LOI v2 with
-email-agreed kickoff date. Geomacro verifies signature, clock, numeric ID,
+networked PUBLIC_SANDBOX signed sample and signed/countersigned LOI v2 if required for the separate signed-market
+integration, with the mutually agreed kickoff date. Geomacro verifies signature, clock, numeric ID,
 origin, actual server counters and fail-closed responses. No fees, prepaid
 costs or minimum commitments. A public research news feed alone is **not**
 an agreement to redistribute structured intelligence commercially.
-Legacy Supabase-backed risk-gate endpoint is not a deployed replacement
-for the isolated partner pilot; don't send a paid request or claim production
-GO until the external gates are verified.
+The existing unsigned research feed is available separately from any
+legacy Supabase-backed Risk Gate endpoint. Do not send a paid request or
+claim signed-market driver production GO until external signature,
+counter and policy gates are verified. The first real-input feedback
+milestone is **2 November 2026**, with earlier integration blockers to be
+reported as they arise. That future update is not proof of a completed test.
 
 Relevant canonical sources:
 `schemas/gro-1.1.schema.json`, `src/lib/risk-gate-contract.ts`,

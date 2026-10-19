@@ -26,5 +26,19 @@
     "sample corridor GRO",
     "v1 Risk Gate request",
     "v1 Risk Gate advisory response"
-  ]
+  ],
+  "free_public_research_feed_requires_partner_scope_receipt": false,
+  "free_public_research_feed_requires_rights_review_receipt": false,
+  "free_public_research_feed_requires_approved_item_ids": false,
+  "free_public_research_feed_requires_signed_gri": false,
+  "internal_testing_and_validation_only": true,
+  "raw_articles_included": false,
+  "paid_intelligence_included": false,
+  "bulk_historical_access_included": false,
+  "resale_or_onward_redistribution_authorized": false,
+  "unscored_observations_advisory_only": true,
+  "signed_market_fields_origin": "PREDGE_INDEPENDENT_SIGNATURE_VERIFICATION",
+  "predge_market_driver_accepted": false,
+  "first_real_input_feedback_target_date": "2026-11-02",
+  "no_new_private_partner_auth_claimed": true
 }
