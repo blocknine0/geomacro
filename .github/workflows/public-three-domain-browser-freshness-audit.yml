@@ -46,7 +46,7 @@ jobs:
   public-live-browser:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -54,5 +54,18 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
+      - name: Resolve a real installed headless Chrome binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          for browser in /usr/bin/google-chrome /usr/bin/chromium /usr/bin/chromium-browser; do
+            if test -x "$browser"; then
+              echo "GEOMACRO_BROWSER_CHROME_PATH=$browser" >> "$GITHUB_ENV"
+              "$browser" --version
+              exit 0
+            fi
+          done
+          echo "::error::PUBLIC_NEWS_HEADLESS_BROWSER_MISSING"
+          exit 2
       - name: Read public D1 and verify actual three-domain browser cards
         run: node scripts/ops/verify-public-intelligence-browser-freshness.mjs

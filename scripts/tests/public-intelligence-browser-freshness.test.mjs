@@ -17,7 +17,12 @@ function doc(signals=names.map(x=>row(x))){
 }
 const article=(label)=>
   '<article><div>GEOMACRO FINDS · '+label+'</div><h2>Geomacro finds original release update</h2></article>';
-const html=()=>article("Geopolitics")+article("Macro / FX")+article("Critical Minerals");
+const tabs='<main data-testid="geomacro-derived-news-desk">'+
+  '<button>Geopolitics <span>1</span></button>'+
+  '<button>Macro / FX <span>1</span></button>'+
+  '<button>Critical Minerals <span>1</span></button>';
+const html=()=>tabs+article("Geopolitics")+article("Macro / FX")+
+  article("Critical Minerals")+'</main>';
 test("verified D1 3-domain journal and actual three published DOM cards pass",()=>{
   const x=evaluatePublicNews(doc(),html(),NOW);
   assert.equal(x.accepted,true);
@@ -29,7 +34,7 @@ test("verified D1 3-domain journal and actual three published DOM cards pass",()
   assert.equal(x.raw_source_data_logged,false);
 });
 test("website only showing geopolitics fails even if D1 includes three",()=>{
-  const x=evaluatePublicNews(doc(),article("Geopolitics"),NOW);
+  const x=evaluatePublicNews(doc(),tabs+article("Geopolitics")+"</main>",NOW);
   assert.equal(x.accepted,false);
   assert.deepEqual(x.browser_domains_rendered,["geopolitics"]);
 });
@@ -38,6 +43,19 @@ test("does not count Loading or source health as an actual story",()=>{
     article("Critical Minerals"),'<p>Loading Critical Minerals from official publishers</p>'),NOW);
   assert.equal(x.accepted,false);
   assert.ok(!x.browser_domains_rendered.includes("rare_earth"));
+});
+test("quiet macro/minerals sources do not fail a genuine three-tab browser",()=>{
+  const result=evaluatePublicNews(doc([row("geopolitics")]),
+    tabs+article("Geopolitics")+"</main>",NOW);
+  assert.equal(result.accepted,true);
+  assert.deepEqual(result.d1_domains_present,["geopolitics"]);
+  assert.deepEqual(result.browser_tabs_available,names.slice().sort());
+  assert.equal(result.category_counts.macro.stored_72h,0);
+  assert.equal(result.category_counts.rare_earth.stored_72h,0);
+});
+test("empty publisher day requires a real rendered three-tab desk",()=>{
+  assert.equal(evaluatePublicNews(doc([]),tabs+"</main>",NOW).accepted,true);
+  assert.equal(evaluatePublicNews(doc([]),"<main>Geopolitics Macro / FX Critical Minerals</main>",NOW).accepted,false);
 });
 test("zero original last-24h is truthful observation and not fabricated news",()=>{
   const x=evaluatePublicNews(doc(names.map(n=>row(n,1,"2026-10-11T12:00:00Z"))),html(),NOW);
@@ -63,6 +81,7 @@ test("reject old, future, malformed and unscored-contract-breaking rows",()=>{
 test("reject compromised D1 schema and missing category even if browser paints three",()=>{
   assert.throws(()=>evaluatePublicNews({...doc(),original_release_delay_minutes:0},html(),NOW));
   const x=evaluatePublicNews(doc([row("geopolitics"),row("rare_earth")]),html(),NOW);
-  assert.equal(x.accepted,false);
+  assert.equal(x.accepted,true);
+  assert.equal(evaluatePublicNews(doc(),tabs+article("Geopolitics")+"</main>",NOW).accepted,false);
   assert.deepEqual(x.d1_domains_present,["geopolitics","rare_earth"]);
 });
