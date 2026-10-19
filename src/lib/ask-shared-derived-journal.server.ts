@@ -21,7 +21,10 @@ const ALL=new Set<StatelessCategory>(["geopolitics","macro","rare_earth"]);
 const CLOCK_24H=24*60*60_000;
 function eligible(s:StatelessIntelligenceSignal,now:number){
  const issued=Date.parse(s?.published_at??"");
- return verifyDerivedStory(s,now)&&s.sources_credited.length===0&&
+ // A dated but unclassified issuer-feed candidate belongs in the free
+ // research journal, never the Ask "official news" response tier.
+ return s.status==="official_release_observed_unscored"&&
+   verifyDerivedStory(s,now)&&s.sources_credited.length===0&&
    Number.isFinite(issued)&&now-issued>=15*60_000&&now-issued<=CLOCK_24H;
 }
 const defaultLive:ReadLive=async(category)=>{

@@ -6,6 +6,7 @@ import {verifyDerivedStory,readDerivedStories}
   from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {publicSharedDerivedNewsFeed}
   from "../../workers/control-plane/src/shared-derived-news-feed.mjs";
+import {collectSharedOfficialNews} from "../lib/ask-shared-derived-journal.server";
 import {buildMaterialGriReviewFromDerivedD1}
   from "../../scripts/lib/material-gri-news-review.mjs";
 
@@ -86,6 +87,10 @@ describe("low-friction genuine original-source candidate tier for Predge",()=>{
    }
    expect(data.partner_api_payment_required).toBe(false);
    expect(data.partner_resale_or_commercial_redistribution_authorized).toBe(false);
+   const ask=await collectSharedOfficialNews(cats,{now:NOW,
+     readJournal:async()=>candidates,
+     readLive:async()=>({signals:candidates})});
+   expect(ask.signals).toEqual([]);
    const queue=buildMaterialGriReviewFromDerivedD1(feed(candidates),NOW);
    expect(queue.categories.every((x:any)=>x.candidates_count===0)).toBe(true);
    expect(data.raw_upstream_delivered).toBe(false);
