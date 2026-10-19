@@ -42,15 +42,20 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-predge-free-news-72h-presentation-alignment-20261019");
+    expect(config.lock_revision).toBe("founder-approved-intelligence-news-country-no-emdash-20261019");
     const audit = config.approved_website_final_audit;
     // The prior Oct 19 website audit stays an immutable historical approval.
     // The subsequent Predge 72h wording/link change has its OWN scoped
     // owner authorization; never silently rewrite older approvals.
     expect(audit.approved_ui_commit).toBe("972d987f44f328d727fb3147daf2b6807a344a38");
     const predge = config.approved_predge_free_news_presentation_alignment;
-    expect(config.baseline_sha).toBe("0e595227c9dba46f7e456bdc5f1e0532cc0f6c90");
-    expect(predge.approved_ui_commit).toBe(config.baseline_sha);
+    expect(predge.approved_ui_commit).toBe("0e595227c9dba46f7e456bdc5f1e0532cc0f6c90");
+    const news=config.approved_intelligence_news_country_presentation;
+    expect(news.approved_ui_commit).toBe(config.baseline_sha);
+    expect(news.previous_baseline_sha).toBe(predge.approved_ui_commit);
+    expect(news.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx","src/routes/intelligence.tsx"]);
+    expect(news.global_risk_final_lock_unmodified).toBe(true);
+    expect(news.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(predge.previous_baseline_sha).toBe(audit.approved_ui_commit);
     expect(predge.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
     expect(predge.reviewed_changes).toHaveLength(4);
