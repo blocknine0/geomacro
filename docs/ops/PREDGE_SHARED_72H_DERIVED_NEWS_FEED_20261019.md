@@ -87,3 +87,18 @@ without extra items or manual item allowlist, while honoring the existing
 15m/day embargo, withheld mandatory credits, 72h retention and original
 source time. The URL is a **research pilot** only and has an upper-bound
 pilot time window.
+
+
+## Production 90-day research-GET protection (no extra storage)
+
+The private Bearer route consumes the existing atomic Cloudflare D1
+`central_security_budget` on every authenticated and syntactically valid
+GET, with a hard **500 requests per UTC day** across the one purpose-scoped
+partner grant (100/day is the recommended operating target). It returns HTTP
+429 and `Retry-After` on exhaustion, HTTP 503 if the atomic quota service
+is unavailable and 401 for invalid Bearer credentials. No extra cron,
+new database table, B2 operation, Supabase or real-money settlement is needed.
+Only a hash-derived client bucket reaches D1. The private route still returns
+exactly the same 72-hour source-neutral items as the free website research
+projection, excluding upstream items requiring attribution. This is **not**
+a guarantee of 24/7 provider availability or commercial redistribution rights.
