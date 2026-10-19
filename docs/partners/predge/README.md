@@ -97,8 +97,7 @@ rights flags unchanged. **Never relabel these fixtures as production signatures.
 ## For separately gated signed-market driver acceptance
 
 For the separately gated signed-market driver, Predge must confirm its
-**own** server-enforced partner quota and credential header: target ~100
-checks/day, HARD maximum 500/day. **Neither quota nor credential is
+**own** server-enforced partner quota and credential header: target **100 checks/day**, HARD maximum **500/day**. **Neither quota nor credential is
 required for the existing free public research news GET.** They must provide
 settlement-risk endpoint specification, current signing key, independent live
 networked PUBLIC_SANDBOX signed sample and signed/countersigned LOI v2 if required for the separate signed-market
