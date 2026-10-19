@@ -42,7 +42,15 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-homepage-free-finds-live-d1-20261017");
+    expect(config.lock_revision).toBe("founder-approved-home-intelligence-final-audit-20261019");
+    const audit = config.approved_website_final_audit;
+    expect(audit.approved_ui_commit).toBe(config.baseline_sha);
+    expect(audit.approved_ui_commit).toBe("972d987f44f328d727fb3147daf2b6807a344a38");
+    expect(audit.previous_baseline_sha).toBe("ecbf82c6bea1d77ad9b38a41cedf8b1f306ca61e");
+    expect(audit.global_risk_final_lock_unmodified).toBe(true);
+    expect(audit.canonical_price_amounts_unmodified).toBe(true);
+    expect(audit.funds_authorized).toBe(false);
+    expect(audit.pending_exact_sha_live_deployment_acceptance).toBe(true);
     const findApproval = config.approved_find_card_v1_presentation_change;
      expect(findApproval?.approved_ui_commit).toBe("5b70fc0fc83477662aa314a07dde0706be2c3640");
     expect(findApproval?.previous_baseline_sha).toBe("7af9ea7eb5a67743d730bae258dcac3724625473");
@@ -58,7 +66,7 @@ describe("website lock governance", () => {
     // a distinct founder approval with exact UI merge SHA and unchanged funds.
     const homepage = config.approved_homepage_free_finds_live;
     expect(homepage?.approved_pr).toBe(2376);
-    expect(homepage?.approved_ui_commit).toBe(config.baseline_sha);
+    expect(homepage?.approved_ui_commit).toBe("ecbf82c6bea1d77ad9b38a41cedf8b1f306ca61e");
     expect(homepage?.previous_baseline_sha).toBe("7ad7e57f1b67873de3dbc050cf0eaa847e471081");
     expect(homepage?.scope).toEqual([
       "src/routes/index.tsx",
@@ -136,7 +144,7 @@ describe("website lock governance", () => {
     expect(config.intelligence_ssr_change_approval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(config.pending_publish_acceptance).toBe(true);
     expect(config.website_privacy_baseline_status)
-      .toBe("FOUNDER_APPROVED_FREE_HOMEPAGE_FINDS_PENDING_EXACT_SHA_DEPLOYMENT");
+      .toBe("FOUNDER_APPROVED_WEBSITE_AUDIT_PENDING_EXACT_SHA_DEPLOYMENT");
     expect(config.published_source_sha).toBe("7215b0d05b05ccc4de1e5f69a333ae615abc38e3");
     expect(config.published_baseline).toContain("User will manually publish only after exact-head source/test/security verification and Lovable sync");
     expect(config.published_baseline).toContain("no x402 or GRI changes");
