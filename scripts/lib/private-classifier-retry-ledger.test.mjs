@@ -48,6 +48,24 @@ test("new original fails before ack, next pulse can retry only once",()=>{
  assert.equal(terminal.records[0].status,"EXHAUSTED");
  assert.deepEqual(find(pulse("macro",later,[]),ledger(terminal),later),[]);
 });
+test("quota hold never turns source recency into a phantom retry or consumes model budget",()=>{
+ const pending=pulse("macro",at,[SHA]);
+ const original=find(pending,null,at);
+ assert.equal(original[0].next_attempts,1);
+ // Quota check returned false BEFORE claim; no D1 classifier ledger row.
+ const next=find(pulse("macro",later,[]),null,later);
+ assert.equal(next[0].next_attempts,1);
+ assert.equal(next[0].retry,false);
+ // Only after a real durable claim may a delayed attempt 2 occur.
+ const claim=claimPrivateClassifierWork({
+  domain:"macro",work:next[0],now:later,runId:"999",
+ });
+ const laterAgain="2026-10-14T11:07:00.000Z";
+ const second=find(pulse("macro",laterAgain,[]),ledger(claim),laterAgain);
+ assert.equal(second[0].next_attempts,2);
+ assert.equal(second[0].retry,true);
+});
+
 test("successful classifier return is durably acked and prevents duplicate scoring",()=>{
  const p=pulse(),w=find(p);
  const first=claimPrivateClassifierWork({domain:"macro",work:w[0],now:at,runId:"100"});
@@ -66,15 +84,28 @@ test("successful classifier return is durably acked and prevents duplicate scori
   attempted:[SHA],returned:[SHA],
  }),/PRIVATE_CLASSIFIER_ATTEMPT_LEDGER_INVALID/);
 });
-test("unprocessed old D1 original gets only one bounded recovery",()=>{
- const pending=pulse("macro",at,[]);
- const w=find(pending);
- assert.equal(w[0].next_attempts,2);
- assert.equal(w[0].retry,true);
+test("quota-held D1 original with NO classifier claim retains first attempt on reobservation",()=>{
+ // A 1GET+1PUT quota preflight can correctly deny before claim. On the
+ // following source pulse, the same SHA is no longer novel in the source
+ // queue but has ZERO durable classifier attempts.
+ const reobserved=pulse("macro",later,[]);
+ const first=find(reobserved,null,later);
+ assert.equal(first.length,1);
+ assert.equal(first[0].next_attempts,1);
+ assert.equal(first[0].retry,false);
  const claimed=claimPrivateClassifierWork({
-  domain:"macro",work:w[0],now:at,runId:"50",
+  domain:"macro",work:first[0],now:later,runId:"50",
  });
+ assert.equal(claimed.records[0].attempts,1);
  assert.deepEqual(find(pulse("macro",later,[]),ledger(claimed),later),[]);
+ assert.throws(()=>claimPrivateClassifierWork({
+  domain:"macro",work:{...first[0],next_attempts:2,retry:true},
+  now:later,runId:"51",
+ }),/PRIVATE_CLASSIFIER_ATTEMPT_LEDGER_INVALID/);
+ assert.throws(()=>claimPrivateClassifierWork({
+  domain:"macro",work:{...first[0],retry:true},
+  now:later,runId:"51",
+ }),/PRIVATE_CLASSIFIER_ATTEMPT_LEDGER_INVALID/);
 });
 test("original clock/SHA changes, expiration, source absence all refuse unsafe retry",()=>{
  const old=claimPrivateClassifierWork({
@@ -88,7 +119,8 @@ test("original clock/SHA changes, expiration, source absence all refuse unsafe r
    [candidate(OTHER)]);
  assert.equal(replacement.length,1);
  assert.equal(replacement[0].article_sha256,OTHER);
- assert.equal(replacement[0].next_attempts,2); // new SHA cannot borrow old claim/ACK
+ assert.equal(replacement[0].next_attempts,1); // new SHA cannot borrow old claim/ACK
+ assert.equal(replacement[0].retry,false);
  assert.deepEqual(find(pulse("macro",later,[]),ledger(old),later,[]),[]);
  const expired="2026-10-12T08:00:00.000Z";
  assert.deepEqual(find(pulse("macro",later,[],SHA,expired),null,later,
