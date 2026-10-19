@@ -7,6 +7,7 @@ import {readOnlyCandidate} from "../../workers/web-candidate/read-only.mjs";
 import {prepareWebCandidate} from "./prepare-web-candidate.mjs";
 import {materializeCandidateAssets} from "./materialize-web-candidate-assets.mjs";
 import {createHash} from "node:crypto";
+import {waitForCandidateMarker} from './web-candidate-propagation.mjs';
 
 test("candidate denies writes/payment/authorization before invoking the app",async()=>{
  let calls=0;
@@ -95,4 +96,22 @@ test("candidate images require exact pinned PNG bytes; no partial files on corru
   for(const response of [new Response('<html>',{headers:{'content-type':'text/html'}}),new Response(Buffer.alloc(bytes.length+1),{headers:{'content-type':'image/png'}})])
    await assert.rejects(materializeCandidateAssets({root,pins,fetchImpl:async()=>response}),/ASSET_(READ_FAILED|SIZE_MISMATCH)/);
  }finally{rmSync(root,{recursive:true,force:true})}
+});
+
+test('edge propagation admits only the exact requested revision after a bounded wait',async()=>{
+ const marker=sha=>({res:{status:200},json:{schema_version:'geomacro.deployment-build.v1',canonical_main_sha:sha,production_activation_performed:false,candidate_mode:'read-only-no-funds'}});
+ let calls=0,pauses=0;
+ const result=await waitForCandidateMarker(async()=>marker(++calls===1?'a'.repeat(40):'b'.repeat(40)),'b'.repeat(40),{pause:async()=>{pauses++}});
+ assert.equal(result.json.canonical_main_sha,'b'.repeat(40));assert.equal(calls,2);assert.equal(pauses,1);
+ calls=0;pauses=0;
+ await assert.rejects(waitForCandidateMarker(async()=>{calls++;return marker('a'.repeat(40))},'b'.repeat(40),{pause:async()=>{pauses++}}),/EXACT_SHA_MISMATCH/);
+ assert.equal(calls,7);assert.equal(pauses,6);
+});
+test('propagation wait never retries malformed, activated, unsafe or failed markers',async()=>{
+ const valid={res:{status:200},json:{schema_version:'geomacro.deployment-build.v1',canonical_main_sha:'a'.repeat(40),production_activation_performed:false,candidate_mode:'read-only-no-funds'}};
+ for(const marker of [null,{...valid,res:{status:503}},{...valid,json:{...valid.json,production_activation_performed:true}},{...valid,json:{...valid.json,candidate_mode:'production'}},{...valid,json:{...valid.json,canonical_main_sha:'unknown'}}]){
+  let calls=0;
+  await assert.rejects(waitForCandidateMarker(async()=>{calls++;return marker},'b'.repeat(40),{pause:async()=>{throw Error('must not pause')}}),/UNSAFE_OR_INVALID/);assert.equal(calls,1);
+ }
+ await assert.rejects(waitForCandidateMarker(async()=>{throw Error('transport failed')},'b'.repeat(40)),/transport failed/);
 });
