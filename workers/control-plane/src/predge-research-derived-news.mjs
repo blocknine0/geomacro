@@ -11,13 +11,22 @@
  * score, funds, risk-gate decisions, or trading authorization.
  */
 import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
+import {consumeCentralSecurityBudget} from "./central-security-budget.mjs";
 
 export const PREDGE_RESEARCH_PILOT_END_UTC="2027-01-17T00:00:00.000Z";
+const PREDGE_BUDGET_ROUTE="predge_research_news";
+const PREDGE_DAY_CAP=500;
 const HEADERS={"Cache-Control":"private, no-store","Pragma":"no-cache",
   "Vary":"Authorization","X-Content-Type-Options":"nosniff",
   "Referrer-Policy":"no-referrer"};
 const fail=(error,status)=>Response.json({ok:false,error,chargeable:false,
   partner_redistribution_authorized:false},{status,headers:HEADERS});
+async function tokenBudgetKey(token){
+  // Only an opaque hash-derived six-hex D1 client bucket is retained;
+  // the auth token, root secret, client IP and original upstream data never enter D1.
+  const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(token));
+  return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
 function equalsToken(value,expected){
   if(typeof value!=="string"||typeof expected!=="string"||
      !/^[a-f0-9]{64}$/.test(expected)||value.length!==expected.length)return false;
@@ -29,7 +38,7 @@ function equalsToken(value,expected){
 export async function predgeResearchDerivedNewsFeed(
   request,env,now=Date.now(),
 ){
-  if(!Number.isFinite(now))return fail("PREDGE_RESEARCH_CLOCK_INVALID",503);
+  if(!Number.isSafeInteger(now)||now<0)return fail("PREDGE_RESEARCH_CLOCK_INVALID",503);
   const expected=env?.PREDGE_RESEARCH_NEWS_TOKEN;
   if(typeof expected!=="string"||!/^[a-f0-9]{64}$/.test(expected))
     return fail("PREDGE_RESEARCH_AUTH_UNCONFIGURED",503);
@@ -43,10 +52,32 @@ export async function predgeResearchDerivedNewsFeed(
     /^Bearer [a-f0-9]{64}$/.test(authorization)&&
     equalsToken(authorization.slice(7),expected);
   if(!match)return fail("PREDGE_RESEARCH_UNAUTHORIZED",401);
+  if(request.method!=="GET")return fail("PREDGE_RESEARCH_METHOD_NOT_ALLOWED",405);
   const url=new URL(request.url);
-  // Only the existing exact domain filter is allowed; token and IDs NEVER
-  // enter URL query parameters, and per-item allowlists are deliberately gone.
-  const upstream=await publicSharedDerivedNewsFeed(env,url.searchParams,now);
+  // Reject extraneous query keys BEFORE consuming the scarce daily budget.
+  // No token, partner-scoped ACL, manual allowlist or item selector is allowed.
+  const query=url.searchParams;
+  if([...query.keys()].some(k=>k!=="domain")||
+     query.getAll("domain").length>1||
+     (query.has("domain")&&
+      !["geopolitics","macro","rare_earth"].includes(query.get("domain"))))
+    return fail("PREDGE_RESEARCH_QUERY_INVALID",400);
+  if(!env?.DB?.batch)return fail("PREDGE_RESEARCH_RATE_GOVERNOR_UNAVAILABLE",503);
+  let budget;
+  try{
+    budget=await consumeCentralSecurityBudget(env.DB,{
+      route_class:PREDGE_BUDGET_ROUTE,client_key:await tokenBudgetKey(expected),
+    },{now});
+  }catch{
+    // Never fall back to unmetered partner access on D1 failure.
+    return fail("PREDGE_RESEARCH_RATE_GOVERNOR_UNAVAILABLE",503);
+  }
+  if(!budget.allowed)return Response.json({
+    ok:false,error:"PREDGE_RESEARCH_DAILY_LIMIT",
+    chargeable:false,partner_redistribution_authorized:false,
+  },{status:429,headers:{...HEADERS,
+    "Retry-After":String(Math.max(1,budget.retry_after_seconds))}});
+  const upstream=await publicSharedDerivedNewsFeed(env,query,now);
   const status=upstream.status;
   let body;
   try{body=await upstream.json()}catch{return fail("PREDGE_RESEARCH_D1_UNAVAILABLE",503)}
@@ -79,5 +110,8 @@ export async function predgeResearchDerivedNewsFeed(
     execution_authorized:false,partner_resale_or_commercial_redistribution_authorized:false,
     maximum_pilot_scope_expires_at:PREDGE_RESEARCH_PILOT_END_UTC,
     source_credits_needing_attribution_still_withheld:true,
+    daily_utc_request_hard_cap:PREDGE_DAY_CAP,
+    suggested_daily_requests:100,
+    distributed_rate_governor:"ATOMIC_CLOUDFLARE_D1_FAIL_CLOSED",
   },{status:200,headers:HEADERS});
 }
