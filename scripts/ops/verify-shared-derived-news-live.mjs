@@ -21,7 +21,10 @@ export async function verifySharedNewsLive(fetcher=fetch){
     feed.raw_upstream_delivered!==false||!Array.isArray(feed.items)||
     feed.items.length>600||
     domains.some(c=>!Number.isSafeInteger(feed.counts?.[c])||
-      !feed.availability_by_category?.[c]))
+      !feed.availability_by_category?.[c]||
+     feed.availability_by_category[c].latest_source_check?.commercial_rights_verified!==false||
+     feed.availability_by_category[c].latest_source_check?.paid_delivery_authorized!==false||
+     !Number.isSafeInteger(feed.availability_by_category[c].journal_derived_records_72h)))
    throw Error("D1_SHARED_NEWS_CONTRACT_INVALID");
  const journal=new Map();
  for(const offset of [0,250,500]){
@@ -58,6 +61,16 @@ export async function verifySharedNewsLive(fetcher=fetch){
  for(const category of domains){
   if(feed.counts[category]!==feed.items.filter(r=>r.category===category).length)
    throw Error("D1_SHARED_NEWS_DOMAIN_COUNT_MISMATCH");
+  const observed=[...journal.values()].filter(s=>s.category===category);
+  const sourceHeld=observed.filter(s=>s.sources_credited?.length>0).length;
+  const state=feed.availability_by_category[category];
+  if(state.journal_derived_records_72h!==observed.length||
+     state.journal_credit_required_records_72h!==sourceHeld||
+     state.withheld_from_source_neutral_view_72h!==observed.length-feed.counts[category]||
+     state.producer_run_freshness_verified!==
+       state.latest_source_check.current_source_check_verified||
+     state.reference_data_is_not_a_new_official_release!==true)
+    throw Error("D1_SHARED_NEWS_DIAGNOSIS_PARITY_MISMATCH");
  }
  return {schema:"geomacro.shared-d1-predge-live-proof.v1",
   same_journal_ids_verified:true,counts:feed.counts,

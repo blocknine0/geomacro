@@ -4,6 +4,7 @@
  * Evaluation observations are NOT rights-certified commercial content.
  */
 import {readDerivedStories} from "./website-derived-intelligence.mjs";
+import {getNewsProducerChecks} from "./derived-news-qualification-status.mjs";
 import {buildDerivedNewsStructural,NEWS_STRUCTURAL_SCHEMA}
   from "../../../src/lib/derived-news-structural-bridge.ts";
 
@@ -50,12 +51,19 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
     }
     if(!complete)throw Error("SHARED_NEWS_INCOMPLETE");
     const all=buildDerivedNewsStructural(signals,now);
+    const producerChecks=await getNewsProducerChecks(env,now);
+    const observed=Object.fromEntries(CATEGORIES.map(c=>[c,
+      signals.filter(s=>s.category===c).length]));
+    const creditHeld=Object.fromEntries(CATEGORIES.map(c=>[c,
+      signals.filter(s=>s.category===c&&s.sources_credited?.length>0).length]));
     const counts=Object.fromEntries(CATEGORIES.map(c=>[
       c,all.filter(row=>row.category===c).length
     ]));
     const availability_by_category=Object.fromEntries(CATEGORIES.map(c=>{
       const matching=all.filter(row=>row.category===c);
       const last=matching[0]??null;
+      const status=producerChecks[c];
+      const held=observed[c]-matching.length;
       const count24=matching.filter(row=>{
         const ms=Date.parse(row.original_published_at);
         return Number.isFinite(ms)&&ms<=now&&now-ms<=86_400_000;
@@ -67,7 +75,22 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
         latest_original_date_precision:last?.date_precision??null,
         observed_derived_records_24h:count24,
         observed_derived_records_72h:matching.length,
-        producer_run_freshness_verified:false,
+        journal_derived_records_72h:observed[c],
+        journal_credit_required_records_72h:creditHeld[c],
+        withheld_from_source_neutral_view_72h:held,
+        no_qualified_release_explanation:matching.length>0?
+          "PUBLIC_ELIGIBLE_RELEASE_PRESENT":held>0?
+          "JOURNAL_RELEASE_REQUIRES_VISIBLE_SOURCE_CREDIT":
+          status.current_source_check_verified&&status.original_candidates_examined>0?
+          "OFFICIAL_CANDIDATES_OBSERVED_BUT_NONE_PASSED_RELEASE_RULES":
+          status.current_source_check_verified?
+          "COLLECTOR_RAN_NO_QUALIFYING_RELEASE":
+          "COLLECTOR_FRESHNESS_NOT_VERIFIED",
+        latest_source_check:status,
+        producer_run_freshness_verified:status.current_source_check_verified,
+        separate_verified_structural_context_path:
+          "/v1/public/three-domain-continuity",
+        reference_data_is_not_a_new_official_release:true,
         real_time_commercial_event_certified:false,gaps_may_exist:true,
       }];
     }));
@@ -86,6 +109,7 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
       raw_upstream_delivered:false,
       generated_at:new Date(now).toISOString(),
       availability_by_category,counts,items,
+      producer_observations_separate_from_original_release_clocks:true,
     });
   }catch{
     return reply({ok:false,error:"SHARED_NEWS_D1_READBACK_UNAVAILABLE",
