@@ -83,6 +83,27 @@ jobs:
             # source->review->signature->publisher before B2 current-hot audit.
             exit 2
           fi
+          # Signed reference validity can be 12h/3h, but current product
+          # serving is a different <=60m native-source clock. Do not spend
+          # six scarce archive GETs on a reference that cannot serve current.
+          if ! node --input-type=module <<'NODE'
+          import {readFileSync} from "node:fs";
+          const p=JSON.parse(readFileSync("artifacts/public-serving/d1-metadata.json","utf8"));
+          const names=["intelligence","global-risk","risk-indices"];
+          const admitted=p.all_three_metadata_eligible===true &&
+            names.every(n=>p.products?.[n]?.live_freshness_eligible===true);
+          console.log(JSON.stringify({
+            schema:"geomacro.p0-hot-current-source-clock-admission.v1",
+            all_three_metadata_eligible:p.all_three_metadata_eligible,
+            all_three_native_source_within_60m:admitted,
+            b2_requests:0,d1_writes:0,payments:0,
+          }));
+          if(!admitted)process.exitCode=2;
+          NODE
+          then
+            echo "::error::P0_SIGNED_REFERENCE_NOT_CURRENT_SOURCE_DO_NOT_SPEND_B2_GET"
+            exit 2
+          fi
           echo "P0_CURRENT_HOT_D1_METADATA_POSSIBLE_NOT_CERTIFIED"
 
       - name: Fail closed without B2 GET headroom

@@ -26,6 +26,8 @@ describe("#2124 one-shot production audit cannot regress previously accepted ser
     expect(getter).toBeGreaterThan(budget);
     expect(workflow).toContain("node scripts/ops/classify-d1-hot-metadata.mjs");
     expect(workflow).toContain("P0_NO_CURRENT_HOT_INPUT_DO_NOT_WASTE_B2_GET");
+    expect(workflow).toContain("P0_SIGNED_REFERENCE_NOT_CURRENT_SOURCE_DO_NOT_SPEND_B2_GET");
+    expect(workflow).toContain("live_freshness_eligible===true");
     expect(workflow).toContain("length(CAST(payload_json AS BLOB)) AS payload_bytes");
     expect(workflow).not.toContain("SELECT * FROM public_b2_hot_snapshot");
     expect(workflow).toContain("artifacts/public-serving/d1-metadata.json");

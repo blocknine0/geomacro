@@ -11,7 +11,7 @@ file's next main merge now performs these stages in strict order:
 1. Offline contract test; resolve shared quota-governed Cloudflare D1.
 2. One D1 **metadata-only** SELECT for all three hot products with their
    unchanged source_as_of/expires_at. No hash content or payload_json output.
-   Existing classifier must prove all three are metadata-eligible before any
+   Existing classifier must prove all three are metadata-eligible AND each native source is within the actual 60-minute current window before any
    current-hot B2 GET; otherwise the workflow fails P0_NO_CURRENT_HOT_INPUT.
 3. Only then check conservative 8-GET account-wide headroom. Every later B2
    attempt still makes its own atomic shared D1 quota reservation.
