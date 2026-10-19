@@ -9,7 +9,7 @@ export function CapabilityPriceSchedule({compact=false}:{compact?:boolean}){
         <div>
           <h3 className="text-xl font-semibold tracking-tight">Exact capability prices</h3>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            Approved USDC prices. An advertised price is not proof that signed, current delivery is available.
+            Approved USDC prices. Each capability needs its own verified delivery; structural digests do not require a signed risk score.
           </p>
         </div>
         <span className="font-mono text-[10px] text-muted-foreground">
@@ -22,12 +22,12 @@ export function CapabilityPriceSchedule({compact=false}:{compact?:boolean}){
             <h4 className="text-sm font-semibold">{group.label}</h4>
             <ul className="mt-3 space-y-3">
               {group.ids.map(capability=>(
-                <li key={capability}>
+                <li key={capability} data-capability={capability}>
                   <p className="font-mono text-[11px] text-foreground">
                     {capability}
                   </p>
                   {Object.entries(GEOMACRO_CAPABILITY_PRICES[capability]).map(([variant,amount])=>(
-                    <div key={variant} className="mt-1 flex items-center justify-between gap-3 text-xs">
+                    <div key={variant} data-variant={variant} data-price-usdc={amount} className="mt-1 flex items-center justify-between gap-3 text-xs">
                       <span className="capitalize text-muted-foreground">{variant.replaceAll("_"," ")}</span>
                       <span className="shrink-0 font-mono text-foreground">{amount} USDC</span>
                     </div>

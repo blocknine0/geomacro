@@ -1,21 +1,15 @@
 import {useEffect,useState} from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, CalendarDays, Clock3, Mail, Radio, Zap } from "lucide-react";
+import { ArrowRight, Clock3, Radio } from "lucide-react";
 import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
 import { findCardFromObservedRelease,type FindCardV1 } from "@/lib/find-card-v1";
-import { selectHomepageFreeFind,homeFindsPulse,parseHomepageFindsFeed } from "@/lib/homepage-free-finds";
+import { selectHomepageFreeFind,homeFindsPulse,parseHomepageFindsFeed,mergeHomepageFindCards } from "@/lib/homepage-free-finds";
 
 const DOMAINS: Record<string, string> = {
   geopolitics: "Geopolitical",
   macro: "Macro & FX",
   rare_earth: "Critical minerals",
 };
-
-const BUSINESS_EMAIL = "contact@geomacro.live";
-const MONTHLY_MAIL =
-  `mailto:${BUSINESS_EMAIL}?subject=${encodeURIComponent("Request: Geomacro Monthly Intelligence Plan")}&body=${encodeURIComponent("Hello Geomacro,\n\nI would like to discuss a recurring intelligence plan.\nCompany/team:\nCountries/corridors:\nGeopolitical, Macro/FX or Critical Minerals:\nEstimated API calls per month:\n\nPlease contact me with the suitable plan.")}`;
-const ANNUAL_MAIL =
-  `mailto:${BUSINESS_EMAIL}?subject=${encodeURIComponent("Request: Geomacro Enterprise Intelligence")}`;
 
 function eventDate(value: string): string {
   return new Date(value).toLocaleString("en-GB", {
@@ -24,57 +18,6 @@ function eventDate(value: string): string {
     month: "short",
     year: "numeric",
   });
-}
-
-function AccessOptions() {
-  return (
-    <div className="mt-5 border-t border-border/55 pt-5">
-      <h3 className="text-sm font-semibold tracking-tight sm:text-base">
-        Move from headlines to decisions
-      </h3>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-        Give your team or AI agents structured severity, dated intelligence and decision context—without processing raw news feeds.
-      </p>
-      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <Link
-          to="/pricing"
-          className="group flex min-h-20 flex-col justify-between gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3.5 py-3 transition-colors hover:border-primary/60 hover:bg-primary/15"
-        >
-          <span className="flex items-center gap-2 text-xs font-semibold">
-            <Zap className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-            Decision-ready API · Pay per call
-          </span>
-          <span className="inline-flex items-center justify-between gap-2 text-sm font-semibold text-primary">
-            Exact USDC price by capability
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-          </span>
-        </Link>
-        <a
-          href={MONTHLY_MAIL}
-          className="group flex min-h-20 flex-col justify-between gap-2 rounded-xl border border-border/70 bg-background/30 px-3.5 py-3 transition-colors hover:border-primary/50"
-        >
-          <span className="flex items-center gap-2 text-xs font-semibold">
-            <CalendarDays className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-            Monthly intelligence · Coming Soon
-          </span>
-          <span className="inline-flex items-center justify-between gap-2 text-sm font-medium">
-            Request a tailored plan
-            <ArrowRight className="h-3.5 w-3.5 text-primary transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-          </span>
-        </a>
-      </div>
-      <a
-        href={ANNUAL_MAIL}
-        className="mt-3 inline-flex w-full items-center justify-between gap-3 rounded-lg px-1 py-2 text-xs text-muted-foreground transition-colors hover:text-primary"
-      >
-        <span className="inline-flex items-center gap-2">
-          <Mail className="h-3.5 w-3.5" aria-hidden="true" />
-          Need country, corridor or enterprise coverage? Talk to us
-        </span>
-        <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-      </a>
-    </div>
-  );
 }
 
 /**
@@ -98,7 +41,7 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
         const raw=await response.text();
         if(raw.length>250_000)throw Error("HOME_FINDS_RESPONSE_TOO_LARGE");
         const next=parseHomepageFindsFeed(JSON.parse(raw));
-        if(!cancelled){setCards(next);setUnavailable(false);setChecked(true);}
+        if(!cancelled){setCards(previous=>mergeHomepageFindCards(previous,next));setUnavailable(false);setChecked(true);}
       } catch {
         // This is the established, independently guarded public D1 reader:
         // it bypasses a temporarily unhealthy site RPC/runtime path.
@@ -107,7 +50,7 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
           const now=Date.now();
           const next=signals.map(s=>findCardFromObservedRelease(s,now))
             .filter((v):v is FindCardV1=>v!==null);
-          if(!cancelled){setCards(next);setUnavailable(false);setChecked(true);}
+          if(!cancelled){setCards(previous=>mergeHomepageFindCards(previous,next));setUnavailable(false);setChecked(true);}
         } catch {
           if(!cancelled){setUnavailable(true);setChecked(true);}
         }
@@ -139,6 +82,7 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
               {card.headline}
             </h2>
             <p className="mt-3 max-w-[34rem] text-sm leading-6 text-muted-foreground">{card.what_changed}</p>
+            {card.detail_state==="LIMITED" ? <p className="mt-2 text-xs font-medium text-muted-foreground">Release observed · specific details pending</p> : null}
             <p className="mt-3 max-w-[34rem] text-sm leading-6 text-muted-foreground">
               <span className="font-semibold text-foreground">Why it matters: </span>{card.why_it_matters}
             </p>
@@ -148,7 +92,7 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
               <span>{winner.isCurrent?"Original release within 24h":"Earlier original release · not current"}</span>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              First-party release observed · unscored · independent same-event review not established
+              Unscored finding · independent same-event review not established
             </p>
             <Link to="/intelligence" className="group mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline hover:underline-offset-4">
               Explore free Intelligence <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
@@ -167,7 +111,7 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
         )}
         <div className="mt-5 border-t border-border/55 pt-4" aria-label="Original release coverage">
           <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            Original release coverage · three global domains
+            Available findings · three domains
           </p>
           <div className="mt-3 grid grid-cols-3 gap-2">
             {pulse.map(domain=>(
@@ -181,7 +125,6 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
             ))}
           </div>
         </div>
-        <AccessOptions />
       </div>
     </div>
   );

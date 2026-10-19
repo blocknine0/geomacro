@@ -60,7 +60,7 @@ export function CommercialHome({initialFindCards=[]}:{initialFindCards?:FindCard
     <>
       <section className="relative overflow-hidden border-b border-border/50">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_16%,color-mix(in_oklab,var(--primary)_16%,transparent),transparent_33%)]" />
-        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-18 lg:min-h-[610px] lg:grid-cols-[minmax(0,1.02fr)_minmax(0,.98fr)] lg:gap-14 lg:py-20">
+        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 sm:py-12 lg:min-h-[540px] lg:grid-cols-[minmax(0,1.02fr)_minmax(0,.98fr)] lg:gap-14 lg:py-16">
           <div className="min-w-0 max-w-2xl">
             <Eyebrow>Global risk intelligence · Built for decisions</Eyebrow>
             <h1 className="mt-5 max-w-[43rem] text-[clamp(2.6rem,4vw,4.6rem)] font-semibold leading-[1.02] tracking-[-0.05em]">
@@ -147,7 +147,7 @@ export function CommercialHome({initialFindCards=[]}:{initialFindCards?:FindCard
               Dedicated intelligence connects supply concentration, geopolitical dependency, policy pressure and related macro exposure without mixing them into one opaque score.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Button asChild><Link to="/global-risk">Explore Critical Minerals Risk</Link></Button>
+              <Button asChild><Link to="/intelligence" search={{category:"rare_earth"}}>Explore Critical Minerals Intelligence</Link></Button>
               <Button asChild variant="ghost"><Link to="/intelligence">View supporting intelligence</Link></Button>
             </div>
           </div>

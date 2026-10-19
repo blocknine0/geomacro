@@ -21,7 +21,7 @@ describe("Coming Soon status is truthful across commercial website", () => {
     expect(pricing).toContain("Coming Soon · Monthly checkout");
     expect(pricing).toContain("Monthly subscriptions are Coming Soon");
     expect(pricing).toContain("Request monthly access");
-    expect(homepage).toContain("Monthly intelligence · Coming Soon");
+    expect(shell).toContain("<CommercialAccessGuide />");
     expect(pricing).not.toContain("Subscribe now");
   });
 
@@ -38,8 +38,8 @@ describe("Coming Soon status is truthful across commercial website", () => {
   it("preserves restricted pilot status but labels unrestricted public access Coming Soon", () => {
     expect(riskGate).toContain(">PRIVATE PILOT</Badge>");
     expect(riskGate).toContain("Coming Soon for general access");
-    expect(shell).toContain("Risk Gate · Private Pilot");
-    expect(shell).toContain("Public access Coming Soon");
+    expect(shell).not.toContain('to: "/risk-gate"');
+    expect(shell).not.toContain('to="/risk-gate"');
     expect(riskGate).toContain("execution_authorized = false");
   });
 

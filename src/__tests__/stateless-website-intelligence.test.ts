@@ -241,15 +241,15 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(desk).toContain("initialJournal = []");
     expect(desk).toContain("useState<StatelessIntelligenceSignal[]>(() => initialJournal)");
     expect(desk).toContain('data-testid="geomacro-derived-news-desk"');
-    expect(desk).toContain("const allSignals = [...merged.values()]");
+    expect(desk).toContain("const allSignals = filterIntelligenceDesk([...merged.values()]");
 
     expect(desk).toContain("getStatelessIntelligence({ data: { category } })");
     expect(desk).toContain("setInterval(");
     expect(desk).toContain("Latest Geomacro finds");
     // The main desk must show all three categories automatically, not
     // require the visitor to click each category before a source check.
-    expect(desk).toContain('useState<View>("all")');
-    expect(desk).toContain("All latest</button>");
+    expect(desk).toContain('useState<View>(initialView)');
+    expect(desk).toContain("All findings</button>");
     expect(desk).toContain("const missingAtSsr = DOMAINS.map(domain => domain.key)");
     expect(desk).toContain("if (missingAtSsr.length > 0) void refresh(missingAtSsr)");
     expect(desk).toContain('DOMAINS.map(domain => domain.key)');
@@ -262,7 +262,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(desk).toContain('New in the last 24 hours');
     expect(desk).toContain('Earlier original releases · Last 30 days');
 
-    expect(desk).toContain("15-minute delayed");
+    expect(desk).toContain("15-minute public delay");
     expect(desk).not.toContain("RiskBadge");
     expect(desk).not.toContain("RiskTrend");
     expect(desk).not.toContain("Score evidence");
@@ -278,7 +278,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(source).not.toContain("public_updated_at");
     expect(source).toContain("persistent_storage: false");
     expect(source).toContain("now - STATELESS_WEBSITE_DELAY_MS");
-    expect(desk).toContain("Only Geomacro-derived findings are kept in a bounded Cloudflare D1");
-    expect(desk).toContain("Raw upstream feeds, publisher article text, original headlines and source URLs are not stored");
+    expect(desk).toContain("Required credits are retained");
+    expect(desk).toContain("raw articles and source feeds are not delivered");
   });
 });

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const PRIMARY_NAV = [
+  { to: "/", label: "Home" },
   { to: "/intelligence", label: "Intelligence" },
   { to: "/risk-indices", label: "Risk Indices" },
   { to: "/ask-geomacro", label: "Ask Geomacro" },
@@ -33,7 +34,6 @@ const PRIMARY_NAV = [
 
 const EXPLORE_NAV = [
   { to: "/global-risk", label: "Global Risk History", description: "Historical global risk conditions and context" },
-  { to: "/risk-gate", label: "Risk Gate · Private Pilot", description: "Public access Coming Soon · request a controlled pilot" },
   { to: "/ecosystem", label: "Ecosystem & Partnerships", description: "Integrations, partnerships and commercial ecosystem" },
   { to: "/research", label: "Research & Evidence", description: "Methodology, coverage evidence and limitations" },
   { to: "/docs", label: "Documentation", description: "Product architecture and technical reference" },
@@ -134,6 +134,7 @@ function MobileGroup({ title, items }: { title: string; items: ReadonlyArray<{ t
           <SheetClose asChild key={item.to}>
             <Link
               to={item.to}
+              activeOptions={{ exact: item.to === "/" }}
               className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
               activeProps={{ className: "rounded-lg px-3 py-2.5 text-sm bg-muted text-foreground" }}
             >
@@ -191,6 +192,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 <Link
                   key={item.to}
                   to={item.to}
+                  activeOptions={{ exact: item.to === "/" }}
                   className="whitespace-nowrap py-2 transition hover:text-foreground"
                   activeProps={{ className: "text-foreground" }}
                 >
@@ -229,6 +231,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <div>
                 <p className="font-medium text-foreground">Product</p>
                 <div className="mt-3 flex flex-col gap-2.5">
+                  <Link to="/" className="hover:text-foreground">Home</Link>
                   <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
                   <Link to="/risk-indices" className="hover:text-foreground">Risk Indices</Link>
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
@@ -241,7 +244,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 <div className="mt-3 flex flex-col gap-2.5">
                   <Link to="/data-api" className="hover:text-foreground">API & Agents</Link>
                   <Link to="/institutional" className="hover:text-foreground">Institutions</Link>
-                  <Link to="/risk-gate" className="hover:text-foreground">Risk Gate · Private Pilot</Link>
                   <Link to="/contact" className="hover:text-foreground">Contact</Link>
                 </div>
               </div>

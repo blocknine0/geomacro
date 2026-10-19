@@ -15,7 +15,8 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(card).toContain("card.why_it_matters");
     expect(card).not.toContain("categoryLeads(intelligence.data.all)");
     expect(card).not.toContain("categoryHighlights");
-    expect(card).toContain("<AccessOptions />");
+    expect(card).not.toContain("<AccessOptions />");
+    expect(card).toContain("Release observed · specific details pending");
   });
 
   it("does not promote a free D1 release to paid GRO/score or fresh commercial review",()=>{
@@ -31,14 +32,14 @@ describe("Geomacro Finds commercial homepage presentation", () => {
   });
 
   it("keeps sales enquiries open without suggesting an active monthly checkout", () => {
-    expect(card).toContain('to="/pricing"');
-    expect(card).toContain("Exact USDC price by capability");
+    const guide = readFileSync("src/components/commercial-access-guide.tsx", "utf8");
+    const shell = readFileSync("src/components/site-shell.tsx", "utf8");
+    expect(shell).toContain("<CommercialAccessGuide />");
+    expect(guide).toContain("Exact USDC price by capability");
+    expect(guide).toContain("Coming Soon · enquiries open");
+    expect(guide).toContain("Request monthly access");
+    expect(guide).toContain("mailto:contact@geomacro.live");
     expect(card).not.toContain("From 0.05 USDC");
-    expect(card).toContain("Monthly intelligence · Coming Soon");
-    expect(card).toContain("Request a tailored plan");
-    expect(card).toContain("enterprise coverage? Talk to us");
-    expect(card).toContain("contact@geomacro.live");
-    expect(card).toContain("mailto:");
   });
 
   it("has a balanced responsive hero and correct risk-indices route", () => {

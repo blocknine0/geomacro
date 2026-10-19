@@ -156,8 +156,9 @@ describe("free public v1 Finds GET from existing D1 journal",()=>{
   // source-credit-preserving condition without making any paid GRO claim.
   const code=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
   expect(code).toContain("findCardFromObservedRelease(signal, checkedAt)");
-  expect(code).toContain('data-testid="geomacro-find-card-v1"');
-  expect(code).toContain("Details not captured");
+  expect(code).toContain('data-testid={card ? "geomacro-find-card-v1"');
+  expect(code).toContain('card?.detail_state === "LIMITED"');
+  expect(code).toContain("Specific details not captured");
   expect(code).toContain("signal.sources_credited");
   expect(findCardFromObservedRelease(signal,NOW)?.detail_state).toBe("LIMITED");
  });

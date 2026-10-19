@@ -248,7 +248,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(ui).toContain("getWebsiteDerivedNews()");
     expect(ui).toContain('const merged = new Map<string, StatelessIntelligenceSignal>()');
     // Presentation copy is locked to the approved published website baseline until separately published.
-    expect(ui).toContain("Background collection every 30 minutes");
+    expect(ui).toContain("Dates describe the original publication, not the last refresh");
     for(const forbidden of ["https://supabase", "createPayment", "signed_risk_object",
       "publishB2VerifiedHotSnapshot", "fetch(", "localStorage"]) {
       expect(worker).not.toContain(forbidden);
