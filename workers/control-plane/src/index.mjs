@@ -3,6 +3,7 @@ import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
 import { readDerivedStories, publishDerivedStories, renderDerivedStoriesHtml } from "./website-derived-intelligence.mjs";
 import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
+import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
@@ -1276,6 +1277,8 @@ export default {
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/derived-structural-72h")
       return publicSharedDerivedNewsFeed(env,url.searchParams);
+    if(request.method==="GET"&&url.pathname==="/v1/partner/predge/derived-structural-72h")
+      return predgeResearchDerivedNewsFeed(request,env);
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
       return renderDerivedStoriesHtml(env);
     }

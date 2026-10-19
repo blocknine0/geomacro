@@ -72,3 +72,18 @@ The public pilot research endpoint charges 0 USDC, bounded to at most 600
 retained D1 records per response. The 90-day evaluation is a proposed pilot
 term and **not** a private metered quota or enforceable SLA in this public
 endpoint. Do not describe this as actual commercial redistribution permission.
+
+## Authenticated 90-day Predge research route — single grant, not per-item approvals
+
+`GET /v1/partner/predge/derived-structural-72h` on the SAME Cloudflare D1
+control-plane Worker accepts only a **dedicated** 64-hex Bearer derived in
+the protected deploy from the existing root production secret using
+HMAC-SHA256 namespace `geomacro-predge-72h-research-only-v1` (not the
+admin-token namespace). Token never appears in URLs or GitHub artifacts;
+no CORS and no-store private cache response. Authentication cannot grant
+original publisher rights, paid eligibility, GRO authenticity or Risk Gate
+execution. The endpoint reuses all public-eligible IDs and metadata 1:1
+without extra items or manual item allowlist, while honoring the existing
+15m/day embargo, withheld mandatory credits, 72h retention and original
+source time. The URL is a **research pilot** only and has an upper-bound
+pilot time window.
