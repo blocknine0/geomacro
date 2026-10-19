@@ -7,7 +7,7 @@ const root="https://www.minister.industry.gov.au";
 const index=root+"/king/media?type=media_releases";
 const article=root+"/king/media/rare-earth-export-supply-agreement";
 const now=Date.parse("2026-10-19T09:00:00.000Z");
-const title="New rare earth minerals export agreement supports Australian resources trade";
+const title="Rare earths project supports resources and energy exports";
 const indexHtml='<div class="views-row">18 October 2026 <a href="'+article+'">'+title+'</a></div>';
 const articleHtml="<h1>"+title+"</h1><time>18 October 2026</time><p>Official ministerial statement.</p>";
 function fixture(){
