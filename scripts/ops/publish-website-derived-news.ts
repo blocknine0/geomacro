@@ -10,6 +10,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { summarizeDerivedSourceHealth } from "../lib/derived-news-source-health.mjs";
 import { buildMaterialGriNewsReviewQueue } from "../lib/material-gri-news-review.mjs";
 import { readStatelessWebsiteIntelligence } from "../../src/lib/stateless-public-intelligence.server";
+import {createRunScopedAustralianResourcesFetch} from "../../src/lib/stateless-run-shared-official-fetch";
 import {
   conservativeDayReleaseMs,reconcilePrivateDerivedSourceRefs,
   type StatelessSourceCandidate,
@@ -38,13 +39,14 @@ let success=true;
 const privateOriginals:StatelessSourceCandidate[]=[];
 const reports:StatelessIntelligenceResult[]=[];
 const sourceHealthReceipts:Array<{category:string}>=[];
+const sharedOfficialDocuments=createRunScopedAustralianResourcesFetch();
 for (const category of categories) {
   try {
     const lanes:{index:number;transport_ok:boolean;failure_class?:string}[]=[];
     const report=await readStatelessWebsiteIntelligence(category,Date.now(),
       (index, diagnostics)=>lanes.push({index,transport_ok:diagnostics.transport_ok,
         failure_class:diagnostics.transport_failure_class}),
-      candidates=>privateOriginals.push(...candidates),200);
+      candidates=>privateOriginals.push(...candidates),200,sharedOfficialDocuments);
     const health=summarizeDerivedSourceHealth(category,report.feed_count,report.healthy_feed_count,lanes);
     sourceHealthReceipts.push(health);
     if(health.sources_unavailable>0 || !health.diagnostics_complete)
@@ -104,6 +106,14 @@ for (const category of categories) {
     console.error("::error::WEBSITE_DERIVED_NEWS_INGEST_"+category.toUpperCase()+"_UNAVAILABLE");
   }
 }
+console.log(JSON.stringify({
+  schema:"geomacro.shared-official-original-transport.v1",
+  ...sharedOfficialDocuments.stats(),
+  scope:"one_ingestion_run_independently_validated_two_category_reuse",
+  cross_category_automatic_publication:false,
+  rights_review_waived:false,commercially_chargeable:false,
+  b2_requests:0,supabase_writes:0,payments:0,
+}));
 // High-impact / prediction-market-like event triage is derived only from
 // the already validated issuer-release *structured* cards. No raw source
 // data, odds, article bodies, inferred outcomes, risk scores or publisher IDs
