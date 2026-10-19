@@ -32,7 +32,7 @@ async function githubRead(path,label) {
 const u=new URL("workflows/"+WEBSITE_PUBLISHER_WORKFLOW+"/runs",base);
 u.searchParams.set("branch","main");
 u.searchParams.set("status","success");
-u.searchParams.set("per_page","20");
+u.searchParams.set("per_page","8");
 const data=await githubRead(u,"PRIMARY_RUNS");
 if(!Array.isArray(data.workflow_runs))
   throw Error("NEWS_BACKSTOP_GITHUB_RESPONSE_INVALID");
@@ -43,16 +43,27 @@ const force=process.env.GITHUB_EVENT_NAME==="workflow_dispatch";
 // not suppress recovery. Read only a bounded number of job-step summaries.
 const genuine=[];
 const checkedNow=Date.now();
-for(const run of data.workflow_runs.slice(0,10)){
+// Only recent 3 candidates are needed for a 70-minute publisher clock.
+ // Serial 10-job fanout timed out in production; do not repeat it.
+for(const run of data.workflow_runs.slice(0,3)){
   if(run?.status!=="completed"||run.conclusion!=="success"||
     run.head_branch!=="main"||!Number.isSafeInteger(run.id)||run.id<=0)continue;
   const at=Date.parse(run.updated_at);
-  if(!Number.isFinite(at)||at<checkedNow-6*60*60_000||at>checkedNow+60_000)continue;
-  const jobs=await githubRead("runs/"+run.id+"/jobs?per_page=25","PRIMARY_JOBS");
-  if(!Array.isArray(jobs.jobs))throw Error("NEWS_BACKSTOP_PRIMARY_JOBS_INVALID");
-  const completed=verifiedPrimaryPublicationTime(run,jobs.jobs,checkedNow);
-  if(completed)genuine.push({status:"completed",conclusion:"success",
-    head_branch:"main",updated_at:completed});
+  if(!Number.isFinite(at)||at<checkedNow-3*60*60_000||at>checkedNow+60_000)continue;
+  // An unavailable GitHub step-proof endpoint is NOT an issuer clock.
+  // Keep the failed proof unconfirmed; the idempotent D1 backstop can recover.
+  try{
+    const jobs=await githubRead("runs/"+run.id+"/jobs?per_page=25","PRIMARY_JOBS");
+    if(!Array.isArray(jobs.jobs))throw Error("NEWS_BACKSTOP_PRIMARY_JOBS_INVALID");
+    const completed=verifiedPrimaryPublicationTime(run,jobs.jobs,checkedNow);
+    if(completed){
+      genuine.push({status:"completed",conclusion:"success",
+        head_branch:"main",updated_at:completed});
+      if(checkedNow-Date.parse(completed)<70*60_000)break;
+    }
+  }catch{
+    console.warn("::warning::NEWS_BACKSTOP_PRIMARY_JOB_PROOF_UNAVAILABLE");
+  }
 }
 const primary=decideWebsiteNewsBackstop(genuine,checkedNow);
 let decision=primary,successProof=genuine.length?
@@ -81,7 +92,9 @@ if(primary.should_run&&!force){
       if(at)proofs.push({status:"completed",conclusion:"success",head_branch:"main",updated_at:at});
     }
     if(proofs.length){
-      const combined=decideWebsiteNewsBackstop([...data.workflow_runs,...proofs],now);
+      // Exclude green-but-skipped primary workflow metadata. Using the raw
+      // workflow list here would undo the entire primary job-step proof fix.
+      const combined=decideWebsiteNewsBackstop([...genuine,...proofs],now);
       if(!combined.should_run){decision=combined;successProof="VERIFIED_RECOVERY_D1_READBACK";}
     }
   }catch{

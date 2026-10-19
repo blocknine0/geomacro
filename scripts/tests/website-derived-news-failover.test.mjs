@@ -231,6 +231,50 @@ test("hourly cadence CLI counts only real D1-writer-and-readback recovery when p
   }finally{rmSync(temp,{recursive:true,force:true});}
 });
 
+test("skipped primary green run never forges a fresh writer even when recovery proof exists",async()=>{
+  const {mkdtempSync,readFileSync,rmSync}=await import("node:fs");
+  const {tmpdir}=await import("node:os");
+  const {join}=await import("node:path");
+  const {spawnSync}=await import("node:child_process");
+  const script=new URL("../ops/check-website-derived-news-cadence.mjs",import.meta.url).href;
+  const dir=mkdtempSync(join(tmpdir(),"news-proof-failover-"));
+  try{
+    for(const recovered of [false,true]){
+      const output=join(dir,String(recovered)),now=Date.now();
+      const prior=new Date(now-80*60_000).toISOString();
+      const latest=new Date(now-10*60_000).toISOString();
+      const recoveryRun={id:123,head_branch:"main",status:"completed",conclusion:"success",
+        updated_at:latest};
+      const recoveryJob={name:"catch-up-derived-only",status:"completed",conclusion:"success",
+        completed_at:latest,steps:[
+          "Publish bounded 3-domain derived news to existing D1 (idempotent)",
+          "Independently prove private-source-free D1 readback after recovery",
+        ].map(name=>({name,status:"completed",conclusion:"success"}))};
+      const code=`globalThis.fetch=async u=>{
+        const url=new URL(u);
+        if(url.pathname.endsWith("/website-derived-news-continuity.yml/runs"))
+          return Response.json({workflow_runs:[{id:201,status:"completed",
+            conclusion:"success",head_branch:"main",updated_at:${JSON.stringify(latest)}}]});
+        if(url.pathname.endsWith("/runs/201/jobs"))
+          return Response.json({jobs:[{name:"refresh-derived-news",status:"completed",
+            conclusion:"success",completed_at:${JSON.stringify(latest)},
+            steps:[{name:"Read three domains and write only derived news to existing D1",
+              status:"completed",conclusion:"skipped"}]}]});
+        if(url.pathname.endsWith("/website-derived-news-cadence-backstop.yml/runs"))
+          return Response.json({workflow_runs:${JSON.stringify(recovered?[recoveryRun]:[])}});
+        if(url.pathname.endsWith("/runs/123/jobs"))
+          return Response.json({jobs:${JSON.stringify([recoveryJob])}});
+        throw Error("unexpected fake GH path");
+      };await import(${JSON.stringify(script)});`;
+      const got=spawnSync(process.execPath,["--input-type=module","-e",code],{
+        encoding:"utf8",env:{...process.env,GITHUB_REPOSITORY:"blocknine0/geomacro",
+        GITHUB_TOKEN:"test-token",GITHUB_EVENT_NAME:"schedule",GITHUB_OUTPUT:output}});
+      assert.equal(got.status,0,got.stderr);
+      assert.equal(readFileSync(output,"utf8"),
+        "should_run="+(recovered?"false":"true")+"\n");
+    }
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
 test("backstop workflow is parseable by GitHub with a real boolean continue-on-error",async()=>{
   const {readFileSync}=await import("node:fs");
   const src=readFileSync(new URL("../../.github/workflows/website-derived-news-cadence-backstop.yml",import.meta.url),"utf8");
