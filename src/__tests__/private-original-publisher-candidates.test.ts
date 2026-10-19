@@ -33,6 +33,44 @@ describe("#1827 native article discovery, deterministic dedup, secure private sc
     expect(JSON.stringify(rows)).not.toContain("news.un.org");
   });
 
+  it("uses a later validated Atom article link for native-dated and publisher-page verified private SHA",()=>{
+    const src=EXPANDED_OFFICIAL_SOURCES.find(
+      s=>s.id==="uk_fcdo_original_foreign_policy_atom_review")!;
+    const article="https://www.gov.uk/government/news/foreign-secretary-unveils-new-sanctions";
+    const xml=(dateTag:string)=>
+      '<atom:feed xmlns:atom="http://www.w3.org/2005/Atom"><atom:entry>'+
+      '<atom:title>Foreign Secretary announces new sanctions after conflict</atom:title>'+
+      '<atom:link rel="self" href="https://www.gov.uk/feed.xml"/>'+
+      '<atom:link rel="alternate" href="https://evil.example/government/news/spoof"/>'+
+      '<atom:link rel="alternate" href=""/>'+
+      '<atom:link rel="canonical" href="'+article+'"/>'+dateTag+
+      '</atom:entry></atom:feed>';
+    const dated=originalPublisherPrivateCandidates(
+      xml('<atom:published>2026-10-10T18:00:00Z</atom:published>'),src,NOW);
+    expect(dated).toHaveLength(1);
+    expect(dated[0]).toMatchObject({
+      native_published_at:"2026-10-10T18:00:00.000Z",
+      eligible_for_scoring:false,eligible_for_publication:false,
+      commercial_derived_use_rights_verified:false,
+    });
+    const undated=xml('<atom:updated>2026-10-10T18:05:00Z</atom:updated>');
+    expect(originalPublisherPrivateCandidates(undated,src,NOW)).toEqual([]);
+    const candidate=originalPublisherPrivatePageDateCandidate(undated,src,{
+      articleUrl:article,publishedAt:"2026-10-10T18:00:00Z",now:NOW,
+      captureAllTopics:true,
+    });
+    expect(candidate?.original_article_sha256).toBe(dated[0].original_article_sha256);
+    expect(candidate?.eligible_for_publication).toBe(false);
+    const offHostOnly=xml('<atom:published>2026-10-10T18:00:00Z</atom:published>')
+      .replace('<atom:link rel="canonical" href="'+article+'"/>',"");
+    expect(originalPublisherPrivateCandidates(offHostOnly,src,NOW)).toEqual([]);
+    expect(originalPublisherPrivatePageDateCandidate(undated,src,{
+      articleUrl:"https://evil.example/government/news/spoof",
+      publishedAt:"2026-10-10T18:00:00Z",now:NOW,
+      captureAllTopics:true,
+    })).toBeNull();
+  });
+
   it("admits only a real first-party article publication clock into private SHA queue",async()=>{
     const src=EXPANDED_OFFICIAL_SOURCES.find(x=>x.id==="uk_fcdo_original_foreign_policy_atom_review")!;
     const url="https://www.gov.uk/government/news/foreign-secretary-announces-sanctions";
