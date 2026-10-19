@@ -74,6 +74,18 @@ export function officialGeomacroAgentDiscovery(){
   per_variant_output_fields_endpoint:endpoints.priced_output_fields,
   discovery_does_not_prove_delivery:true,
   current_paid_availability:"REQUIRES_PER_REQUEST_LIVE_NO_FUNDS_PREFLIGHT",
+  buyer_integration:{
+   discover:"GET /api/v1/agent?view=openapi",
+   prices:"GET /api/v1/pricing",
+   check_delivery:"POST /api/v1/intelligence/availability",
+   payable_resource:"POST /api/v1/intelligence/query",
+   free_explorer:"GET /api/v1/finds",
+   safe_order:["discover","prices","check_delivery","payable_resource"],
+   preflight_does_not_charge:true,
+   no_automatic_payment_retry:true,
+   use_server_verified_freshness_only:true,
+   no_live_delivery_guarantee:true,
+  },
   all_routed_country_category_cells_commercially_verified:false,
   source_names_disclosed:false,raw_data_delivered:false,
   payment_authorized_by_discovery:false,
@@ -96,6 +108,7 @@ export function officialGeomacroAgentOpenApi(){
    "400":{description:"Invalid or unsupported query"},
    "402":{description:"Only after canonical deliverability and payment preflight, not a blanket price offer"},
    "422":{description:"Not eligible or insufficient original evidence/rights"},
+   "429":{description:"Rate limited; honor Retry-After if present and back off without auto-paying"},
    "503":{description:"Unavailable or unverified data runtime; no paid delivery"},
   },
  });
@@ -110,12 +123,24 @@ export function officialGeomacroAgentOpenApi(){
      operationId:"discoverOfficialGeomacroAgent",
      responses:{"200":{description:"Public discovery only; never implies paid readiness."}}},
     post:{...op("Call a Geomacro tool using canonical x402 evidence gates","post"),
-     requestBody:{required:true,content:{"application/json":{schema:{
-      type:"object",additionalProperties:false,required:["tool","arguments"],
-      properties:{
-       tool:{type:"string",enum:GEOMACRO_AGENT_TOOLS.filter(t=>t.paid).map(t=>t.name)},
-       arguments:{type:"object",description:"Exact inputSchema from GET /api/v1/agent tools list."},
-      }}}}}},
+     requestBody:{required:true,content:{"application/json":{
+      schema:{
+       type:"object",additionalProperties:false,required:["tool","arguments"],
+       properties:{
+        tool:{type:"string",enum:GEOMACRO_AGENT_TOOLS.filter(t=>t.paid).map(t=>t.name)},
+        arguments:{type:"object"},
+       },
+       // Match tool and arguments together: generic object schemas cause
+       // generated clients to send wrong envelopes that cannot be charged.
+       oneOf:GEOMACRO_AGENT_TOOLS.filter(t=>t.paid).map(t=>({
+        properties:{tool:{const:t.name},arguments:t.inputSchema},
+        required:["tool","arguments"],
+       })),
+      },
+      examples:Object.fromEntries(GEOMACRO_AGENT_TOOLS.filter(t=>t.paid).map(t=>[
+       t.name,{summary:t.description,value:{tool:t.name,arguments:t.example}},
+      ])),
+     }}},
    },
    [endpoints.canonical_intelligence]:{post:op("Query canonical Geomacro paid intelligence","post")},
    [endpoints.geopolitics]:{post:op("Query geopolitics scoped intelligence","post")},
