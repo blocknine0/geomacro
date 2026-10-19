@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { gzipSync, gunzipSync } from "node:zlib";
+import {
+  encodePrivateStageCompanionB2Bundle, verifyPrivateStageCompanionB2Bundle,
+  PRIVATE_COMBINED_ARCHIVE_SCHEMA,
+} from "../lib/private-stage-companion-b2-bundle.mjs";
 import { createB2Client } from "./b2-s3-client.mjs";
 import { createD1ControlPlaneStateClient } from "../lib/d1-control-plane-state.mjs";
 import { verifyPrivateScoringD1Checkpoint } from "../lib/private-scoring-d1-checkpoint-proof.mjs";
@@ -13,13 +16,10 @@ import {
   CANONICAL_CLASSIFIER_VERSION,
   makePrivateStageBundle,
   validatePrivateStageBundle,
-  sha256,
 } from "../lib/restricted-private-scored-stage.mjs";
 
 const ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const BUCKET = "geomacro-private-archive";
-const PRIVATE_PREFIX = "geomacro-evidence/v1/private/restricted-current-scoring/";
-const PRIVATE_SOURCE_PREFIX = "geomacro-evidence/v1/private/gri-original-source-companions/";
 const ARTIFACT_DIR = "artifacts/restricted-current-scoring";
 const MAX_INPUT_BYTES = 80 * 1024;
 const MAX_B2_REQUESTS = 6;
@@ -110,72 +110,39 @@ const sourceCompanion = makePrivateGriCompanionBundle(
   stage, loadPrivateSourceCandidates(),
 );
 validatePrivateGriCompanionBundle(sourceCompanion, stage);
-const sourceCompanionRaw=Buffer.from(JSON.stringify(sourceCompanion),"utf8");
-if(sourceCompanionRaw.length > MAX_INPUT_BYTES)
-  throw new Error("PRIVATE_GRI_COMPANION_BUNDLE_TOO_LARGE");
-const sourceCompanionPacked=gzipSync(sourceCompanionRaw,{level:9});
-const sourceCompanionDigest=sha256(sourceCompanionPacked);
-const sourceCompanionKey=`${PRIVATE_SOURCE_PREFIX}${sourceCompanionDigest}.json.gz`;
-const raw = Buffer.from(JSON.stringify(stage), "utf8");
-if (raw.byteLength > MAX_INPUT_BYTES) {
-  throw new Error("PRIVATE_SCORING_STAGE_BUNDLE_TOO_LARGE");
-}
-const packed = gzipSync(raw, { level: 9 });
-const digest = sha256(packed);
-const key = `${PRIVATE_PREFIX}${digest}.json.gz`;
-const b2 = createB2Client({
-  endpointUrl: ENDPOINT,
-  accessKey: process.env.B2_KEY_ID,
-  secretKey: process.env.B2_APPLICATION_KEY,
-  bucket: BUCKET,
+// The canonical stage and its sensitive first-party source companion share
+// ONE content-addressed B2 gzip. The bundle preserves separate logical hashes
+// and validates both members against the exact signed GET byte readback.
+const bundle=encodePrivateStageCompanionB2Bundle(stage,sourceCompanion);
+const raw=bundle.stageBytes;
+const sourceCompanionRaw=bundle.companionBytes;
+const packed=bundle.bytes;
+const digest=bundle.digest;
+const key=bundle.key;
+const sourceCompanionKey=key; // same fetched B2 object, not a second upload
+const sourceCompanionDigest=digest;
+const b2=createB2Client({
+  endpointUrl:ENDPOINT,
+  accessKey:process.env.B2_KEY_ID,
+  secretKey:process.env.B2_APPLICATION_KEY,
+  bucket:BUCKET,
 });
 
-let restored = false;
-const b2Receipt = await b2.putWithMetadataVerification(key, packed, {
+let restored=false;
+const b2Receipt=await b2.putWithMetadataVerification(key,packed,{
   verifyRestored(readback) {
-    let parsed;
-    try {
-      parsed = JSON.parse(gunzipSync(readback).toString("utf8"));
-    } catch {
-      throw new Error("PRIVATE_SCORING_B2_GZIP_RESTORE_INVALID");
-    }
-    validatePrivateStageBundle(parsed);
-    if (JSON.stringify(parsed) !== JSON.stringify(stage)) {
-      throw new Error("PRIVATE_SCORING_B2_EXACT_RESTORE_MISMATCH");
-    }
-    restored = true;
+    verifyPrivateStageCompanionB2Bundle(readback,bundle);
+    restored=true;
   },
 });
-if (b2Receipt.sha256 !== digest ||
-    b2Receipt.full_body_readback_verified !== true ||
-    !restored || b2.usage().requests_started > MAX_B2_REQUESTS) {
-  throw new Error("PRIVATE_SCORING_B2_READBACK_PROOF_INVALID");
+if(b2Receipt.sha256!==digest ||
+   b2Receipt.full_body_readback_verified!==true ||
+   !restored || b2.usage().requests_started>MAX_B2_REQUESTS) {
+  throw new Error("PRIVATE_SCORING_BUNDLED_B2_READBACK_PROOF_INVALID");
 }
-
-// Persist ORIGINAL private publisher titles only in the separately named,
-// content-addressed companion. A D1 checkpoint is forbidden until BOTH the
-// scoring stage AND the companion independently survive full B2 readback.
-let sourceCompanionRestored=false;
-const sourceCompanionReceipt=await b2.putWithMetadataVerification(
-  sourceCompanionKey, sourceCompanionPacked, {
-    verifyRestored(readback) {
-      let restoredSource;
-      try { restoredSource=JSON.parse(gunzipSync(readback).toString("utf8")); }
-      catch { throw new Error("PRIVATE_GRI_COMPANION_B2_GZIP_RESTORE_INVALID"); }
-      validatePrivateGriCompanionBundle(restoredSource, stage);
-      if(JSON.stringify(restoredSource)!==JSON.stringify(sourceCompanion))
-        throw new Error("PRIVATE_GRI_COMPANION_B2_EXACT_RESTORE_INVALID");
-      sourceCompanionRestored=true;
-    },
-  },
-);
-if(sourceCompanionReceipt.sha256!==sourceCompanionDigest ||
-   sourceCompanionReceipt.full_body_readback_verified!==true ||
-   !sourceCompanionRestored ||
-   b2.usage().requests_started > MAX_B2_REQUESTS) {
-  throw new Error("PRIVATE_GRI_COMPANION_B2_READBACK_PROOF_INVALID");
-}
-
+// Both original members are restored from the SAME verified gzip. Source
+// text stays private and is never copied into public D1 or Actions artifacts.
+const sourceCompanionRestored=true;
 // Durable control-plane metadata is compact, source-free, and written ONLY
 // after B2 full byte readback + gzip/JSON/contract exact restore succeeded.
 // No public overlay, scored-only projection, or paid API reads this checkpoint.
@@ -190,6 +157,9 @@ await control.persist("private_stage", {
     sha256: digest,
     classifier_version: CANONICAL_CLASSIFIER_VERSION,
     counts: stage.counts,
+    archive_format: PRIVATE_COMBINED_ARCHIVE_SCHEMA,
+    stage_logical_sha256:bundle.stageSha256,
+    source_companion_logical_sha256:bundle.companionSha256,
     source_companion_key: sourceCompanionKey,
     source_companion_sha256: sourceCompanionDigest,
     source_companion_stage_sha256: sourceCompanion.stage_bundle_sha256,
@@ -213,6 +183,8 @@ verifyPrivateScoringD1Checkpoint(checkpoint, {
   sourceCompanion: {
     key: sourceCompanionKey, compressedSha256: sourceCompanionDigest,
     stageSha256: sourceCompanion.stage_bundle_sha256,
+    logicalSha256: bundle.companionSha256,
+    stageLogicalSha256: bundle.stageSha256,
   },
 });
 
@@ -220,6 +192,9 @@ const receipt = {
   ok: true,
   schema: "geomacro.restricted-private-scoring-archive-proof.v1",
   role: "private_stage_only",
+  archive_format: PRIVATE_COMBINED_ARCHIVE_SCHEMA,
+  stage_uncompressed_sha256:bundle.stageSha256,
+  companion_uncompressed_sha256:bundle.companionSha256,
   content_addressed_b2_key: key,
   compressed_sha256: digest,
   compressed_bytes: packed.length,
@@ -245,9 +220,9 @@ const receipt = {
   verified_at: now,
 };
 mkdirSync(ARTIFACT_DIR, { recursive: true, mode: 0o700 });
-// Never upload these files as Actions artifacts. They are exact, verified B2
-// gzip-restored local representations for the optional PRIVATE GRI producer.
-// Save ONLY after both full B2 readbacks and independent D1 readback succeeded.
+// Never upload these files as Actions artifacts. They are exact local
+// members independently SHA-checked inside ONE full B2 readback, then bound
+// by a compact D1 checkpoint. The optional private GRI producer uses them.
 writeFileSync(`${ARTIFACT_DIR}/verified-stage.json`,
   raw, { mode: 0o600, flag: "wx" });
 writeFileSync(`${ARTIFACT_DIR}/verified-source-companion.json`,
