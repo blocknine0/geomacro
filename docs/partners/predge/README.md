@@ -27,12 +27,17 @@ eligibility to unclassified candidates. Records explicitly mark
 ## Confirmed free research feed: no private partner gate
 
 The **existing public** `derived-structural-72h` GET may be read for the
-90-day internal **testing and validation** scope, with zero payment, no new
-partner key and no per-item private approval receipt. The source-neutral
-journal validator and upstream content-rights exclusions still apply. In
-particular, there is **no claim of a new authenticated partner delivery
-channel**; a partner's private credential, quota receipt or signed GRO
-verification is *not* a prerequisite to reading this already-public feed.
+90-day internal **testing and validation** scope, with zero payment, no
+partner key and no per-item private approval receipt. The separate
+`/v1/partner/predge/derived-structural-72h` authenticated pilot route
+from PR #2501 requires **one dedicated securely shared research Bearer
+token**, not repeated item-ID, partner-scope or reviewer receipts. The source-neutral
+journal validator and upstream content-rights exclusions still apply.
+Do not confuse the token-free public GET with the **dedicated-token private
+research GET**. The private route must pass its real post-deploy authenticated
+versus anonymous acceptance before delivery is called operational.
+Neither route requires a signed GRO, per-item private clearance or x402
+settlement for the explicitly non-commercial evaluation data.
 
 Use the *same* D1-derived observation `id`, original publication clock,
 category, candidate-vs-classified state and Geomacro context across the

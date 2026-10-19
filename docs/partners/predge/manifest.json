@@ -40,5 +40,12 @@
   "signed_market_fields_origin": "PREDGE_INDEPENDENT_SIGNATURE_VERIFICATION",
   "predge_market_driver_accepted": false,
   "first_real_input_feedback_target_date": "2026-11-02",
-  "no_new_private_partner_auth_claimed": true
+  "no_new_private_partner_auth_claimed": true,
+  "private_predge_research_route": "https://geomacro-control-plane.daspallab202391.workers.dev/v1/partner/predge/derived-structural-72h",
+  "private_predge_research_route_requires_dedicated_bearer": true,
+  "private_research_route_per_item_receipts_required": false,
+  "private_research_route_anonymous_access_allowed": false,
+  "private_predge_token_securely_delivered_to_partner_verified": false,
+  "private_predge_live_auth_acceptance_verified": false,
+  "provisional_private_research_route_expiry": "2027-01-17T00:00:00.000Z"
 }

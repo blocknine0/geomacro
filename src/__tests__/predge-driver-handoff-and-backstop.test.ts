@@ -55,6 +55,13 @@ describe("Predge 90-day no-funds integration handoff",()=>{
     expect(manifest.free_public_research_feed_requires_rights_review_receipt).toBe(false);
     expect(manifest.free_public_research_feed_requires_approved_item_ids).toBe(false);
     expect(manifest.free_public_research_feed_requires_signed_gri).toBe(false);
+    expect(manifest.private_predge_research_route_requires_dedicated_bearer).toBe(true);
+    expect(manifest.private_research_route_anonymous_access_allowed).toBe(false);
+    expect(manifest.private_research_route_per_item_receipts_required).toBe(false);
+    expect(manifest.private_predge_token_securely_delivered_to_partner_verified).toBe(false);
+    expect(manifest.private_predge_live_auth_acceptance_verified).toBe(false);
+    expect(read).toContain("one dedicated securely shared research Bearer");
+    expect(read).toContain("/v1/partner/predge/derived-structural-72h");
     expect(manifest.internal_testing_and_validation_only).toBe(true);
     expect(manifest.resale_or_onward_redistribution_authorized).toBe(false);
     expect(manifest.unscored_observations_advisory_only).toBe(true);
