@@ -148,10 +148,10 @@ jobs:
         if: steps.decide.outputs.should_run == 'true'
         run: node scripts/ops/build-material-gri-country-worklist.mjs
       - name: Independently verify signed Finds across combined and category reads
-        if: always()
+        if: always() && steps.decide.outputs.should_run == 'true'
         # A held B2/archive signer is a separately monitored signed-product
         # degradation, not a failure of the independently verified free D1 feed.
-        continue-on-error: true && steps.decide.outputs.should_run == 'true'
+        continue-on-error: true
         shell: bash
         run: |
           bun - <<'TS'

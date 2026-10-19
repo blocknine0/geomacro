@@ -1,0 +1,73 @@
+{
+  "attribution": [],
+  "commercial_eligibility": {
+    "status": "UNVERIFIED",
+    "reason_codes": [
+      "SYNTHETIC_UNSIGNED_CORRIDOR_NO_REAL_EVIDENCE"
+    ]
+  },
+  "confidence": 0.72,
+  "evidence": [],
+  "evidence_coverage": null,
+  "evidence_summary": {
+    "event_count": 0,
+    "evidence_count": 0,
+    "independent_source_count": 0
+  },
+  "expires_at": "2026-09-07T21:30:37.459Z",
+  "generated_at": "2026-09-07T18:30:37.459Z",
+  "integrity": {
+    "calculation_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "canonicalization": "geomacro-canonical-json-v1",
+    "data_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "payload_hash": null,
+    "signature": null,
+    "signature_scheme": "Ed25519",
+    "signing_key_id": "canonical-test-key-1"
+  },
+  "issuer": "Geomacro",
+  "methodology_version": "corridor-endpoint-max-v0.1.0-pilot",
+  "object_id": "gro_corridor_IND_ARE_predge_illustrative_only",
+  "provenance": {
+    "country_versions": [],
+    "relevance_versions": [],
+    "scoring_versions": [],
+    "story_versions": [],
+    "structure_versions": []
+  },
+  "risk": {
+    "score": 68,
+    "label": "ELEVATED",
+    "previous_score": null,
+    "delta": null,
+    "direction": "unknown"
+  },
+  "schema_version": "gro-1.1",
+  "subject": {
+    "type": "corridor",
+    "id": "IND>ARE",
+    "name": "India to United Arab Emirates"
+  },
+  "verification": {
+    "status": "INCOMPLETE",
+    "reason_codes": [
+      "ILLUSTRATIVE_ONLY_NO_REAL_GRO_SIGNATURE"
+    ],
+    "last_verified_at": null
+  },
+  "corridor_context": {
+    "origin_country_iso3": "IND",
+    "destination_country_iso3": "ARE",
+    "composition": "max_endpoint_score_v1",
+    "dominant_endpoint": "origin",
+    "source_risk_object_ids": [
+      "gro_ind_illustrative_only",
+      "gro_are_illustrative_only"
+    ],
+    "source_calculation_hashes": [
+      "1111111111111111111111111111111111111111111111111111111111111111",
+      "2222222222222222222222222222222222222222222222222222222222222222"
+    ]
+  }
+}

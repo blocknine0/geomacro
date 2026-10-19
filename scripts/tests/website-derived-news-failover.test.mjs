@@ -190,3 +190,13 @@ test("hourly cadence CLI counts only real D1-writer-and-readback recovery when p
     }
   }finally{rmSync(temp,{recursive:true,force:true});}
 });
+
+test("backstop workflow is parseable by GitHub with a real boolean continue-on-error",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const src=readFileSync(new URL("../../.github/workflows/website-derived-news-cadence-backstop.yml",import.meta.url),"utf8");
+  assert.ok(src.includes("if: always() && steps.decide.outputs.should_run == 'true'"));
+  assert.ok(src.includes("continue-on-error: true"));
+  assert.ok(!src.includes("continue-on-error: true &&"));
+  assert.ok(src.includes('cron: "22,52 * * * *"'));
+  assert.ok(src.includes("group: geomacro-website-derived-news-continuity"));
+});

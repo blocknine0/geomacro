@@ -1,0 +1,49 @@
+{
+  "schema_version": "risk-gate-1.0",
+  "request_id": "predge-pilot-integration-fixture-001",
+  "decision": "PAUSE",
+  "recommended_action": "BLOCK",
+  "reason_codes": [
+    "risk_object_incomplete",
+    "commercial_verification_required"
+  ],
+  "counterfactual": {
+    "version": "risk-gate-counterfactual-v1.0.0",
+    "current_action": "BLOCK",
+    "next_less_restrictive_action": "REQUIRE_HUMAN_APPROVAL",
+    "blockers": [
+      {
+        "type": "verification",
+        "reason_code": "complete_verifiable_risk_object_required",
+        "current_value": "INCOMPLETE",
+        "required_value": "VERIFIED",
+        "delta_required": null
+      }
+    ],
+    "note": "Counterfactual context only; it never authorizes execution."
+  },
+  "subject": {
+    "id": "USA",
+    "name": "United States",
+    "type": "country"
+  },
+  "risk": {
+    "object_id": "gro_country_USA_canonical_v1_test",
+    "score": 61,
+    "label": "ELEVATED",
+    "previous_score": 58,
+    "delta": 3,
+    "confidence": 0.88,
+    "verification_status": "INCOMPLETE",
+    "commercial_eligibility_status": "UNVERIFIED",
+    "generated_at": "2026-09-07T18:30:37.459Z",
+    "expires_at": "2026-09-07T21:30:37.459Z",
+    "methodology_version": "country-risk-v0.1.0-pilot"
+  },
+  "top_drivers": [],
+  "policy": {
+    "policy_id": "predge-free-pilot-review-only",
+    "policy_version": "1"
+  },
+  "execution_authorized": false
+}

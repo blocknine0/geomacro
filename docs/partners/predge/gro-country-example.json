@@ -1,0 +1,59 @@
+{
+  "attribution": [],
+  "commercial_eligibility": {
+    "status": "UNVERIFIED",
+    "reason_codes": [
+      "TEST_ONLY_NO_COMMERCIAL_CLEARANCE"
+    ]
+  },
+  "confidence": 0.88,
+  "evidence": [],
+  "evidence_coverage": null,
+  "evidence_summary": {
+    "event_count": 0,
+    "evidence_count": 0,
+    "independent_source_count": 0
+  },
+  "expires_at": "2026-09-07T21:30:37.459Z",
+  "generated_at": "2026-09-07T18:30:37.459Z",
+  "integrity": {
+    "calculation_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "canonicalization": "geomacro-canonical-json-v1",
+    "data_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "payload_hash": null,
+    "signature": null,
+    "signature_scheme": "Ed25519",
+    "signing_key_id": "canonical-test-key-1"
+  },
+  "issuer": "Geomacro",
+  "methodology_version": "country-risk-v0.1.0-pilot",
+  "object_id": "gro_country_USA_canonical_v1_test",
+  "provenance": {
+    "country_versions": [],
+    "relevance_versions": [],
+    "scoring_versions": [],
+    "story_versions": [],
+    "structure_versions": []
+  },
+  "risk": {
+    "delta": 3,
+    "direction": "escalating",
+    "label": "ELEVATED",
+    "previous_score": 58,
+    "score": 61
+  },
+  "schema_version": "gro-1.1",
+  "subject": {
+    "id": "USA",
+    "name": "United States",
+    "type": "country"
+  },
+  "verification": {
+    "status": "INCOMPLETE",
+    "reason_codes": [
+      "TEST_VECTOR_NOT_PRODUCTION_EVIDENCE"
+    ],
+    "last_verified_at": null
+  }
+}
