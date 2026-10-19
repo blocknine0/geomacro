@@ -50,3 +50,25 @@ No new payment, Supabase, B2 network operations, raw source redistribution,
 third-party attribution suppression, fake events or additional cron jobs.
 
 Worker deployment must independently pass `verify-shared-derived-news-live.mjs`: parity of all retained journal IDs, category, publication time and derived explanations with structured records. This does not prove commercial redistribution rights.\n
+## Candidate-admission tier for 90-day free Predge pilot
+
+Every **valid dated first-party original-source** input admitted by the
+existing licensed/approved feed readers is projected even when no topic
+keyword matches. Those rows use `official_feed_candidate_unscored` in the
+existing 72h Cloudflare D1 journal and
+`DATED_OFFICIAL_FEED_CANDIDATE_UNCLASSIFIED` in the exact same website/Predge
+structured JSON response. The separate fields
+`topical_match_verified:false`, `qualifying_topic_release_verified:false`
+and `further_validation_required:true` protect against inventing a
+geopolitical, macro or minerals event from an unrelated original publication.
+
+Dated, topic-matched genuine releases remain unchanged. Off-domain links,
+unverified originating publication dates, deduplicated repeats, hidden
+mandatory attribution, the 15-minute (or conservative day-only) embargo,
+72-hour retention and 600-row bound remain enforced. The existing private
+GRI and commercial signed-data gates do not accept the candidate-only status.
+
+The public pilot research endpoint charges 0 USDC, bounded to at most 600
+retained D1 records per response. The 90-day evaluation is a proposed pilot
+term and **not** a private metered quota or enforceable SLA in this public
+endpoint. Do not describe this as actual commercial redistribution permission.

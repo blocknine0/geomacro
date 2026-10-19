@@ -18,7 +18,9 @@ const TOPICS = new Set(["sanctions and trade restrictions","security and diploma
   "FX and external balances","financial conditions","trade and economic relations",
   "official economic statistics","rare-earth supply",
   "critical-mineral inputs","critical-minerals policy",
-  "mineral exploration and production"]);
+  "mineral exploration and production",
+  "geopolitical publisher candidate","macro publisher candidate",
+  "minerals publisher candidate"]);
 const SIGNAL_KEYS = new Set(["id","category","title","why_it_matters","topic",
   "what_changed","geography","development_type","published_at","date_precision",
   "observed_release_count","sources_credited","status",
@@ -60,7 +62,14 @@ export function verifyDerivedStory(s, now=Date.now()) {
       typeof s.development_type!=="string" || s.development_type.length>80 ||
       !(s.geography===null || typeof s.geography==="string"&&s.geography.length<=70) ||
       s.observed_release_count!==1 ||
-      s.status!=="official_release_observed_unscored" ||
+      !((s.status==="official_release_observed_unscored" &&
+          !s.topic.endsWith(" publisher candidate")) ||
+        (s.status==="official_feed_candidate_unscored" &&
+          ((s.category==="geopolitics"&&s.topic==="geopolitical publisher candidate")||
+           (s.category==="macro"&&s.topic==="macro publisher candidate")||
+           (s.category==="rare_earth"&&s.topic==="minerals publisher candidate")) &&
+          s.development_type==="unclassified publisher update" &&
+          s.geography===null)) ||
       s.same_event_corrob_verified!==false ||
       s.severity!==null ||
       !Array.isArray(s.sources_credited) || s.sources_credited.length>2 ||
@@ -155,7 +164,8 @@ export async function renderDerivedStoriesHtml(env,now=Date.now()){
   const body=await response.json();
   const labels={geopolitics:"Geopolitics",macro:"Macro / FX",rare_earth:"Critical Minerals"};
   const records=body.signals.filter(s=>verifyDerivedStory(s,now)).slice(0,150);
-  const stories=records.map(s=>'<article><div class="label">GEOMACRO FINDS · '+
+  const stories=records.map(s=>'<article><div class="label">'+
+    (s.status==="official_feed_candidate_unscored"?"SOURCE CANDIDATE · TOPIC UNVERIFIED":"GEOMACRO FINDS")+' · '+
     escapeHtml(labels[s.category])+' · <time>'+escapeHtml(s.published_at)+
     '</time></div><h2>'+escapeHtml(s.title)+
     '</h2><section><div><strong>What changed</strong><p>'+escapeHtml(s.what_changed)+

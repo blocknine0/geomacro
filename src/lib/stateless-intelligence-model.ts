@@ -45,7 +45,7 @@ export type StatelessIntelligenceSignal = {
   date_precision: "exact" | "day";
   observed_release_count: 1;
   sources_credited: string[];
-  status: "official_release_observed_unscored";
+  status: "official_release_observed_unscored" | "official_feed_candidate_unscored";
   same_event_corrob_verified: false;
   severity: null;
 };
@@ -251,6 +251,16 @@ const STATCAN_DAILY_TOPIC = {
   test: /./,
   name: "official economic statistics",
   implication: "An original-dated first-party economic statistical release may inform macroeconomic context; no metric direction, materiality or risk score is inferred from its headline.",
+};
+/** Not every issuer-feed item matches the monitored topic. Retain it as a
+ * clearly unclassified candidate rather than inventing topical event facts. */
+const UNCLASSIFIED_FEED_TOPIC:Record<StatelessCategory,{name:string;implication:string}> = {
+  geopolitics:{name:"geopolitical publisher candidate",
+    implication:"A dated official-source item was observed in a geopolitical publisher feed, but its relevance, event facts and impact remain unverified."},
+  macro:{name:"macro publisher candidate",
+    implication:"A dated official-source item was observed in a macroeconomic publisher feed, but its topical relevance, figures and impact remain unverified."},
+  rare_earth:{name:"minerals publisher candidate",
+    implication:"A dated official-source item was observed in a minerals publisher feed, but its minerals relevance, production and supply impact remain unverified."},
 };
 function topicForOriginal(
   title: string, category: StatelessCategory, sourceId: string, dayVerified: boolean,
@@ -497,7 +507,8 @@ export function deriveStatelessSignals(
     if (url.protocol !== "https:" || url.username || url.password || url.port ||
         url.hash || !url.hostname) continue;
     const topic = topicForOriginal(item.title, item.category, item.sourceId, dayOnly);
-    if (!topic) continue;
+    const candidateOnly=topic===null;
+    const selected=topic??UNCLASSIFIED_FEED_TOPIC[item.category];
     // The same official article can occur in several publisher subject feeds.
     // Deduplicate by the exact admitted article URL within its category,
     // not the feed lane ID; never collapse different source articles by topic.
@@ -514,23 +525,27 @@ export function deriveStatelessSignals(
     const deliveryIdentity = item.category + "|" + url.href;
     if (unique.has(deliveryIdentity)) continue;
     unique.add(deliveryIdentity);
-    const focus = SAFE_FOCUS[item.category].find(rule => rule.test.test(item.title))?.label ?? topic.name;
-    const geography = geographyMention(item.title);
-    const kind = developmentKind(item.title);
+    const focus=candidateOnly?selected.name:
+      SAFE_FOCUS[item.category].find(rule => rule.test.test(item.title))?.label ?? selected.name;
+    const geography=candidateOnly?null:geographyMention(item.title);
+    const kind=candidateOnly?"unclassified publisher update":developmentKind(item.title);
     result.push({
       id: item.category + "-" + viewIdentifier(fingerprint),
       category: item.category,
       title: "Geomacro finds " + kind + " on " + focus + (geography ? " — " + geography : ""),
-      why_it_matters: topic.implication,
-      what_changed: developmentSummary(focus, kind, geography),
+      why_it_matters:selected.implication,
+      what_changed:candidateOnly?
+        "A dated first-party source item was observed; category relevance, event details and material changes have not yet been established.":
+        developmentSummary(focus,kind,geography),
       geography,
       development_type: kind,
-      topic: topic.name,
+      topic: selected.name,
       published_at: dayOnly ? item.publishedAt : new Date(native).toISOString(),
       date_precision: dayOnly ? "day" : "exact",
       observed_release_count: 1,
       sources_credited: item.credit ? [item.credit] : [],
-      status: "official_release_observed_unscored",
+      status:candidateOnly?"official_feed_candidate_unscored":
+        "official_release_observed_unscored",
       same_event_corrob_verified: false,
       severity: null,
     });

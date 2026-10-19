@@ -29,7 +29,9 @@ describe("Ask Geomacro realtime search fallback", () => {
     expect(shared).toContain("Promise.allSettled(");
     expect(shared).toContain("verifyDerivedStory(s,now)");
     expect(shared).toContain("s.sources_credited.length===0");
-    expect(verifier).toContain('s.status!=="official_release_observed_unscored"');
+    expect(verifier).toContain('s.status==="official_release_observed_unscored"');
+    expect(verifier).toContain('s.status==="official_feed_candidate_unscored"');
+    expect(shared).toContain('s.status==="official_release_observed_unscored"');
     expect(verifier).toContain("s.same_event_corrob_verified!==false");
     expect(verifier).toContain("s.severity!==null");
     expect(orchestrator).toContain("selectOfficialNewsCategories(question)");
