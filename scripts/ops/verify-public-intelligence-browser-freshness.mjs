@@ -51,19 +51,32 @@ export function evaluatePublicNews(doc,dom,now=Date.now()) {
     }
   }
   const d1Domains=DOMAINS.filter(x=>counts[x].stored_72h>0);
+  // Publisher quiet periods cannot manufacture articles. All three browse
+  // controls must still render, while only D1-backed news needs a story card.
+  const deskPresent=/<main\b[^>]*data-testid=["']geomacro-derived-news-desk["']/iu.test(dom);
+  const tabs=new Set();
+  for(const match of dom.matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/giu)){
+    const label=match[1].replace(/<[^>]*>/gu," ").replace(/\s+/gu," ").toLowerCase();
+    for(const domain of DOMAINS)
+      if(label.includes(CATEGORIES[domain]))tabs.add(domain);
+  }
+  const browserTabs=[...tabs].sort();
   const browserDomains=[...rendered].sort();
   return {
     schema:"geomacro.public-three-domain-freshness-observability.v1",
     checked_at:new Date(now).toISOString(),
     d1_domains_present:d1Domains,
     browser_domains_rendered:browserDomains,
+    browser_tabs_available:browserTabs,
+    actual_story_domains_required:d1Domains,
     category_counts:counts,
     last_original_publication_day:lastDates,
     publisher_realtime_guaranteed:false,
     current_signed_gro_verified:false,
     commercial_payments_authorized:false,
     raw_source_data_logged:false,
-    accepted:d1Domains.length===3 && browserDomains.length===3,
+    accepted:deskPresent && browserTabs.length===3 &&
+      d1Domains.every(domain=>rendered.has(domain)),
   };
 }
 export async function main(){
@@ -76,22 +89,31 @@ export async function main(){
   const body=await response.text();
   if(body.length>512_000)throw Error("PUBLIC_NEWS_D1_BODY_TOO_LARGE");
   const chrome=[
+    process.env.GEOMACRO_BROWSER_CHROME_PATH,
     "/usr/bin/google-chrome","/usr/bin/chromium","/usr/bin/chromium-browser",
-  ].find(p=>{
+  ].filter(Boolean).find(p=>{
     try{execFileSync("test",["-x",p],{stdio:"ignore"});return true;}catch{return false;}
   });
   if(!chrome)throw Error("PUBLIC_NEWS_HEADLESS_BROWSER_MISSING");
   let html="";
+  const {mkdtempSync,rmSync}=await import("node:fs");
+  const {tmpdir}=await import("node:os");
+  const {join}=await import("node:path");
+  const profile=mkdtempSync(join(tmpdir(),"geomacro-browser-"));
   try{
     html=execFileSync(chrome,[
-      "--headless","--no-sandbox","--disable-gpu",
-      "--disable-dev-shm-usage","--disable-background-networking",
-      "--virtual-time-budget=18000","--dump-dom",SITE,
-    ],{encoding:"utf8",timeout:47_000,maxBuffer:6_000_000,stdio:["ignore","pipe","ignore"]});
+      "--headless=new","--no-sandbox","--no-zygote","--disable-gpu",
+      "--disable-dev-shm-usage","--disable-extensions",
+      "--disable-background-networking","--no-first-run",
+      "--no-default-browser-check","--timeout=25000",
+      "--virtual-time-budget=12000","--user-data-dir="+profile,
+      "--dump-dom",SITE,
+    ],{encoding:"utf8",timeout:60_000,maxBuffer:6_000_000,stdio:["ignore","pipe","ignore"]});
   }catch { throw Error("PUBLIC_NEWS_BROWSER_RENDER_UNAVAILABLE"); }
+  finally{rmSync(profile,{recursive:true,force:true});}
   const report=evaluatePublicNews(JSON.parse(body),html);
   console.log(JSON.stringify(report));
-  if(!report.accepted) throw Error("PUBLIC_NEWS_THREE_DOMAINS_NOT_RENDERED");
+  if(!report.accepted) throw Error("PUBLIC_NEWS_BROWSER_TABS_OR_ACTUAL_CARDS_NOT_RENDERED");
   // Missing a 24h publisher release is a truthful business observation,
   // not itself ingestion failure or a trigger to backdate an older release.
   for(const domain of DOMAINS){
