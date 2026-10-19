@@ -157,6 +157,54 @@ describe("#1827 three-domain third publisher RSS/Atom strict private originals",
       "geopolitics",{now})).toThrow("OFFICIAL_THIRD_RSS_INVALID");
   });
 
+  it("accepts prefixed Atom title and genuine per-entry published time without page probing",async()=>{
+    const feed='<atom:feed xmlns:atom="http://www.w3.org/2005/Atom">'+
+      '<atom:entry><atom:title type="text">'+title.geopolitics+'</atom:title>'+
+      '<atom:link rel="alternate" href="'+url.geopolitics+'"/>'+
+      '<atom:published>2026-10-09T17:55:00.000Z</atom:published>'+
+      '<atom:updated>2026-10-09T18:09:00.000Z</atom:updated>'+
+      '</atom:entry></atom:feed>';
+    const diagnostics:Record<string,number>={};
+    const rows=parseOfficialThirdRss(feed,"geopolitics",{now,diagnostics});
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      publishedAt:"2026-10-09T17:55:00.000Z",
+      nativeTimeEvidence:"publisher_atom_entry_published",
+      privateOnly:true,rightsVerified:false,commercialEligible:false,
+    });
+    expect(diagnostics.third_atom_published_seen).toBe(1);
+    const requested:string[]=[];
+    const fetched=await fetchOfficialThirdPublisherArticles("geopolitics",{
+      now,fetchImpl:async(u:string)=>{
+        requested.push(u);
+        if(u===OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url)
+          return res(feed,"application/atom+xml");
+        throw Error("ARTICLE_PAGE_MUST_NOT_BE_PROBED_FOR_NATIVE_PUBLISHED");
+      },
+    });
+    expect(fetched).toHaveLength(1);
+    expect(requested).toEqual([OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url]);
+  });
+
+  it("never promotes prefixed Atom updated, future or wrong-origin entries",()=>{
+    const make=(clock:string,hostUrl=url.rare_earth)=>
+      '<atom:feed xmlns:atom="http://www.w3.org/2005/Atom">'+
+      '<atom:entry><atom:title>'+title.rare_earth+'</atom:title>'+
+      '<atom:link rel="alternate" href="'+hostUrl+'"/>'+
+      clock+'</atom:entry></atom:feed>';
+    const onlyUpdated=make('<atom:updated>2026-10-09T17:55:00.000Z</atom:updated>');
+    expect(parseOfficialThirdRss(onlyUpdated,"rare_earth",{now})).toEqual([]);
+    const future=make('<atom:published>2026-10-09T18:11:00.000Z</atom:published>');
+    expect(parseOfficialThirdRss(future,"rare_earth",{now})).toEqual([]);
+    const forged=make('<atom:published>2026-10-09T17:55:00.000Z</atom:published>',
+      'https://www.gov.uk.attacker.example/government/news/critical-minerals');
+    expect(parseOfficialThirdRss(forged,"rare_earth",{now})).toEqual([]);
+    const valid=make('<atom:published>2026-10-09T17:55:00.000Z</atom:published>');
+    const rows=parseOfficialThirdRss(valid,"rare_earth",{now});
+    expect(rows).toHaveLength(1);
+    expect(rows[0].publishedAt).toBe("2026-10-09T17:55:00.000Z");
+  });
+
   it("gates UK FCDO Atom on native original published, never updated, forged host or future",()=>{
     const valid=parseOfficialThirdRss(rss("geopolitics"),"geopolitics",{now});
     expect(valid).toHaveLength(1);
