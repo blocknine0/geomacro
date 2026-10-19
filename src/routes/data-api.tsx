@@ -81,7 +81,7 @@ function DataApiPage() {
               INTELLIGENCE API · AI AGENTS
             </Badge>
             <h1 className="mt-5 text-[clamp(2.7rem,6vw,5.5rem)] font-semibold leading-[0.96] tracking-[-0.05em]">
-              Risk intelligence, ready for your applications.
+              Structured risk intelligence for your applications.
             </h1>
             <p className="mt-6 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
               Geomacro delivers decision-ready geopolitical, macroeconomic and critical-mineral intelligence through governed machine interfaces. The intelligence stays canonical; API and x402 are delivery layers around the same verified product state.
@@ -93,7 +93,7 @@ function DataApiPage() {
               <Button asChild size="lg" variant="outline" className="h-12 px-6"><Link to="/docs">Developer documentation</Link></Button>
               <Button asChild size="lg" variant="ghost" className="h-12 px-5"><Link to="/contact">Discuss integration</Link></Button>
             </div>
-            <p className="mt-4 text-xs leading-5 text-muted-foreground">Standalone Geomacro AI Agent: <span className="font-semibold text-foreground">Coming Soon</span>. API access follows the live commercial status shown here.</p>
+            <p className="mt-4 text-xs leading-5 text-muted-foreground">Official AI Agent discovery and schemas are available where deployed. <span className="font-semibold text-foreground">Paid execution requires live verification</span>; no agent may assume commercial availability from this page.</p>
           </div>
 
           <div className="rounded-[1.65rem] border border-border/65 bg-card/65 p-5 shadow-2xl shadow-black/20 backdrop-blur sm:p-7">
@@ -162,10 +162,39 @@ function DataApiPage() {
         </div>
 
         <div className="mt-9 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatusCard icon={Database} status="LIVE" title="Public Intelligence" text="Geopolitical, macroeconomic and critical-mineral intelligence for browser research." />
-          <StatusCard icon={Sparkles} status="LIVE" title="Risk Indices" text="Separate public geopolitical, macroeconomic and critical-mineral risk indices." />
+          <StatusCard icon={Database} status="PUBLIC EXPLORER" title="Public Intelligence" text="Browse available, dated geopolitical, macroeconomic and critical-mineral developments; freshness varies by category." />
+          <StatusCard icon={Sparkles} status="VERIFY FRESHNESS" title="Risk Indices" text="Historical and current verified states are different; a visible index is not proof of a fresh signed reading." />
           <StatusCard icon={Fingerprint} status="PRIVATE PILOT" title="Risk Objects & Risk Gate" text="Signed country and directional-corridor objects with bounded pre-decision context." />
           <StatusCard icon={Braces} status="RUNTIME STATUS ABOVE" title="x402 agent access" text="Commercial machine-payment status comes from the runtime, not a hard-coded production claim." />
+        </div>
+      </section>
+
+      <section className="border-t border-border/55 bg-card/10" aria-labelledby="machine-quickstart">
+        <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Developer quickstart · no funds</p>
+          <h2 id="machine-quickstart" className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Inspect first. Pay only for deliverable data.</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
+            Discover the agent contract, compare exact prices, then perform a request-specific availability check before attempting a canonical x402 query.
+            Availability may differ by country, category, evidence date and product. No discovery call authorizes a payment.
+          </p>
+          <ol className="mt-6 grid gap-3 md:grid-cols-3">
+            <li className="rounded-xl border border-border/60 bg-background/50 p-4">
+              <p className="text-xs font-semibold">1. Discover schemas</p>
+              <a href="/api/v1/agent?view=openapi" className="mt-2 block break-all font-mono text-xs text-primary hover:underline">GET /api/v1/agent?view=openapi</a>
+            </li>
+            <li className="rounded-xl border border-border/60 bg-background/50 p-4">
+              <p className="text-xs font-semibold">2. Check approved prices</p>
+              <a href="/api/v1/pricing" className="mt-2 block break-all font-mono text-xs text-primary hover:underline">GET /api/v1/pricing</a>
+            </li>
+            <li className="rounded-xl border border-border/60 bg-background/50 p-4">
+              <p className="text-xs font-semibold">3. Check the requested data</p>
+              <code className="mt-2 block break-all font-mono text-xs text-foreground">POST /api/v1/intelligence/availability</code>
+            </li>
+          </ol>
+          <p className="mt-4 text-xs leading-6 text-muted-foreground">
+            For stale, missing or unqualified data: show the reason, do not treat old data as current, and do not automatically retry payment.
+            A confirmed payment quote must be bound to the canonical request, not to agent discovery.
+          </p>
         </div>
       </section>
 
