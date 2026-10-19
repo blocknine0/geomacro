@@ -299,7 +299,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         <label className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 text-xs text-muted-foreground">
           Publication window
           <select value={period} onChange={event=>setPeriod(event.target.value as IntelligenceDeskPeriod)} className="bg-card py-3 text-sm text-foreground" aria-label="Filter by publication time">
-            <option value="all">Last 30 days</option><option value="24h">Last 24 hours</option><option value="7d">Last 7 days</option>
+            <option value="all">All available releases</option><option value="24h">Last 24 hours</option><option value="7d">Last 7 days</option>
           </select>
         </label>
       </div>
@@ -315,9 +315,9 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
             </h2>
             <p role="status" className="mt-2 text-xs text-muted-foreground">
               {allSignals.length === 0
-                ? "Reading the verified 30-day Intelligence journal below"
+                ? "Reading the 72-hour stored derived-news journal below"
                 : recentCount + " in the last 24 hours · " +
-                  (categorySignals.length - recentCount) + " earlier (last 30 days)"}
+                  (categorySignals.length - recentCount) + " earlier (original-dated)"}
               {latestCheck ? " · Latest source check " + formatInstant(new Date(latestCheck).toISOString()) : ""}
             </p>
           </div>
@@ -379,7 +379,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
               </p>
             )}
             {earlier.length > 0 ? (
-              <section><h3 className="mb-3 text-sm font-semibold">Earlier original releases · Last 30 days</h3><div className="grid items-start gap-4 lg:grid-cols-2">{earlier.map(signal => <Story key={signal.id} signal={signal} checkedAt={checkedAt} />)}</div></section>
+              <section><h3 className="mb-3 text-sm font-semibold">Earlier original releases · Dated</h3><div className="grid items-start gap-4 lg:grid-cols-2">{earlier.map(signal => <Story key={signal.id} signal={signal} checkedAt={checkedAt} />)}</div></section>
             ) : null}
           </div>
         ) : missing.length === 0 ? (
@@ -396,7 +396,10 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         <p className="mt-8 text-xs leading-6 text-muted-foreground">
           Dates describe the original publication, not the last refresh. Earlier findings remain
           clearly dated. A publisher release alone does not establish a verified real-world outcome.
-          Required credits are retained; raw articles and source feeds are not delivered.
+          The stored 72-hour derived-news journal also powers a
+          <a className="mx-1 underline underline-offset-2" href="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/derived-structural-72h" target="_blank" rel="noopener noreferrer">structured research feed</a>
+          for machine evaluation, including the Predge pilot. It is unscored and not licensed for partner resale.
+          Required credits are retained on the website; raw articles and source feeds are not delivered.
         </p>
       </section>
     </main>

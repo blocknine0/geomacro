@@ -167,6 +167,13 @@ jobs:
             raw_upstream_disclosed:false,supabase_dependency:false}));
           NODE
 
+      - name: Confirm partner structured JSON equals the live retained Intelligence journal
+        # On main push, Worker deployment may still be in progress; scheduled
+        # collection and successful Worker-deploy wakeups verify exact parity.
+        if: always() && github.event_name != 'push'
+        shell: bash
+        run: node scripts/ops/verify-shared-derived-news-live.mjs
+
       - name: Save sanitized hourly three-category source health receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

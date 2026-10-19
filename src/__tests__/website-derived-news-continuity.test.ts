@@ -175,7 +175,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(route).toContain('initialJournal={loader.journal}');
     expect(desk).toContain("useState<StatelessIntelligenceSignal[]>(() => initialJournal)");
     expect(desk).toContain("allSignals.length === 0");
-    expect(desk).toContain("Reading the verified 30-day Intelligence journal below");
+    expect(desk).toContain("Reading the 72-hour stored derived-news journal below");
   });
   it("allows conservative day-only release only after its complete embargo",()=>{
     const day={...sample("rare_earth","2026-10-09"),date_precision:"day",

@@ -259,6 +259,10 @@ jobs:
           echo "::error::THREE_DOMAIN_CONTINUITY_DIRECT_D1_LIVE_READBACK_FAILED"
           exit 10
 
+      - name: Verify Predge structured feed matches three-domain website D1 journal
+        shell: bash
+        run: node scripts/ops/verify-shared-derived-news-live.mjs
+
       - name: Verify authenticated D1 central security budgets without B2 or payment
         run: node scripts/ops/verify-d1-central-security-budget.mjs
 
