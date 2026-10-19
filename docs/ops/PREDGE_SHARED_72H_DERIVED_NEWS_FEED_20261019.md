@@ -8,7 +8,7 @@
   path ONLY if the primary publisher has missed its 70m readback target.
 * Valid source-native original timestamps and a 15-minute public embargo
   (longer conservative embargo for day-only releases) are enforced before
-  inserting already-Geormacro-authored derived JSON into the existing
+  inserting already-Geomacro-authored derived JSON into the existing
   `website_derived_intelligence` Cloudflare D1 table. Stable opaque IDs
   dedupe retries; maximum 600 records and 72h first-seen/original-date TTL.
 * `https://geomacro.live/intelligence` reads the same 72h D1 journal
@@ -48,3 +48,5 @@ licensing solely because this public research endpoint is accessible.
 
 No new payment, Supabase, B2 network operations, raw source redistribution,
 third-party attribution suppression, fake events or additional cron jobs.
+
+Worker deployment must independently pass `verify-shared-derived-news-live.mjs`: parity of all retained journal IDs, category, publication time and derived explanations with structured records. This does not prove commercial redistribution rights.\n
