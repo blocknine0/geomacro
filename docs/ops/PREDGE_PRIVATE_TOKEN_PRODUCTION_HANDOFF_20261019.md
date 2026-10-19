@@ -21,8 +21,8 @@ The proof expressly did **not** assert token transmission to Predge.
    `$token = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)).ToLowerInvariant()`
    Keep this value private. **Do not paste it in an issue, PR, this chat,
    URL query or artifact. Never give the existing root ledger token**.
-2. In GitHub **Settings → Secrets and variables → Actions → Environments →
-   production** (or the repository Actions secrets if environment absent)
+2. In GitHub **Settings → Environments → production → Environment secrets**
+   (or **Settings → Secrets and variables → Actions → Repository secrets**)
    add `PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE` with that exact 64-character
    lowercase hex value. Existing deployment now prefers this private token
    and falls back to the original domain-separated HMAC without downtime.

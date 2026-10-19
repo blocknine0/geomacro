@@ -92,6 +92,7 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   expect(workflow).toContain("secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE");
   expect(workflow).toContain("PREDGE_RESEARCH_OVERRIDE_INVALID");
   expect(workflow).toContain("PREDGE_RESEARCH_ADMIN_TOKEN_REUSE_FORBIDDEN");
+  expect(workflow).toContain("PREDGE_RESEARCH_ROOT_SECRET_REUSE_FORBIDDEN");
   expect(workflow).toContain("PREDGE_RESEARCH_DEDICATED_GRANT_MODE");
   expect(workflow).not.toContain("echo ${PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE}");
   expect(workflow).toContain("verify-predge-auth-research-delivery.mjs");

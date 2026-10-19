@@ -159,6 +159,9 @@ jobs:
             if test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$CONTROL_PLANE_TOKEN"; then
               echo "::error::PREDGE_RESEARCH_ADMIN_TOKEN_REUSE_FORBIDDEN"; exit 5
             fi
+            if test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$ROOT_LEDGER_TOKEN"; then
+              echo "::error::PREDGE_RESEARCH_ROOT_SECRET_REUSE_FORBIDDEN"; exit 5
+            fi
             echo "PREDGE_RESEARCH_DEDICATED_GRANT_MODE=production-secret-override" >> "$GITHUB_ENV"
           else
             PREDGE_RESEARCH_NEWS_TOKEN="$(node -e "const c=require('node:crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-72h-research-only-v1').digest('hex'))")"
