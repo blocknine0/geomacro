@@ -1,0 +1,82 @@
+name: Predge Shared D1 News Live Parity (No Funds)
+# Direct read-only customer/partner API acceptance. The SAME persisted,
+# source-neutral 72h D1 journal backs website Intelligence and Predge.
+# Do not create a separate partner store, scrape sources, charge x402, or
+# silently relabel unsigned releases as GRO/current scored Risk Gate data.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/predge-shared-d1-news-live-acceptance.yml"
+      - "scripts/ops/verify-shared-derived-news-live.mjs"
+      - "docs/partners/predge/**"
+  pull_request:
+    paths:
+      - ".github/workflows/predge-shared-d1-news-live-acceptance.yml"
+      - "scripts/ops/verify-shared-derived-news-live.mjs"
+      - "src/__tests__/predge-shared-feed-live-workflow.test.ts"
+  workflow_run:
+    workflows: ["Website Derived News Continuity"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-predge-d1-research-live-readonly
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Validate pure no-funds readback
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/verify-shared-derived-news-live.mjs
+          grep -Fq 'same_journal_ids_verified:true' scripts/ops/verify-shared-derived-news-live.mjs
+          grep -Fq 'partner_resale_or_commercial_redistribution_authorized!==false' scripts/ops/verify-shared-derived-news-live.mjs
+          ! grep -Eq 'PAYMENT-SIGNATURE|secrets.B2_|SUPABASE_SERVICE_ROLE_KEY' scripts/ops/verify-shared-derived-news-live.mjs
+
+  live-parity:
+    needs: contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'push' ||
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_sha == github.sha
+        )
+      )
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Compare three-domain Predge JSON against ALL retained D1 Intelligence IDs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-shared-derived-news-live.mjs
+      - name: Distinguish real research parity from commercial settlement
+        run: |
+          echo "Predge research feed D1 identity readback checked; no real signed GRO or partner resale permission asserted." >> "$GITHUB_STEP_SUMMARY"
+          echo "No B2 request, payment, Supabase write, or private partner credentials." >> "$GITHUB_STEP_SUMMARY"
