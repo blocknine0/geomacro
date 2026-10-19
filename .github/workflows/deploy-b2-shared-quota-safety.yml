@@ -83,9 +83,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bash scripts/ops/prepare-edge-continuity.sh \
+          if bash scripts/ops/prepare-edge-continuity.sh \
             "$EDGE_PRODUCT" "$SOURCE_WORKFLOW" "$PROOF_SCHEMA" \
-            "workers/$EDGE_PRODUCT-edge/src/continuity.mjs"
+            "workers/$EDGE_PRODUCT-edge/src/continuity.mjs"; then
+            echo "VERIFIED_STATIC_B2_CONTINUITY_MATERIALIZED"
+          elif [ "$EDGE_PRODUCT" = "risk-indices" ]; then
+            # The former Postgres publisher is retired; no fresh B2 artifact
+            # exists. Do not invent one, and never replace a verified current
+            # 200 with unproven bytes. Reuse the reviewed safe-deploy gate.
+            code="$(curl -sS -D /tmp/phase2-indices-old.headers -o /tmp/phase2-indices-old.json -w '%{http_code}' --max-time 10 "$EDGE_URL/risk-indices" || true)"
+            decision="$(node scripts/ops/assess-risk-indices-code-deploy.mjs "$code" /tmp/phase2-indices-old.headers /tmp/phase2-indices-old.json)" || exit 13
+            if [ "$decision" = "PRESERVE_VERIFIED_CURRENT_EDGE" ]; then
+              echo "::error::CURRENT_SIGNED_INDICES_MUST_NOT_BE_REPLACED_WITH_NULL"
+              exit 13
+            fi
+            test "$decision" = "SAFE_CODE_ONLY_NULL_CONTINUITY" || exit 13
+            printf 'export default null;\n' > workers/risk-indices-edge/src/continuity.mjs
+            echo "::notice::RISK_INDICES_SAFE_CODE_ONLY_NO_SIGNED_CURRENT_PROOF"
+          else
+            echo "::error::SIGNED_B2_READBACK_ARTIFACT_REQUIRED"
+            exit 12
+          fi
       - name: Bind pre-existing shared D1 database without creating or writing
         shell: bash
         run: |
