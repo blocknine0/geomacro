@@ -33,7 +33,8 @@ const env=(rows:unknown[]=[],count=1)=>({PREDGE_RESEARCH_NEWS_TOKEN:TOKEN,
 describe("one grant for all qualifying Predge research news, still no resale",()=>{
  it("is authenticated and returns exactly the same D1 IDs without per-item approvals",async()=>{
   const rows=Array.from({length:63},(_,i)=>signal(i));
-  const response=await predgeResearchDerivedNewsFeed(make(),env(rows),NOW);
+  const seeded=env(rows);
+  const response=await predgeResearchDerivedNewsFeed(make(),seeded,NOW);
   expect(response.status).toBe(200);
   const data=await response.json();
   expect(data.items).toHaveLength(63);
@@ -52,7 +53,7 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   expect(response.headers.get("vary")).toBe("Authorization");
   expect(data.daily_utc_request_hard_cap).toBe(500);
   expect(data.distributed_rate_governor).toBe("ATOMIC_CLOUDFLARE_D1_FAIL_CLOSED");
-  expect(env(rows).DB.batch).toBeDefined();
+  expect(seeded.DB.batch).toHaveBeenCalledTimes(1);
  });
  it("gates invalid/missing token, malformed key and missing config",async()=>{
   const e=env([signal(0)]);
@@ -63,6 +64,9 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   }
   const none=await predgeResearchDerivedNewsFeed(make(),{...e,PREDGE_RESEARCH_NEWS_TOKEN:""},NOW);
   expect(none.status).toBe(503);
+  expect(e.DB.batch).not.toHaveBeenCalled();
+  const post=new Request(make().url,{method:"POST",headers:{authorization:"Bearer "+TOKEN}});
+  expect((await predgeResearchDerivedNewsFeed(post,e,NOW)).status).toBe(405);
   expect(e.DB.batch).not.toHaveBeenCalled();
  });
  it("limits authenticated reads atomically to 500 per UTC day before journal SELECT",async()=>{
