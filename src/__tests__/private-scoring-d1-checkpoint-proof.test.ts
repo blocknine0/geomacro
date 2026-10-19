@@ -60,7 +60,7 @@ describe("#1827 D1 independent compact private checkpoint verification", () => {
     expect(script).toContain("verifyPrivateScoringD1Checkpoint(checkpoint");
     expect(script).toContain("d1_checkpoint_readback_verified: true");
     expect(d1).toContain("SELECT scope,status,last_attempt_at,last_success_at,cursor,metadata_json,updated_at");
-    expect(script).toContain("b2Receipt.full_body_readback_verified !== true");
+    expect(script).toContain("b2Receipt.full_body_readback_verified!==true");
     expect(script).toContain("public_published: false");
     expect(script).toContain("commercial_eligible: false");
     expect(script).toContain("supabase_writes: 0");
