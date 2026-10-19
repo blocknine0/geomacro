@@ -164,7 +164,8 @@ export async function renderDerivedStoriesHtml(env,now=Date.now()){
   const body=await response.json();
   const labels={geopolitics:"Geopolitics",macro:"Macro / FX",rare_earth:"Critical Minerals"};
   const records=body.signals.filter(s=>verifyDerivedStory(s,now)).slice(0,150);
-  const stories=records.map(s=>'<article><div class="label">GEOMACRO FINDS · '+
+  const stories=records.map(s=>'<article><div class="label">'+
+    (s.status==="official_feed_candidate_unscored"?"SOURCE CANDIDATE · TOPIC UNVERIFIED":"GEOMACRO FINDS")+' · '+
     escapeHtml(labels[s.category])+' · <time>'+escapeHtml(s.published_at)+
     '</time></div><h2>'+escapeHtml(s.title)+
     '</h2><section><div><strong>What changed</strong><p>'+escapeHtml(s.what_changed)+

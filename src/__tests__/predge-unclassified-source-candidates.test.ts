@@ -6,6 +6,8 @@ import {verifyDerivedStory,readDerivedStories}
   from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {publicSharedDerivedNewsFeed}
   from "../../workers/control-plane/src/shared-derived-news-feed.mjs";
+import {findCardFromObservedRelease} from "../lib/find-card-v1";
+import {readFileSync} from "node:fs";
 import {collectSharedOfficialNews} from "../lib/ask-shared-derived-journal.server";
 import {buildMaterialGriReviewFromDerivedD1}
   from "../../scripts/lib/material-gri-news-review.mjs";
@@ -38,6 +40,7 @@ describe("low-friction genuine original-source candidate tier for Predge",()=>{
      expect(s.development_type).toBe("unclassified publisher update");
      expect(s.geography).toBeNull();
      expect(verifyDerivedStory(s,NOW)).toBe(true);
+     expect(findCardFromObservedRelease(s,NOW)).toBeNull();
      expect(JSON.stringify(s)).not.toContain(titles[i]);
      expect(JSON.stringify(s)).not.toContain("gov.example.net");
    }
@@ -94,5 +97,9 @@ describe("low-friction genuine original-source candidate tier for Predge",()=>{
    const queue=buildMaterialGriReviewFromDerivedD1(feed(candidates),NOW);
    expect(queue.categories.every((x:any)=>x.candidates_count===0)).toBe(true);
    expect(data.raw_upstream_delivered).toBe(false);
+   const website=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
+   expect(website).toContain("Unclassified source candidate · topic unverified");
+   const html=readFileSync("workers/control-plane/src/website-derived-intelligence.mjs","utf8");
+   expect(html).toContain("SOURCE CANDIDATE · TOPIC UNVERIFIED");
  });
 });

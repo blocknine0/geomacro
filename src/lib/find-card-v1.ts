@@ -116,7 +116,8 @@ export function findCardFromObservedRelease(
  // Existing public derived-journal proof gates: original date + 15m (or
  // next-day 12:15 for day-only), no copied source title or URL.
  // A required-credit source cannot become an attribution-free Find Card.
- if(!verifyDerivedStory(s,now)||s.sources_credited.length>0||
+ if(s.status!=="official_release_observed_unscored"||
+    !verifyDerivedStory(s,now)||s.sources_credited.length>0||
     !Number.isFinite(now))return null;
  const originalDate=s.date_precision==="day"
    ?s.published_at+"T00:00:00.000Z":s.published_at;
