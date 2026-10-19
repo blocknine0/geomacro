@@ -100,5 +100,11 @@ describe("low-friction genuine original-source candidate tier for Predge",()=>{
    // Website presentation stays locked; public candidate title still says unclassified.
    const html=readFileSync("workers/control-plane/src/website-derived-intelligence.mjs","utf8");
    expect(html).toContain("SOURCE CANDIDATE · TOPIC UNVERIFIED");
+   const wf=readFileSync(".github/workflows/website-derived-news-continuity.yml","utf8");
+   expect(wf).toContain('s.status==="official_feed_candidate_unscored"');
+   expect(wf).toContain('s.status==="official_release_observed_unscored"');
+   const parity=readFileSync("scripts/ops/verify-shared-derived-news-live.mjs","utf8");
+   expect(parity).toContain("row.qualifying_topic_release_verified");
+   expect(parity).toContain("row.topical_match_verified");
  });
 });
