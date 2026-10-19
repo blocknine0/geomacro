@@ -14,6 +14,7 @@ on:
       - "scripts/ops/restore-gri-verified-version-to-d1.mjs"
       - "scripts/ops/preflight-gri-historical-shared-quota.mjs"
       - "scripts/ops/preflight-gri-historical-existing-d1.mjs"
+      - "scripts/ops/preflight-phase2-reviewed-history.mjs"
       - ".github/workflows/gri-pinned-version-recovery.yml"
   pull_request:
     paths:
@@ -24,6 +25,8 @@ on:
       - "scripts/ops/preflight-gri-historical-shared-quota.mjs"
       - "src/__tests__/gri-historical-quota-aware-recovery.test.ts"
       - "src/__tests__/gri-historical-d1-idempotent-before-b2.test.ts"
+      - "scripts/ops/preflight-phase2-reviewed-history.mjs"
+      - "src/__tests__/gri-phase2-reviewed-history.test.ts"
       - ".github/workflows/gri-pinned-version-recovery.yml"
 permissions:
   contents: read
@@ -42,7 +45,7 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile --ignore-scripts
-      - run: bunx vitest run src/__tests__/gri-pinned-version-recovery.test.ts src/__tests__/gri-b2-historical-live-readback.test.ts src/__tests__/gri-verified-version-d1-restore.test.ts src/__tests__/gri-historical-quota-aware-recovery.test.ts src/__tests__/gri-historical-d1-idempotent-before-b2.test.ts
+      - run: bunx vitest run src/__tests__/gri-pinned-version-recovery.test.ts src/__tests__/gri-b2-historical-live-readback.test.ts src/__tests__/gri-verified-version-d1-restore.test.ts src/__tests__/gri-historical-quota-aware-recovery.test.ts src/__tests__/gri-historical-d1-idempotent-before-b2.test.ts src/__tests__/gri-phase2-reviewed-history.test.ts
   pinned-original-version:
     needs: contract
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -126,3 +129,50 @@ jobs:
           path: artifacts/gri-b2-history/historical-d1-restore.json
           if-no-files-found: warn
           retention-days: 14
+
+  phase2-readonly-review-and-history:
+    needs: contract
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment: production
+    permissions:
+      contents: read
+    env:
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: historical_gri_version_recovery
+      GEOMACRO_GRI_RESTORE_WEBSITE_HISTORY: "1"
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GRI_READY_REVIEWED_SHA256: ${{ vars.GRI_READY_REVIEWED_SHA256 }}
+      GRI_READY_CERTIFICATES_SHA256: ${{ vars.GRI_READY_CERTIFICATES_SHA256 }}
+      GRI_READY_APPROVED_AT: ${{ vars.GRI_READY_APPROVED_AT }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Require exact protected main and no payment or Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$GITHUB_SHA" = "$(git rev-parse HEAD)"
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          for key in SUPABASE_URL SUPABASE_DB_URL APP_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY COINBASE_API_KEY COINBASE_X402_MAINNET_ACK GEOMACRO_COMMERCIAL_LAUNCH_ACK; do
+            test -z "${!key:-}" || { echo "::error::PHASE2_NO_FUNDS_SUPABASE"; exit 2; }
+          done
+      - name: Resolve existing Cloudflare D1 database for metadata-only SELECT
+        shell: bash
+        run: |
+          set -euo pipefail
+          json="$(npx -y wrangler@4.136.3 d1 list --json)"
+          id="$(printf '%s' "$json" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{const a=JSON.parse(s).filter(x=>x.name==="geomacro-control-plane");if(a.length!==1)process.exit(2);process.stdout.write(a[0].uuid??a[0].id??"")})')"
+          test -n "$id"
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+      - name: Phase2 historical multi-snapshot and signed approval read-only admission
+        run: node scripts/ops/preflight-phase2-reviewed-history.mjs
