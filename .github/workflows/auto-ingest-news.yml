@@ -62,6 +62,46 @@ jobs:
           node --check scripts/ops/report-gri-four-gates-readiness.mjs
           node --test scripts/lib/gri-four-gates-readiness.test.mjs
 
+      - name: Diagnostic PR-only live D1 and structural counts, plus primary publisher status
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node --input-type=module <<'JS'
+          const targets={
+            d1_website:'https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news',
+            free_structured:'https://geomacro.live/api/v1/intelligence/query?view=structural-72h',
+            recent_primary:'https://api.github.com/repos/blocknine0/geomacro/actions/workflows/website-derived-news-continuity.yml/runs?branch=main&per_page=4'
+          };
+          for(const [name,url] of Object.entries(targets)){
+            let receipt={schema:'geomacro.news-live-pr-diagnostic.v1',target:name,
+              checked_at:new Date().toISOString(),provider_calls:0,payments:0};
+            try{
+              const headers={Accept:'application/json'};
+              if(name==='recent_primary')headers.Authorization='Bearer '+process.env.GH_TOKEN;
+              const r=await fetch(url,{headers,redirect:'error',signal:AbortSignal.timeout(11000)});
+              receipt.status=r.status;
+              const bytes=await r.arrayBuffer();
+              if(bytes.byteLength>1500000)throw Error('TOO_LARGE');
+              const d=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+              if(name==='d1_website'){
+                receipt.ok=d.ok===true;receipt.derived_count=Array.isArray(d.signals)?d.signals.length:null;
+                receipt.delivery_scope=d.delivery_scope??null;receipt.retention_hours=d.retention_hours??null;
+              }else if(name==='free_structured'){
+                receipt.ok=d.ok===true;receipt.counts=d.counts??null;
+                receipt.eligible_items=Array.isArray(d.items)?d.items.length:null;
+                receipt.rights_verified=d.commercial_rights_verified??null;
+              }else{
+                receipt.runs=(d.workflow_runs||[]).slice(0,4).map(x=>({
+                  status:x.status,conclusion:x.conclusion,created_at:x.created_at,
+                  updated_at:x.updated_at,event:x.event}));
+              }
+            }catch{receipt.error='PUBLIC_READBACK_OR_API_UNAVAILABLE';}
+            console.log(JSON.stringify(receipt));
+          }
+          JS
+
   ingest-supabase-free-derived-news:
     # No cross-workflow 'uses' recursion. Dispatch only the SAME canonical
     # primary's D1 backstop on a verified missed publication, never start
