@@ -50,6 +50,9 @@ jobs:
           mkdir -p artifacts
           bun run test:app 2>&1 | tee artifacts/product-ci-tests.log
 
+      - name: Predge owner sealed token-only handoff crypto and authorization (offline)
+        run: node --test scripts/ops/predge-sealed-token-handoff.test.mjs
+
       - name: Official macro and minerals source-clock integrity (no network)
         run: node --test global-intelligence/scripts/test-statistical-source-clocks.test.mjs
 
