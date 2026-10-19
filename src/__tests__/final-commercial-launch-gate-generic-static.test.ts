@@ -31,12 +31,22 @@ describe("#1414 partner-independent final commercial launch gate", () => {
   });
 
   it("accepts only fresh successful production Intelligence publication owners", () => {
-    expect(finalWorkflow).toContain("actions/workflows/intelligence-scored-refresh.yml/runs");
-    expect(finalWorkflow).toContain("actions/workflows/intelligence-fastlane-publication.yml/runs");
-    expect(finalWorkflow).toContain("Intelligence Scored + Current Evidence");
-    expect(finalWorkflow).toContain("Intelligence Fastlane Publication Sync");
-    expect(finalWorkflow).toContain("intelligence-scored-refresh");
-    expect(finalWorkflow).toContain("intelligence-fastlane-publication");
+    // Current signed publishing is no longer owned by the frozen Supabase
+    // Postgres scorer or fastlane. Accept only independently reviewed or
+    // distinct machine-facts/rights approved immutable inputs.
+    expect(finalWorkflow).toContain("actions/workflows/intelligence-supabase-free-reviewed-current.yml/runs");
+    expect(finalWorkflow).toContain("actions/workflows/intelligence-machine-current.yml/runs");
+    expect(finalWorkflow).toContain("Supabase-Free Reviewed Intelligence Publication");
+    expect(finalWorkflow).toContain("Machine Dual-Authority Intelligence Publication");
+    expect(finalWorkflow).toContain("intelligence-supabase-free-reviewed-current");
+    expect(finalWorkflow).toContain("intelligence-machine-current");
+    expect(finalWorkflow).not.toContain("actions/workflows/intelligence-scored-refresh.yml/runs");
+    expect(finalWorkflow).not.toContain("actions/workflows/intelligence-fastlane-publication.yml/runs");
+    expect(finalWorkflow).toContain("run?.head_sha !== process.env.HEAD_SHA");
+    expect(finalWorkflow).toContain("run?.name !== source.workflow");
+    expect(finalWorkflow).toContain("events:new Set(['workflow_dispatch'])");
+    expect(finalWorkflow).toContain("events:new Set(['repository_dispatch','workflow_dispatch'])");
+    expect(finalWorkflow).toContain("exact_upstream_sha_verified:true");
     expect(finalWorkflow).toContain("run.status === 'completed'");
     expect(finalWorkflow).toContain("run.conclusion === 'success'");
     expect(finalWorkflow).toContain("ageMs <= maxAgeMs");
@@ -47,8 +57,8 @@ describe("#1414 partner-independent final commercial launch gate", () => {
   });
 
   it("streams workflow-run API payloads through files instead of oversized environment variables", () => {
-    expect(finalWorkflow).toContain("/tmp/final-intelligence-runs.json");
-    expect(finalWorkflow).toContain("/tmp/final-fastlane-publication-runs.json");
+    expect(finalWorkflow).toContain("/tmp/final-reviewed-intelligence-runs.json");
+    expect(finalWorkflow).toContain("/tmp/final-machine-intelligence-runs.json");
     expect(finalWorkflow).toContain("/tmp/final-exact-head-runs.json");
     expect(finalWorkflow).toContain("fs.readFileSync(source.file,'utf8')");
     expect(finalWorkflow).toContain("fs.readFileSync('/tmp/final-exact-head-runs.json','utf8')");
