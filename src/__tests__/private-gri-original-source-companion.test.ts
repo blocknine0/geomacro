@@ -8,6 +8,10 @@ import {
 } from "../../scripts/lib/private-gri-original-publisher-companion.mjs";
 import { makePrivateStageRecord, makePrivateStageBundle } from "../../scripts/lib/restricted-private-scored-stage.mjs";
 import { verifyPrivateScoringD1Checkpoint } from "../../scripts/lib/private-scoring-d1-checkpoint-proof.mjs";
+import {
+  encodePrivateStageCompanionB2Bundle,verifyPrivateStageCompanionB2Bundle,
+  PRIVATE_COMBINED_ARCHIVE_SCHEMA,
+} from "../../scripts/lib/private-stage-companion-b2-bundle.mjs";
 
 const now=new Date("2026-10-09T11:15:00.000Z");
 const article={
@@ -156,6 +160,63 @@ describe("#1827 private original-publisher title lineage to canonical GRI",()=>{
         cursor:{...cursor,source_companion_full_readback_verified:false},
       },
     },opts)).toThrow("PRIVATE_GRI_COMPANION_D1_READBACK_INVALID");
+  });
+
+  it("verifies both independently hashed private members in one full B2 gzip readback and D1 cursor",()=>{
+    const {stage,source}=fixture();
+    const companion=makePrivateGriCompanionBundle(stage,[source],{now});
+    const packed=encodePrivateStageCompanionB2Bundle(stage,companion,{now});
+    expect(packed.key).toMatch(
+      /^geomacro-evidence\\/v1\\/private\\/restricted-current-scoring-bundles\\/[a-f0-9]{64}\\.json\\.gz$/);
+    expect(packed.stageSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(packed.companionSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(packed.stageSha256).not.toBe(packed.companionSha256);
+    expect(verifyPrivateStageCompanionB2Bundle(packed.bytes,packed,{now})).toBe(true);
+    const corrupt=Buffer.from(packed.bytes);
+    corrupt[corrupt.length-1]^=1;
+    expect(()=>verifyPrivateStageCompanionB2Bundle(corrupt,packed,{now}))
+      .toThrow("PRIVATE_B2_BUNDLE_FULL_READBACK_HASH_INVALID");
+    const checkpoint={
+      source_id:"orchestrator:private_stage",
+      payload:{
+        source:"geomacro_intelligence_orchestrator",task:"private_stage",
+        cursor:{
+          status:"verified_private_staging",publication_authorized:false,
+          classifier_version:"event-severity-v1.0.5",
+          counts:stage.counts,archive_format:PRIVATE_COMBINED_ARCHIVE_SCHEMA,
+          b2_key:packed.key,sha256:packed.digest,
+          stage_logical_sha256:packed.stageSha256,
+          source_companion_key:packed.key,
+          source_companion_sha256:packed.digest,
+          source_companion_logical_sha256:packed.companionSha256,
+          source_companion_stage_sha256:packed.stageSha256,
+          source_companion_full_readback_verified:true,
+          source_companion_exact_gzip_restore_verified:true,
+        },
+      },
+      last_success_at:now.toISOString(),
+    };
+    const options={
+      b2Key:packed.key,compressedSha256:packed.digest,
+      counts:stage.counts,lastSuccessAt:now.toISOString(),
+      sourceCompanion:{
+        key:packed.key,compressedSha256:packed.digest,
+        stageSha256:packed.stageSha256,logicalSha256:packed.companionSha256,
+        stageLogicalSha256:packed.stageSha256,
+      },
+    };
+    expect(verifyPrivateScoringD1Checkpoint(checkpoint,options)).toBe(true);
+    expect(JSON.stringify(checkpoint)).not.toContain(source.private_source_title);
+    expect(()=>verifyPrivateScoringD1Checkpoint({
+      ...checkpoint,payload:{...checkpoint.payload,cursor:{
+        ...checkpoint.payload.cursor,source_companion_logical_sha256:"0".repeat(64),
+      }},
+    },options)).toThrow("PRIVATE_GRI_COMPANION_BUNDLED_D1_READBACK_INVALID");
+    expect(()=>verifyPrivateScoringD1Checkpoint({
+      ...checkpoint,payload:{...checkpoint.payload,cursor:{
+        ...checkpoint.payload.cursor,source_companion_full_readback_verified:false,
+      }},
+    },options)).toThrow("PRIVATE_GRI_COMPANION_D1_READBACK_INVALID");
   });
 
   it("production writer makes ONE B2 PUT+full GET then independently validates BOTH logical members before source-free D1",()=>{
