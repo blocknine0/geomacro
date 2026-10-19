@@ -32,8 +32,10 @@ describe("#2124 one-shot production audit cannot regress previously accepted ser
     expect(workflow).not.toContain("SELECT * FROM public_b2_hot_snapshot");
     expect(workflow).toContain("artifacts/public-serving/d1-metadata.json");
     const quota=read(".github/workflows/b2-account-readonly-quota-receipt.yml");
-    expect(quota).toContain("geomacro.p0-hot-503-readonly-quota-decision.v1");
-    expect(quota).toContain("current_hot_eight_get_headroom_present");
+    expect(quota).toContain("node scripts/ops/print-p0-hot503-quota-decision.mjs");
+    const reporter=read("scripts/ops/print-p0-hot503-quota-decision.mjs");
+    expect(reporter).toContain("geomacro.p0-hot-503-readonly-quota-decision.v1");
+    expect(reporter).toContain("current_hot_eight_get_headroom_present");
     expect(quota).not.toContain("secrets.B2_");
     expect(workflow).toContain("B2_ARCHIVE_READ_APPLICATION_KEY");
     expect(workflow).toContain("permissions:\n  contents: read");
