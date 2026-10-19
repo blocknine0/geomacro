@@ -1,13 +1,13 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "972d987f44f328d727fb3147daf2b6807a344a38",
+  "baseline_sha": "0e595227c9dba46f7e456bdc5f1e0532cc0f6c90",
   "published_baseline": "Founder directs Geomacro to restore actual intelligence news published after 10 October 2026, across Geopolitics, Macro/FX and Critical Minerals, not fabricated or backdated stories. Existing 30d rolling derived-only Cloudflare D1 website journal, direct browser D1 fallback, initial SSR and 30-minute background ingestion stay in place. Source expansion: first-party UK Home Office security, UK DBT Macro/FX economic trade policy, India Ministry of Mines PIB original page clock verified in IST; only admitted first-party and relevant original releases generate generic Geomacro-derived What changed / Why it matters, without copying headlines, original URLs, publisher raw text or secrets. The active /intelligence SSR loader reads independently verified derived news directly from the public D1 endpoint rather than nesting an unreliable server-function RPC, and the source reader preserves actual original time, strict 15-minute original-source delay, dedup, and source-health warnings; no synthetic news from empty publisher windows. no x402 or GRI changes; independent 60m Global Risk remains. User will manually publish only after exact-head source/test/security verification and Lovable sync; live acceptance separate. Founder directs gap recovery from prior Supabase freeze; verified first-party 2026-10-01 onward original-first-publication GOV UK archived Search + Content API, separate manual once/weekly backfill into derived-only D1. If Lovable SSR or browser transport returns no cards, free website shows source-private sandboxed/no-script Cloudflare D1 newsroom HTML fallback with original dates, Geomacro Finds, What changed and Why it matters, not fabricated latest news.  Original founder recovery live-D1 HTML cards pass through the corrected Signal[] array from fetchDirectDerivedNews() to initialJournal first HTML; the formerly erroneous history.value.signals silently discarded all records. Show unknown/loading rather than zero when network/SSR have not provided a verified count. Embedded direct D1 output remains source-private. Founder-authorized source-display recovery (October 13): first HTML paint now requests all three existing official-source category readers independently and in parallel, retains verified D1 30-day journal and explicit per-category fail-closed state, and avoids duplicate immediate browser refresh for already fetched categories. No changes to previously frozen Global Risk presentation or Ask hybrid workflow; still waiting exact-SHA website publish acceptance.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-10T17:25:00Z",
   "published_source_sha": "7215b0d05b05ccc4de1e5f69a333ae615abc38e3",
-  "lock_revision": "founder-approved-home-intelligence-final-audit-20261019",
+  "lock_revision": "founder-approved-predge-free-news-72h-presentation-alignment-20261019",
   "pending_publish_acceptance": true,
   "website_privacy_baseline_status": "FOUNDER_APPROVED_WEBSITE_AUDIT_PENDING_EXACT_SHA_DEPLOYMENT",
   "approved_presentation_change": {
@@ -169,6 +169,33 @@
     "global_risk_final_lock_unmodified": true,
     "canonical_price_amounts_unmodified": true,
     "funds_authorized": false,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_predge_free_news_presentation_alignment": {
+    "approval": "Founder explicitly instructed permanent repair of the stateless-live-desk.tsx website lock for the Predge pilot in ChatGPT on 2026-10-19 (Asia/Kolkata).",
+    "approved_ui_commit": "0e595227c9dba46f7e456bdc5f1e0532cc0f6c90",
+    "previous_baseline_sha": "972d987f44f328d727fb3147daf2b6807a344a38",
+    "scope": [
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "reviewed_changes": [
+      "Replace imprecise 30-day selector wording with All available releases; no source, API or 72-hour D1 expiry changed.",
+      "Present actual 72-hour free D1-derived journal and original-dated earlier items honestly.",
+      "Replace earlier Last 30 days heading with Dated.",
+      "Add public existing derived-structural-72h research endpoint link with Predge pilot context and explicit not-licensed-for-resale restriction."
+    ],
+    "purpose": "Ratify the existing founder-requested website-to-Predge free derived-news presentation alignment without reverting truthful data-retention labels; eliminate baseline drift while preserving the strict Website Lock and the independent immutable Global Risk presentation lock.",
+    "website_presentation_source_diff_reviewed": true,
+    "global_risk_final_lock_unmodified": true,
+    "backend_auto_ingest_unmodified": true,
+    "upstream_source_rights_not_approved_by_this_change": true,
+    "partner_news_redistribution_not_authorized_by_this_change": true,
+    "source_original_publication_delay_minutes": 15,
+    "public_structured_retention_hours": 72,
+    "x402_prices_unchanged": true,
+    "funds_authorized": false,
+    "supabase_reactivated": false,
+    "published_source_sha_unchanged": true,
     "pending_exact_sha_live_deployment_acceptance": true
   }
 }
