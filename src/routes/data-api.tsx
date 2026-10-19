@@ -174,8 +174,8 @@ function DataApiPage() {
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Developer quickstart · no funds</p>
           <h2 id="machine-quickstart" className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Inspect first. Pay only for deliverable data.</h2>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
-            Discover the agent contract, compare exact prices, then perform a request-specific availability check before attempting a canonical x402 query.
-            Availability may differ by country, category, evidence date and product. No discovery call authorizes a payment.
+            Discover the agent contract and exact prices. A no-funds availability preflight is available specifically for historical structural-baseline requests.
+            Other capabilities use the canonical x402 query's own request-specific eligibility gates. Availability varies by country, category, evidence date and product; discovery never authorizes payment.
           </p>
           <ol className="mt-6 grid gap-3 md:grid-cols-3">
             <li className="rounded-xl border border-border/60 bg-background/50 p-4">
@@ -187,13 +187,14 @@ function DataApiPage() {
               <a href="/api/v1/pricing" className="mt-2 block break-all font-mono text-xs text-primary hover:underline">GET /api/v1/pricing</a>
             </li>
             <li className="rounded-xl border border-border/60 bg-background/50 p-4">
-              <p className="text-xs font-semibold">3. Check the requested data</p>
-              <code className="mt-2 block break-all font-mono text-xs text-foreground">POST /api/v1/intelligence/availability</code>
+              <p className="text-xs font-semibold">3. Explore baseline-only preflight</p>
+              <a href="/api/v1/intelligence/availability" className="mt-2 block break-all font-mono text-xs text-primary hover:underline">GET /api/v1/intelligence/availability</a>
             </li>
           </ol>
           <p className="mt-4 text-xs leading-6 text-muted-foreground">
-            For stale, missing or unqualified data: show the reason, do not treat old data as current, and do not automatically retry payment.
-            A confirmed payment quote must be bound to the canonical request, not to agent discovery.
+            The preflight POST accepts only structural_baseline canonical queries, not every paid capability. For stale or unqualified data:
+            show the reason, never treat old data as current, and never automatically retry payment.
+            Any actual quote must be bound to the canonical request, not to agent discovery.
           </p>
         </div>
       </section>
