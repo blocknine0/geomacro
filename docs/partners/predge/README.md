@@ -111,3 +111,50 @@ Maximum provisional pilot expiry is **2027-01-17T00:00:00Z** (90 days
 from proposed Oct 19 UTC kickoff). This does not assert a countersigned
 LOI or give rights beyond the separately written pilot agreement; if
 the actual agreed kickoff differs, reconfigure before any extension.
+
+## Get ONLY the dedicated Predge research token securely
+
+The protected Cloudflare deployment already derives the 64-char hex
+`PREDGE_RESEARCH_NEWS_TOKEN` via
+`HMAC-SHA256(GEOMACRO_COMMERCE_LEDGER_TOKEN,
+"geomacro-predge-72h-research-only-v1")`.
+It is a Worker secret and **cannot be read back** in plaintext from GitHub
+Actions or Cloudflare. Do not share the root ledger or control-plane admin
+secret with Predge.
+
+If the owner no longer has the plaintext production root secret, use the
+**manual, owner-initiated sealed handoff**:
+`.github/workflows/predge-token-only-sealed-handoff.yml`. Generate a
+temporary RSA 3072 private/public keypair LOCALLY, outside the repo.
+Pass only the **base64 PUBLIC PEM** as the workflow input. The production
+runner verifies anonymous=401 and authenticated research=200, encrypts the
+dedicated research token using RSA-OAEP-SHA256 and the fixed
+`geomacro.predge.research-token-handoff.v1` label, and publishes only
+encrypted ciphertext as a 1-day GitHub Actions artifact. No plaintext
+Bearer is in the logs or artifact. Decrypt the ciphertext on the owner's
+computer with the private PEM; deliver the bearer via a private secure
+partner channel (not a chat, GitHub issue, URL or public email).
+
+PowerShell, from a private folder OUTSIDE the project (Node.js 22):
+
+```powershell
+node -e "const c=require('node:crypto'),f=require('node:fs'),k=c.generateKeyPairSync('rsa',{modulusLength:3072,publicKeyEncoding:{type:'spki',format:'pem'},privateKeyEncoding:{type:'pkcs8',format:'pem'}});f.writeFileSync('predge-owner-private.pem',k.privateKey,{mode:0o600});f.writeFileSync('predge-owner-public.pem',k.publicKey);console.log(Buffer.from(k.publicKey).toString('base64'))"
+```
+
+Copy the displayed BASE64 PUBLIC key (not the PEM private key). In GitHub:
+Actions > "Predge Token-Only Encrypted Handoff (No Funds)" >
+Run workflow (branch main) > paste public key > Run. Download
+`predge-owner-research-token-encrypted-<run_id>` from that run and unzip
+the ciphertext into the same private folder, then:
+
+```powershell
+node -e "const c=require('node:crypto'),f=require('node:fs');const t=c.privateDecrypt({key:f.readFileSync('predge-owner-private.pem'),padding:c.constants.RSA_PKCS1_OAEP_PADDING,oaepHash:'sha256',oaepLabel:Buffer.from('geomacro.predge.research-token-handoff.v1')},f.readFileSync('predge-research-token.rsa-oaep-sha256.bin')).toString('utf8'); if(!/^[a-f0-9]{64}$/.test(t))throw Error('Invalid handoff');console.log(t)"
+```
+
+Keep plaintext hidden and hand off ONLY that 64-hex token to Predge.
+They call:
+`GET https://geomacro-control-plane.daspallab202391.workers.dev/v1/partner/predge/derived-structural-72h`
+with `Authorization: Bearer <token>` (no token in URL).
+Predge gets the same public-eligible derived D1 items, not raw publisher
+articles or signed paid GRO. The provisional research expiry is
+2027-01-17T00:00:00Z and does **not** itself grant commercial redistribution.
