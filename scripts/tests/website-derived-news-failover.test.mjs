@@ -95,7 +95,7 @@ test("hourly Cloudflare collection and +15m recovery retain single-writer and th
   assert.ok(legacy.includes("if: " + "$" + "{{ false }}"));
   assert.ok(legacy.includes('cron: "37 * * * *"'));
   assert.ok(legacy.includes("ingest-supabase-free-derived-news:"));
-  assert.ok(legacy.includes("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml"));
+  assert.ok(legacy.includes("website-derived-news-cadence-backstop.yml/dispatches"));
   assert.ok(legacy.includes("secrets: inherit"));
   assert.ok(backstop.includes("workflow_call: {}"));
   assert.ok(legacy.includes("actions: read"));
