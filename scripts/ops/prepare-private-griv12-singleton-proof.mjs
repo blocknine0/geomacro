@@ -10,6 +10,8 @@ import { gzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {encodePrivateStageCompanionB2Bundle,PRIVATE_COMBINED_ARCHIVE_SCHEMA} from
+  "../lib/private-stage-companion-b2-bundle.mjs";
 import { buildPrivateGriSingletonSourceBridge } from
   "../lib/private-gri-singleton-source-bridge.mjs";
 import { validatePrivateStageBundle } from
@@ -54,6 +56,22 @@ export function compileVerifiedPrivateSingletonProof({
   const stageHash=sha256(stageBytes);
   const stageKey=archiveKey("restricted-current-scoring",stageDigest);
   const companionKey=archiveKey("gri-original-source-companions",sourceDigest);
+  const combined=receipt?.archive_format===PRIVATE_COMBINED_ARCHIVE_SCHEMA
+    ?encodePrivateStageCompanionB2Bundle(stage,sourceCompanion,{now}):null;
+  const archiveBinding=combined
+    ?receipt.content_addressed_b2_key===combined.key &&
+      receipt.compressed_sha256===combined.digest &&
+      receipt.private_original_source_companion_b2_key===combined.key &&
+      receipt.private_original_source_companion_sha256===combined.digest &&
+      receipt.stage_uncompressed_sha256===combined.stageSha256 &&
+      receipt.companion_uncompressed_sha256===combined.companionSha256 &&
+      combined.stageLegacyCompressedSha256===stageDigest &&
+      combined.companionLegacyCompressedSha256===sourceDigest
+    :receipt?.content_addressed_b2_key===stageKey &&
+      receipt?.compressed_sha256===stageDigest &&
+      receipt?.private_original_source_companion_b2_key===companionKey &&
+      receipt?.private_original_source_companion_sha256===sourceDigest &&
+      receipt?.archive_format===undefined;
   required(receipt?.ok===true &&
     receipt?.role==="private_stage_only" &&
     receipt?.b2_full_readback_sha256_verified===true &&
@@ -66,10 +84,7 @@ export function compileVerifiedPrivateSingletonProof({
     receipt?.source_authenticity_independently_verified===false &&
     receipt?.public_published===false &&
     receipt?.commercial_eligible===false &&
-    receipt?.content_addressed_b2_key===stageKey &&
-    receipt?.compressed_sha256===stageDigest &&
-    receipt?.private_original_source_companion_b2_key===companionKey &&
-    receipt?.private_original_source_companion_sha256===sourceDigest &&
+    archiveBinding &&
     sourceCompanion.stage_bundle_sha256===stageHash &&
     SHA.test(stageDigest) && SHA.test(sourceDigest),
     "GRI_PRIVATE_BRIDGE_VERIFIED_ARCHIVE_LINEAGE_INVALID");
