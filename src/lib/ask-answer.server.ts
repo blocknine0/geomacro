@@ -148,14 +148,6 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
       signed_gro_generated: false, independent_same_event_verification: false,
     };
   }
-  // Narrow first-party source reads are separate from signed/payable intelligence.
-  try {
-    const original = await answerFromCurrentOriginals(question);
-    if (original) return original;
-  } catch (error) {
-    console.error("[ask-answer] original retrieval unavailable",
-      error instanceof Error ? error.message : "unknown error");
-  }
   // Broad free-news requests use original releases and bounded index discovery.
   // Country, corridor and scored questions keep the governed path below.
   if (selectOfficialNewsCategories(question).length > 0) {
@@ -173,6 +165,14 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
     } catch {
       return unavailable;
     }
+  }
+  // Narrow first-party source reads are separate from signed/payable intelligence.
+  try {
+    const original = await answerFromCurrentOriginals(question);
+    if (original) return original;
+  } catch (error) {
+    console.error("[ask-answer] original retrieval unavailable",
+      error instanceof Error ? error.message : "unknown error");
   }
   const primary = await answerHybridQuestion(question);
   if (!primary.insufficient_evidence) return primary;

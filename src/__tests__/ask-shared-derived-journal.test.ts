@@ -76,6 +76,10 @@ describe("Ask reuses D1 official observations across all three categories",()=>{
    expect(src).toContain("answerFromCurrentOriginals(question)");
    expect(src).toContain("collectSharedOfficialNews(categories)");
    expect(src).toContain("answerHybridQuestion(question)");
+   expect(src.indexOf("collectSharedOfficialNews(categories)"))
+     .toBeLessThan(src.indexOf("answerFromCurrentOriginals(question)"));
+   expect(src.indexOf("answerFromCurrentOriginals(question)"))
+     .toBeLessThan(src.indexOf("answerHybridQuestion(question)"));
    const helper=readFileSync("src/lib/ask-shared-derived-journal.server.ts","utf8");
    expect(helper).toContain("sources_credited.length===0");
    expect(helper).not.toContain("settleCoinbaseX402");
