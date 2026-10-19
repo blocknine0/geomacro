@@ -67,8 +67,9 @@ export function verifyPrivateScoringD1Checkpoint(checkpoint, {
          cursor.source_companion_stage_sha256!==sourceCompanion.stageLogicalSha256)
         throw Error("PRIVATE_GRI_COMPANION_BUNDLED_D1_READBACK_INVALID");
     } else {
-       if(sourceCompanion.key!==null && typeof sourceCompanion.key!=="string") throw Error("PRIVATE_GRI_COMPANION_D1_READBACK_INVALID");
-         sourceCompanion.key!=="geomacro-evidence/v1/private/gri-original-source-companions/"+
+      if(typeof sourceCompanion.key!=="string" ||
+         sourceCompanion.key!==
+           "geomacro-evidence/v1/private/gri-original-source-companions/"+
            sourceCompanion.compressedSha256+".json.gz")
         throw Error("PRIVATE_GRI_COMPANION_D1_READBACK_INVALID");
     }
