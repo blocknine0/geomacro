@@ -14,9 +14,12 @@ export function readOnlyCandidate(app) {
         });
       }
       // The receipt is stamped after Nitro's asset manifest is compiled.
-      // Serve that one public static asset via its actual deployed binding.
+      // Serve the marker and pinned public images through the real asset binding.
       // Otherwise Nitro can route the new file to its SSR 404 page.
-      const response = new URL(request.url).pathname === "/.well-known/geomacro-build.json" && env?.ASSETS
+      const path = new URL(request.url).pathname;
+      const publicBuildAsset = path === "/.well-known/geomacro-build.json" ||
+        path.startsWith("/__l5e/assets-v1/");
+      const response = publicBuildAsset && env?.ASSETS
         ? await env.ASSETS.fetch(request)
         : await app.fetch(request, env, ctx);
       const headers = new Headers(response.headers);

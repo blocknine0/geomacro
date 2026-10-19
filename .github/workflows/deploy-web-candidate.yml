@@ -64,6 +64,7 @@ jobs:
           bun install --frozen-lockfile --ignore-scripts
           bun run build
           node scripts/ops/prepare-web-candidate.mjs
+          node scripts/ops/materialize-web-candidate-assets.mjs
       - name: Require same-head Product CI success and current main before deployment
         env:
           GH_TOKEN: ${{ github.token }}

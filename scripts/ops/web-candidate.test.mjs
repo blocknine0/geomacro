@@ -5,6 +5,8 @@ import {tmpdir} from "node:os";
 import {resolve} from "node:path";
 import {readOnlyCandidate} from "../../workers/web-candidate/read-only.mjs";
 import {prepareWebCandidate} from "./prepare-web-candidate.mjs";
+import {materializeCandidateAssets} from "./materialize-web-candidate-assets.mjs";
+import {createHash} from "node:crypto";
 
 test("candidate denies writes/payment/authorization before invoking the app",async()=>{
  let calls=0;
@@ -64,5 +66,33 @@ test("build preparation discards inherited production routes and bindings and pi
   assert.equal(marker.canonical_main_sha,"a".repeat(40));assert.equal(marker.production_activation_performed,false);
   writeFileSync(path,JSON.stringify({...config,main:"unknown.mjs"}));
   assert.throws(()=>prepareWebCandidate({root,sha:"a".repeat(40)}),/LAYOUT_UNVERIFIED/);
+ }finally{rmSync(root,{recursive:true,force:true})}
+});
+
+test("Lovable public image paths use shipped assets behind the same no-write fence",async()=>{
+ let appCalls=0,assetCalls=0;
+ const guard=readOnlyCandidate({fetch:async()=>{appCalls++;return new Response('wrong app')}});
+ const env={ASSETS:{fetch:async()=>{assetCalls++;return new Response('image',{headers:{'content-type':'image/png'}})}}};
+ const url='https://candidate.invalid/__l5e/assets-v1/9118c3e7-7750-4173-90cc-dd0445585e92/geomacro-logo.png';
+ assert.equal(await (await guard.fetch(new Request(url),env)).text(),'image');
+ assert.equal((await guard.fetch(new Request(url,{headers:{authorization:'synthetic'}}),env)).status,405);
+ assert.equal(appCalls,0);assert.equal(assetCalls,1);
+});
+test("candidate images require exact pinned PNG bytes; no partial files on corruption",async()=>{
+ const root=mkdtempSync(resolve(tmpdir(),'geomacro-candidate-images-'));
+ const bytes=Buffer.from('89504e470d0a1a0a01020304','hex');
+ const pins=['logo.png','background.png'].map(file=>({file,sha256:createHash('sha256').update(bytes).digest('hex')}));
+ try{
+  mkdirSync(resolve(root,'src/assets'),{recursive:true});
+  for(const pin of pins)writeFileSync(resolve(root,'src/assets',pin.file+'.asset.json'),JSON.stringify({asset_id:'9118c3e7-7750-4173-90cc-dd0445585e92',url:'/__l5e/assets-v1/9118c3e7-7750-4173-90cc-dd0445585e92/'+pin.file,size:bytes.length,content_type:'image/png'}));
+  let calls=0;
+  const fetchImpl=async(url,init)=>{calls++;assert.equal(new URL(url).origin,'https://geomacro.live');assert.equal(init.redirect,'error');assert.equal(init.credentials,'omit');assert.deepEqual(init.headers,{Accept:'image/png'});return new Response(calls===2?Buffer.alloc(bytes.length):bytes,{headers:{'content-type':'image/png'}})};
+  await assert.rejects(materializeCandidateAssets({root,pins,fetchImpl}),/BYTES_MISMATCH/);
+  assert.throws(()=>readFileSync(resolve(root,'.output/public/__l5e/assets-v1/9118c3e7-7750-4173-90cc-dd0445585e92/logo.png')),/ENOENT/);
+  const receipt=await materializeCandidateAssets({root,pins,fetchImpl:async()=>new Response(bytes,{headers:{'content-type':'image/png'}})});
+  assert.equal(receipt.verified_images,2);assert.equal(receipt.runtime_asset_proxy,false);
+  assert.deepEqual(readFileSync(resolve(root,'.output/public/__l5e/assets-v1/9118c3e7-7750-4173-90cc-dd0445585e92/logo.png')),bytes);
+  for(const response of [new Response('<html>',{headers:{'content-type':'text/html'}}),new Response(Buffer.alloc(bytes.length+1),{headers:{'content-type':'image/png'}})])
+   await assert.rejects(materializeCandidateAssets({root,pins,fetchImpl:async()=>response}),/ASSET_(READ_FAILED|SIZE_MISMATCH)/);
  }finally{rmSync(root,{recursive:true,force:true})}
 });
