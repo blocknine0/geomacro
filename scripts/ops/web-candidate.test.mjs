@@ -9,6 +9,18 @@ import {materializeCandidateAssets} from "./materialize-web-candidate-assets.mjs
 import {createHash} from "node:crypto";
 import {waitForCandidateMarker} from './web-candidate-propagation.mjs';
 
+test("independent deployed candidate verifies canonical free machine GET without enabling x402",()=>{
+ const source=readFileSync("scripts/ops/verify-web-candidate.mjs","utf8");
+ assert.ok(source.includes('const machine=await get("/api/v1/intelligence/query")'));
+ assert.ok(source.includes('machine.json.payment_rail_status!=="CONTROLLED_PRELAUNCH_UNAVAILABLE"'));
+ assert.ok(source.includes('machine.json.discovery_is_free!==true'));
+ assert.ok(source.includes('machine.json.execution_authorized!==false'));
+ assert.ok(source.includes('machine.res.headers.has("PAYMENT-REQUIRED")'));
+ assert.ok(source.includes('machine_payment_rail_locked:true'));
+ const server=readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts","utf8");
+ assert.ok(server.includes('payment_rail_status: config === null'));
+ assert.ok(server.includes('machine_next_steps: {'));
+});
 test("candidate denies writes/payment/authorization before invoking the app",async()=>{
  let calls=0;
  const guard=readOnlyCandidate({fetch(){calls++;return new Response("unexpected")}});
