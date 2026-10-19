@@ -92,6 +92,66 @@ beforeEach(()=>{
 });
 
 describe("production no-charge on-demand search without Coinbase configuration",()=>{
+  it("returns truthful free canonical discovery even if payment config validation throws",async()=>{
+    const response=await mainnetIntelligenceHandlers.GET({
+      request:new Request("https://geomacro.live/api/v1/intelligence/query"),
+    });
+    const body=await response.json();
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok:true,configured:false,
+      payment_rail_status:"CONTROLLED_PRELAUNCH_UNAVAILABLE",
+      environment:"prelaunch",network:null,asset:"USDC",
+      exact_price_usdc:null,
+      discovery_is_free:true,discovery_proves_current_product:false,
+      no_funds_or_payment_claimed:true,
+      live_on_demand_payment_authorized:false,
+      raw_data_delivered:false,source_identity_delivered:false,
+      execution_authorized:false,
+      machine_next_steps:{
+        schemas:"/api/v1/agent?view=openapi",
+        exact_prices:"/api/v1/pricing",
+        baseline_only_availability:"/api/v1/intelligence/availability",
+        payable_request:"/api/v1/intelligence/query",
+        retry_paid_request_automatically:false,
+      },
+    });
+    expect(body).not.toHaveProperty("error");
+    expect(JSON.stringify(body)).not.toContain("Coinbase secrets not configured");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("payment-required")).toBeNull();
+    expect(mocks.discover).not.toHaveBeenCalled();
+    expect(mocks.settle).not.toHaveBeenCalled();
+  });
+  it("returns the same no-charge discovery when Coinbase is wholly unconfigured",async()=>{
+    mocks.coinbaseConfig.mockReturnValueOnce(null);
+    const response=await mainnetIntelligenceHandlers.GET({
+      request:new Request("https://geomacro.live/api/v1/intelligence/query"),
+    });
+    const body=await response.json();
+    expect(response.status).toBe(200);
+    expect(body.configured).toBe(false);
+    expect(body.payment_rail_status).toBe("CONTROLLED_PRELAUNCH_UNAVAILABLE");
+    expect(body.execution_authorized).toBe(false);
+    expect(mocks.settle).not.toHaveBeenCalled();
+  });
+  it("configured testnet discovery never implies commercial product or money authorization",async()=>{
+    mocks.coinbaseConfig.mockReturnValueOnce({
+      environment:"testnet",network:"eip155:84532",
+    });
+    const response=await mainnetIntelligenceHandlers.GET({
+      request:new Request("https://geomacro.live/api/v1/intelligence/query"),
+    });
+    const body=await response.json();
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      configured:true,environment:"testnet",network:"eip155:84532",
+      payment_rail_status:"CONFIGURED_DELIVERY_STILL_REQUIRES_LIVE_PROOF",
+      exact_price_usdc:null,discovery_proves_current_product:false,
+      live_on_demand_payment_authorized:false,execution_authorized:false,
+    });
+    expect(mocks.settle).not.toHaveBeenCalled();
+  });
   it("reaches all three domain discovery without invoking Coinbase, settlement or raw storage",async()=>{
     const response=await post("live_on_demand");
     const body=await response.json();

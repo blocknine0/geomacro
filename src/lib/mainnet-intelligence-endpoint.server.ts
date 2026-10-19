@@ -243,11 +243,13 @@ function replaySettlement(tx: string | null, network: string | null): CoinbaseSe
 export const mainnetIntelligenceHandlers = {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       GET: async ({ request }: { request: Request }) => {
-        let config: CoinbaseX402Config | null;
-        try { config = getCoinbaseX402Config(); } catch (error) {
-          return json({ ok: false, configured: false, error: error instanceof Error ? error.message : "Invalid x402 configuration", execution_authorized: false }, 503);
-        }
-        if (!config) return json({ ok: false, configured: false, execution_authorized: false }, 503);
+        // Discovery is a zero-charge, read-only capability. It must remain
+        // machine-readable if Coinbase is absent, intentionally frozen or
+        // incompletely configured. Only POST may quote, verify or settle.
+        // Never leak operator config/secret validation details to callers.
+        let config: CoinbaseX402Config | null = null;
+        try { config = getCoinbaseX402Config(); }
+        catch { /* A locked/broken rail is unavailable, not an API catalog failure. */ }
         return json({
           ok: true,
           service: "Geomacro Adaptive Risk Intelligence",
@@ -256,8 +258,14 @@ export const mainnetIntelligenceHandlers = {
           legacy_compatibility_endpoint: new URL(LEGACY_X402_INTELLIGENCE_PATH, request.url).toString(),
           availability_endpoint: new URL("/api/x402/risk/availability", request.url).toString(),
           x402_version: 2,
-          environment: config.environment,
-          network: config.network,
+          configured: config !== null,
+          // This is payment-rail configuration only, NOT proof that fresh
+          // rights-qualified signed intelligence is commercially deliverable.
+          payment_rail_status: config === null
+            ? "CONTROLLED_PRELAUNCH_UNAVAILABLE"
+            : "CONFIGURED_DELIVERY_STILL_REQUIRES_LIVE_PROOF",
+          environment: config?.environment ?? "prelaunch",
+          network: config?.network ?? null,
           asset: "USDC",
           // One global flat price is not a valid capability quote.
           // Buyers must POST a proven plan for an exact server-derived amount.
@@ -267,6 +275,16 @@ export const mainnetIntelligenceHandlers = {
           coverage: "data-driven; only currently deliverable subjects are payable",
           live_on_demand_discovery_supported: true,
           live_on_demand_payment_authorized: false,
+          discovery_is_free: true,
+          discovery_proves_current_product: false,
+          no_funds_or_payment_claimed: true,
+          machine_next_steps: {
+            schemas: "/api/v1/agent?view=openapi",
+            exact_prices: "/api/v1/pricing",
+            baseline_only_availability: "/api/v1/intelligence/availability",
+            payable_request: CANONICAL_MAINNET_INTELLIGENCE_PATH,
+            retry_paid_request_automatically: false,
+          },
           delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY",
           raw_data_delivered: false,
           source_identity_delivered: false,
