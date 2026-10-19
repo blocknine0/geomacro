@@ -2,6 +2,7 @@
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {PINNED_ASSETS} from './materialize-web-candidate-assets.mjs';
+import {waitForCandidateMarker} from './web-candidate-propagation.mjs';
 const base="https://geomacro-web-candidate.daspallab202391.workers.dev";
 const expected=process.env.EXPECTED_CANONICAL_MAIN_SHA;
 if(!/^[a-f0-9]{40}$/.test(expected??""))throw Error("CANDIDATE_EXPECTED_SHA_REQUIRED");
@@ -13,7 +14,7 @@ async function get(path) {
  const json=await res.json();
  return {res,json};
 }
-const marker=await get("/.well-known/geomacro-build.json");
+const marker=await waitForCandidateMarker(()=>get("/.well-known/geomacro-build.json"),expected);
 if(marker.res.status!==200||marker.json.schema_version!=="geomacro.deployment-build.v1"||
  marker.json.canonical_main_sha!==expected||marker.json.production_activation_performed!==false||
  marker.json.candidate_mode!=="read-only-no-funds")throw Error("CANDIDATE_EXACT_SHA_MISMATCH");
