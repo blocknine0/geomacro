@@ -90,11 +90,38 @@ for (const category of categories) {
     }
     if(acknowledged!==signals.length)
       throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_PARTIAL");
+    // A green collection run with ZERO releases must be observable without
+    // inventing a new news event. Reuse existing authenticated D1 checkpoint.
+    // Only bounded counters/timestamps, never original links/text/credits.
+    const checkedAt=new Date().toISOString();
+    const checkpoint=await fetch(ENDPOINT.replace("/v1/website-derived-news",
+      "/v1/checkpoint/website_derived_news_ingest/"+category),{
+      method:"PUT",redirect:"error",cache:"no-store",
+      headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},
+      body:JSON.stringify({status:"DERIVED_NEWS_PUBLISH_COMPLETED",
+        last_attempt_at:checkedAt,last_success_at:checkedAt,cursor:null,
+        metadata:{schema:"geomacro.derived-news-source-check.v1",
+          category,checked_at:checkedAt,
+          sources_configured:report.feed_count,
+          sources_reachable:report.healthy_feed_count,
+          original_candidates_examined:report.releases_examined,
+          accepted_derived_rows:signals.length,
+          raw_upstream_stored:false,commercial_rights_verified:false,
+          paid_delivery_authorized:false}}),
+      signal:AbortSignal.timeout(12_000),
+    });
+    if(!checkpoint.ok)throw Error("DERIVED_NEWS_SOURCE_CHECK_WRITE_UNAVAILABLE");
+    const checkedReceipt=await checkpoint.json() as {
+      ok?:boolean;scope?:string;pipeline?:string};
+    if(checkedReceipt.ok!==true||checkedReceipt.scope!==category||
+       checkedReceipt.pipeline!=="website_derived_news_ingest")
+      throw Error("DERIVED_NEWS_SOURCE_CHECK_ACK_INVALID");
     console.log(JSON.stringify({
       schema:"geomacro.website-derived-news-ingest-metrics.v1",category,
       source_feeds_healthy:report.healthy_feed_count,
       official_candidates:report.releases_examined,
       accepted_derived_news:signals.length,
+      source_check_receipt_d1_verified:true,
       supabase_attempts:denied,storage:"cloudflare-d1-derived-only",
     }));
   } catch {
