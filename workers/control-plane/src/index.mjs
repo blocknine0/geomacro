@@ -2,6 +2,7 @@ import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligen
 import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
 import { readDerivedStories, publishDerivedStories, renderDerivedStoriesHtml } from "./website-derived-intelligence.mjs";
+import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
@@ -1273,6 +1274,8 @@ export default {
         return json({ok:false,error:"AUTOMATED_FINDS_QUERY_INVALID"},400);
       return getAutomatedFinds(env,url.searchParams.get("category"));
     }
+    if(request.method==="GET"&&url.pathname==="/v1/public/derived-structural-72h")
+      return publicSharedDerivedNewsFeed(env,url.searchParams);
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
       return renderDerivedStoriesHtml(env);
     }
