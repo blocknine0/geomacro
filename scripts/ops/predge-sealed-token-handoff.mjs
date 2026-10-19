@@ -34,9 +34,21 @@ export function decodeRecipientPublicKey(publicKeyB64){
     error("PREDGE_HANDOFF_RSA_3072_OR_STRONGER_REQUIRED");
   return key;
 }
-export function sealPredgeResearchBearer({root,recipientPublicKeyB64}={}){
+export function resolvePredgeResearchBearer({root,override}={}){
+  // Always validate the original root and control-plane namespace to avoid
+  // accidentally enrolling privileged credentials as partner Bearers.
+  const old=derivePredgeResearchBearer(root);
+  if(override===undefined||override===null||override==="")return old;
+  if(typeof override!=="string"||!/^[a-f0-9]{64}$/.test(override))
+    error("PREDGE_HANDOFF_EXISTING_PARTNER_TOKEN_INVALID");
+  const admin=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
+  if(override===root||override===admin)
+    error("PREDGE_HANDOFF_PRIVILEGED_TOKEN_REUSE_FORBIDDEN");
+  return override;
+}
+export function sealPredgeResearchBearer({root,override,recipientPublicKeyB64}={}){
   const key=decodeRecipientPublicKey(recipientPublicKeyB64);
-  const token=derivePredgeResearchBearer(root);
+  const token=resolvePredgeResearchBearer({root,override});
   const ciphertext=publicEncrypt({
     key,padding:constants.RSA_PKCS1_OAEP_PADDING,oaepHash:"sha256",
     oaepLabel:Buffer.from(PREDGE_OAEP_LABEL),
@@ -45,8 +57,8 @@ export function sealPredgeResearchBearer({root,recipientPublicKeyB64}={}){
     error("PREDGE_HANDOFF_SEALED_OUTPUT_INVALID");
   return ciphertext;
 }
-export async function verifyPredgeLiveBearer({root,fetchImpl=fetch}={}){
-  const token=derivePredgeResearchBearer(root);
+export async function verifyPredgeLiveBearer({root,override,fetchImpl=fetch}={}){
+  const token=resolvePredgeResearchBearer({root,override});
   const read=async authorized=>{
     let r;
     try{r=await fetchImpl(PREDGE_RESEARCH_URL,{
@@ -85,12 +97,13 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       "COINBASE_API_KEY","COINBASE_X402_MAINNET_ACK"])
       if(process.env[name])error("PREDGE_HANDOFF_FUNDS_OR_SUPABASE_FORBIDDEN");
     const root=process.env.ROOT_LEDGER_TOKEN;
+    const override=process.env.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE;
     const pub=process.env.RECIPIENT_RSA_PUBKEY_B64;
     // Validate recipient key BEFORE creating any ciphertext.
     decodeRecipientPublicKey(pub);
-    const evidence=await verifyPredgeLiveBearer({root});
+    const evidence=await verifyPredgeLiveBearer({root,override});
     const ciphertext=sealPredgeResearchBearer({
-      root,recipientPublicKeyB64:pub,
+      root,override,recipientPublicKeyB64:pub,
     });
     mkdirSync("artifacts/predge-research-token",{recursive:true,mode:0o700});
     writeFileSync(OUTPUT,ciphertext,{mode:0o600,flag:"wx"});

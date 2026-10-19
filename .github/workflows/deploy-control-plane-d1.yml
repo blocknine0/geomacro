@@ -136,6 +136,10 @@ jobs:
           printf '%s' "$OUT" | grep -q '1' || { echo "D1 schema verification failed"; exit 4; }
 
       - name: Derive domain-separated control-plane token
+        # Optionally accept an existing purpose-scoped token issued by Predge.
+        # The server-only secret is never sent to the PR, logs or operator UI.
+        env:
+          PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
         shell: bash
         run: |
           set -euo pipefail
@@ -145,7 +149,23 @@ jobs:
           echo "CONTROL_PLANE_TOKEN=$CONTROL_PLANE_TOKEN" >> "$GITHUB_ENV"
           # Distinct HMAC namespace: sharing Predge's research token never
           # shares the control-plane admin or commercial ledger secret.
-          PREDGE_RESEARCH_NEWS_TOKEN="$(node -e "const c=require('node:crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-72h-research-only-v1').digest('hex'))")"
+          if test -n "${PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE:-}"; then
+            # The existing Worker contract accepts exact lowercase 64-hex.
+            # Never silently change the grant by accepting an arbitrary
+            # Predge-issued API credential for a different system.
+            PREDGE_RESEARCH_NEWS_TOKEN="$PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE"
+            if ! [[ "$PREDGE_RESEARCH_NEWS_TOKEN" =~ ^[a-f0-9]{64}$ ]]; then
+              echo "::error::PREDGE_RESEARCH_OVERRIDE_INVALID_FORMAT"; exit 5
+            fi
+            if test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$ROOT_LEDGER_TOKEN" ||
+               test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$CONTROL_PLANE_TOKEN"; then
+              echo "::error::PREDGE_RESEARCH_PRIVILEGED_CREDENTIAL_REUSE_FORBIDDEN"; exit 5
+            fi
+            echo "PREDGE_RESEARCH_GRANT_MODE=PROTECTED_PARTNER_ISSUED_TOKEN" >> "$GITHUB_ENV"
+          else
+            PREDGE_RESEARCH_NEWS_TOKEN="$(node -e "const c=require('node:crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-72h-research-only-v1').digest('hex'))")"
+            echo "PREDGE_RESEARCH_GRANT_MODE=EXISTING_SEPARATE_HMAC_TOKEN" >> "$GITHUB_ENV"
+          fi
           test "${#PREDGE_RESEARCH_NEWS_TOKEN}" -eq 64
           echo "::add-mask::$PREDGE_RESEARCH_NEWS_TOKEN"
           echo "PREDGE_RESEARCH_NEWS_TOKEN=$PREDGE_RESEARCH_NEWS_TOKEN" >> "$GITHUB_ENV"

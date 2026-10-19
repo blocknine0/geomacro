@@ -88,6 +88,9 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   expect(index).toContain('"/v1/partner/predge/derived-structural-72h"');
   expect(index).toContain("predgeResearchDerivedNewsFeed(request,env)");
   expect(workflow).toContain("geomacro-predge-72h-research-only-v1");
+  expect(workflow).toContain("secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE");
+  expect(workflow).toContain("PREDGE_RESEARCH_OVERRIDE_INVALID_FORMAT");
+  expect(workflow).toContain("PREDGE_RESEARCH_PRIVILEGED_CREDENTIAL_REUSE_FORBIDDEN");
   expect(workflow).toContain("secret put PREDGE_RESEARCH_NEWS_TOKEN");
   expect(workflow).toContain("verify-predge-auth-research-delivery.mjs");
   expect(workflow).not.toContain("echo $PREDGE_RESEARCH_NEWS_TOKEN");
