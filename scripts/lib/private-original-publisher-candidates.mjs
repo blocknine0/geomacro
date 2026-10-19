@@ -86,11 +86,16 @@ function xmlTag(chunk,name) {
   const m=chunk.match(new RegExp("<(?:atom:)?"+name+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:atom:)?"+name+">","iu"));
   return m?.[1]?.trim()??null;
 }
-function atomArticleLink(chunk) {
+function atomArticleLink(chunk,source) {
+  // One Atom entry may have several alternates (including empty/off-host
+  // links). Align the SHA handoff with the upstream original-link verifier:
+  // select the first FULLY validated publisher article, not merely the
+  // first rel=alternate. Never enlarge the trusted source host/path set.
   for(const m of chunk.matchAll(/<(?:atom:)?link\b([^>]*?)\/?\s*>/giu)){
     const rel=m[1].match(/\brel\s*=\s*["']([^"']+)["']/iu)?.[1]??"alternate";
     if(rel!=="alternate"&&rel!=="canonical")continue;
-    return m[1].match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1]??null;
+    const href=m[1].match(/\bhref\s*=\s*["']([^"']+)["']/iu)?.[1]??"";
+    if(canonicalOriginalUrl(href,source))return href;
   }
   return null;
 }
@@ -122,7 +127,7 @@ export function originalPublisherPrivateCandidates(xml,source,now=new Date(),{ca
     // Topic match remains only a downstream relevance hint, NOT acceptance.
     if(!title || (!captureAllTopics &&
        (!(source.topic instanceof RegExp)||!source.topic.test(title))))continue;
-    const original=canonicalOriginalUrl(rss?officialOriginalRssArticleUrl(item,source):atomArticleLink(item),source);
+    const original=canonicalOriginalUrl(rss?officialOriginalRssArticleUrl(item,source):atomArticleLink(item,source),source);
     if(!original)continue;
     const articleFingerprint=digest(original);
     if(seen.has(articleFingerprint))continue;
@@ -187,7 +192,7 @@ export function originalPublisherPrivatePageDateCandidate(xml,source,{
     if(!title || (!captureAllTopics &&
        (!(source.topic instanceof RegExp)||!source.topic.test(title))))
       continue;
-    const link=canonicalOriginalUrl(rss?officialOriginalRssArticleUrl(item,source):atomArticleLink(item),source);
+    const link=canonicalOriginalUrl(rss?officialOriginalRssArticleUrl(item,source):atomArticleLink(item,source),source);
     if(link!==original)continue;
     return {
       schema:"geomacro.private-original-article-candidate.v1",

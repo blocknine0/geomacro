@@ -58,6 +58,38 @@ describe("#2041 publisher-origin item rejection diagnostics",()=>{
     expect(x.current_scored_intelligence_verified).toBe(false);
     expect(x.commercial_eligible).toBe(false);
   });
+  it("accepts the later first-party Atom alternate and keeps diagnostics and SHA consistent",async()=>{
+    const original=govUrl("original-foreign-secretary-diplomacy-statement");
+    const invalids='<link rel="alternate" href="https://attacker.example/government/news/fake"/>'+
+      '<link rel="alternate"/><link rel="self" href="https://www.gov.uk/feed.xml"/>';
+    const xml=atom('<entry><title>Foreign office original policy update on conflict</title>'+
+      '<published>2026-10-11T14:45:00Z</published>'+invalids+
+      '<link rel="alternate" href="'+original+'"/></entry>');
+    const observed=await probeExpandedSource(gov,{
+      now:NOW,fetchImpl:fixtureResponse(xml,"application/atom+xml"),
+      openDiscovery:true,collectPrivateCandidates:true,
+    });
+    expect(observed.source_native_24h_release_items).toBe(1);
+    expect(observed.source_item_provenance_diagnostics).toMatchObject({
+      entries_parsed:1,original_article_link_rejected:0,
+      accepted_first_party_native_dated:1,
+    });
+    expect(observed.private_original_article_candidates).toHaveLength(1);
+    expect(observed.private_original_article_candidates[0]).toMatchObject({
+      native_published_at:"2026-10-11T14:45:00.000Z",
+      eligible_for_scoring:false,
+      eligible_for_publication:false,
+    });
+    const bad=xml.replace('<link rel="alternate" href="'+original+'"/>',"");
+    const denied=await probeExpandedSource(gov,{
+      now:NOW,fetchImpl:fixtureResponse(bad,"application/atom+xml"),
+      openDiscovery:true,collectPrivateCandidates:true,
+    });
+    expect(denied.source_native_24h_release_items).toBe(0);
+    expect(denied.private_original_article_candidates).toEqual([]);
+    expect(denied.source_item_provenance_diagnostics.original_article_link_rejected).toBe(1);
+  });
+
   it("reports RSS native clock absence and rejects feed index as an original article",async()=>{
     const item=(date:string|undefined,url:string)=>`<item><title>Monetary statement</title>`+
       (date===undefined?"":`<pubDate>${date}</pubDate>`)+
