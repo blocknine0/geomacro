@@ -5,6 +5,7 @@ import {
 import { realtimeSearchAnswer } from "./ask-realtime-search.server";
 import { answerFromCurrentOriginals } from "./ask-on-demand-original.server";
 import { answerOfficialNumeric, planAskOfficialNumeric } from "./ask-official-numeric.server";
+import {collectSharedOfficialNews} from "./ask-shared-derived-journal.server";
 
 /**
  * Canonical Ask Geomacro answer orchestration.
@@ -64,22 +65,11 @@ function selectOfficialNewsCategories(question: string): OfficialNewsCategory[] 
 async function officialUnscoredReleaseAnswer(question: string): Promise<HybridAskAnswer | null> {
   const categories = selectOfficialNewsCategories(question);
   if (!categories.length) return null;
-  const { readStatelessWebsiteIntelligence } = await import("./stateless-public-intelligence.server");
-  const results = await Promise.allSettled(
-    categories.map(category => readStatelessWebsiteIntelligence(category))
-  );
-  const now = Date.now();
-  const signals = results.flatMap(result => {
-    if (result.status !== "fulfilled") return [];
-    const recent = result.value.signals.filter(signal => {
-      const issued = Date.parse(signal.published_at);
-      return Number.isFinite(issued) && issued <= now - 15 * 60_000 &&
-        now - issued <= 24 * 3_600_000 &&
-        signal.status === "official_release_observed_unscored" &&
-        signal.same_event_corrob_verified === false && signal.severity === null;
-    });
-    return recent.slice(0, categories.length === 1 ? 3 : 1);
-  });
+  // The SAME source-neutral, native-dated D1 journal already powers website
+  // and free API. Reuse it for covered categories instead of re-fetching
+  // official publishers; missing categories still get bounded live checks.
+  const selected=await collectSharedOfficialNews(categories);
+  const signals=selected.signals;
   if (!signals.length) return null;
   // Report only categories that ACTUALLY yielded native-dated releases.
   // A healthy request for three categories is not evidence that all three
@@ -108,11 +98,13 @@ async function officialUnscoredReleaseAnswer(question: string): Promise<HybridAs
     gri: null,
     generatedAt: new Date().toISOString(),
     latest_original_published_at: latestOriginal,
-    data_mode: "ephemeral_live",
-    cache_status: "bypassed",
+    data_mode: selected.live_categories_queried.length===0 ? "short_cache":"ephemeral_live",
+    cache_status: selected.live_categories_queried.length===0 ? "hit":"bypassed",
     source_identity_exposed: false,
     durable_live_storage_write: false,
-    real_time_message: "Unscored first-party release observations only.",
+    real_time_message: selected.live_categories_queried.length===0
+      ? "Reused original-dated Geomacro D1 news. No new issuer request or signed risk claim."
+      : "Reused qualified D1 news; checked missing categories via bounded live originals. No signed risk claim.",
     intelligence_tier: "official_observation_unscored",
     signed_gro_generated: false,
     independent_same_event_verification: false,
@@ -156,14 +148,6 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
       signed_gro_generated: false, independent_same_event_verification: false,
     };
   }
-  // Narrow first-party source reads are separate from signed/payable intelligence.
-  try {
-    const original = await answerFromCurrentOriginals(question);
-    if (original) return original;
-  } catch (error) {
-    console.error("[ask-answer] original retrieval unavailable",
-      error instanceof Error ? error.message : "unknown error");
-  }
   // Broad free-news requests use original releases and bounded index discovery.
   // Country, corridor and scored questions keep the governed path below.
   if (selectOfficialNewsCategories(question).length > 0) {
@@ -181,6 +165,14 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
     } catch {
       return unavailable;
     }
+  }
+  // Narrow first-party source reads are separate from signed/payable intelligence.
+  try {
+    const original = await answerFromCurrentOriginals(question);
+    if (original) return original;
+  } catch (error) {
+    console.error("[ask-answer] original retrieval unavailable",
+      error instanceof Error ? error.message : "unknown error");
   }
   const primary = await answerHybridQuestion(question);
   if (!primary.insufficient_evidence) return primary;
