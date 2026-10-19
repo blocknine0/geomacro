@@ -96,7 +96,8 @@ test("hourly Cloudflare collection and +15m recovery retain single-writer and th
   assert.ok(legacy.includes('cron: "37 * * * *"'));
   assert.ok(legacy.includes("ingest-supabase-free-derived-news:"));
   assert.ok(legacy.includes("website-derived-news-cadence-backstop.yml/dispatches"));
-  assert.ok(legacy.includes("secrets: inherit"));
+  assert.ok(legacy.includes("actions: write"));
+  assert.ok(legacy.includes("CANONICAL_D1_RECOVERY_DISPATCH_REJECTED_"));
   assert.ok(backstop.includes("workflow_call: {}"));
   assert.ok(legacy.includes("actions: read"));
   assert.ok(legacy.includes("cancel-in-progress: false"));
