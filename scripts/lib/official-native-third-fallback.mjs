@@ -69,7 +69,10 @@ function originalAtomHref(block,host) {
   return null;
 }
 function field(block,name) {
-  const m=block.match(new RegExp("<"+name+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/"+name+">","iu"));
+  // Atom entries may legally use the atom: namespace prefix; require the
+  // SAME field name at both ends, never borrow updated as published.
+  const m=block.match(new RegExp("<(?:atom:)?"+name+
+    "(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:atom:)?"+name+">","iu"));
   return m?unescape(m[1]):"";
 }
 
