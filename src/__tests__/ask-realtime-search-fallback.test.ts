@@ -19,14 +19,21 @@ describe("Ask Geomacro realtime search fallback", () => {
   it("offers publisher-observation-only responses without inventing signed or scored risk", () => {
     const orchestrator = read("src/lib/ask-answer.server.ts");
     const type = read("src/lib/hybrid-ask-intelligence.server.ts");
-    expect(orchestrator).toContain("readStatelessWebsiteIntelligence");
-    expect(orchestrator).toContain("now - issued <= 24 * 3_600_000");
+    const shared = read("src/lib/ask-shared-derived-journal.server.ts");
+    const verifier = read("workers/control-plane/src/website-derived-intelligence.mjs");
+    // Original-source fallback moved into the shared D1-first reader.
+    expect(orchestrator).toContain("collectSharedOfficialNews(categories)");
+    expect(shared).toContain("readStatelessWebsiteIntelligence(category)");
+    expect(shared).toContain("fetchAllDerivedNews()");
+    expect(shared).toContain("const CLOCK_24H=24*60*60_000");
+    expect(shared).toContain("Promise.allSettled(");
+    expect(shared).toContain("verifyDerivedStory(s,now)");
+    expect(shared).toContain("s.sources_credited.length===0");
+    expect(verifier).toContain('s.status!=="official_release_observed_unscored"');
+    expect(verifier).toContain("s.same_event_corrob_verified!==false");
+    expect(verifier).toContain("s.severity!==null");
     expect(orchestrator).toContain("selectOfficialNewsCategories(question)");
-    expect(orchestrator).toContain("Promise.allSettled(");
     expect(orchestrator).toContain("what (?:has )?changed today");
-    expect(orchestrator).toContain("signal.status === \"official_release_observed_unscored\"");
-    expect(orchestrator).toContain("signal.same_event_corrob_verified === false");
-    expect(orchestrator).toContain("signal.severity === null");
     expect(orchestrator).toContain("signals.map(signal => signal.category)");
     expect(orchestrator).toContain("latest_original_published_at: latestOriginal");
     expect(type).toContain("latest_original_published_at?: string");
