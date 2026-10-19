@@ -42,9 +42,36 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-home-intelligence-final-audit-20261019");
+    expect(config.lock_revision).toBe("founder-approved-predge-free-news-72h-presentation-alignment-20261019");
     const audit = config.approved_website_final_audit;
-    expect(audit.approved_ui_commit).toBe(config.baseline_sha);
+    // The prior Oct 19 website audit stays an immutable historical approval.
+    // The subsequent Predge 72h wording/link change has its OWN scoped
+    // owner authorization; never silently rewrite older approvals.
+    expect(audit.approved_ui_commit).toBe("972d987f44f328d727fb3147daf2b6807a344a38");
+    const predge = config.approved_predge_free_news_presentation_alignment;
+    expect(config.baseline_sha).toBe("0e595227c9dba46f7e456bdc5f1e0532cc0f6c90");
+    expect(predge.approved_ui_commit).toBe(config.baseline_sha);
+    expect(predge.previous_baseline_sha).toBe(audit.approved_ui_commit);
+    expect(predge.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(predge.reviewed_changes).toHaveLength(4);
+    expect(predge.website_presentation_source_diff_reviewed).toBe(true);
+    expect(predge.global_risk_final_lock_unmodified).toBe(true);
+    expect(predge.backend_auto_ingest_unmodified).toBe(true);
+    expect(predge.partner_news_redistribution_not_authorized_by_this_change).toBe(true);
+    expect(predge.upstream_source_rights_not_approved_by_this_change).toBe(true);
+    expect(predge.source_original_publication_delay_minutes).toBe(15);
+    expect(predge.public_structured_retention_hours).toBe(72);
+    expect(predge.funds_authorized).toBe(false);
+    expect(predge.supabase_reactivated).toBe(false);
+    expect(predge.published_source_sha_unchanged).toBe(true);
+    expect(predge.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    const desk = read("src/components/intelligence/stateless-live-desk.tsx");
+    expect(desk).toContain('<option value="all">All available releases</option>');
+    expect(desk).toContain("Reading the 72-hour stored derived-news journal below");
+    expect(desk).toContain("Earlier original releases · Dated");
+    expect(desk).toContain("/v1/public/derived-structural-72h");
+    expect(desk).toContain("including the Predge pilot");
+    expect(desk).toContain("not licensed for partner resale");
     expect(audit.approved_ui_commit).toBe("972d987f44f328d727fb3147daf2b6807a344a38");
     expect(audit.previous_baseline_sha).toBe("ecbf82c6bea1d77ad9b38a41cedf8b1f306ca61e");
     expect(audit.global_risk_final_lock_unmodified).toBe(true);
