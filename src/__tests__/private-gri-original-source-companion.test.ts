@@ -8,6 +8,10 @@ import {
 } from "../../scripts/lib/private-gri-original-publisher-companion.mjs";
 import { makePrivateStageRecord, makePrivateStageBundle } from "../../scripts/lib/restricted-private-scored-stage.mjs";
 import { verifyPrivateScoringD1Checkpoint } from "../../scripts/lib/private-scoring-d1-checkpoint-proof.mjs";
+import {
+  encodePrivateStageCompanionB2Bundle,verifyPrivateStageCompanionB2Bundle,
+  PRIVATE_COMBINED_ARCHIVE_SCHEMA,
+} from "../../scripts/lib/private-stage-companion-b2-bundle.mjs";
 
 const now=new Date("2026-10-09T11:15:00.000Z");
 const article={
@@ -158,21 +162,81 @@ describe("#1827 private original-publisher title lineage to canonical GRI",()=>{
     },opts)).toThrow("PRIVATE_GRI_COMPANION_D1_READBACK_INVALID");
   });
 
-  it("production writer requires 2 independent B2 restores BEFORE source-free D1 cursor",()=>{
+  it("verifies both independently hashed private members in one full B2 gzip readback and D1 cursor",()=>{
+    const {stage,source}=fixture();
+    const companion=makePrivateGriCompanionBundle(stage,[source],{now});
+    const packed=encodePrivateStageCompanionB2Bundle(stage,companion,{now});
+    expect(packed.key).toBe(
+      "geomacro-evidence/v1/private/restricted-current-scoring-bundles/"+packed.digest+".json.gz");
+    expect(packed.stageSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(packed.companionSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(packed.stageSha256).not.toBe(packed.companionSha256);
+    expect(verifyPrivateStageCompanionB2Bundle(packed.bytes,packed,{now})).toBe(true);
+    const corrupt=Buffer.from(packed.bytes);
+    corrupt[corrupt.length-1]^=1;
+    expect(()=>verifyPrivateStageCompanionB2Bundle(corrupt,packed,{now}))
+      .toThrow("PRIVATE_B2_BUNDLE_FULL_READBACK_HASH_INVALID");
+    const checkpoint={
+      source_id:"orchestrator:private_stage",
+      payload:{
+        source:"geomacro_intelligence_orchestrator",task:"private_stage",
+        cursor:{
+          status:"verified_private_staging",publication_authorized:false,
+          classifier_version:"event-severity-v1.0.5",
+          counts:stage.counts,archive_format:PRIVATE_COMBINED_ARCHIVE_SCHEMA,
+          b2_key:packed.key,sha256:packed.digest,
+          stage_logical_sha256:packed.stageSha256,
+          source_companion_key:packed.key,
+          source_companion_sha256:packed.digest,
+          source_companion_logical_sha256:packed.companionSha256,
+          source_companion_stage_sha256:packed.stageSha256,
+          source_companion_full_readback_verified:true,
+          source_companion_exact_gzip_restore_verified:true,
+        },
+      },
+      last_success_at:now.toISOString(),
+    };
+    const options={
+      b2Key:packed.key,compressedSha256:packed.digest,
+      counts:stage.counts,lastSuccessAt:now.toISOString(),
+      sourceCompanion:{
+        key:packed.key,compressedSha256:packed.digest,
+        stageSha256:packed.stageSha256,logicalSha256:packed.companionSha256,
+        stageLogicalSha256:packed.stageSha256,
+      },
+    };
+    expect(verifyPrivateScoringD1Checkpoint(checkpoint,options)).toBe(true);
+    expect(JSON.stringify(checkpoint)).not.toContain(source.private_source_title);
+    expect(()=>verifyPrivateScoringD1Checkpoint({
+      ...checkpoint,payload:{...checkpoint.payload,cursor:{
+        ...checkpoint.payload.cursor,source_companion_logical_sha256:"0".repeat(64),
+      }},
+    },options)).toThrow("PRIVATE_GRI_COMPANION_BUNDLED_D1_READBACK_INVALID");
+    expect(()=>verifyPrivateScoringD1Checkpoint({
+      ...checkpoint,payload:{...checkpoint.payload,cursor:{
+        ...checkpoint.payload.cursor,source_companion_full_readback_verified:false,
+      }},
+    },options)).toThrow("PRIVATE_GRI_COMPANION_D1_READBACK_INVALID");
+  });
+
+  it("production writer makes ONE B2 PUT+full GET then independently validates BOTH logical members before source-free D1",()=>{
     const ingest=readFileSync("scripts/ingest-news.js","utf8");
     const archive=readFileSync("scripts/ops/archive-restricted-private-scored-stage.mjs","utf8");
     const workflow=readFileSync(".github/workflows/restricted-private-current-scoring.yml","utf8");
     expect(ingest).toContain("capturePrivateGriSourceCompanion");
     expect(ingest).toContain("privateGriSourceRows.push(source)");
     expect(ingest).toContain("${domain}-source.json");
-    expect(archive).toContain("validatePrivateGriCompanionBundle(restoredSource, stage)");
-    expect(archive).toContain("PRIVATE_GRI_COMPANION_B2_READBACK_PROOF_INVALID");
-    expect(archive.indexOf("sourceCompanionReceipt=await b2.putWithMetadataVerification"))
+    expect(archive).toContain("verifyPrivateStageCompanionB2Bundle(readback,bundle)");
+    expect(archive).toContain("PRIVATE_SCORING_BUNDLED_B2_READBACK_PROOF_INVALID");
+    expect(archive.match(/putWithMetadataVerification/g)).toHaveLength(1);
+    expect(archive.indexOf("const b2Receipt=await b2.putWithMetadataVerification"))
       .toBeLessThan(archive.indexOf("await control.persist"));
+    expect(archive).toContain("stage_logical_sha256:bundle.stageSha256");
+    expect(archive).toContain("source_companion_logical_sha256:bundle.companionSha256");
     expect(archive).toContain("source_companion_full_readback_verified: true");
     expect(archive).toContain("sourceCompanion: {");
     expect(archive).toContain('B2_ACCOUNT_QUOTA_REQUIRED !== "1"');
-    expect(workflow).toContain('B2_REQUEST_BUDGET: "6"');
+    expect(workflow).toContain('B2_REQUEST_BUDGET: "4"');
     expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
     expect(workflow).toContain("archive-proof.json");
     expect(workflow).not.toContain("-source.json");

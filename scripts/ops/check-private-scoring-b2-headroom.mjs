@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Read-only admission BEFORE model classification or B2 upload.
-// Two immutable private bundles require two PUT + two full-body GET;
-// one additional ticket of each type is reserved as bounded retry headroom.
+// One immutable PRIVATE stage+source bundle requires one PUT and one verified
+// full-body GET. Additional retries are never assumed or pre-reserved; each
+// actual network attempt remains guarded by an atomic global D1 ticket.
 // This is advisory; every real B2 request still requires an atomic D1 ticket.
 import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -14,14 +15,15 @@ export async function checkPrivateScoringB2Headroom({
 } = {}) {
   const quota = await governor.status();
   const verdict = evaluateGovernedB2Headroom(quota, {
-    getRequests: 3, putRequests: 3, now,
+    getRequests: 1, putRequests: 1, now,
   });
   return Object.freeze({
     schema: "geomacro.restricted-private-scoring-b2-headroom.v1",
     day_utc: verdict.day_utc,
     admitted: verdict.admitted,
     reason: verdict.admitted ? "SHARED_D1_HEADROOM_OBSERVED" : "QUOTA_HELD_NO_CLASSIFIER_CLAIM",
-    required_get_tickets: 3, required_put_tickets: 3,
+    required_get_tickets: 1, required_put_tickets: 1,
+    archive_mode: "single_b2_bundle_with_independent_logical_sha256_v1",
     checked_before_classifier_and_b2: true,
     d1_status_read_only: true,
     guaranteed_future_b2_reservations: false,
@@ -49,7 +51,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     appendFileSync(process.env.GITHUB_OUTPUT,
       "admitted=" + String(verdict.admitted) + "\n");
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, verdict.admitted
-      ? "Private scoring: shared D1 B2 quota has read-only headroom for 2 immutable bundles and bounded retry. Per-request D1 tickets are still mandatory; no commercial evidence is asserted.\n"
+      ? "Private scoring: shared D1 B2 quota has read-only headroom for one content-addressed bundled archive (1 PUT + 1 full GET). Per-request D1 tickets are still mandatory; no commercial evidence is asserted.\n"
       : "Private scoring: QUOTA HELD before any classifier claim/model read/B2 upload. Current commercial evidence remains unverified. Next UTC budget day may be retried by the existing source pulse.\n");
     console.log(JSON.stringify(verdict));
   } catch {

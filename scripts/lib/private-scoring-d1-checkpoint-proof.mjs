@@ -1,4 +1,5 @@
 import { STAGE_DOMAINS, CANONICAL_CLASSIFIER_VERSION } from "./restricted-private-scored-stage.mjs";
+import { PRIVATE_COMBINED_ARCHIVE_SCHEMA, PRIVATE_COMBINED_ARCHIVE_PREFIX } from "./private-stage-companion-b2-bundle.mjs";
 
 const SHA_RE = /^[0-9a-f]{64}$/u;
 const PREFIX = "geomacro-evidence/v1/private/restricted-current-scoring/";
@@ -17,12 +18,16 @@ export function verifyPrivateScoringD1Checkpoint(checkpoint, {
     checkpoint?.payload?.task !== "private_stage" ||
     cursor?.status !== "verified_private_staging" ||
     cursor?.publication_authorized !== false ||
+    (cursor?.archive_format !== undefined &&
+     cursor?.archive_format !== PRIVATE_COMBINED_ARCHIVE_SCHEMA) ||
     cursor?.classifier_version !== CANONICAL_CLASSIFIER_VERSION ||
     checkpoint?.last_success_at !== lastSuccessAt ||
     !Number.isFinite(Date.parse(String(lastSuccessAt ?? ""))) ||
     !SHA_RE.test(String(compressedSha256 ?? "")) ||
     typeof b2Key !== "string" ||
-    b2Key !== `${PREFIX}${compressedSha256}.json.gz` ||
+    b2Key !== (cursor?.archive_format===PRIVATE_COMBINED_ARCHIVE_SCHEMA
+      ? `${PRIVATE_COMBINED_ARCHIVE_PREFIX}${compressedSha256}.json.gz`
+      : `${PREFIX}${compressedSha256}.json.gz`) ||
     cursor?.b2_key !== b2Key ||
     cursor?.sha256 !== compressedSha256
   ) {
@@ -42,20 +47,34 @@ export function verifyPrivateScoringD1Checkpoint(checkpoint, {
   if (expectedKeys.some((key) => cursor.counts[key] !== counts[key])) {
     throw new Error("PRIVATE_SCORING_D1_READBACK_COUNTS_MISMATCH");
   }
-  if(sourceCompanion!==null && (
-    typeof sourceCompanion!=="object" ||
-    !/^geomacro-evidence\/v1\/private\/gri-original-source-companions\/[a-f0-9]{64}\.json\.gz$/u.test(
-      String(sourceCompanion.key ?? "")) ||
-    !SHA_RE.test(String(sourceCompanion.compressedSha256 ?? "")) ||
-    !SHA_RE.test(String(sourceCompanion.stageSha256 ?? "")) ||
-    sourceCompanion.key !==
-      "geomacro-evidence/v1/private/gri-original-source-companions/" +
-      sourceCompanion.compressedSha256 + ".json.gz" ||
-    cursor?.source_companion_key !== sourceCompanion.key ||
-    cursor?.source_companion_sha256 !== sourceCompanion.compressedSha256 ||
-    cursor?.source_companion_stage_sha256 !== sourceCompanion.stageSha256 ||
-    cursor?.source_companion_full_readback_verified !== true ||
-    cursor?.source_companion_exact_gzip_restore_verified !== true
-  )) throw new Error("PRIVATE_GRI_COMPANION_D1_READBACK_INVALID");
+  if(sourceCompanion!==null) {
+    const common=typeof sourceCompanion==="object" &&
+      SHA_RE.test(String(sourceCompanion.compressedSha256??"")) &&
+      SHA_RE.test(String(sourceCompanion.stageSha256??"")) &&
+      cursor?.source_companion_key===sourceCompanion.key &&
+      cursor?.source_companion_sha256===sourceCompanion.compressedSha256 &&
+      cursor?.source_companion_stage_sha256===sourceCompanion.stageSha256 &&
+      cursor?.source_companion_full_readback_verified===true &&
+      cursor?.source_companion_exact_gzip_restore_verified===true;
+    if(!common)throw Error("PRIVATE_GRI_COMPANION_D1_READBACK_INVALID");
+    if(cursor.archive_format===PRIVATE_COMBINED_ARCHIVE_SCHEMA) {
+      // One B2 object contains two independently hash-checked logical members.
+      // An old two-object checkpoint is still accepted through the legacy path.
+      if(sourceCompanion.key!==b2Key ||
+         sourceCompanion.compressedSha256!==compressedSha256 ||
+         !SHA_RE.test(String(sourceCompanion.logicalSha256??"")) ||
+         !SHA_RE.test(String(sourceCompanion.stageLogicalSha256??"")) ||
+         cursor.stage_logical_sha256!==sourceCompanion.stageLogicalSha256 ||
+         cursor.source_companion_logical_sha256!==sourceCompanion.logicalSha256 ||
+         cursor.source_companion_stage_sha256!==sourceCompanion.stageLogicalSha256)
+        throw Error("PRIVATE_GRI_COMPANION_BUNDLED_D1_READBACK_INVALID");
+    } else {
+      if(typeof sourceCompanion.key!=="string" ||
+         sourceCompanion.key!==
+           "geomacro-evidence/v1/private/gri-original-source-companions/"+
+           sourceCompanion.compressedSha256+".json.gz")
+        throw Error("PRIVATE_GRI_COMPANION_D1_READBACK_INVALID");
+    }
+  }
   return true;
 }

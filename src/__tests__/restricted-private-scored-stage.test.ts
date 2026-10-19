@@ -119,7 +119,7 @@ describe("#1803 restricted canonical private score archive", () => {
     expect(workflow).not.toContain("productionFundsAuthorized: true");
     expect(workflow).not.toContain("workflow_run:");
     expect(workflow).not.toContain("SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.");
-    expect(workflow).toContain('B2_REQUEST_BUDGET: "6"');
+    expect(workflow).toContain('B2_REQUEST_BUDGET: "4"');
     expect(workflow).toContain("for domain in geopolitics macro rare_earth");
     expect(workflow).toContain("--private-scored-stage");
     expect(workflow).toContain("--private-stage-only");
@@ -138,8 +138,8 @@ describe("#1803 restricted canonical private score archive", () => {
     expect(scorer).not.toContain("If private text is invalid, pad it");
 
     expect(archive).toContain("PRIVATE_SCORING_SUPABASE_CREDENTIALS_FORBIDDEN");
-    expect(archive).toContain("putWithMetadataVerification(key, packed, {");
-    expect(archive).toContain("validatePrivateStageBundle(parsed);");
+    expect(archive).toContain("putWithMetadataVerification(key,packed,{");
+    expect(archive).toContain("verifyPrivateStageCompanionB2Bundle(readback,bundle)");
     expect(archive).toContain("b2_exact_gzip_restore_verified: true");
     expect(archive).toContain("publication_authorized: false");
     expect(archive).toContain("supabase_writes: 0");

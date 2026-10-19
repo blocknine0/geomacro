@@ -91,7 +91,7 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      B2_REQUEST_BUDGET: "6"
+      B2_REQUEST_BUDGET: "4"
       # Isolated manual private B2 staging: all B2 HTTP attempts must reserve
       # shared account-wide D1 tickets after the D1 migration is deployed.
       B2_ACCOUNT_QUOTA_REQUIRED: "1"

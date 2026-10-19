@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
+import {encodePrivateStageCompanionB2Bundle,PRIVATE_COMBINED_ARCHIVE_SCHEMA} from "../../scripts/lib/private-stage-companion-b2-bundle.mjs";
 import {
   mkdtempSync, mkdirSync, writeFileSync, readFileSync,
   statSync, readdirSync, rmSync,
@@ -164,6 +165,34 @@ describe("#1827 zero-Supabase strict private original-source -> GRI v1.2 bridge"
     future.sourceCompanion.rows[0].first_observed_at=
       new Date(NOW.getTime()+8*60_000).toISOString();
     expect(()=>bridge(future)).toThrow();
+  });
+
+  it("accepts a single SHA-bound B2 archive for both stage and original source without promoting rights",()=>{
+    const e=makeEvidence();
+    const combined=encodePrivateStageCompanionB2Bundle(e.stage,e.sourceCompanion,{now:NOW});
+    const receipt={
+      ...e.receipt,archive_format:PRIVATE_COMBINED_ARCHIVE_SCHEMA,
+      content_addressed_b2_key:combined.key,
+      compressed_sha256:combined.digest,
+      private_original_source_companion_b2_key:combined.key,
+      private_original_source_companion_sha256:combined.digest,
+      stage_uncompressed_sha256:combined.stageSha256,
+      companion_uncompressed_sha256:combined.companionSha256,
+    };
+    const bound={...e,receipt};
+    const result=verified(bound);
+    expect(result.prior_archive_readback_receipt_consistent).toBe(true);
+    expect(result.public_published).toBe(false);
+    expect(result.commercial_eligible).toBe(false);
+    expect(result.b2_requests).toBe(0);
+    expect(()=>verified({...bound,receipt:{...receipt,
+      companion_uncompressed_sha256:"0".repeat(64)}})).toThrow(
+        "GRI_PRIVATE_BRIDGE_VERIFIED_ARCHIVE_LINEAGE_INVALID");
+    expect(()=>verified({...bound,receipt:{...receipt,
+      private_original_source_companion_b2_key:e.receipt.private_original_source_companion_b2_key}}))
+      .toThrow("GRI_PRIVATE_BRIDGE_VERIFIED_ARCHIVE_LINEAGE_INVALID");
+    expect(()=>verified({...bound,receipt:{...receipt,
+      archive_format:"UNKNOWN"}})).toThrow("GRI_PRIVATE_BRIDGE_VERIFIED_ARCHIVE_LINEAGE_INVALID");
   });
 
   it("rejects fake/altered archive receipt, source hashes and dishonest public flags",()=>{
