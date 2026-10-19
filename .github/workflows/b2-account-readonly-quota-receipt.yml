@@ -92,6 +92,37 @@ jobs:
             exit 2
           fi
           node scripts/ops/report-b2-account-ledger-readonly.mjs < "$raw"
+      - name: Print P0 hot recovery quota decision (read only)
+        if: always()
+        shell: bash
+        run: |
+          if test ! -s artifacts/b2-quota-readonly/account-ledger.json; then
+            echo "::warning::P0_B2_D1_LEDGER_UNAVAILABLE"
+          else
+            node --input-type=module <<'NODE'
+            import {readFileSync,appendFileSync} from "node:fs";
+            const x=JSON.parse(readFileSync("artifacts/b2-quota-readonly/account-ledger.json","utf8"));
+            const info={
+              schema:"geomacro.p0-hot-503-readonly-quota-decision.v1",
+              ledger_observed:x.ledger_observed===true,
+              reserved_total_headroom:x.remaining_reserved_total_headroom??null,
+              reserved_get_headroom:x.remaining_reserved_get_headroom??null,
+              current_hot_eight_get_headroom_present:x.quota_allows_full_hot_audit===true,
+              hold_reason:x.quota_hold_reason??null,
+              provider_account_usage_verified:false,
+              data_signed_or_restored:false,
+              b2_network_requests:0,d1_writes:0,payments:0,
+            };
+            console.log(JSON.stringify(info));
+            if(process.env.GITHUB_STEP_SUMMARY)appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+              "## P0 current hot B2 admission — metadata only\\n"+
+              "D1 ledger observed: "+info.ledger_observed+"; full 8-GET test headroom: "+
+              info.current_hot_eight_get_headroom_present+"; hold: "+
+              (info.hold_reason??"none")+"\\n"+
+              "No provider billing claim, current signed proof, B2 traffic or funds.\\n");
+            NODE
+          fi
+
       - name: Archive sanitized D1 ledger receipt only
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2

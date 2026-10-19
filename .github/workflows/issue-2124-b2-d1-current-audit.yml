@@ -62,6 +62,29 @@ jobs:
           ')"
           test -n "$id" || { echo 'D1_QUOTA_LEDGER_UNAVAILABLE'; exit 2; }
           echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+      # Phase 0: never spend scarce B2 Class B tickets checking three
+      # already-expired public hot pointers. This is an independent original
+      # source clock check, not a health/SHA/rights bypass.
+      - name: Gate current-hot B2 archive GET on source-native D1 metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          sql="SELECT product, schema_name, generated_at, source_as_of, expires_at, b2_object_key, proof_schema, source_run_id, length(b2_sha256) AS b2_hash_length, length(payload_sha256) AS payload_hash_length, length(CAST(payload_json AS BLOB)) AS payload_bytes FROM public_b2_hot_snapshot WHERE product IN ('intelligence','global-risk','risk-indices') LIMIT 3;"
+          raw="$(mktemp)"; err="$(mktemp)"
+          trap 'rm -f "$raw" "$err"' EXIT
+          if ! npx -y "wrangler@${WRANGLER_VERSION}" d1 execute "$D1_DATABASE_NAME" \
+            --remote --json --command "$sql" >"$raw" 2>"$err"; then
+            echo "::error::P0_CURRENT_HOT_D1_METADATA_READ_UNAVAILABLE"
+            exit 2
+          fi
+          if ! node scripts/ops/classify-d1-hot-metadata.mjs <"$raw"; then
+            echo "::error::P0_NO_CURRENT_HOT_INPUT_DO_NOT_WASTE_B2_GET"
+            # Missing/exhausted source clocks must be resolved via authorized
+            # source->review->signature->publisher before B2 current-hot audit.
+            exit 2
+          fi
+          echo "P0_CURRENT_HOT_D1_METADATA_POSSIBLE_NOT_CERTIFIED"
+
       - name: Fail closed without B2 GET headroom
         run: |
           node --input-type=module <<'NODE'
@@ -90,6 +113,8 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
         with:
           name: issue2124-b2-d1-readonly-${{ github.run_id }}
-          path: ${{ runner.temp }}/issue2124-safe-receipt.json
+          path: |
+            ${{ runner.temp }}/issue2124-safe-receipt.json
+            artifacts/public-serving/d1-metadata.json
           if-no-files-found: ignore
           retention-days: 7
