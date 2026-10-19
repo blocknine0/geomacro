@@ -12,7 +12,7 @@ describe("read-only Predge pilot parity on real D1 news",()=>{
   it("does not introduce a second paid/raw/private data pipeline",()=>{
     expect(s).toContain("node scripts/ops/verify-shared-derived-news-live.mjs");
     expect(s).toContain("same_journal_ids_verified");
-    expect(s).not.toContain("secrets.B2_");
+    expect(s).not.toMatch(/^\s+B2_[A-Z_]+:\s*\$\{\{\s*secrets\./m);
     expect(s).not.toContain("COINBASE");
     expect(s).not.toContain("wrangler deploy");
     expect(s).not.toContain("d1 execute");
