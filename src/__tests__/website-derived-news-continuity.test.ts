@@ -136,7 +136,9 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const text=await html.text();
     expect(html.status).toBe(200);
     expect(html.headers.get("content-security-policy")).toContain("frame-ancestors https://geomacro.live");
-    expect(text).toContain("Geomacro finds monetary policy on interest-rate policy");
+    expect(text).toContain("monetary policy on interest-rate policy");
+    expect(text).toContain("Country or region: Not specified in the release");
+    expect(text).not.toContain("\u2014");
     expect(text).toContain("What changed");
     expect(text).toContain("Why it matters");
     expect(text).not.toContain("source_url");

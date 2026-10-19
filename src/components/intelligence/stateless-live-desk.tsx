@@ -13,6 +13,7 @@ const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
   { key: "macro", label: "Macro / FX" },
   { key: "rare_earth", label: "Critical Minerals" },
 ];
+const displayProse = (text: string) => text.replace(/\s*\u2014\s*/gu, "; ");
 const REFRESH_MS = 2 * 60_000;
 const OGL_URL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
 type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
@@ -52,19 +53,20 @@ function Story({ signal, checkedAt }: {signal: StatelessIntelligenceSignal;check
         <span aria-hidden>·</span><time dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
         {!isCurrent ? <span className="rounded-full border border-border px-2 py-0.5">Earlier release</span> : null}
       </div>
-      <h3 className="mt-3 text-lg font-semibold leading-snug tracking-tight">{card?.headline ?? signal.title}</h3>
-      <p className="mt-3 text-sm leading-6">{card?.what_changed ?? signal.what_changed}</p>
+      <p className="mt-3 text-xs font-medium text-muted-foreground">Country or region: {displayProse(signal.geography ?? "Not specified in the release")}</p>
+      <h3 className="mt-3 text-lg font-semibold leading-snug tracking-tight">{displayProse(signal.title.replace(/^Geomacro finds\s+/iu, ""))}</h3>
+      <p className="mt-3 text-sm leading-6">{displayProse(signal.what_changed)}</p>
       {card?.detail_state === "LIMITED" ? <p className="mt-2 text-xs text-muted-foreground">Specific details not captured</p> : null}
       <details className="mt-4 border-t border-border/60 pt-3">
         <summary className="cursor-pointer py-1 text-xs font-semibold text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">Why it matters &amp; what to watch</summary>
         <div className="mt-3 space-y-4 text-sm leading-6 text-muted-foreground">
-          <div><h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Why it matters</h4><p className="mt-1">{card?.why_it_matters ?? signal.why_it_matters}</p></div>
-          {card ? <div><h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Watch next</h4><p className="mt-1">{card.watch_next.text}</p></div> : null}
+          <div><h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Why it matters</h4><p className="mt-1">{displayProse(signal.why_it_matters)}</p></div>
+          {card ? <div><h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Watch next</h4><p className="mt-1">{displayProse(card.watch_next.text)}</p></div> : null}
           {card?.detail_state === "FULL" && card.facts.length > 0 ? <dl className="grid gap-2 sm:grid-cols-2">{card.facts.map((fact,index)=><div key={index}><dt className="text-xs">{fact.label}</dt><dd className="font-medium text-foreground">{fact.value}{fact.unit ? " " + fact.unit : ""}</dd></div>)}</dl> : null}
           <p className="text-xs">Original release observed · No independent corroboration or risk score claimed</p>
         </div>
       </details>
-      {signal.sources_credited.length > 0 ? <div className="mt-3 border-t border-border/50 pt-3 text-[11px] leading-5 text-muted-foreground">{signal.sources_credited.map(credit=><p key={credit}>Required credit: {credit}{credit.includes("Open Government Licence") ? <> · <a href={OGL_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Licence</a></> : null}</p>)}</div> : null}
+      {signal.sources_credited.length > 0 ? <div className="mt-3 border-t border-border/50 pt-3 text-[11px] leading-5 text-muted-foreground">{signal.sources_credited.map(credit=><p key={credit}>Required credit: {displayProse(credit)}{credit.includes("Open Government Licence") ? <> · <a href={OGL_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Licence</a></> : null}</p>)}</div> : null}
     </article>
   );
 }
@@ -284,7 +286,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
                 (view === domain.key ? "border-primary bg-primary text-primary-foreground" :
                   "border-border bg-card hover:border-primary/60")}>
               {domain.label}
-              <span className="ml-2 text-xs opacity-80">{allSignals.some(signal => signal.category === domain.key) ? allSignals.filter(signal => signal.category === domain.key).length : feeds[domain.key] ? 0 : errors[domain.key] ? "—" : "…"}</span>
+              <span className="ml-2 text-xs opacity-80">{allSignals.some(signal => signal.category === domain.key) ? allSignals.filter(signal => signal.category === domain.key).length : feeds[domain.key] ? 0 : errors[domain.key] ? "Unavailable" : "…"}</span>
             </button>
           ))}
         </div>

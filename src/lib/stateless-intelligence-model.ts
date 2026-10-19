@@ -1,3 +1,4 @@
+import {releaseNewsObservation} from "./release-news-observation";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,verifiedGlobalRdfFeed} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { visiblePublisherText } from "./stateless-publisher-text";
 import { exactCanonicalCountryMentionFromOriginalTitle } from "./gri-canonical-country-title-mention";
@@ -529,13 +530,15 @@ export function deriveStatelessSignals(
       SAFE_FOCUS[item.category].find(rule => rule.test.test(item.title))?.label ?? selected.name;
     const geography=candidateOnly?null:geographyMention(item.title);
     const kind=candidateOnly?"unclassified publisher update":developmentKind(item.title);
+    const news=candidateOnly?null:releaseNewsObservation(item.title);
     result.push({
       id: item.category + "-" + viewIdentifier(fingerprint),
       category: item.category,
-      title: "Geomacro finds " + kind + " on " + focus + (geography ? " — " + geography : ""),
+      title: "Geomacro finds " + (news?.headline ?? kind + " on " + focus) + (geography ? " · " + geography : ""),
       why_it_matters:selected.implication,
       what_changed:candidateOnly?
         "A dated first-party source item was observed; category relevance, event details and material changes have not yet been established.":
+        news ? news.change + (geography ? " Country or region mentioned: " + geography + "." : "") :
         developmentSummary(focus,kind,geography),
       geography,
       development_type: kind,

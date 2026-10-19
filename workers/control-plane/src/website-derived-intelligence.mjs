@@ -151,7 +151,7 @@ export async function readDerivedStories(env,now=Date.now(),offset=0) {
  * broken TanStack RPC/SSR bridge cannot hide already verified historical news.
  * No script, no external CSS, and no upstream identity leaks.
  */
-const escapeHtml = text => String(text ?? "")
+const escapeHtml = text => String(text ?? "").replace(/\s*\u2014\s*/gu,"; ")
   .replace(/&/gu,"&amp;").replace(/</gu,"&lt;").replace(/>/gu,"&gt;")
   .replace(/"/gu,"&quot;").replace(/'/gu,"&#39;");
 export async function renderDerivedStoriesHtml(env,now=Date.now()){
@@ -167,14 +167,14 @@ export async function renderDerivedStoriesHtml(env,now=Date.now()){
   const stories=records.map(s=>'<article><div class="label">'+
     (s.status==="official_feed_candidate_unscored"?"SOURCE CANDIDATE · TOPIC UNVERIFIED":"GEOMACRO FINDS")+' · '+
     escapeHtml(labels[s.category])+' · <time>'+escapeHtml(s.published_at)+
-    '</time></div><h2>'+escapeHtml(s.title)+
+    '</time></div><p class=label>Country or region: '+escapeHtml(s.geography??'Not specified in the release')+'</p><h2>'+escapeHtml(s.title.replace(/^Geomacro finds\s+/iu,''))+
     '</h2><section><div><strong>What changed</strong><p>'+escapeHtml(s.what_changed)+
     '</p></div><div><strong>Why it matters</strong><p>'+escapeHtml(s.why_it_matters)+
-    '</p></div></section></article>').join("");
+    '</p></div></section>'+s.sources_credited.map(credit=>'<p class=label>Required credit: '+escapeHtml(credit)+'</p>').join('')+'</article>').join("");
   const message=records.length===0?'<p>No eligible original-dated publisher releases in the current window.</p>':stories;
   const markup='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
     '<meta name="viewport" content="width=device-width,initial-scale=1">'+
-    '<title>Geomacro Finds — rolling derived Intelligence</title>'+
+    '<title>Geomacro Finds | rolling derived Intelligence</title>'+
     '<style>body{margin:0;padding:4px;background:transparent;color:CanvasText;font:15px system-ui,sans-serif}'+
     'article{border:1px solid #9996;border-radius:14px;padding:20px;margin:0 0 14px;background:Canvas}'+
     '.label{font-size:11px;font-weight:700;letter-spacing:.06em;opacity:.85}'+
