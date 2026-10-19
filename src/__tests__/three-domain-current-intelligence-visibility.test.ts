@@ -86,7 +86,7 @@ describe("#1827 website Intelligence freshness visibility without invented three
     const source = readFileSync("src/components/home/live-intelligence-showcase.tsx","utf8");
     expect(source).toContain("selectHomepageFreeFind(cards)");
     expect(source).toContain("homeFindsPulse(cards)");
-    expect(source).toContain("Original release coverage · three global domains");
+    expect(source).toContain("Available findings · three domains");
     expect(source).toContain("Earlier release · unscored");
     expect(source).toContain("Recent release · unscored");
     expect(source).toContain("No eligible release");

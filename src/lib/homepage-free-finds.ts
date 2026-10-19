@@ -50,6 +50,15 @@ export function homeFindsPulse(cards:readonly unknown[],now=Date.now()){
     return {key,state:fresh?"recent_original":matching.length?"dated_original":"unavailable"} as const;
   });
 }
+/** Keep a bounded, original-dated winner when a healthy poll returns no new
+ * qualifying story. A refresh can never extend its source-native 30-day age. */
+export function mergeHomepageFindCards(previous:readonly unknown[],next:readonly unknown[],now=Date.now()){
+ const available=eligibleHomeFindCards([...next,...previous],now);
+ const best=selectHomepageFreeFind(available,now)?.card;
+ const latest=available.sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||a.id.localeCompare(b.id)).slice(0,100);
+ if(best&&!latest.some(card=>card.id===best.id))latest[latest.length-1]=best;
+ return latest;
+}
 /** Require the exact public no-funds D1-backed API contract; reject
  * unexpected billed/reviewed/scored documents before displaying them.
  */

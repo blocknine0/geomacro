@@ -4,6 +4,7 @@ import {findCardFromObservedRelease,type FindCardV1} from "../lib/find-card-v1";
 import {
   selectHomepageFreeFind,eligibleHomeFindCards,
   parseHomepageFindsFeed,homeFindsPulse,
+  mergeHomepageFindCards,
 } from "../lib/homepage-free-finds";
 import type {StatelessIntelligenceSignal} from "../lib/stateless-intelligence-model";
 
@@ -29,6 +30,19 @@ function feed(cards:FindCardV1[]){
   source_metadata_returned:false,original_release_delay_minutes:15};
 }
 describe("unscored three-domain homepage from existing public D1 journal",()=>{
+ it("retains a dated winner after an empty healthy poll without extending its age",()=>{
+  const previous=card("rare_earth","2026-10-10T11:00:00Z");
+  expect(mergeHomepageFindCards([previous],[],NOW)).toEqual([previous]);
+  expect(mergeHomepageFindCards([previous],[],Date.parse("2026-11-17T17:00:00Z"))).toEqual([]);
+ });
+ it("bounds browser continuity, replaces duplicate identities and retains the best eligible card",()=>{
+  const previous=card("macro","2026-10-10T11:00:00Z");
+  const next=Array.from({length:110},(_,i)=>({...card("geopolitics","2026-10-17T15:00:00Z"),id:"new-find-"+i}));
+  const merged=mergeHomepageFindCards([previous],next,NOW);
+  expect(merged).toHaveLength(100);expect(new Set(merged.map(x=>x.id)).size).toBe(100);
+  const replacement={...previous,headline:"Updated derived description"};
+  expect(mergeHomepageFindCards([previous],[replacement],NOW)).toEqual([replacement]);
+ });
  it("selects one genuinely original-dated 24h public Find, never a refreshed old score",()=>{
   const yesterday=card("geopolitics","2026-10-16T17:10:00Z");
   const earlier=card("macro","2026-10-10T11:00:00Z");

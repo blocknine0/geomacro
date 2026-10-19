@@ -31,7 +31,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     expect(pricing).toContain("<CapabilityPriceSchedule />");
     expect(api).toContain("<CapabilityPriceSchedule compact />");
     expect(pricing).not.toContain("Launch price for the first 20,000");
-    expect(read("src/components/home/live-intelligence-showcase.tsx")).toContain("Exact USDC price by capability");
+    expect(read("src/components/commercial-access-guide.tsx")).toContain("Exact USDC price by capability");
     expect(read("src/components/agent-commerce-status.tsx")).not.toContain("USDC/call");
     expect(pricing).toContain("Monthly access");
     expect(pricing).toContain("mailto:contact@geomacro.live?subject=Geomacro%20monthly");

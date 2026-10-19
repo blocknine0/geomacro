@@ -24,6 +24,7 @@ import { categoryLeads, publicHeadline, scoredNews, COMMERCIAL_DOMAINS } from "@
 import { intelligenceDomainPulse } from "@/lib/intelligence-domain-pulse";
 import { currentVerifiedDeskEvents } from "@/lib/intelligence-current-desk";
 import { SourceNetworkMonitor } from "@/components/intelligence/source-network-monitor";
+import { intelligenceCategorySearch } from "@/lib/intelligence-desk-view";
 
 const TITLE = "Geomacro Finds | Live 15-Minute Delayed Intelligence";
 const DESCRIPTION = "Geomacro Finds: on-demand geopolitical, Macro/FX and critical-minerals developments, updated as eligible official releases arrive with a 15-minute public delay. No scores or persistent source storage.";
@@ -31,6 +32,7 @@ const URL = "https://geomacro.live/intelligence";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
 export const Route = createFileRoute("/intelligence")({
+  validateSearch: intelligenceCategorySearch,
   loader: async () => {
     const now = Date.now();
     // All THREE actual publisher categories must be present in the first
@@ -114,7 +116,8 @@ export const Route = createFileRoute("/intelligence")({
 
 function StatelessWebsiteIntelligencePage() {
   const loader = Route.useLoaderData();
-  return <StatelessLiveDesk initial={loader.stateless} initialFeeds={loader.statelessFeeds} initialJournal={loader.journal} />;
+  const {category}=Route.useSearch();
+  return <StatelessLiveDesk initial={loader.stateless} initialFeeds={loader.statelessFeeds} initialJournal={loader.journal} initialView={category??"all"} />;
 }
 
 function IntelligencePage() {

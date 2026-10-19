@@ -393,12 +393,12 @@ export function AskWorkspace() {
               Enter to send · Shift+Enter for a new line · Follow-ups use bounded context, not previous answers as evidence.
             </p>
             <p className="text-center text-[11px] leading-5 text-muted-foreground">
-              Public chat is free; signed structured API products use separate x402 pricing.{" "}
+              Public chat is free; structured API products use separate x402 pricing.{" "}
               <Link to="/pricing" className="hover:text-foreground hover:underline">compare API and monthly access</Link>
               {" · "}
               <Link to="/intelligence" className="hover:text-foreground hover:underline">Intelligence</Link>
               {" · "}
-              <Link to="/global-risk" className="hover:text-foreground hover:underline">Risk Indices</Link>
+              <Link to="/risk-indices" className="hover:text-foreground hover:underline">Risk Indices</Link>
             </p>
           </div>
         </div>
