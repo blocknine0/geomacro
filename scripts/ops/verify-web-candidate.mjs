@@ -25,6 +25,30 @@ for(const asset of PINNED_ASSETS){
  const bytes=Buffer.from(await res.arrayBuffer());
  if(bytes.length!==metadata.size||createHash('sha256').update(bytes).digest('hex')!==asset.sha256)throw Error('CANDIDATE_PUBLIC_IMAGE_BYTES_MISMATCH');
 }
+// Exact-code machine integration acceptance is separate from signed-data
+// health. Discovery must be free/read-only with a locked Coinbase rail; only
+// POST can ever trigger a quote or payment, and this candidate denies POST.
+const machine=await get("/api/v1/intelligence/query");
+if(machine.res.status!==200 ||
+ machine.json.ok!==true ||
+ machine.json.product!=="geomacro_adaptive_risk_intelligence_v1" ||
+ machine.json.configured!==false ||
+ machine.json.payment_rail_status!=="CONTROLLED_PRELAUNCH_UNAVAILABLE" ||
+ machine.json.environment!=="prelaunch" ||
+ machine.json.network!==null ||
+ machine.json.exact_price_usdc!==null ||
+ machine.json.discovery_is_free!==true ||
+ machine.json.discovery_proves_current_product!==false ||
+ machine.json.no_funds_or_payment_claimed!==true ||
+ machine.json.execution_authorized!==false ||
+ machine.json.raw_data_delivered!==false ||
+ machine.json.source_identity_delivered!==false ||
+ machine.json.machine_next_steps?.schemas!=="/api/v1/agent?view=openapi" ||
+ machine.json.machine_next_steps?.payable_request!=="/api/v1/intelligence/query" ||
+ machine.json.machine_next_steps?.retry_paid_request_automatically!==false ||
+ machine.res.headers.has("PAYMENT-REQUIRED") ||
+ machine.res.headers.has("PAYMENT-RESPONSE"))
+ throw Error("CANDIDATE_MACHINE_DISCOVERY_NO_FUNDS_CONTRACT_INVALID");
 const live=await get("/api/health?deep=1&profile=live-structured");
 const categories=["geopolitics","macro-fx","critical-minerals"];
 if(live.res.status!==200||live.json.schema!=="geomacro.product-scoped-deep-health.v1"||
@@ -54,4 +78,5 @@ console.log(JSON.stringify({schema:"geomacro.web-candidate-readback.v1",canonica
  public_images_verified:PINNED_ASSETS.length,
  legacy_deep_health_status:legacy.res.status,legacy_signed_products_ready:legacy.json.ok===true,
  deployment_mode:"read-only-no-funds",production_domain_changed:false,
+ machine_discovery_http_200:true,machine_payment_rail_locked:true,
  commercial_launch_ready:false,payment_attempts:0}));
