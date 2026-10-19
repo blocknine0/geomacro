@@ -24,6 +24,31 @@ eligibility to unclassified candidates. Records explicitly mark
 `commercial_derived_rights_verified:false`, `signed_product_verified:false`,
 `payable:false`, and no source-neutral redistribution rights.
 
+## Two independent onboarding scopes — do not confuse their gates
+
+**FREE RESEARCH (available now):** Public `GET /v1/public/derived-structural-72h`
+needs no partner token, individual item approvals, reviewer receipts or signed
+GRI. The optional authenticated Predge research route requires **one
+dedicated 64-hex Bearer**, not repeat per-item approvals. The Geomacro
+Worker's private anonymous 401 / authenticated 200 and matching D1 IDs were
+independently verified on the 19 October 2026 protected main deploy.
+**Predge's receipt of that token and its own successful call are not yet
+independently confirmed.** A 200 with no eligible items is a valid empty
+observation, not invented macro or minerals coverage.
+
+Both free routes are **non-commercial, source-neutral research-only**. They
+retain native clocks, original content-credit exclusions, the 15-minute
+delay, 72-hour retention and existing 500/UTC-day authenticated hard cap.
+They cannot authorize resale, source-rights elevation, scoring, payment or
+trade execution.
+
+**SIGNED MARKET / GRO / RISK GATE (separate, not yet accepted):** Requires
+Predge's independently verifiable market signing key, signed numeric
+`market_id` plus `condition_id`, exact clocks/condition/dispute state,
+their own authorization and quota acceptance, and a genuinely current
+verified `gro-1.1` if making a Risk Gate decision. Free public news
+records are advisory candidate observations, not signed market state.
+
 ## Driver fields (actual implementation contracts)
 
 A Risk Gate v1 request needs `request_id`,
@@ -63,19 +88,25 @@ For real GRO delivery request an independently signed and unexpired
 `gro-1.1` object with its `integrity`, `verification`, evidence and
 rights flags unchanged. **Never relabel these fixtures as production signatures.**
 
-## Before actual 90-day driver kickoff
+## Before separately signed-market Risk Gate driver acceptance
 
-Predge must confirm its **own** server-enforced partner quota and credential
-header: suggested target 100 checks/day, HARD maximum 500/day. They must provide
-settlement-risk endpoint specification, current signing key, independent live
-networked PUBLIC_SANDBOX signed sample and signed/countersigned LOI v2 with
-email-agreed kickoff date. Geomacro verifies signature, clock, numeric ID,
-origin, actual server counters and fail-closed responses. No fees, prepaid
-costs or minimum commitments. A public research news feed alone is **not**
-an agreement to redistribute structured intelligence commercially.
-Legacy Supabase-backed risk-gate endpoint is not a deployed replacement
-for the isolated partner pilot; don't send a paid request or claim production
-GO until the external gates are verified.
+Predge must confirm its **own** server-enforced market-feed quota, signing
+key and credential header: suggested target 100 checks/day, HARD maximum
+500/day. Those **Predge-market** credentials and counters are NOT
+prerequisites for Geomacro's already deployed public free-research GET.
+The authenticated Geomacro research feed instead requires only its own
+dedicated Bearer, which the owner must share through a secure channel.
+For the signed-market driver Predge must provide settlement-risk endpoint
+specification, a current signing key, independent live PUBLIC_SANDBOX signed
+sample and signed/countersigned LOI v2 where applicable to the separate
+driver agreement. Geomacro verifies signature, clock, numeric ID, origin,
+actual server counters and fail-closed responses. No fees, prepaid costs
+or minimum commitments. A public research news feed alone is **not** an
+agreement to redistribute structured intelligence commercially.
+The first real-input feedback target is 2 November 2026, not evidence
+that a signed-market driver test has already passed. Legacy Supabase
+Risk Gate is not a deployed replacement; never claim paid production GO
+before the independent signed-market and product proof gates pass.
 
 Relevant canonical sources:
 `schemas/gro-1.1.schema.json`, `src/lib/risk-gate-contract.ts`,
