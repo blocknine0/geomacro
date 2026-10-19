@@ -45,6 +45,20 @@ describe("official Geomacro API and AI Agent v1",()=>{
   expect(openapi.paths["/api/v1/agent"].post.requestBody.content["application/json"].schema.required).toEqual(["tool","arguments"]);
   expect(openapi.paths["/api/v1/intelligence/query"]).toHaveProperty("post");
   expect(openapi.paths["/api/v1/finds"]).toHaveProperty("get");
+  const media=openapi.paths["/api/v1/agent"].post.requestBody.content["application/json"];
+  const paid=GEOMACRO_AGENT_TOOLS.filter(tool=>tool.paid);
+  expect(media.schema.oneOf).toHaveLength(paid.length);
+  for(const tool of paid){
+   const variant=media.schema.oneOf.find(x=>x.properties.tool.const===tool.name);
+   expect(variant?.properties.arguments).toEqual(tool.inputSchema);
+   const example=media.examples[tool.name].value;
+   expect(example.tool).toBe(tool.name);
+   expect(planOfficialGeomacroToolCall(example)?.tool).toBe(tool.name);
+  }
+  expect(media.examples).not.toHaveProperty("verify_risk_object");
+  expect(openapi.paths["/api/v1/agent"].post.responses).toHaveProperty("429");
+  expect(d.buyer_integration.preflight_does_not_charge).toBe(true);
+  expect(d.buyer_integration.no_automatic_payment_retry).toBe(true);
   expect(openapi["x-geomacro"].execution_authorized).toBe(false);
  });
  it.each(["country_risk","corridor_risk","change_since_last_verified",
