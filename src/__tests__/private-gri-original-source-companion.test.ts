@@ -166,8 +166,8 @@ describe("#1827 private original-publisher title lineage to canonical GRI",()=>{
     const {stage,source}=fixture();
     const companion=makePrivateGriCompanionBundle(stage,[source],{now});
     const packed=encodePrivateStageCompanionB2Bundle(stage,companion,{now});
-    expect(packed.key).toMatch(
-      /^geomacro-evidence\\/v1\\/private\\/restricted-current-scoring-bundles\\/[a-f0-9]{64}\\.json\\.gz$/);
+    expect(packed.key).toBe(
+      "geomacro-evidence/v1/private/restricted-current-scoring-bundles/"+packed.digest+".json.gz");
     expect(packed.stageSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(packed.companionSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(packed.stageSha256).not.toBe(packed.companionSha256);
