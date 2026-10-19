@@ -140,7 +140,7 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(orchestratorWorkflow).toContain("FROZEN_SUPABASE_NO_NETWORK");
     expect(autoIngestWorkflow).toContain("workflow_dispatch: {}");
     expect(autoIngestWorkflow).toContain('cron: "37 * * * *"');
-    expect(autoIngestWorkflow).toContain("uses: ./.github/workflows/website-derived-news-cadence-backstop.yml");
+    expect(autoIngestWorkflow).toContain("website-derived-news-cadence-backstop.yml/dispatches");
     expect(autoIngestWorkflow).toContain("  recover-news-ingest:\n    # Legacy Supabase recovery retired:");
     expect(autoIngestWorkflow).toContain("    if: ${{ false }}");
     expect(autoIngestWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
