@@ -1,0 +1,30 @@
+{
+  "schema": "geomacro.predge.pilot-handoff-manifest.v1",
+  "prepared_for": "Predge Risk Gate driver / 90-day free research pilot",
+  "generated_from_git_sha": "3eaf4ac61726439296af0c7ce4e2478c9b00a072",
+  "scope": "INTEGRATION_TEST_FIXTURES_AND_PUBLIC_RESEARCH_FEED_ONLY",
+  "production_gro_signed": false,
+  "upstream_source_rights_for_redistribution_verified": false,
+  "predge_partner_quota_live_verified": false,
+  "partner_server_credential_verified": false,
+  "noi_fee_required": true,
+  "payments": 0,
+  "execution_authorized": false,
+  "contracts": {
+    "gro": "gro-1.1",
+    "risk_gate": "risk-gate-1.0",
+    "derived_news": "geomacro.derived-news-structural-feed.v1"
+  },
+  "live_free_feed": "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/derived-structural-72h",
+  "website": "https://geomacro.live/intelligence",
+  "sha_scope": "test fixtures not production data",
+  "term_days_after_written_kickoff": 90,
+  "requests_per_day_target": 100,
+  "hard_ceiling_per_day": 500,
+  "includes": [
+    "sample country GRO",
+    "sample corridor GRO",
+    "v1 Risk Gate request",
+    "v1 Risk Gate advisory response"
+  ]
+}
