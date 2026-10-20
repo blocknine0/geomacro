@@ -35,7 +35,9 @@ export function classifyPublishedSourceEquivalence(compare,siteSha,mainSha){
      compare.files.length>=300||!Array.isArray(compare.commits)||
      compare.commits.at(-1)?.sha!==mainSha)return false;
   return compare.files.every(file=>file&&file.status!=="removed"&&
-    typeof file.filename==="string"&&SAFE_NON_WEBSITE_PATH.test(file.filename));
+    typeof file.filename==="string"&&
+    !file.filename.split("/").some(segment=>segment==="."||segment==="..")&&
+    SAFE_NON_WEBSITE_PATH.test(file.filename));
 }
 export async function verifyPublishedSourceEquivalence(siteSha,mainSha,{
   fetcher=fetch,token=process.env.GITHUB_TOKEN??"",
