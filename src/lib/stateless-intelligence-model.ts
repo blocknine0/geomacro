@@ -131,6 +131,12 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
     // links. Resolve ONLY the exact preapproved original pressNNN.php path
     // to the fixed issuer origin. No user-controlled base, off-host scheme,
     // query, fragment, double slash or generic same-host article fallback.
+    // WTO's own RSS directory historically advertises HTTP issuer links.
+    // Upgrade only exact, pre-approved WTO news article paths, never
+    // arbitrary HTTP, redirect hosts or tracking links.
+    if (source.id === "wto_trade_original_rss" &&
+        /^http:\/\/www\.wto\.org\/english\/news_e\/(?:news|pres)\d{2}_e\/[a-z0-9_.-]{4,150}\.htm$/u.test(normalized))
+      normalized = "https:" + normalized.slice("http:".length);
     if (source.id === "eia_press_macro" &&
         /^\/pressroom\/releases\/press[1-9][0-9]{1,5}\.php$/u.test(normalized))
       normalized = "https://www.eia.gov" + normalized;
@@ -148,6 +154,12 @@ export function acceptedOriginalArticleLink(raw: string | null, source: Stateles
     if (source.govContentApi &&
         !/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u.test(link.pathname)) return null;
     if (source.id === "fed_press" && !/^\/newsevents\/pressreleases\//u.test(link.pathname)) return null;
+    if (source.id.startsWith("nz_beehive_") &&
+        (link.search || !/^\/(?:release|speech)\/[a-z0-9][a-z0-9-]{4,180}$/u.test(link.pathname)))
+      return null;
+    if (source.id === "wto_trade_original_rss" &&
+        (link.search || !/^\/english\/news_e\/(?:news|pres)\d{2}_e\/[a-z0-9_.-]{4,150}\.htm$/u.test(link.pathname)))
+      return null;
     // EIA Press Room's numbered original release article, not the source
     // landing/search page, Today-in-Energy, RSS feed or mirror. An issuer
     // release URL does NOT certify source rights or signed GRI eligibility.
