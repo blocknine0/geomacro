@@ -51,8 +51,9 @@ test("rolling dates are bounded, non-future, and advanced by the caller clock",(
   assert.equal(first.hostname,"www.gdacs.org");
   assert.equal(first.pathname,"/gdacsapi/api/events/geteventlist/SEARCH");
   assert.equal(first.searchParams.get("eventlist"),"EQ");
-  assert.equal(first.searchParams.get("pageSize"),"25");
-  assert.equal(first.searchParams.get("pageNumber"),"1");
+  assert.equal(first.searchParams.get("pagesize"),"3");
+  assert.equal(first.searchParams.get("pagenumber"),"1");
+  assert.equal(first.searchParams.has("pageSize"),false);
   assert.equal(first.searchParams.get("fromdate"),"2026-10-13");
   assert.equal(first.searchParams.get("todate"),"2026-10-20");
   const next=new URL(gdacsCountryEventListUrl(new Date("2026-11-02T00:01:00Z")));
@@ -70,8 +71,8 @@ test("network fetch uses the same rolling native-date query; invalid clock makes
   assert.equal(count,1);
   assert.equal(requestUrl.searchParams.get("fromdate"),"2026-10-13");
   assert.equal(requestUrl.searchParams.get("todate"),"2026-10-20");
-  assert.equal(requestUrl.searchParams.get("pageSize"),"25");
-  assert.equal(requestUrl.searchParams.get("pageNumber"),"1");
+  assert.equal(requestUrl.searchParams.get("pagesize"),"3");
+  assert.equal(requestUrl.searchParams.get("pagenumber"),"1");
   await assert.rejects(()=>fetchGdacsNativeCountry({
     now:new Date("invalid"),fetchImpl:async()=>{count++;return Response.json(good);}
   }),/GDACS_CLOCK_INVALID/);
