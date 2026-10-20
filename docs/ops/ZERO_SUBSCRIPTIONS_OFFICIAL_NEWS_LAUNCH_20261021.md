@@ -10,10 +10,10 @@ a new service, new cron, paid API, Supabase, extra D1 table, B2 or payments:
 | Domain | Existing and additional issuer originals |
 | --- | --- |
 | Geopolitics | UN News; UK FCDO (+) |
-| Macro/FX and trade | US Federal Reserve; WTO trade news; NZ Beehive (+) |
+| Macro/FX and trade | US Federal Reserve; WTO trade news; ECB (+) |
 | Critical minerals | Natural Resources Canada; US DOE (+) |
 
-All seven use pre-existing topic-specific classifiers, allowlisted host,
+Beehive remains catalogued in the existing hourly portfolio, but the protected live feed diagnostic returned HTTP 200 text/html rather than RSS/XML for all tested Beehive endpoints on 2026-10-20. Do not count it as an active fastlane news feed or try to bypass its response. WTO RSS returned actual XML with 10 feed items, which is transport evidence, not new original-page verification. The separately active ECB issuer family has an RSS content-type and remains subject to actual native-date verification.\n\nAll seven use pre-existing topic-specific classifiers, allowlisted host,
 source-native time, source-specific release identity and the mandatory 15m
 original-publication display delay. A publisher's RSS fetch time is NOT a
 news event. Rates: up to 7 fixed origins per 5-minute opportunity, before
