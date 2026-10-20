@@ -5,6 +5,7 @@ import {automatedFindsResponse} from "../lib/automated-finds-reader.server";
 import {publicFindCardsResponse} from "../lib/public-find-card-feed.server";
 import {derivedNewsStructuralResponse} from "../lib/derived-news-structural-response.server";
 import {publicThreeDomainContinuityResponse} from "../lib/three-domain-evidence-continuity-client";
+import {geomacroThreeDomainDeliveryContract} from "../lib/three-domain-delivery-contract";
 
 export const Route = createFileRoute("/api/v1/intelligence/query")({
   server: {
@@ -16,6 +17,17 @@ export const Route = createFileRoute("/api/v1/intelligence/query")({
       ...mainnetIntelligenceHandlers,
       GET: async ({request}:{request:Request}) => {
         const url=new URL(request.url);
+        if(url.searchParams.get("view")==="delivery-contract"){
+          if(url.searchParams.getAll("view").length!==1 ||
+             [...url.searchParams.keys()].some(key=>key!=="view")){
+            return Response.json({ok:false,chargeable:false,
+              error:"DOMAIN_DELIVERY_CONTRACT_QUERY_INVALID"},{status:400,
+              headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
+          }
+          return Response.json(geomacroThreeDomainDeliveryContract(),{
+            headers:{"Cache-Control":"public, max-age=300, must-revalidate",
+              "X-Content-Type-Options":"nosniff"}});
+        }
         if(url.searchParams.get("view")==="finds")return automatedFindsResponse(request);
         if(url.searchParams.get("view")==="structural-72h")
           return derivedNewsStructuralResponse(request);
