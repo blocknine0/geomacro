@@ -258,7 +258,7 @@ const AU_RESOURCES_TRADE_TOPIC = {
 // original-policy subjects, not every WTO newsletter/headline. Source-native
 // pubDate + issuer's pinned original article path remain independent gates.
 const WTO_ORIGINAL_TRADE_POLICY_TOPIC={
-  test:/\\b(?:safeguard investigations?|anti[- ]dumping|countervailing (?:duty|duties|measures?)|trade[- ]remedy investigations?|tariff[- ]rate quotas?|tariff (?:concessions?|commitments?|bindings?)|trade (?:policy reviews?|facilitation|disputes?|barriers?)|(?:WTO )?dispute[- ]settlement panels?)\\b/iu,
+  test:/\\b(?:safeguard investigations?|anti[- ]dumping|countervailing (?:duty|duties|measures?)|trade[- ]remedy investigations?|tariff[- ]rate quotas?|tariff (?:concessions?|commitments?|bindings?)|trade (?:policy reviews?|facilitation|disputes?|barriers?)|(?:WTO )?dispute[- ]settlement(?: panels?)?)\\b/iu,
   name:"international trade measures and disputes",
   implication:"An original trade-policy notice may affect cross-border market access and supply chains. Enforceability, tariff magnitude, country impact and FX direction are not established by the announcement alone.",
 };
