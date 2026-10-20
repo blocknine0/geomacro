@@ -1,0 +1,73 @@
+name: Five-Minute Original News Fastlane
+
+# Best-effort 5-minute original-source intake for ONE pre-reviewed publisher
+# per category. NOT 195x3 live sources or a guaranteed 20-minute SLA.
+# All genuine articles stay source-private; only the original-dated Geomacro
+# derived cards enter the EXISTING 72-hour D1 journal. No Supabase, B2 or x402.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "3-58/5 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/five-minute-original-news-fastlane.yml"
+      - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - "src/__tests__/five-minute-original-news-fastlane.test.ts"
+  pull_request:
+    paths:
+      - ".github/workflows/five-minute-original-news-fastlane.yml"
+      - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - "src/__tests__/five-minute-original-news-fastlane.test.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-five-minute-original-news-fastlane-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fastlane-contract:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+      - name: Validate original-only fastlane, actual source clocks and no funds
+        run: bunx vitest run src/__tests__/five-minute-original-news-fastlane.test.ts
+
+  original-five-minute-derived-news:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    environment: production
+    env:
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+    steps:
+      - name: Checkout exact canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+      - name: Verify existing D1 derived-news authorization is configured
+        run: |
+          test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || {
+            echo "::error::Five-minute existing derived journal authorization absent"
+            exit 2
+          }
+      - name: Publish bounded current original-dated three-category derived news
+        run: bun scripts/ops/publish-original-news-five-minute-fastlane.ts
