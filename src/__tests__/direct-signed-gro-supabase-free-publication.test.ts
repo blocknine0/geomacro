@@ -1,5 +1,6 @@
 import {readFileSync} from "node:fs";
 import {describe,it,expect} from "vitest";
+import {predgeRiskGateD1Readiness} from "../../workers/control-plane/src/predge-risk-gate-d1.mjs";
 import {validatedOwnerPrivateGRO,promoteOwnerPrivateGRO}
  from "../../scripts/ops/publish-private-signed-gro-d1";
 
@@ -45,5 +46,34 @@ describe("single genuine signed GRO -> B2+D1 without Supabase",()=>{
   expect(src).toContain("supabase_requests:0");
   expect(src).not.toContain("createGriDbClient");
   expect(src).not.toContain("requireRiskSupabase");
+ });
+});
+
+describe("D1 pinned public key without duplicate secret",()=>{
+ const now=Date.parse("2026-10-20T16:00:00.000Z");
+ const env={
+   PREDGE_RISK_GATE_TOKEN:"f".repeat(64),
+   PREDGE_RESEARCH_NEWS_TOKEN:"a".repeat(64),
+   CONTROL_PLANE_TOKEN:"b".repeat(64),
+   DB:{prepare:()=>({bind:()=>({first:async()=>null}),
+     first:async()=>({healthy:1})})},
+ };
+ it("uses reviewed active pinned Ed25519 key even without private env duplicate",async()=>{
+  const response=await predgeRiskGateD1Readiness(env,now);
+  const body=await response.json();
+  expect(response.status).toBe(503);
+  expect(body.checks.active_pinned_verification_key).toBe(true);
+  expect(body.checks.fresh_verified_commercial_country_gro).toBe(false);
+  expect(body.paid_launch_approved).toBe(false);
+  expect(body.execution_authorized).toBe(false);
+ });
+ it("denies inconsistent protected key registry rather than bypassing the pin",async()=>{
+  const response=await predgeRiskGateD1Readiness({...env,
+    RISK_GATE_VERIFY_KEYS_JSON:JSON.stringify({
+     "geomacro-risk-2026-03":{status:"active",public_key_spki_b64:"wrong"}
+    })},now);
+  const body=await response.json();
+  expect(body.checks.active_pinned_verification_key).toBe(false);
+  expect(body.status).toBe("not_ready");
  });
 });
