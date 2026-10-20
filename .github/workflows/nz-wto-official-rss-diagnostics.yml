@@ -13,6 +13,8 @@ on:
     paths:
       - "scripts/ops/diagnose-nz-wto-official-rss.mjs"
       - "scripts/ops/diagnose-nz-wto-official-rss.test.mjs"
+      - "scripts/tests/telegram-humint-operational-guard.test.mjs"
+      - "docs/ops/TELEGRAM_HUMINT_HUMAN_ONLY_OPERATIONS_20261020.md"
       - "src/lib/stateless-intelligence-model.ts"
       - "src/lib/stateless-public-intelligence.server.ts"
       - "src/__tests__/nz-wto-official-original-news.test.ts"
@@ -33,6 +35,6 @@ jobs:
         with:
           persist-credentials: false
       - name: Test zero-secret source quarantine and exact official endpoint pins
-        run: node --test scripts/ops/diagnose-nz-wto-official-rss.test.mjs
+        run: node --test scripts/ops/diagnose-nz-wto-official-rss.test.mjs scripts/tests/telegram-humint-operational-guard.test.mjs
       - name: Read real official portfolio and trade transport (never log upstream data)
         run: node scripts/ops/diagnose-nz-wto-official-rss.mjs
