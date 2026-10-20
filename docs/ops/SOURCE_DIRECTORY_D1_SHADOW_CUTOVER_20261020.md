@@ -1,3 +1,39 @@
+## Verified production acceptance (2026-10-20 UTC)
+
+This is **COMPLETED** for the four official-source directory metadata
+tables only, not an acceptance for the 139 application tables or Supabase
+shutdown.
+
+Source read and exact private D1 copy:
+[GitHub Actions #39459307233](https://github.com/blocknine0/geomacro/actions/runs/39459307233)
+
+- `source_read_transport=POSTGREST_TWO_PASS_READ_ONLY` (GitHub runner's
+  pinned read-only PostgreSQL attempt had failed; protected double-read HTTPS
+  source hash verification succeeded).
+- All 779 rows matched byte-level per-entry JSON and SHA-256 plus complete
+  cross-dataset cardinality.
+- Counts: primary 195, statistics 194 (missing VA), monetary 195, minerals 195.
+- Private source manifest SHA-256:
+  `0309cbf3090582d39392b6f09c87c5ceeb77720e6b668a4918c74cdf3e8d69ec`.
+- `source_activation_performed=false`; `paid_product_promoted=false`;
+  `supabase_row_deletions=0`; `payments=0`.
+
+Private Worker lookup and security acceptance:
+[GitHub Actions #39460591204](https://github.com/blocknine0/geomacro/actions/runs/39460591204)
+
+- Private `/v1/internal/source-directory-coverage` refuses anonymous calls
+  with HTTP 401; authorized full 779-row coverage returns HTTP 200.
+- Private US government source row is hash-verified; missing VA statistics
+  entry returns HTTP 404, never fabricated.
+- No source URLs exposed via a public or partner route. No new Supabase
+  reads from the Worker, and no commercial rights automatically granted.
+
+**Still NOT completed**: any other source/observation/GRI/GRO/history/payment/
+identity/Storage data migration, full x402/agent read path refactor,
+commercial signed GRO recovery and all legacy Edge Function retirement.
+Never stop the upstream Supabase project or remove its Storage based solely
+on this directory metadata cutover.
+
 # Official source-directory cutover: owner-only D1 shadow
 
 This migration takes only the four verified legacy **source directory metadata**
