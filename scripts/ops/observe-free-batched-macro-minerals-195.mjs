@@ -19,7 +19,7 @@ const started=new Date(),fail=reason=>({
 });
 let macro;
 try{macro=await observeWorldBank195();}
-catch(e){macro=fail(e?.message);}
+catch(e){macro=fail(e?.name==="TimeoutError"?"WDI_TIMEOUT_25S":e?.message);}
 const mineral=await observeTwoMineralIndices();
 const wdiOk=macro.schema==="geomacro.wdi-195-two-indicator-reference-audit.v1" &&
   Array.isArray(macro.indicators)&&macro.indicators.length===2 &&

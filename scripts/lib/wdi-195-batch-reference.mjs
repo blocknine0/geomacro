@@ -105,7 +105,7 @@ async function boundedJson(response){
 export async function observeWorldBank195({fetchImpl=fetch,now=new Date(),registrySource}={}){
  const url=wdiBulkQueryUrl(now);
  const response=await fetchImpl(url,{method:"GET",redirect:"error",
-   headers:{accept:"application/json"},signal:AbortSignal.timeout(12000)});
+   headers:{accept:"application/json"},signal:AbortSignal.timeout(25000)});
  const body=await boundedJson(response);
  return summarizeWorldBank195Batch(body,{now,registrySource});
 }
