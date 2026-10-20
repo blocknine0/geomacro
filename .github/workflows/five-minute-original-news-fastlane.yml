@@ -7,7 +7,10 @@ name: Five-Minute Original News Fastlane
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "3-58/5 * * * *"
+    # Change the schedule's clock offset to re-register the source-workflow
+    # actor after observed no scheduled runs since protected push acceptance.
+    # GitHub may still delay/drop; companion existing-backstop watchdog detects it.
+    - cron: "4-59/5 * * * *"
   push:
     branches: [main]
     paths:
@@ -15,19 +18,25 @@ on:
       - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
       - "src/lib/stateless-public-intelligence.server.ts"
       - "src/__tests__/five-minute-original-news-fastlane.test.ts"
+      - "scripts/lib/five-minute-news-cadence-watch.mjs"
+      - "scripts/ops/recover-stalled-five-minute-news.mjs"
+      - "scripts/tests/five-minute-news-cadence-watch.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/five-minute-original-news-fastlane.yml"
       - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
       - "src/lib/stateless-public-intelligence.server.ts"
       - "src/__tests__/five-minute-original-news-fastlane.test.ts"
+      - "scripts/lib/five-minute-news-cadence-watch.mjs"
+      - "scripts/ops/recover-stalled-five-minute-news.mjs"
+      - "scripts/tests/five-minute-news-cadence-watch.test.mjs"
 
 permissions:
   contents: read
 
 concurrency:
   group: geomacro-five-minute-original-news-fastlane-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   fastlane-contract:
