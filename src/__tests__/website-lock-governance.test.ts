@@ -42,7 +42,17 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-intelligence-news-country-no-emdash-20261019");
+    expect(config.lock_revision).toBe("founder-approved-195-country-all-three-domain-intelligence-journal-view-20261020");
+    const countryBrowser = config.approved_195_country_full_journal_browser;
+    expect(countryBrowser?.previous_baseline_sha).toBe("acbbfa547ba720cd93586440f51b100016819672");
+    expect(countryBrowser?.approved_ui_commit).toBe(config.baseline_sha);
+    expect(countryBrowser?.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(countryBrowser?.global_risk_final_lock_unmodified).toBe(true);
+    expect(countryBrowser?.source_upstream_unchanged).toBe(true);
+    expect(countryBrowser?.no_unverified_585_country_news_claim).toBe(true);
+    expect(countryBrowser?.source_commercial_rights_not_implied).toBe(true);
+    expect(countryBrowser?.funds_authorized).toBe(false);
+    expect(countryBrowser?.pending_exact_sha_live_deployment_acceptance).toBe(true);
     const audit = config.approved_website_final_audit;
     // The prior Oct 19 website audit stays an immutable historical approval.
     // The subsequent Predge 72h wording/link change has its OWN scoped
@@ -51,7 +61,7 @@ describe("website lock governance", () => {
     const predge = config.approved_predge_free_news_presentation_alignment;
     expect(predge.approved_ui_commit).toBe("0e595227c9dba46f7e456bdc5f1e0532cc0f6c90");
     const news=config.approved_intelligence_news_country_presentation;
-    expect(news.approved_ui_commit).toBe(config.baseline_sha);
+    expect(news.approved_ui_commit).toBe(countryBrowser.previous_baseline_sha);
     expect(news.previous_baseline_sha).toBe(predge.approved_ui_commit);
     expect(news.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx","src/routes/intelligence.tsx"]);
     expect(news.global_risk_final_lock_unmodified).toBe(true);
@@ -71,6 +81,11 @@ describe("website lock governance", () => {
     expect(predge.published_source_sha_unchanged).toBe(true);
     expect(predge.pending_exact_sha_live_deployment_acceptance).toBe(true);
     const desk = read("src/components/intelligence/stateless-live-desk.tsx");
+    expect(desk).toContain('aria-label="Filter Intelligence by country"');
+    expect(desk).toContain("COUNTRIES_195");
+    expect(desk).toContain("fetchAllDerivedNews()");
+    expect(desk).toContain("JOURNAL_REFRESH_MS = 6 * 60_000");
+    expect(desk).toContain("No matching country-mentioned release is observed");
     expect(desk).toContain('<option value="all">All available releases</option>');
     expect(desk).toContain("Reading the 72-hour stored derived-news journal below");
     expect(desk).toContain("Earlier original releases · Dated");
