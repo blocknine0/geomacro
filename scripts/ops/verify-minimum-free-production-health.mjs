@@ -12,6 +12,50 @@ const RETENTION_MS=72*60*60_000;
 const DELAY_MS=15*60_000;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const validSha=(s)=>typeof s==="string"&&/^[a-f0-9]{40}$/u.test(s);
+/**
+ * Release parity is content-specific for FREE website health only. Ops-only
+ * GitHub merges don't change the already published HTML/JS bundle and must
+ * not demand a new Lovable publish. NEVER use this to certify signed B2/D1
+ * hot products or activate x402 payment.
+ *
+ * Reject anything that can change website output: src, public, workers, lib,
+ * package/lock/config/build files. Compare must be canonical exact-head,
+ * complete (<300 changed files and <250 commits) and non-forking.
+ */
+export const SAFE_NON_WEBSITE_PATH = /^(?:\.github\/workflows\/[a-z0-9._-]+\.ya?ml|docs\/[A-Za-z0-9_./-]+|scripts\/(?:ops|tests)\/[A-Za-z0-9_./-]+)$/u;
+export function classifyPublishedSourceEquivalence(compare,siteSha,mainSha){
+  if(!validSha(siteSha)||!validSha(mainSha)||siteSha===mainSha||
+     !compare||compare.status!=="ahead"||
+     compare.base_commit?.sha!==siteSha||
+     compare.merge_base_commit?.sha!==siteSha||
+     !Number.isSafeInteger(compare.ahead_by)||compare.ahead_by<1||
+     compare.ahead_by>=250||compare.behind_by!==0||
+     compare.total_commits!==compare.ahead_by||
+     !Array.isArray(compare.files)||compare.files.length===0||
+     compare.files.length>=300||!Array.isArray(compare.commits)||
+     compare.commits.at(-1)?.sha!==mainSha)return false;
+  return compare.files.every(file=>file&&file.status!=="removed"&&
+    typeof file.filename==="string"&&SAFE_NON_WEBSITE_PATH.test(file.filename));
+}
+export async function verifyPublishedSourceEquivalence(siteSha,mainSha,{
+  fetcher=fetch,token=process.env.GITHUB_TOKEN??"",
+}={}){
+  if(!validSha(siteSha)||!validSha(mainSha)||siteSha===mainSha)return false;
+  try{
+    const url="https://api.github.com/repos/blocknine0/geomacro/compare/"+
+      encodeURIComponent(siteSha)+"..."+encodeURIComponent(mainSha);
+    const response=await fetcher(url,{redirect:"error",
+      headers:{Accept:"application/vnd.github+json",
+        "X-GitHub-Api-Version":"2022-11-28",
+        ...(token?{Authorization:"Bearer "+token}:{})},
+      signal:AbortSignal.timeout(12_000)});
+    if(response.status!==200)return false;
+    const body=await response.text();
+    if(body.length>250_000)return false;
+    return classifyPublishedSourceEquivalence(JSON.parse(body),siteSha,mainSha);
+  }catch{return false;}
+}
+
 function originalPublication(s,now){
   if(!s||typeof s!=="object"||Array.isArray(s))return null;
   if(s.date_precision==="exact"){
@@ -51,13 +95,15 @@ function invalid(reason,counts){
  */
 export function classifyMinimumFreeProduction({
   journalStatus,journal,siteStatus,siteHtml,buildStatus,build,
-  expectedSha,nowMs=Date.now(),
+  expectedSha,websiteSourceEquivalent=false,nowMs=Date.now(),
 }={}){
   if(!validSha(expectedSha)||!Number.isFinite(nowMs))
     return invalid("EXPECTED_DEPLOYMENT_SHA_INVALID");
   if(buildStatus!==200||!build||build.schema_version!=="geomacro.deployment-build.v1"||
     build.canonical_repository!=="blocknine0/geomacro"||
-    build.production_activation_performed!==false||build.canonical_main_sha!==expectedSha)
+    build.production_activation_performed!==false||
+    !(build.canonical_main_sha===expectedSha||
+      (websiteSourceEquivalent===true&&validSha(build.canonical_main_sha))))
     return invalid("LIVE_BUILD_PARITY_UNVERIFIED");
   if(journalStatus!==200||!journal||journal.ok!==true||
     journal.schema!=="geomacro.website-derived-news-feed.v1"||
@@ -90,6 +136,8 @@ export function classifyMinimumFreeProduction({
     return invalid("FREE_D1_STORIES_NOT_RENDERED_IN_FIRST_HTML",counts);
   return {schema:"geomacro.minimum-free-production-health.v1",ok:true,
     reason:"FREE_DERIVED_NEWS_SSR_VERIFIED",free_derived_ssr_ready:true,
+    website_parity_mode:build.canonical_main_sha===expectedSha
+      ?"EXACT_MAIN_SHA":"VERIFIED_NO_WEBSITE_SOURCE_CHANGES",
     derived_rows:titles.length,categories:counts,
     all_three_categories_have_recent_originals:CATEGORIES.every(c=>counts[c]>0),
     legacy_signed_hot_products_verified:false,
@@ -110,9 +158,12 @@ export async function checkMinimumFreeProduction(expectedSha){
     read(JOURNAL,{json:true}),read(ROOT+"/intelligence"),
     read(ROOT+"/.well-known/geomacro-build.json",{json:true}),
   ]);
+  const observedSha=b.body?.canonical_main_sha;
+  const websiteSourceEquivalent=observedSha===expectedSha?false:
+    await verifyPublishedSourceEquivalence(observedSha,expectedSha);
   return classifyMinimumFreeProduction({
     journalStatus:j.status,journal:j.body,siteStatus:s.status,siteHtml:s.body,
-    buildStatus:b.status,build:b.body,expectedSha,
+    buildStatus:b.status,build:b.body,expectedSha,websiteSourceEquivalent,
   });
 }
 if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){

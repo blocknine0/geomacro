@@ -60,6 +60,9 @@ jobs:
       - name: Verify exact-main free derived D1 readback and first HTML without funds
         env:
           GITHUB_SHA: ${{ github.sha }}
+          # Default ephemeral, read-only Actions token. Used only for an exact
+          # canonical compare when the deployed site SHA is an older ancestor.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/ops/verify-minimum-free-production-health.mjs
 
       - name: Verify actual D1 free-product health endpoint without implying signed readiness
