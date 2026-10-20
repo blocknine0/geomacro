@@ -18,6 +18,7 @@ on:
       - "config/global-p0-source-expansion.json"
       - "global-intelligence/adapters/**"
       - "scripts/test-p0-adapters.mjs"
+      - "scripts/tests/macro-statistical-reference-clock.test.mjs"
       - "scripts/test-p0-adapter-certification.mjs"
       - "scripts/test-p0-live-schema-certification.mjs"
       - "scripts/test-p0-registry-alignment.mjs"
@@ -62,6 +63,8 @@ jobs:
 
       - name: Test P0 normalization adapters
         run: node scripts/test-p0-adapters.mjs
+      - name: Require macro reference periods are not publisher dates
+        run: node --test scripts/tests/macro-statistical-reference-clock.test.mjs
 
       - name: Test P0 certification gates
         run: node scripts/test-p0-adapter-certification.mjs
