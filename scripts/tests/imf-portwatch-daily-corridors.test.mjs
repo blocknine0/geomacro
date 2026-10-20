@@ -52,7 +52,7 @@ test("missing corridors, stale data, future timestamps and provider errors are n
  assert.equal(future.routes_with_recent_daily_observations,0);
  assert.throws(()=>inspectPortwatchDailyResponse({error:{code:400}},now),/PORTWATCH_RESPONSE_INVALID/);
  assert.throws(()=>inspectPortwatchDailyResponse({features:[]},now),/PORTWATCH_RESPONSE_INVALID/);
- assert.throws(()=>inspectPortwatchDailyResponse(sample(),new Date("invalid"))),/PORTWATCH_CLOCK_INVALID/);
+ assert.throws(()=>inspectPortwatchDailyResponse(sample(),new Date("invalid")),/PORTWATCH_CLOCK_INVALID/);
 });
 test("one bounded request, status fail closed on 429 and oversize",async()=>{
  let hits=0,seen;
