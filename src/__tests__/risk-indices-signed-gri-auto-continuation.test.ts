@@ -23,7 +23,7 @@ describe("P0 no-funds signed GRI -> Risk Indices operational continuation", () =
       "github.event.workflow_run.event == 'repository_dispatch'",
       "github.event.workflow_run.head_branch == 'main'",
       "github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'",
-      "github.event.workflow_run.head_sha == github.sha",
+      "github.event.workflow_run.head_sha != ''",
       "environment: production",
     ]) expect(publish).toContain(boundary);
   });
@@ -31,6 +31,9 @@ describe("P0 no-funds signed GRI -> Risk Indices operational continuation", () =
   it("requires current canonical source, verified parent, B2/D1 and no-money barriers",()=>{
     for(const boundary of [
       "node scripts/ops/assert-backend-publication-main.mjs",
+      "node scripts/ops/assert-gri-continuation-ancestry.mjs",
+      "node --test scripts/ops/assert-gri-continuation-ancestry.test.mjs",
+      "fetch-depth: 0",
       "test \"$EXPECTED_SHA\" = \"$(git rev-parse HEAD)\"",
       "B2_ACCOUNT_QUOTA_REQUIRED: \"1\"",
       "B2_ACCOUNT_QUOTA_WORKFLOW_ID: risk_indices_d1_parent",

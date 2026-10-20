@@ -16,6 +16,8 @@ on:
       - "scripts/lib/risk-indices-verified-d1-parent.mjs"
       - "scripts/lib/risk-indices-verified-d1-parent.test.mjs"
       - "scripts/ops/publish-risk-indices-from-verified-global-risk.mjs"
+      - "scripts/ops/assert-gri-continuation-ancestry.mjs"
+      - "scripts/ops/assert-gri-continuation-ancestry.test.mjs"
   push:
     branches: [main]
     paths:
@@ -43,6 +45,7 @@ jobs:
           node --check scripts/lib/risk-indices-verified-d1-parent.test.mjs
           node --check scripts/ops/publish-risk-indices-from-verified-global-risk.mjs
           node --test scripts/lib/risk-indices-verified-d1-parent.test.mjs
+          node --test scripts/ops/assert-gri-continuation-ancestry.test.mjs
   publish:
     needs: source-contract-tests
     if: >-
@@ -57,7 +60,7 @@ jobs:
            github.event.workflow_run.event == 'repository_dispatch') &&
           github.event.workflow_run.head_branch == 'main' &&
           github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
-          github.event.workflow_run.head_sha == github.sha
+          github.event.workflow_run.head_sha != ''
         )
       )
     runs-on: ubuntu-24.04
@@ -80,10 +83,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+          fetch-depth: 0 # requires verified merge-base ancestor of current main
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Admit trusted signed GRI event only when its SHA is in current main ancestry
+        env:
+          TRUSTED_GRI_PARENT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          node --test scripts/ops/assert-gri-continuation-ancestry.test.mjs
+          node scripts/ops/assert-gri-continuation-ancestry.mjs
       - name: Validate pure verified-source guard
         run: node --test scripts/lib/risk-indices-verified-d1-parent.test.mjs
       - name: Require exact current canonical main before any B2 GET or D1 write
