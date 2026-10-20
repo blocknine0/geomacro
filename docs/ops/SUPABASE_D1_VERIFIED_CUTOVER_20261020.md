@@ -56,6 +56,20 @@ Measured at the same audit date:
 
 **Non-null archive references do not prove Backblaze bytes still exist, pass SHA-256, restore correctly, or have redistribution rights.** No original rows or secrets were exported or deleted by this read-only audit.
 
+### 2026-10-20 acceptance update
+
+The **four official source-directory metadata families** have now been copied
+without changing old source records to private Cloudflare D1 and independently
+SHA256/readback verified:
+[import #39459307233](https://github.com/blocknine0/geomacro/actions/runs/39459307233)
+and [private Worker acceptance #39460591204](https://github.com/blocknine0/geomacro/actions/runs/39460591204).
+A total of **779** row copies were verified (195/194/195/195, missing
+statistics VA). Internal-only source directory read API is authenticated,
+hash-checked, and cannot grant licensing or source activation.
+This narrowly improves the source catalog row; **it does not imply the
+other 135 public application tables or all Auth/Storage objects are copied**.
+Authoritative database remains online pending lossless further migrations.
+
 ## What is already Supabase-free
 
 - Public 72h Geomacro-derived news journal via Cloudflare D1, same IDs and structured projection for website and free research. 15-minute original-release delay and source rights restrictions remain.
