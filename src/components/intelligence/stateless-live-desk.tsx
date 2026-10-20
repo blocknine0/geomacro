@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Clock3, RefreshCw, Search } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
-import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
 import { findCardFromObservedRelease } from "@/lib/find-card-v1";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
@@ -15,9 +15,6 @@ const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
 ];
 const displayProse = (text: string) => text.replace(/\s*\u2014\s*/gu, "; ");
 const REFRESH_MS = 2 * 60_000;
-// Three journal pages instead of one. Same bounded average public GET rate:
-// up to 3 pages per six minutes rather than 1 page per two minutes.
-const JOURNAL_REFRESH_MS = 6 * 60_000;
 const OGL_URL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
 type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
 // Stable default avoids restarting fetch effects when legacy callers omit this prop.
@@ -190,7 +187,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
     };
   }, [initial, initialFeeds]);
 
-  // Same 72-hour D1 journal as the free structured API, fully paginated.
+  // Durable derived-only 30-day D1 journal independent of visitor activity.
   useEffect(() => {
     let alive = true;
     let pending = false;
@@ -201,7 +198,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
       // Browser-direct D1 is crucial when a Lovable server-function roundtrip
       // fails despite the verified, public, source-private D1 journal.
       try {
-        const signals = await fetchAllDerivedNews();
+        const signals = await fetchDirectDerivedNews();
         if (alive) { setJournal(signals); setJournalUnavailable(false); }
       } catch {
         // The legacy server function is only a secondary fallback; preserve
@@ -212,7 +209,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
             9_000,
             "Intelligence journal fallback timed out.",
           );
-          if (alive) { setJournal(result.signals); setJournalUnavailable(true); }
+          if (alive) { setJournal(result.signals); setJournalUnavailable(false); }
         } catch { if (alive) setJournalUnavailable(true); }
       }
       } finally { pending = false; }
@@ -221,7 +218,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
     void sync();
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void sync();
-    }, JOURNAL_REFRESH_MS);
+    }, REFRESH_MS);
     const onReturn = () => { if (document.visibilityState === "visible") void sync(); };
     document.addEventListener("visibilitychange", onReturn);
     return () => {
