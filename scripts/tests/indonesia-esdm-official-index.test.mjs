@@ -36,6 +36,21 @@ test("no fake mineral lead from stale or future press dates",()=>{
  const stale=inspectIndonesiaEsdmIndex(page("Monday, 19 August 2026 nickel policy"),now);
  assert.equal(stale.mineral_topic_index_candidates_within_30d,0);
 });
+test("script closing tags with whitespace or attributes never fabricate mineral releases",()=>{
+ const poisoned=page("Monday, 19 October 2026 Fuel distribution update")
+   .replace("<h3>Press Release</h3>",
+     '<script type="application/json">Monday, 19 October 2026 nickel new mine</script\t\n bar>'+
+     '<h3>Press Release</h3>');
+ const result=inspectIndonesiaEsdmIndex(poisoned,now);
+ assert.equal(result.mineral_topic_index_candidates_within_30d,0);
+ assert.equal(result.status,"OFFICIAL_PRESS_INDEX_READABLE_NO_MINERAL_LEADS");
+ const scriptWithinSection=page(
+  '<script>Monday, 19 October 2026 nickel mining export halt</script\t\n bar>'+
+  'Monday, 19 October 2026 General electricity services');
+ const safe=inspectIndonesiaEsdmIndex(scriptWithinSection,now);
+ assert.equal(safe.mineral_topic_index_candidates_within_7d,0);
+});
+
 test("denial, oversize and issuer mismatch fail closed",async()=>{
  assert.throws(()=>inspectIndonesiaEsdmIndex(page().replaceAll("Kementerian Energi dan Sumber Daya Mineral","Other").replace("Ministry of Energy and Mineral Resources","Other"),now),/PUBLISHER_UNVERIFIED/);
  let calls=0;const r=await observeIndonesiaEsdmIndex({now,fetchImpl:async(url,opts)=>{
