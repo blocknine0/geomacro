@@ -5,7 +5,7 @@ on:
       - "scripts/ops/inspect-predge-public-verification.mjs"
       - ".github/workflows/predge-signed-market-public-verification.yml"
       - "scripts/ops/verify-predge-signed-market.mjs"
-      - "src/__tests__/predge-signed-market-verifier.test.ts"
+      - "scripts/ops/verify-predge-signed-market.test.mjs"
   push:
     branches: [main]
     paths:
@@ -34,5 +34,14 @@ jobs:
           set -euo pipefail
           node --check scripts/ops/inspect-predge-public-verification.mjs
           node scripts/ops/inspect-predge-public-verification.mjs
+      - name: Strict offline crypto and tamper/revoked-key tests
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/verify-predge-signed-market.mjs
+          node --test scripts/ops/verify-predge-signed-market.test.mjs
+      - name: Independently verify Amir's public signed market 5710779, active key and all three signatures
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-predge-signed-market.mjs
       - name: No source rights, payment, private key or real-money production action
         run: echo "PREDGE_PUBLIC_DOC_INSPECTION_ONLY_NO_FUNDS"
