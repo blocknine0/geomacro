@@ -11,6 +11,7 @@ const base:GeomacroEvidenceState={
   native_period_verified:true,country_or_corridor_match_verified:true,
   topic_or_indicator_match_verified:true,current_release_qualified:true,
   independent_corroboration_verified:true,
+  independent_corroboration_required:true,
   intended_commercial_rights_verified:true,
   signed_current_product_verified:true,
 };
@@ -68,6 +69,17 @@ describe("final three-domain source-to-customer contract",()=>{
    expect(assessGeomacroEvidenceDelivery({...base,
      evidence_kind:"mineral_production_reference"}).evidence_state)
      .toBe("UNSUPPORTED_DOMAIN_EVIDENCE");
+ });
+ it("permits one qualifying official original for an unscored Find, never for signed GRI",()=>{
+   const one=assessGeomacroEvidenceDelivery({...base,
+     independent_corroboration_required:false,
+     independent_corroboration_verified:false,
+     signed_current_product_verified:true});
+   expect(one.current_event_verified).toBe(true);
+   expect(one.commercial_derived_delivery_eligible).toBe(true);
+   expect(one.independently_corroborated).toBe(false);
+   expect(one.current_signed_index_eligible).toBe(false);
+   expect(one.charge_authorized).toBe(false);
  });
  it("separates qualified research, authorized derived output, signed-score proof and payment",()=>{
    const noRights=assessGeomacroEvidenceDelivery({...base,
