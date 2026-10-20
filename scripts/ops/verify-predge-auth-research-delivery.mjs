@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Genuine post-deploy PRIVATE Predge research auth and SAME D1 identity proof.
 // Do not log tokens, raw source content, or per-item partner grants.
+import {createHmac} from "node:crypto";
 const origin=String(process.env.CONTROL_PLANE_URL??"").replace(/\/$/u,"");
 const token=process.env.PREDGE_RESEARCH_NEWS_TOKEN;
 const base=origin+"/v1/";
@@ -12,8 +13,30 @@ const get=async(path,tokenValue)=>{
  return {status:response.status,body};
 };
 try{
- if(!/^https:\/\/[A-Za-z0-9._-]+\.workers\.dev$/.test(origin)||
-    !/^[a-f0-9]{64}$/.test(token??""))throw Error("CONFIG_INVALID");
+ if(!/^https:\/\/[A-Za-z0-9._-]+\.workers\.dev$/.test(origin))
+   throw Error("CONFIG_INVALID");
+ const legacyRoot=String(process.env.ROOT_LEDGER_TOKEN??"");
+ if(legacyRoot.length<32)throw Error("ROOT_REQUIRED_TO_VERIFY_REVOCATION");
+ const previouslyExposed=createHmac("sha256",legacyRoot)
+   .update("geomacro-predge-72h-research-only-v1").digest("hex");
+ const legacyAttempt=await get("partner/predge/derived-structural-72h",previouslyExposed);
+ const configured=/^[a-f0-9]{64}$/.test(token??"");
+ // When no new protected token is supplied, research intentionally shuts down.
+ // Both anonymous and the old emailed/HMAC token must receive closed 503.
+ if(!configured){
+   const anonymous=await get("partner/predge/derived-structural-72h");
+   if(anonymous.status!==503||legacyAttempt.status!==503||
+       anonymous.body?.error!=="PREDGE_RESEARCH_AUTH_UNCONFIGURED"||
+       legacyAttempt.body?.error!=="PREDGE_RESEARCH_AUTH_UNCONFIGURED")
+      throw Error("OLD_RESEARCH_TOKEN_NOT_REVOKED");
+   console.log(JSON.stringify({schema:"geomacro.predge-research-revocation-receipt.v1",
+     old_token_denied:true,rotated_token_configured:false,
+     private_feed_available:false,pilot_resumption_requires_owner_secret:true,
+     supabase_writes:0,payments:0}));
+   process.exit(0);
+ }
+ if(token===previouslyExposed||legacyAttempt.status!==401)
+   throw Error("OLD_RESEARCH_TOKEN_NOT_REVOKED");
  const unauthorized=await get("partner/predge/derived-structural-72h");
  if(unauthorized.status!==401||unauthorized.body?.ok!==false)
    throw Error("ANONYMOUS_NOT_DENIED");
