@@ -12,7 +12,7 @@ const OUTPUT="artifacts/expanded-official-source/operator-free-feed-rotation.jso
 const FEEDS=Object.freeze([
   {id:"fed_press",url:"https://www.federalreserve.gov/feeds/press_all.xml",format:"xml",group:0},
   {id:"ofac_recent_actions",url:"https://ofac.treasury.gov/recent-actions",format:"html",group:0},
-  {id:"bls",url:"https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",format:"json",group:0},
+  {id:"bls",url:"https://api.bls.gov/publicAPI/v1/timeseries/data/",format:"json",group:0,series_ids:["CUUR0000SA0","LNS14000000"]},
   {id:"news_aljazeera",url:"https://www.aljazeera.com/xml/rss/all.xml",format:"xml",group:1},
   {id:"news_dw",url:"https://rss.dw.com/rdf/rss-en-all",format:"xml",group:1},
   {id:"state_tass",url:"https://tass.com/rss/v2.xml",format:"xml",group:1},
@@ -54,7 +54,8 @@ async function boundedFetch(feed,fetchImpl){
   let response;
   try{
     response=await fetchImpl(feed.url,{
-      method:"GET",redirect:"error",headers:{accept:feed.format==="xml"?"application/rss+xml, application/atom+xml, text/xml;q=0.9, application/xml;q=0.8":feed.format==="json"?"application/json":"text/html"},
+      method:feed.id==="bls"?"POST":"GET",redirect:"error",headers:{accept:feed.format==="xml"?"application/rss+xml, application/atom+xml, text/xml;q=0.9, application/xml;q=0.8":feed.format==="json"?"application/json":"text/html",...(feed.id==="bls"?{"content-type":"application/json"}:{})},
+      ...(feed.id==="bls"?{body:JSON.stringify({seriesid:feed.series_ids})}:{}),
       signal:AbortSignal.timeout(8000),
     });
   }catch{return {state:"NETWORK_OR_REDIRECT_UNAVAILABLE"};}
@@ -91,6 +92,49 @@ function nativeFeedItemPublishedAt(item){
   const value=Date.parse(timestamp);
   return Number.isFinite(value)?value:null;
 }
+// The BLS no-key Version 1 endpoint accepts up to 25 series per POST.
+// Reuse the already-scheduled single "bls" request for two USA native monthly
+// references; do not treat a reference month as a publisher release timestamp.
+export function summarizeBlsTwoMonthlyReferences(input,now=new Date()){
+ if(!(now instanceof Date)||!Number.isFinite(now.getTime()))return null;
+ if(input?.status!=="REQUEST_SUCCEEDED"||
+    !Array.isArray(input?.Results?.series)||input.Results.series.length!==2)return null;
+ const ids=["CUUR0000SA0","LNS14000000"],seen=new Set();
+ const dateNow=now.getUTCFullYear()*12+now.getUTCMonth();
+ const result={};
+ for(const series of input.Results.series){
+   const id=series?.seriesID;
+   if(!ids.includes(id)||seen.has(id)||!Array.isArray(series.data)||
+      series.data.length>60)return null;
+   seen.add(id);
+   let latest=null,latestIndex=-1;
+   for(const row of series.data){
+     if(!/^20\d{2}$/u.test(String(row?.year))||
+        !/^M(?:0[1-9]|1[0-2])$/u.test(String(row?.period))||
+        typeof row?.value!=="string"||row.value.trim()===""||
+        !Number.isFinite(Number(row.value)))continue;
+     const index=Number(row.year)*12+Number(row.period.slice(1))-1;
+     // Reject future, 3-year-outside data and model-inferred fill-forward.
+     if(index>dateNow||dateNow-index>36)continue;
+     if(index>latestIndex){
+       latestIndex=index;
+       latest=row.year+"-"+row.period.slice(1);
+     }
+   }
+   if(!latest)return null;
+   result[id]=latest;
+ }
+ if(seen.size!==2)return null;
+ return {
+   series_count:2,
+   native_month_by_series:result,
+   reference_only:true,
+   current_release_timestamp_verified:false,
+   commercial_rights_verified:false,
+   signed_index_or_paid_event_eligible:false
+ };
+}
+
 function parse(feed,body,now){
   if(feed.format==="html"){
     if(!/<(?:!doctype\s+html|html)\b/iu.test(body))return null;
@@ -99,10 +143,12 @@ function parse(feed,body,now){
   if(feed.format==="json"){
     try{
       const json=JSON.parse(body);
-      if(json?.status!=="REQUEST_SUCCEEDED"||!Array.isArray(json?.Results?.series))return null;
-      return {count:json.Results.series.reduce((n,x)=>n+(Array.isArray(x.data)?Math.min(x.data.length,MAX_ITEMS):0),0),
-        fresh:null,provisional:{geopolitics:0,macro:0,rare_earth:0},
-        scope:"BLS_PUBLIC_V1_REFERENCE_PERIOD_NOT_PUBLICATION_TIME"};
+      const two=summarizeBlsTwoMonthlyReferences(json,now);
+      if(!two)return null;
+      return {count:2,fresh:null,provisional:{geopolitics:0,macro:0,rare_earth:0},
+        bls_native_reference_periods:two.native_month_by_series,
+        bls_series_count:two.series_count,
+        scope:"BLS_PUBLIC_V1_TWO_NATIVE_MONTHLY_REFERENCES_NOT_PUBLICATION_TIME"};
     }catch{return null;}
   }
   // A feed root must be the *actual* XML document root. Merely finding an
@@ -154,6 +200,8 @@ export async function observeOperatorFreeFeedRotation({
         parsed?.updated_without_native_publication_count??null,
       provisional_topic_matches:parsed?.provisional??base.provisional_topic_matches,
       timestamp_precision:parsed?.scope??null,
+      bls_native_reference_periods:feed.id==="bls"?parsed?.bls_native_reference_periods??null:null,
+      bls_series_count:feed.id==="bls"?parsed?.bls_series_count??0:0,
     });
   }
   return {schema:"geomacro.operator-free-rotating-private-feed-metadata.v1",
