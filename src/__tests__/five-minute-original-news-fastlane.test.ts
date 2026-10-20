@@ -6,7 +6,7 @@ import {FIVE_MINUTE_NEWS_FASTLANE,readFiveMinuteNewsFastlane} from "../lib/state
 const read=(p:string)=>readFileSync(p,"utf8");
 const CATS=["geopolitics","macro","rare_earth"];
 describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
- it("accepts only one pinned originating publisher in each existing domain; not 195 fresh sources",()=>{
+ it("accepts only one pinned originating publisher in each existing domain; not 195 fresh sources",async()=>{
    expect(FIVE_MINUTE_NEWS_FASTLANE).toHaveLength(3);
    expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.category)).toEqual(CATS);
    expect(new Set(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).size).toBe(3);
@@ -18,9 +18,9 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(collector).toContain("deriveStatelessSignals(candidates,now,{maxSignals})");
    expect(collector).toContain("readSource(source,now)");
    expect(collector).not.toContain("publishDerivedStories(");
-   expect(()=>readFiveMinuteNewsFastlane(NaN)).rejects.toThrow(
+   await expect(readFiveMinuteNewsFastlane(NaN)).rejects.toThrow(
      "ORIGINAL_FASTLANE_CLOCK_OR_BUDGET_INVALID");
-   expect(()=>readFiveMinuteNewsFastlane(Date.now(),100)).rejects.toThrow(
+   await expect(readFiveMinuteNewsFastlane(Date.now(),100)).rejects.toThrow(
      "ORIGINAL_FASTLANE_CLOCK_OR_BUDGET_INVALID");
  });
  it("leaves native original time and the 15-minute presentation embargo mandatory",()=>{
@@ -35,6 +35,7 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    const early=deriveStatelessSignals([source],at+14*60_000);
    expect(early).toEqual([]);
    const ontime=deriveStatelessSignals([source],at+16*60_000);
+   expect(ontime).toHaveLength(1);
    for(const s of ontime){
      expect(s.same_event_corrob_verified).toBe(false);
      expect(s.severity).toBeNull();
