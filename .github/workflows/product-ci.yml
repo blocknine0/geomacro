@@ -61,6 +61,9 @@ jobs:
         with:
           node-version: '24'
 
+      - name: P0 public hot recovery handoff tests (offline, no funds)
+        run: node --test scripts/ops/reconcile-public-hot-recovery.test.mjs
+
       - name: Native Circle Facilitator verification (offline, no funds)
         run: node --test scripts/lib/circle-facilitator-verification.test.mjs scripts/ops/verify-structural-candidate-vault.test.mjs
 
