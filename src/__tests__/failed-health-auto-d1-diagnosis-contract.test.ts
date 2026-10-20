@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 describe("automatic read-only P0 diagnosis when exact-main website health fails",()=>{
  const diagnostic=readFileSync(".github/workflows/public-hot-serving-diagnostic.yml","utf8");
  const health=readFileSync(".github/workflows/production-website-health.yml","utf8");
- it("wakes only for an actual failed same-head protected-main health run",()=>{
+ it("wakes from an actual failed trusted-main health run even after a later main merge",()=>{
    expect(health).toContain("name: Production Website Health");
    expect(diagnostic).toContain('workflows: ["Production Website Health"]');
    expect(diagnostic).toContain("types: [completed]");
@@ -19,8 +19,12 @@ describe("automatic read-only P0 diagnosis when exact-main website health fails"
      "github.event.workflow_run.event == 'workflow_dispatch'",
      "github.event.workflow_run.head_branch == 'main'",
      "github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'",
-     "github.event.workflow_run.head_sha == github.sha",
+     "github.event.workflow_run.head_sha != ''",
    ])expect(diagnostic).toContain(gate);
+   // A failed trusted publish of yesterday's main must diagnose today's
+   // canonical main rather than silently skip on a SHA race.
+   expect(diagnostic).not.toContain("github.event.workflow_run.head_sha == github.sha");
+   expect(diagnostic).toContain("github.event.workflow_run.head_sha != ''");
  });
  it("preserves genuine failure, independent metadata readback and zero-funds isolation",()=>{
    expect(diagnostic).toContain("node scripts/ops/diagnose-public-hot-serving.mjs");
