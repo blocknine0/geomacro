@@ -53,14 +53,18 @@ function b64bytes(v){
  return bytes;
 }
 function trustRecord(env,id,generatedAt){
- let registry;
- try{registry=JSON.parse(String(env?.RISK_GATE_VERIFY_KEYS_JSON||""))}catch{return null;}
- if(!record(registry)||!KEY_ID.test(id)||id!==ACTIVE_KEY_ID)return null;
- const ent=registry[id];
+ if(!KEY_ID.test(id)||id!==ACTIVE_KEY_ID||!Number.isFinite(Date.parse(generatedAt)))return null;
+ // Public canonical registry pin is sufficient for offline Ed25519
+ // verification. A *present* override may only narrow this trust, never
+ // introduce another key; no missing GitHub secret should block public-key crypto.
+ const raw=String(env?.RISK_GATE_VERIFY_KEYS_JSON??"").trim();
+ if(!raw)return {status:"active",public_key_spki_b64:ACTIVE_KEY_SPKI};
+ let registry;try{registry=JSON.parse(raw)}catch{return null;}
+ const ent=record(registry)?registry[id]:null;
  if(!record(ent)||ent.status!=="active"||ent.public_key_spki_b64!==ACTIVE_KEY_SPKI)return null;
  const n=Date.parse(generatedAt);
- if(ent.not_before&&n<Date.parse(ent.not_before))return null;
- if(ent.not_after&&n>Date.parse(ent.not_after))return null;
+ if(ent.not_before&&(!Number.isFinite(Date.parse(ent.not_before))||n<Date.parse(ent.not_before)))return null;
+ if(ent.not_after&&(!Number.isFinite(Date.parse(ent.not_after))||n>Date.parse(ent.not_after)))return null;
  return ent;
 }
 export async function verifyHotGRO(row,env,subject,now=Date.now()){
@@ -277,9 +281,7 @@ export async function predgeRiskGateD1Readiness(env,now=Date.now()){
    if(env?.DB?.prepare){
      await env.DB.prepare("SELECT 1 AS healthy FROM risk_gate_d1_requests LIMIT 1").first();
      d1=true;
-     const parsed=JSON.parse(String(env?.RISK_GATE_VERIFY_KEYS_JSON??""));
-     keys=parsed?.[ACTIVE_KEY_ID]?.status==="active"&&
-       parsed[ACTIVE_KEY_ID]?.public_key_spki_b64===ACTIVE_KEY_SPKI;
+     keys=Boolean(trustRecord(env,ACTIVE_KEY_ID,new Date(now).toISOString()));
      if(keys){
        const row=await env.DB.prepare(
          "SELECT * FROM country_gro_verified_hot WHERE generated_at<=? AND expires_at>? ORDER BY verified_at DESC LIMIT 1"
