@@ -48,8 +48,9 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
  it("schedules best-effort 5-minute existing-source publishing, never paid APIs or B2",()=>{
    const wf=read(".github/workflows/five-minute-original-news-fastlane.yml");
    const pub=read("scripts/ops/publish-original-news-five-minute-fastlane.ts");
-   expect(wf).toContain('cron: "3-58/5 * * * *"');
+   expect(wf).toContain('cron: "4-59/5 * * * *"');
    expect(wf).toContain("environment: production");
+   expect(wf).toContain("cancel-in-progress: false");
    expect(wf).toContain("geomacro-five-minute-original-news-fastlane-");
    expect(wf).toContain("GEOMACRO_COMMERCE_LEDGER_TOKEN");
    expect(wf).not.toContain("COINBASE_X402_MAINNET_ACK");
