@@ -15,6 +15,9 @@ on:
       - "scripts/lib/two-official-mineral-release-indices.mjs"
       - "scripts/tests/two-official-mineral-release-indices.test.mjs"
       - "scripts/ops/observe-free-batched-macro-minerals-195.mjs"
+      - "scripts/lib/imf-195-country-reference-gap.mjs"
+      - "scripts/tests/imf-195-country-reference-gap.test.mjs"
+      - "scripts/ops/observe-imf-195-reference.mjs"
       - "scripts/lib/chile-copper-official-monthly.mjs"
       - "scripts/tests/chile-copper-official-monthly.test.mjs"
       - "scripts/ops/observe-chile-copper-official.mjs"
@@ -38,6 +41,9 @@ on:
       - "scripts/lib/two-official-mineral-release-indices.mjs"
       - "scripts/tests/two-official-mineral-release-indices.test.mjs"
       - "scripts/ops/observe-free-batched-macro-minerals-195.mjs"
+      - "scripts/lib/imf-195-country-reference-gap.mjs"
+      - "scripts/tests/imf-195-country-reference-gap.test.mjs"
+      - "scripts/ops/observe-imf-195-reference.mjs"
       - "scripts/lib/chile-copper-official-monthly.mjs"
       - "scripts/tests/chile-copper-official-monthly.test.mjs"
       - "scripts/ops/observe-chile-copper-official.mjs"
@@ -78,6 +84,9 @@ jobs:
           node --check scripts/lib/two-official-mineral-release-indices.mjs
           node --check scripts/ops/observe-free-batched-macro-minerals-195.mjs
           node --test scripts/tests/wdi-195-batch-reference.test.mjs
+          node --check scripts/lib/imf-195-country-reference-gap.mjs
+          node --check scripts/ops/observe-imf-195-reference.mjs
+          node --test scripts/tests/imf-195-country-reference-gap.test.mjs
           node --test scripts/tests/two-official-mineral-release-indices.test.mjs
           node --check scripts/lib/chile-copper-official-monthly.mjs
           node --check scripts/ops/observe-chile-copper-official.mjs
@@ -199,5 +208,29 @@ jobs:
         with:
           name: indonesia-esdm-private-index-${{ github.run_id }}
           path: artifacts/official-national-mineral-index/indonesia-esdm.json
+          retention-days: 3
+          if-no-files-found: warn
+
+  imf-weo-195-reference:
+    # Two no-key, bounded WEO reference-series requests on the existing
+    # 03:51 UTC source schedule. No extra cron, no current FX/price claim.
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22
+      - name: Probe 195 canonical country IMF WEO reference presence
+        run: node scripts/ops/observe-imf-195-reference.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: imf-weo-195-private-reference-${{ github.run_id }}
+          path: artifacts/imf-195-reference/receipt.json
           retention-days: 3
           if-no-files-found: warn
