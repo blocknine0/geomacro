@@ -5,6 +5,15 @@
 research* observations. No new key, wallet, payment, source rights or production
 authorization is granted by this pack.
 
+**Security rotation:** After the protected 20 October credential-security
+deployment, the default research Bearer changes from the old v1 HMAC to
+`geomacro-predge-72h-research-only-v2-20261020`. The old v1 token must
+return HTTP 401; Predge must receive the newly sealed research token through
+a secure channel. The *separate* Risk Gate token uses
+`geomacro-predge-risk-gate-v1` and is handed to the owner only through
+`.github/workflows/predge-risk-gate-sealed-handoff.yml`. Never reuse one
+Bearer for both routes or send either in plaintext email.
+
 ## 20 October 2026 partner clarification
 
 Predge's 20 October email reports first public-feed real-input HTTP 200 with
