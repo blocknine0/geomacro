@@ -49,9 +49,10 @@ function displayedDay(s){
     date.toISOString().slice(0,10):null;
 }
 function firstDisplayedDay(context){
- // Bound all user/external text given to date regex.
- const matches=context.slice(0,180).match(/(?:[1-9]|[12]\d|3[01]) (?:January|February|March|April|May|June|July|August|September|October|November|December) 20\d{2}\b/gu)??[];
- for(const candidate of matches){const valid=displayedDay(candidate);if(valid)return valid;}
+ // Accept exactly a whitespace or image-caption prefix, never a substring
+ // of an invalid day such as "32 October 2026".
+ const m=context.slice(0,180).matchAll(/(?:Image|\s)((?:[1-9]|[12]\d|3[01]) (?:January|February|March|April|May|June|July|August|September|October|November|December) 20\d{2}\b)/gu);
+ for(const match of m){const valid=displayedDay(match[1]);if(valid)return valid;}
  return null;
 }
 export function inspectUkmtoPublicIncidentIndex(html,now=new Date()){
