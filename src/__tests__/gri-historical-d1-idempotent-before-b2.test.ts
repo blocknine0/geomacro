@@ -81,7 +81,7 @@ describe("prior pinned GRI historical D1 idempotence",()=>{
   // D1 historical idempotence must not permanently suppress a real
   // immutable version B2 byte readback, and must NEVER replay historical
   // data into current signed GRI or risk-indices.
-  const verified=w.indexOf("run: node scripts/ops/recover-gri-pinned-b2-version.mjs");
+  const verified=w.indexOf("          node scripts/ops/recover-gri-pinned-b2-version.mjs");
   expect(verified).toBeGreaterThan(b);
   expect(verified).toBeLessThan(c);
   expect(w).toContain("steps.gri_history_existing.outputs.already_restored == 'true' && steps.gri_history_quota.outputs.ready == 'true'");
