@@ -745,7 +745,7 @@ export const FIVE_MINUTE_NEWS_FASTLANE = Object.freeze([
   {category:"geopolitics",id:"uk_fcdo"},
   {category:"macro",id:"fed_press"},
   {category:"macro",id:"wto_trade_original_rss"},
-  {category:"macro",id:"nz_beehive_macro"},
+  {category:"macro",id:"ecb_press"},
   {category:"rare_earth",id:"nrcan_releases"},
   {category:"rare_earth",id:"us_doe_news_minerals"},
 ] as const);
