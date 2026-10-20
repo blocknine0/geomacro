@@ -738,12 +738,16 @@ export async function readStatelessWebsiteIntelligence(
 // delay, and Geomacro-authored text all come from the EXISTING canonical
 // first-party reader; do not construct a new license-agnostic news crawler.
 export const FIVE_MINUTE_NEWS_FASTLANE = Object.freeze([
+  // Genuine distinct originating publisher families where possible.
+  // Every source already has an approved origin host, original-page binding,
+  // its own date handling and a pinned category-specific topic gate.
   {category:"geopolitics",id:"un_news"},
+  {category:"geopolitics",id:"uk_fcdo"},
   {category:"macro",id:"fed_press"},
-  // WTO issuer RSS: one extra official, independently owned macro publisher.
-  // Never infer tariff direction, FX changes, paid rights or GEO/GRI proofs.
   {category:"macro",id:"wto_trade_original_rss"},
+  {category:"macro",id:"ecb_press"},
   {category:"rare_earth",id:"nrcan_releases"},
+  {category:"rare_earth",id:"us_doe_news_minerals"},
 ] as const);
 export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20):
  Promise<StatelessIntelligenceResult[]>{

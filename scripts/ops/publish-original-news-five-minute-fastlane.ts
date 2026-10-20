@@ -7,7 +7,7 @@
  * no B2, no signing, no x402 settlement.
  */
 import {createHmac} from "node:crypto";
-import {readFiveMinuteNewsFastlane} from "../../src/lib/stateless-public-intelligence.server";
+import {FIVE_MINUTE_NEWS_FASTLANE,readFiveMinuteNewsFastlane} from "../../src/lib/stateless-public-intelligence.server";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
 import type {StatelessIntelligenceSignal} from "../../src/lib/stateless-intelligence-model";
 
@@ -26,7 +26,7 @@ const reports=await readFiveMinuteNewsFastlane(runAt,20);
 let failure=false,allPublished:StatelessIntelligenceSignal[]=[];
 for(const category of categories){
  const report=reports.find(r=>r.category===category);
- const expectedOrigins=category==="macro"?2:1;
+ const expectedOrigins=FIVE_MINUTE_NEWS_FASTLANE.filter(s=>s.category===category).length;
  if(!report||report.feed_count!==expectedOrigins||report.healthy_feed_count<1){
    failure=true;
    console.warn("::warning::FASTLANE_ORIGINAL_PUBLISHER_UNAVAILABLE_"+category.toUpperCase());
@@ -111,7 +111,7 @@ if(allPublished.length){
 }
 console.log(JSON.stringify({
  schema:"geomacro.5min-three-domain-original-news-run.v1",
- configured_categories:3,pinned_original_publishers:4,
+ configured_categories:3,pinned_original_publishers:FIVE_MINUTE_NEWS_FASTLANE.length,
  scheduled_interval_minutes:5,latency_objective_minutes:20,
  max_derived_rows_per_category:20,all_world_news_guaranteed:false,
  publisher_source_clock_not_fetch_clock:true,
