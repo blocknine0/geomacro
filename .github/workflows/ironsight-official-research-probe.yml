@@ -1,0 +1,43 @@
+name: IRONSIGHT Independent Official Research Sources (No Funds)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/ops/probe-ironsight-official-sources.mjs"
+      - "scripts/ops/probe-ironsight-official-sources.test.mjs"
+      - ".github/workflows/ironsight-official-research-probe.yml"
+      - "docs/ops/IRONSIGHT_SAFE_OFFICIAL_SOURCE_RESEARCH_20261021.md"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/probe-ironsight-official-sources.mjs"
+      - "scripts/ops/probe-ironsight-official-sources.test.mjs"
+      - ".github/workflows/ironsight-official-research-probe.yml"
+      - "docs/ops/IRONSIGHT_SAFE_OFFICIAL_SOURCE_RESEARCH_20261021.md"
+  schedule:
+    - cron: "21 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ironsight-official-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bounded-original-official-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout pinned Geomacro source (no credentials persisted)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Enforce bounded official-only no-funds research contract
+        run: |
+          node --check scripts/ops/probe-ironsight-official-sources.mjs
+          node --test scripts/ops/probe-ironsight-official-sources.test.mjs
+      - name: Check two exact official original publisher feed transports
+        run: node scripts/ops/probe-ironsight-official-sources.mjs
