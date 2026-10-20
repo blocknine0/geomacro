@@ -4,11 +4,17 @@ name: NZ Beehive and WTO Official RSS Readonly Diagnostics
 # certification, or Telegram authorization. No production secrets supplied.
 on:
   workflow_dispatch: {}
+  # Four small, read-only watches daily (6 exact official endpoints per
+  # watch); GitHub cron best-effort, no laptop and no paid subscription.
+  schedule:
+    - cron: "23 0,6,12,18 * * *"
   pull_request:
     branches: [main]
     paths:
       - "scripts/ops/diagnose-nz-wto-official-rss.mjs"
       - "scripts/ops/diagnose-nz-wto-official-rss.test.mjs"
+      - "scripts/tests/telegram-humint-operational-guard.test.mjs"
+      - "docs/ops/TELEGRAM_HUMINT_HUMAN_ONLY_OPERATIONS_20261020.md"
       - "src/lib/stateless-intelligence-model.ts"
       - "src/lib/stateless-public-intelligence.server.ts"
       - "src/__tests__/nz-wto-official-original-news.test.ts"
@@ -19,6 +25,9 @@ permissions:
 
 jobs:
   official-rss-safety:
+    if: github.event_name == 'pull_request' ||
+        (github.repository == 'blocknine0/geomacro' &&
+         github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
@@ -26,6 +35,6 @@ jobs:
         with:
           persist-credentials: false
       - name: Test zero-secret source quarantine and exact official endpoint pins
-        run: node --test scripts/ops/diagnose-nz-wto-official-rss.test.mjs
-      - name: Read real official transport response (never log upstream data)
+        run: node --test scripts/ops/diagnose-nz-wto-official-rss.test.mjs scripts/tests/telegram-humint-operational-guard.test.mjs
+      - name: Read real official portfolio and trade transport (never log upstream data)
         run: node scripts/ops/diagnose-nz-wto-official-rss.mjs
