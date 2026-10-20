@@ -42,3 +42,39 @@ test("only two bounded source GETs, denials truthfully isolated",async()=>{
  assert.equal(denied.healthy_source_count,1);
  assert.equal(denied.sources[1].status,"FIRST_PARTY_PUBLICATION_INDEX_DATES_OBSERVED");
 });
+
+test("GEOSCAN network failure uses exactly one pre-registered official NRCan news Atom fallback",async()=>{
+ const {NRCAN_OFFICIAL_NEWS_FALLBACK,summarizeNrcanNewsAtomFallback}=await import("../lib/two-official-mineral-release-indices.mjs");
+ const atom='<feed xmlns="http://www.w3.org/2005/Atom"><entry>'+
+  '<id>tag:canada.ca,2026:news1</id>'+
+  '<published>2026-10-19T16:00:00Z</published>'+
+  '<title>Canadian lithium and critical minerals mine initiative</title></entry></feed>';
+ assert.ok(NRCAN_OFFICIAL_NEWS_FALLBACK.startsWith("https://api.io.canada.ca/"));
+ assert.equal(summarizeNrcanNewsAtomFallback(atom,now).recent_native_publisher_items,1);
+ let calls=0;
+ const receipts=await observeTwoMineralIndices({now,fetchImpl:async url=>{
+  calls++;
+  if(url.includes("geoscan"))throw Error("fetch failed");
+  if(url.includes("api.io.canada.ca"))return new Response(atom);
+  return new Response(peru);
+ }});
+ assert.equal(calls,3);
+ assert.equal(receipts.upstream_calls,3);
+ assert.equal(receipts.conditional_fallback_calls,1);
+ assert.equal(receipts.healthy_source_count,2);
+ assert.equal(receipts.sources[1].upstream_actual_family,"nrcan");
+ assert.equal(receipts.sources[1].same_publisher_family_fallback_used,true);
+ assert.equal(receipts.native_original_articles_verified,false);
+ assert.equal(receipts.raw_source_bytes_stored,false);
+});
+test("provider 403 never triggers alternate same-department endpoint",async()=>{
+ let calls=0;
+ const r=await observeTwoMineralIndices({now,fetchImpl:async url=>{
+   calls++;
+   return url.includes("geoscan")?new Response("denied",{status:403}):new Response(peru);
+ }});
+ assert.equal(calls,2);
+ assert.equal(r.conditional_fallback_calls,0);
+ assert.equal(r.sources[1].reason,"MINERAL_DENIED_OR_QUOTA");
+ assert.equal(r.healthy_source_count,1);
+});
