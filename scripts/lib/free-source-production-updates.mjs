@@ -2,6 +2,7 @@
 // native clocks. This does not score, sign, grant rights or publish articles.
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,ieaMineralsIndexCandidates,verifiedGlobalRdfFeed} from './global-official-release-feeds.mjs';
 import {createHash} from 'node:crypto';
+import {MARAD_OFFICIAL_RSS_URL,summarizeMaradCorridorContext} from './marad-official-corridor-context.mjs';
 import {FREE_NO_KEY_TRANSPORT_SPECS,probeNoKeySource} from './free-no-key-source-probe.mjs';
 import {SOURCE_LINEUP_BY_ID,SOURCE_LINEUP} from './operator-commercial-free-source-lineup.mjs';
 import {officialItemNativePublicationMs} from './official-native-item-publication-date.mjs';
@@ -17,6 +18,9 @@ export const USGS_MCS_OFFICIAL_LANDING_URL =
 const EXTRA=[
  {id:'federal_reserve',category:'macro',url:'https://www.federalreserve.gov/feeds/press_all.xml',format:'rss',maxBytes:384000},
  {id:'noaa_nhc',category:'geopolitics',url:'https://www.nhc.noaa.gov/index-at.xml',format:'rss',maxBytes:256000},
+ // Reuse the catalogued MARAD family, no new independent publisher or cron.
+ {id:'marad_advisories',reader_revision:1,category:'geopolitics',url:MARAD_OFFICIAL_RSS_URL,
+  format:'rss',maxBytes:256000},
  {id:'uk_fcdo_advisories',category:'geopolitics',url:'https://www.gov.uk/api/search.json?filter_format=travel_advice&order=-public_timestamp&count=5',format:'json',maxBytes:128000},
  {id:'un_security_council_sanctions',reader_revision:2,category:'geopolitics',url:'https://scsanctions.un.org/resources/xml/en/consolidated.xml',format:'xml',maxBytes:4*1024*1024,baseline:true},
  {id:'ons',category:'macro',url:'https://www.ons.gov.uk/releasecalendar?rss&highlight=true&limit=10&page=1&release-type=type-published&sort=date-newest',format:'rss',maxBytes:256000},
@@ -53,6 +57,8 @@ function nativeClock(value,now){
 export function summarizeFreeSourceUpdates(spec,payload,now){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))throw Error('FREE_SOURCE_UPDATE_CLOCK_INVALID');
  const fingerprints=[],nativeTimes=[],seen=new Set();
+ const maradCorridor=spec.id==='marad_advisories'?
+   summarizeMaradCorridorContext(payload,now):null;
  let sampled=0,kind='REFERENCE_DATASET_CHANGE';
  function record(identity,clock=null){
    if(sampled>=40)return;
@@ -107,6 +113,9 @@ export function summarizeFreeSourceUpdates(spec,payload,now){
    native_publications_within_30m:nativeTimes.filter(t=>now.getTime()-Date.parse(t)<=1800000).length,
    native_publications_within_6h:nativeTimes.filter(t=>now.getTime()-Date.parse(t)<=21600000).length,
    // Native feed clocks remain source observations, not verified risk claims.
+   corridor_advisory_candidate_count:maradCorridor?.advisory_items_with_corridor_terms??0,
+   candidate_corridor_ids:maradCorridor?.candidate_corridor_ids??[],
+   corridor_current_disruption_verified:false,
    independently_verified_event:false,topic_relevance_classified:false};
 }
 function previousSnapshot(row,category){
@@ -200,7 +209,9 @@ export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=
    outcomes.push({category:spec.category,state:result.state,new_updates:fresh,
      first_observation_baseline:healthy&&!old?.last_success_at,kind:observed?.kind??null,
      native_publications_within_30m:healthy?observed.native_publications_within_30m:0,
-     native_publications_within_6h:healthy?observed.native_publications_within_6h:0});
+     native_publications_within_6h:healthy?observed.native_publications_within_6h:0,
+     corridor_advisory_candidate_count:healthy?observed.corridor_advisory_candidate_count:0,
+     candidate_corridor_ids:healthy?observed.candidate_corridor_ids:[]});
  }}
  await Promise.all(Array.from({length:4},()=>worker()));
  const expected=new Map();
@@ -240,6 +251,9 @@ export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=
      readable:rows.filter(r=>r.state==='TRANSPORT_READABLE').length,
      newly_detected_update_fingerprints:rows.reduce((n,r)=>n+r.new_updates,0),
      native_publications_within_30m:rows.reduce((n,r)=>n+(r.native_publications_within_30m??0),0),
+     corridor_advisory_candidate_count:rows.reduce((n,r)=>n+(r.corridor_advisory_candidate_count??0),0),
+     // Canonical route IDs only, not article titles, source URLs or live incident assertions.
+     candidate_corridor_ids:[...new Set(rows.flatMap(r=>r.candidate_corridor_ids??[]))].sort(),
      first_observation_baselines:rows.filter(r=>r.first_observation_baseline).length,
    }]})),
    first_observation_is_new_update:false,baseline_poll_minutes:1440,fast_poll_target_minutes:30,
