@@ -120,7 +120,8 @@ jobs:
     environment: production
     timeout-minutes: 4
     env:
-      ZOHO_MAIL_REGION: ${{ vars.ZOHO_MAIL_REGION }}
+      # Pinned to the mailbox's actual mail.zoho.in data centre.
+      ZOHO_MAIL_REGION: in
       ZOHO_MAIL_CLIENT_ID: ${{ secrets.ZOHO_MAIL_CLIENT_ID }}
       ZOHO_MAIL_CLIENT_SECRET: ${{ secrets.ZOHO_MAIL_CLIENT_SECRET }}
       ZOHO_MAIL_REFRESH_TOKEN: ${{ secrets.ZOHO_MAIL_REFRESH_TOKEN }}
