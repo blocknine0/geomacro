@@ -11,11 +11,33 @@ const MARAD_CORRIDOR_TITLES=Object.freeze([
   {id:"black_sea_grain_kerch",pattern:/\b(?:black sea|sea of azov|kerch strait)\b/iu},
   {id:"suez_canal",pattern:/\bsuez canal\b/iu},
 ]);
+// Bounded, one-pass scanning avoids applying attacker-influenced regexes to
+// publisher-supplied XML. This extracts metadata only, not general XML.
 function xmlText(item,name){
- const raw=item.match(new RegExp("<"+name+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/"+name+">","iu"))?.[1]??"";
- return raw.replace(/^<!\[CDATA\[([\s\S]*)\]\]>$/u,"$1")
-   .replace(/&amp;/giu,"&").replace(/&quot;/giu,'"')
-   .replace(/&#39;|&apos;/giu,"'").trim();
+ if(!["title","link","pubDate"].includes(name))return "";
+ const startTag="<"+name+">",endTag="</"+name+">";
+ const start=item.indexOf(startTag);
+ if(start<0)return "";
+ const from=start+startTag.length;
+ const end=item.indexOf(endTag,from);
+ if(end<0||end-from>1024)return "";
+ let value=item.slice(from,end).trim();
+ if(value.startsWith("<![CDATA[")&&value.endsWith("]]>"))
+   value=value.slice(9,-3);
+ return value.replaceAll("&amp;","&").replaceAll("&quot;",'"')
+   .replaceAll("&#39;","'").replaceAll("&apos;","'").trim();
+}
+function* rssItems(xml){
+ let cursor=0,scanned=0;
+ while(scanned<40){
+   const start=xml.indexOf("<item>",cursor);
+   if(start<0)break;
+   const from=start+6,end=xml.indexOf("</item>",from);
+   if(end<0)break;
+   cursor=end+7;scanned++;
+   if(end-from>8192)continue;
+   yield xml.slice(from,end);
+ }
 }
 function isFirstPartyArticleLink(link){
  try{
@@ -33,7 +55,7 @@ export function summarizeMaradCorridorContext(payload,now=new Date()){
  const matching=new Set(),seen=new Set();
  let verified_feed_item_clocks=0;
  let first_party_advisory_candidates=0;
- for(const [,item] of payload.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)){
+ for(const item of rssItems(payload)){
    if(seen.size>=40)break;
    const title=xmlText(item,"title"),link=xmlText(item,"link");
    const published=xmlText(item,"pubDate");
