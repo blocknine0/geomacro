@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 export const UNCTADSTAT_URL = "https://unctadstat.unctad.org/datacentre/";
 
 export function normalizeUnctadStatObservation({ dataset, series, period, value, unit = null, countryIso3 = null, retrievedAt = new Date().toISOString(), raw = null }) {
-  if (!dataset || !series || !period || !/^(?:\d{4}(?:-\d{2})?|\d{4}-Q[1-4])$/.test(String(period)) || value == null || !Number.isFinite(Number(value))) {
+  if (!dataset || !series || !period || !/^20\d{2}(?:-(?:0[1-9]|1[0-2]|Q[1-4]))?$/.test(String(period)) || value == null || !Number.isFinite(Number(value))) {
     throw new Error("Invalid UNCTADstat observation");
   }
   const key = [dataset, series, countryIso3 ?? "GLOBAL", period].join(":");
@@ -14,7 +14,12 @@ export function normalizeUnctadStatObservation({ dataset, series, period, value,
     category:"MACRO",
     country_iso3:countryIso3,
     observed_at:retrievedAt,
-    published_at:period.length === 7 ? period + "-01T00:00:00.000Z" : retrievedAt,
+    // Dataset period (year/month/quarter) is NOT the native publication date.
+    published_at:null,
+    observation_period:String(period),
+    clock_semantics:String(period).includes("-Q")?"reference_quarter":
+      String(period).includes("-")?"reference_month":"reference_year",
+    native_publication_time_verified:false,
     title:"UNCTADstat " + series,
     summary:"UNCTADstat observation for " + series + " (" + period + ").",
     source_url:UNCTADSTAT_URL,
