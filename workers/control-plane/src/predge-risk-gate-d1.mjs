@@ -13,7 +13,11 @@ const DRIVER=new Set(["conflict","sanctions","political_instability","trade_poli
   "rare_earth_supply","critical_minerals","shipping_logistics","other"]);
 const encoder=new TextEncoder();
 const MAX_BYTES=65536;
-// Compile-time trust pin matches src/lib/risk-object-public-registry.ts.\n// An environment variable alone may not authorize a new signing key.\nconst ACTIVE_KEY_ID="geomacro-risk-2026-03";\nconst ACTIVE_KEY_SPKI="MCowBQYDK2VwAyEAeMsePxig7TEUR3fykcx9wcBqomj9KBuJ/TXTX2QSN2k=";\nconst DAY_LIMIT=100;
+// Compile-time trust pin matches src/lib/risk-object-public-registry.ts.
+// An environment variable alone may not authorize a new signing key.
+const ACTIVE_KEY_ID="geomacro-risk-2026-03";
+const ACTIVE_KEY_SPKI="MCowBQYDK2VwAyEAeMsePxig7TEUR3fykcx9wcBqomj9KBuJ/TXTX2QSN2k=";
+const DAY_LIMIT=100;
 const HARD_CEILING=500;
 const headers={"Cache-Control":"private, no-store","Vary":"Authorization",
  "X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
