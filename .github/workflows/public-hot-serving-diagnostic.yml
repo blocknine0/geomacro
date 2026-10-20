@@ -29,7 +29,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: geomacro-public-hot-serving-diagnostic
+  # Separate push and workflow_run lanes: an ineligible/skipped website
+  # completion must not cancel a useful current-main push diagnostic.
+  # At most one active read-only metadata diagnostic per trigger class.
+  group: geomacro-public-hot-serving-diagnostic-${{ github.event_name }}
   cancel-in-progress: true
 
 # A failed same-repo main health may finish after main advances. This
