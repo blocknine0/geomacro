@@ -48,7 +48,9 @@ for(const [name,url] of sources){
    }
   }else if(r.ok&&name==="keys"||r.ok&&name==="market"){
    let parsed;try{parsed=JSON.parse(bytes.toString("utf8"))}catch{throw Error("INVALID_JSON")}
-   result.paths=paths(parsed);\n   if(name==="market"){result.top_level_keys=Object.keys(parsed);result.attestation_keys=Object.keys(parsed.attestation??{});result.attestation_payload_keys=Object.keys(parsed.attestation?.payload??{});result.signature_headers={body_signature:r.headers.has("x-predge-body-signature"),body_sha256:r.headers.has("x-predge-body-sha256")};}\n   if(name==="keys")result.key_statuses=parsed.keys?.map(k=>({kid:k.kid,algorithm:k.algorithm,role:k.role,active:k.active,status:k.status,public_key:k.public_key}));
+   result.paths=paths(parsed);
+   if(name==="market"){result.top_level_keys=Object.keys(parsed);result.attestation_keys=Object.keys(parsed.attestation??{});result.attestation_payload_keys=Object.keys(parsed.attestation?.payload??{});result.signature_headers={body_signature:r.headers.has("x-predge-body-signature"),body_sha256:r.headers.has("x-predge-body-sha256")};}
+   if(name==="keys")result.key_statuses=parsed.keys?.map(k=>({kid:k.kid,algorithm:k.algorithm,role:k.role,active:k.active,status:k.status,public_key:k.public_key}));
    // No full signed market copied. Capture small safe public algorithm hints.
    if(name==="keys")result.status_labels=JSON.stringify(parsed).match(/"status"\s*:\s*"(?:active|retired|revoked)"/g)?.slice(0,18)??[];
   }else if(r.ok&&name==="verifier"){
