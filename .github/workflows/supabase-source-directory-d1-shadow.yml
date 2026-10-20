@@ -1,7 +1,8 @@
 name: Protected One-Shot Supabase Source Directory D1 Shadow
 on:
   workflow_dispatch: {}
-  # Bounded retry 2: emit only safe phase codes if protected upstream fails.
+  # Bounded retry 3: PostgreSQL first, then pinned project HTTPS read-only
+  # two-pass snapshot when protected runner psql transport fails.
   # No secrets, DSNs, source URLs, publisher material or SQL in logs.
   # One-shot after merging this exact workflow change to main. Does not
   # recur hourly or on unrelated pushes, and does not become a runtime
@@ -51,6 +52,10 @@ jobs:
     env:
       GEOMACRO_SOURCE_DIRECTORY_SHADOW_ACK: YES
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      # Optional strictly scoped read-only REST transport fallback, when the
+      # authoritative DSN is valid but protected runner cannot establish psql.
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
