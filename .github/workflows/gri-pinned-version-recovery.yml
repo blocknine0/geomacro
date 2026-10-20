@@ -14,6 +14,7 @@ on:
       - "scripts/ops/restore-gri-verified-version-to-d1.mjs"
       - "scripts/ops/preflight-gri-historical-shared-quota.mjs"
       - "scripts/ops/preflight-gri-historical-existing-d1.mjs"
+      - "scripts/ops/recover-gri-pinned-b2-version.mjs"
       - ".github/workflows/gri-pinned-version-recovery.yml"
   pull_request:
     paths:
@@ -24,6 +25,7 @@ on:
       - "scripts/ops/preflight-gri-historical-shared-quota.mjs"
       - "src/__tests__/gri-historical-quota-aware-recovery.test.ts"
       - "src/__tests__/gri-historical-d1-idempotent-before-b2.test.ts"
+      - "scripts/ops/recover-gri-pinned-b2-version.mjs"
       - ".github/workflows/gri-pinned-version-recovery.yml"
 permissions:
   contents: read
@@ -101,20 +103,27 @@ jobs:
       - name: Check whether the exact D1-pinned historical proof is already recorded
         id: gri_history_existing
         run: node scripts/ops/preflight-gri-historical-existing-d1.mjs
-      - name: Avoid replaying an already recorded historical B2 version
+      - name: Preserve D1 historical row without replaying or mutating it
         if: steps.gri_history_existing.outputs.already_restored == 'true'
         run: |
-          echo "::notice::GRI_HISTORY_PINNED_D1_ALREADY_RESTORED_NO_B2_REPLAY"
-          echo "Exact prior D1 historical anchor recorded; B2 re-read not attempted. No current signed GRI claim." >> "$GITHUB_STEP_SUMMARY"
+          echo '::notice::GRI_HISTORY_PINNED_D1_ALREADY_RESTORED_NO_B2_REPLAY'
+          echo 'Historical D1 row already exists; this alone does not verify current immutable B2 bytes.' >> "$GITHUB_STEP_SUMMARY"
       - name: Preflight authenticated D1 account-wide B2 quota without using any B2 ticket
-        if: steps.gri_history_existing.outputs.already_restored != 'true'
         id: gri_history_quota
         run: node scripts/ops/preflight-gri-historical-shared-quota.mjs
-      - name: Disclose quota-held historical recovery without claiming restored lineage
-        if: steps.gri_history_existing.outputs.already_restored != 'true' && steps.gri_history_quota.outputs.ready != 'true'
+      - name: Disclose quota-held historical B2 verification independently of D1 idempotence
+        if: steps.gri_history_quota.outputs.ready != 'true'
         run: |
-          echo "::notice::GRI_HISTORY_SHARED_QUOTA_HELD_NO_RESTORE"
-          echo "GRI historical B2 immutable version was NOT read. No current product was promoted." >> "$GITHUB_STEP_SUMMARY"
+          echo '::notice::GRI_HISTORY_SHARED_QUOTA_HELD_NO_B2_READBACK'
+          echo 'Historical immutable B2 version NOT read; D1 metadata is not B2 verification. No current product promoted.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Read exact original immutable B2 version when D1 historical row is present
+        # D1 INSERT success is NOT proof the historical B2 file-version bytes still exist.
+        # No D1 replay, re-dating or promotion in this read-only recovery branch.
+        if: steps.gri_history_existing.outputs.already_restored == 'true' && steps.gri_history_quota.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          node scripts/ops/recover-gri-pinned-b2-version.mjs
+          echo 'Original immutable historical B2 SHA/gzip readback verified NOW. Historical only; not fresh GRI.' >> "$GITHUB_STEP_SUMMARY"
       - name: Restore the exact pinned original to D1 history and independently verify the historical website view
         if: steps.gri_history_existing.outputs.already_restored != 'true' && steps.gri_history_quota.outputs.ready == 'true'
         run: node scripts/ops/restore-gri-verified-version-to-d1.mjs
@@ -123,6 +132,8 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: gri-pinned-version-readback-${{ github.run_id }}
-          path: artifacts/gri-b2-history/historical-d1-restore.json
+          path: |
+            artifacts/gri-b2-history/historical-d1-restore.json
+            artifacts/gri-b2-history/immutable-version-readback.json
           if-no-files-found: warn
           retention-days: 14
