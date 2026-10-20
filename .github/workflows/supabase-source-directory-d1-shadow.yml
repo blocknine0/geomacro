@@ -1,6 +1,13 @@
-name: Owner-Only Supabase Source Directory D1 Shadow
+name: Protected One-Shot Supabase Source Directory D1 Shadow
 on:
   workflow_dispatch: {}
+  # One-shot after merging this exact workflow change to main. Does not
+  # recur hourly or on unrelated pushes, and does not become a runtime
+  # Supabase dependency after the shadow has been verified.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/supabase-source-directory-d1-shadow.yml"
   pull_request:
     paths:
       - "scripts/ops/migrate-supabase-official-source-directories-d1-shadow.mjs"
@@ -35,7 +42,7 @@ jobs:
           JS
   promote-private-shadow:
     needs: contract-no-funds
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: production
