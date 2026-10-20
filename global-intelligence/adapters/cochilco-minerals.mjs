@@ -63,7 +63,13 @@ export function parseCochilcoAnuarioHtml(html, { retrievedAt = new Date().toISOS
 }
 
 export function normalizeCochilcoObservation({ series, period, value, unit = null, commodity = "Copper", retrievedAt = new Date().toISOString(), raw = null }) {
-  if (!series || !period || value == null || !Number.isFinite(Number(value))) throw new Error("Invalid COCHILCO observation");
+  // Monthly statistical reference periods must not be converted into
+  // fictional publisher release days (e.g. 2026-07 -> 2026-07-01).
+  if (!series || typeof period !== "string" ||
+      !/^20[0-9]{2}-(?:0[1-9]|1[0-2])$/.test(period) ||
+      value == null || !Number.isFinite(Number(value))) {
+    throw new Error("Invalid COCHILCO observation");
+  }
   const rawPayload = raw ?? { series, period, value, unit, commodity };
   return {
     source_id:"cochilco_minerals",
@@ -71,7 +77,11 @@ export function normalizeCochilcoObservation({ series, period, value, unit = nul
     category:"CRITICAL_MINERALS",
     country_iso3:"CHL",
     observed_at:retrievedAt,
-    published_at:period.length === 7 ? period + "-01T00:00:00.000Z" : retrievedAt,
+    // Only an authenticated, source-native release clock can populate this.
+    published_at:null,
+    observation_period:period,
+    clock_semantics:"reference_month",
+    native_publication_time_verified:false,
     title:"COCHILCO " + series + ": " + commodity,
     summary:"Chilean mining and mineral market statistical observation.",
     source_url:COCHILCO_URL,
