@@ -39,7 +39,10 @@ export function inspectChileanCopperMonthly(html,now=new Date()){
  const observed=[];
  const nowMonth=now.getUTCFullYear()*12+now.getUTCMonth();
  // A display month is a reference period, not the original issuer release day.
- const re=/\b(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic)\.?(20\d{2})\b/gu;
+ // Only accept month/year labels from numeric observation entries
+ // ("Ago.2026: 366,3"). Generic page-update timestamps such as
+ // "Actualizado: 13.Oct.2026" are NEVER mine production periods.
+ const re=/\b(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic)\.?(20\d{2})\s*:\s*[0-9][0-9.,]{0,20}\b/gu;
  for(const match of text.slice(0,12000).matchAll(re)){
   const year=Number(match[2]),month=MONTHS[match[1]];
   const index=year*12+(month-1);

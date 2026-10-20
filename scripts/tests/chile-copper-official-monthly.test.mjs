@@ -23,6 +23,16 @@ test("pinned official Chile series, monthly native reference period only",()=>{
  assert.equal(r.customer_paid_eligible,false);
  assert.doesNotMatch(JSON.stringify(r),/366,3|400,3/);
 });
+test("publisher page updated in October must not become October copper observation",()=>{
+ const evidence=html().replace("<div>Observaciones",
+   "<p>Actualizado: 13.Oct.2026</p><p>Last updated Oct.2026</p><div>Observaciones");
+ const r=inspectChileanCopperMonthly(evidence,now);
+ assert.equal(r.latest_observed_reference_month,"2026-08");
+ assert.equal(r.reference_lag_months,2);
+ assert.equal(r.native_publication_clock_verified,false);
+ assert.equal(r.exact_period_value_verified,false);
+});
+
 test("unknown series, future period, empty HTML, scripts fail closed",()=>{
  assert.throws(()=>inspectChileanCopperMonthly("<html>fake chart</html>",now),/CHILE_OFFICIAL_SERIES_NOT_CONFIRMED/);
  const future=inspectChileanCopperMonthly(html("Nov.2026").replace("Jul.2026",""),now);
