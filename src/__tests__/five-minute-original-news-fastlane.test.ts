@@ -1,7 +1,9 @@
 import {describe,expect,it} from "vitest";
 import {readFileSync} from "node:fs";
 import {deriveStatelessSignals} from "../lib/stateless-intelligence-model";
-import {FIVE_MINUTE_NEWS_FASTLANE,readFiveMinuteNewsFastlane} from "../lib/stateless-public-intelligence.server";
+import {FIVE_MINUTE_NEWS_FASTLANE,FIVE_MINUTE_NEWS_FALLBACK,
+ FASTLANE_MAX_FALLBACK_READS_PER_RUN,decideFiveMinuteFallbackCategories,
+ readFiveMinuteNewsFastlane} from "../lib/stateless-public-intelligence.server";
 
 const read=(p:string)=>readFileSync(p,"utf8");
 const CATS=["geopolitics","macro","rare_earth"];
@@ -23,6 +25,42 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
      "ORIGINAL_FASTLANE_CLOCK_OR_BUDGET_INVALID");
    await expect(readFiveMinuteNewsFastlane(Date.now(),100)).rejects.toThrow(
      "ORIGINAL_FASTLANE_CLOCK_OR_BUDGET_INVALID");
+ });
+ it("runs zero extra official requests for healthy primaries and one separately pinned origin for complete outage",()=>{
+   expect(FIVE_MINUTE_NEWS_FALLBACK).toEqual([
+     {category:"geopolitics",id:"canada_foreign_statements"},
+     {category:"macro",id:"bis_press"},
+     {category:"rare_earth",id:"uk_dbt"},
+   ]);
+   expect(FASTLANE_MAX_FALLBACK_READS_PER_RUN).toBe(3);
+   expect(new Set(FIVE_MINUTE_NEWS_FALLBACK.map(x=>x.id)).size).toBe(3);
+   expect(FIVE_MINUTE_NEWS_FALLBACK.every(x=>
+     !FIVE_MINUTE_NEWS_FASTLANE.some(y=>y.category===x.category&&y.id===x.id))).toBe(true);
+   const primary=FIVE_MINUTE_NEWS_FASTLANE.map(x=>({
+     category:x.category,healthy:true,
+   }));
+   expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
+   // One failed origin is never treated as an entire category outage.
+   primary[0].healthy=false;
+   expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
+   primary[1].healthy=false;
+   expect(decideFiveMinuteFallbackCategories(primary)).toEqual(["geopolitics"]);
+   primary[2].healthy=false;
+   primary[3].healthy=false;
+   primary[4].healthy=false;
+   primary[5].healthy=false;
+   primary[6].healthy=false;
+   expect(decideFiveMinuteFallbackCategories(primary)).toEqual(CATS);
+   expect(()=>decideFiveMinuteFallbackCategories([{category:"unapproved",healthy:true}]))
+     .toThrow("ORIGINAL_FASTLANE_PRIMARY_HEALTH_INVALID");
+   expect(()=>decideFiveMinuteFallbackCategories([{category:"macro",healthy:undefined as any}]))
+     .toThrow("ORIGINAL_FASTLANE_PRIMARY_HEALTH_INVALID");
+   const impl=read("src/lib/stateless-public-intelligence.server.ts");
+   expect(impl).toContain("const fallbackCategories=decideFiveMinuteFallbackCategories(");
+   expect(impl).toContain("fallbackSelected.length>FASTLANE_MAX_FALLBACK_READS_PER_RUN");
+   expect(impl).toContain("SOURCES.filter(s=>s.id===entry.id&&s.category===entry.category)");
+   expect(impl).toContain("const fallbackBatches=await Promise.all(");
+   expect(impl).toContain("p.category===category?[fallbackBatches[i]]:[]");
  });
  it("leaves native original time and the 15-minute presentation embargo mandatory",()=>{
    const at=Date.parse("2026-10-20T12:00:00.000Z");
@@ -61,6 +99,9 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(pub).toContain('configured_categories:3,pinned_original_publishers:FIVE_MINUTE_NEWS_FASTLANE.length');
    expect(pub).toContain('FIVE_MINUTE_NEWS_FASTLANE.filter(s=>s.category===category).length');
    expect(pub).toContain("report.healthy_feed_count<1");
+   expect(pub).toContain("report.feed_count>expectedOrigins+1");
+   expect(pub).toContain("conditional_fallback_attempted:report.feed_count>expectedOrigins");
+   expect(pub).toContain("fallback_only_for_complete_primary_category_outage:true");
    expect(pub).toContain("const baseline=await fetchAllDerivedNews(fetch,runAt)");
    expect(pub).toContain("!existingIds.has(s.id)");
    expect(pub).toContain("fetchAllDerivedNews(fetch,Date.now())");

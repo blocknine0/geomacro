@@ -749,6 +749,30 @@ export const FIVE_MINUTE_NEWS_FASTLANE = Object.freeze([
   {category:"rare_earth",id:"nrcan_releases"},
   {category:"rare_earth",id:"us_doe_news_minerals"},
 ] as const);
+/**
+ * Conditional first-party alternatives, only if EVERY primary issuer within
+ * that category failed transport. No additional steady-state source polling,
+ * no new credential/rights model, no raw redistribution.
+ * Different origin families reduce the correlated-outage risk.
+ */
+export const FIVE_MINUTE_NEWS_FALLBACK=Object.freeze([
+  {category:"geopolitics",id:"canada_foreign_statements"},
+  {category:"macro",id:"bis_press"},
+  {category:"rare_earth",id:"uk_dbt"},
+] as const);
+export const FASTLANE_MAX_FALLBACK_READS_PER_RUN=3 as const;
+export function decideFiveMinuteFallbackCategories(
+  primary: readonly {category:string;healthy:boolean}[],
+): Array<"geopolitics"|"macro"|"rare_earth"> {
+  const domains=["geopolitics","macro","rare_earth"] as const;
+  if(!Array.isArray(primary)||
+     primary.some(x=>!x||!domains.includes(x.category as typeof domains[number])||
+       typeof x.healthy!=="boolean"))
+    throw Error("ORIGINAL_FASTLANE_PRIMARY_HEALTH_INVALID");
+  return domains.filter(category=>
+    primary.some(x=>x.category===category)&&
+    !primary.some(x=>x.category===category&&x.healthy));
+}
 export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20):
  Promise<StatelessIntelligenceResult[]>{
  if(!Number.isFinite(now)||!Number.isSafeInteger(maxSignals)||
@@ -758,14 +782,37 @@ export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20):
    if(matches.length!==1)throw Error("ORIGINAL_FASTLANE_PINNED_PUBLISHER_INVALID");
    return {category,source:matches[0]};
  });
- const batches=await Promise.all(selected.map(({source})=>readSource(source,now)));
- // Fold the additional WTO official issuer into the EXISTING three-domain
- // result contract. Bound each domain to a single maxSignals budget, not a
- // new news queue, table, repeated D1 read or duplicate paid endpoint.
+ // One unreachable origin must not suppress healthy independent publishers.
+ // Do not let a rare parsing exception escape Promise.all and cancel other
+ // categories; a health=false lane is still correctly reported as degraded.
+ const safely=(source:StatelessSourceSpec)=>readSource(source,now)
+   .catch(()=>({candidates:[] as StatelessSourceCandidate[],healthy:false}));
+ const batches=await Promise.all(selected.map(({source})=>safely(source)));
+ // Only failed primary categories pay the marginal zero-subscription cost
+ // of exactly ONE separately pre-registered first-party fallback. A quiet
+ // but healthy source is not an outage and triggers no additional fetch.
+ const fallbackCategories=decideFiveMinuteFallbackCategories(
+   selected.map((p,i)=>({category:p.category,healthy:batches[i].healthy})));
+ const fallbackSelected=fallbackCategories.map(category=>{
+   const entry=FIVE_MINUTE_NEWS_FALLBACK.find(x=>x.category===category);
+   if(!entry)throw Error("ORIGINAL_FASTLANE_FALLBACK_CATEGORY_UNREGISTERED");
+   const matches=SOURCES.filter(s=>s.id===entry.id&&s.category===entry.category);
+   if(matches.length!==1)throw Error("ORIGINAL_FASTLANE_FALLBACK_PUBLISHER_INVALID");
+   return {category,source:matches[0]};
+ });
+ if(fallbackSelected.length>FASTLANE_MAX_FALLBACK_READS_PER_RUN)
+   throw Error("ORIGINAL_FASTLANE_FALLBACK_BUDGET_EXCEEDED");
+ const fallbackBatches=await Promise.all(fallbackSelected.map(
+   ({source})=>safely(source)));
+ // Retain the EXISTING bounded three-domain derivation, original dates,
+ // source credits, privacy and 15-minute publisher embargo.
  const domains=["geopolitics","macro","rare_earth"] as const;
  return domains.map(category=>{
-   const scopes=selected.flatMap((p,i)=>
-     p.category===category?[batches[i]]:[]);
+   const scopes=[
+     ...selected.flatMap((p,i)=>p.category===category?[batches[i]]:[]),
+     ...fallbackSelected.flatMap((p,i)=>
+       p.category===category?[fallbackBatches[i]]:[]),
+   ];
    const candidates=scopes.flatMap(b=>b.candidates);
    const signals=deriveStatelessSignals(candidates,now,{maxSignals});
    const healthy=scopes.filter(b=>b.healthy).length;
