@@ -1,0 +1,28 @@
+# No-laptop real-time first-party news: verified collection and missed-run recovery
+
+Updated 2026-10-21. Goal: target 20 minutes (best-effort) from first-party publication to the FREE Geomacro Intelligence desk, using only pre-existing free GitHub Actions and Cloudflare D1. No Telegram session, channel permission, subscription, new Worker, paid API, raw article redistribution, B2 operation, Supabase or x402 activation.
+
+## What is actually running, and its limit
+
+- Existing Five-Minute Original News Fastlane reads original UN News Geopolitics, Federal Reserve Macro, WTO Trade Macro, and NRCan Critical Minerals. Every source uses the existing pinned parser/original date and exact 15-minute publisher embargo. From its existing three-domain reader, it attempts only new ID-verified Geomacro-derived cards into the shared 72-hour D1 journal. Successful GitHub source checks can yield ZERO novel rows; that is valid, NOT a bug.
+- On 2026-10-20 two protected main **push** Actions runs #39456147648 and #39460173026 demonstrated genuinely healthy source transport (3/4 then 4/4 source lanes) but 0 new rows. No five-minute **schedule** run appeared in GitHub run history through 2026-10-20T19:20:08Z. An existing workflow file with a cron declaration is NOT evidence that it has run at that cadence.
+- The fastlane cron offset is updated to 4-59/5 UTC to re-register/resync the schedule actor, and no-running-publisher-cancellation is enforced. GitHub's scheduled event may still be delayed or dropped, so this cannot offer a 20-minute SLA.
+- Existing Website Derived News Cadence Backstop (cron :22/:52; also reacts to already present original-source pulse workflow success/failure) now independently watches the recent publisher **job plus exact D1 write step**, not just the workflow conclusion or contract test. If no successfully completed actual fastlane polling job in 15m, and no active/recent dispatch, it posts workflow_dispatch to the SAME canonical fastlane with ephemeral scoped GITHUB_TOKEN. It checks each selected parent run is main and exact repository. This uses **no additional cron** and no long-lived secrets. If GitHub dispatch permission is denied, watchdog must fail RED and cannot claim recovery.
+- This watchdog is a recovery of missed automation, not a dedicated global crawler; it cannot make GitHub real-time by force, and normal catch-up may exceed 20 minutes.
+
+## Information rights, category and customer boundary
+
+The same journal powers website Intelligence, country/category derived news API and private on-demand research. Source leads or WTO official feeds cannot directly authorize paid content; consumer output must remain independently assessed Geomacro-created structured data. Never copy a raw Telegram post, verbatim original title, site body, original XML, upstream URL or private publisher ID to a customer. Source-specific licence/required attribution still applies. No false scored GRO/GRI, no automatic certified Risk Indices or real USDC.
+
+195-country ISO3 routing + 3 categories = 585 possible request scopes, but this **does not** activate all 585 as local originals. Current four first-party fastlane origins, the larger hourly original-source collector, and GDELT/other free indexes are complementary, not an exhaustive instant global newswire. Absence of a country-category result means only 'not observed in current admitted sources', never 'nothing happened'. Regional/local 20-minute completeness cannot be promised for sources without timely publication or native article timestamp.
+
+## Operator acceptance from a closed laptop
+
+1. Review [Fastlane Actions](https://github.com/blocknine0/geomacro/actions/workflows/five-minute-original-news-fastlane.yml) and [Cadence Backstop Actions](https://github.com/blocknine0/geomacro/actions/workflows/website-derived-news-cadence-backstop.yml). Look for actual main scheduled runs, publisher job outcome, and 5min latency diagnostics. The named job must show the real publication step SUCCEEDED, not just fastlane-contract.
+2. The backstop job 'fastlane-actual-publisher-cadence-watch' should print sanitized schema geomacro.5min-original-news-verified-cadence-watch.v1 and either RECENT_GENUINE_D1_PUBLISHER_RUN, LIVE_OR_QUEUED_PUBLISHER_RUN, RECENT_RECOVERY_DISPATCH_COOLDOWN, or MISSING_VERIFIED_FASTLANE_POLL with dispatch 204. No raw upstream or API keys logged.
+3. Confirm actual fresh source-native original records via exact D1 readback and the existing public GET /api/v1/intelligence/query?view=structural-72h. If none new, keep zero and source-health diagnostics. 15-minute publisher embargo is unmodified. Never substitute Github run time for original publication time.
+4. After source-native dated articles really arrive, measure observed delay until successfully read from D1; count >20-min deviations truthfully, report scheduler gaps and 401/403/429 instead of claiming completion.
+5. If repeat missed five-minute schedules persist, next step is an **independently deployed** quota-verified Cloudflare Workers Free cron with existing authenticated D1 and per-origin parsers, but only if the account has an available trigger. No such Worker/cron is claimed deployed by this change and no secrets need to be pasted in chat.
+6. The owner must still approve and publish any *new website presentation change* under Website Lock. This patch does NOT touch the website UI and needs no manual site publish to update its scheduled backend ingestion.
+
+At zero events: the correct signal is healthy transports + 0 new source-native release, not a made-up headline. No monthly fees, no 24/7 laptop, and no real-money acknowledgement.
