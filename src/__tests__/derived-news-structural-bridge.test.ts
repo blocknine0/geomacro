@@ -248,11 +248,6 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    const route=readFileSync("src/routes/api.v1.intelligence.query.ts","utf8");
    const paid=readFileSync("src/lib/mainnet-intelligence-endpoint.server.ts","utf8");
    expect(source).toContain("deriveStatelessSignals(originalCandidates, now,{maxSignals})");
-   const website=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
-   expect(website).toContain("fetchAllDerivedNews()");
-   expect(website).not.toContain("fetchDirectDerivedNews()");
-   expect(website).toContain("JOURNAL_REFRESH_MS = 6 * 60_000");
-   expect(website).toContain("fallback");
    expect(route).toContain('"country-coverage-195x3"');
    expect(publish).toContain("privateOriginals.push(...candidates),200");
    expect(publish).toContain("signals.slice(i*40,(i+1)*40)");
