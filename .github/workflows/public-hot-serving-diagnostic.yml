@@ -50,7 +50,9 @@ jobs:
           ) &&
           github.event.workflow_run.head_branch == 'main' &&
           github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
-          github.event.workflow_run.head_sha == github.sha
+          # Diagnose CURRENT main even when later trusted merges occurred while
+          # the failed production website-health run was finishing. Read only.
+          github.event.workflow_run.head_sha != ''
         )
       )
     runs-on: ubuntu-24.04
