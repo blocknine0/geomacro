@@ -7,6 +7,7 @@ import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs"
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
+import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
 import { makeRiskIndicesHistoricalMetadata } from "./risk-indices-historical-status.mjs";
@@ -1322,6 +1323,12 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      // Inherits existing strong CONTROL_PLANE_TOKEN auth; deliberately
+      // excluded from all public and partner routes.
+      if(request.method==="GET"&&url.pathname==="/v1/internal/source-directory" )
+        return getPrivateLegacySourceDirectory(env,url.searchParams);
+      if(request.method==="GET"&&url.pathname==="/v1/internal/source-directory-coverage")
+        return getPrivateLegacySourceDirectoryCoverage(env,url.searchParams);
       if(request.method==='POST'&&url.pathname==='/v1/security/budget'&&!url.search){
         const receipt=await consumeCentralSecurityBudget(env.DB,await readJson(request,256));
         return json(receipt,receipt.allowed?200:429);
