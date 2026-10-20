@@ -72,6 +72,18 @@ jobs:
           if(!(response.headers.get("content-type")??"").includes("application/json"))
             throw Error("FREE_PRODUCT_HEALTH_NON_JSON");
           const v=await response.json();
+          // Only shape, status and fixed/sanitized reason codes; never log
+          // D1 stories, source identity, API headers or paid credentials.
+          const safe=x=>String(x??"missing").replace(/[^A-Za-z0-9_.-]/g,"").slice(0,64);
+          console.log(JSON.stringify({
+            schema:"geomacro.free-product-hosting-route-diagnostic.v1",
+            http_status:response.status,returned_schema:safe(v.schema),
+            returned_reason:safe(v.reason??v.error),
+            eligible_derived_rows:Number.isSafeInteger(v.current_72h_derived_rows)
+              ?v.current_72h_derived_rows:null,
+            valid_free_profile_contract:v.schema==="geomacro.free-derived-deep-health.v1",
+            private_stories_logged:false,payments:0,
+          }));
           if(response.status!==200||v.ok!==true||
              v.schema!=="geomacro.free-derived-deep-health.v1"||
              v.current_72h_derived_rows<1||
