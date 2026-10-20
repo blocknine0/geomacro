@@ -101,7 +101,8 @@ const states=Object.fromEntries(DOMAINS.map(domain=>[domain,{
  source_reference_records:entries.filter(e=>e.domains.includes(domain)).length,
  configured_update_reader_records:entries.filter(e=>
    e.registry==="running_source_reader"&&e.domains.includes(domain)).length,
- verified_current_country_domain_cells:0,
+ verified_current_country_domain_cells:null,
+ current_cell_coverage_measured_by_this_census:false,
  all_sources_live_verified:false,
  commercial_event_delivery_certified:false,
 }]));
