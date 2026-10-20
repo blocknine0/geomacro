@@ -58,7 +58,7 @@ test("Never accept random format, root or admin token as partner research overri
 });
 test("Wrong owner's private key cannot retrieve a plaintext handoff",()=>{
  const other=generateKeyPairSync("rsa",{modulusLength:3072});
- const packed=sealPredgeResearchBearer({root,recipientPublicKeyB64:b64});
+ const packed=sealPredgeResearchBearer({root,override:"b".repeat(64),recipientPublicKeyB64:b64});
  assert.throws(()=>privateDecrypt({key:other.privateKey,
    padding:constants.RSA_PKCS1_OAEP_PADDING,oaepHash:"sha256",
    oaepLabel:Buffer.from(PREDGE_OAEP_LABEL)},packed));
