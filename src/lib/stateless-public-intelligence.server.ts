@@ -20,6 +20,27 @@ import { verifiedStatcanOriginalReleaseDay } from "./stateless-statcan-original.
 
 const OGL_CREDIT = "Contains public sector information licensed under the Open Government Licence v3.0.";
 const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
+  // NZ Government explicitly publishes this first-party releases RSS; its
+  // Crown copyright terms require source acknowledgement. NEVER silently
+  // promote those messages into no-attribution commercial derived outputs.
+  // Three strict *topic* lanes over one official publisher are not three
+  // independent corroborating sources or full New Zealand media coverage.
+  {id:"nz_beehive_geopolitics",category:"geopolitics",media:"rss",
+    url:"https://www.beehive.govt.nz/rss.xml",
+    allowedHosts:["www.beehive.govt.nz"],credit:"New Zealand Government (Beehive)"},
+  {id:"nz_beehive_macro",category:"macro",media:"rss",
+    url:"https://www.beehive.govt.nz/rss.xml",
+    allowedHosts:["www.beehive.govt.nz"],credit:"New Zealand Government (Beehive)"},
+  {id:"nz_beehive_minerals",category:"rare_earth",media:"rss",
+    url:"https://www.beehive.govt.nz/rss.xml",
+    allowedHosts:["www.beehive.govt.nz"],credit:"New Zealand Government (Beehive)"},
+  // WTO's own RSS requires explicit "WTO news" acknowledgement. Its trade
+  // releases are global policy discovery, not macro FX ticks, not a 2nd
+  // independent issuer, not a merchant rights receipt or a scored event.
+  {id:"wto_trade_original_rss",category:"macro",media:"rss",
+    url:"https://www.wto.org/library/rss/latest_news_e.xml",
+    allowedHosts:["www.wto.org"],credit:"WTO news"},
+
   // Shared official resources originals enter geopolitics ONLY when the
   // independently evaluated title matches an existing geopolitical policy
   // rule. Ordinary minerals/export headlines cannot leak into this lane.
