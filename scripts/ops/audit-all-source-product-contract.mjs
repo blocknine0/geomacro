@@ -134,5 +134,30 @@ if(process.argv.includes("--write")){
  const path="artifacts/all-source-product-contract/source-census.json";
  mkdirSync("artifacts/all-source-product-contract",{recursive:true,mode:0o700});
  writeFileSync(path,JSON.stringify(summary,null,2)+"\n",{mode:0o600});
+ // Private operator-only, source-by-source report. Never returned by the
+ // public product discovery API; no upstream URLs, article text or secrets.
+ const ledger={
+   schema:"geomacro.private-source-product-crosswalk.v1",
+   checked_at:summary.checked_at,
+   rows:entries.map(row=>({
+     ...row,
+     operational_state:row.source_read_confirmed?
+       "REGISTRY_FLAG_TRANSPORT_OBSERVED_NOT_CURRENT_PROOF":
+       row.registry==="running_source_reader"?
+       "READER_CONFIGURED_RUNTIME_STATUS_SEPARATE":
+       "REFERENCE_ONLY_RUNTIME_STATUS_SEPARATE",
+     qualification_state:row.original_current_event_verified&&
+       row.rights_for_commercial_delivery_verified?
+         "CATALOG_DECLARED_PROOFS_REQUIRE_RUNTIME_READBACK":
+         "CURRENT_EVENT_OR_RIGHTS_NOT_QUALIFIED_BY_THIS_REGISTRY",
+     signed_product_ready:false,
+     charge_authorized:false,
+   })),
+   raw_source_urls_included:false,
+   all_source_rows_commercially_eligible:false,
+   customer_visible:false,
+ };
+ writeFileSync("artifacts/all-source-product-contract/private-source-ledger.json",
+   JSON.stringify(ledger,null,2)+"\n",{mode:0o600});
 }
 console.log(JSON.stringify(summary));
