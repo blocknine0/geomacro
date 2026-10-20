@@ -181,7 +181,10 @@ export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=
    const spec=PRODUCTION_FREE_UPDATE_SOURCES[i],old=snapshots[spec.category].sources[spec.id];
    const last=Date.parse(old?.last_attempt_at??'');
    const interval=!old||old.state==='TRANSPORT_READABLE'?spec.poll_minutes:
-     old.state==='DENIED_OR_RATE_LIMIT'?Math.max(360,spec.poll_minutes):Math.min(60,spec.poll_minutes);
+     old.state==='DENIED_OR_RATE_LIMIT'?(
+       ['marad_advisories','iea_minerals_global'].includes(spec.id)
+         ?1440:Math.max(360,spec.poll_minutes)
+     ):Math.min(60,spec.poll_minutes);
    // Scheduled jobs start with jitter. Deduplicate healthy reads by UTC
    // polling slot, not an elapsed cutoff that can skip every other cron run.
    // Publisher denials retain a full elapsed backoff, regardless of slots.
