@@ -1,0 +1,102 @@
+import {describe,expect,it,vi} from "vitest";
+import {readFileSync} from "node:fs";
+import {
+  classifyFreeDerivedFeed,probeFreeDerivedDeepHealth,
+} from "./free-derived-deep-health.server";
+
+const time=Date.parse("2026-10-21T00:00:00.000Z");
+const native="2026-10-20T22:30:00.000Z";
+const story=(category="geopolitics",overrides:Record<string,unknown>={})=>({
+  id:category+"-abcdef12",category,date_precision:"exact",published_at:native,
+  title:"Geomacro finds a verified original-dated official development",
+  status:"official_release_observed_unscored",severity:null,
+  same_event_corrob_verified:false,...overrides,
+});
+const feed=(signals:unknown[]=[story()],updates:Record<string,unknown>={})=>({
+  ok:true,schema:"geomacro.website-derived-news-feed.v1",
+  checked_at:"2026-10-21T00:00:00.000Z",
+  original_release_delay_minutes:15,retention_hours:72,retention_days:3,
+  delivery_scope:"free_website_only",
+  scored:false,chargeable:false,supabase_dependency:false,
+  page_offset:0,page_size:250,has_more:false,next_offset:null,
+  signals,...updates,
+});
+describe("authentic free-derived D1 product deep-health",()=>{
+  it("accepts one real, original-dated unscored D1 story without pretending 3-domain signed readiness",()=>{
+    const v=classifyFreeDerivedFeed(feed(),time);
+    expect(v.statusCode).toBe(200);
+    expect(v.body.categories).toEqual({geopolitics:1,macro:0,rare_earth:0});
+    expect(v.body.all_three_categories_have_recent_originals).toBe(false);
+    expect(v.body.current_numerical_gri_verified).toBe(false);
+    expect(v.body.current_signed_hot_snapshots_attested).toBe(false);
+    expect(v.body.legacy_signed_intelligence_gri_risk_indices)
+      .toBe("NOT_EVALUATED_IN_THIS_PROFILE");
+    expect(v.body.free_website_ssr_attested).toBe(false);
+    expect(v.body.x402_payment_authorized).toBe(false);
+    expect(v.body.consumer_commercial_rights_verified).toBe(false);
+    expect(v.body.b2_read_performed).toBe(false);
+    expect(v.body.supabase_access_performed).toBe(false);
+  });
+  it("reports all 3 original categories ONLY when actually present",()=>{
+    const rows=[story(),story("macro"),story("rare_earth")];
+    const v=classifyFreeDerivedFeed(feed(rows),time);
+    expect(v.statusCode).toBe(200);
+    expect(v.body.all_three_categories_have_recent_originals).toBe(true);
+    expect(v.body.current_numerical_gri_verified).toBe(false);
+  });
+  it("fails empty, stale, future, pre-embargo, duplicate or scored stories",()=>{
+    expect(classifyFreeDerivedFeed(feed([]),time).statusCode).toBe(503);
+    for(const published_at of ["2026-10-16T00:00:00.000Z",
+      "2026-10-20T23:50:00.000Z","2026-10-21T01:00:00.000Z"]){
+      expect(classifyFreeDerivedFeed(feed([story("geopolitics",{published_at})]),time)
+        .statusCode).toBe(503);
+    }
+    expect(classifyFreeDerivedFeed(feed([story(),story()]),time).statusCode).toBe(503);
+    for(const overrides of [
+      {severity:6},{same_event_corrob_verified:true},{source_url:"https://raw.example.org"},
+      {status:"verified_b2"},{date_precision:"day",published_at:"2026-10-20"},
+    ]){
+      expect(classifyFreeDerivedFeed(feed([story("geopolitics",overrides)]),time)
+        .statusCode).toBe(503);
+    }
+    const validDay=story("geopolitics",{date_precision:"day",published_at:"2026-10-19"});
+    expect(classifyFreeDerivedFeed(feed([validDay]),time).statusCode).toBe(200);
+  });
+  it("rejects invalid metadata, old replayed checked_at, and commercial flags",()=>{
+    for(const overrides of [
+      {original_release_delay_minutes:0},{retention_hours:720},
+      {chargeable:true},{scored:true},{supabase_dependency:true},
+      {delivery_scope:"paid"},{checked_at:"2026-10-20T18:00:00.000Z"},
+      {page_offset:250},{page_size:1000},{signals:"invalid"},
+    ]){
+      expect(classifyFreeDerivedFeed(feed([story()],overrides),time).statusCode)
+        .toBe(503);
+    }
+  });
+  it("returns HTTP 503 on remote 503, non-JSON, oversize or outage; never a synthetic green",async()=>{
+    const create=(body:unknown,status=200,type="application/json")=>
+      vi.fn<typeof fetch>(async()=>new Response(JSON.stringify(body),{
+        status,headers:{"content-type":type},
+      }));
+    const test=await probeFreeDerivedDeepHealth({
+      fetcher:create(feed()),now:()=>time});
+    expect(test.statusCode).toBe(200);
+    for(const result of [
+      await probeFreeDerivedDeepHealth({fetcher:create({ok:false},503),now:()=>time}),
+      await probeFreeDerivedDeepHealth({fetcher:create(feed(),200,"text/html"),now:()=>time}),
+      await probeFreeDerivedDeepHealth({fetcher:vi.fn<typeof fetch>(async()=>{throw Error("network");}),now:()=>time}),
+    ])expect(result.statusCode).toBe(503);
+  });
+  it("preserves strict signed product deep-health and old live-structured profile intact",()=>{
+    const route=readFileSync("src/routes/api.health.ts","utf8");
+    expect(route).toContain('if (profile === "free-derived")');
+    expect(route).toContain("await probeFreeDerivedDeepHealth()");
+    expect(route).toContain('profile !== "live-structured"');
+    expect(route).toContain('await probeLiveStructuredDeepHealth()');
+    expect(route).toContain("await getPublicProductionReadiness(deep)");
+    expect(route).toContain('publicProduction.risk_verification_status === "verified"');
+    expect(route).toContain("Object.values(publicProduction.hot_snapshot_serving ?? {}).every((proof) => proof.ok)");
+    expect(route).toContain("status: deepReady ? 200 : 503");
+    expect(route).toContain("chargeable:false");
+  });
+});
