@@ -33,6 +33,10 @@ describe("Predge 20 October external contract and trust boundary", () => {
     });
     expect(() => parseExternalRiskGateBody({...country,subject:{type:"country",id:"USA"}}))
       .toThrow("subject contains unsupported field(s): id");
+    for (const field of ["content_hash", "context_sha256"]) {
+      expect(() => parseExternalRiskGateBody({...country, [field]: "a".repeat(64)}))
+        .toThrow(`request contains unsupported field(s): ${field}`);
+    }
     expect(response.schema_version).toBe("risk-gate-1.0");
     expect(response.execution_authorized).toBe(false);
     expect(response.decision).toBe("PAUSE");
