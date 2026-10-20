@@ -1,6 +1,6 @@
 import {describe,expect,it,vi} from "vitest";
 import {readFileSync} from "node:fs";
-import {observeOperatorFreeFeedRotation,PUBLIC_FEED_ROTATION} from "../../scripts/ops/observe-operator-free-feed-rotation.mjs";
+import {observeOperatorFreeFeedRotation,PUBLIC_FEED_ROTATION,summarizeBlsTwoMonthlyReferences} from "../../scripts/ops/observe-operator-free-feed-rotation.mjs";
 
 const now=new Date("2026-10-12T12:00:00Z");
 const rss=`<?xml version="1.0"?><rss version="2.0"><channel><title>Test</title>
@@ -45,7 +45,7 @@ describe("operator public RSS candidate rotating bounded discovery",()=>{
     const mock=vi.fn(async(url:string)=>{
       const host=new URL(url).hostname;
       if(host==="api.bls.gov")return new Response(JSON.stringify({
-        status:"REQUEST_SUCCEEDED",Results:{series:[{data:[{year:"2026",period:"M09"}]}]}
+        status:"REQUEST_SUCCEEDED",Results:{series:[{seriesID:"CUUR0000SA0",data:[{year:"2026",period:"M09",value:"325.3"}]},{seriesID:"LNS14000000",data:[{year:"2026",period:"M09",value:"4.2"}]}]}
       }));
       if(host==="ofac.treasury.gov")return new Response("<!doctype html><html>Recent actions</html>");
       return new Response(rss);
@@ -56,11 +56,48 @@ describe("operator public RSS candidate rotating bounded discovery",()=>{
     expect(mock).toHaveBeenCalledTimes(3);
     expect(r.status).toBe("GROUP_TRANSPORT_OK");
     expect(r.sources.find(s=>s.id==="bls")?.native_dated_24h_items).toBeNull();
+    expect(r.sources.find(s=>s.id==="bls")?.bls_series_count).toBe(2);
+    expect(r.sources.find(s=>s.id==="bls")?.bls_native_reference_periods).toEqual({CUUR0000SA0:"2026-09",LNS14000000:"2026-09"});
     expect(r.sources.find(s=>s.id==="ofac_recent_actions")?.transport_state).toBe("HTML_HEALTH_ONLY");
     expect(r.raw_publisher_payload_persisted).toBe(false);
     expect(r.sources.every(s=>s.commercial_eligible===false&&s.signed_gro===false)).toBe(true);
     expect(JSON.stringify(r)).not.toContain("Lithium mining contract");
     expect(JSON.stringify(r)).not.toContain("Central bank interest rate inflation");
+  });
+  it("keeps one BLS free no-key request but reads both monthly USA source series",async()=>{
+    let blsCalls=0;
+    const mock=vi.fn(async(url:string,opts:RequestInit)=>{
+      if(new URL(url).hostname==="api.bls.gov"){
+        blsCalls++;
+        expect(opts.method).toBe("POST");
+        expect(opts.redirect).toBe("error");
+        expect(JSON.parse(opts.body as string)).toEqual({seriesid:["CUUR0000SA0","LNS14000000"]});
+        return new Response(JSON.stringify({status:"REQUEST_SUCCEEDED",Results:{series:[
+          {seriesID:"LNS14000000",data:[{year:"2026",period:"M09",value:"4.2"}]},
+          {seriesID:"CUUR0000SA0",data:[{year:"2026",period:"M08",value:"325.1"}]}
+        ]}}));
+      }
+      return new Response("<!doctype html><html>Official</html>");
+    });
+    const r=await observeOperatorFreeFeedRotation({group:0,now,fetchImpl:mock as typeof fetch});
+    expect(blsCalls).toBe(1);
+    expect(r.http_requests).toBe(3);
+    expect(r.sources.find(s=>s.id==="bls")?.bls_native_reference_periods)
+      .toEqual({LNS14000000:"2026-09",CUUR0000SA0:"2026-08"});
+    expect(JSON.stringify(r)).not.toContain("325.1");
+    expect(JSON.stringify(r)).not.toContain("4.2");
+  });
+  it("rejects missing, duplicate, future, or value-less BLS monthly series",()=>{
+    const entry=(id:string,month:string,value:string)=>({seriesID:id,data:[{year:"2026",period:month,value}]});
+    const one=entry("CUUR0000SA0","M09","325.2");
+    const two=entry("LNS14000000","M09","4.1");
+    const body=(series:unknown[])=>({status:"REQUEST_SUCCEEDED",Results:{series}});
+    expect(summarizeBlsTwoMonthlyReferences(body([one,two]),now)?.series_count).toBe(2);
+    for(const series of [[one],[one,one],[one,entry("LNS14000000","M11","4.1")],
+      [one,entry("LNS14000000","M09","")]]){
+      expect(summarizeBlsTwoMonthlyReferences(body(series),now)).toBeNull();
+    }
+    expect(summarizeBlsTwoMonthlyReferences(body([one,two]),new Date("invalid"))).toBeNull();
   });
   it("does not call Atom <updated> first publication or count an edited old item as 24h news",async()=>{
     const atom=`<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">
