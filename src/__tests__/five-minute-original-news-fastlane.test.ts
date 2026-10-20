@@ -6,12 +6,12 @@ import {FIVE_MINUTE_NEWS_FASTLANE,readFiveMinuteNewsFastlane} from "../lib/state
 const read=(p:string)=>readFileSync(p,"utf8");
 const CATS=["geopolitics","macro","rare_earth"];
 describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
- it("accepts only one pinned originating publisher in each existing domain; not 195 fresh sources",async()=>{
-   expect(FIVE_MINUTE_NEWS_FASTLANE).toHaveLength(3);
-   expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.category)).toEqual(CATS);
-   expect(new Set(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).size).toBe(3);
+ it("pins four original publishers in three domains, including second Macro WTO origin",async()=>{
+   expect(FIVE_MINUTE_NEWS_FASTLANE).toHaveLength(4);
+   expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.category)).toEqual(["geopolitics","macro","macro","rare_earth"]);
+   expect(new Set(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).size).toBe(4);
    expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).toEqual([
-     "un_news","fed_press","nrcan_releases"]);
+     "un_news","fed_press","wto_trade_original_rss","nrcan_releases"]);
    const collector=read("src/lib/stateless-public-intelligence.server.ts");
    expect(collector).toContain("SOURCES.filter(s=>s.id===id && s.category===category)");
    expect(collector).toContain("const batches=await Promise.all(selected.map");
@@ -56,6 +56,9 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(wf).not.toContain("SUPABASE_URL");
    expect(wf).not.toContain("B2_KEY_ID");
    expect(pub).toContain("readFiveMinuteNewsFastlane(runAt,20)");
+   expect(pub).toContain('configured_categories:3,pinned_original_publishers:4');
+   expect(pub).toContain('category==="macro"?2:1');
+   expect(pub).toContain("report.healthy_feed_count<1");
    expect(pub).toContain("const baseline=await fetchAllDerivedNews(fetch,runAt)");
    expect(pub).toContain("!existingIds.has(s.id)");
    expect(pub).toContain("fetchAllDerivedNews(fetch,Date.now())");
