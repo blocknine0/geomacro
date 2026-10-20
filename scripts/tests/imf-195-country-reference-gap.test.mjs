@@ -74,3 +74,17 @@ test("IMF-only countries supplement missing WDI reference, not replace observed 
  assert.ok(r[1].missing_reference_iso3.includes("PSE"));
  assert.ok(!r[1].missing_reference_iso3.includes("IND"));
 });
+
+test("a shared IMF 403 holds second indicator instead of probing same denied publisher",async()=>{
+ let calls=0;
+ const receipt=await observeImf195({now,registrySource,fetchImpl:async()=>{
+  calls++;return new Response("403",{status:403});
+ }});
+ assert.equal(calls,1);
+ assert.equal(receipt.requests_attempted,1);
+ assert.equal(receipt.verified_indicator_transports,0);
+ assert.equal(receipt.indicators[0].reason,"IMF_DENIED_OR_QUOTA");
+ assert.equal(receipt.indicators[1].reason,"IMF_PROVIDER_DENIED_HOLD");
+ assert.equal(receipt.paid_delivery_enabled,undefined);
+ assert.equal(receipt.payments,0);
+});
