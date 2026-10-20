@@ -81,11 +81,11 @@ describe("Predge 20 October external contract and trust boundary", () => {
     for(const item of ["30 October 2026","18 November 2026","context_sha256",
       "risk-gate-1.0","POST https://geomacro.live/api/risk-gate",
       "geomacro-canonical-json-v1","432f35218570c80c09d56a8005390f6d3111a932ba93298f4ffd86d9896c0b90",
-      "Signed TEST-ONLY vector","PUBLIC","execution_authorized:false"]){
+      "Signed TEST-ONLY vector","Public handoff URLs","execution_authorized:false"]){
       expect(handoff).toContain(item);
     }
     expect(handoff).toContain("No price or revenue-share percentage was agreed.");
-    expect(handoff).toContain("Private research");
+    expect(handoff).toContain("private research endpoint");
     expect(handoff).toContain("MUST NOT");
   });
   it("documents independent digest namespaces, rotations and no paid launch claims",()=>{
