@@ -13,7 +13,7 @@ const DRIVER=new Set(["conflict","sanctions","political_instability","trade_poli
   "rare_earth_supply","critical_minerals","shipping_logistics","other"]);
 const encoder=new TextEncoder();
 const MAX_BYTES=65536;
-const DAY_LIMIT=100;
+// Compile-time trust pin matches src/lib/risk-object-public-registry.ts.\n// An environment variable alone may not authorize a new signing key.\nconst ACTIVE_KEY_ID="geomacro-risk-2026-03";\nconst ACTIVE_KEY_SPKI="MCowBQYDK2VwAyEAeMsePxig7TEUR3fykcx9wcBqomj9KBuJ/TXTX2QSN2k=";\nconst DAY_LIMIT=100;
 const HARD_CEILING=500;
 const headers={"Cache-Control":"private, no-store","Vary":"Authorization",
  "X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
@@ -51,9 +51,9 @@ function b64bytes(v){
 function trustRecord(env,id,generatedAt){
  let registry;
  try{registry=JSON.parse(String(env?.RISK_GATE_VERIFY_KEYS_JSON||""))}catch{return null;}
- if(!record(registry)||!KEY_ID.test(id))return null;
+ if(!record(registry)||!KEY_ID.test(id)||id!==ACTIVE_KEY_ID)return null;
  const ent=registry[id];
- if(!record(ent)||ent.status!=="active"||typeof ent.public_key_spki_b64!=="string")return null;
+ if(!record(ent)||ent.status!=="active"||ent.public_key_spki_b64!==ACTIVE_KEY_SPKI)return null;
  const n=Date.parse(generatedAt);
  if(ent.not_before&&n<Date.parse(ent.not_before))return null;
  if(ent.not_after&&n>Date.parse(ent.not_after))return null;
