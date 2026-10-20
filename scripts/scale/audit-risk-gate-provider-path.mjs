@@ -45,7 +45,7 @@ const output={
  candidate_sha:candidateSha||null,
  synchronous_request_path:"website /api/risk-gate -> Cloudflare Worker purpose-scoped auth -> D1 atomic quota/idempotency -> signed GRO verification -> canonical deterministic risk-gate-engine -> D1 immutable decision replay",
  supabase_used_in_request_path:false,
- external_model_provider_in_synchronous_request_path:false,
+ external_model_provider_in_synchronous_request_path: false,
  legacy_supabase_modules_still_present_in_repository:true,
  production_load_tested:false,
  payment_or_mainnet_activation:false,
