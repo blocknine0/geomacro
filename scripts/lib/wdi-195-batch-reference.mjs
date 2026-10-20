@@ -1,6 +1,7 @@
 // World Bank WDI no-key two-indicator country-wide bulk reference audit.
 // 1 upstream request for the existing fixed 195-country routing universe.
-// Annual statistical observation years are NOT live FX/risk event times.
+// Latest completed calendar year only to halve the WDI payload after a live
+// 12-second bulk timeout. Annual years are NOT live FX/risk event times.
 import {readFileSync} from "node:fs";
 export const WORLD_BANK_WDI_BULK_ENDPOINT="https://api.worldbank.org/v2/country/all/indicator/FP.CPI.TOTL.ZG;NY.GDP.MKTP.KD.ZG";
 export const WORLD_BANK_WDI_INDICATORS=Object.freeze(["FP.CPI.TOTL.ZG","NY.GDP.MKTP.KD.ZG"]);
@@ -28,8 +29,8 @@ export function wdiBulkQueryUrl(now=new Date()){
  const url=new URL(WORLD_BANK_WDI_BULK_ENDPOINT);
  url.searchParams.set("format","json");
  url.searchParams.set("source","2");
- url.searchParams.set("date",String(year-1)+":"+year);
- url.searchParams.set("per_page","1200");
+ url.searchParams.set("date",String(year-1));
+ url.searchParams.set("per_page","700");
  url.searchParams.set("page","1");
  return url.href;
 }
@@ -37,7 +38,7 @@ export function summarizeWorldBank195Batch(data,{now=new Date(),registrySource}=
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))throw Error("WDI_CLOCK_INVALID");
  const codes=country195Map(registrySource);
  if(!Array.isArray(data)||data.length!==2||typeof data[0]!=="object"||
-    !Array.isArray(data[1])||data[1].length>1200||
+    !Array.isArray(data[1])||data[1].length>700||
     Number(data[0]?.pages)!==1||Number(data[0]?.page)!==1||
     Number(data[0]?.total)!==data[1].length)
     throw Error("WDI_BULK_PAGINATION_OR_SHAPE_UNVERIFIED");
@@ -49,7 +50,7 @@ export function summarizeWorldBank195Batch(data,{now=new Date(),registrySource}=
    const code=row?.countryiso3code,indicator=row?.indicator?.id;
    if(!codes.has(code)||!present.has(indicator)){ignored++;continue;}
    const year=Number(row?.date);
-   if(!/^\d{4}$/u.test(String(row?.date))||year<yearFloor||year>nowYear){
+   if(!/^\d{4}$/u.test(String(row?.date))||year!==yearFloor){
      ignored++;continue;
    }
    if(row.value===null)continue;
@@ -71,7 +72,7 @@ export function summarizeWorldBank195Batch(data,{now=new Date(),registrySource}=
    source_family:"world_bank_wdi",checked_at:now.toISOString(),
    iso3_routing_universe_count:195,source_page_count:1,source_calls:1,
    metadata_only:true,
-   observation_year_floor:yearFloor,observation_year_ceiling:nowYear,
+   observation_year_floor:yearFloor,observation_year_ceiling:yearFloor,
    indicators:WORLD_BANK_WDI_INDICATORS.map(id=>({
      id,canonical_countries_with_recent_nonnull_values:present.get(id).size,
      canonical_countries_without_recent_values:195-present.get(id).size

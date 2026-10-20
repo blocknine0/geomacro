@@ -15,9 +15,9 @@ const fixture=()=>[{page:1,pages:1,total:rows.length},rows];
 test("one no-key WDI bulk GET covers all 195 routing rows without inventing values",()=>{
  const url=new URL(wdiBulkQueryUrl(now));
  assert.equal(url.hostname,"api.worldbank.org");
- assert.equal(url.searchParams.get("per_page"),"1200");
+ assert.equal(url.searchParams.get("per_page"),"700");
  assert.equal(url.searchParams.get("source"),"2");
- assert.equal(url.searchParams.get("date"),"2025:2026");
+ assert.equal(url.searchParams.get("date"),"2025");
  assert.equal(url.searchParams.get("page"),"1");
  assert.ok(url.pathname.includes("FP.CPI.TOTL.ZG;NY.GDP.MKTP.KD.ZG"));
  const receipt=summarizeWorldBank195Batch(fixture(),{now,registrySource:source});
