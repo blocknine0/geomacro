@@ -29,7 +29,8 @@ export const Route = createFileRoute("/api/v1/intelligence/query")({
               "X-Content-Type-Options":"nosniff"}});
         }
         if(url.searchParams.get("view")==="finds")return automatedFindsResponse(request);
-        if(url.searchParams.get("view")==="structural-72h")
+        if(["structural-72h","country-coverage-195x3"].includes(
+          url.searchParams.get("view")??""))
           return derivedNewsStructuralResponse(request);
         if(url.searchParams.get("view")==="continuous")
           return publicThreeDomainContinuityResponse(request);

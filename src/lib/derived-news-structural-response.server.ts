@@ -1,4 +1,6 @@
 import {fetchAllDerivedNews} from "./public-derived-news-client";
+import {country195ByIso3} from "./canonical-country-registry-195";
+import {observed195x3Coverage,observedDerivedNewsForCountry} from "./derived-news-country-coverage-195";
 import {buildDerivedNewsStructural,NEWS_STRUCTURAL_SCHEMA} from "./derived-news-structural-bridge";
 
 const CATEGORIES=["geopolitics","macro","rare_earth"] as const;
@@ -47,17 +49,29 @@ export async function derivedNewsStructuralResponse(
 ):Promise<Response>{
   const q=new URL(request.url).searchParams;
   const domain=q.get("domain");
-  if(q.getAll("view").length!==1||q.get("view")!=="structural-72h"||
-     q.getAll("domain").length>1||
-     [...q.keys()].some(k=>!["view","domain"].includes(k))||
-     (domain!==null&&!CATEGORIES.includes(domain as typeof CATEGORIES[number])))
+  const country=q.get("country");
+  const view=q.get("view");
+  const coverageView=view==="country-coverage-195x3";
+  if(q.getAll("view").length!==1||
+     !["structural-72h","country-coverage-195x3"].includes(view??"")||
+     q.getAll("domain").length>1||q.getAll("country").length>1||
+     [...q.keys()].some(k=>!["view","domain","country"].includes(k))||
+     (domain!==null&&!CATEGORIES.includes(domain as typeof CATEGORIES[number]))||
+     (country!==null&&!country195ByIso3(country)))
     return Response.json({ok:false,error:"DERIVED_STRUCTURAL_QUERY_INVALID",chargeable:false},
       {status:400,headers:HEADERS});
   try{
     const signals=await fetchAllDerivedNews(fetchImpl,now);
     const all=buildDerivedNewsStructural(signals,now);
-    const rows=domain===null?all:all.filter(r=>r.category===domain);
-    const counts=Object.fromEntries(CATEGORIES.map(c=>[c,all.filter(r=>r.category===c).length]));
+    if(coverageView)return Response.json(
+      observed195x3Coverage(all,now,{
+        country,domain:domain as Domain|null,
+      }),{headers:HEADERS});
+    // Country routing is exact original-title geography mention only.
+    // Absence is UNKNOWN source coverage, never a "no news in country" claim.
+    const scoped=country===null?all:observedDerivedNewsForCountry(all,country);
+    const rows=domain===null?scoped:scoped.filter(r=>r.category===domain);
+    const counts=Object.fromEntries(CATEGORIES.map(c=>[c,scoped.filter(r=>r.category===c).length]));
     return Response.json({
       ok:true,schema:"geomacro.derived-news-structural-feed.v1",
       item_schema:NEWS_STRUCTURAL_SCHEMA,retention_hours:72,
@@ -68,7 +82,13 @@ export async function derivedNewsStructuralResponse(
       scored:false,signed:false,chargeable:false,payment_required_now:false,
       raw_upstream_delivered:false,
       generated_at:new Date(now).toISOString(),
-      availability_by_category:structuralNewsAvailability(all,now),
+      ...(country===null?{}:{country:{
+        iso3:country,name:country195ByIso3(country)!.name,
+        routing_basis:"EXACT_ORIGINAL_TITLE_GEOGRAPHY_MENTION_ONLY",
+        country_subject_verified:false,all_news_exhaustive:false,
+        no_matching_rows_does_not_mean_no_news:true,
+      }}),
+      availability_by_category:structuralNewsAvailability(scoped,now),
       counts,items:rows,
     },{headers:HEADERS});
   }catch{
