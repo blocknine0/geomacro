@@ -2,7 +2,7 @@
   "request_id": "predge-pilot-integration-fixture-001",
   "subject": {
     "type": "country",
-    "id": "USA"
+    "country_iso3": "USA"
   },
   "action_context": {
     "action_type": "market_settlement_preflight",
