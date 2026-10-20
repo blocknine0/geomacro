@@ -228,6 +228,14 @@ jobs:
           esac
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
+      - name: Verify separate Supabase-free Risk Gate authentication and signed-GRO boundary (no funds)
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-predge-risk-gate-d1-live.mjs
+
       - name: Run no-funds D1 control-plane acceptance
         env:
           CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
