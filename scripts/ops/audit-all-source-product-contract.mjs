@@ -6,6 +6,7 @@
 import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
 import {SOURCE_LINEUP} from "../lib/operator-commercial-free-source-lineup.mjs";
 import {PRODUCTION_FREE_UPDATE_SOURCES} from "../lib/free-source-production-updates.mjs";
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS} from "../lib/global-official-release-feeds.mjs";
 const read=p=>JSON.parse(readFileSync(p,"utf8"));
 const country=read("config/operator-country-source-crosswalk.v1.json");
 const corridor=read("config/operator-corridor-source-crosswalk.v1.json");
@@ -73,12 +74,21 @@ for(const entry of SOURCE_LINEUP)
     "NO_CURRENT_COMMERCIAL_RIGHTS_CERTIFIED",
  });
 const byId=new Map(SOURCE_LINEUP.map(e=>[e.id,e.category]));
+const globalById=new Map(GLOBAL_OFFICIAL_RELEASE_FEEDS.map(e=>[e.id,e]));
+if(globalById.size!==GLOBAL_OFFICIAL_RELEASE_FEEDS.length)
+  throw Error("SOURCE_CENSUS_DUPLICATE_GLOBAL_OFFICIAL_FEED");
+for(const source of GLOBAL_OFFICIAL_RELEASE_FEEDS)
+  accept("registered_global_official_release",source.id,[source.category],{
+    note:"OFFICIAL_SOURCE_DIRECTORY_NOT_A_CURRENT_EVENT",
+  });
 const readerIds=new Set();
 for(const reader of PRODUCTION_FREE_UPDATE_SOURCES){
  if(readerIds.has(reader.id))throw Error("SOURCE_CENSUS_DUPLICATE_READER:"+reader.id);
  readerIds.add(reader.id);
- if(byId.get(reader.id)!==reader.category &&
-    !reader.id.startsWith("govuk_global_"))
+ const global=globalById.get(reader.id);
+ const globallyRegistered=global?.category===reader.category &&
+   global?.url===reader.url;
+ if(byId.get(reader.id)!==reader.category && !globallyRegistered)
    throw Error("SOURCE_CENSUS_ORPHAN_PRODUCTION_READER:"+reader.id);
  accept("running_source_reader",reader.id,[reader.category],{
    note:"READER_CONFIGURED_NO_RUNTIME_HEALTH_ASSERTED",
@@ -106,6 +116,7 @@ const summary={
   corridor_provider_rows:corridor.source_registry.length,
   national_mineral_authorities:minerals.sources.length,
   existing_source_lineup_families:SOURCE_LINEUP.length,
+  registered_official_global_release_feeds:GLOBAL_OFFICIAL_RELEASE_FEEDS.length,
   configured_source_update_readers:PRODUCTION_FREE_UPDATE_SOURCES.length,
  },
  reference_records_checked:entries.length,
