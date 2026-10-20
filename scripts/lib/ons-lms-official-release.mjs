@@ -2,7 +2,9 @@
 // Source metadata ONLY, never an unemployment observation or risk score.
 export const ONS_LMS_RELEASE_URL=
  "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/labourmarketstatistics/current";
-const MAX_BYTES=512*1024,DAY=86_400_000;
+// ONS's current first-party HTML landing exceeded 512 KiB on exact-main.
+// Keep a strict 2 MiB streaming cap; one GET/day, no large LMS CSV download.
+const MAX_BYTES=2*1024*1024,DAY=86_400_000;
 const MONTHS=Object.freeze(["January","February","March","April","May","June","July","August",
  "September","October","November","December"]);
 function visibleText(html){
@@ -79,7 +81,12 @@ export function inspectOnsLabourMarketRelease(html,now=new Date()){
 async function readBounded(response){
  if([401,403,429].includes(response.status))throw Error("ONS_DENIED_OR_QUOTA");
  if(!response.ok)throw Error("ONS_HTTP_UNAVAILABLE");
- if(Number(response.headers.get("content-length")||0)>MAX_BYTES)throw Error("ONS_BODY_LIMIT");
+ const declared=Number(response.headers.get("content-length")||0);
+ if(declared>MAX_BYTES){
+  const failure=Error("ONS_BODY_LIMIT");
+  failure.declared_bytes=declared;
+  throw failure;
+ }
  if(!response.body)throw Error("ONS_BODY_EMPTY");
  let n=0;const chunks=[],reader=response.body.getReader();
  try{for(;;){
