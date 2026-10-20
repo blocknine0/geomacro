@@ -85,7 +85,9 @@ shares were approved. Those require protected runtime/partner receipts.
 `risk-gate-idempotency.server.ts`, or
 `risk-gate-api.server.ts`. Those historic modules may still be referenced
 by tests or other older workflows and must be inventoried before deletion.
-Likewise `src/routes/api.risk-gate-readiness.ts` currently performs a legacy
-Supabase readiness check and must be migrated separately; do not advertise
-this readiness endpoint as D1 acceptance. This migration is **one concrete
-production ingress path**, not a repo-wide Supabase uninstall.
+`src/routes/api.risk-gate-readiness.ts` also delegates to the public
+D1 Worker readiness projection. A 200 means a correctly pinned, genuinely
+signed **country** GRO and isolated credential were observed at check time;
+`paid_launch_approved` remains false and corridor/partner signed-market,
+payment and rights acceptance remain independent. These are **two**
+D1-native production Risk Gate HTTP surfaces, not a repo-wide Supabase uninstall.
