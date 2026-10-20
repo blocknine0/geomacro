@@ -38,3 +38,9 @@
 - For troubleshooting, check the job's error **code** only; never paste an OAuth refresh token, password or raw message contents in issues.
 
 References: [Zoho data centers](https://www.zoho.com/mail/help/api/getting-started-with-api.html), [Zoho OAuth](https://www.zoho.com/mail/help/api/using-oauth-2.html), [Get account](https://www.zoho.com/mail/help/api/get-user-account-details.html), [List messages](https://www.zoho.com/mail/help/api/get-emails-list.html).
+
+## 20 October subscription confirmation safety correction
+
+The owner received a first-party MARAD `Subscription Change Confirmation` from `marad@info.dot.gov`. This email is **evidence of free enrollment only**, not a maritime alert. The Zoho observer now excludes confirmation, subscriber preferences, account notices and welcome messages **before selecting header GETs**. A genuinely advisory-like subject remains an *unverified private lead*, not a confirmed incident or licensed data item.
+
+The most recent live GitHub mail-observer result before this patch was `ZOHO_OAUTH_SETUP_REQUIRED`, `external_calls=0`; subscription activation did not automatically grant GitHub read-only mailbox OAuth. The existing five protected `production` environment secrets described above are still required. A successful source-contract CI run or a `NO_QUALIFIED_MAIL_HEADER_CANDIDATES` result is **not** proof that new maritime advisories were received. Do not install credentials in comments, issues, PR text or chat.
