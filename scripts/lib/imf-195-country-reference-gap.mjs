@@ -88,9 +88,19 @@ async function boundedJson(response){
 }
 export async function observeImf195({fetchImpl=fetch,now=new Date(),registrySource}={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))throw Error("IMF_CLOCK_INVALID");
- const rows=[];let attempted=0;
- // One bounded request per fixed indicator, no retries, 403 bypass or token.
+ const rows=[];let attempted=0,publisherDenied=false;
+ // Same publisher: once it denies access, never spend a second probe.
  for(const item of IMF_GAP_INDICATORS){
+  if(publisherDenied){
+   rows.push({schema:"geomacro.imf-195-annual-reference-gap.v1",
+    source_family:"imf_datamapper_weo",indicator:item.imf,
+    aligned_wdi_indicator:item.wdi,status:"UNVERIFIED_OR_UNAVAILABLE",
+    reason:"IMF_PROVIDER_DENIED_HOLD",reference_year:now.getUTCFullYear()-1,
+    countries_with_imf_reference:0,countries_missing_imf_reference:195,
+    countries_with_imf_reference_iso3:[],imf_actual_vs_estimate_vs_forecast_verified:false,
+    paid_delivery_enabled:false,raw_publisher_values_stored:false});
+   continue;
+  }
   attempted++;
   try{
    const response=await fetchImpl(imfPeriodUrl(item.imf,now),{
@@ -100,6 +110,7 @@ export async function observeImf195({fetchImpl=fetch,now=new Date(),registrySour
    rows.push(inspectImfDataMapper195(await boundedJson(response),item.imf,{now,registrySource}));
   }catch(error){
    const reason=String(error?.message??"");
+   if(reason==="IMF_DENIED_OR_QUOTA")publisherDenied=true;
    rows.push({schema:"geomacro.imf-195-annual-reference-gap.v1",
     source_family:"imf_datamapper_weo",indicator:item.imf,
     aligned_wdi_indicator:item.wdi,
