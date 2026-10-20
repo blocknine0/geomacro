@@ -85,6 +85,7 @@ test("real published older source is equivalent only for a trusted exact-head op
   {filename:"docs/ops/source-recovery.md",status:"added"},
   {filename:"scripts/ops/verify-public-intelligence-browser-freshness.mjs",status:"modified"},
   {filename:"scripts/tests/public-intelligence-browser-freshness.test.mjs",status:"modified"},
+  {filename:"src/__tests__/five-minute-original-news-fastlane.test.ts",status:"modified"},
  ];
  const compare={status:"ahead",base_commit:{sha:site},
    merge_base_commit:{sha:site},ahead_by:3,behind_by:0,total_commits:3,
@@ -100,7 +101,8 @@ test("real published older source is equivalent only for a trusted exact-head op
  assert.equal(publicResult.legacy_signed_hot_products_verified,false);
  for(const filename of ["src/routes/intelligence.tsx","public/index.html",
     "workers/control-plane/src/index.mjs","lib/risk.js",
-    "scripts/lib/global-official-release-feeds.mjs","package-lock.json",
+    "scripts/lib/global-official-release-feeds.mjs","src/__tests__/runtime.ts",
+    "src/__tests__/../../routes/intelligence.test.ts","package-lock.json",
     "vite.config.ts",".github/workflows/../unsafe.yml"]){
     const bad={...compare,files:[...files,{filename,status:"modified"}]};
     assert.equal(classifyPublishedSourceEquivalence(bad,site,main),false,filename);
