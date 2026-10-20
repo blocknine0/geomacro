@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {classifyMinimumFreeProduction} from "./verify-minimum-free-production-health.mjs";
+import {classifyMinimumFreeProduction,classifyPublishedSourceEquivalence,verifyPublishedSourceEquivalence} from "./verify-minimum-free-production-health.mjs";
 
 const now=Date.parse("2026-10-21T00:00:00.000Z");
 const sha="a".repeat(40);
@@ -76,4 +76,65 @@ test("a wrong build SHA, unavailable D1, or quiet 72h journal cannot be green",(
     assert.equal(classifyMinimumFreeProduction({...fixture(),...bad}).ok,false);
   }
   assert.equal(classifyMinimumFreeProduction({...fixture(),expectedSha:"bad"}).ok,false);
+});
+
+test("real published older source is equivalent only for a trusted exact-head ops-only GitHub compare",()=>{
+ const site="a".repeat(40),main="b".repeat(40);
+ const files=[
+  {filename:".github/workflows/website-derived-news-continuity.yml",status:"modified"},
+  {filename:"docs/ops/source-recovery.md",status:"added"},
+  {filename:"scripts/ops/verify-public-intelligence-browser-freshness.mjs",status:"modified"},
+  {filename:"scripts/tests/public-intelligence-browser-freshness.test.mjs",status:"modified"},
+ ];
+ const compare={status:"ahead",base_commit:{sha:site},
+   merge_base_commit:{sha:site},ahead_by:3,behind_by:0,total_commits:3,
+   commits:[{sha:"c".repeat(40)},{sha:"d".repeat(40)},{sha:main}],files};
+ assert.equal(classifyPublishedSourceEquivalence(compare,site,main),true);
+ const publicResult=classifyMinimumFreeProduction({
+  ...fixture(),expectedSha:main,
+  websiteSourceEquivalent:classifyPublishedSourceEquivalence(compare,site,main),
+ });
+ assert.equal(publicResult.ok,true);
+ assert.equal(publicResult.website_parity_mode,"VERIFIED_NO_WEBSITE_SOURCE_CHANGES");
+ assert.equal(publicResult.paid_delivery_authorized,false);
+ assert.equal(publicResult.legacy_signed_hot_products_verified,false);
+ for(const filename of ["src/routes/intelligence.tsx","public/index.html",
+    "workers/control-plane/src/index.mjs","lib/risk.js",
+    "scripts/lib/global-official-release-feeds.mjs","package-lock.json",
+    "vite.config.ts",".github/workflows/../unsafe.yml"]){
+    const bad={...compare,files:[...files,{filename,status:"modified"}]};
+    assert.equal(classifyPublishedSourceEquivalence(bad,site,main),false,filename);
+ }
+ for(const bad of [{...compare,status:"diverged"},
+  {...compare,behind_by:1},{...compare,base_commit:{sha:main}},
+  {...compare,total_commits:900},{...compare,commits:[]},
+  {...compare,files:[]},{...compare,files:Array(300).fill(files[0])}]){
+   assert.equal(classifyPublishedSourceEquivalence(bad,site,main),false);
+ }
+ assert.equal(classifyMinimumFreeProduction({
+   ...fixture(),expectedSha:main,websiteSourceEquivalent:false,
+ }).ok,false);
+});
+test("network-bounded GitHub comparison refuses invalid, unavailable and noncanonical attestation",async()=>{
+ const site="a".repeat(40),main="b".repeat(40);
+ const cmp={status:"ahead",base_commit:{sha:site},merge_base_commit:{sha:site},
+   ahead_by:1,behind_by:0,total_commits:1,commits:[{sha:main}],
+   files:[{filename:"docs/ops/approved.md",status:"modified"}]};
+ let calls=0;
+ const trusted=async (url,options)=>{
+   calls++;
+   assert.ok(url.includes("/compare/"+site+"..."+main));
+   assert.equal(options.redirect,"error");
+   return new Response(JSON.stringify(cmp),{status:200});
+ };
+ assert.equal(await verifyPublishedSourceEquivalence(site,main,{fetcher:trusted}),true);
+ assert.equal(calls,1);
+ assert.equal(await verifyPublishedSourceEquivalence(site,site,{fetcher:trusted}),false);
+ assert.equal(calls,1);
+ assert.equal(await verifyPublishedSourceEquivalence(site,main,{
+   fetcher:async()=>new Response("unauthorized",{status:403}),
+ }),false);
+ assert.equal(await verifyPublishedSourceEquivalence(site,main,{
+   fetcher:async()=>{throw Error("network");},
+ }),false);
 });
