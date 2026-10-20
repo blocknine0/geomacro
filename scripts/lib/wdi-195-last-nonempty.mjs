@@ -71,7 +71,7 @@ export function inspectWdiLastNonempty(data,{now=new Date(),registrySource}={}){
   annual_reference_not_live_fx_or_news:true,
   source_publication_datetime_verified:false,
   verified_current_195x3_country_domain_events:false,
-  historical_data_present_is_not_current:false,
+  historical_data_present_is_not_current:true,
   raw_source_values_stored:false,paid_delivery_enabled:false,
   b2_requests:0,d1_writes:0,supabase_requests:0,payments:0};
 }
