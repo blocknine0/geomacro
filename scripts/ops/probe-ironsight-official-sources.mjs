@@ -90,9 +90,9 @@ export async function probeIronsightOfficialSources({
     await res.body?.cancel().catch(()=>undefined);rows.push(row);continue;
    }
    const xml=await boundedXml(res);
-   if(XML_DTD.test(xml)||
-       !(/<rss(?:\s|>)/iu.test(xml) && /<item(?:\s|>)/iu.test(xml)) &&
-         !(/<feed(?:\s|>)/iu.test(xml) && /<entry(?:\s|>)/iu.test(xml)))){
+   const rssEnvelope=/<rss(?:\s|>)/iu.test(xml)&&/<item(?:\s|>)/iu.test(xml);
+   const atomEnvelope=/<feed(?:\s|>)/iu.test(xml)&&/<entry(?:\s|>)/iu.test(xml);
+   if(XML_DTD.test(xml)||(!rssEnvelope&&!atomEnvelope)){
     row.transport_state="UNQUALIFIED_XML_ENVELOPE";
     rows.push(row);continue;
    }
