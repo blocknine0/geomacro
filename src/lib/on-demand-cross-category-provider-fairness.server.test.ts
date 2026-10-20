@@ -3,6 +3,42 @@ import {discoverOnDemandForPrivateQualification}
   from "./on-demand-global-discovery.server";
 
 describe("cross-category canonical on-demand bounded original-publisher recovery",()=>{
+
+  it("reserves all three official index rescues for 24h 195-country tri-domain discovery, not annual WDI",async()=>{
+    const urls:string[]=[];
+    const now=new Date("2026-10-20T09:00:00Z");
+    const fake=vi.fn(async(target:RequestInfo|URL):Promise<Response>=>{
+      const url=new URL(String(target));
+      urls.push(url.href);
+      if(url.hostname==="api.worldbank.org")
+        throw Error("FRESH_NEWS_MUST_NOT_PROBE_ANNUAL_WDI");
+      if(url.hostname==="api.gdeltproject.org")
+        return Response.json({articles:[]});
+      if(url.hostname==="www.gov.uk" && url.pathname==="/api/search.json")
+        return Response.json({results:[],total:0});
+      return new Response("<rss><channel></channel></rss>",{status:200});
+    }) as typeof fetch;
+    const result=await discoverOnDemandForPrivateQualification({
+      country_iso3:"IND",categories:["geopolitics","macro","rare_earth"],
+      topics:["conflict_geopolitics","macro_risk","critical_minerals"],
+      max_age_seconds:86_400,
+    },{fetchImpl:fake,now});
+    expect(result.discovery.network_attempts).toBeLessThanOrEqual(12);
+    expect(urls).toHaveLength(result.discovery.network_attempts);
+    expect(urls.some(url=>new URL(url).hostname==="api.worldbank.org")).toBe(false);
+    expect(result.private_macro_changes).toHaveLength(0);
+    const searches=urls.filter(url=>new URL(url).pathname==="/api/search.json");
+    // Real first-party publisher search can still return zero candidates.
+    // Search metadata never becomes a qualified original or a paid event.
+    expect(searches).toHaveLength(3);
+    expect(result.discovery.source_probes.filter(p=>p.family.includes("search_original_page"))
+      .map(p=>p.category).sort()).toEqual(["geopolitics","macro","rare_earth"]);
+    expect(result.discovery.signed_derived_intelligence_created).toBe(false);
+    expect(result.discovery.payable).toBe(false);
+    expect(result.private_original_review_candidates).toHaveLength(0);
+  });
+
+
   it("prioritizes two distinct original publishers per category ahead of index-only discovery within cap",async()=>{
     const seen:string[]=[];
     const now=new Date("2026-10-14T09:00:00.000Z");

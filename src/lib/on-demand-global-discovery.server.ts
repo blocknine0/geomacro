@@ -1084,6 +1084,13 @@ async function discoverOnDemandImpl(
       new Set(input.categories).size !== input.categories.length)
     throw Error("ON_DEMAND_CATEGORIES_INVALID");
   const categories = [...input.categories].sort();
+  // Explicit recent three-domain discovery is a NEWS/EVENT retrieval lane.
+  // Annual WDI observation years are structural context and must not take
+  // a scarce 12-request original-source slot in a <=24h event search.
+  // Ordinary numeric/structural country requests still retain both WDI series.
+  const freshThreeDomainEventDiscovery = categories.length===3 &&
+    input.max_age_seconds!==undefined && input.max_age_seconds<=86_400 &&
+    Array.isArray(input.topics) && input.topics.length>0;
   const mineral = input.mineral ?? null;
   if (mineral !== null &&
       (!categories.includes("rare_earth") ||
@@ -1134,7 +1141,8 @@ async function discoverOnDemandImpl(
         country,name,trackedFetch,now,mineral,topics,newsMaxAgeMs),
     });
   }
-  if (!options.directPublisherOnly && categories.includes("macro")) for (const indicator of [
+  if (!options.directPublisherOnly && categories.includes("macro") &&
+      !freshThreeDomainEventDiscovery) for (const indicator of [
     "FP.CPI.TOTL.ZG","NY.GDP.MKTP.KD.ZG",
   ] as const) tasks.push({name:"world_bank_official_" + indicator,category:"macro",
     run:()=>worldBank(country,indicator,trackedFetch,now)});
@@ -1142,14 +1150,18 @@ async function discoverOnDemandImpl(
   // no 195-country fanout and no user question passed upstream.
   // One country GET + at most eleven provider GETs. Prioritize annual macro
   // observables when optional approvals increase the configured fanout.
-  // In explicit three-domain current-event discovery reserve two slots
+  // Three-domain news searches preserve quota: for <=24h queries, reserve
+  // three slots for existing country-scoped first-party GOV.UK discovery;
+  // structural queries continue to use their previous two-slot rescue.
+  // For other three-domain requests, reserve two slots
   // for the existing country-scoped first-party GOV.UK Search rescue
   // (the search itself never supplies an original article clock). We can
   // afford 6 independent originating publisher feeds + 3 GDELT scopes +
   // 1 annual WDI context = 10 primary GETs, never more than the existing
   // 12 total. WDI annual records are NOT current event proof. Two-domain
   // queries and unscoped legacy requests retain their existing behaviour.
-  const maxPrimary=topics.length>0 && categories.length===3?10:11;
+  const maxPrimary=freshThreeDomainEventDiscovery?9:
+    topics.length>0 && categories.length===3?10:11;
   // Multi-category current-event questions must sample two distinct
   // ORIGINAL issuers per requested domain before spending the bounded
   // request budget on GDELT discovery indexes (never original evidence).
@@ -1263,9 +1275,14 @@ async function discoverOnDemandImpl(
   // original-publisher fallback. Every search lead still requires its
   // first-party article page and real original publication date.
   if(name && topics.length>0 && categories.length===3){
-    const targeted=["rare_earth","geopolitics"] as const;
+    // In a genuine <=24h three-domain search, include Macro in issuer-index
+    // rescue instead of spending that slot on an annual WDI statistic.
+    const targeted=freshThreeDomainEventDiscovery
+      ?(["rare_earth","macro","geopolitics"] as const)
+      :(["rare_earth","geopolitics"] as const);
     for(const category of targeted){
-      if(!categories.includes(category) || networkAttempts>=11)break;
+      if(!categories.includes(category) || networkAttempts>=
+          (freshThreeDomainEventDiscovery?12:11))break;
       const originalPresent=settled.some(result=>
         result.status==="fulfilled" &&
         "private_candidates" in result.value &&

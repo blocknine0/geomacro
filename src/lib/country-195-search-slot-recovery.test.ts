@@ -48,7 +48,9 @@ describe("global original-source country search survives fixed 12-request select
     },{fetchImpl:fetchImpl as typeof fetch,now});
     const searches=requests.filter(x=>new URL(x).pathname==="/api/search.json");
     expect(searches.length).toBeGreaterThanOrEqual(1);
-    expect(searches.length).toBeLessThanOrEqual(2);
+    expect(searches.length).toBe(3);
+    expect(searches.some(x=>new URL(x).searchParams.get("filter_organisations")===
+      "hm-treasury")).toBe(true);
     expect(searches.some(x=>new URL(x).searchParams.get("filter_organisations")===
       "department-for-business-innovation-science-and-trade")).toBe(true);
     const minerals=r.private_original_review_candidates.filter(x=>
@@ -72,7 +74,7 @@ describe("global original-source country search survives fixed 12-request select
       x.page_original_published_at==="2026-10-15T10:00:00.000Z")).toBe(true);
     expect(page.verified_candidates.every(x=>x.paid_delivery_allowed===false)).toBe(true);
   });
-  it("does not spend more than two early government index lookups when none match",async()=>{
+  it("spends at most three country-domain first-party discovery lookups when none match",async()=>{
     const hit:string[]=[];
     const empty=async(target:RequestInfo|URL):Promise<Response>=>{
       const url=new URL(String(target));
@@ -92,7 +94,7 @@ describe("global original-source country search survives fixed 12-request select
       max_age_seconds:86_400,
     },{fetchImpl:empty as typeof fetch,now});
     const searches=hit.filter(x=>new URL(x).pathname==="/api/search.json");
-    expect(searches.length).toBeLessThanOrEqual(2);
+    expect(searches.length).toBe(3);
     expect(r.discovery.network_attempts).toBeLessThanOrEqual(12);
     expect(r.private_original_review_candidates).toHaveLength(0);
     expect(r.discovery.payable).toBe(false);
