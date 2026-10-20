@@ -1,4 +1,5 @@
 import { createHash, createPublicKey, verify as ed25519Verify } from "node:crypto";
+import { pinnedRiskObjectVerificationKeySet } from "../lib/risk-object-public-registry";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseExternalRiskGateBody } from "../lib/risk-gate-api.server";
@@ -66,15 +67,37 @@ describe("Predge 20 October external contract and trust boundary", () => {
     expect(Date.parse(signed.expires_at)).toBeLessThan(Date.parse("2026-10-20T00:00:00Z"));
   });
 
+  it("publishes the correct source-pinned production key, distinct from test fixture",()=>{
+    const set=pinnedRiskObjectVerificationKeySet();
+    const active=set.keys.find(k=>k.key_id==="geomacro-risk-2026-03");
+    expect(active?.status).toBe("active");
+    expect(active?.public_key_spki_b64).toBe("MCowBQYDK2VwAyEAeMsePxig7TEUR3fykcx9wcBqomj9KBuJ/TXTX2QSN2k=");
+    expect(createHash("sha256").update(Buffer.from(active!.public_key_spki_b64,"base64")).digest("hex"))
+      .toBe("432f35218570c80c09d56a8005390f6d3111a932ba93298f4ffd86d9896c0b90");
+    expect(active?.public_key_spki_b64).not.toBe(reference.public_key_spki_b64);
+  });
+  it("Amir follow-up respects Oct30/Nov18 and no promised paid launch",()=>{
+    const handoff=readFileSync(root+"AMIR_20261020_TECHNICAL_COMMERCIAL_NEXT_STEPS.md","utf8");
+    for(const item of ["30 October 2026","18 November 2026","context_sha256",
+      "risk-gate-1.0","POST https://geomacro.live/api/risk-gate",
+      "geomacro-canonical-json-v1","432f35218570c80c09d56a8005390f6d3111a932ba93298f4ffd86d9896c0b90",
+      "Signed TEST-ONLY vector","PUBLIC","execution_authorized:false"]){
+      expect(handoff).toContain(item);
+    }
+    expect(handoff).toContain("No price or revenue-share percentage was agreed.");
+    expect(handoff).toContain("Private research");
+    expect(handoff).toContain("MUST NOT");
+  });
   it("documents independent digest namespaces, rotations and no paid launch claims",()=>{
     const doc = readFileSync(root+"PREDGE_20261020_INTEGRATION_CONTRACT.md","utf8");
     expect(doc).toContain("context_sha256");
     expect(doc).toContain("integrity.payload_hash");
     expect(doc).toContain("context_sha256` directly");
     expect(doc).toContain("subject.country_iso3");
-    expect(doc).toContain("requireRiskSupabase()");
+    expect(doc).toContain("Cloudflare D1 Worker");
+    expect(doc).not.toContain("existing authenticated Risk Gate path uses `requireRiskSupabase()`");
     expect(doc).toContain("PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE");
-    expect(doc).toContain("the old deterministic HMAC fallback");
+    expect(doc).toContain("DISABLES the old deterministic HMAC fallback");
     expect(doc).toContain("expired, incomplete and commercially unverified");
     expect(doc).toContain("execution_authorized:false");
   });
