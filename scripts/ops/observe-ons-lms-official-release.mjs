@@ -13,6 +13,7 @@ catch(e){
  receipt={schema:"geomacro.ons-lms-national-reference-release.v1",
   status:"FIRST_PARTY_SOURCE_UNVERIFIED",
   reason:/^ONS_[A-Z_]+$/u.test(reason)?reason:"ONS_NETWORK_OR_SCHEMA_UNKNOWN",
+  provider_declared_bytes:Number.isSafeInteger(e?.declared_bytes)?e.declared_bytes:null,
   checked_at:new Date().toISOString(),
   source_family:"uk_ons_public",country_iso3:"GBR",category:"macro",
   observed_unemployment_value_verified:false,current_fx_rate_verified:false,
@@ -27,7 +28,7 @@ console.log(JSON.stringify({
  schema:receipt.schema,status:receipt.status,
  latest_source_release_day:receipt.source_native_release_day??null,
  next_publisher_release_day:receipt.publisher_announced_next_release_day??null,
- reason:receipt.reason??null,
+ reason:receipt.reason??null,provider_declared_bytes:receipt.provider_declared_bytes??null,
  observed_unemployment_value_verified:false,
  signed_current_macro_or_risk_event:false,
  external_requests:1,payments:0

@@ -51,5 +51,7 @@ test("one bounded no-key HTTPS GET, reject denial and oversized response",async(
  }});
  assert.equal(calls,1);assert.equal(r.source_native_release_day,"2026-10-20");
  await assert.rejects(()=>observeOnsLabourMarketRelease({now,fetchImpl:async()=>new Response("403",{status:403})}),/ONS_DENIED_OR_QUOTA/);
- await assert.rejects(()=>observeOnsLabourMarketRelease({now,fetchImpl:async()=>new Response("x",{headers:{"content-length":"700000"}})}),/ONS_BODY_LIMIT/);
+ await assert.rejects(()=>observeOnsLabourMarketRelease({now,fetchImpl:async()=>new Response("x",{headers:{"content-length":"3000000"}})}),/ONS_BODY_LIMIT/);
+ const generous=await observeOnsLabourMarketRelease({now,fetchImpl:async()=>new Response(page(),{headers:{"content-length":"700000"}})});
+ assert.equal(generous.status,"FIRST_PARTY_DATASET_RELEASE_DATE_OBSERVED");
 });
