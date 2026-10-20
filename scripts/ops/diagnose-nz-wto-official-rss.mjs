@@ -9,6 +9,12 @@ import {resolve} from "node:path";
 const SOURCES=Object.freeze([
   {id:"NZ_ALL_RSS",url:"https://www.beehive.govt.nz/rss.xml"},
   {id:"NZ_RELEASES_RSS",url:"https://www.beehive.govt.nz/releases/feed"},
+  // Three independently documented portfolio feed paths, all the SAME
+  // publisher family (NZ Government). Probe only, don't bypass a denied
+  // root feed or claim these as independent corroborating publishers.
+  {id:"NZ_TRADE_INVESTMENT_RSS",url:"https://www.beehive.govt.nz/taxonomy/term/6830/feed"},
+  {id:"NZ_RESOURCES_RSS",url:"https://www.beehive.govt.nz/taxonomy/term/6789/feed"},
+  {id:"NZ_NATIONAL_SECURITY_RSS",url:"https://www.beehive.govt.nz/taxonomy/term/6715/feed"},
   {id:"WTO_NEWS_RSS",url:"https://www.wto.org/library/rss/latest_news_e.xml"},
 ]);
 export async function probeOfficialTradeNewsFeeds({fetchImpl=fetch,timeout=9000}={}){
@@ -59,9 +65,11 @@ export async function probeOfficialTradeNewsFeeds({fetchImpl=fetch,timeout=9000}
  return {
   schema:"geomacro.nz-wto-official-feed-transport-diagnostic.v1",
   checked_at:new Date().toISOString(),
-  three_exact_official_endpoints_only:true,rows,
+  exact_pinned_official_endpoints_only:true,observed_endpoints:SOURCES.length,rows,
   source_html_or_403_not_trusted_as_xml:true,
   publisher_licence_still_required:true,
+  nz_portfolio_feeds_one_publisher_family:true,
+  rss_mime_readback_not_current_news_or_commercial_authority:true,
   no_new_original_claim:true,
   no_raw_sources_or_payload_logged:true,
   no_b2_d1_supabase_or_funds:true,
