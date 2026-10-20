@@ -16,7 +16,12 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).toContain('getWebsiteDerivedNews(),\n            9_000');
     expect(desk).toContain("setErrors(previous => ({ ...previous, ...nextErrors }))");
     expect(desk).toContain("setJournalUnavailable(true)");
-    expect(desk).toContain("fetchDirectDerivedNews()");
+    expect(desk).toContain("fetchAllDerivedNews()");
+    expect(desk).not.toContain("fetchDirectDerivedNews()");
+    expect(desk).toContain("JOURNAL_REFRESH_MS = 6 * 60_000");
+    expect(desk).toContain('aria-label="Filter Intelligence by country"');
+    expect(desk).toContain("No matching country-mentioned release is observed");
+    expect(desk).toContain("fallback findings may be incomplete");
     expect(desk).toContain("initialJournal = []");
     expect(desk).toContain("Previously received in-tab findings may be out of date");
     expect(desk).toContain("https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-html");
