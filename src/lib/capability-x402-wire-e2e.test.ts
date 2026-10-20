@@ -102,6 +102,22 @@ for(const rail of ["coinbase","circle"] as const)describe(`${rail}: actual handl
   const replay=await call(rail,payment);expect(replay.status).toBe(200);expect(await replay.text()).toBe(bytes);
   expect(rail==="coinbase"?mock.coinbaseSettle:mock.circleSettle).toHaveBeenCalledTimes(1);
  });
+ it("rejects nested raw upstream material before creating any real x402 402 offer",async()=>{
+  mock.assemble.mockImplementation((args:any)=>{
+    const clean=prepared(args);
+    return {...clean,analysis:{...clean.analysis,
+      raw_html:"<article>synthetic upstream-only fixture</article>",
+      upstream_payload:{raw_count:123}}};
+  });
+  const res=await call(rail);
+  expect(res.status).toBe(422);
+  expect(res.headers.get("PAYMENT-REQUIRED")).toBeNull();
+  expect(mock.coinbaseVerify).not.toHaveBeenCalled();
+  expect(mock.circleVerify).not.toHaveBeenCalled();
+  expect(mock.coinbaseSettle).not.toHaveBeenCalled();
+  expect(mock.circleSettle).not.toHaveBeenCalled();
+  expect(requests.some(x=>x.action==="capability-prequote-freeze")).toBe(false);
+ });
  it("rejects amount, frozen hash and request mutation without provider verification or settlement",async()=>{
   const {payment}=await offer(rail);
   for(const mutate of [(p:any)=>{p.accepted.amount="50000";},(p:any)=>{p.extensions.geomacro.info.capability_quote.prepared_answer_sha256="f".repeat(64);}]) {
