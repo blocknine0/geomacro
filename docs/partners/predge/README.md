@@ -5,6 +5,24 @@
 research* observations. No new key, wallet, payment, source rights or production
 authorization is granted by this pack.
 
+## 20 October 2026 partner clarification
+
+Predge's 20 October email reports first public-feed real-input HTTP 200 with
+4 geopolitical, 0 macro and 0 rare-earth items and three independently
+signed Predge **market** records, including a UMA-vote case. This does NOT
+establish a verified Geomacro production GRO or paid Risk Gate launch.
+
+**Read [the versioned October 20 contract](PREDGE_20261020_INTEGRATION_CONTRACT.md)
+first:** `context_sha256` is NOT a documented alias for `content_hash` or
+Geomacro GRO `integrity.payload_hash`; `risk-gate-1.0` names the advisory
+**response** format, while the external request parser uses `subject.country_iso3`
+or corridor ISO3 endpoints. The separate signed
+[`gro-signed-test-vector.json`](gro-signed-test-vector.json) can be verified
+cryptographically with its explicitly TEST-ONLY Ed25519 public key, but is
+**expired, incomplete, commercially unverified, and not production trusted**.
+The bearer shown in the 19 October email needs issuer-side revocation and
+new secure handoff before continued authenticated use.
+
 ## Live input to connect immediately
 
 ```bash
@@ -51,9 +69,11 @@ records are advisory candidate observations, not signed market state.
 
 ## Driver fields (actual implementation contracts)
 
-A Risk Gate v1 request needs `request_id`,
-`subject:{type:"country"|"corridor",id}`, and `policy`:
-`policy_id`, `policy_version`, `continue_max_score`,
+A live external Risk Gate v1 request needs `request_id`,
+`subject:{type:"country",country_iso3:"USA"}` (or legacy top-level
+`country_iso3:"USA"`), **or**
+`subject:{type:"corridor",origin_country_iso3:"IND",destination_country_iso3:"ARE"}`,
+and `policy`: `policy_id`, `policy_version`, `continue_max_score`,
 `reduce_limit_max_score`, `require_approval_max_score`,
 `minimum_confidence_for_auto_continue`,
 `require_commercial_verification_for_continue`. Optional
@@ -80,8 +100,14 @@ current GRO => fail closed `PAUSE` / human review.
   **unsigned as a GRO**. NOT a verified current source observation.
 * `gro-corridor-example.json` — synthetic corridor shape only,
   **unsigned** and INCOMPLETE.
-* `risk-gate-request.json` — pilot-only request structure; example IDs
-  and monetary context are synthetic.
+* `gro-signed-test-vector.json` — Ed25519 **signed test-vector** country GRO,
+  reconstructable from the public canonical test vector. Expired, incomplete,
+  non-commercial, signed by a test key that is **not** a production trust root.
+  This meets the need for an offline signed-format verification sample only.
+* `risk-gate-corridor-request.json` — supported external corridor request form.
+* `risk-gate-request.json` — corrected **external** country request shape;
+  example IDs and monetary context are synthetic. The old `subject.id` shape
+  is NOT accepted by the external `POST /api/risk-gate` parser.
 * `risk-gate-response.json` — illustrative fail-closed advisory.
 * `manifest.json` — machine-readable field and scope contract.
 For real GRO delivery request an independently signed and unexpired
@@ -103,8 +129,10 @@ driver agreement. Geomacro verifies signature, clock, numeric ID, origin,
 actual server counters and fail-closed responses. No fees, prepaid costs
 or minimum commitments. A public research news feed alone is **not** an
 agreement to redistribute structured intelligence commercially.
-The first real-input feedback target is 2 November 2026, not evidence
-that a signed-market driver test has already passed. Legacy Supabase
+The original 2 November 2026 first-feedback target was overtaken by
+Predge's 20 October 2026 self-reported real-input public-feed test. That
+report is **not** evidence that a signed GRO or paid-market Risk Gate
+integration has passed independent production acceptance. Legacy Supabase
 Risk Gate is not a deployed replacement; never claim paid production GO
 before the independent signed-market and product proof gates pass.
 
