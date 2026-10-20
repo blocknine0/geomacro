@@ -56,5 +56,13 @@ describe("owner-only legacy Supabase official source directories to private D1",
   expect(migration).not.toContain("DELETE FROM");
   expect(migration).not.toContain("settleCoinbase");
   expect(migration).not.toContain("/v1/public/");
+  const workflow=readFileSync(".github/workflows/supabase-source-directory-d1-shadow.yml","utf8");
+  expect(workflow).toContain("branches: [main]");
+  expect(workflow).toContain('".github/workflows/supabase-source-directory-d1-shadow.yml"');
+  expect(workflow).toContain("github.event_name == 'workflow_dispatch' || github.event_name == 'push'");
+  expect(workflow).toContain("environment: production");
+  expect(workflow).not.toMatch(/^  schedule:/m);
+  expect(workflow).toContain("secrets.SUPABASE_DB_URL");
+  expect(workflow).toContain("secrets.CLOUDFLARE_API_TOKEN");
  });
 });
