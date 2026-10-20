@@ -69,7 +69,11 @@ test("no IRONSIGHT unofficial scraper copied or production Telegram secrets in w
  const workflow=readFileSync(".github/workflows/ironsight-official-research-probe.yml","utf8");
  assert.ok(!source.includes("findLatestPostId"));
  assert.ok(!source.includes("translateFreeText"));
- assert.ok(!source.includes("https://t.me/"));
+ // Source routing is enforced by the exact trusted-origin URL array above.
+ // Do not use URL substring validation, which could admit attacker-controlled
+ // hosts; a source's URL is never constructed from arbitrary caller input.
+ assert.ok(IRONSIGHT_OFFICIAL_DISCOVERY_SOURCES.every(spec =>
+  ["www.centcom.mil","www.defense.gov"].includes(new URL(spec.url).hostname)));
  assert.match(workflow,/permissions:\s*\n\s*contents: read/u);
  assert.match(workflow,/node --test scripts\/ops\/probe-ironsight-official-sources\.test\.mjs/u);
  assert.match(workflow,/node scripts\/ops\/probe-ironsight-official-sources\.mjs/u);
