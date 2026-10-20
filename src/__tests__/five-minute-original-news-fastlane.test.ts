@@ -6,13 +6,13 @@ import {FIVE_MINUTE_NEWS_FASTLANE,readFiveMinuteNewsFastlane} from "../lib/state
 const read=(p:string)=>readFileSync(p,"utf8");
 const CATS=["geopolitics","macro","rare_earth"];
 describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
- it("pins seven source-governed original publishers across three domains with NZ WTO UK DOE",async()=>{
+ it("pins seven source-governed original publishers across three domains with ECB WTO UK DOE",async()=>{
    expect(FIVE_MINUTE_NEWS_FASTLANE).toHaveLength(7);
    expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.category)).toEqual(["geopolitics","geopolitics","macro","macro","macro","rare_earth","rare_earth"]);
    expect(new Set(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).size).toBe(7);
    expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).toEqual([
      "un_news","uk_fcdo","fed_press","wto_trade_original_rss",
-     "nz_beehive_macro","nrcan_releases","us_doe_news_minerals"]);
+     "ecb_press","nrcan_releases","us_doe_news_minerals"]);
    const collector=read("src/lib/stateless-public-intelligence.server.ts");
    expect(collector).toContain("SOURCES.filter(s=>s.id===id && s.category===category)");
    expect(collector).toContain("const batches=await Promise.all(selected.map");
