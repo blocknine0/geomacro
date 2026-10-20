@@ -1,3 +1,4 @@
+import {geomacroThreeDomainDeliveryContract} from "../lib/three-domain-delivery-contract";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
@@ -20,6 +21,11 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
         // Public legal terms are a back-end API view; this avoids changing
         // the website while the presentation lock is active.
         const view=new URL(request.url).searchParams.get("view");
+        if(view==="domains"){
+          return Response.json(geomacroThreeDomainDeliveryContract(),{
+            headers:{"Cache-Control":"public, max-age=300, must-revalidate",
+              "X-Content-Type-Options":"nosniff"}});
+        }
         if(view==="outputs"){
           return Response.json({
             schema:GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,
@@ -98,6 +104,7 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
             },
             endpoints: {
               paid_intelligence: "POST /api/v1/intelligence/query",
+              domain_delivery_contract: "GET /api/v1/intelligence/query?view=delivery-contract",
               free_capability_discovery: "GET /api/intelligence/capabilities",
               paid_price_catalog: "GET "+GEOMACRO_PAID_PRICING_PATH,
               priced_structured_deliverables: "GET /api/intelligence/capabilities?view=outputs",
