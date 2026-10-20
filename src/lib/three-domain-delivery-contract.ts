@@ -110,6 +110,7 @@ export type GeomacroEvidenceState=Readonly<{
   topic_or_indicator_match_verified:boolean;
   current_release_qualified:boolean;
   independent_corroboration_verified:boolean;
+  independent_corroboration_required:boolean;
   intended_commercial_rights_verified:boolean;
   signed_current_product_verified:boolean;
 }>;
@@ -131,9 +132,15 @@ export function assessGeomacroEvidenceDelivery(evidence:GeomacroEvidenceState){
     evidence.country_or_corridor_match_verified&&
     evidence.topic_or_indicator_match_verified;
   const currentEvent=sourceQualified&&!referenceOnly&&!isLead&&
-    evidence.current_release_qualified&&evidence.independent_corroboration_verified;
+    evidence.current_release_qualified&&
+    (!evidence.independent_corroboration_required||
+     evidence.independent_corroboration_verified);
   const commercialEligible=currentEvent&&evidence.intended_commercial_rights_verified;
-  const signedIndexEligible=commercialEligible&&evidence.signed_current_product_verified;
+  // Independent review/signing is a separate, stronger scored-index contract.
+  // A single official first-party original may support an unscored Find,
+  // never by itself a newly certified signed score.
+  const signedIndexEligible=commercialEligible&&
+    evidence.independent_corroboration_verified&&evidence.signed_current_product_verified;
   return {
     schema:"geomacro.evidence-delivery-decision.v1" as const,
     domain:evidence.domain,
@@ -146,6 +153,8 @@ export function assessGeomacroEvidenceDelivery(evidence:GeomacroEvidenceState){
       "CURRENT_EVENT_NOT_QUALIFIED" as const,
     private_source_research_usable:sourceQualified,
     current_event_verified:currentEvent,
+    corroboration_required_for_this_product:evidence.independent_corroboration_required,
+    independently_corroborated:evidence.independent_corroboration_verified,
     commercial_derived_delivery_eligible:commercialEligible,
     current_signed_index_eligible:signedIndexEligible,
     score_available:signedIndexEligible,
