@@ -54,7 +54,8 @@ describe("P0 exact-candidate launch closure", () => {
     expect(providerAudit).toContain("external_model_provider_in_synchronous_request_path: false");
     expect(providerAudit).toContain("not_applicable_to_synchronous_risk_gate_request_path");
     expect(providerAudit).toContain("audited_sources");
-    expect(providerAudit).toContain("No outbound HTTP request occurs in this wrapper.");
+    expect(providerAudit).toContain("Cloudflare Worker purpose-scoped auth");
+    expect(providerAudit).toContain("D1 atomic quota/idempotency");
     expect(evidenceClosure).toContain("risk-gate-provider-path-audit.json");
   });
 
