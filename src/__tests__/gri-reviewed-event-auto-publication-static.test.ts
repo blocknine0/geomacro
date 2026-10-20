@@ -46,10 +46,11 @@ describe("signed approved B2-ready GRI producer -> real numerical GRI -> risk in
     expect(gri).not.toContain("material-gri-review.json");
     expect(gri).not.toContain("computeRiskFromUnscoredNews");
   });
-  it("launches risk indices only on SAME SHA successful publisher event, still no-funds",()=>{
+  it("launches risk indices only from same-repo successful GRI ancestor of current main, no funds",()=>{
     expect(indices).toContain("github.event.workflow_run.event == 'repository_dispatch'");
     expect(indices).toContain("github.event.workflow_run.conclusion == 'success'");
-    expect(indices).toContain("github.event.workflow_run.head_sha == github.sha");
+    expect(indices).toContain("github.event.workflow_run.head_sha != ''");
+    expect(indices).toContain("node scripts/ops/assert-gri-continuation-ancestry.mjs");
     expect(indices).toContain("github.event.workflow_run.head_branch == 'main'");
     expect(indices).toContain("github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'");
     expect(indices).toContain("publish-risk-indices-from-verified-global-risk.mjs --verified-d1-parent-only");
