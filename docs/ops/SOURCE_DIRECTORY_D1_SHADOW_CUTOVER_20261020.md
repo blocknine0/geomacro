@@ -20,7 +20,7 @@ with committed D1 migration `0021_legacy_official_source_directory_shadow.sql`.
 
 ### Safety properties
 
-- Require owner-protected workflow_dispatch + production environment ACK.
+- Require owner-protected production environment ACK. The first reviewed change to the dedicated workflow on main triggers one bounded protected one-shot import; workflow_dispatch remains available for explicit retries.
 - Strictly pinned primary Supabase project, a single REPEATABLE READ READ ONLY
   transaction, no data writes or deletes in Supabase.
 - No upstream original article bytes; source directory rows are bounded,
@@ -37,13 +37,14 @@ with committed D1 migration `0021_legacy_official_source_directory_shadow.sql`.
 
 ### Owner operation
 
-After `deploy-control-plane-d1.yml` successfully migrates the new
-table, run the manual workflow
-`.github/workflows/supabase-source-directory-d1-shadow.yml`
-from the `main` branch, with existing GitHub protected production
-`SUPABASE_DB_URL`, `CLOUDFLARE_ACCOUNT_ID`, and
-`CLOUDFLARE_API_TOKEN`. It does not ask for any secret as a GitHub
-workflow input.
+The D1 schema is deployed. Merging the reviewed one-shot trigger
+`.github/workflows/supabase-source-directory-d1-shadow.yml` into `main`
+initiates the protected migration automatically once, provided the existing
+GitHub protected production `SUPABASE_DB_URL`,
+`CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are present.
+A future explicit `workflow_dispatch` remains available for safe retry
+if the one-shot run has no secret or quota. No private data or secret is a
+workflow input, and unrelated commits do not trigger another import.
 
 Success receipt must report schema
 `geomacro.legacy-source-directory-d1-shadow-acceptance.v1`,
