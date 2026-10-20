@@ -709,3 +709,46 @@ export async function readStatelessWebsiteIntelligence(
     independent_same_event_verification: false,
   };
 }
+
+
+// A narrowly scoped rapid-response ORIGINAL publisher lane. This is not 195
+// local publishers or a guarantee of one published story every five minutes.
+// Source specs, RSS/Atom parsing, source-native clocks, credits, 15-minute
+// delay, and Geomacro-authored text all come from the EXISTING canonical
+// first-party reader; do not construct a new license-agnostic news crawler.
+export const FIVE_MINUTE_NEWS_FASTLANE = Object.freeze([
+  {category:"geopolitics",id:"un_news"},
+  {category:"macro",id:"fed_press"},
+  {category:"rare_earth",id:"nrcan_releases"},
+] as const);
+export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20):
+ Promise<StatelessIntelligenceResult[]>{
+ if(!Number.isFinite(now)||!Number.isSafeInteger(maxSignals)||
+    maxSignals<1||maxSignals>40)throw Error("ORIGINAL_FASTLANE_CLOCK_OR_BUDGET_INVALID");
+ const selected=FIVE_MINUTE_NEWS_FASTLANE.map(({category,id})=>{
+   const matches=SOURCES.filter(s=>s.id===id && s.category===category);
+   if(matches.length!==1)throw Error("ORIGINAL_FASTLANE_PINNED_PUBLISHER_INVALID");
+   return {category,source:matches[0]};
+ });
+ const batches=await Promise.all(selected.map(({source})=>readSource(source,now)));
+ return selected.map(({category},i)=>{
+   const batch=batches[i];
+   const candidates=batch.candidates;
+   const signals=deriveStatelessSignals(candidates,now,{maxSignals});
+   return {
+     schema:"geomacro.website-stateless-intelligence.v1",
+     category,checked_at:new Date(now).toISOString(),
+     website_release_cutoff:new Date(now-STATELESS_WEBSITE_DELAY_MS).toISOString(),
+     earliest_original:new Date(now-STATELESS_LOOKBACK_MS).toISOString(),
+     releases_examined:candidates.length,feed_count:1,
+     healthy_feed_count:batch.healthy?1:0,
+     current_24h_count:signals.filter(s=>Date.parse(s.published_at)>=now-86400000).length,
+     last_7d_count:signals.filter(s=>Date.parse(s.published_at)>=now-7*86400000).length,
+     last_30d_count:signals.length,
+     status:signals.length>0?"official_observations_available":
+       batch.healthy?"no_eligible_original_releases":"sources_unavailable",
+     signals,persistent_storage:false,publisher_title_redistributed:false,
+     signed_risk_score_generated:false,independent_same_event_verification:false,
+   };
+ });
+}
