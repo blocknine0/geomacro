@@ -7,6 +7,8 @@ on:
     paths:
       - 'scripts/lib/gri-reviewed-immutable-b2-handoff.mjs'
       - 'scripts/ops/stage-approved-reviewed-gri-private-b2.mjs'
+      - 'scripts/ops/export-gri-verified-history-private.mjs'
+      - 'scripts/ops/export-gri-verified-history-private.test.mjs'
       - 'scripts/ops/verify-three-domain-reviewed-handoff.mjs'
       - 'src/__tests__/three-domain-reviewed-handoff.test.js'
       - 'scripts/tests/gri-reviewed-immutable-b2-stage-guard.test.mjs'
@@ -18,6 +20,8 @@ on:
     paths:
       - 'scripts/lib/gri-reviewed-immutable-b2-handoff.mjs'
       - 'scripts/ops/stage-approved-reviewed-gri-private-b2.mjs'
+      - 'scripts/ops/export-gri-verified-history-private.mjs'
+      - 'scripts/ops/export-gri-verified-history-private.test.mjs'
       - 'scripts/ops/verify-three-domain-reviewed-handoff.mjs'
       - 'src/__tests__/three-domain-reviewed-handoff.test.js'
       - 'scripts/tests/gri-reviewed-immutable-b2-stage-guard.test.mjs'
@@ -52,6 +56,8 @@ jobs:
           set -euo pipefail
           node --check scripts/lib/gri-reviewed-immutable-b2-handoff.mjs
           node --check scripts/ops/stage-approved-reviewed-gri-private-b2.mjs
+          node --check scripts/ops/export-gri-verified-history-private.mjs
+          node --test scripts/ops/export-gri-verified-history-private.test.mjs
           node --check scripts/ops/verify-three-domain-reviewed-handoff.mjs
           node --test scripts/tests/gri-reviewed-immutable-b2-stage-guard.test.mjs
       - name: Build private approved input staging without network calls
