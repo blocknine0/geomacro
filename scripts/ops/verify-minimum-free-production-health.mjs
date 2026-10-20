@@ -22,7 +22,7 @@ const validSha=(s)=>typeof s==="string"&&/^[a-f0-9]{40}$/u.test(s);
  * package/lock/config/build files. Compare must be canonical exact-head,
  * complete (<300 changed files and <250 commits) and non-forking.
  */
-export const SAFE_NON_WEBSITE_PATH = /^(?:\.github\/workflows\/[a-z0-9._-]+\.ya?ml|docs\/[A-Za-z0-9_./-]+|scripts\/(?:ops|tests)\/[A-Za-z0-9_./-]+)$/u;
+export const SAFE_NON_WEBSITE_PATH = /^(?:\.github\/workflows\/[a-z0-9._-]+\.ya?ml|docs\/[A-Za-z0-9_./-]+|scripts\/(?:ops|tests)\/[A-Za-z0-9_./-]+|src\/__tests__\/[A-Za-z0-9_./-]+\.test\.[cm]?[jt]sx?)$/u;
 export function classifyPublishedSourceEquivalence(compare,siteSha,mainSha){
   if(!validSha(siteSha)||!validSha(mainSha)||siteSha===mainSha||
      !compare||compare.status!=="ahead"||
@@ -35,7 +35,9 @@ export function classifyPublishedSourceEquivalence(compare,siteSha,mainSha){
      compare.files.length>=300||!Array.isArray(compare.commits)||
      compare.commits.at(-1)?.sha!==mainSha)return false;
   return compare.files.every(file=>file&&file.status!=="removed"&&
-    typeof file.filename==="string"&&SAFE_NON_WEBSITE_PATH.test(file.filename));
+    typeof file.filename==="string"&&
+    !file.filename.split("/").some(segment=>segment==="."||segment==="..")&&
+    SAFE_NON_WEBSITE_PATH.test(file.filename));
 }
 export async function verifyPublishedSourceEquivalence(siteSha,mainSha,{
   fetcher=fetch,token=process.env.GITHUB_TOKEN??"",
