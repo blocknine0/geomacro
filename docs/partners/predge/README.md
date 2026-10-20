@@ -176,7 +176,7 @@ the actual agreed kickoff differs, reconfigure before any extension.
 The protected Cloudflare deployment already derives the 64-char hex
 `PREDGE_RESEARCH_NEWS_TOKEN` via
 `HMAC-SHA256(GEOMACRO_COMMERCE_LEDGER_TOKEN,
-"geomacro-predge-72h-research-only-v1")`.
+"geomacro-predge-72h-research-only-v2-20261020")`.
 It is a Worker secret and **cannot be read back** in plaintext from GitHub
 Actions or Cloudflare. Do not share the root ledger or control-plane admin
 secret with Predge.
