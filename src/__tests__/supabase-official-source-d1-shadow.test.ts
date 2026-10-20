@@ -64,5 +64,13 @@ describe("owner-only legacy Supabase official source directories to private D1",
   expect(workflow).not.toMatch(/^  schedule:/m);
   expect(workflow).toContain("secrets.SUPABASE_DB_URL");
   expect(workflow).toContain("secrets.CLOUDFLARE_API_TOKEN");
+  expect(migration).toContain("SUPABASE_URI_VALIDATION");
+  expect(migration).toContain("SUPABASE_READ_ONLY_PSQL");
+  expect(migration).toContain("SUPABASE_ROW_VALIDATION");
+  expect(migration).toContain("CLOUDFLARE_D1_DISCOVERY");
+  expect(migration).toContain("CLOUDFLARE_D1_WRITES");
+  expect(migration).toContain("CLOUDFLARE_D1_READBACK");
+  expect(migration).not.toContain("console.error(error)");
+  expect(workflow).not.toMatch(/^  schedule:/m);
  });
 });

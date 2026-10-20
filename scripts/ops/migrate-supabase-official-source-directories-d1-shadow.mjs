@@ -19,7 +19,8 @@ const SAFE=/^[A-Z]{2}$/u;
 const SHA=/^[a-f0-9]{64}$/u;
 const COUNTRY_COUNT=195;
 const encoder=new TextEncoder();
-function invalid(){throw Error(SCRIPT_ERROR)}
+let stage="PRECHECK";
+function invalid(){throw Error(SCRIPT_ERROR+"_"+stage)}
 const sha256=s=>createHash("sha256").update(s,"utf8").digest("hex");
 function stable(v){
  if(v===null||typeof v!=="object")return JSON.stringify(v);
@@ -88,6 +89,7 @@ function validateDbUri(uri){
  }catch{invalid()}
 }
 function supabaseSnapshot(){
+ stage="SUPABASE_URI_VALIDATION";
  const uri=String(process.env.SUPABASE_DB_URL??"");
  validateDbUri(uri);
  const specs={
@@ -101,11 +103,13 @@ function supabaseSnapshot(){
  const sql="BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;\n"+
    selects.join("\nUNION ALL\n")+"\nORDER BY 1;\nCOMMIT;\n";
  // PGDATABASE carries the URI via protected process environment, not argv.
+ stage="SUPABASE_READ_ONLY_PSQL";
  const r=spawnSync("psql",["-X","-A","-t","-v","ON_ERROR_STOP=1","-f","-"],{
   input:sql,encoding:"utf8",maxBuffer:8*1024*1024,timeout:60000,
   env:{...process.env,PGDATABASE:uri,PGCONNECT_TIMEOUT:"12",PGSSLMODE:"verify-full"},
  });
  if(r.error||r.status!==0||typeof r.stdout!=="string")invalid();
+ stage="SUPABASE_ROW_VALIDATION";
  return validateSupabaseDirectoryRows(r.stdout.split(/\r?\n/u).filter(l=>l.trim()&&l!=="BEGIN"&&l!=="COMMIT"));
 }
 async function cloudflare(path,token,body){
@@ -129,12 +133,15 @@ async function d1Query(account,id,token,batch){
  return doc.result.map(r=>r.results??[]);
 }
 export async function migrateShadow(){
+ stage="OWNER_ACK";
  if(process.env.GEOMACRO_SOURCE_DIRECTORY_SHADOW_ACK!=="YES")invalid();
  // No fallback to writing a public source registry.
+ stage="CLOUDFLARE_SECRET_VALIDATION";
  const account=String(process.env.CLOUDFLARE_ACCOUNT_ID??"");
  const token=String(process.env.CLOUDFLARE_API_TOKEN??"");
  if(!/^[a-f0-9]{32}$/u.test(account)||token.length<20)invalid();
  const snapshot=supabaseSnapshot();
+ stage="CLOUDFLARE_D1_DISCOVERY";
  const list=await cloudflare("/accounts/"+account+"/d1/database?per_page=100",token);
  const matches=(list.result??[]).filter(x=>x.name===D1);
  if(matches.length!==1||!matches[0].uuid)invalid();
@@ -142,12 +149,14 @@ export async function migrateShadow(){
  const stamp=new Date().toISOString();
  // Only insert/update private mirror rows; NEVER write live source registry.
  const sql="INSERT INTO legacy_official_source_directory_shadow (dataset,country_iso2,source_row_json,source_row_sha256,verification_state,copied_at) VALUES (?,?,?,?,?,?) ON CONFLICT(dataset,country_iso2) DO UPDATE SET source_row_json=excluded.source_row_json,source_row_sha256=excluded.source_row_sha256,verification_state=excluded.verification_state,copied_at=excluded.copied_at";
+ stage="CLOUDFLARE_D1_WRITES";
  for(let i=0;i<snapshot.rows.length;i+=24){
   const batch=snapshot.rows.slice(i,i+24).map(r=>({
    sql,params:[r.dataset,r.iso2,r.json,r.hash,r.verification,stamp],
   }));
   await d1Query(account,id,token,batch);
  }
+ stage="CLOUDFLARE_D1_READBACK";
  const observed=[];
  for(const family of DATASETS){
   const rows=await d1Query(account,id,token,[{
@@ -169,6 +178,7 @@ export async function migrateShadow(){
   const original=expected.get(entry.dataset+":"+entry.iso2);
   if(!original||original.hash!==entry.hash||original.json!==entry.json)invalid();
  }
+ stage="FINAL_MANIFEST_HASH";
  const digest=sha256(observed.map(r=>r.dataset+":"+r.iso2+":"+r.hash).join("\n"));
  if(digest!==snapshot.manifest_sha256)invalid();
  return {
@@ -183,5 +193,10 @@ export async function migrateShadow(){
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  migrateShadow().then(r=>console.log(JSON.stringify(r)))
-  .catch(()=>{console.error(SCRIPT_ERROR);process.exitCode=2});
+  .catch(error=>{
+   const code=String(error?.message??"");
+   // Only hardcoded phase names; NEVER log Postgres, HTTP or credentials.
+   console.error(code.startsWith(SCRIPT_ERROR+"_")?code:SCRIPT_ERROR+"_UNEXPECTED");
+   process.exitCode=2;
+  });
 }
