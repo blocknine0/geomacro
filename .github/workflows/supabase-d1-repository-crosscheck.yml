@@ -1,0 +1,62 @@
+name: Supabase to D1 Repository Crosscheck
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "scripts/ops/inventory-supabase-d1-repository-crosscheck.mjs"
+      - "src/__tests__/supabase-d1-repository-crosscheck.test.ts"
+      - ".github/workflows/supabase-d1-repository-crosscheck.yml"
+      - "docs/ops/SUPABASE_D1_VERIFIED_CUTOVER_20261020.md"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/inventory-supabase-d1-repository-crosscheck.mjs"
+      - "src/__tests__/supabase-d1-repository-crosscheck.test.ts"
+      - ".github/workflows/supabase-d1-repository-crosscheck.yml"
+permissions:
+  contents: read
+jobs:
+  static-audit-no-funds:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      APP_SUPABASE_URL: ""
+      APP_SUPABASE_SERVICE_ROLE_KEY: ""
+      SUPABASE_DB_URL: ""
+      SUPABASE_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      GEOMACRO_SUPABASE_RUNTIME_MODE: standby
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Check all static request imports, workflows, source and legacy references
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/inventory-supabase-d1-repository-crosscheck.mjs
+          node scripts/ops/inventory-supabase-d1-repository-crosscheck.mjs
+          node - <<'JS'
+          const f=require("node:fs");
+          const d=JSON.parse(f.readFileSync("artifacts/supabase-d1-repository-crosscheck.json","utf8"));
+          if(d.schema!=="geomacro.supabase-d1-repository-crosscheck.v1"||
+             d.file_count<500 ||d.repo_static_reference_count<50 ||
+             d.workflow_files<250 ||
+             d.all_supabase_data_migrated_to_d1_proven!==false||
+             d.legacy_payment_and_customer_records_safely_reconciled!==false ||
+             d.currently_serving_supabase_runtime_calls_proven_absent!==false||
+             d.b2_requests!==0||d.supabase_requests!==0||
+             d.d1_writes!==0||d.payments!==0)
+              throw Error("AUDIT_CONSERVATISM_OR_COVERAGE_FAILED");
+          console.log("PASS: complete static inventory. Not certified Supabase-free.");
+          JS
+      - name: Upload reconciliation inventory (filenames and signal types only)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: supabase-d1-repository-crosscheck-${{ github.run_id }}
+          path: artifacts/supabase-d1-repository-crosscheck.json
+          if-no-files-found: error
+          retention-days: 14
