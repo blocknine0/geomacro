@@ -69,6 +69,12 @@ function sanitize(
 
   const output: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
+    // Retain explicit false-only safety assertions even though their key
+    // contains "raw" or "source"; never let a true claim through this hole.
+    if (SAFE_FALSE_FLAGS.has(key.toLowerCase()) && child === false) {
+      output[key] = false;
+      continue;
+    }
     if (path.length === 0 && key === "data_attribution") {
       // Narrow exemptions for fixed WDI or Board original-article credit.
       // Attribution format alone never grants commercial source rights.
@@ -145,6 +151,7 @@ export function assertPublicPaidOutputBoundary(payload: unknown): void {
       return;
     }
     for (const [key, child] of Object.entries(value)) {
+      if (SAFE_FALSE_FLAGS.has(key.toLowerCase()) && child === false) continue;
       if (path.length === 0 && key === "data_attribution") {
         if (!isApprovedWdiAttribution(child) &&
             !isApprovedFedBoardMinutesAttribution(child))
