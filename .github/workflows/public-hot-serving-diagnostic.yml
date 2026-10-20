@@ -18,6 +18,8 @@ on:
       - "scripts/ops/classify-d1-hot-metadata.mjs"
       - "src/__tests__/diagnose-public-hot-serving.test.ts"
       - "src/__tests__/classify-d1-hot-metadata.test.ts"
+      - "scripts/ops/reconcile-public-hot-recovery.mjs"
+      - "scripts/ops/reconcile-public-hot-recovery.test.mjs"
       # Re-audit public B2/D1 metadata when no-charge diagnostics change;
       # no direct B2 GET, no D1 write, no tokens or private source payload.
       - "scripts/ops/verify-failed-health-x402-no-funds.mjs"
@@ -69,6 +71,8 @@ jobs:
         run: |
           node --check scripts/ops/diagnose-public-hot-serving.mjs
           node --check scripts/ops/classify-d1-hot-metadata.mjs
+          node --check scripts/ops/reconcile-public-hot-recovery.mjs
+          node --test scripts/ops/reconcile-public-hot-recovery.test.mjs
 
       - name: Diagnose public site and all 3 D1 hot-snapshot products
         id: diagnose
@@ -102,6 +106,22 @@ jobs:
           fi
           node scripts/ops/classify-d1-hot-metadata.mjs < "$raw"
 
+      - name: Classify missing approved current publisher inputs (read-only, no SHA exposure)
+        if: always()
+        shell: bash
+        env:
+          # Existing backstop pointer hints only. Never expose values in output.
+          GRI_READY_REVIEWED_SHA256: ${{ vars.GRI_READY_REVIEWED_SHA256 }}
+          GRI_READY_CERTIFICATES_SHA256: ${{ vars.GRI_READY_CERTIFICATES_SHA256 }}
+          GRI_READY_APPROVED_AT: ${{ vars.GRI_READY_APPROVED_AT }}
+          MACHINE_INTELLIGENCE_READY_INPUT_SHA256: ${{ vars.MACHINE_INTELLIGENCE_READY_INPUT_SHA256 }}
+          MACHINE_INTELLIGENCE_READY_APPROVED_AT: ${{ vars.MACHINE_INTELLIGENCE_READY_APPROVED_AT }}
+        run: |
+          set -euo pipefail
+          # Uses only already-scrubbed public and D1 reports. Missing D1 report
+          # remains UNKNOWN, never silently deemed fresh. No network or writes.
+          node scripts/ops/reconcile-public-hot-recovery.mjs
+
       - name: Upload scrubbed production status regardless of health
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
@@ -110,5 +130,6 @@ jobs:
           path: |
             artifacts/public-serving/diagnostic.json
             artifacts/public-serving/d1-metadata.json
+            artifacts/public-serving/recovery.json
           if-no-files-found: warn
           retention-days: 7
