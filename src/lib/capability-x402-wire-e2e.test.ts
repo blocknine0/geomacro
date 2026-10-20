@@ -35,7 +35,15 @@ const handlers={coinbase:mainnetIntelligenceHandlers.POST,circle:circlePost};
 function availability(plan:any):AgentQueryDeliverability {return {deliverable:true,code:"AVAILABLE",query_plan_hash:plan.query_plan_hash,checked_at:new Date().toISOString(),missing_modules:[],stale_modules:[],ineligible_source_ids:[],source_contracts:[{source_id:"PRIVATE_TEST_ONLY",commercial_usage_status:"DERIVED_ONLY",raw_redistribution_allowed:false,attribution_required:false,licence_name:null}],subjects:[{subject:plan.subjects[0],status:"AVAILABLE",available_modules:plan.required_modules,latest_evidence_at:"2025-12-31T23:59:59.000Z",required_source_ids:["PRIVATE_TEST_ONLY"],governed_fallback_modules:[]}]};}
 function prepared({plan,requestId,clientRequestId,priceUsdc}:any) {
   const core={schema_version:SCHEMA,product:"geomacro_adaptive_risk_intelligence_v1",request_id:requestId,client_request_id:clientRequestId,query_plan_hash:plan.query_plan_hash,subjects:plan.subjects,
-    question_interpretation:{delivery_tier:"structural_baseline"},analysis:{type:"single_subject"},structural:[],hot_topics:[],risk_gate:[],signed_risk_objects:[],gri_context:null,current_state:[],
+    question_interpretation:{delivery_tier:"structural_baseline"},analysis:{type:"single_subject"},
+    // ONLY synthetic governed module fixtures, never real article text or
+    // a fabricated production certification. Buyer gate must reject [].
+    structural:plan.subjects.map((subject:any)=>({
+      subject, intelligence:Object.fromEntries(plan.required_modules.map((module:string)=>[
+        module,{observations:[{value_numeric:1,observed_at:"2025-12-31T23:59:59.000Z"}],coverage:[]}
+      ])), evidence_summary:{observation_count:1,available_dimensions:plan.required_modules,
+        latest_observed_at:"2025-12-31T23:59:59.000Z"}
+    })),hot_topics:[],risk_gate:[],signed_risk_objects:[],gri_context:null,current_state:[],
     change_intelligence:[{schema_version:"geomacro.change-intelligence.v1",delivery_boundary:"STRUCTURED_DERIVED_CHANGE_INTELLIGENCE_ONLY",raw_data_delivered:false,execution_authorized:false,refresh_hint:{strategy:"SOURCE_NATIVE_CADENCE_OR_STATE_CHANGE",recommended_not_before_seconds:900},state_version:"gstate_test"}],
     decision_intelligence:[{schema_version:"geomacro.decision-intelligence.v1",delivery_boundary:"DERIVED_DECISION_INTELLIGENCE_ONLY",raw_data_delivered:false,execution_authorized:false,cause:"Geomacro detects this because comparable annual estimates differ.",geomacro_detected:[],watch_next:[],decision:{execution_authorized:false}}],
     answer:{summary:"Synthetic test-only annual structured output; never production evidence."},methodology:{response_schema_version:SCHEMA,customer_facing_output:"decision_intelligence_v1",price_usdc:priceUsdc,signed_current_risk_object_included:false},limitations:{execution_authorized:false},execution_authorized:false};
@@ -101,6 +109,29 @@ for(const rail of ["coinbase","circle"] as const)describe(`${rail}: actual handl
   vi.setSystemTime(new Date("2026-10-18T15:00:00Z"));mock.availability.mockRejectedValue(Error("SOURCE_NOW_EXPIRED"));mock.assemble.mockRejectedValue(Error("MUST_NOT_REASSEMBLE"));
   const replay=await call(rail,payment);expect(replay.status).toBe(200);expect(await replay.text()).toBe(bytes);
   expect(rail==="coinbase"?mock.coinbaseSettle:mock.circleSettle).toHaveBeenCalledTimes(1);
+ });
+ it("never charges for empty, wrong-country, undated or missing priced structural modules",async()=>{
+   const cases=[
+     (r:any)=>({...r,structural:[]}),
+     (r:any)=>({...r,structural:[{...r.structural[0],subject:{type:"country",country_iso3:"CAN"}}]}),
+     (r:any)=>({...r,structural:[{...r.structural[0],intelligence:{}}]}),
+     (r:any)=>({...r,structural:[{...r.structural[0],intelligence:{
+       critical_minerals:{observations:[],coverage:[]}}}]}),
+     (r:any)=>({...r,structural:[{...r.structural[0],evidence_summary:{
+       ...r.structural[0].evidence_summary,latest_observed_at:null}}]}),
+     (r:any)=>({...r,methodology:{...r.methodology,price_usdc:"0.01"}}),
+   ];
+   for(const corrupt of cases){
+     stores.clear();ledgers.clear();requests.length=0;
+     mock.assemble.mockImplementation((args:any)=>corrupt(prepared(args)));
+     const response=await call(rail);
+     expect(response.status).not.toBe(402);
+     expect(response.status).toBeGreaterThanOrEqual(400);
+     expect(response.headers.get("PAYMENT-REQUIRED")).toBeNull();
+     expect(requests.some(x=>x.action==="capability-prequote-freeze")).toBe(false);
+     expect(mock.coinbaseSettle).not.toHaveBeenCalled();
+     expect(mock.circleSettle).not.toHaveBeenCalled();
+   }
  });
  it("rejects nested raw upstream material before creating any real x402 402 offer",async()=>{
   mock.assemble.mockImplementation((args:any)=>{

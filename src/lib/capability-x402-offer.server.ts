@@ -1,4 +1,5 @@
 import {randomUUID} from "node:crypto";
+import {assertPreparedCapabilityBuyerValue} from "./capability-buyer-output-value.server";
 import type {AgentQueryPlan} from "./agent-query-plan";
 import {publicAgentQueryAvailability, type AgentQueryDeliverability} from "./agent-query-deliverability.server";
 import {assembleAgentQueryResponse} from "./agent-query-response.server";
@@ -27,6 +28,11 @@ export async function prepareVerifiedCapabilityOffer(input:{
   });
   if(assembled.query_plan_hash!==input.plan.query_plan_hash || assembled.execution_authorized!==false)
     throw Error("CAPABILITY_PREQUOTE_QUERY_MISMATCH");
+  // Qualifying source rights and 402 pricing are not sufficient if source
+  // retrieval subsequently yielded EMPTY output. Fail before durable freeze.
+  assertPreparedCapabilityBuyerValue(
+    input.plan,input.availability,assembled,price.amount_usdc,
+  );
   const prepared=sanitizeAndRehashPaidPreparedResponse(assembled,{rejectEmbeddedLinks:true});
   assertGeomacroIntelligenceResponseContract(prepared);
   assertPublicPaidOutputBoundary(prepared);
