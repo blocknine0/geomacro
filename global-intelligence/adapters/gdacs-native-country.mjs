@@ -14,11 +14,11 @@ export function gdacsCountryEventListUrl(now = new Date()) {
   url.searchParams.set("eventlist", "EQ");
   url.searchParams.set("fromdate", start);
   url.searchParams.set("todate", end);
-  // GDACS SEARCH defaults to up to 100 events; a large unpaged GeoJSON
-  // exceeded our hard 512 KiB read limit on protected main (2026-10-20).
-  // Its documented first page is ordered by latest event end date.
-  url.searchParams.set("pageSize", "25");
-  url.searchParams.set("pageNumber", "1");
+  // Two protected-main runs hit 512 KiB with default/25-event GeoJSON.
+  // Use the provider quickstart\x27s lowercase pagesize/pagenumber keys and a
+  // three-item first page, while retaining the fixed memory/timeout limits.
+  url.searchParams.set("pagesize", "3");
+  url.searchParams.set("pagenumber", "1");
   return url.href;
 }
 const MAX_BYTES=512*1024;
