@@ -78,5 +78,18 @@ describe("prior pinned GRI historical D1 idempotence",()=>{
   expect(w).toContain("steps.gri_history_existing.outputs.already_restored != 'true'");
   expect(w).toContain("GRI_HISTORY_PINNED_D1_ALREADY_RESTORED_NO_B2_REPLAY");
   expect(w).toContain("GEOMACRO_GRI_RESTORE_WEBSITE_HISTORY");
+  // D1 historical idempotence must not permanently suppress a real
+  // immutable version B2 byte readback, and must NEVER replay historical
+  // data into current signed GRI or risk-indices.
+  const verified=w.indexOf("run: node scripts/ops/recover-gri-pinned-b2-version.mjs");
+  expect(verified).toBeGreaterThan(b);
+  expect(verified).toBeLessThan(c);
+  expect(w).toContain("steps.gri_history_existing.outputs.already_restored == 'true' && steps.gri_history_quota.outputs.ready == 'true'");
+  expect(w).toContain("steps.gri_history_quota.outputs.ready != 'true'");
+  expect(w).toContain("artifacts/gri-b2-history/immutable-version-readback.json");
+  const readOnlyBranch=w.slice(w.indexOf("      - name: Read exact original immutable B2 version"),c);
+  expect(readOnlyBranch).not.toContain("restore-gri-verified-version-to-d1.mjs");
+  expect(readOnlyBranch).not.toContain("publish-supabase-free-global-risk");
+  expect(w).not.toContain("risk-indices-verified-d1-parent.yml");
  });
 });
