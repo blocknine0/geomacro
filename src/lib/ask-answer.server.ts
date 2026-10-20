@@ -126,6 +126,33 @@ function noCurrentPublisherNewsAnswer(): HybridAskAnswer {
   };
 }
 
+// Only the three exact scored-index queries. Other risk questions retain the
+// governed intelligence engine. No new score, fake source or paid entitlement.
+function canonicalScoredIndexQuestion(question: string): string | null {
+  const q=question.trim();
+  if (/^What is the latest geopolitical risk index\??$/iu.test(q))
+    return "Geopolitical Risk Index";
+  if (/^What is the latest macroeconomic risk index\??$/iu.test(q))
+    return "Macroeconomic Risk Index";
+  if (/^What is the latest critical minerals risk index\??$/iu.test(q))
+    return "Critical Minerals Risk Index";
+  return null;
+}
+function unavailableScoredIndex(label: string): HybridAskAnswer {
+  return {
+    summary: label+" has no verified current signed reading available.",
+    what_changed: "No current signed index value passed the existing retrieval and freshness checks for this request.",
+    why_it_matters: "An official news item, historical snapshot or annual dataset is not a substitute for a current signed risk index.",
+    geomacro_view: "Geomacro will not generate a numeric score or describe stale index values as live. Retry when verified current data is available.",
+    evidence: [],insufficient_evidence:true,mean_relevance:null,
+    low_confidence:true,gri:null,generatedAt:new Date().toISOString(),
+    data_mode:"ephemeral_live",cache_status:"bypassed",
+    source_identity_exposed:false,durable_live_storage_write:false,
+    real_time_message:"CURRENT_SIGNED_RISK_INDEX_UNAVAILABLE",
+    signed_gro_generated:false,independent_same_event_verification:false
+  };
+}
+
 export async function answerAskQuestion(question: string): Promise<HybridAskAnswer> {
   // For explicit precise official measurements, either answer with a verified
   // source period or fail closed: an indexed headline is never a numeric value.
@@ -176,6 +203,10 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
   }
   const primary = await answerHybridQuestion(question);
   if (!primary.insufficient_evidence) return primary;
+  // An unverified general web search cannot manufacture a requested exact
+  // numerical risk index. Give a category-specific unavailable answer instead.
+  const requestedIndex=canonicalScoredIndexQuestion(question);
+  if (requestedIndex) return unavailableScoredIndex(requestedIndex);
   try {
     const realtime = await realtimeSearchAnswer(question, primary);
     return realtime ?? primary;
