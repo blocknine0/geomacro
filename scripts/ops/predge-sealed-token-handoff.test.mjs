@@ -13,11 +13,11 @@ const {publicKey,privateKey}=generateKeyPairSync("rsa",{
 });
 const b64=Buffer.from(publicKey).toString("base64"),root="R".repeat(48);
 test("Owner alone decrypts dedicated Predge token; root and admin tokens never delivered",()=>{
- const ciphertext=sealPredgeResearchBearer({root,recipientPublicKeyB64:b64});
+ const ciphertext=sealPredgeResearchBearer({root,override:"b".repeat(64),recipientPublicKeyB64:b64});
  const derived=privateDecrypt({key:privateKey,
     padding:constants.RSA_PKCS1_OAEP_PADDING,oaepHash:"sha256",
     oaepLabel:Buffer.from(PREDGE_OAEP_LABEL)},ciphertext).toString("utf8");
- const expected=createHmac("sha256",root).update(PREDGE_HMAC_DOMAIN).digest("hex");
+ const expected="b".repeat(64);
  assert.equal(derived,expected);
  assert.match(derived,/^[0-9a-f]{64}$/);
  assert.ok(!ciphertext.includes(Buffer.from(derived)));
@@ -53,7 +53,8 @@ test("Never accept random format, root or admin token as partner research overri
   for(const override of ["short","X".repeat(64),"e".repeat(65),root,privileged]){
     assert.throws(()=>resolvePredgeResearchBearer({root,override}));
   }
-  assert.equal(resolvePredgeResearchBearer({root,override:""}),derivePredgeResearchBearer(root));
+  assert.throws(()=>resolvePredgeResearchBearer({root,override:""}),/PREDGE_RESEARCH_ROTATION_REQUIRED/);
+  assert.throws(()=>resolvePredgeResearchBearer({root,override:derivePredgeResearchBearer(root)}),/PRIVILEGED_TOKEN_REUSE/);
 });
 test("Wrong owner's private key cannot retrieve a plaintext handoff",()=>{
  const other=generateKeyPairSync("rsa",{modulusLength:3072});
@@ -71,7 +72,7 @@ test("Reject weak/forged RSA key, fake PEM, missing root, arbitrary bearer",()=>
  assert.throws(()=>derivePredgeResearchBearer(""));
 });
 test("Live research authorization must deny anonymous and admit dedicated Bearer only",async()=>{
- const expected=derivePredgeResearchBearer(root);
+ const expected="d".repeat(64);
  const calls=[];
  const fetchImpl=async(url,options)=>{
    calls.push({url,header:options.headers?.authorization??null});
@@ -82,13 +83,13 @@ test("Live research authorization must deny anonymous and admit dedicated Bearer
      partner_resale_or_commercial_redistribution_authorized:false,
      source_licensing_waived:false,chargeable:false,gro_signed:false,items:[]});
  };
- const result=await verifyPredgeLiveBearer({root,fetchImpl});
+ const result=await verifyPredgeLiveBearer({root,override:expected,fetchImpl});
  assert.equal(result.authenticated_research_verified,true);
  assert.equal(calls.length,2);
  assert.equal(calls[0].url,PREDGE_RESEARCH_URL);
  assert.equal(calls[1].header,"Bearer "+expected);
  assert.equal(calls[0].header,null);
- await assert.rejects(()=>verifyPredgeLiveBearer({root,
+ await assert.rejects(()=>verifyPredgeLiveBearer({root,override:expected,
    fetchImpl:async()=>Response.json({ok:false},{status:401})}));
 });
 test("Only manual protected production workflow can create encrypted artifact",()=>{
