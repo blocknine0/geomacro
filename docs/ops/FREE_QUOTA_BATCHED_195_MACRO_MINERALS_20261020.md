@@ -34,3 +34,11 @@ Each response has size/time/redirect and date guards. Explicit 401/403/429 stays
 - **Maritime**: UKMTO/MARAD current automated access blocked (403), even though website listings are public. Consider government-authorized email subscriptions or first-party authorized feeds; USCG NAVCEN offers public free RSS by district, but cannot be represented as UKMTO/MARAD incident coverage or globally identical provenance.
 
 Commercial derived output permission, current 195x3 paid country evidence, complete 58-route mapping, actual website display, current signed objects and deep-health HTTP 200 require separate truthful acceptance.
+
+## October 20 live-source correction
+
+The exact-main WDI country-wide batch subsequently succeeded after its 25-second time allowance: **166 of 195** registered countries had annual CPI-reference values; **181 of 195** had annual real GDP growth values for the last completed calendar year. This is annual 2025 reference availability only, not live currency prices or globally certified intelligence.
+
+The same run correctly reported both optional MINEM and Canada GEOSCAN transports as unavailable; provider incidents must **not retroactively invalidate already verified independent WDI reference coverage**. The follow-on category-aware operator verdict now records distinct Macro success and Minerals degraded status; the job returns success when genuine WDI country reference coverage is observed and the bounded request budget is respected, but the failed Mineral transports remain explicitly red in the same receipt.
+
+On a *network failure only* at Canada GEOSCAN, the observer may perform one additional bounded GET to the **existing catalogued Natural Resources Canada news Atom feed** (`nrcan` family). The fallback is from the same Canadian government publisher family, never independent corroboration, and is neither current mine production, confirmed incident nor new commercial rights. Exactly 3 routine calls/day, at most 4 when the Canadian network fallback is eligible. Do not use it after any explicit 401/403/429 denial. A blocked fallback remains red.

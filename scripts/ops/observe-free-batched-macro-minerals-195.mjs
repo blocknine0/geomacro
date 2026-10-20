@@ -27,9 +27,10 @@ const wdiOk=macro.schema==="geomacro.wdi-195-two-indicator-reference-audit.v1" &
 const verdict={
  schema:"geomacro.free-global-macro-minerals-195-source-budget.v1",
  checked_at:started.toISOString(),
- status:wdiOk&&mineral.healthy_source_count>=1?"PARTIAL_COUNTRY_REFERENCE_SOURCE_ACCEPTED":
-   "GLOBAL_REFERENCE_SOURCES_DEGRADED",
- expected_api_requests:3,
+ status:!wdiOk?"MACRO_REFERENCE_SOURCE_DEGRADED":
+   mineral.healthy_source_count>=1?"MACRO_AND_MINERALS_REFERENCE_CONTEXT_OBSERVED":
+   "MACRO_REFERENCE_OBSERVED_MINERALS_DEGRADED",
+ nominal_api_requests:3,max_api_requests:4,
  source_requests_observed:macro.source_calls+mineral.upstream_calls,
  external_source_budgets:{world_bank_wdi:1,peru_minem:1,canada_nrcan_geoscan:1},
  wdi:macro,minerals:mineral,
@@ -44,7 +45,7 @@ mkdirSync("artifacts/free-global-source-budget",{recursive:true,mode:0o700});
 writeFileSync(OUT,JSON.stringify(verdict,null,2)+"\n",{mode:0o600});
 console.log(JSON.stringify({
  schema:verdict.schema,status:verdict.status,
- expected_api_requests:3,source_requests_observed:verdict.source_requests_observed,
+ nominal_api_requests:3,max_api_requests:4,source_requests_observed:verdict.source_requests_observed,
  wdi_indicator_coverage:macro.indicators?.map(x=>({
    indicator:x.id,countries:x.canonical_countries_with_recent_nonnull_values
  }))??[],
@@ -53,5 +54,5 @@ console.log(JSON.stringify({
  wdi_error:macro.reason??null,
  current_195x3_verified:false,paid_data_grants:0,payments:0
 }));
-if(verdict.source_requests_observed!==3||
-   verdict.status!=="PARTIAL_COUNTRY_REFERENCE_SOURCE_ACCEPTED")process.exitCode=3;
+if(verdict.source_requests_observed<3||verdict.source_requests_observed>4||
+   !wdiOk)process.exitCode=3;
