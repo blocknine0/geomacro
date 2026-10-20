@@ -1,7 +1,21 @@
 // Official GDACS disaster event list. A first-party native event country
 // field is a source assertion, not an independently verified affected region,
 // official country impact, news publication time, or geopolitical event.
-const URL="https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?eventlist=EQ&fromdate=2026-09-01&todate=2026-12-31";
+const GDACS_EVENTS_ENDPOINT = "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH";
+const DAY_MS = 86_400_000;
+// This is a rolling hazard discovery lookback, not a claim of current publication
+// or a verified affected-country set. Never request a future calendar date.
+export function gdacsCountryEventListUrl(now = new Date()) {
+  if (!(now instanceof Date) || !Number.isFinite(now.getTime()))
+    throw Error("GDACS_CLOCK_INVALID");
+  const end = now.toISOString().slice(0, 10);
+  const start = new Date(now.getTime() - 7 * DAY_MS).toISOString().slice(0, 10);
+  const url = new URL(GDACS_EVENTS_ENDPOINT);
+  url.searchParams.set("eventlist", "EQ");
+  url.searchParams.set("fromdate", start);
+  url.searchParams.set("todate", end);
+  return url.href;
+}
 const MAX_BYTES=512*1024;
 function nativeIso3(p){
   const s=String(p?.iso3??p?.countryiso3??p?.country_iso3??"").trim().toUpperCase();
@@ -46,8 +60,9 @@ export function inspectGdacsCountryNative(payload){
     raw_upstream_payload_stored:false,
   };
 }
-export async function fetchGdacsNativeCountry({fetchImpl=fetch}={}){
-  const r=await fetchImpl(URL,{method:"GET",redirect:"error",
+export async function fetchGdacsNativeCountry({fetchImpl=fetch,now=new Date()}={}){
+  const url=gdacsCountryEventListUrl(now);
+  const r=await fetchImpl(url,{method:"GET",redirect:"error",
     signal:AbortSignal.timeout(12000),headers:{accept:"application/json"}});
   if(!r.ok){await r.body?.cancel().catch(()=>{});throw Error("GDACS_HTTP_"+r.status);}
   if(!r.body||Number(r.headers.get("content-length")??0)>MAX_BYTES)
