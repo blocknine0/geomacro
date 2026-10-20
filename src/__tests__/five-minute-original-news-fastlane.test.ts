@@ -56,7 +56,11 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(wf).not.toContain("SUPABASE_URL");
    expect(wf).not.toContain("B2_KEY_ID");
    expect(pub).toContain("readFiveMinuteNewsFastlane(runAt,20)");
+   expect(pub).toContain("const baseline=await fetchAllDerivedNews(fetch,runAt)");
+   expect(pub).toContain("!existingIds.has(s.id)");
    expect(pub).toContain("fetchAllDerivedNews(fetch,Date.now())");
+   expect(pub).toContain("exact_first_writer_attribution_verified:false");
+   expect(pub).toContain("measurement_is_true_first_insert_utc:false");
    expect(pub).toContain("FASTLANE_D1_FULL_JOURNAL_READBACK_FAILED");
    expect(pub).toContain("original_exact_publications_verified");
    expect(pub).toContain("exact_publications_outside_target_at_d1_readback");
