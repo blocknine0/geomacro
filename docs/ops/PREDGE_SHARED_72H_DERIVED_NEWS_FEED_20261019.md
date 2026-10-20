@@ -78,7 +78,7 @@ endpoint. Do not describe this as actual commercial redistribution permission.
 `GET /v1/partner/predge/derived-structural-72h` on the SAME Cloudflare D1
 control-plane Worker accepts only a **dedicated** 64-hex Bearer derived in
 the protected deploy from the existing root production secret using
-HMAC-SHA256 namespace `geomacro-predge-72h-research-only-v1` (not the
+HMAC-SHA256 namespace `geomacro-predge-72h-research-only-v2-20261020` (not the
 admin-token namespace). Token never appears in URLs or GitHub artifacts;
 no CORS and no-store private cache response. Authentication cannot grant
 original publisher rights, paid eligibility, GRO authenticity or Risk Gate
