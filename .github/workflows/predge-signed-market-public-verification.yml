@@ -1,0 +1,47 @@
+name: Predge Signed Market Public Contract Discovery (No Funds)
+on:
+  pull_request:
+    paths:
+      - "scripts/ops/inspect-predge-public-verification.mjs"
+      - ".github/workflows/predge-signed-market-public-verification.yml"
+      - "scripts/ops/verify-predge-signed-market.mjs"
+      - "scripts/ops/verify-predge-signed-market.test.mjs"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/inspect-predge-public-verification.mjs"
+      - ".github/workflows/predge-signed-market-public-verification.yml"
+permissions:
+  contents: read
+jobs:
+  inspect-public-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      SUPABASE_DB_URL: ""
+      CLOUDFLARE_API_TOKEN: ""
+      PREDGE_RESEARCH_NEWS_TOKEN: ""
+      PREDGE_RISK_GATE_TOKEN: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Inspect only the four exact public URLs Amir supplied
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/inspect-predge-public-verification.mjs
+          node scripts/ops/inspect-predge-public-verification.mjs
+      - name: Strict offline crypto and tamper/revoked-key tests
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/verify-predge-signed-market.mjs
+          node --test scripts/ops/verify-predge-signed-market.test.mjs
+      - name: Independently verify Amir's public signed market 5710779, active key and all three signatures
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-predge-signed-market.mjs
+      - name: No source rights, payment, private key or real-money production action
+        run: echo "PREDGE_PUBLIC_DOC_INSPECTION_ONLY_NO_FUNDS"
