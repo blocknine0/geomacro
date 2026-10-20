@@ -18,6 +18,9 @@ on:
       - "scripts/lib/chile-copper-official-monthly.mjs"
       - "scripts/tests/chile-copper-official-monthly.test.mjs"
       - "scripts/ops/observe-chile-copper-official.mjs"
+      - "scripts/lib/indonesia-esdm-official-index.mjs"
+      - "scripts/tests/indonesia-esdm-official-index.test.mjs"
+      - "scripts/ops/observe-indonesia-esdm.mjs"
       - ".github/workflows/gdacs-native-country.yml"
   push:
     branches: [main]
@@ -38,6 +41,9 @@ on:
       - "scripts/lib/chile-copper-official-monthly.mjs"
       - "scripts/tests/chile-copper-official-monthly.test.mjs"
       - "scripts/ops/observe-chile-copper-official.mjs"
+      - "scripts/lib/indonesia-esdm-official-index.mjs"
+      - "scripts/tests/indonesia-esdm-official-index.test.mjs"
+      - "scripts/ops/observe-indonesia-esdm.mjs"
       - ".github/workflows/gdacs-native-country.yml"
   workflow_dispatch:
   schedule:
@@ -76,6 +82,9 @@ jobs:
           node --check scripts/lib/chile-copper-official-monthly.mjs
           node --check scripts/ops/observe-chile-copper-official.mjs
           node --test scripts/tests/chile-copper-official-monthly.test.mjs
+          node --check scripts/lib/indonesia-esdm-official-index.mjs
+          node --check scripts/ops/observe-indonesia-esdm.mjs
+          node --test scripts/tests/indonesia-esdm-official-index.test.mjs
   live-upstream:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: static
@@ -166,5 +175,29 @@ jobs:
         with:
           name: chile-official-copper-monthly-${{ github.run_id }}
           path: artifacts/chile-copper-official/reference.json
+          retention-days: 3
+          if-no-files-found: warn
+
+  indonesia-esdm-official-mineral-index:
+    # Extend official national mines news discovery on same 03:51 UTC slot.
+    # Index dates are not corroborated incidents nor commercial rights.
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22
+      - name: Check bounded Ministry ESDM press index
+        run: node scripts/ops/observe-indonesia-esdm.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: indonesia-esdm-private-index-${{ github.run_id }}
+          path: artifacts/official-national-mineral-index/indonesia-esdm.json
           retention-days: 3
           if-no-files-found: warn
