@@ -41,8 +41,10 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.4.2"
+      - name: Install pinned repository dependencies without ad-hoc packages
+        run: bun install --frozen-lockfile
       - name: Validate original-only fastlane, actual source clocks and no funds
-        run: bunx vitest run src/__tests__/five-minute-original-news-fastlane.test.ts
+        run: bun run vitest run src/__tests__/five-minute-original-news-fastlane.test.ts
 
   original-five-minute-derived-news:
     if: >-
