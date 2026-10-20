@@ -8,11 +8,36 @@ const months={january:1,february:2,march:3,april:4,may:5,june:6,
  oktober:10,desember:12};
 const mineral=/\b(?:nickel|nikel|lithium|litium|cobalt|kobalt|copper|tembaga|critical minerals?|mineral strategis|rare[- ]earths?|tanah jarang|bauxite|bauksit|graphite|grafit|tambang|mineral dan batubara|mineral and coal|mining)\b/iu;
 function htmlText(html){
- // Strip nonvisible hydration, templates, comments, and head scripts.
- const visible=html.replace(/<!--[\s\S]*?-->/gu," ")
-   .replace(/<(?:script|style|noscript|template)\b[^>]*>[\s\S]*?<\/(?:script|style|noscript|template)\s*>/giu," ")
-   .replace(/<[^>]*>/gu," ");
- return visible.replace(/&nbsp;|&#160;/giu," ")
+ // Bounded tag scanner instead of fragile regex HTML filtering. Explicitly
+ // handles whitespace and attributes inside closing script/style tags.
+ let out="",i=0,blocked=null;
+ const ignored=new Set(["script","style","noscript","template"]);
+ while(i<html.length){
+  if(html.startsWith("<!--",i)){
+   const end=html.indexOf("-->",i+4);
+   if(end<0)break;
+   i=end+3;continue;
+  }
+  if(html[i]==="<"){
+   const end=html.indexOf(">",i+1);
+   if(end<0)break;
+   const inside=html.slice(i+1,end).trimStart();
+   let k=inside.startsWith("/")?1:0;
+   const closing=k===1;
+   while(k<inside.length && /\s/u.test(inside[k]))k++;
+   let t=k;
+   while(t<inside.length && /[a-z0-9:-]/iu.test(inside[t]))t++;
+   const tag=inside.slice(k,t).toLowerCase();
+   if(blocked){
+    if(closing&&tag===blocked)blocked=null;
+   }else if(!closing&&ignored.has(tag))blocked=tag;
+   if(!blocked)out+=" ";
+   i=end+1;continue;
+  }
+  if(!blocked)out+=html[i];
+  i++;
+ }
+ return out.replace(/&nbsp;|&#160;/giu," ")
    .replace(/&amp;/giu,"&").replace(/\s+/gu," ").trim();
 }
 function dayMs(dd,mm,yyyy){
