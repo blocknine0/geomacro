@@ -17,6 +17,11 @@ const token=createHmac("sha256",ROOT).update("geomacro-control-plane-v1").digest
 const endpoint="https://geomacro-control-plane.daspallab202391.workers.dev/v1/website-derived-news";
 const categories=["geopolitics","macro","rare_earth"] as const;
 const runAt=Date.now();
+// Full verified D1 baseline BEFORE origin polling. Repeated releases are never
+// counted as fresh 20-minute deliveries or written again on every tick.
+// Fail closed if the bounded journal reader is unavailable.
+const baseline=await fetchAllDerivedNews(fetch,runAt);
+const existingIds=new Set(baseline.map(s=>s.id));
 const reports=await readFiveMinuteNewsFastlane(runAt,20);
 let failure=false,allPublished:StatelessIntelligenceSignal[]=[];
 for(const category of categories){
@@ -30,7 +35,7 @@ for(const category of categories){
  // 15m minimum delay. Do not override it, including day-only conservative lag.
  const candidates=report.signals.filter(s=>
    s.category===category&&s.severity===null&&
-   s.same_event_corrob_verified===false&&
+   s.same_event_corrob_verified===false&&!existingIds.has(s.id)&&
    Date.parse(s.published_at)>=runAt-72*3600000&&
    (s.date_precision==="exact"
       ?Date.parse(s.published_at)+15*60000<=runAt
@@ -84,6 +89,10 @@ if(allPublished.length){
     github_schedule_guaranteed:false,
     source_portfolio_exhaustive_195x3:false,
     original_exact_publications_verified:originalExact.length,
+    previously_retained_derived_ids_excluded:existingIds.size,
+    newly_unobserved_to_prefetch_derived_rows:allPublished.length,
+    exact_first_writer_attribution_verified:false,
+    measurement_is_true_first_insert_utc:false,
     exact_publications_within_target_at_d1_readback:counts.in_target,
     exact_publications_outside_target_at_d1_readback:counts.outside_target,
     day_precision_excluded_from_20min_clock:allPublished.length-originalExact.length,
