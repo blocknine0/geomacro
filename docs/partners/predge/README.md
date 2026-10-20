@@ -23,7 +23,7 @@ cryptographically with its explicitly TEST-ONLY Ed25519 public key, but is
 The bearer shown in the 19 October email needs issuer-side revocation and
 new secure handoff before continued authenticated use.
 
-## Live input to connect immediately
+## Live public research input to connect immediately
 
 ```bash
 curl --fail-with-body --retry 2 --retry-delay 5 \
@@ -47,9 +47,9 @@ eligibility to unclassified candidates. Records explicitly mark
 **FREE RESEARCH (available now):** Public `GET /v1/public/derived-structural-72h`
 needs no partner token, individual item approvals, reviewer receipts or signed
 GRI. The optional authenticated Predge research route requires **one
-dedicated 64-hex Bearer**, not repeat per-item approvals. The Geomacro
-Worker's private anonymous 401 / authenticated 200 and matching D1 IDs were
-independently verified on the 19 October 2026 protected main deploy.
+dedicated 64-hex Bearer**, not repeat per-item approvals. The Geomacro Worker had authenticated 401/200 checks in an earlier pilot,
+but the exposed old credential was subsequently revoked. No **new** Bearer
+has yet been independently accepted in production.
 **Predge's receipt of that token and its own successful call are not yet
 independently confirmed.** A 200 with no eligible items is a valid empty
 observation, not invented macro or minerals coverage.
@@ -141,110 +141,44 @@ Relevant canonical sources:
 `src/lib/risk-gate-api.server.ts`,
 `docs/ops/PREDGE_SHARED_72H_DERIVED_NEWS_FEED_20261019.md`.
 
-## One-token automatic *private* research delivery (pilot-only)
+## Current private research Bearer handoff (20 October security amendment)
 
-After the protected D1 Worker deploy the authenticated route is:
-`GET https://geomacro-control-plane.daspallab202391.workers.dev/v1/partner/predge/derived-structural-72h`.
-Use `Authorization: Bearer <dedicated-research-token>`. The dedicated token
-is HMAC-derived *server-side only* from the existing production ledger secret,
-under a different domain-separated label than the administration token.
-**Never disclose** the root/admin secret to Predge. Share the single dedicated
-token through an agreed secure partner channel; it is not returned in GitHub
-Actions or this repository.
+**This section supersedes any earlier HMAC-fallback instructions.** The
+19 October emailed Bearer was treated as exposed. Production old-token access
+was revoked and verified in
+[Actions #39446430795](https://github.com/blocknine0/geomacro/actions/runs/39446430795).
+The former deterministic fallback has been **disabled**, not retained.
+Without a new protected token, private research access remains closed.
 
-No partner-scope receipt, per-item rights-review receipt or individual item
-ID allowlist is needed for **private non-commercial research evaluation**:
-the feed automatically returns exactly the same up-to-600 **public-eligible**
-72-hour derived item IDs as Geomacro Intelligence. Predge deduplicates by
-`id` while polling, and sees source-native clocks and unclassified flags.
-No new D1 table, B2 downloads, Supabase, payment or private-publisher scrape.
+The free public, non-commercial, derived 72-hour feed is already available at:
+`GET https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/derived-structural-72h`.
 
-The pilot-only path never allows paid use, public or customer-facing resale,
-unreviewed third-party material, credited items requiring visibly disclosed
-publisher attribution, signed GRO or automated Risk Gate approval. Treat
-the records as **driver candidates**, not Risk Gate decisions: Predge's
-`risk-gate-1.0` still requires a separately verified current `gro-1.1`
-and a policy evaluation. `execution_authorized=false` always.
+To restore Predge's optional research-only authenticated feed:
 
-Maximum provisional pilot expiry is **2027-01-17T00:00:00Z** (90 days
-from proposed Oct 19 UTC kickoff). This does not assert a countersigned
-LOI or give rights beyond the separately written pilot agreement; if
-the actual agreed kickoff differs, reconfigure before any extension.
+1. Generate a **new** random 64-lowercase-hex token locally on the owner's
+   trusted machine, never in email or repository files.
+2. Set GitHub protected **production**
+   `PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE` to that token. Do **not** reuse the
+   old emailed/HMAC-derived token, the root/admin token or the separately
+   required Risk Gate token.
+3. Redeploy `.github/workflows/deploy-control-plane-d1.yml` from main.
+   Verify anonymous=401, previously exposed Bearer=401, **new** Bearer=200
+   and source D1-ID parity. Failing protected acceptance means do not hand
+   over or claim active access.
+4. Use `.github/workflows/predge-token-only-sealed-handoff.yml`, which
+   now **requires the explicit fresh override** and produces an RSA-OAEP
+   encrypted artifact only after live auth verification. Decrypt on the
+   owner's local machine; send only the purpose-scoped token to Amir through
+   a mutually confirmed encrypted channel, not plaintext email, an ordinary
+   Telegram cloud chat or public GitHub artifact.
+5. Ask Amir to confirm an authenticated live GET with the new token.
+   This authorization grants only the agreed private noncommercial pilot.
 
-## Get ONLY the dedicated Predge research token securely
+This is not a commercial GRO or Risk Gate token. Paid Risk Gate requires its
+**own distinct** protected `PREDGE_RISK_GATE_TOKEN`, genuine fresh signed
+commercial GRO, rights and independent live acceptance. Missing inputs must
+fail closed with `execution_authorized:false`.
 
-The protected Cloudflare deployment already derives the 64-char hex
-`PREDGE_RESEARCH_NEWS_TOKEN` via
-`HMAC-SHA256(GEOMACRO_COMMERCE_LEDGER_TOKEN,
-"geomacro-predge-72h-research-only-v1")`.
-It is a Worker secret and **cannot be read back** in plaintext from GitHub
-Actions or Cloudflare. Do not share the root ledger or control-plane admin
-secret with Predge.
-
-If the owner no longer has the plaintext production root secret, use the
-**manual, owner-initiated sealed handoff**:
-`.github/workflows/predge-token-only-sealed-handoff.yml`. Generate a
-temporary RSA 3072 private/public keypair LOCALLY, outside the repo.
-Pass only the **base64 PUBLIC PEM** as the workflow input. The production
-runner verifies anonymous=401 and authenticated research=200, encrypts the
-dedicated research token using RSA-OAEP-SHA256 and the fixed
-`geomacro.predge.research-token-handoff.v1` label, and publishes only
-encrypted ciphertext as a 1-day GitHub Actions artifact. No plaintext
-Bearer is in the logs or artifact. Decrypt the ciphertext on the owner's
-computer with the private PEM; deliver the bearer via a private secure
-partner channel (not a chat, GitHub issue, URL or public email).
-
-PowerShell, from a private folder OUTSIDE the project (Node.js 22):
-
-```powershell
-node -e "const c=require('node:crypto'),f=require('node:fs'),k=c.generateKeyPairSync('rsa',{modulusLength:3072,publicKeyEncoding:{type:'spki',format:'pem'},privateKeyEncoding:{type:'pkcs8',format:'pem'}});f.writeFileSync('predge-owner-private.pem',k.privateKey,{mode:0o600});f.writeFileSync('predge-owner-public.pem',k.publicKey);console.log(Buffer.from(k.publicKey).toString('base64'))"
-```
-
-Copy the displayed BASE64 PUBLIC key (not the PEM private key). In GitHub:
-Actions > "Predge Token-Only Encrypted Handoff (No Funds)" >
-Run workflow (branch main) > paste public key > Run. Download
-`predge-owner-research-token-encrypted-<run_id>` from that run and unzip
-the ciphertext into the same private folder, then:
-
-```powershell
-node -e "const c=require('node:crypto'),f=require('node:fs');const t=c.privateDecrypt({key:f.readFileSync('predge-owner-private.pem'),padding:c.constants.RSA_PKCS1_OAEP_PADDING,oaepHash:'sha256',oaepLabel:Buffer.from('geomacro.predge.research-token-handoff.v1')},f.readFileSync('predge-research-token.rsa-oaep-sha256.bin')).toString('utf8'); if(!/^[a-f0-9]{64}$/.test(t))throw Error('Invalid handoff');console.log(t)"
-```
-
-Keep plaintext hidden and hand off ONLY that 64-hex token to Predge.
-They call:
-`GET https://geomacro-control-plane.daspallab202391.workers.dev/v1/partner/predge/derived-structural-72h`
-with `Authorization: Bearer <token>` (no token in URL).
-Predge gets the same public-eligible derived D1 items, not raw publisher
-articles or signed paid GRO. The provisional research expiry is
-2027-01-17T00:00:00Z and does **not** itself grant commercial redistribution.
-
-## Reusing an already-issued Predge research Bearer (optional)
-
-If Predge already generated an **independent, purpose-scoped research token**
-that is exactly 64 lowercase hexadecimal characters, the founder may retain
-that value rather than replacing it. Set it privately as the
-`PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE` **production environment secret** in
-GitHub (not in chat, README, PR, an issue, or a workflow input), then deploy
-the existing D1 control-plane workflow on protected main. The deploy rejects
-invalid format and attempts to reuse Geomacro admin/root credentials, then
-requires existing live 401/200 + shared 72-hour D1 ID parity acceptance.
-
-The owner-only RSA-OAEP encrypted handoff workflow now uses the *same active
-token source* as the deploy: optional protected override, otherwise original
-separate domain HMAC. It verifies the actual live endpoint **before** sealing
-the token. No root or token is printed or made publicly readable.
-
-**Crucial distinction:** A token issued by Predge to call **Predge's own
-settlement-risk API** does **not** automatically authorize Geomacro's research
-endpoint and should not be reused across the two services. The existing
-Predge-facing Geomacro token must be purpose-scoped explicitly for this
-Geomacro feed. If the prior credential has a different opaque format, it
-requires a separate validated integration and cannot be pasted into this
-64-hex Worker contract. No automatic conversion, source-rights bypass or
-public partner commercial grant.
-
-To rotate or revoke an enrolled token, use a replacement 64-hex protected
-secret and redeploy. **Deleting the override alone reactivates the preexisting
-HMAC fallback**, which is not an effective revocation if that fallback has
-previously been shared. Partner acknowledgments and actual 200 requests must
-be verified independently; green CI alone does not prove recipient access.
+See [Amir's latest technical + commercial handoff](AMIR_20261020_TECHNICAL_COMMERCIAL_NEXT_STEPS.md)
+for hash mapping, request examples, public Ed25519 key/spec, signed
+test-only fixture and the **30 October** / **18 November** milestones.
