@@ -41,8 +41,10 @@ test("missing corridors, stale data, future timestamps and provider errors are n
  const partial=inspectPortwatchDailyResponse({features:sample().features.slice(0,2)},now);
  assert.equal(partial.status,"PARTIAL_DAILY_REFERENCE_OBSERVED");
  assert.equal(partial.routes_with_recent_daily_observations,1);
- const stale=inspectPortwatchDailyResponse(sample("2026-09-01"),now);
+ const staleRows=sample().features.map((f,i)=>i<2 ? {...f,attributes:{...f.attributes,date:i===0?"2026-09-01":"2026-08-31"}}:f);
+ const stale=inspectPortwatchDailyResponse({features:staleRows},now);
  assert.equal(stale.routes_with_recent_daily_observations,5);
+ assert.equal(stale.routes.find(r=>r.corridor_id==="suez_canal").observation_state,"SOURCE_STALE");
  const future=inspectPortwatchDailyResponse({features:[
    {attributes:{portid:"chokepoint6",date:"2026-10-21",n_total:150}}
  ]},now);
