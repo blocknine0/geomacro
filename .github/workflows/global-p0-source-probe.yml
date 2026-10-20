@@ -17,6 +17,7 @@ on:
     paths:
       - "config/global-p0-source-expansion.json"
       - "global-intelligence/adapters/**"
+      - "scripts/tests/cochilco-observation-clock.test.mjs"
       - "scripts/test-p0-adapters.mjs"
       - "scripts/test-p0-adapter-certification.mjs"
       - "scripts/test-p0-live-schema-certification.mjs"
@@ -62,6 +63,8 @@ jobs:
 
       - name: Test P0 normalization adapters
         run: node scripts/test-p0-adapters.mjs
+      - name: Verify COCHILCO monthly reference clock is never a release clock
+        run: node --test scripts/tests/cochilco-observation-clock.test.mjs
 
       - name: Test P0 certification gates
         run: node scripts/test-p0-adapter-certification.mjs
