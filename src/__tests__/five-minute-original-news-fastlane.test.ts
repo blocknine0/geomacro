@@ -6,12 +6,13 @@ import {FIVE_MINUTE_NEWS_FASTLANE,readFiveMinuteNewsFastlane} from "../lib/state
 const read=(p:string)=>readFileSync(p,"utf8");
 const CATS=["geopolitics","macro","rare_earth"];
 describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
- it("pins four original publishers in three domains, including second Macro WTO origin",async()=>{
-   expect(FIVE_MINUTE_NEWS_FASTLANE).toHaveLength(4);
-   expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.category)).toEqual(["geopolitics","macro","macro","rare_earth"]);
-   expect(new Set(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).size).toBe(4);
+ it("pins seven source-governed original publishers across three domains with NZ WTO UK DOE",async()=>{
+   expect(FIVE_MINUTE_NEWS_FASTLANE).toHaveLength(7);
+   expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.category)).toEqual(["geopolitics","geopolitics","macro","macro","macro","rare_earth","rare_earth"]);
+   expect(new Set(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).size).toBe(7);
    expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).toEqual([
-     "un_news","fed_press","wto_trade_original_rss","nrcan_releases"]);
+     "un_news","uk_fcdo","fed_press","wto_trade_original_rss",
+     "nz_beehive_macro","nrcan_releases","us_doe_news_minerals"]);
    const collector=read("src/lib/stateless-public-intelligence.server.ts");
    expect(collector).toContain("SOURCES.filter(s=>s.id===id && s.category===category)");
    expect(collector).toContain("const batches=await Promise.all(selected.map");
@@ -57,8 +58,8 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(wf).not.toContain("SUPABASE_URL");
    expect(wf).not.toContain("B2_KEY_ID");
    expect(pub).toContain("readFiveMinuteNewsFastlane(runAt,20)");
-   expect(pub).toContain('configured_categories:3,pinned_original_publishers:4');
-   expect(pub).toContain('category==="macro"?2:1');
+   expect(pub).toContain('configured_categories:3,pinned_original_publishers:FIVE_MINUTE_NEWS_FASTLANE.length');
+   expect(pub).toContain('FIVE_MINUTE_NEWS_FASTLANE.filter(s=>s.category===category).length');
    expect(pub).toContain("report.healthy_feed_count<1");
    expect(pub).toContain("const baseline=await fetchAllDerivedNews(fetch,runAt)");
    expect(pub).toContain("!existingIds.has(s.id)");
