@@ -33,7 +33,7 @@ function network(version='one',deny=null){return async(url,options)=>{
  return s.id===deny?new Response('private upstream denial',{status:403}):new Response(validBody(s,version));
 };}
 test('all configured production sources are unique and baseline clocks remain distinct from intraday publication',()=>{
- assert.equal(PRODUCTION_FREE_UPDATE_SOURCES.length,31);
+ assert.equal(PRODUCTION_FREE_UPDATE_SOURCES.length,32);
  assert.equal(new Set(PRODUCTION_FREE_UPDATE_SOURCES.map(s=>s.id)).size,31);
  assert.ok(PRODUCTION_FREE_UPDATE_SOURCES.some(s=>s.category==='rare_earth'&&s.id==='us_doe'));
  for(const s of PRODUCTION_FREE_UPDATE_SOURCES){assert.equal(new URL(s.url).protocol,'https:');assert.ok([30,1440].includes(s.poll_minutes));}
