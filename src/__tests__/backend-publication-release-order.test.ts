@@ -30,7 +30,9 @@ describe("signed-data publication precedes independent website release acceptanc
       "Risk Indices from Verified D1 Global Risk (No Funds)",
       "github.event.workflow_run.conclusion == 'success'",
       "github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'",
-      "github.event.workflow_run.head_sha == github.sha",
+      "github.event.workflow_run.head_sha != ''",
+      "scripts/ops/assert-website-publication-followup.mjs",
+      "TRUSTED_PUBLISHER_PARENT_SHA",
       "Verify live build marker matches canonical main",
       "Verify Lovable mirror source parity",
       "/api/health?deep=1"])
