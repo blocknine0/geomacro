@@ -222,3 +222,26 @@ test('a reader revision never shortens an existing publisher-denial backoff',asy
  const r=await collectProductionFreeSourceUpdates({stateClient:state,now:new Date(at.getTime()+60000),fetchImpl:async()=>{calls++;throw Error('denial must not be retried');}});
  assert.equal(calls,0);assert.equal(r.attempted,0);assert.equal(r.retained_degraded_readers,1);
 });
+
+test('MARAD and IEA 403 receive a persistent 24h quota backoff, not a six-hour retry storm',async()=>{
+ const state=memoryState();
+ let maradCalls=0,ieaCalls=0;
+ const traffic=async(url,opts)=>{
+   const s=byUrl.get(url);assert.ok(s);
+   if(s.id==='marad_advisories'){maradCalls++;return new Response('denied',{status:403});}
+   if(s.id==='iea_minerals_global'){ieaCalls++;return new Response('denied',{status:403});}
+   return network()(url,opts);
+ };
+ await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:traffic,now:at});
+ assert.equal(maradCalls,1);
+ assert.equal(ieaCalls,1);
+ const sixHours=await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:traffic,
+   now:new Date(at.getTime()+360*60000)});
+ assert.equal(maradCalls,1);
+ assert.equal(ieaCalls,1);
+ assert.ok(sixHours.retained_degraded_readers>=2);
+ await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:traffic,
+   now:new Date(at.getTime()+1440*60000)});
+ assert.equal(maradCalls,2);
+ assert.equal(ieaCalls,2);
+});

@@ -10,6 +10,11 @@ on:
       - "scripts/lib/imf-portwatch-daily-corridors.mjs"
       - "scripts/tests/imf-portwatch-daily-corridors.test.mjs"
       - "scripts/ops/observe-imf-portwatch-corridors.mjs"
+      - "scripts/lib/wdi-195-batch-reference.mjs"
+      - "scripts/tests/wdi-195-batch-reference.test.mjs"
+      - "scripts/lib/two-official-mineral-release-indices.mjs"
+      - "scripts/tests/two-official-mineral-release-indices.test.mjs"
+      - "scripts/ops/observe-free-batched-macro-minerals-195.mjs"
       - ".github/workflows/gdacs-native-country.yml"
   push:
     branches: [main]
@@ -22,6 +27,11 @@ on:
       - "scripts/lib/imf-portwatch-daily-corridors.mjs"
       - "scripts/tests/imf-portwatch-daily-corridors.test.mjs"
       - "scripts/ops/observe-imf-portwatch-corridors.mjs"
+      - "scripts/lib/wdi-195-batch-reference.mjs"
+      - "scripts/tests/wdi-195-batch-reference.test.mjs"
+      - "scripts/lib/two-official-mineral-release-indices.mjs"
+      - "scripts/tests/two-official-mineral-release-indices.test.mjs"
+      - "scripts/ops/observe-free-batched-macro-minerals-195.mjs"
       - ".github/workflows/gdacs-native-country.yml"
   workflow_dispatch:
   schedule:
@@ -52,6 +62,11 @@ jobs:
           node --check scripts/lib/imf-portwatch-daily-corridors.mjs
           node --check scripts/ops/observe-imf-portwatch-corridors.mjs
           node --test scripts/tests/imf-portwatch-daily-corridors.test.mjs
+          node --check scripts/lib/wdi-195-batch-reference.mjs
+          node --check scripts/lib/two-official-mineral-release-indices.mjs
+          node --check scripts/ops/observe-free-batched-macro-minerals-195.mjs
+          node --test scripts/tests/wdi-195-batch-reference.test.mjs
+          node --test scripts/tests/two-official-mineral-release-indices.test.mjs
   live-upstream:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: static
@@ -96,3 +111,27 @@ jobs:
           path: artifacts/portwatch-corridor-daily/receipt.json
           retention-days: 3
           if-no-files-found: warn
+
+  free-macro-mineral-global-daily:
+    # Reuse GDACS/PortWatch's existing 03:51 UTC free scheduling slot.
+    # Precisely THREE bounded no-key first-party GETs, no new cron trigger.
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22
+      - name: Read 195 WDI reference country rows + two national minerals indices
+        run: node scripts/ops/observe-free-batched-macro-minerals-195.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: free-batched-macro-minerals-195-${{ github.run_id }}
+          path: artifacts/free-global-source-budget/daily-observation.json
+          if-no-files-found: warn
+          retention-days: 3
