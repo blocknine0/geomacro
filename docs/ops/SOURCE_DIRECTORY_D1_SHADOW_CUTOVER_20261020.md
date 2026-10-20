@@ -58,3 +58,20 @@ compare results with actual original-source probes, and only then retire the
 old DB directory reads. Do not assert end-to-end 195-country current news,
 fresh GRO, commercial licenses, or full Supabase shutdown from source
 directory metadata alone.
+
+### Protected runner PostgreSQL transport fallback
+
+The first protected migration attempts failed **before any D1 write** at
+`SUPABASE_READ_ONLY_PSQL`. To avoid creating a new database or copying
+credentials into chat, the importer still requires a correctly pinned
+authoritative PostgreSQL DSN, and first attempts an isolated PostgreSQL
+REPEATABLE READ READ ONLY snapshot. If that network/TLS path fails, it can
+fall back to **GET-only** PostgREST against the single fixed original
+`ldpwajisioljyjtojvfx` domain with existing protected service-role
+credentials. It performs **two full 779-row source directory reads** and
+requires byte-identical aggregate manifest digests before writing D1.
+The fallback does not read any other table, store credentials, change
+rights, or imply a snapshot transaction across HTTP requests.
+The only audit output is source read transport, counts, SHA256 and D1
+cardinality/hash acceptance. Protected role keys are never printed.
+If neither transport succeeds, the import remains blocked.

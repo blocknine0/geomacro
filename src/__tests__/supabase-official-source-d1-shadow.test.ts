@@ -64,6 +64,15 @@ describe("owner-only legacy Supabase official source directories to private D1",
   expect(workflow).not.toMatch(/^  schedule:/m);
   expect(workflow).toContain("secrets.SUPABASE_DB_URL");
   expect(workflow).toContain("secrets.CLOUDFLARE_API_TOKEN");
+  expect(workflow).toContain("secrets.SUPABASE_SERVICE_ROLE_KEY");
+  expect(migration).toContain("POSTGREST_TWO_PASS_READ_ONLY");
+  expect(migration).toContain("SUPABASE_REST_DOUBLE_READ_HASH");
+  expect(migration).toContain('const api="https://"+AUTHORITATIVE_PROJECT+".supabase.co/rest/v1/"');
+  expect(migration).toContain('if(first.manifest_sha256!==second.manifest_sha256');
+  expect(migration).toContain('method:"GET",redirect:"error",cache:"no-store"');
+  expect(migration).toContain("source_read_transport:snapshot.read_transport");
+  expect(migration).not.toContain("console.error(response)");
+  expect(migration).not.toContain("console.error(service)");
   expect(migration).toContain("SUPABASE_URI_VALIDATION");
   expect(migration).toContain("SUPABASE_READ_ONLY_PSQL");
   expect(migration).toContain("SUPABASE_ROW_VALIDATION");

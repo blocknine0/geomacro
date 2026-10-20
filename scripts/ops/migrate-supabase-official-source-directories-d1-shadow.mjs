@@ -88,7 +88,7 @@ function validateDbUri(uri){
   if(!direct&&!pool)invalid();
  }catch{invalid()}
 }
-function supabaseSnapshot(){
+async function supabaseSnapshot(){
  stage="SUPABASE_URI_VALIDATION";
  const uri=String(process.env.SUPABASE_DB_URL??"");
  validateDbUri(uri);
@@ -108,9 +108,65 @@ function supabaseSnapshot(){
   input:sql,encoding:"utf8",maxBuffer:8*1024*1024,timeout:60000,
   env:{...process.env,PGDATABASE:uri,PGCONNECT_TIMEOUT:"12",PGSSLMODE:"verify-full"},
  });
- if(r.error||r.status!==0||typeof r.stdout!=="string")invalid();
- stage="SUPABASE_ROW_VALIDATION";
- return validateSupabaseDirectoryRows(r.stdout.split(/\r?\n/u).filter(l=>l.trim()&&l!=="BEGIN"&&l!=="COMMIT"));
+ if(!r.error&&r.status===0&&typeof r.stdout==="string"){
+   stage="SUPABASE_ROW_VALIDATION";
+   return {...validateSupabaseDirectoryRows(
+     r.stdout.split(/\r?\n/u).filter(l=>l.trim()&&l!=="BEGIN"&&l!=="COMMIT")
+   ),read_transport:"POSTGRES_READ_ONLY_SNAPSHOT"};
+ }
+ // Some protected GitHub runners have PostgreSQL-pooler TLS or network
+ // incompatibilities. Fall back ONLY to the exact pinned project's HTTPS
+ // read-only PostgREST service-key API. Never send DSN or key to Cloudflare.
+ // Two identical complete reads reject concurrent source-directory changes.
+ stage="SUPABASE_REST_SERVICE_AUTH";
+ const service=String(process.env.SUPABASE_SERVICE_ROLE_KEY||
+   process.env.APP_SUPABASE_SERVICE_ROLE_KEY||"");
+ if(service.length<40)invalid();
+ const api="https://"+AUTHORITATIVE_PROJECT+".supabase.co/rest/v1/";
+ async function restReadOnce(){
+   const result=[];
+   for(const [dataset,table] of Object.entries(specs)){
+     stage="SUPABASE_REST_READ_"+dataset.toUpperCase();
+     const url=api+table+"?select=*";
+     const response=await fetch(url,{
+       method:"GET",redirect:"error",cache:"no-store",
+       headers:{"apikey":service,"authorization":"Bearer "+service,
+         "accept":"application/json","range-unit":"items","range":"0-194"},
+       signal:AbortSignal.timeout(15000),
+     }).catch(()=>null);
+     if(!response||!response.ok||
+        !/^application\/json/u.test(response.headers.get("content-type")??""))
+       invalid();
+     if(Number(response.headers.get("content-length")??0)>1_000_000)invalid();
+     const reader=response.body?.getReader();
+     if(!reader)invalid();
+     let chunks=[],len=0;
+     for(;;){
+       const v=await reader.read();
+       if(v.done)break;
+       len+=v.value.byteLength;
+       if(len>1_000_000){await reader.cancel().catch(()=>{});invalid();}
+       chunks.push(v.value);
+     }
+     let bytes=new Uint8Array(len),offset=0;
+     for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength}
+     const text=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+     let rows;try{rows=JSON.parse(text)}catch{invalid()}
+     if(!Array.isArray(rows)||rows.length>195)invalid();
+     for(const row of rows){
+       if(!object(row)||typeof row.country_iso2!=="string")invalid();
+       result.push(JSON.stringify({dataset,iso2:row.country_iso2,row}));
+     }
+   }
+   stage="SUPABASE_REST_ROW_VALIDATION";
+   return validateSupabaseDirectoryRows(result);
+ }
+ const first=await restReadOnce();
+ const second=await restReadOnce();
+ stage="SUPABASE_REST_DOUBLE_READ_HASH";
+ if(first.manifest_sha256!==second.manifest_sha256||
+    JSON.stringify(first.counts)!==JSON.stringify(second.counts))invalid();
+ return {...second,read_transport:"POSTGREST_TWO_PASS_READ_ONLY"};
 }
 async function cloudflare(path,token,body){
  const response=await fetch("https://api.cloudflare.com/client/v4"+path,{
@@ -140,7 +196,7 @@ export async function migrateShadow(){
  const account=String(process.env.CLOUDFLARE_ACCOUNT_ID??"");
  const token=String(process.env.CLOUDFLARE_API_TOKEN??"");
  if(!/^[a-f0-9]{32}$/u.test(account)||token.length<20)invalid();
- const snapshot=supabaseSnapshot();
+ const snapshot=await supabaseSnapshot();
  stage="CLOUDFLARE_D1_DISCOVERY";
  const list=await cloudflare("/accounts/"+account+"/d1/database?per_page=100",token);
  const matches=(list.result??[]).filter(x=>x.name===D1);
@@ -184,6 +240,7 @@ export async function migrateShadow(){
  return {
   ok:true,schema:"geomacro.legacy-source-directory-d1-shadow-acceptance.v1",
   counts:snapshot.counts,missing_statistics_iso2:snapshot.missing_statistics_iso2,
+  source_read_transport:snapshot.read_transport,
   manifest_sha256:digest,strict_supabase_read_only:true,
   d1_exact_hash_and_cardinality_readback:true,
   source_activation_performed:false,partner_delivery_changed:false,
