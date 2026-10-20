@@ -44,12 +44,45 @@ bun scripts/ops/prepare-machine-intelligence-publication.ts \
 
 This rereads actual originals and the governed source-rights registry and
 writes a 0600 bundle with exactly `rows` and `eventPackages`. Its receipt
-contains the exact file SHA and immutable private B2 key. Use the existing
-governed private archive uploader to store those exact bytes, then manually
-run **Machine Dual-Authority Intelligence Publication** on main with
-`machine_b2_key` and independently verified `machine_b2_sha256`. Never place
-the input bundle, raw originals, licence files or private keys in Git, public
-artifacts or Actions input text. The workflow accepts a key and SHA only.
+contains the exact file SHA and immutable private B2 key. Use the **owner-private
+machine staging operator** below. It preflights the complete signed event batch
+against distinct approved public Ed25519 pins, actual original-page bytes and
+source-rights registry, then immutably uploads the exact signed input to B2,
+reads it back and can dispatch the protected publisher. No issuer private keys
+are given to GitHub or to the staging operator. Never place the input bundle,
+raw originals, licence files or private keys in Git, public artifacts or Actions
+input text. The workflow accepts a key and SHA only.
+
+### Approved immutable B2 input staging and handoff
+
+On the authorized private machine only, set
+`GEOMACRO_QUALIFIED_INTELLIGENCE_INPUT` to the existing 0600 signed output file
+and `GEOMACRO_QUALIFIED_INTELLIGENCE_SHA256` to its independently computed
+byte SHA-256. Set the three approved public-key identities and pins required
+by the existing protected machine publisher, but **never supply private PEMs**.
+Provide existing scoped B2/D1 governor credentials, with
+`B2_ACCOUNT_QUOTA_REQUIRED=1`,
+`B2_ACCOUNT_QUOTA_WORKFLOW_ID=machine_intelligence_signed_staging`,
+`B2_REQUEST_BUDGET=6`, `D1_DATABASE_ID`, `CLOUDFLARE_ACCOUNT_ID`,
+`CLOUDFLARE_API_TOKEN`, `GEOMACRO_COMMERCE_LEDGER_TOKEN`, `B2_KEY_ID`
+and `B2_APPLICATION_KEY`. No Supabase/Coinbase environment settings.
+
+```bash
+bun scripts/ops/stage-approved-machine-intelligence-b2.mjs --stage-dual-signed-no-funds
+```
+
+After exact B2 byte readback, the receipt gives the immutable private B2 key and
+SHA for manual `intelligence-machine-current.yml` dispatch. To automatically
+hand off the **already approved** signed input, set
+`MACHINE_SIGNED_READY_DISPATCH_ACK=YES_NO_FUNDS` and a restricted GitHub
+repository-dispatch token on this owner-private machine; rerun the same command.
+The event only submits the hash/key, never raw signed bytes. GitHub receipt
+`204` means a **dispatch was accepted**, not that production Intelligence has
+been published. The canonical protected publisher re-verifies live original
+clocks, independent facts/rights signatures, commercial source permission,
+B2 gzip/hash restore and D1 public readback. No approved real signed bundle
+was available in the checked production environment at implementation time;
+this staging improvement does **not** cure the current HTTP 503 by itself.
 
 ## Publication and serving
 
