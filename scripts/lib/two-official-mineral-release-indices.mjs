@@ -11,6 +11,8 @@ export const MINERAL_ORIGINAL_INDICES=Object.freeze([
 ]);
 const MINERAL=/\b(?:critical minerals?|rare[- ]earths?|cobalt|nickel|lithium|copper|graphite|rare earth elements?|mining|mineral resources?|geolog(?:y|ical))\b/iu;
 const MAX_ITEMS=30;
+export const NRCAN_OFFICIAL_NEWS_FALLBACK="https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&pick=5&format=atom&atomtitle=Natural%20Resources%20Canada";
+const NRCAN_ATOM_MAX_BYTES=160000;
 function* rssItems(xml){
  let cursor=0,n=0;
  while(n<MAX_ITEMS){
@@ -67,6 +69,48 @@ export function summarizeMineralOriginalIndex(spec,body,now=new Date()){
    full_original_publication_verified:false,
    complete_current_month_data_verified:false};
 }
+// The primary GEOSCAN publication RSS can fail on GitHub network transports.
+// On network failures only (NOT 401/403/429), reuse the already registered
+// first-party NRCan news publisher once. A fallback is not new corroboration.
+function* atomItems(xml){
+ let cursor=0,n=0;
+ while(n<MAX_ITEMS){
+   const pos=xml.indexOf("<entry>",cursor);if(pos<0)break;
+   const from=pos+7,end=xml.indexOf("</entry>",from);if(end<0)break;
+   cursor=end+8;n++;
+   if(end-from<=10000)yield xml.slice(from,end);
+ }
+}
+export function summarizeNrcanNewsAtomFallback(body,now=new Date()){
+ if(!(now instanceof Date)||!Number.isFinite(now.getTime()))throw Error("MINERAL_CLOCK_INVALID");
+ if(typeof body!=="string"||Buffer.byteLength(body,"utf8")>NRCAN_ATOM_MAX_BYTES||
+    !/<feed(?:\s|>)/iu.test(body)||!body.includes("<entry>")||
+    body.includes("<!DOCTYPE")||body.includes("<!ENTITY"))
+   throw Error("MINERAL_NRCAN_ATOM_SHAPE_UNVERIFIED");
+ const used=new Set();let dated=0,topics=0,recent=0;
+ for(const item of atomItems(body)){
+   const id=field(item,"id"),title=field(item,"title");
+   const timestamp=officialItemNativePublicationMs(field(item,"published"));
+   if(!id||used.has(id)||id.length>500||
+      !Number.isFinite(timestamp)||timestamp>now.getTime())continue;
+   used.add(id);dated++;
+   if(!MINERAL.test(title))continue;
+   topics++;
+   if(now.getTime()-timestamp<=30*86_400_000)recent++;
+ }
+ return {
+   id:"canada_nrcan_geoscan_mineral_publications",iso3:"CAN",
+   status:dated>0?"GEOSCAN_NETWORK_FAILED_NRCAN_NEWS_FALLBACK_OBSERVED":
+          "GEOSCAN_NETWORK_FAILED_NRCan_NEWS_DATE_UNVERIFIED",
+   upstream_actual_family:"nrcan",
+   same_publisher_family_fallback_used:true,
+   publisher_entries_with_native_publication_time:dated,
+   qualifying_relevant_entries:topics,recent_native_publisher_items:recent,
+   full_original_publication_verified:false,
+   complete_current_month_data_verified:false,
+   mineral_event_independently_verified:false
+ };
+}
 async function textBody(response,maxBytes){
  if([401,403,429].includes(response.status))throw Error("MINERAL_DENIED_OR_QUOTA");
  if(!response.ok)throw Error("MINERAL_HTTP_UNAVAILABLE");
@@ -83,9 +127,10 @@ async function textBody(response,maxBytes){
 }
 export async function observeTwoMineralIndices({fetchImpl=fetch,now=new Date()}={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))throw Error("MINERAL_CLOCK_INVALID");
- const readings=[];
+ const readings=[];let providerCalls=0;
  for(const spec of MINERAL_ORIGINAL_INDICES){
    try{
+    providerCalls++;
     const response=await fetchImpl(spec.url,{
       method:"GET",redirect:"error",signal:AbortSignal.timeout(10000),
       headers:{accept:spec.format==="rss"?"application/rss+xml, application/xml":"text/html"}
@@ -93,16 +138,30 @@ export async function observeTwoMineralIndices({fetchImpl=fetch,now=new Date()}=
     const data=await textBody(response,spec.maxBytes);
     readings.push(summarizeMineralOriginalIndex(spec,data,now));
    }catch(e){
-    const reason=String(e?.message??"");
-    readings.push({id:spec.id,iso3:spec.iso3,status:"UNVERIFIED_OR_UNAVAILABLE",
-      reason:/^MINERAL_[A-Z_]+$/u.test(reason)?reason:"MINERAL_NETWORK_FAILURE",
+    const message=String(e?.message??"");
+    const reason=/^MINERAL_[A-Z_]+$/u.test(message)?message:"MINERAL_NETWORK_FAILURE";
+    let alternate=null;
+    if(spec.iso3==="CAN"&&reason==="MINERAL_NETWORK_FAILURE"){
+      providerCalls++;
+      try{
+        const response=await fetchImpl(NRCAN_OFFICIAL_NEWS_FALLBACK,{
+          method:"GET",redirect:"error",signal:AbortSignal.timeout(10000),
+          headers:{accept:"application/atom+xml, application/xml"}
+        });
+        const body=await textBody(response,NRCAN_ATOM_MAX_BYTES);
+        alternate=summarizeNrcanNewsAtomFallback(body,now);
+      }catch{alternate=null;}
+    }
+    readings.push(alternate??{id:spec.id,iso3:spec.iso3,status:"UNVERIFIED_OR_UNAVAILABLE",
+      reason,
       publisher_entries_with_native_publication_time:0,qualifying_relevant_entries:0,
       recent_native_publisher_items:0,complete_current_month_data_verified:false});
    }
  }
  return {schema:"geomacro.two-national-mineral-index-observer.v1",checked_at:now.toISOString(),
-  upstream_calls:MINERAL_ORIGINAL_INDICES.length,
-  sources:readings,healthy_source_count:readings.filter(r=>r.status!=="UNVERIFIED_OR_UNAVAILABLE").length,
+  upstream_calls:providerCalls,
+  conditional_fallback_calls:providerCalls-MINERAL_ORIGINAL_INDICES.length,
+  sources:readings,healthy_source_count:readings.filter(r=>r.status==="MONTHLY_MINERAL_BULLETIN_INDEX_PRESENT"||r.status==="FIRST_PARTY_PUBLICATION_INDEX_DATES_OBSERVED"||r.status==="GEOSCAN_NETWORK_FAILED_NRCAN_NEWS_FALLBACK_OBSERVED").length,
   all_195_mineral_countries_verified:false,
   source_licences_for_paid_derived_outputs_verified:false,
   mine_disruption_or_trade_flow_verified:false,
