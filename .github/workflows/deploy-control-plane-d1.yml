@@ -32,6 +32,8 @@ jobs:
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
       RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
+      # Separate protected credential: never reuse the research or root/admin token.
+      PREDGE_RISK_GATE_TOKEN: ${{ secrets.PREDGE_RISK_GATE_TOKEN }}
       RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
       RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
       D1_DATABASE_NAME: geomacro-control-plane
@@ -169,6 +171,26 @@ jobs:
           test "${#PREDGE_RESEARCH_NEWS_TOKEN}" -eq 64
           echo "::add-mask::$PREDGE_RESEARCH_NEWS_TOKEN"
           echo "PREDGE_RESEARCH_NEWS_TOKEN=$PREDGE_RESEARCH_NEWS_TOKEN" >> "$GITHUB_ENV"
+          if test -n "${PREDGE_RISK_GATE_TOKEN:-}"; then
+            if ! [[ "$PREDGE_RISK_GATE_TOKEN" =~ ^[a-f0-9]{64}$ ]] ||
+               test "$PREDGE_RISK_GATE_TOKEN" = "$CONTROL_PLANE_TOKEN" ||
+               test "$PREDGE_RISK_GATE_TOKEN" = "$PREDGE_RESEARCH_NEWS_TOKEN" ||
+               test "$PREDGE_RISK_GATE_TOKEN" = "$ROOT_LEDGER_TOKEN"; then
+              echo "::error::PREDGE_RISK_GATE_SECRET_INVALID_OR_REUSED"; exit 5
+            fi
+            echo "::add-mask::$PREDGE_RISK_GATE_TOKEN"
+            echo "PREDGE_RISK_GATE_TOKEN_CONFIGURED=true" >> "$GITHUB_ENV"
+          else
+            echo "PREDGE_RISK_GATE_TOKEN_CONFIGURED=false" >> "$GITHUB_ENV"
+            echo "::warning::PREDGE_RISK_GATE_TOKEN missing; new endpoint fails closed until protected secret provisioned"
+          fi
+          if test -n "${RISK_OBJECT_VERIFY_KEYS_JSON:-}"; then
+            node -e 'const d=JSON.parse(process.env.RISK_OBJECT_VERIFY_KEYS_JSON); if(!d||typeof d!=="object"||Array.isArray(d))process.exit(3)'
+            echo "RISK_GATE_VERIFY_KEYS_CONFIGURED=true" >> "$GITHUB_ENV"
+          else
+            echo "RISK_GATE_VERIFY_KEYS_CONFIGURED=false" >> "$GITHUB_ENV"
+            echo "::warning::RISK_OBJECT_VERIFY_KEYS_JSON missing; signed GRO verification fails closed"
+          fi
 
       - name: Deploy D1 control-plane Worker with pinned Wrangler
         id: deploy
@@ -182,6 +204,14 @@ jobs:
           test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev deployment URL"; exit 6; }
           printf '%s' "$CONTROL_PLANE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put CONTROL_PLANE_TOKEN --config wrangler.runtime.jsonc >/tmp/d1-secret-put.log
           printf '%s' "$PREDGE_RESEARCH_NEWS_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_RESEARCH_NEWS_TOKEN --config wrangler.runtime.jsonc >/tmp/predge-research-secret-put.log
+          # Protected credentials and trust keys are installed only when
+          # configured. No private tokens are ever emitted to logs.
+          if test "${PREDGE_RISK_GATE_TOKEN_CONFIGURED:-}" = "true"; then
+            printf '%s' "$PREDGE_RISK_GATE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_RISK_GATE_TOKEN --config wrangler.runtime.jsonc >/dev/null
+          fi
+          if test "${RISK_GATE_VERIFY_KEYS_CONFIGURED:-}" = "true"; then
+            printf '%s' "$RISK_OBJECT_VERIFY_KEYS_JSON" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_VERIFY_KEYS_JSON --config wrangler.runtime.jsonc >/dev/null
+          fi
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
           echo "D1 control-plane Worker deployed and server-only secret configured."
 
