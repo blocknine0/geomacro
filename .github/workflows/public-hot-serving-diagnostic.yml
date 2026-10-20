@@ -32,6 +32,8 @@ concurrency:
   group: geomacro-public-hot-serving-diagnostic
   cancel-in-progress: true
 
+# A failed same-repo main health may finish after main advances. This
+# read-only diagnostic must then inspect the current main rather than skip.
 jobs:
   diagnose:
     if: >-
@@ -50,8 +52,6 @@ jobs:
           ) &&
           github.event.workflow_run.head_branch == 'main' &&
           github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
-          # Diagnose CURRENT main even when later trusted merges occurred while
-          # the failed production website-health run was finishing. Read only.
           github.event.workflow_run.head_sha != ''
         )
       )
