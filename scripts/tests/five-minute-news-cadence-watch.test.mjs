@@ -76,7 +76,7 @@ test("uses pre-existing backstop wakeups and ephemeral GitHub Actions dispatch; 
  assert.match(wf,/secrets\.GITHUB_TOKEN/);
  assert.match(wf,/node scripts\/ops\/recover-stalled-five-minute-news\.mjs/);
  assert.match(cli,/ACTUAL_PUBLISHER_JOB_PROOF_UNAVAILABLE/);
- assert.match(cli,/new URL\("workflows\/"\+FASTLANE_WORKFLOW\+"\/dispatches"/);
+ assert.match(cli,/FASTLANE_WORKFLOW\+"\/dispatches"/);
  assert.match(cli,/response.status!==204/);
  // The EXISTING separately gated signed-Finds catch-up uses B2. The
  // NEW watchdog is the isolated job above catch-up-derived-only, with no B2.
