@@ -8,7 +8,7 @@
  */
 import {createHmac} from "node:crypto";
 import {readFiveMinuteNewsFastlane} from "../../src/lib/stateless-public-intelligence.server";
-import {checkedDerivedNews,fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
+import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
 import type {StatelessIntelligenceSignal} from "../../src/lib/stateless-intelligence-model";
 
 const ROOT=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
