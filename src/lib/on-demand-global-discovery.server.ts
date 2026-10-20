@@ -1281,7 +1281,8 @@ async function discoverOnDemandImpl(
       ?(["rare_earth","macro","geopolitics"] as const)
       :(["rare_earth","geopolitics"] as const);
     for(const category of targeted){
-      if(!categories.includes(category) || networkAttempts>=\n          (freshThreeDomainEventDiscovery?12:11))break;
+      if(!categories.includes(category) || networkAttempts>=
+          (freshThreeDomainEventDiscovery?12:11))break;
       const originalPresent=settled.some(result=>
         result.status==="fulfilled" &&
         "private_candidates" in result.value &&
