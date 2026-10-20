@@ -43,6 +43,19 @@ The project also has GRI snapshots/contributions, source-correlation, 195-countr
 - All 5 old commercial payment events are `environment=testnet`, `revenue_classification=testnet_non_revenue`, `commercial_revenue=false`.
 - Total signed GRO count or a 195-country source directory does NOT establish current verified commercial GRO availability.
 
+### Further read-only archive and entitlement counters
+
+Measured at the same audit date:
+
+- 41,487 of 46,163 `live_external_observations` rows hold non-null `archive_bundle_key` **and** `archive_bundle_sha256`.
+- 29,934 of 30,777 `live_raw_source_snapshots` rows hold these two archive reference fields.
+- 9,324 `geomacro_risk_objects` carry direct archive key/hash; 8,695 carry bundle key/hash. These populations may overlap. Do not add them together.
+- `live_structured_events` has 61 rows marked `commercial_eligibility_status=VERIFIED`, **not** 61 newly eligible news releases and not a current signed GRO.
+- 4 `commercial_entitlement_grants`, 3 `coinbase_x402_deliveries`, 3 commercial API credential lifecycle events, and 8 agent-commerce delivery rows require separate immutable entitlement/replay integrity verification.
+- 23 legacy `live_source_registry` rows, 9 rows simultaneously `enabled` and `derivative_intelligence_allowed`.
+
+**Non-null archive references do not prove Backblaze bytes still exist, pass SHA-256, restore correctly, or have redistribution rights.** No original rows or secrets were exported or deleted by this read-only audit.
+
 ## What is already Supabase-free
 
 - Public 72h Geomacro-derived news journal via Cloudflare D1, same IDs and structured projection for website and free research. 15-minute original-release delay and source rights restrictions remain.
