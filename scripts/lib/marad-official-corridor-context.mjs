@@ -24,8 +24,9 @@ function xmlText(item,name){
  let value=item.slice(from,end).trim();
  if(value.startsWith("<![CDATA[")&&value.endsWith("]]>"))
    value=value.slice(9,-3);
- return value.replaceAll("&amp;","&").replaceAll("&quot;",'"')
-   .replaceAll("&#39;","'").replaceAll("&apos;","'").trim();
+ return value.replaceAll("&quot;",'"')
+   .replaceAll("&#39;","'").replaceAll("&apos;","'")
+   .replaceAll("&amp;","&").trim();
 }
 function* rssItems(xml){
  let cursor=0,scanned=0;
