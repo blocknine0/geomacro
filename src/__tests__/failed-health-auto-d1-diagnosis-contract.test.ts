@@ -27,9 +27,9 @@ describe("automatic read-only P0 diagnosis when exact-main website health fails"
    expect(diagnostic).toContain("github.event.workflow_run.head_sha != ''");
    // Folded YAML expressions are expressions, not shell scripts: inline
    // hash-prefixed comment lines would invalidate the workflow before jobs.
-   const expr=diagnostic.split("    if: >-\\n")[1]?.split("    runs-on:")[0];
+   const expr=diagnostic.split("    if: >-\n")[1]?.split("    runs-on:")[0];
    expect(expr).toBeTruthy();
-   expect(expr).not.toMatch(/^\\s*#/m);
+   expect(expr).not.toMatch(/^\s*#/m);
  });
  it("preserves genuine failure, independent metadata readback and zero-funds isolation",()=>{
    expect(diagnostic).toContain("node scripts/ops/diagnose-public-hot-serving.mjs");
