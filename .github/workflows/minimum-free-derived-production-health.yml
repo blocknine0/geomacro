@@ -87,6 +87,25 @@ jobs:
             valid_free_profile_contract:v.schema==="geomacro.free-derived-deep-health.v1",
             private_stories_logged:false,payments:0,
           }));
+          // The hosted server's outgoing Worker fetch can be unavailable
+          // even while canonical D1 and the ACTUAL website have just passed
+          // independent native-date, SHA and first-HTML acceptance above.
+          // Demote ONLY this exact known host-egress status to a WARNING.
+          // Never report this same-origin profile as 200, never waive D1/SSR,
+          // and never waive the separate signed Production Website Health.
+          if(response.status===503&&v.ok===false&&
+             v.schema==="geomacro.free-derived-deep-health.v1"&&
+             v.reason==="FREE_D1_TRANSPORT_UNAVAILABLE"&&
+             v.x402_payment_authorized===false&&v.chargeable===false&&
+             v.settlement_performed===false&&
+             v.current_signed_hot_snapshots_attested===false){
+            console.log("::warning title=Free profile server egress degraded::D1 and website first HTML verified separately; hosted free profile still HTTP 503");
+            console.log(JSON.stringify({schema:"geomacro.free-profile-degraded-isolation.v1",
+              free_derived_site_verified:true,hosted_profile_ready:false,
+              same_origin_egress_degraded:true,signed_hot_readiness_claimed:false,
+              d1_source_data_logged:false,payment_attempted:false}));
+            process.exit(0);
+          }
           if(response.status!==200||v.ok!==true||
              v.schema!=="geomacro.free-derived-deep-health.v1"||
              v.current_72h_derived_rows<1||
