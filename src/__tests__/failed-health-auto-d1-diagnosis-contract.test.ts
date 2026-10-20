@@ -25,6 +25,10 @@ describe("automatic read-only P0 diagnosis when exact-main website health fails"
    // canonical main rather than silently skip on a SHA race.
    expect(diagnostic).not.toContain("github.event.workflow_run.head_sha == github.sha");
    expect(diagnostic).toContain("github.event.workflow_run.head_sha != ''");
+   // A skipped/ineligible workflow_run cannot starve or cancel a main-push
+   // status probe. Each lane keeps its own bounded one-active-run policy.
+   expect(diagnostic).toContain("group: geomacro-public-hot-serving-diagnostic-${{ github.event_name }}");
+   expect(diagnostic).toContain("cancel-in-progress: true");
    // Folded YAML expressions are expressions, not shell scripts: inline
    // hash-prefixed comment lines would invalidate the workflow before jobs.
    const expr=diagnostic.split("    if: >-\n")[1]?.split("    runs-on:")[0];
