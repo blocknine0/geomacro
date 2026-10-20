@@ -55,6 +55,20 @@ async function limitedJson(response,label){
  try{return JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(b))}
  catch{throw Error(label+"_JSON_INVALID")}
 }
+// GovDelivery subscription changes, password/reset/opt-in confirmations and
+// preferences notices can originate from the exact legitimate MARAD sender.
+// A real subscription confirmation is NOT a maritime advisory or incident.
+export function isMaritimeAlertSubject(family,subject){
+ if(typeof subject!=="string"||subject.length>300)return false;
+ const value=subject.trim().toLowerCase();
+ if(!value || /(?:subscription|subscriber|preferences|welcome|confirmation|confirm your|password|unsubscribe|verify your|account update|sign.?up|digest preferences)/u.test(value))
+   return false;
+ if(family==="marad_advisories")
+   return /\b(?:u\.?s\.? maritime (?:alert|advisory)|maritime (?:alert|advisory)|maritime security (?:alert|advisory)|usma[- ]?20\d{2}[-/]\d{3})\b/u.test(value);
+ if(family==="ukmto")
+   return /\b(?:ukmto|maritime security|vessel|incident|warning|advisory|attack)\b/u.test(value);
+ return false;
+}
 function sourceFor(from,config){
  if(typeof from!=="string")return null;
  const value=from.trim().toLowerCase();
@@ -70,7 +84,7 @@ export function summarizeZohoMaritimeMessages(messages,headerMap,config,now=new 
   const id=String(m?.messageId??"");
   const family=sourceFor(m?.fromAddress,config);
   const received=Number(m?.receivedTime);
-  if(!family||!/^\d{8,26}$/u.test(id)||seen.has(id)||
+  if(!family||!isMaritimeAlertSubject(family,m?.subject)||!/^\d{8,26}$/u.test(id)||seen.has(id)||
     !Number.isSafeInteger(received)||received>now.getTime()+60_000||
     now.getTime()-received>LAST_HOURS*3_600_000)continue;
   seen.add(id);
@@ -147,10 +161,10 @@ export async function observeZohoMaritime({env=process.env,fetchImpl=fetch,now=n
  }),"ZOHO_LIST");
  if(Number(list?.status?.code)!==200 || !Array.isArray(list?.data)||
     list.data.length>20)throw Error("ZOHO_LIST_SHAPE_INVALID");
- const selected=list.data.filter(x=>sourceFor(x?.fromAddress,cfg)&&
+ const selected=list.data.filter(x=>{const family=sourceFor(x?.fromAddress,cfg);return family&&isMaritimeAlertSubject(family,x?.subject)&&
    /^\d{8,26}$/u.test(String(x?.messageId??"")) &&
    Number(x.receivedTime)<=now.getTime()+60_000 &&
-   now.getTime()-Number(x.receivedTime)<=LAST_HOURS*3_600_000).slice(0,MAX_HEADERS);
+   now.getTime()-Number(x.receivedTime)<=LAST_HOURS*3_600_000;}).slice(0,MAX_HEADERS);
  const headerMap={};
  for(const m of selected){
   const url=mailRoot+"/api/accounts/"+cfg.accountId+"/folders/"+cfg.folderId+

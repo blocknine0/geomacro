@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
- validateZohoMaritimeConfig,observeZohoMaritime,summarizeZohoMaritimeMessages
+ validateZohoMaritimeConfig,observeZohoMaritime,summarizeZohoMaritimeMessages,isMaritimeAlertSubject
 } from "../lib/zoho-maritime-subscription-mail.mjs";
 const now=new Date("2026-10-20T12:00:00Z");
 const env={
@@ -101,4 +101,42 @@ test("unconfigured credentials perform no network request; 403 never retries",as
   n++;return new Response("access denied",{status:403});
  }}),/ZOHO_OAUTH_HTTP_DENIED/);
  assert.equal(n,1);
+});
+
+test("MARAD official free subscription receipt is not a source incident or alert",async()=>{
+ const confirmation={...marad,subject:"Subscription Change Confirmation"};
+ const preferences={...marad,messageId:"1719887058769100022",subject:"U.S. Maritime Alerts & Advisories subscription preferences"};
+ const legit={...marad,messageId:"1719887058769100033",subject:"U.S. Maritime Advisory 2026-013 Red Sea"};
+ assert.equal(isMaritimeAlertSubject("marad_advisories",confirmation.subject),false);
+ assert.equal(isMaritimeAlertSubject("marad_advisories",preferences.subject),false);
+ assert.equal(isMaritimeAlertSubject("marad_advisories",legit.subject),true);
+ assert.equal(isMaritimeAlertSubject("ukmto","UKMTO account confirmation"),false);
+ assert.equal(isMaritimeAlertSubject("ukmto","UKMTO warning Gulf of Aden"),true);
+ const x=summarizeZohoMaritimeMessages([confirmation,preferences,legit],
+   {[confirmation.messageId]:hdr("marad@info.dot.gov"),
+    [preferences.messageId]:hdr("marad@info.dot.gov"),
+    [legit.messageId]:hdr("marad@info.dot.gov")},
+   validateZohoMaritimeConfig(env),now);
+ assert.equal(x.candidate_counts.marad_advisories,1);
+ assert.equal(x.leads.length,1);
+ assert.equal(x.leads[0].publisher_authentication_verified,false);
+ assert.equal(x.leads[0].commercial_reuse_rights_verified,false);
+});
+test("OAuth adapter skips header GETs for official GovDelivery subscription confirmations",async()=>{
+ const confirmation={...marad,subject:"Subscription Change Confirmation"};
+ let calls=0;
+ const responses=[
+  {access_token:"sample_token_long_enough"},
+  {status:{code:200},data:{primaryEmailAddress:"contact@geomacro.live"}},
+  {status:{code:200},data:[confirmation]}
+ ];
+ const result=await observeZohoMaritime({now,env,fetchImpl:async()=>{
+   const next=responses[calls++];if(!next)throw Error("unexpected header GET");
+   return Response.json(next);
+ }});
+ assert.equal(calls,3);
+ assert.equal(result.external_calls,3);
+ assert.equal(result.candidate_counts.marad_advisories,0);
+ assert.equal(result.status,"NO_QUALIFIED_MAIL_HEADER_CANDIDATES");
+ assert.equal(result.paid_partner_delivery_enabled,false);
 });
