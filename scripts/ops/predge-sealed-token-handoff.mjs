@@ -38,11 +38,12 @@ export function resolvePredgeResearchBearer({root,override}={}){
   // Always validate the original root and control-plane namespace to avoid
   // accidentally enrolling privileged credentials as partner Bearers.
   const old=derivePredgeResearchBearer(root);
-  if(override===undefined||override===null||override==="")return old;
+  if(override===undefined||override===null||override==="")
+    error("PREDGE_RESEARCH_ROTATION_REQUIRED");
   if(typeof override!=="string"||!/^[a-f0-9]{64}$/.test(override))
     error("PREDGE_HANDOFF_EXISTING_PARTNER_TOKEN_INVALID");
   const admin=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
-  if(override===root||override===admin)
+  if(override===root||override===admin||override===old)
     error("PREDGE_HANDOFF_PRIVILEGED_TOKEN_REUSE_FORBIDDEN");
   return override;
 }
