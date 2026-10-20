@@ -46,6 +46,10 @@ const output={
  synchronous_request_path:"website /api/risk-gate -> Cloudflare Worker purpose-scoped auth -> D1 atomic quota/idempotency -> signed GRO verification -> canonical deterministic risk-gate-engine -> D1 immutable decision replay",
  supabase_used_in_request_path:false,
  external_model_provider_in_synchronous_request_path: false,
+ external_model_provider_saturation:{
+  status:"not_applicable_to_synchronous_risk_gate_request_path",
+  reason:"Signed GRO and deterministic Risk Gate engine; no external model-provider requests",
+ },
  legacy_supabase_modules_still_present_in_repository:true,
  production_load_tested:false,
  payment_or_mainnet_activation:false,
