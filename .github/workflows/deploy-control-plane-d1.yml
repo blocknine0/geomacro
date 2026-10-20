@@ -151,24 +151,29 @@ jobs:
           echo "CONTROL_PLANE_TOKEN=$CONTROL_PLANE_TOKEN" >> "$GITHUB_ENV"
           # Distinct HMAC namespace: sharing Predge's research token never
           # shares the control-plane admin or commercial ledger secret.
+          # Revoke the old 19-Oct deterministic HMAC research Bearer.
+          # Never re-enable this fallback: an emailed credential may be exposed.
+          PREDGE_REVOKED_OLD_TOKEN="$(node -e "const c=require('node:crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-72h-research-only-v1').digest('hex'))")"
+          echo "::add-mask::$PREDGE_REVOKED_OLD_TOKEN"
           if test -n "${PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE:-}"; then
-            # The existing Worker contract accepts exact lowercase 64-hex.
-            # Never silently change the grant by accepting an arbitrary
-            # Predge-issued API credential for a different system.
             PREDGE_RESEARCH_NEWS_TOKEN="$PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE"
             if ! [[ "$PREDGE_RESEARCH_NEWS_TOKEN" =~ ^[a-f0-9]{64}$ ]]; then
               echo "::error::PREDGE_RESEARCH_OVERRIDE_INVALID_FORMAT"; exit 5
             fi
             if test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$ROOT_LEDGER_TOKEN" ||
-               test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$CONTROL_PLANE_TOKEN"; then
+               test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$CONTROL_PLANE_TOKEN" ||
+               test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$PREDGE_REVOKED_OLD_TOKEN"; then
               echo "::error::PREDGE_RESEARCH_PRIVILEGED_CREDENTIAL_REUSE_FORBIDDEN"; exit 5
             fi
-            echo "PREDGE_RESEARCH_GRANT_MODE=PROTECTED_PARTNER_ISSUED_TOKEN" >> "$GITHUB_ENV"
+            echo "PREDGE_RESEARCH_GRANT_MODE=PROTECTED_ROTATED_TOKEN" >> "$GITHUB_ENV"
           else
-            PREDGE_RESEARCH_NEWS_TOKEN="$(node -e "const c=require('node:crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-72h-research-only-v1').digest('hex'))")"
-            echo "PREDGE_RESEARCH_GRANT_MODE=EXISTING_SEPARATE_HMAC_TOKEN" >> "$GITHUB_ENV"
+            # Deliberately invalid Worker token disables authenticated research
+            # until the owner provisions a fresh purpose-scoped secret.
+            # This overwrites any previously deployed deterministic token.
+            PREDGE_RESEARCH_NEWS_TOKEN="REVOKED_ROTATION_REQUIRED"
+            echo "PREDGE_RESEARCH_GRANT_MODE=REVOKED_PENDING_OWNER_ROTATION" >> "$GITHUB_ENV"
+            echo "::warning::PREDGE_RESEARCH_ROTATION_REQUIRED_PRIVATE_FEED_CLOSED"
           fi
-          test "${#PREDGE_RESEARCH_NEWS_TOKEN}" -eq 64
           echo "::add-mask::$PREDGE_RESEARCH_NEWS_TOKEN"
           echo "PREDGE_RESEARCH_NEWS_TOKEN=$PREDGE_RESEARCH_NEWS_TOKEN" >> "$GITHUB_ENV"
           if test -n "${PREDGE_RISK_GATE_TOKEN:-}"; then
