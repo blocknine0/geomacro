@@ -55,7 +55,7 @@ describe("quota-aware genuine immutable historical GRI retry",()=>{
   expect(y).toContain("id: gri_history_quota");
   expect(y).toContain("node scripts/ops/preflight-gri-historical-shared-quota.mjs");
   expect(y).toContain("steps.gri_history_quota.outputs.ready == 'true'");
-  expect(y).toContain("GRI_HISTORY_SHARED_QUOTA_HELD_NO_RESTORE");
+  expect(y).toContain("GRI_HISTORY_SHARED_QUOTA_HELD_NO_B2_READBACK");
   expect(y).toContain("GEOMACRO_GRI_RESTORE_WEBSITE_HISTORY");
   expect(y).not.toContain("COINBASE_API_KEY: "+String.fromCharCode(36)+"{{ secrets.");
  });
