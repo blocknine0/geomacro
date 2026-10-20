@@ -3,7 +3,7 @@
  * Separate purpose-scoped bearer, bounded request, D1 atomic quota, idempotent
  * audit and genuine signed GRO verified against owner-provisioned trust keys.
  */
-import {evaluateRiskGate} from "../../../src/lib/risk-gate-engine.ts";
+// Load the canonical TS engine lazily only after signed GRO acceptance.\n// The D1 Worker is also imported by Node ESM ops tests without TS extension resolution.
 
 const HASH=/^[a-f0-9]{64}$/;
 const ISO3=/^[A-Z]{3}$/;
@@ -249,6 +249,7 @@ export async function predgeRiskGateD1(request,env,now=Date.now()){
    const gro=row?await verifyHotGRO(row,env,parsed.subject,now):null;
    if(!gro)return fail("CURRENT_SIGNED_GRO_UNAVAILABLE",503,{
      reason_code:"NO_INDEPENDENTLY_VERIFIED_CURRENT_COMMERCIAL_GRO"});
+   const {evaluateRiskGate}=await import("../../../src/lib/risk-gate-engine.ts");
    const result=evaluateRiskGate(parsed,gro,new Date(now));
    if(result.execution_authorized!==false)throw Error("EXECUTION_BOUNDARY");
    const response={ok:true,risk_gate:result,context:{
