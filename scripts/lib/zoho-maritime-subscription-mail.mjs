@@ -9,6 +9,7 @@ const DATA_CENTRES=Object.freeze({
  jp:["https://accounts.zoho.jp","https://mail.zoho.jp"]
 });
 const MAX_RESPONSE_BYTES=192*1024;
+export const MARAD_SUBSCRIPTION_MAILBOX="contact@geomacro.live";
 const MAX_HEADERS=3;
 const LAST_HOURS=72;
 const ROUTES=Object.freeze([
@@ -25,8 +26,8 @@ export function validateZohoMaritimeConfig(env){
  const required=["ZOHO_MAIL_CLIENT_ID","ZOHO_MAIL_CLIENT_SECRET","ZOHO_MAIL_REFRESH_TOKEN",
                  "ZOHO_MAIL_ACCOUNT_ID","ZOHO_MAIL_FOLDER_ID"];
  if(required.some(k=>!get(k)))return {ready:false,status:"ZOHO_OAUTH_SETUP_REQUIRED"};
- const region=get("ZOHO_MAIL_REGION")||"us";
- if(!Object.hasOwn(DATA_CENTRES,region))throw Error("ZOHO_REGION_NOT_ALLOWED");
+ const region=get("ZOHO_MAIL_REGION")||"in";
+ if(region!=="in"||!Object.hasOwn(DATA_CENTRES,region))throw Error("ZOHO_REGION_NOT_ALLOWED");
  const accountId=get("ZOHO_MAIL_ACCOUNT_ID"),folderId=get("ZOHO_MAIL_FOLDER_ID");
  if(!/^\d{5,26}$/u.test(accountId)||!/^\d{5,26}$/u.test(folderId))
    throw Error("ZOHO_MAIL_ID_INVALID");
@@ -34,6 +35,7 @@ export function validateZohoMaritimeConfig(env){
  if(ukmto && !/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/u.test(ukmto))
    throw Error("UKMTO_APPROVED_SENDER_INVALID");
  return {ready:true,status:"CONFIGURED",region,accountId,folderId,
+  expectedMailbox:MARAD_SUBSCRIPTION_MAILBOX,
   clientId:get("ZOHO_MAIL_CLIENT_ID"),clientSecret:get("ZOHO_MAIL_CLIENT_SECRET"),
   refreshToken:get("ZOHO_MAIL_REFRESH_TOKEN"),ukmtoSender:ukmto};
 }
@@ -128,10 +130,18 @@ export async function observeZohoMaritime({env=process.env,fetchImpl=fetch,now=n
  const token=(await limitedJson(tokenRes,"ZOHO_OAUTH")).access_token;
  if(typeof token!=="string"||token.length<12||token.length>2048)throw Error("ZOHO_OAUTH_NO_TOKEN");
  const headers={authorization:"Zoho-oauthtoken "+token,accept:"application/json"};
+ // Bind the OAuth account ID to the subscriber mailbox BEFORE listing any
+ // messages. Prevent an accidentally pasted ID from reading another inbox.
+ const account=await limitedJson(await fetchImpl(mailRoot+"/api/accounts/"+cfg.accountId,{
+  method:"GET",redirect:"error",signal:AbortSignal.timeout(10000),headers
+ }),"ZOHO_ACCOUNT");
+ const address=String(account?.data?.primaryEmailAddress??account?.data?.mailboxAddress??"").trim().toLowerCase();
+ if(Number(account?.status?.code)!==200||address!==cfg.expectedMailbox)
+   throw Error("ZOHO_MAILBOX_IDENTITY_MISMATCH");
  const listUrl=new URL(mailRoot+"/api/accounts/"+cfg.accountId+"/messages/view");
  for(const [k,v] of Object.entries({folderId:cfg.folderId,start:"1",limit:"20",
         status:"all",sortBy:"date",sortorder:"false"}))listUrl.searchParams.set(k,v);
- let apiCalls=2;
+ let apiCalls=3;
  const list=await limitedJson(await fetchImpl(listUrl.href,{
   method:"GET",redirect:"error",signal:AbortSignal.timeout(10000),headers
  }),"ZOHO_LIST");
@@ -154,5 +164,6 @@ export async function observeZohoMaritime({env=process.env,fetchImpl=fetch,now=n
     headerMap[String(m.messageId)]=result.data.headerContent;
  }
  return {...summarizeZohoMaritimeMessages(list.data,headerMap,cfg,now),
-   external_calls:apiCalls,ukmto_sender_ready:!!cfg.ukmtoSender,configured:true};
+   external_calls:apiCalls,ukmto_sender_ready:!!cfg.ukmtoSender,configured:true,
+   mailbox_identity_verified:true};
 }
