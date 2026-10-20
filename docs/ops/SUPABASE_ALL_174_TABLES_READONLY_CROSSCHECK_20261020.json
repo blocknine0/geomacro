@@ -1,0 +1,2318 @@
+{
+  "schema": "geomacro.supabase-live-table-schema-manifest.v1",
+  "captured_at": "2026-10-20",
+  "project_id": "ldpwajisioljyjtojvfx",
+  "live_project_status": "ACTIVE_HEALTHY",
+  "total_tables": 174,
+  "schema_counts": {
+    "public": 139,
+    "auth": 27,
+    "storage": 8
+  },
+  "metadata_only": true,
+  "customer_rows_exported": false,
+  "plaintext_secrets_exported": false,
+  "d1_import_performed": false,
+  "legacy_data_deletion_authorized": false,
+  "classifications": {
+    "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER": 27,
+    "REVIEW_REQUIRED_OTHER_DOMAIN": 31,
+    "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY": 35,
+    "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT": 13,
+    "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE": 36,
+    "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE": 24,
+    "SUPABASE_MANAGED_STORAGE_NEEDS_B2_BYTE_RESTORE": 8
+  },
+  "tables": [
+    {
+      "schema": "auth",
+      "table": "audit_log_entries",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "custom_oauth_providers",
+      "estimated_rows": 0,
+      "storage_bytes": 57344,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "flow_state",
+      "estimated_rows": 0,
+      "storage_bytes": 40960,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "identities",
+      "estimated_rows": 0,
+      "storage_bytes": 40960,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "instances",
+      "estimated_rows": 0,
+      "storage_bytes": 16384,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "mfa_amr_claims",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "mfa_challenges",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "mfa_factors",
+      "estimated_rows": 0,
+      "storage_bytes": 57344,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "mfa_recovery_code_sets",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "mfa_recovery_codes",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "oauth_authorizations",
+      "estimated_rows": 0,
+      "storage_bytes": 40960,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "oauth_client_states",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "oauth_clients",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "oauth_consents",
+      "estimated_rows": 0,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "one_time_tokens",
+      "estimated_rows": 0,
+      "storage_bytes": 90112,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "refresh_tokens",
+      "estimated_rows": 0,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "saml_providers",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "saml_relay_states",
+      "estimated_rows": 0,
+      "storage_bytes": 40960,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "schema_migrations",
+      "estimated_rows": 82,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "version"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "scim_tokens",
+      "estimated_rows": 0,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "scim_users",
+      "estimated_rows": 0,
+      "storage_bytes": 90112,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "sessions",
+      "estimated_rows": 0,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "sso_domains",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "sso_providers",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "users",
+      "estimated_rows": 0,
+      "storage_bytes": 131072,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "webauthn_challenges",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "auth",
+      "table": "webauthn_credentials",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_AUTH_NEEDS_SESSION_IDENTITY_CUTOVER",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "a2a_audit_events",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "a2a_messages",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "a2a_push_notification_configs",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "a2a_tasks",
+      "estimated_rows": 0,
+      "storage_bytes": 40960,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "agent_api_requests",
+      "estimated_rows": 649,
+      "storage_bytes": 262144,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "agent_commerce_deliveries",
+      "estimated_rows": 8,
+      "storage_bytes": 172032,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "agent_goat_order_challenges",
+      "estimated_rows": 8,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "request_id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "agent_goat_order_creation_claims",
+      "estimated_rows": 8,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "request_id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "agent_goat_orders",
+      "estimated_rows": 8,
+      "storage_bytes": 131072,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "agent_goat_pilot_fulfillments",
+      "estimated_rows": 2,
+      "storage_bytes": 81920,
+      "primary_key_columns": [
+        "request_id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "agent_goat_pilot_requests",
+      "estimated_rows": 9,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "request_id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "agent_goat_pilot_resources",
+      "estimated_rows": 8,
+      "storage_bytes": 106496,
+      "primary_key_columns": [
+        "request_id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "agent_payments",
+      "estimated_rows": 5,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "agentic_demo_feedback",
+      "estimated_rows": 1,
+      "storage_bytes": 57344,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "central_security_request_buckets",
+      "estimated_rows": 471,
+      "storage_bytes": 172032,
+      "primary_key_columns": [
+        "route_class",
+        "bucket_kind",
+        "bucket_key"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "central_security_request_buckets_v2",
+      "estimated_rows": 3787,
+      "storage_bytes": 1130496,
+      "primary_key_columns": [
+        "route_class",
+        "bucket_kind",
+        "bucket_key"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "coinbase_x402_deliveries",
+      "estimated_rows": 3,
+      "storage_bytes": 147456,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "coinbase_x402_product_audit",
+      "estimated_rows": 0,
+      "storage_bytes": 40960,
+      "primary_key_columns": [
+        "request_id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "coinbase_x402_usage_reservations",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "payment_fingerprint_sha256"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "commercial_api_credential_lifecycle_events",
+      "estimated_rows": 3,
+      "storage_bytes": 81920,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "commercial_api_credentials",
+      "estimated_rows": 11,
+      "storage_bytes": 81920,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "commercial_credit_accounts",
+      "estimated_rows": 4,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "commercial_credit_usage",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "commercial_entitlement_grants",
+      "estimated_rows": 4,
+      "storage_bytes": 57344,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "commercial_marketing_drafts",
+      "estimated_rows": 0,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "commercial_payment_events",
+      "estimated_rows": 5,
+      "storage_bytes": 131072,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "commercial_principals",
+      "estimated_rows": 7,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "commercial_proof_snapshots",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "commercial_share_events",
+      "estimated_rows": 0,
+      "storage_bytes": 40960,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "commercial_usage_events",
+      "estimated_rows": 6,
+      "storage_bytes": 147456,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "country_intelligence_states",
+      "estimated_rows": 6,
+      "storage_bytes": 163840,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "early_warning_alerts",
+      "estimated_rows": 0,
+      "storage_bytes": 57344,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "early_warning_distribution_receipts",
+      "estimated_rows": 0,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "events",
+      "estimated_rows": 1980,
+      "storage_bytes": 3088384,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "geomacro_risk_objects",
+      "estimated_rows": 21178,
+      "storage_bytes": 114163712,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "gri_benchmark_definitions",
+      "estimated_rows": 6,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "benchmark_key"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "gri_benchmark_observations",
+      "estimated_rows": 96,
+      "storage_bytes": 90112,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "gri_contributions",
+      "estimated_rows": 6389,
+      "storage_bytes": 9347072,
+      "primary_key_columns": [
+        "snapshot_id",
+        "event_id"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "gri_event_assessments",
+      "estimated_rows": 49,
+      "storage_bytes": 172032,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "gri_replay_runs",
+      "estimated_rows": 0,
+      "storage_bytes": 16384,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "gri_replay_snapshots",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "replay_run_id",
+        "as_of"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "gri_snapshots",
+      "estimated_rows": 267,
+      "storage_bytes": 4415488,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "gri_source_dispositions",
+      "estimated_rows": 4931,
+      "storage_bytes": 4374528,
+      "primary_key_columns": [
+        "snapshot_id",
+        "event_id"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "gri_story_assignments",
+      "estimated_rows": 288,
+      "storage_bytes": 311296,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "gri_story_clusters",
+      "estimated_rows": 240,
+      "storage_bytes": 221184,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "gri_validation_metrics",
+      "estimated_rows": 54,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "validation_run_id",
+        "benchmark_key",
+        "horizon_hours",
+        "split"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "gri_validation_runs",
+      "estimated_rows": 1,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "HISTORICAL_SIGNED_INTELLIGENCE_NOT_CURRENT",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "jury_votes",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_corridor_module_coverage_targets",
+      "estimated_rows": 560,
+      "storage_bytes": 253952,
+      "primary_key_columns": [
+        "corridor_id",
+        "module_id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_country_coverage_requirements",
+      "estimated_rows": 249,
+      "storage_bytes": 81920,
+      "primary_key_columns": [
+        "country_iso3"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_country_critical_mineral_source_directory",
+      "estimated_rows": 195,
+      "storage_bytes": 106496,
+      "primary_key_columns": [
+        "country_iso2"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_country_module_coverage_targets",
+      "estimated_rows": 4000,
+      "storage_bytes": 1343488,
+      "primary_key_columns": [
+        "country_iso3",
+        "module_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_country_monetary_authority_directory",
+      "estimated_rows": 195,
+      "storage_bytes": 106496,
+      "primary_key_columns": [
+        "country_iso2"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_country_primary_source_directory",
+      "estimated_rows": 195,
+      "storage_bytes": 114688,
+      "primary_key_columns": [
+        "country_iso2"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_country_registry",
+      "estimated_rows": 250,
+      "storage_bytes": 139264,
+      "primary_key_columns": [
+        "iso2"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_country_statistics_source_directory",
+      "estimated_rows": 194,
+      "storage_bytes": 106496,
+      "primary_key_columns": [
+        "country_iso2"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_critical_mineral_shock_catalog",
+      "estimated_rows": 45,
+      "storage_bytes": 81920,
+      "primary_key_columns": [
+        "shock_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_external_observations",
+      "estimated_rows": 46163,
+      "storage_bytes": 87465984,
+      "primary_key_columns": [
+        "observation_id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_external_sources",
+      "estimated_rows": 1031,
+      "storage_bytes": 557056,
+      "primary_key_columns": [
+        "source_id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_flash_corroborations",
+      "estimated_rows": 20,
+      "storage_bytes": 73728,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_flash_event_countries",
+      "estimated_rows": 2151,
+      "storage_bytes": 827392,
+      "primary_key_columns": [
+        "flash_id",
+        "country_iso3"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_flash_event_families",
+      "estimated_rows": 1702,
+      "storage_bytes": 901120,
+      "primary_key_columns": [
+        "family_id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_flash_event_family_members",
+      "estimated_rows": 1896,
+      "storage_bytes": 884736,
+      "primary_key_columns": [
+        "family_id",
+        "flash_id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_flash_event_family_versions",
+      "estimated_rows": 1720,
+      "storage_bytes": 1384448,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_flash_event_versions",
+      "estimated_rows": 2939,
+      "storage_bytes": 1949696,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_flash_events",
+      "estimated_rows": 2590,
+      "storage_bytes": 3817472,
+      "primary_key_columns": [
+        "flash_id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_fragment_archive_locations",
+      "estimated_rows": 325,
+      "storage_bytes": 319488,
+      "primary_key_columns": [
+        "fragment_id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_fragment_manifest",
+      "estimated_rows": 23933,
+      "storage_bytes": 23674880,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_global_domain_catalog",
+      "estimated_rows": 16,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "module_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_global_shock_module_map",
+      "estimated_rows": 42,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "shock_id",
+        "module_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_global_shock_taxonomy",
+      "estimated_rows": 36,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "shock_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_global_source_universe",
+      "estimated_rows": 7181,
+      "storage_bytes": 3358720,
+      "primary_key_columns": [
+        "universe_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_ingestion_cursors",
+      "estimated_rows": 16,
+      "storage_bytes": 212992,
+      "primary_key_columns": [
+        "source_key",
+        "stream_key"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_ingestion_runs",
+      "estimated_rows": 645,
+      "storage_bytes": 352256,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_intelligence_scheduler_state",
+      "estimated_rows": 13,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "source_id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_operational_shock_catalog",
+      "estimated_rows": 111,
+      "storage_bytes": 98304,
+      "primary_key_columns": [
+        "shock_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_operational_shock_source_paths",
+      "estimated_rows": 333,
+      "storage_bytes": 122880,
+      "primary_key_columns": [
+        "shock_id",
+        "source_role"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_operational_subzone_catalog",
+      "estimated_rows": 39,
+      "storage_bytes": 81920,
+      "primary_key_columns": [
+        "subzone_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_operational_subzone_source_paths",
+      "estimated_rows": 117,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "subzone_id",
+        "source_role"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_raw_source_snapshots",
+      "estimated_rows": 30777,
+      "storage_bytes": 30081024,
+      "primary_key_columns": [
+        "snapshot_id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_raw_source_targets",
+      "estimated_rows": 6211,
+      "storage_bytes": 4833280,
+      "primary_key_columns": [
+        "target_id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_realtime_burst_runs",
+      "estimated_rows": 1020,
+      "storage_bytes": 983040,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_realtime_escalation_queue",
+      "estimated_rows": 791,
+      "storage_bytes": 737280,
+      "primary_key_columns": [
+        "queue_id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_realtime_scope_targets",
+      "estimated_rows": 231,
+      "storage_bytes": 237568,
+      "primary_key_columns": [
+        "target_id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_recent_fingerprints",
+      "estimated_rows": 47505,
+      "storage_bytes": 15753216,
+      "primary_key_columns": [
+        "fingerprint"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_region_zone_catalog",
+      "estimated_rows": 24,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "zone_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_region_zone_module_coverage_targets",
+      "estimated_rows": 384,
+      "storage_bytes": 196608,
+      "primary_key_columns": [
+        "zone_id",
+        "module_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_scheduled_events",
+      "estimated_rows": 0,
+      "storage_bytes": 40960,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_certification_evidence_archives",
+      "estimated_rows": 1,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_certification_evidence_edges",
+      "estimated_rows": 17064,
+      "storage_bytes": 15007744,
+      "primary_key_columns": [
+        "edge_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_certification_evidence_nodes",
+      "estimated_rows": 19140,
+      "storage_bytes": 17244160,
+      "primary_key_columns": [
+        "evidence_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_certification_evidence_runs",
+      "estimated_rows": 15,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_certification_queue",
+      "estimated_rows": 11676,
+      "storage_bytes": 16539648,
+      "primary_key_columns": [
+        "queue_key"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_certification_records",
+      "estimated_rows": 1031,
+      "storage_bytes": 1638400,
+      "primary_key_columns": [
+        "source_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_coverage_targets",
+      "estimated_rows": 13,
+      "storage_bytes": 81920,
+      "primary_key_columns": [
+        "coverage_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_discovery_fingerprints",
+      "estimated_rows": 0,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "fingerprint",
+        "source_key"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_endpoint_disposition_ledger",
+      "estimated_rows": 933,
+      "storage_bytes": 1368064,
+      "primary_key_columns": [
+        "manifest_sha256",
+        "endpoint_url"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_endpoint_manifest_lock",
+      "estimated_rows": 1,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "lock_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_registry",
+      "estimated_rows": 23,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "source_key"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_release_manifests",
+      "estimated_rows": 167,
+      "storage_bytes": 368640,
+      "primary_key_columns": [
+        "source_id",
+        "release_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_source_url_commercial_policy",
+      "estimated_rows": 3,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "policy_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_storage_policy",
+      "estimated_rows": 1,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "singleton"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_strategic_corridor_catalog",
+      "estimated_rows": 35,
+      "storage_bytes": 81920,
+      "primary_key_columns": [
+        "corridor_id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_structured_event_archived_sources",
+      "estimated_rows": 20033,
+      "storage_bytes": 4259840,
+      "primary_key_columns": [
+        "event_id",
+        "source_key"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_structured_event_evidence",
+      "estimated_rows": 18647,
+      "storage_bytes": 13393920,
+      "primary_key_columns": [
+        "event_id",
+        "fingerprint"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_structured_event_evidence_archive_index",
+      "estimated_rows": 38893,
+      "storage_bytes": 23502848,
+      "primary_key_columns": [
+        "event_id",
+        "fingerprint"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_structured_events",
+      "estimated_rows": 33124,
+      "storage_bytes": 71467008,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_structuring_exclusions",
+      "estimated_rows": 494,
+      "storage_bytes": 303104,
+      "primary_key_columns": [
+        "fingerprint"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_structuring_runs",
+      "estimated_rows": 147,
+      "storage_bytes": 163840,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "PRIVATE_SOURCE_EVIDENCE_AND_ARCHIVE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_telegram_channel_registry",
+      "estimated_rows": 3,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "channel_key"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "live_telegram_source_candidates",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "candidate_key"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "market_disputes",
+      "estimated_rows": 0,
+      "storage_bytes": 40960,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "positions",
+      "estimated_rows": 72,
+      "storage_bytes": 122880,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "private_commercial_revenue_delivery_ledger",
+      "estimated_rows": 0,
+      "storage_bytes": 90112,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "risk_exposure_edges",
+      "estimated_rows": 0,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "risk_gate_api_clients",
+      "estimated_rows": 6,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "risk_gate_audit_log",
+      "estimated_rows": 31,
+      "storage_bytes": 163840,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "risk_gate_daily_usage",
+      "estimated_rows": 0,
+      "storage_bytes": 16384,
+      "primary_key_columns": [
+        "client_id",
+        "usage_day"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "risk_gate_idempotency_keys",
+      "estimated_rows": 2,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "client_id",
+        "request_id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "risk_gate_rate_limits",
+      "estimated_rows": 16,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "client_id",
+        "window_started_at"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "risk_module_attribution",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "risk_module_states",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "risk_subjects",
+      "estimated_rows": 250,
+      "storage_bytes": 163840,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "ORIGINAL_SOURCE_REFERENCE_DIRECTORY_OR_COVERAGE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "siwe_login_nonces",
+      "estimated_rows": 5,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "nonce_hash"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "sync_state",
+      "estimated_rows": 3,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "key"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "tameion_agent_decisions",
+      "estimated_rows": 14,
+      "storage_bytes": 139264,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "REVIEW_REQUIRED_OTHER_DOMAIN",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "testnet_api_request_bindings",
+      "estimated_rows": 1,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "testnet_developer_api_funnel_events",
+      "estimated_rows": 573,
+      "storage_bytes": 417792,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "testnet_developer_credentials",
+      "estimated_rows": 11,
+      "storage_bytes": 81920,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "testnet_email_verification_challenges",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "testnet_oauth_states",
+      "estimated_rows": 0,
+      "storage_bytes": 32768,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "testnet_public_share_pages",
+      "estimated_rows": 0,
+      "storage_bytes": 40960,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "testnet_tester_profiles",
+      "estimated_rows": 7,
+      "storage_bytes": 114688,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "testnet_tester_sessions",
+      "estimated_rows": 18,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "testnet_usdc_payment_claims",
+      "estimated_rows": 0,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "testnet_wallet_challenges",
+      "estimated_rows": 23,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "tx_history",
+      "estimated_rows": 8,
+      "storage_bytes": 65536,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "wallet_balance_history",
+      "estimated_rows": 103,
+      "storage_bytes": 81920,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "public",
+      "table": "webhook_event_outbox",
+      "estimated_rows": 0,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "IMMUTABLE_CUSTOMER_CREDENTIAL_PAYMENT_REPLAY",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "storage",
+      "table": "buckets",
+      "estimated_rows": 2,
+      "storage_bytes": 49152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_STORAGE_NEEDS_B2_BYTE_RESTORE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "storage",
+      "table": "buckets_analytics",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_STORAGE_NEEDS_B2_BYTE_RESTORE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "storage",
+      "table": "buckets_vectors",
+      "estimated_rows": 0,
+      "storage_bytes": 16384,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_STORAGE_NEEDS_B2_BYTE_RESTORE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "storage",
+      "table": "migrations",
+      "estimated_rows": 74,
+      "storage_bytes": 73728,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_STORAGE_NEEDS_B2_BYTE_RESTORE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "storage",
+      "table": "objects",
+      "estimated_rows": 23648,
+      "storage_bytes": 41009152,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_STORAGE_NEEDS_B2_BYTE_RESTORE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "storage",
+      "table": "s3_multipart_uploads",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_STORAGE_NEEDS_B2_BYTE_RESTORE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "storage",
+      "table": "s3_multipart_uploads_parts",
+      "estimated_rows": 0,
+      "storage_bytes": 16384,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_STORAGE_NEEDS_B2_BYTE_RESTORE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    },
+    {
+      "schema": "storage",
+      "table": "vector_indexes",
+      "estimated_rows": 0,
+      "storage_bytes": 24576,
+      "primary_key_columns": [
+        "id"
+      ],
+      "migration_class": "SUPABASE_MANAGED_STORAGE_NEEDS_B2_BYTE_RESTORE",
+      "hash_readback_verified": false,
+      "destination_acceptance": "NOT_VERIFIED",
+      "old_data_delete_authorized": false
+    }
+  ]
+}
