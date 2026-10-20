@@ -50,7 +50,7 @@ function displayedDay(s){
 }
 function firstDisplayedDay(context){
  // Bound all user/external text given to date regex.
- const matches=context.slice(0,180).match(/\b(?:[1-9]|[12]\d|3[01]) (?:January|February|March|April|May|June|July|August|September|October|November|December) 20\d{2}\b/gu)??[];
+ const matches=context.slice(0,180).match(/(?:[1-9]|[12]\d|3[01]) (?:January|February|March|April|May|June|July|August|September|October|November|December) 20\d{2}\b/gu)??[];
  for(const candidate of matches){const valid=displayedDay(candidate);if(valid)return valid;}
  return null;
 }
