@@ -98,3 +98,42 @@ describe("official question-time numerical answers",()=>{
     fetchImpl:bad,noCache:true,now})).toBeNull();
  });
 });
+
+
+describe("official numeric request-local publication windows and WDI timeout",()=>{
+ it("passes a bounded 16s budget only to WDI, preserving 6s ECB and one call per source",async()=>{
+  const observed:{hostname:string;timeoutIsAbortSignal:boolean}[]=[];
+  const impl=vi.fn(async(url:string,init?:RequestInit)=>{
+   observed.push({hostname:new URL(url).hostname,
+    timeoutIsAbortSignal:init?.signal instanceof AbortSignal});
+   if(url.includes("worldbank"))return new Response(wdi("IND","FP.CPI.TOTL.ZG"));
+   return new Response(csv("USD",1.2));
+  }) as unknown as typeof fetch;
+  const w=await answerOfficialNumeric("India latest inflation rate?",{fetchImpl:impl,noCache:true,now});
+  const fx=await answerOfficialNumeric("EUR/USD exchange rate",{fetchImpl:impl,noCache:true,now});
+  expect(w?.summary).toContain("2025");
+  expect(fx?.summary).toContain("1.2 USD");
+  expect(observed).toHaveLength(2);
+  expect(observed.every(x=>x.timeoutIsAbortSignal)).toBe(true);
+ });
+ it("does not accept a future official observation against the request-local clock",()=>{
+  const year=JSON.parse(wdi("IND","FP.CPI.TOTL.ZG"));
+  year[1][0].date="2027";
+  expect(parseAnnualWdi(year,"IND","FP.CPI.TOTL.ZG",now)).toEqual([{year:"2024",value:5.22}]);
+  const futureCsv=csv("USD",1.2,"2026-10-18");
+  expect(parseEcbFix(futureCsv,"USD",now)).toEqual([]);
+  expect(parseEcbFix(csv("USD",1.2,"2026-10-16"),"USD",now)).toHaveLength(1);
+  expect(parseAnnualWdi(year,"IND","FP.CPI.TOTL.ZG",new Date("invalid"))).toEqual([]);
+ });
+ it("never retries an upstream 429 or forwards provider content to users",async()=>{
+  let count=0;const codes:string[]=[];
+  const x=await answerOfficialNumeric("India latest inflation rate?",{
+   now,noCache:true,onFailure:code=>codes.push(code),fetchImpl:vi.fn(async()=>{count++;
+    return new Response("secret data",{status:429});
+   }) as unknown as typeof fetch
+  });
+  expect(x).toBeNull();
+  expect(count).toBe(1);
+  expect(codes).toEqual(["ASK_OFFICIAL_NUMERIC_HTTP_429"]);
+ });
+});
