@@ -1,0 +1,28 @@
+{
+  "request_id": "predge-pilot-corridor-fixture-001",
+  "subject": {
+    "type": "corridor",
+    "origin_country_iso3": "IND",
+    "destination_country_iso3": "ARE"
+  },
+  "action_context": {
+    "action_type": "market_settlement_preflight",
+    "amount": 0,
+    "currency": "USDC",
+    "metadata": {
+      "market_id": "123456789",
+      "condition_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "environment": "TEST_ONLY"
+    }
+  },
+  "policy": {
+    "policy_id": "predge-free-pilot-review-only",
+    "policy_version": "1",
+    "continue_max_score": 20,
+    "reduce_limit_max_score": 45,
+    "require_approval_max_score": 70,
+    "minimum_confidence_for_auto_continue": 0.9,
+    "require_commercial_verification_for_continue": true,
+    "max_positive_delta_for_auto_continue": 0
+  }
+}
