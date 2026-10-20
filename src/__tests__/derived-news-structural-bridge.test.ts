@@ -1,6 +1,8 @@
 import {describe,expect,it,vi} from "vitest";
 import {readFileSync} from "node:fs";
 import {buildDerivedNewsStructural} from "../lib/derived-news-structural-bridge";
+import {COUNTRIES_195} from "../lib/canonical-country-registry-195";
+import {countryFromDerivedGeography,observed195x3Coverage} from "../lib/derived-news-country-coverage-195";
 import {derivedNewsStructuralResponse,structuralNewsAvailability} from "../lib/derived-news-structural-response.server";
 import {fetchAllDerivedNews} from "../lib/public-derived-news-client";
 import {readDerivedStories} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
@@ -90,6 +92,89 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    expect(body.exhaustive_all_global_sources).toBe(false);
    expect(body.source_scope).toBe("ELIGIBLE_RELEASES_PRESENT_IN_BOUNDED_D1_JOURNAL");
    expect(JSON.stringify(body)).not.toContain("source_url");
+ });
+ it("routes the exact 195 countries × 3 categories but never claims 585 populated news cells",()=>{
+   const candidate=[
+     {...story(0),geography:"India"},
+     {...story(1),geography:"Ukraine"},
+     {...story(2),geography:"State of Palestine"},
+     {...story(3),geography:"Congo"},
+   ];
+   const rows=buildDerivedNewsStructural(candidate,NOW);
+   const observed=observed195x3Coverage(rows,NOW);
+   expect(COUNTRIES_195).toHaveLength(195);
+   expect(observed.country_count).toBe(195);
+   expect(observed.category_count).toBe(3);
+   expect(observed.total_country_category_cells).toBe(585);
+   expect(observed.cells).toHaveLength(585);
+   expect(observed.unassigned_or_regional_derived_records_72h).toBe(1);
+   expect(observed.cells.filter(c=>c.observed_derived_records_72h>0)).toHaveLength(3);
+   expect(observed.cells.find(c=>c.country_iso3==="IND"&&c.category==="geopolitics"))
+     .toMatchObject({status:"DERIVED_OFFICIAL_COUNTRY_MENTION_OBSERVED_UNVERIFIED",
+       observed_derived_records_72h:1,country_subject_verified:false,
+       independent_same_event_verified:false,commercial_rights_verified:false,
+       all_news_exhaustive:false,paid_delivery_eligible:false});
+   expect(observed.cells.find(c=>c.country_iso3==="PSE"&&c.category==="rare_earth")
+     ?.observed_derived_records_72h).toBe(1);
+   expect(observed.cells.find(c=>c.country_iso3==="USA"&&c.category==="macro"))
+     .toMatchObject({status:"NO_MATCHING_COUNTRY_MENTION_IN_BOUNDED_JOURNAL",
+       observed_derived_records_72h:0,all_news_exhaustive:false});
+   expect(observed.not_observed_means_no_news).toBe(false);
+   expect(observed.exhaustive_country_news_coverage_verified).toBe(false);
+   expect(observed.raw_upstream_delivered).toBe(false);
+   expect(observed.payment_required_now).toBe(false);
+   expect(observed.chargeable).toBe(false);
+   expect(countryFromDerivedGeography("Congo")).toBeNull();
+   expect(countryFromDerivedGeography("India-based statement")).toBeNull();
+   expect(countryFromDerivedGeography("news.un.org")).toBeNull();
+   expect(countryFromDerivedGeography("Türkiye")).toBe("TUR");
+   expect(countryFromDerivedGeography("West Bank")).toBe("PSE");
+   expect(countryFromDerivedGeography("United States")).toBe("USA");
+ });
+ it("serves country-specific articles and 585-cell derived mention coverage from SAME D1 pages",async()=>{
+   const rows=[
+     {...story(0),geography:"India"},
+     {...story(1),geography:"Ukraine"},
+     {...story(2),geography:"State of Palestine"},
+     {...story(3),geography:null},
+   ];
+   const mock=vi.fn(async(input:RequestInfo|URL)=>{
+     const url=new URL(String(input));
+     const offset=Number(url.searchParams.get("offset")||0);
+     return Response.json(feed(rows.slice(offset,offset+250),offset,false));
+   });
+   const path="https://geomacro.live/api/v1/intelligence/query";
+   const scoped=await derivedNewsStructuralResponse(new Request(
+     path+"?view=structural-72h&country=IND"),mock as typeof fetch,NOW);
+   expect(scoped.status).toBe(200);
+   const doc=await scoped.json();
+   expect(doc.items).toHaveLength(1);
+   expect(doc.items[0].geography_mentioned).toBe("India");
+   expect(doc.country).toMatchObject({iso3:"IND",country_subject_verified:false,
+     all_news_exhaustive:false,no_matching_rows_does_not_mean_no_news:true});
+   expect(doc.counts).toEqual({geopolitics:1,macro:0,rare_earth:0});
+   const matrix=await derivedNewsStructuralResponse(new Request(
+     path+"?view=country-coverage-195x3"),mock as typeof fetch,NOW);
+   expect(matrix.status).toBe(200);
+   const m=await matrix.json();
+   expect(m.cells).toHaveLength(585);
+   expect(m.total_country_category_cells).toBe(585);
+   const one=await derivedNewsStructuralResponse(new Request(
+     path+"?view=country-coverage-195x3&country=IND&domain=macro"),
+     mock as typeof fetch,NOW);
+   expect((await one.json()).cells).toMatchObject([{country_iso3:"IND",
+     category:"macro",observed_derived_records_72h:0,all_news_exhaustive:false}]);
+   expect(mock).toHaveBeenCalledTimes(3);
+   expect(JSON.stringify(m)).not.toMatch(/(?:https?:\\/\\/|source_id|source_url|raw_html|publisher_name)/iu);
+   expect(JSON.stringify(doc)).not.toContain("raw_payload");
+   for(const query of ["country=ZZZ","country=ind","country=USA&country=IND",
+     "country=","view=structural-72h&country=IND&country=USA",
+     "domain=macro&domain=rare_earth"]){
+      const url=query.startsWith("view=")?path+"?"+query:
+        path+"?view=country-coverage-195x3&"+query;
+      const resp=await derivedNewsStructuralResponse(new Request(url),mock as typeof fetch,NOW);
+      expect(resp.status).toBe(400);
+   }
  });
  it("keeps a stable 3-category status even when no official release is qualified",async()=>{
    const f=vi.fn(async()=>Response.json(feed([],0,false)));
