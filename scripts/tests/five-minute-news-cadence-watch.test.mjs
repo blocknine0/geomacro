@@ -78,7 +78,10 @@ test("uses pre-existing backstop wakeups and ephemeral GitHub Actions dispatch; 
  assert.match(cli,/ACTUAL_PUBLISHER_JOB_PROOF_UNAVAILABLE/);
  assert.match(cli,/new URL\("workflows\/"\+FASTLANE_WORKFLOW\+"\/dispatches"/);
  assert.match(cli,/response.status!==204/);
- for(const txt of [cli,wf]){
+ // The EXISTING separately gated signed-Finds catch-up uses B2. The
+ // NEW watchdog is the isolated job above catch-up-derived-only, with no B2.
+ const isolated=wf.split("fastlane-actual-publisher-cadence-watch:")[1]?.split("catch-up-derived-only:")[0]??"";
+ for(const txt of [cli,isolated]){
   assert.doesNotMatch(txt,/COINBASE_X402_MAINNET_ACK|SUPABASE_SERVICE_ROLE_KEY|TELEGRAM_SESSION|B2_APPLICATION_KEY\s*:/);
  }
 });
