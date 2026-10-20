@@ -344,6 +344,11 @@ jobs:
           set -euo pipefail
           node scripts/ops/verify-predge-auth-research-delivery.mjs
 
+      - name: Confirm previously exposed Predge research-v1 Bearer is revoked (no funds)
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        run: node scripts/ops/verify-predge-v1-revoked-live.mjs
+
       - name: Verify authenticated D1 central security budgets without B2 or payment
         run: node scripts/ops/verify-d1-central-security-budget.mjs
 
