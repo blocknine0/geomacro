@@ -18,6 +18,15 @@ export const EARNING_PILOT_ALTERNATE_CASES = Object.freeze([
   Object.freeze({ name: "macro_fx", topic: "macro_risk", country: "BRA" }),
   Object.freeze({ name: "critical_minerals", topic: "critical_minerals", country: "AUS" }),
 ]);
+/** Choose exactly one of two approved three-case sets on existing six-hour diagnostics.
+ * Every result is no-funds diagnostic, not a payment or launch authorization.
+ */
+export function scheduledEarningPilotCases(now=new Date()){
+  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
+    throw Error("EARNING_PILOT_SCHEDULE_CLOCK_INVALID");
+  return Math.floor(now.getUTCHours()/6)%2===1
+    ? EARNING_PILOT_ALTERNATE_CASES : EARNING_PILOT_CASES;
+}
 const SCHEMA = "geomacro.earn-first-live-no-funds.v1";
 const PUBLIC_PREFLIGHT_DENIAL_CODES = new Set([
   "CENTRAL_SECURITY_UNAVAILABLE",
@@ -256,12 +265,17 @@ export async function acceptEarningPilotLive({
 
 if(process.argv[1]?.endsWith("verify-earn-first-live-no-funds.mjs")){
   try{
+    if(process.argv.includes("--auto-country-probe") &&
+       !process.argv.includes("--diagnostic-only"))
+       throw Error("EARNING_PILOT_ROTATION_DIAGNOSTIC_ONLY");
     const result=await acceptEarningPilotLive({
       origin:process.env.GEOMACRO_BASE_URL||"https://geomacro.live",
       expectedSha:process.env.EXPECTED_CANONICAL_SHA,
       diagnosticOnly:process.argv.includes("--diagnostic-only"),
-      pilotCases:process.argv.includes("--alternate-country-probe")
-        ? EARNING_PILOT_ALTERNATE_CASES : EARNING_PILOT_CASES,
+      pilotCases:process.argv.includes("--auto-country-probe")
+        ? scheduledEarningPilotCases(new Date()) :
+        process.argv.includes("--alternate-country-probe")
+          ? EARNING_PILOT_ALTERNATE_CASES : EARNING_PILOT_CASES,
     });
     console.log(JSON.stringify(result));
     // PR diagnostics are read-only observation, NOT earning acceptance.

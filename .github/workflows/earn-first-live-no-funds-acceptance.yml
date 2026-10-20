@@ -23,6 +23,8 @@ on:
       - "src/lib/capability-pricing-catalog.ts"
       - "src/routes/api.v1.intelligence.availability.ts"
       - "scripts/agentic/verify-earn-first-live-no-funds.mjs"
+      - "src/__tests__/earn-first-live-no-funds-acceptance.test.ts"
+      - "docs/ops/FIRST_REVENUE_NO_SUBSCRIPTIONS_20261020.md"
       - ".github/workflows/earn-first-live-no-funds-acceptance.yml"
   pull_request:
     paths:
@@ -31,6 +33,8 @@ on:
       - "src/lib/earn-first-structural-offers.server.ts"
       - "src/routes/api.v1.intelligence.availability.ts"
       - "scripts/agentic/verify-earn-first-live-no-funds.mjs"
+      - "src/__tests__/earn-first-live-no-funds-acceptance.test.ts"
+      - "docs/ops/FIRST_REVENUE_NO_SUBSCRIPTIONS_20261020.md"
       - "src/__tests__/earn-first-live-no-funds-acceptance.test.ts"
       - "src/lib/central-security.server.ts"
       - "src/lib/agent-query-deliverability.server.ts"
@@ -85,11 +89,12 @@ jobs:
           EXPECTED_CANONICAL_SHA: ${{ github.sha }}
         run: node scripts/agentic/verify-earn-first-live-no-funds.mjs
 
-      # Schedule may run against a stale published SHA. Observe that honestly
-      # instead of failing due to unavailable categories or silently accepting
-      # payable evidence. Only normal main-push exact-SHA job is an acceptance.
-      - name: Six-hourly no-funds 3-category buyer availability observation
+      # One of two approved three-country/category cohorts per six-hour slot.
+      # This broadens discovery at the SAME three POSTs/run and zero B2 costs.
+      # Cron is best-effort, published SHA may lag, and no diagnostic authorizes
+      # payable offers or production settlement.
+      - name: Six-hourly rotating no-funds buyer availability observation
         if: github.event_name == 'schedule'
         env:
           EXPECTED_CANONICAL_SHA: ${{ github.sha }}
-        run: node scripts/agentic/verify-earn-first-live-no-funds.mjs --diagnostic-only
+        run: node scripts/agentic/verify-earn-first-live-no-funds.mjs --diagnostic-only --auto-country-probe

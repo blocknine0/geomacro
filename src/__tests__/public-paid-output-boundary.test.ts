@@ -200,6 +200,36 @@ describe("source-free paid output boundary", () => {
     })).toThrow(/PAID_OUTPUT_(PROVIDER_IDENTITY_LEAK|EMBEDDED_SOURCE_URL)/);
   });
 
+  it("blocks nested raw source HTML, feed bytes and upstream payload before ANY quote",()=>{
+    const rawExamples=[
+      {answer:{raw_html:"<article>upstream fixture</article>"}},
+      {analysis:{article_body:"publisher fixture"}},
+      {structural:[{feed_xml:"<rss>fixture</rss>"}]},
+      {signed_risk_objects:[{object:{upstream_payload:{private:"fixture"}}}]},
+      {current_state:[{dataset_dump:"bulk export fixture"}]},
+      {risk_gate:[{result:{original_text:"copyrighted fixture"}}]},
+      {payment:{storage_blob:"binary fixture"}},
+    ];
+    for(const input of rawExamples){
+      expect(()=>sanitizePublicPaidOutput(input,{rejectEmbeddedLinks:true}))
+        .toThrow("PAID_OUTPUT_UNQUALIFIED_RAW_MATERIAL_FIELD");
+      expect(()=>assertPublicPaidOutputBoundary(input))
+        .toThrow("PAID_OUTPUT_RAW_MATERIAL_FIELD");
+      const legacy=sanitizePublicPaidOutput(input);
+      const asJson=JSON.stringify(legacy);
+      expect(asJson).not.toContain("fixture");
+      expect(()=>assertPublicPaidOutputBoundary(legacy)).not.toThrow();
+    }
+  });
+  it("retains only literally false raw-delivery safety flags, never true claims",()=>{
+    const harmless={limitations:{raw_data_delivered:false,
+      raw_source_material_delivered:false},answer:{summary:"Derived Geomacro assessment"}};
+    expect(sanitizePublicPaidOutput(harmless,{rejectEmbeddedLinks:true})).toEqual(harmless);
+    expect(()=>assertPublicPaidOutputBoundary(harmless)).not.toThrow();
+    expect(()=>sanitizePublicPaidOutput({raw_data_delivered:true},
+      {rejectEmbeddedLinks:true})).toThrow("PAID_OUTPUT_UNQUALIFIED_RAW_MATERIAL_FIELD");
+  });
+
   it("wires sanitation before durable x402 preparation and on replay", async () => {
     const fs = await import("node:fs/promises");
     const route = await fs.readFile("src/lib/mainnet-intelligence-endpoint.server.ts", "utf8");
