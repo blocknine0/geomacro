@@ -186,8 +186,25 @@ export async function predgeRiskGateD1(request,env,now=Date.now()){
  if(!env?.DB?.prepare)return fail("RISK_GATE_D1_UNAVAILABLE");
  if((request.headers.get("content-type")??"").split(";")[0].trim().toLowerCase()!=="application/json")
    return fail("UNSUPPORTED_MEDIA_TYPE",415);
- const raw=await request.text();
- if(encoder.encode(raw).byteLength>MAX_BYTES)return fail("BODY_TOO_LARGE",413);
+ const length=Number(request.headers.get("content-length")??"0");
+ if(!Number.isFinite(length)||length>MAX_BYTES)return fail("BODY_TOO_LARGE",413);
+ // Bound actual streamed body even when Content-Length is absent or forged.
+ let raw="";
+ try{
+   const reader=request.body?.getReader();
+   if(!reader)return fail("INVALID_RISK_GATE_REQUEST",400);
+   const chunks=[];let total=0;
+   for(;;){
+     const {done,value}=await reader.read();
+     if(done)break;
+     total+=value.byteLength;
+     if(total>MAX_BYTES){await reader.cancel();return fail("BODY_TOO_LARGE",413);}
+     chunks.push(value);
+   }
+   const buf=new Uint8Array(total);let offset=0;
+   for(const chunk of chunks){buf.set(chunk,offset);offset+=chunk.byteLength;}
+   raw=new TextDecoder("utf-8",{fatal:true}).decode(buf);
+ }catch{return fail("INVALID_RISK_GATE_REQUEST",400);}
  let body;try{body=JSON.parse(raw)}catch{return fail("INVALID_JSON",400);}
  const parsed=parseRequest(body,now);
  if(!parsed)return fail("INVALID_RISK_GATE_REQUEST",400);
@@ -206,7 +223,12 @@ export async function predgeRiskGateD1(request,env,now=Date.now()){
    if(!claim)return fail("RISK_GATE_LEDGER_UNAVAILABLE");
    if(claim.request_hash!==requestHash)return fail("RISK_GATE_IDEMPOTENCY_CONFLICT",409);
    if(claim.state==="DONE"&&claim.response_json){
-      const saved=JSON.parse(claim.response_json);
+      let saved;
+      try{saved=JSON.parse(claim.response_json)}catch{return fail("RISK_GATE_REPLAY_INVALID");}
+      if(saved?.ok!==true||saved?.execution_authorized!==false||
+         saved?.risk_gate?.execution_authorized!==false||
+         !["CONTINUE","REDUCE_LIMIT","REQUIRE_APPROVAL","PAUSE"].includes(saved.risk_gate.decision))
+        return fail("RISK_GATE_REPLAY_INVALID");
       return Response.json({...saved,idempotent_replay:true},{status:200,headers});
    }
    // PENDING claim must belong to the current request: older claims cannot
