@@ -124,7 +124,14 @@ test('production schedule isolates refs and exposes only checkpoint credentials 
  assert.ok(workflow.includes('environment: production'));
  assert.ok(workflow.includes('--production-updates'));
  assert.ok(workflow.includes('path: artifacts/free-source-updates/receipt.json'));
- assert.deepEqual([...workflow.matchAll(/secrets\.([A-Z0-9_]+)/gu)].map(m=>m[1]).sort(),['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_API_TOKEN']);
+ const writerSection=workflow.split('  read-only-production-mesh:')[1]?.split('  zoho-subscribed-maritime-candidates:')[0];
+ assert.ok(writerSection);
+ assert.deepEqual([...writerSection.matchAll(/secrets\.([A-Z0-9_]+)/gu)].map(m=>m[1]).sort(),['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_API_TOKEN']);
+ const mailboxSection=workflow.split('  zoho-subscribed-maritime-candidates:')[1];
+ assert.ok(mailboxSection);
+ assert.ok(mailboxSection.includes('github.event_name != \'pull_request\''));
+ assert.ok(mailboxSection.includes('environment: production'));
+ assert.ok(mailboxSection.includes('scripts/ops/observe-zoho-maritime-subscriptions.mjs'));
  assert.ok(workflow.includes("github.event_name != 'pull_request'"));
 });
 test('CISA bounded window selects latest catalogue additions rather than the first historical rows',()=>{
