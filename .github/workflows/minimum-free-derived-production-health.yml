@@ -1,0 +1,57 @@
+name: Minimum Free Derived Production Health (No Funds)
+
+# Independent lowest-cost health for the actual free website product.
+# Does NOT mark legacy signed Intelligence/GRI/Risk Indices or x402 ready.
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Best-effort, 12 small public readbacks/day. Zero B2, D1 writes or payments.
+    - cron: "23 */2 * * *"
+  pull_request:
+    paths:
+      - ".github/workflows/minimum-free-derived-production-health.yml"
+      - "scripts/ops/verify-minimum-free-production-health.mjs"
+      - "scripts/ops/verify-minimum-free-production-health.test.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/minimum-free-derived-production-health.yml"
+      - "scripts/ops/verify-minimum-free-production-health.mjs"
+      - "scripts/ops/verify-minimum-free-production-health.test.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-minimum-free-production-health
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify minimum mode does not greenwash signed products or paid readiness
+        run: |
+          node --check scripts/ops/verify-minimum-free-production-health.mjs
+          node --test scripts/ops/verify-minimum-free-production-health.test.mjs
+
+  public-free-site:
+    needs: offline-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify exact-main free derived D1 readback and first HTML without funds
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: node scripts/ops/verify-minimum-free-production-health.mjs

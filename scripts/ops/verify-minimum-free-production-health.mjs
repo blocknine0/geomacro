@@ -1,0 +1,127 @@
+#!/usr/bin/env node
+/**
+ * Cheapest independent outside-in health for the CURRENT FREE Geomacro product.
+ * No B2, Supabase, publisher secrets, signing, settlement, or extra database.
+ * Legacy signed Intelligence/GRI/Risk Indices health remains a separate gate.
+ */
+import {fileURLToPath} from "node:url";
+
+const ROOT="https://geomacro.live";
+const JOURNAL="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news";
+const RETENTION_MS=72*60*60_000;
+const DELAY_MS=15*60_000;
+const CATEGORIES=["geopolitics","macro","rare_earth"];
+const validSha=(s)=>typeof s==="string"&&/^[a-f0-9]{40}$/u.test(s);
+function originalPublication(s,now){
+  if(!s||typeof s!=="object"||Array.isArray(s))return null;
+  if(s.date_precision==="exact"){
+    if(typeof s.published_at!=="string"||
+       !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/u.test(s.published_at))return null;
+    const at=Date.parse(s.published_at);
+    return Number.isFinite(at)&&at<=now-DELAY_MS&&at>=now-RETENTION_MS?at:null;
+  }
+  if(s.date_precision==="day"){
+    if(typeof s.published_at!=="string"||
+       !/^\d{4}-\d\d-\d\d$/u.test(s.published_at))return null;
+    const at=Date.parse(s.published_at+"T00:00:00.000Z");
+    return Number.isFinite(at)&&new Date(at).toISOString().startsWith(s.published_at)&&
+      at+36*60*60_000+DELAY_MS<=now&&at>=now-RETENTION_MS?at:null;
+  }
+  return null;
+}
+function decodeHtml(s){
+  return s.replace(/&#x([0-9a-f]+);/giu,(_,n)=>String.fromCodePoint(parseInt(n,16)))
+    .replace(/&#(\d+);/gu,(_,n)=>String.fromCodePoint(Number(n)))
+    .replace(/&(?:amp|quot|apos|lt|gt);/gu,m=>
+      ({"&amp;":"&","&quot;":'"',"&apos;":"'","&lt;":"<","&gt;":">"})[m]);
+}
+function invalid(reason,counts){
+  return {schema:"geomacro.minimum-free-production-health.v1",ok:false,
+    reason,free_derived_ssr_ready:false,derived_rows:0,
+    categories:counts??{geopolitics:0,macro:0,rare_earth:0},
+    all_three_categories_have_recent_originals:false,
+    legacy_signed_hot_products_verified:false,
+    current_numerical_gri_verified:false,
+    paid_delivery_authorized:false,b2_requests:0,supabase_requests:0,payments:0};
+}
+/**
+ * "Minimum" means one actually dated free Find makes the public newsroom
+ * usable; it does NOT claim fresh news in all three categories. When there
+ * are no recent originals, fail instead of inventing a synthetic story.
+ */
+export function classifyMinimumFreeProduction({
+  journalStatus,journal,siteStatus,siteHtml,buildStatus,build,
+  expectedSha,nowMs=Date.now(),
+}={}){
+  if(!validSha(expectedSha)||!Number.isFinite(nowMs))
+    return invalid("EXPECTED_DEPLOYMENT_SHA_INVALID");
+  if(buildStatus!==200||!build||build.schema_version!=="geomacro.deployment-build.v1"||
+    build.canonical_repository!=="blocknine0/geomacro"||
+    build.production_activation_performed!==false||build.canonical_main_sha!==expectedSha)
+    return invalid("LIVE_BUILD_PARITY_UNVERIFIED");
+  if(journalStatus!==200||!journal||journal.ok!==true||
+    journal.schema!=="geomacro.website-derived-news-feed.v1"||
+    journal.original_release_delay_minutes!==15||
+    journal.retention_hours!==72||journal.retention_days!==3||
+    journal.delivery_scope!=="free_website_only"||
+    !Array.isArray(journal.signals)||journal.signals.length>250)
+    return invalid("FREE_D1_JOURNAL_CONTRACT_INVALID");
+  const counts={geopolitics:0,macro:0,rare_earth:0};
+  const titles=[];
+  for(const row of journal.signals){
+    const valid=typeof row?.title==="string"&&row.title.startsWith("Geomacro finds ")&&
+      CATEGORIES.includes(row.category)&&
+      row.severity===null&&row.same_event_corrob_verified===false&&
+      (row.status==="official_release_observed_unscored"||
+       row.status==="official_feed_candidate_unscored")&&
+      originalPublication(row,nowMs)!==null&&
+      !/(?:https?:\/\/|www\.)/iu.test(JSON.stringify(row));
+    if(!valid)return invalid("FREE_D1_ORIGINAL_TIME_OR_RIGHTS_SHAPE_INVALID",counts);
+    counts[row.category]++;
+    titles.push(row.title);
+  }
+  if(!titles.length)return invalid("NO_RETAINED_CURRENT_OFFICIAL_ORIGINALS",counts);
+  if(siteStatus!==200||typeof siteHtml!=="string")
+    return invalid("FREE_INTELLIGENCE_HTML_UNAVAILABLE",counts);
+  const html=decodeHtml(siteHtml);
+  if(!html.includes("What changed in the world")||!html.includes("GEOMACRO FINDS")||
+    !titles.some(title=>html.includes(title))||
+    html.includes("No current verified scored development"))
+    return invalid("FREE_D1_STORIES_NOT_RENDERED_IN_FIRST_HTML",counts);
+  return {schema:"geomacro.minimum-free-production-health.v1",ok:true,
+    reason:"FREE_DERIVED_NEWS_SSR_VERIFIED",free_derived_ssr_ready:true,
+    derived_rows:titles.length,categories:counts,
+    all_three_categories_have_recent_originals:CATEGORIES.every(c=>counts[c]>0),
+    legacy_signed_hot_products_verified:false,
+    current_numerical_gri_verified:false,
+    paid_delivery_authorized:false,b2_requests:0,supabase_requests:0,payments:0};
+}
+async function read(url,{json=false}={}){
+  const response=await fetch(url,{redirect:"error",
+    headers:{"Accept":json?"application/json":"text/html","Cache-Control":"no-cache"},
+    signal:AbortSignal.timeout(16_000)});
+  const body=await response.text();
+  if(body.length>1_500_000)throw Error("MINIMUM_PUBLIC_READBACK_TOO_LARGE");
+  return {status:response.status,body:json?JSON.parse(body):body};
+}
+export async function checkMinimumFreeProduction(expectedSha){
+  // Three read-only requests only. No provider API, B2 GET, D1 write, money.
+  const [j,s,b]=await Promise.all([
+    read(JOURNAL,{json:true}),read(ROOT+"/intelligence"),
+    read(ROOT+"/.well-known/geomacro-build.json",{json:true}),
+  ]);
+  return classifyMinimumFreeProduction({
+    journalStatus:j.status,journal:j.body,siteStatus:s.status,siteHtml:s.body,
+    buildStatus:b.status,build:b.body,expectedSha,
+  });
+}
+if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
+  try{
+    const result=await checkMinimumFreeProduction(process.env.GITHUB_SHA);
+    console.log(JSON.stringify(result));
+    if(!result.ok)process.exitCode=2;
+  }catch{
+    console.error("MINIMUM_FREE_PRODUCTION_PUBLIC_READBACK_UNAVAILABLE");
+    process.exitCode=2;
+  }
+}
