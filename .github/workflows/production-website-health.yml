@@ -22,7 +22,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: geomacro-production-website-health
+  # A later push must not cancel acceptance of a successful signed publisher.
+  # All lanes still perform actual site SHA, B2/D1 and public HTTP checks.
+  group: geomacro-production-website-health-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -34,7 +36,7 @@ jobs:
        (github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
         github.event.workflow_run.head_branch == 'main' &&
-        github.event.workflow_run.head_sha == github.sha &&
+        github.event.workflow_run.head_sha != '' &&
         (github.event.workflow_run.event == 'workflow_dispatch' ||
          github.event.workflow_run.event == 'repository_dispatch' ||
          (github.event.workflow_run.name == 'Risk Indices from Verified D1 Global Risk (No Funds)' &&
@@ -52,6 +54,19 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+
+      - name: Admit only trusted successful signed-publisher ancestor of checked-out main
+        env:
+          TRUSTED_PUBLISHER_PARENT_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRUSTED_PUBLISHER_PARENT_REPOSITORY: ${{ github.event.workflow_run.head_repository.full_name }}
+          TRUSTED_PUBLISHER_PARENT_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          TRUSTED_PUBLISHER_PARENT_WORKFLOW: ${{ github.event.workflow_run.name }}
+          TRUSTED_PUBLISHER_PARENT_EVENT: ${{ github.event.workflow_run.event }}
+          TRUSTED_PUBLISHER_PARENT_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -euo pipefail
+          node --test scripts/ops/assert-website-publication-followup.test.mjs
+          node scripts/ops/assert-website-publication-followup.mjs
 
       - name: Verify checked-out website lock on exact candidate SHA
         run: node scripts/ops/verify-website-lock.mjs
