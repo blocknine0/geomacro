@@ -1,0 +1,67 @@
+name: Owner-Only Supabase Source Directory D1 Shadow
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "scripts/ops/migrate-supabase-official-source-directories-d1-shadow.mjs"
+      - "src/__tests__/supabase-official-source-d1-shadow.test.ts"
+      - ".github/workflows/supabase-source-directory-d1-shadow.yml"
+      - "workers/control-plane/migrations/0021_legacy_official_source_directory_shadow.sql"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-source-directory-private-cutover
+  cancel-in-progress: false
+jobs:
+  contract-no-funds:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "22"}
+      - name: Require isolated owner-ACK and no implicit cloud writes
+        run: |
+          node --check scripts/ops/migrate-supabase-official-source-directories-d1-shadow.mjs
+          node - <<'JS'
+          const {readFileSync}=require('node:fs');
+          const c=readFileSync('scripts/ops/migrate-supabase-official-source-directories-d1-shadow.mjs','utf8');
+          if(!c.includes('GEOMACRO_SOURCE_DIRECTORY_SHADOW_ACK')||
+             !c.includes('REPEATABLE READ READ ONLY')||
+             c.includes('DELETE FROM')||c.includes('settleCoinbase'))throw Error('OWNER_CUTOVER_GUARD_MISSING');
+          console.log('NO_FUNDS_PRIVATE_SOURCE_DIRECTORY_GUARD_OK');
+          JS
+  promote-private-shadow:
+    needs: contract-no-funds
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    env:
+      GEOMACRO_SOURCE_DIRECTORY_SHADOW_ACK: YES
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "22"}
+      - name: Install distro-provided PostgreSQL read-only client
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client >/dev/null
+      - name: Mirror four legacy directories to private D1 with exact bytes/hashes
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_URL:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          node scripts/ops/migrate-supabase-official-source-directories-d1-shadow.mjs
+      - name: No real funds or source activation permitted
+        run: echo "PRIVATE_SOURCE_DIRECTORY_SHADOW_ONLY_NO_COMMERCIAL_SOURCE_ACTIVATION"
