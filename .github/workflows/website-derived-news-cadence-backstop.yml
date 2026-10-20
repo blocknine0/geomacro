@@ -19,6 +19,9 @@ on:
     paths:
       - ".github/workflows/website-derived-news-cadence-backstop.yml"
       - "scripts/ops/check-website-derived-news-cadence.mjs"
+      - "scripts/lib/five-minute-news-cadence-watch.mjs"
+      - "scripts/ops/recover-stalled-five-minute-news.mjs"
+      - "scripts/tests/five-minute-news-cadence-watch.test.mjs"
       - "scripts/lib/website-derived-news-failover.mjs"
       - "scripts/tests/website-derived-news-failover.test.mjs"
       - "scripts/lib/automated-finds-run-health.mjs"
@@ -34,6 +37,9 @@ on:
     paths:
       - ".github/workflows/website-derived-news-cadence-backstop.yml"
       - "scripts/ops/check-website-derived-news-cadence.mjs"
+      - "scripts/lib/five-minute-news-cadence-watch.mjs"
+      - "scripts/ops/recover-stalled-five-minute-news.mjs"
+      - "scripts/tests/five-minute-news-cadence-watch.test.mjs"
       - "scripts/lib/website-derived-news-failover.mjs"
       - "scripts/tests/website-derived-news-failover.test.mjs"
       - "scripts/lib/automated-finds-run-health.mjs"
@@ -70,7 +76,40 @@ jobs:
         run: |
           node --check scripts/lib/website-derived-news-failover.mjs
           node --check scripts/ops/check-website-derived-news-cadence.mjs
+          node --check scripts/lib/five-minute-news-cadence-watch.mjs
+          node --check scripts/ops/recover-stalled-five-minute-news.mjs
+          node --test scripts/tests/five-minute-news-cadence-watch.test.mjs
           node --test scripts/tests/website-derived-news-failover.test.mjs scripts/tests/automated-finds-run-health.test.mjs scripts/tests/derived-news-source-health.test.mjs scripts/tests/material-gri-news-review.test.mjs scripts/tests/material-gri-country-evidence-worklist.test.mjs
+
+  fastlane-actual-publisher-cadence-watch:
+    # Reuse EXISTING :22/:52 cron + original-source pulse workflow_run wakeups,
+    # and this workflow's main push, NOT a paid/new poll or unbounded extra cron.
+    # An exact D1-publisher JOB success is required, not a green contract job.
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.head_repository.full_name == github.repository &&
+        contains(fromJSON('["success","failure","timed_out"]'), github.event.workflow_run.conclusion)))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout immutable watchdog and existing official-source contract
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify actual current news-publisher run and dispatch ONLY if stale
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/ops/recover-stalled-five-minute-news.mjs
 
   catch-up-derived-only:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && contains(fromJSON('["success","failure","timed_out"]'), github.event.workflow_run.conclusion)))
