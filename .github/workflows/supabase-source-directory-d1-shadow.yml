@@ -1,6 +1,8 @@
 name: Protected One-Shot Supabase Source Directory D1 Shadow
 on:
   workflow_dispatch: {}
+  # Bounded retry 2: emit only safe phase codes if protected upstream fails.
+  # No secrets, DSNs, source URLs, publisher material or SQL in logs.
   # One-shot after merging this exact workflow change to main. Does not
   # recur hourly or on unrelated pushes, and does not become a runtime
   # Supabase dependency after the shadow has been verified.
