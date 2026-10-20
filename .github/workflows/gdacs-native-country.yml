@@ -4,6 +4,8 @@ on:
     paths:
       - "global-intelligence/adapters/gdacs-native-country.mjs"
       - "scripts/tests/gdacs-native-country.test.mjs"
+      - "global-intelligence/adapters/gdacs-official-eq-rss.mjs"
+      - "scripts/tests/gdacs-official-eq-rss.test.mjs"
       - "scripts/ops/verify-gdacs-native-country.mjs"
       - "scripts/lib/imf-portwatch-daily-corridors.mjs"
       - "scripts/tests/imf-portwatch-daily-corridors.test.mjs"
@@ -14,6 +16,8 @@ on:
     paths:
       - "global-intelligence/adapters/gdacs-native-country.mjs"
       - "scripts/tests/gdacs-native-country.test.mjs"
+      - "global-intelligence/adapters/gdacs-official-eq-rss.mjs"
+      - "scripts/tests/gdacs-official-eq-rss.test.mjs"
       - "scripts/ops/verify-gdacs-native-country.mjs"
       - "scripts/lib/imf-portwatch-daily-corridors.mjs"
       - "scripts/tests/imf-portwatch-daily-corridors.test.mjs"
@@ -43,6 +47,8 @@ jobs:
           node --check global-intelligence/adapters/gdacs-native-country.mjs
           node --check scripts/ops/verify-gdacs-native-country.mjs
           node --test scripts/tests/gdacs-native-country.test.mjs
+          node --check global-intelligence/adapters/gdacs-official-eq-rss.mjs
+          node --test scripts/tests/gdacs-official-eq-rss.test.mjs
           node --check scripts/lib/imf-portwatch-daily-corridors.mjs
           node --check scripts/ops/observe-imf-portwatch-corridors.mjs
           node --test scripts/tests/imf-portwatch-daily-corridors.test.mjs
