@@ -7,7 +7,7 @@ import {mkdirSync,writeFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 
-export const PREDGE_HMAC_DOMAIN="geomacro-predge-72h-research-only-v1";
+export const PREDGE_HMAC_DOMAIN="geomacro-predge-72h-research-only-v2-20261020";
 export const PREDGE_OAEP_LABEL="geomacro.predge.research-token-handoff.v1";
 export const PREDGE_RESEARCH_URL="https://geomacro-control-plane.daspallab202391.workers.dev/v1/partner/predge/derived-structural-72h";
 const OUTPUT="artifacts/predge-research-token/predge-research-token.rsa-oaep-sha256.bin";
