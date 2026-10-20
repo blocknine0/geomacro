@@ -165,7 +165,8 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    expect((await one.json()).cells).toMatchObject([{country_iso3:"IND",
      category:"macro",observed_derived_records_72h:0,all_news_exhaustive:false}]);
    expect(mock).toHaveBeenCalledTimes(3);
-   expect(JSON.stringify(m)).not.toMatch(/(?:https?:\\/\\/|source_id|source_url|raw_html|publisher_name)/iu);
+   for(const prohibited of ["https://","source_id","source_url","raw_html","publisher_name"])
+     expect(JSON.stringify(m)).not.toContain(prohibited);
    expect(JSON.stringify(doc)).not.toContain("raw_payload");
    for(const query of ["country=ZZZ","country=ind","country=USA&country=IND",
      "country=","view=structural-72h&country=IND&country=USA",
