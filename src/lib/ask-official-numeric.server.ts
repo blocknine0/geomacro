@@ -20,7 +20,7 @@ export function planAskOfficialNumeric(question:string):Plan|null{
  if(cpi===growth||!/\b(latest|current|annual|yearly|rate|value|what|how|figure|recent)\b/iu.test(question))return null;
  return {kind:"wdi",iso3:country.iso3,name:country.name,indicator:cpi?"FP.CPI.TOTL.ZG":"NY.GDP.MKTP.KD.ZG"};
 }
-async function bounded(url:string,accept:string,fetchImpl:typeof fetch):Promise<string>{
+async function bounded(url:string,accept:string,fetchImpl:typeof fetch,timeoutMs=6000):Promise<string>{
  const u=new URL(url);
  if(u.protocol!=="https:"||u.username||u.password||u.port||u.hash||
    !["api.worldbank.org","data-api.ecb.europa.eu"].includes(u.hostname))
@@ -28,7 +28,7 @@ async function bounded(url:string,accept:string,fetchImpl:typeof fetch):Promise<
  // Cloudflare workerd rejects redirect:"error" before issuing the request.
  // The shared helper uses redirect:"manual" and rejects every 3xx, so this
  // restores official HTTPS reads without following an upstream redirect.
- const res=await fetchWithoutRedirectUsing(fetchImpl,url,{method:"GET",signal:AbortSignal.timeout(6000),
+ const res=await fetchWithoutRedirectUsing(fetchImpl,url,{method:"GET",signal:AbortSignal.timeout(timeoutMs),
    headers:{Accept:accept}});
  if(!res.ok||!res.body)throw Error("ASK_OFFICIAL_NUMERIC_HTTP_"+res.status);
  if(Number(res.headers.get("content-length")??0)>256_000)throw Error("ASK_OFFICIAL_NUMERIC_SIZE");
@@ -39,27 +39,27 @@ async function bounded(url:string,accept:string,fetchImpl:typeof fetch):Promise<
  const bytes=new Uint8Array(size);let i=0;for(const part of chunks){bytes.set(part,i);i+=part.length;}
  return new TextDecoder("utf-8",{fatal:true}).decode(bytes);
 }
-export function parseAnnualWdi(json:unknown,iso3:string,indicator:string){
- if(!Array.isArray(json)||!Array.isArray(json[1]))return [];
+export function parseAnnualWdi(json:unknown,iso3:string,indicator:string,now=new Date()){
+ if(!(now instanceof Date)||!Number.isFinite(now.getTime())||!Array.isArray(json)||!Array.isArray(json[1]))return [];
  const rows:{year:string;value:number}[]=[];
  for(const row of json[1].slice(0,20)){
   if(!row||row.countryiso3code!==iso3||row.indicator?.id!==indicator||
      typeof row.date!=="string"||!/^(?:19|20)\d{2}$/u.test(row.date)||
      typeof row.value!=="number"||!Number.isFinite(row.value)||
-     Number(row.date)>new Date().getUTCFullYear())continue;
+     Number(row.date)>now.getUTCFullYear())continue;
   if(rows.every(x=>x.year!==row.date))rows.push({year:row.date,value:row.value});
  }
  return rows.sort((a,b)=>b.year.localeCompare(a.year)).slice(0,2);
 }
-export function parseEcbFix(text:string,currency:string){
- if(currency==="EUR"||!FX.has(currency))return [];
+export function parseEcbFix(text:string,currency:string,now=new Date()){
+ if(currency==="EUR"||!FX.has(currency)||!(now instanceof Date)||!Number.isFinite(now.getTime()))return [];
  const rows=parseCsvRecords(text) as Array<Record<string,string>>;
  return rows.filter(x=>x.FREQ==="D"&&x.CURRENCY===currency&&
  x.CURRENCY_DENOM==="EUR"&&x.EXR_TYPE==="SP00"&&x.EXR_SUFFIX==="A"&&
  /^\d{4}-\d{2}-\d{2}$/u.test(x.TIME_PERIOD)&&
  Number.isFinite(Date.parse(x.TIME_PERIOD+"T00:00:00Z")) &&
- Date.parse(x.TIME_PERIOD+"T00:00:00Z")<=Date.now() &&
- Date.now()-Date.parse(x.TIME_PERIOD+"T00:00:00Z")<=14*86400_000 &&
+ Date.parse(x.TIME_PERIOD+"T00:00:00Z")<=now.getTime() &&
+ now.getTime()-Date.parse(x.TIME_PERIOD+"T00:00:00Z")<=14*86400_000 &&
  Number.isFinite(Number(x.OBS_VALUE))&&Number(x.OBS_VALUE)>0)
  .map(x=>({day:x.TIME_PERIOD,value:Number(x.OBS_VALUE)}))
  .sort((a,b)=>b.day.localeCompare(a.day)).slice(0,6);
@@ -78,8 +78,8 @@ async function query(plan:Plan,now:Date,fetchImpl:typeof fetch):Promise<HybridAs
  if(plan.kind==="wdi"){
   const json=JSON.parse(await bounded("https://api.worldbank.org/v2/country/"+
    plan.iso3.toLowerCase()+"/indicator/"+plan.indicator+
-   "?source=2&format=json&mrnev=3","application/json",fetchImpl));
-  const rows=parseAnnualWdi(json,plan.iso3,plan.indicator);
+   "?source=2&format=json&mrnev=3","application/json",fetchImpl,16000));
+  const rows=parseAnnualWdi(json,plan.iso3,plan.indicator,now);
   if(!rows.length)throw Error("ASK_OFFICIAL_NUMERIC_NO_MATCHING_ROWS");
   const [latest,prior]=rows;
   const metric=plan.indicator==="FP.CPI.TOTL.ZG"?"consumer-price inflation":"GDP growth";
@@ -94,7 +94,7 @@ async function query(plan:Plan,now:Date,fetchImpl:typeof fetch):Promise<HybridAs
  const currencies=[...new Set([plan.base,plan.quote])].filter(x=>x!=="EUR");
  const data=await Promise.all(currencies.map(async currency=>({
   currency,rows:parseEcbFix(await bounded("https://data-api.ecb.europa.eu/service/data/EXR/D."+
-   currency+".EUR.SP00.A?format=csvdata&lastNObservations=6","text/csv",fetchImpl),currency)
+   currency+".EUR.SP00.A?format=csvdata&lastNObservations=6","text/csv",fetchImpl),currency,now)
  })));
  const from=plan.base==="EUR"?null:data.find(x=>x.currency===plan.base)?.rows;
  const to=plan.quote==="EUR"?null:data.find(x=>x.currency===plan.quote)?.rows;
