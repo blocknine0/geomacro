@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {inspectGdacsCountryNative,fetchGdacsNativeCountry} from "../../global-intelligence/adapters/gdacs-native-country.mjs";
+import {inspectGdacsCountryNative,fetchGdacsNativeCountry,gdacsCountryEventListUrl} from "../../global-intelligence/adapters/gdacs-native-country.mjs";
 const good={features:[{type:"Feature",geometry:{type:"Point",coordinates:[70.2,19.5]},
   properties:{eventid:123456,iso3:"IND",country:"India",fromdate:"2026-09-21T06:24:00Z"}}]};
 test("GDACS native country and event time never certify whole affected-country set",()=>{
@@ -44,4 +44,32 @@ test("bounded official read, independent 429/oversize and parser failures",async
  await assert.rejects(()=>fetchGdacsNativeCountry({fetchImpl:async()=>new Response("{}",{
    headers:{"content-length":"600000"}
  })}),/GDACS_BODY_LIMIT/);
+});
+
+test("rolling dates are bounded, non-future, and advanced by the caller clock",()=>{
+  const first=new URL(gdacsCountryEventListUrl(new Date("2026-10-20T10:00:00Z")));
+  assert.equal(first.hostname,"www.gdacs.org");
+  assert.equal(first.pathname,"/gdacsapi/api/events/geteventlist/SEARCH");
+  assert.equal(first.searchParams.get("eventlist"),"EQ");
+  assert.equal(first.searchParams.get("fromdate"),"2026-10-13");
+  assert.equal(first.searchParams.get("todate"),"2026-10-20");
+  const next=new URL(gdacsCountryEventListUrl(new Date("2026-11-02T00:01:00Z")));
+  assert.equal(next.searchParams.get("fromdate"),"2026-10-26");
+  assert.equal(next.searchParams.get("todate"),"2026-11-02");
+  assert.throws(()=>gdacsCountryEventListUrl(new Date("invalid")),/GDACS_CLOCK_INVALID/);
+  assert.throws(()=>gdacsCountryEventListUrl("2026-10-20"),/GDACS_CLOCK_INVALID/);
+});
+test("network fetch uses the same rolling native-date query; invalid clock makes zero requests",async()=>{
+  let count=0,requestUrl;
+  await fetchGdacsNativeCountry({
+    now:new Date("2026-10-20T23:59:00Z"),
+    fetchImpl:async(url)=>{count++;requestUrl=new URL(url);return Response.json(good);}
+  });
+  assert.equal(count,1);
+  assert.equal(requestUrl.searchParams.get("fromdate"),"2026-10-13");
+  assert.equal(requestUrl.searchParams.get("todate"),"2026-10-20");
+  await assert.rejects(()=>fetchGdacsNativeCountry({
+    now:new Date("invalid"),fetchImpl:async()=>{count++;return Response.json(good);}
+  }),/GDACS_CLOCK_INVALID/);
+  assert.equal(count,1);
 });
