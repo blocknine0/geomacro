@@ -4,6 +4,9 @@ on:
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - "scripts/ops/observe-country-corridor-official-sources.mjs"
+      - "scripts/lib/ukmto-official-corridor-index.mjs"
+      - "scripts/tests/ukmto-official-corridor-index.test.mjs"
+      - "scripts/ops/observe-ukmto-corridor-index.mjs"
       - "scripts/lib/operator-country-corridor-reference.mjs"
       - "config/operator-country-source-crosswalk.v1.json"
       - "config/operator-corridor-source-crosswalk.v1.json"
@@ -32,6 +35,9 @@ on:
     paths:
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - "scripts/ops/observe-country-corridor-official-sources.mjs"
+      - "scripts/lib/ukmto-official-corridor-index.mjs"
+      - "scripts/tests/ukmto-official-corridor-index.test.mjs"
+      - "scripts/ops/observe-ukmto-corridor-index.mjs"
       - "scripts/lib/operator-country-corridor-reference.mjs"
       - "config/operator-country-source-crosswalk.v1.json"
       - "config/operator-corridor-source-crosswalk.v1.json"
@@ -424,5 +430,47 @@ jobs:
         with:
           name: three-domain-90min-country-matrix-${{ github.run_id }}
           path: artifacts/expanded-official-source/90min-country-census.json
+          if-no-files-found: warn
+          retention-days: 3
+
+
+  ukmto-index-contract:
+    # Pure offline contract check; no upstream requests on PR.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify UKMTO index bounded extraction and fail-closed regression
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/ukmto-official-corridor-index.mjs
+          node --check scripts/ops/observe-ukmto-corridor-index.mjs
+          node --test scripts/tests/ukmto-official-corridor-index.test.mjs
+
+  ukmto-first-party-private-context:
+    # Reuse existing 90-minute schedule. A blocked/dynamic-empty index stays RED.
+    needs: ukmto-index-contract
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Observe bounded first-party UKMTO index once
+        run: node scripts/ops/observe-ukmto-corridor-index.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: ukmto-private-corridor-index-${{ github.run_id }}
+          path: artifacts/expanded-official-source/ukmto-corridor-index.json
           if-no-files-found: warn
           retention-days: 3
