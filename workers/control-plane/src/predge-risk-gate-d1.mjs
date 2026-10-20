@@ -53,10 +53,19 @@ function b64bytes(v){
  return bytes;
 }
 function trustRecord(env,id,generatedAt){
- let registry;
- try{registry=JSON.parse(String(env?.RISK_GATE_VERIFY_KEYS_JSON||""))}catch{return null;}
- if(!record(registry)||!KEY_ID.test(id)||id!==ACTIVE_KEY_ID)return null;
- const ent=registry[id];
+ if(!KEY_ID.test(id)||id!==ACTIVE_KEY_ID)return null;
+ const protectedRegistry=String(env?.RISK_GATE_VERIFY_KEYS_JSON??"").trim();
+ let ent;
+ if(!protectedRegistry){
+   // The production Ed25519 PUBLIC key is already pinned in reviewed code.
+   // Absence of a duplicate secret must not disable genuine verification.
+   ent={status:"active",public_key_spki_b64:ACTIVE_KEY_SPKI};
+ }else{
+   let registry;
+   try{registry=JSON.parse(protectedRegistry)}catch{return null;}
+   if(!record(registry))return null;
+   ent=registry[id];
+ }
  if(!record(ent)||ent.status!=="active"||ent.public_key_spki_b64!==ACTIVE_KEY_SPKI)return null;
  const n=Date.parse(generatedAt);
  if(ent.not_before&&n<Date.parse(ent.not_before))return null;
@@ -277,9 +286,7 @@ export async function predgeRiskGateD1Readiness(env,now=Date.now()){
    if(env?.DB?.prepare){
      await env.DB.prepare("SELECT 1 AS healthy FROM risk_gate_d1_requests LIMIT 1").first();
      d1=true;
-     const parsed=JSON.parse(String(env?.RISK_GATE_VERIFY_KEYS_JSON??""));
-     keys=parsed?.[ACTIVE_KEY_ID]?.status==="active"&&
-       parsed[ACTIVE_KEY_ID]?.public_key_spki_b64===ACTIVE_KEY_SPKI;
+     keys=Boolean(trustRecord(env,ACTIVE_KEY_ID,new Date(now).toISOString()));
      if(keys){
        const row=await env.DB.prepare(
          "SELECT * FROM country_gro_verified_hot WHERE generated_at<=? AND expires_at>? ORDER BY verified_at DESC LIMIT 1"
