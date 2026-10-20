@@ -14,8 +14,38 @@ const CATEGORIES={geopolitics:"geopolitics",macro:"macro / fx",rare_earth:"criti
 const PUBLIC_D1="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news";
 const SITE="https://geomacro.live/intelligence";
 const DAY=86_400_000;
+// Audit the real React Story card, whose displayed heading intentionally drops
+// "Geomacro finds ". No source title, URL or article bytes are logged.
+const decode = txt=>txt.replace(/&#x([0-9a-f]+);/giu,(_,n)=>String.fromCodePoint(parseInt(n,16)))
+  .replace(/&#([0-9]+);/gu,(_,n)=>String.fromCodePoint(Number(n)))
+  .replace(/&(amp|quot|apos|lt|gt);/giu,(_,n)=>({
+    amp:"&",quot:'"',apos:"'",lt:"<",gt:">",
+  })[n.toLowerCase()]);
+const normalized = txt => decode(String(txt)).replace(/<[^>]*>/gu," ")
+  .replace(/[\u2014\u2013;]/gu," ").replace(/\s+/gu," ").trim().toLowerCase();
+function realD1CardDomains(html,signals){
+  const rendered=new Set();
+  if(typeof html!=="string"||html.length>6_000_000)return rendered;
+  for(const article of html.matchAll(/<article\b([^>]*)>([\s\S]*?)<\/article>/giu)){
+    if(!/data-testid=["']geomacro-(?:find-card-v1|release-finding)["']/iu.test(article[1]))
+      continue;
+    const text=normalized(article[2]);
+    for(const domain of DOMAINS){
+      if(!text.includes(CATEGORIES[domain]))continue;
+      if(signals.some(s=>s.category===domain&&typeof s.title==="string"&&
+          text.includes(normalized(s.title.replace(/^Geomacro finds\s+/iu,"")))))
+        rendered.add(domain);
+    }
+  }
+  return rendered;
+}
+function categoryIsActive(html,domain){
+  const label=CATEGORIES[domain];
+  return [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/giu)]
+    .some(m=>/aria-pressed=["']true["']/iu.test(m[1])&&normalized(m[2]).includes(label));
+}
 
-export function evaluatePublicNews(doc,dom,now=Date.now()) {
+export function evaluatePublicNews(doc,dom,now=Date.now(),categoryPages={}) {
   if(!doc || doc.ok!==true || doc.schema!=="geomacro.website-derived-news-feed.v1" ||
      doc.original_release_delay_minutes!==15 || doc.retention_days!==3 || doc.retention_hours!==72 ||
      doc.delivery_scope!=="free_website_only" || !Array.isArray(doc.signals) ||
@@ -41,14 +71,16 @@ export function evaluatePublicNews(doc,dom,now=Date.now()) {
     counts[domain]={stored_72h:rows.length,original_last_24h:n24,original_last_7d:n7};
     lastDates[domain]=lastDate===null?null:new Date(lastDate).toISOString().slice(0,10);
   }
-  const cards=[...dom.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/giu)];
-  const rendered=new Set();
-  for(const card of cards){
-    const text=card[1].replace(/<[^>]*>/gu," ").replace(/\s+/gu," ").toLowerCase();
-    if(!text.includes("geomacro finds"))continue;
-    for(const domain of DOMAINS){
-      if(text.includes(CATEGORIES[domain]))rendered.add(domain);
-    }
+  const rendered=realD1CardDomains(dom,doc.signals);
+  // First page shows only 12 newest cards. A busy geopolitical category
+  // can push Macro below the fold; inspect its real category-specific page.
+  for(const domain of DOMAINS){
+    if(rendered.has(domain)||typeof categoryPages[domain]!=="string")continue;
+    const page=categoryPages[domain];
+    if(!/<main\b[^>]*data-testid=["']geomacro-derived-news-desk["']/iu.test(page))
+      continue;
+    if(!categoryIsActive(page,domain))continue;
+    if(realD1CardDomains(page,doc.signals).has(domain))rendered.add(domain);
   }
   const d1Domains=DOMAINS.filter(x=>counts[x].stored_72h>0);
   // Publisher quiet periods cannot manufacture articles. All three browse
@@ -100,18 +132,29 @@ export async function main(){
   const {tmpdir}=await import("node:os");
   const {join}=await import("node:path");
   const profile=mkdtempSync(join(tmpdir(),"geomacro-browser-"));
+  const render=(target)=>execFileSync(chrome,[
+    "--headless=new","--no-sandbox","--no-zygote","--disable-gpu",
+    "--disable-dev-shm-usage","--disable-extensions",
+    "--disable-background-networking","--no-first-run",
+    "--no-default-browser-check","--timeout=25000",
+    "--virtual-time-budget=12000","--user-data-dir="+profile,
+    "--dump-dom",target,
+  ],{encoding:"utf8",timeout:60_000,maxBuffer:6_000_000,stdio:["ignore","pipe","ignore"]});
+  const parsed=JSON.parse(body);
+  const categoryPages={};
+  let report;
   try{
-    html=execFileSync(chrome,[
-      "--headless=new","--no-sandbox","--no-zygote","--disable-gpu",
-      "--disable-dev-shm-usage","--disable-extensions",
-      "--disable-background-networking","--no-first-run",
-      "--no-default-browser-check","--timeout=25000",
-      "--virtual-time-budget=12000","--user-data-dir="+profile,
-      "--dump-dom",SITE,
-    ],{encoding:"utf8",timeout:60_000,maxBuffer:6_000_000,stdio:["ignore","pipe","ignore"]});
+    html=render(SITE);
+    report=evaluatePublicNews(parsed,html);
+    // No speculative navigation for quiet categories. The actual category
+    // URL only resolves a D1 domain missing from the 12-card default page.
+    for(const domain of report.d1_domains_present){
+      if(report.browser_domains_rendered.includes(domain))continue;
+      categoryPages[domain]=render(SITE+"?category="+encodeURIComponent(domain));
+    }
+    report=evaluatePublicNews(parsed,html,Date.now(),categoryPages);
   }catch { throw Error("PUBLIC_NEWS_BROWSER_RENDER_UNAVAILABLE"); }
   finally{rmSync(profile,{recursive:true,force:true});}
-  const report=evaluatePublicNews(JSON.parse(body),html);
   console.log(JSON.stringify(report));
   if(!report.accepted) throw Error("PUBLIC_NEWS_BROWSER_TABS_OR_ACTUAL_CARDS_NOT_RENDERED");
   // Missing a 24h publisher release is a truthful business observation,

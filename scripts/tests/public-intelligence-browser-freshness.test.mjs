@@ -15,8 +15,14 @@ function doc(signals=names.map(x=>row(x))){
     original_release_delay_minutes:15,retention_days:3,retention_hours:72,
     delivery_scope:"free_website_only",signals};
 }
-const article=(label)=>
-  '<article><div>GEOMACRO FINDS · '+label+'</div><h2>Geomacro finds original release update</h2></article>';
+const article=(label)=>{
+  const domain=label==="Geopolitics"?"geopolitics":
+    label==="Macro / FX"?"macro":"rare_earth";
+  // Actual React Story component has a test ID and strips the
+  // "Geomacro finds " prefix from the public derived headline.
+  return '<article data-testid="geomacro-find-card-v1"><span>'+label+
+    '</span><h3>official update on '+domain+'</h3></article>';
+};
 const tabs='<main data-testid="geomacro-derived-news-desk">'+
   '<button>Geopolitics <span>1</span></button>'+
   '<button>Macro / FX <span>1</span></button>'+
@@ -32,6 +38,28 @@ test("verified D1 3-domain journal and actual three published DOM cards pass",()
   assert.equal(x.current_signed_gro_verified,false);
   assert.equal(x.publisher_realtime_guaranteed,false);
   assert.equal(x.raw_source_data_logged,false);
+});
+test("12-card default-page pagination does not hide a genuinely rendered Macro category",()=>{
+  const total=[...Array.from({length:13},(_,i)=>row("geopolitics",i+1)),row("macro")];
+  const initial=tabs+article("Geopolitics")+"</main>";
+  const macroPage='<main data-testid="geomacro-derived-news-desk">'+
+    '<button aria-pressed="false">Geopolitics</button>'+
+    '<button aria-pressed="true">Macro / FX</button>'+
+    '<button aria-pressed="false">Critical Minerals</button>'+
+    article("Macro / FX")+'</main>';
+  const x=evaluatePublicNews(doc(total),initial,NOW,{macro:macroPage});
+  assert.equal(x.accepted,true);
+  assert.deepEqual(x.browser_domains_rendered,["geopolitics","macro"]);
+  assert.equal(evaluatePublicNews(doc(total),initial,NOW).accepted,false);
+  const forged=macroPage.replace("official update on macro","unrelated story");
+  assert.equal(evaluatePublicNews(doc(total),initial,NOW,{macro:forged}).accepted,false);
+  const inactive=macroPage.replace('aria-pressed="true"','aria-pressed="false"');
+  assert.equal(evaluatePublicNews(doc(total),initial,NOW,{macro:inactive}).accepted,false);
+});
+test("a generic article, tab counter or iframe link is never D1 title-proof",()=>{
+ const fake=tabs+'<article><h3>official update on geopolitics</h3>'+
+   '<p>Geopolitics</p></article><iframe src="continuity"></iframe></main>';
+ assert.equal(evaluatePublicNews(doc([row("geopolitics")]),fake,NOW).accepted,false);
 });
 test("website only showing geopolitics fails even if D1 includes three",()=>{
   const x=evaluatePublicNews(doc(),tabs+article("Geopolitics")+"</main>",NOW);
