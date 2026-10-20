@@ -1,0 +1,43 @@
+name: Predge Risk Gate Token Encrypted Handoff (No Funds)
+on:
+  workflow_dispatch:
+    inputs:
+      recipient_rsa_public_key_base64:
+        description: "Base64 RSA 3072+ PUBLIC PEM (private PEM must stay local)."
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-predge-risk-gate-owner-handoff
+  cancel-in-progress: false
+jobs:
+  seal-risk-gate-token:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment: production
+    env:
+      ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      PREDGE_RISK_GATE_TOKEN: ${{ secrets.PREDGE_RISK_GATE_TOKEN }}
+      RECIPIENT_RSA_PUBKEY_B64: ${{ inputs.recipient_rsa_public_key_base64 }}
+    steps:
+      - name: Checkout immutable current main without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0f15c1 # v7
+        with: {node-version: '22'}
+      - name: Verify no-funds encrypted handoff cryptographic tests
+        run: node --test scripts/ops/predge-risk-gate-sealed-handoff.test.mjs
+      - name: Authenticated live read then encrypt Risk Gate bearer to owner
+        run: node scripts/ops/predge-risk-gate-sealed-handoff.mjs --seal-after-live-auth
+      - name: Upload ciphertext only (one-day retention)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
+        with:
+          name: predge-risk-gate-token-encrypted-${{ github.run_id }}
+          path: artifacts/predge-risk-gate-token/predge-risk-gate-token.rsa-oaep-sha256.bin
+          if-no-files-found: error
+          retention-days: 1

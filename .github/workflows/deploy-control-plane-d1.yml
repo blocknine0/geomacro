@@ -165,7 +165,7 @@ jobs:
             fi
             echo "PREDGE_RESEARCH_GRANT_MODE=PROTECTED_PARTNER_ISSUED_TOKEN" >> "$GITHUB_ENV"
           else
-            PREDGE_RESEARCH_NEWS_TOKEN="$(node -e "const c=require('node:crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-72h-research-only-v1').digest('hex'))")"
+            PREDGE_RESEARCH_NEWS_TOKEN="$(node -e "const c=require('node:crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-72h-research-only-v2-20261020').digest('hex'))")"
             echo "PREDGE_RESEARCH_GRANT_MODE=EXISTING_SEPARATE_HMAC_TOKEN" >> "$GITHUB_ENV"
           fi
           test "${#PREDGE_RESEARCH_NEWS_TOKEN}" -eq 64
@@ -181,8 +181,16 @@ jobs:
             echo "::add-mask::$PREDGE_RISK_GATE_TOKEN"
             echo "PREDGE_RISK_GATE_TOKEN_CONFIGURED=true" >> "$GITHUB_ENV"
           else
-            echo "PREDGE_RISK_GATE_TOKEN_CONFIGURED=false" >> "$GITHUB_ENV"
-            echo "::warning::PREDGE_RISK_GATE_TOKEN missing; new endpoint fails closed until protected secret provisioned"
+            # Root token stays protected. Risk Gate uses its own HMAC namespace
+            # and cannot be exchanged for research or admin authorization.
+            PREDGE_RISK_GATE_TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-risk-gate-v1').digest('hex'))")"
+            if test "$PREDGE_RISK_GATE_TOKEN" = "$CONTROL_PLANE_TOKEN" ||
+               test "$PREDGE_RISK_GATE_TOKEN" = "$PREDGE_RESEARCH_NEWS_TOKEN"; then
+              echo "::error::RISK_GATE_DOMAIN_SEPARATION_FAILED"; exit 5
+            fi
+            echo "::add-mask::$PREDGE_RISK_GATE_TOKEN"
+            echo "PREDGE_RISK_GATE_TOKEN_CONFIGURED=true" >> "$GITHUB_ENV"
+            echo "PREDGE_RISK_GATE_CREDENTIAL_MODE=DOMAIN_SEPARATED_HMAC" >> "$GITHUB_ENV"
           fi
           if test -n "${RISK_OBJECT_VERIFY_KEYS_JSON:-}"; then
             node -e 'const d=JSON.parse(process.env.RISK_OBJECT_VERIFY_KEYS_JSON); if(!d||typeof d!=="object"||Array.isArray(d))process.exit(3)'
@@ -335,6 +343,11 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/ops/verify-predge-auth-research-delivery.mjs
+
+      - name: Confirm previously exposed Predge research-v1 Bearer is revoked (no funds)
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        run: node scripts/ops/verify-predge-v1-revoked-live.mjs
 
       - name: Verify authenticated D1 central security budgets without B2 or payment
         run: node scripts/ops/verify-d1-central-security-budget.mjs

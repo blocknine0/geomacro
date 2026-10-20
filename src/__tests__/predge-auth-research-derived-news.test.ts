@@ -125,7 +125,7 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   const workflow=readFileSync(".github/workflows/deploy-control-plane-d1.yml","utf8");
   expect(index).toContain('"/v1/partner/predge/derived-structural-72h"');
   expect(index).toContain("predgeResearchDerivedNewsFeed(request,env)");
-  expect(workflow).toContain("geomacro-predge-72h-research-only-v1");
+  expect(workflow).toContain("geomacro-predge-72h-research-only-v2-20261020");
   expect(workflow).toContain("secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE");
   expect(workflow).toContain("PREDGE_RESEARCH_OVERRIDE_INVALID_FORMAT");
   expect(workflow).toContain("PREDGE_RESEARCH_PRIVILEGED_CREDENTIAL_REUSE_FORBIDDEN");
