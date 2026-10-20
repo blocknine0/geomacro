@@ -13,22 +13,33 @@ function canonical195(source=readFileSync("src/lib/canonical-country-registry-19
    throw Error("WDI_BACKFILL_REGISTRY_INVALID");
  return codes;
 }
-export function wdiLastNonemptyUrl(now=new Date()){
+function targetIso3(codes,source){
+ const canonical=canonical195(source);
+ if(!Array.isArray(codes)||codes.length===0||codes.length>50)
+   throw Error("WDI_BACKFILL_TARGET_INVALID");
+ const distinct=[...new Set(codes)];
+ if(distinct.length!==codes.length||distinct.some(x=>typeof x!=="string"||!canonical.has(x)))
+   throw Error("WDI_BACKFILL_TARGET_INVALID");
+ return distinct.sort();
+}
+export function wdiLastNonemptyUrl(now=new Date(),missingIso3,registrySource){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))throw Error("WDI_BACKFILL_CLOCK_INVALID");
- const url=new URL(BASE);
+ const targets=targetIso3(missingIso3,registrySource);
+ const url=new URL(BASE.replace("/country/all/","/country/"+targets.join(";")+"/"));
  url.searchParams.set("source","2");
  url.searchParams.set("format","json");
  url.searchParams.set("mrnev","1");
- url.searchParams.set("per_page","700");
+ url.searchParams.set("per_page","120");
  url.searchParams.set("page","1");
  return url.href;
 }
-export function inspectWdiLastNonempty(data,{now=new Date(),registrySource}={}){
+export function inspectWdiLastNonempty(data,{now=new Date(),registrySource,missingIso3}={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))throw Error("WDI_BACKFILL_CLOCK_INVALID");
- const codes=canonical195(registrySource);
+ const targets=targetIso3(missingIso3,registrySource);
+ const allowed=new Set(targets);
  if(!Array.isArray(data)||data.length!==2||
     !data[0]||Number(data[0].page)!==1||Number(data[0].pages)!==1||
-    !Array.isArray(data[1])||data[1].length>700||
+    !Array.isArray(data[1])||data[1].length>120||
     Number(data[0].total)!==data[1].length)
    throw Error("WDI_BACKFILL_PAGINATION_UNVERIFIED");
  const floor=now.getUTCFullYear()-1;
@@ -36,7 +47,7 @@ export function inspectWdiLastNonempty(data,{now=new Date(),registrySource}={}){
  let excluded=0;
  for(const row of data[1]){
   const iso=row?.countryiso3code,id=row?.indicator?.id;
-  if(!codes.has(iso)||!periods.has(id)){excluded++;continue;}
+  if(!allowed.has(iso)||!periods.has(id)){excluded++;continue;}
   const year=Number(row?.date);
   if(typeof row?.date!=="string"||!/^(?:19|20)\d{2}$/u.test(row.date)||
      year>floor||year<1960||
@@ -52,11 +63,12 @@ export function inspectWdiLastNonempty(data,{now=new Date(),registrySource}={}){
   const inFive=[...years].filter(([,y])=>floor-y<=5).length;
   return {
    indicator,last_completed_calendar_year:floor,
-   countries_with_any_nonnull_historical_reference:years.size,
-   countries_with_reference_in_last_5_years:inFive,
-   countries_with_reference_in_last_10_years:inTen,
-   countries_without_any_reference:195-years.size,
-   canonical_country_reference_years:[...codes].sort().map(iso3=>({
+   targeted_missing_2025_country_count:targets.length,
+   target_countries_with_any_historical_reference:years.size,
+   target_countries_with_reference_in_last_5_years:inFive,
+   target_countries_with_reference_in_last_10_years:inTen,
+   target_countries_without_any_reference:targets.length-years.size,
+   target_country_reference_years:targets.map(iso3=>({
     iso3,reference_year:years.get(iso3)??null,
     reference_is_current_observation:false,
     publication_datetime_verified:false
@@ -66,6 +78,8 @@ export function inspectWdiLastNonempty(data,{now=new Date(),registrySource}={}){
  return {schema:"geomacro.wdi-195-last-nonempty-reference.v1",
   checked_at:now.toISOString(),source_family:"world_bank_wdi",
   canonical_195_country_registry_verified:true,
+  query_target_is_only_2025_missing_countries:true,
+  target_countries_count:targets.length,
   indicator_count:2,request_count:1,
   excluded_aggregates_and_bad_rows:excluded,indicators:lines,
   annual_reference_not_live_fx_or_news:true,
@@ -91,9 +105,9 @@ async function bounded(response){
  try{return JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(b))}
  catch{throw Error("WDI_BACKFILL_JSON_INVALID")}
 }
-export async function observeWdiLastNonempty({fetchImpl=fetch,now=new Date(),registrySource}={}){
- const url=wdiLastNonemptyUrl(now);
+export async function observeWdiLastNonempty({fetchImpl=fetch,now=new Date(),registrySource,missingIso3}={}){
+ const url=wdiLastNonemptyUrl(now,missingIso3,registrySource);
  const response=await fetchImpl(url,{method:"GET",redirect:"error",
   headers:{accept:"application/json"},signal:AbortSignal.timeout(25000)});
- return inspectWdiLastNonempty(await bounded(response),{now,registrySource});
+ return inspectWdiLastNonempty(await bounded(response),{now,registrySource,missingIso3});
 }

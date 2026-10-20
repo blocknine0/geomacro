@@ -20,7 +20,6 @@ on:
       - "scripts/ops/observe-imf-195-reference.mjs"
       - "scripts/lib/wdi-195-last-nonempty.mjs"
       - "scripts/tests/wdi-195-last-nonempty.test.mjs"
-      - "scripts/ops/observe-wdi-195-last-nonempty.mjs"
       - "scripts/lib/chile-copper-official-monthly.mjs"
       - "scripts/tests/chile-copper-official-monthly.test.mjs"
       - "scripts/ops/observe-chile-copper-official.mjs"
@@ -49,7 +48,6 @@ on:
       - "scripts/ops/observe-imf-195-reference.mjs"
       - "scripts/lib/wdi-195-last-nonempty.mjs"
       - "scripts/tests/wdi-195-last-nonempty.test.mjs"
-      - "scripts/ops/observe-wdi-195-last-nonempty.mjs"
       - "scripts/lib/chile-copper-official-monthly.mjs"
       - "scripts/tests/chile-copper-official-monthly.test.mjs"
       - "scripts/ops/observe-chile-copper-official.mjs"
@@ -94,7 +92,6 @@ jobs:
           node --check scripts/ops/observe-imf-195-reference.mjs
           node --test scripts/tests/imf-195-country-reference-gap.test.mjs
           node --check scripts/lib/wdi-195-last-nonempty.mjs
-          node --check scripts/ops/observe-wdi-195-last-nonempty.mjs
           node --test scripts/tests/wdi-195-last-nonempty.test.mjs
           node --test scripts/tests/two-official-mineral-release-indices.test.mjs
           node --check scripts/lib/chile-copper-official-monthly.mjs
@@ -244,26 +241,3 @@ jobs:
           retention-days: 3
           if-no-files-found: warn
 
-  wdi-195-last-nonempty-reference:
-    # One independent official WDI public GET in same UTC 03:51 cron.
-    # The latest non-null OBSERVATION YEAR is never a current-release date.
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: static
-    runs-on: ubuntu-24.04
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version: 22
-      - name: Verify latest nonempty annual period for 195 canonical countries
-        run: node scripts/ops/observe-wdi-195-last-nonempty.mjs
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always()
-        with:
-          name: wdi-195-last-nonempty-private-${{ github.run_id }}
-          path: artifacts/wdi-195-last-nonempty/receipt.json
-          retention-days: 3
-          if-no-files-found: warn
