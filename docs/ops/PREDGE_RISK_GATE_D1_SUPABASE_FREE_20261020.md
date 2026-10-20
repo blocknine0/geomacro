@@ -1,5 +1,32 @@
 # Supabase-free Predge Risk Gate — Cloudflare D1 handoff (20 October 2026)
 
+## 20 October security follow-up: no new paid secret or registry service required
+
+The protected deploy now derives a new **research v2** Bearer from the
+existing root HMAC, replacing the old v1 Bearer when no override is set,
+and derives a **separate** Risk Gate Bearer using HMAC domain
+`geomacro-predge-risk-gate-v1` when no protected explicit override exists.
+Only the derived 64-hex **child tokens** are installed into Cloudflare;
+the parent ledger credential is never sent to Predge. The public GRO
+verification key is compile-time pinned to the canonical risk registry,
+so a missing `RISK_OBJECT_VERIFY_KEYS_JSON` no longer blocks verification;
+a present override may only match and narrow the pin.
+
+An exposed old v1 research token must return 401 following successful deploy.
+The owner obtains the new research token by the existing
+`predge-token-only-sealed-handoff.yml` and the independent Risk Gate
+Bearer via `predge-risk-gate-sealed-handoff.yml`. Supply only the locally
+generated RSA-3072 **public** key as the manual workflow input. Decrypt
+the one-day RSA-OAEP-SHA256 ciphertext locally with the retained private
+PEM. Different handoff OAEP labels are bound to the two credentials.
+Never email either plaintext bearer or print it in CI logs.
+
+Risk Gate credentials can be rotated independently by adding a new
+production `PREDGE_RISK_GATE_TOKEN` override and redeploying, retaining
+an explicit override while revoking old derived grants. If the signer key
+rotates, the canonical pinned public registry and D1 Worker code MUST be
+reviewed and changed together. Green CI is not commercial paid GO.
+
 **Scope:** the public `POST /api/risk-gate` request path now delegates to
 `POST /v1/partner/predge/risk-gate` on the existing D1 Worker. This does NOT
 eliminate unrelated Supabase-dependent endpoints, background jobs, old source
