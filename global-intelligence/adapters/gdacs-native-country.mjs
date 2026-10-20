@@ -1,3 +1,4 @@
+import {gdacsOfficialEqRssCountryFallback} from "./gdacs-official-eq-rss.mjs";
 // Official GDACS disaster event list. A first-party native event country
 // field is a source assertion, not an independently verified affected region,
 // official country impact, news publication time, or geopolitical event.
@@ -66,19 +67,33 @@ export function inspectGdacsCountryNative(payload){
   };
 }
 export async function fetchGdacsNativeCountry({fetchImpl=fetch,now=new Date()}={}){
-  const url=gdacsCountryEventListUrl(now);
-  const r=await fetchImpl(url,{method:"GET",redirect:"error",
-    signal:AbortSignal.timeout(12000),headers:{accept:"application/json"}});
-  if(!r.ok){await r.body?.cancel().catch(()=>{});throw Error("GDACS_HTTP_"+r.status);}
-  if(!r.body||Number(r.headers.get("content-length")??0)>MAX_BYTES)
-    throw Error("GDACS_BODY_LIMIT");
-  const rd=r.body.getReader(),parts=[];let size=0;
-  try{for(;;){const {done,value}=await rd.read();if(done)break;
-    size+=value.byteLength;if(size>MAX_BYTES)throw Error("GDACS_BODY_LIMIT");
-    parts.push(value);}
-  }finally{await rd.cancel().catch(()=>{});rd.releaseLock();}
-  const b=new Uint8Array(size);let n=0;for(const p of parts){b.set(p,n);n+=p.byteLength;}
-  let payload;try{payload=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(b));}
-  catch{throw Error("GDACS_JSON_SHAPE_INVALID");}
-  return inspectGdacsCountryNative(payload);
+ const url=gdacsCountryEventListUrl(now);
+ const r=await fetchImpl(url,{method:"GET",redirect:"error",
+   signal:AbortSignal.timeout(12000),headers:{accept:"application/json"}});
+ if(!r.ok){await r.body?.cancel().catch(()=>{});throw Error("GDACS_HTTP_"+r.status);}
+ let primary;
+ try{
+   if(!r.body||Number(r.headers.get("content-length")??0)>MAX_BYTES)
+     throw Error("GDACS_BODY_LIMIT");
+   const rd=r.body.getReader(),parts=[];let size=0;
+   try{for(;;){
+     const {done,value}=await rd.read();if(done)break;
+     size+=value.byteLength;
+     if(size>MAX_BYTES)throw Error("GDACS_BODY_LIMIT");
+     parts.push(value);
+   }}finally{await rd.cancel().catch(()=>{});rd.releaseLock();}
+   const b=new Uint8Array(size);let n=0;for(const p of parts){b.set(p,n);n+=p.byteLength;}
+   try{primary=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(b));}
+   catch{throw Error("GDACS_JSON_SHAPE_INVALID");}
+ }catch(error){
+   if(error?.message!=="GDACS_BODY_LIMIT")throw error;
+   // One documented first-party alternate only for a 512KiB body cap.
+   // 401/403/429, invalid JSON, redirect and unknown shape NEVER use fallback.
+   await r.body?.cancel().catch(()=>{});
+   const rss=await gdacsOfficialEqRssCountryFallback({fetchImpl,now});
+   return {...inspectGdacsCountryNative(rss),
+     same_publisher_24h_rss_used:true};
+ }
+ return {...inspectGdacsCountryNative(primary),
+   same_publisher_24h_rss_used:false};
 }

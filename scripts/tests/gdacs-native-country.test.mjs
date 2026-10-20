@@ -41,9 +41,11 @@ test("bounded official read, independent 429/oversize and parser failures",async
  assert.equal(o.redirect,"error");
  assert.equal(r.native_country_identifiers,1);
  await assert.rejects(()=>fetchGdacsNativeCountry({fetchImpl:async()=>new Response("429",{status:429})}),/GDACS_HTTP_429/);
- await assert.rejects(()=>fetchGdacsNativeCountry({fetchImpl:async()=>new Response("{}",{
-   headers:{"content-length":"600000"}
- })}),/GDACS_BODY_LIMIT/);
+ let attempts=0;
+ await assert.rejects(()=>fetchGdacsNativeCountry({fetchImpl:async()=>{
+   attempts++;return new Response("{}",{headers:{"content-length":"600000"}});
+ }}),/GDACS_RSS_BODY_LIMIT/);
+ assert.equal(attempts,2);
 });
 
 test("rolling dates are bounded, non-future, and advanced by the caller clock",()=>{
