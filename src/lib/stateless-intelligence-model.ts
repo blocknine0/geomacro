@@ -254,6 +254,14 @@ const AU_RESOURCES_TRADE_TOPIC = {
   name: "resources and energy export outlook",
   implication: "A dated government resources export release informs trade context only; no export value, FX movement or risk score is inferred.",
 };
+// WTO publishes diverse trade-policy notices. Admit ONLY these explicit
+// original-policy subjects, not every WTO newsletter/headline. Source-native
+// pubDate + issuer's pinned original article path remain independent gates.
+const WTO_ORIGINAL_TRADE_POLICY_TOPIC={
+  test:/\b(?:safeguard investigations?|anti[- ]dumping|countervailing (?:duty|duties|measures?)|trade[- ]remedy investigations?|tariff[- ]rate quotas?|tariff (?:concessions?|commitments?|bindings?)|trade (?:policy reviews?|facilitation|disputes?|barriers?)|(?:WTO )?dispute[- ]settlement(?: panels?)?)\b/iu,
+  name:"international trade measures and disputes",
+  implication:"An original trade-policy notice may affect cross-border market access and supply chains. Enforceability, tariff magnitude, country impact and FX direction are not established by the announcement alone.",
+};
 export function australianResourcesMacroMatches(title: string): boolean {
   return AU_RESOURCES_TRADE_TOPIC.test.test(title);
 }
@@ -279,6 +287,8 @@ function topicForOriginal(
   title: string, category: StatelessCategory, sourceId: string, dayVerified: boolean,
 ) {
   return selectOfficialTopic(title, category) ??
+    (category === "macro" && sourceId === "wto_trade_original_rss" &&
+      WTO_ORIGINAL_TRADE_POLICY_TOPIC.test.test(title) ? WTO_ORIGINAL_TRADE_POLICY_TOPIC : null) ??
     (category === "macro" && sourceId === "eia_press_macro" &&
       EIA_MACRO_ENERGY_TOPIC.test.test(title) ? EIA_MACRO_ENERGY_TOPIC : null) ??
     (category === "macro" && dayVerified && sourceId === "au_resources_macro_index" &&

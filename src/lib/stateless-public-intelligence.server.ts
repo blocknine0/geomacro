@@ -740,6 +740,9 @@ export async function readStatelessWebsiteIntelligence(
 export const FIVE_MINUTE_NEWS_FASTLANE = Object.freeze([
   {category:"geopolitics",id:"un_news"},
   {category:"macro",id:"fed_press"},
+  // WTO issuer RSS: one extra official, independently owned macro publisher.
+  // Never infer tariff direction, FX changes, paid rights or GEO/GRI proofs.
+  {category:"macro",id:"wto_trade_original_rss"},
   {category:"rare_earth",id:"nrcan_releases"},
 ] as const);
 export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20):
@@ -752,22 +755,28 @@ export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20):
    return {category,source:matches[0]};
  });
  const batches=await Promise.all(selected.map(({source})=>readSource(source,now)));
- return selected.map(({category},i)=>{
-   const batch=batches[i];
-   const candidates=batch.candidates;
+ // Fold the additional WTO official issuer into the EXISTING three-domain
+ // result contract. Bound each domain to a single maxSignals budget, not a
+ // new news queue, table, repeated D1 read or duplicate paid endpoint.
+ const domains=["geopolitics","macro","rare_earth"] as const;
+ return domains.map(category=>{
+   const scopes=selected.flatMap((p,i)=>
+     p.category===category?[batches[i]]:[]);
+   const candidates=scopes.flatMap(b=>b.candidates);
    const signals=deriveStatelessSignals(candidates,now,{maxSignals});
+   const healthy=scopes.filter(b=>b.healthy).length;
    return {
      schema:"geomacro.website-stateless-intelligence.v1",
      category,checked_at:new Date(now).toISOString(),
      website_release_cutoff:new Date(now-STATELESS_WEBSITE_DELAY_MS).toISOString(),
      earliest_original:new Date(now-STATELESS_LOOKBACK_MS).toISOString(),
-     releases_examined:candidates.length,feed_count:1,
-     healthy_feed_count:batch.healthy?1:0,
+     releases_examined:candidates.length,feed_count:scopes.length,
+     healthy_feed_count:healthy,
      current_24h_count:signals.filter(s=>Date.parse(s.published_at)>=now-86400000).length,
      last_7d_count:signals.filter(s=>Date.parse(s.published_at)>=now-7*86400000).length,
      last_30d_count:signals.length,
      status:signals.length>0?"official_observations_available":
-       batch.healthy?"no_eligible_original_releases":"sources_unavailable",
+       healthy>0?"no_eligible_original_releases":"sources_unavailable",
      signals,persistent_storage:false,publisher_title_redistributed:false,
      signed_risk_score_generated:false,independent_same_event_verification:false,
    };

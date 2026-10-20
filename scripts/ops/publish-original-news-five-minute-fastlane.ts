@@ -26,7 +26,8 @@ const reports=await readFiveMinuteNewsFastlane(runAt,20);
 let failure=false,allPublished:StatelessIntelligenceSignal[]=[];
 for(const category of categories){
  const report=reports.find(r=>r.category===category);
- if(!report||report.feed_count!==1||report.healthy_feed_count!==1){
+ const expectedOrigins=category==="macro"?2:1;
+ if(!report||report.feed_count!==expectedOrigins||report.healthy_feed_count<1){
    failure=true;
    console.warn("::warning::FASTLANE_ORIGINAL_PUBLISHER_UNAVAILABLE_"+category.toUpperCase());
    continue;
@@ -61,6 +62,9 @@ for(const category of categories){
  console.log(JSON.stringify({
    schema:"geomacro.5min-original-lane.v1",category,
    original_publisher_health:true,
+   original_publishers_checked:expectedOrigins,
+   original_publishers_reachable:report.healthy_feed_count,
+   one_unreachable_publisher_does_not_block_other_origin:true,
    source_native_candidates:report.releases_examined,
    admitted_bounded_derived_records:candidates.length,
    historical_reference_is_not_new_event:true,
@@ -107,7 +111,7 @@ if(allPublished.length){
 }
 console.log(JSON.stringify({
  schema:"geomacro.5min-three-domain-original-news-run.v1",
- configured_categories:3,pinned_original_publishers:3,
+ configured_categories:3,pinned_original_publishers:4,
  scheduled_interval_minutes:5,latency_objective_minutes:20,
  max_derived_rows_per_category:20,all_world_news_guaranteed:false,
  publisher_source_clock_not_fetch_clock:true,

@@ -57,6 +57,30 @@ describe("new official NZ/WTO sources, original clock and mandatory credit",()=>
   expect(JSON.stringify(signals)).not.toContain(url);
   expect(JSON.stringify(signals)).not.toContain(title);
  });
+ it("admits original WTO safeguard/trade-remedy notices with real native dates but never makes claims of tariff effect",()=>{
+   const source=specs[3];
+   for(const title of [
+     "Madagascar launches safeguard investigation on imported confectionery",
+     "WTO members discuss countervailing duties and trade-remedy investigations",
+     "Members start trade policy review of a country's export measures",
+     "Panel established for WTO dispute settlement",
+   ]){
+     const p=parseFirstPartyFeed(fixture(title,
+       "https://www.wto.org/english/news_e/news26_e/mark_12oct26_516_e.htm"),source,NOW);
+     expect(p.dated).toHaveLength(1);
+     const rows=deriveStatelessSignals(p.dated,NOW);
+     expect(rows).toHaveLength(1);
+     expect(rows[0].sources_credited).toEqual(["WTO news"]);
+     expect(rows[0].why_it_matters).not.toMatch(/\b(?:guaranteed|increased tariff by|fx fell by)\b/iu);
+     expect(rows[0].severity).toBeNull();
+   }
+   for(const title of ["WTO publishes staff meeting agenda",
+     "Training course for young professionals","New employee joins WTO"]){
+     expect(parseFirstPartyFeed(fixture(title,
+       "https://www.wto.org/english/news_e/news26_e/mark_12oct26_516_e.htm"),source,NOW).dated)
+       .toHaveLength(0);
+   }
+ });
  it("rejects feed updated-only clocks, future/unzoned dates and off-site or unsafe originals",()=>{
   for(const source of specs){
     const article=source.id==="wto_trade_original_rss"
