@@ -75,3 +75,5 @@ The report does NOT say any of 195x3 runtime cells or 58 corridors are up-to-dat
 2. `scripts/ops/audit-all-source-product-contract.mjs` passes on checked-out latest `main` (zero external requests).
 3. App build / CodeQL and source-CI pass.
 4. After merge, compare exact source commit and live API GET discovery; source health and commercial readiness must be independently verified rather than inferred from merge success.
+
+**Private source-by-source audit artifact.** On a protected `main` push/scheduled run, the same existing workflow additionally writes `artifacts/all-source-product-contract/private-source-ledger.json`. It contains one row for every registered source record and configured reader (registry, internal reference ID, domain classification and proof-state flags), with no upstream URLs, raw articles or secrets. It is retained in the private GitHub Actions artifact for 3 days, **never** returned from public discovery or paid API. The public log contains only aggregate counts.
