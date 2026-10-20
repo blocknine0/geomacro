@@ -24,6 +24,15 @@ describe("#1414 Ask Geomacro production acceptance", () => {
     expect(verifier).toContain("ASK_PRIVATE_SOURCE_LEAK");
   });
 
+  it("preserves honest no-current-signed-index response without false product readiness", () => {
+    expect(verifier).toContain("HONEST_INDEX_UNAVAILABLE");
+    expect(verifier).toContain("DEGRADED_CURRENT_INDEX_UNAVAILABLE");
+    expect(verifier).toContain("current_signed_risk_indices_ready: indexesReady");
+    expect(verifier).toContain("full_live_intelligence_acceptance: indexesReady");
+    expect(verifier).toContain("data.gri === null");
+    expect(verifier).toContain("ASK_VERIFIED_INDEX_NOT_ANSWERED_CONFIDENTLY");
+  });
+
   it("keeps human and machine intelligence_query on the same canonical answer engine", () => {
     expect(human).toContain('import { answerAskQuestion } from "./ask-answer.server"');
     expect(human).toContain("answerAskQuestion(data.question)");
