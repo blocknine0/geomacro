@@ -119,6 +119,17 @@ jobs:
           node --test scripts/tests/ons-lms-official-release.test.mjs
           node --check scripts/ops/audit-all-source-product-contract.mjs
           node scripts/ops/audit-all-source-product-contract.mjs
+      - name: Create private per-source product qualification ledger
+        if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: node scripts/ops/audit-all-source-product-contract.mjs --write
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          name: private-three-domain-source-census-${{ github.run_id }}
+          path: artifacts/all-source-product-contract/*.json
+          retention-days: 3
+          if-no-files-found: error
+
   live-upstream:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: static
