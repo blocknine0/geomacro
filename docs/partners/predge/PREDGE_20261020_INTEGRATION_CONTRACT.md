@@ -1,6 +1,6 @@
 # Predge x Geomacro — 20 October 2026 integration clarifications
 
-**Authority:** verified against the repository's `src/lib/risk-gate-api.server.ts`, `src/lib/risk-object-signing.server.ts`, and the public GRO v1 specification. This handoff is for interoperability testing, **not** a declaration of paid Risk Gate availability or commercial redistribution rights.
+**Authority:** verified against the current Cloudflare D1 `workers/control-plane/src/predge-risk-gate-d1.mjs`, deployed website proxy `src/routes/api.risk-gate.ts`, cryptographic source `src/lib/risk-object-signing.server.ts`, and the public GRO v1 specification. Read the 20 October [Amir follow-up](AMIR_20261020_TECHNICAL_COMMERCIAL_NEXT_STEPS.md) for current status. This handoff is for interoperability testing, **not** a declaration of paid Risk Gate availability or commercial redistribution rights.
 
 ## 1. Which field is `content_hash`?
 
@@ -24,9 +24,9 @@
   - `subject: {"type":"corridor","origin_country_iso3":"USA","destination_country_iso3":"CHN"}`.
 - Country requests use **`subject.country_iso3`** rather than `subject.id`. It **does not accept** `subject: {"type":"country","id":"USA"}`. That was a documentation/fixture error corrected in the accompanying example.
 - **Neither `content_hash` nor `context_sha256` is a top-level field accepted by `POST /api/risk-gate`.** This endpoint parses Risk Gate policy/action context, not Predge's market signature envelope. If a market digest is included as a string in `action_context.metadata`, that does not make it trusted or signature-verified. Validate the signed Predge context separately before correlating it with any risk result.
-- `docs/partners/predge/risk-gate-request.json` and `risk-gate-corridor-request.json` are canonical **syntactic** examples for the external handler. Policy fields and increasing score thresholds are validated by the runtime parser. See `src/lib/risk-gate-api.server.ts::parseExternalRiskGateBody` and `docs/openapi/geomacro-v1.yaml`.
+- `docs/partners/predge/risk-gate-request.json` and `risk-gate-corridor-request.json` are canonical **syntactic** examples for the external handler. Policy fields and increasing score thresholds are validated by the runtime parser. See `workers/control-plane/src/predge-risk-gate-d1.mjs::parseRequest` (current D1 ingress), historical `src/lib/risk-gate-api.server.ts::parseExternalRiskGateBody`, and `docs/openapi/geomacro-v1.yaml`.
 - `request-public-sandbox.json` is **not** a repository-defined production Risk Gate request contract. PUBLIC_SANDBOX is associated with other demo routes. Do not submit a sandbox demo envelope to `POST /api/risk-gate` or claim it is the accepted paid contract.
-- Even with a valid request, the existing authenticated Risk Gate path uses `requireRiskSupabase()` for client/quota and requires current commercially eligible signed GRO inputs. A syntactically valid request **does not prove the endpoint is live or paid-launch ready**. No execution is authorized: `risk_gate.execution_authorized=false` even if the advisory decision says CONTINUE.
+- The active external Risk Gate request path is now Supabase-free: the website proxy forwards to Cloudflare D1 Worker, with a separate partner token, atomic D1 quota and pinned GRO verification. **No dedicated paid Risk Gate credential or genuine current signed GRO has been confirmed for partner acceptance**, so the endpoint remains fail closed. A syntactically valid request **does not prove paid-launch readiness**. No execution is authorized: `risk_gate.execution_authorized=false` even if the advisory decision says CONTINUE.
 
 Example country (test values; **not** authorization):
 ```json
@@ -79,8 +79,8 @@ Predge reports a Bearer credential visible in an email sent on 19 October. Treat
 For Geomacro's purpose-scoped research Bearer:
 
 1. Privately generate a NEW random 32-byte token, rendered as 64 lowercase hex characters on the owner's secure machine (for example, Node `randomBytes(32).toString("hex")`). **Never paste it into email, chat, GitHub workflow input, issue or log.**
-2. In GitHub's protected **production** secrets set `PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE` to the new 64-hex token. Keep the override present; **removing it re-enables the old deterministic HMAC fallback and can undo revocation**.
-3. Deploy `.github/workflows/deploy-control-plane-d1.yml` from protected `main`. Wait for real production 401 anonymous / 200 new-token and D1 parity acceptance. If deployment fails, treat the prior token as still exposed and do **not** claim rotation.
+2. In GitHub's protected **production** secrets set `PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE` to the new 64-hex token. Keep the override present: the current deployed code **deliberately DISABLES the old deterministic HMAC fallback** when no fresh secret is configured. Clearing the override keeps private access closed, not usable.
+3. Deploy `.github/workflows/deploy-control-plane-d1.yml` from protected `main`. Wait for real production 401 anonymous / 200 new-token and D1 parity acceptance. If deployment fails, independently recheck the current worker before assuming revocation or restored new-token access; do **not** claim successful rotation.
 4. Test the **previous** Bearer on the private route in a secret-safe client and require HTTP 401. Test the new Bearer requires HTTP 200. Never log token bytes, signed headers or customer data. Rotate any unrelated exposed tokens at their own issuers.
 5. Use `.github/workflows/predge-token-only-sealed-handoff.yml` with an owner's locally held RSA 3072+ public key to receive the **same active** research credential as encrypted artifact. Decrypt locally with the private key, and transmit via an agreed end-to-end secure partner channel. Predge must acknowledge a successful fresh authenticated GET using that new token.
 6. Record the incident, revocation receipt, deployment SHA/time, old=401/new=200 proof and Predge acknowledgment in a **private** operations log. This repository cannot read protected secrets or independently certify rotation merely from code.
@@ -89,4 +89,4 @@ The research Bearer is NOT a Risk Gate commercial-client credential. Do not use 
 
 ## 6. Commercial discussions
 
-Monthly subscription is an option **only after** Predge states the requested products (geopolitics/macro/critical minerals, GRO/Risk Gate/other feeds), geographic scope, requests or records per month, refresh rate, history, SLA, rights and support. Geomacro's existing fixed x402 per-capability pricing remains unchanged unless a separate written subscription or revenue-share agreement is negotiated. The 18 November date is a negotiation target, **not** a paid-launch approval.
+Monthly subscription is an option **only after** Predge states the requested products (geopolitics/macro/critical minerals, GRO/Risk Gate/other feeds), geographic scope, requests or records per month, refresh rate, history, SLA, rights and support. Geomacro's existing fixed x402 per-capability pricing remains unchanged unless a separate written subscription or revenue-share agreement is negotiated. Amir has since confirmed **Friday 30 October 2026** for a concrete proposed monthly scope (feeds, calls, refresh, history) and **18 November 2026** for the target pricing/revenue-share discussion. The 18 November date is a negotiation target, **not** a paid-launch approval.
