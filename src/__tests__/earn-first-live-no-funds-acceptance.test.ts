@@ -1,6 +1,6 @@
 import {describe,expect,it,vi} from "vitest";
 import {readFileSync} from "node:fs";
-import {acceptEarningPilotLive,EARNING_PILOT_CASES,EARNING_PILOT_ALTERNATE_CASES} from "../../scripts/agentic/verify-earn-first-live-no-funds.mjs";
+import {acceptEarningPilotLive,EARNING_PILOT_CASES,EARNING_PILOT_ALTERNATE_CASES,scheduledEarningPilotCases} from "../../scripts/agentic/verify-earn-first-live-no-funds.mjs";
 
 const sha="a".repeat(40);
 const marker={schema_version:"geomacro.deployment-build.v1",
@@ -283,5 +283,32 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     expect(workflow).toContain("github.event_name == 'schedule'");
     expect(workflow).toContain("verify-earn-first-live-no-funds.mjs --diagnostic-only");
     expect(workflow).toContain("github.event_name != 'pull_request' && github.event_name != 'schedule'");
+  });
+});
+
+
+describe("same-quota rotating earning discovery diagnostics",()=>{
+  it("uses only fixed approved country sets, exactly three preflights every six hours",()=>{
+    for(let slot=0;slot<4;slot++){
+      const hour=String(slot*6).padStart(2,"0");
+      const cases=scheduledEarningPilotCases(new Date(`2026-10-20T${hour}:07:00Z`));
+      expect(cases).toBe(slot%2===0?EARNING_PILOT_CASES:EARNING_PILOT_ALTERNATE_CASES);
+      expect(cases).toHaveLength(3);
+    }
+    expect(()=>scheduledEarningPilotCases(new Date(NaN))).toThrow("EARNING_PILOT_SCHEDULE_CLOCK_INVALID");
+  });
+  it("keeps scheduled rotation diagnostic-only and never accepts funds",async()=>{
+    const {fetchImpl,received}=calls([eligible,eligible,eligible]);
+    const report=await acceptEarningPilotLive({expectedSha:sha,fetchImpl,
+      diagnosticOnly:true,pilotCases:scheduledEarningPilotCases(new Date("2026-10-20T07:07:00Z"))});
+    expect(report.country_profile).toBe("ALTERNATE_COUNTRIES_DIAGNOSTIC_ONLY");
+    expect(report.eligible_category_count).toBe(3);
+    expect(report.first_earning_ready).toBe(false);
+    expect(report.real_funds_touched).toBe(false);
+    expect(received.filter(x=>x.method==="POST")).toHaveLength(3);
+    expect(received.some(x=>x.url.includes("/api/v1/intelligence/query"))).toBe(false);
+    const workflow=readFileSync(".github/workflows/earn-first-live-no-funds-acceptance.yml","utf8");
+    expect(workflow).toContain("--diagnostic-only --auto-country-probe");
+    expect(workflow).toContain('cron: "7 */6 * * *"');
   });
 });
