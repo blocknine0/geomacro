@@ -1,0 +1,31 @@
+name: NZ Beehive and WTO Official RSS Readonly Diagnostics
+
+# Genuine network observation, not a commercial/licensing approval, all-news
+# certification, or Telegram authorization. No production secrets supplied.
+on:
+  workflow_dispatch: {}
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/ops/diagnose-nz-wto-official-rss.mjs"
+      - "scripts/ops/diagnose-nz-wto-official-rss.test.mjs"
+      - "src/lib/stateless-intelligence-model.ts"
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - "src/__tests__/nz-wto-official-original-news.test.ts"
+      - ".github/workflows/nz-wto-official-rss-diagnostics.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  official-rss-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test zero-secret source quarantine and exact official endpoint pins
+        run: node --test scripts/ops/diagnose-nz-wto-official-rss.test.mjs
+      - name: Read real official transport response (never log upstream data)
+        run: node scripts/ops/diagnose-nz-wto-official-rss.mjs
