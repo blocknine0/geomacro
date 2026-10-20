@@ -29,6 +29,10 @@ on:
       - "scripts/lib/ons-lms-official-release.mjs"
       - "scripts/tests/ons-lms-official-release.test.mjs"
       - "scripts/ops/observe-ons-lms-official-release.mjs"
+      - "scripts/ops/audit-all-source-product-contract.mjs"
+      - "config/operator-country-source-crosswalk.v1.json"
+      - "config/operator-corridor-source-crosswalk.v1.json"
+      - "global-intelligence/sources/national-minerals-authority.v1.json"
       - ".github/workflows/gdacs-native-country.yml"
   push:
     branches: [main]
@@ -60,6 +64,10 @@ on:
       - "scripts/lib/ons-lms-official-release.mjs"
       - "scripts/tests/ons-lms-official-release.test.mjs"
       - "scripts/ops/observe-ons-lms-official-release.mjs"
+      - "scripts/ops/audit-all-source-product-contract.mjs"
+      - "config/operator-country-source-crosswalk.v1.json"
+      - "config/operator-corridor-source-crosswalk.v1.json"
+      - "global-intelligence/sources/national-minerals-authority.v1.json"
       - ".github/workflows/gdacs-native-country.yml"
   workflow_dispatch:
   schedule:
@@ -109,6 +117,8 @@ jobs:
           node --check scripts/lib/ons-lms-official-release.mjs
           node --check scripts/ops/observe-ons-lms-official-release.mjs
           node --test scripts/tests/ons-lms-official-release.test.mjs
+          node --check scripts/ops/audit-all-source-product-contract.mjs
+          node scripts/ops/audit-all-source-product-contract.mjs
   live-upstream:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: static
