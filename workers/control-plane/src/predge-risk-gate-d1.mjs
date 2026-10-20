@@ -265,3 +265,42 @@ export async function predgeRiskGateD1(request,env,now=Date.now()){
    return Response.json(response,{status:200,headers});
  }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
 }
+
+/** Coarse source-safe operational readiness, never a paid-launch verdict. */
+export async function predgeRiskGateD1Readiness(env,now=Date.now()){
+ const configured=/^[a-f0-9]{64}$/.test(String(env?.PREDGE_RISK_GATE_TOKEN??""))&&
+   !constantEqual(env.PREDGE_RISK_GATE_TOKEN,env?.PREDGE_RESEARCH_NEWS_TOKEN)&&
+   !constantEqual(env.PREDGE_RISK_GATE_TOKEN,env?.CONTROL_PLANE_TOKEN);
+ let d1=false,keys=false,signed=false;
+ try{
+   if(env?.DB?.prepare){
+     await env.DB.prepare("SELECT 1 AS healthy FROM risk_gate_d1_requests LIMIT 1").first();
+     d1=true;
+     const parsed=JSON.parse(String(env?.RISK_GATE_VERIFY_KEYS_JSON??""));
+     keys=parsed?.[ACTIVE_KEY_ID]?.status==="active"&&
+       parsed[ACTIVE_KEY_ID]?.public_key_spki_b64===ACTIVE_KEY_SPKI;
+     if(keys){
+       const row=await env.DB.prepare(
+         "SELECT * FROM country_gro_verified_hot WHERE generated_at<=? AND expires_at>? ORDER BY verified_at DESC LIMIT 1"
+       ).bind(new Date(now).toISOString(),new Date(now).toISOString()).first();
+       if(row&&ISO3.test(row.country_iso3)){
+         const obj=await verifyHotGRO(row,env,{type:"country",id:row.country_iso3},now);
+         signed=Boolean(obj);
+       }
+     }
+   }
+ }catch{d1=false;keys=false;signed=false;}
+ const ready=Boolean(configured&&d1&&keys&&signed);
+ return Response.json({
+   status:ready?"ready":"not_ready",
+   checked_at:new Date(now).toISOString(),
+   authority:"cloudflare-d1",
+   scope:"predge-risk-gate-country-v1",
+   checks:{database:d1,audit_store:d1,isolated_partner_credential:configured,
+      active_pinned_verification_key:keys,
+      fresh_verified_commercial_country_gro:signed},
+   // readiness is not partner-market proof, rights to onward redistribute, or paid approval.
+   paid_launch_approved:false,execution_authorized:false
+ },{status:ready?200:503,headers:{"Cache-Control":"public, max-age=60",
+ "X-Content-Type-Options":"nosniff"}});
+}
