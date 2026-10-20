@@ -27,6 +27,9 @@ test("requires complete OAuth secrets and exact allowed Zoho data center",()=>{
  const cfg=validateZohoMaritimeConfig(env);
  assert.equal(cfg.ready,true);assert.equal(cfg.region,"in");
  assert.equal(cfg.ukmtoSender,"alerts@ukmto.example");
+ assert.equal(cfg.expectedMailbox,"contact@geomacro.live");
+ assert.equal(validateZohoMaritimeConfig({...env,ZOHO_MAIL_REGION:""}).region,"in");
+ assert.throws(()=>validateZohoMaritimeConfig({...env,ZOHO_MAIL_REGION:"us"}),/REGION_NOT_ALLOWED/);
  assert.throws(()=>validateZohoMaritimeConfig({...env,ZOHO_MAIL_REGION:"https://evil.com"}),/REGION_NOT_ALLOWED/);
  assert.throws(()=>validateZohoMaritimeConfig({...env,ZOHO_MAIL_FOLDER_ID:"../../evil"}),/ID_INVALID/);
 });
@@ -56,9 +59,10 @@ test("missing header, stale date, duplicate and unknown UKMTO address fail close
  assert.equal(x.candidate_counts.ukmto,0);
  assert.deepEqual(x.subscriptions_configured,["marad_advisories"]);
 });
-test("one OAuth refresh, one mailbox listing and at most three headers: no contents or writes",async()=>{
+test("one OAuth refresh, bound mailbox ID, one listing and at most three headers: no contents or writes",async()=>{
  const urls=[];const responses=[
  {access_token:"sample_token_long_enough"},
+ {status:{code:200},data:{primaryEmailAddress:"contact@geomacro.live"}},
  {status:{code:200},data:[marad,ukmto,untrusted]},
  {status:{code:200},data:{headerContent:hdr("marad@info.dot.gov")}},
  {status:{code:200},data:{headerContent:hdr("alerts@ukmto.example")}}
@@ -70,13 +74,24 @@ test("one OAuth refresh, one mailbox listing and at most three headers: no conte
   else {assert.ok(opts.headers.authorization.startsWith("Zoho-oauthtoken "));}
   return Response.json(responses[n++]);
  }});
- assert.equal(n,4);
- assert.equal(result.external_calls,4);
+ assert.equal(n,5);
+ assert.equal(result.external_calls,5);
+ assert.equal(result.mailbox_identity_verified,true);
+ assert.ok(urls[1].endsWith("/api/accounts/"+env.ZOHO_MAIL_ACCOUNT_ID));
  assert.equal(result.leads.length,2);
  assert.equal(result.paid_partner_delivery_enabled,false);
  assert.ok(urls.every(x=>!x.includes("/content")));
  assert.equal(result.d1_writes,0);
  assert.equal(result.supabase_requests,0);
+});
+test("OAuth mailbox cannot read any messages if account belongs to another address",async()=>{
+ let calls=0;
+ await assert.rejects(()=>observeZohoMaritime({env,fetchImpl:async()=>{
+  calls++;
+  return Response.json(calls===1?{access_token:"sample_token_long_enough"}:
+   {status:{code:200},data:{primaryEmailAddress:"another@example.org"}});
+ }}),/ZOHO_MAILBOX_IDENTITY_MISMATCH/);
+ assert.equal(calls,2);
 });
 test("unconfigured credentials perform no network request; 403 never retries",async()=>{
  let n=0;
