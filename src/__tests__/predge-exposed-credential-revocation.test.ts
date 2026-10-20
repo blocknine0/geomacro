@@ -23,9 +23,12 @@ describe("19 October emailed Predge research token revocation",()=>{
  });
  it("requires real live old-credential rejection before partner encrypted handoff",()=>{
   const verifier=readFileSync("scripts/ops/verify-predge-auth-research-delivery.mjs","utf8");
-  expect(verifier).toContain("OLD_RESEARCH_TOKEN_NOT_REVOKED");
-  expect(verifier).toContain("legacyAttempt.status!==401");
-  expect(verifier).toContain("legacyAttempt.status!==503");
+  expect(verifier).toContain("EXPOSED_BEARER_STILL_ACCEPTED");
+  expect(verifier).toContain("if(old.status!==401)");
+  expect(verifier).toContain("old_emailed_bearer_denied:true");
+  expect(verifier).toContain('if(old.status===503&&anonymous.status===503');
+  expect(verifier).toContain("ACCEPTANCE_");
+  expect(verifier).not.toContain("console.error(token)");
   const handoff=readFileSync("scripts/ops/predge-sealed-token-handoff.mjs","utf8");
   expect(handoff).toContain('error("PREDGE_RESEARCH_ROTATION_REQUIRED")');
  });
