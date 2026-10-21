@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { groqClassifyJson } from "./groq.server";
+import { groqBrowserResearchForMissingOfficial } from "../../scripts/lib/groq-browser-live-fallback.mjs";
 import { buildRealtimeSearchPlan } from "./ask-realtime-query-plan";
 import { resolveAskCountry } from "./ask-on-demand-original.server";
 import type { AskAnswer } from "./ask-intelligence.server";
@@ -268,7 +269,45 @@ export async function realtimeSearchAnswer(
   options: { deterministicOnly?: boolean } = {},
 ): Promise<HybridAskAnswer | null> {
   const hits = await currentSearch(question);
-  if (!hits.length) return null;
+  if (!hits.length) {
+    // Strict FALLBACK only: existing free first-party and public GDELT indexes
+    // have already returned no matching leads. No raw customer question, B2,
+    // payment, independent reviewer or original license is forwarded.
+    let groqResearch;
+    try {
+      const scope=planSafeRealtimeIndexQueries(question);
+      const country=resolveAskCountry(question);
+      groqResearch=await groqBrowserResearchForMissingOfficial({
+        categories:scope.queries.map(q=>q.category),
+        country_iso3:country?.iso3 ?? null,
+        country_name:country?.name ?? null,
+      });
+    } catch {
+      return null;
+    }
+    if (!groqResearch?.leads?.length) return null;
+    const leads=groqResearch.leads;
+    const selected=leads.slice(0,3);
+    const evidence=selected.map((lead,index)=>({
+      eventId:`research:groq-browser:${lead.source_claim_fingerprint.slice(0,14)}:${index}`,
+      title:`Geomacro provisional live browser research · ${categoryLabel(lead.category)} · original not verified`,
+      relevance:50,
+    }));
+    return {
+      summary:"Provisional live research leads were found, but no exact current event is independently verified.",
+      what_changed:selected.map((lead,i)=>
+        `${i+1}) Unverified research lead: ${lead.what_changed}`).join("; ").slice(0,900),
+      why_it_matters:selected.map(lead=>lead.why_it_matters).join("; ").slice(0,800),
+      geomacro_view:"This is Geomacro-authored provisional analysis from Groq browser research, not an original publisher readback, verified numerical value, signed GRI or licensed paid result.",
+      evidence,insufficient_evidence:true,mean_relevance:null,low_confidence:true,
+      gri:null,generatedAt:new Date().toISOString(),
+      data_mode:"ephemeral_live",cache_status:"bypassed",
+      source_identity_exposed:false,durable_live_storage_write:false,
+      real_time_message:"Free official/index retrieval had no eligible leads; Groq browser-search fallback yielded unverified research, not signed commercial intelligence.",
+      intelligence_tier:"index_observation_unverified",
+      signed_gro_generated:false,independent_same_event_verification:false
+    };
+  }
 
   // Broad free-news discovery does not require an optional hosted formatter.
   const grounded = options.deterministicOnly
