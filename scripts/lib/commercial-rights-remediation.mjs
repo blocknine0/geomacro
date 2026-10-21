@@ -97,7 +97,7 @@ export function sourceRightsFollowupStatus(sourceId,category){
 export function triageCommercialRightsCandidates(candidates,{now=new Date()}={}){
  if(!Array.isArray(candidates)||candidates.length>MAX||
     !(now instanceof Date)||!Number.isFinite(now.getTime()))reject();
- const seen=new Set(),seenIssuerClaim=new Set(),rows=[];
+ const seen=new Set(),seenArticleBytes=new Set(),seenIssuerClaim=new Set(),rows=[];
  for(const c of candidates){
   if(!c||typeof c!=="object"||Array.isArray(c)||
     !SAFE_ID.test(c.source_id??"")||
@@ -112,8 +112,14 @@ export function triageCommercialRightsCandidates(candidates,{now=new Date()}={})
   const eligibleClock=at<=now.getTime()&&now.getTime()-at<=6*60*60*1000;
   const exactKey=c.issuer_id+":"+c.original_article_sha256;
   const claimKey=c.issuer_id+":"+c.same_event_claim_sha256;
-  const repeated=seen.has(exactKey)||seenIssuerClaim.has(claimKey);
-  seen.add(exactKey);seenIssuerClaim.add(claimKey);
+  // Exact same publisher HTML bytes cannot become multiple independent
+  // originals merely by changing the claimed issuer. This detects accidental
+  // syndicated mirroring or forged multi-source submissions as well.
+  const repeated=seen.has(exactKey)||
+    seenArticleBytes.has(c.original_article_sha256)||
+    seenIssuerClaim.has(claimKey);
+  seen.add(exactKey);seenArticleBytes.add(c.original_article_sha256);
+  seenIssuerClaim.add(claimKey);
   const rights=COMMERCIAL_SOURCE_RIGHTS_EVIDENCE[c.source_id];
   const domains=SOURCE_DOMAIN_HINTS[c.source_id]??[];
   let status,action;
