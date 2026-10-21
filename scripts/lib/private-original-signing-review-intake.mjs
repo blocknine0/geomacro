@@ -127,7 +127,7 @@ export async function preparePrivateOriginalSigningReview({
   verified_original_counts_by_category:counts,
   status:leads.length>0?"FACTUAL_SOURCE_BYTES_VERIFIED_REVIEW_PENDING":
     "NO_CURRENT_BYTE_VERIFIED_SOURCE_FOR_REVIEW",
-  native_original_clock_used:true,article_bytes_reread:true,
+  native_original_clock_policy_enforced:true,article_bytes_reread:attempts.length>0,
   individual_country_category_semantic_claim_verified:false,
   article_specific_commercial_rights_verified:false,
   signed_machine_input_created:false,independent_facts_signature_verified:false,

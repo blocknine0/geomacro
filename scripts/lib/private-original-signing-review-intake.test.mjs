@@ -51,6 +51,16 @@ test("actual exact issuer HTML byte hash and original native clock prepare a rev
  for(const secret of [URL,"Synthetic monetary",sha(HTML),"federal_reserve"])
   assert.equal(publicReceipt.includes(secret),false);
 });
+test("no actual source reread reports no bytes read and never issues signing input",async()=>{
+ const r=await preparePrivateOriginalSigningReview({
+  country_iso3:"USA",discovery,pages:{attempted:0,verified_candidates:[]},
+  now:NOW,readback:async()=>{throw Error("UNEXPECTED_NETWORK")},
+ });
+ assert.equal(r.receipt.byte_exact_rereads_attempted,0);
+ assert.equal(r.receipt.article_bytes_reread,false);
+ assert.equal(r.receipt.signed_machine_input_created,false);
+ assert.equal(r.receipt.status,"NO_CURRENT_BYTE_VERIFIED_SOURCE_FOR_REVIEW");
+});
 test("the production exact HTML-byte verifier needs a pinned official original and native date",async()=>{
  const proof=await verifyGeomacroUnclaimedOriginalPage({original:{
   category:"macro",originating_reporting_organization_id:"federal_reserve",
