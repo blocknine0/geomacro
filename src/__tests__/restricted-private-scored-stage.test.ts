@@ -97,6 +97,7 @@ describe("#1803 restricted canonical private score archive", () => {
   it("isolates staging from Supabase and public projections, with one verified B2 GET", () => {
     const workflow = readFileSync(".github/workflows/restricted-private-current-scoring.yml", "utf8");
     const scorer = readFileSync("scripts/ingest-news.js", "utf8");
+    const prompt = readFileSync("scripts/lib/canonical-risk-classification-prompt.mjs", "utf8");
     const archive = readFileSync("scripts/ops/archive-restricted-private-scored-stage.mjs", "utf8");
     const client = readFileSync("scripts/ops/b2-s3-client.mjs", "utf8");
     expect(workflow).toContain("workflow_dispatch:");
@@ -129,13 +130,13 @@ describe("#1803 restricted canonical private score archive", () => {
     expect(scorer).toContain("privateStagedRows.push(staged)");
     // Prompt quality is shared across geopolitics, macro and rare_earth.
     // These are LLM targets, never a parser rewrite or reduced stage gate.
-    expect(scorer).toContain("DERIVED TEXT QUALITY CONTRACT (all three categories):");
-    expect(scorer).toContain("narrative should be 40-260 characters");
-    expect(scorer).toContain("summary should be 60-700 characters");
-    expect(scorer).toContain("canonical relevance, severity, source-native timestamp");
-    expect(scorer).toContain("independent corroboration remain separate fail-closed gates");
-    expect(scorer).toContain("return relevant=false");
-    expect(scorer).not.toContain("If private text is invalid, pad it");
+    expect(prompt).toContain("DERIVED TEXT QUALITY CONTRACT (all three categories):");
+    expect(prompt).toContain("narrative should be 40-260 characters");
+    expect(prompt).toContain("summary should be 60-700 characters");
+    expect(prompt).toContain("canonical relevance, severity, source-native timestamp");
+    expect(prompt).toContain("independent corroboration remain separate fail-closed gates");
+    expect(prompt).toContain("return relevant=false");
+    expect(prompt).not.toContain("If private text is invalid, pad it");
 
     expect(archive).toContain("PRIVATE_SCORING_SUPABASE_CREDENTIALS_FORBIDDEN");
     expect(archive).toContain("putWithMetadataVerification(key,packed,{");

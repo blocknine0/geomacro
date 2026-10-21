@@ -25,6 +25,13 @@ on:
       - ".github/workflows/restricted-private-current-scoring.yml"
       - "scripts/ops/preflight-private-griv12-singleton.mjs"
       - "scripts/tests/auto-private-gri-no-funds-continuation.test.mjs"
+      - "scripts/lib/classifier-provider-configuration*"
+      - "scripts/lib/canonical-risk-classification-prompt.mjs"
+      - "scripts/lib/private-scoring-clocks.test.mjs"
+      - "scripts/lib/restricted-private-scored-stage.mjs"
+      - "scripts/lib/private-gri-original-publisher-companion.mjs"
+      - "scripts/lib/private-gri-singleton-source-bridge.mjs"
+      - "scripts/lib/independent-review-preparation.mjs"
   push:
     branches: [main]
     paths:
@@ -35,6 +42,13 @@ on:
       - "scripts/lib/official-native-rss.mjs"
       - "scripts/lib/official-native-alternates.mjs"
       - "scripts/lib/official-native-third-fallback.mjs"
+      - "scripts/lib/classifier-provider-configuration*"
+      - "scripts/lib/canonical-risk-classification-prompt.mjs"
+      - "scripts/lib/private-scoring-clocks.test.mjs"
+      - "scripts/lib/restricted-private-scored-stage.mjs"
+      - "scripts/lib/private-gri-original-publisher-companion.mjs"
+      - "scripts/lib/private-gri-singleton-source-bridge.mjs"
+      - "scripts/lib/independent-review-preparation.mjs"
 
 permissions:
   contents: read
@@ -61,6 +75,7 @@ jobs:
           set -euo pipefail
           node --check scripts/ops/preflight-private-griv12-singleton.mjs
           node --test scripts/tests/auto-private-gri-no-funds-continuation.test.mjs
+          node --test scripts/lib/classifier-provider-configuration.test.mjs scripts/lib/private-scoring-clocks.test.mjs scripts/lib/independent-review-preparation.test.mjs
 
   private-stage:
     if: >-
@@ -153,7 +168,11 @@ jobs:
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}" && test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
           test -n "${B2_KEY_ID:-}" && test -n "${B2_APPLICATION_KEY:-}"
-          test -n "${GROQ_API_KEY:-}"
+          node --input-type=module <<'NODE'
+          import {requireConfiguredClassifier} from './scripts/lib/classifier-provider-configuration.mjs';
+          requireConfiguredClassifier();
+          console.log('PRIVATE_SCORING_CLASSIFIER_CONFIGURATION_PRESENT');
+          NODE
           LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
           DB_ID="$(printf '%s' "$LIST_JSON" | node -e '
             let s="";
