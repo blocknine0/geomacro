@@ -250,7 +250,7 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    expect(source).toContain("deriveStatelessSignals(originalCandidates, now,{maxSignals})");
    expect(route).toContain('"country-coverage-195x3"');
    expect(publish).toContain("privateOriginals.push(...candidates),200");
-   expect(publish).toContain("signals.slice(i*40,(i+1)*40)");
+   expect(publish).toContain("prepareDerivedNewsBatches(eligible)");
    expect(route).toContain("derivedNewsStructuralResponse(request)");
    expect(paid).toContain("auto_ingest_72h_drafts_commercially_eligible:false");
    expect(paid).toContain("const finalConfig = resolveEligibleCoinbaseCapabilityConfig");

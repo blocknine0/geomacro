@@ -47,5 +47,11 @@ describe("ephemeral first-party original-reference crosswalk for D1-derived lead
   expect(publisher).toContain("UNAVAILABLE_NO_EVIDENCE_PROMOTION");
   expect(publisher).not.toContain("JSON.stringify(privateOriginals)");
   expect(publisher).not.toContain("signed:true");
+  const privateCrosswalk=publisher.slice(publisher.indexOf('// One bounded, metadata-only D1 readback'));
+  expect(privateCrosswalk).not.toContain('console.log(');
+  expect(privateCrosswalk).toContain('geomacro-private-source-crosswalk.json');
+  expect(privateCrosswalk).toContain("mode:0o600,flag:'wx'");
+  expect(readFileSync('.github/workflows/website-derived-news-continuity.yml','utf8'))
+    .toContain('"$RUNNER_TEMP/geomacro-private-source-crosswalk.json"');
  });
 });

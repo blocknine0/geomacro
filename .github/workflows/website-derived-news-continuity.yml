@@ -160,7 +160,7 @@ jobs:
       - name: Remove private review handoff and internal verdicts from the runner
         if: always()
         run: |
-          rm -f -- "$RUNNER_TEMP/geomacro-source-review-refs.json" "$RUNNER_TEMP/geomacro-source-review-result.json"
+          rm -f -- "$RUNNER_TEMP/geomacro-source-review-refs.json" "$RUNNER_TEMP/geomacro-source-review-result.json" "$RUNNER_TEMP/geomacro-private-source-crosswalk.json"
       - name: Produce country-scoped high-impact GRI evidence worklist (zero scoring)
         run: |
           node --test scripts/tests/material-gri-country-evidence-worklist.test.mjs

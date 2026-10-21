@@ -8,6 +8,7 @@
 import { createHmac } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { summarizeDerivedSourceHealth } from "../lib/derived-news-source-health.mjs";
+import {prepareDerivedNewsBatches} from '../lib/derived-news-d1-batches.mjs';
 import { buildMaterialGriNewsReviewQueue } from "../lib/material-gri-news-review.mjs";
 import { readStatelessWebsiteIntelligence } from "../../src/lib/stateless-public-intelligence.server";
 import {createRunScopedAustralianResourcesFetch} from "../../src/lib/stateless-run-shared-official-fetch";
@@ -58,7 +59,7 @@ for (const category of categories) {
     // Already derived by the publisher model; this is a belt-and-braces
     // 15-minute gate before D1 writes. Day-only releases conservatively wait.
     const checked=Date.parse(report.checked_at);
-    const signals=report.signals.filter(signal=>{
+    const eligible=report.signals.filter(signal=>{
       const at=Date.parse(signal.published_at);
       return signal.category===category && Number.isFinite(at) &&
         at>=checked-72*60*60_000 && at<=checked &&
@@ -72,9 +73,7 @@ for (const category of categories) {
     // eligible release is processed, with 40-row chunks under the control
     // plane's strict 64KiB authenticated request limit. No upstream bytes.
     // EMPTY batches remain required for truthful retention sweeps.
-    const chunks=signals.length
-      ?Array.from({length:Math.ceil(signals.length/40)},(_,i)=>signals.slice(i*40,(i+1)*40))
-      :[[]];
+    const {signals,chunks}=prepareDerivedNewsBatches(eligible);
     let acknowledged=0;
     for(const chunk of chunks){
       const reply=await fetch(ENDPOINT,{
@@ -125,13 +124,15 @@ for (const category of categories) {
       source_check_receipt_d1_verified:true,
       supabase_attempts:denied,storage:"cloudflare-d1-derived-only",
     }));
-  } catch {
+  } catch(error) {
     success=false;
     if(!sourceHealthReceipts.some(r=>r.category===category))
       sourceHealthReceipts.push({schema:"geomacro.hourly-free-source-health.v1",
         category,status:"CATEGORY_COLLECTION_UNAVAILABLE",diagnostics_complete:false,
         commercial_rights_verified:false,raw_upstream_stored:false});
-    console.error("::error::WEBSITE_DERIVED_NEWS_INGEST_"+category.toUpperCase()+"_UNAVAILABLE");
+    const code=error instanceof Error&&/^(?:CLOUDFLARE_DERIVED_NEWS_[A-Z0-9_]+|DERIVED_NEWS_[A-Z0-9_]+|OFFICIAL_FEEDS_UNREACHABLE)$/.test(error.message)
+      ?error.message:'UNCLASSIFIED';
+    console.error("::error::WEBSITE_DERIVED_NEWS_INGEST_"+category.toUpperCase()+"_UNAVAILABLE_"+code);
   }
 }
 console.log(JSON.stringify({
@@ -288,17 +289,15 @@ try {
     independent_fact_verified:false,article_commercial_rights_verified:false,
     signed:false,customer_delivery_eligible:false,
   }));
-  console.log(JSON.stringify({
+  const crosswalk={
     schema:"geomacro.private-derived-original-crosswalk-status.v1",
     checked_at:new Date(now).toISOString(),recent_count:recent.length,
     matched_ephemeral_originals:rows.filter(r=>r.source_original_reference_recovered).length,
     rows,raw_source_content_logged:false,source_urls_logged:false,
     persisted_original_urls:false,commercially_authorizing:false,
-  }));
+  };
+  if(process.env.RUNNER_TEMP)writeFileSync(process.env.RUNNER_TEMP+'/geomacro-private-source-crosswalk.json',
+    JSON.stringify(crosswalk),{mode:0o600,flag:'wx'});
 } catch {
-  console.log(JSON.stringify({
-    schema:"geomacro.private-derived-original-crosswalk-status.v1",
-    status:"UNAVAILABLE_NO_EVIDENCE_PROMOTION",
-    raw_source_content_logged:false,commercially_authorizing:false,
-  }));
+  console.warn('::warning::PRIVATE_SOURCE_CROSSWALK_UNAVAILABLE_NO_EVIDENCE_PROMOTION');
 }
