@@ -83,8 +83,19 @@ async function main(){
   AWS_EC2_METADATA_DISABLED:"true",
   AWS_MAX_ATTEMPTS:"1",AWS_RETRY_MODE:"standard",
  };
+ // Independent read-only account-wide inventory credentials may be supplied
+ // without expanding the current protected archive writer's capability scope.
+ // Incomplete credential pairs fail closed instead of falling back unnoticed.
+ const inventoryId=String(env.B2_LEGACY_INVENTORY_KEY_ID??"").trim();
+ const inventorySecret=String(env.B2_LEGACY_INVENTORY_APPLICATION_KEY??"").trim();
+ if(Boolean(inventoryId)!==Boolean(inventorySecret))
+  return blocked("B2_READONLY_INVENTORY_CREDENTIAL_PAIR_INCOMPLETE");
+ const inventoryEnv={...awsEnv,
+  AWS_ACCESS_KEY_ID:inventoryId||env.B2_KEY_ID,
+  AWS_SECRET_ACCESS_KEY:inventorySecret||env.B2_APPLICATION_KEY,
+ };
  const b2Args=["--endpoint-url",ENDPOINT];
- const bucketsRaw=run("aws",["s3api","list-buckets",...b2Args,"--output","json"],awsEnv,30000,2_000_000);
+ const bucketsRaw=run("aws",["s3api","list-buckets",...b2Args,"--output","json"],inventoryEnv,30000,2_000_000);
  if(!bucketsRaw)return blocked("B2_ACCOUNT_WIDE_FREE_STORAGE_INVENTORY_INACCESSIBLE");
  let buckets;
  try{buckets=JSON.parse(bucketsRaw)?.Buckets?.map(x=>x.Name)}catch{return blocked("B2_ACCOUNT_BUCKET_LIST_INVALID")}
@@ -94,7 +105,7 @@ async function main(){
  for(const bucket of buckets){
    // Versions include retained historical objects, not just the current keys.
    const raw=run("aws",["s3api","list-object-versions",...b2Args,
-     "--bucket",bucket,"--output","json"],awsEnv,120000,60_000_000);
+     "--bucket",bucket,"--output","json"],inventoryEnv,120000,60_000_000);
    if(!raw)return blocked("B2_VERSIONED_ACCOUNT_STORAGE_USAGE_NOT_VERIFIABLE");
    try{
     const versions=JSON.parse(raw)?.Versions;
