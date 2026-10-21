@@ -12,6 +12,8 @@ on:
       - ".github/workflows/minimum-free-derived-production-health.yml"
       - "scripts/ops/verify-minimum-free-production-health.mjs"
       - "scripts/ops/verify-minimum-free-production-health.test.mjs"
+      - "scripts/ops/derived-news-latency-audit.mjs"
+      - "scripts/ops/derived-news-latency-audit.test.mjs"
       - "src/lib/free-derived-deep-health.server.ts"
       - "src/lib/free-derived-deep-health.server.test.ts"
       - "src/routes/api.health.ts"
@@ -21,6 +23,8 @@ on:
       - ".github/workflows/minimum-free-derived-production-health.yml"
       - "scripts/ops/verify-minimum-free-production-health.mjs"
       - "scripts/ops/verify-minimum-free-production-health.test.mjs"
+      - "scripts/ops/derived-news-latency-audit.mjs"
+      - "scripts/ops/derived-news-latency-audit.test.mjs"
       - "src/lib/free-derived-deep-health.server.ts"
       - "src/lib/free-derived-deep-health.server.test.ts"
       - "src/routes/api.health.ts"
@@ -43,7 +47,7 @@ jobs:
       - name: Verify minimum mode does not greenwash signed products or paid readiness
         run: |
           node --check scripts/ops/verify-minimum-free-production-health.mjs
-          node --test scripts/ops/verify-minimum-free-production-health.test.mjs
+          node --test scripts/ops/verify-minimum-free-production-health.test.mjs scripts/ops/derived-news-latency-audit.test.mjs
 
   public-free-site:
     needs: offline-contract
@@ -65,6 +69,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/ops/verify-minimum-free-production-health.mjs
 
+      - name: Audit real D1 first-insert clocks and bounded 600-row retention without funds
+        # A code push can race the separate D1 Worker rollout, so the actual
+        # readback runs on the next scheduled/owner-dispatched health cycle.
+        if: github.event_name != 'push'
+        run: node scripts/ops/derived-news-latency-audit.mjs
       - name: Verify actual D1 free-product health endpoint without implying signed readiness
         run: |
           node --input-type=module <<'NODE'

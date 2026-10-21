@@ -44,7 +44,7 @@ function db() {
         },
         async all() {
           return {results:[...data.values()].sort((a,b)=>b.published_at.localeCompare(a.published_at))
-            .slice(0,250).map(row=>({story_json:row.story_json}))};
+            .slice(0,250).map(row=>({story_json:row.story_json,first_seen_at:row.first_seen_at}))};
         },
       };
     },
@@ -101,6 +101,10 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const result=await resp.json();
     expect(resp.status).toBe(200);
     expect(result.signals).toHaveLength(2);
+    expect(result.ingest_clock_kind).toBe("D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER");
+    expect(result.first_ingest).toHaveLength(2);
+    expect(result.first_ingest.every((v:{first_seen_at:string})=>
+      v.first_seen_at==="2026-10-12T20:00:00.000Z")).toBe(true);
     expect(result.signals[0].published_at).toBe("2026-10-12T19:00:00.000Z");
     expect(JSON.stringify(result)).not.toContain("source_url");
   });

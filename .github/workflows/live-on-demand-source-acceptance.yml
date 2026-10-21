@@ -9,12 +9,12 @@ on:
         type: boolean
         default: false
       country_batch_start:
-        description: "Optional 0-194 offset into fixed 195-country registry; no country-wide polling"
+        description: "Optional 0-194 offset into fixed 195-country registry; max 3 countries"
         required: false
         type: string
         default: ""
       country_batch_count:
-        description: "At most two countries per run; all three categories separately"
+        description: "At most three countries per run; all three categories separately"
         required: false
         type: string
         default: "2"
@@ -133,7 +133,7 @@ jobs:
           bun scripts/ops/verify-live-fed-board-private-finding.ts
       # Existing once-daily original API acceptance owns the rotating probe.
       # One canonical three-category request per country, <=12 discovery GETs
-      # and <=4 original-page reads PER COUNTRY (max two countries/run).
+      # and <=4 original-page reads PER COUNTRY (max three countries/run).
       # No separate cron or B2/Supabase/D1 intake.
       # PR runners never run this optional additional network probing stage.
       # Country batch probes run only on daily schedule or explicit dispatch.

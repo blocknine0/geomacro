@@ -15,7 +15,7 @@ import {COUNTRY_BATCH_REVIEWED_TOPICS,summarizeCountryBatchCell,
 const from=Number(process.env.GEOMACRO_COUNTRY_BATCH_START??"0");
 const count=Number(process.env.GEOMACRO_COUNTRY_BATCH_COUNT??"1");
 if(!Number.isSafeInteger(from)||from<0||from>=195||
-   !Number.isSafeInteger(count)||count<1||count>2||from+count>195)
+   !Number.isSafeInteger(count)||count<1||count>3||from+count>195)
  throw Error("COUNTRY_195_SAFE_BATCH_RANGE_INVALID");
 
 const observations:CoverageObservation195[]=[];
@@ -113,6 +113,8 @@ const report={
  rights_checked:false,signing_checked:false,
  provider_requests:totalProviderRequests,original_page_requests:totalPageRequests,
  requests_per_country_cap:12,original_pages_per_country_cap:4,
+ daily_batch_country_cap:3,physical_routing_sweep_days:65,
+ checkpoints_required_for_complete_proof:65,
  source_urls_logged:false,source_titles_logged:false,raw_data_persisted:false,
  supabase_requests:0,b2_requests:0,real_money_payments:0,
  cells:cells.map(x=>{

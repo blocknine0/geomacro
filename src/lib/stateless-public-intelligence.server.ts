@@ -380,6 +380,18 @@ export async function fetchFirstPartyOriginalFeed(
          name!=="TimeoutError") throw error;
       response = await request();
     }
+    // Only a confirmed missing/server-broken Fed All Press Releases
+    // endpoint may use the separately published Fed monetary RSS. This is
+    // ONE same-issuer substitute; never bypass 401/403/429, HTML WAF or
+    // any off-domain redirect, and never treat it as independent evidence.
+    if(source.id==="fed_press" && hop===0 &&
+       source.url==="https://www.federalreserve.gov/feeds/press_all.xml" &&
+       target===source.url &&
+       (response.status===404||response.status>=500&&response.status<=599)){
+      await response.body?.cancel().catch(()=>undefined);
+      target="https://www.federalreserve.gov/feeds/press_monetary.xml";
+      continue;
+    }
     if (![301, 302, 307, 308].includes(response.status)) return response;
     // Unrelated providers are never granted a new redirect privilege.
     if (source.id !== "nrcan_science" || hop === 2) return response;
