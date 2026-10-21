@@ -11,6 +11,8 @@ on:
     paths:
       - ".github/workflows/legacy-b2-origin-free-restore.yml"
       - "scripts/ops/legacy-b2-origin-free-storage-readback.mjs"
+      - "scripts/ops/legacy-b2-original-offline-recover.mjs"
+      - "scripts/ops/legacy-b2-original-offline-recover.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/legacy-b2-origin-free-restore.yml"
@@ -41,6 +43,8 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/ops/legacy-b2-origin-free-storage-readback.mjs
+          node --check scripts/ops/legacy-b2-original-offline-recover.mjs
+          node --test scripts/ops/legacy-b2-original-offline-recover.test.mjs
           node - <<'NODE'
           const fs=require("node:fs");
           const src=fs.readFileSync("scripts/ops/legacy-b2-origin-free-storage-readback.mjs","utf8");
