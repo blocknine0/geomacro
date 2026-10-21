@@ -32,7 +32,7 @@ function fixture(){
   source_project:"ldpwajisioljyjtojvfx",verified_shards:4,object_count:1,total_bytes:bytes.length,
   objects:[{...part[0],sha256:sha(bytes),shard:0,archive_key:key}]};
  const indexBytes=Buffer.from(JSON.stringify(index)),markerBytes=Buffer.from(JSON.stringify(marker));
- return {temp,archive,bucket,name,bytes,index,indexBytes,marker,markerBytes,
+ return {temp,archive,archivePath:archive,bucket,name,bytes,index,indexBytes,marker,markerBytes,
   expectedRootSha256:sha(indexBytes)};
 }
 test("recover private original from manifest, marker and compressed archive without network",()=>{
