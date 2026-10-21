@@ -43,6 +43,37 @@ describe("BLS official Atom transport negotiation",()=>{
   });
 });
 
+describe("Federal Reserve bounded same-publisher fault recovery",()=>{
+ const fed:StatelessSourceSpec={
+   id:"fed_press",category:"macro",media:"rss",
+   url:"https://www.federalreserve.gov/feeds/press_all.xml",
+   allowedHosts:["www.federalreserve.gov"],credit:"Federal Reserve Board",
+ };
+ it("falls back only after the official All Press feed returns 404/5xx",async()=>{
+   for(const status of [404,500,503]){
+     const calls=vi.fn(async(url:RequestInfo|URL)=>String(url)===fed.url
+       ?new Response(null,{status}):ok);
+     const reply=await fetchFirstPartyOriginalFeed(fed,calls as unknown as typeof fetch);
+     expect(reply.status).toBe(200);
+     expect(calls).toHaveBeenCalledTimes(2);
+     expect(calls.mock.calls[1]?.[0]).toBe(
+       "https://www.federalreserve.gov/feeds/press_monetary.xml");
+   }
+ });
+ it("never bypasses a denied or rate-limited Fed publisher, or a fake same-ID feed",async()=>{
+   for(const status of [200,401,403,429]){
+     const calls=vi.fn(async()=>new Response(null,{status}));
+     const reply=await fetchFirstPartyOriginalFeed(fed,calls as unknown as typeof fetch);
+     expect(reply.status).toBe(status);
+     expect(calls).toHaveBeenCalledTimes(1);
+   }
+   const forged={...fed,url:"https://other.example/feeds/press_all.xml"};
+   const calls=vi.fn(async()=>new Response(null,{status:404}));
+   expect((await fetchFirstPartyOriginalFeed(forged,calls as unknown as typeof fetch)).status).toBe(404);
+   expect(calls).toHaveBeenCalledTimes(1);
+ });
+});
+
 describe("first-party bank Macro release and bounded mineral redirect",()=>{
   it("uses the actual central-bank-published feed and its original native publication clock",()=>{
     const source=readFileSync("src/lib/stateless-public-intelligence.server.ts","utf8");
