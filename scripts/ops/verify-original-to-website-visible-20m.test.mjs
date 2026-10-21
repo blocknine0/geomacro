@@ -38,6 +38,12 @@ test("a title merely serialized in JSON never certifies visible SSR",()=>{
  assert.equal(v.missing_or_inconclusive_in_fresh_window,1);
  assert.equal(v.sampled_original_to_website_html_20min_evidence,false);
 });
+test("nested HTML/script text is never promoted into a positive SSR heading proof",()=>{
+ const injected='<h3>monetary action <script>alert(1)</script>concerning interest rates</h3>';
+ const v=assessWebsiteVisibleOriginals({journal:report([fresh]),html:injected,now:NOW});
+ assert.equal(v.candidates_visible_in_actual_website_ssr,0);
+ assert.equal(v.sampled_original_to_website_html_20min_evidence,false);
+});
 test("no fresh originals or blocked HTML cannot be certified",()=>{
  const v=assessWebsiteVisibleOriginals({journal:report([prior]),html:website(),now:NOW});
  assert.equal(v.fresh_20min_exact_original_candidates,0);
