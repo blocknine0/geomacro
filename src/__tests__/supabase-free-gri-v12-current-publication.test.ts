@@ -10,6 +10,7 @@ import {
 } from "../../scripts/lib/independent-same-event-qualification.mjs";
 import { assemblePublicGlobalRisk } from "../lib/global-risk-assemble";
 import {GRI_RETAINED_PORTFOLIO_PROFILE} from "../../scripts/lib/gri-reviewed-source-window.mjs";
+import { appendVerifiedGriHistory, GRI_HISTORY_LINEAGE_SCHEMA } from "../../scripts/lib/gri-v12-b2-immutable-history-chain.mjs";
 import { validateGlobalRiskContinuity } from "../lib/global-risk-continuity";
 
 const now = new Date("2026-10-15T10:35:00.000Z");
@@ -185,6 +186,15 @@ describe("Supabase-free Global Risk GRI v1.2 signed hot publisher",()=>{
     expect(JSON.stringify(result.liveValue)).not.toContain("Private original");
     expect(JSON.stringify(result.liveValue)).not.toContain("federalreserve.gov");
     expect(result.historyValue.verified_snapshot_rows.length).toBe(3);
+    expect(result.historyValue.lineage.schema).toBe(GRI_HISTORY_LINEAGE_SCHEMA);
+    expect(result.historyValue.lineage.previous_history_b2_key)
+      .toBe(f.reviewed.signed_input.history_b2_key);
+    expect(result.historyValue.lineage.previous_history_b2_sha256)
+      .toBe(f.reviewed.signed_input.history_b2_sha256);
+    expect(result.historyValue.lineage.total_verified_snapshots).toBe(3);
+    expect(result.historyValue.lineage.current_score_method)
+      .toBe("canonical_72h_recomputed_not_score_sum");
+    expect(result.reviewProof.history_append_only_b2_lineage_verified).toBe(true);
   });
   it("rejects signed private-only stages, stale originals and re-signed GRI-only score laundering",()=>{
     const privateOnly=fixture();
@@ -287,5 +297,81 @@ describe("v1.2 reviewed high-impact news with 72h retained sources",()=>{
     (noReapproval.reviewed.signed_input as any).retained_originals_current_review_completed=false;
     noReapproval.reviewed.review_signature_base64=signJson(noReapproval.reviewed.signed_input);
     expect(()=>run(noReapproval)).toThrow("GRI_PORTFOLIO_EXPLICIT_FRESH_REVIEW_REQUIRED");
+  });
+});
+
+
+describe("permanent B2 GRI v1.2 append-only history and bounded hot projection",()=>{
+  const priorAnchor = "b".repeat(64);
+  function latestFor(rows:any[],n:number) {
+    const head=rows[0];
+    return {
+      ...head, id:"new-gri-snapshot-"+n,
+      as_of:new Date(Date.parse(head.as_of)+60_000).toISOString(),
+      previous_as_of:head.as_of,previous_raw_score:head.raw_score,
+      previous_display_score:head.display_score,
+    };
+  }
+  const key=(id:string)=>"geomacro-evidence/v1/history/global-risk/gri-v1.2.0/"+id+".json.gz";
+
+  it("always carries exact old verified history and B2 predecessor hash",()=>{
+    const q=fixture();
+    const oldRows=q.history.verified_snapshot_rows;
+    const latest=latestFor(oldRows,1);
+    const next=appendVerifiedGriHistory({history:q.history,latest,
+      priorHistoryKey:key(q.history.snapshot_id),
+      verifiedPriorB2Sha256:priorAnchor});
+    expect(next.retainedRows).toEqual([latest,...oldRows]);
+    expect(next.retainedRows[1]).toBe(oldRows[0]);
+    expect(next.lineage.total_verified_snapshots).toBe(3);
+    expect(next.lineage.older_snapshots_in_pinned_b2_history).toBe(0);
+    expect(next.lineage.previous_history_b2_sha256).toBe(priorAnchor);
+  });
+  it("continues after 1000 snapshots without losing older immutable B2 predecessors",()=>{
+    const rows=Array.from({length:1000},(_,i)=>({
+      ...historicalSnapshot(1,50+i),
+      id:"historical-"+i.toString().padStart(4,"0"),
+      as_of:time(50+i),
+    }));
+    const history:any={schema:"geomacro.public-global-risk-history.v1",
+      snapshot_id:rows[0].id,snapshot_as_of:rows[0].as_of,verified_snapshot_rows:rows};
+    const one=appendVerifiedGriHistory({history,latest:latestFor(rows,1001),
+      priorHistoryKey:key(history.snapshot_id),verifiedPriorB2Sha256:priorAnchor});
+    expect(one.retainedRows).toHaveLength(1000);
+    expect(one.retainedRows.at(-1)?.id).toBe(rows[998].id);
+    expect(one.lineage.total_verified_snapshots).toBe(1001);
+    expect(one.lineage.older_snapshots_in_pinned_b2_history).toBe(1);
+    const newerHistory={...history,verified_snapshot_rows:one.retainedRows,
+      snapshot_id:one.retainedRows[0].id,snapshot_as_of:one.retainedRows[0].as_of,
+      lineage:one.lineage};
+    const two=appendVerifiedGriHistory({history:newerHistory,
+      latest:latestFor(one.retainedRows,1002),
+      priorHistoryKey:key(newerHistory.snapshot_id),
+      verifiedPriorB2Sha256:"c".repeat(64)});
+    expect(two.retainedRows).toHaveLength(1000);
+    expect(two.lineage.total_verified_snapshots).toBe(1002);
+    expect(two.lineage.older_snapshots_in_pinned_b2_history).toBe(2);
+    expect(two.lineage.previous_history_b2_sha256).toBe("c".repeat(64));
+    expect(rows[999].id).toBe("historical-0999");
+  });
+  it("refuses historical rollback, fake ancestor count and score overwrite",()=>{
+    const q=fixture();
+    const original=q.history.verified_snapshot_rows;
+    const base={history:q.history,latest:latestFor(original,7),
+      priorHistoryKey:key(q.history.snapshot_id),verifiedPriorB2Sha256:priorAnchor};
+    expect(()=>appendVerifiedGriHistory({...base,latest:{...base.latest,
+      as_of:original[0].as_of}})).toThrow("GRI_HISTORY_CHAIN_PREVIOUS_OR_NEW_VERIFIED_SNAPSHOT_INVALID");
+    expect(()=>appendVerifiedGriHistory({...base,latest:{...base.latest,
+      previous_raw_score:99}})).toThrow("GRI_HISTORY_CHAIN_PREVIOUS_OR_NEW_VERIFIED_SNAPSHOT_INVALID");
+    expect(()=>appendVerifiedGriHistory({...base,verifiedPriorB2Sha256:"0"}))
+      .toThrow("GRI_HISTORY_CHAIN_PREVIOUS_OR_NEW_VERIFIED_SNAPSHOT_INVALID");
+    expect(()=>appendVerifiedGriHistory({...base,priorHistoryKey:key("not-original")}))
+      .toThrow("GRI_HISTORY_CHAIN_PREVIOUS_OR_NEW_VERIFIED_SNAPSHOT_INVALID");
+    q.history.lineage={schema:GRI_HISTORY_LINEAGE_SCHEMA,
+      latest_snapshot_id:q.history.snapshot_id,latest_as_of:q.history.snapshot_as_of,
+      retained_snapshot_rows:original.length,hot_row_limit:1000,
+      total_verified_snapshots:999,older_snapshots_in_pinned_b2_history:0,
+      previous_history_b2_key:key("ancestor"),previous_history_b2_sha256:priorAnchor};
+    expect(()=>appendVerifiedGriHistory(base)).toThrow("GRI_HISTORY_CHAIN_PREVIOUS_B2_LINEAGE_INVALID");
   });
 });
