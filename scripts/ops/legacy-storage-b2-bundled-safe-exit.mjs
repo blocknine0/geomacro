@@ -6,6 +6,7 @@ import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync,readdirSync,exis
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
+import {classifyLegacyStorageResponse,isRetryableOriginalStorageCategory,retryDelayMs} from "./legacy-storage-transport-policy.mjs";
 const ref="ldpwajisioljyjtojvfx", origin="https://"+ref+".supabase.co";
 const bucket="geomacro-private-archive",endpoint="https://s3.us-east-005.backblazeb2.com";
 const prefix="geomacro-evidence/v1/legacy-supabase-safe-exit/storage/";
@@ -17,6 +18,7 @@ const report={schema:"geomacro.legacy-storage-b2-bundles.v1",
  source_project:ref,checked_at:new Date().toISOString(),status:"BLOCKED_NO_DELETION",
  source_objects_downloaded:0,source_bytes_downloaded:0,per_object_b2_sha_verified:0,
  b2_gets:0,b2_puts:0,completed_shards_this_run:0,storage_fully_migrated:false,
+ source_read_retry_attempts:0,source_read_first_terminal_reason:null,
  source_supabase_writes:0,source_supabase_deletes:0,b2_deletes:0,payments:0,
  old_supabase_deletion_authorized:false};
 function save(reason){report.reason=reason;mkdirSync("artifacts/legacy-exit",{recursive:true});
@@ -44,24 +46,57 @@ function buildParts(rows){
  for(const r of rows){const i=parseInt(hash(r.bucket+"/"+r.name).slice(0,2),16)%shards;result[i].push(r)}
  return result.map(r=>r.sort((a,b)=>(a.bucket+"/"+a.name).localeCompare(b.bucket+"/"+b.name)));
 }
+// Every original byte remains in a PRIVATE ephemeral runner until all sha checks.
+function noteTerminalSourceFailure(kind) {
+ if(report.source_read_first_terminal_reason===null)report.source_read_first_terminal_reason=kind;
+}
 async function fetchOriginal(x,secret,folder){
  const url=origin+"/storage/v1/object/authenticated/"+encodeURIComponent(x.bucket)+"/"+
   x.name.split("/").map(encodeURIComponent).join("/");
- let response;
- for(let attempt=0;attempt<2;attempt++){
-  try{response=await fetch(url,{redirect:"error",headers:{
-   apikey:secret,Authorization:"Bearer "+secret},signal:AbortSignal.timeout(25000)})}
-  catch{return null}
-  if((response.status===429||response.status>=500)&&attempt===0){
-    await new Promise(done=>setTimeout(done,1500));continue}
-  break;
+ const maxAttempts=6;
+ for(let attempt=0;attempt<maxAttempts;attempt++){
+  let response=null;
+  let failure=null;
+  let header=null;
+  try{
+   response=await fetch(url,{method:"GET",redirect:"error",headers:{
+    apikey:secret,Authorization:"Bearer "+secret},
+    signal:AbortSignal.timeout(30000)});
+  }catch{
+   failure="SOURCE_NETWORK_OR_TIMEOUT";
+  }
+  if(response){
+   header=response.headers.get("retry-after");
+   failure=classifyLegacyStorageResponse(response.status);
+   if(failure==="OK"){
+    let bytes;
+    try{bytes=Buffer.from(await response.arrayBuffer())}
+    catch{failure="SOURCE_BODY_INTERRUPTED"}
+    if(bytes){
+     if(bytes.length!==x.size){
+      // A metadata/actual-bytes discrepancy must never be silently waived.
+      noteTerminalSourceFailure("SOURCE_LENGTH_MISMATCH");
+      return null;
+     }
+     const id=hash(x.bucket+"/"+x.name);
+     writeFileSync(join(folder,id),bytes,{mode:0o600});
+     report.source_objects_downloaded++;
+     report.source_bytes_downloaded+=bytes.length;
+     return [id,hash(bytes)];
+    }
+   }else{
+    try{await response.body?.cancel()}catch{}
+   }
+  }
+  if(!isRetryableOriginalStorageCategory(failure)||attempt===maxAttempts-1){
+   noteTerminalSourceFailure(failure??"SOURCE_NETWORK_OR_TIMEOUT");
+   return null;
+  }
+  report.source_read_retry_attempts++;
+  await new Promise(done=>setTimeout(done,retryDelayMs(attempt,header)));
  }
- if(!response||response.status!==200)return null;
- const bytes=Buffer.from(await response.arrayBuffer());
- if(bytes.length!==x.size)return null;
- const id=hash(x.bucket+"/"+x.name);writeFileSync(join(folder,id),bytes,{mode:0o600});
- report.source_objects_downloaded++;report.source_bytes_downloaded+=bytes.length;
- return [id,hash(bytes)];
+ noteTerminalSourceFailure("SOURCE_RETRY_EXHAUSTED");
+ return null;
 }
 function checkBundle(extract,part,expectedHashes){
  let data;try{data=JSON.parse(readFileSync(join(extract,"manifest.json"),"utf8"))}
