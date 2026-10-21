@@ -1,6 +1,7 @@
 import {registeredOriginalPublisherOrganization} from "./independent-same-event-qualification.mjs";
 import {verifyGeomacroUnclaimedOriginalPage} from "./geomacro-original-page-readback.mjs";
 import {createBundledOriginalReadbackBudget,bundleRoundRobinNews} from "./bundled-original-source-quota.mjs";
+import {sourceRightsFollowupStatus} from "./commercial-rights-remediation.mjs";
 
 /**
  * Aggregate-only, fail-closed audit of EVERY incoming free D1 news signal.
@@ -129,6 +130,12 @@ export async function auditEveryDerivedNewsOriginal({
     }
    }
   }
+  // Actual original bytes must have passed first. This is just an internal
+  // source-contract remediation HINT; do not expose issuer/rights row details.
+  // No approval, Rights signature, signed GRO or payment is inferred.
+  row.source_rights_next_action=row.exact_original_page_html_readback
+   ?sourceRightsFollowupStatus(reference?.sourceId,signal.category)
+   :"ORIGINAL_PAGE_READBACK_REQUIRED";
   rows.push(row);
  }
  const counts=Object.fromEntries(DOMAINS.map(domain=>[
@@ -151,6 +158,10 @@ export async function auditEveryDerivedNewsOriginal({
   verified_original_page_bytes_and_native_time:verified,
   pending_or_unverified_news_count:rows.length-verified,
   categories:counts,rows,
+  rights_remediation_actions:Object.fromEntries(
+    [...new Set(rows.map(x=>x.source_rights_next_action))].sort()
+     .map(state=>[state,rows.filter(x=>x.source_rights_next_action===state).length])
+  ),
   // Original HTML proof != independent event/facts and legally reusable data.
   independent_same_event_verified:false,
   per_article_commercial_rights_verified:false,
