@@ -25,6 +25,8 @@ on:
       - "scripts/lib/automated-finds-run-health.mjs"
       - "scripts/lib/derived-news-source-health.mjs"
       - "scripts/lib/all-news-original-evidence-audit.mjs"
+      - "scripts/lib/bundled-original-source-quota.mjs"
+      - "scripts/lib/bundled-original-source-quota.test.mjs"
       - "scripts/lib/all-news-original-evidence-audit.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
       - "scripts/lib/material-gri-news-review.mjs"
@@ -80,6 +82,7 @@ jobs:
           bun-version: "1.4.2"
       - name: Test individual news original-byte evidence vs unverified and commercial boundaries
         run: |
+          node --test scripts/lib/bundled-original-source-quota.test.mjs
           node --test scripts/lib/all-news-original-evidence-audit.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
       - name: Require existing control-plane authorization
