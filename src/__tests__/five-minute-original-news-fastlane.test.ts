@@ -63,12 +63,12 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    primary[0].healthy=false;
    expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
    primary[1].healthy=false;
+   expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
+   primary[2].healthy=false; // UN Press is the third geopolitical primary.
    expect(decideFiveMinuteFallbackCategories(primary)).toEqual(["geopolitics"]);
-   primary[2].healthy=false;
-   primary[3].healthy=false;
-   primary[4].healthy=false;
-   primary[5].healthy=false;
-   primary[6].healthy=false;
+   // Four macro and three mineral primaries must each ALL fail before the
+   // single additional category fallback is permitted.
+   for(let i=3;i<10;i++)primary[i].healthy=false;
    expect(decideFiveMinuteFallbackCategories(primary)).toEqual(CATS);
    expect(()=>decideFiveMinuteFallbackCategories([{category:"unapproved",healthy:true}]))
      .toThrow("ORIGINAL_FASTLANE_PRIMARY_HEALTH_INVALID");
