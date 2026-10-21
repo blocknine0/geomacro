@@ -116,16 +116,26 @@ export async function readDerivedStories(env,now=Date.now(),offset=0) {
     return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID"},400);
   try {
     const {results=[]}=await env.DB.prepare(
-      "SELECT story_json FROM website_derived_intelligence WHERE published_at>=? AND first_seen_at>=? ORDER BY published_at DESC, id DESC LIMIT 251 OFFSET ?"
+      "SELECT story_json, first_seen_at FROM website_derived_intelligence WHERE published_at>=? AND first_seen_at>=? ORDER BY published_at DESC, id DESC LIMIT 251 OFFSET ?"
     ).bind(new Date(now-AUTO_INGEST_RETENTION_MS).toISOString().slice(0,10),
       new Date(now-AUTO_INGEST_RETENTION_MS).toISOString(),offset).all();
     const signals=[];
+    const firstIngest=[];
     for (const row of results.slice(0,250)) {
       try {
         const signal=JSON.parse(row.story_json);
         if (verifyDerivedStory(signal,now) &&
-            (originalTime(signal,now)?.at??-Infinity)>=now-AUTO_INGEST_RETENTION_MS)
+            (originalTime(signal,now)?.at??-Infinity)>=now-AUTO_INGEST_RETENTION_MS) {
+          // Audit provenance: server-generated D1 first insertion timestamp,
+          // not upstream fetch time and not a claim that website was rendered.
+          // Keep this OUTSIDE the strict source-neutral signal schema.
+          const firstMs=Date.parse(row.first_seen_at);
+          if(!Number.isFinite(firstMs)||firstMs>now+60_000||
+             firstMs<(originalTime(signal,now)?.at??Infinity)+DELAY_MS)
+            continue;
           signals.push(signal);
+          firstIngest.push({id:signal.id,first_seen_at:new Date(firstMs).toISOString()});
+        }
       } catch { /* reject malformed row, never leak SQL metadata */ }
     }
     return json({ok:true,schema:"geomacro.website-derived-news-feed.v1",
@@ -136,7 +146,8 @@ export async function readDerivedStories(env,now=Date.now(),offset=0) {
       scored:false,chargeable:false,supabase_dependency:false,
       page_offset:offset,page_size:250,has_more:results.length>250,
       next_offset:results.length>250&&offset<500?offset+250:null,
-      signals},200);
+      ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
+      first_ingest:firstIngest,signals},200);
   } catch {
     return json({ok:false,error:"DERIVED_NEWS_FEED_UNAVAILABLE",
       chargeable:false,signals:[]},503);
