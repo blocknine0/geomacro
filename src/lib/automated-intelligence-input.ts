@@ -1,6 +1,6 @@
-import {canonicalJson} from './canonical-json';
-import {checkedDerivedNews} from './public-derived-news-client';
-import type {StatelessIntelligenceSignal} from './stateless-intelligence-model';
+import {canonicalJson} from './canonical-json.ts';
+import {checkedDerivedNews} from './public-derived-news-client.ts';
+import type {StatelessIntelligenceSignal} from './stateless-intelligence-model.ts';
 
 export const AUTOMATED_INPUT_DOMAIN='geomacro.automated-intelligence-input.v1\n';
 export type AutomatedInputPayload={

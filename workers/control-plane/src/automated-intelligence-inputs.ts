@@ -1,4 +1,4 @@
-import {automatedInputId,verifyAutomatedInput,type AutomatedInputEnvelope} from '../../../src/lib/automated-intelligence-input';
+import {automatedInputId,verifyAutomatedInput,type AutomatedInputEnvelope} from '../../../src/lib/automated-intelligence-input.ts';
 const PREFIX='automated_input_v1:';
 type Env={DB:any;AUTOMATED_FINDS_VERIFY_KEYS_JSON?:string};
 const json=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});

@@ -48,6 +48,24 @@ Provision a dedicated key through the owner's existing protected secret manager:
 - GEOMACRO_LOW_REVIEW_PUBLIC_PEM
 - GEOMACRO_LOW_REVIEW_PUBLIC_SHA256 (SHA-256 of DER SPKI)
 
+From a current checkout on the owner's authenticated machine, with Node and
+GitHub CLI installed, run `gh auth login` if needed, then:
+
+```sh
+node scripts/ops/provision-private-low-review-authority.mjs --check
+node scripts/ops/provision-private-low-review-authority.mjs --provision
+```
+
+The helper targets only this repository's production environment. It generates
+a new dedicated key in memory and passes values to `gh secret set` on stdin;
+no key file, private output or command-line secret is created. Existing complete
+configuration is left unchanged (presence alone does not verify its values).
+Partial configuration stops without overwriting a trust anchor. If a network
+failure interrupts provisioning, recover that partial configuration through the
+owner's protected secret manager before trying again. Provisioning is not a
+live deployment or review receipt. This session cannot execute the helper's
+write path because no authenticated GitHub CLI/admin credential is available.
+
 Do not reuse the issuer or facts/rights authority private key. No private key
 belongs in chat, Git, an artifact, command arguments or the Worker. Deployment
 transfers only the public reviewer key/pin to the control-plane Worker. The

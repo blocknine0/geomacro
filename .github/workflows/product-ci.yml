@@ -53,6 +53,9 @@ jobs:
       - name: Predge owner sealed token-only handoff crypto and authorization (offline)
         run: node --test scripts/ops/predge-sealed-token-handoff.test.mjs
 
+      - name: Private LOW reviewer provisioning boundary (offline, no secret writes)
+        run: node --test scripts/ops/provision-private-low-review-authority.test.mjs
+
       - name: Query-specific capability price health (offline, no funds)
         run: >-
           node --test scripts/commerce/capability-price-health.test.mjs

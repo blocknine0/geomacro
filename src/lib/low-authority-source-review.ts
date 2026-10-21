@@ -1,5 +1,5 @@
-import {canonicalJson} from './canonical-json';
-import {inputHash} from './automated-intelligence-input';
+import {canonicalJson} from './canonical-json.ts';
+import {inputHash} from './automated-intelligence-input.ts';
 export const LOW_REVIEW_DOMAIN='geomacro.internal-low-source-review.v1\n';
 export type LowSourceReview={
  schema:'geomacro.internal-low-source-review.v1';authority:'GEOMACRO_INTERNAL_AUTOMATED_LOW_V1';

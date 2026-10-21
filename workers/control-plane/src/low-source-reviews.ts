@@ -1,4 +1,4 @@
-import {verifyLowSourceReview,type SignedLowSourceReview,type LowReviewTrust} from '../../../src/lib/low-authority-source-review';
+import {verifyLowSourceReview,type SignedLowSourceReview,type LowReviewTrust} from '../../../src/lib/low-authority-source-review.ts';
 const PREFIX='low_source_review_v1:';
 const reply=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
 export async function lowReviewToken(controlToken:string){
