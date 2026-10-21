@@ -35,7 +35,7 @@ const isAttribution=license=>/CC\s*BY|with citation|acknowledg|attribution|with 
 
 /** A snapshot of all current source contracts: no approval is added. */
 export function buildCommercialRightsRemediationInventory(register=COMMERCIAL_SOURCE_RIGHTS_EVIDENCE){
- if(!register||typeof register!=="object"||Array.isArray(register)||Object.keys(register).length>MAX)reject();
+ if(!register||typeof register!=="object"||Array.isArray(register)||Object.keys(register).length>MAX||Object.keys(register).length===0)reject();
  const rows=[];
  for(const [id,record] of Object.entries(register).sort(([a],[b])=>a.localeCompare(b))){
   if(!SAFE_ID.test(id)||!record||typeof record!=="object"||
