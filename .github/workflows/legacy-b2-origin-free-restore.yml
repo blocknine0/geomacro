@@ -1,0 +1,109 @@
+name: Legacy B2 Storage Independent Origin-Free Restore Canary
+# These two private object canaries use B2 only and ZERO old Supabase credentials.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/legacy-b2-origin-free-restore.yml"
+      - "scripts/ops/legacy-b2-origin-free-storage-readback.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/legacy-b2-origin-free-restore.yml"
+      - "scripts/ops/legacy-b2-origin-free-storage-readback.mjs"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-legacy-storage-b2-origin-free-readonly-recovery
+  cancel-in-progress: false
+
+jobs:
+  static-no-credentials-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      B2_KEY_ID: ""
+      B2_APPLICATION_KEY: ""
+      B2_LEGACY_INVENTORY_KEY_ID: ""
+      B2_LEGACY_INVENTORY_APPLICATION_KEY: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Require fail-closed Supabase-independent B2 recovery
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/legacy-b2-origin-free-storage-readback.mjs
+          node scripts/ops/legacy-b2-origin-free-storage-readback.mjs || test "$?" -eq 3
+          node - <<'NODE'
+          const fs=require("node:fs");
+          const r=require("./artifacts/legacy-exit/legacy-b2-origin-free-recovery-canary.json");
+          const source=fs.readFileSync("scripts/ops/legacy-b2-origin-free-storage-readback.mjs","utf8");
+          if(r.status!=="BLOCKED_NO_DELETION"||
+             r.old_supabase_deletion_authorized!==false||
+             r.source_supabase_network_requests!==0||
+             r.source_supabase_deletes!==0||r.source_supabase_writes!==0||
+             r.b2_writes!==0||r.b2_deletes!==0||r.payments!==0||
+             !source.includes('VERIFIED_ROOT_HASH_PREFIX="5eff883cadf814cd"'))
+            throw Error("B2_ORIGIN_FREE_NO_DELETION_CONTRACT_FAILED");
+          NODE
+  protected-private-readback:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: production
+    env:
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_LEGACY_INVENTORY_KEY_ID: ${{ secrets.B2_LEGACY_INVENTORY_KEY_ID }}
+      B2_LEGACY_INVENTORY_APPLICATION_KEY: ${{ secrets.B2_LEGACY_INVENTORY_APPLICATION_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Find existing canonical shared B2 quota governor D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {appendFileSync} from "node:fs";
+          const id=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!/^[a-f0-9]{32}$/u.test(id??""))throw Error("B2_ORIGIN_FREE_D1_ACCOUNT_NOT_PINNED");
+          const res=await fetch("https://api.cloudflare.com/client/v4/accounts/"+
+            id+"/d1/database?per_page=100",{
+            headers:{Authorization:"Bearer "+process.env.CLOUDFLARE_API_TOKEN},
+            redirect:"error",signal:AbortSignal.timeout(15000)});
+          const body=await res.json();
+          const db=body?.result?.find(x=>x.name==="geomacro-control-plane")?.uuid;
+          if(!res.ok||body.success!==true||!/^[a-f0-9-]{36}$/u.test(db??""))
+            throw Error("B2_ORIGIN_FREE_D1_SHARED_QUOTA_UNAVAILABLE");
+          appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+db+"\n");
+          NODE
+      - name: Restore one original byte-identical file from each old bucket using ONLY B2
+        run: |
+          set -euo pipefail
+          node scripts/ops/legacy-b2-origin-free-storage-readback.mjs
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/legacy-b2-origin-free-recovery-canary.json");
+          if(r.status!=="B2_ORIGIN_FREE_BOTH_BUCKETS_ORIGINAL_BYTES_RESTORABLE"||
+             r.b2_independent_original_bucket_canaries_verified!==2||
+             r.source_supabase_network_requests!==0||
+             r.old_supabase_deletion_authorized!==false)
+            throw Error("B2_ORIGIN_FREE_READBACK_NOT_ACCEPTED");
+          NODE
+      - name: Upload sanitized zero-secret proof only
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: b2-origin-free-two-bucket-recovery-${{ github.run_id }}
+          path: artifacts/legacy-exit/legacy-b2-origin-free-recovery-canary.json
+          if-no-files-found: warn
+          retention-days: 14
