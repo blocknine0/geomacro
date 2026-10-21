@@ -55,7 +55,11 @@ async function main(){
  const list=await fetch("https://api.supabase.com/v1/projects/"+ref+"/functions",{
   headers:{Authorization:"Bearer "+env.SUPABASE_ACCESS_TOKEN},
   redirect:"error",signal:AbortSignal.timeout(15000)}).catch(()=>null);
- if(!list||!list.ok)return halt("OLD_EDGE_MANAGEMENT_LIST_UNAVAILABLE");
+ if(!list)return halt("OLD_EDGE_MANAGEMENT_NETWORK_UNAVAILABLE");
+ if(list.status===401||list.status===403)
+  return halt("OLD_EDGE_MANAGEMENT_TOKEN_NOT_AUTHORIZED");
+ if(list.status===429)return halt("OLD_EDGE_MANAGEMENT_API_RATE_LIMITED");
+ if(!list.ok)return halt("OLD_EDGE_MANAGEMENT_RESPONSE_NOT_OK");
  let metadata;try{metadata=await list.json()}catch{return halt("OLD_EDGE_MANAGEMENT_METADATA_INVALID")}
  if(!Array.isArray(metadata)||metadata.length!==10||
   metadata.some(f=>!names.includes(f.slug))||
@@ -69,7 +73,10 @@ async function main(){
    encodeURIComponent(slug)+"/body",{
     headers:{Authorization:"Bearer "+env.SUPABASE_ACCESS_TOKEN},
     redirect:"error",signal:AbortSignal.timeout(20000)}).catch(()=>null);
-  if(!r||r.status!==200)return halt("OLD_EDGE_SOURCE_BODY_AUTHORIZATION_UNAVAILABLE");
+  if(!r)return halt("OLD_EDGE_SOURCE_BODY_NETWORK_UNAVAILABLE");
+  if(r.status===401||r.status===403)return halt("OLD_EDGE_SOURCE_BODY_READ_PERMISSION_MISSING");
+  if(r.status===429)return halt("OLD_EDGE_SOURCE_BODY_RATE_LIMITED");
+  if(r.status!==200)return halt("OLD_EDGE_SOURCE_BODY_NOT_AVAILABLE");
   const bytes=Buffer.from(await r.arrayBuffer());
   if(!isSourceBody(bytes))return halt("OLD_EDGE_SOURCE_BODY_NOT_RESTORABLE");
   archived.push({slug,version:meta.version,verify_jwt:meta.verify_jwt,
