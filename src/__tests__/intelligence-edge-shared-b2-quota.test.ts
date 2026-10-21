@@ -29,7 +29,7 @@ function d1({exhausted=false,failReceipt=false}={}){
             async first() {
               operations.push({sql,args});
               expect(sql).toContain("ON CONFLICT(day_utc) DO UPDATE");
-              expect(args).toContain(25);
+              expect(args).toContain(45);
               return exhausted?null:{
                 total_requests:1,get_requests:1,put_requests:0,
                 head_requests:0,native_auth_requests:0,
@@ -82,7 +82,7 @@ describe("#1827 account-wide Intelligence edge Backblaze GET guard",()=>{
     expect(b2).not.toHaveBeenCalled();
   });
 
-  it("global 25-GET exhausted blocks both parallel proof/object B2 requests",async()=>{
+  it("global 45-GET exhausted blocks both parallel proof/object B2 requests",async()=>{
     coldCache();
     const b2=vi.fn(async()=>{throw Error("UNEXPECTED_B2_NETWORK");});
     vi.stubGlobal("fetch",b2);
