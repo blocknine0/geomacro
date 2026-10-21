@@ -40,7 +40,7 @@ function validateOriginal(d,now){
    !COUNTRY.test(d.country_iso3)||!CATEGORIES.has(d.category)||
    !Number.isFinite(epoch(d.original_published_at)))fail();
  if(epoch(d.original_published_at)>now+10*60000)fail();
- if(Object.keys(d).some(k=>/(?:^|_)(?:secret|private[_-]?key|token|password|authorization)(?:_|$)/iu.test(k)))
+ if(Object.keys(d).some(k=>/(?:^|_)(?:secret|private[_-]?key|api[_-]?key|access[_-]?key|credential|token|password|authorization)(?:_|$)/iu.test(k)))
    fail();
  // No allowance for plausible quoted source snippets masquerading as
  // first-party original content. Here only cryptographic references exist.
