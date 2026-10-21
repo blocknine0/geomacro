@@ -92,19 +92,45 @@ test("wrong official issuing organization, off-publisher host and other GOV depa
  assert.equal(result.rows.every(r=>r.original_page_evidence_status===
   "ORIGINAL_ISSUER_NOT_REGISTERED_FOR_BYTE_RECHECK"),true);
 });
-test("strict caps defer excess articles, never auto-verify or charge",async()=>{
+test("identical official original is read once and reused for identical publication proof",async()=>{
  const rows=["11111111","22222222","33333333","44444444"].map(x=>signal(x));
+ let physical=0;
  const report=await auditEveryDerivedNewsOriginal({
   signals:rows,originalRefs:new Map(rows.map(r=>[r.id,ref()])),
-  now,maxReadbacks:2,maxPerCategory:2,verify:actualPage,
+  now,maxReadbacks:2,maxPerCategory:2,
+  verify:async(args)=>{physical++;return actualPage(args);},
  });
- assert.equal(report.exact_page_byte_rereads_attempted,2);
- assert.equal(report.verified_original_page_bytes_and_native_time,2);
- assert.equal(report.rows.filter(x=>x.original_page_evidence_status===
-  "ORIGINAL_PAGE_READBACK_DEFERRED_QUOTA").length,2);
+ assert.equal(physical,1);
+ assert.equal(report.exact_page_byte_rereads_attempted,1);
+ assert.equal(report.verified_original_page_bytes_and_native_time,4);
+ assert.equal(report.rows.every(x=>x.exact_original_page_html_readback),true);
  assert.equal(report.x402_charges,0);
  assert.equal(report.d1_writes,0);
  assert.equal(report.signed_commercial_intelligence_created,false);
+});
+test("different articles from one publisher share a hard per-run host cap",async()=>{
+ const rows=["11111111","22222222","33333333"].map(x=>signal(x));
+ const refs=new Map(rows.map((r,i)=>[r.id,
+  ref(at,"fed_press","https://www.federalreserve.gov/newsevents/pressreleases/monetary20261021"+
+    String.fromCharCode(97+i)+".htm")]));
+ let physical=0;
+ const proof={schema:"geomacro.private-unclaimed-original-pre-review.v1",
+   accepted:true,status:"ORIGINAL_BYTES_AND_CLOCK_VERIFIED_REVIEW_PENDING",
+   original_article_sha256:digest(html),original_native_published_at:at,
+   source_article_rights_verified:false,facts_signature_verified:false,
+   rights_signature_verified:false,signed_gro_created:false,payment_authorized:false};
+ const report=await auditEveryDerivedNewsOriginal({
+  signals:rows,originalRefs:refs,now,maxReadbacks:6,maxPerCategory:4,
+  verify:async()=>{physical++;return proof;},
+ });
+ assert.equal(physical,1);
+ assert.equal(report.verified_original_page_bytes_and_native_time,1);
+ assert.equal(report.rows.filter(x=>x.original_page_evidence_status===
+  "ORIGINAL_PAGE_READBACK_DEFERRED_QUOTA").length,2);
+ assert.equal(report.bundled_source_quota.hard_ceiling,6);
+ assert.equal(report.bundled_source_quota.protected_unused_reserve,2);
+ assert.equal(report.bundled_source_quota.normal_allowance,4);
+ assert.equal(report.bundled_source_quota.reserve_touched,false);
 });
 test("a forged readback proof that claims rights or payment is rejected",async()=>{
  const row=signal("abcdefab");
