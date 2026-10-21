@@ -36,6 +36,9 @@ test("real first-party HTTP HTML exact bytes/native time prove only original-pag
   "ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME_VERIFIED");
  assert.equal(result.rows[0].exact_original_page_html_readback,true);
  assert.equal(result.rows[0].source_rights_verified,false);
+ assert.equal(result.rows[0].source_rights_next_action,
+  "SOURCE_CONTRACT_UNREGISTERED_OR_OUT_OF_SCOPE");
+ assert.equal(result.rights_remediation_actions.SOURCE_CONTRACT_UNREGISTERED_OR_OUT_OF_SCOPE,1);
  assert.equal(result.rows[0].signed_commercial_input,false);
  const out=JSON.stringify(result);
  for(const secret of [url,html,digest(html),"TEST ONLY","federal_reserve"]){
