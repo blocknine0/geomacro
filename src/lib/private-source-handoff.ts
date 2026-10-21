@@ -10,7 +10,7 @@ export function canonicalizePrivateOriginalSourceClock(
 ):StatelessSourceCandidate{
  if(!ref||!signal||ref.publishedAt===signal.published_at)return ref;
  if(signal.date_precision!=='exact'||typeof ref.publishedAt!=='string'||
-  !/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,3})?Z$/u.test(signal.published_at))
+  !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u.test(signal.published_at))
    return ref;
  const original=Date.parse(ref.publishedAt),signed=Date.parse(signal.published_at);
  if(!Number.isFinite(original)||!Number.isFinite(signed)||original!==signed)return ref;
