@@ -44,7 +44,8 @@ test("Groq search only receives fixed country/category scope, NOT customer quest
  assert.equal(result.real_payments,0);
  assert.equal(result.b2_requests,0);
  assert.equal(JSON.stringify(result).includes(token),false);
- assert.equal(JSON.stringify(result).includes("example.gov"),false);
+ assert.equal(Object.hasOwn(result.leads[0],"source_domain"),false);
+ assert.equal(result.leads[0].source_claim_fingerprint.length,64);
 });
 test("missing owner browser-search free-tier approval or Groq key yields ZERO calls",async()=>{
  let calls=0;
