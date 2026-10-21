@@ -132,11 +132,13 @@ customer revenue are three separate observations. Record each independently.
 ## Owner-approved three-chain launch update (21 October 2026)
 
 The owner approved Base, Polygon PoS and Arc mainnet with a single NEW receiving
-address. The actual new public address has not yet been supplied. Configuration
-must not guess it, reuse an old receiver without confirmation, or place a private
-key in the browser. `config/mainnet-three-chain-launch.env.example` names the
-settings. Mainnet Coinbase and Circle configuration now rejects conflicting
-recipient aliases before any payment offer.
+address. The owner supplied `0xF98c18231ceFBD6d11154DEc14b3Aec6D74dC4B0`
+for all three networks; its EIP-55 checksum is valid. The approved public address
+is recorded in `config/mainnet-usdc-recipient.json` and all three receiver settings
+in `config/mainnet-three-chain-launch.env.example`. Production rejects conflicting
+aliases or an address different from this owner-approved recipient. Applying
+the values to the authenticated production runtime is still required; a source
+configuration change is not wallet-control proof or a settled payment.
 
 The API page now has a bounded country/category query form. It checks actual
 payable availability, validates native USDC and locked capability pricing for the

@@ -81,6 +81,8 @@ export function publicGeomacroUsdcRailDiscovery(){
       receiverState="RECEIVER_CONFIGURATION_MISMATCH";
     else if(error instanceof Error&&error.message==="SHARED_USDC_RECEIVER_INVALID")
       receiverState="RECEIVER_CONFIGURATION_INVALID";
+    else if(error instanceof Error&&error.message==="SHARED_USDC_RECEIVER_NOT_OWNER_APPROVED")
+      receiverState="RECEIVER_NOT_OWNER_APPROVED";
   }
   return {
     schema:GEOMACRO_USDC_RAIL_SCHEMA,ok:true,

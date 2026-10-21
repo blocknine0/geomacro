@@ -1,3 +1,5 @@
+import approvedRecipient from "../../config/mainnet-usdc-recipient.json";
+
 const ADDRESS=/^0x[0-9a-fA-F]{40}$/u;
 const ZERO=/^0x0{40}$/iu;
 const NAMES=["GEOMACRO_USDC_RECEIVER","COINBASE_X402_PAY_TO","CIRCLE_X402_SELLER_ADDRESS"] as const;
@@ -11,6 +13,9 @@ export function resolveSharedUsdcReceiver(env:Record<string,string|undefined>=pr
   throw Error("SHARED_USDC_RECEIVER_INVALID");
  const unique=new Set(entries.map(x=>x.value!.toLowerCase()));
  if(unique.size!==1)throw Error("SHARED_USDC_RECEIVER_MISMATCH");
+ if(env.NODE_ENV==="production"&&
+    entries[0].value!.toLowerCase()!==approvedRecipient.receiver.toLowerCase())
+  throw Error("SHARED_USDC_RECEIVER_NOT_OWNER_APPROVED");
  return entries[0].value!.toLowerCase() as `0x${string}`;
 }
 

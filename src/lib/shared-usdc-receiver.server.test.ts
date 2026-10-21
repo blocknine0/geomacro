@@ -15,4 +15,12 @@ describe("single mainnet merchant receiving address",()=>{
   for(const value of [undefined,"","0x"+"0".repeat(40),"0xshort","private-key"])
    expect(()=>resolveSharedUsdcReceiver({GEOMACRO_USDC_RECEIVER:value})).toThrow();
  });
+ it("pins the owner-approved address in production without asserting wallet control",()=>{
+  const approved="0xF98c18231ceFBD6d11154DEc14b3Aec6D74dC4B0";
+  expect(resolveSharedUsdcReceiver({NODE_ENV:"production",GEOMACRO_USDC_RECEIVER:approved,
+   COINBASE_X402_PAY_TO:approved.toLowerCase(),CIRCLE_X402_SELLER_ADDRESS:approved}))
+   .toBe(approved.toLowerCase());
+  expect(()=>resolveSharedUsdcReceiver({NODE_ENV:"production",GEOMACRO_USDC_RECEIVER:a}))
+   .toThrow("NOT_OWNER_APPROVED");
+ });
 });
