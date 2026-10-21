@@ -3,6 +3,8 @@ name: Legacy B2 Storage Independent Origin-Free Restore Canary
 on:
   workflow_dispatch: {}
   # One calendar-scoped attempt after the next UTC daily quota reset.
+  # Pushes run STATIC tests only; protected B2 GET quota is preserved for
+  # genuine commercial signed publication and owner-authorized recovery.
   # Do not run forever. October 22 in future years is gated out below.
   schedule:
     - cron: "43 0 22 10 *"
@@ -74,7 +76,10 @@ jobs:
             throw Error("B2_ORIGIN_FREE_NO_DELETION_CONTRACT_FAILED");
           NODE
   protected-private-readback:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     environment: production
