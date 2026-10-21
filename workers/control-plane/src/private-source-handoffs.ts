@@ -6,6 +6,29 @@ const reply=(v:unknown,status=200)=>Response.json(v,{status,headers:{
 const equal=(a:string,b:string)=>{
  let diff=a.length^b.length;for(let i=0;i<b.length;i++)diff|=(a.charCodeAt(i)||0)^b.charCodeAt(i);return diff===0;
 };
+// Low-cardinality failure classes, never original URLs, titles, publisher IDs,
+// signed payloads or runtime exception text. Authentication runs before this
+// mapping, so an unauthenticated caller cannot enumerate signed input state.
+const REASONS:Record<string,string>=Object.freeze({
+  SIGNED_INPUT_REQUIRED:'SIGNED_INPUT_NOT_PRESENT',
+  PRIVATE_SOURCE_HANDOFF_INVALID:'HANDOFF_ID_OR_SHAPE',
+  PRIVATE_SOURCE_HANDOFF_REFERENCE_INVALID:'ORIGINAL_REFERENCE_FORMAT',
+  PRIVATE_SOURCE_HANDOFF_BINDING_INVALID:'SIGNED_SIGNAL_ORIGINAL_BINDING',
+  AUTOMATED_INPUT_CLOCK_INVALID:'SIGNED_INPUT_STALE_OR_CLOCK',
+  AUTOMATED_INPUT_STORY_INVALID:'SIGNED_INPUT_STORY_OR_EMBARGO',
+  AUTOMATED_INPUT_ENVELOPE_INVALID:'SIGNED_INPUT_ENVELOPE',
+  AUTOMATED_INPUT_CONTRACT_INVALID:'SIGNED_INPUT_CONTRACT',
+  AUTOMATED_INPUT_KEY_INVALID:'SIGNER_KEY_NOT_APPROVED',
+  AUTOMATED_INPUT_KEY_LIFECYCLE_INVALID:'SIGNER_KEY_TIME_WINDOW',
+  AUTOMATED_INPUT_SIGNATURE_INVALID:'SIGNER_SIGNATURE',
+  QUERY:'QUERY_INVALID',SIZE:'PAYLOAD_TOO_LARGE',SHAPE:'PAYLOAD_SHAPE',
+  IDENTITY:'INPUT_IDENTITY',COLLISION:'INPUT_COLLISION',
+  BINDING:'D1_STORED_BINDING',READ:'D1_READ',WRITE:'D1_WRITE',
+});
+export function safePrivateHandoffRejection(error:unknown):string{
+ const key=error instanceof Error?error.message:'';
+ return Object.hasOwn(REASONS,key)?REASONS[key]:'UNCLASSIFIED_VALIDATION_OR_STORE';
+}
 export async function handlePrivateSourceHandoffs(request:Request,env:any,now=Date.now()){
  const root=String(env.CONTROL_PLANE_TOKEN??'').trim();
  if(root.length<32)return reply({ok:false,error:'PRIVATE_HANDOFF_UNAVAILABLE'},503);
@@ -70,5 +93,6 @@ export async function handlePrivateSourceHandoffs(request:Request,env:any,now=Da
   const results=await env.DB.batch(statements);
   if(results.some((r:any)=>r.success===false))throw Error('WRITE');
   return reply({ok:true,accepted_ids:[...unique.keys()]});
- }catch{return reply({ok:false,error:'PRIVATE_HANDOFF_NOT_VERIFIED'},400);}
+ }catch(error){return reply({ok:false,error:'PRIVATE_HANDOFF_NOT_VERIFIED',
+   reason_code:safePrivateHandoffRejection(error)},400);}
 }

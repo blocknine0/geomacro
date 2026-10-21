@@ -53,6 +53,9 @@ jobs:
       - name: Predge owner sealed token-only handoff crypto and authorization (offline)
         run: node --test scripts/ops/predge-sealed-token-handoff.test.mjs
 
+      - name: Private source handoff SQLite binding and safe rejection contracts (offline)
+        run: bun test scripts/tests/private-source-handoff-sqlite.test.ts
+
       - name: Private handoff D1 production acceptance contract (offline, no funds)
         run: node --test scripts/tests/verify-private-handoff-production.test.mjs
 

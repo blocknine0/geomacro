@@ -51,7 +51,24 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
   const body=JSON.stringify({items:group});
   const response=await fetchImpl(endpoint,{method:'PUT',redirect:'error',cache:'no-store',
    headers:{authorization:'Bearer '+token,'Content-Type':'application/json'},body,signal:AbortSignal.timeout(15000)});
-  if(!response.ok||response.redirected)throw Error('PRIVATE_HANDOFF_WRITE_HTTP_'+response.status);
+  if(!response.ok||response.redirected){
+   if(response.status===400){
+    // Only bounded category codes are printed. Never log response bodies,
+    // original URLs, article titles, upstream IDs or signer details.
+    let reason='REJECTED_UNCLASSIFIED';
+    try{
+     const raw=await response.text();
+     if(raw.length<=1000){
+      const doc=JSON.parse(raw);
+      if(doc?.error==='PRIVATE_HANDOFF_NOT_VERIFIED'&&
+       /^(?:SIGNED_INPUT_NOT_PRESENT|HANDOFF_ID_OR_SHAPE|ORIGINAL_REFERENCE_FORMAT|SIGNED_SIGNAL_ORIGINAL_BINDING|SIGNED_INPUT_STALE_OR_CLOCK|SIGNED_INPUT_STORY_OR_EMBARGO|SIGNED_INPUT_ENVELOPE|SIGNED_INPUT_CONTRACT|SIGNER_KEY_NOT_APPROVED|SIGNER_KEY_TIME_WINDOW|SIGNER_SIGNATURE|QUERY_INVALID|PAYLOAD_TOO_LARGE|PAYLOAD_SHAPE|INPUT_IDENTITY|INPUT_COLLISION|D1_STORED_BINDING|D1_READ|D1_WRITE|UNCLASSIFIED_VALIDATION_OR_STORE)$/u.test(doc.reason_code??''))
+       reason=doc.reason_code;
+     }
+    }catch{/* Response text and transport error details must stay private. */}
+    throw Error('PRIVATE_HANDOFF_WRITE_REJECTED_'+reason);
+   }
+   throw Error('PRIVATE_HANDOFF_WRITE_HTTP_'+response.status);
+  }
   const raw=await response.text();if(raw.length>10000)throw Error('PRIVATE_HANDOFF_ACK_INVALID');
   const ack=JSON.parse(raw);
   if(ack.ok!==true||!Array.isArray(ack.accepted_ids)||

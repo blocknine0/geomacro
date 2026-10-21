@@ -8,7 +8,7 @@ import {deriveStatelessSignals} from '../../src/lib/stateless-intelligence-model
 import {automatedInputId} from '../../src/lib/automated-intelligence-input.ts';
 import {signAutomatedIntelligenceInput} from '../../src/lib/risk-object-signing.server.ts';
 import {putAutomatedInputs,getAutomatedInputs} from '../../workers/control-plane/src/automated-intelligence-inputs.ts';
-import {handlePrivateSourceHandoffs} from '../../workers/control-plane/src/private-source-handoffs.ts';
+import {handlePrivateSourceHandoffs,safePrivateHandoffRejection} from '../../workers/control-plane/src/private-source-handoffs.ts';
 import {handleLowSourceReviews,lowReviewToken} from '../../workers/control-plane/src/low-source-reviews.ts';
 import {persistPrivateSourceHandoffs,readPrivateSourceRefs} from '../ops/persist-private-source-handoffs.ts';
 import {readPrivateSourceHandoffs} from '../ops/read-private-source-handoffs.ts';
@@ -223,4 +223,14 @@ test('continuation reviewer has no issuer, B2 or Cloudflare private capability a
  expect(step).not.toContain('GEOMACRO_COMMERCE_LEDGER_TOKEN');
  expect(step).toContain('GEOMACRO_LOW_REVIEW_PRIVATE_PKCS8_B64');
  expect(job).toContain('Remove private review results');
+});
+
+test('private handoff rejections are bounded classes without evidence text',()=>{
+ expect(safePrivateHandoffRejection(new Error('SIGNED_INPUT_REQUIRED'))).toBe('SIGNED_INPUT_NOT_PRESENT');
+ expect(safePrivateHandoffRejection(new Error('PRIVATE_SOURCE_HANDOFF_REFERENCE_INVALID'))).toBe('ORIGINAL_REFERENCE_FORMAT');
+ expect(safePrivateHandoffRejection(new Error('PRIVATE_SOURCE_HANDOFF_BINDING_INVALID'))).toBe('SIGNED_SIGNAL_ORIGINAL_BINDING');
+ expect(safePrivateHandoffRejection(new Error('AUTOMATED_INPUT_CLOCK_INVALID'))).toBe('SIGNED_INPUT_STALE_OR_CLOCK');
+ expect(safePrivateHandoffRejection(new Error('WRITE'))).toBe('D1_WRITE');
+ expect(safePrivateHandoffRejection(new Error('article title https://issuer.example/a?secret=1'))).toBe('UNCLASSIFIED_VALIDATION_OR_STORE');
+ expect(safePrivateHandoffRejection({message:'SIGNED_INPUT_REQUIRED'})).toBe('UNCLASSIFIED_VALIDATION_OR_STORE');
 });
