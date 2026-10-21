@@ -12,6 +12,7 @@ import {putAutomatedInputs,getAutomatedInputs} from '../../workers/control-plane
 import {handlePrivateSourceHandoffs,safePrivateHandoffRejection} from '../../workers/control-plane/src/private-source-handoffs.ts';
 import {handleLowSourceReviews,lowReviewToken} from '../../workers/control-plane/src/low-source-reviews.ts';
 import {persistPrivateSourceHandoffs,readPrivateSourceRefs} from '../ops/persist-private-source-handoffs.ts';
+import {preflightPrivateSourceReference} from '../lib/private-original-handoff-preflight.ts';
 import {readPrivateSourceHandoffs} from '../ops/read-private-source-handoffs.ts';
 import {reviewDerivedInputs} from '../ops/review-derived-inputs-low-authority.ts';
 import {verifyGeomacroUnclaimedOriginalPage} from '../lib/geomacro-original-page-readback.mjs';
@@ -270,4 +271,42 @@ test('strict handoff rejects forged clock and unsafe URL with separate safe reas
  const url=await handlePrivateSourceHandoffs(request('PUT',root,{items:[unsafe]}),env,nowMs);
  expect(url.status).toBe(400);
  expect((await url.json()).reason_code).toBe('ORIGINAL_REFERENCE_URL');
+});
+
+test('private producer isolates clock, URL and source-mismatch originals before D1 PUT',async()=>{
+ const {db,env}=store(),base=await fixture(),badClock=await fixture(1),
+  badUrl=await fixture(2),badTitle=await fixture(3);
+ await seed(env,[base,badClock,badUrl,badTitle]);
+ const wrongClock={...badClock.ref,publishedAt:
+   new Date(Date.parse(badClock.ref.publishedAt)+60000).toISOString()};
+ const wrongUrl={...badUrl.ref,articleUrl:badUrl.ref.articleUrl+'?track=1'};
+ const wrongTitle={...badTitle.ref,title:'Breaking unrelated research update about astronomy'};
+ expect((await preflightPrivateSourceReference({
+   signal:badClock.signal,original:wrongClock,inputId:badClock.item.input_id,now:nowMs
+ })).reason).toBe('ORIGINAL_CLOCK_DIFFERENT');
+ expect((await preflightPrivateSourceReference({
+   signal:badUrl.signal,original:wrongUrl,inputId:badUrl.item.input_id,now:nowMs
+ })).reason).toBe('URL_INVALID');
+ expect((await preflightPrivateSourceReference({
+   signal:badTitle.signal,original:wrongTitle,inputId:badTitle.item.input_id,now:nowMs
+ })).reason).toBe('SOURCE_DERIVATION_MISMATCH');
+ const fetcher=async(url:any,options:any={})=>String(url).includes('/intelligence-inputs/automated')
+  ?getAutomatedInputs(env,new URL(url).searchParams,nowMs)
+  :handlePrivateSourceHandoffs(new Request(url,{...options,headers:{
+    ...options.headers,authorization:'Bearer '+root}}),env,nowMs);
+ const receipt=await persistPrivateSourceHandoffs({
+  refs:new Map([[base.signal.id,base.ref],[badClock.signal.id,wrongClock],
+    [badUrl.signal.id,wrongUrl],[badTitle.signal.id,wrongTitle]]),
+  env:{GEOMACRO_COMMERCE_LEDGER_TOKEN:'fixture-owner-secret'.repeat(2)},
+  now,readJournal:async()=>[base.signal,badClock.signal,badUrl.signal,badTitle.signal],
+  fetchImpl:fetcher as typeof fetch,
+ });
+ expect(receipt.references_accepted).toBe(1);
+ expect(receipt.unqualified_original_references_excluded).toBe(3);
+ expect(receipt.all_available_references_verified).toBe(false);
+ expect(receipt.rejection_classes.ORIGINAL_CLOCK_DIFFERENT).toBe(1);
+ expect(receipt.rejection_classes.URL_INVALID).toBe(1);
+ expect(receipt.rejection_classes.SOURCE_DERIVATION_MISMATCH).toBe(1);
+ expect(JSON.stringify(receipt)).not.toContain(base.ref.articleUrl);
+ expect((db.query("SELECT COUNT(*) AS n FROM control_state WHERE key GLOB 'automated_source_handoff_v1:*'").get() as any).n).toBe(1);
 });
