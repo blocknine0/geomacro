@@ -17,11 +17,12 @@ Independent *candidate* issuer count is preserved (no automatic semantic corrobo
 Each unique original has an executable rights state:
 - `PUBLISHER_OR_DATASET_PERMISSION_REQUEST_REQUIRED`: unknown source or no reviewed exact dataset license; a private precise-article permission request is generated, **not an approval**.
 - `ATTRIBUTION_INCOMPATIBLE_WITH_PRIVATE_DELIVERY`: source license allows some commercial use *with attribution*, but the existing Geomacro paid contract hides source names. Do not omit required credit. Negotiate an actual written no-attribution exception from the rights holder, change the product disclosure contract with customer consent, or exclude this original.
+- `PUBLIC_DOMAIN_AND_THIRD_PARTY_COMPONENTS_REVIEW_REQUIRED`: the source catalogue records USGS-produced public-domain materials. USGS **requests** source credit; this is not automatically identical to an enforceable CC BY licence condition. Scope still needs factual first-party authorship, geographic law and third-party exclusion verification. Do not blindly auto-approve a whole website.
 - `ARTICLE_SCOPE_RIGHTS_DOCUMENT_REQUIRED`: known source dataset terms exist without attribution restriction; the specific article/page and any third-party materials still require validation.
 - `ARTICLE_SCOPE_PROOF_FOR_INDEPENDENT_RIGHTS_REVIEW`: supplied document metadata matches article SHA/time/scope and is ready for **separate genuine Rights authority review**, not approved.
 - `ORIGINAL_TOO_OLD_FOR_CURRENT_GRO`: not eligible as freshly signed current GRO even if historic rights are sound.
 
-The initial reviewed catalogue contains approximately a dozen exact datasets, many subject to attribution obligations. Country directory entries (**779 copied privately to D1**) are discovery pointers, **not 779 licensed original article feeds**; each new original still requires its own license and rights evidence. Source pages can change licensing independently of published cached source metadata.
+The initial reviewed catalogue contains **11** exact source-family licensing records and **11** legacy `attribution_required=true` flags. Two are USGS source families describing **public-domain USGS-produced content and a credit request**, which needs different exact-scope review from a mandatory CC BY attribution condition. This engine flags these for special legal-scope review; it does not automatically turn those 2 into genuine approved source-private commercial permissions. Country directory entries (**779 copied privately to D1**) are discovery pointers, **not 779 licensed original article feeds**; each new original still requires its own license and rights evidence. Source pages can change licensing independently of published cached source metadata.
 
 ## Run the source inventory anywhere, zero cost and no credentials
 
@@ -95,3 +96,10 @@ No email has been sent to upstream rightsholders by this PR. An approval is effe
 ## Production acceptance verdict
 
 `INTAKE_AUTOMATION_READY` is a code/test conclusion only. It does **not** mean `THIRD_PARTY_RIGHTS_APPROVED`, `FACTS_RIGHTS_SIGNED`, `CURRENT_COMMERCIAL_GRO_SIGNED`, `GRO_HOT_PUBLISHED` or `PREDGE_PAID_RISK_GATE_READY`. No payments or customer access changes.
+
+### Primary public-policy interpretation references
+
+- [USGS Copyrights and Credits](https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits): USGS-authored information generally public domain in the U.S., third-party materials excluded, credit **requested**. Actual work/jurisdiction still needs review.
+- [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.en): licensed commercial adaptation requires attribution where that licence applies. A public-domain element or legally applicable exception can have different obligations.
+
+A catalogue field named `attribution_required` is a historically conservative internal gate, **not a judicial finding** of the legal nature of every underlying item.
