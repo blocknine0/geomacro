@@ -43,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs
-          node scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs
+          node scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs || test "$?" -eq 3
           node - <<'NODE'
           const r=require("./artifacts/legacy-exit/legacy-storage-bundles.json");
           if(r.status!=="BLOCKED_NO_DELETION" ||
