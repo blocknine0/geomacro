@@ -25,8 +25,7 @@ function command(cmd,args,opts={},max=12_000_000,timeout=150000){
  const result=spawnSync(cmd,args,{env:{...env,...opts},encoding:"utf8",timeout,maxBuffer:max,
   stdio:["ignore","pipe","pipe"]});return result.status===0&&!result.error?result.stdout:null;
 }
-function postgresPinned(s){try{const u=new URL(s);return
-  ["postgres:","postgresql:"].includes(u.protocol)&&u.pathname==="/postgres"&&
+function postgresPinned(s){try{const u=new URL(s);return ["postgres:","postgresql:"].includes(u.protocol)&&u.pathname==="/postgres"&&
   !!u.password&&(u.hostname==="db."+ref+".supabase.co"&&u.username==="postgres"||
   u.hostname.endsWith(".pooler.supabase.com")&&decodeURIComponent(u.username)==="postgres."+ref)}
  catch{return false}}
