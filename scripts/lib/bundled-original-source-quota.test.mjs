@@ -19,7 +19,13 @@ test("pool reserves 2 of 6 physical reads and rejects the 5th, without emitting 
  assert.equal(receipt.protected_unused_reserve,2);
  assert.equal(receipt.reserve_touched,false);
  assert.equal(receipt.upstream_daily_quota_independently_verified,false);
- assert.equal(JSON.stringify(receipt).includes("first.gov"),false);
+ assert.deepEqual(Object.keys(receipt).sort(),[
+  "schema","hard_ceiling","normal_allowance","protected_unused_reserve",
+  "readbacks_used","normal_remaining","distinct_hosts_checked",
+  "reserve_touched","upstream_daily_quota_independently_verified",
+  "no_provider_hostnames_logged",
+ ].sort());
+ assert.equal(receipt.no_provider_hostnames_logged,true);
 });
 test("no repeated request to same government host in one run",()=>{
  const b=createBundledOriginalReadbackBudget();
