@@ -15,8 +15,7 @@ function emit(reason){receipt.reason=reason;mkdirSync("artifacts/legacy-exit",{r
  writeFileSync(output,JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
  console.log(JSON.stringify(receipt))}
 function fail(reason){emit(reason);process.exitCode=3}
-function pinned(s){try{const u=new URL(s);return
- ["postgres:","postgresql:"].includes(u.protocol)&&u.pathname==="/postgres"&&
+function pinned(s){try{const u=new URL(s);return ["postgres:","postgresql:"].includes(u.protocol)&&u.pathname==="/postgres"&&
  !!u.password&&(u.hostname==="db."+ref+".supabase.co"&&u.username==="postgres"||
  u.hostname.endsWith(".pooler.supabase.com")&&decodeURIComponent(u.username)==="postgres."+ref)}
  catch{return false}}
