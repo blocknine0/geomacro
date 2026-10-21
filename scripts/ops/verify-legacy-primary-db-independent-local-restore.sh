@@ -23,9 +23,9 @@ trap cleanup EXIT
 mkdir -p artifacts/legacy-exit
 reason="NOT_STARTED"
 write_receipt() {
-  node - "$ARTIFACT" "$reason" "${1:-}" "${2:-}" "${3:-}" "${4:-}" <<'NODE'
+  node - "$ARTIFACT" "$reason" "${1:-}" "${2:-}" "${3:-}" "${4:-}" "${5:-}" <<'NODE'
 const fs=require("node:fs");
-const [out,reason,structured,storage,payments,risk]=process.argv.slice(2);
+const [out,reason,structured,storage,payments,risk,failureClass]=process.argv.slice(2);
 const good=reason==="B2_DB_INDEPENDENT_LOCAL_RESTORE_VERIFIED";
 const report={
  schema:"geomacro.legacy-primary-disposable-b2-restore.v1",
@@ -33,6 +33,7 @@ const report={
  originating_verified_b2_archive_run:"39590890260",
  status:good?"B2_DB_INDEPENDENT_LOCAL_RESTORE_VERIFIED":"BLOCKED_NO_DELETION",
  blocker:good?null:reason,
+ restore_failure_class:good?null:(failureClass||null),
  independent_disposable_postgres17_database_restore_verified:good,
  restored_structured_event_rows:good?Number(structured):null,
  restored_storage_metadata_rows:good?Number(storage):null,
@@ -54,7 +55,26 @@ NODE
 }
 block(){
  reason="$1"
- write_receipt
+ local category=""
+ if [[ "$reason" == "DISPOSABLE_INDEPENDENT_PHYSICAL_RESTORE_FAILED" &&
+       -f "$PRIVATE/restore.stderr" ]];then
+   # Privacy-safe diagnostics: NEVER copy SQL error text or object names into
+   # public logs or GitHub artifacts. Only constant error family identifiers.
+   if grep -Fq 'schema "public" already exists' "$PRIVATE/restore.stderr";then
+     category="DEFAULT_PUBLIC_SCHEMA_COLLISION"
+   elif grep -Eiq 'extension .* is not available|could not open extension control file' "$PRIVATE/restore.stderr";then
+     category="LOCAL_REQUIRED_EXTENSION_UNAVAILABLE"
+   elif grep -Eiq 'role "[^"]+" does not exist|permission denied' "$PRIVATE/restore.stderr";then
+     category="LOCAL_ROLE_OR_PERMISSION_NOT_AVAILABLE"
+   elif grep -Eiq 'already exists|duplicate key value' "$PRIVATE/restore.stderr";then
+     category="LOCAL_PREEXISTING_OBJECT_COLLISION"
+   elif grep -Eiq 'does not exist|undefined' "$PRIVATE/restore.stderr";then
+     category="LOCAL_DEPENDENCY_MISSING"
+   else
+     category="OTHER_PRIVATE_PG_RESTORE_FAILURE"
+   fi
+ fi
+ write_receipt "" "" "" "" "$category"
  exit 3
 }
 if [[ "${APP_SUPABASE_URL:-}" != "https://ldpwajisioljyjtojvfx.supabase.co" ]]; then
@@ -134,6 +154,15 @@ psql "$URL" -X -q -v ON_ERROR_STOP=1 \
  block "DISPOSABLE_TARGET_DB_CREATE_FAILED"
 # All SQL writes are ONLY to fresh local dedicated localhost database.
 LOCAL_RESTORE_URL="postgresql://postgres:postgres@127.0.0.1:54322/geomacro_legacy_restored"
+# PostgreSQL 15+ creates the default 'public' schema in a fresh database;
+# the independently backed-up archive also defines that schema. Drop ONLY
+# the empty disposable target's default schema, never the production source.
+[[ "$LOCAL_RESTORE_URL" == "postgresql://postgres:postgres@127.0.0.1:54322/geomacro_legacy_restored" ]] ||
+ block "DISPOSABLE_LOCAL_TARGET_IDENTITY_MISMATCH"
+psql "$LOCAL_RESTORE_URL" -X -q -v ON_ERROR_STOP=1 \
+ -c 'DROP SCHEMA IF EXISTS public CASCADE;' \
+ >"$PRIVATE/drop-default-public.stdout" 2>"$PRIVATE/drop-default-public.stderr" ||
+ block "DISPOSABLE_DEFAULT_PUBLIC_SCHEMA_RESET_FAILED"
 docker run --rm --network host -v "$PRIVATE:/backup:ro" postgres:17-alpine \
  pg_restore --dbname "$LOCAL_RESTORE_URL" --no-owner --no-privileges \
  --exit-on-error /backup/verified-old-primary.pgcustom \
