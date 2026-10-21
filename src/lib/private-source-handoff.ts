@@ -1,6 +1,22 @@
 import {automatedInputId,verifyAutomatedInput,type AutomatedInputEnvelope} from './automated-intelligence-input.ts';
 import type {StatelessSourceCandidate} from './stateless-intelligence-model.ts';
 
+// A native RSS pubDate can be RFC 2822 while the signed derived journal
+// stores the exact same instant in UTC ISO form. Normalize representation
+// ONLY when both parsed clocks agree exactly; never supply an inferred hour
+// for day-only inputs, change original event time, or bypass byte readback.
+export function canonicalizePrivateOriginalSourceClock(
+  ref:StatelessSourceCandidate,signal:{published_at:string;date_precision:string}
+):StatelessSourceCandidate{
+ if(!ref||!signal||ref.publishedAt===signal.published_at)return ref;
+ if(signal.date_precision!=='exact'||typeof ref.publishedAt!=='string'||
+  !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u.test(signal.published_at))
+   return ref;
+ const original=Date.parse(ref.publishedAt),signed=Date.parse(signal.published_at);
+ if(!Number.isFinite(original)||!Number.isFinite(signed)||original!==signed)return ref;
+ return {...ref,publishedAt:signal.published_at};
+}
+
 export type PrivateSourceHandoff={input_id:string;ref:StatelessSourceCandidate};
 export async function verifyPrivateSourceHandoff(item:PrivateSourceHandoff,input:AutomatedInputEnvelope,
  keys:Parameters<typeof verifyAutomatedInput>[1],now=Date.now()){
@@ -14,11 +30,14 @@ export async function verifyPrivateSourceHandoff(item:PrivateSourceHandoff,input
   typeof r.articleUrl!=='string'||r.articleUrl.length>2048||
   typeof r.sourceId!=='string'||!/^[a-zA-Z0-9_.:-]{1,128}$/.test(r.sourceId)||
   !(r.credit===null||typeof r.credit==='string'&&r.credit.length<=1000)||
-  r.publishedAt!==input.payload.signal.published_at||r.category!==input.payload.signal.category)
-  throw Error('PRIVATE_SOURCE_HANDOFF_REFERENCE_INVALID');
- const u=new URL(r.articleUrl);
+  r.category!==input.payload.signal.category)
+  throw Error('PRIVATE_SOURCE_HANDOFF_REFERENCE_SHAPE_INVALID');
+ if(r.publishedAt!==input.payload.signal.published_at)
+  throw Error('PRIVATE_SOURCE_HANDOFF_REFERENCE_CLOCK_INVALID');
+ let u:URL;
+ try{u=new URL(r.articleUrl)}catch{throw Error('PRIVATE_SOURCE_HANDOFF_REFERENCE_URL_INVALID')}
  if(u.protocol!=='https:'||u.username||u.password||u.port||u.search||u.hash||u.href!==r.articleUrl)
-  throw Error('PRIVATE_SOURCE_HANDOFF_REFERENCE_INVALID');
+  throw Error('PRIVATE_SOURCE_HANDOFF_REFERENCE_URL_INVALID');
  // Reproduce the exact derived content, rather than accepting an arbitrary
  // URL attached to an approved input. This is provenance, NOT source approval.
  const {deriveStatelessSignals}=await import('./stateless-intelligence-model.ts');
