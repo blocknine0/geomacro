@@ -2,7 +2,7 @@ import {createHmac} from 'node:crypto';
 import {lstatSync,readFileSync} from 'node:fs';
 import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client.ts';
 import {automatedInputId} from '../../src/lib/automated-intelligence-input.ts';
-import {canonicalizePrivateOriginalSourceClock} from '../../src/lib/private-source-handoff.ts';
+import {preflightPrivateSourceReference} from '../lib/private-original-handoff-preflight.ts';
 import type {StatelessSourceCandidate} from '../../src/lib/stateless-intelligence-model.ts';
 const endpoint='https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/source-handoffs';
 export function readPrivateSourceRefs(env=process.env){
@@ -37,12 +37,18 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
   throw Error('PRIVATE_HANDOFF_INDEX_INVALID');
  const canonicalIds=new Map<string,string>(index.handoffs.map((x:any)=>[x.input_id,x.signal_id]));
  let equivalentNativeClocksCanonicalized=0;
+ const rejected={SHAPE_INVALID:0,URL_INVALID:0,ORIGINAL_CLOCK_DIFFERENT:0,
+  SOURCE_DERIVATION_MISMATCH:0,SIGNED_ID_MISMATCH:0};
  for(const signal of signals){const original=refs.get(signal.id);if(original){
   const input_id=await automatedInputId(signal);
   if(canonicalIds.get(input_id)===signal.id&&!items.has(input_id)){
-   const ref=canonicalizePrivateOriginalSourceClock(original,signal);
-   if(ref!==original)equivalentNativeClocksCanonicalized++;
-   items.set(input_id,{input_id,ref});
+   const admission=await preflightPrivateSourceReference({
+    signal,original,inputId:input_id,now:now.getTime()});
+   if(admission.reason!=='ELIGIBLE'){
+    rejected[admission.reason]++;continue;
+   }
+   if(admission.ref!==original)equivalentNativeClocksCanonicalized++;
+   items.set(input_id,{input_id,ref:admission.ref});
   }
  }}
  const all=[...items.values()];
@@ -85,6 +91,9 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
  // Counts only. Original titles/URLs, internal IDs and LOW verdicts are private.
  return {schema:'geomacro.private-source-handoff-run.v1',references_accepted:all.length,
   equivalent_native_clock_representations_normalized:equivalentNativeClocksCanonicalized,
+  unqualified_original_references_excluded:Object.values(rejected).reduce((a,b)=>a+b,0),
+  rejection_classes:rejected,
+  all_available_references_verified:refs.size>0&&Object.values(rejected).every(n=>n===0),
   public_sources_disclosed:false,source_evidence_verified:false,commercial_rights_attested:false,
   b2_requests:0,supabase_requests:0,payments:0};
 }
