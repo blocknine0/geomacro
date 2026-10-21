@@ -35,6 +35,27 @@ function ed25519B64(b64) {
   return createHash("sha256").update(der).digest("hex");
  }catch{return null}
 }
+// Return a fixed safe cause only; never disclose an issuer's public bytes,
+// fingerprint, GitHub secret value, or which actual key identity it matches.
+export function independentReviewerPublicKeyIssue(env=process.env,{facts,rights,gro}={}) {
+ const pem=env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM;
+ const pin=env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256;
+ if(!PRESENT(pem))return "REVIEWER_PUBLIC_PEM_NOT_CONFIGURED";
+ if(!HEX.test(pin??""))return "REVIEWER_PUBLIC_SHA256_PIN_NOT_CONFIGURED";
+ let reviewer;
+ try{
+  const key=createPublicKey(pem);
+  if(key.asymmetricKeyType!=="ed25519")
+   return "REVIEWER_PUBLIC_KEY_NOT_VALID_ED25519";
+  reviewer=createHash("sha256")
+   .update(key.export({format:"der",type:"spki"})).digest("hex");
+ }catch{return "REVIEWER_PUBLIC_KEY_NOT_VALID_ED25519"}
+ if(reviewer!==pin)return "REVIEWER_PUBLIC_SPKI_SHA256_MISMATCH";
+ if(!gro)return "GRO_PUBLIC_PIN_NOT_VALIDATED";
+ if(reviewer===facts||reviewer===rights||reviewer===gro)
+  return "REVIEWER_NOT_INDEPENDENT_OF_OTHER_AUTHORITIES";
+ return "READY_PUBLIC_PIN_ONLY_NOT_A_REVIEW_SIGNATURE";
+}
 export function cloudAuthorityReadiness(env=process.env) {
  const noFunds=BLOCKED.every(k=>!PRESENT(env[k]));
  const b2=PRESENT(env.B2_KEY_ID)&&PRESENT(env.B2_APPLICATION_KEY);
@@ -48,10 +69,8 @@ export function cloudAuthorityReadiness(env=process.env) {
  const gro=ed25519B64(env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64);
  const distinct=Boolean(facts&&rights&&gro&&
   facts!==rights&&facts!==gro&&rights!==gro);
- const reviewer=ed25519Pem(env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM,
-  env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256);
- const reviewerIndependent=Boolean(reviewer&&gro&&reviewer!==gro&&
-  reviewer!==facts&&reviewer!==rights);
+ const reviewerIssue=independentReviewerPublicKeyIssue(env,{facts,rights,gro});
+ const reviewerIndependent=reviewerIssue==="READY_PUBLIC_PIN_ONLY_NOT_A_REVIEW_SIGNATURE";
  const endpoints={
   archive_storage_credentials:state(b2),
   cloudflare_control_plane_credentials:state(d1),
@@ -59,6 +78,7 @@ export function cloudAuthorityReadiness(env=process.env) {
     ?"PINS_CRYPTOGRAPHICALLY_MATCH_AND_DISTINCT":"MISSING_OR_INVALID",
   independent_gri_reviewer_public_key:reviewerIndependent
     ?"PIN_MATCHED_DISTINCT_FROM_SIGNERS":"MISSING_OR_INVALID",
+  independent_gri_reviewer_configuration_reason:reviewerIssue,
   zero_money_and_supabase_boundary:noFunds?"PRESENT":"VIOLATED",
  };
  // A short reason list is a safe whitelist, not a diagnostic copy of env.

@@ -60,6 +60,36 @@ test("rejects forged or reused Facts/Rights/GRO/reviewer pin material",()=>{
   GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM:c.pem,
   GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256:c.hash}).configuration_passed,false);
 });
+test("reviewer blocker is specifically classified without leaking PEM or fingerprints",()=>{
+ const [a,b,c,d]=Array.from({length:4},mk);
+ const e=env(a,b,c,d);
+ const absent=cloudAuthorityReadiness({...e,
+  GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM:""});
+ assert.equal(absent.configuration.independent_gri_reviewer_configuration_reason,
+  "REVIEWER_PUBLIC_PEM_NOT_CONFIGURED");
+ const noPin=cloudAuthorityReadiness({...e,
+  GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256:""});
+ assert.equal(noPin.configuration.independent_gri_reviewer_configuration_reason,
+  "REVIEWER_PUBLIC_SHA256_PIN_NOT_CONFIGURED");
+ const invalid=cloudAuthorityReadiness({...e,
+  GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM:"invalid"});
+ assert.equal(invalid.configuration.independent_gri_reviewer_configuration_reason,
+  "REVIEWER_PUBLIC_KEY_NOT_VALID_ED25519");
+ const mismatch=cloudAuthorityReadiness({...e,
+  GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256:"f".repeat(64)});
+ assert.equal(mismatch.configuration.independent_gri_reviewer_configuration_reason,
+  "REVIEWER_PUBLIC_SPKI_SHA256_MISMATCH");
+ const clone=cloudAuthorityReadiness({...e,
+  GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM:c.pem,
+  GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256:c.hash});
+ assert.equal(clone.configuration.independent_gri_reviewer_configuration_reason,
+  "REVIEWER_NOT_INDEPENDENT_OF_OTHER_AUTHORITIES");
+ assert.equal(cloudAuthorityReadiness(e).configuration.independent_gri_reviewer_configuration_reason,
+  "READY_PUBLIC_PIN_ONLY_NOT_A_REVIEW_SIGNATURE");
+ const printed=JSON.stringify(clone)+JSON.stringify(mismatch);
+ for(const raw of [a.pem,b.pem,c.pem,d.pem,c.hash,d.hash])
+  assert.equal(printed.includes(raw),false);
+});
 test("cannot mark configured with an active Supabase/payment env or invalid public key",()=>{
  const [a,b,c,d]=Array.from({length:4},mk);
  const v=env(a,b,c,d);
