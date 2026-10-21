@@ -271,3 +271,52 @@ test('strict handoff rejects forged clock and unsafe URL with separate safe reas
  expect(url.status).toBe(400);
  expect((await url.json()).reason_code).toBe('ORIGINAL_REFERENCE_URL');
 });
+
+test('one genuine original clock mismatch cannot reject other independent signed D1 mappings',async()=>{
+ const {db,env}=store(),a=await fixture(),b=await fixture(1);
+ await seed(env,[a,b]);
+ const bad={...a.ref,publishedAt:new Date(Date.parse(a.ref.publishedAt)+60_000).toISOString()};
+ let putAttempts=0;
+ const fetcher=async(url:any,options:any={})=>{
+  if(String(url).includes('/intelligence-inputs/automated'))
+   return getAutomatedInputs(env,new URL(url).searchParams,nowMs);
+  if(options.method==='PUT')putAttempts++;
+  return handlePrivateSourceHandoffs(new Request(url,{...options,headers:{...options.headers,
+   authorization:'Bearer '+root}}),env,nowMs);
+ };
+ const receipt=await persistPrivateSourceHandoffs({
+  refs:new Map([[a.signal.id,bad],[b.signal.id,b.ref]]),
+  env:{GEOMACRO_COMMERCE_LEDGER_TOKEN:'fixture-owner-secret'.repeat(2)},
+  now,readJournal:async()=>[a.signal,b.signal],fetchImpl:fetcher as typeof fetch});
+ expect(receipt.references_accepted).toBe(1);
+ expect(receipt.original_refs_deferred_clock_mismatch).toBe(1);
+ expect(receipt.all_private_original_refs_qualified).toBe(false);
+ expect(receipt.source_evidence_verified).toBe(false);
+ expect(receipt.commercial_rights_attested).toBe(false);
+ expect(putAttempts).toBe(1);
+ expect(db.query('SELECT value_json FROM control_state WHERE key=?')
+  .get('automated_source_handoff_v1:'+a.item.input_id)).toBeNull();
+ expect(db.query('SELECT value_json FROM control_state WHERE key=?')
+  .get('automated_source_handoff_v1:'+b.item.input_id)).not.toBeNull();
+ expect(JSON.stringify(receipt)).not.toContain(b.ref.articleUrl);
+});
+test('invalid source URL is quarantined without D1 writes or fake original verification',async()=>{
+ const {db,env}=store(),a=await fixture();await seed(env,[a]);
+ const bad={...a.ref,articleUrl:a.ref.articleUrl+'?tracking=1'};
+ let putAttempts=0;
+ const fetcher=async(url:any,options:any={})=>{
+  if(String(url).includes('/intelligence-inputs/automated'))
+   return getAutomatedInputs(env,new URL(url).searchParams,nowMs);
+  if(options.method==='PUT')putAttempts++;
+  return handlePrivateSourceHandoffs(new Request(url,{...options,headers:{...options.headers,
+   authorization:'Bearer '+root}}),env,nowMs);
+ };
+ const receipt=await persistPrivateSourceHandoffs({refs:new Map([[a.signal.id,bad]]),
+  env:{GEOMACRO_COMMERCE_LEDGER_TOKEN:'fixture-owner-secret'.repeat(2)},
+  now,readJournal:async()=>[a.signal],fetchImpl:fetcher as typeof fetch});
+ expect(receipt.references_accepted).toBe(0);
+ expect(receipt.original_refs_deferred_url).toBe(1);
+ expect(receipt.all_private_original_refs_qualified).toBe(false);
+ expect(putAttempts).toBe(0);
+ expect((db.query("SELECT COUNT(*) AS n FROM control_state WHERE key GLOB 'automated_source_handoff_v1:*'").get() as any).n).toBe(0);
+});
