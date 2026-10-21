@@ -1,0 +1,134 @@
+name: Geomacro AI-Assisted Private Research Review (No External Reviewer)
+
+# Trigger only after a real private immutable derived-only research case exists.
+# Input is ONLY an exact SHA-pinned B2 private Geomacro-authored summary object,
+# never a raw upstream article, URL, source identity or licence. NO PUBLIC
+# signed GRI/Intelligence/Risk Indices; no third-party human reviewer claimed.
+on:
+  workflow_dispatch:
+    inputs:
+      case_sha256:
+        description: "SHA256 of private derived-only AI research case JSON already in B2"
+        required: true
+        type: string
+  repository_dispatch:
+    types: [geomacro_ai_derived_case_ready]
+  pull_request:
+    paths:
+      - ".github/workflows/ai-assisted-private-research-review.yml"
+      - "scripts/lib/private-ai-research-adjudication.mjs"
+      - "scripts/lib/private-ai-research-adjudication.test.mjs"
+      - "scripts/ops/run-hosted-ai-private-review.mjs"
+      - "scripts/ops/run-hosted-ai-private-review.test.mjs"
+      - "docs/ops/AI_ASSISTED_NO_HUMAN_REVIEWER_20261022.md"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ai-assisted-private-research-review.yml"
+      - "scripts/lib/private-ai-research-adjudication.mjs"
+      - "scripts/lib/private-ai-research-adjudication.test.mjs"
+      - "scripts/ops/run-hosted-ai-private-review.mjs"
+      - "scripts/ops/run-hosted-ai-private-review.test.mjs"
+      - "docs/ops/AI_ASSISTED_NO_HUMAN_REVIEWER_20261022.md"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-ai-assisted-research-review-no-funds
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify two-model AI evidence and private B2 receipt cannot authorize commercial GRI
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test scripts/lib/facts-only-derived-news-regression.test.mjs
+          node --test scripts/lib/private-ai-research-adjudication.test.mjs
+          node --test scripts/ops/run-hosted-ai-private-review.test.mjs
+
+  protected-research-only:
+    needs: offline-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'repository_dispatch' &&
+        github.event.action == 'geomacro_ai_derived_case_ready' &&
+        github.event.client_payload.schema ==
+          'geomacro.private-ai-derived-case-ready.v1'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    env:
+      AI_REVIEW_CASE_SHA256: ${{ github.event_name == 'workflow_dispatch' && inputs.case_sha256 || github.event.client_payload.case_sha256 }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: ai_private_review_research
+      B2_REQUEST_BUDGET: "4"
+      CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER || 'groq,gemini,mistral,cerebras' }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+      GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+      MISTRAL_MODEL: ${{ vars.MISTRAL_MODEL }}
+      CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+      GEOMACRO_AI_REVIEW_DERIVED_ONLY_ACK: ${{ vars.GEOMACRO_AI_REVIEW_DERIVED_ONLY_ACK }}
+      GEOMACRO_AI_REVIEW_FREE_QUOTA_ACK: ${{ vars.GEOMACRO_AI_REVIEW_FREE_QUOTA_ACK }}
+      SUPABASE_DB_URL: ""
+      SUPABASE_URL: ""
+      APP_SUPABASE_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      APP_SUPABASE_SERVICE_ROLE_KEY: ""
+      COINBASE_API_KEY: ""
+      COINBASE_COMMERCE_API_KEY: ""
+      COINBASE_X402_MAINNET_ACK: ""
+      GEOMACRO_COMMERCIAL_LAUNCH_ACK: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Require exact pinned source and verified main before any B2 GET or AI request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = "$(git rev-parse HEAD)"
+          [[ "$AI_REVIEW_CASE_SHA256" =~ ^[a-f0-9]{64}$ ]] || {
+            echo "::error::NO_GENUINE_IMMUTABLE_DERIVED_AI_CASE_SHA"
+            exit 2
+          }
+          echo "AI_REVIEW_CASE_B2_KEY=geomacro-evidence/v1/private/ai-review-case/${AI_REVIEW_CASE_SHA256}.json" >> "$GITHUB_ENV"
+          test "${GEOMACRO_AI_REVIEW_DERIVED_ONLY_ACK:-}" = "YES_APPROVED_DERIVED_ONLY"
+          test "${GEOMACRO_AI_REVIEW_FREE_QUOTA_ACK:-}" = "YES_FREE_TIER_CONFIRMED"
+      - name: Resolve shared free-tier D1 B2 quota governor
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" && test -n "${CLOUDFLARE_API_TOKEN:-}"
+          json="$(npx -y wrangler@4.136.3 d1 list --json)"
+          id="$(printf '%s' "$json" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{const v=JSON.parse(s).find(x=>x.name==="geomacro-control-plane");process.stdout.write(v?.uuid??v?.id??"")})')"
+          test -n "$id" || { echo "::error::AI_RESEARCH_SHARED_D1_QUOTA_MISSING"; exit 2; }
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+      - name: Review Geomacro-authored derived facts with two different model providers and verify private B2 receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/run-hosted-ai-private-review.mjs

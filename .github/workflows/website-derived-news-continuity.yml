@@ -35,6 +35,7 @@ on:
       - "scripts/lib/automated-finds-run-health.mjs"
       - "scripts/lib/derived-news-source-health.mjs"
       - "scripts/lib/all-news-original-evidence-audit.mjs"
+      - "scripts/lib/facts-only-derived-news-regression.test.mjs"
       - "scripts/lib/bundled-original-source-quota.mjs"
       - "scripts/lib/bundled-original-source-quota.test.mjs"
       - "scripts/lib/all-news-original-evidence-audit.test.mjs"
@@ -86,6 +87,7 @@ jobs:
         run: |
           node --test scripts/lib/bundled-original-source-quota.test.mjs
           node --test scripts/lib/all-news-original-evidence-audit.test.mjs
+          node --test scripts/lib/facts-only-derived-news-regression.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
       - name: Require existing control-plane authorization
         env:
