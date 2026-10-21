@@ -51,6 +51,8 @@ jobs:
           const code=fs.readFileSync('scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs','utf8');
           if(!code.includes('shards=4')||!code.includes('length:8')||
              !code.includes('verified.size!==part.length')||
+             !code.includes('FINAL_STORAGE_ORIGINAL_FILES_NOT_RESTORABLE')||
+             !code.includes('FINAL_STORAGE_COMPLETE_ORIGINAL_COVERAGE_MISMATCH')||
              !code.includes('source_supabase_deletes:0')||
              !code.includes('old_supabase_deletion_authorized:false'))
             throw Error('FOUR_SHARD_SHA256_NO_DELETION_CONTRACT_FAILED');
