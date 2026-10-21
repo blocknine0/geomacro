@@ -194,3 +194,53 @@ export async function verifyGeomacroSingleOriginalPage({
     signed_commercial_gro:false,
   });
 }
+
+/**
+ * PRE-REVIEW ONLY: no semantic event identity has been approved yet.
+ * The existing strict HTTPS publisher pin, bounded exact HTML bytes reader,
+ * original publisher clock and six-hour time gate are reused without
+ * manufacturing a same-event claim SHA to satisfy the signed risk profile.
+ *
+ * This profile returns an actual HTML-byte digest for a private review lead.
+ * It cannot be submitted as a signed source or a commercial GRO.
+ */
+export async function verifyGeomacroUnclaimedOriginalPage({
+  original,now=new Date(),fetchImpl=fetch,
+}={}){
+  if(!original||typeof original!=="object"||Array.isArray(original)||
+     !(now instanceof Date)||!Number.isFinite(now.getTime())||
+     typeof fetchImpl!=="function"||
+     !CATEGORIES.has(original.category)||
+     typeof original.original_article_url!=="string"||
+     typeof original.original_published_at!=="string"||
+     !TIME.test(original.original_published_at)||
+     typeof original.originating_reporting_organization_id!=="string"||
+     Object.hasOwn(original,"original_article_sha256"))
+    fail();
+  const uri=pinnedOriginalPage(original.original_article_url,original.category);
+  const publisher=uri&&registeredOriginalPublisherOrganization(uri.hostname);
+  const publication=Date.parse(original.original_published_at);
+  if(!uri||publisher!==original.originating_reporting_organization_id||
+     !Number.isFinite(publication)||publication>now.getTime()||
+     now.getTime()-publication>6*60*60*1000)
+    fail();
+  const readback=await exactReadback({
+    url:uri.href,expected_at:publication,expected_sha:null,
+  },now,fetchImpl);
+  const accepted=readback.status==="PAGE_BYTES_AND_NATIVE_CLOCK_VERIFIED";
+  return Object.freeze({
+    schema:"geomacro.private-unclaimed-original-pre-review.v1",
+    status:accepted?"ORIGINAL_BYTES_AND_CLOCK_VERIFIED_REVIEW_PENDING":
+      readback.reason,
+    accepted,original_article_sha256:accepted?readback.article_sha256:null,
+    original_native_published_at:accepted?readback.original_published_at:null,
+    country_and_category_scope_review_pending:true,
+    semantic_claim_reviewed:false,source_article_rights_verified:false,
+    facts_signature_verified:false,rights_signature_verified:false,
+    independent_corroboration_verified:false,
+    commercial_eligible:false,signed_gro_created:false,
+    public_hot_published:false,payment_authorized:false,
+    raw_upstream_exposed:false,b2_requests:0,d1_writes:0,
+    supabase_requests:0,payments:0,
+  });
+}
