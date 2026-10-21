@@ -1,0 +1,51 @@
+name: All News First-party Original Evidence Contract
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/all-news-original-evidence-audit.yml"
+      - "scripts/lib/all-news-original-evidence-audit.mjs"
+      - "scripts/lib/all-news-original-evidence-audit.test.mjs"
+      - "scripts/lib/geomacro-original-page-readback.mjs"
+      - "scripts/ops/publish-website-derived-news.ts"
+      - ".github/workflows/website-derived-news-continuity.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/all-news-original-evidence-audit.yml"
+      - "scripts/lib/all-news-original-evidence-audit.mjs"
+      - "scripts/lib/all-news-original-evidence-audit.test.mjs"
+      - "scripts/lib/geomacro-original-page-readback.mjs"
+      - "scripts/ops/publish-website-derived-news.ts"
+      - ".github/workflows/website-derived-news-continuity.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  exact-original-trust-boundary:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v4
+        with:
+          node-version: '22'
+      - name: Test exact original HTML and mandatory nonverified outcomes (no network)
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/all-news-original-evidence-audit.mjs
+          node --check scripts/lib/geomacro-original-page-readback.mjs
+          node --test scripts/lib/all-news-original-evidence-audit.test.mjs
+          node --test scripts/lib/geomacro-original-page-readback.test.mjs
+      - name: Verify no audit script mints or delivers paid signed news
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -E -n 'settleCoinbaseX402|SUPABASE_SERVICE_ROLE_KEY|RISK_OBJECT_SIGNING_PRIVATE_KEY|GEOMACRO_MACHINE_FACTS_PRIVATE_KEY|GEOMACRO_MACHINE_RIGHTS_PRIVATE_KEY' scripts/lib/all-news-original-evidence-audit.mjs
+          grep -Fq 'maxReadbacks:6,maxPerCategory:2' scripts/ops/publish-website-derived-news.ts
+          grep -Fq 'derived-news-original-evidence-' .github/workflows/website-derived-news-continuity.yml
