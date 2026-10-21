@@ -237,7 +237,7 @@
     ],
     "approved_ui_commit": "2746afdd404f0e3477b5a8aa08a18de20712c3df",
     "previous_baseline_sha": "0b3f72c2a845376eefb57fbe107cc3cf184adaca",
-    "purpose": "Add an exact-quote wallet buyer flow, three question agents and observable rendered-story identifiers. Preserve runtime-dependent paid availability, current product/source eligibility, native asset checks, existing prices, immutable delivery and same-proof recovery. New public receiver address and authenticated Lovable publishing access remain required.",
+    "purpose": "Add an exact-quote wallet buyer flow, three question agents and observable rendered-story identifiers. Preserve runtime-dependent paid availability, current product/source eligibility, native asset checks, existing prices, immutable delivery and same-proof recovery. The owner-supplied public receiver is pinned separately; authenticated Lovable publishing access and runtime activation remain required.",
     "all_three_chain_merchant_activation_claimed": false,
     "global_risk_final_lock_unmodified": true,
     "pending_exact_sha_live_deployment_acceptance": true

@@ -17,7 +17,7 @@ describe("production-first public identity", () => {
   it("publishes only production or production-gated commerce status", () => {
     const status = read("src/components/agent-commerce-status.tsx");
     expect(status.toLowerCase()).not.toContain("testnet");
-    expect(status).toContain("x402 commercial access · production activation pending");
+    expect(status).toContain("Mainnet USDC · production activation pending");
     expect(status).toContain("live HTTP challenge and health contract remain the authority");
   });
 

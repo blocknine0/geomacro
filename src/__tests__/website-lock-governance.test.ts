@@ -42,10 +42,15 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-195-country-all-three-domain-intelligence-journal-view-20261020");
+    expect(config.lock_revision).toBe("founder-approved-three-category-mainnet-buyer-flow-20261021");
+    const launch = config.three_chain_launch_presentation_approval;
+    expect(launch.approved_ui_commit).toBe(config.baseline_sha);
+    expect(launch.all_three_chain_merchant_activation_claimed).toBe(false);
+    expect(launch.global_risk_final_lock_unmodified).toBe(true);
+    expect(launch.pending_exact_sha_live_deployment_acceptance).toBe(true);
     const countryBrowser = config.approved_195_country_full_journal_browser;
     expect(countryBrowser?.previous_baseline_sha).toBe("acbbfa547ba720cd93586440f51b100016819672");
-    expect(countryBrowser?.approved_ui_commit).toBe(config.baseline_sha);
+    expect(countryBrowser?.approved_ui_commit).toBe(launch.previous_baseline_sha);
     expect(countryBrowser?.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
     expect(countryBrowser?.global_risk_final_lock_unmodified).toBe(true);
     expect(countryBrowser?.source_upstream_unchanged).toBe(true);

@@ -64,6 +64,11 @@ jobs:
           node-version: "22"
       - name: Aggregate only real last-90d schedule-success checkpoint artifacts
         run: node scripts/ops/aggregate-country-195-proofs.mjs
+      - name: Observe current website latency independently without funds
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/website-latency
+          node scripts/ops/derived-news-latency-audit.mjs --website-observed > artifacts/website-latency/served-samples.json
       - name: Report current source-proof and signed-serving launch gaps without funds
         run: node scripts/ops/three-launch-blockers-report.mjs
       - name: Keep source-free trusted coverage-gap rollup

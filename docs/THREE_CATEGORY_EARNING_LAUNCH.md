@@ -190,3 +190,25 @@ existing website into launch mode. The general website baseline is updated in
 a separate commit after the approved UI commit; the independent frozen Global
 Risk presentation is not changed. Existing Lovable source mirroring is retained.
 Publishing still needs the existing project's authenticated deployment access.
+
+## Current-main reconciliation and acceptance repair (21 October)
+
+Merged the canonical original-byte audit, private original-signing intake and
+independent SSR-heading latency observer without discarding those changes.
+The historical 195-country website approval remains unchanged; the new buyer
+flow has its own approval and baseline. Public copy tests now assert the
+runtime-gated mainnet status and explicit published-only buyer request.
+
+The weekly rollup now takes a fresh website HTML observation before reporting.
+Only receipts no older than five minutes with internally consistent publication
+and observation clocks can qualify. Failed latency probes preserve negative
+Actions evidence and do not block original-source ingestion.
+
+Focused validation: 15 app tests, 32 offline tests and production build passed;
+website and independent immutable Global Risk locks passed. Public readback
+returned website HTTP 200, deep-health HTTP 503, zero verified hot products and
+zero fresh twenty-minute candidates. This is not commercial launch acceptance.
+No wallet signature, funds transfer, runtime activation or Lovable publication
+was performed. Production credentials/publishing access and genuine current
+eligible signed products remain required, along with complete native settlement
+and delivery integration for Polygon/Arc. No marketplace listing is claimed.

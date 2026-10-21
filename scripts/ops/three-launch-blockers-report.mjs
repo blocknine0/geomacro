@@ -13,13 +13,18 @@ export function summarizeLaunchAcceptance({coverage=null,latency=null,health=nul
  const currentCells=coverageShape?coverage.cells.filter(c=>c.current_original_proof_verified===true&&
   Number.isFinite(Date.parse(c.last_probe_at))&&Date.parse(c.last_probe_at)<=now+60000&&
   now-Date.parse(c.last_probe_at)<86400000).length:0;
- const sample=latency?.schema==='geomacro.website-observed-publication-latency.v1'&&
+ const observed=Date.parse(latency?.observed_at);
+ const currentLatency=Number.isFinite(observed)&&observed<=now+60000&&now-observed<=300000;
+ const sample=currentLatency&&latency?.schema==='geomacro.website-observed-publication-latency.v1'&&
   latency.actual_website_20min_sample_verified===true&&
   Array.isArray(latency.samples)&&latency.samples.some(s=>s.within_20_minutes===true&&
-   s.latency_upper_bound_seconds>=900&&s.latency_upper_bound_seconds<=1200);
+   s.latency_upper_bound_seconds>=900&&s.latency_upper_bound_seconds<=1200&&
+   Date.parse(s.website_observed_at)===observed&&
+   Number.isFinite(Date.parse(s.source_published_at))&&
+   Math.ceil((observed-Date.parse(s.source_published_at))/1000)===s.latency_upper_bound_seconds);
  const products=health?.public_production?.current_hot_product_ready;
  const hot=products&&['intelligence','global_risk','risk_indices'].filter(k=>products[k]===true).length||0;
- const mainnet=paymentStatus?.environment==='production'&&paymentStatus?.network==='eip155:8453';
+ const mainnet=paymentStatus?.environment==='production'&&paymentStatus?.network==='eip155:8453'&&paymentStatus?.configured===true;
  return {schema:'geomacro.three-launch-blockers-report.v1',checked_at:checkedAt,
   country_category_proof:{state:currentCells===585?'CURRENT_ORIGINAL_PROOFS_OBSERVED':'INCOMPLETE',
    trusted_receipt_available:coverageShape,
@@ -28,7 +33,7 @@ export function summarizeLaunchAcceptance({coverage=null,latency=null,health=nul
    nominal_bounded_sweep_days:65,source_registry_count_is_not_proof:true},
   original_to_website_latency:{state:!latency?'NO_TRUSTED_LATENCY_RECEIPT':
     sample?'QUALIFYING_LIVE_SAMPLE_OBSERVED':'NO_QUALIFYING_LIVE_SAMPLE',
-   qualifying_20min_sample_observed:sample,universal_20min_sla_verified:false,
+   qualifying_20min_sample_observed:sample,receipt_current:currentLatency,universal_20min_sla_verified:false,
    measurement:'SERVED_ARTICLE_HTML_RECEIPT_UPPER_BOUND'},
   signed_commercial_serving:{deep_health_http:healthStatus,
    verified_current_hot_products:hot,required_hot_products:3,
