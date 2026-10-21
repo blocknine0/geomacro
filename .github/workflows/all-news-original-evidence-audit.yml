@@ -5,6 +5,8 @@ on:
     paths:
       - ".github/workflows/all-news-original-evidence-audit.yml"
       - "scripts/lib/all-news-original-evidence-audit.mjs"
+      - "scripts/lib/bundled-original-source-quota.mjs"
+      - "scripts/lib/bundled-original-source-quota.test.mjs"
       - "scripts/lib/all-news-original-evidence-audit.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
       - "scripts/ops/publish-website-derived-news.ts"
@@ -38,7 +40,9 @@ jobs:
       - name: Test exact original HTML and mandatory nonverified outcomes (no network)
         run: |
           set -euo pipefail
+          node --check scripts/lib/bundled-original-source-quota.mjs
           node --check scripts/lib/all-news-original-evidence-audit.mjs
+          node --test scripts/lib/bundled-original-source-quota.test.mjs
           node --check scripts/lib/geomacro-original-page-readback.mjs
           node --test scripts/lib/all-news-original-evidence-audit.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
@@ -47,5 +51,5 @@ jobs:
         run: |
           set -euo pipefail
           ! grep -E -n 'settleCoinbaseX402|SUPABASE_SERVICE_ROLE_KEY|RISK_OBJECT_SIGNING_PRIVATE_KEY|GEOMACRO_MACHINE_FACTS_PRIVATE_KEY|GEOMACRO_MACHINE_RIGHTS_PRIVATE_KEY' scripts/lib/all-news-original-evidence-audit.mjs
-          grep -Fq 'maxReadbacks:6,maxPerCategory:2' scripts/ops/publish-website-derived-news.ts
+          grep -Fq 'maxReadbacks:6,maxPerCategory:4' scripts/ops/publish-website-derived-news.ts
           grep -Fq 'derived-news-original-evidence-' .github/workflows/website-derived-news-continuity.yml
