@@ -118,8 +118,90 @@ async function main(){
  const complete=parts.map((p,n)=>known.has(stem(n)+".verified.json"));
  const n=complete.findIndex(x=>!x);
  report.verified_marker_shards=complete.filter(Boolean).length;report.remaining_shards=complete.filter(x=>!x).length;
- if(n===-1){report.status="ALL_MARKERS_PRESENT_FINAL_AUDIT_PENDING";
-  return save("COMPLETE_REVALIDATION_AND_RUNTIME_CUTOVER_NOT_DONE")}
+ if(n===-1){
+  // Never trust marker presence alone. Read back and verify ALL 4 bundles and
+  // every original member in a separate final proof run.
+  const gov=createB2D1AccountGovernor({env:{
+   ...env,B2_ACCOUNT_QUOTA_WORKFLOW_ID:"legacy_storage_exit"}});
+  let quota;try{quota=await gov.status()}catch{return halt("B2_D1_GOVERNOR_UNAVAILABLE")}
+  // 2 GETs per shard (receipt + archive), then 1 GET for final private index,
+  // while preserving 5 GETs for serving and safety recovery.
+  if(quota.used.GET+9>quota.limits.GET-5||
+   quota.used.PUT+1>quota.limits.PUT-3||
+   quota.used.total+10>quota.limits.total-8)
+   return halt("FINAL_FULL_RESTORE_B2_PROTECTED_HEADROOM_REQUIRED");
+  const privateIndex=[];
+  const writeCred=credentials(env.B2_KEY_ID,env.B2_APPLICATION_KEY);
+  const rootKey=prefix+"complete-"+hash(JSON.stringify(parts.map(p=>hash(JSON.stringify(p))))).slice(0,24)+".json";
+  for(let i=0;i<shards;i++){
+   const restore=join(tmp,"final-"+String(i));mkdirSync(restore);
+   const receiptPath=join(tmp,"marker-"+String(i)+".json");
+   const archivePath=join(tmp,"bundle-"+String(i)+".tar.gz");
+   try{await gov.reserve("GET")}catch{return halt("FINAL_MARKER_GET_QUOTA_DENIED")}
+   if(aws(["get-object","--bucket",bucket,"--key",stem(i)+".verified.json",
+        receiptPath,"--output","json"],writeCred)===null)return halt("FINAL_MARKER_NOT_READABLE");
+   let receipt;try{receipt=JSON.parse(readFileSync(receiptPath,"utf8"))}
+   catch{return halt("FINAL_MARKER_INVALID")}
+   if(receipt.schema!=="geomacro.storage-shard-verified.v1"||
+    receipt.source!==ref||receipt.shard!==i||receipt.part_manifest_hash!==ids[i]||
+    receipt.items!==parts[i].length||!/^[a-f0-9]{64}$/.test(receipt.bundle_sha256||"")||
+    receipt.original_bytes!==parts[i].reduce((a,b)=>a+b.size,0)||
+    receipt.exact_full_body_b2_readback!==true||
+    receipt.all_original_file_sha_verified!==true)
+    return halt("FINAL_MARKER_CONTENT_DOES_NOT_MATCH_SOURCE");
+   try{await gov.reserve("GET")}catch{return halt("FINAL_ARCHIVE_GET_QUOTA_DENIED")}
+   if(aws(["get-object","--bucket",bucket,"--key",stem(i)+".tar.gz",
+      archivePath,"--output","json"],writeCred)===null)return halt("FINAL_ARCHIVE_READBACK_FAILED");
+   if(hash(readFileSync(archivePath))!==receipt.bundle_sha256)
+    return halt("FINAL_ARCHIVE_BYTE_HASH_MISMATCH");
+   const listing=command("tar",["-tzf",archivePath],{},5_000_000);
+   if(listing===null||listing.trim().split("\n").some(x=>x.includes("..")||
+       x.startsWith("/")||! /^(\.\/)?(files\/[a-f0-9]{64}|files\/?|manifest\.json|\.\/?)$/.test(x)))
+    return halt("FINAL_ARCHIVE_LAYOUT_INVALID");
+   if(command("tar",["-xzf",archivePath,"-C",restore])===null||
+      !checkBundle(restore,parts[i],null))return halt("FINAL_RESTORED_ORIGINAL_FILE_HASH_FAILED");
+   let manifest;try{manifest=JSON.parse(readFileSync(join(restore,"manifest.json"),"utf8"))}
+   catch{return halt("FINAL_RESTORED_MANIFEST_INVALID")}
+   const byId=new Map(manifest.hashes);
+   for(const item of parts[i]){
+     const id=hash(item.bucket+"/"+item.name);
+     const digest=byId.get(id);
+     if(!/^[a-f0-9]{64}$/.test(digest||""))return halt("FINAL_SOURCE_OBJECT_DIGEST_MISSING");
+     privateIndex.push({...item,sha256:digest,shard:i,archive_key:stem(i)+".tar.gz"});
+   }
+   report.per_object_b2_sha_verified+=parts[i].length;
+  }
+  if(privateIndex.length!==rows.length||
+   new Set(privateIndex.map(x=>x.bucket+"/"+x.name)).size!==rows.length)
+   return halt("FINAL_ARCHIVE_ACCOUNT_WIDE_OBJECT_SET_INVALID");
+  const finalManifest={
+   schema:"geomacro.legacy-storage-complete-restore-index.v1",
+   source_project:ref,object_count:rows.length,total_bytes:total,
+   verified_shards:shards,objects:privateIndex,
+   audited_at:new Date().toISOString(),
+  };
+  const file=join(tmp,"final-index.json"),downloaded=join(tmp,"final-index-readback.json");
+  writeFileSync(file,JSON.stringify(finalManifest),{mode:0o600});
+  const expected=hash(readFileSync(file));
+  if(!known.has(rootKey)){
+   try{await gov.reserve("PUT")}catch{return halt("FINAL_INDEX_PUT_QUOTA_DENIED")}
+   const put=aws(["put-object","--bucket",bucket,"--key",rootKey,
+     "--body",file,"--server-side-encryption","AES256","--output","json"],writeCred);
+   let ack;try{ack=JSON.parse(put)}catch{return halt("FINAL_PRIVATE_INDEX_UPLOAD_FAILED")}
+   if(ack?.ServerSideEncryption!=="AES256")return halt("FINAL_INDEX_ENCRYPTION_NOT_PROVEN");
+   report.b2_puts++;
+  }
+  try{await gov.reserve("GET")}catch{return halt("FINAL_INDEX_GET_QUOTA_DENIED")}
+  if(aws(["get-object","--bucket",bucket,"--key",rootKey,
+    downloaded,"--output","json"],writeCred)===null||
+    hash(readFileSync(downloaded))!==expected)return halt("FINAL_INDEX_INDEPENDENT_READBACK_FAILED");
+  report.b2_gets+=9;
+  report.storage_fully_migrated=true;
+  report.final_index_sha256_prefix=expected.slice(0,16);
+  report.verified_marker_shards=shards;report.remaining_shards=0;
+  report.status="ALL_OLD_STORAGE_ORIGINAL_BYTES_IN_PRIVATE_B2_RESTORED_AND_VERIFIED";
+  return save("SUPABASE_STORAGE_RETRIEVAL_CUTOVER_AND_DELETION_STILL_PENDING");
+ }
  report.selected_shard=n;report.selected_shard_object_count=parts[n].length;
  let gov;try{gov=createB2D1AccountGovernor({env:{
   ...env,B2_ACCOUNT_QUOTA_WORKFLOW_ID:"legacy_storage_exit"}})}catch{return halt("B2_D1_GOVERNOR_MISSING")}
