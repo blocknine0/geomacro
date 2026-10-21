@@ -2,6 +2,10 @@ name: Legacy B2 Storage Independent Origin-Free Restore Canary
 # These two private object canaries use B2 only and ZERO old Supabase credentials.
 on:
   workflow_dispatch: {}
+  # One calendar-scoped attempt after the next UTC daily quota reset.
+  # Do not run forever. October 22 in future years is gated out below.
+  schedule:
+    - cron: "43 0 22 10 *"
   push:
     branches: [main]
     paths:
@@ -78,13 +82,27 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Pin one-time 2026 UTC retry window
+        id: once
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" != "schedule" ]] ||
+             [[ "$(date -u +%F)" == "2026-10-22" ]]; then
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.once.outputs.eligible == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+      - if: steps.once.outputs.eligible == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
-      - name: Find existing canonical shared B2 quota governor D1
+      - if: steps.once.outputs.eligible == 'true'
+        name: Find existing canonical shared B2 quota governor D1
         shell: bash
         run: |
           set -euo pipefail
@@ -102,7 +120,8 @@ jobs:
             throw Error("B2_ORIGIN_FREE_D1_SHARED_QUOTA_UNAVAILABLE");
           appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+db+"\n");
           NODE
-      - name: Restore one original byte-identical file from each old bucket using ONLY B2
+      - if: steps.once.outputs.eligible == 'true'
+        name: Restore one original byte-identical file from each old bucket using ONLY B2
         run: |
           set -euo pipefail
           node scripts/ops/legacy-b2-origin-free-storage-readback.mjs
@@ -115,7 +134,7 @@ jobs:
             throw Error("B2_ORIGIN_FREE_READBACK_NOT_ACCEPTED");
           NODE
       - name: Upload sanitized zero-secret proof only
-        if: always()
+        if: always() && steps.once.outputs.eligible == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: b2-origin-free-two-bucket-recovery-${{ github.run_id }}
