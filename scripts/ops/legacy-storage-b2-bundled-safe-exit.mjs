@@ -111,7 +111,7 @@ async function main(){
  const inventoryCred=credentials(env.B2_LEGACY_INVENTORY_KEY_ID,
   env.B2_LEGACY_INVENTORY_APPLICATION_KEY);
  // Free-only archive admission: include ALL buckets and historic versions,
- // not just currently visible objects. Apply a 1 GiB reserve under B2's
+ // not just currently visible objects. Reserve at least 1 GB under B2's
  // advertised first-10-GiB free storage allowance. Inventory is READ ONLY.
  const accountList=aws(["list-buckets","--output","json"],inventoryCred,2_000_000);
  let names;
@@ -133,7 +133,7 @@ async function main(){
    if(!Number.isSafeInteger(size)||size<0)return halt("B2_ARCHIVE_VERSION_SIZE_INVALID");
    usedStorageBytes+=size;
    if(!Number.isSafeInteger(usedStorageBytes)||
-      usedStorageBytes+total>9*1024*1024*1024)
+      usedStorageBytes+total>9_000_000_000)
     return halt("B2_FREE_ACCOUNT_WIDE_STORAGE_HEADROOM_TOO_SMALL");
   }
  }
