@@ -69,14 +69,19 @@ function checkBundle(extract,part,expectedHashes){
  if(data.schema!=="geomacro.storage-original-bundle.v1"||data.source!==ref||
     JSON.stringify(data.objects)!==JSON.stringify(part)||data.hashes.length!==part.length)return false;
  const actualNames=readdirSync(join(extract,"files")).sort();
- const wanted=part.map(x=>hash(x.bucket+"/"+x.name)).sort();
- if(JSON.stringify(actualNames)!==JSON.stringify(wanted))return false;
+ const indexed=new Map(part.map(x=>[hash(x.bucket+"/"+x.name),x]));
+ const wanted=[...indexed.keys()].sort();
+ if(indexed.size!==part.length||JSON.stringify(actualNames)!==JSON.stringify(wanted))return false;
+ const verified=new Set();
  for(const [id,digest] of data.hashes){
-  if(!wanted.includes(id)||typeof digest!=="string"||!/^[a-f0-9]{64}$/.test(digest))return false;
+  if(!indexed.has(id)||verified.has(id)||typeof digest!=="string"||
+     !/^[a-f0-9]{64}$/.test(digest))return false;
   const bytes=readFileSync(join(extract,"files",id));
-  const meta=part.find(x=>hash(x.bucket+"/"+x.name)===id);
-  if(!meta||bytes.length!==meta.size||hash(bytes)!==digest)return false;
+  const meta=indexed.get(id);
+  if(bytes.length!==meta.size||hash(bytes)!==digest)return false;
+  verified.add(id);
  }
+ if(verified.size!==part.length)return false;
  if(expectedHashes&&JSON.stringify(data.hashes)!==JSON.stringify(expectedHashes))return false;
  return true;
 }
