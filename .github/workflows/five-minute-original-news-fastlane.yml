@@ -20,6 +20,8 @@ on:
       - "scripts/ops/persist-private-source-handoffs.ts"
       - "scripts/ops/read-private-source-handoffs.ts"
       - "scripts/ops/review-derived-inputs-low-authority.ts"
+      - "scripts/ops/emit-low-source-review-status.mjs"
+      - "scripts/tests/emit-low-source-review-status.test.mjs"
       - "src/lib/private-source-handoff.ts"
       - "workers/control-plane/src/private-source-handoffs.ts"
       - "src/lib/automated-intelligence-input.ts"
@@ -40,6 +42,8 @@ on:
       - "scripts/ops/persist-private-source-handoffs.ts"
       - "scripts/ops/read-private-source-handoffs.ts"
       - "scripts/ops/review-derived-inputs-low-authority.ts"
+      - "scripts/ops/emit-low-source-review-status.mjs"
+      - "scripts/tests/emit-low-source-review-status.test.mjs"
       - "src/lib/private-source-handoff.ts"
       - "workers/control-plane/src/private-source-handoffs.ts"
       - "src/lib/automated-intelligence-input.ts"
@@ -110,6 +114,8 @@ jobs:
         run: |
           umask 077
           bun scripts/ops/review-derived-inputs-low-authority.ts > "$RUNNER_TEMP/geomacro-source-review-result.json"
+      - name: Verify and emit only safe source-review aggregates
+        run: node scripts/ops/emit-low-source-review-status.mjs "$RUNNER_TEMP/geomacro-source-review-result.json"
       - name: Remove private review results
         if: always()
         run: rm -f -- "$RUNNER_TEMP/geomacro-source-review-result.json"
@@ -132,6 +138,7 @@ jobs:
           bun run vitest run src/__tests__/five-minute-original-news-fastlane.test.ts src/__tests__/automated-intelligence-input.test.ts src/__tests__/low-authority-source-review.test.ts
           bun test scripts/tests/private-source-handoff-sqlite.test.ts
           node --test scripts/ops/verify-original-to-website-visible-20m.test.mjs
+          node --test scripts/tests/emit-low-source-review-status.test.mjs
 
   original-five-minute-derived-news:
     if: >-

@@ -59,6 +59,9 @@ jobs:
       - name: Private handoff D1 production acceptance contract (offline, no funds)
         run: node --test scripts/tests/verify-private-handoff-production.test.mjs
 
+      - name: Safe low-source review operator counters (no private bytes, no funds)
+        run: node --test scripts/tests/emit-low-source-review-status.test.mjs
+
       - name: Private LOW reviewer provisioning boundary (offline, no secret writes)
         run: node --test scripts/ops/provision-private-low-review-authority.test.mjs
 

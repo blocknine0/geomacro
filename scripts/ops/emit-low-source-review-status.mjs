@@ -1,0 +1,107 @@
+#!/usr/bin/env node
+/**
+ * Strict redacted aggregate readback of the separate low-authority evidence
+ * reviewer. The private full-result JSON is never uploaded or printed.
+ * An original-page SHA + native timestamp is not a Facts or Rights approval.
+ */
+import {readFileSync, lstatSync} from "node:fs";
+import {resolve, isAbsolute} from "node:path";
+import {pathToFileURL} from "node:url";
+
+const DOMAINS=["geopolitics","macro","rare_earth"];
+const STATUSES=[
+  "ORIGINAL_PAGE_READBACK_REQUIRED",
+  "SOURCE_CONTRACT_UNREGISTERED_OR_OUT_OF_SCOPE",
+  "FIRST_PARTY_PUBLIC_DOMAIN_SCOPE_REVIEW_REQUIRED",
+  "ATTRIBUTION_WAIVER_OR_SEPARATE_CREDITED_PRODUCT_REQUIRED",
+  "ARTICLE_SPECIFIC_PERMISSION_AND_RIGHTS_SIGNATURE_REQUIRED",
+];
+const invalid=()=>{throw Error("LOW_REVIEW_SAFE_RECEIPT_INVALID")};
+const count=(value,max=600)=>Number.isSafeInteger(value)&&value>=0&&value<=max;
+const exactly=(obj,keys)=>obj&&typeof obj==="object"&&!Array.isArray(obj)&&
+ Object.keys(obj).sort().join(",")===keys.slice().sort().join(",");
+
+export function aggregateLowSourceReview(result){
+ if(!result||typeof result!=="object"||Array.isArray(result))invalid();
+ const audit=result.audit;
+ if(!audit||audit.schema!=="geomacro.all-derived-news-original-page-evidence-audit.v1"||
+  !count(audit.ingested_news_examined)||!count(audit.verified_original_page_bytes_and_native_time)||
+  !count(audit.pending_or_unverified_news_count)||
+  audit.verified_original_page_bytes_and_native_time+audit.pending_or_unverified_news_count!==
+   audit.ingested_news_examined||
+  !count(audit.exact_page_byte_rereads_attempted,6)||
+  !count(audit.exact_page_byte_rereads_limit,6)||
+  audit.exact_page_byte_rereads_attempted>audit.exact_page_byte_rereads_limit||
+  !audit.categories||typeof audit.categories!=="object"||
+  !DOMAINS.every(domain=>{
+   const row=audit.categories[domain];
+   return row&&count(row.total)&&count(row.original_bytes_verified)&&
+    count(row.pending_or_unverified)&&row.total===
+    row.original_bytes_verified+row.pending_or_unverified;
+  })||Object.keys(audit.categories).sort().join(",")!==DOMAINS.slice().sort().join(",")||
+  DOMAINS.reduce((a,d)=>a+audit.categories[d].total,0)!==audit.ingested_news_examined)
+  invalid();
+ if(audit.independent_same_event_verified!==false||
+  audit.per_article_commercial_rights_verified!==false||
+  audit.facts_signatures_verified!==false||
+  audit.rights_signatures_verified!==false||
+  audit.signed_commercial_intelligence_created!==false||
+  audit.b2_requests!==0||audit.d1_writes!==0||audit.supabase_requests!==0||
+  audit.x402_charges!==0||
+  audit.raw_source_urls_titles_html_logged!==false||
+  audit.private_original_html_hashes_exposed!==false)
+  invalid();
+ const fields=["reviewed_items","reused_current_verified_items",
+   "source_retry_cooldown_items","source_verified_items"];
+ if(!fields.every(k=>count(result[k])))invalid();
+ if(result.source_verified_items>result.reviewed_items||
+   result.reviewed_items>audit.ingested_news_examined||
+   result.source_verified_items>audit.verified_original_page_bytes_and_native_time)
+  invalid();
+ const states=audit.rights_remediation_actions;
+ if(!states||typeof states!=="object"||Array.isArray(states)||
+  Object.keys(states).some(s=>!STATUSES.includes(s)||!count(states[s]))||
+  Object.values(states).reduce((sum,n)=>sum+n,0)!==audit.ingested_news_examined)
+  invalid();
+ // Never serialize audit.rows, original URLs, article SHA, signal IDs,
+ // ephemeral signer contents, trust pins or private source metadata.
+ const rightCounts=Object.fromEntries(STATUSES.map(state=>[state,states[state]??0]));
+ return Object.freeze({
+  schema:"geomacro.low-source-review-safe-operator-status.v1",
+  original_candidates_examined:audit.ingested_news_examined,
+  exact_original_page_readbacks_attempted:audit.exact_page_byte_rereads_attempted,
+  new_original_pages_and_native_time_verified:result.source_verified_items,
+  previously_verified_current_reused:result.reused_current_verified_items,
+  retry_cooldowns:result.source_retry_cooldown_items,
+  pending_or_unverified_originals:audit.pending_or_unverified_news_count,
+  original_page_verified_by_domain:Object.fromEntries(
+   DOMAINS.map(d=>[d,audit.categories[d].original_bytes_verified])),
+  rights_followup_classes:rightCounts,
+  requires_real_independent_facts_review:true,
+  requires_real_article_scoped_rights_review:true,
+  legally_licensed_commercial_events_verified:false,
+  current_gri_verified:false,
+  current_risk_indices_verified:false,
+  charged_or_payable:false,
+  b2_writes:0,d1_writes:0,supabase_requests:0,real_payments:0,
+ });
+}
+export function readPrivateResult(path,env=process.env){
+ if(!isAbsolute(path)||!env.RUNNER_TEMP||
+   !resolve(path).startsWith(resolve(env.RUNNER_TEMP)+"/"))invalid();
+ const st=lstatSync(path);
+ if(!st.isFile()||st.isSymbolicLink()||
+   st.size<20||st.size>2*1024*1024||
+   process.platform!=="win32"&&(st.mode&0o077)!==0)invalid();
+ return JSON.parse(readFileSync(path,"utf8"));
+}
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
+ try{
+  if(process.argv.length!==3)invalid();
+  process.stdout.write(JSON.stringify(aggregateLowSourceReview(
+   readPrivateResult(process.argv[2])))+"\n");
+ }catch{
+  console.error("::error::LOW_SOURCE_REVIEW_AGGREGATE_NOT_VERIFIED");
+  process.exitCode=2;
+ }
+}

@@ -24,6 +24,8 @@ on:
       - "src/lib/automated-finds*"
       - "src/lib/low-authority-source-review.ts"
       - "scripts/ops/review-derived-inputs-low-authority.ts"
+      - "scripts/ops/emit-low-source-review-status.mjs"
+      - "scripts/tests/emit-low-source-review-status.test.mjs"
       - "scripts/ops/persist-private-source-handoffs.ts"
       - "scripts/ops/read-private-source-handoffs.ts"
       - "src/lib/private-source-handoff.ts"
@@ -167,6 +169,8 @@ jobs:
         run: |
           umask 077
           bun scripts/ops/review-derived-inputs-low-authority.ts > "$RUNNER_TEMP/geomacro-source-review-result.json"
+      - name: Verify and emit only safe source-review aggregates
+        run: node scripts/ops/emit-low-source-review-status.mjs "$RUNNER_TEMP/geomacro-source-review-result.json"
       - name: Remove private review handoff and internal verdicts from the runner
         if: always()
         run: |
