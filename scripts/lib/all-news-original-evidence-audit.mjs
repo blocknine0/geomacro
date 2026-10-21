@@ -77,7 +77,7 @@ export async function auditEveryDerivedNewsOriginal({
        !url.search&&!url.hash)
      organization=registeredOriginalPublisherOrganization(url.hostname);
    }catch{/* untrusted reference is never fetched */}
-   if(!organization||reference.category!==signal.category||
+   if(!organization||\n      (url.hostname==="www.gov.uk"&&reference.sourceId!=="uk_fcdo")||\n      reference.category!==signal.category||
       reference.publishedAt!==signal.published_at ||
       typeof reference.articleUrl!=="string"){
     row.original_page_evidence_status=STATUSES.NO_PIN;
