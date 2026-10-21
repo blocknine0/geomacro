@@ -1,0 +1,76 @@
+name: Old Supabase Storage Authenticated Original Bytes Canary
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/legacy-storage-original-byte-canary.yml"
+      - "scripts/ops/legacy-storage-original-byte-canary.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/legacy-storage-original-byte-canary.yml"
+      - "scripts/ops/legacy-storage-original-byte-canary.mjs"
+permissions:
+  contents: read
+jobs:
+  fail-closed-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      APP_SUPABASE_URL: ""
+      SUPABASE_DB_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify absent privileges cannot pass canary
+        run: |
+          node --check scripts/ops/legacy-storage-original-byte-canary.mjs
+          node scripts/ops/legacy-storage-original-byte-canary.mjs || test "$?" -eq 3
+          node - <<'NODE'
+          const r=require('./artifacts/legacy-exit/old-storage-byte-canary.json');
+          if(r.status!=='BLOCKED_NO_DELETION'||r.old_project_deletion_authorized!==false||
+             r.source_supabase_writes!==0||r.source_supabase_deletes!==0||r.b2_requests!==0)
+            throw Error('LEGACY_SOURCE_CANARY_SAFETY_FAILED');
+          NODE
+
+  production-private-source-byte-read:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify authentic live original bytes for both private buckets
+        run: |
+          set -euo pipefail
+          node scripts/ops/legacy-storage-original-byte-canary.mjs
+          node - <<'NODE'
+          const r=require('./artifacts/legacy-exit/old-storage-byte-canary.json');
+          if(r.status!=='TWO_PRIVATE_BUCKETS_ORIGINAL_BYTES_READBACK_VERIFIED'||
+             r.original_source_objects_verified!==2||
+             r.source_supabase_writes!==0||r.source_supabase_deletes!==0||
+             r.b2_requests!==0||r.old_project_deletion_authorized!==false)
+            throw Error('ORIGINAL_BUCKET_BYTE_READBACK_NOT_VERIFIED');
+          NODE
+      - name: Upload only redacted byte count/verified flags
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: legacy-storage-original-byte-canary-${{ github.run_id }}
+          path: artifacts/legacy-exit/old-storage-byte-canary.json
+          if-no-files-found: warn
+          retention-days: 7
