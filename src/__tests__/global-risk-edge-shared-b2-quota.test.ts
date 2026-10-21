@@ -26,7 +26,7 @@ function dbFixture({exhausted=false,failReceipt=false}={}) {
           return {
             async first() {
               expect(sql).toContain("ON CONFLICT(day_utc) DO UPDATE");
-              expect(params).toContain(25);
+              expect(params).toContain(45);
               if(exhausted)return null;
               return {
                 total_requests:1,get_requests:1,put_requests:0,

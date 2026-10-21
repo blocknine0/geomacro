@@ -71,7 +71,7 @@ describe("Risk Gate staging evidence contract", () => {
       "bun x tsx scripts/load-test-risk-gate-staging.ts",
     );
     expect(finalAcceptanceWorkflow).toContain(
-      "bun x tsx scripts/ops/provision-ephemeral-risk-gate-staging.ts",
+      "bun scripts/ops/start-ephemeral-d1-risk-gate-staging.ts",
     );
     expect(finalAcceptanceWorkflow).toContain(
       "supabase db reset --local --no-seed",

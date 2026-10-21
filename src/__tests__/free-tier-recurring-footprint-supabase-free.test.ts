@@ -20,7 +20,7 @@ describe("Supabase-free recurring quota footprint",()=>{
     expect(calls).toEqual(["status"]);
     expect(proof).toMatchObject({
       ok:true,source:"canonical-cloudflare-d1-b2-account-quota",
-      b2_remaining:{total:72,GET:22,PUT:50},
+      b2_remaining:{total:92,GET:42,PUT:50},
       status_read_only:true,per_b2_operation_atomic_reservation_still_required:true,
       supabase_required:false,supabase_network_calls:0,b2_network_calls:0,
       d1_writes:0,payments:0,other_platform_usage_unknown:true,
@@ -29,7 +29,7 @@ describe("Supabase-free recurring quota footprint",()=>{
     });
   });
   it("reports depleted capacity without pretending it resets or grants writes",()=>{
-    const v=validateAccountBudget(sample(25,55),{now});
+    const v=validateAccountBudget(sample(45,55),{now});
     expect(v.b2_daily_quota_exhausted).toBe(true);
     expect(v.b2_remaining.total).toBe(0);
     expect(v.ungoverned_b2_admission).toBe(false);

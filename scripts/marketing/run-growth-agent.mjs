@@ -13,6 +13,9 @@ const marketplace = JSON.parse(await fs.readFile(path.join(root, 'config/agent-m
 const distribution = JSON.parse(await fs.readFile(path.join(root, 'config/auto-distribution.json'), 'utf8'));
 
 const requestedLive = args.has('live');
+const prFixture = args.has('pr-fixture');
+if(prFixture && (requestedLive || process.env.GITHUB_EVENT_NAME !== 'pull_request'))
+  throw new Error('Offline Growth fixture is restricted to non-live pull-request contracts');
 const ownerAckEnv = config.activation?.owner_ack_env || 'GEOMACRO_GROWTH_AGENT_ACK';
 const ownerAckValue = config.activation?.owner_ack_value || 'I_AUTHORIZE_COMPLIANT_ZERO_COST_GROWTH';
 
@@ -52,6 +55,7 @@ if (freeChannels.length) {
     '--limit=5',
   ];
   if (socialLiveAllowed) pollArgs.push('--live');
+  if (prFixture) pollArgs.push('--input=scripts/marketing/fixtures/sample-public-early-warning-feed.json');
 
   const run = spawnSync(process.execPath, pollArgs, { cwd: root, encoding: 'utf8' });
   if (run.status !== 0) {
@@ -64,6 +68,8 @@ const output = {
   schema_version: 'geomacro.growth-agent-run.v1',
   generated_at: new Date().toISOString(),
   mode: requestedLive ? 'live-requested' : 'shadow',
+  evidence_source: prFixture ? 'SYNTHETIC_PR_FIXTURE' : 'CANONICAL_PUBLIC_FEED',
+  production_readiness_verified: false,
   canonical_origin: config.canonical_origin,
   canonical_product: config.canonical_product,
   zero_cost_first: config.zero_cost_first === true,

@@ -47,6 +47,9 @@ jobs:
         shell: bash
         run: |
           EXTRA=""
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            EXTRA="--pr-fixture"
+          fi
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.live }}" == "true" ]]; then
             EXTRA="--live"
           fi

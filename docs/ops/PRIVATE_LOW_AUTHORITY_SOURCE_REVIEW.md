@@ -65,6 +65,9 @@ failure interrupts provisioning, recover that partial configuration through the
 owner's protected secret manager before trying again. Provisioning is not a
 live deployment or review receipt. This session cannot execute the helper's
 write path because no authenticated GitHub CLI/admin credential is available.
+The owner subsequently ran this helper successfully and reported PROVISIONED;
+protected values were not shared in chat. Deployment and actual review receipts
+still need independent verification.
 
 Do not reuse the issuer or facts/rights authority private key. No private key
 belongs in chat, Git, an artifact, command arguments or the Worker. Deployment
@@ -78,4 +81,17 @@ independent and is not erased by a reviewer failure.
 Source implementation in a PR is not an active reviewer. Production activation
 requires the protected dedicated key/pin, main merge, Worker deployment and a
 successful actual review/write receipt. This session has not provisioned those
-secrets and does not claim production activation or commercial hot 3/3 health.
+secrets itself and does not claim production activation or commercial hot 3/3 health.
+
+## CI and live evidence
+
+Pull-request GRI calibration and Growth rendering use explicitly labeled pinned
+or synthetic fixtures. Those modes refuse manual/live invocation and do not
+authorize production readiness claims. Manual production runs retain real feed,
+current snapshot, rights and publication checks.
+
+Disposable staging uses the canonical D1 Risk Gate handler, real SQLite SQL,
+fresh synthetic Ed25519 fixtures and a loopback-only development proxy. The
+production code-level key pin rejects those fixtures; no HTTP field or runtime
+environment variable can replace it. This is SQL-compatible staging evidence,
+not proof of a deployed Cloudflare D1 binding or commercial source validity.

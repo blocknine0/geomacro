@@ -72,7 +72,8 @@ jobs:
       GRI_METHOD_VERSION: gri-v1.2.0
       GRI_PROOF_VERSION: gri-proof-v1.2.0
       GRI_VALIDATION_VERSION: gri-validation-v1.1.0
-      # Pull requests validate deterministic sensitivity mechanics on the latest public snapshot.
+      # PRs validate labeled offline mechanics; manual runs retain live evidence audits.
+      GRI_PR_OFFLINE_CONTRACT: ${{ github.event_name == 'pull_request' && '1' || '0' }}
       # Manual production runs keep the strict 3-hour freshness policy.
       GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"
       GRI_REQUIRE_PUBLIC_FRESHNESS: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}

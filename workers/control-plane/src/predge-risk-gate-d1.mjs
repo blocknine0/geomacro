@@ -17,6 +17,7 @@ const MAX_BYTES=65536;
 // An environment variable alone may not authorize a new signing key.
 const ACTIVE_KEY_ID="geomacro-risk-2026-03";
 const ACTIVE_KEY_SPKI="MCowBQYDK2VwAyEAeMsePxig7TEUR3fykcx9wcBqomj9KBuJ/TXTX2QSN2k=";
+const DEFAULT_AUTHORITY=Object.freeze({key_id:ACTIVE_KEY_ID,public_key_spki_b64:ACTIVE_KEY_SPKI});
 const DAY_LIMIT=100;
 const HARD_CEILING=500;
 const headers={"Cache-Control":"private, no-store","Vary":"Authorization",
@@ -52,27 +53,27 @@ function b64bytes(v){
  if(btoa(round)!==v)throw Error("NONCANONICAL_BASE64");
  return bytes;
 }
-function trustRecord(env,id,generatedAt){
- if(!KEY_ID.test(id)||id!==ACTIVE_KEY_ID)return null;
+function trustRecord(env,id,generatedAt,authority=DEFAULT_AUTHORITY){
+ if(!KEY_ID.test(id)||id!==authority.key_id)return null;
  const protectedRegistry=String(env?.RISK_GATE_VERIFY_KEYS_JSON??"").trim();
  let ent;
  if(!protectedRegistry){
    // The production Ed25519 PUBLIC key is already pinned in reviewed code.
    // Absence of a duplicate secret must not disable genuine verification.
-   ent={status:"active",public_key_spki_b64:ACTIVE_KEY_SPKI};
+   ent={status:"active",public_key_spki_b64:authority.public_key_spki_b64};
  }else{
    let registry;
    try{registry=JSON.parse(protectedRegistry)}catch{return null;}
    if(!record(registry))return null;
    ent=registry[id];
  }
- if(!record(ent)||ent.status!=="active"||ent.public_key_spki_b64!==ACTIVE_KEY_SPKI)return null;
+ if(!record(ent)||ent.status!=="active"||ent.public_key_spki_b64!==authority.public_key_spki_b64)return null;
  const n=Date.parse(generatedAt);
  if(ent.not_before&&n<Date.parse(ent.not_before))return null;
  if(ent.not_after&&n>Date.parse(ent.not_after))return null;
  return ent;
 }
-export async function verifyHotGRO(row,env,subject,now=Date.now()){
+export async function verifyHotGRO(row,env,subject,now=Date.now(),authority=DEFAULT_AUTHORITY){
  if(!record(row)||row.archive_write_acknowledged!==1||
      row.schema_version!=="gro-1.1"||!HASH.test(String(row.record_sha256))||
      !HASH.test(String(row.payload_hash))||typeof row.object_json!=="string"||
@@ -104,7 +105,7 @@ export async function verifyHotGRO(row,env,subject,now=Date.now()){
  if(!Number.isFinite(generated)||!Number.isFinite(expires)||
      generated>now+300000||generated>now||expires<=now||
      expires<=generated||expires-generated>3*60*60*1000+300000)return null;
- const ent=trustRecord(env,row.signing_key_id,obj.generated_at);
+ const ent=trustRecord(env,row.signing_key_id,obj.generated_at,authority);
  if(!ent)return null;
  const signable={...obj,integrity:{...obj.integrity,payload_hash:null,signature:null}};
  const bytes=encoder.encode(canonical(signable));
@@ -191,7 +192,9 @@ function serviceCredential(request,env){
     !constantEqual(token.slice(7),expected))return {error:"RISK_GATE_UNAUTHORIZED",status:401};
  return null;
 }
-export async function predgeRiskGateD1(request,env,now=Date.now()){
+// Production entry passes only request/env/time; HTTP and env cannot choose this pin.
+// The optional code-level authority permits isolated signed staging fixtures.
+export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFAULT_AUTHORITY){
  if(!Number.isSafeInteger(now)||now<0)return fail("RISK_GATE_CLOCK_UNAVAILABLE");
  const auth=serviceCredential(request,env);
  if(auth)return fail(auth.error,auth.status);
@@ -221,6 +224,18 @@ export async function predgeRiskGateD1(request,env,now=Date.now()){
  let body;try{body=JSON.parse(raw)}catch{return fail("INVALID_JSON",400);}
  const parsed=parseRequest(body,now);
  if(!parsed)return fail("INVALID_RISK_GATE_REQUEST",400);
+ // Read and independently verify a CURRENT GRO before reserving a paid
+ // partner request ID or burning limited D1 daily quota. An unavailable
+ // signed product is NOT a replayable paid decision: Predge must be able to
+ // retry the exact same request_id once a genuine approved GRO is published.
+ // This is a read-only preflight; no stale/unsigned fallback is allowed.
+ let gro;
+ try{
+   const row=await hotRow(env.DB,parsed.subject,now);
+   gro=row?await verifyHotGRO(row,env,parsed.subject,now,authority):null;
+ }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
+ if(!gro)return fail("CURRENT_SIGNED_GRO_UNAVAILABLE",503,{
+   reason_code:"NO_INDEPENDENTLY_VERIFIED_CURRENT_COMMERCIAL_GRO"});
  // Only server-provisioned Predge pilot may call this route. No payment endpoint.
  const requestHash=await digest(canonical(body));
  const nowIso=new Date(now).toISOString();
@@ -254,10 +269,7 @@ export async function predgeRiskGateD1(request,env,now=Date.now()){
      VALUES(?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1
      WHERE used < ? RETURNING used`).bind(client,day,Math.min(DAY_LIMIT,HARD_CEILING)).first();
    if(!quota)return fail("RISK_GATE_DAILY_LIMIT",429,{daily_limit:DAY_LIMIT});
-   const row=await hotRow(env.DB,parsed.subject,now);
-   const gro=row?await verifyHotGRO(row,env,parsed.subject,now):null;
-   if(!gro)return fail("CURRENT_SIGNED_GRO_UNAVAILABLE",503,{
-     reason_code:"NO_INDEPENDENTLY_VERIFIED_CURRENT_COMMERCIAL_GRO"});
+
    const {evaluateRiskGate}=await import("../../../src/lib/risk-gate-engine.ts");
    const result=evaluateRiskGate(parsed,gro,new Date(now));
    if(result.execution_authorized!==false)throw Error("EXECUTION_BOUNDARY");

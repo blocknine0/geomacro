@@ -55,7 +55,7 @@ describe("#1827 D1-account B2 preflight bridge",()=>{
     expect(calls).toHaveLength(2);
     expect(calls.every(x=>x.method==="POST" && x.url.includes("/d1/database/"))).toBe(true);
     expect(calls[0].body.sql).toContain("ON CONFLICT(day_utc) DO UPDATE");
-    expect(calls[0].body.params).toContain(25);
+    expect(calls[0].body.params).toContain(45);
     expect(calls[1].body.sql).toContain("b2_request_quota_workflow_receipt");
     expect(JSON.stringify(calls)).not.toContain("write-secret");
   });

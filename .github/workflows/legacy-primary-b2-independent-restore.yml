@@ -1,0 +1,140 @@
+name: Legacy Primary B2 Independent PG17 Restore (No Deletion)
+# The immutable original backup is the one produced by Actions #39590890260.
+# This job never accesses old Supabase DB or sends private data to artifacts.
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "scripts/ops/verify-legacy-primary-db-independent-local-restore.sh"
+      - "scripts/ops/classify-private-pg-restore-error.mjs"
+      - "scripts/ops/classify-private-pg-restore-error.test.mjs"
+      - "scripts/ops/legacy-restore-schema-bootstrap.mjs"
+      - "scripts/ops/legacy-restore-schema-bootstrap.test.mjs"
+      - ".github/workflows/legacy-primary-b2-independent-restore.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/verify-legacy-primary-db-independent-local-restore.sh"
+      - ".github/workflows/legacy-primary-b2-independent-restore.yml"
+
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-legacy-primary-original-b2-independent-restore
+  cancel-in-progress: false
+
+jobs:
+  no-credentials-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      APP_SUPABASE_URL: ""
+      B2_KEY_ID: ""
+      B2_APPLICATION_KEY: ""
+      B2_LEGACY_INVENTORY_KEY_ID: ""
+      B2_LEGACY_INVENTORY_APPLICATION_KEY: ""
+      CLOUDFLARE_API_TOKEN: ""
+      CLOUDFLARE_ACCOUNT_ID: ""
+      D1_DATABASE_ID: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Bash check and prove source-free fail-closed contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/ops/verify-legacy-primary-db-independent-local-restore.sh
+          node - <<'NODE'
+          const f=require('node:fs').readFileSync('scripts/ops/verify-legacy-primary-db-independent-local-restore.sh','utf8');
+          for(const n of ['agent_payments','commercial_credit_accounts','commercial_credit_usage',
+             'commercial_entitlement_grants','commercial_payment_events','early_warning_distribution_receipts',
+             'live_source_endpoint_disposition_ledger','private_commercial_revenue_delivery_ledger',
+             'testnet_usdc_payment_claims'])
+             if(!f.includes(n))throw Error('COMMERCIAL_RECONCILIATION_COVERAGE_MISSING');
+          if(!f.includes('cmp -s "$PRIVATE/old-ledger" "$PRIVATE/restored-ledger"'))
+            throw Error('COMMERCIAL_PRIVATE_CONTENT_COMPARISON_MISSING');
+          NODE
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const script=fs.readFileSync('scripts/ops/verify-legacy-primary-db-independent-local-restore.sh','utf8');
+          if(!script.includes('LOCAL_ADMIN_IS_SUPER')||
+             !script.includes("supabase_db_[A-Za-z0-9_-]+")||
+             !script.includes('docker exec -i "$LOCAL_DB_CONTAINER"')||
+             !script.includes('pg_restore -U supabase_admin -d geomacro_legacy_restored')||
+             !script.includes('project_deletion_authorized:false')||
+             !script.includes('old_supabase_db_writes:0')||
+             !script.includes('b2_writes:0'))
+             throw Error('DISPOSABLE_SUPABASE_ADMIN_RESTORE_PIN_FAILED');
+          NODE
+          node --test scripts/ops/classify-private-pg-restore-error.test.mjs scripts/ops/legacy-restore-schema-bootstrap.test.mjs
+          if bash scripts/ops/verify-legacy-primary-db-independent-local-restore.sh; then
+            echo "unexpectedly passed without production credentials"
+            exit 3
+          fi
+          node - <<'NODE'
+          const r=require('./artifacts/legacy-exit/primary-db-independent-restore.json');
+          if(r.status!=='BLOCKED_NO_DELETION' ||
+             r.project_deletion_authorized!==false ||
+             r.independent_disposable_postgres17_database_restore_verified!==false ||
+             r.old_supabase_db_writes!==0 ||
+             r.old_supabase_storage_deletes!==0 ||
+             r.b2_writes!==0 ||r.real_money_transactions!==0)
+            throw Error('INDEPENDENT_RESTORE_SAFETY_GATE_BYPASSED');
+          console.log('PASS: no original news, Supabase source or money touched');
+          NODE
+
+  independently-reopen-backup:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 85
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_LEGACY_INVENTORY_KEY_ID: ${{ secrets.B2_LEGACY_INVENTORY_KEY_ID }}
+      B2_LEGACY_INVENTORY_APPLICATION_KEY: ${{ secrets.B2_LEGACY_INVENTORY_APPLICATION_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359
+        with:
+          version: "2.117.0"
+      - name: Resolve shared existing D1 quota ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {appendFileSync} from "node:fs";
+          const id=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!/^[a-f0-9]{32}$/u.test(id??""))throw Error("ACCOUNT_ID_INVALID");
+          const res=await fetch("https://api.cloudflare.com/client/v4/accounts/"+
+            id+"/d1/database?per_page=100",{
+             headers:{Authorization:"Bearer "+process.env.CLOUDFLARE_API_TOKEN},
+             redirect:"error",signal:AbortSignal.timeout(15000)});
+          const body=await res.json();
+          const d=body?.result?.find(x=>x.name==="geomacro-control-plane")?.uuid;
+          if(!res.ok||body.success!==true||!/^[a-f0-9-]{36}$/u.test(d??""))
+            throw Error("SHARED_B2_QUOTA_LEDGER_UNAVAILABLE");
+          appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+d+"\n");
+          NODE
+      - name: Download previously certified private B2 archive; restore in local PG17; prove counts
+        shell: bash
+        run: bash scripts/ops/verify-legacy-primary-db-independent-local-restore.sh
+      - name: Upload only redacted restoration acceptance or blocker
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: legacy-db-independent-restore-${{ github.run_id }}
+          path: artifacts/legacy-exit/primary-db-independent-restore.json
+          retention-days: 14
+          if-no-files-found: warn

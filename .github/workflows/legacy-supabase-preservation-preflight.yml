@@ -1,0 +1,88 @@
+name: Legacy Supabase Safe Exit Protected Preflight
+# This is a zero-write READINESS PROBE. No backup bytes or secrets enter
+# GitHub artifacts. It will never delete any Supabase project.
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/legacy-supabase-preservation-preflight.yml"
+      - "scripts/ops/legacy-supabase-preservation-preflight.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/legacy-supabase-preservation-preflight.yml"
+      - "scripts/ops/legacy-supabase-preservation-preflight.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-legacy-primary-preservation-preflight
+  cancel-in-progress: false
+
+jobs:
+  contract-no-creds:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify fail-closed without any protected credentials
+        env:
+          APP_SUPABASE_URL: ""
+          SUPABASE_DB_URL: ""
+          SUPABASE_SERVICE_ROLE_KEY: ""
+          B2_KEY_ID: ""
+          B2_APPLICATION_KEY: ""
+          CLOUDFLARE_API_TOKEN: ""
+          CLOUDFLARE_ACCOUNT_ID: ""
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/legacy-supabase-preservation-preflight.mjs
+          node scripts/ops/legacy-supabase-preservation-preflight.mjs
+          node - <<'NODE'
+          const s=require('./artifacts/legacy-exit/preservation-preflight.json');
+          if(s.source_project!=="ldpwajisioljyjtojvfx" ||
+             s.project_deletion_authorized!==false ||
+             s.all_bytes_exported!==false ||
+             s.source_db_writes!==0 || s.storage_deletes!==0 ||
+             s.b2_writes!==0 || s.payments!==0 ||
+             s.status!=="BLOCKED_NO_DELETION")
+            throw Error("LEGACY_PRESERVATION_PROBE_BYPASSED_DELETION_LOCK");
+          NODE
+
+  old-source-and-destination-check:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify exact old DB and storage counts and shared archive ledger
+        run: node scripts/ops/legacy-supabase-preservation-preflight.mjs
+      - name: Upload only sanitized readiness receipt; never backup files
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: legacy-preservation-preflight-${{ github.run_id }}
+          path: artifacts/legacy-exit/preservation-preflight.json
+          if-no-files-found: warn
+          retention-days: 7
