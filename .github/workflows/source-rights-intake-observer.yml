@@ -1,0 +1,59 @@
+name: Source Rights Intake and License Terms Observation (No Funds)
+on:
+  pull_request:
+    paths:
+      - "scripts/lib/geomacro-rights-intake-autopilot.mjs"
+      - "scripts/lib/geomacro-rights-intake-autopilot.test.mjs"
+      - "src/__tests__/geomacro-commercial-rights-intake-safety.test.ts"
+      - "scripts/ops/run-geomacro-rights-intake.mjs"
+      - "scripts/ops/observe-commercial-license-terms.mjs"
+      - ".github/workflows/source-rights-intake-observer.yml"
+      - "docs/ops/AUTOMATED_COMMERCIAL_SOURCE_RIGHTS_INTAKE_20261021.md"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/lib/geomacro-rights-intake-autopilot.mjs"
+      - "scripts/lib/geomacro-rights-intake-autopilot.test.mjs"
+      - "src/__tests__/geomacro-commercial-rights-intake-safety.test.ts"
+      - "scripts/ops/run-geomacro-rights-intake.mjs"
+      - "scripts/ops/observe-commercial-license-terms.mjs"
+      - ".github/workflows/source-rights-intake-observer.yml"
+  schedule:
+    # Weekly external terms observation; bounded <=16 public GETs per week
+    - cron: "43 6 * * 3"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-no-funds-commercial-rights-observer
+  cancel-in-progress: false
+jobs:
+  private-intake-contract-no-funds:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      SUPABASE_DB_URL: ""
+      CLOUDFLARE_API_TOKEN: ""
+      B2_KEY_ID: ""
+      B2_APPLICATION_KEY: ""
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ""
+      GEOMACRO_MACHINE_FACTS_PRIVATE_PEM_FILE: ""
+      GEOMACRO_MACHINE_RIGHTS_PRIVATE_PEM_FILE: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "22"}
+      - name: Negative tests for unknown rights, invalid document, no attribution, duplicates
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/geomacro-rights-intake-autopilot.mjs
+          node --check scripts/ops/run-geomacro-rights-intake.mjs
+          node --check scripts/ops/observe-commercial-license-terms.mjs
+          node --test scripts/lib/geomacro-rights-intake-autopilot.test.mjs
+          node scripts/ops/run-geomacro-rights-intake.mjs --catalogue
+      - name: Bounded weekly public official terms observation (does not grant rights)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        run: node scripts/ops/observe-commercial-license-terms.mjs
+      - name: No permission fabrication, no signed GRO, no fund transfer
+        run: echo "SOURCE_RIGHTS_QUEUE_ONLY_NO_PERMISSION_GENERATED_NO_FUNDS"
