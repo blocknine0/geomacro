@@ -16,6 +16,8 @@ on:
     paths:
       - ".github/workflows/five-minute-original-news-fastlane.yml"
       - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
+      - "scripts/ops/verify-original-to-website-visible-20m.mjs"
+      - "scripts/ops/verify-original-to-website-visible-20m.test.mjs"
       - "src/lib/stateless-public-intelligence.server.ts"
       - "scripts/lib/global-official-release-feeds.mjs"
       - "src/lib/stateless-intelligence-model.ts"
@@ -27,6 +29,8 @@ on:
     paths:
       - ".github/workflows/five-minute-original-news-fastlane.yml"
       - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
+      - "scripts/ops/verify-original-to-website-visible-20m.mjs"
+      - "scripts/ops/verify-original-to-website-visible-20m.test.mjs"
       - "src/lib/stateless-public-intelligence.server.ts"
       - "scripts/lib/global-official-release-feeds.mjs"
       - "src/lib/stateless-intelligence-model.ts"
@@ -57,7 +61,9 @@ jobs:
       - name: Install pinned repository dependencies without ad-hoc packages
         run: bun install --frozen-lockfile
       - name: Validate original-only fastlane, actual source clocks and no funds
-        run: bun run vitest run src/__tests__/five-minute-original-news-fastlane.test.ts
+        run: |
+          bun run vitest run src/__tests__/five-minute-original-news-fastlane.test.ts
+          node --test scripts/ops/verify-original-to-website-visible-20m.test.mjs
 
   original-five-minute-derived-news:
     if: >-
@@ -86,3 +92,14 @@ jobs:
           }
       - name: Publish bounded current original-dated three-category derived news
         run: bun scripts/ops/publish-original-news-five-minute-fastlane.ts
+      - name: Independently observe true original-to-website HTML visibility
+        # The 15-minute release delay and 5-minute Actions clock are not a
+        # guaranteed SLA. This public readback checks genuine original clocks
+        # and the actual served SSR headings after each ingest without funds.
+        # An unavailable website must not stop intake; its negative evidence
+        # remains visible in Actions logs instead of being called success.
+        if: always()
+        continue-on-error: true
+        run: |
+          node --check scripts/ops/verify-original-to-website-visible-20m.mjs
+          node scripts/ops/verify-original-to-website-visible-20m.mjs
