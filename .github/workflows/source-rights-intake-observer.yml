@@ -4,6 +4,7 @@ on:
     paths:
       - "scripts/lib/geomacro-rights-intake-autopilot.mjs"
       - "scripts/lib/geomacro-rights-intake-autopilot.test.mjs"
+      - "src/__tests__/geomacro-commercial-rights-intake-safety.test.ts"
       - "scripts/ops/run-geomacro-rights-intake.mjs"
       - "scripts/ops/observe-commercial-license-terms.mjs"
       - ".github/workflows/source-rights-intake-observer.yml"
@@ -13,6 +14,7 @@ on:
     paths:
       - "scripts/lib/geomacro-rights-intake-autopilot.mjs"
       - "scripts/lib/geomacro-rights-intake-autopilot.test.mjs"
+      - "src/__tests__/geomacro-commercial-rights-intake-safety.test.ts"
       - "scripts/ops/run-geomacro-rights-intake.mjs"
       - "scripts/ops/observe-commercial-license-terms.mjs"
       - ".github/workflows/source-rights-intake-observer.yml"
