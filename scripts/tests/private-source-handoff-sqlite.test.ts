@@ -6,6 +6,7 @@ import {join} from 'node:path';
 import {generateKeyPairSync,createHash} from 'node:crypto';
 import {deriveStatelessSignals} from '../../src/lib/stateless-intelligence-model.ts';
 import {automatedInputId} from '../../src/lib/automated-intelligence-input.ts';
+import {canonicalizePrivateOriginalSourceClock} from '../../src/lib/private-source-handoff.ts';
 import {signAutomatedIntelligenceInput} from '../../src/lib/risk-object-signing.server.ts';
 import {putAutomatedInputs,getAutomatedInputs} from '../../workers/control-plane/src/automated-intelligence-inputs.ts';
 import {handlePrivateSourceHandoffs,safePrivateHandoffRejection} from '../../workers/control-plane/src/private-source-handoffs.ts';
@@ -233,4 +234,40 @@ test('private handoff rejections are bounded classes without evidence text',()=>
  expect(safePrivateHandoffRejection(new Error('WRITE'))).toBe('D1_WRITE');
  expect(safePrivateHandoffRejection(new Error('article title https://issuer.example/a?secret=1'))).toBe('UNCLASSIFIED_VALIDATION_OR_STORE');
  expect(safePrivateHandoffRejection({message:'SIGNED_INPUT_REQUIRED'})).toBe('UNCLASSIFIED_VALIDATION_OR_STORE');
+});
+
+test('native UTC-offset original clock is canonically stored only if identical to signed source moment',async()=>{
+ const {db,env}=store(),f=await fixture();await seed(env,[f]);
+ const offsetRef={...f.ref,publishedAt:f.ref.publishedAt.replace('Z','+00:00')};
+ expect(offsetRef.publishedAt).not.toBe(f.signal.published_at);
+ const canonical=canonicalizePrivateOriginalSourceClock(offsetRef,f.signal);
+ expect(canonical.publishedAt).toBe(f.signal.published_at);
+ expect(canonical.articleUrl).toBe(f.ref.articleUrl);
+ expect(canonical.title).toBe(f.ref.title);
+ const index=async(url:any,options:any={})=>String(url).includes('/intelligence-inputs/automated')
+  ?getAutomatedInputs(env,new URL(url).searchParams,nowMs)
+  :handlePrivateSourceHandoffs(new Request(url,{...options,headers:{...options.headers,authorization:'Bearer '+root}}),env,nowMs);
+ const receipt=await persistPrivateSourceHandoffs({refs:new Map([[f.signal.id,offsetRef]]),
+   env:{GEOMACRO_COMMERCE_LEDGER_TOKEN:'fixture-owner-secret'.repeat(2)},now,
+   readJournal:async()=>[f.signal],fetchImpl:index as typeof fetch});
+ expect(receipt.references_accepted).toBe(1);
+ expect(receipt.equivalent_native_clock_representations_normalized).toBe(1);
+ const saved=db.query('SELECT value_json FROM control_state WHERE key=?')
+  .get('automated_source_handoff_v1:'+f.item.input_id) as any;
+ expect(JSON.parse(saved.value_json).ref.publishedAt).toBe(f.signal.published_at);
+ const mismatch={...offsetRef,publishedAt:new Date(Date.parse(f.signal.published_at)+60000).toISOString()};
+ expect(canonicalizePrivateOriginalSourceClock(mismatch,f.signal)).toBe(mismatch);
+ const daySignal={...f.signal,published_at:f.signal.published_at.slice(0,10),date_precision:'day'};
+ expect(canonicalizePrivateOriginalSourceClock(offsetRef,daySignal)).toBe(offsetRef);
+});
+test('strict handoff rejects forged clock and unsafe URL with separate safe reasons',async()=>{
+ const {env}=store(),f=await fixture();await seed(env,[f]);
+ const forged={...f.item,ref:{...f.ref,publishedAt:new Date(Date.parse(f.ref.publishedAt)+60000).toISOString()}};
+ const clock=await handlePrivateSourceHandoffs(request('PUT',root,{items:[forged]}),env,nowMs);
+ expect(clock.status).toBe(400);
+ expect((await clock.json()).reason_code).toBe('ORIGINAL_REFERENCE_CLOCK');
+ const unsafe={...f.item,ref:{...f.ref,articleUrl:f.ref.articleUrl+'?tracking=1'}};
+ const url=await handlePrivateSourceHandoffs(request('PUT',root,{items:[unsafe]}),env,nowMs);
+ expect(url.status).toBe(400);
+ expect((await url.json()).reason_code).toBe('ORIGINAL_REFERENCE_URL');
 });
