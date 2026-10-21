@@ -66,7 +66,9 @@ test("GitHub CLI always yields bounded safe outputs and never reads source data"
   try{
     for(const event of ["schedule","workflow_dispatch","push"]){
       const output=join(directory,event);
-      // Stable post-epoch CLI clock: the PR may be tested before the\n      // next daily sweep starts on 2026-10-22 UTC.\n      const code=`globalThis.Date=class extends Date{constructor(...a){if(a.length)super(...a);else super("2026-10-23T12:00:00.000Z")}};await import(${JSON.stringify(script)});`;
+      // Stable post-epoch CLI clock: the PR may be tested before the
+      // next daily sweep starts on 2026-10-22 UTC.
+      const code=`globalThis.Date=class extends Date{constructor(...a){if(a.length)super(...a);else super("2026-10-23T12:00:00.000Z")}};await import(${JSON.stringify(script)});`;
       const result=spawnSync(process.execPath,["--input-type=module","-e",code],{
         encoding:"utf8",env:{
           ...process.env,GITHUB_REPOSITORY:"blocknine0/geomacro",
