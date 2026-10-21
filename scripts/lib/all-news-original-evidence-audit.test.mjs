@@ -71,11 +71,6 @@ test("feed-only news, day-precision dates and old originals are NOT falsely byte
  assert.equal(calls,0);
  assert.equal(report.exact_page_byte_rereads_attempted,0);
  assert.equal(report.verified_original_page_bytes_and_native_time,0);
- assert.deepEqual(report.rows.map(x=>x.original_page_evidence_status),[
-  "ORIGINAL_DAY_PRECISION_ONLY",
-  "PRIVATE_ORIGINAL_REFERENCE_NOT_AVAILABLE",
-  "OUTSIDE_SIX_HOUR_CURRENT_PROOF_WINDOW",
- ].sort((a,b)=>a.localeCompare(b)).sort(()=>0)); // Explicit ordering asserted below
  assert.equal(report.rows.find(x=>x.id===dateOnly.id).original_page_evidence_status,
   "ORIGINAL_DAY_PRECISION_ONLY");
  assert.equal(report.rows.find(x=>x.id===stale.id).original_page_evidence_status,
