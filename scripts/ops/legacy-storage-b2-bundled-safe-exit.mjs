@@ -118,12 +118,69 @@ async function main(){
  const complete=parts.map((p,n)=>known.has(stem(n)+".verified.json"));
  const n=complete.findIndex(x=>!x);
  report.verified_marker_shards=complete.filter(Boolean).length;report.remaining_shards=complete.filter(x=>!x).length;
- if(n===-1){report.status="ALL_MARKERS_PRESENT_FINAL_AUDIT_PENDING";
-  return save("COMPLETE_REVALIDATION_AND_RUNTIME_CUTOVER_NOT_DONE")}
+ if(n===-1){
+  // An archive's verification marker is evidence only after BOTH that private
+  // marker and the original encrypted archive have independently round-tripped.
+  // Re-check every original member against current source metadata. NEVER delete.
+  const gov=createB2D1AccountGovernor({env:{...env,
+    B2_ACCOUNT_QUOTA_WORKFLOW_ID:"legacy_storage_final_audit"}});
+  let q;try{q=await gov.status()}catch{return halt("FINAL_AUDIT_B2_QUOTA_UNAVAILABLE")}
+  report.global_b2_quota={day_utc:q.day_utc,used:q.used,limits:q.limits};
+  if(q.used.GET+8>q.limits.GET-5||q.used.total+8>q.limits.total-5)
+    return halt("FINAL_STORAGE_AUDIT_NEEDS_EIGHT_PROTECTED_B2_GETS");
+  const writer=credentials(env.B2_KEY_ID,env.B2_APPLICATION_KEY);
+  let objects=0,bytes=0;
+  for(let i=0;i<shards;i++){
+   const proofFile=join(tmp,"receipt-"+i+".json");
+   try{await gov.reserve("GET")}catch{return halt("FINAL_STORAGE_MARKER_GET_QUOTA_DENIED")}
+   const proofResult=aws(["get-object","--bucket",bucket,"--key",stem(i)+".verified.json",
+    proofFile,"--output","json"],writer);
+   if(proofResult===null)return halt("FINAL_STORAGE_PRIVATE_MARKER_MISSING");
+   report.b2_gets++;
+   let proof;
+   try{proof=JSON.parse(readFileSync(proofFile,"utf8"))}catch{return halt("FINAL_STORAGE_MARKER_INVALID")}
+   if(proof.schema!=="geomacro.storage-shard-verified.v1"||
+      proof.source!==ref||proof.shard!==i||
+      proof.part_manifest_hash!==ids[i]||
+      proof.items!==parts[i].length||
+      proof.original_bytes!==parts[i].reduce((a,x)=>a+x.size,0)||
+      !/^[a-f0-9]{64}$/.test(proof.bundle_sha256||"")||
+      proof.exact_full_body_b2_readback!==true||
+      proof.all_original_file_sha_verified!==true)
+      return halt("FINAL_STORAGE_VERIFIED_MARKER_CONTENT_MISMATCH");
+   const local=join(tmp,"final-bundle-"+i+".tar.gz");
+   try{await gov.reserve("GET")}catch{return halt("FINAL_STORAGE_BUNDLE_GET_QUOTA_DENIED")}
+   if(aws(["get-object","--bucket",bucket,"--key",stem(i)+".tar.gz",
+     local,"--output","json"],writer)===null||
+     !existsSync(local)||hash(readFileSync(local))!==proof.bundle_sha256)
+     return halt("FINAL_STORAGE_B2_ORIGINAL_ARCHIVE_MISMATCH");
+   report.b2_gets++;
+   const entries=command("tar",["-tzf",local],{},4_000_000);
+   if(entries===null||entries.trim().split("\n").some(x=>x.includes("..")||
+      x.startsWith("/")||!/^(\.\/)?(files\/[a-f0-9]{64}|files\/?|manifest\.json|\.\/?)$/.test(x)))
+     return halt("FINAL_STORAGE_ARCHIVE_PATH_SAFETY_FAILED");
+   const target=join(tmp,"final-extracted-"+i);
+   mkdirSync(target);
+   if(command("tar",["-xzf",local,"-C",target])===null||
+     !checkBundle(target,parts[i],null))
+     return halt("FINAL_STORAGE_ORIGINAL_FILES_NOT_RESTORABLE");
+   objects+=parts[i].length;
+   bytes+=parts[i].reduce((a,x)=>a+x.size,0);
+  }
+  if(objects!==rows.length||bytes!==total||objects<23648||bytes<57459939)
+    return halt("FINAL_STORAGE_COMPLETE_ORIGINAL_COVERAGE_MISMATCH");
+  report.final_independent_original_objects_restored=objects;
+  report.final_independent_original_bytes_restored=bytes;
+  report.final_independent_verified_shards=shards;
+  report.storage_fully_migrated=true;
+  report.status="FULL_LEGACY_STORAGE_BYTES_PRIVATE_B2_MIGRATION_VERIFIED";
+  return save("SOURCE_DELETION_REQUIRES_SEPARATE_ALL_CONSUMER_CUTOVER_PROOF");
+ }
  report.selected_shard=n;report.selected_shard_object_count=parts[n].length;
  let gov;try{gov=createB2D1AccountGovernor({env:{
   ...env,B2_ACCOUNT_QUOTA_WORKFLOW_ID:"legacy_storage_exit"}})}catch{return halt("B2_D1_GOVERNOR_MISSING")}
  let quota;try{quota=await gov.status()}catch{return halt("B2_D1_GOVERNOR_UNAVAILABLE")}
+ report.global_b2_quota={day_utc:quota.day_utc,used:quota.used,limits:quota.limits};
  if(quota.used.GET>=quota.limits.GET-5||quota.used.PUT>=quota.limits.PUT-3||
  quota.used.total>=quota.limits.total-8)return halt("B2_PROTECTED_HEADROOM_REQUIRED");
  const source=join(tmp,"source"),extract=join(tmp,"extracted");
