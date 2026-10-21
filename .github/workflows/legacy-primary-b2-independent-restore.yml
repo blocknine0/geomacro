@@ -46,6 +46,16 @@ jobs:
           set -euo pipefail
           bash -n scripts/ops/verify-legacy-primary-db-independent-local-restore.sh
           node - <<'NODE'
+          const f=require('node:fs').readFileSync('scripts/ops/verify-legacy-primary-db-independent-local-restore.sh','utf8');
+          for(const n of ['agent_payments','commercial_credit_accounts','commercial_credit_usage',
+             'commercial_entitlement_grants','commercial_payment_events','early_warning_distribution_receipts',
+             'live_source_endpoint_disposition_ledger','private_commercial_revenue_delivery_ledger',
+             'testnet_usdc_payment_claims'])
+             if(!f.includes(n))throw Error('COMMERCIAL_RECONCILIATION_COVERAGE_MISSING');
+          if(!f.includes('cmp -s "$PRIVATE/old-ledger" "$PRIVATE/restored-ledger"'))
+            throw Error('COMMERCIAL_PRIVATE_CONTENT_COMPARISON_MISSING');
+          NODE
+          node - <<'NODE'
           const fs=require('node:fs');
           const script=fs.readFileSync('scripts/ops/verify-legacy-primary-db-independent-local-restore.sh','utf8');
           if(!script.includes('LOCAL_ADMIN_IS_SUPER')||
@@ -81,6 +91,7 @@ jobs:
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_LEGACY_INVENTORY_KEY_ID: ${{ secrets.B2_LEGACY_INVENTORY_KEY_ID }}
