@@ -37,11 +37,13 @@ test("CC BY/source-credit-required cannot silently enter a no-attribution produc
 test("same content hash or same issuer+claim is deduped",()=>{
  const rows=triageCommercialRightsCandidates([
   base,{...base,original_article_sha256:"c".repeat(64)},
-  {...base,issuer_id:"different-issuer",original_article_sha256:"a".repeat(64)}
+  {...base,issuer_id:"different-issuer",original_article_sha256:"a".repeat(64)},
+  {...base,issuer_id:"independent-origin",original_article_sha256:"d".repeat(64)}
  ],{now:NOW});
- assert.equal(rows.duplicates_excluded,1);
+ assert.equal(rows.duplicates_excluded,2);
  assert.equal(rows.rows[1].next_action,"DEDUPLICATE_AND_FIND_INDEPENDENT_FIRST_PARTY_ORIGINAL");
- assert.equal(rows.rows[2].eligible_as_independent_original,true);
+ assert.equal(rows.rows[2].next_action,"DEDUPLICATE_AND_FIND_INDEPENDENT_FIRST_PARTY_ORIGINAL");
+ assert.equal(rows.rows[3].eligible_as_independent_original,true);
 });
 test("unknown rights, wrong category, stale dates or third party scope deny promotion",()=>{
  let r=triageCommercialRightsCandidates([{...base,source_id:"unknown"}],{now:NOW});
