@@ -52,8 +52,10 @@ async function main(){
  const gov=createB2D1AccountGovernor({env:{
    ...env,B2_ACCOUNT_QUOTA_WORKFLOW_ID:"legacy_b2_origin_free_read"}});
  let quota;try{quota=await gov.status()}catch{return block("SHARED_B2_D1_QUOTA_UNAVAILABLE")}
- if(!quota.ok||quota.used.GET+3>quota.limits.GET-5||
-   quota.used.total+3>quota.limits.total-6)
+ // One certified private index GET and ONE shared shard GET. Two independent
+ // bucket originals chosen from the SAME already-verified B2 tar shard.
+ if(!quota.ok||quota.used.GET+2>quota.limits.GET-5||
+   quota.used.total+2>quota.limits.total-6)
   return block("SHARED_B2_ORIGIN_FREE_READ_QUOTA_RESERVED");
  const readCred=credentials(env.B2_LEGACY_INVENTORY_KEY_ID,
   env.B2_LEGACY_INVENTORY_APPLICATION_KEY);
@@ -80,30 +82,38 @@ async function main(){
     index.verified_shards!==4||index.object_count!==23648||
     index.total_bytes!==57459939||index.objects?.length!==23648)
    return block("B2_ORIGIN_FREE_INDEX_RESTORE_SET_MISMATCH");
- const originals=[
-   index.objects.find(x=>x.bucket==="geomacro-live-intelligence"),
-   index.objects.find(x=>x.bucket==="testnet-tester-avatars"),
- ];
+ // Read the OLD image bucket's verified member, then select an intelligence
+ // member from that SAME immutable B2 bundle. Each shard contains thousands
+ // of intelligence objects and the bundle's source-original SHA manifest
+ // already passed full per-member independent restoration.
+ const avatar=index.objects.find(x=>x.bucket==="testnet-tester-avatars");
+ const intel=avatar?index.objects.find(x=>x.bucket==="geomacro-live-intelligence"&&
+   x.archive_key===avatar.archive_key):null;
+ const originals=[avatar,intel];
+ if(!avatar||!intel||avatar.archive_key!==intel.archive_key)
+   return block("SAME_VERIFIED_SHARD_TWO_BUCKET_CANARY_UNAVAILABLE");
  if(originals.some(x=>!x||!Number.isSafeInteger(x.size)||
   x.size<1||x.size>26214400||!/^[a-f0-9]{64}$/.test(x.sha256||"")||
   !/^geomacro-evidence\/v1\/legacy-supabase-safe-exit\/storage\/part-0[0-3]-[a-f0-9]{24}\.tar\.gz$/.test(x.archive_key||"")||
   typeof x.name!=="string"||!x.name.length))
   return block("B2_ORIGIN_FREE_CANARY_METADATA_INVALID");
- const downloaded=new Map();
+ try{await gov.reserve("GET")}catch{
+  return block("B2_ORIGIN_FREE_ARCHIVE_GET_RESERVATION_DENIED");
+ }
+ const archive=join(dir,"shared-shard.tar.gz");
+ if(aws(["get-object","--bucket",B2_BUCKET,"--key",avatar.archive_key,
+   archive,"--output","json"],writerCred)===null)
+   return block("B2_ORIGIN_FREE_SHARD_DOWNLOAD_FAILED");
+ const entries=call("tar",["-tzf",archive],{},8_000_000);
+ if(!entries)return block("B2_ORIGIN_FREE_SHARD_TAR_INDEX_INVALID");
+ const fileList=entries.trim().split("\n");
+ if(fileList.some(x=>x.includes("..")||x.startsWith("/")||
+   !/^(\.\/)?(files\/[a-f0-9]{64}|files\/|manifest\.json|\.\/?)$/.test(x)))
+   return block("B2_ORIGIN_FREE_UNSAFE_TAR_ENTRY");
  for(const item of originals){
-   let archive=downloaded.get(item.archive_key);
-   if(!archive){
-    try{await gov.reserve("GET")}catch{return block("B2_ORIGIN_FREE_ARCHIVE_GET_RESERVATION_DENIED")}
-    archive=join(dir,"shard-"+downloaded.size+".tar.gz");
-    if(aws(["get-object","--bucket",B2_BUCKET,"--key",item.archive_key,
-      archive,"--output","json"],writerCred)===null)return block("B2_ORIGIN_FREE_SHARD_DOWNLOAD_FAILED");
-    downloaded.set(item.archive_key,archive);
-   }
    const id=hash(item.bucket+"/"+item.name);
-   const entries=call("tar",["-tzf",archive],{},8_000_000);
-   if(!entries)return block("B2_ORIGIN_FREE_SHARD_TAR_INDEX_INVALID");
    const candidates=["./files/"+id,"files/"+id];
-   const actual=entries.trim().split("\n").filter(x=>candidates.includes(x));
+   const actual=fileList.filter(x=>candidates.includes(x));
    if(actual.length!==1)return block("B2_ORIGIN_FREE_PRIVATE_MEMBER_MISSING");
    const original=call("tar",["-xOzf",archive,"--",actual[0]],
       {},26_500_000,90000,null);
