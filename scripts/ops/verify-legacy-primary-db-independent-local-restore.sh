@@ -23,9 +23,9 @@ trap cleanup EXIT
 mkdir -p artifacts/legacy-exit
 reason="NOT_STARTED"
 write_receipt() {
-  node - "$ARTIFACT" "$reason" "${1:-}" "${2:-}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" <<'NODE'
+  node - "$ARTIFACT" "$reason" "${1:-}" "${2:-}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" "${7:-}" <<'NODE'
 const fs=require("node:fs");
-const [out,reason,structured,storage,payments,risk,failureClass,firstErrorDetails]=process.argv.slice(2);
+const [out,reason,structured,storage,payments,risk,failureClass,firstErrorDetails,ledgerMatches]=process.argv.slice(2);
 const good=reason==="B2_DB_INDEPENDENT_LOCAL_RESTORE_VERIFIED";
 const report={
  schema:"geomacro.legacy-primary-disposable-b2-restore.v1",
@@ -40,6 +40,8 @@ const report={
  restored_storage_metadata_rows:good?Number(storage):null,
  restored_legacy_payment_event_rows:good?Number(payments):null,
  restored_geomacro_risk_object_rows:good?Number(risk):null,
+ old_commercial_ledger_database_content_reconciled:good&&ledgerMatches==="9",
+ historic_commercial_tables_exactly_reconciled:good?Number(ledgerMatches||0):0,
  source_storage_bytes_migrated:false,
  all_edge_function_settings_preserved:false,
  all_payment_entitlements_reconciled:false,
@@ -247,5 +249,36 @@ IFS='|' read -r STRUCTURED STORAGE PAYMENTS RISK <<<"$COUNTS"
  block "DISPOSABLE_RESTORED_COUNTS_INVALID"
 (( STRUCTURED >= 33138 && STORAGE >= 23648 && PAYMENTS >= 5 && RISK >= 21178 )) ||
  block "DISPOSABLE_RESTORED_CANONICAL_ROW_COUNTS_BELOW_BASELINE"
+# Compare exact historical ledger row content, never print rows or private hashes.
+[[ -n "${SUPABASE_DB_URL:-}" ]] || block "OLD_COMMERCIAL_SOURCE_DB_URL_MISSING"
+node - "$SUPABASE_DB_URL" <<'NODE' || block "OLD_COMMERCIAL_SOURCE_DB_IDENTITY_INVALID"
+const u=new URL(process.argv[2]);
+const ref="ldpwajisioljyjtojvfx";
+if(!["postgres:","postgresql:"].includes(u.protocol)||u.pathname!=="/postgres"||
+ !(u.hostname==="db."+ref+".supabase.co"&&u.username==="postgres"||
+   u.hostname.endsWith(".pooler.supabase.com")&&decodeURIComponent(u.username)==="postgres."+ref))
+ process.exit(3);
+NODE
+COMMERCIAL_TABLES=(
+ agent_payments commercial_credit_accounts commercial_credit_usage
+ commercial_entitlement_grants commercial_payment_events
+ early_warning_distribution_receipts live_source_endpoint_disposition_ledger
+ private_commercial_revenue_delivery_ledger testnet_usdc_payment_claims
+)
+MATCHED=0
+for TABLE in "${COMMERCIAL_TABLES[@]}";do
+ [[ "$TABLE" =~ ^[a-z_]+$ ]] || block "LEGACY_COMMERCIAL_TABLE_IDENTIFIER_INVALID"
+ QUERY="SELECT to_jsonb(t)::text FROM public.$TABLE AS t ORDER BY to_jsonb(t)::text;"
+ psql "$SUPABASE_DB_URL" -X -qAt -v ON_ERROR_STOP=1 -c "$QUERY" \
+   >"$PRIVATE/old-ledger" 2>"$PRIVATE/old-ledger.err" ||
+   block "OLD_COMMERCIAL_LEDGER_READ_ONLY_SELECT_FAILED"
+ psql "$LOCAL_RESTORE_URL" -X -qAt -v ON_ERROR_STOP=1 -c "$QUERY" \
+   >"$PRIVATE/restored-ledger" 2>"$PRIVATE/restored-ledger.err" ||
+   block "RESTORED_COMMERCIAL_LEDGER_SELECT_FAILED"
+ cmp -s "$PRIVATE/old-ledger" "$PRIVATE/restored-ledger" ||
+   block "LEGACY_COMMERCIAL_SNAPSHOT_CONTENT_MISMATCH"
+ MATCHED=$((MATCHED+1))
+done
+[[ "$MATCHED" -eq 9 ]] || block "LEGACY_COMMERCIAL_ROW_RECONCILIATION_INCOMPLETE"
 reason="B2_DB_INDEPENDENT_LOCAL_RESTORE_VERIFIED"
-write_receipt "$STRUCTURED" "$STORAGE" "$PAYMENTS" "$RISK"
+write_receipt "$STRUCTURED" "$STORAGE" "$PAYMENTS" "$RISK" "" "" "$MATCHED"
