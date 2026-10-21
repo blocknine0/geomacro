@@ -7,9 +7,10 @@
  * no B2, no signing, no x402 settlement.
  */
 import {createHmac} from "node:crypto";
+import {writeFileSync} from 'node:fs';
 import {FIVE_MINUTE_NEWS_FASTLANE,readFiveMinuteNewsFastlane} from "../../src/lib/stateless-public-intelligence.server";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
-import type {StatelessIntelligenceSignal} from "../../src/lib/stateless-intelligence-model";
+import {reconcilePrivateDerivedSourceRefs,type StatelessSourceCandidate,type StatelessIntelligenceSignal} from "../../src/lib/stateless-intelligence-model";
 
 const ROOT=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(ROOT.length<32)throw Error("FIVE_MIN_NEWS_PROTECTED_D1_AUTH_REQUIRED");
@@ -22,7 +23,9 @@ const runAt=Date.now();
 // Fail closed if the bounded journal reader is unavailable.
 const baseline=await fetchAllDerivedNews(fetch,runAt);
 const existingIds=new Set(baseline.map(s=>s.id));
-const reports=await readFiveMinuteNewsFastlane(runAt,20);
+const privateOriginals:StatelessSourceCandidate[]=[];
+const reports=await readFiveMinuteNewsFastlane(runAt,20,
+ process.env.GEOMACRO_LOW_SOURCE_REVIEW==='1'?items=>privateOriginals.push(...items):undefined);
 let failure=false,allPublished:StatelessIntelligenceSignal[]=[];
 for(const category of categories){
  const report=reports.find(r=>r.category===category);
@@ -127,4 +130,12 @@ console.log(JSON.stringify({
  existing_d1_72h_journal_only:true,b2_requests:0,supabase_requests:0,
  x402_charges:0,original_content_persisted:false,
 }));
+if(process.env.GEOMACRO_LOW_SOURCE_REVIEW==='1'){
+ try{
+  const path=process.env.GEOMACRO_LOW_REVIEW_REFS_FILE??'',temp=process.env.RUNNER_TEMP??'';
+  if(!temp||!path.startsWith(temp+'/')||path.includes('/../'))throw Error('PRIVATE_HANDOFF_PATH_INVALID');
+  const refs=reconcilePrivateDerivedSourceRefs(privateOriginals.slice(0,1000),reports.flatMap(r=>r.signals),runAt);
+  writeFileSync(path,JSON.stringify({refs:[...refs]}),{mode:0o600,flag:'wx'});
+ }catch{failure=true;console.error('::error::FASTLANE_PRIVATE_HANDOFF_UNAVAILABLE');}
+}
 if(failure)process.exitCode=2;

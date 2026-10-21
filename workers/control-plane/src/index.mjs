@@ -8,6 +8,7 @@ import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
 import {handleLowSourceReviews} from './low-source-reviews.ts';
+import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
@@ -1324,6 +1325,7 @@ export default {
     // Dedicated capability token: this reviewer cannot use the admin writer,
     // partner delivery or paid/hot publication routes with this credential.
     if(url.pathname==='/v1/internal/low-source-reviews')return handleLowSourceReviews(request,env);
+    if(url.pathname==='/v1/internal/source-handoffs')return handlePrivateSourceHandoffs(request,env);
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
