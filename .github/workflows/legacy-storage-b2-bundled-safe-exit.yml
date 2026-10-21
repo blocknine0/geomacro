@@ -116,9 +116,13 @@ jobs:
           const r=require("./artifacts/legacy-exit/legacy-storage-bundles.json");
           if(r.old_supabase_deletion_authorized!==false||
              r.source_supabase_writes!==0||r.source_supabase_deletes!==0||
-             r.b2_deletes!==0||r.payments!==0||
-             r.storage_fully_migrated!==false)
+             r.b2_deletes!==0||r.payments!==0)
             throw Error("OLD_SUPABASE_DELETION_FENCE_BROKEN");
+          if(r.storage_fully_migrated===true &&
+             (r.status!=="ALL_OLD_STORAGE_ORIGINAL_BYTES_IN_PRIVATE_B2_RESTORED_AND_VERIFIED"||
+              r.per_object_b2_sha_verified!==r.source_metadata_count||
+              r.remaining_shards!==0))
+            throw Error("FULL_STORAGE_RESTORE_PROOF_FENCE_BROKEN");
           if(r.status==="BLOCKED_NO_DELETION")process.exitCode=3;
           NODE
       - name: Publish only counts and sanitized status, never Storage contents
