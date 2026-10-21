@@ -6,6 +6,8 @@ on:
   pull_request:
     paths:
       - "scripts/ops/verify-legacy-primary-db-independent-local-restore.sh"
+      - "scripts/ops/classify-private-pg-restore-error.mjs"
+      - "scripts/ops/classify-private-pg-restore-error.test.mjs"
       - ".github/workflows/legacy-primary-b2-independent-restore.yml"
   push:
     branches: [main]
@@ -41,6 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           bash -n scripts/ops/verify-legacy-primary-db-independent-local-restore.sh
+          node --test scripts/ops/classify-private-pg-restore-error.test.mjs
           if bash scripts/ops/verify-legacy-primary-db-independent-local-restore.sh; then
             echo "unexpectedly passed without production credentials"
             exit 3
