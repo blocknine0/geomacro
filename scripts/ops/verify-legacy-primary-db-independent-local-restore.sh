@@ -166,7 +166,7 @@ LOCAL_ADMIN_IS_SUPER="$(docker exec "$LOCAL_DB_CONTAINER" \
  block "DISPOSABLE_SUPABASE_ADMIN_PRIVILEGE_UNAVAILABLE"
 LOCAL_RESTORE_MAJOR="$(docker exec "$LOCAL_DB_CONTAINER" pg_restore --version \
   2>"$PRIVATE/local-pg-restore.stderr" || true)"
-[[ "$LOCAL_RESTORE_MAJOR" =~ PostgreSQL[[:space:]]17\. ]] ||
+[[ "$LOCAL_RESTORE_MAJOR" =~ ^pg_restore[[:space:]]\(PostgreSQL\)[[:space:]]17\. ]] ||
  block "DISPOSABLE_SUPABASE_PG_RESTORE_VERSION_MISMATCH"
 # The original custom dump can omit PostgreSQL's PINNED default public
 # schema, which template1 already provides. Do not drop it blindly.
