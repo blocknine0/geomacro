@@ -187,6 +187,18 @@ async function main(){
   const gov=createB2D1AccountGovernor({env:{
    ...env,B2_ACCOUNT_QUOTA_WORKFLOW_ID:"legacy_storage_exit"}});
   let quota;try{quota=await gov.status()}catch{return halt("B2_D1_GOVERNOR_UNAVAILABLE")}
+  // Sanitized per-day counters only. No account ID, B2 key, object path or
+  // customer data is permitted in any public CI receipt.
+  if(quota?.ok&&quota.used&&quota.limits){
+   const kinds=["GET","PUT","HEAD","NATIVE_AUTH","total"];
+   const used={},limits={};
+   for(const kind of kinds){
+    const u=quota.used[kind],l=quota.limits[kind];
+    if(Number.isSafeInteger(u)&&u>=0)used[kind]=u;
+    if(Number.isSafeInteger(l)&&l>=0)limits[kind]=l;
+   }
+   report.shared_b2_daily_quota={used,limits};
+  }
   // 2 GETs per shard (receipt + archive), then 1 GET for final private index,
   // while preserving 5 GETs for serving and safety recovery.
   if(quota.used.GET+9>quota.limits.GET-5||
@@ -269,6 +281,18 @@ async function main(){
  let gov;try{gov=createB2D1AccountGovernor({env:{
   ...env,B2_ACCOUNT_QUOTA_WORKFLOW_ID:"legacy_storage_exit"}})}catch{return halt("B2_D1_GOVERNOR_MISSING")}
  let quota;try{quota=await gov.status()}catch{return halt("B2_D1_GOVERNOR_UNAVAILABLE")}
+  // Sanitized per-day counters only. No account ID, B2 key, object path or
+  // customer data is permitted in any public CI receipt.
+  if(quota?.ok&&quota.used&&quota.limits){
+   const kinds=["GET","PUT","HEAD","NATIVE_AUTH","total"];
+   const used={},limits={};
+   for(const kind of kinds){
+    const u=quota.used[kind],l=quota.limits[kind];
+    if(Number.isSafeInteger(u)&&u>=0)used[kind]=u;
+    if(Number.isSafeInteger(l)&&l>=0)limits[kind]=l;
+   }
+   report.shared_b2_daily_quota={used,limits};
+  }
  if(quota.used.GET>=quota.limits.GET-5||quota.used.PUT>=quota.limits.PUT-3||
  quota.used.total>=quota.limits.total-8)return halt("B2_PROTECTED_HEADROOM_REQUIRED");
  const source=join(tmp,"source"),extract=join(tmp,"extracted");
