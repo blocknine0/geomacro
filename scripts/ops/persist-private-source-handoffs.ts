@@ -2,6 +2,7 @@ import {createHmac} from 'node:crypto';
 import {lstatSync,readFileSync} from 'node:fs';
 import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client.ts';
 import {automatedInputId} from '../../src/lib/automated-intelligence-input.ts';
+import {canonicalizePrivateOriginalSourceClock} from '../../src/lib/private-source-handoff.ts';
 import type {StatelessSourceCandidate} from '../../src/lib/stateless-intelligence-model.ts';
 const endpoint='https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/source-handoffs';
 export function readPrivateSourceRefs(env=process.env){
@@ -35,9 +36,14 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
    !/^[a-f0-9]{64}$/.test(x?.input_id??'')||!/^(geopolitics|macro|rare_earth)-[a-f0-9]{8}$/.test(x?.signal_id??'')))
   throw Error('PRIVATE_HANDOFF_INDEX_INVALID');
  const canonicalIds=new Map<string,string>(index.handoffs.map((x:any)=>[x.input_id,x.signal_id]));
- for(const signal of signals){const ref=refs.get(signal.id);if(ref){
+ let equivalentNativeClocksCanonicalized=0;
+ for(const signal of signals){const original=refs.get(signal.id);if(original){
   const input_id=await automatedInputId(signal);
-  if(canonicalIds.get(input_id)===signal.id&&!items.has(input_id))items.set(input_id,{input_id,ref});
+  if(canonicalIds.get(input_id)===signal.id&&!items.has(input_id)){
+   const ref=canonicalizePrivateOriginalSourceClock(original,signal);
+   if(ref!==original)equivalentNativeClocksCanonicalized++;
+   items.set(input_id,{input_id,ref});
+  }
  }}
  const all=[...items.values()];
  for(let offset=0;offset<all.length;){
@@ -61,7 +67,7 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
      if(raw.length<=1000){
       const doc=JSON.parse(raw);
       if(doc?.error==='PRIVATE_HANDOFF_NOT_VERIFIED'&&
-       /^(?:SIGNED_INPUT_NOT_PRESENT|HANDOFF_ID_OR_SHAPE|ORIGINAL_REFERENCE_FORMAT|SIGNED_SIGNAL_ORIGINAL_BINDING|SIGNED_INPUT_STALE_OR_CLOCK|SIGNED_INPUT_STORY_OR_EMBARGO|SIGNED_INPUT_ENVELOPE|SIGNED_INPUT_CONTRACT|SIGNER_KEY_NOT_APPROVED|SIGNER_KEY_TIME_WINDOW|SIGNER_SIGNATURE|QUERY_INVALID|PAYLOAD_TOO_LARGE|PAYLOAD_SHAPE|INPUT_IDENTITY|INPUT_COLLISION|D1_STORED_BINDING|D1_READ|D1_WRITE|UNCLASSIFIED_VALIDATION_OR_STORE)$/u.test(doc.reason_code??''))
+       /^(?:SIGNED_INPUT_NOT_PRESENT|HANDOFF_ID_OR_SHAPE|ORIGINAL_REFERENCE_FORMAT|ORIGINAL_REFERENCE_SHAPE|ORIGINAL_REFERENCE_CLOCK|ORIGINAL_REFERENCE_URL|SIGNED_SIGNAL_ORIGINAL_BINDING|SIGNED_INPUT_STALE_OR_CLOCK|SIGNED_INPUT_STORY_OR_EMBARGO|SIGNED_INPUT_ENVELOPE|SIGNED_INPUT_CONTRACT|SIGNER_KEY_NOT_APPROVED|SIGNER_KEY_TIME_WINDOW|SIGNER_SIGNATURE|QUERY_INVALID|PAYLOAD_TOO_LARGE|PAYLOAD_SHAPE|INPUT_IDENTITY|INPUT_COLLISION|D1_STORED_BINDING|D1_READ|D1_WRITE|UNCLASSIFIED_VALIDATION_OR_STORE)$/u.test(doc.reason_code??''))
        reason=doc.reason_code;
      }
     }catch{/* Response text and transport error details must stay private. */}
@@ -78,6 +84,7 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
  }
  // Counts only. Original titles/URLs, internal IDs and LOW verdicts are private.
  return {schema:'geomacro.private-source-handoff-run.v1',references_accepted:all.length,
+  equivalent_native_clock_representations_normalized:equivalentNativeClocksCanonicalized,
   public_sources_disclosed:false,source_evidence_verified:false,commercial_rights_attested:false,
   b2_requests:0,supabase_requests:0,payments:0};
 }
