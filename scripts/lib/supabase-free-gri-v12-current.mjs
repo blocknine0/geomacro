@@ -11,6 +11,7 @@ import {
 } from "./gri-engine-v12.js";
 import { GRI_DISPOSITION, buildSourceDisposition } from "./gri-disposition-v12.js";
 import { reviewedNumericalGriDelta } from "./gri-reviewed-numerical-delta.mjs";
+import { appendVerifiedGriHistory } from "./gri-v12-b2-immutable-history-chain.mjs";
 import {reviewedGriPortfolioProfile,GRI_RETAINED_MAX_AGE_MS} from "./gri-reviewed-source-window.mjs";
 import { buildPortableGriProofBundle, verifyPortableGriProofBundle } from "./gri-portable-proof-v12.js";
 import { qualifyIndependentSameEvent } from "./independent-same-event-qualification.mjs";
@@ -273,7 +274,16 @@ export function computeReviewedCurrentGlobalRisk({
     // Never serialize it into public D1/B2 projection.
     explanation: null, status: "published",
   };
-  const snapshotRows = [latest, ...historicalRows];
+  // Every valid new current snapshot extends the *exact SHA-pinned* previous
+  // immutable B2 history. Keep a bounded hot view while older versions remain
+  // recursively recoverable from each archived predecessor key and SHA.
+  // Do not ever compute a new GRI by simply adding old and new numeric scores.
+  const accumulatedHistory = appendVerifiedGriHistory({
+    history, latest,
+    priorHistoryKey: input.history_b2_key,
+    verifiedPriorB2Sha256: verifiedHistoryB2Sha256,
+  });
+  const snapshotRows = accumulatedHistory.retainedRows;
   const risk = assemblePublicGlobalRisk(snapshotRows, [], at);
   const historicalRisk = assemblePublicGlobalRisk(snapshotRows, [], at);
   assert(risk.snapshotId === snapshotId && risk.proofHash === p.proofHash &&
@@ -289,6 +299,7 @@ export function computeReviewedCurrentGlobalRisk({
     snapshot_id: snapshotId,
     snapshot_as_of: latest.as_of,
     verified_snapshot_rows: snapshotRows,
+    lineage: accumulatedHistory.lineage,
     data: historicalRisk,
   };
   const liveValue = {
@@ -316,6 +327,14 @@ export function computeReviewedCurrentGlobalRisk({
       verified_previous_snapshot_id:movement.verified_previous_snapshot_id,
       observed_numeric_delta_points:movement.change_points,
       numerical_change_not_event_attribution:true,
+      history_append_only_b2_lineage_verified:true,
+      previous_history_immutable_b2_sha256:verifiedHistoryB2Sha256,
+      historical_snapshots_preserved_total:
+        accumulatedHistory.lineage.total_verified_snapshots,
+      history_rolling_view_limit:
+        accumulatedHistory.lineage.hot_row_limit,
+      historical_snapshots_in_older_immutable_b2_versions:
+        accumulatedHistory.lineage.older_snapshots_in_pinned_b2_history,
       // Provenance-only: signed reviewer intentionally retained real
       // source-native events under the *unchanged* 72h v1.2 scoring formula.
       retained_source_portfolio_review:reviewedGriPortfolioProfile(input),
