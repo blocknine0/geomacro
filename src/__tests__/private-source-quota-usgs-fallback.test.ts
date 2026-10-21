@@ -33,13 +33,13 @@ describe('private current-source recovery: free quota and official MCS fallback'
      b2_requests:0,payments:0,
    });
    expect((await checkPrivateScoringB2Headroom({
-     governor:{status:async()=>status({total:79,GET:25,PUT:54})},
+     governor:{status:async()=>status({total:99,GET:45,PUT:54})},
      now:today,
    })).admitted).toBe(false);
  });
  it('quota exhaustion holds before classifier and cannot be passed off as readiness',async()=>{
    const x=await checkPrivateScoringB2Headroom({
-     governor:{status:async()=>status({total:79,GET:25,PUT:54})},now:today});
+     governor:{status:async()=>status({total:99,GET:45,PUT:54})},now:today});
    expect(x.admitted).toBe(false);
    expect(x.reason).toBe('QUOTA_HELD_NO_CLASSIFIER_CLAIM');
    await expect(checkPrivateScoringB2Headroom({
