@@ -1,11 +1,12 @@
 import {createPrivateKey,createPublicKey,sign} from 'node:crypto';
-import {readFileSync} from 'node:fs';
 // @ts-expect-error Existing bounded JavaScript auditor has no declaration file.
 import {auditEveryDerivedNewsOriginal} from '../lib/all-news-original-evidence-audit.mjs';
 // @ts-expect-error Existing byte/clock verifier has no declaration file.
 import {verifyGeomacroUnclaimedOriginalPage} from '../lib/geomacro-original-page-readback.mjs';
 import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client';
 import {automatedInputId} from '../../src/lib/automated-intelligence-input';
+import {loadRiskObjectVerificationKeysFromEnv} from '../../src/lib/risk-object-signing.server';
+import {readPrivateSourceHandoffs} from './read-private-source-handoffs';
 import {assertLowReviewTrust,lowSourceReviewBytes,verifyLowSourceReview,type LowReviewTrust,
  type LowSourceReview,type SignedLowSourceReview} from '../../src/lib/low-authority-source-review';
 
@@ -22,7 +23,7 @@ export function lowReviewerMaterial(env=process.env){
   issuer_public_keys_b64:JSON.parse(env.GEOMACRO_LOW_REVIEW_ISSUER_PUBLIC_KEYS_JSON??'[]')};
  return {key,trust};
 }
-export async function reviewDerivedInputs({signals,originalRefs,env=process.env,now=new Date(),
+export async function reviewDerivedInputs({signals,originalRefs,previousReviews=new Map(),env=process.env,now=new Date(),
  verifyOriginal=verifyGeomacroUnclaimedOriginalPage,persist=async(_items:SignedLowSourceReview[])=>{},
 }:any){
  const {key,trust}=lowReviewerMaterial(env);await assertLowReviewTrust(trust);
@@ -32,6 +33,22 @@ export async function reviewDerivedInputs({signals,originalRefs,env=process.env,
   if(!prior||!originalRefs.has(prior.id)&&originalRefs.has(signal.id))dedup.set(id,signal);
  }
  signals=[...dedup.values()];
+ const pending=[];let reusedVerified=0,cooldown=0;
+ for(const signal of signals){
+  const id=await automatedInputId(signal),prior=previousReviews.get(id);
+  let valid=false;
+  if(prior)try{
+   await verifyLowSourceReview(prior,trust,now.getTime());
+   valid=prior.review.input_id===id&&prior.review.category===signal.category&&
+    prior.review.source_published_at===signal.published_at;
+  }catch{/* Untrusted or expired prior state cannot suppress checking. */}
+  if(valid&&prior.review.verdict==='SOURCE_EVIDENCE_VERIFIED'&&
+   now.getTime()-Date.parse(signal.published_at)<=6*3600_000){reusedVerified++;continue;}
+  if(valid&&prior.review.verdict==='SOURCE_EVIDENCE_REJECTED'&&
+   now.getTime()-Date.parse(prior.review.reviewed_at)<30*60_000){cooldown++;continue;}
+  pending.push(signal);
+ }
+ signals=pending;
  const evidence=new Map<string,string>();
  const proofKey=(o:any)=>JSON.stringify([o.category,o.original_article_url,o.original_published_at]);
  const audit=await auditEveryDerivedNewsOriginal({signals,originalRefs,now,maxReadbacks:6,maxPerCategory:4,
@@ -62,14 +79,17 @@ export async function reviewDerivedInputs({signals,originalRefs,env=process.env,
  }
  const items=[...unique.values()];
  for(let i=0;i<items.length;i+=40)await persist(items.slice(i,i+40));
- return {audit,reviewed_items:unique.size,source_verified_items:items.filter(e=>e.review.verdict==='SOURCE_EVIDENCE_VERIFIED').length};
+ return {audit,reviewed_items:unique.size,reused_current_verified_items:reusedVerified,
+  source_retry_cooldown_items:cooldown,source_verified_items:items.filter(e=>e.review.verdict==='SOURCE_EVIDENCE_VERIFIED').length};
 }
 if(import.meta.main){
  try{
-  const raw=readFileSync(0,'utf8');if(raw.length>2_000_000)throw Error('OVERSIZE');
-  const input=JSON.parse(raw),now=new Date();
+  const now=new Date(),{trust}=lowReviewerMaterial();await assertLowReviewTrust(trust);
+  const retained=await readPrivateSourceHandoffs({keys:loadRiskObjectVerificationKeysFromEnv(),trust,now});
   const signals=await fetchAllDerivedNews(fetch,now.getTime());
-  const result=await reviewDerivedInputs({signals,originalRefs:new Map(input.refs),now,
+  const originalRefs=new Map();
+  for(const signal of signals){const ref=retained.originals.get(await automatedInputId(signal));if(ref)originalRefs.set(signal.id,ref);}
+  const result=await reviewDerivedInputs({signals,originalRefs,previousReviews:retained.previous,now,
    persist:async(items:SignedLowSourceReview[])=>{
     const r=await fetch('https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/low-source-reviews',{
      method:'PUT',redirect:'error',headers:{Authorization:'Bearer '+process.env.GEOMACRO_LOW_REVIEW_TOKEN,

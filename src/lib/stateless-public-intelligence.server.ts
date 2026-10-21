@@ -794,7 +794,8 @@ export function decideFiveMinuteFallbackCategories(
     primary.some(x=>x.category===category)&&
     !primary.some(x=>x.category===category&&x.healthy));
 }
-export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20):
+export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20,
+ onPrivateOriginalCandidates?:(candidates:readonly StatelessSourceCandidate[])=>void):
  Promise<StatelessIntelligenceResult[]>{
  if(!Number.isFinite(now)||!Number.isSafeInteger(maxSignals)||
     maxSignals<1||maxSignals>40)throw Error("ORIGINAL_FASTLANE_CLOCK_OR_BUDGET_INVALID");
@@ -840,6 +841,8 @@ export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20):
        p.category===category?[fallbackBatches[i]]:[]),
    ];
    const candidates=scopes.flatMap(b=>b.candidates);
+   // Private producer IPC only; never add originals to the public result.
+   onPrivateOriginalCandidates?.(candidates);
    const signals=deriveStatelessSignals(candidates,now,{maxSignals});
    const healthy=scopes.filter(b=>b.healthy).length;
    return {

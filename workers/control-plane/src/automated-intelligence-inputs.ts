@@ -35,27 +35,32 @@ export async function putAutomatedInputs(env:Env,body:{schema:string;items:Autom
 export async function getAutomatedInputs(env:Env,params:URLSearchParams,now=Date.now()){
  const view=params.get('view'),offset=Number(params.get('offset')??0);
  if([...params.keys()].some(k=>!['view','offset'].includes(k))||
-  (view!==null&&view!=='ids')||!Number.isSafeInteger(offset)||offset<0||offset>600||
-  params.getAll('view').length>1||params.getAll('offset').length>1||view==='ids'&&params.has('offset'))
+  (view!==null&&!['ids','handoff-ids'].includes(view))||!Number.isSafeInteger(offset)||offset<0||offset>600||
+  params.getAll('view').length>1||params.getAll('offset').length>1||view!==null&&params.has('offset'))
   return json({ok:false,error:'AUTOMATED_INPUT_QUERY_INVALID'},400);
  try{
-  const limit=view==='ids'?600:40;
-  const fields=view==='ids'?"key,json_extract(value_json,'$.integrity.signing_key_id') AS signing_key_id":'key,value_json';
+  const index=view!==null,limit=index?600:40;
+  const fields=index?"key,json_extract(value_json,'$.integrity.signing_key_id') AS signing_key_id,json_extract(value_json,'$.payload.signal.id') AS signal_id":'key,value_json';
   const r=await env.DB.prepare(`SELECT ${fields} FROM control_state WHERE key GLOB ?
    AND json_extract(value_json,'$.payload.expires_at')>? ORDER BY key LIMIT ? OFFSET ?`)
    .bind(PREFIX+'*',new Date(now).toISOString(),limit,offset).all();
   if(r.success===false||!Array.isArray(r.results))throw Error('READ');
-  const registry=keys(env),items:AutomatedInputEnvelope[]=[],ids:string[]=[];
+  const registry=keys(env),items:AutomatedInputEnvelope[]=[],ids:string[]=[],handoffs:{input_id:string;signal_id:string}[]=[];
   for(const row of r.results){
    // Index reads avoid up to 600 crypto operations per five-minute run.
    // Each stored input passed signature verification at PUT; consumers verify
    // actual envelopes through bounded 40-item reads, not this ID inventory.
-   if(view==='ids'){
+   if(index){
     const raw=Object.prototype.hasOwnProperty.call(registry,row.signing_key_id)?registry[row.signing_key_id]:null;
     if(!raw||typeof raw!=='string'&&![undefined,'active','retired'].includes(raw.status))continue;
     const id=String(row.key).slice(PREFIX.length);
     if(!String(row.key).startsWith(PREFIX)||!/^[a-f0-9]{64}$/.test(id))throw Error('IDENTITY');
-    ids.push(id);continue;
+    ids.push(id);
+    if(view==='handoff-ids'){
+     if(typeof row.signal_id!=='string'||!/^(geopolitics|macro|rare_earth)-[a-f0-9]{8}$/.test(row.signal_id))throw Error('IDENTITY');
+     handoffs.push({input_id:id,signal_id:row.signal_id});
+    }
+    continue;
    }
    const e=JSON.parse(row.value_json);await verifyAutomatedInput(e,registry,now);
    const id=await automatedInputId(e.payload.signal);
@@ -63,9 +68,9 @@ export async function getAutomatedInputs(env:Env,params:URLSearchParams,now=Date
    ids.push(id);if(view!=='ids')items.push(e);
   }
   return json({ok:true,schema:'geomacro.automated-intelligence-input-feed.v1',
-   ...(view==='ids'?{ids}:{items,offset,next_offset:r.results.length===40&&offset+40<600?offset+40:null}),
+   ...(view==='ids'?{ids}:view==='handoff-ids'?{handoffs}:{items,offset,next_offset:r.results.length===40&&offset+40<600?offset+40:null}),
    retention_hours:72,retained_capacity:600,manual_approval_required:false,
-   verification_scope:view==='ids'?'ACCEPTED_INPUT_ID_INVENTORY':'ED25519_ENVELOPES',
+   verification_scope:index?'ACCEPTED_INPUT_ID_INVENTORY':'ED25519_ENVELOPES',
    independent_reviewed:false,commercial_rights_attested:false,scored:false});
  }catch{return json({ok:false,error:'AUTOMATED_INPUT_READBACK_UNVERIFIED'},503);}
 }

@@ -12,7 +12,8 @@ import {createBundledOriginalReadbackBudget,bundleRoundRobinNews} from "./bundle
  *
  * This is NOT semantic same-event confirmation, source rights, licensing,
  * issuer signatures, signed GRO, GRI or payable customer intelligence.
- * Full private source references stay ephemeral in the producer's memory.
+ * This auditor never persists or publishes private source references. Trusted
+ * producers may preserve them separately in the protected D1 handoff.
  */
 const DOMAINS=["geopolitics","macro","rare_earth"];
 const STATUSES=Object.freeze({

@@ -17,6 +17,11 @@ on:
       - ".github/workflows/five-minute-original-news-fastlane.yml"
       - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
       - "scripts/ops/publish-automated-intelligence-inputs.ts"
+      - "scripts/ops/persist-private-source-handoffs.ts"
+      - "scripts/ops/read-private-source-handoffs.ts"
+      - "scripts/ops/review-derived-inputs-low-authority.ts"
+      - "src/lib/private-source-handoff.ts"
+      - "workers/control-plane/src/private-source-handoffs.ts"
       - "src/lib/automated-intelligence-input.ts"
       - "scripts/ops/verify-original-to-website-visible-20m.mjs"
       - "scripts/ops/verify-original-to-website-visible-20m.test.mjs"
@@ -32,6 +37,11 @@ on:
       - ".github/workflows/five-minute-original-news-fastlane.yml"
       - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
       - "scripts/ops/publish-automated-intelligence-inputs.ts"
+      - "scripts/ops/persist-private-source-handoffs.ts"
+      - "scripts/ops/read-private-source-handoffs.ts"
+      - "scripts/ops/review-derived-inputs-low-authority.ts"
+      - "src/lib/private-source-handoff.ts"
+      - "workers/control-plane/src/private-source-handoffs.ts"
       - "src/lib/automated-intelligence-input.ts"
       - "scripts/ops/verify-original-to-website-visible-20m.mjs"
       - "scripts/ops/verify-original-to-website-visible-20m.test.mjs"
@@ -51,6 +61,59 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  continue-private-source-review:
+    needs: original-five-minute-derived-news
+    if: >-
+      always() && !cancelled() && github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    concurrency:
+      group: geomacro-private-low-review-continuation
+      cancel-in-progress: false
+    env:
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Derive only the restricted review capability
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {createHmac} from 'node:crypto';
+          import {appendFileSync} from 'node:fs';
+          const root=(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN||'').trim();
+          if(root.length<32)throw Error('LOW_REVIEW_SCOPED_CHANNEL_UNAVAILABLE');
+          const control=createHmac('sha256',root).update('geomacro-control-plane-v1').digest('hex');
+          const token=createHmac('sha256',control).update('geomacro-low-source-review-v1').digest('hex');
+          console.log('::add-mask::'+token);
+          const registry=JSON.parse(process.env.RISK_OBJECT_VERIFY_KEYS_JSON||'{}');
+          const keys=[...Object.values(registry).map(v=>typeof v==='string'?v:v.public_key_spki_b64),
+            process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64].filter(Boolean);
+          appendFileSync(process.env.GITHUB_ENV,'GEOMACRO_LOW_REVIEW_TOKEN='+token+'\n'+
+            'GEOMACRO_LOW_REVIEW_ISSUER_PUBLIC_KEYS_JSON='+JSON.stringify([...new Set(keys)])+'\n');
+          NODE
+      - name: Check retained originals with the independent low authority
+        env:
+          GEOMACRO_LOW_REVIEW_PRIVATE_PKCS8_B64: ${{ secrets.GEOMACRO_LOW_REVIEW_PRIVATE_PKCS8_B64 }}
+          GEOMACRO_LOW_REVIEW_PUBLIC_PEM: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_PEM }}
+          GEOMACRO_LOW_REVIEW_PUBLIC_SHA256: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256 }}
+        run: |
+          umask 077
+          bun scripts/ops/review-derived-inputs-low-authority.ts > "$RUNNER_TEMP/geomacro-source-review-result.json"
+      - name: Remove private review results
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/geomacro-source-review-result.json"
+
   fastlane-contract:
     if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-24.04
@@ -67,6 +130,7 @@ jobs:
       - name: Validate original-only fastlane, actual source clocks and no funds
         run: |
           bun run vitest run src/__tests__/five-minute-original-news-fastlane.test.ts src/__tests__/automated-intelligence-input.test.ts src/__tests__/low-authority-source-review.test.ts
+          bun test scripts/tests/private-source-handoff-sqlite.test.ts
           node --test scripts/ops/verify-original-to-website-visible-20m.test.mjs
 
   original-five-minute-derived-news:
@@ -103,10 +167,21 @@ jobs:
             exit 2
           }
       - name: Publish bounded current original-dated three-category derived news
+        env:
+          GEOMACRO_LOW_SOURCE_REVIEW: "1"
+          GEOMACRO_LOW_REVIEW_REFS_FILE: ${{ runner.temp }}/geomacro-source-review-refs.json
         run: bun scripts/ops/publish-original-news-five-minute-fastlane.ts
       - name: Automatically approve and sign every unique retained derived input
         if: always()
         run: bun scripts/ops/publish-automated-intelligence-inputs.ts
+      - name: Preserve private originals for the separate automated reviewer
+        if: always()
+        env:
+          GEOMACRO_LOW_REVIEW_REFS_FILE: ${{ runner.temp }}/geomacro-source-review-refs.json
+        run: bun scripts/ops/persist-private-source-handoffs.ts
+      - name: Remove private original references from the producer runner
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/geomacro-source-review-refs.json"
       - name: Observe actual served website latency after publication without funds
         if: always()
         continue-on-error: true

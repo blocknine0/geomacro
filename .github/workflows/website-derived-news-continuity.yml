@@ -24,6 +24,10 @@ on:
       - "src/lib/automated-finds*"
       - "src/lib/low-authority-source-review.ts"
       - "scripts/ops/review-derived-inputs-low-authority.ts"
+      - "scripts/ops/persist-private-source-handoffs.ts"
+      - "scripts/ops/read-private-source-handoffs.ts"
+      - "src/lib/private-source-handoff.ts"
+      - "workers/control-plane/src/private-source-handoffs.ts"
       - "src/lib/risk-object-signing.server.ts"
       - "scripts/ops/publish-automated-finds.ts"
       - "scripts/lib/automated-finds-run-health.mjs"
@@ -129,6 +133,12 @@ jobs:
           RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
         if: always()
         run: bun scripts/ops/publish-automated-intelligence-inputs.ts
+      - name: Preserve private original references for automated review continuation
+        if: always()
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          GEOMACRO_LOW_REVIEW_REFS_FILE: ${{ runner.temp }}/geomacro-source-review-refs.json
+        run: bun scripts/ops/persist-private-source-handoffs.ts
       - name: Prepare restricted internal source-review capability
         if: always()
         env:
@@ -156,7 +166,7 @@ jobs:
           GEOMACRO_LOW_REVIEW_PUBLIC_SHA256: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256 }}
         run: |
           umask 077
-          bun scripts/ops/review-derived-inputs-low-authority.ts < "$RUNNER_TEMP/geomacro-source-review-refs.json" > "$RUNNER_TEMP/geomacro-source-review-result.json"
+          bun scripts/ops/review-derived-inputs-low-authority.ts > "$RUNNER_TEMP/geomacro-source-review-result.json"
       - name: Remove private review handoff and internal verdicts from the runner
         if: always()
         run: |

@@ -114,7 +114,9 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(wf).not.toContain("COINBASE_X402_MAINNET_ACK");
    expect(wf).not.toContain("SUPABASE_URL");
    expect(wf).not.toContain("B2_KEY_ID");
-   expect(pub).toContain("readFiveMinuteNewsFastlane(runAt,20)");
+   expect(pub).toContain("readFiveMinuteNewsFastlane(runAt,20,");
+   expect(pub).toContain("reconcilePrivateDerivedSourceRefs");
+   expect(wf).toContain('bun scripts/ops/persist-private-source-handoffs.ts');
    expect(pub).toContain('configured_categories:3,pinned_original_publishers:FIVE_MINUTE_NEWS_FASTLANE.length');
    expect(pub).toContain('FIVE_MINUTE_NEWS_FASTLANE.filter(s=>s.category===category).length');
    expect(pub).toContain("report.healthy_feed_count<1");
