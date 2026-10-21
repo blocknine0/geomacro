@@ -53,6 +53,9 @@ jobs:
       - name: Predge owner sealed token-only handoff crypto and authorization (offline)
         run: node --test scripts/ops/predge-sealed-token-handoff.test.mjs
 
+      - name: Groq browser search official-first fallback (offline, no provider calls)
+        run: node --test scripts/lib/groq-browser-live-fallback.test.mjs
+
       - name: Private source handoff SQLite binding and safe rejection contracts (offline)
         run: bun test scripts/tests/private-source-handoff-sqlite.test.ts
 
