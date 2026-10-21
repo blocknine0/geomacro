@@ -41,7 +41,7 @@ describe("GDELT GAL manual B2 recovery quota safety", () => {
   });
 
   it("holds at GET, PUT or total limits before invoking upstream or B2", async () => {
-    for (const counts of [[25, 0, 0, 0],[0, 55, 0, 0],[20, 50, 10, 0]] as const) {
+    for (const counts of [[45, 0, 0, 0],[0, 55, 0, 0],[43, 46, 10, 0]] as const) {
       await expect(requireGdeltB2RecoveryHeadroom({
         env, now, governor: governor(status(...counts)),
       })).rejects.toThrow("GDELT_B2_SHARED_DAILY_QUOTA_HELD");
