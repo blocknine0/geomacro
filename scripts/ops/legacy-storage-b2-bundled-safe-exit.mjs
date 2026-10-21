@@ -9,7 +9,8 @@ import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 const ref="ldpwajisioljyjtojvfx", origin="https://"+ref+".supabase.co";
 const bucket="geomacro-private-archive",endpoint="https://s3.us-east-005.backblazeb2.com";
 const prefix="geomacro-evidence/v1/legacy-supabase-safe-exit/storage/";
-const output="artifacts/legacy-exit/legacy-storage-bundles.json",shards=24;
+// Four source-frozen immutable shards keep private B2 Class-B GETs low (four vs 24).
+const output="artifacts/legacy-exit/legacy-storage-bundles.json",shards=4;
 const env=process.env,tmp=mkdtempSync(join(tmpdir(),"geomacro-legacy-"));
 const hash=x=>createHash("sha256").update(x).digest("hex");
 const report={schema:"geomacro.legacy-storage-b2-bundles.v1",
@@ -122,12 +123,22 @@ async function main(){
  quota.used.total>=quota.limits.total-8)return halt("B2_PROTECTED_HEADROOM_REQUIRED");
  const source=join(tmp,"source"),extract=join(tmp,"extracted");
  mkdirSync(join(source,"files"),{recursive:true});mkdirSync(extract);
- const hashes=[];
- for(const x of parts[n]){
-  const result=await fetchOriginal(x,env.SUPABASE_SERVICE_ROLE_KEY,join(source,"files"));
-  if(!result)return halt("OLD_STORAGE_AUTHENTICATED_BYTES_UNAVAILABLE");
-  hashes.push(result);
- }
+ // Eight workers cap source-only reads. Race-free receipt counts run on one Node
+ // event loop; each worker processes disjoint source paths. Any missing or
+ // mismatched byte stops the entire shard BEFORE B2 is touched.
+ const hashes=new Array(parts[n].length);
+ let next=0;
+ let failed=false;
+ await Promise.all(Array.from({length:8},async()=>{
+  while(!failed){
+   const index=next++;
+   if(index>=parts[n].length)return;
+   const result=await fetchOriginal(parts[n][index],env.SUPABASE_SERVICE_ROLE_KEY,join(source,"files"));
+   if(!result){failed=true;return}
+   hashes[index]=result;
+  }
+ }));
+ if(failed||hashes.some(x=>!x))return halt("OLD_STORAGE_AUTHENTICATED_BYTES_UNAVAILABLE");
  writeFileSync(join(source,"manifest.json"),JSON.stringify({
   schema:"geomacro.storage-original-bundle.v1",source:ref,shard:n,
   objects:parts[n],hashes}),{mode:0o600});
