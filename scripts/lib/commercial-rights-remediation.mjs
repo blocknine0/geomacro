@@ -76,6 +76,19 @@ export function buildCommercialRightsRemediationInventory(register=COMMERCIAL_SO
   rows});
 }
 
+/** Safe per-story follow-up code for the hourly original evidence audit.
+ * It is only a SOURCE-CONTRACT hint, never article-specific approval. */
+export function sourceRightsFollowupStatus(sourceId,category){
+ const row=COMMERCIAL_SOURCE_RIGHTS_EVIDENCE[sourceId];
+ if(!row||!SOURCE_DOMAIN_HINTS[sourceId]?.includes(category))
+  return "SOURCE_CONTRACT_UNREGISTERED_OR_OUT_OF_SCOPE";
+ if(ONLY_USGS_PRODUCED.has(sourceId)&&/public domain/i.test(row.licence??""))
+  return "FIRST_PARTY_PUBLIC_DOMAIN_SCOPE_REVIEW_REQUIRED";
+ if(row.attribution_required===true||isAttribution(row.licence))
+  return "ATTRIBUTION_WAIVER_OR_SEPARATE_CREDITED_PRODUCT_REQUIRED";
+ return "ARTICLE_SPECIFIC_PERMISSION_AND_RIGHTS_SIGNATURE_REQUIRED";
+}
+
 /**
  * Deduplication is article-byte/issuer/claim specific. Similar headlines
  * cannot be conflated with independently authored first-party originals.
