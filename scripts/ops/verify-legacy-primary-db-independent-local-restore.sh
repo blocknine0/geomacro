@@ -152,94 +152,9 @@ MAJOR="$(psql "$URL" -X -A -t -v ON_ERROR_STOP=1 -c 'show server_version_num;' \
  2>"$PRIVATE/pg.err" || true)"
 [[ "$MAJOR" =~ ^17[0-9]{4}$ ]] ||
  block "DISPOSABLE_TARGET_NOT_POSTGRES17"
-# Supabase's regular postgres login is intentionally NOT a superuser.
-# The original archive contains Supabase-managed extension objects; restore
-# only INSIDE the disposable local Supabase postgres container, using its
-# locally initialized superuser. Never use this role on an external server.
+# Only the disposable Supabase PG17 container may use its own admin role.
 mapfile -t LOCAL_DB_CONTAINERS < <(docker ps --format '{{.Names}}' |
-  grep -E '^supabase_db_[A-Za-z0-9_-]+# The original custom dump can omit PostgreSQL's PINNED default public
-# schema, which template1 already provides. Do not drop it blindly.
-PUBLIC_IN_ARCHIVE="$(node --input-type=module - "$PRIVATE/toc" <<'NODE'
-import {readFileSync} from "node:fs";
-import {archiveDefinesSchema} from "./scripts/ops/legacy-restore-schema-bootstrap.mjs";
-console.log(archiveDefinesSchema(readFileSync(process.argv[2],"utf8"),"public")?"1":"0");
-NODE
-)" || block "PRIVATE_ARCHIVE_SCHEMA_PLAN_UNAVAILABLE"
-[[ "$PUBLIC_IN_ARCHIVE" == 0 || "$PUBLIC_IN_ARCHIVE" == 1 ]] ||
- block "PRIVATE_ARCHIVE_PUBLIC_SCHEMA_PLAN_INVALID"
-# There is never a remote address in the restore target or administrative URL.
-LOCAL_RESTORE_URL="postgresql://postgres:postgres@127.0.0.1:54322/geomacro_legacy_restored"
-[[ "$LOCAL_RESTORE_URL" == "postgresql://postgres:postgres@127.0.0.1:54322/geomacro_legacy_restored" ]] ||
- block "DISPOSABLE_LOCAL_TARGET_IDENTITY_MISMATCH"
-declare -a BOOTSTRAP_SCHEMAS=()
-RESTORED=0
-# Retry at most 4 isolated local DBs while reusing THE SAME previously
-# downloaded and SHA-verified B2 archive. Zero extra B2 reads/puts.
-for ATTEMPT in 0 1 2 3; do
-  if (( ATTEMPT>0 ));then
-    psql "$URL" -X -q -v ON_ERROR_STOP=1 \
-      -c 'DROP DATABASE geomacro_legacy_restored WITH (FORCE);' \
-      >"$PRIVATE/drop-local-db.stdout" 2>"$PRIVATE/drop-local-db.stderr" ||
-      block "DISPOSABLE_LOCAL_RETRY_RESET_FAILED"
-  fi
-  psql "$URL" -X -q -v ON_ERROR_STOP=1 \
-    -c 'CREATE DATABASE geomacro_legacy_restored;' \
-    >"$PRIVATE/createdb.out" 2>"$PRIVATE/createdb.err" ||
-    block "DISPOSABLE_TARGET_DB_CREATE_FAILED"
-  if [[ "$PUBLIC_IN_ARCHIVE" == "1" ]];then
-    psql "$LOCAL_RESTORE_URL" -X -q -v ON_ERROR_STOP=1 \
-      -c 'DROP SCHEMA IF EXISTS public CASCADE;' \
-      >"$PRIVATE/drop-default-public.stdout" 2>"$PRIVATE/drop-default-public.stderr" ||
-      block "DISPOSABLE_DEFAULT_PUBLIC_SCHEMA_RESET_FAILED"
-  fi
-  for SCHEMA_NAME in "${BOOTSTRAP_SCHEMAS[@]}";do
-    [[ "$SCHEMA_NAME" =~ ^(public|auth|storage|extensions|vault|graphql|graphql_public|pgbouncer|realtime|supabase_migrations)$ ]] ||
-       block "RESTORE_SCHEMA_BOOTSTRAP_NOT_ALLOWED"
-    psql "$LOCAL_RESTORE_URL" -X -q -v ON_ERROR_STOP=1 \
-      -c "CREATE SCHEMA \"$SCHEMA_NAME\";" \
-      >"$PRIVATE/bootstrap.stdout" 2>"$PRIVATE/bootstrap.stderr" ||
-       block "DISPOSABLE_WHITELISTED_SCHEMA_BOOTSTRAP_FAILED"
-  done
-  # This process uses only the fresh, local Docker PG17 container via its
-  # Unix socket; the original source PostgreSQL URL is never passed to it.
-  if docker exec -i "$LOCAL_DB_CONTAINER" \
-      pg_restore -U supabase_admin -d geomacro_legacy_restored \
-      --no-owner --no-privileges --exit-on-error \
-      <"$PRIVATE/verified-old-primary.pgcustom" \
-      >"$PRIVATE/restore.stdout" 2>"$PRIVATE/restore.stderr";then
-    RESTORED=1
-    break
-  fi
-  if (( ATTEMPT==3 ));then
-    block "DISPOSABLE_INDEPENDENT_PHYSICAL_RESTORE_FAILED"
-  fi
-  NEXT_SCHEMA="$(node --input-type=module - "$PRIVATE/restore.stderr" "$PRIVATE/toc" "${BOOTSTRAP_SCHEMAS[@]}" <<'NODE'
-import {readFileSync} from "node:fs";
-import {privateMissingSchema} from "./scripts/ops/legacy-restore-schema-bootstrap.mjs";
-const [errorPath,tocPath,...seen]=process.argv.slice(2);
-const next=privateMissingSchema(readFileSync(errorPath,"utf8"),readFileSync(tocPath,"utf8"),seen);
-if(next)process.stdout.write(next);
-NODE
-)" || block "PRIVATE_RESTORE_SCHEMA_DIAGNOSTIC_FAILED"
-  [[ -n "$NEXT_SCHEMA" ]] || block "DISPOSABLE_INDEPENDENT_PHYSICAL_RESTORE_FAILED"
-  BOOTSTRAP_SCHEMAS+=("$NEXT_SCHEMA")
-done
-[[ "$RESTORED" == "1" ]] || block "DISPOSABLE_INDEPENDENT_PHYSICAL_RESTORE_FAILED"
-COUNTS="$(psql "$LOCAL_RESTORE_URL" -X -A -t -F '|' -v ON_ERROR_STOP=1 \
- -c 'SELECT (SELECT count(*) FROM public.live_structured_events),
-            (SELECT count(*) FROM storage.objects),
-            (SELECT count(*) FROM public.commercial_payment_events),
-            (SELECT count(*) FROM public.geomacro_risk_objects);' \
- 2>"$PRIVATE/counts.err")" || block "INDEPENDENT_RESTORED_CANONICAL_ROWS_UNAVAILABLE"
-IFS='|' read -r STRUCTURED STORAGE PAYMENTS RISK <<<"$COUNTS"
-[[ "$STRUCTURED" =~ ^[0-9]+$ && "$STORAGE" =~ ^[0-9]+$ &&
-   "$PAYMENTS" =~ ^[0-9]+$ && "$RISK" =~ ^[0-9]+$ ]] ||
- block "DISPOSABLE_RESTORED_COUNTS_INVALID"
-(( STRUCTURED >= 33138 && STORAGE >= 23648 && PAYMENTS >= 5 && RISK >= 21178 )) ||
- block "DISPOSABLE_RESTORED_CANONICAL_ROW_COUNTS_BELOW_BASELINE"
-reason="B2_DB_INDEPENDENT_LOCAL_RESTORE_VERIFIED"
-write_receipt "$STRUCTURED" "$STORAGE" "$PAYMENTS" "$RISK"
- || true)
+  grep -E '^supabase_db_[A-Za-z0-9_-]+$' || true)
 [[ "${#LOCAL_DB_CONTAINERS[@]}" == "1" ]] ||
  block "DISPOSABLE_SINGLE_SUPABASE_DB_CONTAINER_NOT_PROVEN"
 LOCAL_DB_CONTAINER="${LOCAL_DB_CONTAINERS[0]}"
@@ -296,9 +211,11 @@ for ATTEMPT in 0 1 2 3; do
       >"$PRIVATE/bootstrap.stdout" 2>"$PRIVATE/bootstrap.stderr" ||
        block "DISPOSABLE_WHITELISTED_SCHEMA_BOOTSTRAP_FAILED"
   done
-  if docker run --rm --network host -v "$PRIVATE:/backup:ro" postgres:17-alpine \
-    pg_restore --dbname "$LOCAL_RESTORE_URL" --no-owner --no-privileges \
-      --exit-on-error /backup/verified-old-primary.pgcustom \
+  # Uses only the disposable Docker PG17 Unix socket, never the old hosted URL.
+  if docker exec -i "$LOCAL_DB_CONTAINER" \
+      pg_restore -U supabase_admin -d geomacro_legacy_restored \
+      --no-owner --no-privileges --exit-on-error \
+      <"$PRIVATE/verified-old-primary.pgcustom" \
       >"$PRIVATE/restore.stdout" 2>"$PRIVATE/restore.stderr";then
     RESTORED=1
     break
