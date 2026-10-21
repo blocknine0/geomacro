@@ -1,0 +1,89 @@
+name: Legacy Old Supabase Non-Predge Retirement Readiness
+# Read-only counter audit; never deletes source account, Storage, tables, files or payments.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/legacy-nonpredge-retirement-readiness.yml"
+      - "scripts/ops/legacy-nonpredge-retirement-readiness.mjs"
+  schedule:
+    - cron: "23 3 * * *"
+  pull_request:
+    paths:
+      - ".github/workflows/legacy-nonpredge-retirement-readiness.yml"
+      - "scripts/ops/legacy-nonpredge-retirement-readiness.mjs"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-legacy-nonpredge-readonly-deletion-gate
+  cancel-in-progress: false
+
+jobs:
+  safety-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      APP_SUPABASE_URL: ""
+      SUPABASE_DB_URL: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Check syntax, no secrets, never deletion
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/legacy-nonpredge-retirement-readiness.mjs
+          node scripts/ops/legacy-nonpredge-retirement-readiness.mjs
+          node - <<'NODE'
+          const fs=require("node:fs");
+          const src=fs.readFileSync("scripts/ops/legacy-nonpredge-retirement-readiness.mjs","utf8");
+          const r=require("./artifacts/legacy-exit/nonpredge-old-supabase-retirement-readiness.json");
+          if(r.old_supabase_project_deletion_authorized!==false||
+             r.legacy_storage_removal_authorized!==false||
+             r.source_database_writes!==0||r.source_storage_removals!==0||
+             r.destination_writes!==0||r.b2_deletions!==0||r.payments!==0||
+             r.predge_work_performed!==false||
+             r.status!=="BLOCKED_NO_DELETION"||
+             !src.includes("UNVERIFIED_PRODUCTION_HISTORICAL_FRAGMENT_B2_READ_CUTOVER"))
+            throw Error("OLD_PRIMARY_RETIREMENT_SAFETY_POLICY_BYPASSED");
+          NODE
+  read-only-source-census:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Count old source objects and non-Predge commercial callers, no writes
+        run: |
+          set -euo pipefail
+          node scripts/ops/legacy-nonpredge-retirement-readiness.mjs
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/nonpredge-old-supabase-retirement-readiness.json");
+          if(r.old_supabase_project_deletion_authorized!==false||
+             r.legacy_storage_removal_authorized!==false||
+             r.source_database_writes!==0||r.source_storage_removals!==0||
+             r.destination_writes!==0||r.b2_deletions!==0||r.payments!==0||
+             r.predge_work_performed!==false)throw Error("LEGACY_NO_DELETION_GUARD_FAILED");
+          if(!r.source_counts)throw Error("OLD_PRIMARY_READONLY_SOURCE_INVENTORY_UNAVAILABLE");
+          NODE
+      - name: Publish sanitized counts and mandatory blockers only
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: legacy-nonpredge-retirement-readiness-${{ github.run_id }}
+          path: artifacts/legacy-exit/nonpredge-old-supabase-retirement-readiness.json
+          if-no-files-found: warn
+          retention-days: 14
