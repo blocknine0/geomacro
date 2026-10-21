@@ -23,9 +23,9 @@ trap cleanup EXIT
 mkdir -p artifacts/legacy-exit
 reason="NOT_STARTED"
 write_receipt() {
-  node - "$ARTIFACT" "$reason" "${1:-}" "${2:-}" "${3:-}" "${4:-}" "${5:-}" <<'NODE'
+  node - "$ARTIFACT" "$reason" "${1:-}" "${2:-}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" <<'NODE'
 const fs=require("node:fs");
-const [out,reason,structured,storage,payments,risk,failureClass]=process.argv.slice(2);
+const [out,reason,structured,storage,payments,risk,failureClass,firstErrorDetails]=process.argv.slice(2);
 const good=reason==="B2_DB_INDEPENDENT_LOCAL_RESTORE_VERIFIED";
 const report={
  schema:"geomacro.legacy-primary-disposable-b2-restore.v1",
@@ -34,6 +34,7 @@ const report={
  status:good?"B2_DB_INDEPENDENT_LOCAL_RESTORE_VERIFIED":"BLOCKED_NO_DELETION",
  blocker:good?null:reason,
  restore_failure_class:good?null:(failureClass||null),
+ restore_first_error_details:good?null:(()=>{try{const d=JSON.parse(firstErrorDetails||'null');if(!d||!['MISSING_SCHEMA','MISSING_EXTENSION','MISSING_FUNCTION','MISSING_RELATION','MISSING_TYPE','MISSING_OPERATOR','MISSING_ROLE','MISSING_COLUMN','MISSING_CAST','MISSING_TABLESPACE','MISSING_OTHER_OBJECT','DUPLICATE_OBJECT','UNAVAILABLE_EXTENSION_LIBRARY','PERMISSION_PROBLEM','OTHER_SQL_FAILURE','NO_RESTORABLE_PG_ERROR_FOUND'].includes(d.first_server_error_kind)||d.error_text_or_object_identifiers_exposed!==false)return null;return d;}catch{return null}})(),
  independent_disposable_postgres17_database_restore_verified:good,
  restored_structured_event_rows:good?Number(structured):null,
  restored_storage_metadata_rows:good?Number(storage):null,
@@ -56,8 +57,11 @@ NODE
 block(){
  reason="$1"
  local category=""
+ local diagnosis=""
  if [[ "$reason" == "DISPOSABLE_INDEPENDENT_PHYSICAL_RESTORE_FAILED" &&
        -f "$PRIVATE/restore.stderr" ]];then
+   # Classify only the FIRST PG error in the PRIVATE local stderr.
+   diagnosis="$(node scripts/ops/classify-private-pg-restore-error.mjs "$PRIVATE/restore.stderr" || true)"
    # Privacy-safe diagnostics: NEVER copy SQL error text or object names into
    # public logs or GitHub artifacts. Only constant error family identifiers.
    if grep -Fq 'schema "public" already exists' "$PRIVATE/restore.stderr";then
@@ -74,7 +78,7 @@ block(){
      category="OTHER_PRIVATE_PG_RESTORE_FAILURE"
    fi
  fi
- write_receipt "" "" "" "" "$category"
+ write_receipt "" "" "" "" "$category" "$diagnosis"
  exit 3
 }
 if [[ "${APP_SUPABASE_URL:-}" != "https://ldpwajisioljyjtojvfx.supabase.co" ]]; then
