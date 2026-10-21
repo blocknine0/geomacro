@@ -188,7 +188,7 @@ try {
     throw Error("ALL_NEWS_ORIGINAL_AUDIT_BOUNDARY_FAILED");
   mkdirSync("artifacts/derived-news",{recursive:true});
   writeFileSync("artifacts/derived-news/all-original-evidence-audit.json",
-    JSON.stringify(audit,null,2)+"\\n",{encoding:"utf8",mode:0o600});
+    JSON.stringify(audit,null,2)+"\n",{encoding:"utf8",mode:0o600});
   console.log(JSON.stringify({
     schema:audit.schema,checked_at:audit.checked_at,
     ingested_news_examined:audit.ingested_news_examined,
