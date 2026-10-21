@@ -75,7 +75,7 @@ export function bundleRoundRobinNews(signals){
  for(const group of groups.values())group.sort(sort);
  const rows=[];
  let index=0;
- while([...groups.values()].some(x=>x.length)){
+ while([...groups.values()].some(x=>x.length>index)){
   for(const domain of domains){
    const next=groups.get(domain)[index];
    if(next)rows.push(next);
