@@ -128,3 +128,63 @@ free compatible distribution under the zero-subscription launch constraint.
 
 Public listing verification, paid delivery verification and real external
 customer revenue are three separate observations. Record each independently.
+
+## Owner-approved three-chain launch update (21 October 2026)
+
+The owner approved Base, Polygon PoS and Arc mainnet with a single NEW receiving
+address. The actual new public address has not yet been supplied. Configuration
+must not guess it, reuse an old receiver without confirmation, or place a private
+key in the browser. `config/mainnet-three-chain-launch.env.example` names the
+settings. Mainnet Coinbase and Circle configuration now rejects conflicting
+recipient aliases before any payment offer.
+
+The API page now has a bounded country/category query form. It checks actual
+payable availability, validates native USDC and locked capability pricing for the
+selected chain, shows the recipient and expiry, and asks the customer's wallet
+to sign only after an explicit payment click. It never sends a direct token
+transfer. It verifies exact delivered UTF-8 bytes and retains the same payment
+proof in memory for recovery instead of automatically creating another charge.
+A chain selection cannot enable an unsupported server payment rail. Native
+EIP-3009 authorizations and Circle Gateway batching are different protocols;
+the browser does not sign a batching requirement as a native transfer.
+
+Current code still has a Base-only Coinbase paid adapter and a Base-only Circle
+Gateway batching adapter. The separately existing native Circle verification
+helper is not a complete Arc/Polygon settlement/status-to-delivery integration.
+The three-chain merchant settlement acceptance remains OPEN. The owner approval
+permits implementation and launch but does not fabricate missing credentials,
+wallet control, signed products, or paid customer readback.
+
+## The three acceptance requirements
+
+1. **195 countries x 3 categories:** the proof rollup now emits all 585 cells,
+   last-probe times and specific repair reasons. It accepts complete current
+   coverage only when all 585 have actual country-relevant original-page proof
+   observed within 24 hours. Older successful transport checks stay stale. The
+   default 65-day bounded sweep does not claim simultaneous daily global proof.
+   A repair queue is emitted; it does not trigger uncontrolled global polling.
+2. **Original publication to served website <=20 minutes:** Intelligence article
+   markup exposes only its existing derived story ID. The five-minute fastlane
+   independently reads served HTML after publication and matches it to original
+   timestamps. Receipt time is a conservative upper latency bound. Exact-clock
+   stories visible at 15-20 minutes qualify; embedded JSON, D1 insertion time,
+   day-only dates and older releases do not. Evidence is retained for seven days.
+   This verifies actual samples, never an unconditional universal SLA.
+3. **Signed commercial launch:** the launch report reads real deep health and
+   payment runtime metadata and separately reports each current hot product.
+   A successful unsigned Find or source scan never substitutes for certified
+   inputs, rights, actual signatures and paid delivery. Receiver and provider
+   configuration, current eligible signed products and per-chain settlement,
+   exact customer-byte readback and replay must pass before closure.
+
+Run `node scripts/ops/three-launch-blockers-report.mjs` for the source-free gap
+report. Missing local coverage/latency receipts are explicitly unverified. The
+weekly proof audit also writes this report; the five-minute source workflow
+retains its own actual website sample receipts. No additional recurring workflow
+or paid infrastructure was added.
+
+The website source changes are founder-authorized by the request to put the
+existing website into launch mode. The general website baseline is updated in
+a separate commit after the approved UI commit; the independent frozen Global
+Risk presentation is not changed. Existing Lovable source mirroring is retained.
+Publishing still needs the existing project's authenticated deployment access.

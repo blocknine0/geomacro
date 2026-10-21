@@ -41,3 +41,23 @@ test("rejects duplicated cells, fabricated signing, omitted proof and unauthoriz
  assert.throws(()=>rollupCountry195Proofs([changed],known,{now}),/RECEIPT_UNTRUSTED/);
  assert.deepEqual(rollupCountry195Proofs([],known,{now}).category_coverage.rare_earth.unprobed_country_cells,195);
 });
+test("publishes all 585 actionable cell statuses and never confuses historical transport with fresh originals",()=>{
+ const out=rollupCountry195Proofs([mock()],known,{now});
+ assert.equal(out.cells.length,585);assert.equal(out.repair_queue.length,585);
+ assert.equal(out.cells[0].status,"PROOF_OLDER_THAN_24H");
+ assert.equal(out.cells[9].status,"UNPROBED");
+ const reports=Array.from({length:65},(_,i)=>{
+  const r=mock(i*3,3);
+  r.probe_started_at="2026-10-24T11:23:00Z";
+  r.probe_finished_at="2026-10-24T11:25:00Z";
+  r.cells.forEach(c=>{c.COUNTRY_RELEVANCE_VERIFIED=true;
+   c.ORIGINAL_EVIDENCE_VERIFIED=true;c.ORIGINAL_PAGE_VERIFIED=true;});
+  return r;
+ });
+ const complete=rollupCountry195Proofs(reports,known,{now});
+ assert.equal(complete.current_original_verified_cells,585);
+ assert.equal(complete.complete_195x3_current_live_original_coverage_verified,true);
+ assert.equal(complete.repair_queue.length,0);
+ assert.equal(rollupCountry195Proofs(reports,known,{now:new Date("2026-10-26T12:00:00Z")})
+  .complete_195x3_current_live_original_coverage_verified,false);
+});

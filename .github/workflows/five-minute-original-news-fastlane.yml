@@ -86,3 +86,15 @@ jobs:
           }
       - name: Publish bounded current original-dated three-category derived news
         run: bun scripts/ops/publish-original-news-five-minute-fastlane.ts
+      - name: Observe actual served website latency after publication without funds
+        run: |
+          mkdir -p artifacts/website-latency
+          bun scripts/ops/derived-news-latency-audit.mjs --website-observed > artifacts/website-latency/served-samples.json
+          cat artifacts/website-latency/served-samples.json
+      - name: Retain source-free website observation receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: actual-website-latency-${{ github.run_id }}
+          path: artifacts/website-latency/served-samples.json
+          retention-days: 7

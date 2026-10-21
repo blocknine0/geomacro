@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import process from "node:process";
+import {assertSharedUsdcReceiver} from "./shared-usdc-receiver.server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { SignJWT, importJWK, importPKCS8 } from "jose";
 import { assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server";
@@ -124,6 +125,7 @@ export function getCoinbaseX402Config(): CoinbaseX402Config | null {
   }
 
   if (rawEnvironment === "production") {
+    assertSharedUsdcReceiver(payTo);
     assertCommercialLaunchAuthorized("coinbase_x402");
     if (process.env.COINBASE_X402_MAINNET_ACK?.trim() !== COINBASE_X402_MAINNET_ACK) {
       throw new Error(

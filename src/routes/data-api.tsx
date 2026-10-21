@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AgentCommerceStatus } from "@/components/agent-commerce-status";
 import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
+import { CategoryApiLaunchPanel } from "@/components/category-api-launch-panel";
 
 const TITLE = "API & Agent Access | Geomacro";
 const DESCRIPTION =
@@ -93,7 +94,7 @@ function DataApiPage() {
               <Button asChild size="lg" variant="outline" className="h-12 px-6"><Link to="/docs">Developer documentation</Link></Button>
               <Button asChild size="lg" variant="ghost" className="h-12 px-5"><Link to="/contact">Discuss integration</Link></Button>
             </div>
-            <p className="mt-4 text-xs leading-5 text-muted-foreground">Standalone Geomacro AI Agent: <span className="font-semibold text-foreground">Coming Soon</span>. API access follows the live commercial status shown here.</p>
+            <p className="mt-4 text-xs leading-5 text-muted-foreground">Three category agents share the Geomacro engine. <a href="/api/v1/agent?view=openapi" className="underline underline-offset-2">Open API and agent schemas</a>. Payment availability is checked for your exact question.</p>
           </div>
 
           <div className="rounded-[1.65rem] border border-border/65 bg-card/65 p-5 shadow-2xl shadow-black/20 backdrop-blur sm:p-7">
@@ -111,6 +112,8 @@ function DataApiPage() {
           </div>
         </div>
       </section>
+
+      <CategoryApiLaunchPanel />
 
       <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
         <div className="max-w-3xl">

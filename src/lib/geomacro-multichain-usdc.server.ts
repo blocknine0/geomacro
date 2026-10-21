@@ -1,4 +1,5 @@
 import {createHash} from "node:crypto";
+import {resolveSharedUsdcReceiver} from "./shared-usdc-receiver.server";
 import {
   GEOMACRO_CAPABILITY_PRICING_VERSION,
   resolveGeomacroCapabilityPrice,
@@ -72,10 +73,25 @@ export function quoteGeomacroUsdcCapabilityPreflight(input:unknown){
   });
 }
 export function publicGeomacroUsdcRailDiscovery(){
+  let receiver:string|null=null,receiverState="RECEIVER_NOT_CONFIGURED";
+  try{
+    receiver=resolveSharedUsdcReceiver();receiverState="RECEIVER_CONFIGURED_CONTROL_NOT_ATTESTED";
+  }catch(error){
+    if(error instanceof Error&&error.message==="SHARED_USDC_RECEIVER_MISMATCH")
+      receiverState="RECEIVER_CONFIGURATION_MISMATCH";
+    else if(error instanceof Error&&error.message==="SHARED_USDC_RECEIVER_INVALID")
+      receiverState="RECEIVER_CONFIGURATION_INVALID";
+  }
   return {
     schema:GEOMACRO_USDC_RAIL_SCHEMA,ok:true,
     chain_policy:"NATIVE_CIRCLE_USDC_ONLY",
     network_count:3,
+    receiving_policy:"ONE_SHARED_EVM_MERCHANT_ADDRESS",
+    receiving_address_control_and_configuration_require_verification:true,
+    native_facilitator_distinct_from_gateway_batching:true,
+    merchant_receiver:{state:receiverState,address:receiver,
+      same_address_configuration_verified:receiver!==null,
+      wallet_control_verified:false},
     networks:Object.values(GEOMACRO_USDC_NETWORKS).map(rail=>({
       ...rail,scheme:"exact" as const,x402_version:2 as const,
       // Rail support from Circle != Geomacro merchant activation.
