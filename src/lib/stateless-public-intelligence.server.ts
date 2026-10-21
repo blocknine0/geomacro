@@ -743,12 +743,21 @@ export const FIVE_MINUTE_NEWS_FASTLANE = Object.freeze([
   // its own date handling and a pinned category-specific topic gate.
   {category:"geopolitics",id:"un_news"},
   {category:"geopolitics",id:"uk_fcdo"},
+  // UN Press directly publishes Security Council and diplomatic statements;
+  // this complements UN News but is the same UN organization, not independent
+  // same-event corroboration.
+  {category:"geopolitics",id:"un_press_global"},
   {category:"macro",id:"fed_press"},
   {category:"macro",id:"wto_trade_original_rss"},
   {category:"macro",id:"ecb_press"},
+  // Existing vetted Bank of Canada RSS1.0/RDF original-date parser.
+  {category:"macro",id:"boc_press_global"},
   {category:"rare_earth",id:"nrcan_releases"},
   {category:"rare_earth",id:"us_doe_news_minerals"},
+  // British Columbia's provincial Mining and Critical Minerals release feed.
+  {category:"rare_earth",id:"bc_minerals_global"},
 ] as const);
+export const FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN=10 as const;
 /**
  * Conditional first-party alternatives, only if EVERY primary issuer within
  * that category failed transport. No additional steady-state source polling,
@@ -777,8 +786,13 @@ export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20):
  Promise<StatelessIntelligenceResult[]>{
  if(!Number.isFinite(now)||!Number.isSafeInteger(maxSignals)||
     maxSignals<1||maxSignals>40)throw Error("ORIGINAL_FASTLANE_CLOCK_OR_BUDGET_INVALID");
+ // Strict original-source budget; global additions must reuse the existing
+ // allowlisted issuer-date and article-path parser, never generic RSS URLs.
+ if(FIVE_MINUTE_NEWS_FASTLANE.length>FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN)
+   throw Error("ORIGINAL_FASTLANE_PRIMARY_REQUEST_BUDGET_EXCEEDED");
+ const officialSources=[...SOURCES,...GLOBAL_SOURCES];
  const selected=FIVE_MINUTE_NEWS_FASTLANE.map(({category,id})=>{
-   const matches=SOURCES.filter(s=>s.id===id && s.category===category);
+   const matches=officialSources.filter(s=>s.id===id && s.category===category);
    if(matches.length!==1)throw Error("ORIGINAL_FASTLANE_PINNED_PUBLISHER_INVALID");
    return {category,source:matches[0]};
  });
