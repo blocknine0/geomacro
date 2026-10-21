@@ -1,0 +1,74 @@
+name: Country 195 Rolling Original Proof Audit
+
+# READ only prior owner-approved GitHub Actions country-proof artifacts.
+# Weekly aggregation never re-polls countries or treats routing as coverage.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "53 10 * * 0"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/country-195-rolling-original-proof-audit.yml"
+      - "scripts/lib/country-195-proof-rollup.mjs"
+      - "scripts/ops/aggregate-country-195-proofs.mjs"
+      - "scripts/tests/country-195-proof-rollup.test.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/country-195-rolling-original-proof-audit.yml"
+      - "scripts/lib/country-195-proof-rollup.mjs"
+      - "scripts/ops/aggregate-country-195-proofs.mjs"
+      - "scripts/tests/country-195-proof-rollup.test.mjs"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: geomacro-country-195-rolling-original-proof-audit
+  cancel-in-progress: false
+
+jobs:
+  offline-trust-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify one authentic calendar-cycle receipt cannot assert 585 without actual country proofs
+        run: |
+          node --check scripts/lib/country-195-proof-rollup.mjs
+          node --check scripts/ops/aggregate-country-195-proofs.mjs
+          node --test scripts/tests/country-195-proof-rollup.test.mjs
+
+  read-only-coverage-aggregation:
+    needs: offline-trust-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Aggregate only real last-90d schedule-success checkpoint artifacts
+        run: node scripts/ops/aggregate-country-195-proofs.mjs
+      - name: Keep source-free trusted coverage-gap rollup
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: country-195-rolling-original-proof-${{ github.run_id }}
+          path: artifacts/country-195/rolling-proof-summary.v1.json
+          if-no-files-found: warn
+          retention-days: 90
