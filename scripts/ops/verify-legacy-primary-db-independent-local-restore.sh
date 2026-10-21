@@ -63,7 +63,7 @@ fi
 for key in B2_KEY_ID B2_APPLICATION_KEY B2_LEGACY_INVENTORY_KEY_ID B2_LEGACY_INVENTORY_APPLICATION_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID D1_DATABASE_ID; do
   [[ -n "${!key:-}" ]] || block "PRIVATE_RUNTIME_CONFIG_INCOMPLETE"
 done
-for bin in aws jq pg_restore psql sha256sum supabase docker node; do
+for bin in aws jq psql sha256sum supabase docker node; do
   command -v "$bin" >/dev/null 2>&1 || block "DISPOSABLE_RESTORE_DEPENDENCY_MISSING"
 done
 # Read-only inventory key, no write access. Keep response in protected runner.
@@ -105,7 +105,8 @@ HASH="$(sha256sum "$PRIVATE/verified-old-primary.pgcustom" | cut -d' ' -f1)"
 BYTES="$(stat -c '%s' "$PRIVATE/verified-old-primary.pgcustom")"
 [[ "$BYTES" -ge 1048576 && "$BYTES" -le 891289600 ]] ||
  block "B2_ARCHIVE_BYTES_OUTSIDE_SAFE_BOUND"
-pg_restore --list "$PRIVATE/verified-old-primary.pgcustom" >"$PRIVATE/toc" \
+docker run --rm --network none -v "$PRIVATE:/backup:ro" postgres:17-alpine \
+ pg_restore --list /backup/verified-old-primary.pgcustom >"$PRIVATE/toc" \
  2>"$PRIVATE/toc.err" || block "B2_CUSTOM_POSTGRES_ARCHIVE_INVALID"
 # Existing PG17 logical backup reported at least this many table definitions.
 node - "$PRIVATE/toc" <<'NODE' || block "BACKUP_SCHEMA_DEFINITION_UNEXPECTED"
@@ -133,8 +134,9 @@ psql "$URL" -X -q -v ON_ERROR_STOP=1 \
  block "DISPOSABLE_TARGET_DB_CREATE_FAILED"
 # All SQL writes are ONLY to fresh local dedicated localhost database.
 LOCAL_RESTORE_URL="postgresql://postgres:postgres@127.0.0.1:54322/geomacro_legacy_restored"
-pg_restore --dbname "$LOCAL_RESTORE_URL" --no-owner --no-privileges \
- --exit-on-error "$PRIVATE/verified-old-primary.pgcustom" \
+docker run --rm --network host -v "$PRIVATE:/backup:ro" postgres:17-alpine \
+ pg_restore --dbname "$LOCAL_RESTORE_URL" --no-owner --no-privileges \
+ --exit-on-error /backup/verified-old-primary.pgcustom \
  >"$PRIVATE/restore.stdout" 2>"$PRIVATE/restore.stderr" ||
  block "DISPOSABLE_INDEPENDENT_PHYSICAL_RESTORE_FAILED"
 COUNTS="$(psql "$LOCAL_RESTORE_URL" -X -A -t -F '|' -v ON_ERROR_STOP=1 \
