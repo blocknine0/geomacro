@@ -4,7 +4,10 @@ name: Legacy Supabase Storage Original Bytes to Private B2
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "17 1,7,13,19 * * *"
+    # Run shortly after the D1 daily quota changes UTC day, before optional
+    # consumers drain headroom. Late recovery probes provide safe fallback.
+    - cron: "3 0 * * *"
+    - cron: "17 6,12,18 * * *"
   pull_request:
     paths:
       - ".github/workflows/legacy-storage-b2-bundled-safe-exit.yml"
