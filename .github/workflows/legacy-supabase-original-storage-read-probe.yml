@@ -1,0 +1,74 @@
+name: Diagnose Legacy Supabase Storage Read Restriction (No Deletes)
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/probe-legacy-supabase-original-storage-read.mjs"
+      - ".github/workflows/legacy-supabase-original-storage-read-probe.yml"
+  pull_request:
+    paths:
+      - "scripts/ops/probe-legacy-supabase-original-storage-read.mjs"
+      - ".github/workflows/legacy-supabase-original-storage-read-probe.yml"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-legacy-supabase-private-read-diagnostic
+  cancel-in-progress: false
+jobs:
+  safe-without-secrets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      APP_SUPABASE_URL: ""
+      SUPABASE_DB_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Source identity and no-deletion guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/probe-legacy-supabase-original-storage-read.mjs
+          node scripts/ops/probe-legacy-supabase-original-storage-read.mjs || test "$?" -eq 3
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/supabase-original-byte-read-access.json");
+          if(r.classification!=="EXACT_LEGACY_READ_CREDENTIALS_NOT_CONFIGURED"||
+          r.source_database_writes!==0||r.source_storage_deletes!==0||
+          r.b2_requests!==0||r.project_deletion_authorized!==false||
+          r.source_data_or_file_paths_published!==false)
+          throw Error("LEGACY_SOURCE_NO_SECRET_PROBE_CONTRACT_FAILED");
+          NODE
+  test-authenticated-read-only-source:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Probe one smallest real original private object, no B2 quota
+        shell: bash
+        run: node scripts/ops/probe-legacy-supabase-original-storage-read.mjs
+      - name: Preserve only sanitized restriction class, never raw bytes
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: old-supabase-read-classification-${{ github.run_id }}
+          path: artifacts/legacy-exit/supabase-original-byte-read-access.json
+          retention-days: 14
+          if-no-files-found: warn
