@@ -1,22 +1,41 @@
 import {describe,expect,it} from "vitest";
 import {readFileSync} from "node:fs";
 import {deriveStatelessSignals} from "../lib/stateless-intelligence-model";
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS} from "../../scripts/lib/global-official-release-feeds.mjs";
 import {FIVE_MINUTE_NEWS_FASTLANE,FIVE_MINUTE_NEWS_FALLBACK,
- FASTLANE_MAX_FALLBACK_READS_PER_RUN,decideFiveMinuteFallbackCategories,
+ FASTLANE_MAX_FALLBACK_READS_PER_RUN,FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN,decideFiveMinuteFallbackCategories,
  readFiveMinuteNewsFastlane} from "../lib/stateless-public-intelligence.server";
 
 const read=(p:string)=>readFileSync(p,"utf8");
 const CATS=["geopolitics","macro","rare_earth"];
 describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
- it("pins seven source-governed original publishers across three domains with ECB WTO UK DOE",async()=>{
-   expect(FIVE_MINUTE_NEWS_FASTLANE).toHaveLength(7);
-   expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.category)).toEqual(["geopolitics","geopolitics","macro","macro","macro","rare_earth","rare_earth"]);
-   expect(new Set(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).size).toBe(7);
+ it("pins ten bounded official original feeds across three domains with global source reuse",async()=>{
+   expect(FIVE_MINUTE_NEWS_FASTLANE).toHaveLength(10);
+   expect(FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN).toBe(10);
+   expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.category)).toEqual([
+     "geopolitics","geopolitics","geopolitics",
+     "macro","macro","macro","macro",
+     "rare_earth","rare_earth","rare_earth"]);
+   expect(new Set(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).size).toBe(10);
    expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).toEqual([
-     "un_news","uk_fcdo","fed_press","wto_trade_original_rss",
-     "ecb_press","nrcan_releases","us_doe_news_minerals"]);
+     "un_news","uk_fcdo","un_press_global","fed_press","wto_trade_original_rss",
+     "ecb_press","boc_press_global","nrcan_releases","us_doe_news_minerals",
+     "bc_minerals_global"]);
    const collector=read("src/lib/stateless-public-intelligence.server.ts");
-   expect(collector).toContain("SOURCES.filter(s=>s.id===id && s.category===category)");
+   expect(collector).toContain("officialSources.filter(s=>s.id===id && s.category===category)");
+   expect(collector).toContain("FIVE_MINUTE_NEWS_FASTLANE.length>FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN");
+   for(const id of ["un_press_global","boc_press_global","bc_minerals_global"]){
+     const entry=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((x:{id:string})=>x.id===id);
+     expect(entry?.production_update_reader).toBe(true);
+     expect(entry?.format).toBe("rss");
+     expect(entry?.url).toMatch(/^https:\/\//);
+     expect(entry?.poll_minutes).toBe(30);
+     expect(entry?.path).toBeInstanceOf(RegExp);
+   }
+   // UN Press + UN News are not two independent organizations; fastlane
+   // transport is only original-source discovery, never corroboration.
+   expect(collector).toContain("not independent");
+   expect(collector).toContain("const officialSources=[...SOURCES,...GLOBAL_SOURCES]");
    expect(collector).toContain("const batches=await Promise.all(selected.map");
    expect(collector).toContain("deriveStatelessSignals(candidates,now,{maxSignals})");
    expect(collector).toContain("readSource(source,now)");
