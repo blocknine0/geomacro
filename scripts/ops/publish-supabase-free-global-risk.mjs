@@ -219,6 +219,11 @@ async function main() {
     direct_b2_readback_verified: true, exact_gzip_restore_verified: true,
     d1_public_readback_verified: true,
     original_event_reviewed: true,
+    historical_b2_lineage_sha_linked: produced.reviewProof.history_append_only_b2_lineage_verified,
+    history_total_verified_snapshots: produced.historyValue.lineage.total_verified_snapshots,
+    history_hot_projection_rows: produced.historyValue.lineage.retained_snapshot_rows,
+    history_prior_immutable_b2_snapshots:
+      produced.historyValue.lineage.older_snapshots_in_pinned_b2_history,
     private_proof_published: false, private_only_promoted: false,
     supabase_reads: 0, supabase_writes: 0,
     funds_spent_usdc: 0, x402_activation_performed: false,
