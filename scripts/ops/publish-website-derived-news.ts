@@ -178,10 +178,12 @@ try {
       sourceRefs,cards,now.getTime()))reconciled.set(id,ref);
   }
   const audit=await auditEveryDerivedNewsOriginal({
-    signals,originalRefs:reconciled,now,maxReadbacks:6,maxPerCategory:2,
+    signals,originalRefs:reconciled,now,maxReadbacks:6,maxPerCategory:4,
   });
   if(audit.ingested_news_examined!==signals.length ||
-     audit.exact_page_byte_rereads_attempted>6 ||
+     audit.exact_page_byte_rereads_attempted>4 ||
+     audit.bundled_source_quota?.protected_unused_reserve!==2 ||
+     audit.bundled_source_quota?.reserve_touched!==false ||
      audit.signed_commercial_intelligence_created!==false ||
      audit.per_article_commercial_rights_verified!==false ||
      audit.x402_charges!==0)
@@ -193,6 +195,7 @@ try {
     schema:audit.schema,checked_at:audit.checked_at,
     ingested_news_examined:audit.ingested_news_examined,
     exact_page_byte_rereads_attempted:audit.exact_page_byte_rereads_attempted,
+    bundled_source_quota:audit.bundled_source_quota,
     verified_original_page_bytes_and_native_time:audit.verified_original_page_bytes_and_native_time,
     pending_or_unverified_news_count:audit.pending_or_unverified_news_count,
     categories:audit.categories,

@@ -3,6 +3,8 @@ name: Risk Indices Verified GRI Parent Repair Backstop (No Funds)
 # Guarantees a missed GRI->indices workflow_run trigger can recover while
 # the genuine signed GRI parent is STILL current. No news score, no signatures,
 # no Supabase, no B2, no customer payment in this scheduler.
+# Verify current GitHub main and signed D1 parent independently of website
+# publication; exact website SHA remains a separate launch acceptance.
 on:
   schedule:
     - cron: "11,41 * * * *"

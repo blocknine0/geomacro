@@ -1,5 +1,6 @@
 import {registeredOriginalPublisherOrganization} from "./independent-same-event-qualification.mjs";
 import {verifyGeomacroUnclaimedOriginalPage} from "./geomacro-original-page-readback.mjs";
+import {createBundledOriginalReadbackBudget,bundleRoundRobinNews} from "./bundled-original-source-quota.mjs";
 
 /**
  * Aggregate-only, fail-closed audit of EVERY incoming free D1 news signal.
@@ -31,18 +32,24 @@ const error=()=>{throw Error("ALL_NEWS_EVIDENCE_INPUT_INVALID")};
 
 export async function auditEveryDerivedNewsOriginal({
  signals,originalRefs,now=new Date(),verify=verifyGeomacroUnclaimedOriginalPage,
- maxReadbacks=6,maxPerCategory=2,
+ maxReadbacks=6,maxPerCategory=4,
 }={}){
  if(!Array.isArray(signals)||signals.length>MAX_SIGNALS||
    !(originalRefs instanceof Map)||!(now instanceof Date)||
    !Number.isFinite(now.getTime())||typeof verify!=="function"||
    !Number.isSafeInteger(maxReadbacks)||maxReadbacks<0||maxReadbacks>6||
-   !Number.isSafeInteger(maxPerCategory)||maxPerCategory<0||maxPerCategory>2)
+   !Number.isSafeInteger(maxPerCategory)||maxPerCategory<0||maxPerCategory>6)
   error();
  const seen=new Set(),rows=[],rereadByCategory=new Map(DOMAINS.map(x=>[x,0]));
- const ordered=[...signals].sort((a,b)=>
-   String(b?.published_at??"").localeCompare(String(a?.published_at??"")) ||
-   String(a?.id??"").localeCompare(String(b?.id??"")));
+ // Physical GETs are bundled, not partitioned into wasteful 2/2/2 lanes.
+ // Keep two of the six maximum readback slots unused as free-tier headroom.
+ // Developer tests can request a smaller explicit cap without reserving two
+ // of those already-reduced test slots.
+ const bundle=createBundledOriginalReadbackBudget({
+   hardCeiling:maxReadbacks,reserved:maxReadbacks===6?2:0,perHostMax:1,
+ });
+ const proofCache=new Map();
+ const ordered=bundleRoundRobinNews(signals);
  let rereads=0;
  for(const signal of ordered){
   if(!signal||typeof signal!=="object"||Array.isArray(signal)||
@@ -83,33 +90,43 @@ export async function auditEveryDerivedNewsOriginal({
       reference.publishedAt!==signal.published_at ||
       typeof reference.articleUrl!=="string"){
     row.original_page_evidence_status=STATUSES.NO_PIN;
-   }else if(rereads>=maxReadbacks||
-      rereadByCategory.get(signal.category)>=maxPerCategory){
-    row.original_page_evidence_status=STATUSES.QUOTA;
    }else{
-    rereads++;
-    rereadByCategory.set(signal.category,rereadByCategory.get(signal.category)+1);
-    let proof=null;
-    try{
-     proof=await verify({original:{
-      category:signal.category,
-      originating_reporting_organization_id:organization,
-      original_article_url:reference.articleUrl,
-      original_published_at:signal.published_at,
-     },now});
-    }catch{/* denied, mismatched or network issue is NOT evidence */}
-    if(proof?.schema==="geomacro.private-unclaimed-original-pre-review.v1"&&
-       proof.accepted===true&&
-       proof.status==="ORIGINAL_BYTES_AND_CLOCK_VERIFIED_REVIEW_PENDING"&&
-       /^[0-9a-f]{64}$/u.test(proof.original_article_sha256??"")&&
-       Date.parse(proof.original_native_published_at)===at&&
-       proof.source_article_rights_verified===false&&
-       proof.facts_signature_verified===false&&
-       proof.rights_signature_verified===false&&
-       proof.signed_gro_created===false&&proof.payment_authorized===false){
-     row.original_page_evidence_status=STATUSES.VERIFIED;
-     row.exact_original_page_html_readback=true;
-    }else row.original_page_evidence_status=STATUSES.REJECTED;
+    const key=JSON.stringify([signal.category,organization,url.href,signal.published_at]);
+    const cached=proofCache.get(key);
+    // Exactly the SAME issuer/original/category/native publication time may
+    // be reused for multiple derived views within this run. Never reuse a
+    // cross-issuer or cross-date proof, including a prior run's stale proof.
+    if(cached){
+      row.original_page_evidence_status=cached.status;
+      row.exact_original_page_html_readback=cached.verified;
+    }else if(rereadByCategory.get(signal.category)>=maxPerCategory||
+       !bundle.admit(url.hostname)){
+      row.original_page_evidence_status=STATUSES.QUOTA;
+    }else{
+      rereads++;
+      rereadByCategory.set(signal.category,rereadByCategory.get(signal.category)+1);
+      let proof=null;
+      try{
+       proof=await verify({original:{
+        category:signal.category,
+        originating_reporting_organization_id:organization,
+        original_article_url:reference.articleUrl,
+        original_published_at:signal.published_at,
+       },now});
+      }catch{/* denied, rate-limited or mismatch: fail closed; no retry */}
+      const verified=proof?.schema==="geomacro.private-unclaimed-original-pre-review.v1"&&
+        proof.accepted===true&&
+        proof.status==="ORIGINAL_BYTES_AND_CLOCK_VERIFIED_REVIEW_PENDING"&&
+        /^[0-9a-f]{64}$/u.test(proof.original_article_sha256??"")&&
+        Date.parse(proof.original_native_published_at)===at&&
+        proof.source_article_rights_verified===false&&
+        proof.facts_signature_verified===false&&
+        proof.rights_signature_verified===false&&
+        proof.signed_gro_created===false&&proof.payment_authorized===false;
+      row.original_page_evidence_status=verified?STATUSES.VERIFIED:STATUSES.REJECTED;
+      row.exact_original_page_html_readback=verified;
+      proofCache.set(key,{status:row.original_page_evidence_status,verified});
+    }
    }
   }
   rows.push(row);
@@ -130,6 +147,7 @@ export async function auditEveryDerivedNewsOriginal({
   ingested_news_examined:rows.length,
   exact_page_byte_rereads_attempted:rereads,
   exact_page_byte_rereads_limit:maxReadbacks,
+  bundled_source_quota:bundle.snapshot(),
   verified_original_page_bytes_and_native_time:verified,
   pending_or_unverified_news_count:rows.length-verified,
   categories:counts,rows,

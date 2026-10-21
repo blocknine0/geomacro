@@ -4,7 +4,7 @@ import {assertVerifiedCurrentGlobalRiskD1Parent} from "../lib/risk-indices-verif
 
 const REPO="blocknine0/geomacro";
 const CONTROL="https://geomacro-control-plane.daspallab202391.workers.dev";
-const SITE="https://geomacro.live/.well-known/geomacro-build.json";
+const MAIN="https://api.github.com/repos/"+REPO+"/git/ref/heads/main";
 const TARGET="risk-indices-verified-d1-parent.yml";
 const SHA=/^[a-f0-9]{40}$/u;
 const HASH=/^[a-f0-9]{64}$/u;
@@ -122,13 +122,14 @@ export async function runRiskIndicesVerifiedParentBackstop({
      env.GITHUB_SHA!==env.EXPECTED_CANONICAL_MAIN_SHA)
     throw Error("INDICES_REPAIR_PROTECTED_CANONICAL_MAIN_REQUIRED");
   if(!Number.isFinite(now.getTime()))throw Error("INDICES_REPAIR_CLOCK_INVALID");
-  // The website build must match the canonical main that downstream will
-  // verify again before its first quota-governed B2 GET or D1 write.
-  const build=await safeJson(SITE,fetchImpl);
-  if(!build.ok||build.value?.schema_version!=="geomacro.deployment-build.v1"||
-     build.value.canonical_repository!==REPO||
-     build.value.canonical_main_sha!==env.GITHUB_SHA)
-    return EMPTY("SKIPPED_DEPLOYMENT_NOT_CURRENT","EXACT_LOVABLE_SHA_REQUIRED");
+  // Backend recovery follows canonical code, independently of Lovable publish.
+  // The protected publisher rechecks remote main before B2 GET or D1 write.
+  // Website SHA parity remains a separate launch acceptance requirement.
+  const main=await safeJson(MAIN,fetchImpl);
+  if(!main.ok||main.value?.ref!=="refs/heads/main"||
+     main.value.object?.type!=="commit"||
+     main.value.object.sha!==env.GITHUB_SHA)
+    return EMPTY("SKIPPED_CANONICAL_MAIN_NOT_CURRENT","EXACT_GITHUB_MAIN_SHA_REQUIRED");
   const gri=await safeJson(CONTROL+"/v1/public/hot-snapshot/global-risk",fetchImpl);
   if(!gri.ok)
     return Object.freeze({...EMPTY("SKIPPED_NO_CURRENT_SIGNED_GRI","PUBLIC_GRI_NOT_AVAILABLE"),
@@ -143,7 +144,7 @@ export async function runRiskIndicesVerifiedParentBackstop({
   if(!decision.eligible)return decision;
   if(typeof env.GITHUB_TOKEN!=="string"||env.GITHUB_TOKEN.length<20)
     throw Error("INDICES_REPAIR_GITHUB_ACTIONS_DISPATCH_TOKEN_REQUIRED");
-  // GET verified deployment+parent+child first, THEN check dedupe metadata.
+  // GET canonical main+verified parent+child first, THEN check dedupe metadata.
   // This public-health read never grants authorization to score a GRI.
   const recentUrl="https://api.github.com/repos/"+REPO+
     "/actions/workflows/"+TARGET+"/runs?per_page=20";

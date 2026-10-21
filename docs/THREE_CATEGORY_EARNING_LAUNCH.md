@@ -221,3 +221,36 @@ checked 618 packages with no known vulnerabilities. Full Product CI passed on
 cfbdfe5 before this dependency update; newest-head CI remains independently
 required. Growth Agent still observes a real Early Warning 503 and the legacy
 staging load still needs D1 fixtures; neither gate has been weakened or waived.
+
+## Current signed-product recovery audit (21 October, 15:49 IST)
+
+Public root-cause run 39583757039 confirms D1 schema 5 is reachable (HTTP 200).
+All three hot projections are rejected for SOURCE_TOO_OLD and EXPIRED:
+Intelligence original age 16,774 minutes, Global Risk 18,010 minutes and Risk
+Indices 18,986 minutes at that observation. This is not a D1 outage. Last
+readable historical anchor is not current signed product evidence.
+
+Original intake run 39577555336 found zero byte-verified six-hour review leads.
+Signing backstop run 39562696595 reported no current independently approved
+Intelligence input and no reviewed GRI input/country certificates. Successful
+scheduler jobs therefore did not publish products. These inputs must be real
+and signed by the existing approved distinct authorities; neither a receiving
+wallet address, owner launch approval nor a generic free-source registry grants
+those signatures or article-specific rights. No usable current signed package
+was identified by the targeted Library search in this session.
+
+Risk Indices repair run 39562492369 stopped at EXACT_LOVABLE_SHA_REQUIRED before
+inspecting its signed GRI parent. This scheduler contradicted its protected
+backend publisher, which already independently verifies current GitHub main.
+The backstop now checks the exact canonical GitHub main ref, then validates
+its real signed parent and existing child. It no longer waits on the website
+publish clock. Changed/malformed/unavailable main, expired or unverified parent,
+active/successful publisher and retry budget still prevent dispatch. The
+publisher retains independent current-main, B2 proof, source/expiry, hash,
+quota and D1 promotion checks. Website exact-SHA acceptance remains separate.
+
+This fixes recovery scheduling only. It does not turn 0/3 into 3/3, extend
+old product dates, create a reviewer signature or publish a product. Full
+closure still requires approved current Intelligence and GRI/certificate
+bundles through their existing protected publishers, derived Risk Indices,
+exact B2/D1 readback and live default deep health HTTP 200.
