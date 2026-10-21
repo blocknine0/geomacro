@@ -39,11 +39,6 @@ const blocked=(reason)=>{
  output.status="BLOCKED_NO_DELETION";output.reason=reason;
  receipt();process.exitCode=0;
 };
-const sha=path=>{
- const h=createHash("sha256");
- // Stream through chunks without buffering all private dataset in memory.
- const fd=requireNotUsed();
-};
 const shaFile=async path=>new Promise((resolvePromise,reject)=>{
  const h=createHash("sha256");
  const r=createReadStream(path);
@@ -136,7 +131,7 @@ async function main(){
   "-v",mount,image,"pg_dump","-d","postgres",
   "--format=custom","--compress=6","--no-owner","--no-privileges",
   "--lock-wait-timeout=15000","--file=/backup/primary.pgcustom"];
- if(!run("docker",cmd,dbEnv,40*60*1000,50000))
+ if(run("docker",cmd,dbEnv,40*60*1000,50000)===null)
   return blocked("POSTGRES17_FULL_LOGICAL_DUMP_FAILED");
  if(!statSync(local).isFile()||statSync(local).size<1024*1024||
     statSync(local).size>MAX)
