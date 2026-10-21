@@ -3,7 +3,7 @@ import {lstatSync,readFileSync} from 'node:fs';
 import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client.ts';
 import {automatedInputId} from '../../src/lib/automated-intelligence-input.ts';
 import {canonicalizePrivateOriginalSourceClock} from '../../src/lib/private-source-handoff.ts';
-import type {StatelessSourceCandidate} from '../../src/lib/stateless-intelligence-model.ts';
+import {deriveStatelessSignals,type StatelessSourceCandidate} from '../../src/lib/stateless-intelligence-model.ts';
 const endpoint='https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/source-handoffs';
 export function readPrivateSourceRefs(env=process.env){
  const path=env.GEOMACRO_LOW_REVIEW_REFS_FILE,temp=env.RUNNER_TEMP;
@@ -37,13 +37,33 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
   throw Error('PRIVATE_HANDOFF_INDEX_INVALID');
  const canonicalIds=new Map<string,string>(index.handoffs.map((x:any)=>[x.input_id,x.signal_id]));
  let equivalentNativeClocksCanonicalized=0;
+ const deferred={clock:0,url:0,shape:0,derivation:0};
  for(const signal of signals){const original=refs.get(signal.id);if(original){
   const input_id=await automatedInputId(signal);
-  if(canonicalIds.get(input_id)===signal.id&&!items.has(input_id)){
-   const ref=canonicalizePrivateOriginalSourceClock(original,signal);
-   if(ref!==original)equivalentNativeClocksCanonicalized++;
-   items.set(input_id,{input_id,ref});
+  if(canonicalIds.get(input_id)!==signal.id||items.has(input_id))continue;
+  // Never make one invalid feed/original ref poison all other independently
+  // signed journal IDs in the same D1 batch. Rejected candidates are
+  // NOT verified, approved, B2-staged, or promoted to commercial input.
+  const ref=canonicalizePrivateOriginalSourceClock(original,signal);
+  if(!ref||typeof ref!=='object'||Array.isArray(ref)||
+     Object.keys(ref).some(k=>!['title','articleUrl','publishedAt','datePrecision','sourceId','category','credit'].includes(k))||
+     typeof ref.title!=='string'||ref.title.length<1||ref.title.length>2000||
+     typeof ref.articleUrl!=='string'||ref.articleUrl.length>2048||
+     typeof ref.sourceId!=='string'||!/^[a-zA-Z0-9_.:-]{1,128}$/u.test(ref.sourceId)||
+     !(ref.credit===null||typeof ref.credit==='string'&&ref.credit.length<=1000)||
+     ref.category!==signal.category){deferred.shape++;continue}
+  if(ref.publishedAt!==signal.published_at){deferred.clock++;continue}
+  try{
+   const u=new URL(ref.articleUrl);
+   if(u.protocol!=='https:'||u.username||u.password||u.port||u.search||u.hash||
+      u.href!==ref.articleUrl){deferred.url++;continue}
+  }catch{deferred.url++;continue}
+  const derived=deriveStatelessSignals([ref],now.getTime())[0];
+  if(!derived||derived.id!==signal.id||await automatedInputId(derived)!==input_id){
+   deferred.derivation++;continue
   }
+  if(ref!==original)equivalentNativeClocksCanonicalized++;
+  items.set(input_id,{input_id,ref});
  }}
  const all=[...items.values()];
  for(let offset=0;offset<all.length;){
@@ -85,6 +105,11 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
  // Counts only. Original titles/URLs, internal IDs and LOW verdicts are private.
  return {schema:'geomacro.private-source-handoff-run.v1',references_accepted:all.length,
   equivalent_native_clock_representations_normalized:equivalentNativeClocksCanonicalized,
+  original_refs_deferred_clock_mismatch:deferred.clock,
+  original_refs_deferred_url:deferred.url,
+  original_refs_deferred_shape:deferred.shape,
+  original_refs_deferred_derivation:deferred.derivation,
+  all_private_original_refs_qualified:deferred.clock+deferred.url+deferred.shape+deferred.derivation===0,
   public_sources_disclosed:false,source_evidence_verified:false,commercial_rights_attested:false,
   b2_requests:0,supabase_requests:0,payments:0};
 }
