@@ -21,7 +21,10 @@ test("actual existing pinned catalogue attribution cannot be laundered into sour
  const p=planGeomacroCommercialRightsIntake([base,other],opts);
  assert.equal(p.unique_originals,2);
  assert.equal(p.catalogue_source_count>=10,true);
- assert.equal(p.rights_dispositions.ATTRIBUTION_INCOMPATIBLE_WITH_PRIVATE_DELIVERY,2);
+ assert.equal(p.rights_dispositions.ATTRIBUTION_INCOMPATIBLE_WITH_PRIVATE_DELIVERY,1);
+ assert.equal(p.rights_dispositions.PUBLIC_DOMAIN_AND_THIRD_PARTY_COMPONENTS_REVIEW_REQUIRED,1);
+ assert.equal(p.items[1].source_reuse_decision,"PUBLIC_DOMAIN_ORIGINAL_SCOPE_REVIEW_REQUIRED");
+ assert.equal(p.items[1].source_legal_permission_certified,false);
  assert.equal(p.issuer_facts_signatures_created,0);
  assert.equal(p.issuer_rights_signatures_created,0);
  assert.equal(p.gro_signatures_created,0);
