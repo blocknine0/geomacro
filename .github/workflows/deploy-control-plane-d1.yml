@@ -15,6 +15,8 @@ on:
       - "scripts/ops/verify-predge-auth-research-delivery.mjs"
       - "src/__tests__/predge-auth-research-live-verifier.test.ts"
       - "scripts/ops/verify-d1-central-security-budget.mjs"
+      - "scripts/ops/verify-private-handoff-production.mjs"
+      - "scripts/tests/verify-private-handoff-production.test.mjs"
 
 permissions:
   contents: read
@@ -58,6 +60,9 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 2; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
           test "${#ROOT_LEDGER_TOKEN}" -ge 32 || { echo "GEOMACRO_COMMERCE_LEDGER_TOKEN must be at least 32 characters"; exit 2; }
+
+      - name: Test private source-handoff acceptance contracts without network
+        run: node --test scripts/tests/verify-private-handoff-production.test.mjs
 
       - name: Discover or create the single production D1 database
         id: d1
@@ -305,6 +310,14 @@ jobs:
           done
           test "$CODE" = "200" || { echo "Authenticated control-plane write failed: HTTP $CODE"; cat /tmp/auth.json; exit 9; }
           grep -q '"ok":true' /tmp/auth.json || { echo "Authenticated response missing ok=true"; exit 9; }
+
+      - name: Independently verify private handoff D1 reads and restricted capabilities
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-private-handoff-production.mjs
 
       - name: Verify three-domain continuity direct Worker readback (no funds)
         env:
