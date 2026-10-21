@@ -62,7 +62,7 @@ describe("#1827 Telegram: shared D1 quota + frozen Postgres no-B2 consumer",()=>
       {...quota(),limits:{...B2_DAILY_LIMITS,GET:999}},
       {...quota(),used:{...validUsed,total:7}},
       {...quota(),used:{...validUsed,GET:-1,total:4}},
-      {...quota(),used:{...validUsed,GET:26,total:31}},
+      {...quota(),used:{...validUsed,GET:46,total:51}},
     ];
     for(const q of invalid){
       expect(()=>evaluateTelegramConsumerAdmission({
