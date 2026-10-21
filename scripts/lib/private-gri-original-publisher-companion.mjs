@@ -70,6 +70,12 @@ export function capturePrivateGriSourceCompanion({
     "PRIVATE_GRI_COMPANION_STAGE_BINDING_INVALID");
 
   const classifiedAt=capturedAt.toISOString();
+  const observedAt=staged.first_observed_at ?? classifiedAt;
+  check((staged.published_at ?? original)===original &&
+    (staged.classification_scored_at ?? classifiedAt)===classifiedAt &&
+    Date.parse(original)<=Date.parse(observedAt) &&
+    Date.parse(observedAt)<=nowMs,
+    'PRIVATE_GRI_COMPANION_CLOCK_BINDING_INVALID');
   return {
     event_id:eventId,
     category:staged.category,
@@ -78,7 +84,7 @@ export function capturePrivateGriSourceCompanion({
     private_source_url:urlText,
     private_source_domain:domain,
     original_published_at:original,
-    first_observed_at:classifiedAt,
+    first_observed_at:observedAt,
     classification_scored_at:classifiedAt,
     classifier_version:staged.classifier.version,
     classifier_prompt_version:staged.classifier.prompt_version,
@@ -117,7 +123,11 @@ function validateCompanionRow(row,staged,nowMs) {
   const scored=iso(row.classification_scored_at,nowMs);
   const hash=sha256(title.toLowerCase());
   check(published<=observed && published<=scored &&
-    observed===scored &&
+    observed<=scored &&
+    (staged?.first_observed_at !== undefined || observed===scored) &&
+    (staged?.published_at ?? published)===published &&
+    (staged?.first_observed_at ?? observed)===observed &&
+    (staged?.classification_scored_at ?? scored)===scored &&
     row.private_source_title===title &&
     row.private_source_title_sha256===hash &&
     row.private_source_domain===url.hostname.toLowerCase() &&

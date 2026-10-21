@@ -77,6 +77,14 @@ export function makePrivateStageRecord({ article, assessment, category, now = ne
     throw new Error("PRIVATE_SCORING_CLASSIFIER_PROVENANCE_INVALID");
   }
   const timestamp = safeTime(article?.publishedAt, now.getTime());
+  const scoredAt = now.toISOString();
+  // Discovery may preserve an earlier actual observation. With no preserved
+  // clock we can attest observation only at classification, never at publication.
+  const firstObservedAt = article?.firstObservedAt === undefined ? scoredAt :
+    safeTime(article.firstObservedAt, now.getTime());
+  if (Date.parse(timestamp) > Date.parse(firstObservedAt) ||
+      Date.parse(firstObservedAt) > now.getTime())
+    throw new Error('PRIVATE_SCORING_CLOCK_ORDER_INVALID');
   const identity = sourceIdentity(article);
   const derived = preparePrivateDerivedText(assessment);
   const id = sha256([category, identity.source_url, identity.source_title_sha256, timestamp].join("\n"));
@@ -84,6 +92,11 @@ export function makePrivateStageRecord({ article, assessment, category, now = ne
     id,
     category,
     observed_at: timestamp,
+    // observed_at is the legacy v1 publication alias; never use it as the
+    // classifier/verification clock. Preserve old immutable archive readers.
+    published_at: timestamp,
+    first_observed_at: firstObservedAt,
+    classification_scored_at: scoredAt,
     severity,
     confidence,
     narrative: derived.narrative,
@@ -123,6 +136,16 @@ export function makePrivateStageBundle(records, { now = new Date() } = {}) {
       throw new Error("PRIVATE_SCORING_STAGE_ROW_INVALID");
     }
     safeTime(row.observed_at, now.getTime());
+    const clocks = ['published_at', 'first_observed_at', 'classification_scored_at'];
+    if (clocks.some(key => Object.hasOwn(row, key))) {
+      if (!clocks.every(key => typeof row[key] === 'string') ||
+          row.published_at !== row.observed_at ||
+          clocks.some(key => safeTime(row[key], now.getTime()) !== row[key]) ||
+          Date.parse(row.published_at) > Date.parse(row.first_observed_at) ||
+          Date.parse(row.first_observed_at) > Date.parse(row.classification_scored_at) ||
+          Date.parse(row.classification_scored_at) > now.getTime())
+        throw new Error('PRIVATE_SCORING_CLOCK_ORDER_INVALID');
+    }
     const source = sourceIdentity({
       url: row.private_source?.source_url,
       sourceDomain: row.private_source?.source_domain,

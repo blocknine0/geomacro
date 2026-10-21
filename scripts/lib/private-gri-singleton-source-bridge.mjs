@@ -59,7 +59,8 @@ export function buildPrivateGriSingletonSourceBridge({
     const observedAt=Date.parse(source.first_observed_at);
     const classifiedAt=Date.parse(source.classification_scored_at);
     invariant([publishedAt,observedAt,classifiedAt].every(Number.isFinite) &&
-      publishedAt<=observedAt && classifiedAt===observedAt &&
+      publishedAt<=observedAt && observedAt<=classifiedAt &&
+      classifiedAt<=nowMs+MAX_FUTURE_MS &&
       observedAt<=nowMs+MAX_FUTURE_MS &&
       publishedAt<=nowMs+MAX_FUTURE_MS &&
       nowMs-publishedAt<=MAX_AGE_MS &&

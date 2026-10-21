@@ -39,9 +39,13 @@ export function prepareIndependentReviewPackage({pins,stageBytes,companionBytes,
  validatePrivateGriCompanionBundle(companion,stage,{now});
  const missing=STAGE_DOMAINS.filter(domain=>stage.counts[domain]===0);
  const tasks=stage.rows.map(row=>{
-  const age=at-Date.parse(row.observed_at);
+  const source=companion.rows.find(source=>source.event_id===row.id);
+  const age=at-Date.parse(source.original_published_at);
   return {event_id:row.id,category:row.category,
-   source_as_of:row.observed_at,original_age_minutes:Math.floor(age/60000),
+   source_as_of:source.original_published_at,original_age_minutes:Math.floor(age/60000),
+   first_observed_at:source.first_observed_at,
+   classification_scored_at:source.classification_scored_at,
+   verification_checked_at:now.toISOString(),
    within_intelligence_6h:age>=0&&age<=6*3600000,
    within_gri_90m:age>=0&&age<=90*60000,
    required_review:['FIRST_PARTY_CONTENT_AND_NATIVE_CLOCK','SAME_EVENT_INDEPENDENT_ORIGINALS',
