@@ -43,12 +43,12 @@ describe("#1827 read-only B2 daily account quota gate for governed EIA/NOAA",()=
   });
 
   it("admits exactly one shared PUT+GET pair without weakening account limits",()=>{
-    const decision = evaluateGovernedB2Headroom(from({GET:24,PUT:54}),{
+    const decision = evaluateGovernedB2Headroom(from({GET:44,PUT:54}),{
       getRequests:1,putRequests:1,now:clock,
     });
     expect(decision.admitted).toBe(true);
     expect(decision.b2_requests_by_this_check).toBe(0);
-    const denied = evaluateGovernedB2Headroom(from({GET:25,PUT:54}),{
+    const denied = evaluateGovernedB2Headroom(from({GET:45,PUT:54}),{
       getRequests:1,putRequests:1,now:clock,
     });
     expect(denied.admitted).toBe(false);
@@ -56,9 +56,9 @@ describe("#1827 read-only B2 daily account quota gate for governed EIA/NOAA",()=
 
   it("holds exactly at shared GET/PUT/total limits without spending a B2 ticket",()=>{
     for(const [status,request] of [
-      [from({GET:24,PUT:5}),{getRequests:2,putRequests:2}],
+      [from({GET:44,PUT:5}),{getRequests:2,putRequests:2}],
       [from({GET:4,PUT:54}),{getRequests:2,putRequests:2}],
-      [from({GET:24,PUT:50,HEAD:5}),{getRequests:2,putRequests:2}],
+      [from({GET:44,PUT:50,HEAD:5}),{getRequests:2,putRequests:2}],
       [from({GET:17,PUT:47}),{getRequests:9,putRequests:9}],
     ] as const) {
       const d=evaluateGovernedB2Headroom(status,{...request,now:clock});

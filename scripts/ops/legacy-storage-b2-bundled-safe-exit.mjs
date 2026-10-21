@@ -110,6 +110,34 @@ async function main(){
  return halt("STORAGE_BUNDLE_PART_UNBOUNDED");
  const inventoryCred=credentials(env.B2_LEGACY_INVENTORY_KEY_ID,
   env.B2_LEGACY_INVENTORY_APPLICATION_KEY);
+ // Free-only archive admission: include ALL buckets and historic versions,
+ // not just currently visible objects. Reserve at least 1 GB under B2's
+ // advertised first-10-GiB free storage allowance. Inventory is READ ONLY.
+ const accountList=aws(["list-buckets","--output","json"],inventoryCred,2_000_000);
+ let names;
+ try {names=JSON.parse(accountList??"null")?.Buckets?.map(x=>x.Name)}
+ catch{return halt("B2_ACCOUNT_CAPACITY_INVENTORY_UNREADABLE")}
+ if(!Array.isArray(names)||names.length<1||names.length>40||
+    !names.includes(bucket)||names.some(x=>!/^[a-z0-9-]{3,63}$/.test(x)))
+  return halt("B2_ACCOUNT_WIDE_FREE_STORAGE_CAPACITY_NOT_PROVEN");
+ let usedStorageBytes=0;
+ for(const inventoryBucket of names){
+  const versions=aws(["list-object-versions","--bucket",inventoryBucket,
+    "--output","json"],inventoryCred,60_000_000);
+  let rows;
+  try{rows=JSON.parse(versions??"null")?.Versions}
+  catch{return halt("B2_HISTORIC_STORAGE_VERSIONS_INVENTORY_INVALID")}
+  if(!Array.isArray(rows))return halt("B2_HISTORIC_STORAGE_VERSIONS_INVENTORY_MISSING");
+  for(const version of rows){
+   const size=version?.Size;
+   if(!Number.isSafeInteger(size)||size<0)return halt("B2_ARCHIVE_VERSION_SIZE_INVALID");
+   usedStorageBytes+=size;
+   if(!Number.isSafeInteger(usedStorageBytes)||
+      usedStorageBytes+total>9_000_000_000)
+    return halt("B2_FREE_ACCOUNT_WIDE_STORAGE_HEADROOM_TOO_SMALL");
+  }
+ }
+ report.b2_account_free_storage_headroom_verified=true;
  const listing=aws(["list-objects-v2","--bucket",bucket,"--prefix",prefix,"--output","json"],inventoryCred);
  if(listing===null)return halt("B2_PRIVATE_STORAGE_LIST_UNAVAILABLE");
  let known;try{known=new Set((JSON.parse(listing).Contents||[]).map(x=>x.Key))}

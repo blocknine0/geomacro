@@ -25,7 +25,7 @@ function fakeD1({ exhausted = false } = {}) {
           return {
             async first() {
               expect(sql).toContain("ON CONFLICT(day_utc) DO UPDATE");
-              expect(args).toContain(25);
+              expect(args).toContain(45);
               if (exhausted) return null;
               return { total_requests: 1, get_requests: 1,
                 put_requests: 0, head_requests: 0,
