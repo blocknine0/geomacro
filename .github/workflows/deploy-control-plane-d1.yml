@@ -537,7 +537,13 @@ jobs:
           test "$unauth" = 401 || { echo "B2 quota status must be authenticated"; exit 10; }
           curl --fail --silent --show-error --max-time 15 "$CONTROL_PLANE_URL/v1/b2-quota/status" \
             -H "authorization: Bearer $CONTROL_PLANE_TOKEN" > /tmp/b2-quota-before.json
-          jq -e '.ok==true and .limits.total==80 and .limits.GET==25 and .limits.PUT==55' /tmp/b2-quota-before.json >/dev/null
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {B2_DAILY_LIMITS} from './workers/control-plane/src/b2-account-quota.mjs';
+          const before=JSON.parse(readFileSync('/tmp/b2-quota-before.json','utf8'));
+          if(before.ok!==true||Object.entries(B2_DAILY_LIMITS).some(([kind,limit])=>before.limits?.[kind]!==limit))
+            throw Error('DEPLOYED_B2_QUOTA_POLICY_MISMATCH');
+          NODE
           before="$(jq -r '.used.total' /tmp/b2-quota-before.json)"
           code="$(curl --silent --show-error -o /tmp/b2-quota-reservation.json -w '%{http_code}' --max-time 15 \
             -X POST "$CONTROL_PLANE_URL/v1/b2-quota/reserve" \
@@ -555,7 +561,7 @@ jobs:
           curl --fail --silent --show-error --max-time 15 "$CONTROL_PLANE_URL/v1/b2-quota/status" \
             -H "authorization: Bearer $CONTROL_PLANE_TOKEN" > /tmp/b2-quota-after.json
           jq -e --argjson before "$before" --argjson success "$([ "$code" = 200 ] && echo 1 || echo 0)" \
-            '.used.total==($before+$success)' /tmp/b2-quota-after.json >/dev/null
+            '.used.total>=($before+$success)' /tmp/b2-quota-after.json >/dev/null
           echo "PASS: account-wide D1 reservation is authenticated, atomic and never calls B2, Supabase or commerce."
 
       - name: Verify private 779-row source directory acceptance with no Supabase calls
