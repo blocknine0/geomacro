@@ -221,6 +221,18 @@ export async function predgeRiskGateD1(request,env,now=Date.now()){
  let body;try{body=JSON.parse(raw)}catch{return fail("INVALID_JSON",400);}
  const parsed=parseRequest(body,now);
  if(!parsed)return fail("INVALID_RISK_GATE_REQUEST",400);
+ // Read and independently verify a CURRENT GRO before reserving a paid
+ // partner request ID or burning limited D1 daily quota. An unavailable
+ // signed product is NOT a replayable paid decision: Predge must be able to
+ // retry the exact same request_id once a genuine approved GRO is published.
+ // This is a read-only preflight; no stale/unsigned fallback is allowed.
+ let gro;
+ try{
+   const row=await hotRow(env.DB,parsed.subject,now);
+   gro=row?await verifyHotGRO(row,env,parsed.subject,now):null;
+ }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
+ if(!gro)return fail("CURRENT_SIGNED_GRO_UNAVAILABLE",503,{
+   reason_code:"NO_INDEPENDENTLY_VERIFIED_CURRENT_COMMERCIAL_GRO"});
  // Only server-provisioned Predge pilot may call this route. No payment endpoint.
  const requestHash=await digest(canonical(body));
  const nowIso=new Date(now).toISOString();
@@ -254,10 +266,6 @@ export async function predgeRiskGateD1(request,env,now=Date.now()){
      VALUES(?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1
      WHERE used < ? RETURNING used`).bind(client,day,Math.min(DAY_LIMIT,HARD_CEILING)).first();
    if(!quota)return fail("RISK_GATE_DAILY_LIMIT",429,{daily_limit:DAY_LIMIT});
-   const row=await hotRow(env.DB,parsed.subject,now);
-   const gro=row?await verifyHotGRO(row,env,parsed.subject,now):null;
-   if(!gro)return fail("CURRENT_SIGNED_GRO_UNAVAILABLE",503,{
-     reason_code:"NO_INDEPENDENTLY_VERIFIED_CURRENT_COMMERCIAL_GRO"});
    const {evaluateRiskGate}=await import("../../../src/lib/risk-gate-engine.ts");
    const result=evaluateRiskGate(parsed,gro,new Date(now));
    if(result.execution_authorized!==false)throw Error("EXECUTION_BOUNDARY");
