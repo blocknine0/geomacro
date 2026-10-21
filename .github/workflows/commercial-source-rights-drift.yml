@@ -7,6 +7,8 @@ on:
     paths:
       - "scripts/lib/commercial-rights-remediation.mjs"
       - "scripts/lib/commercial-rights-remediation.test.mjs"
+      - "scripts/lib/all-news-original-evidence-audit.mjs"
+      - "scripts/lib/all-news-original-evidence-audit.test.mjs"
       - "scripts/ops/monitor-commercial-source-rights.mjs"
       - "scripts/ops/monitor-commercial-source-rights.test.mjs"
       - ".github/workflows/commercial-source-rights-drift.yml"
@@ -41,7 +43,7 @@ jobs:
           set -euo pipefail
           node --check scripts/lib/commercial-rights-remediation.mjs
           node --check scripts/ops/monitor-commercial-source-rights.mjs
-          node --test scripts/lib/commercial-rights-remediation.test.mjs scripts/ops/monitor-commercial-source-rights.test.mjs
+          node --test scripts/lib/commercial-rights-remediation.test.mjs scripts/ops/monitor-commercial-source-rights.test.mjs scripts/lib/all-news-original-evidence-audit.test.mjs
       - name: Inspect pinned official terms only, never auto-issue rights
         run: |
           set -euo pipefail
