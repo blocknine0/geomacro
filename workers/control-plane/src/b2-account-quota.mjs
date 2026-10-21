@@ -2,9 +2,9 @@
 // Counts attempts before B2 network I/O, not just successful responses.
 // Deliberately conservative: ambiguous retries are *not* refunded.
 export const B2_DAILY_LIMITS = Object.freeze({
-  total: 80, GET: 25, PUT: 55, HEAD: 10, NATIVE_AUTH: 10,
+  total: 100, GET: 45, PUT: 55, HEAD: 10, NATIVE_AUTH: 10,
 });
-// Reserve at least 15/25 shared GET tickets for trusted producers and
+// Reserve at least 35/45 shared GET tickets for trusted producers and
 // verified recovery. All THREE currently deployed public B2 cold-read Workers
 // must count against the SAME 10-ticket ceiling. This is based on total GET
 // reservations, so producer use can only make the public allocation smaller;
@@ -85,7 +85,7 @@ export async function reserveB2AccountQuota(db, body, {now = new Date()} = {}) {
   const increments = KINDS.map(k => Number(k === kind));
   // This is evaluated within the SAME atomic quota UPSERT, not as a racy
   // SELECT or user-provided priority. Recovery workers never inherit this
-  // low-priority app ceiling; the account's 25-GET hard safety cap persists.
+  // low-priority app ceiling; the account's 45-GET hard safety cap persists.
   const getCeiling = kind !== "GET" ? null
     : workflowId === "app_private_structural_serving"
       ? B2_APP_STRUCTURAL_SHARED_GET_CEILING
