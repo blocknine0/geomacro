@@ -37,6 +37,21 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/ops/legacy-b2-origin-free-storage-readback.mjs
+          node - <<'NODE'
+          const fs=require("node:fs");
+          const src=fs.readFileSync("scripts/ops/legacy-b2-origin-free-storage-readback.mjs","utf8");
+          const checks=[
+            'quota.used.GET+2>quota.limits.GET-5',
+            'avatar.archive_key===intel.archive_key',
+            'SAME_VERIFIED_SHARD_TWO_BUCKET_CANARY_UNAVAILABLE',
+            'b2_independent_original_bucket_canaries_verified!==2',
+            'source_supabase_network_requests:0',
+            'old_supabase_deletion_authorized:false',
+          ];
+          if(checks.some(p=>!src.includes(p)) ||
+            (src.match(/await gov.reserve\\("GET"\\)/g)||[]).length!==2)
+            throw Error("LEGACY_ORIGIN_FREE_TWO_GET_NO_DELETION_CONTRACT_FAILED");
+          NODE
           node scripts/ops/legacy-b2-origin-free-storage-readback.mjs || test "$?" -eq 3
           node - <<'NODE'
           const fs=require("node:fs");
