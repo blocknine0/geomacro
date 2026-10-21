@@ -1,0 +1,119 @@
+name: Legacy Supabase Storage Original Bytes to Private B2
+# Preservation-only. One bounded shard per run; first on merged main,
+# later schedule resumes. Deletes absolutely nothing and exposes no files.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "17 1,7,13,19 * * *"
+  pull_request:
+    paths:
+      - ".github/workflows/legacy-storage-b2-bundled-safe-exit.yml"
+      - "scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/legacy-storage-b2-bundled-safe-exit.yml"
+      - "scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-legacy-supabase-storage-preservation
+  cancel-in-progress: false
+
+jobs:
+  no-secret-static-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      APP_SUPABASE_URL: ""
+      SUPABASE_DB_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      B2_KEY_ID: ""
+      B2_APPLICATION_KEY: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify fail-closed on missing credentials, never destructive
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs
+          node scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/legacy-storage-bundles.json");
+          if(r.status!=="BLOCKED_NO_DELETION" ||
+             r.source_supabase_writes!==0 ||r.source_supabase_deletes!==0||
+             r.b2_deletes!==0||r.payments!==0||
+             r.old_supabase_deletion_authorized!==false||
+             r.storage_fully_migrated!==false)
+            throw Error("STORAGE_PRESERVATION_DELETION_SAFETY_BYPASSED");
+          NODE
+
+  private-original-byte-preservation:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 110
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_LEGACY_INVENTORY_KEY_ID: ${{ secrets.B2_LEGACY_INVENTORY_KEY_ID }}
+      B2_LEGACY_INVENTORY_APPLICATION_KEY: ${{ secrets.B2_LEGACY_INVENTORY_APPLICATION_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Resolve existing canonical D1 shared B2 quota ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {appendFileSync} from "node:fs";
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!/^[a-f0-9]{32}$/u.test(account??""))throw Error("OLD_ARCHIVE_D1_ACCOUNT_UNAVAILABLE");
+          const res=await fetch("https://api.cloudflare.com/client/v4/accounts/"+
+            account+"/d1/database?per_page=100",{
+            headers:{authorization:"Bearer "+process.env.CLOUDFLARE_API_TOKEN},
+            redirect:"error",signal:AbortSignal.timeout(15000)});
+          const body=await res.json();
+          const id=body?.result?.find(x=>x.name==="geomacro-control-plane")?.uuid;
+          if(!res.ok||body.success!==true||!/^[a-f0-9-]{36}$/u.test(id??""))
+            throw Error("OLD_ARCHIVE_D1_QUOTA_LEDGER_UNAVAILABLE");
+          appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+id+"\n");
+          NODE
+      - name: Independently preserve one bundled set of real original Storage bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/legacy-storage-bundles.json");
+          if(r.old_supabase_deletion_authorized!==false||
+             r.source_supabase_writes!==0||r.source_supabase_deletes!==0||
+             r.b2_deletes!==0||r.payments!==0||
+             r.storage_fully_migrated!==false)
+            throw Error("OLD_SUPABASE_DELETION_FENCE_BROKEN");
+          if(r.status==="BLOCKED_NO_DELETION")process.exitCode=3;
+          NODE
+      - name: Publish only counts and sanitized status, never Storage contents
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: legacy-original-storage-b2-${{ github.run_id }}
+          path: artifacts/legacy-exit/legacy-storage-bundles.json
+          if-no-files-found: warn
+          retention-days: 14
