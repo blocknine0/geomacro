@@ -12,6 +12,8 @@ on:
     paths:
       - ".github/workflows/legacy-storage-b2-bundled-safe-exit.yml"
       - "scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs"
+      - "scripts/ops/legacy-storage-transport-policy.mjs"
+      - "scripts/ops/legacy-storage-transport-policy.test.mjs"
   push:
     branches: [main]
     paths:
@@ -46,6 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs
+          node --test scripts/ops/legacy-storage-transport-policy.test.mjs
           node - <<'NODE'
           const fs=require('node:fs');
           const code=fs.readFileSync('scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs','utf8');
