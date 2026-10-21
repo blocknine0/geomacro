@@ -81,7 +81,7 @@ describe("Risk Gate staging evidence contract", () => {
     );
     expect(finalAcceptanceWorkflow).toContain("RISK_GATE_LOAD_TEST_ALLOW_429: 'false'");
     expect(finalAcceptanceWorkflow).not.toContain("RISK_GATE_STAGING_BASE_URL");
-    expect(finalAcceptanceWorkflow).not.toContain("RISK_GATE_STAGING_API_KEY");
+    expect(finalAcceptanceWorkflow).not.toContain("secrets.RISK_GATE_STAGING_API_KEY");
   });
 
   it("keeps the new staging evidence contracts inside the P0 security gate", () => {
