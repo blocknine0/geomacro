@@ -74,7 +74,7 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     expect(B2_PUBLIC_EDGE_GLOBAL_GET_CEILING).toBe(10);
     expect(B2_APP_STRUCTURAL_SHARED_GET_CEILING).toBe(10);
     expect(B2_APP_PRIVATE_METADATA_SHARED_GET_CEILING).toBe(18);
-    expect(B2_DAILY_LIMITS).toEqual({total:80,GET:25,PUT:55,HEAD:10,NATIVE_AUTH:10});
+    expect(B2_DAILY_LIMITS).toEqual({total:100,GET:45,PUT:55,HEAD:10,NATIVE_AUTH:10});
   });
 
   it("enforces a single account cap across 6 workflows under concurrent reservation", async () => {
@@ -91,7 +91,7 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
 
   it("separately enforces GET and total hard caps, and starts a new day with fresh tickets", async () => {
     const {db}=fakeD1();
-    for (let i=0;i<25;i++) {
+    for (let i=0;i<45;i++) {
       expect((await reserveB2AccountQuota(db,{
         kind:"GET",workflow_id:"reader_one"},{now:date})).ok).toBe(true);
     }
@@ -104,7 +104,7 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     expect((await reserveB2AccountQuota(db,{kind:"HEAD",workflow_id:"writer_two"},{now:date})).ok)
       .toBe(false);
     const status=await readB2AccountQuota(db,{now:date});
-    expect(status.used).toEqual({total:80,GET:25,PUT:55,HEAD:0,NATIVE_AUTH:0});
+    expect(status.used).toEqual({total:100,GET:45,PUT:55,HEAD:0,NATIVE_AUTH:0});
     const next=await reserveB2AccountQuota(db,{kind:"GET",workflow_id:"reader_one"},
       {now:new Date("2026-10-10T00:00:01Z")});
     expect(next.ok).toBe(true);
@@ -161,11 +161,11 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
       kind:"GET",workflow_id:"historical_gri_version_recovery"},{now:date})));
     expect(historical.every(x=>x.ok)).toBe(true);
     expect(byWorkflow.get("2026-10-09|historical_gri_version_recovery|GET")).toBe(3);
-    // Other admitted producers retain the original 25-GET HARD cap.
-    const producer=await Promise.all(Array.from({length:20},()=>reserveB2AccountQuota(db,{
+    // Other admitted producers retain the updated 45-GET HARD cap.
+    const producer=await Promise.all(Array.from({length:40},()=>reserveB2AccountQuota(db,{
       kind:"GET",workflow_id:"gri_reviewed_current"},{now:date})));
-    expect(producer.filter(x=>x.ok)).toHaveLength(12);
-    expect(counters.get("2026-10-09")?.get_requests).toBe(25);
+    expect(producer.filter(x=>x.ok)).toHaveLength(32);
+    expect(counters.get("2026-10-09")?.get_requests).toBe(45);
     expect((await reserveB2AccountQuota(db,{kind:"GET",
       workflow_id:"historical_gri_version_recovery"},{now:date})).ok).toBe(false);
   });
@@ -178,9 +178,9 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     expect((await get("app_private_source_rights")).ok).toBe(false);
     expect((await get("app_private_source_status")).ok).toBe(false);
     // Real signed publishing and historical recovery still get per-operation
-    // tickets up to the original account hard ceiling, never without a ticket.
-    for(let i=0;i<7;i++)expect((await get("historical_gri_version_recovery")).ok).toBe(true);
-    expect(counters.get("2026-10-09")?.get_requests).toBe(25);
+    // tickets up to the guarded account hard ceiling, never without a ticket.
+    for(let i=0;i<27;i++)expect((await get("historical_gri_version_recovery")).ok).toBe(true);
+    expect(counters.get("2026-10-09")?.get_requests).toBe(45);
     expect((await get("historical_gri_version_recovery")).ok).toBe(false);
   });
 
