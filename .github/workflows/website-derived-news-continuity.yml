@@ -24,6 +24,9 @@ on:
       - "scripts/ops/publish-automated-finds.ts"
       - "scripts/lib/automated-finds-run-health.mjs"
       - "scripts/lib/derived-news-source-health.mjs"
+      - "scripts/lib/all-news-original-evidence-audit.mjs"
+      - "scripts/lib/all-news-original-evidence-audit.test.mjs"
+      - "scripts/lib/geomacro-original-page-readback.mjs"
       - "scripts/lib/material-gri-news-review.mjs"
       - "scripts/tests/material-gri-news-review.test.mjs"
       - "scripts/lib/material-gri-country-evidence-worklist.mjs"
@@ -75,6 +78,10 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
+      - name: Test individual news original-byte evidence vs unverified and commercial boundaries
+        run: |
+          node --test scripts/lib/all-news-original-evidence-audit.test.mjs
+          node --test scripts/lib/geomacro-original-page-readback.test.mjs
       - name: Require existing control-plane authorization
         shell: bash
         run: |
@@ -190,6 +197,18 @@ jobs:
         with:
           name: derived-news-source-health-${{ github.run_id }}
           path: artifacts/derived-news/source-health.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Preserve redacted ORIGINAL-evidence status for EVERY incoming news item
+        # Every card has a status: actual publisher HTML byte proof or
+        # explicit unverified/quota-deferred. No raw HTML, source URL or
+        # original article SHA; a receipt is NOT source licensing.
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: derived-news-original-evidence-${{ github.run_id }}
+          path: artifacts/derived-news/all-original-evidence-audit.json
           if-no-files-found: warn
           retention-days: 14
 
