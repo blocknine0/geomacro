@@ -25,7 +25,13 @@ function proof(){
    private_original_html_hashes_exposed:false,
    rows:[{articleUrl:"https://secret.example/release",
      original_article_sha256:"a".repeat(64),title:"SECRET UPSTREAM TITLE",
-     publisher:"REAL_PRIVATE_PUBLISHER",id:"geopolitics-bc123abc"}]
+     publisher:"REAL_PRIVATE_PUBLISHER",id:"geopolitics-bc123abc",
+     original_page_evidence_status:"ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME_VERIFIED",
+     exact_original_page_html_readback:true},
+    {id:"macro-89abcdef",original_page_evidence_status:
+      "OUTSIDE_SIX_HOUR_CURRENT_PROOF_WINDOW",exact_original_page_html_readback:false},
+    {id:"rare_earth-1234abcd",original_page_evidence_status:
+      "PRIVATE_ORIGINAL_REFERENCE_NOT_AVAILABLE",exact_original_page_html_readback:false}]
   },
   reviewed_items:3,reused_current_verified_items:0,
   source_retry_cooldown_items:0,source_verified_items:1,
@@ -39,6 +45,9 @@ test("prints only aggregate source bytes review counts, never private evidence",
  assert.equal(r.current_gri_verified,false);
  assert.equal(r.legally_licensed_commercial_events_verified,false);
  assert.equal(r.rights_followup_classes.ORIGINAL_PAGE_READBACK_REQUIRED,2);
+ assert.equal(r.original_readback_deferral_classes.outside_six_hour_current_proof_window,1);
+ assert.equal(r.original_readback_deferral_classes.missing_private_original_reference,1);
+ assert.equal(r.original_readback_deferral_classes.verified,1);
  for(const forbidden of ["secret.example","SECRET UPSTREAM","PRIVATE_PUBLISHER",
    "SECRET_SIGNER","bc123abc","aaaaaaaa","articleUrl","original_article_sha256","rows"])
    assert.equal(s.includes(forbidden),false);
@@ -66,7 +75,10 @@ test("fails closed on fabricated aggregate rights or invalid source counts",()=>
   p=>p.audit.exact_page_byte_rereads_attempted=9,
   p=>p.audit.verified_original_page_bytes_and_native_time=3,
   p=>p.audit.categories.rare_earth.original_bytes_verified=2,
-  p=>p.audit.categories.geopolitics={total:1,original_bytes_verified:2,pending_or_unverified:0}
+  p=>p.audit.categories.geopolitics={total:1,original_bytes_verified:2,pending_or_unverified:0},
+  p=>p.audit.rows[1].original_page_evidence_status="SIGNED_COMMERCIAL_GRO_VERIFIED",
+  p=>p.audit.rows[0].exact_original_page_html_readback=false,
+  p=>p.audit.rows.pop()
  ];
  for(const patch of bad){const p=proof();patch(p);
   assert.throws(()=>aggregateLowSourceReview(p),/LOW_REVIEW_SAFE_RECEIPT_INVALID/)}

@@ -16,6 +16,15 @@ const STATUSES=[
   "ATTRIBUTION_WAIVER_OR_SEPARATE_CREDITED_PRODUCT_REQUIRED",
   "ARTICLE_SPECIFIC_PERMISSION_AND_RIGHTS_SIGNATURE_REQUIRED",
 ];
+const ORIGINAL_STATES=Object.freeze({
+ "ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME_VERIFIED":"verified",
+ "PRIVATE_ORIGINAL_REFERENCE_NOT_AVAILABLE":"missing_private_original_reference",
+ "ORIGINAL_DAY_PRECISION_ONLY":"original_day_precision_only",
+ "OUTSIDE_SIX_HOUR_CURRENT_PROOF_WINDOW":"outside_six_hour_current_proof_window",
+ "ORIGINAL_ISSUER_NOT_REGISTERED_FOR_BYTE_RECHECK":"issuer_not_registered_for_html_readback",
+ "ORIGINAL_PAGE_READBACK_DEFERRED_QUOTA":"quota_deferred",
+ "ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED":"original_bytes_or_clock_rejected",
+});
 const invalid=()=>{throw Error("LOW_REVIEW_SAFE_RECEIPT_INVALID")};
 const count=(value,max=600)=>Number.isSafeInteger(value)&&value>=0&&value<=max;
 const exactly=(obj,keys)=>obj&&typeof obj==="object"&&!Array.isArray(obj)&&
@@ -63,6 +72,24 @@ export function aggregateLowSourceReview(result){
   Object.keys(states).some(s=>!STATUSES.includes(s)||!count(states[s]))||
   Object.values(states).reduce((sum,n)=>sum+n,0)!==audit.ingested_news_examined)
   invalid();
+ // Read status classification ONLY. Each row may contain private source
+ // identifiers, which must never be serialized, logged or returned.
+ if(!Array.isArray(audit.rows)||audit.rows.length!==audit.ingested_news_examined||
+   audit.rows.some(r=>!r||typeof r!=="object"||
+    !Object.hasOwn(ORIGINAL_STATES,r.original_page_evidence_status)||
+    typeof r.exact_original_page_html_readback!=="boolean"||
+    r.exact_original_page_html_readback!==
+       (r.original_page_evidence_status==="ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME_VERIFIED")))
+  invalid();
+ const evidenceStatuses=Object.fromEntries(
+  Object.values(ORIGINAL_STATES).map(v=>[v,0]));
+ for(const r of audit.rows){
+   evidenceStatuses[ORIGINAL_STATES[r.original_page_evidence_status]]++;
+ }
+ if(evidenceStatuses.verified!==audit.verified_original_page_bytes_and_native_time||
+   Object.values(evidenceStatuses).reduce((a,n)=>a+n,0)!==
+     audit.ingested_news_examined)
+  invalid();
  // Never serialize audit.rows, original URLs, article SHA, signal IDs,
  // ephemeral signer contents, trust pins or private source metadata.
  const rightCounts=Object.fromEntries(STATUSES.map(state=>[state,states[state]??0]));
@@ -77,6 +104,7 @@ export function aggregateLowSourceReview(result){
   original_page_verified_by_domain:Object.fromEntries(
    DOMAINS.map(d=>[d,audit.categories[d].original_bytes_verified])),
   rights_followup_classes:rightCounts,
+  original_readback_deferral_classes:evidenceStatuses,
   requires_real_independent_facts_review:true,
   requires_real_article_scoped_rights_review:true,
   legally_licensed_commercial_events_verified:false,
