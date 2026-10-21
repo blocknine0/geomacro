@@ -16,6 +16,7 @@ import {
   type StatelessSourceCandidate,
 } from "../../src/lib/stateless-intelligence-model";
 import {checkedDerivedNews} from "../../src/lib/public-derived-news-client";
+import {auditEveryDerivedNewsOriginal} from "../lib/all-news-original-evidence-audit.mjs";
 import type {StatelessIntelligenceResult} from "../../src/lib/stateless-public-intelligence.server";
 
 const ROOT = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
@@ -158,6 +159,49 @@ try {
 }catch{
   success=false;
   console.error("::error::MATERIAL_GRI_PRIVATE_REVIEW_CANDIDATES_UNAVAILABLE");
+}
+
+// Audit ALL source-derived news cards in this publisher run, not merely
+// a selected headline or two. A feed read / pubDate is never an exact HTML
+// source proof. At most SIX additional strict first-party rechecks TOTAL;
+// every other card has an explicitly unverified/deferred status. Original
+// URLs, upstream titles and actual HTML SHA are never printed or uploaded.
+// Keep these public-safe receipts separate from scored or paid product gates.
+try {
+  const now=new Date();
+  const signals=reports.flatMap(r=>r.signals);
+  const reconciled=new Map<string,StatelessSourceCandidate>();
+  for(const category of categories){
+    const sourceRefs=privateOriginals.filter(x=>x.category===category).slice(0,1000);
+    const cards=signals.filter(x=>x.category===category);
+    for(const [id,ref] of reconcilePrivateDerivedSourceRefs(
+      sourceRefs,cards,now.getTime()))reconciled.set(id,ref);
+  }
+  const audit=await auditEveryDerivedNewsOriginal({
+    signals,originalRefs:reconciled,now,maxReadbacks:6,maxPerCategory:2,
+  });
+  if(audit.ingested_news_examined!==signals.length ||
+     audit.exact_page_byte_rereads_attempted>6 ||
+     audit.signed_commercial_intelligence_created!==false ||
+     audit.per_article_commercial_rights_verified!==false ||
+     audit.x402_charges!==0)
+    throw Error("ALL_NEWS_ORIGINAL_AUDIT_BOUNDARY_FAILED");
+  mkdirSync("artifacts/derived-news",{recursive:true});
+  writeFileSync("artifacts/derived-news/all-original-evidence-audit.json",
+    JSON.stringify(audit,null,2)+"\n",{encoding:"utf8",mode:0o600});
+  console.log(JSON.stringify({
+    schema:audit.schema,checked_at:audit.checked_at,
+    ingested_news_examined:audit.ingested_news_examined,
+    exact_page_byte_rereads_attempted:audit.exact_page_byte_rereads_attempted,
+    verified_original_page_bytes_and_native_time:audit.verified_original_page_bytes_and_native_time,
+    pending_or_unverified_news_count:audit.pending_or_unverified_news_count,
+    categories:audit.categories,
+    commercially_verified:false,payable:false,source_urls_logged:false,
+  }));
+} catch {
+  // Evidence audit unavailable does NOT upgrade RSS-only entries to verified
+  // and must not force duplicate ingestion/news polling or paid availability.
+  console.warn("::warning::ALL_NEWS_ORIGINAL_EVIDENCE_AUDIT_UNAVAILABLE");
 }
 
 // An ephemeral, sanitized hourly source-health artifact helps identify outages
