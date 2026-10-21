@@ -53,7 +53,7 @@ jobs:
           node --test scripts/lib/geomacro-rights-intake-autopilot.test.mjs
           node scripts/ops/run-geomacro-rights-intake.mjs --catalogue
       - name: Bounded weekly public official terms observation (does not grant rights)
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         run: node scripts/ops/observe-commercial-license-terms.mjs
       - name: No permission fabrication, no signed GRO, no fund transfer
         run: echo "SOURCE_RIGHTS_QUEUE_ONLY_NO_PERMISSION_GENERATED_NO_FUNDS"
