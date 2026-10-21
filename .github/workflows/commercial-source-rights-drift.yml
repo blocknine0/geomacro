@@ -1,0 +1,56 @@
+name: Commercial Source Rights Terms Drift Audit
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "23 7 * * 2"
+  pull_request:
+    paths:
+      - "scripts/lib/commercial-rights-remediation.mjs"
+      - "scripts/lib/commercial-rights-remediation.test.mjs"
+      - "scripts/ops/monitor-commercial-source-rights.mjs"
+      - "scripts/ops/monitor-commercial-source-rights.test.mjs"
+      - ".github/workflows/commercial-source-rights-drift.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/commercial-source-rights-drift.yml"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-rights-source-terms-audit
+  cancel-in-progress: false
+jobs:
+  audit-terms-no-funds:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      SUPABASE_DB_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      CLOUDFLARE_API_TOKEN: ""
+      PREDGE_RESEARCH_NEWS_TOKEN: ""
+      PREDGE_RISK_GATE_TOKEN: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Test exact-asset rights separation and non-escalation
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/commercial-rights-remediation.mjs
+          node --check scripts/ops/monitor-commercial-source-rights.mjs
+          node --test scripts/lib/commercial-rights-remediation.test.mjs scripts/ops/monitor-commercial-source-rights.test.mjs
+      - name: Inspect pinned official terms only, never auto-issue rights
+        run: |
+          set -euo pipefail
+          node scripts/ops/monitor-commercial-source-rights.mjs
+      - name: Preserve terms hash manifest for change review
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: commercial-rights-public-terms-${{ github.run_id }}
+          path: artifacts/source-rights/current-source-terms-audit.json
+          retention-days: 30
+          if-no-files-found: warn
