@@ -794,6 +794,30 @@ export async function signAutomatedFindsBatch(
   return envelope;
 }
 
+/** Automatic issuer approval of an ingested derived item, not a review verdict. */
+export async function signAutomatedIntelligenceInput(
+ payload:import('./automated-intelligence-input').AutomatedInputPayload,
+ material?:RiskObjectSigningMaterial,
+):Promise<import('./automated-intelligence-input').AutomatedInputEnvelope>{
+ const configured=material===undefined;
+ material??=signingMaterialFromEnv();
+ const {assertAutomatedInput,automatedInputSignable,verifyAutomatedInput}=await import('./automated-intelligence-input');
+ assertRiskObjectJsonKeysSafe(payload);assertAutomatedInput(payload);assertSigningWindow(payload,material);
+ const keyId=validateKeyId(material.key_id),privateKey=privateKeyFromBase64(material.private_key_pkcs8_b64);
+ const publicB64=publicKeyBase64(createPublicKey(privateKey));
+ if(material.public_key_spki_b64&&publicKeyBase64(publicKeyFromBase64(material.public_key_spki_b64))!==publicB64)
+  throw Error('AUTOMATED_INPUT_SIGNER_KEY_MISMATCH');
+ const bytes=Buffer.from(automatedInputSignable(payload),'utf8');
+ const envelope:import('./automated-intelligence-input').AutomatedInputEnvelope={payload,integrity:{
+  signing_key_id:keyId,signature_scheme:'ed25519',canonicalization:'geomacro-canonical-json-v1',
+  payload_sha256:createHash('sha256').update(bytes).digest('hex'),signature:signBytes(null,bytes,privateKey).toString('base64'),
+ }};
+ const keys=configured?loadRiskObjectVerificationKeysFromEnv():{[keyId]:{
+  public_key_spki_b64:publicB64,status:'active',not_before:material.not_before,not_after:material.not_after}};
+ if(normalizeRiskObjectVerificationKeys(keys)[keyId]?.status!=='active')throw Error('AUTOMATED_INPUT_ACTIVE_SIGNER_REQUIRED');
+ await verifyAutomatedInput(envelope,keys);return envelope;
+}
+
 export function signRiskObject(
   object: GeomacroRiskObject,
   material:

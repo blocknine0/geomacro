@@ -8,6 +8,7 @@ on:
     paths:
       - "lib/intelligence-publication-authority.mjs"
       - "workers/control-plane/**"
+      - "src/lib/automated-intelligence-input.ts"
       - ".github/workflows/deploy-control-plane-d1.yml"
       - "src/__tests__/cloudflare-d1-bootstrap-static.test.ts"
       - "scripts/ops/verify-predge-auth-research-delivery.mjs"

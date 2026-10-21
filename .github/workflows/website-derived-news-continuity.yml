@@ -15,6 +15,8 @@ on:
       - "scripts/lib/global-official-release-feeds.mjs"
       - ".github/workflows/website-derived-news-continuity.yml"
       - "scripts/ops/publish-website-derived-news.ts"
+      - "scripts/ops/publish-automated-intelligence-inputs.ts"
+      - "src/lib/automated-intelligence-input.ts"
       - "src/lib/stateless-intelligence-model.ts"
       - "src/lib/stateless-public-intelligence.server.ts"
       - "src/lib/stateless-pib-mines-original.server.ts"
@@ -111,6 +113,9 @@ jobs:
       - name: Read three domains and write only derived news to existing D1
         shell: bash
         run: bun scripts/ops/publish-website-derived-news.ts
+      - name: Automatically approve and sign every unique retained derived input
+        if: always()
+        run: bun scripts/ops/publish-automated-intelligence-inputs.ts
       - name: Produce country-scoped high-impact GRI evidence worklist (zero scoring)
         run: |
           node --test scripts/tests/material-gri-country-evidence-worklist.test.mjs
