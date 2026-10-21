@@ -60,7 +60,10 @@ describe("Supabase cold-standby production policy", () => {
 
 describe("durable commerce control plane", () => {
   it("defaults production paid-delivery state to the Durable Object backend", () => {
-    expect(agentLedger).toContain('process.env.NODE_ENV === "production" ? "durable_object" : "supabase"');
+    expect(agentLedger).toContain("resolveCommerceLedgerDurabilityPolicy(");
+    expect(agentLedger).toContain('process.env.GEOMACRO_COMMERCE_LEDGER_BACKEND');
+    expect(agentLedger).toContain('process.env.NODE_ENV');
+    expect(agentLedger).not.toContain('process.env.NODE_ENV === "production" ? "durable_object" : "supabase"');
     expect(agentLedger).toContain('commerceLedgerBackend() === "durable_object"');
   });
 

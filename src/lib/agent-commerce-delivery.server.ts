@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { requireRiskSupabase } from "./risk-supabase.server";
+import { resolveCommerceLedgerDurabilityPolicy } from "./commerce-control-plane.server";
 
 export type AgentCommerceProvider = "coinbase_x402" | "goat_x402" | "nevermined" | (string & {});
 
@@ -56,14 +57,14 @@ function normalizeBounded(value: string | null | undefined, max: number) {
 }
 
 function commerceLedgerBackend(): CommerceLedgerBackend {
-  const raw = String(
-    process.env.GEOMACRO_COMMERCE_LEDGER_BACKEND ??
-      (process.env.NODE_ENV === "production" ? "durable_object" : "supabase"),
-  )
-    .trim()
-    .toLowerCase();
-  if (raw === "supabase" || raw === "durable_object") return raw;
-  throw new Error("AGENT_COMMERCE_LEDGER_BACKEND_INVALID");
+  // There is exactly ONE production paid-commerce authority. In particular,
+  // an inherited/old GEOMACRO_COMMERCE_LEDGER_BACKEND=supabase may never
+  // resurrect legacy RPC writes or an alternate settlement ledger.
+  // A missing/unavailable Durable Object fails closed; no auto-fallback.
+  return resolveCommerceLedgerDurabilityPolicy(
+    process.env.GEOMACRO_COMMERCE_LEDGER_BACKEND,
+    process.env.NODE_ENV,
+  ) ? "durable_object" : "supabase";
 }
 
 function durableLedgerConfig() {
