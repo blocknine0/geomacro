@@ -178,7 +178,7 @@ async function main(){
    schema:"geomacro.legacy-storage-complete-restore-index.v1",
    source_project:ref,object_count:rows.length,total_bytes:total,
    verified_shards:shards,objects:privateIndex,
-   audited_at:new Date().toISOString(),
+   source_root_sha256:hash(JSON.stringify(parts.map(p=>hash(JSON.stringify(p))))),
   };
   const file=join(tmp,"final-index.json"),downloaded=join(tmp,"final-index-readback.json");
   writeFileSync(file,JSON.stringify(finalManifest),{mode:0o600});
