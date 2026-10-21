@@ -17,7 +17,11 @@ const decode=(s)=>s.replace(/&#x([0-9a-f]+);/giu,(_,hex)=>String.fromCodePoint(p
  .replace(/&#(\d+);/gu,(_,n)=>String.fromCodePoint(Number(n)))
  .replace(/&(?:amp|quot|apos|lt|gt|nbsp);/gu,m=>({
  "&amp;":"&","&quot;":'"',"&apos;":"'","&lt;":"<","&gt;":">","&nbsp;":" "}[m]));
-const textOnly=(s)=>decode(s.replace(/<[^>]*>/gu,"")).replace(/\s+/gu," ").trim();
+// This is strict TEXT comparison, never HTML sanitization or rendering.
+// Reject markup inside a supposed visible heading instead of trying to
+// strip arbitrary HTML that can conceal nested script or malformed tags.
+const textOnly=(s)=>typeof s==="string"&&s.length<=1250&&
+ !/[<>]/u.test(s)?decode(s).replace(/\s+/gu," ").trim():null;
 export function assessWebsiteVisibleOriginals({journal,html,now=new Date(),siteStatus=200}={}){
  if(!journal||journal.ok!==true||
     journal.schema!=="geomacro.website-derived-news-feed.v1"||
@@ -55,7 +59,7 @@ export function assessWebsiteVisibleOriginals({journal,html,now=new Date(),siteS
   if(clock-publish>TARGET)continue;
   timeEligible++;latest[row.category]++;
   const title=textOnly(row.title.replace(/^Geomacro finds\s+/iu,""));
-  const headingSeen=headings.some(h=>h===title);
+  const headingSeen=title!==null&&headings.some(h=>h===title);
   if(!headingSeen)continue;
   ssrVisible++;
   const elapsed=clock-publish;
