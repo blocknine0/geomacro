@@ -16,6 +16,7 @@ export const RIGHTS_INTAKE_SCHEMA="geomacro.private-commercial-rights-intake.v1"
 const SHA=/^[0-9a-f]{64}$/u;
 const COUNTRY=/^[A-Z]{3}$/u;
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
+const PUBLIC_DOMAIN_SOURCE_IDS=new Set(["usgs_mcs","usgs_earthquake_hazards"]);
 const MAX_ITEMS=2000;
 const MAX_SOURCES=3000;
 const fail=()=>{throw Error("RIGHTS_INTAKE_NOT_VERIFIED")};
@@ -56,12 +57,19 @@ function analyzeCatalogue(id){
   original_article_commercial_rights_verified:false,
  };
  const allowed=["VERIFIED","DERIVED_ONLY"].includes(entry.approved_status);
+ // USGS-authored government works generally are U.S. public domain and USGS
+ // asks for credit, but pages can embed separately copyrighted third-party
+ // material. This special case is a review opportunity, NEVER auto-approval.
+ const usgsOwnedScope=PUBLIC_DOMAIN_SOURCE_IDS.has(id)&&
+    entry.licence?.includes("U.S. public domain")===true;
  return {
   source_contract_state:allowed?"VERSIONED_DATASET_LICENSE_RECORDED":"NOT_VERIFIED",
   source_reuse_decision:!allowed?"UNKNOWN_PERMISSION":
+    usgsOwnedScope?"PUBLIC_DOMAIN_ORIGINAL_SCOPE_REVIEW_REQUIRED":
     entry.attribution_required===true?"ATTRIBUTION_REQUIRES_DISCLOSURE":
     "SOURCE_SCOPE_REVIEW_REQUIRED",
-  attribution_required:entry.attribution_required===true,
+  attribution_required:usgsOwnedScope?"PUBLIC_DOMAIN_CREDIT_REQUESTED_EXACT_SCOPE_REVIEW":
+    entry.attribution_required===true,
   source_license_document_url:typeof entry.terms_url==="string"?entry.terms_url:null,
   original_article_commercial_rights_verified:false,
  };
@@ -88,6 +96,8 @@ const dedupeKey=x=>hash([x.source_id,x.originating_organization_id,
  x.original_url,x.original_article_sha256].join("\n"));
 const approvalState=(entry,proofReady,age)=>{
  if(age>6*3600000)return "ORIGINAL_TOO_OLD_FOR_CURRENT_GRO";
+ if(entry.source_reuse_decision==="PUBLIC_DOMAIN_ORIGINAL_SCOPE_REVIEW_REQUIRED")
+   return "PUBLIC_DOMAIN_AND_THIRD_PARTY_COMPONENTS_REVIEW_REQUIRED";
  if(entry.source_reuse_decision==="ATTRIBUTION_REQUIRES_DISCLOSURE")
    return "ATTRIBUTION_INCOMPATIBLE_WITH_PRIVATE_DELIVERY";
  if(entry.source_reuse_decision==="UNKNOWN_PERMISSION")
