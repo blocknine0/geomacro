@@ -7,6 +7,7 @@ import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs"
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
+import {handleLowSourceReviews} from './low-source-reviews.ts';
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
@@ -1320,6 +1321,9 @@ export default {
       return getPublicHotSnapshot(env, decodeURIComponent(parts[3]));
     }
 
+    // Dedicated capability token: this reviewer cannot use the admin writer,
+    // partner delivery or paid/hot publication routes with this credential.
+    if(url.pathname==='/v1/internal/low-source-reviews')return handleLowSourceReviews(request,env);
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
