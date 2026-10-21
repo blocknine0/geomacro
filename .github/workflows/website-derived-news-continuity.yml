@@ -15,11 +15,15 @@ on:
       - "scripts/lib/global-official-release-feeds.mjs"
       - ".github/workflows/website-derived-news-continuity.yml"
       - "scripts/ops/publish-website-derived-news.ts"
+      - "scripts/ops/publish-automated-intelligence-inputs.ts"
+      - "src/lib/automated-intelligence-input.ts"
       - "src/lib/stateless-intelligence-model.ts"
       - "src/lib/stateless-public-intelligence.server.ts"
       - "src/lib/stateless-pib-mines-original.server.ts"
       - "workers/control-plane/src/website-derived-intelligence.mjs"
       - "src/lib/automated-finds*"
+      - "src/lib/low-authority-source-review.ts"
+      - "scripts/ops/review-derived-inputs-low-authority.ts"
       - "src/lib/risk-object-signing.server.ts"
       - "scripts/ops/publish-automated-finds.ts"
       - "scripts/lib/automated-finds-run-health.mjs"
@@ -53,19 +57,11 @@ jobs:
     timeout-minutes: 12
     environment: production
     env:
-      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       GEOMACRO_AUTOMATED_FINDS_PUBLICATION: "1"
       B2_ACCOUNT_QUOTA_REQUIRED: "1"
       B2_ACCOUNT_QUOTA_WORKFLOW_ID: automated_finds
       B2_REQUEST_BUDGET: "12"
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
-      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
-      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
-      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
       RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
       RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
       RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
@@ -86,6 +82,8 @@ jobs:
           node --test scripts/lib/all-news-original-evidence-audit.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
       - name: Require existing control-plane authorization
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -94,6 +92,9 @@ jobs:
             exit 2
           }
       - name: Resolve existing D1 shared B2 quota ledger
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
         run: |
           set -euo pipefail
@@ -109,8 +110,57 @@ jobs:
           appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+id+'\n');
           NODE
       - name: Read three domains and write only derived news to existing D1
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+          B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+          RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+          GEOMACRO_LOW_SOURCE_REVIEW: "1"
+          GEOMACRO_LOW_REVIEW_REFS_FILE: ${{ runner.temp }}/geomacro-source-review-refs.json
         shell: bash
         run: bun scripts/ops/publish-website-derived-news.ts
+      - name: Automatically approve and sign every unique retained derived input
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+        if: always()
+        run: bun scripts/ops/publish-automated-intelligence-inputs.ts
+      - name: Prepare restricted internal source-review capability
+        if: always()
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {createHmac} from 'node:crypto';
+          import {appendFileSync} from 'node:fs';
+          const root=(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN||'').trim();
+          if(root.length<32)throw Error('LOW_REVIEW_SCOPED_CHANNEL_UNAVAILABLE');
+          const control=createHmac('sha256',root).update('geomacro-control-plane-v1').digest('hex');
+          const token=createHmac('sha256',control).update('geomacro-low-source-review-v1').digest('hex');
+          console.log('::add-mask::'+token);
+          const registry=JSON.parse(process.env.RISK_OBJECT_VERIFY_KEYS_JSON||'{}');
+          const keys=[...Object.values(registry).map(v=>typeof v==='string'?v:v.public_key_spki_b64),
+            process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64].filter(Boolean);
+          appendFileSync(process.env.GITHUB_ENV,'GEOMACRO_LOW_REVIEW_TOKEN='+token+'\n'+
+            'GEOMACRO_LOW_REVIEW_ISSUER_PUBLIC_KEYS_JSON='+JSON.stringify([...new Set(keys)])+'\n');
+          NODE
+      - name: Review real source evidence with the separate low authority
+        if: always()
+        env:
+          GEOMACRO_LOW_REVIEW_PRIVATE_PKCS8_B64: ${{ secrets.GEOMACRO_LOW_REVIEW_PRIVATE_PKCS8_B64 }}
+          GEOMACRO_LOW_REVIEW_PUBLIC_PEM: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_PEM }}
+          GEOMACRO_LOW_REVIEW_PUBLIC_SHA256: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256 }}
+        run: |
+          umask 077
+          bun scripts/ops/review-derived-inputs-low-authority.ts < "$RUNNER_TEMP/geomacro-source-review-refs.json" > "$RUNNER_TEMP/geomacro-source-review-result.json"
+      - name: Remove private review handoff and internal verdicts from the runner
+        if: always()
+        run: |
+          rm -f -- "$RUNNER_TEMP/geomacro-source-review-refs.json" "$RUNNER_TEMP/geomacro-source-review-result.json"
       - name: Produce country-scoped high-impact GRI evidence worklist (zero scoring)
         run: |
           node --test scripts/tests/material-gri-country-evidence-worklist.test.mjs

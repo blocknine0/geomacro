@@ -8,6 +8,8 @@ on:
     paths:
       - "lib/intelligence-publication-authority.mjs"
       - "workers/control-plane/**"
+      - "src/lib/automated-intelligence-input.ts"
+      - "src/lib/low-authority-source-review.ts"
       - ".github/workflows/deploy-control-plane-d1.yml"
       - "src/__tests__/cloudflare-d1-bootstrap-static.test.ts"
       - "scripts/ops/verify-predge-auth-research-delivery.mjs"
@@ -34,6 +36,8 @@ jobs:
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
       RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
+      GEOMACRO_LOW_REVIEW_PUBLIC_PEM: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_PEM }}
+      GEOMACRO_LOW_REVIEW_PUBLIC_SHA256: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256 }}
       # Separate protected credential: never reuse the research or root/admin token.
       PREDGE_RISK_GATE_TOKEN: ${{ secrets.PREDGE_RISK_GATE_TOKEN }}
       RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
@@ -121,6 +125,21 @@ jobs:
               not_after:process.env.RISK_OBJECT_SIGNING_KEY_NOT_AFTER||null};
           }
           config.vars.AUTOMATED_FINDS_VERIFY_KEYS_JSON=JSON.stringify(keys);
+          const lowPem=process.env.GEOMACRO_LOW_REVIEW_PUBLIC_PEM;
+          const lowPin=process.env.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256;
+          if(lowPem||lowPin){
+            const {createPublicKey,createHash}=require('node:crypto');
+            const key=createPublicKey(lowPem);
+            if(key.asymmetricKeyType!=='ed25519')throw Error('LOW_REVIEW_KEY_TYPE_INVALID');
+            const der=key.export({format:'der',type:'spki'});
+            const pub=der.toString('base64');
+            if(createHash('sha256').update(der).digest('hex')!==lowPin||
+              Object.values(keys).some(v=>(typeof v==='string'?v:v.public_key_spki_b64)===pub))
+              throw Error('LOW_REVIEW_DISTINCT_PIN_REQUIRED');
+            config.vars.GEOMACRO_LOW_REVIEW_PUBLIC_SPKI_B64=pub;
+            config.vars.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256=lowPin;
+          }
+
           fs.writeFileSync('workers/control-plane/wrangler.runtime.jsonc', JSON.stringify(config, null, 2));
           NODE
 

@@ -64,6 +64,13 @@ jobs:
           node-version: "22"
       - name: Aggregate only real last-90d schedule-success checkpoint artifacts
         run: node scripts/ops/aggregate-country-195-proofs.mjs
+      - name: Observe current website latency independently without funds
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/website-latency
+          node scripts/ops/derived-news-latency-audit.mjs --website-observed > artifacts/website-latency/served-samples.json
+      - name: Report current source-proof and signed-serving launch gaps without funds
+        run: node scripts/ops/three-launch-blockers-report.mjs
       - name: Keep source-free trusted coverage-gap rollup
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -72,3 +79,11 @@ jobs:
           path: artifacts/country-195/rolling-proof-summary.v1.json
           if-no-files-found: warn
           retention-days: 90
+      - name: Keep independent three-requirement launch gap report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: three-launch-blockers-${{ github.run_id }}
+          path: artifacts/launch-acceptance/three-blockers.json
+          if-no-files-found: warn
+          retention-days: 7

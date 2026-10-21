@@ -10,8 +10,19 @@ const FALLBACK="https://geomacro-control-plane.daspallab202391.workers.dev";
 const MAX_BYTES=64*1024;
 const headers={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"};
 export async function forwardRiskGateToD1(request:Request,fetcher=fetchWithoutRedirect):Promise<Response>{
- const origin=String(process.env.GEOMACRO_CONTROL_PLANE_URL??FALLBACK).replace(/\/+$/,"");
- if(!/^https:\/\/[A-Za-z0-9._-]+(?::443)?$/.test(origin)){
+ const incoming=new URL(request.url);
+ // Disposable local tests must never forward their synthetic bearer or GRO
+ // to the real production Worker. A local D1 fixture is a separate explicit
+ // test target; restoring a Supabase production fallback is not permitted.
+ const local=["localhost","127.0.0.1","[::1]"].includes(incoming.hostname);
+ const localOrigin=String(process.env.GEOMACRO_RISK_GATE_LOCAL_D1_ORIGIN??'');
+ const staging=local&&process.env.NODE_ENV==='development'&&
+  process.env.RISK_GATE_LOAD_TEST_ACK==='STAGING_ONLY'&&
+  /^http:\/\/127\.0\.0\.1:\d{2,5}$/.test(localOrigin);
+ if(local&&!staging)return Response.json({ok:false,error:"RISK_GATE_LOCAL_D1_FIXTURE_REQUIRED",
+   execution_authorized:false},{status:503,headers});
+ const origin=staging?localOrigin:String(process.env.GEOMACRO_CONTROL_PLANE_URL??FALLBACK).replace(/\/+$/,"");
+ if(!staging&&!/^https:\/\/[A-Za-z0-9._-]+(?::443)?$/.test(origin)){
    return Response.json({ok:false,error:"RISK_GATE_ORIGIN_INVALID",execution_authorized:false},{status:503,headers});
  }
  const contentType=(request.headers.get("content-type")??"").split(";")[0].trim().toLowerCase();

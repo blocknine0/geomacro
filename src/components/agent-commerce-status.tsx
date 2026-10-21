@@ -86,7 +86,7 @@ export function AgentCommerceStatus({ compact = false }: { compact?: boolean }) 
       ? "x402 commercial access · verifying production status"
       : state.mode === "unavailable"
         ? "x402 commercial access · status unavailable"
-        : "Coming Soon · x402 commercial access · production activation pending";
+        : "Mainnet USDC · production activation pending";
 
   if (compact) {
     return (

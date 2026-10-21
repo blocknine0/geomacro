@@ -1,4 +1,5 @@
 import process from "node:process";
+import {assertSharedUsdcReceiver} from "./shared-usdc-receiver.server";
 import { BatchFacilitatorClient } from "@circle-fin/x402-batching/server";
 
 import { assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server";
@@ -45,6 +46,7 @@ function requireSellerAddress() {
   if (!value || !/^0x[a-fA-F0-9]{40}$/.test(value)) {
     throw new Error("CIRCLE_X402_SELLER_ADDRESS_INVALID");
   }
+  assertSharedUsdcReceiver(value);
   return value as `0x${string}`;
 }
 

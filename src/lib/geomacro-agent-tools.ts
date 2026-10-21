@@ -3,6 +3,7 @@ import {
   AGENT_QUERY_SCHEMA_VERSION,
   type AgentAdaptiveQuery,
   type AgentQueryTopic,
+  inferAgentQueryTopics,
 } from "./agent-query-plan";
 
 export const GEOMACRO_MCP_PROTOCOL_VERSION = "2026-07-28" as const;
@@ -10,6 +11,9 @@ export const GEOMACRO_MCP_SERVER_VERSION = "geomacro-mcp-v1" as const;
 export const GEOMACRO_MCP_PATH = "/api/mcp" as const;
 
 export const GEOMACRO_AGENT_TOOL_NAMES = [
+  "geopolitics_query",
+  "macro_fx_query",
+  "critical_minerals_query",
   "country_risk",
   "corridor_risk",
   "change_since_last_verified",
@@ -33,6 +37,24 @@ const domains = z.array(z.enum(GEOMACRO_AGENT_DOMAINS)).min(1).max(3).default([.
 const detail = z.enum(["compact", "standard", "full"]).default("standard");
 const clientRequestId = z.string().trim().min(4).max(128).optional();
 const maxAgeSeconds = z.number().int().positive().max(94_608_000).optional();
+
+export const categoryQuestionToolSchema = z.object({
+  country_iso3: iso3,
+  question: z.string().trim().min(3).max(2_000),
+  fulfillment_mode: z.enum(["live_on_demand", "published_only"]).default("live_on_demand"),
+  max_age_seconds: maxAgeSeconds,
+  detail,
+  client_request_id: clientRequestId,
+}).strict();
+
+export const GEOMACRO_CATEGORY_AGENT_PROFILES = [
+  { id: "geopolitics", name: "Geomacro Geopolitics Agent", tool: "geopolitics_query",
+    api: "/api/v1/intelligence/geopolitics", topics: ["conflict_geopolitics"] },
+  { id: "macro-fx", name: "Geomacro Macro / FX Agent", tool: "macro_fx_query",
+    api: "/api/v1/intelligence/macro-fx", topics: ["macro_risk", "fx_external_risk"] },
+  { id: "critical-minerals", name: "Geomacro Critical Minerals Agent", tool: "critical_minerals_query",
+    api: "/api/v1/intelligence/critical-minerals", topics: ["critical_minerals"] },
+] as const;
 
 const countrySubject = z.object({
   country_iso3: iso3,
@@ -162,6 +184,26 @@ export function geomacroAgentToolToCanonicalQuery(
   toolName: Exclude<GeomacroAgentToolName, "verify_risk_object">,
   rawArguments: unknown,
 ): AgentAdaptiveQuery {
+  const category = GEOMACRO_CATEGORY_AGENT_PROFILES.find(profile => profile.tool === toolName);
+  if (category) {
+    const input = categoryQuestionToolSchema.parse(rawArguments);
+    const topics: readonly AgentQueryTopic[] = category.topics;
+    if (inferAgentQueryTopics(input.question).some(topic => !topics.includes(topic)))
+      throw new Error("CATEGORY_QUESTION_SCOPE_MISMATCH");
+    return {
+      schema_version: AGENT_QUERY_SCHEMA_VERSION,
+      subjects: [{ type: "country", country_iso3: input.country_iso3 }],
+      question: input.question, topics: [...topics], intent: "single_subject",
+      evidence: "required", detail: input.detail,
+      fulfillment_mode: input.fulfillment_mode, delivery_tier: "signed_risk_intelligence",
+      ...(input.max_age_seconds ? { max_age_seconds: input.max_age_seconds } : {}),
+      ...(input.client_request_id ? { client_request_id: input.client_request_id } : {}),
+    };
+  }
+  // Narrow explicitly after the profile lookup so future names cannot fall
+  // through into a generic subject tool or silently lose the buyer's question.
+  if (toolName === "geopolitics_query" || toolName === "macro_fx_query" ||
+      toolName === "critical_minerals_query") throw new Error("CATEGORY_TOOL_PROFILE_MISSING");
   if (toolName === "country_risk") {
     const input = countryRiskToolSchema.parse(rawArguments);
     return commonQuery({
@@ -323,6 +365,21 @@ const intelligenceOutputSchema = {
 };
 
 export const GEOMACRO_AGENT_TOOLS = [
+  ...GEOMACRO_CATEGORY_AGENT_PROFILES.map(profile => ({
+    name: profile.tool,
+    description: `${profile.name}: answer a country-specific question through the shared Geomacro engine. Live retrieval is no-charge until the exact answer is commercially verified; published_only uses existing governed x402 delivery.`,
+    paid: true,
+    inputSchema: objectSchema({
+      country_iso3: iso3Json,
+      question: { type: "string", minLength: 3, maxLength: 2_000 },
+      fulfillment_mode: { type: "string", enum: ["live_on_demand", "published_only"], default: "live_on_demand" },
+      max_age_seconds: commonProperties.max_age_seconds,
+      detail: commonProperties.detail,
+      client_request_id: commonProperties.client_request_id,
+    }, ["country_iso3", "question"]),
+    outputSchema: intelligenceOutputSchema,
+    example: { country_iso3: "IND", question: `What are the current ${profile.id === "macro-fx" ? "macro and FX" : profile.id === "critical-minerals" ? "critical minerals" : "geopolitical"} risks for India?` },
+  })),
   {
     name: "country_risk",
     description: "Return current derived Geomacro country risk across selected commercial domains. Never returns raw upstream data or source identity.",

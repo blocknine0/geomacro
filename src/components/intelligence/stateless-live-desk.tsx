@@ -53,6 +53,7 @@ function Story({ signal, checkedAt }: {signal: StatelessIntelligenceSignal;check
   const card = findCardFromObservedRelease(signal, checkedAt);
   return (
     <article data-testid={card ? "geomacro-find-card-v1" : "geomacro-release-finding"}
+      data-geomacro-story-id={signal.id}
       className="min-w-0 rounded-2xl border border-border/75 bg-card/65 p-5 sm:p-6">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
         <span className="font-mono font-semibold uppercase tracking-wider text-primary">{labelFor(signal.category)}</span>

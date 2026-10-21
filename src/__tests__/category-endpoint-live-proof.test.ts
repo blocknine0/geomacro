@@ -51,7 +51,10 @@ describe('category no-funds live proof', () => {
     for (const [, options] of fetchImpl.mock.calls as unknown as Array<[string, RequestInit]>) {
       expect(new Headers(options.headers).has('payment-signature')).toBe(false);
       expect(options.redirect).toBe('error');
-      if (options.method === 'POST') expect(JSON.parse(options.body as string).max_age_seconds).toBe(3600);
+      if (options.method === 'POST') {
+        expect(JSON.parse(options.body as string).max_age_seconds).toBe(3600);
+        expect(JSON.parse(options.body as string).fulfillment_mode).toBe('published_only');
+      }
     }
     expect(result.status).toBe('BLOCKED');
     expect(result.proves_paid_delivery).toBe(false);

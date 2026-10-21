@@ -177,6 +177,15 @@ try {
     for(const [id,ref] of reconcilePrivateDerivedSourceRefs(
       sourceRefs,cards,now.getTime()))reconciled.set(id,ref);
   }
+  if(process.env.GEOMACRO_LOW_SOURCE_REVIEW==='1'){
+    // Short-lived, private IPC between credential-separated workflow steps.
+    // Never upload this file or its result as a public Actions artifact.
+    const path=process.env.GEOMACRO_LOW_REVIEW_REFS_FILE??'';
+    const temp=process.env.RUNNER_TEMP??'';
+    if(!temp||!path.startsWith(temp+'/')||path.includes('/../'))
+      throw Error('LOW_REVIEW_PRIVATE_HANDOFF_PATH_INVALID');
+    writeFileSync(path,JSON.stringify({refs:[...reconciled]}),{mode:0o600,flag:'wx'});
+  }else{
   const audit=await auditEveryDerivedNewsOriginal({
     signals,originalRefs:reconciled,now,maxReadbacks:6,maxPerCategory:4,
   });
@@ -201,6 +210,7 @@ try {
     categories:audit.categories,
     commercially_verified:false,payable:false,source_urls_logged:false,
   }));
+  }
 } catch {
   // Evidence audit unavailable does NOT upgrade RSS-only entries to verified
   // and must not force duplicate ingestion/news polling or paid availability.

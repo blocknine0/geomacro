@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {auditDerivedJournalPages,auditLiveDerivedJournal} from "./derived-news-latency-audit.mjs";
+import {auditDerivedJournalPages,auditLiveDerivedJournal,auditObservedWebsiteLatency} from "./derived-news-latency-audit.mjs";
 const NOW=new Date("2026-10-21T12:00:00.000Z");
 const sample=(id,cat,at,ingested,date_precision="exact")=>({
  signal:{id,category:cat,published_at:at,date_precision,sources_credited:[]},
@@ -57,4 +57,23 @@ test("detects pagination and does not pretend 600 retained rows are all world ne
  assert.equal(value.retained_unique_rows,251);
  assert.equal(value.total_source_history_complete,false);
  assert.equal(value.readback_pages,2);
+});
+test("proves a served 17-minute sample only from article markup, not embedded JSON or D1 insertion",()=>{
+ const row={...a.signal,id:"macro-1234abcd",status:"official_release_observed_unscored",topic:"monetary policy"};
+ const at=new Date("2026-10-21T11:17:00Z");
+ const html='<article data-geomacro-story-id="macro-1234abcd"><h3>Derived card</h3></article>';
+ const out=auditObservedWebsiteLatency({signals:[row]},html,at);
+ assert.equal(out.actual_website_20min_sample_verified,true);
+ assert.equal(out.samples[0].latency_upper_bound_seconds,1020);
+ assert.equal(out.universal_20min_sla_verified,false);
+ assert.equal(auditObservedWebsiteLatency({signals:[row]},JSON.stringify(row),at)
+  .actual_website_20min_sample_verified,false);
+ assert.equal(auditObservedWebsiteLatency({signals:[row]},html,new Date("2026-10-21T11:21:00Z"))
+  .actual_website_20min_sample_verified,false);
+ assert.equal(auditObservedWebsiteLatency({signals:[row]},html,new Date("2026-10-21T11:14:00Z"))
+  .actual_website_20min_sample_verified,false);
+ assert.equal(auditObservedWebsiteLatency({signals:[{...row,date_precision:"day"}]},html,at)
+  .actual_website_20min_sample_verified,false);
+ assert.equal(auditObservedWebsiteLatency({signals:[{...row,status:"official_feed_candidate_unscored"}]},html,at)
+  .actual_website_20min_sample_verified,false);
 });

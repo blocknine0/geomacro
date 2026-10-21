@@ -30,7 +30,7 @@ describe("Coming Soon status is truthful across commercial website", () => {
     expect(guide).toContain('commerce.mode === "production"');
     expect(guide).toContain('"Check live checkout"');
     expect(guide).toContain('"Coming Soon"');
-    expect(commerce).toContain("Coming Soon · x402 commercial access · production activation pending");
+    expect(commerce).toContain("Mainnet USDC · production activation pending");
     expect(commerce).toContain('state.mode === "production"');
     expect(api).toContain("AgentCommerceStatus");
   });
@@ -44,8 +44,10 @@ describe("Coming Soon status is truthful across commercial website", () => {
   });
 
   it("does not present autonomous agent and future services as active products", () => {
-    expect(api).toContain("Standalone Geomacro AI Agent:");
-    expect(api).toContain("Coming Soon");
+    expect(api).toContain("<CategoryApiLaunchPanel />");
+    const buyer = read("src/components/category-api-launch-panel.tsx");
+    expect(buyer).toContain("published_only");
+    expect(buyer).toContain("response.status!==402");
     expect(roadmap).toContain("COMING SOON · IN PROGRESS");
     expect(roadmap).toContain("COMING SOON · EARLY ACCESS");
     expect(roadmap).toContain("COMING SOON · FUTURE");

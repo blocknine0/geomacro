@@ -86,7 +86,53 @@ export async function auditLiveDerivedJournal(fetcher=fetch,now=new Date()){
  }
  return auditDerivedJournalPages(pages,now);
 }
+/** Receipt time provides a conservative upper bound: this exact derived
+ * story was in served article HTML by then. It is not the first browser paint
+ * and never establishes an unconditional global delivery SLA. */
+export function auditObservedWebsiteLatency(journal,html,observedAt=new Date()){
+ if(!Array.isArray(journal?.signals)||typeof html!=="string"||
+    !(observedAt instanceof Date)||!Number.isFinite(observedAt.getTime()))
+  fail("WEBSITE_OBSERVATION_INVALID");
+ const rendered=new Set([...html.matchAll(/<article\b[^>]*\bdata-geomacro-story-id="((?:geopolitics|macro|rare_earth)-[0-9a-f]{8})"/gu)]
+  .map(match=>match[1]));
+ const ids=new Set(),samples=[];
+ for(const row of journal.signals){
+  if(!CATS.includes(row?.category)||!rendered.has(row?.id)||ids.has(row.id)||row.date_precision!=="exact"||
+     row.status!=="official_release_observed_unscored"||
+     typeof row.topic!=="string"||row.topic.endsWith(" publisher candidate"))continue;
+  const published=parse(row.published_at),latency=observedAt.getTime()-published;
+  if(!Number.isFinite(published)||latency<DELAY||latency>WINDOW)continue;
+  ids.add(row.id);samples.push({id:row.id,category:row.category,
+   source_published_at:row.published_at,website_observed_at:observedAt.toISOString(),
+   latency_upper_bound_seconds:Math.ceil(latency/1000),within_20_minutes:latency<=TARGET});
+ }
+ const qualifying=samples.filter(s=>s.within_20_minutes);
+ return {schema:"geomacro.website-observed-publication-latency.v1",
+  observed_at:observedAt.toISOString(),measurement:"SERVED_ARTICLE_HTML_RECEIPT_UPPER_BOUND",
+  samples,matched_exact_clock_stories:samples.length,
+  qualifying_20min_samples:qualifying.length,
+  actual_website_20min_sample_verified:qualifying.length>0,
+  qualifying_categories:CATS.filter(c=>qualifying.some(s=>s.category===c)),
+  website_first_render_timestamp_verified:false,universal_20min_sla_verified:false,
+  raw_upstream_content_logged:false,payments:0};
+}
+export async function auditLiveWebsiteLatency(fetcher=fetch){
+ const [j,s]=await Promise.all([
+  fetcher(ROOT,{headers:{Accept:"application/json"},redirect:"error",cache:"no-store",signal:AbortSignal.timeout(12000)}),
+  fetcher("https://geomacro.live/intelligence",{headers:{Accept:"text/html"},redirect:"error",cache:"no-store",signal:AbortSignal.timeout(12000)}),
+ ]);
+ if(j.status!==200||s.status!==200)fail("WEBSITE_READBACK_UNAVAILABLE");
+ const [raw,html]=await Promise.all([j.text(),s.text()]);
+ const observedAt=new Date();
+ if(raw.length>600000||html.length>1500000)fail("WEBSITE_READBACK_OVERSIZE");
+ const journal=JSON.parse(raw);
+ if(journal.schema!=="geomacro.website-derived-news-feed.v1"||journal.ok!==true||
+    journal.original_release_delay_minutes!==15||journal.retention_hours!==72)
+  fail("WEBSITE_JOURNAL_INVALID");
+ return auditObservedWebsiteLatency(journal,html,observedAt);
+}
 if(process.argv[1]?.endsWith("derived-news-latency-audit.mjs")){
- try{console.log(JSON.stringify(await auditLiveDerivedJournal()));}
+ try{console.log(JSON.stringify(process.argv.includes("--website-observed")
+  ?await auditLiveWebsiteLatency():await auditLiveDerivedJournal()));}
  catch{console.error("::error::DERIVED_NEWS_LATENCY_OR_JOURNAL_AUDIT_UNAVAILABLE");process.exitCode=2;}
 }

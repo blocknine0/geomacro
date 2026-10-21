@@ -53,6 +53,7 @@ export function rollupCountry195Proofs(reports,knownCodes,{now=new Date()}={}){
       c.RIGHTS_QUALIFIED===true||
       c.ORIGINAL_PAGE_VERIFIED!==c.ORIGINAL_EVIDENCE_VERIFIED||
       c.ORIGINAL_EVIDENCE_VERIFIED===true&&c.LIVE_SOURCE_REACHABLE!==true||
+      c.ORIGINAL_EVIDENCE_VERIFIED===true&&c.COUNTRY_RELEVANCE_VERIFIED!==true||
       c.INDEPENDENT_FALLBACK_VERIFIED===true&&c.ORIGINAL_EVIDENCE_VERIFIED!==true)
       fail();
    unique.add(key);
@@ -77,13 +78,30 @@ export function rollupCountry195Proofs(reports,knownCodes,{now=new Date()}={}){
   }];
  }));
  const countriesProbed=new Set([...checked.keys()].map(k=>k.split(":")[0])).size;
+ const cells=knownCodes.flatMap(iso3=>CAT.map(category=>{
+  const observed=checked.get(iso3+":"+category);
+  const recent=!!observed&&now.getTime()-observed.at<86400_000;
+  const original=observed?.cell.ORIGINAL_EVIDENCE_VERIFIED===true&&
+   observed?.cell.COUNTRY_RELEVANCE_VERIFIED===true&&
+   observed?.cell.LIVE_SOURCE_REACHABLE===true;
+  const status=!observed?"UNPROBED":!recent?"PROOF_OLDER_THAN_24H":
+   observed.cell.LIVE_SOURCE_REACHABLE!==true?"SOURCE_TRANSPORT_UNVERIFIED":
+   observed.cell.COUNTRY_RELEVANCE_VERIFIED!==true?"COUNTRY_RELEVANCE_UNVERIFIED":
+   !original?"ORIGINAL_PAGE_UNVERIFIED":"CURRENT_ORIGINAL_PROOF_VERIFIED";
+  return {iso3,category,status,last_probe_at:observed?new Date(observed.at).toISOString():null,
+   current_original_proof_verified:recent&&original};
+ }));
+ const currentVerified=cells.filter(c=>c.current_original_proof_verified).length;
  return {
   schema:"geomacro.country-195-live-original-proof-rollup.v1",
   as_of:now.toISOString(),distinct_probed_countries:countriesProbed,
   cells_probed:checked.size,total_expected_cells:585,unprobed_cells:585-checked.size,
   original_page_verified_rolling_cells:Object.values(categories)
     .reduce((n,v)=>n+v.first_party_original_page_verified,0),
-  complete_195x3_current_live_original_coverage_verified:false,
+  current_original_verified_cells:currentVerified,
+  complete_195x3_current_live_original_coverage_verified:currentVerified===585,
+  cells,repair_queue:cells.filter(c=>!c.current_original_proof_verified),
+  repair_queue_is_not_automatic_unbounded_source_polling:true,
   proof_window_days:90,nominal_calendar_sweep_days:65,
   proof_reports_accepted:acceptedRuns,category_coverage:categories,
   publisher_reachable_does_not_mean_current_news:true,

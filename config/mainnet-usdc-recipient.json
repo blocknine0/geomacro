@@ -1,0 +1,10 @@
+{
+  "schema": "geomacro.owner-approved-mainnet-recipient.v1",
+  "receiver": "0xF98c18231ceFBD6d11154DEc14b3Aec6D74dC4B0",
+  "networks": ["eip155:8453", "eip155:137", "eip155:5042"],
+  "same_address_on_all_networks": true,
+  "owner_instruction_date": "2026-10-21",
+  "address_checksum_verified": true,
+  "wallet_control_verified": false,
+  "merchant_settlement_verified": false
+}

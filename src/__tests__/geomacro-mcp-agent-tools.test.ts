@@ -42,8 +42,11 @@ function modernRequest(method: string, params: Record<string, unknown> = {}) {
 }
 
 describe("Geomacro MCP + thin agent contract", () => {
-  it("publishes exactly the seven bounded tools requested for the commercial agent", async () => {
+  it("publishes three category question tools alongside the seven existing bounded tools", async () => {
     expect(GEOMACRO_AGENT_TOOL_NAMES).toEqual([
+      "geopolitics_query",
+      "macro_fx_query",
+      "critical_minerals_query",
       "country_risk",
       "corridor_risk",
       "change_since_last_verified",

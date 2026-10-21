@@ -32,10 +32,14 @@ const SCORE_TOLERANCE = 0.00001;
 const PR_FIXTURE_FALLBACK_ALLOWED =
   process.env.GITHUB_EVENT_NAME === "pull_request";
 
-let fixtureFallbackUsed = false;
+const offlineContract = process.env.GRI_PR_OFFLINE_CONTRACT === "1";
+if (offlineContract && !PR_FIXTURE_FALLBACK_ALLOWED) {
+  throw new Error("GRI offline contract is restricted to pull_request");
+}
+let fixtureFallbackUsed = offlineContract;
 let liveReadSucceeded = false;
 
-if (!SUPABASE_URL || !ANON_KEY) {
+if (!offlineContract && (!SUPABASE_URL || !ANON_KEY)) {
   throw new Error("APP_SUPABASE_URL and APP_SUPABASE_ANON_KEY are required");
 }
 if (!Number.isFinite(MAX_AGE_HOURS) || MAX_AGE_HOURS <= 0) {
@@ -270,7 +274,7 @@ async function main() {
         "This report measures how the audited eligible event set changes under predeclared counterfactual parameter perturbations. It does not define a pass/fail robustness threshold and does not establish predictive accuracy.",
     },
     scope: fixtureFallbackUsed
-      ? "Pull-request-only deterministic sensitivity audit of a pinned, previously verified GRI v1.2 snapshot after the public Supabase read path returned HTTP 402. This fixture validates scoring mechanics and stored-score parity only; it is not current production evidence and cannot authorize production claims."
+      ? "Pull-request-only deterministic sensitivity audit of a pinned, previously verified GRI v1.2 snapshot using explicit offline PR mode or after HTTP 402. This fixture validates scoring mechanics and stored-score parity only; it is not current production evidence and cannot authorize production claims."
       : "Read-only sensitivity evidence over the current published v1.2 eligible contribution universe. Lookback perturbations are only shorter than the canonical 72-hour window so the stored published universe remains complete. Longer-lookback sensitivity requires a separately governed candidate-event dataset and is intentionally not inferred here.",
   };
 

@@ -65,17 +65,16 @@ const env={
   GITHUB_EVENT_NAME:"schedule",GITHUB_SHA:gitSha,
   EXPECTED_CANONICAL_MAIN_SHA:gitSha,GITHUB_TOKEN:"private-synthetic-token-for-tests-only",
 };
-const build={schema_version:"geomacro.deployment-build.v1",
-  canonical_repository:REPO,canonical_main_sha:gitSha};
+const main={ref:"refs/heads/main",object:{type:"commit",sha:gitSha}};
 const response=(body,status=200)=>new Response(JSON.stringify(body),
   {status,headers:{"content-type":"application/json"}});
-function mock({gri=parent(),child=indices(gri),site=build,
+function mock({gri=parent(),child=indices(gri),canonicalMain=main,
   griStatus=200,childStatus=200,postStatus=204,
   existingRuns=[],metadataStatus=200}={}){
   const calls=[];
   const fetchImpl=async(url,options)=>{
     calls.push({url,method:options.method});
-    if(String(url).includes("geomacro-build.json"))return response(site);
+    if(String(url).endsWith("/git/ref/heads/main"))return response(canonicalMain);
     if(String(url).endsWith("/global-risk"))return response(gri,griStatus);
     if(String(url).endsWith("/risk-indices"))return response(child,childStatus);
     if(String(url).endsWith("/runs?per_page=20"))
@@ -136,9 +135,9 @@ test("source SHA mismatched indices request repair rather than declare current",
   assert.equal(decision.eligible,true);
   assert.equal(decision.parent_scored_gri_verified,true);
 });
-test("no current GRI, mismatched published main or untrusted branch never trigger",async()=>{
+test("no current GRI, moved canonical main or untrusted branch never trigger",async()=>{
   for(const failed of [
-    {griStatus:503},{site:{...build,canonical_main_sha:"b".repeat(40)}},
+    {griStatus:503},{canonicalMain:{...main,object:{type:"commit",sha:"b".repeat(40)}}},
   ]){
     const f=mock(failed);
     const result=await runRiskIndicesVerifiedParentBackstop({
@@ -226,4 +225,29 @@ test("run reconciliation rejects forged clock or head before any retry",()=>{
     runs:[],headSha:gitSha,
     parentSourceAsOf:new Date(AT.getTime()-3*3600_000).toISOString(),now:AT,
   }),/PARENT_TIME_INVALID/);
+});
+
+test("valid backend recovery never waits on a website deployment",async()=>{
+ const f=mock({childStatus:503});
+ const r=await runRiskIndicesVerifiedParentBackstop({env,now:AT,fetchImpl:f.fetchImpl});
+ assert.equal(r.dispatch_requested,true);
+ assert.equal(r.parent_scored_gri_verified,true);
+ assert.equal(f.calls.some(x=>x.url.includes("geomacro.live")),false);
+ assert.equal(f.calls[0].url,"https://api.github.com/repos/"+REPO+"/git/ref/heads/main");
+});
+test("unavailable or malformed canonical code identity cannot request publication",async()=>{
+ for(const canonicalMain of [null,{}, {ref:"refs/heads/main",object:{type:"tag",sha:gitSha}},
+  {ref:"refs/heads/other",object:{type:"commit",sha:gitSha}}]){
+  const f=mock({canonicalMain,childStatus:503});
+  const r=await runRiskIndicesVerifiedParentBackstop({env,now:AT,fetchImpl:f.fetchImpl});
+  assert.equal(r.status,"SKIPPED_CANONICAL_MAIN_NOT_CURRENT");
+  assert.equal(r.dispatch_requested,false);
+  assert.equal(f.calls.length,1);
+ }
+ const calls=[];
+ const r=await runRiskIndicesVerifiedParentBackstop({env,now:AT,fetchImpl:async url=>{
+  calls.push(url);return new Response(null,{status:503});
+ }});
+ assert.equal(r.dispatch_requested,false);
+ assert.equal(calls.length,1);
 });

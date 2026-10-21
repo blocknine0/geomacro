@@ -26,10 +26,14 @@ const SPLIT_ORDER = new Map([
   ["test", 2],
 ]);
 
-let fixtureFallbackUsed = false;
+const offlineContract = process.env.GRI_PR_OFFLINE_CONTRACT === "1";
+if (offlineContract && !PR_FIXTURE_FALLBACK_ALLOWED) {
+  throw new Error("GRI offline contract is restricted to pull_request");
+}
+let fixtureFallbackUsed = offlineContract;
 let liveReadSucceeded = false;
 
-if (!SUPABASE_URL || !ANON_KEY) {
+if (!offlineContract && (!SUPABASE_URL || !ANON_KEY)) {
   throw new Error("APP_SUPABASE_URL and APP_SUPABASE_ANON_KEY are required");
 }
 
@@ -310,7 +314,7 @@ async function main() {
         "A structurally valid published validation run can support only the evidence class and sample-qualified associations it actually measures. It does not authorize predictive certainty, causality or an institutional-grade accuracy claim.",
     },
     scope: fixtureFallbackUsed
-      ? "Pull-request-only deterministic audit of the pinned, previously verified GRI v1.2 validation fixture after the public Supabase read path returned HTTP 402. This fixture validates mechanics and hash parity only; it is not current production evidence and cannot authorize production claims."
+      ? "Pull-request-only deterministic audit of the pinned, previously verified GRI v1.2 validation fixture using explicit offline PR mode or after HTTP 402. This fixture validates mechanics and hash parity only; it is not current production evidence and cannot authorize production claims."
       : "Read-only audit of the latest published GRI v1.2 validation run, its complete benchmark/horizon/split metric grid, sample-status contract, evidence-mode claim policy and deterministic result hash.",
   };
 

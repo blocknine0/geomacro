@@ -1,11 +1,11 @@
-import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
+import {fetchWithoutRedirectUsing} from "./fetch-without-redirect.ts";
 /**
  * Direct, public, derived-only newsroom GET for browser clients.
  * This intentionally bypasses the React Start server-function transport when
  * the site's SSR/RPC runtime is unhealthy. It never asks for upstream sources,
  * private article URLs, raw feeds, Supabase, B2, credentials or payments.
  */
-import type { StatelessIntelligenceSignal } from "./stateless-intelligence-model";
+import type { StatelessIntelligenceSignal } from "./stateless-intelligence-model.ts";
 
 export const GEOMACRO_DERIVED_JOURNAL_URL =
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news";
