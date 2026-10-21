@@ -1,12 +1,13 @@
 /** Zero-cost deterministic 195-country source acceptance rotation.
  * Offline calendar routing, not a claim of issuer reachability or event freshness.
- * Two countries share the existing per-country 12+4 bounded GET caps per day.
+ * Three countries share existing per-country 12+4 bounded GET caps per day.
+ * A full 65-day rotation fits within the 90-day GitHub checkpoint retention.
  * No GitHub run-number dependency (push/PR runs cannot silently skip countries).
  */
 export const COUNTRY_COUNT=195;
-export const MAX_COUNTRIES_PER_RUN=2;
+export const MAX_COUNTRIES_PER_RUN=3;
 export const ROTATION_DAYS=Math.ceil(COUNTRY_COUNT/MAX_COUNTRIES_PER_RUN);
-export const ROTATION_EPOCH_MS=Date.parse("2026-10-17T00:00:00.000Z");
+export const ROTATION_EPOCH_MS=Date.parse("2026-10-22T00:00:00.000Z");
 const DAY=86_400_000;
 const INT=/^(0|[1-9]\d{0,2})$/u;
 const parseIndex=(value,label)=>{
