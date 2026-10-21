@@ -23,7 +23,7 @@ trap cleanup EXIT
 mkdir -p artifacts/legacy-exit
 reason="NOT_STARTED"
 write_receipt() {
-  node - "$ARTIFACT" "$reason" "${1:-}" "${2:-}" "${3:-}" "${4:-}" <<'NODE'
+  node - "$ARTIFACT" "$reason" "${1:-}" "${2:-}" "${3:-}" "${4:-}" "${5:-}" <<'NODE'
 const fs=require("node:fs");
 const [out,reason,structured,storage,payments,risk,failureClass]=process.argv.slice(2);
 const good=reason==="B2_DB_INDEPENDENT_LOCAL_RESTORE_VERIFIED";
