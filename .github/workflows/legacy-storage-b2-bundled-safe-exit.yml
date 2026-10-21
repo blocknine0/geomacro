@@ -107,12 +107,17 @@ jobs:
             throw Error("OLD_ARCHIVE_D1_QUOTA_LEDGER_UNAVAILABLE");
           appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+id+"\n");
           NODE
-      - name: Independently preserve one bundled set of real original Storage bytes
+      - name: Independently preserve up to four shards and all-account restore proof
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs
-          node - <<'NODE'
+          # The earliest 00:03 UTC free-quota slot can finish the whole 4-shard
+          # migration in ONE protected job when request headroom allows. Each
+          # separate invocation is bounded and idempotent. Do not delete data.
+          for attempt in 1 2 3 4 5; do
+            echo "Protected legacy Storage archive phase ${attempt} of 5"
+            node scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs
+            node - <<'NODE'
           const r=require("./artifacts/legacy-exit/legacy-storage-bundles.json");
           if(r.old_supabase_deletion_authorized!==false||
              r.source_supabase_writes!==0||r.source_supabase_deletes!==0||
@@ -125,6 +130,12 @@ jobs:
             throw Error("FULL_STORAGE_RESTORE_PROOF_FENCE_BROKEN");
           if(r.status==="BLOCKED_NO_DELETION")process.exitCode=3;
           NODE
+            state="$(node -p 'require("./artifacts/legacy-exit/legacy-storage-bundles.json").status')"
+            if [[ "$state" == "ALL_OLD_STORAGE_ORIGINAL_BYTES_IN_PRIVATE_B2_RESTORED_AND_VERIFIED" ]]; then
+              echo "Original bytes recovered across all four bundles; source deletion still locked"
+              break
+            fi
+          done
       - name: Publish only counts and sanitized status, never Storage contents
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
