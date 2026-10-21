@@ -130,11 +130,14 @@ export async function readDerivedStories(env,now=Date.now(),offset=0) {
           // not upstream fetch time and not a claim that website was rendered.
           // Keep this OUTSIDE the strict source-neutral signal schema.
           const firstMs=Date.parse(row.first_seen_at);
-          if(!Number.isFinite(firstMs)||firstMs>now+60_000||
-             firstMs<(originalTime(signal,now)?.at??Infinity)+DELAY_MS)
-            continue;
           signals.push(signal);
-          firstIngest.push({id:signal.id,first_seen_at:new Date(firstMs).toISOString()});
+          // NEVER drop a verified existing story merely because its metadata
+          // was absent in a legacy row/test transport. The journal audit
+          // separately fails closed for missing trusted first-ingest clocks.
+          firstIngest.push({id:signal.id,
+            first_seen_at:Number.isFinite(firstMs)&&firstMs<=now+60_000&&
+              firstMs>=(originalTime(signal,now)?.eligibleAt??Infinity)
+                ?new Date(firstMs).toISOString():null});
         }
       } catch { /* reject malformed row, never leak SQL metadata */ }
     }
