@@ -36,7 +36,10 @@ export async function preflightPrivateSourceReference({
   const ref=canonicalizePrivateOriginalSourceClock(original,signal);
   if(ref.publishedAt!==signal.published_at)return {reason:'ORIGINAL_CLOCK_DIFFERENT'};
   const derived=deriveStatelessSignals([ref],now)[0];
-  if(!derived||JSON.stringify(derived)!==JSON.stringify(signal))
+  if(!derived||Object.keys(derived).length!==Object.keys(signal).length||
+    Object.keys(derived).some(k=>
+      JSON.stringify((derived as unknown as Record<string,unknown>)[k])!==
+      JSON.stringify((signal as unknown as Record<string,unknown>)[k])))
     return {reason:'SOURCE_DERIVATION_MISMATCH'};
   if(derived.id!==signal.id||await automatedInputId(signal)!==inputId)
     return {reason:'SIGNED_ID_MISMATCH'};
