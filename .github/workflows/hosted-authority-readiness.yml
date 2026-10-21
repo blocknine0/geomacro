@@ -1,0 +1,92 @@
+name: Hosted Authority Readiness (No Laptop, No Funds)
+
+# One cloud-only, metadata-only production authority check per day.
+# This is not a private-key migration or a signer: no signing authority, licence
+# approval, B2 GET, D1 write, Supabase or real-money operation is performed.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "17 3 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/hosted-authority-readiness.yml"
+      - "scripts/ops/verify-hosted-production-authorities.mjs"
+      - "scripts/tests/verify-hosted-production-authorities.test.mjs"
+      - "docs/ops/HOSTED_NO_LAPTOP_503_RECOVERY.md"
+  pull_request:
+    paths:
+      - ".github/workflows/hosted-authority-readiness.yml"
+      - "scripts/ops/verify-hosted-production-authorities.mjs"
+      - "scripts/tests/verify-hosted-production-authorities.test.mjs"
+      - "docs/ops/HOSTED_NO_LAPTOP_503_RECOVERY.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-hosted-authority-readiness-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Prove no-publication and signer public-key shape contracts
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/verify-hosted-production-authorities.mjs
+          node --test scripts/tests/verify-hosted-production-authorities.test.mjs
+
+  protected-metadata-only:
+    needs: offline-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    env:
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256 }}
+      SUPABASE_URL: ""
+      SUPABASE_DB_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      APP_SUPABASE_URL: ""
+      APP_SUPABASE_SERVICE_ROLE_KEY: ""
+      COINBASE_API_KEY: ""
+      COINBASE_COMMERCE_API_KEY: ""
+      COINBASE_X402_MAINNET_ACK: ""
+      GEOMACRO_COMMERCIAL_LAUNCH_ACK: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify canonical main and exact protected authority inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_SHA}" = "$(git rev-parse HEAD)"
+          node scripts/ops/verify-hosted-production-authorities.mjs
