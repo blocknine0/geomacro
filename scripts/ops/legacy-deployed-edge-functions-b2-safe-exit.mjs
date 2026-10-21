@@ -15,6 +15,7 @@ const names=["live-gdelt-ingest","live-structure-intelligence","live-flash-inges
  "gro-archive-read","gro-archive-maintain","raw-snapshot-read","archive-verify-read"];
 const hash=x=>createHash("sha256").update(x).digest("hex");
 const env=process.env,tmp=mkdtempSync(join(tmpdir(),"geomacro-edges-"));
+const readOnlyMgmtToken=String(env.SUPABASE_LEGACY_EDGE_READ_TOKEN||env.SUPABASE_ACCESS_TOKEN||"");
 const output="artifacts/legacy-exit/deployed-edge-b2-verified.json";
 const report={schema:"geomacro.legacy-deployed-edge-functions-v1",source_project:ref,
  fetched_from_live_management_api:0,verified_private_source_files:0,b2_verified:false,
@@ -42,7 +43,7 @@ function isSourceBody(buffer){
  }catch{return false}
 }
 async function main(){
- if(env.SUPABASE_PROJECT_ID!==ref||!env.SUPABASE_ACCESS_TOKEN||
+ if(env.SUPABASE_PROJECT_ID!==ref||!readOnlyMgmtToken||
  !env.B2_KEY_ID||!env.B2_APPLICATION_KEY||
  !env.CLOUDFLARE_API_TOKEN||!env.CLOUDFLARE_ACCOUNT_ID||
  !env.D1_DATABASE_ID)return halt("EXACT_OLD_MANAGEMENT_AND_B2_CONFIG_REQUIRED");
@@ -53,7 +54,7 @@ async function main(){
   quota.used.PUT>=quota.limits.PUT-2||
   quota.used.total>=quota.limits.total-6)return halt("B2_PROTECTED_GET_RESERVE_REQUIRED");
  const list=await fetch("https://api.supabase.com/v1/projects/"+ref+"/functions",{
-  headers:{Authorization:"Bearer "+env.SUPABASE_ACCESS_TOKEN},
+  headers:{Authorization:"Bearer "+readOnlyMgmtToken},
   redirect:"error",signal:AbortSignal.timeout(15000)}).catch(()=>null);
  if(!list)return halt("OLD_EDGE_MANAGEMENT_NETWORK_UNAVAILABLE");
  if(list.status===401||list.status===403)
@@ -71,7 +72,7 @@ async function main(){
    typeof meta.ezbr_sha256!=="string")return halt("OLD_EDGE_DEPLOYED_METADATA_INCOMPLETE");
   const r=await fetch("https://api.supabase.com/v1/projects/"+ref+"/functions/"+
    encodeURIComponent(slug)+"/body",{
-    headers:{Authorization:"Bearer "+env.SUPABASE_ACCESS_TOKEN},
+    headers:{Authorization:"Bearer "+readOnlyMgmtToken},
     redirect:"error",signal:AbortSignal.timeout(20000)}).catch(()=>null);
   if(!r)return halt("OLD_EDGE_SOURCE_BODY_NETWORK_UNAVAILABLE");
   if(r.status===401||r.status===403)return halt("OLD_EDGE_SOURCE_BODY_READ_PERMISSION_MISSING");
