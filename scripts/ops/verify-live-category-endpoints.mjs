@@ -62,6 +62,10 @@ export async function verifyLiveCategories({ origin = 'https://geomacro.live', f
         headers: { 'Accept': 'application/json', ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) },
         ...(method === 'POST' ? { body: JSON.stringify({
           subjects: [{ type: 'country', country_iso3: 'IND' }], max_age_seconds: 3600, detail: 'compact',
+          // The category default is a separate no-charge research lane that
+          // intentionally never emits a payment offer. Probe the actual paid
+          // published lane explicitly instead of requiring research to be 402.
+          fulfillment_mode: 'published_only',
         }) } : {}),
       });
       let body = null;
@@ -78,6 +82,7 @@ export async function verifyLiveCategories({ origin = 'https://geomacro.live', f
   }
   return { schema_version: 'geomacro.category-endpoint-no-funds-proof.v1', checked_at: new Date().toISOString(),
     country_iso3: 'IND', requested_max_age_seconds: 3600, payment_signature_sent: false,
+    probed_fulfillment_mode: 'published_only',
     payment_or_settlement_performed: false, execution_authorized: false,
     status: categories.every(c => c.ready_for_no_funds_preflight) ? 'NO_FUNDS_PREFLIGHT_PASS' : 'BLOCKED',
     // One-country challenge checks are not paid delivery, global coverage or SLA acceptance.

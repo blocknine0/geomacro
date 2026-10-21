@@ -3,7 +3,7 @@ import {
  CANONICAL_MAINNET_INTELLIGENCE_PATH,
  mainnetIntelligenceHandlers,
 } from "./mainnet-intelligence-endpoint.server";
-import {GEOMACRO_AGENT_TOOLS,geomacroAgentTool,
+import {GEOMACRO_AGENT_TOOLS,GEOMACRO_CATEGORY_AGENT_PROFILES,geomacroAgentTool,
  geomacroAgentToolToCanonicalQuery} from "./geomacro-agent-tools";
 import {AGENT_QUERY_SCHEMA_VERSION} from "./agent-query-plan";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION,
@@ -60,6 +60,14 @@ export function officialGeomacroAgentDiscovery(){
   countries_routable:195,domains:["geopolitics","macro","rare_earth"],
   protocols:["HTTPS JSON","MCP","A2A","x402-v2"],
   endpoints,
+  category_agents:GEOMACRO_CATEGORY_AGENT_PROFILES.map(profile=>({
+   ...profile,agent_endpoint:OFFICIAL_AGENT_PATH,
+   agent_request:{tool:profile.tool,arguments:{country_iso3:"IND",
+    question:profile.id==="geopolitics"?"What are the geopolitical risks for India?":
+     profile.id==="macro-fx"?"What are the macro and FX risks for India?":
+     "What are the critical minerals risks for India?"}},
+   shared_engine:true,discovery_is_not_paid_availability:true,
+  })),
   tools:GEOMACRO_AGENT_TOOLS.map(t=>({
    name:t.name,description:t.description,input_schema:t.inputSchema,
    access:t.paid?"CANONICAL_X402_VERIFIED_ONLY":"MCP_PUBLIC_PROOF_VERIFY",

@@ -1,3 +1,4 @@
+import { assertCapabilityPriceHealth } from "./capability-price-health.mjs";
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -68,13 +69,6 @@ async function boundedJson(response, label) {
   }
 }
 
-function atomicFromUsdc(value) {
-  const raw = String(value ?? "").trim();
-  if (!/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(raw)) fail(`Invalid USDC decimal ${raw}`);
-  const [whole, fraction = ""] = raw.split(".");
-  return (BigInt(whole) * 1_000_000n + BigInt((fraction + "000000").slice(0, 6))).toString();
-}
-
 function adaptiveRequest() {
   const country = String(process.env.GEOMACRO_POST_LISTING_COUNTRY_ISO3 ?? "USA")
     .trim()
@@ -123,9 +117,7 @@ function validateRequirement(provider, required, base, getBody, availability) {
     if (getBody?.network !== BASE_MAINNET || getBody?.asset !== "USDC") {
       fail("Coinbase GET status metadata differs from unpaid 402");
     }
-    if (atomicFromUsdc(getBody?.exact_price_usdc) !== amount) {
-      fail("Coinbase GET price differs from unpaid 402");
-    }
+    assertCapabilityPriceHealth(getBody, availability, acceptance);
   } else if (provider.key === "circle") {
     if (acceptance.scheme !== "exact" || acceptance.network !== BASE_MAINNET) {
       fail("Circle public 402 is not Base-mainnet exact");
@@ -139,9 +131,7 @@ function validateRequirement(provider, required, base, getBody, availability) {
     if (getBody?.network !== BASE_MAINNET || getBody?.asset?.toLowerCase() !== BASE_USDC.toLowerCase()) {
       fail("Circle GET status metadata differs from unpaid 402");
     }
-    if (atomicFromUsdc(getBody?.price_usdc) !== amount) {
-      fail("Circle GET price differs from unpaid 402");
-    }
+    assertCapabilityPriceHealth(getBody, availability, acceptance);
   } else {
     if (!["nvm:erc4337", "nvm:card-delegation"].includes(acceptance.scheme)) {
       fail("Nevermined live 402 scheme is not approved");

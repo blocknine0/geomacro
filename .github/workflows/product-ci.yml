@@ -53,6 +53,9 @@ jobs:
       - name: Predge owner sealed token-only handoff crypto and authorization (offline)
         run: node --test scripts/ops/predge-sealed-token-handoff.test.mjs
 
+      - name: Query-specific capability price health (offline, no funds)
+        run: node --test scripts/commerce/capability-price-health.test.mjs
+
       - name: Official macro and minerals source-clock integrity (no network)
         run: node --test global-intelligence/scripts/test-statistical-source-clocks.test.mjs
 
