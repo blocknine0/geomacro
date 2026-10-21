@@ -152,6 +152,22 @@ MAJOR="$(psql "$URL" -X -A -t -v ON_ERROR_STOP=1 -c 'show server_version_num;' \
  2>"$PRIVATE/pg.err" || true)"
 [[ "$MAJOR" =~ ^17[0-9]{4}$ ]] ||
  block "DISPOSABLE_TARGET_NOT_POSTGRES17"
+# Only the disposable Supabase PG17 container may use its own admin role.
+mapfile -t LOCAL_DB_CONTAINERS < <(docker ps --format '{{.Names}}' |
+  grep -E '^supabase_db_[A-Za-z0-9_-]+$' || true)
+[[ "${#LOCAL_DB_CONTAINERS[@]}" == "1" ]] ||
+ block "DISPOSABLE_SINGLE_SUPABASE_DB_CONTAINER_NOT_PROVEN"
+LOCAL_DB_CONTAINER="${LOCAL_DB_CONTAINERS[0]}"
+LOCAL_ADMIN_IS_SUPER="$(docker exec "$LOCAL_DB_CONTAINER" \
+  psql -U supabase_admin -d postgres -X -A -t -v ON_ERROR_STOP=1 \
+  -c "SELECT CASE WHEN rolsuper THEN 1 ELSE 0 END FROM pg_roles WHERE rolname='supabase_admin';" \
+  2>"$PRIVATE/privileges.stderr" || true)"
+[[ "$LOCAL_ADMIN_IS_SUPER" == "1" ]] ||
+ block "DISPOSABLE_SUPABASE_ADMIN_PRIVILEGE_UNAVAILABLE"
+LOCAL_RESTORE_MAJOR="$(docker exec "$LOCAL_DB_CONTAINER" pg_restore --version \
+  2>"$PRIVATE/local-pg-restore.stderr" || true)"
+[[ "$LOCAL_RESTORE_MAJOR" =~ ^pg_restore[[:space:]]\(PostgreSQL\)[[:space:]]17\. ]] ||
+ block "DISPOSABLE_SUPABASE_PG_RESTORE_VERSION_MISMATCH"
 # The original custom dump can omit PostgreSQL's PINNED default public
 # schema, which template1 already provides. Do not drop it blindly.
 PUBLIC_IN_ARCHIVE="$(node --input-type=module - "$PRIVATE/toc" <<'NODE'
@@ -195,9 +211,11 @@ for ATTEMPT in 0 1 2 3; do
       >"$PRIVATE/bootstrap.stdout" 2>"$PRIVATE/bootstrap.stderr" ||
        block "DISPOSABLE_WHITELISTED_SCHEMA_BOOTSTRAP_FAILED"
   done
-  if docker run --rm --network host -v "$PRIVATE:/backup:ro" postgres:17-alpine \
-    pg_restore --dbname "$LOCAL_RESTORE_URL" --no-owner --no-privileges \
-      --exit-on-error /backup/verified-old-primary.pgcustom \
+  # Uses only the disposable Docker PG17 Unix socket, never the old hosted URL.
+  if docker exec -i "$LOCAL_DB_CONTAINER" \
+      pg_restore -U supabase_admin -d geomacro_legacy_restored \
+      --no-owner --no-privileges --exit-on-error \
+      <"$PRIVATE/verified-old-primary.pgcustom" \
       >"$PRIVATE/restore.stdout" 2>"$PRIVATE/restore.stderr";then
     RESTORED=1
     break

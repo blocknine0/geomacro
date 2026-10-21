@@ -45,6 +45,18 @@ jobs:
         run: |
           set -euo pipefail
           bash -n scripts/ops/verify-legacy-primary-db-independent-local-restore.sh
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const script=fs.readFileSync('scripts/ops/verify-legacy-primary-db-independent-local-restore.sh','utf8');
+          if(!script.includes('LOCAL_ADMIN_IS_SUPER')||
+             !script.includes("supabase_db_[A-Za-z0-9_-]+")||
+             !script.includes('docker exec -i "$LOCAL_DB_CONTAINER"')||
+             !script.includes('pg_restore -U supabase_admin -d geomacro_legacy_restored')||
+             !script.includes('project_deletion_authorized:false')||
+             !script.includes('old_supabase_db_writes:0')||
+             !script.includes('b2_writes:0'))
+             throw Error('DISPOSABLE_SUPABASE_ADMIN_RESTORE_PIN_FAILED');
+          NODE
           node --test scripts/ops/classify-private-pg-restore-error.test.mjs scripts/ops/legacy-restore-schema-bootstrap.test.mjs
           if bash scripts/ops/verify-legacy-primary-db-independent-local-restore.sh; then
             echo "unexpectedly passed without production credentials"
