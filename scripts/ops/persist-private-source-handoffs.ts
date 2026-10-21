@@ -27,7 +27,7 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
   b2_requests:0,supabase_requests:0,payments:0};
  const indexResponse=await fetchImpl(endpoint.replace('/internal/source-handoffs','/intelligence-inputs/automated')+'?view=handoff-ids',{
   redirect:'error',cache:'no-store',headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)});
- if(!indexResponse.ok||indexResponse.redirected)throw Error('PRIVATE_HANDOFF_INDEX_UNAVAILABLE');
+ if(!indexResponse.ok||indexResponse.redirected)throw Error('PRIVATE_HANDOFF_INDEX_HTTP_'+indexResponse.status);
  const rawIndex=await indexResponse.text();if(rawIndex.length>150000)throw Error('PRIVATE_HANDOFF_INDEX_OVERSIZE');
  const index=JSON.parse(rawIndex);
  if(index.ok!==true||index.schema!=='geomacro.automated-intelligence-input-feed.v1'||
@@ -51,7 +51,7 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
   const body=JSON.stringify({items:group});
   const response=await fetchImpl(endpoint,{method:'PUT',redirect:'error',cache:'no-store',
    headers:{authorization:'Bearer '+token,'Content-Type':'application/json'},body,signal:AbortSignal.timeout(15000)});
-  if(!response.ok||response.redirected)throw Error('PRIVATE_HANDOFF_WRITE_FAILED');
+  if(!response.ok||response.redirected)throw Error('PRIVATE_HANDOFF_WRITE_HTTP_'+response.status);
   const raw=await response.text();if(raw.length>10000)throw Error('PRIVATE_HANDOFF_ACK_INVALID');
   const ack=JSON.parse(raw);
   if(ack.ok!==true||!Array.isArray(ack.accepted_ids)||
@@ -66,5 +66,12 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
 }
 if(import.meta.main){
  try{console.log(JSON.stringify(await persistPrivateSourceHandoffs({refs:readPrivateSourceRefs()})))}
- catch{console.error('PRIVATE_SOURCE_HANDOFF_NOT_VERIFIED');process.exitCode=2;}
+ catch(error){
+  // Controlled stage/status only: never print private publisher URL, title,
+  // article hash, token, HTTP response body or untrusted exception text.
+  const message=error instanceof Error?error.message:'';
+  const safe=/^(?:PRIVATE_HANDOFF_[A-Z0-9_]+|DERIVED_NEWS_[A-Z0-9_]+)$/u.test(message)
+   ?message:'PRIVATE_HANDOFF_UNCLASSIFIED_TRANSPORT_OR_BINDING_ERROR';
+  console.error('::error::'+safe);process.exitCode=2;
+ }
 }
