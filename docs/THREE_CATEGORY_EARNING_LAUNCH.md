@@ -212,3 +212,12 @@ No wallet signature, funds transfer, runtime activation or Lovable publication
 was performed. Production credentials/publishing access and genuine current
 eligible signed products remain required, along with complete native settlement
 and delivery integration for Polygon/Arc. No marketplace listing is claimed.
+
+Security follow-up: canonical dependency audit found GHSA-587h-7wmj-h5pm,
+GHSA-698v-4r3x-3vcv and GHSA-r825-w8mm-5pxw. Pin Vite 7.3.7 and
+launch-editor 2.14.2 (override), regenerate bun.lock with Bun 1.4.2.
+Frozen installation, 29 focused app tests and production build passed; Bun audit
+checked 618 packages with no known vulnerabilities. Full Product CI passed on
+cfbdfe5 before this dependency update; newest-head CI remains independently
+required. Growth Agent still observes a real Early Warning 503 and the legacy
+staging load still needs D1 fixtures; neither gate has been weakened or waived.
