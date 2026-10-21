@@ -11,7 +11,7 @@ const MAX_BODY=192*1024;
 const MAX_TIME=13000;
 const OUT="artifacts/source-rights/current-source-terms-audit.json";
 const ALLOWED_HOSTS=new Set([
- "datacatalog.worldbank.org","www.worldbank.org","www.unhcr.org",
+ "datacatalog.worldbank.org","www.worldbank.org","www.unhcr.org","gdeltproject.org",
  "ucdp.uu.se","www.usgs.gov","www.gdeltproject.org","ec.europa.eu",
  "reliefweb.int","api.reliefweb.int","www.reliefweb.int"
 ]);
