@@ -14,6 +14,7 @@ import {approvedIndependentReviewerFromEnv} from
 import {prepareImmutableReviewedGriHandoff} from
   "../lib/gri-reviewed-immutable-b2-handoff.mjs";
 import {createB2Client} from "./b2-s3-client.mjs";
+import {verifyPallabSignedReadyGate} from "../lib/pallab-signed-ready-gri-gate.mjs";
 
 const sha=bytes=>createHash("sha256").update(bytes).digest("hex");
 const HEX=/^[a-f0-9]{64}$/u;
@@ -55,6 +56,22 @@ async function main(){
   if(!pem)fail("APPROVED_INDEPENDENT_REVIEWER_PIN_REQUIRED");
   const [reviewedGri,countryCategoryCertificates,historicalB2Bytes]=
     sources.map(row=>pinned(...row));
+  // CRITICAL: private staging itself cannot PUT signed GRI to B2 unless
+  // Pallab has personally approved the exact Suman signed JSON and cert
+  // bytes. The canonical publisher independently repeats this check.
+  const ownerApproval=pinned("GEOMACRO_OWNER_SIGNED_APPROVAL",8192,"json");
+  const gate=verifyPallabSignedReadyGate({
+    ownerEnvelopeBase64:Buffer.from(JSON.stringify(ownerApproval),"utf8").toString("base64"),
+    ownerPublicKeyPem:process.env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM,
+    ownerPublicKeySpkiSha256:process.env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256,
+    sumanReviewerSpkiSha256:process.env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256,
+    factsSpkiSha256:process.env.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256,
+    rightsSpkiSha256:process.env.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256,
+    reviewedSha256:process.env.GEOMACRO_REVIEWED_GRI_SHA256,
+    certificatesSha256:process.env.GEOMACRO_COUNTRY_CERTIFICATES_SHA256
+  });
+  if(gate.signed_owner_approval_verified!==true)
+    fail("REAL_OWNER_HUMAN_SIGNATURE_REQUIRED_BEFORE_B2");
   // No client initialization or quota reservation on invalid reviewer,
   // country certificates, independent event evidence or historical SHA.
   const input={reviewedGri,countryCategoryCertificates,
