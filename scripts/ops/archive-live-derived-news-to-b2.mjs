@@ -3,6 +3,7 @@
 // Intelligence journal, no issuer polling, no Supabase and no new cron.
 import {createB2Client} from "./b2-s3-client.mjs";
 import {resolve} from "node:path";
+import {mkdirSync,writeFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {archiveDerivedJournalToB2}
@@ -46,23 +47,57 @@ export async function runGovernedDerivedNewsBackup({
  });
  return archiveDerivedJournalToB2({fetchImpl,b2,now,force});
 }
+function writeSafeBackupReceipt(receipt){
+ // Private Actions artifact contains no title, article bytes, source URL,
+ // key material or public commercial authorization. An empty/held/failed
+ // storage attempt must NEVER be marked uploaded.
+ const archived=receipt?.status==="B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED"&&
+   receipt?.b2_put_verified===true&&
+   receipt?.b2_exact_readback_verified===true&&
+   receipt?.source_d1_readback_verified===true;
+ const safe={
+  schema:"geomacro.private-derived-news-b2-independent-archive-acceptance.v1",
+  checked_at:new Date().toISOString(),
+  status:receipt?.status??"BACKUP_FAILED_CLOSED",
+  derived_rows_archived:archived?receipt.archived_rows:0,
+  category_counts:archived?receipt.category_counts:null,
+  source_d1_verified:receipt?.source_d1_readback_verified===true,
+  put_then_full_get_restored_verified:archived,
+  object_sha256:archived?receipt.compressed_sha256:null,
+  exact_b2_archive_object_key:archived?receipt.archive_object_key:null,
+  storage_confirmed:archived,
+  source_news_d1_website_delivery_not_modified:true,
+  signed_hot_gri_verified:false,
+  paid_eligible:false,raw_original_saved:false,payments:0
+ };
+ mkdirSync("artifacts/derived-news",{recursive:true,mode:0o700});
+ writeFileSync("artifacts/derived-news/b2-archive-verified-readback.json",
+  JSON.stringify(safe,null,2)+"\\n",{mode:0o600});
+ return safe;
+}
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{
   const receipt=await runGovernedDerivedNewsBackup();
+  const verified=writeSafeBackupReceipt(receipt);
   // No original headlines, private URLs, entire article bytes or tokens in logs.
   console.log(JSON.stringify({
-   schema:receipt.schema,status:receipt.status,
-   rows:receipt.archived_rows??0,
-   domains:receipt.category_counts??null,
-   d1_readback:receipt.source_d1_readback_verified??false,
-   b2_put_full_get_verified:receipt.b2_exact_readback_verified??false,
+   schema:verified.schema,status:verified.status,
+   rows:verified.derived_rows_archived,
+   domains:verified.category_counts,
+   d1_readback:verified.source_d1_verified,
+   b2_put_full_get_verified:verified.storage_confirmed,
    signed_gri:false,paid_eligible:false,requests_funded:0
   }));
+  // A quota hold during a designated archive attempt is not an archive.
+  // Distinguish genuine zero-news from inability to retain actual news.
+  if(verified.status==="B2_SHARED_ACCOUNT_RECOVERY_HEADROOM_HELD")
+    process.exitCode=3;
  }catch(e){
   const error=e instanceof Error?e.message:"";
   const code=/^(?:DERIVED_NEWS_B2_[A-Z0-9_]+|DERIVED_NEWS_B2_BACKUP_[A-Z0-9_]+|B2_[A-Z0-9_]+)$/u.test(error)?error:
    "DERIVED_NEWS_B2_ARCHIVE_UNAVAILABLE";
-  console.error("::warning::"+code);
+  writeSafeBackupReceipt({status:"BACKUP_FAILED_CLOSED"});
+  console.error("::error::"+code);
   process.exitCode=3;
  }
 }
