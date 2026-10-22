@@ -29,8 +29,11 @@ if(import.meta.main){
   for(const signal of journal){
    const ref=retained.originals.get(await automatedInputId(signal));
    if(!ref){missing++;continue;}
-   const next=deriveStatelessSignals([ref],now.getTime())[0];
-   if(!next||next.id!==signal.id||next.category!==signal.category||
+   const derived=deriveStatelessSignals([ref],now.getTime())[0];
+   // input identity excludes UI IDs: equivalent retained aliases legitimately
+   // share one authenticated original. Preserve each existing journal ID.
+   const next=derived?{...derived,id:signal.id}:null;
+   if(!next||next.category!==signal.category||
     next.published_at!==signal.published_at||next.date_precision!==signal.date_precision)throw Error('CLOCK');
    if(await automatedInputId(next)!==await automatedInputId(signal))revised.push(next);
   }

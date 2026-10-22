@@ -58,6 +58,11 @@ it("retains genuine pre-style-update private references while newly rendered con
  const revised=deriveStatelessSignals([ref],now)[0];
  expect(legacy.id).toBe(revised.id);expect(legacy.published_at).toBe(revised.published_at);
  expect(await automatedInputId(legacy)).not.toBe(await automatedInputId(revised));
+ // A second public UI ID is the same exact signed content identity.
+ const alias={...legacy,id:'geopolitics-deadbeef'};
+ expect(await automatedInputId(alias)).toBe(await automatedInputId(legacy));
+ const refreshScript=(await import('node:fs')).readFileSync('scripts/ops/refresh-derived-news-editorial.ts','utf8');
+ expect(refreshScript).toContain('const next=derived?{...derived,id:signal.id}:null');
  for(const signal of [legacy,revised]){
   const envelope=await signAutomatedIntelligenceInput({schema:'geomacro.automated-intelligence-input.v1',
    approval_mode:'AUTOMATED_INGESTION',approved_for:'derived_intelligence_input',generated_at:new Date(now).toISOString(),
