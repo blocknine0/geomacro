@@ -7,8 +7,8 @@ const INSTITUTIONAL = readFileSync("src/routes/institutional.tsx", "utf8");
 
 describe("Risk Gate commercial control ordering", () => {
   it("keeps detailed Risk Gate mechanics off the buyer-first homepage", () => {
-    expect(HOME).toContain("Machine and commercial access lives in dedicated product surfaces with explicit availability and product boundaries.");
-    expect(HOME).toContain("API & Agent Access");
+    expect(HOME).toContain("The same intelligence. Structured for your workflow.");
+    expect(HOME).toContain("Visit the Store");
     expect(HOME).not.toContain("Risk Gate recommendation returned");
     expect(HOME).not.toContain("Customer policy decides what happens next");
     expect(HOME).not.toContain("CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE");

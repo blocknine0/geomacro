@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, Clock3, RefreshCw, Search } from "lucide-react";
+import { AlertCircle, Bookmark, Clock3, RefreshCw, Search } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
@@ -7,6 +7,8 @@ import { findCardFromObservedRelease } from "@/lib/find-card-v1";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
 import type { StatelessCategory, StatelessIntelligenceSignal } from "@/lib/stateless-intelligence-model";
+
+import { parseReaderPreferences, READER_PREFERENCES_KEY } from "@/lib/reader-preferences";
 
 const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
   { key: "geopolitics", label: "Geopolitics" },
@@ -45,7 +47,7 @@ function formatInstant(value: string): string {
     : "Original publication time unavailable";
 }
 
-function Story({ signal, checkedAt }: {signal: StatelessIntelligenceSignal;checkedAt: number}) {
+function Story({ signal, checkedAt, saved, onSave }: {signal: StatelessIntelligenceSignal;checkedAt: number;saved: boolean;onSave: () => void}) {
   const isCurrent = Date.parse(signal.published_at) >= checkedAt - 86_400_000;
   const card = findCardFromObservedRelease(signal, checkedAt);
   return (
@@ -57,6 +59,7 @@ function Story({ signal, checkedAt }: {signal: StatelessIntelligenceSignal;check
         <span aria-hidden>·</span><time dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
         {!isCurrent ? <span className="rounded-full border border-border px-2 py-0.5">Earlier release</span> : null}
       </div>
+      <button type="button" onClick={onSave} aria-pressed={saved} aria-label={saved ? "Remove saved finding" : "Save finding"} className="mt-3 inline-flex min-h-9 items-center gap-2 text-xs text-primary"><Bookmark className="h-3.5 w-3.5" fill={saved ? "currentColor" : "none"} aria-hidden />{saved ? "Saved" : "Save finding"}</button>
       <p className="mt-3 text-xs font-medium text-muted-foreground">Country or region: {displayProse(signal.geography ?? "Not specified in the release")}</p>
       <h3 className="mt-3 text-lg font-semibold leading-snug tracking-tight">{displayProse(signal.title.replace(/^Geomacro finds\s+/iu, ""))}</h3>
       <p className="mt-3 text-sm leading-6">{displayProse(signal.what_changed)}</p>
@@ -97,7 +100,30 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
   const [query, setQuery] = useState("");
   const [period, setPeriod] = useState<IntelligenceDeskPeriod>("all");
   const [visibleCount, setVisibleCount] = useState(INTELLIGENCE_PAGE_SIZE);
-  useEffect(() => setView(initialView === "all" ? "geopolitics" : initialView), [initialView]);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [savedOnly, setSavedOnly] = useState(false);
+  const [lastVisit, setLastVisit] = useState<number | null>(null);
+  const [readerReady, setReaderReady] = useState(false);
+  const visitStarted = useRef<number>(0);
+  useEffect(() => {
+    visitStarted.current = Date.now();
+    try {
+      const reader = parseReaderPreferences(localStorage.getItem(READER_PREFERENCES_KEY));
+      if (initialView === "all") setView(reader.category);
+      setSavedIds(reader.savedIds);
+      setLastVisit(reader.lastVisit);
+    } catch { /* Browser storage is optional. */ }
+    setReaderReady(true);
+  }, []);
+  useEffect(() => {
+    if (initialView !== "all") setView(initialView);
+  }, [initialView]);
+  useEffect(() => {
+    if (!readerReady) return;
+    try { localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify({ category: view, savedIds, lastVisit: visitStarted.current })); }
+    catch { /* Private browsing and storage limits must not block reading. */ }
+  }, [view, savedIds, readerReady]);
+  const toggleSaved = (id: string) => setSavedIds(ids => ids.includes(id) ? ids.filter(value => value !== id) : [id, ...ids].slice(0, 200));
   useEffect(() => setVisibleCount(INTELLIGENCE_PAGE_SIZE), [view, query, period]);
   // SSR can now load all three issuer categories independently. Do not erase
   // valid server-published Macro/Minerals on the first browser hydration or
@@ -244,7 +270,8 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
   const checkedAt = Date.now();
   const allSignals = filterIntelligenceDesk([...merged.values()], {category:"all",query:"",period:"all"}, checkedAt);
   const categorySignals = allSignals.filter(signal => signal.category === view);
-  const signals = filterIntelligenceDesk(allSignals, {category:view,query,period}, checkedAt);
+  const signals = filterIntelligenceDesk(allSignals, {category:view,query,period}, checkedAt).filter(signal => !savedOnly || savedIds.includes(signal.id));
+  const newSinceVisit = lastVisit === null ? null : categorySignals.filter(signal => Date.parse(signal.published_at) > lastVisit).length;
   const recentCount = categorySignals.filter(signal => Date.parse(signal.published_at) >= checkedAt - 86_400_000).length;
   const shown = signals.slice(0, visibleCount);
   const recent = shown.filter(signal => Date.parse(signal.published_at) >= checkedAt - 86_400_000);
@@ -266,15 +293,19 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           What changed in the world
         </h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
-          What changed, why it matters and what to watch across Geopolitics, Macro/FX and
-          Critical Minerals. Original publication dates stay visible. Findings are unscored.
+          Your briefing on Geopolitics, Macro / FX and Critical Minerals.
         </p>
         <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Clock3 className="h-4 w-4" aria-hidden />
-          <span>15-minute public delay · Original sources rechecked while open · Full stored journal refreshed every 6 minutes</span>
+          <span>15-minute public delay · Original dates shown · Unscored findings</span>
         </p>
       </header>
 
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/30 px-4 py-3">
+        <p role="status" className="text-xs text-muted-foreground">{newSinceVisit === null ? "Make this your daily briefing." : `${newSinceVisit} available findings published since your previous visit in this category.`}</p>
+        <button type="button" aria-pressed={savedOnly} onClick={() => { setSavedOnly(value => !value); setVisibleCount(INTELLIGENCE_PAGE_SIZE); }} className="inline-flex min-h-10 items-center gap-2 text-sm text-primary"><Bookmark className="h-4 w-4" />{savedOnly ? "Show all findings" : `Saved findings (${savedIds.length})`}</button>
+        <p className="w-full text-[11px] text-muted-foreground">Preferences and saved IDs stay in this browser. Saved findings remain readable while available in the feed.</p>
+      </div>
       <section className="mt-8" aria-label="Intelligence category">
         <h2 className="text-sm font-semibold">Browse findings</h2>
         <div role="group" aria-label="Intelligence category"
@@ -374,14 +405,14 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         {signals.length > 0 ? (
           <div className="mt-6 space-y-8" aria-live="polite" aria-atomic="false">
             {recent.length > 0 ? (
-              <section><h3 className="mb-3 text-sm font-semibold">New in the last 24 hours</h3><div className="grid items-start gap-4 lg:grid-cols-2">{recent.map(signal => <Story key={signal.id} signal={signal} checkedAt={checkedAt} />)}</div></section>
+              <section><h3 className="mb-3 text-sm font-semibold">New in the last 24 hours</h3><div className="grid items-start gap-4 lg:grid-cols-2">{recent.map(signal => <Story key={signal.id} signal={signal} checkedAt={checkedAt} saved={savedIds.includes(signal.id)} onSave={() => toggleSaved(signal.id)} />)}</div></section>
             ) : (
               <p className="text-sm text-muted-foreground">
                 No verified original release from this view in the last 24 hours.
               </p>
             )}
             {earlier.length > 0 ? (
-              <section><h3 className="mb-3 text-sm font-semibold">Earlier original releases · Dated</h3><div className="grid items-start gap-4 lg:grid-cols-2">{earlier.map(signal => <Story key={signal.id} signal={signal} checkedAt={checkedAt} />)}</div></section>
+              <section><h3 className="mb-3 text-sm font-semibold">Earlier original releases · Dated</h3><div className="grid items-start gap-4 lg:grid-cols-2">{earlier.map(signal => <Story key={signal.id} signal={signal} checkedAt={checkedAt} saved={savedIds.includes(signal.id)} onSave={() => toggleSaved(signal.id)} />)}</div></section>
             ) : null}
           </div>
         ) : missing.length === 0 ? (
@@ -395,6 +426,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           <p role="status" className="text-xs text-muted-foreground">Showing {shown.length} of {signals.length} matching findings</p>
           {shown.length < signals.length ? <button type="button" onClick={()=>setVisibleCount(count=>count+INTELLIGENCE_PAGE_SIZE)} className="min-h-11 rounded-xl border border-border px-5 text-sm font-medium hover:bg-muted">Show more findings</button> : null}
         </div> : null}
+        <details className="mt-8 border-t border-border pt-4"><summary className="cursor-pointer text-xs text-muted-foreground">About these findings</summary>
         <p className="mt-8 text-xs leading-6 text-muted-foreground">
           Dates describe the original publication, not the last refresh. Earlier findings remain
           clearly dated. A publisher release alone does not establish a verified real-world outcome.
@@ -403,6 +435,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           for machine evaluation, including the Predge pilot. It is unscored and not licensed for partner resale.
           Required credits are retained on the website; raw articles and source feeds are not delivered.
         </p>
+        </details>
       </section>
     </main>
   );

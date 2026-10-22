@@ -14,7 +14,10 @@ export const Route = createFileRoute("/docs")({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
-      { name: "robots", content: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" },
+      {
+        name: "robots",
+        content: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+      },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
@@ -43,7 +46,7 @@ export const Route = createFileRoute("/docs")({
           publisher: { "@id": "https://geomacro.live/#organization" },
           mainEntity: {
             "@type": "ItemList",
-            name: "Geomacro public documentation",
+            name: "Documentation",
             numberOfItems: DOCS_PAGE_COUNT,
           },
         }),
@@ -84,7 +87,9 @@ const ENTRY_SLUGS = [
 ] as const;
 
 function DocsIndexPage() {
-  const entryCards = ENTRY_SLUGS.map((slug) => DOCS_MANIFEST.find((entry) => entry.slug === slug)).filter(Boolean);
+  const entryCards = ENTRY_SLUGS.map((slug) =>
+    DOCS_MANIFEST.find((entry) => entry.slug === slug),
+  ).filter(Boolean);
   const first = DOCS_MANIFEST[0];
 
   return (
@@ -92,59 +97,112 @@ function DocsIndexPage() {
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <main className="min-w-0 max-w-3xl">
           <DocumentHeader />
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Geomacro public documentation</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+            Documentation
+          </h1>
           <p className="mt-4 leading-7 text-muted-foreground">
-            Start with the public Intelligence and Risk Indices products. These guides explain what you can access for free, how commercial API delivery works, and the safeguards behind Geomacro risk intelligence.
-          </p>
-          <p className="mt-4 leading-7 text-muted-foreground">
-            The current public indices preserve the versioned <span className="font-mono text-foreground">gri-v1.2.0</span> parent methodology and verified proof lineage. Historical GRI material therefore remains available as a methodology and proof reference rather than a second live headline product.
+            Product guides, methodology and developer reference. Start with a topic below.
           </p>
 
+          <details className="mt-4 text-sm text-muted-foreground"><summary className="cursor-pointer">Methodology & historical context</summary><p className="mt-3 leading-7">The current public indices preserve the versioned gri-v1.2.0 parent methodology. Historical GRI material therefore remains available as a methodology and proof reference rather than a second live headline product.</p></details>
           <div className="mt-7 flex flex-wrap gap-3 text-sm">
-            <Link to="/intelligence" className="rounded-lg border border-primary/35 bg-primary/10 px-4 py-2 font-medium text-primary hover:border-primary/70">Explore free Intelligence</Link>
-            <Link to="/pricing" className="rounded-lg border border-border/70 px-4 py-2 font-medium text-foreground hover:border-primary/50">Compare API & monthly access</Link>
+            <Link
+              to="/intelligence"
+              className="rounded-lg border border-primary/35 bg-primary/10 px-4 py-2 font-medium text-primary hover:border-primary/70"
+            >
+              Explore free Intelligence
+            </Link>
+            <Link
+              to="/pricing"
+              className="rounded-lg border border-border/70 px-4 py-2 font-medium text-foreground hover:border-primary/50"
+            >
+              Visit Store
+            </Link>
           </div>
 
           <div className="mt-8 rounded-lg border border-border bg-card/30 p-4">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Intelligence flow</p>
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Intelligence flow
+            </p>
             <ol className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2 text-xs">
-              {["Real-world events", "Structured signals", "Separate Risk Indices", "Change attribution", "Risk Objects / Risk Gate"].map((step, index, all) => (
+              {[
+                "Real-world events",
+                "Structured signals",
+                "Separate Risk Indices",
+                "Change attribution",
+                "Risk Objects / Risk Gate",
+              ].map((step, index, all) => (
                 <li key={step} className="flex items-center gap-2">
-                  <span className="rounded border border-border bg-background/60 px-2.5 py-1.5 text-foreground">{step}</span>
-                  {index < all.length - 1 ? <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60" aria-hidden /> : null}
+                  <span className="rounded border border-border bg-background/60 px-2.5 py-1.5 text-foreground">
+                    {step}
+                  </span>
+                  {index < all.length - 1 ? (
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60" aria-hidden />
+                  ) : null}
                 </li>
               ))}
             </ol>
           </div>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {entryCards.map((entry) => entry ? (
-              <Link key={entry.slug} to="/docs/$slug" params={{ slug: entry.slug }} className="group rounded-lg border border-border bg-card/30 p-4 transition-colors hover:border-primary/50">
-                <p className="text-sm font-semibold text-foreground">{entry.title}</p>
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Explore guide →</p>
-              </Link>
-            ) : null)}
+            {entryCards.map((entry) =>
+              entry ? (
+                <Link
+                  key={entry.slug}
+                  to="/docs/$slug"
+                  params={{ slug: entry.slug }}
+                  className="group rounded-lg border border-border bg-card/30 p-4 transition-colors hover:border-primary/50"
+                >
+                  <p className="text-sm font-semibold text-foreground">{entry.title}</p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                    Explore guide →
+                  </p>
+                </Link>
+              ) : null,
+            )}
           </div>
 
-          <Link to="/docs/$slug" params={{ slug: first.slug }} className="mt-8 inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/50">
+          <Link
+            to="/docs/$slug"
+            params={{ slug: first.slug }}
+            className="mt-8 inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/50"
+          >
             Start reading <ArrowRight className="h-4 w-4" aria-hidden />
           </Link>
 
           <p className="mt-12 border-t border-border pt-6 text-sm text-muted-foreground">
-            The versioned GRI v1.2 parent methodology and proof reference remains available at <a href="/docs/gri-architecture" className="text-primary underline underline-offset-4 hover:no-underline">GRI Architecture & Proof System</a>.
+            The versioned GRI v1.2 parent methodology and proof reference remains available at{" "}
+            <a
+              href="/docs/gri-architecture"
+              className="text-primary underline underline-offset-4 hover:no-underline"
+            >
+              GRI Architecture & Proof System
+            </a>
+            .
           </p>
         </main>
 
         <aside className="rounded-xl border border-border/60 bg-card/20 p-5 lg:sticky lg:top-20 lg:self-start">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Complete contents · {DOCS_PAGE_COUNT} pages</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            Complete contents · {DOCS_PAGE_COUNT} pages
+          </p>
           <div className="mt-5 max-h-[70vh] space-y-5 overflow-y-auto pr-1">
             {DOCS_GROUPS.map((group) => (
               <div key={group.title}>
-                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">{group.title}</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+                  {group.title}
+                </p>
                 <div className="mt-1 space-y-1">
                   {group.entries.map((entry) => (
-                    <Link key={entry.slug} to="/docs/$slug" params={{ slug: entry.slug }} className="flex gap-2 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted/40 hover:text-foreground">
-                      <span className="w-6 shrink-0 tabular-nums">{String(entry.page_number).padStart(2, "0")}</span>
+                    <Link
+                      key={entry.slug}
+                      to="/docs/$slug"
+                      params={{ slug: entry.slug }}
+                      className="flex gap-2 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                    >
+                      <span className="w-6 shrink-0 tabular-nums">
+                        {String(entry.page_number).padStart(2, "0")}
+                      </span>
                       <span>{entry.title}</span>
                     </Link>
                   ))}

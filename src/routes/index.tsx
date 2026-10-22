@@ -4,9 +4,9 @@ import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
 import { findCardFromObservedRelease } from "@/lib/find-card-v1";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 
-const TITLE = "Global Risk Intelligence Infrastructure | Geomacro";
+const TITLE = "Geomacro | What changed. Why it matters.";
 const DESCRIPTION =
-  "Geomacro turns geopolitical, macroeconomic and critical-mineral developments into explainable, machine-readable risk context for institutions, operators and AI systems.";
+  "Follow Geopolitics, Macro / FX and Critical Minerals. Read clear findings, ask questions and explore structured intelligence in the Geomacro Store.";
 const URL = "https://geomacro.live/";
 const IMAGE = "https://geomacro.live/og-image-v2.png";
 

@@ -34,7 +34,8 @@ describe("Geomacro Finds commercial homepage presentation", () => {
   it("keeps sales enquiries open without suggesting an active monthly checkout", () => {
     const guide = readFileSync("src/components/commercial-access-guide.tsx", "utf8");
     const shell = readFileSync("src/components/site-shell.tsx", "utf8");
-    expect(shell).toContain("<CommercialAccessGuide />");
+    expect(shell).not.toContain("<CommercialAccessGuide />");
+    expect(shell).toContain('label: "Store"');
     expect(guide).toContain("Exact USDC price by capability");
     expect(guide).toContain("Coming Soon · enquiries open");
     expect(guide).toContain("Request monthly access");
@@ -43,11 +44,11 @@ describe("Geomacro Finds commercial homepage presentation", () => {
   });
 
   it("has a balanced responsive hero and correct risk-indices route", () => {
-    expect(home).toContain("minmax(0,1.02fr)_minmax(0,.98fr)");
-    expect(home).toContain("text-[clamp(2.6rem,4vw,4.6rem)]");
+    expect(home).toContain("lg:grid-cols-2");
+    expect(home).toContain("text-[clamp(3rem,6vw,5.5rem)]");
     expect(home).toContain("<LiveIntelligenceShowcase initialFindCards={initialFindCards} />");
     expect(home).toContain('to="/risk-indices"');
-    expect(home).toContain("Clarity without the noise.");
+    expect(home).toContain("Three lenses on a changing world.");
     expect(home).not.toContain("Not another raw-data feed.");
   });
 

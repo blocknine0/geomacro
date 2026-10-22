@@ -89,18 +89,14 @@ jobs:
             exit 1
           fi
           grep -Fq 'Earlier assessments retain their original dates.' src/routes/intelligence.tsx
-          grep -Fq 'Explore for free. Choose the access that fits.' src/routes/pricing.tsx
-          grep -Fq 'Failed, stale, unavailable, replayed, refunded, internal and unpaid requests do not count as successful paid deliveries.' src/routes/pricing.tsx
+          grep -Fq 'Geomacro Store' src/routes/pricing.tsx
+          grep -Fq 'CapabilityPriceSchedule' src/routes/pricing.tsx
+          grep -Fq 'ApiKeysNotice' src/routes/pricing.tsx
+          grep -Fq 'Self-service access and checkout are not open yet.' src/components/api-keys-notice.tsx
+          grep -Fq 'Coming soon' src/components/api-keys-notice.tsx
+          grep -Fq 'Each exact request must qualify before payment.' src/components/capability-price-schedule.tsx
+          grep -Fq 'Enquire about this product' src/components/capability-price-schedule.tsx
           grep -Fq 'Risk Gate, paid agent/x402 production access and broader machine delivery remain roadmap or controlled capabilities until separately promoted.' src/routes/institutional.tsx
-          grep -Fq 'Pay-per-call availability is confirmed by the live checkout, not the advertised price.' src/routes/pricing.tsx
-          grep -Fq 'Coming Soon · Monthly checkout' src/routes/pricing.tsx
-          grep -Fq 'Monthly subscriptions are Coming Soon. You can request a tailored plan and quote now.' src/routes/pricing.tsx
-          grep -Fq 'Request monthly access' src/routes/pricing.tsx
-          grep -Fq 'Structured intelligence for APIs and AI agents' src/components/commercial-access-guide.tsx
-          grep -Fq '"Coming Soon · enquiries open"' src/components/commercial-access-guide.tsx
-          grep -Fq 'Monthly subscription checkout is Coming Soon; plan enquiries are open.' src/components/commercial-access-guide.tsx
-          grep -Fq 'Request monthly access' src/components/commercial-access-guide.tsx
-          grep -Fq 'Pay only when a verified delivery succeeds' src/components/commercial-access-guide.tsx
           echo "PASS: evidence-time and commercial-truth source contracts match the exact checked-out SHA."
 
       - name: Verify locked production presentation and product truth
@@ -118,16 +114,16 @@ jobs:
             exit 1
           fi
           grep -Fq 'Ask Geomacro' src/components/ask/ask-workspace.tsx
-          grep -Fq 'Geomacro turns global developments into clear risk intelligence for teams, decisions and AI agents.' src/components/home/commercial-home.tsx
+          grep -Fq 'Follow what matters to you' src/components/home/commercial-home.tsx
 
           grep -Fq 'CapabilityPriceSchedule' src/routes/pricing.tsx
           grep -Fq 'GEOMACRO_CAPABILITY_PRICES' src/components/capability-price-schedule.tsx
           grep -Fq 'GEOMACRO_PRICING_GROUPS' src/components/capability-price-schedule.tsx
           grep -Fq 'CapabilityPriceSchedule' src/routes/data-api.tsx
-          grep -Fq 'No-charge failure boundary' src/routes/pricing.tsx
-          grep -Fq 'Pay-per-call availability is confirmed by the live checkout, not the advertised price.' src/routes/pricing.tsx
+          grep -Fq 'Unavailable, stale or unqualified results are not chargeable.' src/components/capability-price-schedule.tsx
+          grep -Fq 'A displayed price is not an available payment quote.' src/components/capability-price-schedule.tsx
 
-          grep -Fq 'COMMERCIAL RISK INTELLIGENCE' src/routes/institutional.tsx
+          grep -Fq 'For teams' src/routes/institutional.tsx
           grep -Fq 'Risk Gate' src/routes/risk-gate.tsx
           node - <<'NODE'
           const fs = require('fs');
@@ -625,18 +621,18 @@ jobs:
         run: |
           set -euo pipefail
           routes="$(cat <<'EOF'
-          /|Global risk intelligence
+          /|What changed.
           /intelligence|What changed in the world
           /global-risk|Geomacro Global Risk
           /risk-indices|Geomacro Risk Indices
           /ask-geomacro|Ask Geomacro
-          /data-api|INTELLIGENCE API · AI AGENTS
-          /pricing|Access & pricing
-          /institutional|COMMERCIAL RISK INTELLIGENCE
+          /data-api|API &amp; Agents
+          /pricing|Geomacro Store
+          /institutional|For teams
           /risk-gate|Risk Gate
-          /ecosystem|Ecosystem & partnerships
-          /research|Research & methodology
-          /docs|Geomacro public documentation
+          /ecosystem|Ecosystem
+          /research|Research
+          /docs|Documentation
           /about|About & trust
           /roadmap|What works today, and what comes next.
           /contact|Bring the workflow.

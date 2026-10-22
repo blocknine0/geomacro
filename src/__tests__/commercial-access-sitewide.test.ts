@@ -13,8 +13,8 @@ describe("commercial access is explained sitewide", () => {
   const docMetadata = read("src/routes/docs_.$slug.tsx");
 
   it("shares one commercial access guide with every route except pricing, where the comparison is already complete", () => {
-    expect(shell).toContain('import { CommercialAccessGuide } from "@/components/commercial-access-guide"');
-    expect(shell).toContain('pathname === "/pricing" ? null : <CommercialAccessGuide />');
+    expect(shell).not.toContain('import { CommercialAccessGuide }');
+    expect(shell).toContain('{ to: "/pricing", label: "Store" }');
     expect(guide).toContain('aria-label="Choose how to access Geomacro"');
     expect(guide).toContain('to="/pricing"');
   });
@@ -40,8 +40,8 @@ describe("commercial access is explained sitewide", () => {
     expect(guide).toContain("Recurring intelligence for teams and workflows");
     expect(guide).toContain('mailto:contact@geomacro.live?subject=Geomacro%20monthly');
     expect(guide).toContain("Monthly subscription checkout is Coming Soon; plan enquiries are open.");
-    expect(pricing).toContain("Monthly subscriptions are Coming Soon. You can request a tailored plan and quote now.");
-    expect(pricing).toContain("Annual & enterprise");
+    expect(read("src/components/api-keys-notice.tsx")).toContain("Self-service access and checkout are not open yet.");
+    expect(pricing).toContain("Building for a team?");
   });
 
   it("provides buyer action on Intelligence, Ask and Docs without promising paid availability", () => {
@@ -50,7 +50,7 @@ describe("commercial access is explained sitewide", () => {
     expect(ask).toContain("Ask a public risk question for free");
     expect(ask).toContain("compare API and monthly access");
     expect(docs).toContain("Explore free Intelligence");
-    expect(docs).toContain("Compare API & monthly access");
+    expect(docs).toContain("Visit Store");
   });
 
   it("does not expose editorial content type labels or a synthetic live subscription", () => {
@@ -67,7 +67,7 @@ describe("commercial access is explained sitewide", () => {
     const roadmap = read("src/components/sections/roadmap-section.tsx");
     const contact = read("src/routes/contact.tsx");
     expect(intelligence).toContain("Previous verified risk assessments remain available for comparison");
-    expect(roadmap).toContain("Enterprise agreements and support");
-    expect(contact).toContain("Scope, service terms and access are agreed before commercial delivery.");
+    expect(roadmap).toContain("API keys · Coming soon");
+    expect(contact).toContain("Do not send private keys, seed phrases or production secrets.");
   });
 });

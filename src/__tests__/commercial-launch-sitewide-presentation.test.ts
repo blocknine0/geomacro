@@ -20,25 +20,23 @@ describe("Geomacro post-launch commercial website presentation", () => {
     expect(shell).toContain('to: "/global-risk", label: "Global Risk History"');
     expect(shell).toContain('<Link to="/risk-indices" className="hover:text-foreground">Risk Indices</Link>');
     expect(shell).toContain('<Link to="/about" className="hover:text-foreground">About & Trust</Link>');
-    expect(institutional).toContain('<Link to="/risk-indices">Risk Indices</Link>');
-    expect(research).toContain('<Link to="/risk-indices">Verify current Risk Indices');
+    expect(institutional).toContain('href: "/intelligence"');
+    expect(research).toContain('href: "/risk-indices"');
     expect(shell).not.toContain('to: "/global-risk", label: "Risk Indices"');
   });
 
-  it("offers all three commercial buying paths without faking checkout or entitlements", () => {
-    expect(pricing).toContain("Free Explorer");
-    expect(pricing).toContain("Capability-based USDC");
+  it("offers the store catalog and launch enquiries without fake checkout", () => {
+    const notice = read("src/components/api-keys-notice.tsx");
+    const catalog = read("src/components/capability-price-schedule.tsx");
+    expect(pricing).toContain("Geomacro Store");
     expect(pricing).toContain("<CapabilityPriceSchedule />");
     expect(api).toContain("<CapabilityPriceSchedule compact />");
-    expect(pricing).not.toContain("Launch price for the first 20,000");
-    expect(read("src/components/commercial-access-guide.tsx")).toContain("Exact USDC price by capability");
-    expect(read("src/components/agent-commerce-status.tsx")).not.toContain("USDC/call");
-    expect(pricing).toContain("Monthly access");
-    expect(pricing).toContain("mailto:contact@geomacro.live?subject=Geomacro%20monthly");
-    expect(pricing).toContain("Annual & enterprise");
-    expect(pricing).toContain("mailto:contact@geomacro.live?subject=Geomacro%20annual");
-    expect(pricing).toContain("Monthly subscriptions are Coming Soon. You can request a tailored plan and quote now.");
-    expect(pricing).toContain("Pay-per-call availability is confirmed by the live checkout");
+    expect(notice).toContain("API keys");
+    expect(notice).toContain("Coming soon");
+    expect(notice).toContain("Self-service access and checkout are not open yet.");
+    expect(catalog).toContain("GEOMACRO_CAPABILITY_PRICES");
+    expect(catalog).toContain("Enquire about this product");
+    expect(catalog).not.toContain("Buy now");
   });
 
   it("keeps technical and noncommercial messaging away from the main buyer journey", () => {
@@ -46,7 +44,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
       expect(s).not.toMatch(/raw article text|prediction markets|bridge & swap|testnet USDC/iu);
     }
     expect(shell).not.toContain("AgentCommerceStatus compact");
-    expect(api).toContain("INTELLIGENCE API · AI AGENTS");
+    expect(api).toContain("API & Agents");
     expect(api).toContain("Get concise, structured Geomacro intelligence built for decisions");
     expect(api).not.toContain("Runtime truth, not marketing copy");
     expect((riskGate.match(/>PRIVATE PILOT<\/Badge>/gu) ?? []).length).toBe(1);
@@ -68,7 +66,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     expect(about).toContain("Risk Gate remains non-authorizing");
     expect(api).toContain("AgentCommerceStatus");
     expect(api).toContain("Paid API requests become available only when the live payment");
-    expect(pricing).toContain("AgentCommerceStatus");
+    expect(pricing).toContain("ApiKeysNotice");
     expect(riskGate).toContain("execution_authorized = false");
   });
 });

@@ -17,8 +17,9 @@ describe("canonical Geomacro site background", () => {
     expect(background).toContain('linear-gradient(to_bottom,rgba(8,11,17,0.74),rgba(8,11,17,0.9))');
   });
 
-  it("mounts the background at the shared site shell", () => {
-    expect(shell).toContain('import { AnimatedBackground } from "@/components/animated-background"');
-    expect(shell).toContain('<AnimatedBackground />');
+  it("uses the quiet shared editorial background without continuous canvas work", () => {
+    expect(shell).not.toContain('import { AnimatedBackground }');
+    expect(shell).not.toContain('<AnimatedBackground />');
+    expect(shell).toContain('gm-site');
   });
 });

@@ -10,8 +10,8 @@ describe("production-first public identity", () => {
       expect(shell).not.toContain(marker);
     }
     expect(shell).toContain('label: "API & Agents"');
-    expect(shell).toContain('label: "Institutions"');
-    expect(shell).toContain('label: "Pricing"');
+    expect(shell).toContain('label: "For teams"');
+    expect(shell).toContain('label: "Store"');
   });
 
   it("publishes only production or production-gated commerce status", () => {

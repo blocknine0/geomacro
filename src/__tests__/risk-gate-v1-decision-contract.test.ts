@@ -53,7 +53,7 @@ describe("Risk Gate v1 decision contract", () => {
     expect(route).toContain("execution_authorized = false");
     expect(readme).not.toContain("PAUSE / REROUTE");
     expect(institutional).toContain("Signed Risk Objects and Risk Gate");
-    expect(institutional).toContain("Machine and automation layers come later");
+    expect(institutional).toContain("Applications & agents");
     for (const decision of V1_DECISIONS) expect(institutional).not.toContain(decision);
     expect(surfaces).toContain("`REROUTE` is not a current v1 machine decision");
     expect(agentDocs).toContain("`REROUTE` is not a current Risk Gate v1 machine decision");

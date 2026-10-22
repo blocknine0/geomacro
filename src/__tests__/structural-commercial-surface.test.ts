@@ -9,10 +9,10 @@ const packageDoc = readFileSync(
 
 describe("structural data commercial surface", () => {
   it("keeps commercial machine delivery governed and runtime-status driven without a free API promise", () => {
-    expect(page).toContain("INTELLIGENCE API · AI AGENTS");
+    expect(page).toContain("API & Agents");
     expect(page).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(page).toContain("AgentCommerceStatus");
-    expect(page).toContain("RUNTIME STATUS ABOVE");
+    expect(page).toContain("Delivery status & product boundaries");
     expect(page).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(page).not.toContain("bounded public structured-data digest");
   });

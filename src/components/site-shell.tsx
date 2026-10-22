@@ -3,9 +3,7 @@ import type { ReactNode } from "react";
 import { ChevronDown, Languages, Menu, Twitter } from "lucide-react";
 import { Wordmark } from "@/components/wordmark";
 import { Button } from "@/components/ui/button";
-import { AnimatedBackground } from "@/components/animated-background";
 import { ProductionCoverageProof } from "@/components/production-coverage-proof";
-import { CommercialAccessGuide } from "@/components/commercial-access-guide";
 import {
   Sheet,
   SheetContent,
@@ -27,12 +25,12 @@ const PRIMARY_NAV = [
   { to: "/intelligence", label: "Intelligence" },
   { to: "/risk-indices", label: "Risk Indices" },
   { to: "/ask-geomacro", label: "Ask Geomacro" },
-  { to: "/data-api", label: "API & Agents" },
-  { to: "/institutional", label: "Institutions" },
-  { to: "/pricing", label: "Pricing" },
+  { to: "/pricing", label: "Store" },
 ] as const;
 
 const EXPLORE_NAV = [
+  { to: "/data-api", label: "API & Agents", description: "API keys coming soon" },
+  { to: "/institutional", label: "For teams", description: "Risk, treasury and supply-chain workflows" },
   { to: "/global-risk", label: "Global Risk History", description: "Historical global risk conditions and context" },
   { to: "/ecosystem", label: "Ecosystem & Partnerships", description: "Integrations, partnerships and commercial ecosystem" },
   { to: "/research", label: "Research & Evidence", description: "Methodology, coverage evidence and limitations" },
@@ -153,14 +151,14 @@ export function SiteShell({ children }: { children: ReactNode }) {
   const showProductionEvidence = PRODUCTION_EVIDENCE_ROUTES.has(pathname);
 
   return (
-    <div className="relative min-h-screen text-foreground">
+    <div className="gm-site relative min-h-screen bg-background text-foreground">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
       >
         Skip to content
       </a>
-      <AnimatedBackground />
+
       <div className="relative z-10 flex min-h-screen flex-col">
         <header className="sticky top-0 z-50 border-b border-border/55 bg-background/78 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/68">
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:h-[68px] sm:px-6">
@@ -187,7 +185,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               </Link>
             </div>
 
-            <nav aria-label="Primary" className="hidden items-center gap-3 text-xs text-muted-foreground xl:flex 2xl:gap-4">
+            <nav aria-label="Primary" className="hidden items-center gap-5 text-sm text-muted-foreground xl:flex">
               {PRIMARY_NAV.map((item) => (
                 <Link
                   key={item.to}
@@ -215,16 +213,16 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
         <div id="main-content" className="flex-1">{children}</div>
 
-        {pathname === "/pricing" ? null : <CommercialAccessGuide />}
+
 
         <footer className="border-t border-border/60 bg-background/45 backdrop-blur-sm">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 text-sm text-muted-foreground sm:px-6 lg:grid-cols-[1.15fr_2fr] lg:py-14">
             <div>
               <Wordmark height={32} />
               <p className="mt-4 max-w-sm text-sm leading-6">
-                Decision-ready geopolitical, macroeconomic and critical-mineral risk intelligence for humans and machines.
+                What changed. Why it matters. Geopolitics, Macro / FX and Critical Minerals.
               </p>
-              <p className="mt-4 font-mono text-[11px]">© 2026 Geomacro</p>
+              <p className="mt-4 font-mono text-[11px]">© {new Date().getFullYear()} Geomacro</p>
             </div>
 
             <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
@@ -236,7 +234,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   <Link to="/risk-indices" className="hover:text-foreground">Risk Indices</Link>
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
                   <Link to="/global-risk" className="hover:text-foreground">Global Risk History</Link>
-                  <Link to="/pricing" className="hover:text-foreground">Pricing</Link>
+                  <Link to="/pricing" className="hover:text-foreground">Store</Link>
                 </div>
               </div>
               <div>
@@ -271,7 +269,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-              <span>Intelligence findings delayed at least 15 minutes · Risk Indices retain their 60-minute delay · x402/API is separately gated · No raw sources</span>
+              <span>Intelligence findings delayed at least 15 minutes · Risk Indices retain their 60-minute delay · API keys coming soon</span>
               <Link to="/about" className="hover:text-foreground">Privacy · Product use · Trust</Link>
             </div>
           </div>
