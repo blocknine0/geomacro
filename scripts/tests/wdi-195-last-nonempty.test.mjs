@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {wdiLastNonemptyUrl,inspectWdiLastNonempty,observeWdiLastNonempty}
+import {wdiLastNonemptyUrl,inspectWdiLastNonempty,observeWdiLastNonempty,planWdiMissingCountryBatches,combineWdiMissingCountryBatches}
  from "../lib/wdi-195-last-nonempty.mjs";
 const now=new Date("2026-10-20T09:00:00Z");
 const registrySource=readFileSync("src/lib/canonical-country-registry-195.ts","utf8");
@@ -62,4 +62,47 @@ test("one official GET and provider-denial fail closed",async()=>{
  assert.equal(x.payments,0);
  await assert.rejects(()=>observeWdiLastNonempty({now,missingIso3,fetchImpl:async()=>new Response("403",{status:403})}),/DENIED_OR_QUOTA/);
  await assert.rejects(()=>observeWdiLastNonempty({now,missingIso3,fetchImpl:async()=>new Response("x",{headers:{"content-length":"900000"}})}),/BODY_LIMIT/);
+});
+
+test("33 real WDI missing countries are split 17/16 within exactly two additional free GETs",()=>{
+ const all=/const COUNTRY_ROWS=`([^`]+)`/u.exec(registrySource)[1].trim()
+   .split("\n").map(x=>x.split("|")[0]);
+ const missing=all.slice(0,33);
+ const plan=planWdiMissingCountryBatches(missing,registrySource);
+ assert.deepEqual(plan.batches.map(x=>x.length),[17,16]);
+ assert.equal(plan.max_extra_source_calls,2);
+ assert.equal(plan.unprobed_country_count,0);
+ assert.deepEqual(plan.batches.flat(),[...missing].sort());
+ const reports=plan.batches.map(batch=>inspectWdiLastNonempty([
+   {page:1,pages:1,total:batch.length*2},
+   batch.flatMap(iso3=>[
+     {countryiso3code:iso3,indicator:{id:"FP.CPI.TOTL.ZG"},date:"2024",value:2.5},
+     {countryiso3code:iso3,indicator:{id:"NY.GDP.MKTP.KD.ZG"},date:"2023",value:1.1}
+   ])
+ ],{now,registrySource,missingIso3:batch}));
+ const merged=combineWdiMissingCountryBatches(plan,reports);
+ assert.equal(merged.status,"OFFICIAL_HISTORICAL_PERIODS_OBSERVED");
+ assert.equal(merged.actually_queried_missing_countries,33);
+ assert.equal(merged.not_yet_queried_missing_countries,0);
+ assert.equal(merged.observed_source_requests,2);
+ assert.equal(merged.target_country_reference_years_by_indicator["FP.CPI.TOTL.ZG"].length,33);
+ assert.equal(merged.verified_current_195x3_country_domain_events,false);
+ assert.equal(merged.paid_delivery_enabled,false);
+ assert.doesNotMatch(JSON.stringify(merged),/2\.5|1\.1/);
+});
+test("partial World Bank 403/429 stops same-provider batch and never claims all missing found",()=>{
+ const all=/const COUNTRY_ROWS=`([^`]+)`/u.exec(registrySource)[1].trim()
+  .split("\n").map(x=>x.split("|")[0]);
+ const plan=planWdiMissingCountryBatches(all.slice(0,33),registrySource);
+ const failed=combineWdiMissingCountryBatches(plan,[],{failure:"WDI_BACKFILL_DENIED_OR_QUOTA"});
+ assert.equal(failed.status,"UNVERIFIED_OR_UNAVAILABLE");
+ assert.equal(failed.observed_source_requests,1);
+ assert.equal(failed.actually_queried_missing_countries,0);
+ assert.equal(failed.not_yet_queried_missing_countries,33);
+ const tooMany=planWdiMissingCountryBatches(all.slice(0,40),registrySource);
+ assert.equal(tooMany.unprobed_country_count,6);
+ assert.equal(tooMany.all_requested_gaps_checked,false);
+ assert.equal(tooMany.batches.flat().length,34);
+ assert.throws(()=>planWdiMissingCountryBatches(["EAS"],registrySource),/TARGET_INVALID/);
+ assert.throws(()=>planWdiMissingCountryBatches(["IND","IND"],registrySource),/TARGET_INVALID/);
 });
