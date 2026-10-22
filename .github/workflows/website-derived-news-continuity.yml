@@ -4,6 +4,11 @@ name: Website Derived News Continuity
 # GitHub cron is best effort; only owned structured news is written to Cloudflare D1.
 # Signed Finds/B2 backup retain the existing quota governor and rights boundary.
 on:
+  pull_request:
+    paths:
+      - "scripts/ops/verify-production-observed-195x3.mjs"
+      - "scripts/tests/verify-production-observed-195x3.test.mjs"
+      - ".github/workflows/website-derived-news-continuity.yml"
   workflow_dispatch: {}
   workflow_run:
     workflows: ["Deploy D1 Control Plane"]
@@ -65,6 +70,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  observed-195x3-static-contract:
+    # PR smoke has no production environment or customer credentials.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22
+      - name: Validate truthful 195-country observed-source matrix without network
+        run: |
+          node --check scripts/ops/verify-production-observed-195x3.mjs
+          node --test scripts/tests/verify-production-observed-195x3.test.mjs
+
   refresh-derived-news:
     if: >-
       github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' &&
