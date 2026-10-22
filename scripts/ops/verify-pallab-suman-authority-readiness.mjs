@@ -4,20 +4,40 @@
 import {createHash,createPublicKey} from "node:crypto";
 import {pathToFileURL} from "node:url";
 const SHA=/^[a-f0-9]{64}$/u;
-function pin(pem,sha){
- if(typeof pem!=="string"||!SHA.test(sha??""))return null;
+// Emit only a finite failure code; never echo PEMs, pins, bytes, size,
+// fingerprint, secret content or even a signed payload into Actions logs.
+export function inspectPublicEd25519Pin(pem,sha){
+ if(typeof pem!=="string"||pem.trim()==="")
+  return Object.freeze({status:"PUBLIC_PEM_SECRET_MISSING",pin:null});
+ if(typeof sha!=="string"||sha.trim()==="")
+  return Object.freeze({status:"PUBLIC_PIN_SECRET_MISSING",pin:null});
+ if(!SHA.test(sha))
+  return Object.freeze({status:"PUBLIC_PIN_NOT_LOWERCASE_64_HEX",pin:null});
+ if(pem.includes("\\n")&&!pem.includes("\n"))
+  return Object.freeze({status:"PUBLIC_PEM_HAS_LITERAL_BACKSLASH_N",pin:null});
+ if(!/^-----BEGIN PUBLIC KEY-----\r?\n/u.test(pem)||
+    !/\r?\n-----END PUBLIC KEY-----\s*$/u.test(pem))
+  return Object.freeze({status:"PUBLIC_PEM_HEADER_OR_NEWLINE_INVALID",pin:null});
  try{
   const key=createPublicKey(pem);
-  return key.asymmetricKeyType==="ed25519" &&
-   createHash("sha256").update(key.export({format:"der",type:"spki"}))
-    .digest("hex")===sha ? sha :null;
- }catch{return null;}
+  if(key.asymmetricKeyType!=="ed25519")
+    return Object.freeze({status:"PUBLIC_KEY_NOT_ED25519",pin:null});
+  const actual=createHash("sha256")
+   .update(key.export({format:"der",type:"spki"})).digest("hex");
+  if(actual!==sha)
+    return Object.freeze({status:"PUBLIC_KEY_SPKI_SHA256_MISMATCH",pin:null});
+  return Object.freeze({status:"PUBLIC_PIN_VERIFIED",pin:sha});
+ }catch{return Object.freeze({status:"PUBLIC_PEM_PARSE_INVALID",pin:null});}
 }
+
 export function pallabSumanAuthorityReadiness(env=process.env){
- const owner=pin(env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM,
+ const ownerCheck=inspectPublicEd25519Pin(
+   env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM,
    env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256);
- const reviewer=pin(env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM,
+ const reviewerCheck=inspectPublicEd25519Pin(
+   env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM,
    env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256);
+ const owner=ownerCheck.pin,reviewer=reviewerCheck.pin;
  const other=[
   env.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256,
   env.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256
@@ -45,6 +65,12 @@ export function pallabSumanAuthorityReadiness(env=process.env){
   owner_human_authority_expected:"Pallab Das",
   independent_reviewer_expected:"Suman Dey",
   status,configured_public_key_shapes_passed:distinct,
+  // Only named finite state codes to repair the four public secrets.
+  owner_public_key_check:ownerCheck.status,
+  reviewer_public_key_check:reviewerCheck.status,
+  facts_public_pin_present_and_well_formed:other.length===2&&
+    other.every(x=>SHA.test(x)),
+  gro_signer_public_pin_well_formed:Boolean(gro),
   reviewer_person_identity_confirmed_by_key_shape_only:false,
   owner_person_identity_confirmed_by_key_shape_only:false,
   owner_signature_uploaded_and_verified:false,
