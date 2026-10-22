@@ -42,8 +42,9 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
       expect(html).toContain(headline[category].replace(/^Geomacro finds /u,""));
       for(const other of ["geopolitics","macro","rare_earth"] as const)
         if(other!==category)expect(html).not.toContain(headline[other].replace(/^Geomacro finds /u,""));
-      expect((html.match(/aria-pressed=/gu)??[]).length).toBe(3);
-      expect((html.match(/aria-pressed="true"/gu)??[]).length).toBe(1);
+      const categories = html.slice(html.indexOf('aria-label="Intelligence category"'), html.indexOf("</section>"));
+      expect((categories.match(/aria-pressed=/gu)??[]).length).toBe(3);
+      expect((categories.match(/aria-pressed="true"/gu)??[]).length).toBe(1);
       expect(html).not.toContain("All findings</button>");
       expect(html).not.toContain('aria-label="Filter Intelligence by country"');
       expect(html).not.toContain("Loading ");
@@ -91,7 +92,7 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
     expect(desk).toContain("const missingAtSsr = DOMAINS.map(domain => domain.key)");
     expect(desk).toContain("if (missingAtSsr.length > 0) void refresh(missingAtSsr)");
     expect(desk).toContain("const EMPTY_FEEDS: FeedState = Object.freeze({})");
-    for(const forbidden of ["localStorage","sessionStorage","SUPABASE_DB_URL","settleCoinbase"])
+    for(const forbidden of ["sessionStorage","SUPABASE_DB_URL","settleCoinbase"])
       expect(desk).not.toContain(forbidden);
   });
 });

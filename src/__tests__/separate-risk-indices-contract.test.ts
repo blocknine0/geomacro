@@ -62,7 +62,7 @@ describe("separate public risk indices contract", () => {
     expect(projection).toContain('status: "unavailable"');
     expect(projection).toContain("score: null");
     expect(workspace).toContain("does not substitute zero or a synthetic estimate");
-    expect(workspace).toContain("No zero-risk or synthetic substitute");
+    expect(workspace).toContain("No unverified fallback is being displayed.");
   });
 
   it("keeps the legacy Supabase Edge Function read-only and bounded for explicit recovery only", () => {
@@ -149,6 +149,6 @@ describe("separate public risk indices contract", () => {
     }
 
     expect(read("src/routes/intelligence.tsx")).toContain("useRiskIndices");
-    expect(read("src/routes/institutional.tsx")).toContain("Separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
+    expect(read("src/routes/institutional.tsx")).toContain("Risk & strategy");
   });
 });

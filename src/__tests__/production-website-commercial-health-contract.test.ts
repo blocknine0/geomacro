@@ -18,26 +18,19 @@ describe("production website health validates real commercial promises", () => {
     expect(job).not.toContain("Score dates remain the original verified evidence times.");
   });
 
-  it("verifies truthful free, x402 and monthly access against checked-out source", () => {
-    for (const phrase of [
-      "Explore for free. Choose the access that fits.",
-      "Pay-per-call availability is confirmed by the live checkout, not the advertised price.",
-      "Coming Soon · Monthly checkout",
-      "Monthly subscriptions are Coming Soon. You can request a tailored plan and quote now.",
-      "Request monthly access",
-    ]) {
+  it("verifies store and coming-soon promises against checked-out source", () => {
+    const notice = read("src/components/api-keys-notice.tsx");
+    const schedule = read("src/components/capability-price-schedule.tsx");
+    for (const phrase of ["Geomacro Store", "CapabilityPriceSchedule", "ApiKeysNotice"]) {
       expect(job).toContain(phrase);
       expect(pricing).toContain(phrase);
     }
-    expect(job).toContain("Structured intelligence for APIs and AI agents");
-    expect(guide).toContain("Structured intelligence for APIs and AI agents");
-    expect(job).toContain("Coming Soon · enquiries open");
-    expect(guide).toContain("Coming Soon · enquiries open");
-    expect(job).toContain("Monthly subscription checkout is Coming Soon; plan enquiries are open.");
-    expect(guide).toContain("Monthly subscription checkout is Coming Soon; plan enquiries are open.");
-    expect(job).toContain("Request monthly access");
-    expect(guide).toContain("Request monthly access");
-    expect(job).toContain("Failed, stale, unavailable, replayed, refunded, internal and unpaid requests do not count as successful paid deliveries.");
+    expect(job).toContain("Self-service access and checkout are not open yet.");
+    expect(notice).toContain("Self-service access and checkout are not open yet.");
+    expect(job).toContain("Each exact request must qualify before payment.");
+    expect(schedule).toContain("Each exact request must qualify before payment.");
+    expect(job).toContain("Unavailable, stale or unqualified results are not chargeable.");
+    expect(schedule).toContain("Unavailable, stale or unqualified results are not chargeable.");
   });
 
   it("continues fail-closed checks on live APIs, published SHA and mobile", () => {

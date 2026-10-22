@@ -14,14 +14,14 @@ describe("Coming Soon status is truthful across commercial website", () => {
   const commerce = read("src/components/agent-commerce-status.tsx");
   const policy = read("src/content/docs/48-status-labels.md");
 
-  it("marks free explorer available while monthly self-service remains Coming Soon", () => {
-    expect(guide).toContain('"Available now"');
-    expect(guide).toContain('"Coming Soon · enquiries open"');
-    expect(guide).toContain("Monthly subscription checkout is Coming Soon");
-    expect(pricing).toContain("Coming Soon · Monthly checkout");
-    expect(pricing).toContain("Monthly subscriptions are Coming Soon");
-    expect(pricing).toContain("Request monthly access");
-    expect(shell).toContain("<CommercialAccessGuide />");
+  it("marks store browsing free while API keys and self-service checkout remain coming soon", () => {
+    const notice = read("src/components/api-keys-notice.tsx");
+    expect(pricing).toContain("Just exploring?");
+    expect(pricing).toContain("<ApiKeysNotice />");
+    expect(notice).toContain("API keys");
+    expect(notice).toContain("Coming soon");
+    expect(notice).toContain("Self-service access and checkout are not open yet.");
+    expect(shell).not.toContain("<CommercialAccessGuide />");
     expect(pricing).not.toContain("Subscribe now");
   });
 
@@ -48,17 +48,17 @@ describe("Coming Soon status is truthful across commercial website", () => {
     const buyer = read("src/components/category-api-launch-panel.tsx");
     expect(buyer).toContain("published_only");
     expect(buyer).toContain("response.status!==402");
-    expect(roadmap).toContain("COMING SOON · IN PROGRESS");
-    expect(roadmap).toContain("COMING SOON · EARLY ACCESS");
-    expect(roadmap).toContain("COMING SOON · FUTURE");
+    expect(roadmap).toContain("API keys · Coming soon");
+    expect(roadmap).toContain("Scoped pilot integrations remain available by agreement.");
+    expect(roadmap).toContain("Marketplace listings · Planned");
     expect(policy).toContain("PLANNED / COMING SOON");
     expect(policy).toContain("Coming Soon");
   });
 
   it("keeps working annual enterprise email enquiries open and never invents subscription prices", () => {
-    expect(pricing).toContain("Email enterprise sales");
-    expect(pricing).toContain("mailto:contact@geomacro.live?subject=Geomacro%20annual");
-    expect(pricing).toContain("Annual pricing is quoted directly");
+    expect(pricing).toContain("Building for a team?");
+    expect(pricing).toContain('to="/contact"');
+    expect(read("src/routes/contact.tsx")).toContain("mailto:contact@geomacro.live");
     expect(guide).not.toContain("monthly_price_usdc");
     expect(guide).not.toContain("Unlimited calls");
   });

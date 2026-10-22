@@ -28,9 +28,9 @@ describe("commercial public surface v2", () => {
       expect(surface).not.toContain("Verified snapshot unavailable");
     }
 
-    expect(read("src/routes/about.tsx")).toContain("Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
-    expect(read("src/routes/data-api.tsx")).toContain("Separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
-    expect(read("src/routes/research.tsx")).toContain("Separate public indices, preserved versioned lineage.");
+    expect(read("src/routes/about.tsx")).toContain("Geopolitics, Macro / FX and Critical Minerals");
+    expect(read("src/routes/data-api.tsx")).toContain("Geopolitics, Macro / FX and Critical Minerals");
+    expect(read("src/routes/research.tsx")).toContain("See how a risk reading is built.");
   });
 
   it("keeps GRI v1.2 as proof lineage rather than a second current headline product", () => {
@@ -41,7 +41,7 @@ describe("commercial public surface v2", () => {
 
     expect(about).not.toContain("GRI v1.2 - Live");
     expect(about).not.toContain("combined GRI");
-    expect(research).toContain("historical combined GRI remains a versioned proof record");
+    expect(research).toContain("Methodology, evidence rules and change attribution");
     expect(docs).toContain("Historical GRI material therefore remains available as a methodology and proof reference");
     expect(llms).toContain("Historical combined-GRI snapshots remain versioned audit records");
   });
@@ -50,14 +50,14 @@ describe("commercial public surface v2", () => {
     const home = read("src/components/home/commercial-home.tsx");
     const shell = read("src/components/site-shell.tsx");
 
-    expect(home).toContain("Global risk intelligence");
-    expect(home).toContain("Know what changed.");
-    expect(home).toContain("Know why it matters.");
-    expect(home).toContain("Three risk domains");
-    expect(home).toContain("Clarity without the noise.");
-    expect(home).toContain("Built for real workflows");
-    expect(home).toContain("Critical minerals & rare earths");
-    expect(home).toContain("Machine and commercial access lives in dedicated product surfaces with explicit availability and product boundaries.");
+    expect(home).toContain("The world changes. Stay with it.");
+    expect(home).toContain("What changed.");
+    expect(home).toContain("Why it matters.");
+    expect(home).toContain("Three lenses on a changing world.");
+    expect(home).toContain("Three lenses on a changing world.");
+    expect(home).toContain("Go from a finding to a question");
+    expect(home).toContain("Critical Minerals");
+    expect(home).toContain("The same intelligence. Structured for your workflow.");
     expect(home).not.toContain("AskGeomacroSection");
     expect(home).not.toContain("RiskIndicesSection");
     expect(home).not.toContain("eventCount");
@@ -101,21 +101,21 @@ describe("commercial public surface v2", () => {
     expect(status).toContain("production activation pending");
     expect(status.toLowerCase()).not.toContain("testnet");
     expect(dataApi).toContain("AgentCommerceStatus");
-    expect(dataApi).toContain("x402 pay per call");
+    expect(dataApi).toContain("Try the request console");
     expect(dataApi).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(home).not.toContain("AgentCommerceStatus compact");
     expect(home).not.toContain("0.05 USDC");
-    expect(home).not.toContain("x402 pay per call");
+    expect(home).not.toContain("Try the request console");
   });
 
   it("qualifies commercial conversations before sensitive pilot work", () => {
     const contact = read("src/routes/contact.tsx");
 
-    expect(contact).toContain("Bring the workflow.");
-    expect(contact).toContain("What decision or review should Geomacro support?");
-    expect(contact).toContain("What would make the evaluation useful enough to continue?");
-    expect(contact).toContain("Do not send seed phrases, private keys, production secrets or unnecessary personal/confidential data by email.");
-    expect(contact).toContain("The fastest conversation starts with the decision you are trying to improve");
+    expect(contact).toContain("Let’s talk about your workflow.");
+    expect(contact).toContain("Tell us which product, geography and delivery format you need.");
+    expect(contact).toContain("Include the page, time and issue you saw so we can investigate.");
+    expect(contact).toContain("Do not send private keys, seed phrases or production secrets.");
+    expect(contact).toContain("Sales, support and integration enquiries:");
   });
 
   it("documents fail-closed public Risk Indices without synthetic fallback or infinite loading", () => {

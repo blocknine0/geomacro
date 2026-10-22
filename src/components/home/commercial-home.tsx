@@ -1,200 +1,127 @@
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  Bot,
-  CheckCircle2,
-  CircleGauge,
-  Globe2,
-  Landmark,
-  Layers3,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, Globe2, Landmark, Layers3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LiveIntelligenceShowcase } from "@/components/home/live-intelligence-showcase";
-import type {FindCardV1} from "@/lib/find-card-v1";
+import type { FindCardV1 } from "@/lib/find-card-v1";
 
 const DOMAINS = [
   {
-    title: "Geopolitical risk",
-    body: "Track policy, conflict, sanctions and cross-border changes without turning a news stream into your workflow.",
+    category: "geopolitics",
+    title: "Geopolitics",
+    text: "Conflict, sanctions and policy shifts.",
     icon: Globe2,
   },
   {
-    title: "Macro & FX risk",
-    body: "See the macro conditions and external-pressure signals that can change country, treasury and operating decisions.",
+    category: "macro",
+    title: "Macro / FX",
+    text: "Rates, inflation and currency pressure.",
     icon: Landmark,
   },
   {
-    title: "Critical minerals",
-    body: "Monitor rare-earth and strategic-mineral concentration, sourcing pressure and geopolitical dependency.",
+    category: "rare_earth",
+    title: "Critical Minerals",
+    text: "Supply, export controls and rare earths.",
     icon: Layers3,
   },
 ] as const;
 
-const OUTPUTS = [
-  "What changed",
-  "Why it matters",
-  "Likely impact",
-  "Confidence",
-  "What to watch next",
-] as const;
-
-const BUYERS = [
-  ["Risk & strategy", "Turn external events into reviewable risk context."],
-  ["Treasury & operations", "Add country and macro context to escalation workflows."],
-  ["Supply chain", "Track mineral, sourcing and geopolitical concentration risk."],
-  ["AI agents", "Consume bounded, machine-readable intelligence instead of raw data dumps."],
-] as const;
-
-function Eyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-primary sm:text-xs">
-      {children}
-    </p>
-  );
-}
-
-export function CommercialHome({initialFindCards=[]}:{initialFindCards?:FindCardV1[]}) {
+export function CommercialHome({ initialFindCards = [] }: { initialFindCards?: FindCardV1[] }) {
   return (
     <>
-      <section className="relative overflow-hidden border-b border-border/50">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_16%,color-mix(in_oklab,var(--primary)_16%,transparent),transparent_33%)]" />
-        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 sm:py-12 lg:min-h-[540px] lg:grid-cols-[minmax(0,1.02fr)_minmax(0,.98fr)] lg:gap-14 lg:py-16">
-          <div className="min-w-0 max-w-2xl">
-            <Eyebrow>Global risk intelligence · Built for decisions</Eyebrow>
-            <h1 className="mt-5 max-w-[43rem] text-[clamp(2.6rem,4vw,4.6rem)] font-semibold leading-[1.02] tracking-[-0.05em]">
-              Know what changed.
-              <span className="mt-1 block text-primary">Know why it matters.</span>
+      <section className="gm-hero border-b border-border">
+        <div className="gm-container grid items-center gap-12 py-14 sm:py-20 lg:grid-cols-2 lg:gap-16">
+          <div>
+            <p className="gm-eyebrow">The world changes. Stay with it.</p>
+            <h1 className="mt-6 text-[clamp(3rem,6vw,5.5rem)] font-semibold leading-[1.02] tracking-[-0.055em]">
+              What changed.
+              <br />
+              <span className="text-primary">Why it matters.</span>
             </h1>
-            <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-              Geomacro turns global developments into clear risk intelligence for teams, decisions and AI agents.
+            <p className="mt-6 max-w-md text-lg leading-8 text-muted-foreground">
+              Geopolitics, Macro / FX and Critical Minerals. Clear findings for your next decision.
             </p>
-            <div className="mt-7 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
-              <Button asChild size="lg" className="h-12 gap-2 px-6">
-                <Link to="/intelligence">Explore Intelligence <ArrowRight className="h-4 w-4" /></Link>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button asChild size="lg">
+                <Link to="/intelligence">
+                  Explore intelligence <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="h-12 px-6">
-                <Link to="/data-api">API & Agent Access</Link>
-              </Button>
-              <Button asChild size="lg" variant="ghost" className="h-12 px-5">
-                <Link to="/risk-indices">View Risk Indices</Link>
+              <Button asChild size="lg" variant="outline">
+                <Link to="/pricing">Visit the Store</Link>
               </Button>
             </div>
-            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground sm:text-sm">
-              <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Clear context</span>
-              <span className="inline-flex items-center gap-2"><CircleGauge className="h-4 w-4 text-primary" /> Decision-focused</span>
-              <span className="inline-flex items-center gap-2"><Bot className="h-4 w-4 text-primary" /> AI-ready</span>
-            </div>
+            <p className="mt-5 text-xs text-muted-foreground">
+              Free to explore · No account needed
+            </p>
           </div>
-
           <LiveIntelligenceShowcase initialFindCards={initialFindCards} />
         </div>
       </section>
-
-      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="max-w-3xl">
-          <Eyebrow>Three risk domains</Eyebrow>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl lg:text-5xl">One place to understand the external risks that move decisions.</h2>
+      <section className="gm-container py-12 sm:py-16">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="gm-eyebrow">Follow what matters to you</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight">
+              Three lenses on a changing world.
+            </h2>
+          </div>
+          <Link to="/risk-indices" className="gm-text-link">
+            View Risk Indices <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-        <div className="mt-10 grid gap-4 lg:grid-cols-3">
-          {DOMAINS.map(({ title, body, icon: Icon }) => (
-            <article key={title} className="group rounded-2xl border border-border/65 bg-card/35 p-6 transition duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-card/60 sm:p-7">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
-                <Icon className="h-5 w-5" />
+        <div className="mt-8 grid gap-px overflow-hidden rounded-2xl border border-border bg-border md:grid-cols-3">
+          {DOMAINS.map(({ category, title, text, icon: Icon }, i) => (
+            <Link
+              key={category}
+              to="/intelligence"
+              search={{ category }}
+              className="group bg-background p-7 transition hover:bg-card sm:p-8"
+            >
+              <div className="flex items-center justify-between">
+                <Icon className="h-6 w-6 text-primary" />
+                <span className="font-mono text-xs text-muted-foreground">0{i + 1}</span>
               </div>
-              <h3 className="mt-5 text-xl font-semibold tracking-tight">{title}</h3>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">{body}</p>
-            </article>
+              <h3 className="mt-8 text-xl font-semibold">{title}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">{text}</p>
+              <span className="mt-6 inline-flex items-center gap-2 text-sm text-primary">
+                Browse findings{" "}
+                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+              </span>
+            </Link>
           ))}
         </div>
       </section>
-
-      <section className="border-y border-border/55 bg-card/15">
-        <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
+      <section className="border-y border-border bg-card/30">
+        <div className="gm-container grid gap-8 py-12 md:grid-cols-[1fr_auto] md:items-center">
           <div>
-            <Eyebrow>Built for clarity</Eyebrow>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Clarity without the noise.</h2>
-            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
-              Geomacro helps people and applications focus on meaningful changes and available risk context, not an endless stream of updates.
+            <p className="gm-eyebrow">Go from a finding to a question</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight">
+              What does this mean for you?
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              Ask about a country, a corridor or a change you are following.
             </p>
-            <Button asChild variant="outline" className="mt-7">
-              <Link to="/about">How Geomacro works <ArrowRight className="ml-2 h-4 w-4" /></Link>
-            </Button>
           </div>
-          <div className="rounded-2xl border border-border/65 bg-background/30 p-5 sm:p-7">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Every useful answer is organized around</p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {OUTPUTS.map((item, index) => (
-                <div key={item} className={index === OUTPUTS.length - 1 ? "sm:col-span-2" : ""}>
-                  <div className="flex items-center gap-3 rounded-xl border border-border/55 bg-card/30 px-4 py-4">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-                    <span className="text-sm font-medium">{item}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <Button asChild variant="outline" size="lg">
+            <Link to="/ask-geomacro">
+              Ask Geomacro <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
         </div>
       </section>
-
-      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="grid gap-10 lg:grid-cols-[1fr_1.05fr] lg:items-start">
-          <div>
-            <Eyebrow>Critical minerals & rare earths</Eyebrow>
-            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">See concentration and sourcing risk before it becomes a procurement surprise.</h2>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
-              Dedicated intelligence connects supply concentration, geopolitical dependency, policy pressure and related macro exposure without mixing them into one opaque score.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Button asChild><Link to="/intelligence" search={{category:"rare_earth"}}>Explore Critical Minerals Intelligence</Link></Button>
-              <Button asChild variant="ghost"><Link to="/intelligence">View supporting intelligence</Link></Button>
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {["Supply concentration", "Geopolitical dependency", "Policy & export pressure", "Macro exposure"].map((item) => (
-              <div key={item} className="rounded-2xl border border-border/60 bg-card/30 p-5">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <p className="mt-4 text-sm font-semibold">{item}</p>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">Structured as separate drivers so users can see what is actually changing.</p>
-              </div>
-            ))}
-          </div>
+      <section className="gm-container flex flex-wrap items-center justify-between gap-6 py-12">
+        <div>
+          <p className="gm-eyebrow">For applications & agents</p>
+          <h2 className="mt-3 text-2xl font-semibold">
+            The same intelligence. Structured for your workflow.
+          </h2>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Explore products and exact USDC prices. API keys coming soon.
+          </p>
         </div>
-      </section>
-
-      <section className="border-y border-border/55 bg-card/15">
-        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-            <div className="max-w-3xl">
-              <Eyebrow>Built for real workflows</Eyebrow>
-              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Useful to people. Structured for machines.</h2>
-            </div>
-            <Button asChild variant="outline"><Link to="/institutional">Institutional use cases</Link></Button>
-          </div>
-          <div className="mt-9 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {BUYERS.map(([title, body]) => (
-              <article key={title} className="rounded-2xl border border-border/55 bg-background/25 p-5 sm:p-6">
-                <h3 className="font-semibold">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--primary)_10%,transparent),transparent_55%)] p-6 sm:p-9 lg:flex lg:items-center lg:justify-between lg:gap-12">
-          <div className="max-w-3xl">
-            <Eyebrow>Explore Geomacro</Eyebrow>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Start with the intelligence. Integrate when your workflow is ready.</h2>
-            <p className="mt-4 text-base leading-7 text-muted-foreground">Public exploration stays simple. Machine and commercial access lives in dedicated product surfaces with explicit availability and product boundaries.</p>
-          </div>
-          <div className="mt-7 flex shrink-0 flex-col gap-3 sm:flex-row lg:mt-0 lg:flex-col xl:flex-row">
-            <Button asChild size="lg" className="gap-2"><Link to="/intelligence">Open Intelligence <ArrowRight className="h-4 w-4" /></Link></Button>
-            <Button asChild size="lg" variant="outline"><Link to="/contact">Contact Geomacro</Link></Button>
-          </div>
-        </div>
+        <Link to="/pricing" className="gm-text-link">
+          Browse the Store <ArrowRight className="h-4 w-4" />
+        </Link>
       </section>
     </>
   );

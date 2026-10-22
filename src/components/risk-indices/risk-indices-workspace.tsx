@@ -27,8 +27,8 @@ export function RiskIndicesWorkspace() {
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
               {unavailable
-                ? "Geomacro could not read the verified B2 public risk package. No zero-risk or synthetic substitute is shown."
-                : "Geomacro is checking the verified B2 public data path. No zero-risk or synthetic substitute is shown while a reading is being recovered."}
+                ? "The latest verified readings are temporarily unavailable."
+                : "Checking for the latest verified readings."}
             </p>
           </div>
           <Button type="button" variant="outline" onClick={risk.retry} className="gap-2">
@@ -43,7 +43,7 @@ export function RiskIndicesWorkspace() {
               <div>
                 <p className="font-medium text-foreground">No unverified fallback is being displayed.</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Production serving is fail-closed. Retry after the verified B2 continuity package becomes readable again.
+                  Try again shortly. The last verified dates remain the reference.
                 </p>
               </div>
             </div>
@@ -91,7 +91,7 @@ export function RiskIndicesWorkspace() {
             Three risks. Three separate indices.
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Geopolitical, macroeconomic and critical-mineral risk are presented separately instead of being compressed into one combined headline score. Each index remains tied to the verified evidence, source controls and proof lineage behind the current versioned methodology.
+            Follow Geopolitical, Macroeconomic and Critical Minerals risk separately. Inspect the dates, drivers and confidence behind each reading.
           </p>
           {hasLastVerified ? (
             <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">

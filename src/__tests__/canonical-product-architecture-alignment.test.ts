@@ -52,12 +52,12 @@ describe("canonical product architecture alignment", () => {
     expect(root).toContain('import { CommercialHome } from "@/components/home/commercial-home"');
     expect(root).toContain("<CommercialHome initialFindCards={initialFindCards} />");
     expect(root).not.toContain("HeroSection");
-    expect(root).toContain("Global Risk Intelligence Infrastructure");
+    expect(root).toContain("What changed. Why it matters.");
   });
 
   it("labels Data & API as governed commercial access", () => {
     const dataApi = read("src/routes/data-api.tsx");
-    expect(dataApi).toContain("INTELLIGENCE API · AI AGENTS");
+    expect(dataApi).toContain("API & Agents");
     expect(dataApi).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(dataApi).toContain("execution_authorized=false");
   });

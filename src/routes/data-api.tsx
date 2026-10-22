@@ -1,57 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  Bot,
-  Braces,
-  Check,
-  CheckCircle2,
-  CircleDollarSign,
-  Database,
-  Fingerprint,
-  LockKeyhole,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ArrowRight, Braces, Bot, Globe2 } from "lucide-react";
 import { AgentCommerceStatus } from "@/components/agent-commerce-status";
-import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
 import { CategoryApiLaunchPanel } from "@/components/category-api-launch-panel";
-
-const TITLE = "API & Agent Access | Geomacro";
+import { ApiKeysNotice } from "@/components/api-keys-notice";
+import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
+const TITLE = "API & Agents | Geomacro";
 const DESCRIPTION =
-  "Governed machine delivery for Geomacro geopolitical, macroeconomic and critical-mineral intelligence, including structured API responses, Risk Objects, Risk Gate and x402 access status.";
+  "Structured geopolitical, Macro/FX and critical-minerals intelligence for applications and AI agents. API keys coming soon.";
 const URL = "https://geomacro.live/data-api";
-
-const DELIVERY_STEPS = [
-  ["01", "Ask", "A machine sends a bounded intelligence request."],
-  ["02", "Preflight", "Geomacro checks capability, freshness, eligibility and delivery health before quoting payment."],
-  ["03", "Settle", "x402 verifies the exact paid request without creating a second risk engine."],
-  ["04", "Deliver", "The caller receives structured Geomacro intelligence with stable state and delivery identifiers."],
-] as const;
-
-const MACHINE_OUTPUTS = [
-  ["Direct answer", "What changed, why it matters and the current decision context."],
-  ["Current state", "Risk level, direction, confidence, top drivers and versioned state."],
-  ["Structural context", "Bounded country or directional-corridor context when the governed capability supports it."],
-  ["Integrity metadata", "Stable query, state and delivery identifiers for machine-side persistence and comparison."],
-] as const;
-
-const FREE_ACCESS = [
-  "Public Intelligence explorer",
-  "Separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices",
-  "Ask Geomacro grounded query experience",
-  "Public research, methodology and trust documentation",
-] as const;
-
-const PAID_ACCESS = [
-  "Concise answer with what changed and why it matters",
-  "Current risk state, direction, confidence and top drivers",
-  "Bounded structural context and current developments",
-  "Machine-readable JSON with stable state and delivery hashes",
-  "Derived Geomacro intelligence only, not raw upstream data",
-] as const;
-
 export const Route = createFileRoute("/data-api")({
   head: () => ({
     meta: [
@@ -73,201 +29,66 @@ export const Route = createFileRoute("/data-api")({
 
 function DataApiPage() {
   return (
-    <main>
-      <section className="relative overflow-hidden border-b border-border/55">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_20%,color-mix(in_oklab,var(--primary)_13%,transparent),transparent_30%)]" />
-        <div className="relative mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-18 lg:grid-cols-[1.02fr_.98fr] lg:items-center lg:py-22">
-          <div className="max-w-3xl">
-            <Badge variant="outline" className="border-primary/25 bg-primary/5 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-              INTELLIGENCE API · AI AGENTS
-            </Badge>
-            <h1 className="mt-5 text-[clamp(2.7rem,6vw,5.5rem)] font-semibold leading-[0.96] tracking-[-0.05em]">
-              Risk intelligence, ready for your applications.
-            </h1>
-            <p className="mt-6 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-              Geomacro delivers decision-ready geopolitical, macroeconomic and critical-mineral intelligence through governed machine interfaces. The intelligence stays canonical; API and x402 are delivery layers around the same verified product state.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Button asChild size="lg" className="h-12 gap-2 px-6">
-                <a href="#pricing">View access & pricing <ArrowRight className="h-4 w-4" /></a>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="h-12 px-6"><Link to="/docs">Developer documentation</Link></Button>
-              <Button asChild size="lg" variant="ghost" className="h-12 px-5"><Link to="/contact">Discuss integration</Link></Button>
-            </div>
-            <p className="mt-4 text-xs leading-5 text-muted-foreground">Three category agents share the Geomacro engine. <a href="/api/v1/agent?view=openapi" className="underline underline-offset-2">Open API and agent schemas</a>. Payment availability is checked for your exact question.</p>
-          </div>
-
-          <div className="rounded-[1.65rem] border border-border/65 bg-card/65 p-5 shadow-2xl shadow-black/20 backdrop-blur sm:p-7">
-            <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-4">
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Commercial delivery status</p>
-                <p className="mt-1 text-sm font-medium">Access follows live availability</p>
-              </div>
-              <Bot className="h-5 w-5 text-primary" />
-            </div>
-            <div className="mt-5"><AgentCommerceStatus /></div>
-            <p className="mt-4 text-xs leading-5 text-muted-foreground">
-              Paid API requests become available only when the live payment and delivery service confirms activation.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <CategoryApiLaunchPanel />
-
-      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="max-w-3xl">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">One commercial path</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Request. Access. Decide.</h2>
-          <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">
-            Payment never bypasses evidence, freshness, source-rights or product controls. If the requested capability cannot deliver, Geomacro fails closed instead of manufacturing a paid answer.
-          </p>
-        </div>
-        <div className="mt-9 grid overflow-hidden rounded-2xl border border-border/65 bg-border/60 sm:grid-cols-2 lg:grid-cols-4">
-          {DELIVERY_STEPS.map(([step, title, body]) => (
-            <article key={step} className="bg-background/88 p-5 sm:p-6">
-              <p className="font-mono text-[10px] tracking-[0.16em] text-primary">{step}</p>
-              <h3 className="mt-3 text-lg font-semibold">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="border-y border-border/55 bg-card/15">
-        <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">What a machine receives</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">The intelligence your workflow needs.</h2>
-            <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">
-              Get concise, structured Geomacro intelligence built for decisions, while underlying evidence remains protected.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {MACHINE_OUTPUTS.map(([title, text]) => (
-              <article key={title} className="rounded-2xl border border-border/60 bg-background/35 p-5">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
-                <h3 className="mt-4 font-semibold">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-          <div className="max-w-3xl">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Availability</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Know what is live before you integrate.</h2>
-          </div>
-          <p className="max-w-xl text-sm leading-6 text-muted-foreground">Free Explorer is website/dashboard access, not a free API. Machine delivery is governed separately and its availability is stated explicitly.</p>
-        </div>
-
-        <div className="mt-9 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatusCard icon={Database} status="LIVE" title="Public Intelligence" text="Geopolitical, macroeconomic and critical-mineral intelligence for browser research." />
-          <StatusCard icon={Sparkles} status="LIVE" title="Risk Indices" text="Separate public geopolitical, macroeconomic and critical-mineral risk indices." />
-          <StatusCard icon={Fingerprint} status="PRIVATE PILOT" title="Risk Objects & Risk Gate" text="Signed country and directional-corridor objects with bounded pre-decision context." />
-          <StatusCard icon={Braces} status="RUNTIME STATUS ABOVE" title="x402 agent access" text="Commercial machine-payment status comes from the runtime, not a hard-coded production claim." />
-        </div>
-      </section>
-
-      <section id="pricing" className="scroll-mt-24 border-y border-border/55 bg-card/15">
-        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-          <div className="max-w-3xl">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Access & pricing</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Free to explore. x402 pay per successful commercial call.</h2>
-            <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">No subscription tier is required for the launch offer. The public site remains free; commercial machine delivery is priced per successful x402 delivery in USDC.</p>
-          </div>
-
-          <div className="mt-9 grid gap-5 lg:grid-cols-2">
-            <article className="rounded-[1.65rem] border border-border/60 bg-background/30 p-6 sm:p-8">
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Free Explorer</p>
-              <p className="mt-3 text-4xl font-semibold">$0</p>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">For people evaluating Geomacro or following the public risk-intelligence product.</p>
-              <ul className="mt-6 space-y-3">
-                {FREE_ACCESS.map((item) => <li key={item} className="flex gap-3 text-sm leading-6"><Check className="mt-1 h-4 w-4 shrink-0 text-primary" /><span>{item}</span></li>)}
-              </ul>
-              <p className="mt-6 rounded-xl border border-border/60 bg-card/30 p-4 text-xs leading-5 text-muted-foreground">Free Explorer does not include a free structured commercial API.</p>
-              <Button asChild variant="outline" className="mt-6"><Link to="/intelligence">Open Free Explorer</Link></Button>
-            </article>
-
-            <article className="relative overflow-hidden rounded-[1.65rem] border border-primary/30 bg-[linear-gradient(145deg,color-mix(in_oklab,var(--primary)_12%,var(--card)),var(--card)_48%)] p-6 sm:p-8">
-              <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
-              <div className="relative">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">x402 pay per call</p>
-                    <div className="mt-3 flex flex-wrap items-end gap-x-2 gap-y-1">
-                      <p className="text-2xl font-semibold">Capability-based USDC</p>
-                      <span className="pb-1 text-sm text-muted-foreground">Exact price shown below</span>
-                    </div>
-                  </div>
-                  <CircleDollarSign className="h-6 w-6 text-primary" />
-                </div>
-                <p className="mt-4 text-sm leading-6 text-muted-foreground">Only verified eligible deliveries use a capability-specific exact USDC quote. Failed, stale, unavailable, replayed, refunded, internal or unpaid requests are not charged.</p>
-                <ul className="mt-6 space-y-3">
-                  {PAID_ACCESS.map((item) => <li key={item} className="flex gap-3 text-sm leading-6"><Check className="mt-1 h-4 w-4 shrink-0 text-primary" /><span>{item}</span></li>)}
-                </ul>
-                <div className="mt-6 rounded-xl border border-primary/20 bg-background/25 p-4">
-                  <p className="text-xs font-medium">No-charge failure policy</p>
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">If Geomacro cannot deliver a fresh, eligible result, the request must fail closed rather than manufacture a chargeable answer.</p>
-                </div>
-              </div>
-            </article>
-          </div>
-          <div className="mt-8"><CapabilityPriceSchedule compact /></div>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="max-w-3xl">
-          <LockKeyhole className="h-5 w-5 text-primary" />
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Hard boundaries</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Commercial access does not weaken the product contract.</h2>
-        </div>
-        <div className="mt-9 grid gap-4 lg:grid-cols-3">
-          <Boundary title="Country + corridor scope" text="The controlled corridor model is ENDPOINT_COMPOSED_V0_1. route_modeling_status = NOT_MODELED unless a future validated model explicitly changes that boundary." />
-          <Boundary title="Customer controls execution" text="Risk Gate can return bounded context and recommendation, but execution_authorized=false. Identity, permissions, policy and final action stay customer-controlled." />
-          <Boundary title="One intelligence foundation" text="Authentication, entitlement, payment and transport may differ by rail. The underlying governed intelligence and product-specific rules remain canonical." />
-        </div>
-      </section>
-
-      <section className="border-t border-border/55">
-        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-          <div className="overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--primary)_10%,transparent),transparent_58%)] p-6 sm:p-9 lg:flex lg:items-center lg:justify-between lg:gap-10">
-            <div className="max-w-3xl">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-              <h2 className="mt-4 text-2xl font-semibold sm:text-3xl">Integrate only the capability your workflow needs.</h2>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground">Start with the free product, review the machine contract and pricing, then bring a concrete country, corridor or agent workflow for commercial evaluation.</p>
-            </div>
-            <Button asChild size="lg" className="mt-7 shrink-0 gap-2 lg:mt-0"><Link to="/contact">Contact Geomacro <ArrowRight className="h-4 w-4" /></Link></Button>
-          </div>
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function StatusCard({ icon: Icon, status, title, text }: { icon: typeof Database; status: string; title: string; text: string }) {
-  return (
-    <article className="rounded-2xl border border-border/60 bg-card/35 p-5 transition hover:border-primary/30 hover:bg-card/55 sm:p-6">
-      <div className="flex items-center justify-between gap-3">
-        <Icon className="h-5 w-5 text-primary" />
-        <span className="font-mono text-[9px] uppercase tracking-[0.13em] text-muted-foreground">{status}</span>
+    <main className="gm-container py-12 sm:py-16">
+      <header className="max-w-3xl">
+        <p className="gm-eyebrow">API & Agents</p>
+        <h1 className="gm-page-title">Bring global context into your workflow.</h1>
+        <p className="gm-intro">
+          Structured answers across Geopolitics, Macro / FX and Critical Minerals.
+        </p>
+      </header>
+      <div className="mt-8">
+        <ApiKeysNotice />
       </div>
-      <h3 className="mt-5 text-lg font-semibold">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
-    </article>
-  );
-}
-
-function Boundary({ title, text }: { title: string; text: string }) {
-  return (
-    <article className="rounded-2xl border border-border/60 bg-background/30 p-5 sm:p-6">
-      <ShieldCheck className="h-4 w-4 text-primary" />
-      <h3 className="mt-4 text-base font-semibold">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
-    </article>
+      <div className="my-10 grid gap-4 md:grid-cols-3">
+        {[
+          {
+            icon: Braces,
+            title: "Structured output",
+            body: "Clear fields for what changed, why it matters and the evidence limits.",
+          },
+          {
+            icon: Globe2,
+            title: "Countries & corridors",
+            body: "Request a country, topic or directional corridor.",
+          },
+          {
+            icon: Bot,
+            title: "For your agent",
+            body: "One intelligence engine for application and agent requests.",
+          },
+        ].map(({ icon: Icon, title, body }) => (
+          <article key={title} className="rounded-xl border border-border p-6">
+            <Icon className="h-5 w-5 text-primary" />
+            <h2 className="mt-5 font-semibold">{title}</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
+          </article>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-6 border-y border-border py-5">
+        <Link to="/pricing" className="gm-text-link">
+          Open Store <ArrowRight className="h-4 w-4" />
+        </Link>
+        <Link to="/docs" className="gm-text-link">
+          Read documentation <ArrowRight className="h-4 w-4" />
+        </Link>
+        <a href="/api/v1/agent?view=openapi" className="gm-text-link">
+          API schema ↗
+        </a>
+      </div>
+      <details className="mt-8"><summary className="cursor-pointer text-sm font-medium">Delivery status & product boundaries</summary><div className="mt-4"><AgentCommerceStatus /></div><div className="mt-4 space-y-3 text-xs leading-6 text-muted-foreground"><p>Paid API requests become available only when the live payment and delivery service confirms activation.</p><p>Free Explorer is website/dashboard access, not a free API.</p><p>Payment never bypasses evidence, freshness, source-rights or product controls.</p><p>Get concise, structured Geomacro intelligence built for decisions, while underlying evidence remains protected.</p><p>Corridor model: ENDPOINT_COMPOSED_V0_1. route_modeling_status = NOT_MODELED. Risk Gate: execution_authorized=false.</p></div></details>
+    <details className="mt-8"><summary className="cursor-pointer text-sm font-medium">Try the request console</summary><CategoryApiLaunchPanel /></details>
+    <details className="mt-8">
+        <summary className="cursor-pointer text-sm font-medium">
+          Browse exact product prices
+        </summary>
+        <div className="mt-6">
+          <CapabilityPriceSchedule compact />
+        </div>
+      </details>
+      <p className="mt-8 text-xs text-muted-foreground">
+        API and AI-agent marketplace listings are planned after launch.
+      </p>
+    </main>
   );
 }

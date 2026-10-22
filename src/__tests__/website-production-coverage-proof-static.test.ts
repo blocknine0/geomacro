@@ -33,7 +33,7 @@ describe("public production coverage proof", () => {
     expect(shell).toContain("showProductionEvidence ? <ProductionCoverageProof /> : null");
     expect(shell).not.toContain('new Set(["/",');
     expect(shell).toContain("Intelligence findings delayed at least 15 minutes · Risk Indices retain their 60-minute delay");
-    expect(shell).toContain("x402/API is separately gated");
+    expect(shell).toContain("API keys coming soon");
     expect(shell).not.toContain("GITHUB_URL");
     expect(shell).not.toContain("AgentCommerceStatus compact");
   });

@@ -32,8 +32,8 @@ describe("commercial website source-of-truth contract", () => {
     expect(shell).toContain('label: "Intelligence"');
     expect(shell).toContain('label: "Risk Indices"');
     expect(shell).toContain('label: "API & Agents"');
-    expect(shell).toContain('label: "Institutions"');
-    expect(shell).toContain('label: "Pricing"');
+    expect(shell).toContain('label: "For teams"');
+    expect(shell).toContain('label: "Store"');
     expect(shell).not.toMatch(/Technical Proof|Testnet API|Arc \/ Onchain|Bridge & Swap|Prediction Markets/);
   });
 

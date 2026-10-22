@@ -1,19 +1,18 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Github, Info, Lock, ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
-const GITHUB_URL = "https://github.com/blocknine0/geomacro";
+import { createFileRoute } from "@tanstack/react-router";
+import { EditorialPage } from "@/components/editorial-page";
 const TITLE = "About, Trust & Product Boundaries · Geomacro";
 const DESCRIPTION =
   "How Geomacro builds geopolitical and macro risk intelligence, what is live today, what remains Private Pilot, and the privacy, security and product-use boundaries that apply.";
 const URL = "https://geomacro.live/about";
-
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
-      { name: "robots", content: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" },
+      {
+        name: "robots",
+        content: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+      },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
@@ -28,121 +27,44 @@ export const Route = createFileRoute("/about")({
 
 function AboutPage() {
   return (
-    <main>
-      <section className="relative overflow-hidden border-b border-border/55">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,color-mix(in_oklab,var(--primary)_12%,transparent),transparent_30%)]" />
-        <div className="relative mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-18 lg:py-22">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">About & trust</p>
-          <h1 className="mt-4 max-w-4xl text-[clamp(2.8rem,6vw,5.5rem)] font-semibold leading-[0.96] tracking-[-0.05em]">Trust the risk view because you can inspect its boundaries.</h1>
-          <p className="mt-6 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">Geomacro tracks geopolitical, macroeconomic and critical-mineral risk with confidence, change attribution and methodology context. Public, Private Pilot and production-gated commercial capabilities are labelled explicitly.</p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild variant="outline"><Link to="/research">Research & evidence</Link></Button>
-            <Button asChild variant="outline"><Link to="/docs">Documentation</Link></Button>
-            <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-lg border border-border/70 px-4 text-sm hover:border-primary/40"><Github className="h-4 w-4" /> GitHub</a>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="grid gap-4 md:grid-cols-3">
-          <StatusCard label="LIVE" title="Public intelligence" text="Risk Intelligence, separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices, and Ask Geomacro." />
-          <StatusCard label="PRIVATE PILOT" title="Controlled machine context" text="Risk Gate, signed country/directional-corridor Risk Objects and scoped commercial delivery." />
-          <StatusCard label="COMMERCIAL ACCESS" title="API & agent delivery" text="Paid machine delivery is production-gated and remains fail-closed until the live production payment path is explicitly activated." />
-        </div>
-      </section>
-
-      <section className="border-y border-border/55 bg-card/15">
-        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-          <div className="max-w-3xl">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Trust model</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Evidence, methodology and responsibility stay visible.</h2>
-          </div>
-          <div className="mt-9 grid gap-4 md:grid-cols-2">
-            <TrustCard icon={ShieldCheck} title="Explain the signal" text="Current readings preserve evidence context, confidence and change attribution instead of presenting an unsupported headline score." />
-            <TrustCard icon={Info} title="Document the system" text="Methodology versions, provenance, confidence and verification details are documented so outputs can be reviewed and reproduced within their stated scope." />
-            <TrustCard icon={Lock} title="Keep execution separate" text="Risk Gate remains non-authorizing. Customer identity, permissions, policy, funds and final execution stay outside Geomacro." />
-            <TrustCard icon={Github} title="Make implementation inspectable" text="The public repository exposes technical implementation for review. Public visibility does not grant unrestricted reuse; repository and upstream rights still apply." />
-          </div>
-          <p className="mt-6 text-sm text-muted-foreground">Geomacro provides a recommendation. The customer remains responsible for any decision or action.</p>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="max-w-3xl">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">What Geomacro does not claim</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Decision context is not delegated authority.</h2>
-        </div>
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            "Not financial, legal, compliance or investment advice.",
-            "Risk Gate does not authorize or execute customer transactions.",
-            "No independent external security certification or production SLA is claimed unless actually completed or contracted.",
-            "Customer policy and final execution remain customer-controlled.",
-            "Raw upstream data and customer execution authority are not part of the commercial intelligence product.",
-          ].map((item) => (
-            <div key={item} className="rounded-xl border border-border/60 bg-card/30 p-4 text-sm leading-6 text-muted-foreground">{item}</div>
-          ))}
-        </div>
-      </section>
-
-      <section className="border-y border-border/55 bg-card/15">
-        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <details id="privacy" className="scroll-mt-24 rounded-2xl border border-border/60 bg-background/30 p-5 sm:p-6">
-              <summary className="cursor-pointer list-none text-lg font-semibold">Privacy notice <span className="ml-2 text-xs font-normal text-muted-foreground">Open details</span></summary>
-              <div className="mt-5 space-y-4 text-sm leading-7 text-muted-foreground">
-                <p>Public intelligence can be viewed without an account or wallet. Standard hosting, security and operational infrastructure may process ordinary request metadata needed to deliver and protect the service.</p>
-                <p>Private Pilot or commercial machine features can process information intentionally provided by the user, including credential metadata, usage records, payment references and structured feedback. Never send a seed phrase, private key or unnecessary confidential information.</p>
-                <p>Private Pilot data minimization, retention, access and deletion requirements should be defined before sensitive business data is introduced.</p>
-                <p>Privacy questions: <a href="mailto:contact@geomacro.live" className="text-primary hover:underline">contact@geomacro.live</a>.</p>
-              </div>
-            </details>
-
-            <details id="product-use" className="scroll-mt-24 rounded-2xl border border-border/60 bg-background/30 p-5 sm:p-6">
-              <summary className="cursor-pointer list-none text-lg font-semibold">Product use <span className="ml-2 text-xs font-normal text-muted-foreground">Open details</span></summary>
-              <div className="mt-5 space-y-4 text-sm leading-7 text-muted-foreground">
-                <p><span className="font-medium text-foreground">Public product:</span> informational risk intelligence that should be independently evaluated for the user&apos;s purpose.</p>
-                <p><span className="font-medium text-foreground">Private Pilot and APIs:</span> access is governed by the scope actually agreed with the customer, including permitted use, support, security and data handling.</p>
-                <p><span className="font-medium text-foreground">Commercial access:</span> machine delivery is limited to the production-gated APIs and entitlements documented by Geomacro. No hidden experimental product is part of the customer contract.</p>
-                <p><span className="font-medium text-foreground">Acceptable use:</span> do not bypass authentication, entitlement, rate-limit or security controls, misuse credentials, submit secrets through public forms or represent Geomacro output as an authorization it did not issue.</p>
-              </div>
-            </details>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--primary)_10%,transparent),transparent_58%)] p-6 sm:p-9 lg:flex lg:items-center lg:justify-between lg:gap-10">
-          <div className="max-w-3xl">
-            <h2 className="text-2xl font-semibold sm:text-3xl">Inspect the product from signal to methodology.</h2>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">Start with live intelligence, then go deeper into evidence, methodology or the controlled machine-delivery boundary.</p>
-          </div>
-          <div className="mt-7 flex shrink-0 flex-wrap gap-3 lg:mt-0">
-            <Button asChild><Link to="/intelligence">Intelligence <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
-            <Button asChild variant="outline"><Link to="/risk-gate">Risk Gate</Link></Button>
-          </div>
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function StatusCard({ label, title, text }: { label: string; title: string; text: string }) {
-  return (
-    <article className="rounded-2xl border border-border/60 bg-card/35 p-5 sm:p-6">
-      <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-primary">{label}</p>
-      <h2 className="mt-3 text-lg font-semibold">{title}</h2>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
-    </article>
-  );
-}
-
-function TrustCard({ icon: Icon, title, text }: { icon: typeof ShieldCheck; title: string; text: string }) {
-  return (
-    <article className="rounded-2xl border border-border/60 bg-background/30 p-5 sm:p-6">
-      <Icon className="h-5 w-5 text-primary" />
-      <h3 className="mt-4 text-lg font-semibold">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
-    </article>
+    <EditorialPage
+      eyebrow={"About & Trust"}
+      title={"Understand the world. Inspect the context."}
+      intro={
+        "Geomacro turns global developments into structured intelligence for people, applications and agents."
+      }
+      items={[
+        {
+          title: "Three domains",
+          text: "Geopolitics, Macro / FX and Critical Minerals. Each keeps its own context and coverage.",
+          href: "/intelligence",
+          label: "Read findings",
+        },
+        {
+          title: "Dates stay visible",
+          text: "Original publication dates, confidence and limitations help you judge what a result can support.",
+          href: "/research",
+          label: "Inspect the methodology",
+        },
+        {
+          title: "Derived intelligence",
+          text: "We deliver our structured interpretation. Raw articles, source feeds and private retrieval records are not sold.",
+          href: "/docs",
+          label: "Read product documentation",
+        },
+        {
+          title: "Your decision",
+          text: "Geomacro supplies context. You control policy, permissions, money and any downstream action.",
+          href: "/contact",
+          label: "Contact us",
+        },
+      ]}
+      note={
+        "Public findings have a 15-minute delay; Risk Indices have a 60-minute delay. Missing evidence is not a zero-risk reading. API keys and self-service checkout are coming soon. We do not sell personal information. Privacy or data-removal enquiries: contact@geomacro.live."
+      }
+    >
+      <details id="privacy" className="mt-8 border-t border-border pt-4"><summary className="cursor-pointer text-sm font-medium">Privacy</summary><p className="mt-3 text-sm leading-7 text-muted-foreground">Category preferences, visit time and saved finding identifiers stay in your browser. We do not store story text in reader preferences. Email contact@geomacro.live for privacy or removal enquiries. No independent external security certification or production SLA is claimed unless actually completed or contracted.</p></details>
+      <details id="product-use" className="mt-4 border-t border-border pt-4"><summary className="cursor-pointer text-sm font-medium">Product use</summary><p className="mt-3 text-sm leading-7 text-muted-foreground">Risk Gate remains non-authorizing. The customer remains responsible for any decision or action. Geomacro provides information and context, not financial, legal or investment advice. Missing or stale evidence stays labeled.</p></details>
+    </EditorialPage>
   );
 }

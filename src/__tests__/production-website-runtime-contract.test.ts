@@ -152,9 +152,9 @@ describe("production website runtime contract", () => {
     expect(intelligenceHook).toContain("setUpdatedAt(latestOriginalEvidenceAt(next.all))");
     expect(intelligenceHook).not.toContain("setUpdatedAt(Date.now())");
     expect(intelligenceRoute).toContain("Earlier assessments retain their original dates.");
-    expect(pricing).toContain("Explore for free. Choose the access that fits.");
-    expect(pricing).toContain("Pay-per-call availability is confirmed by the live checkout, not the advertised price.");
-    expect(institutional).toContain("Institutional delivery is limited to governed Geomacro risk intelligence");
+    expect(pricing).toContain("Geomacro Store");
+    expect(read("src/components/capability-price-schedule.tsx")).toContain("A displayed price is not an available payment quote.");
+    expect(institutional).toContain("Scope, service terms and access are agreed before commercial delivery.");
   });
 
   it("checks rendered route content plus functional public APIs", () => {
@@ -175,8 +175,8 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain("/intelligence|What changed in the world");
     expect(workflow).toContain("/global-risk|");
     expect(workflow).toContain("/ask-geomacro|Ask Geomacro");
-    expect(workflow).toContain("/pricing|Access & pricing");
-    expect(workflow).toContain("/docs|Geomacro public documentation");
+    expect(workflow).toContain("/pricing|Geomacro Store");
+    expect(workflow).toContain("/docs|Documentation");
     expect(workflow).toContain(`Verify rendered production page markers
         # Keep route/UI evidence observable even when an upstream data-plane
         # gate fails. The overall workflow still fails closed on that gate.

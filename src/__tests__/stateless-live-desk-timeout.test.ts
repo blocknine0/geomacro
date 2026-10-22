@@ -28,6 +28,8 @@ describe("Intelligence browser RPC stall recovery", () => {
     // Underlying requests can settle after the UI timed out; no mutation
     // to upstream source clocks, credits, public scores, or private storage.
     expect(desk).not.toContain("localStorage");
+    expect(desk).toContain("loadReaderPreferences()");
+    expect(desk).toContain("saveReaderPreferences({ category: view, savedIds, lastVisit: visitStarted.current })");
     expect(desk).not.toContain("sessionStorage");
   });
 });

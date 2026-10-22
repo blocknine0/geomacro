@@ -269,7 +269,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(endpoint).toContain('createServerFn({ method: "GET" })');
     expect(source).toContain('cache: "no-store"');
     expect(source).toContain('redirect: "error"');
-    for (const token of ["writeFileSync(", ".put(", ".insert(", ".upsert(", ".from(", "localStorage", "sessionStorage", "B2_KEY_ID", "SUPABASE_DB_URL"]) {
+    for (const token of ["writeFileSync(", ".put(", ".insert(", ".upsert(", ".from(", "sessionStorage", "B2_KEY_ID", "SUPABASE_DB_URL"]) {
       expect(source).not.toContain(token);
       expect(desk).not.toContain(token);
     }

@@ -1,13 +1,13 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "f8b8100ed4d371674708f91e1470697492ce1463",
-  "published_baseline": "Founder directs Geomacro to restore actual intelligence news published after 10 October 2026, across Geopolitics, Macro/FX and Critical Minerals, not fabricated or backdated stories. Existing 30d rolling derived-only Cloudflare D1 website journal, direct browser D1 fallback, initial SSR and 30-minute background ingestion stay in place. Source expansion: first-party UK Home Office security, UK DBT Macro/FX economic trade policy, India Ministry of Mines PIB original page clock verified in IST; only admitted first-party and relevant original releases generate generic Geomacro-derived What changed / Why it matters, without copying headlines, original URLs, publisher raw text or secrets. The active /intelligence SSR loader reads independently verified derived news directly from the public D1 endpoint rather than nesting an unreliable server-function RPC, and the source reader preserves actual original time, strict 15-minute original-source delay, dedup, and source-health warnings; no synthetic news from empty publisher windows. no x402 or GRI changes; independent 60m Global Risk remains. User will manually publish only after exact-head source/test/security verification and Lovable sync; live acceptance separate. Founder directs gap recovery from prior Supabase freeze; verified first-party 2026-10-01 onward original-first-publication GOV UK archived Search + Content API, separate manual once/weekly backfill into derived-only D1. If Lovable SSR or browser transport returns no cards, free website shows source-private sandboxed/no-script Cloudflare D1 newsroom HTML fallback with original dates, Geomacro Finds, What changed and Why it matters, not fabricated latest news.  Original founder recovery live-D1 HTML cards pass through the corrected Signal[] array from fetchDirectDerivedNews() to initialJournal first HTML; the formerly erroneous history.value.signals silently discarded all records. Show unknown/loading rather than zero when network/SSR have not provided a verified count. Embedded direct D1 output remains source-private. Founder-authorized source-display recovery (October 13): first HTML paint now requests all three existing official-source category readers independently and in parallel, retains verified D1 30-day journal and explicit per-category fail-closed state, and avoids duplicate immediate browser refresh for already fetched categories. No changes to previously frozen Global Risk presentation or Ask hybrid workflow; still waiting exact-SHA website publish acceptance.",
+  "baseline_sha": "baa79ba2cc6401a96f010499d7ffabac70d13b43",
+  "published_baseline": "Founder directs Geomacro to restore actual intelligence news published after 10 October 2026, across Geopolitics, Macro/FX and Critical Minerals, not fabricated or backdated stories. Existing 30d rolling derived-only Cloudflare D1 website journal, direct browser D1 fallback, initial SSR and 30-minute background ingestion stay in place. Source expansion: first-party UK Home Office security, UK DBT Macro/FX economic trade policy, India Ministry of Mines PIB original page clock verified in IST; only admitted first-party and relevant original releases generate generic Geomacro-derived What changed / Why it matters, without copying headlines, original URLs, publisher raw text or secrets. The active /intelligence SSR loader reads independently verified derived news directly from the public D1 endpoint rather than nesting an unreliable server-function RPC, and the source reader preserves actual original time, strict 15-minute original-source delay, dedup, and source-health warnings; no synthetic news from empty publisher windows. no x402 or GRI changes; independent 60m Global Risk remains. User will manually publish only after exact-head source/test/security verification and Lovable sync; live acceptance separate. Founder directs gap recovery from prior Supabase freeze; verified first-party 2026-10-01 onward original-first-publication GOV UK archived Search + Content API, separate manual once/weekly backfill into derived-only D1. If Lovable SSR or browser transport returns no cards, free website shows source-private sandboxed/no-script Cloudflare D1 newsroom HTML fallback with original dates, Geomacro Finds, What changed and Why it matters, not fabricated latest news.  Original founder recovery live-D1 HTML cards pass through the corrected Signal[] array from fetchDirectDerivedNews() to initialJournal first HTML; the formerly erroneous history.value.signals silently discarded all records. Show unknown/loading rather than zero when network/SSR have not provided a verified count. Embedded direct D1 output remains source-private. Founder-authorized source-display recovery (October 13): first HTML paint now requests all three existing official-source category readers independently and in parallel, retains verified D1 30-day journal and explicit per-category fail-closed state, and avoids duplicate immediate browser refresh for already fetched categories. No changes to previously frozen Global Risk presentation or Ask hybrid workflow; still waiting exact-SHA website publish acceptance. Founder-authorized 23 October concise Store and returning-reader refresh approved in source; exact-SHA live acceptance remains pending.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-10T17:25:00Z",
   "published_source_sha": "7215b0d05b05ccc4de1e5f69a333ae615abc38e3",
-  "lock_revision": "founder-approved-three-category-toggle-actor-action-news-20261022",
+  "lock_revision": "founder-approved-concise-store-and-reader-redesign-20261023",
   "pending_publish_acceptance": true,
   "website_privacy_baseline_status": "FOUNDER_APPROVED_WEBSITE_AUDIT_PENDING_EXACT_SHA_DEPLOYMENT",
   "approved_presentation_change": {
@@ -252,5 +252,44 @@
     "previous_baseline_sha": "2746afdd404f0e3477b5a8aa08a18de20712c3df",
     "global_risk_final_lock_unmodified": true,
     "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_store_reader_redesign": {
+    "approval": "Founder explicitly requests full geomacro.live redesign, minimal unnecessary text, launch pricing as a Store, API keys coming soon, every page corrected, and useful reasons for visitors to return, in ChatGPT on 23 October 2026 (Asia/Kolkata).",
+    "approved_ui_commit": "baa79ba2cc6401a96f010499d7ffabac70d13b43",
+    "previous_baseline_sha": "f8b8100ed4d371674708f91e1470697492ce1463",
+    "scope": [
+      "src/components/api-keys-notice.tsx",
+      "src/components/capability-price-schedule.test.tsx",
+      "src/components/capability-price-schedule.tsx",
+      "src/components/customer-care.tsx",
+      "src/components/editorial-page.tsx",
+      "src/components/home/commercial-home.tsx",
+      "src/components/intelligence/stateless-live-desk.tsx",
+      "src/components/risk-indices/risk-indices-workspace.tsx",
+      "src/components/sections/roadmap-section.tsx",
+      "src/components/site-shell.tsx",
+      "src/routes/about.tsx",
+      "src/routes/contact.tsx",
+      "src/routes/data-api.tsx",
+      "src/routes/docs.tsx",
+      "src/routes/ecosystem.tsx",
+      "src/routes/index.tsx",
+      "src/routes/institutional.tsx",
+      "src/routes/pricing.tsx",
+      "src/routes/research.tsx",
+      "src/styles.css"
+    ],
+    "purpose": "Concise shared visual system and navigation; canonical 8-product/14-variant Store with unchanged prices and launch enquiries; reader category, saved IDs and prior-visit metadata in browser only; preserve source reads, original dates, public delays, signed risk contracts and production payment gates.",
+    "global_risk_final_lock_unmodified": true,
+    "canonical_pricing_unmodified": true,
+    "source_upstream_unchanged": true,
+    "funds_authorized": false,
+    "marketplace_listings_claimed": false,
+    "pending_exact_sha_live_deployment_acceptance": true,
+    "github_publication_approval": "User explicitly approved GitHub push, PR creation and merge after checks with 'ha koro' on 23 October 2026 (Asia/Kolkata).",
+    "reader_metadata_refinement": {
+      "parent_sha": "3a67be3343928b949a60c457c2e52b0c8f0168a9",
+      "purpose": "Keep official source reader and page storage-free; serialize only validated category, saved IDs and last-visit metadata through a dedicated reader-preferences boundary. Patch Vitest and @vitest/mocker to 4.1.12; regenerate canonical Bun lock without advisory exceptions."
+    }
   }
 }
