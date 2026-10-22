@@ -32,3 +32,66 @@ export function releaseNewsObservation(title: string): {headline:string; change:
   const rule=RULES.find(([pattern])=>pattern.test(title));
   return rule?{headline:rule[1],change:rule[2]}:null;
 }
+
+/** Actor/action facts explicitly present in the publisher headline. The output
+ * preserves attribution, amounts and proposals while removing editorial phrasing.
+ * Publisher identity is never substituted for an unknown event actor.
+ */
+export function actorActionNewsObservation(title:string):{headline:string;change:string}|null {
+ if(typeof title!=="string"||title.length>500||/[<>]|https?:\/\/|[\r\n]/iu.test(title))return null;
+ const text=title.replace(/\s*[\u2013\u2014]\s*/gu,", ").replace(/\s+/gu," ").trim();
+ // Reported uncertainty is a fact about what the named experts said, not a
+ // confirmation of the fate of returned people.
+ if(/fate unknown/iu.test(text)&&/returned/iu.test(text)&&/DPR Korea/iu.test(text)&&/China/iu.test(text)&&/UN independent experts/iu.test(text))
+  return {headline:"UN experts report uncertainty over people returned from China to North Korea",
+   change:"UN independent experts said the fate of many people returned from China to North Korea remains unknown."};
+ if(/West Bank/iu.test(text)&&/olive harvest/iu.test(text)&&/settler attacks/iu.test(text))
+  return {headline:"West Bank olive harvest begins amid reported settler attacks",
+   change:"The release reports settler attacks during the start of the olive harvest in the West Bank."};
+ if(/UN agencies appeal/iu.test(text)&&/El Ni[ñn]o/iu.test(text))
+  return {headline:"UN agencies seek assistance for people at risk from El Niño",
+   change:"UN agencies appealed for assistance to protect vulnerable people from El Niño."};
+ if(/^WHO supports Nigeria after first Ebola case confirmed\.?$/iu.test(text))
+  return {headline:"WHO supports Nigeria following confirmation of its first Ebola case",
+   change:"WHO is providing support to Nigeria following confirmation of the country's first Ebola case."};
+ if(/^Sudan conflict:/iu.test(text)&&/Peace efforts resume/iu.test(text)&&/drone/iu.test(text))
+  return {headline:"Peace efforts resume in Sudan amid drone warfare",
+   change:"The release reports renewed peace efforts in Sudan aimed at ending drone warfare and the associated humanitarian crisis."};
+ if(/^Migrants paid up to \$([0-9,.]+) million in smuggling fees on European sea routes\.?$/iu.test(text)){
+  const amount=/\$([0-9,.]+)/u.exec(text)![1];
+  return {headline:"Migrants on European sea routes paid smugglers up to $"+amount+" million",
+   change:"The release reports that migrants using European sea routes paid up to $"+amount+" million in smuggling fees."};
+ }
+ // Do not turn a conditional, quoted statement or question into an action.
+ if(/[?"“”]/u.test(text)||/\b(?:could|might|may|would|whether|if)\b/iu.test(text))return null;
+ const actions:[RegExp,string,string][]=[
+  [/calls? for/iu,"calls for","called for"],[/appeals? for/iu,"appeals for","appealed for"],
+  [/urges?/iu,"urges","urged"],[/warns? (?:of|about)/iu,"warns about","warned about"],
+  [/condemns?/iu,"condemns","condemned"],[/announces?/iu,"announces","announced"],
+  [/imposes?/iu,"imposes","imposed"],[/introduces?/iu,"introduces","introduced"],
+  [/approves?/iu,"approves","approved"],[/proposes?/iu,"proposes","proposed"],
+  [/plans? to/iu,"plans to","announced plans to"],[/considers?/iu,"considers","is considering"],
+  [/cuts?/iu,"cuts","cut"],[/lowers?/iu,"lowers","lowered"],
+  [/raises?/iu,"raises","raised"],[/increases?/iu,"increases","increased"],
+  [/reports?/iu,"reports","reported"],[/launches?/iu,"launches","launched"],
+  [/agrees? to/iu,"agrees to","agreed to"],[/signs?/iu,"signs","signed"],
+  [/rejects?/iu,"rejects","rejected"],[/denies/iu,"denies","denied"],
+ ];
+ for(const [pattern,present,past] of actions){
+  const match=new RegExp("^(.{2,85}?)\\s+("+pattern.source+")\\s+(.{3,150}?)\\.?$","iu").exec(text);
+  if(!match)continue;
+  let actor=match[1].replace(/^The /u,"");
+  // A named institution/country/person must actually occupy the grammatical
+  // actor position; a generic publisher topic is not an actor.
+  const named=/^(?:UN(?:ited Nations)?(?: agencies| independent experts| experts| chief| Secretary-General| Security Council| human rights office| rights chief)?|WHO|UNICEF|UNHCR|WFP|IMF|World Bank|Federal Reserve|European Central Bank|Bank of England|European Commission|European Union|Security Council|Government of [\p{Lu}][\p{L} .'-]{1,45}|[\p{Lu}][\p{L}.'-]*(?:\s+(?:of|the|and|[\p{Lu}][\p{L}.'-]*)){0,6})$/u;
+  if(!named.test(actor))continue;
+  actor=({UK:"United Kingdom",US:"United States",UN:"United Nations",ECB:"European Central Bank"} as Record<string,string>)[actor]??actor;
+  const object=match[3].replace(/\s*[\u2013\u2014]\s*/gu,", ").trim();
+  if(/\b(?:not|never)\b/iu.test(object)&&!["denies","rejects"].includes(present))continue;
+  const headline=actor+" "+past+" "+object;
+  const change=actor+" "+past+" "+object+".";
+  if(headline.length>210||change.length<30||headline.toLowerCase()===text.toLowerCase())continue;
+  return {headline,change};
+ }
+ return null;
+}

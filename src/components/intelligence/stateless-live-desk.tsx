@@ -3,8 +3,6 @@ import { AlertCircle, Clock3, RefreshCw, Search } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
-import { COUNTRIES_195 } from "@/lib/canonical-country-registry-195";
-import { countryFromDerivedGeography } from "@/lib/derived-news-country-coverage-195";
 import { findCardFromObservedRelease } from "@/lib/find-card-v1";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
@@ -20,7 +18,6 @@ const REFRESH_MS = 2 * 60_000;
 // Three complete pages per six minutes use the same bounded mean request rate
 // as the previous single page every two minutes, without silently dropping 350 rows.
 const JOURNAL_REFRESH_MS = 6 * 60_000;
-const COUNTRY_CHOICES = Object.freeze([...COUNTRIES_195].sort((a,b)=>a.name.localeCompare(b.name)));
 const OGL_URL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
 type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
 // Stable default avoids restarting fetch effects when legacy callers omit this prop.
@@ -90,19 +87,18 @@ function Story({ signal, checkedAt }: {signal: StatelessIntelligenceSignal;check
  * is explicitly marked temporarily unverified and its check time remains
  * unchanged until a new real publisher check completes successfully.
  */
-export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initialJournal = [], initialView = "all" }: {
+export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initialJournal = [], initialView = "geopolitics" }: {
   initial: StatelessIntelligenceResult | null;
   initialFeeds?: FeedState;
   initialJournal?: StatelessIntelligenceSignal[];
   initialView?: View;
 }) {
-  const [view, setView] = useState<View>(initialView);
+  const [view, setView] = useState<StatelessCategory>(initialView === "all" ? "geopolitics" : initialView);
   const [query, setQuery] = useState("");
-  const [countryIso3,setCountryIso3] = useState("ALL");
   const [period, setPeriod] = useState<IntelligenceDeskPeriod>("all");
   const [visibleCount, setVisibleCount] = useState(INTELLIGENCE_PAGE_SIZE);
-  useEffect(() => setView(initialView), [initialView]);
-  useEffect(() => setVisibleCount(INTELLIGENCE_PAGE_SIZE), [view, query, period, countryIso3]);
+  useEffect(() => setView(initialView === "all" ? "geopolitics" : initialView), [initialView]);
+  useEffect(() => setVisibleCount(INTELLIGENCE_PAGE_SIZE), [view, query, period]);
   // SSR can now load all three issuer categories independently. Do not erase
   // valid server-published Macro/Minerals on the first browser hydration or
   // wait for a second network roundtrip to fill two empty category counters.
@@ -247,15 +243,13 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
   }
   const checkedAt = Date.now();
   const allSignals = filterIntelligenceDesk([...merged.values()], {category:"all",query:"",period:"all"}, checkedAt);
-  const countrySignals = countryIso3==="ALL" ? allSignals : allSignals.filter(signal =>
-    countryFromDerivedGeography(signal.geography)===countryIso3);
-  const categorySignals = countrySignals.filter(signal => view === "all" || signal.category === view);
-  const signals = filterIntelligenceDesk(countrySignals, {category:view,query,period}, checkedAt);
+  const categorySignals = allSignals.filter(signal => signal.category === view);
+  const signals = filterIntelligenceDesk(allSignals, {category:view,query,period}, checkedAt);
   const recentCount = categorySignals.filter(signal => Date.parse(signal.published_at) >= checkedAt - 86_400_000).length;
   const shown = signals.slice(0, visibleCount);
   const recent = shown.filter(signal => Date.parse(signal.published_at) >= checkedAt - 86_400_000);
   const earlier = shown.filter(signal => Date.parse(signal.published_at) < checkedAt - 86_400_000);
-  const active = view === "all" ? DOMAINS : DOMAINS.filter(domain => domain.key === view);
+  const active = DOMAINS.filter(domain => domain.key === view);
   const incomplete = active.filter(domain => errors[domain.key] || feeds[domain.key]?.healthy_feed_count === 0);
   const latestCheck = Math.max(0, ...active.map(domain =>
     Date.parse(feeds[domain.key]?.checked_at ?? "") || 0));
@@ -285,10 +279,6 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         <h2 className="text-sm font-semibold">Browse findings</h2>
         <div role="group" aria-label="Intelligence category"
           className="mt-3 flex flex-wrap gap-2">
-          <button type="button" aria-pressed={view === "all"} onClick={() => setView("all")}
-            className={"min-h-11 rounded-xl border px-4 py-2 text-sm font-semibold " +
-              (view === "all" ? "border-primary bg-primary text-primary-foreground" :
-                "border-border bg-card hover:border-primary/60")}>All findings</button>
           {DOMAINS.map(domain => (
             <button key={domain.key} type="button" aria-pressed={view === domain.key}
               onClick={() => setView(domain.key)}
@@ -296,23 +286,13 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
                 (view === domain.key ? "border-primary bg-primary text-primary-foreground" :
                   "border-border bg-card hover:border-primary/60")}>
               {domain.label}
-              <span className="ml-2 text-xs opacity-80">{countrySignals.some(signal => signal.category === domain.key) ? countrySignals.filter(signal => signal.category === domain.key).length : feeds[domain.key] ? 0 : errors[domain.key] ? "Unavailable" : "…"}</span>
+              <span className="ml-2 text-xs opacity-80">{allSignals.some(signal => signal.category === domain.key) ? allSignals.filter(signal => signal.category === domain.key).length : feeds[domain.key] ? 0 : errors[domain.key] ? "Unavailable" : "…"}</span>
             </button>
           ))}
         </div>
       </section>
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 text-xs text-muted-foreground">
-          Country
-          <select value={countryIso3} onChange={event=>setCountryIso3(event.target.value)}
-            aria-label="Filter Intelligence by country" className="min-w-0 max-w-56 bg-card py-3 text-sm text-foreground">
-            <option value="ALL">All countries and regions</option>
-            {COUNTRY_CHOICES.map(country=><option key={country.iso3} value={country.iso3}>
-              {country.name} ({country.iso3})
-            </option>)}
-          </select>
-        </label>
         <label className="flex min-h-11 flex-1 items-center gap-2 rounded-xl border border-border bg-card px-3">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
           <span className="sr-only">Search findings by country or topic</span>
@@ -333,10 +313,10 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
               Latest Geomacro finds
             </p>
             <h2 id="stateless-updates-heading" className="mt-1 text-2xl font-semibold">
-              {view === "all" ? "Across all three domains" : labelFor(view) + " developments"}
+              {labelFor(view) + " developments"}
             </h2>
             <p role="status" className="mt-2 text-xs text-muted-foreground">
-              {countrySignals.length === 0
+              {allSignals.length === 0
                 ? "Reading the 72-hour stored derived-news journal below"
                 : recentCount + " in the last 24 hours · " +
                   (categorySignals.length - recentCount) + " earlier (original-dated)"}
@@ -406,9 +386,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           </div>
         ) : missing.length === 0 ? (
           <p role="status" className="mt-6 rounded-xl border border-dashed border-border px-5 py-6 text-sm text-muted-foreground">
-            {countryIso3==="ALL" ?
-              "No findings match this category, search and publication window." :
-              "No matching country-mentioned release is observed in the bounded 72-hour journal. This does not mean there was no news in that country."}
+            No findings match this category, search and publication window.
             Source availability does not prove the absence of real-world events.
           </p>
         ) : null}

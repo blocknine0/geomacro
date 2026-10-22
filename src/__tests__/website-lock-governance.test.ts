@@ -42,9 +42,14 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-three-category-mainnet-buyer-flow-20261021");
+    expect(config.lock_revision).toBe("founder-approved-three-category-toggle-actor-action-news-20261022");
     const launch = config.three_chain_launch_presentation_approval;
-    expect(launch.approved_ui_commit).toBe(config.baseline_sha);
+    const toggle = config.approved_three_category_toggle_presentation;
+    expect(toggle.approved_ui_commit).toBe(config.baseline_sha);
+    expect(toggle.previous_baseline_sha).toBe(launch.approved_ui_commit);
+    expect(toggle.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(toggle.global_risk_final_lock_unmodified).toBe(true);
+    expect(toggle.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(launch.all_three_chain_merchant_activation_claimed).toBe(false);
     expect(launch.global_risk_final_lock_unmodified).toBe(true);
     expect(launch.pending_exact_sha_live_deployment_acceptance).toBe(true);
@@ -86,11 +91,11 @@ describe("website lock governance", () => {
     expect(predge.published_source_sha_unchanged).toBe(true);
     expect(predge.pending_exact_sha_live_deployment_acceptance).toBe(true);
     const desk = read("src/components/intelligence/stateless-live-desk.tsx");
-    expect(desk).toContain('aria-label="Filter Intelligence by country"');
-    expect(desk).toContain("COUNTRIES_195");
+    expect(desk).not.toContain('aria-label="Filter Intelligence by country"');
+    expect(desk).not.toContain("COUNTRIES_195");
     expect(desk).toContain("fetchAllDerivedNews()");
     expect(desk).toContain("JOURNAL_REFRESH_MS = 6 * 60_000");
-    expect(desk).toContain("No matching country-mentioned release is observed");
+    expect(desk).toContain("No findings match this category, search and publication window.");
     expect(desk).toContain('<option value="all">All available releases</option>');
     expect(desk).toContain("Reading the 72-hour stored derived-news journal below");
     expect(desk).toContain("Earlier original releases · Dated");

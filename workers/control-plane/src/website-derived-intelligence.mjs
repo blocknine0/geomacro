@@ -92,8 +92,15 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
   if (new Set(body.signals.map(s=>s.id)).size!==body.signals.length)
     return json({ok:false,error:"DERIVED_NEWS_DUPLICATE_IN_BATCH"},400);
   try {
+    // Refresh derived editorial text for the same original identity. Native
+    // publication/category/precision and first ingestion stay immutable. A
+    // content revision receives a new canonical input hash and signature.
     const statements=body.signals.map(s=>env.DB.prepare(
-      "INSERT OR IGNORE INTO website_derived_intelligence (id,category,published_at,date_precision,story_json,first_seen_at) VALUES (?,?,?,?,?,?)"
+      `INSERT INTO website_derived_intelligence (id,category,published_at,date_precision,story_json,first_seen_at)
+       VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET story_json=excluded.story_json
+       WHERE website_derived_intelligence.category=excluded.category
+        AND website_derived_intelligence.published_at=excluded.published_at
+        AND website_derived_intelligence.date_precision=excluded.date_precision`
     ).bind(s.id,s.category,s.published_at,s.date_precision,JSON.stringify(s),new Date(now).toISOString()));
     // D1 batch is atomic. An empty batch is still a retention sweep.
     if(statements.length)await env.DB.batch(statements);

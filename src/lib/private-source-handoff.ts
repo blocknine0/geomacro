@@ -41,9 +41,15 @@ export async function verifyPrivateSourceHandoff(item:PrivateSourceHandoff,input
  // Reproduce the exact derived content, rather than accepting an arbitrary
  // URL attached to an approved input. This is provenance, NOT source approval.
  const {deriveStatelessSignals}=await import('./stateless-intelligence-model.ts');
- const derived=deriveStatelessSignals([r],now)[0];
- if(!derived||derived.id!==input.payload.signal.id||await automatedInputId(derived)!==item.input_id||
-  await automatedInputId(input.payload.signal)!==item.input_id)
+ // Preserve exact validation of already-signed pre-editorial-update inputs.
+ // New output uses actor/action v2; no existing signature or payload is edited.
+ const candidates=[deriveStatelessSignals([r],now)[0],
+  deriveStatelessSignals([r],now,{editorialVersion:'legacy_v1'})[0]];
+ let bound=false;
+ for(const derived of candidates){
+  if(derived&&derived.id===input.payload.signal.id&&await automatedInputId(derived)===item.input_id)bound=true;
+ }
+ if(!bound||await automatedInputId(input.payload.signal)!==item.input_id)
   throw Error('PRIVATE_SOURCE_HANDOFF_BINDING_INVALID');
  return {schema:'geomacro.private-source-handoff.v1' as const,...item,
   expires_at:input.payload.expires_at};

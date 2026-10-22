@@ -7,6 +7,9 @@ on:
       - main
     paths:
       - "src/lib/original-verification-policy.ts"
+      - "src/lib/release-news-observation.ts"
+      - "src/lib/private-source-handoff.ts"
+      - "src/lib/stateless-intelligence-model.ts"
       - "lib/intelligence-publication-authority.mjs"
       - "workers/control-plane/**"
       - "scripts/ops/verify-all-news-signed-publications.mjs"
