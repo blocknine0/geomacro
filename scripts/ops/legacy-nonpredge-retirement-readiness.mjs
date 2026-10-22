@@ -59,7 +59,10 @@ const legacyDb=process.env.LEGACY_SUPABASE_DB_URL??"";
 const configured=sourceIsPinned(legacyDb)?legacyDb:
   sourceIsPinned(process.env.SUPABASE_DB_URL??"")?process.env.SUPABASE_DB_URL:"";
 report.dedicated_old_db_readonly_secret_available=sourceIsPinned(legacyDb);
-if(process.env.APP_SUPABASE_URL!==ORIGIN||!configured){
+// The APP_SUPABASE_URL may now serve another product after credential rotation.
+// Only the dedicated pinned OLD database URI can override that old app URL
+// assertion. This never changes existing Predge or production credentials.
+if(!configured||(!sourceIsPinned(legacyDb)&&process.env.APP_SUPABASE_URL!==ORIGIN)){
  emit("EXACT_OLD_PRIMARY_READONLY_DATABASE_URL_MISSING");
 } else {
  const q = [
