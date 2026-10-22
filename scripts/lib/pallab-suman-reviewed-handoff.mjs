@@ -44,7 +44,10 @@ export function validatePallabSumanPrivateHandoff({
  if(owner===reviewer||!HEX.test(groSignerPublicSpkiSha256??"")||
     owner===groSignerPublicSpkiSha256||reviewer===groSignerPublicSpkiSha256||
     !Array.isArray(otherAuthoritySpkiSha256)||
-    otherAuthoritySpkiSha256.some(x=>!HEX.test(x)||x===owner||x===reviewer))
+    otherAuthoritySpkiSha256.length!==2||
+    otherAuthoritySpkiSha256[0]===otherAuthoritySpkiSha256[1]||
+    otherAuthoritySpkiSha256.some(x=>!HEX.test(x)||x===owner||
+      x===reviewer||x===groSignerPublicSpkiSha256))
   fail("OWNER_REVIEWER_AND_OTHER_AUTHORITIES_NOT_INDEPENDENT");
  const approval=safeJson(ownerApprovalBytes,MAX.owner);
  const gri=safeJson(reviewedGriBytes,MAX.gri);
