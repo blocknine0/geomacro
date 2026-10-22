@@ -82,7 +82,7 @@ export function reconcileCountry195Publication({rolling,website,now=new Date()}=
   a_source_probe_is_not_a_website_publication_guarantee:true,
   unobserved_does_not_mean_no_world_event:true,
   latest_website_original_at:publicReceipt.latest_original_published_at,
-  195x3_current_signed_commercial_coverage_verified:false,
+  country_195x3_current_signed_commercial_coverage_verified:false,
   actual_original_fact_rights_certificates_verified:false,
   no_new_source_requests:true,no_new_country_polling:true,
   b2_requests:0,d1_writes:0,supabase_reads:0,
