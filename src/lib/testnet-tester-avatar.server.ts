@@ -1,9 +1,22 @@
 import { randomBytes } from "node:crypto";
 
 import { requireRiskSupabase } from "./risk-supabase.server";
+import { readOldSupabaseStorageOriginal } from "./legacy-storage-b2-original.server";
 
 const AVATAR_BUCKET = "testnet-tester-avatars";
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+
+/**
+ * The B2 original reader is privately pinned to the independently restored
+ * full historical archive. Its production activation is an explicit opt-in.
+ * This controls file bytes only; never claim credential/profile cutover.
+ */
+export function testnetAvatarB2HistoricalReadEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return env.GEOMACRO_LEGACY_B2_COLD_READ === "enabled" &&
+    env.GEOMACRO_TESTER_AVATAR_READ_BACKEND === "b2_verified_original";
+}
 
 export type TesterAvatarType = "image/png" | "image/jpeg" | "image/webp";
 
@@ -99,9 +112,23 @@ export async function loadTestnetTesterAvatar(principalId: string) {
   const path = profile.data?.avatar_path;
   if (!path || !path.startsWith(`${principalId}/`)) throw new Error("TESTNET_AVATAR_NOT_FOUND");
 
-  const download = await db.storage.from(AVATAR_BUCKET).download(path);
-  if (download.error || !download.data) throw new Error("TESTNET_AVATAR_NOT_FOUND");
-  const bytes = new Uint8Array(await download.data.arrayBuffer());
+  // The profile lookup above remains the authorization/ownership boundary.
+  // This mode requires the immutable 23,648-file B2 root proof and fails closed
+  // on missing bytes instead of silently returning to old Supabase Storage.
+  // Credential/session and profile migration must be separately verified
+  // before the source database can be retired.
+  let bytes: Uint8Array;
+  if (testnetAvatarB2HistoricalReadEnabled(process.env)) {
+    try {
+      bytes = new Uint8Array(await readOldSupabaseStorageOriginal(AVATAR_BUCKET, path));
+    } catch {
+      throw new Error("TESTNET_AVATAR_B2_READ_NOT_VERIFIED");
+    }
+  } else {
+    const download = await db.storage.from(AVATAR_BUCKET).download(path);
+    if (download.error || !download.data) throw new Error("TESTNET_AVATAR_NOT_FOUND");
+    bytes = new Uint8Array(await download.data.arrayBuffer());
+  }
   const type = detectAvatarType(bytes);
   if (!type) throw new Error("TESTNET_AVATAR_CORRUPT");
   return { bytes, content_type: type.mime } as const;
