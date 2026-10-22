@@ -70,39 +70,66 @@ function query(){
   "'commercial_table_counts',json_build_object("+commercial+")"+
   ")::text";
 }
-function main(){
+async function managementReadOnly(){
+  const token=String(process.env.SUPABASE_ACCESS_TOKEN||
+   process.env.SUPABASE_LEGACY_EDGE_READ_TOKEN||"");
+  if(process.env.SUPABASE_PROJECT_ID!==REF||token.length<20){
+    report.readonly_management_credentials_available=false;
+    return null;
+  }
+  report.readonly_management_credentials_available=true;
+  // The documented beta read-only SQL endpoint runs as
+  // supabase_read_only_user, not as the project's owner.
+  let response;
+  try{
+   response=await fetch("https://api.supabase.com/v1/projects/"+REF+
+    "/database/query/read-only",{
+    method:"POST",headers:{"authorization":"Bearer "+token,
+     "content-type":"application/json","accept":"application/json"},
+    body:JSON.stringify({query:query()+" AS continuity_counts"}),
+    redirect:"error",signal:AbortSignal.timeout(25000)
+   });
+  }catch{return null}
+  report.readonly_management_response_class=
+   response.status===401?"UNAUTHORIZED":
+   response.status===403?"FORBIDDEN":
+   response.status===429?"RATE_LIMIT":
+   response.status>=500?"SERVER_ERROR":
+   response.ok?"SUCCESS":"OTHER_HTTP_ERROR";
+  if(!response.ok)return null;
+  let rows;try{rows=await response.json()}catch{return null}
+  const candidates=Array.isArray(rows)?rows:Array.isArray(rows?.data)?rows.data:null;
+  if(!candidates||candidates.length!==1)return null;
+  const field=candidates[0]?.continuity_counts;
+  if(typeof field==="string"){try{return JSON.parse(field)}catch{return null}}
+  return field&&typeof field==="object"&&!Array.isArray(field)?field:null;
+}
+async function main(){
  if(process.env.APP_SUPABASE_URL!==URL)return fail("PINNED_OLD_SUPABASE_URL_REQUIRED");
  const db=readConfig(process.env.SUPABASE_DB_URL??"");
- if(!db){
-  const raw=String(process.env.SUPABASE_DB_URL??"");
-  report.connection_url_supplied=raw.length>0;
-  // Boolean-only diagnostic. Never copy URL, host, username, secret or DB name.
-  try{
-   const u=new URL(raw),name=decodeURIComponent(u.username);
-   report.source_identity_checks={
-    valid_postgres_protocol:["postgres:","postgresql:"].includes(u.protocol),
-    expected_postgres_db:u.pathname==="/postgres",
-    password_supplied:Boolean(u.password),
-    direct_host_matches_old_project:u.hostname==="db."+REF+".supabase.co",
-    direct_user_is_postgres:name==="postgres",
-    host_is_supabase_pooler:u.hostname.endsWith(".pooler.supabase.com"),
-    pooler_user_matches_old_project:name==="postgres."+REF,
-    connection_url_has_query:Boolean(u.search),
-    connection_url_has_fragment:Boolean(u.hash)
-   };
-  }catch{report.connection_url_parseable=false}
-  return fail("EXACT_LEGACY_POSTGRES_IDENTITY_REQUIRED");
+ let data=null;
+ if(db){
+  const x=spawnSync("psql",[
+   "-h",db.host,"-p",db.port,"-U",db.user,"-d","postgres",
+   "-X","-qAt","-v","ON_ERROR_STOP=1","-c",query()
+  ],{env:{...process.env,PGPASSWORD:db.password,
+      PGSSLMODE:"require",PGCONNECT_TIMEOUT:"15",
+      PGOPTIONS:"-c default_transaction_read_only=on"},
+    encoding:"utf8",timeout:60000,maxBuffer:500_000,
+    stdio:["ignore","pipe","pipe"]});
+  if(x.status===0&&!x.error){
+   try{data=JSON.parse(x.stdout.trim())}catch{data=null}
+   if(data)report.read_only_transport="pinned_tls_postgresql";
+  }
  }
- const x=spawnSync("psql",[
-  "-h",db.host,"-p",db.port,"-U",db.user,"-d","postgres",
-  "-X","-qAt","-v","ON_ERROR_STOP=1","-c",query()
- ],{env:{...process.env,PGPASSWORD:db.password,
-     PGSSLMODE:"require",PGCONNECT_TIMEOUT:"15",
-     PGOPTIONS:"-c default_transaction_read_only=on"},
-   encoding:"utf8",timeout:60000,maxBuffer:500_000,
-   stdio:["ignore","pipe","pipe"]});
- if(x.status!==0||x.error)return fail("READ_ONLY_EXISTING_SUPABASE_SOURCE_UNAVAILABLE");
- let data;try{data=JSON.parse(x.stdout.trim())}catch{return fail("READ_ONLY_AGGREGATE_RESULT_UNPARSABLE")}
+ if(!data){
+  // Separate pinned read-only Management endpoint, no SQL write privilege.
+  // Never attempt to connect an unrecognized PostgreSQL URI.
+  report.existing_db_url_matches_pinned_old_source=Boolean(db);
+  data=await managementReadOnly();
+  if(data)report.read_only_transport="supabase_management_read_only_beta";
+ }
+ if(!data)return fail("OLD_SUPABASE_RETAINED_READ_ONLY_TRANSPORT_NOT_AVAILABLE");
  const keys=[...Object.keys(baseline),"database_bytes","storage_bucket_count"];
  if(keys.some(k=>!Number.isSafeInteger(Number(data[k]))||Number(data[k])<0))
   return fail("SOURCE_AGGREGATE_DATA_INVALID");
@@ -123,4 +150,4 @@ function main(){
       data.storage_bytes<baseline.storage_bytes
       ?"SOURCE_STORAGE_HAS_FEWER_ITEMS_THAN_ARCHIVED_POINT_IN_TIME":"RETENTION_CONTINUITY_OBSERVED");
 }
-main();
+main().catch(()=>fail("OLD_SUPABASE_RETENTION_READ_ONLY_CHECK_FAILED"));
