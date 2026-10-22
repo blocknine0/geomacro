@@ -7,6 +7,8 @@ on:
   pull_request:
     paths:
       - ".github/workflows/pallab-suman-independent-gri-authorities.yml"
+      - "scripts/lib/read-human-key-passphrase.mjs"
+      - "docs/ops/PALLAB_SUMAN_ONE_LAPTOP_SETUP.md"
       - "scripts/lib/pallab-human-gri-batch-approval.mjs"
       - "scripts/lib/pallab-suman-reviewed-handoff.mjs"
       - "scripts/ops/sign-pallab-owner-gri-candidate.mjs"
@@ -47,6 +49,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          node --check scripts/lib/read-human-key-passphrase.mjs
           node --check scripts/lib/pallab-human-gri-batch-approval.mjs
           node --check scripts/lib/pallab-suman-reviewed-handoff.mjs
           node --check scripts/ops/sign-pallab-owner-gri-candidate.mjs
