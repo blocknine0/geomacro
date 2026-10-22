@@ -31,8 +31,10 @@ Production code `scripts/lib/groq-browser-live-fallback.mjs` is locked to:
    independently certified GRI/Indices, not commercial licence and not paid.
    No B2/D1 writes, customer payment or rights/signing authority generated.
 6. A GitHub `production`-environment **real** one-off browser acceptance
-   workflow `groq-live-browser-structured-production.yml` runs on merge
-   (or explicit manual request); it prints sanitized booleans/counters only,
+   workflow `groq-live-browser-structured-production.yml` runs the
+   actual Free-plan search **only on explicit manual workflow_dispatch**;
+   PR/push run offline contracts without spending provider Free quota.
+   The live run prints sanitized booleans/counters only,
    never provider snippets or credentials. The live HTTP200 and strict
    schema acceptance must be observed before claiming actual search success.
    No cron and no Lovable AI editor credit requirement.
@@ -40,6 +42,16 @@ Production code `scripts/lib/groq-browser-live-fallback.mjs` is locked to:
 Groq docs:
 - https://console.groq.com/docs/tool-use/built-in-tools/browser-search
 - https://console.groq.com/docs/structured-outputs
+
+The first actual production canary [#39749895271](https://github.com/blocknine0/geomacro/actions/runs/39749895271)
+returned **HTTP 200**, `executed_tools` browser marker and strictly
+valid **zero leads**. Subsequent pushes can fail at the provider even if
+offline validators are healthy, without any evidence of new qualifying
+publisher articles. No user-controlled data or money was accepted from
+those responses. Hence continuous PR/push acceptance uses **offline**
+schema guards and preserves Free quotas; a real browser check is explicitly
+operator requested, not scheduled or triggered by every source commit.
+Tool errors are not silently considered genuine source truth.
 
 ## B. Current signed hot products: exact missing dependencies
 
