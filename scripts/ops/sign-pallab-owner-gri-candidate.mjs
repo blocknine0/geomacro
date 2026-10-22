@@ -7,12 +7,13 @@ import {dirname,isAbsolute,resolve,relative} from "node:path";
 import {createPrivateKey,createPublicKey,createHash,randomBytes,sign} from "node:crypto";
 import {createInterface} from "node:readline/promises";
 import {pathToFileURL} from "node:url";
+import {readHumanKeyPassphrase} from "../lib/read-human-key-passphrase.mjs";
 import {OWNER_APPROVER,OWNER_APPROVAL_SCHEMA,ownerApprovalCanonicalPayload,
   assertOwnerApprovalEnvelope} from "../lib/pallab-human-gri-batch-approval.mjs";
 const SHA=/^[a-f0-9]{64}$/u;
 const fail=s=>{throw Error("OWNER_HUMAN_LOCAL_SIGN_"+s)};
 export function signOwnerReviewedCandidate({
- privateKey,publicKeyPem,publicKeySpkiSha256,candidateSha256,evidenceSha256,
+ privateKey,privateKeyPassphrase,publicKeyPem,publicKeySpkiSha256,candidateSha256,evidenceSha256,
  now=new Date(),nonceHex
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
@@ -21,7 +22,8 @@ export function signOwnerReviewedCandidate({
     fail("APPROVED_EXACT_DIGESTS_AND_CLOCK_REQUIRED");
  let key,derived;
  try{
-  key=createPrivateKey(privateKey);
+  key=createPrivateKey(privateKeyPassphrase===undefined?privateKey:
+    {key:privateKey,passphrase:privateKeyPassphrase});
   if(key.asymmetricKeyType!=="ed25519")fail("ED25519_PRIVATE_KEY_REQUIRED");
   derived=createPublicKey(key).export({format:"der",type:"spki"});
  }catch{fail("OWNER_PRIVATE_KEY_UNUSABLE");}
@@ -78,8 +80,14 @@ async function run(env=process.env){
   const confirm=await rl.question("Type APPROVE EXACT OWNER REVIEW to cryptographically sign these exact hashes: ");
   if(confirm!=="APPROVE EXACT OWNER REVIEW")fail("HUMAN_DECLINED");
  }finally{rl.close();}
+ const encryptedKeyBytes=readFileSync(key);
+ if(!encryptedKeyBytes.toString("ascii",0,80).includes("BEGIN ENCRYPTED PRIVATE KEY"))
+  fail("SHARED_LAPTOP_ENCRYPTED_PRIVATE_KEY_REQUIRED");
+ const privateKeyPassphrase=await readHumanKeyPassphrase(
+   "Pallab: enter YOUR private signing-key passphrase (hidden): ");
  const envelope=signOwnerReviewedCandidate({
-  privateKey:readFileSync(key),publicKeyPem:env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM,
+  privateKey:encryptedKeyBytes,privateKeyPassphrase,
+  publicKeyPem:env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM,
   publicKeySpkiSha256:env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256,
   candidateSha256,evidenceSha256,nonceHex:randomBytes(16).toString("hex")
  });
