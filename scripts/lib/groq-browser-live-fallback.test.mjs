@@ -20,7 +20,7 @@ const flags={
 test("Groq search only receives fixed country/category scope, NOT customer question",async()=>{
  const searches=[];
  const result=await groqBrowserResearchForMissingOfficial({
-  categories:["MACRO"],country_iso3:"IND",country_name:"India",now:NOW,env:flags,
+  categories:["MACRO"],country_iso3:"IND",country_name:"India",now:NOW,env:flags,budget:{hourStart:0,hourCount:0,dayStart:0,dayCount:0},
   fetchImpl:async(url,opts)=>{
    searches.push({url,opts});
    return {status:200,json:async()=>({choices:[{message:{content:JSON.stringify(fixture)}}]})};
@@ -65,7 +65,7 @@ test("missing existing key or explicit runtime opt-out yields ZERO browser calls
 test("owner-confirmed Free Plan uses existing Groq key even without Lovable variable edits",async()=>{
  let calls=0;
  const out=await groqBrowserResearchForMissingOfficial({
-  categories:["MACRO"],now:NOW,env:{GROQ_API_KEY:token},
+  categories:["MACRO"],now:NOW,env:{GROQ_API_KEY:token},budget:{hourStart:0,hourCount:0,dayStart:0,dayCount:0},
   fetchImpl:async()=>{
    calls++;
    return {status:200,json:async()=>({choices:[{message:{content:JSON.stringify(fixture)}}]})};
@@ -127,21 +127,21 @@ test("search scope must contain only supported fixed topics and canonical countr
 test("upstream error and invalid JSON are fail-closed without retry or logging source text",async()=>{
  let calls=0;
  await assert.rejects(groqBrowserResearchForMissingOfficial({
-  categories:["MACRO"],env:flags,now:NOW,
+  categories:["MACRO"],env:flags,budget:{hourStart:0,hourCount:0,dayStart:0,dayCount:0},now:NOW,
   fetchImpl:async()=>{calls++;return {status:429}}
  }),/GROQ_BROWSER_RESEARCH_UNVERIFIED_OR_UNAVAILABLE/);
  await assert.rejects(groqBrowserResearchForMissingOfficial({
-  categories:["MACRO"],env:flags,now:NOW,
+  categories:["MACRO"],env:flags,budget:{hourStart:0,hourCount:0,dayStart:0,dayCount:0},now:NOW,
   fetchImpl:async()=>{calls++;return {status:200,
    json:async()=>({choices:[{message:{content:"Here is some unverified prose."}}]})}}
  }),/GROQ_BROWSER_RESEARCH_UNVERIFIED_OR_UNAVAILABLE/);
- assert.equal(calls,2);
+ assert.equal(calls,3); // one rate limit + two-stage cited-prose conversion
 });
 
 test("actual browser-style cited prose receives SECOND strict schema model call only",async()=>{
  let calls=0;
  const out=await groqBrowserResearchForMissingOfficial({
-  categories:["MACRO"],country_iso3:"IND",country_name:"India",now:NOW,env:flags,
+  categories:["MACRO"],country_iso3:"IND",country_name:"India",now:NOW,env:flags,budget:{hourStart:0,hourCount:0,dayStart:0,dayCount:0},
   fetchImpl:async(url,opts)=>{
    assert.equal(url,"https://api.groq.com/openai/v1/chat/completions");
    const body=JSON.parse(opts.body);calls++;
@@ -172,7 +172,7 @@ test("empty strict list is valid but withheld instead of inventing current facts
   JSON.stringify({schema:fixture.schema,leads:[]}),{categories:["MACRO"],now:NOW}),[]);
  let calls=0;
  const r=await groqBrowserResearchForMissingOfficial({
-  categories:["MACRO"],now:NOW,env:flags,
+  categories:["MACRO"],now:NOW,env:flags,budget:{hourStart:0,hourCount:0,dayStart:0,dayCount:0},
   fetchImpl:async()=>{
    calls++;
    return {status:200,json:async()=>({choices:[{message:{
@@ -186,7 +186,7 @@ test("empty strict list is valid but withheld instead of inventing current facts
 test("invalid strict conversion fails closed and never returns licensed or signed response",async()=>{
  let calls=0;
  await assert.rejects(groqBrowserResearchForMissingOfficial({
-  categories:["MACRO"],now:NOW,env:flags,
+  categories:["MACRO"],now:NOW,env:flags,budget:{hourStart:0,hourCount:0,dayStart:0,dayCount:0},
   fetchImpl:async()=>{
    calls++;
    return calls===1?
