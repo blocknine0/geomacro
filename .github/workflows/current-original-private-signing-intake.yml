@@ -21,6 +21,7 @@ on:
       - "src/lib/original-verification-policy.ts"
       - ".github/workflows/current-original-private-signing-intake.yml"
       - "scripts/ops/prepare-first-original-signing-input.ts"
+      - "scripts/ops/prepare-first-original-signing-input.test.ts"
       - "scripts/lib/private-original-signing-review-intake.mjs"
       - "scripts/lib/private-original-signing-review-intake.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
@@ -29,6 +30,7 @@ on:
       - "src/lib/original-verification-policy.ts"
       - ".github/workflows/current-original-private-signing-intake.yml"
       - "scripts/ops/prepare-first-original-signing-input.ts"
+      - "scripts/ops/prepare-first-original-signing-input.test.ts"
       - "scripts/lib/private-original-signing-review-intake.mjs"
       - "scripts/lib/private-original-signing-review-intake.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
@@ -61,6 +63,7 @@ jobs:
           node --check scripts/lib/geomacro-original-page-readback.mjs
           node --test scripts/lib/private-original-signing-review-intake.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
+          bunx --no-install vitest run scripts/ops/prepare-first-original-signing-input.test.ts
       - name: Attempt genuine 22h publisher original readbacks without charge
         # PR tests NEVER probe official publishers; main only, 12+4+2 GET cap.
         # Without eligible current releases the result is cleanly NO_CANDIDATE,
