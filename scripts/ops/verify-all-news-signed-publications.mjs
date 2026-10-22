@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {ORIGINAL_VERIFICATION_WINDOW_MS,ORIGINAL_VERIFICATION_WINDOW_HOURS} from '../../src/lib/original-verification-policy.ts';
 import {resolve} from 'node:path';
+import {safeSignedNewsFailureReceipt} from '../lib/signed-news-safe-diagnostic.mjs';
 import {pathToFileURL} from 'node:url';
 import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client.ts';
 import {automatedInputId,verifyAutomatedInput} from '../../src/lib/automated-intelligence-input.ts';
@@ -74,5 +75,5 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{console.log(JSON.stringify(await verifyAllNewsSignedPublications()));}
- catch{console.error('ALL_NEWS_SIGNED_PUBLICATION_NOT_VERIFIED');process.exitCode=2;}
+ catch(error){console.error(JSON.stringify(safeSignedNewsFailureReceipt(error)));process.exitCode=2;}
 }
