@@ -7,7 +7,8 @@
 import {spawnSync} from "node:child_process";
 import {readFileSync,statSync,lstatSync,realpathSync,existsSync} from "node:fs";
 import {join,resolve} from "node:path";
-import {fileURLToPath} from "node:url";
+import {pathToFileURL} from "node:url";
+
 import {createInterface} from "node:readline/promises";
 import {prepareEnrollment,REPOSITORY,SECRETS} from "../lib/standing-derived-cloud-enrollment.mjs";
 const REF="refs/heads/main";
@@ -105,5 +106,5 @@ export async function main(env=process.env){
   next:"gh run list --workflow standing-delegated-derived-attestation.yml --limit 3 --repo blocknine0/geomacro"
  }));
 }
-if(process.argv[1]&&fileURLToPath(import.meta.url)===new URL("file://"+resolve(process.argv[1])).href)
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)
  main().catch(()=>{console.error(ERROR);process.exitCode=2;});
