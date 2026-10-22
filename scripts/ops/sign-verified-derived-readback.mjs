@@ -43,7 +43,7 @@ async function main(env=process.env){
   machine:env.GEOMACRO_DELEGATED_MACHINE_PUBLIC_KEY_SHA256,
   facts:other[0],rights:other[1],gro:other[2],
   policyMachine:envelope.policy?.machine_public_spki_sha256
- });
+ },{allowOwnerFactsReuse:true});
  if(classification!=="NO_ROLE_COLLISION_FOUND"){
   console.error(JSON.stringify({schema:"geomacro.delegation-role-separation-safe-diagnostic.v1",
    collision:classification,machine_signature_produced:false,
@@ -57,6 +57,7 @@ async function main(env=process.env){
   machinePem:env.GEOMACRO_DELEGATED_MACHINE_PUBLIC_KEY_PEM,
   machinePin:env.GEOMACRO_DELEGATED_MACHINE_PUBLIC_KEY_SHA256,
   otherAuthorityPins:other,
+  allowOwnerFactsReuse:true,
   enabled:env.GEOMACRO_STANDING_DELEGATION_ENABLED,
   revoked:env.GEOMACRO_STANDING_DELEGATION_REVOKED
  });

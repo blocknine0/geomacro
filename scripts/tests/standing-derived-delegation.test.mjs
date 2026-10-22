@@ -80,3 +80,32 @@ test("signature binds to exact payload and explicit no-funds claims",()=>{
  assert.throws(()=>signMachineReceipt({receipt:observed,delegation:approved,
   machinePrivatePkcs8B64:x.owner.privateB64,machinePem:x.machine.pem}),/MACHINE_PRIVATE_PUBLIC_MISMATCH/);
 });
+test("same Pallab owner/Facts identity is a derived-only exception, not independent review",()=>{
+ const x=setup(),shared=[x.owner.pin,x.rights.pin,x.gro.pin];
+ assert.throws(()=>validateDelegation(x.envelope,{
+  ...x.keys,otherAuthorityPins:shared
+ }),/AUTHORITY_SEPARATION_FAILED/);
+ const approved=validateDelegation(x.envelope,{
+  ...x.keys,otherAuthorityPins:shared,allowOwnerFactsReuse:true
+ });
+ assert.equal(approved.owner_facts_same_custodian_allowed,true);
+ assert.equal(approved.machine_key_distinct,true);
+ assert.equal(approved.external_independent_review_claimed,false);
+ assert.equal(approved.commercial_rights_claimed,false);
+ assert.equal(approved.legacy_signed_hot_product_equivalent,undefined);
+ assert.equal(approved.real_payment_authorized,false);
+});
+test("dedicated machine/Suman/rights/GRO collisions remain blocked even with owner/Facts reuse",()=>{
+ const x=setup(),base=[x.owner.pin,x.rights.pin,x.gro.pin];
+ for(const other of [
+  [x.machine.pin,x.rights.pin,x.gro.pin],
+  [x.owner.pin,x.machine.pin,x.gro.pin],
+  [x.owner.pin,x.reviewer.pin,x.gro.pin],
+  [x.owner.pin,x.rights.pin,x.machine.pin],
+  [x.owner.pin,x.rights.pin,x.rights.pin]
+ ]){
+  assert.throws(()=>validateDelegation(x.envelope,{
+   ...x.keys,otherAuthorityPins:other,allowOwnerFactsReuse:true
+  }),/AUTHORITY_SEPARATION_FAILED/);
+ }
+});

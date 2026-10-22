@@ -38,3 +38,16 @@ test("invalid or substituted pins fail closed without leaking values",()=>{
    "MACHINE_POLICY_BINDING_MISMATCH");
  assert.equal(standingRoleCollisionKind(null),"ROLE_PINS_MISSING_OR_INVALID");
 });
+
+test("derived-only owner/Facts reuse is specifically allowed, all other collisions denied",()=>{
+ const overlap={...base,facts:base.owner};
+ assert.equal(standingRoleCollisionKind(overlap),"OWNER_AND_FACTS_SHARE_KEY");
+ assert.equal(standingRoleCollisionKind(overlap,{allowOwnerFactsReuse:true}),
+  "NO_ROLE_COLLISION_FOUND");
+ const secondary={...overlap,rights:base.reviewer};
+ assert.equal(standingRoleCollisionKind(secondary,{allowOwnerFactsReuse:true}),
+  "REVIEWER_AND_RIGHTS_SHARE_KEY");
+ const stillForbidden={...overlap,rights:base.machine};
+ assert.equal(standingRoleCollisionKind(stillForbidden,{allowOwnerFactsReuse:true}),
+  "MACHINE_AND_RIGHTS_SHARE_KEY");
+});
