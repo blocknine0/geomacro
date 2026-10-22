@@ -76,7 +76,9 @@ test("unapproved owner/reviewer, swapped package, and reused authority fail befo
  assert.throws(()=>attempt(x,{otherAuthoritySpkiSha256:[x.facts.pin,x.facts.pin]}),
    /AUTHORITIES_NOT_INDEPENDENT/);
  assert.throws(()=>attempt(x,{countryCertificateBytes:Buffer.from("tampered-signed-certificates")}),
-   /EXACT_SIGNED_INPUT_SHA_MISMATCH/);
+   /PRIVATE_SIGNED_JSON_INVALID/);
+ assert.throws(()=>attempt(x,{reviewedGriBytes:Buffer.concat([x.griBytes,Buffer.from("\\n")])}),
+   /PUBLISHED_B2_BYTES_NOT_EXACT_OWNER_APPROVED_BYTES/);
 });
 test("reviewer cannot automatically sign empty or fictional input; owner approval not current GRI",()=>{
  const [pallab,suman]=seeds();
