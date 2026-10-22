@@ -1,0 +1,81 @@
+name: Groq Real Browser + Strict Validator Production Acceptance
+
+# Live: one protected owner-Free-plan browser search and at most one
+# SAME-PROVIDER tool-free structured conversion. No article bytes logged.
+# No cron and no chat/editor credits or unattended repeating API spend.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/groq-live-browser-structured-production.yml"
+      - "scripts/lib/groq-browser-live-fallback.mjs"
+      - "scripts/lib/groq-browser-live-fallback.test.mjs"
+      - "scripts/ops/verify-groq-live-browser-structured.mjs"
+      - "scripts/ops/verify-groq-live-browser-structured.test.mjs"
+      - "docs/ops/GROQ_STRICT_PRODUCTION_LOCK_AND_SIGNED_HOT_RECOVERY.md"
+  pull_request:
+    paths:
+      - ".github/workflows/groq-live-browser-structured-production.yml"
+      - "scripts/lib/groq-browser-live-fallback.mjs"
+      - "scripts/lib/groq-browser-live-fallback.test.mjs"
+      - "scripts/ops/verify-groq-live-browser-structured.mjs"
+      - "scripts/ops/verify-groq-live-browser-structured.test.mjs"
+      - "docs/ops/GROQ_STRICT_PRODUCTION_LOCK_AND_SIGNED_HOT_RECOVERY.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-groq-live-strict-acceptance
+  cancel-in-progress: false
+
+jobs:
+  strict-parser-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "22"}
+      - name: Production contract test with injected fake Groq HTTP responses only
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/groq-browser-live-fallback.mjs
+          node --check scripts/ops/verify-groq-live-browser-structured.mjs
+          node --test scripts/lib/groq-browser-live-fallback.test.mjs
+          node --test scripts/ops/verify-groq-live-browser-structured.test.mjs
+
+  owner-free-existing-key-live-smoke:
+    needs: strict-parser-tests
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment: production
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GROQ_BROWSER_SEARCH_ENABLED: "1"
+      GROQ_BROWSER_SEARCH_FREE_QUOTA_ACK: "YES_BROWSER_FREE_TIER_CONFIRMED"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "22"}
+      - name: Exact canonical owner Free Groq production key sanity check
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = "$(git rev-parse HEAD)"
+          test -n "${GROQ_API_KEY:-}" || { echo "::error::EXISTING_GROQ_KEY_ABSENT"; exit 2; }
+      - name: Actual Groq built-in browser_search with fixed India macro scope, strict schema acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-groq-live-browser-structured.mjs
