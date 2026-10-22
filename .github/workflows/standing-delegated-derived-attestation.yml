@@ -1,67 +1,37 @@
-name: Standing Delegated Derived Attestation (No Funds)
-# Signed policy from TWO humans enables dedicated derived-only machine receipts.
-# No human private key or third-party legal/scored attestations on GitHub.
+name: Standing Delegated Derived Attestation No Funds
 on:
   pull_request:
     paths:
-      - ".github/workflows/standing-delegated-derived-attestation.yml"
-      - "scripts/lib/standing-derived-delegation.mjs"
-      - "scripts/tests/standing-derived-delegation.test.mjs"
-      - "scripts/ops/sign-standing-derived-delegation.mjs"
-      - "scripts/ops/sign-verified-derived-readback.mjs"
-      - "docs/ops/STANDING_DELEGATED_DERIVED_NO_FUNDS.md"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/standing-delegated-derived-attestation.yml"
-      - "scripts/lib/standing-derived-delegation.mjs"
-      - "scripts/tests/standing-derived-delegation.test.mjs"
-      - "scripts/ops/sign-standing-derived-delegation.mjs"
-      - "scripts/ops/sign-verified-derived-readback.mjs"
-      - "docs/ops/STANDING_DELEGATED_DERIVED_NO_FUNDS.md"
-  workflow_dispatch: {}
+      - '.github/workflows/standing-delegated-derived-attestation.yml'
+      - 'scripts/lib/standing-derived-delegation.mjs'
+      - 'scripts/tests/standing-derived-delegation.test.mjs'
+      - 'scripts/ops/sign-standing-derived-delegation.mjs'
+      - 'scripts/ops/sign-verified-derived-readback.mjs'
+  workflow_dispatch:
   schedule:
-    - cron: "23 * * * *"
-  workflow_run:
-    workflows: ["Five-Minute Original News Fastlane"]
-    types: [completed]
-    branches: [main]
-
+    - cron: '23 * * * *'
 permissions:
   contents: read
-concurrency:
-  group: geomacro-standing-delegated-derived-cloud
-  cancel-in-progress: false
-
 jobs:
-  standing-governance-contract:
+  contract:
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: "22"
-      - name: Test exact two-human governance, scope and cloud signer
+          node-version: '22'
+      - name: Verify exact human governance and scope
         run: |
           node --check scripts/lib/standing-derived-delegation.mjs
           node --check scripts/ops/sign-standing-derived-delegation.mjs
           node --check scripts/ops/sign-verified-derived-readback.mjs
           node --test scripts/tests/standing-derived-delegation.test.mjs
 
-  delegated-derived-receipt:
-    needs: standing-governance-contract
-    if: >-
-      github.repository == 'blocknine0/geomacro' &&
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
-        github.event.workflow_run.head_branch == 'main' &&
-        github.event.workflow_run.head_sha == github.sha))
+  cloud-derived-only:
+    needs: contract
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 9
     environment: production
@@ -86,49 +56,42 @@ jobs:
       GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH: ${{ runner.temp }}/verified-derived.json
       GEOMACRO_DELEGATED_RECEIPT_OUTPUT_PATH: ${{ runner.temp }}/delegated-derived.json
     steps:
-      - name: Check one-time standing delegation opted in
-        id: optin
+      - name: Require one-time standing delegation opt-in
+        id: approval
         shell: bash
         run: |
           if [ "$GEOMACRO_STANDING_DELEGATION_ENABLED" = "YES_DELEGATED_DERIVED_ONLY" ] && [ "$GEOMACRO_STANDING_DELEGATION_REVOKED" != "YES" ]; then
-            echo "active=true" >> "$GITHUB_OUTPUT"
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
           else
-            echo "active=false" >> "$GITHUB_OUTPUT"
-            echo "STANDING_DELEGATION_NOT_ACTIVE_NO_SIGNATURE"
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo STANDING_DELEGATION_NOT_ACTIVE
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        if: steps.optin.outputs.active == 'true'
+        if: steps.approval.outputs.ready == 'true'
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        if: steps.optin.outputs.active == 'true'
+        if: steps.approval.outputs.ready == 'true'
         with:
-          bun-version: "1.4.2"
+          bun-version: '1.4.2'
       - name: Install locked dependencies
-        if: steps.optin.outputs.active == 'true'
+        if: steps.approval.outputs.ready == 'true'
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: Read back every existing signed free derived input
-        if: steps.optin.outputs.active == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          bun scripts/ops/verify-all-news-signed-publications.mjs > "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH"
-      - name: Verify one-time signatures and sign derived-only machine receipt
-        if: steps.optin.outputs.active == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          node scripts/ops/sign-verified-derived-readback.mjs --sign-verified-derived
-      - name: Retain sanitized, signed zero-funds receipt
-        if: steps.optin.outputs.active == 'true'
+      - name: Independently verify all existing derived input signatures
+        if: steps.approval.outputs.ready == 'true'
+        run: bun scripts/ops/verify-all-news-signed-publications.mjs > "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH"
+      - name: Sign truthful aggregate derived-only receipt with machine key
+        if: steps.approval.outputs.ready == 'true'
+        run: node scripts/ops/sign-verified-derived-readback.mjs --sign-verified-derived
+      - name: Store sanitized machine-signed no-funds receipt
+        if: steps.approval.outputs.ready == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: delegated-derived-only-${{ github.run_id }}
+          name: derived-only-${{ github.run_id }}
           path: ${{ runner.temp }}/delegated-derived.json
           retention-days: 7
           if-no-files-found: error
-      - name: Remove temporary readback files
+      - name: Clean temporary local readback
         if: always()
         run: rm -f -- "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH" "$GEOMACRO_DELEGATED_RECEIPT_OUTPUT_PATH"
