@@ -38,7 +38,7 @@ export function planTwoHourContinentCountrySweep({
  assertContinentCanonical195(registryText);
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
    now.getTime()<SWEEP_EPOCH_MS)fail("UTC_SLOT_CLOCK_INVALID");
- if(!["schedule","workflow_dispatch"].includes(eventName))
+ if(!["schedule","workflow_dispatch","push"].includes(eventName))
    fail("PROTECTED_EVENT_ONLY");
  const members=CONTINENT_COUNTRIES_195[continent];
  const registered=registryText.match(/const COUNTRY_ROWS=`([\s\S]*?)`/u)[1]
@@ -49,10 +49,11 @@ export function planTwoHourContinentCountrySweep({
     fail("MANUAL_ISO3_NOT_IN_THIS_CONTINENT");
   position=members.indexOf(requestedIso3);trigger="MANUAL_PINNED_ISO3";
  }else{
-  if(requestedIso3!=="")fail("SCHEDULE_CANNOT_OVERRIDE_COUNTRY");
+  if(requestedIso3!=="")fail("NON_MANUAL_CANNOT_OVERRIDE_COUNTRY");
   const slot=Math.floor((now.getTime()-SWEEP_EPOCH_MS)/SWEEP_SLOT_MS);
   position=slot%members.length;
-  trigger=eventName==="schedule"?"TWO_HOUR_UTC_ROTATION":"MANUAL_CURRENT_SLOT";
+  trigger=eventName==="schedule"?"TWO_HOUR_UTC_ROTATION":
+    eventName==="push"?"POST_MERGE_CANARY_ONE_COUNTRY":"MANUAL_CURRENT_SLOT";
  }
  const iso3=members[position],globalStart=registered.indexOf(iso3);
  if(globalStart<0)fail("COUNTRY_GLOBAL_INDEX_MISSING");

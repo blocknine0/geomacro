@@ -18,12 +18,12 @@ on:
 permissions:
   contents: read
 
-# Global serialization across the six geographic lanes; GitHub permits
-# only one running + one pending in a group, so scheduled cron offsets are
-# deliberately 20 minutes apart. Each source job is bounded to 9 minutes. A superseded pending run remains a GAP,
-# never counted as tested source evidence.
+# Isolate each geographic lane. A single global concurrency group
+# silently supersedes 4+ pending runs when GitHub schedules are delayed
+# or bootstrap runs overlap. Individual continents remain non-overlapping,
+# while bootstrap has max-parallel=1 to bound initial issuer traffic.
 concurrency:
-  group: geomacro-continent-country-six-lanes-protected-sources
+  group: geomacro-continent-country-source-${{ inputs.continent }}
   cancel-in-progress: false
 
 jobs:
@@ -31,7 +31,8 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
+       github.event_name == 'push')
     runs-on: ubuntu-24.04
     timeout-minutes: 9
     steps:
