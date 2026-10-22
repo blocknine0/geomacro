@@ -117,7 +117,7 @@ export async function liveStructuredData(raw:unknown,dep:Dependencies={}){
          reference.observations.some(x=>x.clock_semantics!=="reference_year"||
            x.source_rights_scope!=="WDI_SOURCE_2_CC_BY_4_0"||
            x.original_event_time_verified!==false||x.score!==null||
-           !/^(?:19|20)\\d{2}$/u.test(x.observation_period)||
+           !/^(?:19|20)\d{2}$/u.test(x.observation_period)||
            Number(x.observation_period)>new Date(at).getUTCFullYear()))
         return {statusCode:422,body:{...denied(at,"NO_COUNTRY_ANNUAL_REFERENCE_AVAILABLE"),
           category:input.category,country_iso3:input.country_iso3}};
