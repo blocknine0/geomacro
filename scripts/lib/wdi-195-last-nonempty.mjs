@@ -105,6 +105,81 @@ async function bounded(response){
  try{return JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(b))}
  catch{throw Error("WDI_BACKFILL_JSON_INVALID")}
 }
+
+// Read-only daily WDI gap recovery: split a large 2025-missing-only request
+// into at most TWO publisher-supported 17-country batches. The existing
+// daily quota permits <=5 source GETs total (195 bulk + 2 gap + 2 minerals).
+// Never infer a missing 2025 cell from a historical observation.
+export function planWdiMissingCountryBatches(codes,source){
+ const canonical=canonical195(source);
+ if(!Array.isArray(codes)||codes.length<1||codes.length>195||
+    new Set(codes).size!==codes.length||
+    codes.some(x=>typeof x!=="string"||!canonical.has(x)))
+   throw Error("WDI_BACKFILL_TARGET_INVALID");
+ const sorted=[...codes].sort();
+ const eligible=sorted.slice(0,34);
+ return Object.freeze({
+   requested_missing_country_count:sorted.length,
+   unprobed_country_count:sorted.length-eligible.length,
+   batches:Object.freeze([eligible.slice(0,17),eligible.slice(17,34)]
+     .filter(rows=>rows.length).map(rows=>Object.freeze(rows))),
+   all_requested_gaps_checked:eligible.length===sorted.length,
+   max_extra_source_calls:2
+ });
+}
+export function combineWdiMissingCountryBatches(plan,observed,{failure=null}={}){
+ if(!plan||!Array.isArray(plan.batches)||!Array.isArray(observed)||
+    observed.length>2||observed.length>plan.batches.length||
+    (failure!==null&&!/^WDI_BACKFILL_[A-Z_]+$/u.test(failure)))
+   throw Error("WDI_BACKFILL_MERGE_INVALID");
+ const target=plan.batches.flat(),reached=new Set();
+ const indicatorIds=[...INDICATORS];
+ const years=new Map(indicatorIds.map(id=>[id,new Map()]));
+ for(let i=0;i<observed.length;i++){
+   const report=observed[i],batch=plan.batches[i];
+   if(report?.schema!=="geomacro.wdi-195-last-nonempty-reference.v1"||
+      report.target_countries_count!==batch.length||
+      !Array.isArray(report.indicators)||report.indicators.length!==2||
+      report.request_count!==1)
+     throw Error("WDI_BACKFILL_MERGE_INVALID");
+   for(const row of report.indicators){
+     if(!indicatorIds.includes(row.indicator)||
+        !Array.isArray(row.target_country_reference_years)||
+        row.target_country_reference_years.length!==batch.length)
+       throw Error("WDI_BACKFILL_MERGE_INVALID");
+     for(const val of row.target_country_reference_years){
+       if(!batch.includes(val.iso3)||typeof val.iso3!=="string"||
+          (val.reference_year!==null&&
+          (!Number.isSafeInteger(val.reference_year)||val.reference_year<1960||
+           val.reference_year>2100)))
+         throw Error("WDI_BACKFILL_MERGE_INVALID");
+       if(val.reference_year!==null)years.get(row.indicator).set(val.iso3,val.reference_year);
+     }
+   }
+   batch.forEach(x=>reached.add(x));
+ }
+ const complete=observed.length===plan.batches.length&&
+   plan.all_requested_gaps_checked&&failure===null;
+ return {
+   schema:"geomacro.wdi-195-missing-country-batched-reference.v1",
+   status:complete?"OFFICIAL_HISTORICAL_PERIODS_OBSERVED":
+     failure?"UNVERIFIED_OR_UNAVAILABLE":"PARTIAL_HISTORICAL_GAP_OBSERVATION",
+   reason:failure,source_family:"world_bank_wdi",
+   targeted_missing_countries:plan.requested_missing_country_count,
+   actually_queried_missing_countries:reached.size,
+   not_yet_queried_missing_countries:plan.requested_missing_country_count-reached.size,
+   observed_source_requests:observed.length+(failure?1:0),
+   target_country_reference_years_by_indicator:Object.fromEntries(
+     indicatorIds.map(id=>[id,target.map(iso3=>({
+       iso3,reference_year:years.get(id).get(iso3)??null,
+       reference_is_current_observation:false
+     }))])),
+   raw_source_values_stored:false,
+   last_nonempty_year_is_not_current_news:true,
+   paid_delivery_enabled:false,verified_current_195x3_country_domain_events:false
+ };
+}
+
 export async function observeWdiLastNonempty({fetchImpl=fetch,now=new Date(),registrySource,missingIso3}={}){
  const url=wdiLastNonemptyUrl(now,missingIso3,registrySource);
  const response=await fetchImpl(url,{method:"GET",redirect:"error",
