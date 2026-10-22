@@ -10,8 +10,12 @@ reviewed GRI input, signed GRO, hot snapshot or payable x402 product.
 
 `.github/workflows/current-original-private-signing-intake.yml` runs
 best-effort four times daily, and can also be manually dispatched. Default
-daily country rotation covers USA, GBR and CAN (not the whole 195-country
-proof). A manual dispatch can specify any canonical 195-country ISO3.
+country rotation uses all 195 canonical ISO3 codes through the existing
+02:17 / 08:17 / 14:17 / 20:17 UTC slots, four distinct countries/day
+and a 49-day source-probe cycle (195 runs). This is NOT 195-country
+current factual coverage: each candidate still needs new real publisher
+releases, verified HTML bytes, native timestamps and separate review.
+A manual dispatch can specify any canonical 195-country ISO3.
 
 Exactly one existing canonical three-category discovery run is shared across
 the categories: max **12** direct-publisher discovery GETs, **4** native page
@@ -19,7 +23,7 @@ date checks and **2** independent exact HTML byte readbacks per execution.
 Neither a third-party aggregator, article URL hash, website first-seen clock,
 feed `updated`, nor B2/D1 restore time can become an article byte proof.
 
-The current original must be no more than **six hours old**; country/category
+The current original must be within the protected **22-hour source verification window**; country/category
 relevance is grounded in the canonical source reader and is still reviewed
 by the authorized facts custodian. The unclaimed-page verifier does NOT make
 up a canonical WHO/WHAT/WHERE/WHEN event to satisfy the scored contract.
