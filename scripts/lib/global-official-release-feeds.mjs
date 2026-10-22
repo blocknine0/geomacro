@@ -19,7 +19,7 @@ export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
  {id:'ungeneva_press_global',category:'geopolitics',
    url:'https://www.ungeneva.org/news-media/press-releases-list/rss.xml',
    format:'rss',host:'www.ungeneva.org',
-   path:/^\\/en\\/news-media\\/press-release\\/20\\d{2}\\/(?:0[1-9]|1[0-2])\\/[a-z0-9-]{8,220}$/u,
+   path:/^\/en\/news-media\/press-release\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]{8,220}$/u,
    topic:geo,credit:'United Nations Office at Geneva',
    family:'un_geneva_original_press_release_publisher'},
  {id:'un_press_global',category:'geopolitics',url:'https://press.un.org/en/rss.xml',format:'rss',host:'press.un.org',path:/^\/en\/20\d{2}\/[a-z]+\d+[a-z0-9]*\.doc\.htm$/u,topic:geo,credit:'United Nations',family:'un_press_original_publisher'},
