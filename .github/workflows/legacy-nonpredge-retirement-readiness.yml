@@ -47,6 +47,8 @@ jobs:
              r.source_database_writes!==0||r.source_storage_removals!==0||
              r.destination_writes!==0||r.b2_deletions!==0||r.payments!==0||
              r.predge_work_performed!==false||
+             r.predge_legacy_continuity_owner_hold!==true||
+             r.predge_legacy_runtime_cutover_verified!==false||
              r.status!=="BLOCKED_NO_DELETION"||
              !src.includes("UNVERIFIED_PRODUCTION_HISTORICAL_FRAGMENT_B2_READ_CUTOVER"))
             throw Error("OLD_PRIMARY_RETIREMENT_SAFETY_POLICY_BYPASSED");
@@ -76,7 +78,10 @@ jobs:
              r.legacy_storage_removal_authorized!==false||
              r.source_database_writes!==0||r.source_storage_removals!==0||
              r.destination_writes!==0||r.b2_deletions!==0||r.payments!==0||
-             r.predge_work_performed!==false)throw Error("LEGACY_NO_DELETION_GUARD_FAILED");
+             r.predge_work_performed!==false||
+             r.predge_legacy_continuity_owner_hold!==true||
+             r.predge_legacy_runtime_cutover_verified!==false)
+            throw Error("LEGACY_NO_DELETION_GUARD_FAILED");
           if(!r.source_counts)throw Error("OLD_PRIMARY_READONLY_SOURCE_INVENTORY_UNAVAILABLE");
           NODE
       - name: Publish sanitized counts and mandatory blockers only
