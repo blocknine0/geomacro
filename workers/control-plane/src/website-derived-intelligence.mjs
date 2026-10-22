@@ -1,3 +1,4 @@
+import {hasConcreteNewsFacts} from "../../../src/lib/news-event-facts.ts";
 /**
  * Free website-only rolling derived-news journal. Independent of Supabase,
  * B2 hot-snapshot/commercial checks, signed GRO and x402.
@@ -185,7 +186,7 @@ export async function renderDerivedStoriesHtml(env,now=Date.now()){
       "Referrer-Policy":"no-referrer","X-Content-Type-Options":"nosniff"}});
   const body=await response.json();
   const labels={geopolitics:"Geopolitics",macro:"Macro / FX",rare_earth:"Critical Minerals"};
-  const records=body.signals.filter(s=>verifyDerivedStory(s,now)).slice(0,150);
+  const records=body.signals.filter(s=>verifyDerivedStory(s,now)&&hasConcreteNewsFacts(s)).slice(0,150);
   const stories=records.map(s=>'<article><div class="label">'+
     (s.status==="official_feed_candidate_unscored"?"SOURCE CANDIDATE · TOPIC UNVERIFIED":"GEOMACRO FINDS")+' · '+
     escapeHtml(labels[s.category])+' · <time>'+escapeHtml(s.published_at)+
@@ -193,7 +194,7 @@ export async function renderDerivedStoriesHtml(env,now=Date.now()){
     '</h2><section><div><strong>What changed</strong><p>'+escapeHtml(s.what_changed)+
     '</p></div><div><strong>Why it matters</strong><p>'+escapeHtml(s.why_it_matters)+
     '</p></div></section>'+s.sources_credited.map(credit=>'<p class=label>Required credit: '+escapeHtml(credit)+'</p>').join('')+'</article>').join("");
-  const message=records.length===0?'<p>No eligible original-dated publisher releases in the current window.</p>':stories;
+  const message=records.length===0?'<p>Specific event summaries are not available yet. This does not mean no releases were published.</p>':stories;
   const markup='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
     '<meta name="viewport" content="width=device-width,initial-scale=1">'+
     '<title>Geomacro Finds | rolling derived Intelligence</title>'+

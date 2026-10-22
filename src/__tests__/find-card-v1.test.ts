@@ -16,7 +16,7 @@ const safe=(category:"geopolitics"|"macro"|"rare_earth"="macro",
  id:category+"-1234abcd",category,
  title:"Geomacro finds an official policy development concerning trade and monetary conditions",
  why_it_matters:"Official first-party releases may inform funding and cross-border conditions; specific outcomes remain unverified.",
- what_changed:"An official publisher released an original-dated policy statement about financing conditions.",
+ what_changed:"European Central Bank reduced the policy interest rate to 3.0%.",
  topic:category==="macro"?"monetary policy":
        category==="rare_earth"?"critical-minerals policy":"foreign policy",
  geography:null,development_type:"official update",
@@ -56,8 +56,8 @@ describe("Geomacro Find Card v1—supplied exact public JSON Schema",()=>{
   assertFindCardV1(card);
   expect(card!.domain).toBe(domain);
   expect(card!.headline).not.toContain("SECRET UPSTREAM");
-  expect(card!.headline).toContain(input.topic);
-  expect(card!.what_changed).toContain(input.topic);
+  expect(card!.headline).toContain("European Central Bank");
+  expect(card!.what_changed).toContain("reduced the policy interest rate to 3.0%");
   expect(JSON.stringify(card)).not.toContain("sources_credited");
   expect(JSON.stringify(card)).not.toContain("source_url");
   expect(card!.ladder).toBe("ANNOUNCED");

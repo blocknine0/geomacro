@@ -46,8 +46,9 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
   // NOT verified, approved, B2-staged, or promoted to commercial input.
   const ref=canonicalizePrivateOriginalSourceClock(original,signal);
   if(!ref||typeof ref!=='object'||Array.isArray(ref)||
-     Object.keys(ref).some(k=>!['title','articleUrl','publishedAt','datePrecision','sourceId','category','credit'].includes(k))||
+     Object.keys(ref).some(k=>!['title','articleUrl','publishedAt','datePrecision','sourceId','category','credit','description'].includes(k))||
      typeof ref.title!=='string'||ref.title.length<1||ref.title.length>2000||
+  (ref.description!==undefined&&(typeof ref.description!=='string'||ref.description.length>1500||/[<>]|https?:\/\//iu.test(ref.description)))||
      typeof ref.articleUrl!=='string'||ref.articleUrl.length>2048||
      typeof ref.sourceId!=='string'||!/^[a-zA-Z0-9_.:-]{1,128}$/u.test(ref.sourceId)||
      !(ref.credit===null||typeof ref.credit==='string'&&ref.credit.length<=1000)||
@@ -58,8 +59,13 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
    if(u.protocol!=='https:'||u.username||u.password||u.port||u.search||u.hash||
       u.href!==ref.articleUrl){deferred.url++;continue}
   }catch{deferred.url++;continue}
-  const derived=deriveStatelessSignals([ref],now.getTime())[0];
-  if(!derived||derived.id!==signal.id||await automatedInputId(derived)!==input_id){
+  const versions=[undefined,'actor_action_v2','legacy_v1'] as const;
+  let exact=false;
+  for(const editorialVersion of versions){
+   const derived=deriveStatelessSignals([ref],now.getTime(),{editorialVersion})[0];
+   if(derived&&derived.id===signal.id&&await automatedInputId(derived)===input_id)exact=true;
+  }
+  if(!exact){
    deferred.derivation++;continue
   }
   if(ref!==original)equivalentNativeClocksCanonicalized++;

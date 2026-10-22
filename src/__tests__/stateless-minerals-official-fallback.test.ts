@@ -41,7 +41,8 @@ describe("private official first-party mineral live fallback",()=>{
     expect(derived[0].published_at).toBe("2026-09-18");
     expect(derived[0].severity).toBeNull();
     expect(JSON.stringify(derived)).not.toContain("ga.gov.au");
-    expect(JSON.stringify(derived)).not.toContain("Delamerian");
+    expect(derived[0].what_changed).toContain("Delamerian project reported");
+    expect(derived[0].title).toContain("Delamerian project:");
   });
   it("never admits off-host, search/fragment, missing publisher date, stale, future or spoofed links",()=>{
     for(const href of [

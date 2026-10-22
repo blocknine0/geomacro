@@ -1,3 +1,4 @@
+import {privateSourceDescription} from "./stateless-intelligence-model.ts";
 import {fetchWithoutRedirect} from "./fetch-without-redirect";
 import type {RunScopedAustralianResourcesFetch} from "./stateless-run-shared-official-fetch";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
@@ -236,7 +237,7 @@ async function boundedText(response: Response, maxBytes: number): Promise<string
 }
 
 async function readGovContentOriginalDate(candidate: {
-  title: string; articleUrl: string;
+  title: string; articleUrl: string; description?:string;
 }, source: StatelessSourceSpec, now: number): Promise<StatelessSourceCandidate | null> {
   // No visitor-provided URL and no off-host forwarding. Only the fixed
   // GOV.UK API path tied to an already host/path-admitted Atom link.
@@ -264,16 +265,20 @@ async function readGovContentOriginalDate(candidate: {
     const ms = originalPublicationMs(typeof page.first_published_at === "string"
       ? page.first_published_at : null, now);
     if (ms === null) return null;
+    const description=privateSourceDescription([
+      privateSourceDescription(page.description),
+      privateSourceDescription((page.details as {body?:unknown}|undefined)?.body),
+    ].filter(Boolean).join(' '))||candidate.description;
     return {
       sourceId: source.id, category: source.category, title: candidate.title,
       articleUrl: candidate.articleUrl, publishedAt: new Date(ms).toISOString(),
-      credit: source.credit,
+      credit: source.credit,...(description?{description}:{}),
     };
   } catch { return null; }
 }
 
 async function readCanadaNewsOriginalDay(candidate: {
-  title: string; articleUrl: string;
+  title: string; articleUrl: string; description?:string;
 }, source: StatelessSourceSpec, now: number,
   note?: (stage: "path_ok" | "http_ok" | "html_ok" | "title_ok" |
     "clock_found" | "clock_consistent" | "date_path_ok" |
@@ -298,13 +303,13 @@ async function readCanadaNewsOriginalDay(candidate: {
     note?.("original_ok");
     return {sourceId:source.id,category:source.category,title:candidate.title,
       articleUrl:candidate.articleUrl,publishedAt:day,datePrecision:"day",
-      credit:source.credit};
+      credit:source.credit,...(candidate.description?{description:candidate.description}:{})};
   }catch{return null}
 }
 
 
 async function readStatcanDailyOriginalDay(
-  candidate: { title: string; articleUrl: string },
+  candidate: { title: string; articleUrl: string; description?:string },
   source: StatelessSourceSpec, now: number,
 ): Promise<StatelessSourceCandidate | null> {
   if (!source.statcanOriginalPage) return null;
@@ -339,7 +344,7 @@ async function readStatcanDailyOriginalDay(
     return {
       sourceId: source.id, category: source.category, title: candidate.title,
       articleUrl: candidate.articleUrl, publishedAt: day,
-      datePrecision: "day", credit: source.credit,
+      datePrecision: "day", credit: source.credit,...(candidate.description?{description:candidate.description}:{}),
     };
   } catch { return null; }
 }

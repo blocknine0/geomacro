@@ -16,7 +16,7 @@ const signal=(category:"geopolitics"|"macro"|"rare_earth",published_at:string):S
  geography:null,development_type:"official update",published_at,date_precision:"exact",
  observed_release_count:1,sources_credited:[],status:"official_release_observed_unscored",
  same_event_corrob_verified:false,severity:null,
- what_changed:"A real first-party original release was observed, but event-specific effects were not verified.",
+ what_changed:"European Central Bank reduced the policy interest rate to 3.0%.",
  why_it_matters:"Official developments can affect external risk but this does not prove severity or commercial permissions.",
 });
 function card(category:"geopolitics"|"macro"|"rare_earth",at:string){

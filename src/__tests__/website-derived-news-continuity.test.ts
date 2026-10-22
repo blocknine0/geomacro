@@ -10,10 +10,10 @@ const sample=(category="macro",published="2026-10-12T19:00:00.000Z")=>({
   id: category==="macro"?"macro-1234abcd":
     category==="geopolitics"?"geopolitics-1234abcd":"rare_earth-1234abcd",
   category,
-  title:"Geomacro finds monetary policy on interest-rate policy",
+  title:"Geomacro finds European Central Bank lowered the policy rate to 3.0%",
   why_it_matters:"Monetary policy could affect currency and financing conditions, but direction is not inferred.",
   topic:"monetary policy",
-  what_changed:"An official publisher issued a monetary policy update concerning interest-rate policy.",
+  what_changed:"European Central Bank lowered the policy rate to 3.0%.",
   geography:null,
   development_type:"monetary policy",
   published_at:published,
@@ -143,7 +143,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const text=await html.text();
     expect(html.status).toBe(200);
     expect(html.headers.get("content-security-policy")).toContain("frame-ancestors https://geomacro.live");
-    expect(text).toContain("monetary policy on interest-rate policy");
+    expect(text).toContain("European Central Bank lowered the policy rate");
     expect(text).toContain("Country or region: Not specified in the release");
     expect(text).not.toContain("\u2014");
     expect(text).toContain("What changed");
@@ -255,7 +255,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(cron).toContain('cron: "7 * * * *"');
     expect(cron).toContain("bun scripts/ops/publish-website-derived-news.ts");
     expect(ui).toContain("getWebsiteDerivedNews()");
-    expect(ui).toContain('const merged = new Map<string, StatelessIntelligenceSignal>()');
+    expect(ui).toContain('const merged = mergeNewsRevisions(');
     // Presentation copy is locked to the approved published website baseline until separately published.
     expect(ui).toContain("Dates describe the original publication, not the last refresh");
     for(const forbidden of ["https://supabase", "createPayment", "signed_risk_object",

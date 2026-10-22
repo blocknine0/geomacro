@@ -1,3 +1,4 @@
+import {hasConcreteNewsFacts,mergeNewsRevisions} from "@/lib/news-event-facts";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Clock3, RefreshCw, Search } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
@@ -236,13 +237,10 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
   // Human-readable timeline across all three categories, newest first.
   // Day-only originals sort by their actual date, never an invented hour.
   const known = DOMAINS.filter(domain => feeds[domain.key]);
-  const merged = new Map<string, StatelessIntelligenceSignal>();
-  for (const signal of journal) merged.set(signal.id, signal);
-  for (const domain of known) {
-    for (const signal of feeds[domain.key]?.signals ?? []) merged.set(signal.id, signal);
-  }
+  const merged = mergeNewsRevisions(journal,known.flatMap(domain=>feeds[domain.key]?.signals??[]));
   const checkedAt = Date.now();
-  const allSignals = filterIntelligenceDesk([...merged.values()], {category:"all",query:"",period:"all"}, checkedAt);
+  const allSignals = filterIntelligenceDesk([...merged.values()].filter(hasConcreteNewsFacts), {category:"all",query:"",period:"all"}, checkedAt);
+  const pendingDetails = [...merged.values()].filter(signal=>signal.category===view&&!hasConcreteNewsFacts(signal)).length;
   const categorySignals = allSignals.filter(signal => signal.category === view);
   const signals = filterIntelligenceDesk(allSignals, {category:view,query,period}, checkedAt);
   const recentCount = categorySignals.filter(signal => Date.parse(signal.published_at) >= checkedAt - 86_400_000).length;
@@ -330,6 +328,9 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           </button>
         </div>
 
+        {pendingDetails>0?<p role="status" className="mt-4 text-xs text-muted-foreground">
+          {pendingDetails} additional {pendingDetails===1?"release awaits":"releases await"} specific event details.
+        </p>:null}
         {missing.length > 0 ? (
           <p role="status" className="mt-4 text-sm text-muted-foreground">
             Loading {missing.map(x => x.label).join(", ")} from live official publishers…
@@ -343,7 +344,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           </p>
         ) : null}
 
-        {allSignals.length === 0 ? (
+        {allSignals.length === 0 && merged.size === 0 ? (
           <section aria-label="Direct verified Intelligence archive" className="mt-6">
             <p className="mb-3 text-xs text-muted-foreground">
               Reading the continuity feed while the main timeline reconnects.
