@@ -45,6 +45,14 @@ export function pallabSumanAuthorityReadiness(env=process.env){
   owner_human_authority_expected:"Pallab Das",
   independent_reviewer_expected:"Suman Dey",
   status,configured_public_key_shapes_passed:distinct,
+  // Public boolean readiness only. One missing key should not conceal
+  // whether the other person's separate public key is already enrolled.
+  pallab_owner_public_pin_verified:Boolean(owner),
+  suman_reviewer_public_pin_verified:Boolean(reviewer),
+  gro_public_identity_pin_verified:Boolean(gro),
+  facts_rights_public_pins_present:other.length===2&&
+    other.every(x=>SHA.test(x)),
+  all_five_authority_keys_distinct:distinct,
   reviewer_person_identity_confirmed_by_key_shape_only:false,
   owner_person_identity_confirmed_by_key_shape_only:false,
   owner_signature_uploaded_and_verified:false,
