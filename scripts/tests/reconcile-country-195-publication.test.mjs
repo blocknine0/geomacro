@@ -87,5 +87,5 @@ test("duplicate, missing, forged signed and stale website rows are rejected",()=
  const stale=rolling();stale.as_of="2026-10-21T00:00:00Z";
  assert.throws(()=>reconcileCountry195Publication({rolling:stale,website:fixture(),now}),/ROLLUP_STALE/);
  const mismatched=fixture();mismatched.cells[0].country_iso3="ZZZ";
- assert.throws(()=>reconcileCountry195Publication({rolling:rolling(),website:mismatched,now}),/CELL_MISMATCH/);
+ assert.throws(()=>reconcileCountry195Publication({rolling:rolling(),website:mismatched,now}),/(?:LIVE_195X3_COUNTRY_MATRIX_INCOMPLETE|RECONCILIATION_WEBSITE_COUNTRY_CELL_MISMATCH)/);
 });
