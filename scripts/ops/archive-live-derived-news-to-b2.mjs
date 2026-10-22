@@ -47,7 +47,7 @@ export async function runGovernedDerivedNewsBackup({
  });
  return archiveDerivedJournalToB2({fetchImpl,b2,now,force});
 }
-function writeSafeBackupReceipt(receipt){
+export function summarizeSafeBackupReceipt(receipt,now=new Date()){
  // Private Actions artifact contains no title, article bytes, source URL,
  // key material or public commercial authorization. An empty/held/failed
  // storage attempt must NEVER be marked uploaded.
@@ -57,7 +57,7 @@ function writeSafeBackupReceipt(receipt){
    receipt?.source_d1_readback_verified===true;
  const safe={
   schema:"geomacro.private-derived-news-b2-independent-archive-acceptance.v1",
-  checked_at:new Date().toISOString(),
+  checked_at:now.toISOString(),
   status:receipt?.status??"BACKUP_FAILED_CLOSED",
   derived_rows_archived:archived?receipt.archived_rows:0,
   category_counts:archived?receipt.category_counts:null,
@@ -70,6 +70,10 @@ function writeSafeBackupReceipt(receipt){
   signed_hot_gri_verified:false,
   paid_eligible:false,raw_original_saved:false,payments:0
  };
+ return safe;
+}
+function writeSafeBackupReceipt(receipt){
+ const safe=summarizeSafeBackupReceipt(receipt);
  mkdirSync("artifacts/derived-news",{recursive:true,mode:0o700});
  writeFileSync("artifacts/derived-news/b2-archive-verified-readback.json",
   JSON.stringify(safe,null,2)+"\n",{mode:0o600});
