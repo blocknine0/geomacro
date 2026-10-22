@@ -91,7 +91,7 @@ test("manual can target ONLY country in requested continent, never another count
     continent:invalid,registryText:registry}),/CONTINENT_UNRECOGNIZED/);
  }
  assert.throws(()=>planTwoHourContinentCountrySweep({
-  continent:"africa",registryText:registry,eventName:"push"}),/PROTECTED_EVENT_ONLY/);
+  continent:"africa",registryText:registry,eventName:"repository_dispatch"}),/PROTECTED_EVENT_ONLY/);
  assert.throws(()=>planTwoHourContinentCountrySweep({
   continent:"africa",registryText:registry,now:new Date("2026-10-21T23:59:59Z")}),
    /UTC_SLOT_CLOCK_INVALID/);
@@ -99,7 +99,7 @@ test("manual can target ONLY country in requested continent, never another count
 test("all six actual Github workflows have distinct 2h cron and ONE shared no-funds source job",()=>{
  const shared=readFileSync(".github/workflows/continent-country-original-probe-reusable.yml","utf8");
  assert.match(shared,/workflow_call:/);
- assert.match(shared,/geomacro-continent-country-source-\\$\\{\\{ inputs\\.continent \\}\\}/);
+ assert.ok(shared.includes("group: geomacro-continent-country-source-${{ inputs.continent }}"));
  assert.doesNotMatch(shared,/group: geomacro-continent-country-six-lanes-protected-sources/);
  assert.match(shared,/GEOMACRO_COUNTRY_BATCH_COUNT: "1"/);
  assert.match(shared,/GEOMACRO_EXPECTED_COUNTRY_ISO3/);
@@ -152,14 +152,14 @@ test("main push first-run safely initializes all six real continent source probe
  const boot=readFileSync(".github/workflows/continent-country-first-run-bootstrap.yml","utf8");
  const reusable=readFileSync(".github/workflows/continent-country-original-probe-reusable.yml","utf8");
  const planner=readFileSync("scripts/ops/plan-continent-country-195-rotation.mjs","utf8");
- assert.match(boot,/branches: \\[main\\]/);
+ assert.ok(boot.includes("branches: [main]"));
  assert.match(boot,/max-parallel: 1/);
  assert.match(boot,/fail-fast: false/);
  assert.match(boot,/matrix:/);
- assert.match(boot,/continent: \\[africa, asia, europe, north_america, south_america, oceania\\]/);
- assert.match(boot,/continent-country-original-probe-reusable\\.yml/);
- assert.match(reusable,/github\\.event_name == 'push'/);
- assert.match(planner,/\\["schedule","workflow_dispatch","push"\\]/);
+ assert.ok(boot.includes("continent: [africa, asia, europe, north_america, south_america, oceania]"));
+ assert.ok(boot.includes("continent-country-original-probe-reusable.yml"));
+ assert.ok(reusable.includes("github.event_name == 'push'"));
+ assert.ok(planner.includes('["schedule","workflow_dispatch","push"]'));
  const p=planTwoHourContinentCountrySweep({
    continent:"europe",registryText:registry,eventName:"push",
    now:new Date("2026-10-22T17:00:00Z")
