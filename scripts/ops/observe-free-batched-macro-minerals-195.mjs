@@ -3,7 +3,7 @@
 // 1 World Bank WDI bulk GET plus 2 official national mineral indices GETs.
 import {mkdirSync,writeFileSync} from "node:fs";
 import {observeWorldBank195} from "../lib/wdi-195-batch-reference.mjs";
-import {observeWdiLastNonempty} from "../lib/wdi-195-last-nonempty.mjs";
+import {observeWdiLastNonempty,planWdiMissingCountryBatches,combineWdiMissingCountryBatches} from "../lib/wdi-195-last-nonempty.mjs";
 import {observeTwoMineralIndices} from "../lib/two-official-mineral-release-indices.mjs";
 const OUT="artifacts/free-global-source-budget/daily-observation.json";
 if(process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro" ||
@@ -29,21 +29,24 @@ const missingIso3=initialRows.filter(x=>x?.iso3 &&
    !Number.isInteger(x.latest_available_observation_year?.["NY.GDP.MKTP.KD.ZG"])))
  .map(x=>x.iso3);
 let wdiBackfillCalls=0,wdiBackfill=null;
-if(initialRows.length===195&&missingIso3.length>0&&missingIso3.length<=50){
- wdiBackfillCalls=1;
- try{wdiBackfill=await observeWdiLastNonempty({missingIso3});}
- catch(error){
-  const reason=String(error?.message??"");
-  wdiBackfill={schema:"geomacro.wdi-195-last-nonempty-reference.v1",
-    status:"UNVERIFIED_OR_UNAVAILABLE",
-    reason:/^WDI_BACKFILL_[A-Z_]+$/u.test(reason)?reason:
-      error?.name==="TimeoutError"?"WDI_BACKFILL_TIMEOUT":"WDI_BACKFILL_NETWORK_UNAVAILABLE",
-    query_target_is_only_2025_missing_countries:true,
-    target_countries_count:missingIso3.length,
-    indicators:[],request_count:1,
-    verified_current_195x3_country_domain_events:false,
-    paid_delivery_enabled:false};
+if(initialRows.length===195&&missingIso3.length>0){
+ // Narrow publisher requests avoid single oversized/slow 33-country lookup.
+ // A free-source access denial ends this provider's entire daily batch,
+ // never rotates identities or bypasses quota. Only period metadata survives.
+ const plan=planWdiMissingCountryBatches(missingIso3);
+ const accepted=[];let failed=null;
+ for(const batch of plan.batches){
+   wdiBackfillCalls++;
+   try{accepted.push(await observeWdiLastNonempty({missingIso3:batch}));}
+   catch(error){
+     const reason=String(error?.message??"");
+     failed=/^WDI_BACKFILL_[A-Z_]+$/u.test(reason)?reason:
+       error?.name==="TimeoutError"?"WDI_BACKFILL_TIMEOUT":
+       "WDI_BACKFILL_NETWORK_UNAVAILABLE";
+     break;
+   }
  }
+ wdiBackfill=combineWdiMissingCountryBatches(plan,accepted,{failure:failed});
 }
 const mineral=await observeTwoMineralIndices();
 const wdiOk=macro.schema==="geomacro.wdi-195-two-indicator-reference-audit.v1" &&
@@ -57,7 +60,7 @@ const verdict={
    "MACRO_REFERENCE_OBSERVED_MINERALS_DEGRADED",
  nominal_api_requests:3,max_api_requests:5,
  source_requests_observed:macro.source_calls+mineral.upstream_calls+wdiBackfillCalls,
- external_source_budgets:{world_bank_wdi_2025:1,world_bank_wdi_missing_only:1,peru_minem:1,canada_nrcan_geoscan:1},
+ external_source_budgets:{world_bank_wdi_2025:1,world_bank_wdi_missing_only:2,peru_minem:1,canada_nrcan_geoscan:1},
  targeted_missing_2025_countries:missingIso3.length,
  historical_reference_gap_lookup:wdiBackfill,
  wdi:macro,minerals:mineral,
@@ -74,7 +77,9 @@ console.log(JSON.stringify({
  schema:verdict.schema,status:verdict.status,
  nominal_api_requests:3,max_api_requests:5,source_requests_observed:verdict.source_requests_observed,
  historical_gap_lookup_targets:missingIso3.length,
- historical_gap_lookup_status:wdiBackfill?.status??(wdiBackfill?"REFERENCE_PERIODS_OBSERVED":"NOT_REQUIRED_OR_NOT_ELIGIBLE"),
+ historical_gap_lookup_status:wdiBackfill?.status??"NOT_REQUIRED_OR_NOT_ELIGIBLE",
+ historical_gap_countries_actually_queried:wdiBackfill?.actually_queried_missing_countries??0,
+ historical_gap_countries_not_yet_queried:wdiBackfill?.not_yet_queried_missing_countries??0,
  wdi_indicator_coverage:macro.indicators?.map(x=>({
    indicator:x.id,countries:x.canonical_countries_with_recent_nonnull_values
  }))??[],
