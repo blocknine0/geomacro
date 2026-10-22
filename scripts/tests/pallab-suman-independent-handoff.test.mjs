@@ -104,3 +104,35 @@ test("fail closed on stale owner signature, future clock and missing B2 history"
  assert.throws(()=>attempt(x,{historicalB2Bytes:null}),
    /THREE_DOMAIN_REVIEW_HANDOFF_/);
 });
+
+test("Suman's own encrypted key opens only with Suman's passphrase on shared laptop",()=>{
+ const owner=maker(),reviewer=maker();
+ const privateEncrypted=reviewer.privateKey.export({
+   format:"pem",type:"pkcs8",cipher:"aes-256-cbc",
+   passphrase:"suman-only-unique-private-password"
+ });
+ const unsignedGri={
+  schema:"geomacro.gri-v12-reviewed-current-input.v1",
+  private_only:false,publication_review_authorized:true,
+  customerRows:[{id:"A"},{id:"B"},{id:"C"}],
+  events:[{id:"A"},{id:"B"},{id:"C"}]
+ };
+ const certs=["geopolitics","macro","rare_earth"].map((category,i)=>({
+  schema:"geomacro.current-country-category-certification.v1",
+  certification_state:"CERTIFIED",country_iso3:["IND","USA","CHL"][i],
+  category,source_ids:["first_source","second_source"]
+ }));
+ const params={privateKey:privateEncrypted,
+  reviewerPublicKeyPem:reviewer.pem,
+  reviewerApprovedSpkiSha256:reviewer.pin,
+  unsignedGri,unsignedCountryCertificates:certs};
+ assert.throws(()=>signSumanIndependentReview(params),/VALID_INDEPENDENT_ED25519_KEY_REQUIRED/);
+ assert.throws(()=>signSumanIndependentReview({...params,
+  privateKeyPassphrase:"owner-cannot-unlock-this-key"}),
+  /VALID_INDEPENDENT_ED25519_KEY_REQUIRED/);
+ const result=signSumanIndependentReview({...params,
+  privateKeyPassphrase:"suman-only-unique-private-password"});
+ assert.equal(result.countryCertificates.length,3);
+ assert.equal(result.reviewedGri.review_signature_base64.length,88);
+ assert.notEqual(owner.pin,reviewer.pin);
+});
