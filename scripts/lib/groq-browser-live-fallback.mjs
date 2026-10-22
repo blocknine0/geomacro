@@ -183,6 +183,10 @@ export async function groqBrowserResearchForMissingOfficial({
   // Fixed finite input length, no new user message or new external provider.
   conversion="SEPARATE_GROQ_STRICT_JSON_CONVERSION";
   const safeText=browserText.slice(0,6500);
+  // Count actual Groq API calls, not Ask requests: schema conversion is an
+  // extra inference request consuming the same Free organization quota.
+  // At a per-runtime cap, fail closed rather than silently over-spending.
+  if(!reserveBoundedFreeBrowserSlot(now.getTime(),budget))return null;
   const formatRequest={
    model:BROWSER_MODEL,temperature:0,max_completion_tokens:900,
    response_format:{type:"json_schema",json_schema:{
