@@ -133,3 +133,22 @@ SAME `node scripts/ops/enroll-standing-derived-cloud.mjs
 verifies both old genuine human signatures and enrolls the four additional
 public-key secret fields before redispatch. It does not authorize numerical
 GRI, source commercial permissions or real-money payment.
+
+## Same-custodian overlap verified in production
+
+Production run `39868539805` confirmed precisely `OWNER_AND_FACTS_SHARE_KEY`.
+Pallab's one-time owner signature was made using the already registered Facts
+custodian public key. The scoped **free, unscored, no-rights delegated news
+receipt** now permits this same-custodian owner/Facts identity exactly once;
+Suman's reviewer identity, the new dedicated machine signing key, Rights and
+GRO identities MUST remain separate, and legacy GRI/Facts/Rights/GRO
+publisher validation contracts remain entirely unchanged. This is *not*
+a second independent Facts approval. The effective safe receipt continues
+to assert `independent_external_review_attested:false`, no commercial rights,
+no numerical GRI and no real funds.
+
+The human signatures, policy and new cloud credentials already enrolled by
+the owner do NOT need to be recreated. After CI and main merge the existing
+protected main workflow is triggered automatically by the scoped code change.
+A successful `cloud-derived-only` run plus real signed artifact is required
+before calling this unattended derived receipt operational.
