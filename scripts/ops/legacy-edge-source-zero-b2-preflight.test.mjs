@@ -7,8 +7,11 @@ test("no write, deletion or B2 data-plane paths",()=>{
  assert.match(src,/source_supabase_deletes:0/);
  assert.match(src,/old_supabase_deletion_authorized:false/);
  assert.match(src,/b2_requests:0/);
- assert.ok(!src.includes("api.backblazeb2.com"));
- assert.ok(!src.includes("s3.us-east-005.backblazeb2.com"));
+ assert.ok(src.includes('const root="https://api.supabase.com/v1/projects/"+REF+"/functions"'));
+ assert.ok(!src.includes("B2_KEY_ID"));
+ assert.ok(!src.includes("B2_APPLICATION_KEY"));
+ assert.ok(!src.includes('from "./b2-'));
+ assert.ok(!src.includes('aws('));
  assert.ok(!src.includes("storage.from("));
  assert.ok(!src.includes('method:"DELETE"'));
  assert.ok(!src.includes('method:"POST"'));
