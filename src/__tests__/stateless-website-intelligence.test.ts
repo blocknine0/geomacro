@@ -246,10 +246,9 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(desk).toContain("getStatelessIntelligence({ data: { category } })");
     expect(desk).toContain("setInterval(");
     expect(desk).toContain("Latest Geomacro finds");
-    // The main desk must show all three categories automatically, not
-    // require the visitor to click each category before a source check.
-    expect(desk).toContain('useState<View>(initialView)');
-    expect(desk).toContain("All findings</button>");
+    // All three sources refresh independently; the toggle contains only categories.
+    expect(desk).toContain('useState<StatelessCategory>(initialView === "all" ? "geopolitics" : initialView)');
+    expect(desk).not.toContain("All findings</button>");
     expect(desk).toContain("const missingAtSsr = DOMAINS.map(domain => domain.key)");
     expect(desk).toContain("if (missingAtSsr.length > 0) void refresh(missingAtSsr)");
     expect(desk).toContain('DOMAINS.map(domain => domain.key)');

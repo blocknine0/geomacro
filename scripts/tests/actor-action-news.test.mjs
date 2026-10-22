@@ -1,0 +1,63 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {actorActionNewsObservation as render} from '../../src/lib/release-news-observation.ts';
+import {publishDerivedStories} from '../../workers/control-plane/src/website-derived-intelligence.mjs';
+import {spawnSync} from 'node:child_process';
+
+test('explicit actor, action, target and amounts survive paraphrasing',()=>{
+ for(const [title,expected] of [
+  ['UK announces new sanctions on Russia',['United Kingdom','announced new sanctions on Russia']],
+  ['UN calls for immediate ceasefire in Sudan',['United Nations','called for immediate ceasefire in Sudan']],
+  ['Canada proposes new lithium export controls',['Canada','proposed new lithium export controls']],
+  ['Federal Reserve cuts interest rates from 5.50% to 5.25%',['Federal Reserve','cut interest rates from 5.50% to 5.25%']],
+ ]){
+  const item=render(title);assert.ok(item);
+  for(const part of expected){assert.ok(item.headline.includes(part));assert.ok(item.change.includes(part));}
+  assert.notEqual(item.headline,title);assert.equal(item.change.includes('An official publisher'),false);
+  assert.equal(item.headline.includes('\u2014'),false);
+ }
+});
+test('the screenshot source patterns retain named actors, locations and explicit uncertainty',()=>{
+ const unknown=render('Fate unknown of many returned to DPR Korea from China: UN independent experts');
+ assert.ok(unknown.headline.includes('UN experts'));assert.ok(unknown.change.includes('remains unknown'));
+ assert.ok(unknown.change.includes('China to North Korea'));
+ const harvest=render('‘Ominous start’ to West Bank olive harvest amid settler attacks');
+ assert.ok(harvest.headline.includes('West Bank olive harvest'));assert.ok(harvest.change.includes('settler attacks'));
+ const aid=render('UN agencies appeal for help to protect weakest from unprecedented El Niño');
+ assert.ok(aid.change.includes('UN agencies appealed'));assert.equal(aid.change.includes('aid delivered'),false);
+});
+test('conditional or injected content is never turned into a completed event',()=>{
+ for(const title of ['India could cut interest rates','China may introduce export controls',
+  'PRIVATE HEADLINE about diplomacy in Canada','UN announces <script>steal()</script>',
+  'UN announces https://evil.test','Minister asks: "Who calls for ceasefire?"'])assert.equal(render(title),null);
+ const denial=render('UK rejects new sanctions on Russia');assert.ok(denial.change.includes('rejected'));
+ assert.equal(denial.change.includes('imposed'),false);
+});
+test('SQLite refresh changes only editorial content and preserves source and first-ingest clocks',async()=>{
+ const captured=[],now=Date.parse('2026-10-22T12:00:00.000Z');
+ const base={id:'macro-1234abcd',category:'macro',title:'Geomacro finds a monetary policy update',
+  what_changed:'An official publisher released a monetary policy update about financial conditions.',
+  why_it_matters:'Financing conditions can affect the cost of credit and currency exposure.',
+  topic:'monetary policy',geography:'United States',development_type:'monetary policy',
+  published_at:'2026-10-22T10:00:00.000Z',date_precision:'exact',observed_release_count:1,
+  sources_credited:[],status:'official_release_observed_unscored',same_event_corrob_verified:false,severity:null};
+ const env={DB:{prepare:sql=>({run:async()=>{captured.push({sql,args:[]});return {success:true};},bind:(...args)=>({sql,args,run:async()=>{captured.push({sql,args});return {success:true};}})}),
+  batch:async stmts=>{captured.push(...stmts);return stmts.map(()=>({success:true}));}}};
+ const revised={...base,title:'Geomacro finds Federal Reserve cut interest rates from 5.50% to 5.25%',
+  what_changed:'Federal Reserve cut interest rates from 5.50% to 5.25%.'};
+ assert.equal((await publishDerivedStories(env,{schema:'geomacro.website-derived-news-batch.v1',signals:[revised]},now)).status,200);
+ const python=`import sqlite3,json,sys
+p=json.load(sys.stdin); d=sqlite3.connect(':memory:')
+d.execute('CREATE TABLE website_derived_intelligence(id TEXT PRIMARY KEY,category TEXT,published_at TEXT,date_precision TEXT,story_json TEXT,first_seen_at TEXT)')
+b=p['base'];first='2026-10-22T10:20:00.000Z'
+d.execute('INSERT INTO website_derived_intelligence VALUES(?,?,?,?,?,?)',(b['id'],b['category'],b['published_at'],b['date_precision'],json.dumps(b),first))
+for q in p['queries']: d.execute(q['sql'],q['args'])
+r=d.execute('SELECT story_json,published_at,first_seen_at FROM website_derived_intelligence').fetchone()
+assert json.loads(r[0])['title']==p['revised']['title']; assert r[1]==b['published_at']; assert r[2]==first
+# The same ID cannot change the native source clock through editorial refresh.
+q=p['queries'][0]; args=q['args'][:]; args[2]='2026-10-22T11:00:00.000Z'; d.execute(q['sql'],args)
+assert d.execute('SELECT published_at,first_seen_at FROM website_derived_intelligence').fetchone()==(b['published_at'],first)
+print('SQLITE_REVISION_CLOCKS_PRESERVED')`;
+ const r=spawnSync('python',['-c',python],{input:JSON.stringify({base,revised,queries:captured}),encoding:'utf8'});
+ assert.equal(r.status,0,r.stderr);assert.match(r.stdout,/SQLITE_REVISION_CLOCKS_PRESERVED/);
+});

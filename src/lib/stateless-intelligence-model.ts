@@ -1,4 +1,4 @@
-import {releaseNewsObservation} from "./release-news-observation";
+import {releaseNewsObservation,actorActionNewsObservation} from "./release-news-observation";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,verifiedGlobalRdfFeed} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { visiblePublisherText } from "./stateless-publisher-text";
 import { exactCanonicalCountryMentionFromOriginalTitle } from "./gri-canonical-country-title-mention";
@@ -504,7 +504,7 @@ function viewIdentifier(input: string): string {
 export function deriveStatelessSignals(
   candidates: readonly StatelessSourceCandidate[],
   now = Date.now(),
-  options: {websiteDelay?:boolean;maxSignals?:number} = {},
+  options: {websiteDelay?:boolean;maxSignals?:number;editorialVersion?:"legacy_v1"|"actor_action_v2"} = {},
 ): StatelessIntelligenceSignal[] {
   if (!Number.isFinite(now)) return [];
   const maxSignals=options.maxSignals===undefined?50:options.maxSignals;
@@ -550,17 +550,18 @@ export function deriveStatelessSignals(
     unique.add(deliveryIdentity);
     const focus=candidateOnly?selected.name:
       SAFE_FOCUS[item.category].find(rule => rule.test.test(item.title))?.label ?? selected.name;
-    const geography=candidateOnly?null:geographyMention(item.title);
+    const legacy=options.editorialVersion==="legacy_v1";
+    const news=legacy?(candidateOnly?null:releaseNewsObservation(item.title)):
+      actorActionNewsObservation(item.title)??(candidateOnly?null:releaseNewsObservation(item.title));
+    const geography=candidateOnly?null:geographyMention(item.title)??(news?geographyMention(news.headline):null);
     const kind=candidateOnly?"unclassified publisher update":developmentKind(item.title);
-    const news=candidateOnly?null:releaseNewsObservation(item.title);
     result.push({
       id: item.category + "-" + viewIdentifier(fingerprint),
       category: item.category,
       title: "Geomacro finds " + (news?.headline ?? kind + " on " + focus) + (geography ? " · " + geography : ""),
       why_it_matters:selected.implication,
-      what_changed:candidateOnly?
-        "A dated first-party source item was observed; category relevance, event details and material changes have not yet been established.":
-        news ? news.change + (geography ? " Country or region mentioned: " + geography + "." : "") :
+      what_changed:news ? news.change + (geography ? " Country or region mentioned: " + geography + "." : "") :
+        candidateOnly?"A dated first-party source item was observed; category relevance, event details and material changes have not yet been established.":
         developmentSummary(focus,kind,geography),
       geography,
       development_type: kind,

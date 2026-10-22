@@ -86,11 +86,11 @@ describe("website lock governance", () => {
     expect(predge.published_source_sha_unchanged).toBe(true);
     expect(predge.pending_exact_sha_live_deployment_acceptance).toBe(true);
     const desk = read("src/components/intelligence/stateless-live-desk.tsx");
-    expect(desk).toContain('aria-label="Filter Intelligence by country"');
-    expect(desk).toContain("COUNTRIES_195");
+    expect(desk).not.toContain('aria-label="Filter Intelligence by country"');
+    expect(desk).not.toContain("COUNTRIES_195");
     expect(desk).toContain("fetchAllDerivedNews()");
     expect(desk).toContain("JOURNAL_REFRESH_MS = 6 * 60_000");
-    expect(desk).toContain("No matching country-mentioned release is observed");
+    expect(desk).toContain("No findings match this category, search and publication window.");
     expect(desk).toContain('<option value="all">All available releases</option>');
     expect(desk).toContain("Reading the 72-hour stored derived-news journal below");
     expect(desk).toContain("Earlier original releases · Dated");
