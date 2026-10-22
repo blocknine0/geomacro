@@ -99,6 +99,8 @@ test("model snippets never auto certify event, date, licence or risk score",()=>
   x=>x.leads[0].source_domain="localhost",
   x=>x.leads[0].what_changed="https://publisher.gov/raw/article",
   x=>x.leads[0].source_date="2026-11-20",
+  x=>x.leads[0].source_date="2026-10-21T12:00:00Z",
+  x=>x.leads[0].extra="licensed",
   x=>x.leads[0].category="RARE_INDUSTRY",
   x=>x.leads[0].what_changed="Verified",
   x=>x.leads.push(x.leads[0],x.leads[0],x.leads[0])
@@ -108,25 +110,6 @@ test("model snippets never auto certify event, date, licence or risk score",()=>
   assert.throws(()=>validateGroqBrowserLeadText(JSON.stringify(input),
    {categories:["MACRO"],now:NOW}),/GROQ_BROWSER_RESEARCH_UNVERIFIED_OR_UNAVAILABLE/);
  }
-});
-test("model URL-origin/date normalization cannot leak path or falsely certify sources",()=>{
- const input=JSON.parse(JSON.stringify(fixture));
- input.leads[0].category="macro";
- input.leads[0].source_domain="https://www.rbi.org.in/release?private=secret-query";
- input.leads[0].source_date="2026-10-22T08:30:00Z";
- input.leads[0].extra="untrusted fields never forwarded";
- const rows=validateGroqBrowserLeadText(JSON.stringify(input),
-  {categories:["MACRO"],now:NOW});
- assert.equal(rows[0].category,"MACRO");
- assert.equal(rows[0].claimed_original_calendar_day,"2026-10-22");
- assert.equal(rows[0].original_html_verified,false);
- const result=JSON.stringify(rows);
- assert.equal(result.includes("secret-query"),false);
- assert.equal(result.includes("untrusted fields"),false);
- assert.equal(result.includes("rbi.org.in"),false);
- const noResult={schema:"geomacro.groq.browser-research-leads.v1",leads:[]};
- assert.deepEqual(validateGroqBrowserLeadText(JSON.stringify(noResult),
-  {categories:["MACRO"],now:NOW}),[]);
 });
 test("search scope must contain only supported fixed topics and canonical country",()=>{
  for(const item of [
@@ -151,6 +134,67 @@ test("upstream error and invalid JSON are fail-closed without retry or logging s
   categories:["MACRO"],env:flags,now:NOW,
   fetchImpl:async()=>{calls++;return {status:200,
    json:async()=>({choices:[{message:{content:"Here is some unverified prose."}}]})}}
+ }),/GROQ_BROWSER_RESEARCH_UNVERIFIED_OR_UNAVAILABLE/);
+ assert.equal(calls,2);
+});
+
+test("actual browser-style cited prose receives SECOND strict schema model call only",async()=>{
+ let calls=0;
+ const out=await groqBrowserResearchForMissingOfficial({
+  categories:["MACRO"],country_iso3:"IND",country_name:"India",now:NOW,env:flags,
+  fetchImpl:async(url,opts)=>{
+   assert.equal(url,"https://api.groq.com/openai/v1/chat/completions");
+   const body=JSON.parse(opts.body);calls++;
+   if(calls===1){
+    assert.deepEqual(body.tools,[{type:"browser_search"}]);
+    assert.equal(body.response_format,undefined);
+    return {status:200,json:async()=>({choices:[{message:{
+     content:"Recent economic announcements discussed; official data cited below. 〖2†L6-L10〗"
+    }}]})};
+   }
+   assert.equal(body.tools,undefined);
+   assert.equal(body.response_format.type,"json_schema");
+   assert.equal(body.response_format.json_schema.strict,true);
+   assert.equal(body.response_format.json_schema.schema.additionalProperties,false);
+   assert.equal(body.messages[1].content.includes("private customer question"),false);
+   return {status:200,json:async()=>({choices:[{message:{content:JSON.stringify(fixture)}}]})};
+  }
+ });
+ assert.equal(calls,2);
+ assert.equal(out.strict_validator_version,"geomacro.groq-browser-validator.v2");
+ assert.equal(out.conversion_mode,"SEPARATE_GROQ_STRICT_JSON_CONVERSION");
+ assert.equal(out.leads.length,1);
+ assert.equal(out.legal_commercial_rights_verified,false);
+ assert.equal(out.paid_x402_authorized,false);
+});
+test("empty strict list is valid but withheld instead of inventing current facts",async()=>{
+ assert.deepEqual(validateGroqBrowserLeadText(
+  JSON.stringify({schema:fixture.schema,leads:[]}),{categories:["MACRO"],now:NOW}),[]);
+ let calls=0;
+ const r=await groqBrowserResearchForMissingOfficial({
+  categories:["MACRO"],now:NOW,env:flags,
+  fetchImpl:async()=>{
+   calls++;
+   return {status:200,json:async()=>({choices:[{message:{
+    content:JSON.stringify({schema:fixture.schema,leads:[]})
+   }}]})};
+  }
+ });
+ assert.equal(r,null);
+ assert.equal(calls,1);
+});
+test("invalid strict conversion fails closed and never returns licensed or signed response",async()=>{
+ let calls=0;
+ await assert.rejects(groqBrowserResearchForMissingOfficial({
+  categories:["MACRO"],now:NOW,env:flags,
+  fetchImpl:async()=>{
+   calls++;
+   return calls===1?
+     {status:200,json:async()=>({choices:[{message:{content:"browser citations and prose"}}]})}:
+     {status:200,json:async()=>({choices:[{message:{content:JSON.stringify({
+      schema:fixture.schema,leads:[{...fixture.leads[0],license_granted:true}]
+     })}}]})};
+  }
  }),/GROQ_BROWSER_RESEARCH_UNVERIFIED_OR_UNAVAILABLE/);
  assert.equal(calls,2);
 });
