@@ -3,7 +3,7 @@
 // Protected runner, 10 exact slugs, encrypted private B2, independent readback.
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,existsSync} from "node:fs";
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,existsSync,readdirSync,lstatSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
@@ -31,6 +31,43 @@ function aws(args){const r=spawnSync("aws",["--endpoint-url",endpoint,"s3api",..
  AWS_EC2_METADATA_DISABLED:"true",AWS_MAX_ATTEMPTS:"1"},encoding:"utf8",
  maxBuffer:15000,timeout:300000,stdio:["ignore","pipe","pipe"]});
  return r.status===0?r.stdout:null;
+}
+// Official Supabase CLI is the documented fallback when Management API
+// /functions/{slug}/body responds with an opaque or empty body. Every byte
+// stays only inside the protected ephemeral runner and the private B2 archive.
+function downloadActualDeployedSourceWithCli(slug){
+ if(!names.includes(slug))return null;
+ const base=join(tmp,"cli-"+slug);
+ const sourceDir=join(base,"supabase","functions",slug);
+ mkdirSync(join(base,"supabase","functions"),{recursive:true,mode:0o700});
+ const run=spawnSync("supabase",["functions","download",slug,"--project-ref",ref],{
+   cwd:base,env:{...env,SUPABASE_ACCESS_TOKEN:readOnlyMgmtToken},
+   encoding:"utf8",timeout:90000,maxBuffer:60000,stdio:["ignore","pipe","pipe"]});
+ if(run.error||run.status!==0||!existsSync(sourceDir))return null;
+ const files=[];
+ let accumulated=0;
+ function visit(folder,prefix="",depth=0){
+  if(depth>5||files.length>49)throw Error("UNSAFE_PRIVATE_CLI_DOWNLOAD_STRUCTURE");
+  for(const node of readdirSync(folder,{withFileTypes:true})){
+   if(!/^[A-Za-z0-9_.-]{1,120}$/.test(node.name)||node.name===".."||
+      node.name===".")throw Error("UNSAFE_PRIVATE_CLI_SOURCE_FILE_NAME");
+   const path=join(folder,node.name),name=prefix+node.name;
+   const stat=lstatSync(path);
+   if(stat.isSymbolicLink())throw Error("PRIVATE_CLI_DOWNLOAD_SYMLINK_REJECTED");
+   if(stat.isDirectory()){visit(path,name+"/",depth+1);continue}
+   if(!stat.isFile()||stat.size<1||stat.size>2_000_000)
+      throw Error("PRIVATE_CLI_SOURCE_FILE_SIZE_INVALID");
+   const bytes=readFileSync(path);
+   accumulated+=bytes.length;
+   if(accumulated>3_000_000)throw Error("PRIVATE_CLI_SOURCE_TOTAL_BYTES_EXCEEDED");
+   files.push({name:slug+"/"+name,content:bytes.toString("base64"),
+     original_sha256:hash(bytes)});
+  }
+ }
+ try{visit(sourceDir)}catch{return null}
+ if(!files.length||files.length>49||
+    !files.some(x=>x.name.endsWith("/index.ts")))return null;
+ return Buffer.from(JSON.stringify({files,via:"supabase-cli-download-v1"}));
 }
 async function main(){
  if(env.SUPABASE_PROJECT_ID!==ref||!readOnlyMgmtToken||
@@ -68,11 +105,18 @@ async function main(){
   if(r.status===401||r.status===403)return halt("OLD_EDGE_SOURCE_BODY_READ_PERMISSION_MISSING");
   if(r.status===429)return halt("OLD_EDGE_SOURCE_BODY_RATE_LIMITED");
   if(r.status!==200)return halt("OLD_EDGE_SOURCE_BODY_NOT_AVAILABLE");
-  const bytes=Buffer.from(await r.arrayBuffer());
+  let bytes=Buffer.from(await r.arrayBuffer());
   const classification=classifyDeployedSourceBody(bytes,r.headers.get("content-type")||"");
   if(!classification.restorable){
-   report.first_unrecognized_source_body_format=classification.kind;
-   return halt("OLD_EDGE_SOURCE_BODY_NOT_RESTORABLE");
+   // The canonical documented CLI download is only a read of the pinned
+   // deployed source. Never use GitHub main as a substitute for deployed code.
+   const recovered=downloadActualDeployedSourceWithCli(slug);
+   if(!recovered){
+    report.first_unrecognized_source_body_format=classification.kind;
+    return halt("OLD_EDGE_SOURCE_CLI_DOWNLOAD_NOT_RESTORABLE");
+   }
+   bytes=recovered;
+   report.official_cli_fallback_functions=(report.official_cli_fallback_functions||0)+1;
   }
   archived.push({slug,version:meta.version,verify_jwt:meta.verify_jwt,
    original_bundle_sha256:meta.ezbr_sha256,actual_source_body:bytes.toString("base64"),
