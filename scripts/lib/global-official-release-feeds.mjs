@@ -41,7 +41,7 @@ export function globalOriginalArticleUrl(raw,spec){
   let text=String(raw).replace(/&amp;/giu,'&').trim();
   if(spec.id==='boj_press_global'&&text.startsWith('http://www.boj.or.jp/en/'))text=text.replace('http:','https:');
   const u=new URL(text);
-  if(u.protocol!=='https:'||u.hostname!==spec.host||u.username||u.password||u.port||u.hash||u.href.length>1800||!spec.path.test(u.pathname))return null;
+  if(u.protocol!=='https:'||u.hostname!==spec.host||u.username||u.password||u.port||u.hash||u.search||u.href.length>1800||!spec.path.test(u.pathname))return null;
   return u.origin+u.pathname;
  }catch{return null;}
 }
