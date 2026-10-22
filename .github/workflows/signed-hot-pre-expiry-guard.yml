@@ -5,6 +5,12 @@ name: Signed Hot Snapshot Pre-Expiry Guard
 # Genuine new independently attested source inputs remain a hard dependency.
 on:
   workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/signed-hot-pre-expiry-guard.yml"
+      - "scripts/ops/watch-signed-hot-expiry.mjs"
+      - "scripts/ops/signed-hot-live-continuation.mjs"
+      - "scripts/ops/signed-hot-live-continuation.test.mjs"
   schedule:
     - cron: "09,39 * * * *"
   push:
@@ -12,6 +18,8 @@ on:
     paths:
       - ".github/workflows/signed-hot-pre-expiry-guard.yml"
       - "scripts/ops/watch-signed-hot-expiry.mjs"
+      - "scripts/ops/signed-hot-live-continuation.mjs"
+      - "scripts/ops/signed-hot-live-continuation.test.mjs"
       - "scripts/ops/classify-d1-hot-metadata.mjs"
       - "src/__tests__/signed-hot-expiry-prevention.test.ts"
 
@@ -23,8 +31,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  no-credential-slo-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Run 60-minute-source / 45-minute-warning no-secret tests
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/watch-signed-hot-expiry.mjs
+          node --test scripts/ops/signed-hot-live-continuation.test.mjs
   verify-before-expiry:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    needs: no-credential-slo-contract
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: production
@@ -43,6 +67,7 @@ jobs:
       - name: Check source and expiry guardian syntax
         run: |
           node --check scripts/ops/watch-signed-hot-expiry.mjs
+          node --test scripts/ops/signed-hot-live-continuation.test.mjs
           node --check scripts/ops/classify-d1-hot-metadata.mjs
       - name: Read only proof metadata and warn before 6h / 90min windows close
         shell: bash
