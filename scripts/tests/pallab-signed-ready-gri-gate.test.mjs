@@ -70,6 +70,7 @@ test("scheduler without real approval quietly skips; protected publisher always 
  const env={
   GRI_READY_REVIEWED_SHA256:x.reviewed,
   GRI_READY_CERTIFICATES_SHA256:x.certificates,
+  GRI_READY_APPROVED_AT:now.toISOString(),
   GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM:x.owner.pem,
   GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256:x.owner.pin,
   GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256:x.suman.pin,
@@ -96,4 +97,12 @@ test("scheduler without real approval quietly skips; protected publisher always 
   },now,allowEmpty:false
  });
  assert.equal(canonical.approved,true);
+ 
+ const stale=checkCurrentOwnerSignedReady({
+  env:{...env,GEOMACRO_OWNER_HUMAN_SIGNED_ENVELOPE_B64:x.envelope,
+    GRI_READY_APPROVED_AT:new Date(now.getTime()-29*60_000).toISOString()},
+  now,allowEmpty:true
+ });
+ assert.equal(stale.approved,false);
+ assert.equal(stale.status,"STALE_OR_MISSING_HUMAN_SIGNED_READY_HINT");
 });
