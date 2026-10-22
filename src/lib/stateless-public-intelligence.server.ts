@@ -393,6 +393,24 @@ export async function fetchFirstPartyOriginalFeed(
       continue;
     }
     if (![301, 302, 307, 308].includes(response.status)) return response;
+    // UN Geneva's published RSS index currently issues an HTTP redirect.
+    // Allow ONLY its exact canonical /en feed, one hop, on the SAME issuer
+    // HTTPS host. A redirect cannot qualify any article or publication clock.
+    if(source.id==="ungeneva_press_global" && hop===0 &&
+       target==="https://www.ungeneva.org/news-media/press-releases-list/rss.xml" &&
+       source.url===target &&
+       source.allowedHosts.length===1 &&
+       source.allowedHosts[0]==="www.ungeneva.org"){
+      const location=response.headers.get("location");
+      if(!location||location.length>320)return response;
+      let next:URL;
+      try{next=new URL(location,target);}catch{return response;}
+      if(next.href!=="https://www.ungeneva.org/en/news-media/press-releases-list/rss.xml"||
+         next.search||next.hash||next.username||next.password||next.port)return response;
+      await response.body?.cancel().catch(()=>undefined);
+      target=next.href;
+      continue;
+    }
     // Unrelated providers are never granted a new redirect privilege.
     if (source.id !== "nrcan_science" || hop === 2) return response;
     const location = response.headers.get("location");

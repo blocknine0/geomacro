@@ -7,7 +7,7 @@ const now=new Date('2026-10-16T08:00:00Z');
 const candidate={articleUrl:'https://www.iea.org/news/zambia-critical-minerals-supply-security',title:'Zambia critical minerals supply security'};
 const page=(clock='2026-10-16T07:00:00Z',extra='')=>`<!doctype html><html><h1>${candidate.title}</h1><p class="o-hero-news__meta">News<br/><time datetime="${clock}">16 October 2026</time></p>${extra}</html>`;
 test('twelve pinned international connectors cover all three categories without credentials',()=>{
- assert.equal(feeds.length,12);assert.equal(new Set(feeds.map(s=>s.id)).size,12);
+ assert.equal(feeds.length,13);assert.equal(new Set(feeds.map(s=>s.id)).size,13);
  assert.deepEqual(new Set(feeds.map(s=>s.category)),new Set(['geopolitics','macro','rare_earth']));
  for(const s of feeds){const u=new URL(s.url);assert.equal(u.hostname,s.host);assert.equal(u.protocol,'https:');assert.ok(!u.username&&!u.password);assert.equal(s.poll_minutes,30);}
 });
@@ -81,4 +81,30 @@ test('targeted macro trade and rare-earth discovery use real strict official fir
    feeds.find(x=>x.id==='govuk_global_trade_fx').family);
  assert.equal(feeds.find(x=>x.id==='govuk_global_minerals').family,
    feeds.find(x=>x.id==='govuk_global_rare_earth').family);
+});
+
+test('UN Geneva official geopolitical feed accepts issuer press releases, not index/fake or future timestamps',()=>{
+ const source=feeds.find(x=>x.id==='ungeneva_press_global');
+ assert.ok(source);
+ assert.equal(source.format,'rss');
+ assert.equal(source.category,'geopolitics');
+ const article='https://www.ungeneva.org/en/news-media/press-release/2026/10/human-rights-council-adopts-urgent-resolution-on-sudan';
+ assert.equal(globalOriginalArticleUrl(article,source),article);
+ for(const other of [
+  'https://www.ungeneva.org/news-media/press-releases-list/rss.xml',
+  'https://www.ungeneva.org/en/news-media/news/2026/10/sudan-security-council',
+  'https://www.ungeneva.org/en/news-media/press-release/2026/10/sudan',
+  'https://www.ungeneva.org.en.evil.test/en/news-media/press-release/2026/10/security-council-urges-ceasefire',
+  'http://www.ungeneva.org/en/news-media/press-release/2026/10/security-council-urges-ceasefire',
+  article+'?source=feed',
+  article+'#updated'
+ ])assert.equal(globalOriginalArticleUrl(other,source),null);
+ const rss='<rss version="2.0"><channel><item><title>Security Council calls for ceasefire in Sudan</title><link>'+
+   article+'</link><pubDate>Thu, 22 Oct 2026 08:00:00 GMT</pubDate></item></channel></rss>';
+ assert.equal(validateFreeLineupProbePayload(source,rss).valid,true);
+ const accepted=summarizeFreeSourceUpdates(source,rss,new Date('2026-10-22T11:00:00Z'));
+ assert.equal(accepted.latest_native_publication_at,'2026-10-22T08:00:00.000Z');
+ const undated=summarizeFreeSourceUpdates(source,rss.replace('pubDate','updated').replace('/pubDate','/updated'),
+   new Date('2026-10-22T11:00:00Z'));
+ assert.equal(undated.latest_native_publication_at,null);
 });

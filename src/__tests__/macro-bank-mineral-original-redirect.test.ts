@@ -168,3 +168,52 @@ describe("first-party bank Macro release and bounded mineral redirect",()=>{
     }
   });
 });
+
+describe("UN Geneva first-party geopolitical RSS single-source redirect",()=>{
+  const original:StatelessSourceSpec={id:"ungeneva_press_global",category:"geopolitics",media:"rss",
+    url:"https://www.ungeneva.org/news-media/press-releases-list/rss.xml",
+    allowedHosts:["www.ungeneva.org"],credit:"United Nations Office at Geneva"};
+  const canonical="https://www.ungeneva.org/en/news-media/press-releases-list/rss.xml";
+  it("follows only one fixed issuer HTTPS canonical feed, preserving native pubDate",async()=>{
+    const calls=vi.fn(async (url:RequestInfo|URL)=>String(url)===original.url
+       ? move(canonical) : ok);
+    const response=await fetchFirstPartyOriginalFeed(original,calls as unknown as typeof fetch);
+    expect(response.ok).toBe(true);
+    expect(calls).toHaveBeenCalledTimes(2);
+    expect(calls.mock.calls[1]?.[0]).toBe(canonical);
+    expect(calls.mock.calls[0]?.[1]?.redirect).toBe("manual");
+  });
+  it("rejects all other paths, cross-host, query, fragments and third-party re-redirect",async()=>{
+    for(const location of [
+      "https://evil.example.org/en/news-media/press-releases-list/rss.xml",
+      "http://www.ungeneva.org/en/news-media/press-releases-list/rss.xml",
+      "https://www.ungeneva.org/en/news-media/press-items-list/rss.xml",
+      canonical+"?ref=feed",
+      canonical+"#latest",
+      "https://user@www.ungeneva.org/en/news-media/press-releases-list/rss.xml",
+    ]){
+      const calls=vi.fn(async()=>move(location));
+      const response=await fetchFirstPartyOriginalFeed(original,calls as unknown as typeof fetch);
+      expect(response.status).toBe(301);
+      expect(calls).toHaveBeenCalledTimes(1);
+    }
+    const third=vi.fn(async (url:RequestInfo|URL)=>String(url)===original.url
+      ? move(canonical):move("https://www.ungeneva.org/en/news-media/press-items-list/rss.xml"));
+    const result=await fetchFirstPartyOriginalFeed(original,third as unknown as typeof fetch);
+    expect(result.status).toBe(301);
+    expect(third).toHaveBeenCalledTimes(2);
+    for(const code of [403,429]){
+      const denied=vi.fn(async()=>new Response(null,{status:code}));
+      const x=await fetchFirstPartyOriginalFeed(original,denied as unknown as typeof fetch);
+      expect(x.status).toBe(code);
+      expect(denied).toHaveBeenCalledTimes(1);
+    }
+  });
+  it("source id alone cannot grant redirect to arbitrary original URL",async()=>{
+    const forged={...original,url:"https://www.ungeneva.org/other/rss.xml"};
+    const f=vi.fn(async()=>move(canonical));
+    const out=await fetchFirstPartyOriginalFeed(forged,f as unknown as typeof fetch);
+    expect(out.status).toBe(301);
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+});
