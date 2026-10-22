@@ -45,6 +45,15 @@ test("strict schema empty list accepted as NO FRESH EVIDENCE, not invented intel
  assert.equal(x.accepted_provisional_leads,0);
  assert.equal(x.signed_commercial_intelligence,false);
 });
+test("Groq namespaced executed browser tool type proves search without requiring exact bare name",async()=>{
+ const namespaced={status:200,json:async()=>({choices:[{message:{
+  content:sample,executed_tools:[{type:"groq.internal.browser_search"}]
+ }}]})};
+ const answer=await runProtectedGroqBrowserAcceptance({env,now,realFetch:async()=>namespaced});
+ assert.equal(answer.provider_executed_tools_marker_observed,true);
+ assert.equal(answer.schema_validated_by_production_validator,true);
+ assert.equal(answer.signed_commercial_intelligence,false);
+});
 test("fake structured JSON without actual Groq browser tool execution is NOT accepted",async()=>{
  let calls=0;
  const fake={status:200,json:async()=>({choices:[{message:{content:sample,executed_tools:[]}}]})};
