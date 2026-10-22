@@ -13,11 +13,34 @@ const ALLOWED_HTTP=new Set([200,400,401,403,408,422,429,500,502,503,504]);
 export function classifyLiveGroqBrowserEnvelope(status,envelope){
  const http=ALLOWED_HTTP.has(status)?status:null;
  let msg=null;
+ let safe_shape="NO_PARSEABLE_JSON_CONTENT";
+ if(http===200&&typeof envelope?.choices?.[0]?.message?.content==="string"){
+  try {
+   const c=JSON.parse(envelope.choices[0].message.content.trim());
+   if(c?.schema!=="geomacro.groq.browser-research-leads.v1")
+    safe_shape="SCHEMA_NOT_EXPECTED";
+   else if(!Array.isArray(c.leads))
+    safe_shape="LEADS_NOT_ARRAY";
+   else if(c.leads.length===0)
+    safe_shape="ZERO_RESEARCH_LEADS";
+   else if(c.leads.length>3)
+    safe_shape="TOO_MANY_RESEARCH_LEADS";
+   else if(c.leads.some(x=>typeof x?.what_changed!=="string"||
+      typeof x?.why_it_matters!=="string"))
+    safe_shape="CLAIM_TEXT_MISSING";
+   else if(c.leads.some(x=>typeof x?.source_domain!=="string"))
+    safe_shape="CLAIMED_SOURCE_HOST_MISSING";
+   else if(c.leads.some(x=>!x.category))
+    safe_shape="CATEGORY_MISSING";
+   else safe_shape="SCHEMA_AND_LEAD_FIELDS_PRESENT_NOT_NECESSARILY_VALID";
+  }catch{}
+ }
  if(http===200){
   msg=envelope?.choices?.[0]?.message?.content;
  }
  return Object.freeze({
   provider_http_status:http,
+  coarse_structured_shape_status:safe_shape,
   completion_text_received:typeof msg==="string"&&msg.trim().length>0,
   strict_json_text_received:typeof msg==="string"&&
    msg.trim().startsWith("{")&&msg.trim().endsWith("}"),
@@ -87,6 +110,7 @@ export async function verifyRealGroqBrowserOnce({
   one_browser_tool_request_sent:true,
   tool_choice_required:true,
   provider_http_status:observation?.provider_http_status??null,
+  coarse_structured_shape_status:observation?.coarse_structured_shape_status??"NO_RESPONSE",
   completion_text_received:observation?.completion_text_received??false,
   strict_json_text_received:observation?.strict_json_text_received??false,
   model_name_validated:observation?.provider_model==="GPT_OSS_20B",
@@ -112,7 +136,7 @@ if(process.argv[1]===fileURLToPath(import.meta.url)){
   const r=await verifyRealGroqBrowserOnce();
   process.stdout.write(JSON.stringify(r)+"\n");
   if(r.provider_http_status!==200 ||
-     r.fallback_validation!=="VALIDATED_PROVISIONAL_LEADS")
+     !["VALIDATED_PROVISIONAL_LEADS","NO_ELIGIBLE_RESEARCH_LEADS"].includes(r.fallback_validation))
    process.exitCode=2;
  }catch {
   process.stderr.write(BLOCK+"\n");

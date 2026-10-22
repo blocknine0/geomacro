@@ -35,6 +35,36 @@ export function reserveBoundedFreeBrowserSlot(nowMs=Date.now(),budget=inMemoryBr
 const SOURCE_STATUS="BROWSER_SEARCH_LEAD_NOT_ORIGINAL_SOURCE_VERIFIED";
 const K=/^[A-Z]{3}$/u;
 const HOST=/^(?:[a-z0-9-]+\.)+[a-z]{2,}$/u;
+function internalClaimedHostname(value){
+ // A browser model may emit a URL instead of an origin host. If so,
+ // accept ONLY its parsed HTTPS hostname, never expose path, query, text.
+ if(typeof value!=="string"||value.length>300)return null;
+ let host=value;
+ if(value.startsWith("https://")){
+  try{
+   const u=new URL(value);
+   if(u.protocol!=="https:"||u.username||u.password||u.port)return null;
+   host=u.hostname;
+  }catch{return null}
+ }
+ host=host.toLowerCase().replace(/^www\./u,"");
+ if(!HOST.test(host)||host.includes(".."))return null;
+ return host;
+}
+function allowedCategory(value){
+ const normalized=typeof value==="string"?
+  value.trim().toUpperCase().replace(/[ -]/gu,"_"):null;
+ return normalized==="GEOPOLITICS"||normalized==="MACRO"||
+  normalized==="CRITICAL_MINERALS"?normalized:null;
+}
+function claimedCalendarDate(v){
+ if(v===null||v===""||v===undefined)return null;
+ if(typeof v!=="string")return undefined;
+ if(/^\d{4}-\d\d-\d\d$/u.test(v))return v;
+ if(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/u.test(v))
+  return v.slice(0,10);
+ return undefined;
+}
 const SECRET=/https?:\/\/|www\.|<[^>]+>|-----BEGIN|(?:api[_ -]?key|private[_ -]?key)[\s:=]/iu;
 const takeKeys=(obj,keys)=>obj&&typeof obj==="object"&&!Array.isArray(obj)&&
  Object.keys(obj).sort().join(",")===keys.slice().sort().join(",");
@@ -74,28 +104,28 @@ export function validateGroqBrowserLeadText(content,{categories,now=new Date()}=
  let root;try{root=JSON.parse(trimmed)}catch{reject()}
  if(!takeKeys(root,["schema","leads"])||
   root.schema!=="geomacro.groq.browser-research-leads.v1"||
-  !Array.isArray(root.leads)||root.leads.length<1||root.leads.length>3)reject();
+  !Array.isArray(root.leads)||root.leads.length>3)reject();
  const allowed=new Set(categories),clock=now.getTime();
  if(!Number.isFinite(clock))reject();
  const leads=root.leads.map(l=>{
-  if(!takeKeys(l,["category","what_changed","why_it_matters","source_domain","source_date"])||
-   !allowed.has(l.category)||
-   !within(l.what_changed,25,300)||
-   !within(l.why_it_matters,25,320)||
-   typeof l.source_domain!=="string"||!HOST.test(l.source_domain)||
-   l.source_domain!==l.source_domain.toLowerCase()||
-   !(l.source_date===null||typeof l.source_date==="string"&&
-       /^\d{4}-\d\d-\d\d$/u.test(l.source_date)))reject();
-  if(l.source_date!==null){
-   const d=Date.parse(l.source_date+"T00:00:00.000Z");
-   if(!Number.isFinite(d)||new Date(d).toISOString().slice(0,10)!==l.source_date||
+  const cat=allowedCategory(l?.category);
+  const host=internalClaimedHostname(l?.source_domain);
+  const calendar=claimedCalendarDate(l?.source_date);
+  // Extras in an untrusted model JSON object are IGNORED, never forwarded;
+  // the five required typed claims remain strictly validated.
+  if(!l||typeof l!=="object"||Array.isArray(l)||
+   !allowed.has(cat)||!within(l.what_changed,25,300)||
+   !within(l.why_it_matters,25,320)||!host||calendar===undefined)reject();
+  if(calendar!==null){
+   const d=Date.parse(calendar+"T00:00:00.000Z");
+   if(!Number.isFinite(d)||new Date(d).toISOString().slice(0,10)!==calendar||
       d>clock+86400_000||clock-d>7*86400_000)reject();
   }
-  return Object.freeze({category:l.category,what_changed:l.what_changed,
+  return Object.freeze({category:cat,what_changed:l.what_changed,
    why_it_matters:l.why_it_matters,
    // Model-supplied claimed identity/date are internal leads, not original proof.
-   source_claim_fingerprint:createHash("sha256").update(l.source_domain).digest("hex"),
-   claimed_original_calendar_day:l.source_date,
+   source_claim_fingerprint:createHash("sha256").update(host).digest("hex"),
+   claimed_original_calendar_day:calendar,
    source_native_date_verified:false,original_html_verified:false,
    factual_claim_independently_verified:false,commercial_permission_verified:false
   });

@@ -99,8 +99,6 @@ test("model snippets never auto certify event, date, licence or risk score",()=>
   x=>x.leads[0].source_domain="localhost",
   x=>x.leads[0].what_changed="https://publisher.gov/raw/article",
   x=>x.leads[0].source_date="2026-11-20",
-  x=>x.leads[0].source_date="2026-10-21T12:00:00Z",
-  x=>x.leads[0].extra="licensed",
   x=>x.leads[0].category="RARE_INDUSTRY",
   x=>x.leads[0].what_changed="Verified",
   x=>x.leads.push(x.leads[0],x.leads[0],x.leads[0])
@@ -110,6 +108,25 @@ test("model snippets never auto certify event, date, licence or risk score",()=>
   assert.throws(()=>validateGroqBrowserLeadText(JSON.stringify(input),
    {categories:["MACRO"],now:NOW}),/GROQ_BROWSER_RESEARCH_UNVERIFIED_OR_UNAVAILABLE/);
  }
+});
+test("model URL-origin/date normalization cannot leak path or falsely certify sources",()=>{
+ const input=JSON.parse(JSON.stringify(fixture));
+ input.leads[0].category="macro";
+ input.leads[0].source_domain="https://www.rbi.org.in/release?private=secret-query";
+ input.leads[0].source_date="2026-10-22T08:30:00Z";
+ input.leads[0].extra="untrusted fields never forwarded";
+ const rows=validateGroqBrowserLeadText(JSON.stringify(input),
+  {categories:["MACRO"],now:NOW});
+ assert.equal(rows[0].category,"MACRO");
+ assert.equal(rows[0].claimed_original_calendar_day,"2026-10-22");
+ assert.equal(rows[0].original_html_verified,false);
+ const result=JSON.stringify(rows);
+ assert.equal(result.includes("secret-query"),false);
+ assert.equal(result.includes("untrusted fields"),false);
+ assert.equal(result.includes("rbi.org.in"),false);
+ const noResult={schema:"geomacro.groq.browser-research-leads.v1",leads:[]};
+ assert.deepEqual(validateGroqBrowserLeadText(JSON.stringify(noResult),
+  {categories:["MACRO"],now:NOW}),[]);
 });
 test("search scope must contain only supported fixed topics and canonical country",()=>{
  for(const item of [
