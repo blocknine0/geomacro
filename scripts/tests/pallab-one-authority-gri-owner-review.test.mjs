@@ -40,11 +40,11 @@ test("no public key, incorrect pin, wrong signer, tampered hash and evidence den
  const v=sign(),other=makeKey();
  assert.throws(()=>verifyEncodedOwnerApprovedCandidate({
   envelopeBase64:Buffer.from(JSON.stringify(v.envelope)).toString("base64"),
-  ownerPublicKeyPem:other.publicKeyPem,ownerPublicKeySpkiSha256:other.pin
+  ownerPublicKeyPem:other.publicKeyPem,ownerPublicKeySpkiSha256:other.pin,now
  }),/HUMAN_SIGNATURE_INVALID/);
  assert.throws(()=>verifyEncodedOwnerApprovedCandidate({
   envelopeBase64:Buffer.from(JSON.stringify(v.envelope)).toString("base64"),
-  ownerPublicKeyPem:v.key.publicKeyPem,ownerPublicKeySpkiSha256:other.pin
+  ownerPublicKeyPem:v.key.publicKeyPem,ownerPublicKeySpkiSha256:other.pin,now
  }),/OWNER_KEY_PIN_MISMATCH/);
  const edit=structuredClone(v.envelope);
  edit.payload.evidence_manifest_sha256="c".repeat(64);
