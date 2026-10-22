@@ -32,8 +32,11 @@ function fail(reason){report.status="BLOCKED_NO_MUTATION";emit(reason);process.e
 function readConfig(value){
  try{
   const u=new URL(value);
+  // Connection strings may include provider-specific query parameters.
+  // They are NOT passed to psql: only the explicitly pinned host/port/user
+  // and password are used, and TLS remains forced to `require`.
   if(!["postgres:","postgresql:"].includes(u.protocol)||u.pathname!=="/postgres"||
-   !u.password||u.search||u.hash)return null;
+   !u.password||u.hash)return null;
   const username=decodeURIComponent(u.username);
   const direct=u.hostname==="db."+REF+".supabase.co"&&username==="postgres";
   const pooler=u.hostname.endsWith(".pooler.supabase.com")&&username==="postgres."+REF;
@@ -70,7 +73,13 @@ function query(){
 function main(){
  if(process.env.APP_SUPABASE_URL!==URL)return fail("PINNED_OLD_SUPABASE_URL_REQUIRED");
  const db=readConfig(process.env.SUPABASE_DB_URL??"");
- if(!db)return fail("EXACT_LEGACY_POSTGRES_IDENTITY_REQUIRED");
+ if(!db){
+  const raw=String(process.env.SUPABASE_DB_URL??"");
+  report.connection_url_supplied=raw.length>0;
+  // Numeric class only; never expose URL, DB hostname, password or username.
+  report.connection_url_has_query=(()=>{try{return Boolean(new URL(raw).search)}catch{return false}})();
+  return fail("EXACT_LEGACY_POSTGRES_IDENTITY_REQUIRED");
+ }
  const x=spawnSync("psql",[
   "-h",db.host,"-p",db.port,"-U",db.user,"-d","postgres",
   "-X","-qAt","-v","ON_ERROR_STOP=1","-c",query()
