@@ -1,0 +1,127 @@
+name: Cloud Historical GRI B2 Readback and Website-Only Restore (No Funds)
+
+# Cloud-only, owner-requested repair of the genuine old GRI baseline.
+# Uses the existing canonical exact-version B2 readback, governed by D1 quota.
+# Restores ONLY the historical website ring if all immutable hashes and
+# independent PUBLIC readback match. NEVER creates/current-dates signed GRI.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cloud-historical-gri-b2-restore.yml"
+  pull_request:
+    paths:
+      - ".github/workflows/cloud-historical-gri-b2-restore.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-pinned-historical-gri-cloud-restore
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Verify exact historical version retrieval and website only historical policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/recover-gri-pinned-b2-version.mjs
+          node --check scripts/ops/restore-gri-verified-version-to-d1.mjs
+          bun test src/__tests__/gri-pinned-version-recovery.test.ts
+
+  immutable-b2-historical-restore-only:
+    needs: offline-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    env:
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: historical_gri_version_recovery
+      B2_REQUEST_BUDGET: "4"
+      GEOMACRO_GRI_RESTORE_WEBSITE_HISTORY: "1"
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      SUPABASE_URL: ""
+      SUPABASE_DB_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      APP_SUPABASE_URL: ""
+      APP_SUPABASE_DB_URL: ""
+      APP_SUPABASE_SERVICE_ROLE_KEY: ""
+      COINBASE_API_KEY: ""
+      COINBASE_COMMERCE_API_KEY: ""
+      COINBASE_X402_MAINNET_ACK: ""
+      GEOMACRO_COMMERCIAL_LAUNCH_ACK: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify protected B2+Cloudflare config and exact main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = "$(git rev-parse HEAD)"
+          test -n "$B2_KEY_ID" && test -n "$B2_APPLICATION_KEY"
+          test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$GEOMACRO_COMMERCE_LEDGER_TOKEN"
+          for k in SUPABASE_URL SUPABASE_DB_URL SUPABASE_SERVICE_ROLE_KEY COINBASE_API_KEY; do
+            test -z "${!k:-}" || { echo "::error::FORBIDDEN_PAYMENT_OR_LEGACY_CREDENTIAL"; exit 2; }
+          done
+      - name: Resolve existing D1 governor database without new infrastructure
+        shell: bash
+        run: |
+          set -euo pipefail
+          json="$(npx -y wrangler@4.136.3 d1 list --json)"
+          id="$(printf '%s' "$json" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{const v=JSON.parse(s).find(x=>x.name==="geomacro-control-plane");process.stdout.write(v?.uuid??v?.id??"")})')"
+          test -n "$id" || { echo "::error::EXISTING_D1_GOVERNOR_NOT_FOUND"; exit 2; }
+          echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
+      - name: Recover EXACT pinned historical B2 version and verify website historical D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/restore-gri-verified-version-to-d1.mjs
+      - name: Report historical-only proof with no raw data in GitHub artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const r=JSON.parse(readFileSync('artifacts/gri-b2-history/historical-d1-restore.json','utf8'));
+          const h=r.history_restore;
+          const ok=r.immutable_file_version_verified===true &&
+                   r.current_gri_qualified===false &&
+                   h?.verified===true &&
+                   h.website_only===true && h.current_hot_snapshot_written===false &&
+                   h.exact_d1_readback_verified===true;
+          console.log(JSON.stringify({
+            schema:'geomacro.verified-private-historical-restore-acceptance.v1',
+            exact_historical_b2_version_readback: r.immutable_file_version_verified===true,
+            historical_d1_website_only_verified:ok,
+            currently_reviewed_numeric_gri_verified:false,
+            current_hot_snapshot_published:false,
+            input_clock_modified:false,raw_contents_logged:false,
+            payments:0,supabase_requests:0
+          }));
+          if(!ok)process.exitCode=2;
+          JS
