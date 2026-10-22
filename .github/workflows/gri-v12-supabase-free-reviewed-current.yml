@@ -9,6 +9,8 @@ on:
       - ".github/workflows/gri-v12-supabase-free-reviewed-current.yml"
       - "scripts/ops/verify-gri-independent-reviewer-pre-b2.mjs"
       - "scripts/ops/verify-gri-independent-reviewer-pre-b2.test.mjs"
+      - "scripts/lib/pallab-signed-ready-gri-gate.mjs"
+      - "scripts/ops/require-pallab-owner-signed-gri-ready.mjs"
   repository_dispatch:
     types: [gri_reviewed_current_ready]
   workflow_dispatch:
@@ -84,6 +86,11 @@ jobs:
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM }}
       GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_OWNER_HUMAN_SIGNED_ENVELOPE_B64: ${{ secrets.GEOMACRO_OWNER_HUMAN_SIGNED_ENVELOPE_B64 }}
+      GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM }}
+      GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
     steps:
       - name: Checkout exact canonical main
@@ -160,6 +167,12 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/ops/verify-gri-independent-reviewer-pre-b2.mjs
+
+      - name: Require freshly signed Pallab human approval for exact Suman reviewed GRI and certificates before B2 GET
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/require-pallab-owner-signed-gri-ready.mjs --require-owner-before-b2
 
       - name: Read exact pinned signed current evidence from quota-governed B2
         # Separate Bun processes each create their own per-process counter.
