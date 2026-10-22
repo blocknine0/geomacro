@@ -106,3 +106,41 @@ test("diagnostics report precise missing vs malformed vs mismatch without printi
  assert.equal(ok.pallab_owner_public_pin_diagnostic,"VERIFIED");
  assert.equal(ok.suman_reviewer_public_pin_diagnostic,"VERIFIED");
 });
+
+test("role-only diagnostics pinpoint duplicate human and machine signing identities without leaking public pins",()=>{
+ const common=distinct();
+ const ownerReviewer={...common,
+   GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM:
+     common.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM,
+   GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256:
+     common.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256};
+ const ownerPair=pallabSumanAuthorityReadiness(ownerReviewer);
+ assert.deepEqual(ownerPair.duplicate_authority_role_pairs,
+  ["PALLAB_OWNER__SUMAN_REVIEWER"]);
+ assert.deepEqual(ownerPair.missing_or_invalid_authority_roles,[]);
+ assert.equal(ownerPair.configured_public_key_shapes_passed,false);
+ const roleCases=[
+  ["PALLAB_OWNER__FACTS_AUTHORITY",{
+     GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256:common.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256}],
+  ["SUMAN_REVIEWER__RIGHTS_AUTHORITY",{
+     GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256:common.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256}],
+  ["FACTS_AUTHORITY__RIGHTS_AUTHORITY",{
+     GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256:common.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256}],
+ ];
+ for(const [expected,override] of roleCases){
+  const result=pallabSumanAuthorityReadiness({...common,...override});
+  assert.deepEqual(result.duplicate_authority_role_pairs,[expected]);
+  assert.equal(result.configured_public_key_shapes_passed,false);
+  const json=JSON.stringify(result);
+  assert.doesNotMatch(json,/BEGIN PUBLIC|-----|[a-f0-9]{64}|ssh-ed25519/u);
+ }
+ const invalid=pallabSumanAuthorityReadiness({
+  ...common,GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256:"not-a-pin"});
+ assert.deepEqual(invalid.duplicate_authority_role_pairs,[]);
+ assert.deepEqual(invalid.missing_or_invalid_authority_roles,["RIGHTS_AUTHORITY"]);
+ assert.equal(invalid.configured_public_key_shapes_passed,false);
+ const ok=pallabSumanAuthorityReadiness(common);
+ assert.deepEqual(ok.duplicate_authority_role_pairs,[]);
+ assert.deepEqual(ok.missing_or_invalid_authority_roles,[]);
+ assert.equal(ok.configured_public_key_shapes_passed,true);
+});
