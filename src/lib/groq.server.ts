@@ -39,7 +39,7 @@ export async function groqClassifyJson<T>(args: {
         Authorization: `Bearer ${key}`,
       },
       body: JSON.stringify({
-        model: args.model ?? "llama-3.3-70b-versatile",
+        model: args.model ?? "openai/gpt-oss-20b",
         temperature: args.temperature ?? 0.2,
         response_format: { type: "json_object" },
         messages: [
