@@ -98,6 +98,50 @@ on `main`. It verifies key shape/pins and separation from the machine
 Facts, Rights and GRO signing identities. A successful key readiness
 does NOT certify either review, license or current signed GRI.
 
+## C1. Fix protected public pin failures (no secret disclosures)
+
+The protected GitHub Actions authority readiness is **strict**: every secret
+must be configured in the correct repository's `production` environment
+(`https://github.com/blocknine0/geomacro/settings/environments`).
+Repository-level secrets are also visible to the workflow unless overridden
+by an environment-scoped secret with the same name. **Repository variables**
+are NOT a replacement for `secrets.*`.
+
+The public verifier now emits one safe finite diagnostic code **for each
+public key independently**, without logging either PEM or fingerprint:
+
+| Code | Repair |
+| --- | --- |
+| `PUBLIC_PEM_SECRET_MISSING` | Add the exact named `*_PUBLIC_KEY_PEM` environment secret |
+| `PUBLIC_PIN_SECRET_MISSING` | Add the exact `*_PUBLIC_KEY_SHA256` secret |
+| `PUBLIC_PIN_NOT_LOWERCASE_64_HEX` | Paste only 64 lowercase hex characters, not `SHA256(...)=`, the filename or extra spaces |
+| `PUBLIC_PEM_HAS_LITERAL_BACKSLASH_N` | Replace literal `\\n` with actual line breaks when entering PEM |
+| `PUBLIC_PEM_HEADER_OR_NEWLINE_INVALID` | Paste the full multi-line `-----BEGIN PUBLIC KEY-----` to `-----END PUBLIC KEY-----` including markers |
+| `PUBLIC_PEM_PARSE_INVALID` / `PUBLIC_KEY_NOT_ED25519` | Derive **public** Ed25519 SPKI PEM from the person's own key; don't upload any private key |
+| `PUBLIC_KEY_SPKI_SHA256_MISMATCH` | Derive hash from **public DER-SPKI bytes**, not the PEM text, private key or JSON |
+
+From the correct person's account, recompute the fingerprint without ever
+sharing the private key or its passphrase:
+
+```bash
+openssl pkey -pubin -in "$HOME/geomacro-private/pallab/owner-public.pem" \
+  -outform DER | sha256sum
+```
+
+Suman uses his own `suman/reviewer-public.pem` file/path from his account.
+Paste **only** the 64-character lowercase digest portion into the matching
+GitHub environment secret. On account/secret changes, rerun the existing
+[authority readiness workflow](../../.github/workflows/pallab-suman-independent-gri-authorities.yml)
+manually, or rely on the already configured scheduled read-only check.
+GitHub never emits a secret-change event. Do not email passwords, private keys
+or ask anyone to print secret values in public Actions logs.
+
+A green public-key result proves only correct PUBLIC key formatting,
+pinning and separation. It does not prove the named human personally
+reviewed an event or provide signed evidence. Existing independently signed
+GRI stays gated on signed payloads, two real originals, original bytes,
+verified rights and historical B2 lineage.
+
 ## D. Actual review and file transfer on the SAME computer
 
 Only after genuine evidence exists:
