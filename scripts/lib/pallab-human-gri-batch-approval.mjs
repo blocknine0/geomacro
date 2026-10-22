@@ -18,7 +18,7 @@ export function ownerApprovalCanonicalPayload(payload){
     payloadKeys.some(k=>!Object.hasOwn(payload,k))||
     payload.schema!==OWNER_APPROVAL_SCHEMA||
     payload.human_approver!==OWNER_APPROVER||
-    payload.decision!=="APPROVE_EXACT_INPUT_FOR_INDEPENDENT_REVIEW"||
+    payload.decision!=="OWNER_APPROVES_EXACT_DERIVED_GRI_CANDIDATE"||
     !SHA.test(payload.candidate_gri_sha256)||
     !SHA.test(payload.evidence_manifest_sha256)||
     payload.candidate_gri_sha256===payload.evidence_manifest_sha256||
