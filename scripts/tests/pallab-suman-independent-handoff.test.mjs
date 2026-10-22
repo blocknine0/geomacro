@@ -77,7 +77,7 @@ test("unapproved owner/reviewer, swapped package, and reused authority fail befo
    /AUTHORITIES_NOT_INDEPENDENT/);
  assert.throws(()=>attempt(x,{countryCertificateBytes:Buffer.from("tampered-signed-certificates")}),
    /PRIVATE_SIGNED_JSON_INVALID/);
- assert.throws(()=>attempt(x,{reviewedGriBytes:Buffer.concat([x.griBytes,Buffer.from("\\n")])}),
+ assert.throws(()=>attempt(x,{reviewedGriBytes:Buffer.concat([x.griBytes,Buffer.from("\n")])}),
    /PUBLISHED_B2_BYTES_NOT_EXACT_OWNER_APPROVED_BYTES/);
 });
 test("reviewer cannot automatically sign empty or fictional input; owner approval not current GRI",()=>{
