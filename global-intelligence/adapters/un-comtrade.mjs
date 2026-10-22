@@ -80,8 +80,11 @@ function buildUrl({baseUrl,reporterCode,period,cmdCode,flowCode,partnerCode,part
 
 export async function fetchComtrade(countryIso3,{
   reporterCode=null,period="2025",cmdCode="TOTAL",flowCode="X",partnerCode="0",
-  partner2Code="0",motCode="0",customsCode="0",breakdownMode="classic",
-  maxRecords=500,includeDesc=true,allowPreview=true,category="CRITICAL_MINERALS"
+  // Do not send invented optional zero filters to no-key preview: the
+  // publisher documents only reporter/period/flow/commodity/partner for
+  // minimal requests. Optional filters are applied only when explicit.
+  partner2Code=null,motCode=null,customsCode=null,breakdownMode=null,
+  maxRecords=500,includeDesc=null,allowPreview=true,category="CRITICAL_MINERALS"
 }={}){
   const key=process.env.UN_COMTRADE_API_KEY || "";
   if(!key && !allowPreview) throw new Error("UN_COMTRADE_API_KEY is required when allowPreview=false.");
@@ -132,7 +135,7 @@ export async function fetchComtrade(countryIso3,{
 
 export async function fetchComtradeTradeFlows(countryIso3,{
   reporterCode=null,period="2025",cmdCode="TOTAL",partnerCode="0",
-  partner2Code="0",motCode="0",customsCode="0",maxRecords=500,
+  partner2Code=null,motCode=null,customsCode=null,maxRecords=500,
   allowPreview=true,category="CRITICAL_MINERALS"
 }={}){
   const [exportsRows,importsRows]=await Promise.all([
