@@ -22,8 +22,9 @@ export function signOwnerReviewedCandidate({
     fail("APPROVED_EXACT_DIGESTS_AND_CLOCK_REQUIRED");
  let key,derived;
  try{
-  key=createPrivateKey(privateKeyPassphrase===undefined?privateKey:
-    {key:privateKey,passphrase:privateKeyPassphrase});
+  key=privateKey?.type==="private"&&privateKey?.asymmetricKeyType==="ed25519"
+    ?privateKey:createPrivateKey(privateKeyPassphrase===undefined?privateKey:
+      {key:privateKey,passphrase:privateKeyPassphrase});
   if(key.asymmetricKeyType!=="ed25519")fail("ED25519_PRIVATE_KEY_REQUIRED");
   derived=createPublicKey(key).export({format:"der",type:"spki"});
  }catch{fail("OWNER_PRIVATE_KEY_UNUSABLE");}
