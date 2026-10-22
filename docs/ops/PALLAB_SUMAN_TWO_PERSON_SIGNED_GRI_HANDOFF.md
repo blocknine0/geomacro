@@ -91,8 +91,8 @@ only proves distinct key shapes, NOT signed current reviews or human identity.
 
 **Pallab second:**
 
-4. Compute SHA256 of the **exact signed JSON bytes**, including newline, of
-   Suman's reviewed-GRI output and signed certificate array output. Do not
+4. Compute SHA256 of the **exact canonical signed JSON bytes without a trailing newline**, of
+   Suman's reviewed-GRI output and signed certificate array output. The validator refuses whitespace changes because the existing B2 stager stores exact compact JSON bytes. Do not
    sign the unsigned input or hash a reserialized/reformatted file.
 5. On Pallab's *separate*, interactive private machine run:
    `node scripts/ops/sign-pallab-owner-gri-candidate.mjs --human-sign-exact-batch`
