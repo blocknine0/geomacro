@@ -1,5 +1,7 @@
 # Geomacro: permanent old Supabase database exit and optional new Free sidecar
 
+> **SUPERSEDED OWNER DECISION — 2026-10-22:** The old Supabase project **must remain active and must not be deleted**. The retirement guidance on this page is historical planning only, **not approved for execution**. See [RETAIN_OLD_SUPABASE_20261022.md](./RETAIN_OLD_SUPABASE_20261022.md). Any new delete or bulk Storage removal needs fresh explicit owner authorization.
+
 Status checked 2026-10-22. Owner decision: **retire old Supabase** `ldpwajisioljyjtojvfx`; do not reuse `geomacro-staging` (`hencqxkmmcgnothotqpq`) as the replacement. Zero paid infra before revenue.
 
 ## Database authority after exit
