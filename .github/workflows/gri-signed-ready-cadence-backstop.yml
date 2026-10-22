@@ -60,6 +60,13 @@ jobs:
           node-version: "22"
       - name: Fail-closed immutable reviewed input hint tests
         run: node --test scripts/lib/gri-signed-ready-cadence-hint.test.mjs
+      - name: Verify real Pallab signature admission before any GRI publisher dispatch
+        run: |
+          node --check scripts/lib/pallab-signed-ready-gri-gate.mjs
+          node --check scripts/ops/require-pallab-owner-signed-gri-ready.mjs
+          node --check scripts/ops/activate-pallab-suman-signed-automation.mjs
+          node --test scripts/tests/pallab-signed-ready-gri-gate.test.mjs
+          node --test scripts/tests/activate-pallab-suman-signed-automation.test.mjs
       - name: Fail-closed machine dual-authority input hints and no-funds dispatch tests
         run: node --test scripts/lib/machine-intelligence-signed-ready-hint.test.mjs
 
