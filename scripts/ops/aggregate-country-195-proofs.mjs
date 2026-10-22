@@ -6,6 +6,8 @@ import {mkdirSync,readFileSync,writeFileSync,readdirSync,statSync} from "node:fs
 import {join} from "node:path";
 import {parseCanonical195Codes,rollupCountry195Proofs}
  from "../lib/country-195-proof-rollup.mjs";
+import {CONTINENT_COUNTRIES_195,CONTINENTS_195,
+ assertContinentCanonical195} from "../lib/continent-country-195-rotation.mjs";
 
 const REPO="blocknine0/geomacro",TOKEN=process.env.GH_TOKEN;
 if(process.env.GITHUB_REPOSITORY!==REPO||!TOKEN||TOKEN.length<20)
@@ -30,13 +32,33 @@ function locate(dir,depth=0){
  }
  return null;
 }
-const list=await github("/actions/workflows/live-on-demand-source-acceptance.yml/runs?per_page=100&event=schedule&branch=main");
-if(!Array.isArray(list.workflow_runs))throw Error("COUNTRY_195_RUN_HISTORY_INVALID");
+// Six independent 2h source runners now own the actual country network
+// checks. Read each *separate* continent workflow's successful recent
+// artifacts. Up to one full geography sweep per continent is needed;
+// never infer global 195 completion from 195 configured route codes.
+const canonicalText=readFileSync("src/lib/canonical-country-registry-195.ts","utf8");
+assertContinentCanonical195(canonicalText);
 const now=new Date(),epoch=Date.parse("2026-10-22T00:00:00Z");
-const runs=list.workflow_runs.filter(r=>r?.event==="schedule"&&r?.conclusion==="success"&&
- r?.head_branch==="main"&&Number.isSafeInteger(r.id)&&
- Date.parse(r.created_at)>=epoch&&
- Date.parse(r.created_at)>=now.getTime()-90*86400_000).slice(0,70);
+const selected=[];
+const laneStatus={};
+for(const continent of CONTINENTS_195){
+ const workflow="continent-country-"+continent+"-2h.yml";
+ const list=await github("/actions/workflows/"+workflow+
+   "/runs?per_page=100&event=schedule&branch=main");
+ if(!Array.isArray(list.workflow_runs))throw Error("COUNTRY_195_CONTINENT_RUN_HISTORY_INVALID");
+ const good=list.workflow_runs.filter(r=>r?.event==="schedule"&&
+   r?.conclusion==="success"&&r?.head_branch==="main"&&
+   Number.isSafeInteger(r.id)&&
+   Date.parse(r.created_at)>=epoch&&
+   Date.parse(r.created_at)>=now.getTime()-14*86400_000);
+ const cap=CONTINENT_COUNTRIES_195[continent].length;
+ selected.push(...good.slice(0,cap).map(r=>({...r,_continent:continent})));
+ laneStatus[continent]={known_countries:cap,
+   scheduled_success_runs_in_recent_window:good.length,
+   checkpoint_candidates_selected:Math.min(good.length,cap)};
+}
+if(selected.length>195)throw Error("COUNTRY_195_CONTINENT_RUN_SELECTION_OVERFLOW");
+const runs=selected;
 const root="artifacts/country-195/private-rollup-tmp";
 mkdirSync(root,{recursive:true,mode:0o700});
 const reports=[];let missingArtifacts=0,downloadUnavailable=0;
@@ -56,10 +78,13 @@ for(const run of runs){
  if(!file||statSync(file).size>500000)throw Error("COUNTRY_195_DOWNLOADED_PROOF_MISSING");
  reports.push(JSON.parse(readFileSync(file,"utf8")));
 }
-const known=parseCanonical195Codes(
- readFileSync("src/lib/canonical-country-registry-195.ts","utf8"));
+const known=parseCanonical195Codes(canonicalText);
 const audit=rollupCountry195Proofs(reports,known,{now});
 const receipt={...audit,scheduled_runs_seen:runs.length,
+ schedule_mode:"SIX_INDEPENDENT_CONTINENT_COUNTRY_TWO_HOUR_ROTATIONS",
+ continent_source_lanes:laneStatus,
+ planned_sweep_hours_max:108,
+ provider_api_quota_globally_verified:false,
  missing_artifacts:missingArtifacts,download_unavailable:downloadUnavailable,
  archive_backed_input_only:true,upstream_source_requests:0,
  historical_probe_success_does_not_prove_today_reachability:true};

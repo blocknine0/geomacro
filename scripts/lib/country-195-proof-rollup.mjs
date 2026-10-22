@@ -12,7 +12,7 @@ export function parseCanonical195Codes(source){
  return rows;
 }
 export function rollupCountry195Proofs(reports,knownCodes,{now=new Date()}={}){
- if(!Array.isArray(reports)||reports.length>75||
+ if(!Array.isArray(reports)||reports.length>195||
     !Array.isArray(knownCodes)||knownCodes.length!==195||
     new Set(knownCodes).size!==195||
     !(now instanceof Date)||!Number.isFinite(now.getTime()))fail();
@@ -102,7 +102,9 @@ export function rollupCountry195Proofs(reports,knownCodes,{now=new Date()}={}){
   complete_195x3_current_live_original_coverage_verified:currentVerified===585,
   cells,repair_queue:cells.filter(c=>!c.current_original_proof_verified),
   repair_queue_is_not_automatic_unbounded_source_polling:true,
-  proof_window_days:90,nominal_calendar_sweep_days:65,
+  proof_window_days:90,nominal_calendar_sweep_days:null,
+  active_continent_two_hour_sweep_max_hours:108,
+  continent_195_route_configuration_is_not_actual_source_proofs:true,
   proof_reports_accepted:acceptedRuns,category_coverage:categories,
   publisher_reachable_does_not_mean_current_news:true,
   unsigned_and_rights_unverified_by_this_audit:true,

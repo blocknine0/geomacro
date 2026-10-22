@@ -39,6 +39,11 @@ on:
       - "scripts/lib/country-195-daily-rotation.mjs"
       - "scripts/ops/plan-country-195-daily-rotation.mjs"
       - "scripts/tests/country-195-daily-rotation.test.mjs"
+      - "scripts/lib/continent-country-195-rotation.mjs"
+      - "scripts/ops/plan-continent-country-195-rotation.mjs"
+      - "scripts/tests/continent-country-195-rotation.test.mjs"
+      - ".github/workflows/continent-country-original-probe-reusable.yml"
+      - ".github/workflows/continent-country-*-2h.yml"
       - "scripts/ops/export-canonical-195-country-matrix.ts"
       - "src/lib/on-demand-fed-board-discount-release.server.ts"
       - "scripts/ops/verify-live-fed-board-private-finding.ts"
@@ -71,6 +76,11 @@ on:
       - "scripts/lib/country-195-daily-rotation.mjs"
       - "scripts/ops/plan-country-195-daily-rotation.mjs"
       - "scripts/tests/country-195-daily-rotation.test.mjs"
+      - "scripts/lib/continent-country-195-rotation.mjs"
+      - "scripts/ops/plan-continent-country-195-rotation.mjs"
+      - "scripts/tests/continent-country-195-rotation.test.mjs"
+      - ".github/workflows/continent-country-original-probe-reusable.yml"
+      - ".github/workflows/continent-country-*-2h.yml"
       - "scripts/ops/export-canonical-195-country-matrix.ts"
       - "src/lib/on-demand-fed-board-discount-release.server.ts"
       - "scripts/ops/verify-live-fed-board-private-finding.ts"
@@ -82,7 +92,7 @@ on:
       - "scripts/ops/phase2-production-no-funds-readback.mjs"
       - "src/lib/on-demand-provider-category-proof.test.ts"
   schedule:
-    # Once per day: max 12 discovery + 4 original-page read-only calls; no B2/D1/funding.
+    # Daily shared API acceptance only, country scan moved to 6 2h continent workflows.
     - cron: "23 8 * * *"
 
 permissions:
@@ -131,16 +141,20 @@ jobs:
           bun scripts/ops/export-canonical-195-country-matrix.ts
           bunx vitest run src/lib/country-195-batch-evidence.test.ts
           bun scripts/ops/verify-live-fed-board-private-finding.ts
-      # Existing once-daily original API acceptance owns the rotating probe.
+      # Manual explicit source-acceptance only; 6 continent workflows own cron.
       # One canonical three-category request per country, <=12 discovery GETs
       # and <=4 original-page reads PER COUNTRY (max three countries/run).
       # No separate cron or B2/Supabase/D1 intake.
       # PR runners never run this optional additional network probing stage.
-      # Country batch probes run only on daily schedule or explicit dispatch.
+      # Country batch probes here run only on explicit dispatch.
       # A push never repeats the same national source probe/quota window.
       - name: Offline country calendar rotation invariant
         run: node --test scripts/tests/country-195-daily-rotation.test.mjs
-      - name: Select deterministic daily country batch (no source requests)
+      - name: Select deterministic manual country batch (no duplicate scheduled source requests)
+        # 6 geographically isolated two-hour workflows now own the scheduled
+        # 195-country original scans. Keep this workflow's daily GLOBAL API
+        # health checks, but do not duplicate countries and provider quota.
+        if: github.event_name == 'workflow_dispatch'
         id: country_rotation
         env:
           REQUESTED_START: ${{ inputs.country_batch_start }}
@@ -236,7 +250,7 @@ jobs:
           if high:sys.exit(4)
           PY
       - name: Exact 195-country rotation and 250-area crosswalk offline tests
-        run: node --test scripts/tests/country-195-daily-rotation.test.mjs scripts/tests/free-three-domain-country-gap-audit.test.mjs
+        run: node --test scripts/tests/country-195-daily-rotation.test.mjs scripts/tests/continent-country-195-rotation.test.mjs scripts/tests/free-three-domain-country-gap-audit.test.mjs
       - name: Private evidence bridge regression checks
         run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts
       - name: Real no-charge per-category provider readback

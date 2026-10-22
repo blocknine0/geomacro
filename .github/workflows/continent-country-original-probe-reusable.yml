@@ -1,0 +1,72 @@
+name: Reusable Continent Country Original Evidence Probe (No Funds)
+
+# Called ONLY by one of the six geographically isolated cron workflows.
+# A source probe does NOT certify fresh news or signed commercial data.
+on:
+  workflow_call:
+    inputs:
+      continent:
+        description: "One of the fixed 6 continent groups"
+        required: true
+        type: string
+      country_iso3:
+        description: "Optional manual country ISO3, must belong to this continent"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+# Global serialization across the six geographic lanes; GitHub permits
+# only one running + one pending in a group, so scheduled cron offsets are
+# deliberately 20 minutes apart. Each source job is bounded to 9 minutes. A superseded pending run remains a GAP,
+# never counted as tested source evidence.
+concurrency:
+  group: geomacro-continent-country-six-lanes-protected-sources
+  cancel-in-progress: false
+
+jobs:
+  one-country-three-domain-source-readback:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+      - name: Install exact locked source dependencies without install scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify canonical 195-country disjoint partition and strict two-hour source budget
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/continent-country-195-rotation.mjs
+          node --check scripts/ops/plan-continent-country-195-rotation.mjs
+          node --test scripts/tests/continent-country-195-rotation.test.mjs
+      - name: Select exactly one scheduled ISO3 for this continent
+        id: continent_plan
+        env:
+          GEOMACRO_CONTINENT: ${{ inputs.continent }}
+          GEOMACRO_REQUESTED_COUNTRY: ${{ inputs.country_iso3 }}
+        run: node scripts/ops/plan-continent-country-195-rotation.mjs
+      - name: Read existing real country-source originals across three categories without money
+        env:
+          GEOMACRO_COUNTRY_BATCH_START: ${{ steps.continent_plan.outputs.batch_start }}
+          GEOMACRO_COUNTRY_BATCH_COUNT: "1"
+          GEOMACRO_EXPECTED_COUNTRY_ISO3: ${{ steps.continent_plan.outputs.expected_country }}
+          GEOMACRO_CONTINENT: ${{ steps.continent_plan.outputs.continent }}
+        run: bun scripts/ops/verify-live-195-country-batch.ts
+      - name: Persist exact bounded private source-only country artifact
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: live-country-195-resume-${{ github.run_id }}
+          path: artifacts/country-195/live-batch-checkpoint.v1.json
+          retention-days: 14
+          if-no-files-found: warn

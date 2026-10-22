@@ -1,0 +1,27 @@
+name: South America Country Source Sweep (Every 2 Hours)
+
+# Globally staggered exactly 20 UTC minutes apart, one continent at a time.
+# 1 canonical ISO3 per 2h; a full South America loop visits each country once.
+# The 3 product categories share a single bounded source network probe.
+# No raw article publication, rights waiver, B2, D1, Supabase or payments.
+on:
+  schedule:
+    - cron: '24 1-23/2 * * *'
+  workflow_dispatch:
+    inputs:
+      country_iso3:
+        description: 'Optional exact canonical ISO3 INSIDE South America (blank rotates)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  live-continent-country-source:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/continent-country-original-probe-reusable.yml
+    with:
+      continent: 'south_america'
+      country_iso3: ${{ inputs.country_iso3 || '' }}

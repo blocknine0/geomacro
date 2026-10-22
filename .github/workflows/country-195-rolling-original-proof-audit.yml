@@ -10,6 +10,11 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/country-195-rolling-original-proof-audit.yml"
+      - "scripts/lib/continent-country-195-rotation.mjs"
+      - "scripts/ops/plan-continent-country-195-rotation.mjs"
+      - "scripts/tests/continent-country-195-rotation.test.mjs"
+      - ".github/workflows/continent-country-original-probe-reusable.yml"
+      - ".github/workflows/continent-country-*-2h.yml"
       - "scripts/lib/country-195-proof-rollup.mjs"
       - "scripts/ops/aggregate-country-195-proofs.mjs"
       - "scripts/tests/country-195-proof-rollup.test.mjs"
@@ -19,6 +24,11 @@ on:
   pull_request:
     paths:
       - ".github/workflows/country-195-rolling-original-proof-audit.yml"
+      - "scripts/lib/continent-country-195-rotation.mjs"
+      - "scripts/ops/plan-continent-country-195-rotation.mjs"
+      - "scripts/tests/continent-country-195-rotation.test.mjs"
+      - ".github/workflows/continent-country-original-probe-reusable.yml"
+      - ".github/workflows/continent-country-*-2h.yml"
       - "scripts/lib/country-195-proof-rollup.mjs"
       - "scripts/ops/aggregate-country-195-proofs.mjs"
       - "scripts/tests/country-195-proof-rollup.test.mjs"
@@ -49,6 +59,9 @@ jobs:
         run: |
           node --check scripts/lib/country-195-proof-rollup.mjs
           node --check scripts/ops/aggregate-country-195-proofs.mjs
+          node --check scripts/lib/continent-country-195-rotation.mjs
+          node --check scripts/ops/plan-continent-country-195-rotation.mjs
+          node --test scripts/tests/continent-country-195-rotation.test.mjs
           node --test scripts/tests/country-195-proof-rollup.test.mjs
           node --check scripts/lib/reconcile-country-195-publication.mjs
           node --check scripts/ops/audit-country-195-source-website.mjs
