@@ -15,6 +15,15 @@ export function checkCurrentOwnerSignedReady({env=process.env,now=new Date(),all
  const envelope=env.GEOMACRO_OWNER_HUMAN_SIGNED_ENVELOPE_B64||"";
  if(allowEmpty&&(!envelope||!SHA.test(reviewedSha)||!SHA.test(certSha)))
    return {status:"AWAITING_REAL_HUMAN_SIGNED_INPUT",approved:false};
+ // A 90min human signature MUST NOT be reused as if signed recently.
+ // Existing signed-input hints expire in 28min. For scheduled runs, skip
+ // without a network call or spamming failed jobs once the pointer expires.
+ if(allowEmpty){
+   const readyAt=Date.parse(env.GRI_READY_APPROVED_AT??"");
+   if(!Number.isFinite(readyAt)||readyAt>now.getTime()||
+      now.getTime()-readyAt>=28*60_000)
+     return {status:"STALE_OR_MISSING_HUMAN_SIGNED_READY_HINT",approved:false};
+ }
  const result=verifyPallabSignedReadyGate({
    ownerEnvelopeBase64:envelope,
    ownerPublicKeyPem:env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM,
