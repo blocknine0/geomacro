@@ -63,6 +63,11 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
           test "${#ROOT_LEDGER_TOKEN}" -ge 32 || { echo "GEOMACRO_COMMERCE_LEDGER_TOKEN must be at least 32 characters"; exit 2; }
 
+      - name: Set up Node 24 for shared TypeScript signature verification
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+
       - name: Test all-news signed publication integrity and source-proof boundaries offline
         run: node --test scripts/tests/public-signed-news.test.mjs
 

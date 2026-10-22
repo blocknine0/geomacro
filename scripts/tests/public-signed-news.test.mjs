@@ -100,7 +100,7 @@ test('a self-supplied public key never replaces the independently registered sig
  const f=await fixture();const another=generateKeyPairSync('ed25519');
  await assert.rejects(()=>verifyAllNewsSignedPublications({keys:{issuer:another.publicKey.export({format:'der',type:'spki'}).toString('base64')},now,fetchImpl:f.fetchImpl,readJournal:async()=>[signal()]}));
 });
-test('revoked issuer, mismatched stored identities and stale source-review signatures cannot qualify',async()=>{
+test('revoked issuer and mismatched stored identities cannot qualify',async()=>{
  const f=await fixture(),id=await automatedInputId(signal());
  const revoked=JSON.parse(f.env.AUTOMATED_FINDS_VERIFY_KEYS_JSON);revoked.issuer.status='revoked';
  f.env.AUTOMATED_FINDS_VERIFY_KEYS_JSON=JSON.stringify(revoked);
