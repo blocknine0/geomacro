@@ -64,45 +64,67 @@ test("one official GET and provider-denial fail closed",async()=>{
  await assert.rejects(()=>observeWdiLastNonempty({now,missingIso3,fetchImpl:async()=>new Response("x",{headers:{"content-length":"900000"}})}),/BODY_LIMIT/);
 });
 
-test("33 real WDI missing countries are split 17/16 within exactly two additional free GETs",()=>{
+
+test("33 missing WDI countries rotate across two UTC days, only one extra free GET per day",()=>{
  const all=/const COUNTRY_ROWS=`([^`]+)`/u.exec(registrySource)[1].trim()
    .split("\n").map(x=>x.split("|")[0]);
  const missing=all.slice(0,33);
- const plan=planWdiMissingCountryBatches(missing,registrySource);
- assert.deepEqual(plan.batches.map(x=>x.length),[17,16]);
- assert.equal(plan.max_extra_source_calls,2);
- assert.equal(plan.unprobed_country_count,0);
- assert.deepEqual(plan.batches.flat(),[...missing].sort());
- const reports=plan.batches.map(batch=>inspectWdiLastNonempty([
-   {page:1,pages:1,total:batch.length*2},
-   batch.flatMap(iso3=>[
-     {countryiso3code:iso3,indicator:{id:"FP.CPI.TOTL.ZG"},date:"2024",value:2.5},
-     {countryiso3code:iso3,indicator:{id:"NY.GDP.MKTP.KD.ZG"},date:"2023",value:1.1}
-   ])
- ],{now,registrySource,missingIso3:batch}));
- const merged=combineWdiMissingCountryBatches(plan,reports);
- assert.equal(merged.status,"OFFICIAL_HISTORICAL_PERIODS_OBSERVED");
- assert.equal(merged.actually_queried_missing_countries,33);
- assert.equal(merged.not_yet_queried_missing_countries,0);
- assert.equal(merged.observed_source_requests,2);
- assert.equal(merged.target_country_reference_years_by_indicator["FP.CPI.TOTL.ZG"].length,33);
- assert.equal(merged.verified_current_195x3_country_domain_events,false);
- assert.equal(merged.paid_delivery_enabled,false);
- assert.doesNotMatch(JSON.stringify(merged),/2\.5|1\.1/);
+ const a=planWdiMissingCountryBatches(missing,registrySource,new Date("2026-10-22T02:00:00Z"));
+ const b=planWdiMissingCountryBatches(missing,registrySource,new Date("2026-10-23T02:00:00Z"));
+ assert.equal(a.max_extra_source_calls,1);
+ assert.equal(b.max_extra_source_calls,1);
+ assert.equal(a.batches.length,1);assert.equal(b.batches.length,1);
+ assert.deepEqual([a.batches[0].length,b.batches[0].length].sort((x,y)=>x-y),[16,17]);
+ assert.deepEqual([...a.batches[0],...b.batches[0]].sort(),[...missing].sort());
+ assert.equal(a.rotation_slots,2);assert.equal(b.rotation_slots,2);
+ assert.notEqual(a.rotation_slot,b.rotation_slot);
+ for(const plan of [a,b]){
+   const batch=plan.batches[0];
+   const report=inspectWdiLastNonempty([
+      {page:1,pages:1,total:batch.length*2},
+      batch.flatMap(iso3=>[
+        {countryiso3code:iso3,indicator:{id:"FP.CPI.TOTL.ZG"},date:"2024",value:2.5},
+        {countryiso3code:iso3,indicator:{id:"NY.GDP.MKTP.KD.ZG"},date:"2023",value:1.1}
+      ])
+    ],{now,registrySource,missingIso3:batch});
+   const merged=combineWdiMissingCountryBatches(plan,[report]);
+   assert.equal(merged.status,"PARTIAL_HISTORICAL_GAP_OBSERVATION");
+   assert.equal(merged.actually_queried_missing_countries,batch.length);
+   assert.equal(merged.not_yet_queried_missing_countries,33-batch.length);
+   assert.equal(merged.observed_source_requests,1);
+   assert.equal(merged.verified_current_195x3_country_domain_events,false);
+   assert.equal(merged.paid_delivery_enabled,false);
+   assert.doesNotMatch(JSON.stringify(merged),/2\.5|1\.1/);
+ }
 });
-test("partial World Bank 403/429 stops same-provider batch and never claims all missing found",()=>{
+test("single-UTC-day <=17 country official WDI lookup can be fully verified",()=>{
  const all=/const COUNTRY_ROWS=`([^`]+)`/u.exec(registrySource)[1].trim()
-  .split("\n").map(x=>x.split("|")[0]);
- const plan=planWdiMissingCountryBatches(all.slice(0,33),registrySource);
+   .split("\n").map(x=>x.split("|")[0]);
+ const plan=planWdiMissingCountryBatches(all.slice(0,3),registrySource,now);
+ const r=inspectWdiLastNonempty([{page:1,pages:1,total:0},[]],
+   {now,registrySource,missingIso3:plan.batches[0]});
+ const merged=combineWdiMissingCountryBatches(plan,[r]);
+ assert.equal(merged.status,"OFFICIAL_HISTORICAL_PERIODS_OBSERVED");
+ assert.equal(merged.actually_queried_missing_countries,3);
+ assert.equal(merged.not_yet_queried_missing_countries,0);
+});
+test("provider 403/429 stops same-provider day and 40 missing codes rotate fairly over three days",()=>{
+ const all=/const COUNTRY_ROWS=`([^`]+)`/u.exec(registrySource)[1].trim()
+   .split("\n").map(x=>x.split("|")[0]);
+ const plan=planWdiMissingCountryBatches(all.slice(0,33),registrySource,now);
  const failed=combineWdiMissingCountryBatches(plan,[],{failure:"WDI_BACKFILL_DENIED_OR_QUOTA"});
  assert.equal(failed.status,"UNVERIFIED_OR_UNAVAILABLE");
  assert.equal(failed.observed_source_requests,1);
  assert.equal(failed.actually_queried_missing_countries,0);
  assert.equal(failed.not_yet_queried_missing_countries,33);
- const tooMany=planWdiMissingCountryBatches(all.slice(0,40),registrySource);
- assert.equal(tooMany.unprobed_country_count,6);
- assert.equal(tooMany.all_requested_gaps_checked,false);
- assert.equal(tooMany.batches.flat().length,34);
+ const seen=[];
+ for(let day=0;day<3;day++){
+   const x=planWdiMissingCountryBatches(all.slice(0,40),registrySource,
+      new Date(Date.UTC(2026,9,21+day)));
+   assert.equal(x.max_extra_source_calls,1);
+   seen.push(...x.batches[0]);
+ }
+ assert.deepEqual(seen.sort(),all.slice(0,40).sort());
  assert.throws(()=>planWdiMissingCountryBatches(["EAS"],registrySource),/TARGET_INVALID/);
  assert.throws(()=>planWdiMissingCountryBatches(["IND","IND"],registrySource),/TARGET_INVALID/);
 });
