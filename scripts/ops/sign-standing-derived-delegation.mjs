@@ -25,7 +25,7 @@ const readJson=p=>JSON.parse(readFileSync(requirePath(p),"utf8"));
 const write=(p,obj)=>writeFileSync(outPath(p),JSON.stringify(obj,null,2)+"\n",
  {flag:"wx",mode:0o600});
 const pin=pem=>createHash("sha256")
- .update(createPublicKey(pem).export({type:"spki",format:"der"})).digest("hex");
+ .update((pem?.type==="public"?pem:createPublicKey(pem)).export({type:"spki",format:"der"})).digest("hex");
 async function main(env=process.env){
  if(!process.stdin.isTTY||!process.stdout.isTTY||
   env.GITHUB_ACTIONS==="true"||env.CI==="true"||process.argv.length!==3)fail();
