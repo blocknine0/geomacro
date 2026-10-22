@@ -27,8 +27,9 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).toContain("https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-html");
     // Underlying requests can settle after the UI timed out; no mutation
     // to upstream source clocks, credits, public scores, or private storage.
-    expect(desk).toContain("parseReaderPreferences(localStorage.getItem(READER_PREFERENCES_KEY))");
-    expect(desk).toContain("JSON.stringify({ category: view, savedIds, lastVisit: visitStarted.current })");
+    expect(desk).not.toContain("localStorage");
+    expect(desk).toContain("loadReaderPreferences()");
+    expect(desk).toContain("saveReaderPreferences({ category: view, savedIds, lastVisit: visitStarted.current })");
     expect(desk).not.toContain("sessionStorage");
   });
 });

@@ -8,7 +8,7 @@ import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
 import type { StatelessCategory, StatelessIntelligenceSignal } from "@/lib/stateless-intelligence-model";
 
-import { parseReaderPreferences, READER_PREFERENCES_KEY } from "@/lib/reader-preferences";
+import { loadReaderPreferences, saveReaderPreferences } from "@/lib/reader-preferences";
 
 const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
   { key: "geopolitics", label: "Geopolitics" },
@@ -108,7 +108,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
   useEffect(() => {
     visitStarted.current = Date.now();
     try {
-      const reader = parseReaderPreferences(localStorage.getItem(READER_PREFERENCES_KEY));
+      const reader = loadReaderPreferences();
       if (initialView === "all") setView(reader.category);
       setSavedIds(reader.savedIds);
       setLastVisit(reader.lastVisit);
@@ -120,7 +120,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
   }, [initialView]);
   useEffect(() => {
     if (!readerReady) return;
-    try { localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify({ category: view, savedIds, lastVisit: visitStarted.current })); }
+    try { saveReaderPreferences({ category: view, savedIds, lastVisit: visitStarted.current }); }
     catch { /* Private browsing and storage limits must not block reading. */ }
   }, [view, savedIds, readerReady]);
   const toggleSaved = (id: string) => setSavedIds(ids => ids.includes(id) ? ids.filter(value => value !== id) : [id, ...ids].slice(0, 200));

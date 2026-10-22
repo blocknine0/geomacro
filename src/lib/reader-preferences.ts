@@ -35,3 +35,16 @@ export function parseReaderPreferences(raw: string | null, now = Date.now()): Re
     return fallback;
   }
 }
+
+/** Persist only validated reader metadata; never serialize a source/feed object. */
+export function loadReaderPreferences(): ReaderPreferences {
+  try { return parseReaderPreferences(localStorage.getItem(READER_PREFERENCES_KEY)); }
+  catch { return parseReaderPreferences(null); }
+}
+export function saveReaderPreferences(value: ReaderPreferences): void {
+  const metadata = parseReaderPreferences(JSON.stringify({
+    category: value.category, savedIds: value.savedIds, lastVisit: value.lastVisit,
+  }));
+  try { localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify(metadata)); }
+  catch { /* Private browsing or storage limits must not block reading. */ }
+}
