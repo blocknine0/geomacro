@@ -72,7 +72,7 @@ function writeSafeBackupReceipt(receipt){
  };
  mkdirSync("artifacts/derived-news",{recursive:true,mode:0o700});
  writeFileSync("artifacts/derived-news/b2-archive-verified-readback.json",
-  JSON.stringify(safe,null,2)+"\\n",{mode:0o600});
+  JSON.stringify(safe,null,2)+"\n",{mode:0o600});
  return safe;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
