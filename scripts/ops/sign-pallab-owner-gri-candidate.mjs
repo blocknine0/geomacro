@@ -79,8 +79,8 @@ async function run(env=process.env){
   if(confirm!=="APPROVE EXACT OWNER REVIEW")fail("HUMAN_DECLINED");
  }finally{rl.close();}
  const envelope=signOwnerReviewedCandidate({
-  privateKey:readFileSync(key),publicKeyPem:env.GEOMACRO_OWNER_PUBLIC_KEY_PEM,
-  publicKeySpkiSha256:env.GEOMACRO_OWNER_PUBLIC_KEY_SHA256,
+  privateKey:readFileSync(key),publicKeyPem:env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM,
+  publicKeySpkiSha256:env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256,
   candidateSha256,evidenceSha256,nonceHex:randomBytes(16).toString("hex")
  });
  writeFileSync(outPath,JSON.stringify(envelope,null,2)+"\n",
