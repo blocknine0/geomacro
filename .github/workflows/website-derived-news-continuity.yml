@@ -369,11 +369,14 @@ jobs:
     # Dedicated red/green storage job: B2 failure must not hide inside a
     # successful hourly public newsroom workflow, nor stop the D1 website.
     needs: refresh-derived-news
+    # Independently archive only the VALID 72h public D1 journal even if
+    # unrelated signed-Finds, website SHA or GRI checks failed earlier.
+    # Source scope / 15min delay / 72h must pass again before any B2 PUT.
     if: >-
+      always() &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name != 'pull_request' &&
-      needs.refresh-derived-news.result == 'success'
+      github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     environment: production
