@@ -3,20 +3,33 @@ on:
   pull_request:
     paths:
       - "scripts/ops/inspect-predge-public-verification.mjs"
-      - ".github/workflows/predge-signed-market-public-verification.yml"
       - "scripts/ops/verify-predge-signed-market.mjs"
       - "scripts/ops/verify-predge-signed-market.test.mjs"
+      - "scripts/ops/verify-predge-key-rotation.mjs"
+      - "scripts/ops/verify-predge-key-rotation.test.mjs"
+      - ".github/workflows/predge-signed-market-public-verification.yml"
   push:
     branches: [main]
     paths:
       - "scripts/ops/inspect-predge-public-verification.mjs"
+      - "scripts/ops/verify-predge-signed-market.mjs"
+      - "scripts/ops/verify-predge-signed-market.test.mjs"
+      - "scripts/ops/verify-predge-key-rotation.mjs"
+      - "scripts/ops/verify-predge-key-rotation.test.mjs"
       - ".github/workflows/predge-signed-market-public-verification.yml"
+  workflow_dispatch: {}
+  schedule:
+    # Recheck when Predge eventually re-signs the known public market.
+    - cron: "37 3,9,15,21 * * *"
 permissions:
   contents: read
+concurrency:
+  group: predge-public-market-independent-verifier
+  cancel-in-progress: false
 jobs:
   inspect-public-contract:
     runs-on: ubuntu-24.04
-    timeout-minutes: 4
+    timeout-minutes: 5
     env:
       SUPABASE_DB_URL: ""
       CLOUDFLARE_API_TOKEN: ""
@@ -29,19 +42,20 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
-      - name: Inspect only the four exact public URLs Amir supplied
+      - name: Inspect only Amir's exact public endpoints
         run: |
           set -euo pipefail
           node --check scripts/ops/inspect-predge-public-verification.mjs
           node scripts/ops/inspect-predge-public-verification.mjs
-      - name: Strict offline crypto and tamper/revoked-key tests
+      - name: Offline crypto, tamper and revoked-key tests
         run: |
           set -euo pipefail
           node --check scripts/ops/verify-predge-signed-market.mjs
-          node --test scripts/ops/verify-predge-signed-market.test.mjs
-      - name: Independently verify Amir's public signed market 5710779, active key and all three signatures
+          node --check scripts/ops/verify-predge-key-rotation.mjs
+          node --test scripts/ops/verify-predge-signed-market.test.mjs scripts/ops/verify-predge-key-rotation.test.mjs
+      - name: Live key rotation and all three signatures
         run: |
           set -euo pipefail
-          node scripts/ops/verify-predge-signed-market.mjs
-      - name: No source rights, payment, private key or real-money production action
-        run: echo "PREDGE_PUBLIC_DOC_INSPECTION_ONLY_NO_FUNDS"
+          node scripts/ops/verify-predge-key-rotation.mjs
+      - name: No payments, signing, GRO issuance or execution
+        run: echo "PREDGE_PUBLIC_NO_FUNDS_INTEGRITY_VERIFIED_ONLY"
