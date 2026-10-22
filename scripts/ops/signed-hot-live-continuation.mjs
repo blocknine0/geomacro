@@ -28,6 +28,17 @@ export function planSignedHotContinuation(report) {
    public_signed_proof_verified:false,
   });
  }
+ // The child is never independently eligible when its signed scored GRI
+ // parent is absent, expired or outside the live source window. An apparently
+ // fresh child D1 timestamp is not a proof of a current parent.
+ const griParentLive=!out["global-risk"].live_source_renewal_due;
+ if(!griParentLive&&out["risk-indices"].live_source_renewal_due===false){
+   out["risk-indices"]=Object.freeze({
+     ...out["risk-indices"],
+     state:"WAITING_FOR_CURRENT_SIGNED_GRI_PARENT",
+     live_source_renewal_due:true,
+   });
+ }
  const blocking=[];
  if(out.intelligence.live_source_renewal_due)blocking.push("AUTHENTIC_DUAL_SIGNED_FACTS_RIGHTS_INTELLIGENCE_INPUT_REQUIRED");
  if(out["global-risk"].live_source_renewal_due)blocking.push("AUTHENTIC_REVIEWED_GRI_AND_CERTIFIED_COUNTRY_CATEGORY_SCORES_REQUIRED");
