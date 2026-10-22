@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {planBoundedGroqBrowserSearch,validateGroqBrowserLeadText,
- groqBrowserResearchForMissingOfficial} from "./groq-browser-live-fallback.mjs";
+ groqBrowserResearchForMissingOfficial,reserveBoundedFreeBrowserSlot} from "./groq-browser-live-fallback.mjs";
 const NOW=new Date("2026-10-22T12:00:00Z");
 const fixture={
  schema:"geomacro.groq.browser-research-leads.v1",
@@ -47,12 +47,12 @@ test("Groq search only receives fixed country/category scope, NOT customer quest
  assert.equal(Object.hasOwn(result.leads[0],"source_domain"),false);
  assert.equal(result.leads[0].source_claim_fingerprint.length,64);
 });
-test("missing owner browser-search free-tier approval or Groq key yields ZERO calls",async()=>{
+test("missing existing key or explicit runtime opt-out yields ZERO browser calls",async()=>{
  let calls=0;
  for(const env of [
   {},{...flags,GROQ_API_KEY:""},
-  {...flags,GROQ_BROWSER_SEARCH_ENABLED:""},
-  {...flags,GROQ_BROWSER_SEARCH_FREE_QUOTA_ACK:""}
+  {...flags,GROQ_BROWSER_SEARCH_ENABLED:"0"},
+  {...flags,GROQ_BROWSER_SEARCH_FREE_QUOTA_ACK:"DENY"}
  ]){
   const answer=await groqBrowserResearchForMissingOfficial({
    categories:["GEOPOLITICS"],now:NOW,env,
@@ -61,6 +61,33 @@ test("missing owner browser-search free-tier approval or Groq key yields ZERO ca
   assert.equal(answer,null);
  }
  assert.equal(calls,0);
+});
+test("owner-confirmed Free Plan uses existing Groq key even without Lovable variable edits",async()=>{
+ let calls=0;
+ const out=await groqBrowserResearchForMissingOfficial({
+  categories:["MACRO"],now:NOW,env:{GROQ_API_KEY:token},
+  fetchImpl:async()=>{
+   calls++;
+   return {status:200,json:async()=>({choices:[{message:{content:JSON.stringify(fixture)}}]})};
+  }
+ });
+ assert.equal(calls,1);
+ assert.equal(out.leads.length,1);
+ assert.equal(out.paid_x402_authorized,false);
+ assert.equal(out.legal_commercial_rights_verified,false);
+});
+test("bounded Free Plan budget refuses requests after hourly/daily allowance",()=>{
+ const b={hourStart:0,hourCount:0,dayStart:0,dayCount:0};
+ const now=NOW.getTime();
+ for(let n=0;n<6;n++)assert.equal(reserveBoundedFreeBrowserSlot(now,b),true);
+ assert.equal(reserveBoundedFreeBrowserSlot(now,b),false);
+ assert.equal(reserveBoundedFreeBrowserSlot(now+3600_000,b),true);
+ for(let hour=2;hour<=6;hour++){
+  assert.equal(reserveBoundedFreeBrowserSlot(now+hour*3600_000,b),true);
+ }
+ // Values are exact 6+1+5 = 12; new hour but same UTC day budget closed.
+ assert.equal(reserveBoundedFreeBrowserSlot(now+7*3600_000,b),false);
+ assert.equal(reserveBoundedFreeBrowserSlot(now+24*3600_000,b),true);
 });
 test("model snippets never auto certify event, date, licence or risk score",()=>{
  const leads=validateGroqBrowserLeadText(JSON.stringify(fixture),
