@@ -10,7 +10,9 @@ const sample=JSON.stringify({schema:"geomacro.groq.browser-research-leads.v1",
   what_changed:"A recent official report describes material monetary policy developments for economic monitoring.",
   why_it_matters:"The new statement may affect expectations, but the exact primary source is not yet authenticated.",
   source_domain:"example.gov",source_date:"2026-10-22"}]});
-const response=content=>({status:200,json:async()=>({choices:[{message:{content}}]})});
+const response=content=>({status:200,json:async()=>({choices:[{message:{
+ content,executed_tools:[{type:"browser_search"}]
+}}]})});
 test("actual browser response direct strict output remains honest without exposing source or key",async()=>{
  let calls=0;
  const result=await runProtectedGroqBrowserAcceptance({env,now,realFetch:async()=>{
@@ -42,6 +44,14 @@ test("strict schema empty list accepted as NO FRESH EVIDENCE, not invented intel
  const x=await runProtectedGroqBrowserAcceptance({env,now,realFetch:async()=>response(empty)});
  assert.equal(x.accepted_provisional_leads,0);
  assert.equal(x.signed_commercial_intelligence,false);
+});
+test("fake structured JSON without actual Groq browser tool execution is NOT accepted",async()=>{
+ let calls=0;
+ const fake={status:200,json:async()=>({choices:[{message:{content:sample,executed_tools:[]}}]})};
+ await assert.rejects(runProtectedGroqBrowserAcceptance({env,now,
+  realFetch:async()=>{calls++;return fake;}
+ }),/GROQ_BROWSER_LIVE_STRICT_ACCEPTANCE_NOT_VERIFIED/);
+ assert.equal(calls,1);
 });
 test("bad key/scope, 429, invalid conversion or invalid final leads fail-closed",async()=>{
  let calls=0;
