@@ -74,7 +74,8 @@ function approvedKey(pem,pin){
  return key;
 }
 export function validateDelegation(envelope,{ownerPem,ownerPin,reviewerPem,reviewerPin,
- machinePem,machinePin,otherAuthorityPins=[],enabled,revoked,now=new Date()}={}){
+ machinePem,machinePin,otherAuthorityPins=[],allowOwnerFactsReuse=false,
+ enabled,revoked,now=new Date()}={}){
  if(enabled!==ENABLE||revoked==="YES")refuse("DISABLED_OR_REVOKED");
  if(!exact(envelope,["schema","policy","approvals"])||
    envelope.schema!==ENVELOPE_SCHEMA||
@@ -84,9 +85,17 @@ export function validateDelegation(envelope,{ownerPem,ownerPin,reviewerPem,revie
  const owner=approvedKey(ownerPem,ownerPin);
  const reviewer=approvedKey(reviewerPem,reviewerPin);
  const machine=approvedKey(machinePem,machinePin);
+ // This optional derived-only governance scope may reuse its real owner
+ // identity as the existing Facts custodian. This does NOT create a second
+ // independent signer, issue rights, update numerical GRI, or change any
+ // strict Facts/Rights/GRO production publisher trust contract. No other
+ // cross-role reuse is permitted, especially the dedicated machine or Suman.
+ const ownerFactsReuse=allowOwnerFactsReuse===true&&otherAuthorityPins.length===3&&
+  otherAuthorityPins[0]===ownerPin;
  if(machinePin!==policy.machine_public_spki_sha256||
     new Set([ownerPin,reviewerPin,machinePin]).size!==3||
-    otherAuthorityPins.some(x=>!SHA.test(x)||[ownerPin,reviewerPin,machinePin].includes(x))||
+    otherAuthorityPins.some((x,i)=>!SHA.test(x)||x===machinePin||x===reviewerPin||
+      (x===ownerPin&&!(ownerFactsReuse&&i===0)))||
     new Set(otherAuthorityPins).size!==otherAuthorityPins.length)
    refuse("AUTHORITY_SEPARATION_FAILED");
  const signable=policyBytes(policy);
@@ -104,7 +113,8 @@ export function validateDelegation(envelope,{ownerPem,ownerPin,reviewerPem,revie
   scope:PROFILE,policy_sha256:digest(signable),
   pallab_governance_signature_verified:true,
   suman_governance_signature_verified:true,
-  machine_key_distinct:true,continuous_derived_only_authorized:true,
+  machine_key_distinct:true,owner_facts_same_custodian_allowed:ownerFactsReuse,
+  continuous_derived_only_authorized:true,
   external_independent_review_claimed:false,
   commercial_rights_claimed:false,legacy_gri_signed_hot_claimed:false,
   real_payment_authorized:false
