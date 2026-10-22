@@ -41,7 +41,8 @@ describe("actual 195-country request-time World Bank reference observations",()=
   expect(result.source_native_statistical_release_time_verified).toBe(false);
   expect(result.actual_current_macro_news_verified).toBe(false);
   expect(result.customer_chargeable).toBe(false);
-  expect(JSON.stringify(result)).not.toMatch(/api.worldbank.org|https:\/\//u);
+  expect(JSON.stringify(result)).not.toContain("api.worldbank.org");
+  expect(JSON.stringify(result)).not.toContain("https://");
  });
  it("leaves legitimate missing countries empty; no average or made-up zero",()=>{
   const empty=parseCountryWdiRows(sample([
