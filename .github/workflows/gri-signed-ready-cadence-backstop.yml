@@ -23,6 +23,8 @@ on:
       - "scripts/lib/gri-signed-ready-cadence-hint.mjs"
       - "scripts/lib/gri-signed-ready-cadence-hint.test.mjs"
       - "scripts/ops/dispatch-gri-signed-ready-cadence.mjs"
+      - "scripts/lib/pallab-signed-ready-gri-gate.mjs"
+      - "scripts/ops/require-pallab-owner-signed-gri-ready.mjs"
       - "scripts/lib/machine-intelligence-signed-ready-hint.mjs"
       - "scripts/lib/machine-intelligence-signed-ready-hint.test.mjs"
       - "scripts/ops/dispatch-machine-intelligence-signed-ready.mjs"
@@ -33,6 +35,8 @@ on:
       - "scripts/lib/gri-signed-ready-cadence-hint.mjs"
       - "scripts/lib/gri-signed-ready-cadence-hint.test.mjs"
       - "scripts/ops/dispatch-gri-signed-ready-cadence.mjs"
+      - "scripts/lib/pallab-signed-ready-gri-gate.mjs"
+      - "scripts/ops/require-pallab-owner-signed-gri-ready.mjs"
       - "scripts/lib/machine-intelligence-signed-ready-hint.mjs"
       - "scripts/lib/machine-intelligence-signed-ready-hint.test.mjs"
       - "scripts/ops/dispatch-machine-intelligence-signed-ready.mjs"
@@ -75,6 +79,7 @@ jobs:
          github.event.workflow_run.event == 'push')))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    environment: production
     permissions:
       contents: read
       actions: write
@@ -83,6 +88,12 @@ jobs:
       GRI_READY_REVIEWED_SHA256: ${{ vars.GRI_READY_REVIEWED_SHA256 }}
       GRI_READY_CERTIFICATES_SHA256: ${{ vars.GRI_READY_CERTIFICATES_SHA256 }}
       GRI_READY_APPROVED_AT: ${{ vars.GRI_READY_APPROVED_AT }}
+      GEOMACRO_OWNER_HUMAN_SIGNED_ENVELOPE_B64: ${{ secrets.GEOMACRO_OWNER_HUMAN_SIGNED_ENVELOPE_B64 }}
+      GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM }}
+      GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
       GRI_SOURCE_WORKFLOW_VERIFIED: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_sha == github.sha && '1' || '0' }}
       # Repository variables are immutable, short-lived externally approved
       # SHA hints only. The machine publisher independently verifies exact
@@ -108,9 +119,16 @@ jobs:
           test -f .github/workflows/gri-v12-supabase-free-reviewed-current.yml
           grep -Fq 'types: [gri_reviewed_current_ready]' .github/workflows/gri-v12-supabase-free-reviewed-current.yml
           grep -Fq 'CURRENT_GRI_IMMUTABLE_INPUT_KEY_SHA_NOT_BOUND' .github/workflows/gri-v12-supabase-free-reviewed-current.yml
+      - name: Admit only an actual fresh Pallab human signature on Suman's immutable GRI and country certificates
+        id: owner
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/require-pallab-owner-signed-gri-ready.mjs --scheduled-owner-gate
       - name: Resume only recently approved independently signed GRI inputs after actual news completion or cadence
         # Metadata-only GitHub recent-run check prevents repeat B2 publication
         # attempts for the same main SHA and external approval timestamp.
+        if: steps.owner.outputs.owner_approved == 'true'
         run: node scripts/ops/dispatch-gri-signed-ready-cadence.mjs
       - name: Recover missed publisher dispatch ONLY after already approved dual-signed machine B2 input
         # Independent lanes: a GRI API/dispatch failure must not strand an
