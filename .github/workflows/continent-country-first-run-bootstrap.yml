@@ -1,0 +1,41 @@
+name: Six-Continent Country Sweep Bootstrap (Main No Funds)
+
+# Scheduled GitHub Actions are best-effort and can be skipped. When the
+# continent automation source changes, run a bounded 6-continent canary
+# immediately instead of waiting for the next unreliable cron.
+# This is one real country-source probe per continent, NOT a news publisher.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/continent-country-*-2h.yml'
+      - '.github/workflows/continent-country-original-probe-reusable.yml'
+      - '.github/workflows/continent-country-first-run-bootstrap.yml'
+      - 'scripts/lib/continent-country-195-rotation.mjs'
+      - 'scripts/ops/plan-continent-country-195-rotation.mjs'
+      - 'scripts/tests/continent-country-195-rotation.test.mjs'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# Never auto-cancel 1 of the 6 region canaries on a fresh main commit.
+concurrency:
+  group: continent-country-initialization-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  six-real-country-source-canaries:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        continent: [africa, asia, europe, north_america, south_america, oceania]
+    uses: ./.github/workflows/continent-country-original-probe-reusable.yml
+    with:
+      continent: ${{ matrix.continent }}
+      country_iso3: ''
