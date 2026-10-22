@@ -113,8 +113,8 @@ async function main(env=process.env){
   unsignedGri,unsignedCountryCertificates
  });
  const opts={flag:"wx",mode:0o600};
- writeFileSync(griOutput,JSON.stringify(result.reviewedGri)+"\n",opts);
- writeFileSync(certOutput,JSON.stringify(result.countryCertificates)+"\n",opts);
+ writeFileSync(griOutput,JSON.stringify(result.reviewedGri),opts);
+ writeFileSync(certOutput,JSON.stringify(result.countryCertificates),opts);
  process.stdout.write(JSON.stringify({status:result.status,
   reviewed_gri_signatures:1,
   reviewed_country_certificate_signatures:result.countryCertificates.length,
