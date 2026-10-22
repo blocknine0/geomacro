@@ -38,3 +38,39 @@ Run Product CI, CodeQL, safety and Cloudflare Workerd route build. Independently
 To add genuine 195-country country/commodity-specific live geopolitical and minerals news, extend the existing official source adapters with **country and topic matching**, native publication clocks, bounded issuer-specific request routes, primary/fallback coverage and commercial-rights reviews before exposing derived facts. This is separate from creating a GRO, and cannot be replaced by blindly changing a copyrighted article's wording.
 
 Official usage policies: https://datacatalog.worldbank.org/public-licenses ; https://www.ecb.europa.eu/stats/ecb_statistics/governance_and_quality_framework/html/usage_policy.en.html ; https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits .
+
+## 2026-10-22: Actual 195-country on-demand Macro annual values
+
+The country-specific `POST /api/v1/intelligence/live-structured`
+input `{"category":"macro-fx","country_iso3":"IND"}` previously searched
+only current originating news and could return no answer **despite an
+actual country CPI or GDP annual observation** at World Bank WDI.
+
+After the current publisher-news path has no qualified recent original,
+the service now fetches exactly one official World Bank source-2 query for
+both annual inflation `FP.CPI.TOTL.ZG` and GDP growth
+`NY.GDP.MKTP.KD.ZG` for the requested canonical ISO3 country.
+An observation is admitted only if exact country, indicator, finite
+statistic, year, bounded response, pagination and source scope pass. The
+response contains Geomacro-authored comparative percentage-point findings
+and annual period, not the raw upstream API object. Missing, future,
+conflicting, wrong-country or inaccessible data cannot become a successful
+invented observation. All 195 accepted query identifiers are individually
+route-tested, but routing is not a promise that every country has either
+official indicator. VAT/PSE remain explicitly allowed but missing values
+remain missing.
+
+`OFFICIAL_ANNUAL_REFERENCE_FETCHED` has
+`coverage=COUNTRY_OFFICIAL_ANNUAL_REFERENCE_ONLY_NOT_CURRENT_NEWS`;
+it is not same-day national CPI, current policy-release, tick FX,
+geopolitics, mine event, or signed GRI. Exact query-time retrieval
+`checked_at` cannot be used as the source's original publication date.
+Existing native-dated original article answers still take precedence.
+This is a **free unscored country context**, not a new paid tier, no
+commercial-rights review waiver, no Supabase/B2/D1 writes and no USDC.
+
+Official API: https://api.worldbank.org/v2/ ;
+World Bank attribution CC BY 4.0 still applies. A current WDI annual
+row is valuable, but the 195 x 3 live-event completeness claim remains
+unverified. Main-branch CI and deployed API readback must be independently
+accepted, not inferred from a merge.
