@@ -20,6 +20,8 @@ on:
       - ".github/workflows/website-derived-news-continuity.yml"
       - "scripts/ops/publish-website-derived-news.ts"
       - "scripts/ops/publish-automated-intelligence-inputs.ts"
+      - "scripts/ops/verify-production-observed-195x3.mjs"
+      - "scripts/tests/verify-production-observed-195x3.test.mjs"
       - "scripts/ops/verify-all-news-signed-publications.mjs"
       - "scripts/tests/public-signed-news.test.mjs"
       - "workers/control-plane/src/public-signed-news.mjs"
@@ -269,6 +271,22 @@ jobs:
             retention_hours_verified:72,original_clock_window_verified:true,
             raw_upstream_disclosed:false,supabase_dependency:false}));
           NODE
+
+      - name: Verify actual 195-by-3 website country/category observed-news readback
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test scripts/tests/verify-production-observed-195x3.test.mjs
+          node scripts/ops/verify-production-observed-195x3.mjs
+      - name: Retain private actual 195-by-3 counts-only website readback
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: actual-195x3-observed-news-${{ github.run_id }}
+          path: artifacts/derived-news/actual-195x3-coverage.json
+          if-no-files-found: warn
+          retention-days: 3
 
       - name: Confirm partner structured JSON equals the live retained Intelligence journal
         # On main push, Worker deployment may still be in progress; scheduled
