@@ -17,8 +17,9 @@ export function signSumanIndependentReview({
 }={}){
  let priv,pub;
  try{
-  priv=createPrivateKey(privateKeyPassphrase===undefined?privateKey:
-    {key:privateKey,passphrase:privateKeyPassphrase});
+  priv=privateKey?.type==="private"&&privateKey?.asymmetricKeyType==="ed25519"
+    ?privateKey:createPrivateKey(privateKeyPassphrase===undefined?privateKey:
+      {key:privateKey,passphrase:privateKeyPassphrase});
   pub=createPublicKey(reviewerPublicKeyPem);
   if(priv.asymmetricKeyType!=="ed25519"||pub.asymmetricKeyType!=="ed25519")
    fail("ED25519_KEY_REQUIRED");
