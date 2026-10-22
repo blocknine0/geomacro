@@ -1,0 +1,74 @@
+name: Existing Groq Key Free-Browser Readiness (No Calls to Models)
+
+# Runs from hosted GitHub, with existing production GROQ_API_KEY ONLY.
+# No completion or browser search, so no inference bill or browser quota used.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "17 4 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/existing-groq-key-free-readiness.yml"
+      - "scripts/ops/verify-existing-groq-free-readiness.mjs"
+      - "scripts/ops/verify-existing-groq-free-readiness.test.mjs"
+      - "docs/ops/EXISTING_GROQ_KEY_PRODUCTION_SETUP.md"
+  pull_request:
+    paths:
+      - ".github/workflows/existing-groq-key-free-readiness.yml"
+      - "scripts/ops/verify-existing-groq-free-readiness.mjs"
+      - "scripts/ops/verify-existing-groq-free-readiness.test.mjs"
+      - "docs/ops/EXISTING_GROQ_KEY_PRODUCTION_SETUP.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-existing-groq-metadata-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Check existing Groq-key metadata code does not invoke inference
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/verify-existing-groq-free-readiness.mjs
+          node --test scripts/ops/verify-existing-groq-free-readiness.test.mjs
+
+  protected-existing-key:
+    needs: offline-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GROQ_BROWSER_SEARCH_ENABLED: ${{ vars.GROQ_BROWSER_SEARCH_ENABLED }}
+      GROQ_BROWSER_SEARCH_FREE_QUOTA_ACK: ${{ vars.GROQ_BROWSER_SEARCH_FREE_QUOTA_ACK }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: One zero-inference Groq GET models using installed key
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = "$(git rev-parse HEAD)"
+          node scripts/ops/verify-existing-groq-free-readiness.mjs
