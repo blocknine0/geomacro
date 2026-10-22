@@ -76,8 +76,21 @@ function main(){
  if(!db){
   const raw=String(process.env.SUPABASE_DB_URL??"");
   report.connection_url_supplied=raw.length>0;
-  // Numeric class only; never expose URL, DB hostname, password or username.
-  report.connection_url_has_query=(()=>{try{return Boolean(new URL(raw).search)}catch{return false}})();
+  // Boolean-only diagnostic. Never copy URL, host, username, secret or DB name.
+  try{
+   const u=new URL(raw),name=decodeURIComponent(u.username);
+   report.source_identity_checks={
+    valid_postgres_protocol:["postgres:","postgresql:"].includes(u.protocol),
+    expected_postgres_db:u.pathname==="/postgres",
+    password_supplied:Boolean(u.password),
+    direct_host_matches_old_project:u.hostname==="db."+REF+".supabase.co",
+    direct_user_is_postgres:name==="postgres",
+    host_is_supabase_pooler:u.hostname.endsWith(".pooler.supabase.com"),
+    pooler_user_matches_old_project:name==="postgres."+REF,
+    connection_url_has_query:Boolean(u.search),
+    connection_url_has_fragment:Boolean(u.hash)
+   };
+  }catch{report.connection_url_parseable=false}
   return fail("EXACT_LEGACY_POSTGRES_IDENTITY_REQUIRED");
  }
  const x=spawnSync("psql",[
