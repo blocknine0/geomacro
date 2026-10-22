@@ -32,28 +32,38 @@ const state=(category:StatelessCategory):StatelessIntelligenceResult=>({
 });
 
 describe("first HTML paint shows actual original-dated Intelligence from all three domains",()=>{
-  it("renders Macro/FX and Minerals without waiting for client JS hydration",()=>{
+  it("renders each selected category on the first HTML paint with exactly three category toggles",()=>{
     const geo=state("geopolitics"),macro=state("macro"),minerals=state("rare_earth");
-    const html=renderToStaticMarkup(createElement(StatelessLiveDesk,{
-      initial:geo,initialFeeds:{geopolitics:geo,macro,rare_earth:minerals},
-      initialJournal:[],
-    }));
-    for(const category of ["geopolitics","macro","rare_earth"] as const)
+    for(const category of ["geopolitics","macro","rare_earth"] as const){
+      const html=renderToStaticMarkup(createElement(StatelessLiveDesk,{
+        initial:geo,initialFeeds:{geopolitics:geo,macro,rare_earth:minerals},
+        initialJournal:[],initialView:category,
+      }));
       expect(html).toContain(headline[category].replace(/^Geomacro finds /u,""));
-    expect(html).toContain("Across all three domains");
-    expect(html).not.toContain("Loading Macro / FX, Critical Minerals");
-    expect(html).toContain("Earlier original releases");
-    expect(html).not.toContain("current signed risk"); // no promotion
+      for(const other of ["geopolitics","macro","rare_earth"] as const)
+        if(other!==category)expect(html).not.toContain(headline[other].replace(/^Geomacro finds /u,""));
+      expect((html.match(/aria-pressed=/gu)??[]).length).toBe(3);
+      expect((html.match(/aria-pressed="true"/gu)??[]).length).toBe(1);
+      expect(html).not.toContain("All findings</button>");
+      expect(html).not.toContain('aria-label="Filter Intelligence by country"');
+      expect(html).not.toContain("Loading ");
+      expect(html).toContain("Earlier original releases");
+      expect(html).not.toContain("current signed risk");
+    }
   });
-  it("does not fabricate an unavailable category from a healthy unrelated issuer",()=>{
+  it("defaults legacy all URLs to Geopolitics and never fabricates an unavailable selected category",()=>{
     const geo=state("geopolitics");
     const html=renderToStaticMarkup(createElement(StatelessLiveDesk,{
-      initial:geo,initialFeeds:{geopolitics:geo},initialJournal:[],
+      initial:geo,initialFeeds:{geopolitics:geo},initialJournal:[],initialView:"all",
     }));
     expect(html).toContain(headline.geopolitics.replace(/^Geomacro finds /u,""));
     expect(html).not.toContain(headline.macro.replace(/^Geomacro finds /u,""));
-    expect(html).not.toContain(headline.rare_earth.replace(/^Geomacro finds /u,""));
-    expect(html).toContain("Loading Macro / FX, Critical Minerals");
+    const missing=renderToStaticMarkup(createElement(StatelessLiveDesk,{
+      initial:geo,initialFeeds:{geopolitics:geo},initialJournal:[],initialView:"macro",
+    }));
+    expect(missing).not.toContain(headline.geopolitics.replace(/^Geomacro finds /u,""));
+    expect(missing).not.toContain(headline.macro.replace(/^Geomacro finds /u,""));
+    expect(missing).toContain("Loading Macro / FX");
   });
   it("shows the supplied country and actual derived change without em dashes",()=>{
     const geo=state("geopolitics");

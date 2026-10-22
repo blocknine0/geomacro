@@ -31,9 +31,12 @@ function db() {
     bind(...args) {
       return {
         async run() {
-          if(sql.startsWith("INSERT OR IGNORE")) {
+          if(sql.startsWith("INSERT INTO website_derived_intelligence")) {
             const [id,category,published_at,date_precision,story_json,first_seen_at]=args;
-            if(!data.has(id))data.set(id,{id,category,published_at,date_precision,story_json,first_seen_at});
+            const previous=data.get(id);
+            if(!previous)data.set(id,{id,category,published_at,date_precision,story_json,first_seen_at});
+            else if(previous.category===category && previous.published_at===published_at && previous.date_precision===date_precision)
+              previous.story_json=story_json;
           } else if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE published_at")) {
             for(const [id,row] of data) if(row.published_at < args[0] || row.first_seen_at < args[1]) data.delete(id);
           } else if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE id IN")) {
