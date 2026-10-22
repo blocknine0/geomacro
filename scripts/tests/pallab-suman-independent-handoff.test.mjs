@@ -4,7 +4,7 @@ import {generateKeyPairSync,createHash,sign} from "node:crypto";
 import {signOwnerReviewedCandidate} from "../ops/sign-pallab-owner-gri-candidate.mjs";
 import {signSumanIndependentReview} from "../ops/sign-suman-independent-reviewed-gri.mjs";
 import {validatePallabSumanPrivateHandoff}
- from "./pallab-suman-reviewed-handoff.mjs";
+ from "../lib/pallab-suman-reviewed-handoff.mjs";
 const now=new Date("2026-10-22T12:00:00Z");
 const sha=x=>createHash("sha256").update(x).digest("hex");
 const maker=()=>{
