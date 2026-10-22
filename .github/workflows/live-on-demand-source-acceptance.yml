@@ -39,6 +39,11 @@ on:
       - "scripts/lib/country-195-daily-rotation.mjs"
       - "scripts/ops/plan-country-195-daily-rotation.mjs"
       - "scripts/tests/country-195-daily-rotation.test.mjs"
+      - "scripts/lib/continent-country-195-rotation.mjs"
+      - "scripts/ops/plan-continent-country-195-rotation.mjs"
+      - "scripts/tests/continent-country-195-rotation.test.mjs"
+      - ".github/workflows/continent-country-original-probe-reusable.yml"
+      - ".github/workflows/continent-country-*-2h.yml"
       - "scripts/ops/export-canonical-195-country-matrix.ts"
       - "src/lib/on-demand-fed-board-discount-release.server.ts"
       - "scripts/ops/verify-live-fed-board-private-finding.ts"
@@ -71,6 +76,11 @@ on:
       - "scripts/lib/country-195-daily-rotation.mjs"
       - "scripts/ops/plan-country-195-daily-rotation.mjs"
       - "scripts/tests/country-195-daily-rotation.test.mjs"
+      - "scripts/lib/continent-country-195-rotation.mjs"
+      - "scripts/ops/plan-continent-country-195-rotation.mjs"
+      - "scripts/tests/continent-country-195-rotation.test.mjs"
+      - ".github/workflows/continent-country-original-probe-reusable.yml"
+      - ".github/workflows/continent-country-*-2h.yml"
       - "scripts/ops/export-canonical-195-country-matrix.ts"
       - "src/lib/on-demand-fed-board-discount-release.server.ts"
       - "scripts/ops/verify-live-fed-board-private-finding.ts"
@@ -240,7 +250,7 @@ jobs:
           if high:sys.exit(4)
           PY
       - name: Exact 195-country rotation and 250-area crosswalk offline tests
-        run: node --test scripts/tests/country-195-daily-rotation.test.mjs scripts/tests/free-three-domain-country-gap-audit.test.mjs
+        run: node --test scripts/tests/country-195-daily-rotation.test.mjs scripts/tests/continent-country-195-rotation.test.mjs scripts/tests/free-three-domain-country-gap-audit.test.mjs
       - name: Private evidence bridge regression checks
         run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts
       - name: Real no-charge per-category provider readback
