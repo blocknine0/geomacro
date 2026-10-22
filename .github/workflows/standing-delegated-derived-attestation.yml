@@ -2,6 +2,10 @@ name: Standing Delegated Derived Contract No Funds
 on:
   pull_request:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Five-Minute Original News Fastlane"]
+    types: [completed]
+    branches: [main]
   schedule:
     - cron: '23 * * * *'
 permissions:
@@ -16,11 +20,20 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '22'
-      - run: node --test scripts/tests/standing-derived-delegation.test.mjs
+      - run: |
+          node --check scripts/ops/enroll-standing-derived-cloud.mjs
+          node --test scripts/tests/standing-derived-delegation.test.mjs scripts/tests/standing-derived-cloud-enrollment.test.mjs
 
   cloud-derived-only:
     needs: contract
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_sha == github.sha))
     runs-on: ubuntu-24.04
     timeout-minutes: 9
     environment: production
