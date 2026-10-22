@@ -10,7 +10,7 @@ on:
       - 'scripts/tests/signed-news-safe-diagnostic.test.mjs'
       - 'scripts/ops/sign-verified-derived-readback.mjs'
       - 'scripts/lib/standing-delegated-cloud-safe-reasons.mjs'
-      - 'scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs scripts/tests/standing-delegation-role-separation.test.mjs'
+      - 'scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs'
       - 'scripts/lib/standing-derived-cloud-enrollment.mjs'
       - 'scripts/tests/standing-derived-cloud-enrollment.test.mjs'
       - 'scripts/lib/standing-delegation-role-separation.mjs'
@@ -36,7 +36,7 @@ jobs:
           node-version: '22'
       - run: |
           node --check scripts/ops/enroll-standing-derived-cloud.mjs
-          node --test scripts/tests/standing-derived-delegation.test.mjs scripts/tests/standing-derived-cloud-enrollment.test.mjs scripts/tests/signed-news-safe-diagnostic.test.mjs scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs
+          node --test scripts/tests/standing-derived-delegation.test.mjs scripts/tests/standing-derived-cloud-enrollment.test.mjs scripts/tests/signed-news-safe-diagnostic.test.mjs scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs scripts/tests/standing-delegation-role-separation.test.mjs
 
   cloud-derived-only:
     needs: contract
