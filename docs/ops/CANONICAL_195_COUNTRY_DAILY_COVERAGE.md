@@ -29,18 +29,29 @@ all three categories use the same retrieved evidence with issuer-specific
 scope checks. Separate native dates, exact country relevance, source-rights
 gates and no-money requirements remain unchanged.
 
-The index of the daily rotating slice no longer depends on
-`GITHUB_RUN_NUMBER`, because push and PR builds can increment run numbers and
-make the sampled-country selection skip arbitrary countries. Instead use one
-deterministic UTC calendar period beginning 2026-10-17, 2 countries/day, with
-a bounded 98-day sweep over all 195 canonical entries (last day has 1).
-Days elapsed modulo 98 select the slice; repeated same-day reruns select the
-same slice without skipping the next entry. Operator dispatch can explicitly
-pin at most two country positions for targeted repair. Push builds run existing
-representative live-source/country-routing acceptance only; no extra national
-source fan-out. GitHub cron is **best effort**, so an actual missed schedule
-creates a missing **live proof**. The mathematics of 98 planned slots does
-not prove 98 successful network executions or 585 current official releases.
+The index of each daily rotating slice uses the exact implemented
+`scripts/lib/country-195-daily-rotation.mjs` canonical calendar:
+epoch **2026-10-22 00:00 UTC**, at most **three countries/day**, and
+a **65-day complete scheduled sweep**, rather than the superseded
+two-countries/98-day plan. This is *daily original-source research*, not
+a guarantee of current evidence for all 195 countries each day. Each
+country's source attempts are bounded at 12 discovery calls and four
+originating-page checks, shared across the same three categories. GitHub
+cron is best effort; a missed real run remains an unprobed country.
+
+The `Country 195 Rolling Original Proof Audit` now executes **daily** on
+the existing GitHub free tier without starting another source probe. It
+aggregates exact bounded real success checkpoint artifacts retained for
+90 days and checks the 585 country-category cells, 24h source-probe
+recency, actual first-party country relevance and gaps. It separately
+GETs the public website's own 72h D1 derived-news census once, checks
+the literal 585-cell web response and reconciles observed geographic
+headline mentions against truly verified source evidence. A source
+probe and a website journal entry represent different underlying
+questions and time windows: neither one upgrades the other to
+licensed/signed country original. Zero news remains zero, not a
+synthetic success. Missing provider, unsupported country, 401/403/429,
+lack of native article date or no new events remain explicit.
 
 A country cell is honestly **not observed / upstream restricted /
 no qualifying original / country relevant / native dated /
@@ -84,3 +95,24 @@ are accessible; reviewer/authority proof if required by the product;
 signed current D1/B2 hot snapshots and real paid-product HTTP health.
 Provider outages/rights restrictions and GitHub cron delays have no possible
 unconditional 100% availability guarantee on free infrastructure.
+
+## Full-world live evidence completeness limitation
+
+No no-cost deterministic sweep of 3/195 countries/day can establish 195
+countries with newly published events in every category in the past 24
+hours: sources may be silent or block access, and even a perfectly
+executed full 65-day sample window is largely stale for a 24-hour news
+SLA. Customer on-demand queries still invoke worldwide original
+discovery within the approved per-question budget. The daily audit
+**monitors** proven gaps; it cannot invent an event, commercial-use
+rights, a reviewer signature or force upstream publication. 585
+configured route cells and 585 audited delivery cells are not 585
+current signed event products. Honest no-result status is required.
+
+CI acceptance: `node --test
+scripts/tests/country-195-proof-rollup.test.mjs
+scripts/tests/reconcile-country-195-publication.test.mjs`.
+Daily protected-main acceptance additionally requires the actual
+website API to return the 585-cell truthful journal and the rolling
+original proof receipt to be fresh. No Supabase, source re-poll, B2
+write or payment is introduced by that audit.

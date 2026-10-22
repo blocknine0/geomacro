@@ -1,11 +1,11 @@
 name: Country 195 Rolling Original Proof Audit
 
 # READ only prior owner-approved GitHub Actions country-proof artifacts.
-# Weekly aggregation never re-polls countries or treats routing as coverage.
+# Daily aggregation never re-polls countries or treats routing as coverage.
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "53 10 * * 0"
+    - cron: "53 10 * * *"
   push:
     branches: [main]
     paths:
@@ -13,12 +13,18 @@ on:
       - "scripts/lib/country-195-proof-rollup.mjs"
       - "scripts/ops/aggregate-country-195-proofs.mjs"
       - "scripts/tests/country-195-proof-rollup.test.mjs"
+      - "scripts/tests/reconcile-country-195-publication.test.mjs"
+      - "scripts/ops/audit-country-195-source-website.mjs"
+      - "scripts/lib/reconcile-country-195-publication.mjs"
   pull_request:
     paths:
       - ".github/workflows/country-195-rolling-original-proof-audit.yml"
       - "scripts/lib/country-195-proof-rollup.mjs"
       - "scripts/ops/aggregate-country-195-proofs.mjs"
       - "scripts/tests/country-195-proof-rollup.test.mjs"
+      - "scripts/tests/reconcile-country-195-publication.test.mjs"
+      - "scripts/ops/audit-country-195-source-website.mjs"
+      - "scripts/lib/reconcile-country-195-publication.mjs"
 
 permissions:
   contents: read
@@ -44,6 +50,9 @@ jobs:
           node --check scripts/lib/country-195-proof-rollup.mjs
           node --check scripts/ops/aggregate-country-195-proofs.mjs
           node --test scripts/tests/country-195-proof-rollup.test.mjs
+          node --check scripts/lib/reconcile-country-195-publication.mjs
+          node --check scripts/ops/audit-country-195-source-website.mjs
+          node --test scripts/tests/reconcile-country-195-publication.test.mjs
 
   read-only-coverage-aggregation:
     needs: offline-trust-contract
@@ -64,6 +73,11 @@ jobs:
           node-version: "22"
       - name: Aggregate only real last-90d schedule-success checkpoint artifacts
         run: node scripts/ops/aggregate-country-195-proofs.mjs
+      - name: Reconcile actual 585 customer-visible country cells with retained country-original proofs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/audit-country-195-source-website.mjs
       - name: Observe current website latency independently without funds
         continue-on-error: true
         run: |
@@ -79,6 +93,14 @@ jobs:
           path: artifacts/country-195/rolling-proof-summary.v1.json
           if-no-files-found: warn
           retention-days: 90
+      - name: Retain private 195x3 source-to-website coverage reconciliation
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: country-195x3-source-publication-reconciliation-${{ github.run_id }}
+          path: artifacts/country-195/live-195x3-source-website-reconciliation.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Keep independent three-requirement launch gap report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
