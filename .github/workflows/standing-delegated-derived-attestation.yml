@@ -8,6 +8,9 @@ on:
       - 'scripts/ops/verify-all-news-signed-publications.mjs'
       - 'scripts/lib/signed-news-safe-diagnostic.mjs'
       - 'scripts/tests/signed-news-safe-diagnostic.test.mjs'
+      - 'scripts/ops/sign-verified-derived-readback.mjs'
+      - 'scripts/lib/standing-delegated-cloud-safe-reasons.mjs'
+      - 'scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs'
   workflow_dispatch:
   workflow_run:
     workflows: ["Five-Minute Original News Fastlane"]
@@ -29,7 +32,7 @@ jobs:
           node-version: '22'
       - run: |
           node --check scripts/ops/enroll-standing-derived-cloud.mjs
-          node --test scripts/tests/standing-derived-delegation.test.mjs scripts/tests/standing-derived-cloud-enrollment.test.mjs scripts/tests/signed-news-safe-diagnostic.test.mjs
+          node --test scripts/tests/standing-derived-delegation.test.mjs scripts/tests/standing-derived-cloud-enrollment.test.mjs scripts/tests/signed-news-safe-diagnostic.test.mjs scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs
 
   cloud-derived-only:
     needs: contract
