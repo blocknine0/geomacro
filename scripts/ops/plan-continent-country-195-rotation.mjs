@@ -5,7 +5,7 @@ import {planTwoHourContinentCountrySweep} from "../lib/continent-country-195-rot
 const repo=process.env.GITHUB_REPOSITORY,ref=process.env.GITHUB_REF,
  output=process.env.GITHUB_OUTPUT,eventName=process.env.GITHUB_EVENT_NAME;
 if(repo!=="blocknine0/geomacro"||ref!=="refs/heads/main"||
-   !output||!["schedule","workflow_dispatch"].includes(eventName))
+   !output||!["schedule","workflow_dispatch","push"].includes(eventName))
  throw Error("CONTINENT_COUNTRY_195_PROTECTED_MAIN_ONLY");
 const plan=planTwoHourContinentCountrySweep({
  continent:process.env.GEOMACRO_CONTINENT,
