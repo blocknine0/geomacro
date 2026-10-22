@@ -94,7 +94,19 @@ export async function observeComtrade195Minerals({
   }
   const census=summarizeComtrade195Reporters(catalog,{registrySource});
   const observations=[];
+  let publisherAccessHeld=false;
   for(const target of MINERAL_TRADE_SENTINELS){
+    // A documented 401/403/429 from the same API stops *this batch*.
+    // Retrying different country/product queries does not cure access
+    // limits. Never use alternate keys, hosts, proxy rotation, or restart
+    // the denied provider under a new identity.
+    if(publisherAccessHeld){
+      observations.push({country_iso3:target.iso3,commodity:target.label,
+        hs_code:target.commodity,reference_year:Number(year),
+        status:"SKIPPED_PROVIDER_ACCESS_HOLD",
+        reason:"PROVIDER_DENIED_OR_QUOTA"});
+      continue;
+    }
     const reporter=catalog[target.iso3]?.code;
     if(!Number.isSafeInteger(reporter)||reporter<=0){
       observations.push({country_iso3:target.iso3,commodity:target.label,
@@ -126,9 +138,11 @@ export async function observeComtrade195Minerals({
         commodity_hs_vintage_verified:false,customer_delivery_eligible:false
       });
     }catch(error){
+      const reason=fixedReason(error);
+      if(reason==="PROVIDER_DENIED_OR_QUOTA")publisherAccessHeld=true;
       observations.push({country_iso3:target.iso3,commodity:target.label,
         hs_code:target.commodity,reference_year:Number(year),
-        status:"UNAVAILABLE",reason:fixedReason(error)});
+        status:"UNAVAILABLE",reason});
     }
   }
   return {
@@ -139,6 +153,7 @@ export async function observeComtrade195Minerals({
     observations,verified_annual_numeric_samples:observations.filter(x=>
       x.status==="ACTUAL_ANNUAL_EXPORT_VALUE_OBSERVED").length,
     no_key_public_preview_only:true,raw_provider_body_saved:false,
+    publisher_access_held_after_denial:publisherAccessHeld,
     live_incidents_verified:0,current_195x3_coverage_verified:false,
     rights_for_paid_output_verified:false,
     d1_writes:0,b2_requests:0,supabase_requests:0,payments:0
