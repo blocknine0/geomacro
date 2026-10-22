@@ -4,20 +4,41 @@
 import {createHash,createPublicKey} from "node:crypto";
 import {pathToFileURL} from "node:url";
 const SHA=/^[a-f0-9]{64}$/u;
-function pin(pem,sha){
- if(typeof pem!=="string"||!SHA.test(sha??""))return null;
- try{
-  const key=createPublicKey(pem);
-  return key.asymmetricKeyType==="ed25519" &&
-   createHash("sha256").update(key.export({format:"der",type:"spki"}))
-    .digest("hex")===sha ? sha :null;
- }catch{return null;}
+// Only status codes: NEVER log public PEM, key bytes, SPKI digest, or
+// supplied SHA. Help the owner distinguish a secret-name/value problem
+// from a genuine key identity mismatch while keeping custody private.
+function diagnosePin(pem,sha){
+ const rejected=reason=>({pin:null,reason});
+ if(typeof pem!=="string"||!pem.length)return rejected("PUBLIC_PEM_SECRET_MISSING");
+ if(pem.length>8192)return rejected("PUBLIC_PEM_VALUE_OVERSIZE");
+ if(pem.includes("-----BEGIN PRIVATE KEY-----")||
+    pem.includes("-----BEGIN ENCRYPTED PRIVATE KEY-----"))
+   return rejected("PRIVATE_KEY_PASTED_INTO_PUBLIC_SECRET");
+ if(pem.includes("\\n")&&!pem.includes("\n"))
+   return rejected("PUBLIC_PEM_HAS_LITERAL_BACKSLASH_N");
+ if(!pem.includes("-----BEGIN PUBLIC KEY-----")||
+    !pem.includes("-----END PUBLIC KEY-----"))
+   return rejected("PUBLIC_PEM_WRONG_FORMAT");
+ if(typeof sha!=="string"||!sha.length)
+   return rejected("SHA256_SECRET_MISSING");
+ if(!SHA.test(sha))
+   return rejected("SHA256_NOT_64_LOWERCASE_HEX");
+ let key;
+ try{key=createPublicKey(pem);}
+ catch{return rejected("PUBLIC_PEM_CANNOT_PARSE");}
+ if(key.asymmetricKeyType!=="ed25519")
+   return rejected("PUBLIC_KEY_NOT_ED25519");
+ const actual=createHash("sha256")
+   .update(key.export({format:"der",type:"spki"})).digest("hex");
+ if(actual!==sha)return rejected("PUBLIC_PEM_SHA256_PIN_MISMATCH");
+ return Object.freeze({pin:sha,reason:"VERIFIED"});
 }
 export function pallabSumanAuthorityReadiness(env=process.env){
- const owner=pin(env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM,
+ const ownerDiagnostic=diagnosePin(env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM,
    env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256);
- const reviewer=pin(env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM,
+ const reviewerDiagnostic=diagnosePin(env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM,
    env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256);
+ const owner=ownerDiagnostic.pin,reviewer=reviewerDiagnostic.pin;
  const other=[
   env.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256,
   env.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256
@@ -48,7 +69,9 @@ export function pallabSumanAuthorityReadiness(env=process.env){
   // Public boolean readiness only. One missing key should not conceal
   // whether the other person's separate public key is already enrolled.
   pallab_owner_public_pin_verified:Boolean(owner),
+  pallab_owner_public_pin_diagnostic:ownerDiagnostic.reason,
   suman_reviewer_public_pin_verified:Boolean(reviewer),
+  suman_reviewer_public_pin_diagnostic:reviewerDiagnostic.reason,
   gro_public_identity_pin_verified:Boolean(gro),
   facts_rights_public_pins_present:other.length===2&&
     other.every(x=>SHA.test(x)),
