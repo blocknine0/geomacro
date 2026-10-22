@@ -12,7 +12,7 @@ test("existing 15-min cron activation stores only immutable SHA hints and signed
  assert.equal(out.status,"SIGNED_HUMAN_APPROVAL_AND_POINTERS_INSTALLED");
  assert.equal(out.mainnet_payments,0);
  assert.equal(calls.length,4);
- assert.deepEqual(calls.map(x=>x.args[1]),[
+ assert.deepEqual(calls.map(x=>x.args[2]),[
   "GRI_READY_REVIEWED_SHA256",
   "GRI_READY_CERTIFICATES_SHA256",
   "GRI_READY_APPROVED_AT",
