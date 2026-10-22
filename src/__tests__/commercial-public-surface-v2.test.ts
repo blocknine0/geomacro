@@ -50,12 +50,12 @@ describe("commercial public surface v2", () => {
     const home = read("src/components/home/commercial-home.tsx");
     const shell = read("src/components/site-shell.tsx");
 
-    expect(home).toContain("The world changes. Stay with it.");
-    expect(home).toContain("What changed.");
-    expect(home).toContain("Why it matters.");
-    expect(home).toContain("Three lenses on a changing world.");
-    expect(home).toContain("Three lenses on a changing world.");
-    expect(home).toContain("Go from a finding to a question");
+    expect(home).toContain("Global risk intelligence · For people & AI agents");
+    expect(home).toContain("Understand global risk.");
+    expect(home).toContain("Know what matters.");
+    expect(home).toContain("Follow the risks that affect your work.");
+    expect(home).toContain("Follow the risks that affect your work.");
+    expect(home).toContain("Your next step");
     expect(home).toContain("Critical Minerals");
     expect(home).toContain("The same intelligence. Structured for your workflow.");
     expect(home).not.toContain("AskGeomacroSection");

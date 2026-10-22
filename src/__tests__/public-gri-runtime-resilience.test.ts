@@ -53,13 +53,16 @@ describe("public risk runtime resilience", () => {
     expect(indicesHook).toContain('RiskIndicesStatus = "loading" | "ready" | "updating" | "error"');
   });
 
-  it("never discards a previously verified reading because a refresh failed", () => {
+  it("retains a still-eligible verified reading on refresh failure", () => {
     const legacyHook = read("src/lib/use-global-risk.ts");
     const indicesHook = read("src/lib/use-risk-indices.ts");
 
     const legacyCatch = legacyHook.split("} catch (err) {")[1] ?? "";
     const indicesCatch = indicesHook.split("} catch (caught) {")[1] ?? "";
-    expect(legacyCatch).not.toContain("setData(null)");
+    expect(legacyCatch).toContain("newestWebsiteRiskSnapshot([lastData.current])");
+    const retainedBranch=legacyCatch.split("if (retained) {")[1]?.split("} else {")[0] ?? "";
+    expect(retainedBranch).toContain("setData(retained)");
+    expect(retainedBranch).not.toContain("setData(null)");
     expect(indicesCatch).not.toContain("setData(null)");
   });
 

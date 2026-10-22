@@ -10,6 +10,8 @@
  * an already verified reading and never creates a synthetic replacement.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
+import { newestWebsiteRiskSnapshot } from "@/lib/website-historical-risk-view";
 import { validateGlobalRiskContinuity } from "@/lib/global-risk-continuity";
 import {getWebsiteLaggedGlobalRisk} from "@/lib/website-lagged-global-risk.functions";
 import {websiteVerifiedSnapshotPastEmbargo} from "@/lib/website-publication-delay";
@@ -138,7 +140,7 @@ async function readWithFailover(): Promise<GlobalRisk> {
 async function readWebsiteLaggedRisk():Promise<GlobalRisk>{
   let previous:GlobalRisk|undefined;
   try{
-    const response=await getWebsiteLaggedGlobalRisk({data:{}});
+    const response=await withPublicRuntimeTimeout(getWebsiteLaggedGlobalRisk({data:{}}),10_000,"WEBSITE_GRI_LAGGED_READ_TIMEOUT");
     previous=response.data;
   }catch{
     // Server-side D1 history -> quota-governed verified edge fallback is the
@@ -164,22 +166,28 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const hasData = useRef(false);
+  const lastData = useRef<GlobalRisk | null>(null);
 
   const retry = useCallback(() => setReloadKey((key) => key + 1), []);
 
   useEffect(() => {
     let cancelled = false;
+    let inFlight = false;
 
     async function load() {
+      if(cancelled||inFlight)return;
+      inFlight=true;
       setStatus(hasData.current ? "updating" : "loading");
       try {
         const next = await readWebsiteLaggedRisk();
         if (cancelled) return;
 
+        const accepted=newestWebsiteRiskSnapshot([lastData.current,next]);
+        if(!accepted)throw new Error("WEBSITE_GRI_NO_ELIGIBLE_SNAPSHOT");
         hasData.current = true;
-        setData(next);
-        const asOf = new Date(next.snapshotAsOf).getTime();
-        setUpdatedAt(Number.isFinite(asOf) ? asOf : Date.now());
+        lastData.current=accepted;
+        setData(accepted);
+        setUpdatedAt(Date.parse(accepted.snapshotAsOf));
         setError(null);
         setStatus("ready");
       } catch (err) {
@@ -190,21 +198,38 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
           err,
           "refreshing the verified Global Risk continuity package",
         );
-        if (hasData.current) {
+        const retained=newestWebsiteRiskSnapshot([lastData.current]);
+        if (retained) {
+          lastData.current=retained;
+          setData(retained);
           setError(null);
           setStatus("ready");
         } else {
+          hasData.current=false;
+          lastData.current=null;
+          setData(null);
+          setUpdatedAt(null);
           setError(toUserError(err));
           setStatus("error");
         }
+      } finally {
+        inFlight=false;
       }
     }
 
     void load();
-    const id = setInterval(() => void load(), refreshMs);
+    const onReturn=()=>{if(document.visibilityState==="visible")void load();};
+    const onOnline=()=>{void load();};
+    const id = setInterval(onReturn, refreshMs);
+    document.addEventListener("visibilitychange",onReturn);
+    window.addEventListener("focus",onReturn);
+    window.addEventListener("online",onOnline);
     return () => {
       cancelled = true;
       clearInterval(id);
+      document.removeEventListener("visibilitychange",onReturn);
+      window.removeEventListener("focus",onReturn);
+      window.removeEventListener("online",onOnline);
     };
   }, [reloadKey, refreshMs]);
 

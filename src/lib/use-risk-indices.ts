@@ -1,3 +1,4 @@
+import { withPublicRuntimeTimeout } from "./public-runtime-timeout";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   PUBLIC_RISK_INDICES_CONTRACT_VERSION,
@@ -132,7 +133,7 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
       try {
         let response:PublicRiskIndices;
         try{
-          const lagged=await getWebsiteLaggedGlobalRisk({data:{}});
+          const lagged=await withPublicRuntimeTimeout(getWebsiteLaggedGlobalRisk({data:{}}),10_000,"WEBSITE_RISK_INDICES_LAGGED_READ_TIMEOUT");
           response=riskIndicesFromGlobalRisk(lagged.data);
           if(!validIndices(response))throw new Error("WEBSITE_LAGGED_RISK_INDICES_INVALID");
         }catch{

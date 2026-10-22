@@ -1,4 +1,4 @@
-import {websiteHistoricalRiskView} from "./website-historical-risk-view";
+import {websiteHistoricalRiskView,newestWebsiteRiskSnapshot} from "./website-historical-risk-view";
 import {fetchWithoutRedirect} from "./fetch-without-redirect";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAppSupabase } from "./supabase-app.server";
@@ -117,6 +117,11 @@ export async function readWebsiteLaggedGlobalRisk(
   const {validateGlobalRiskContinuity}=
     await import("./global-risk-continuity");
   const cutoff=websitePublicCutoff(now);
+  // Start the existing quota-governed edge read alongside archive recovery.
+  // An old successful archive must never mask a newer eligible signed package.
+  const edgeRead=import("./global-risk-edge.server")
+    .then(({readGlobalRiskEdge})=>readGlobalRiskEdge()).catch(()=>null);
+  const archiveRead=(async()=>{
   let risk:GlobalRisk|null=null;
   // Prefer one bounded existing control-plane D1 read. This is historical
   // website-only; the control plane itself enforces the full 60-minute cutoff
@@ -156,19 +161,20 @@ export async function readWebsiteLaggedGlobalRisk(
   }
   // The production website treats Supabase as permanently unavailable.
   // Never attempt a frozen database read, even after D1 quota exhaustion.
-  // Only the independent, already proof-verified Cloudflare GRI EDGE is
-  // eligible as website backup. Its own serving order is D1 hot -> POP
+  // The independent, already proof-verified Cloudflare GRI EDGE is
+  // also checked for a newer eligible snapshot. Its serving order is D1 hot -> POP
   // positive cache -> D1-quota-governed B2 reads (or safe 503).
   //
   // Do NOT call readB2PublicRisk() here: that generic server helper can
   // issue its own direct signed S3 GET on edge failure, bypassing the
   // account-wide B2 Class B governor when quotas are already exhausted.
-  if(!risk){
-    const {readGlobalRiskEdge}=await import("./global-risk-edge.server");
-    const verifiedEdge=await readGlobalRiskEdge();
-    if(verifiedEdge)risk=verifiedEdge;
-  }
-  if(risk)risk=websiteHistoricalRiskView(risk,now);
+  return risk;
+  })();
+  const [archive,edge]=await Promise.allSettled([archiveRead,edgeRead]);
+  const risk=newestWebsiteRiskSnapshot([
+    archive.status==="fulfilled"?archive.value:null,
+    edge.status==="fulfilled"?edge.value:null,
+  ],now);
   if(!risk||
      !Number.isFinite(Date.parse(risk.snapshotAsOf))||
      Date.parse(risk.snapshotAsOf)>cutoff||

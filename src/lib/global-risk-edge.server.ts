@@ -13,6 +13,7 @@ export async function readGlobalRiskEdge(): Promise<GlobalRisk | null> {
   try {
     const response = await fetch(EDGE_URL, {
       method: "GET",
+      cache: "no-store",
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(4_500),
     });
