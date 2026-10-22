@@ -71,6 +71,10 @@ test("unapproved owner/reviewer, swapped package, and reused authority fail befo
    /AUTHORITIES_NOT_INDEPENDENT/);
  assert.throws(()=>attempt(x,{otherAuthoritySpkiSha256:[x.pallab.pin]}),
    /AUTHORITIES_NOT_INDEPENDENT/);
+ assert.throws(()=>attempt(x,{otherAuthoritySpkiSha256:[]}),
+   /AUTHORITIES_NOT_INDEPENDENT/);
+ assert.throws(()=>attempt(x,{otherAuthoritySpkiSha256:[x.facts.pin,x.facts.pin]}),
+   /AUTHORITIES_NOT_INDEPENDENT/);
  assert.throws(()=>attempt(x,{countryCertificateBytes:Buffer.from("tampered-signed-certificates")}),
    /EXACT_SIGNED_INPUT_SHA_MISMATCH/);
 });
