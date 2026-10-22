@@ -38,6 +38,17 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/ops/verify-retained-supabase-continuity.mjs
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const s=fs.readFileSync('scripts/ops/verify-retained-supabase-continuity.mjs','utf8');
+          for(const needle of [
+           'u.hostname==="db."+REF+".supabase.co"',
+           'u.hostname.endsWith(".pooler.supabase.com")',
+           'PGSSLMODE:"require"',
+           'PGOPTIONS:"-c default_transaction_read_only=on"',
+           'project_deletion_authorized:false'
+          ])if(!s.includes(needle))throw Error('PINNED_READONLY_POSTGRES_CONTRACT_MISSING');
+          NODE
           node scripts/ops/verify-retained-supabase-continuity.mjs || test "$?" -eq 3
           node - <<'NODE'
           const r=require("./artifacts/legacy-exit/retained-supabase-continuity.json");
