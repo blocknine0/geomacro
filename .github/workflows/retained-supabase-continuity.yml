@@ -1,0 +1,90 @@
+name: Retained Supabase Continuity (Owner Keep, No Deletion)
+# Explicit owner decision: KEEP old project active; this job is read-only.
+# No file deletions, no source/project mutations and no money.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "47 6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/retained-supabase-continuity.yml"
+      - "scripts/ops/verify-retained-supabase-continuity.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/retained-supabase-continuity.yml"
+      - "scripts/ops/verify-retained-supabase-continuity.mjs"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-retained-supabase-readonly
+  cancel-in-progress: false
+jobs:
+  no-secrets-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      APP_SUPABASE_URL: ""
+      SUPABASE_DB_URL: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Prove immutable owner retention intent and no-credentials fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/verify-retained-supabase-continuity.mjs
+          node scripts/ops/verify-retained-supabase-continuity.mjs || test "$?" -eq 3
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/retained-supabase-continuity.json");
+          if(r.status!=="BLOCKED_NO_MUTATION"||
+             r.owner_instruction!=="KEEP_EXISTING_SUPABASE_ACTIVE_DO_NOT_DELETE"||
+             r.project_deletion_authorized!==false||
+             r.bucket_deletion_authorized!==false||
+             r.source_mutations!==0||
+             r.source_storage_deletions!==0||r.d1_writes!==0||
+             r.b2_operations!==0||r.real_payments!==0)
+            throw Error("RETAIN_OLD_SUPABASE_POLICY_MUST_FAIL_CLOSED");
+          NODE
+  read-only-live-census:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Read original source table and file COUNTS only
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-retained-supabase-continuity.mjs
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/retained-supabase-continuity.json");
+          if(r.status!=="RETAINED_SUPABASE_SOURCE_READABLE_NO_MUTATION"||
+             r.source_sql_read_only_verified!==true||
+             r.project_deletion_authorized!==false||
+             r.bucket_deletion_authorized!==false||
+             r.source_mutations!==0||r.source_storage_deletions!==0||
+             r.real_payments!==0)
+            throw Error("RETAINED_SUPABASE_CONTINUITY_NOT_PROVEN");
+          NODE
+      - name: Save numeric counts only, never rows, passwords or tokens
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: retained-supabase-readonly-${{ github.run_id }}
+          path: artifacts/legacy-exit/retained-supabase-continuity.json
+          retention-days: 14
+          if-no-files-found: warn
