@@ -3,7 +3,7 @@
 // narrow authority. Neither is silently upgraded to the legacy GRO/GRI proof.
 import {readDerivedStories} from './website-derived-intelligence.mjs';
 import {checkedDerivedNews} from '../../../src/lib/public-derived-news-client.ts';
-import {automatedInputId,verifyAutomatedInput} from '../../../src/lib/automated-intelligence-input.ts';
+import {automatedInputContent,automatedInputId,verifyAutomatedInput} from '../../../src/lib/automated-intelligence-input.ts';
 import {verifyLowSourceReview} from '../../../src/lib/low-authority-source-review.ts';
 const SIZE=40;
 const reply=(body,status=200)=>Response.json(body,{status,headers:{
@@ -40,8 +40,14 @@ export async function publicSignedNews(env,query=new URLSearchParams(),now=Date.
   // One exact canonical identity per unique derived item, including revisions.
   // Alternate journal IDs are aliases, never duplicate signed publications.
   const unique=new Map();
-  for(const signal of journal){const id=await automatedInputId(signal);if(!unique.has(id))unique.set(id,signal);}
-  const selected=[...unique].slice(offset,offset+SIZE);
+  for(const signal of journal){
+   const content=automatedInputContent(signal);
+   if(!unique.has(content))unique.set(content,signal);
+  }
+  // Deduplicate exact canonical bytes without 600 WebCrypto operations on
+  // every proof page. Only the selected 40 items need canonical hash IDs.
+  const selected=await Promise.all([...unique.values()].slice(offset,offset+SIZE)
+   .map(async signal=>[await automatedInputId(signal),signal]));
   const keys=JSON.parse(env.AUTOMATED_FINDS_VERIFY_KEYS_JSON??'{}');
   const trust={public_spki_b64:env.GEOMACRO_LOW_REVIEW_PUBLIC_SPKI_B64,
    public_sha256:env.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256,
