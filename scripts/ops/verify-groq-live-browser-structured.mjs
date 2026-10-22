@@ -43,8 +43,10 @@ export async function runProtectedGroqBrowserAcceptance({
    browser200=true;
    providerToolEvidence=Array.isArray(data?.choices?.[0]?.message?.executed_tools)&&
     data.choices[0].message.executed_tools.some(x=>
-      typeof x?.type==="string"&&x.type.includes("browser_search"));
+      typeof x?.type==="string"&&x.type==="browser_search");
   }else converter200=true;
+  // The mere presence of JSON/prose does not prove built-in web execution.
+  if(stage===1&&!providerToolEvidence)throw Error(DENY);
   const content=data?.choices?.[0]?.message?.content;
   try{
    // An empty leads[] still proves the STRICT validator accepted a legitimate
@@ -60,7 +62,7 @@ export async function runProtectedGroqBrowserAcceptance({
   env:{GROQ_API_KEY:env.GROQ_API_KEY},
   fetchImpl:wrapped,now
  });}catch{throw Error(DENY)}
- if(!browser200||!structuredAccepted||calls<1||calls>2)throw Error(DENY);
+ if(!browser200||!providerToolEvidence||!structuredAccepted||calls<1||calls>2)throw Error(DENY);
  return Object.freeze({
   schema:"geomacro.groq-real-browser-strict-acceptance.v1",
   status:"REAL_PROVIDER_BROWSER_RESPONSE_AND_STRICT_SCHEMA_ACCEPTED",
