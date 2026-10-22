@@ -5,6 +5,7 @@ import {createPublicKey,createHash} from "node:crypto";
 import {validateDelegation,signMachineReceipt,ENABLE} from
  "../lib/standing-derived-delegation.mjs";
 import {sanitizeCloudSigningFailure} from "../lib/standing-delegated-cloud-safe-reasons.mjs";
+import {standingRoleCollisionKind} from "../lib/standing-delegation-role-separation.mjs";
 let phase="ENTRYPOINT";
 const fail=()=>{throw Error("DELEGATED_DERIVED_CLOUD_SIGNING_NOT_READY");};
 const hex=/^[a-f0-9]{64}$/u;
@@ -36,6 +37,18 @@ async function main(env=process.env){
  const other=[env.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256,
   env.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256,groPin];
  if(other.some(x=>!hex.test(x??"")))fail();
+ const classification=standingRoleCollisionKind({
+  owner:env.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256,
+  reviewer:env.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256,
+  machine:env.GEOMACRO_DELEGATED_MACHINE_PUBLIC_KEY_SHA256,
+  facts:other[0],rights:other[1],gro:other[2],
+  policyMachine:envelope.policy?.machine_public_spki_sha256
+ });
+ if(classification!=="NO_ROLE_COLLISION_FOUND"){
+  console.error(JSON.stringify({schema:"geomacro.delegation-role-separation-safe-diagnostic.v1",
+   collision:classification,machine_signature_produced:false,
+   real_money_authorized:false,private_key_material_logged:false}));
+ }
  const delegation=validateDelegation(envelope,{
   ownerPem:env.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM,
   ownerPin:env.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256,
