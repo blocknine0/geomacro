@@ -28,6 +28,34 @@ available. No unreviewed source is self-approved for commercial publication.
   article, rights document, signed envelope, proof or customer data. Each
   field is only a bounded state code.
 
+## 2026-10-22 correction: Lovable B2 S3 secrets are NOT a required prerequisite
+
+Actual `src/routes/api.health.ts` deep readiness reads the authenticated,
+B2-backed Cloudflare edges and **three independently verified current
+Cloudflare D1 hot products**. The app does **not** need new direct S3
+`B2_ARCHIVE_READ_KEY_ID` / `B2_ARCHIVE_READ_APPLICATION_KEY` secrets in Lovable.
+The legacy health property `b2_runtime_configured` is calculated from
+readable, validated B2-backed **edge baselines**, *not* from testing S3
+secret presence in Lovable. The public app's own fallback helper can support
+optional protected private reads, but their absence is not a safe explanation
+of a missing current signed hot proof. Do not copy private B2 key material
+into Lovable merely to make a health flag green.
+
+The *separate GitHub protected issuer/staging workflows* require approved
+B2-scoped storage credentials in their existing **production** environment
+as appropriate. Keep keys there or in the authorized original issuer's
+secret manager; do not print, reuse browser/client secrets or regenerate an
+independent authority. Even valid GitHub B2 storage credentials cannot
+replace source-native 22h evidence, Facts + Rights signatures, reviewed
+numerical GRI v1.2, reviewer public pin, independent historic B2 lineage,
+exact B2 upload/readback or current D1 promotion.
+
+Actual Oct 22 live state at 13:30 UTC: D1 health 200/schema 5;
+three signed hot products stale/expired (0/3), website deep 503,
+archive historic anchor is a valid *historical* D1 record but is not now
+readable B2 proof. x402 remains controlled/no funds. A new Lovable Publish
+synchronizes source SHA but does not reissue genuine independent proofs.
+
 ## What the owner needs to do once (NOT 24/7)
 1. In GitHub **Settings > Environments > production > Environment secrets**
    and repository Actions secrets, review the **names** (not values) of
