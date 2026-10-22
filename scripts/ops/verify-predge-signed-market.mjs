@@ -8,7 +8,7 @@ import {createHash,createPublicKey,verify as ed25519Verify} from "node:crypto";
 import {fileURLToPath} from "node:url";
 
 export const PREDGE_ATTESTATION_PUBLIC_KEY =
- "13fa3d18a369e6c71bf941563ba47822b30182273d5106a0e8fb61c5016352d9";
+ "3b6551a6439b9bda0de7e3b8dc89f276b2141fdfde310f762e663ab4ba2e9d1b";
 export const PREDGE_ATTESTATION_KID=PREDGE_ATTESTATION_PUBLIC_KEY.slice(0,16);
 export const KEY_URL="https://api.predge.io/.well-known/predge-keys.json";
 export const MARKET_URL="https://api.predge.io/v1/settlement-risk/5710779";
