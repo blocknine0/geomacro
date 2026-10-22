@@ -37,9 +37,9 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/ops/legacy-deployed-edge-functions-b2-safe-exit.mjs
-          node - <<\'NODE\'
+          node - <<'NODE'
           const f=require("node:fs").readFileSync("scripts/ops/legacy-deployed-edge-functions-b2-safe-exit.mjs","utf8");
-          for(const t of ["downloadActualDeployedSourceWithCli","functions\",\"download","PRIVATE_CLI_DOWNLOAD_SYMLINK_REJECTED","--project-ref", "old_supabase_deletion_authorized:false"])
+          for(const t of ["downloadActualDeployedSourceWithCli","functions","download","PRIVATE_CLI_DOWNLOAD_SYMLINK_REJECTED","--project-ref","old_supabase_deletion_authorized:false"])
              if(!f.includes(t))throw Error("OFFICIAL_CLI_OR_SAFE_EXIT_BOUNDARY_MISSING");
           NODE
           node --test scripts/ops/legacy-edge-source-body-format.test.mjs
