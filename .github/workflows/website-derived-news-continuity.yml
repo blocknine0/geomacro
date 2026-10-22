@@ -414,7 +414,7 @@ jobs:
           const id=doc.result?.find(x=>x.name==='geomacro-control-plane')?.uuid;
           if(!response.ok||doc.success!==true||!/^[a-f0-9-]{36}$/.test(id||''))
             throw Error('B2_NEWS_D1_QUOTA_LEDGER_UNAVAILABLE');
-          appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+id+'\\n');
+          appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+id+'\n');
           NODE
       - name: Archive real website Intelligence records to private B2 with exact full GET
         shell: bash
