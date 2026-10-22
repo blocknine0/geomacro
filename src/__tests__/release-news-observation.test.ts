@@ -49,11 +49,11 @@ it("retains genuine pre-style-update private references while newly rendered con
  const {signAutomatedIntelligenceInput}=await import('../lib/risk-object-signing.server');
  const {automatedInputId}=await import('../lib/automated-intelligence-input');
  const {verifyPrivateSourceHandoff}=await import('../lib/private-source-handoff');
- const pair=generateKeyPairSync('ed25519'),now=Date.parse('2026-10-22T12:00:00.000Z');
+ const pair=generateKeyPairSync('ed25519'),now=Date.now();
  const material={key_id:'editorial-transition-test',public_key_spki_b64:pair.publicKey.export({format:'der',type:'spki'}).toString('base64'),
   private_key_pkcs8_b64:pair.privateKey.export({format:'der',type:'pkcs8'}).toString('base64')};
  const ref={sourceId:'uk_fcdo',category:'geopolitics' as const,title:'UK announces new sanctions on Russia',
-  articleUrl:'https://www.gov.uk/government/news/test-sanctions-measures',publishedAt:'2026-10-22T11:00:00.000Z',credit:null};
+  articleUrl:'https://www.gov.uk/government/news/test-sanctions-measures',publishedAt:new Date(now-3600000).toISOString(),credit:null};
  const legacy=deriveStatelessSignals([ref],now,{editorialVersion:'legacy_v1'})[0];
  const revised=deriveStatelessSignals([ref],now)[0];
  expect(legacy.id).toBe(revised.id);expect(legacy.published_at).toBe(revised.published_at);
