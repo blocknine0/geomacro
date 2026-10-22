@@ -105,6 +105,13 @@ export async function probeProductionCountryMacro({
      body:JSON.stringify(input),
      redirect:"error",cache:"no-store",signal:AbortSignal.timeout(35_000)
    });
+   if(response.status!==200){
+     await response.body?.cancel().catch(()=>{});
+     results.push(inspectCountryAnnualResponse(input,{
+       httpStatus:response.status,body:null,now
+     }));
+     continue;
+   }
    const body=await smallResponse(response);
    results.push(inspectCountryAnnualResponse(input,{
       httpStatus:response.status,body,now
