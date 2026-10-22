@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {archiveDerivedJournalToB2,readExactCurrentDerivedJournal,
  buildDerivedJournalB2Plan,verifyDerivedJournalB2Restore}
  from "../lib/derived-news-b2-readwrite-backup.mjs";
-import {runGovernedDerivedNewsBackup}
+import {runGovernedDerivedNewsBackup,summarizeSafeBackupReceipt}
  from "../ops/archive-live-derived-news-to-b2.mjs";
 const now=new Date("2026-10-22T12:07:00Z");
 const sample=(category,id)=>{
@@ -119,4 +119,34 @@ test("quota guard reserves free signed-hot recovery headroom before creating B2 
   fetchImpl:async()=>{throw Error("MUST_NOT_GET_D1");}});
  assert.equal(receipt.status,"B2_SHARED_ACCOUNT_RECOVERY_HEADROOM_HELD");
  assert.equal(receipt.b2_put_verified,false);
+});
+
+test("independent B2 job receipt is green ONLY after actual PUT plus full GET and restored SHA",()=>{
+ const testNow=new Date("2026-10-22T12:08:00Z");
+ const good=summarizeSafeBackupReceipt({
+  status:"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED",
+  b2_put_verified:true,b2_exact_readback_verified:true,
+  source_d1_readback_verified:true,
+  archived_rows:3,category_counts:{geopolitics:1,macro:1,rare_earth:1},
+  compressed_sha256:"a".repeat(64),
+  archive_object_key:"geomacro-evidence/v1/private/derived-news-journal/2026/10/22/"+"a".repeat(64)+".json.gz"
+ },testNow);
+ assert.equal(good.status,"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED");
+ assert.equal(good.storage_confirmed,true);
+ assert.equal(good.derived_rows_archived,3);
+ assert.equal(good.source_news_d1_website_delivery_not_modified,true);
+ assert.equal(good.signed_hot_gri_verified,false);
+ for(const receipt of [
+  {status:"SKIPPED_SIX_HOUR_ARCHIVE_SLOT"},
+  {status:"B2_SHARED_ACCOUNT_RECOVERY_HEADROOM_HELD"},
+  {status:"BACKUP_FAILED_CLOSED"},
+  {status:"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED",b2_put_verified:true,
+    b2_exact_readback_verified:false,source_d1_readback_verified:true}
+ ]){
+  const failed=summarizeSafeBackupReceipt(receipt,testNow);
+  assert.equal(failed.storage_confirmed,false);
+  assert.equal(failed.object_sha256,null);
+  assert.equal(failed.derived_rows_archived,0);
+  assert.equal(failed.paid_eligible,false);
+ }
 });

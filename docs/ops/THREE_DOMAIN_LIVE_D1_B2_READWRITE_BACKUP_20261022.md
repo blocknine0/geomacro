@@ -71,16 +71,54 @@ visibly while genuine D1 free news still serves. Report
 a skipped backup as successfully stored. No private article titles/URLs
 appear in Actions logs or public website.
 
+## Independent B2 persistence acceptance (2026-10-22)
+
+The previous same-job archive ran with `continue-on-error: true`. A green
+`Website Derived News Continuity` run could therefore mean that D1 news
+succeeded **while its B2 storage failed** or, outside four slots, was merely
+skipped. This is not durable acceptance.
+
+The archival step is now **a separate** `private-b2-derived-news-acceptance`
+job that depends on completion of the existing D1 newsroom job but has its
+own pass/fail conclusion. The independent job re-resolves the real
+`geomacro-control-plane` D1 shared quota ledger, and re-reads source-neutral
+public D1 pages under the existing original/date/15min/72h/private-info gates.
+It archives those exact cards and verifies Backblaze S3 PUT with a full
+independent GET, exact compressed SHA256 and bounded gzip/JSON reconstruction.
+
+The job is `always()` after the D1 producer (including when a separate
+legacy signed-GRI or website-parity gate fails), because a genuine valid
+D1 news journal should still be backed up without waiting for unrelated
+signed-product recovery. It does not replay B2 records into D1 or create
+a duplicate website feed.
+
+The protected workflow now emits a **3-day counts-and-hash-only Actions
+artifact** `b2-actual-intelligence-derived-news-readback-<run_id>`
+containing an explicit `storage_confirmed` boolean. Only status
+`B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED` with a signed PUT/full GET
+and same source D1 readback is accepted. Storage denial, quota hold,
+unavailable credentials or incorrect bytes fail the **B2 job**, leaving
+free Intelligence unaffected. `SKIPPED_SIX_HOUR_ARCHIVE_SLOT` and
+`SKIPPED_NO_QUALIFYING_D1_NEWS` are visible *not-stored* receipts.
+An all-green standard source unit test cannot attest physical B2 bytes.
+
+**At 2026-10-22 16:10 UTC**, the public D1 readback had 28 cards, but
+the B2 receipt was `SKIPPED_SIX_HOUR_ARCHIVE_SLOT`. Real storage for that
+batch has NOT been proven. The next eligible scheduled archive window
+is 18 UTC if GitHub and B2 provider/ledger quotas permit. No claim of
+exact-once execution, instant full-global news or permanent physical storage
+is made until independent B2 receipt confirms it.
+
 ## Activation and actual acceptance
 
 1. Merge the gated tests/PR. Existing `website-derived-news-continuity.yml`
    automatically dispatches on main push or successful control-plane deploy,
    and retains its scheduled hourly `:07` best-effort cron.
 2. Run `node --test scripts/tests/derived-news-b2-readwrite-backup.test.mjs`.
-3. Protected main run, after `Independently verify public derived-news
-   journal`, executes `Archive SAME genuine D1 Intelligence news to
-   private B2 with exact PUT+GET readback`. Manual dispatch is allowed
-   outside four UTC slots.
+3. Protected main run completes the existing source/public D1 job first,
+   then runs the separate `private-b2-derived-news-acceptance` job, with
+   its own immutable proof receipt and pass/fail status. Manual dispatch is
+   allowed outside four UTC slots.
 4. Look at **actual** GitHub job logs. Only
    `status=B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED` plus
    `b2_put_full_get_verified=true` proves B2 storage.
