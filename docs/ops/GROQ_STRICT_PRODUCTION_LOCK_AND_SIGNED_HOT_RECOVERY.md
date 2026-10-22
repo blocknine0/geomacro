@@ -120,3 +120,49 @@ owner laptop:
 | GRI signed hot | Real independent numerical GRI reviewer/certificates and B2 | BLOCKED |
 | Risk Indices signed hot | Verified current GRI parent and independent indices publication | BLOCKED |
 | Deep health 200 | All three above current, exact deployed build SHA | BLOCKED |
+
+## D. Latest actual production proof (22 Oct 2026 08:47 UTC)
+
+**Groq resolved:** [Run 39749895271](https://github.com/blocknine0/geomacro/actions/runs/39749895271)
+used the existing protected Free-plan Groq key and **real built-in
+browser_search**. Provider HTTP 200, executed_tools browser_search marker
+observed, production exact-schema validator accepted the result; one
+Groq API call, zero payments/B2/D1 writes. It returned `leads:[]`,
+so source-authenticated structured **event coverage is zero in this
+canary**: that is a valid no-qualified-leads outcome, not a publication
+failure or proof of new factual coverage.
+
+The 2026-10-22 quota fix charges BOTH provider requests when a cited
+browser response needs a separate tool-free structured JSON conversion;
+previously the per-runtime limiter counted only the initial browser
+request. It remains a **per Node process** guard, not a shared
+organization-level limiter. Canary now also rejects a fake
+schema-conformant completion without actual `executed_tools:browser_search`.
+Do not bypass Groq Free plan limits or create a second paid account.
+
+**Signed products still unresolved:** [Public D1 Hot Serving Root Cause run
+39750306729](https://github.com/blocknine0/geomacro/actions/runs/39750306729)
+independently found D1 control-plane HTTP 200 but hot endpoints all
+HTTP 503, original native timestamps 18,122 / 19,357 / 20,334
+minutes old (Intelligence / GRI / Indices respectively), all
+`SOURCE_TOO_OLD` and `EXPIRED`. Its real production JSON places
+`historical_b2_baseline_readable` on the top level and uses
+`products.<product>.status`; corrected the recovery handoff to read those
+actual fields. The fix **does not** mint a signed product, download B2
+bytes, extend validity or turn 503 into 200.
+
+There is no authenticated fresh three-domain Facts/Rights dual-signed
+machine batch, independent numerical GRI and country/category
+certificates, or current canonical B2/D1 publication proof. Existing
+reviewer PUBLIC PEM was not configured, and owner has no independent
+human reviewer. An internal AI research validator **cannot** claim a
+separate independent authority. To monetize alternate AI-reviewed
+Geomacro-original insights, explicitly establish and test a separate
+`geomacro.ai-reviewed` product/trust/scoring contract; do not pass
+unreviewed data to the current `independent-reviewed-gri-v1.2`
+publisher or override `health?deep=1`.
+
+The remaining operational steps are actual-source input/custody and the
+protected publisher's real B2/D1 readback. The owner's laptop is **not**
+needed 24/7. Keep source-only public Finds active and payments at
+controlled prelaunch in the meantime.
