@@ -76,3 +76,33 @@ test("broken Ed25519 pin is not accepted, without logging any PEM material",()=>
  assert.equal(x.suman_reviewer_public_pin_verified,true);
  assert.equal(x.configured_public_key_shapes_passed,false);
 });
+
+test("diagnostics report precise missing vs malformed vs mismatch without printing any PEM",()=>{
+ const base=distinct();
+ const variants=[
+  ["PUBLIC_PEM_SECRET_MISSING",{GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM:""}],
+  ["PUBLIC_PEM_HAS_LITERAL_BACKSLASH_N",{GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM:
+    base.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM.replaceAll("\n","\\n")}],
+  ["PUBLIC_PEM_WRONG_FORMAT",{GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM:
+    "ssh-ed25519 AAAAincorrect-format"}],
+  ["PUBLIC_PEM_CANNOT_PARSE",{GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM:
+    "-----BEGIN PUBLIC KEY-----\nINVALID\n-----END PUBLIC KEY-----"}],
+  ["SHA256_SECRET_MISSING",{GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256:""}],
+  ["SHA256_NOT_64_LOWERCASE_HEX",{GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256:
+    base.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256.toUpperCase()}],
+  ["PUBLIC_PEM_SHA256_PIN_MISMATCH",{GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256:
+    "a".repeat(64)===base.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256?"b".repeat(64):"a".repeat(64)}],
+  ["PRIVATE_KEY_PASTED_INTO_PUBLIC_SECRET",{GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM:
+    "-----BEGIN PRIVATE KEY-----\n[redacted]\n-----END PRIVATE KEY-----"}],
+ ];
+ for(const [reason,override] of variants){
+  const actual=pallabSumanAuthorityReadiness({...base,...override});
+  assert.equal(actual.pallab_owner_public_pin_diagnostic,reason);
+  assert.equal(actual.suman_reviewer_public_pin_diagnostic,"VERIFIED");
+  assert.equal(actual.pallab_owner_public_pin_verified,false);
+  assert.doesNotMatch(JSON.stringify(actual),/BEGIN PUBLIC KEY|ssh-ed25519/);
+ }
+ const ok=pallabSumanAuthorityReadiness(base);
+ assert.equal(ok.pallab_owner_public_pin_diagnostic,"VERIFIED");
+ assert.equal(ok.suman_reviewer_public_pin_diagnostic,"VERIFIED");
+});
