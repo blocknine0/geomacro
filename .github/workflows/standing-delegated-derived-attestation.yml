@@ -42,8 +42,8 @@ jobs:
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
       RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
-      GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH: ${{ runner.temp }}/verified-derived.json
-      GEOMACRO_DELEGATED_RECEIPT_OUTPUT_PATH: ${{ runner.temp }}/delegated-derived.json
+      GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH: /home/runner/work/_temp/verified-derived.json
+      GEOMACRO_DELEGATED_RECEIPT_OUTPUT_PATH: /home/runner/work/_temp/delegated-derived.json
     steps:
       - name: Check one-time governance opt-in
         id: optin
