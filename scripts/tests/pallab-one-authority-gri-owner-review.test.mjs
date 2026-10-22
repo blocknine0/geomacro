@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {generateKeyPairSync,createHash} from "node:crypto";
 import {signOwnerReviewedCandidate} from "../ops/sign-pallab-owner-gri-candidate.mjs";
 import {verifyEncodedOwnerApprovedCandidate} from "../ops/verify-pallab-owner-gri-candidate.mjs";
-import {assertOwnerApprovalEnvelope} from "./pallab-human-gri-batch-approval.mjs";
+import {assertOwnerApprovalEnvelope} from "../lib/pallab-human-gri-batch-approval.mjs";
 const now=new Date("2026-10-22T12:00:00.000Z");
 const makeKey=()=>{
  const {privateKey,publicKey}=generateKeyPairSync("ed25519");
