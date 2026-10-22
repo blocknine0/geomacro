@@ -1,0 +1,128 @@
+name: Legacy App Private B2 Original Reader Cutover Acceptance
+# Real application source-free B2 read with no Supabase injected.
+# This is NOT customer-identity, settlement or full deletion acceptance.
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "scripts/ops/legacy-app-b2-original-cutover-acceptance.ts"
+      - ".github/workflows/legacy-app-b2-original-cutover-acceptance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/legacy-app-b2-original-cutover-acceptance.ts"
+      - ".github/workflows/legacy-app-b2-original-cutover-acceptance.yml"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-legacy-app-b2-origin-free-cutover-acceptance
+  cancel-in-progress: false
+jobs:
+  source-free-static-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      NODE_ENV: production
+      GEOMACRO_SUPABASE_RUNTIME_MODE: standby
+      GEOMACRO_LEGACY_B2_COLD_READ: enabled
+      SUPABASE_URL: ""
+      APP_SUPABASE_URL: ""
+      SUPABASE_DB_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      APP_SUPABASE_SERVICE_ROLE_KEY: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Enforce only private original read no deletion and missing-secret fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun build scripts/ops/legacy-app-b2-original-cutover-acceptance.ts --target=bun --outfile /tmp/legacy-acceptance.bundle.js
+          bun scripts/ops/legacy-app-b2-original-cutover-acceptance.ts || test "$?" -eq 3
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/app-b2-origin-free-read-acceptance.json");
+          if(r.status!=="BLOCKED_NO_DELETION"||
+             r.old_supabase_deletion_authorized!==false||
+             r.source_mutations!==0||r.b2_puts!==0||r.b2_deletes!==0||
+             r.real_money_transactions!==0||
+             r.customer_identity_cutover_verified!==false)
+            throw Error("APPLICATION_SOURCE_FREE_NO_DELETION_FENCE_INVALID");
+          NODE
+  protected-original-application-live-read:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production
+    env:
+      NODE_ENV: production
+      GEOMACRO_SUPABASE_RUNTIME_MODE: standby
+      GEOMACRO_LEGACY_B2_COLD_READ: enabled
+      SUPABASE_URL: ""
+      APP_SUPABASE_URL: ""
+      SUPABASE_DB_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      APP_SUPABASE_SERVICE_ROLE_KEY: ""
+      SUPABASE_ACCESS_TOKEN: ""
+      SUPABASE_ANON_KEY: ""
+      APP_SUPABASE_ANON_KEY: ""
+      APP_SUPABASE_JWT_SECRET: ""
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_LEGACY_INVENTORY_KEY_ID: ${{ secrets.B2_LEGACY_INVENTORY_KEY_ID }}
+      B2_LEGACY_INVENTORY_APPLICATION_KEY: ${{ secrets.B2_LEGACY_INVENTORY_APPLICATION_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Read D1 account-wide B2 quota governor without exposing secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun --eval '
+          import {appendFileSync} from "node:fs";
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!/^[a-f0-9]{32}$/u.test(account??""))throw Error("APP_B2_D1_ACCOUNT_INVALID");
+          const r=await fetch("https://api.cloudflare.com/client/v4/accounts/"+
+            account+"/d1/database?per_page=100",{
+            headers:{authorization:"Bearer "+process.env.CLOUDFLARE_API_TOKEN},
+            redirect:"error",signal:AbortSignal.timeout(15000)});
+          const b=await r.json();
+          const id=b?.result?.find(x=>x.name==="geomacro-control-plane")?.uuid;
+          if(!r.ok||b.success!==true||!/^[a-f0-9-]{36}$/u.test(id??""))
+           throw Error("APP_B2_SHARED_QUOTA_LEDGER_UNAVAILABLE");
+          appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+id+"\n");
+          '
+      - name: Actual app original B2 reader; two buckets; Supabase credentials absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ops/legacy-app-b2-original-cutover-acceptance.ts
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/app-b2-origin-free-read-acceptance.json");
+          if(r.status!=="APPLICATION_B2_ORIGINAL_READER_BOTH_BUCKETS_VERIFIED"||
+             r.application_original_reader_independent_originals_verified!==2||
+             r.original_intelligence_bytes_verified!==true||
+             r.original_avatar_bytes_verified!==true||
+             r.old_supabase_deletion_authorized!==false||
+             r.customer_identity_cutover_verified!==false||
+             r.source_mutations!==0||r.b2_puts!==0||r.b2_deletes!==0||
+             r.real_money_transactions!==0)
+            throw Error("APP_PRIVATE_B2_TWO_BUCKET_ACCEPTANCE_NOT_MET");
+          NODE
+      - name: Publish only sanitized private original reader result
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: private-app-original-reader-${{ github.run_id }}
+          path: artifacts/legacy-exit/app-b2-origin-free-read-acceptance.json
+          if-no-files-found: warn
+          retention-days: 14
