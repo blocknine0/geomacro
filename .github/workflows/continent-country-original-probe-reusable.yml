@@ -20,7 +20,7 @@ permissions:
 
 # Global serialization across the six geographic lanes; GitHub permits
 # only one running + one pending in a group, so scheduled cron offsets are
-# deliberately 10 minutes apart. A superseded pending run remains a GAP,
+# deliberately 20 minutes apart. Each source job is bounded to 9 minutes. A superseded pending run remains a GAP,
 # never counted as tested source evidence.
 concurrency:
   group: geomacro-continent-country-six-lanes-protected-sources
