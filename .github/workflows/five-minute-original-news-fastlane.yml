@@ -17,6 +17,9 @@ on:
       - ".github/workflows/five-minute-original-news-fastlane.yml"
       - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
       - "scripts/ops/publish-automated-intelligence-inputs.ts"
+      - "scripts/ops/verify-all-news-signed-publications.mjs"
+      - "scripts/tests/public-signed-news.test.mjs"
+      - "workers/control-plane/src/public-signed-news.mjs"
       - "scripts/ops/persist-private-source-handoffs.ts"
       - "scripts/ops/read-private-source-handoffs.ts"
       - "scripts/ops/review-derived-inputs-low-authority.ts"
@@ -39,6 +42,9 @@ on:
       - ".github/workflows/five-minute-original-news-fastlane.yml"
       - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
       - "scripts/ops/publish-automated-intelligence-inputs.ts"
+      - "scripts/ops/verify-all-news-signed-publications.mjs"
+      - "scripts/tests/public-signed-news.test.mjs"
+      - "workers/control-plane/src/public-signed-news.mjs"
       - "scripts/ops/persist-private-source-handoffs.ts"
       - "scripts/ops/read-private-source-handoffs.ts"
       - "scripts/ops/review-derived-inputs-low-authority.ts"
@@ -114,6 +120,9 @@ jobs:
         run: |
           umask 077
           bun scripts/ops/review-derived-inputs-low-authority.ts > "$RUNNER_TEMP/geomacro-source-review-result.json"
+      - name: Verify every retained newsroom signature against the approved issuer key
+        if: ${{ !cancelled() }}
+        run: bun scripts/ops/verify-all-news-signed-publications.mjs
       - name: Verify and emit only safe source-review aggregates
         run: node scripts/ops/emit-low-source-review-status.mjs "$RUNNER_TEMP/geomacro-source-review-result.json"
       - name: Remove private review results
@@ -139,6 +148,7 @@ jobs:
           bun test scripts/tests/private-source-handoff-sqlite.test.ts
           node --test scripts/ops/verify-original-to-website-visible-20m.test.mjs
           node --test scripts/tests/emit-low-source-review-status.test.mjs
+          bun test scripts/tests/public-signed-news.test.mjs
 
   original-five-minute-derived-news:
     if: >-

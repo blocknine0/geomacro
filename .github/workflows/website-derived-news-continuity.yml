@@ -16,6 +16,9 @@ on:
       - ".github/workflows/website-derived-news-continuity.yml"
       - "scripts/ops/publish-website-derived-news.ts"
       - "scripts/ops/publish-automated-intelligence-inputs.ts"
+      - "scripts/ops/verify-all-news-signed-publications.mjs"
+      - "scripts/tests/public-signed-news.test.mjs"
+      - "workers/control-plane/src/public-signed-news.mjs"
       - "src/lib/automated-intelligence-input.ts"
       - "src/lib/stateless-intelligence-model.ts"
       - "src/lib/stateless-public-intelligence.server.ts"
@@ -171,6 +174,9 @@ jobs:
         run: |
           umask 077
           bun scripts/ops/review-derived-inputs-low-authority.ts > "$RUNNER_TEMP/geomacro-source-review-result.json"
+      - name: Verify every retained newsroom signature against the approved issuer key
+        if: ${{ !cancelled() }}
+        run: bun scripts/ops/verify-all-news-signed-publications.mjs
       - name: Verify and emit only safe source-review aggregates
         run: node scripts/ops/emit-low-source-review-status.mjs "$RUNNER_TEMP/geomacro-source-review-result.json"
       - name: Remove private review handoff and internal verdicts from the runner
