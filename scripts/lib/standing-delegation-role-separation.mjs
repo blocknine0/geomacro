@@ -5,7 +5,7 @@
  */
 const SHA=/^[a-f0-9]{64}$/;
 const KEYS=["owner","reviewer","machine","facts","rights","gro"];
-export function standingRoleCollisionKind(inputs){
+export function standingRoleCollisionKind(inputs,{allowOwnerFactsReuse=false}={}){
  if(!inputs||typeof inputs!=="object"||KEYS.some(k=>!SHA.test(inputs[k]??""))||
     !SHA.test(inputs.policyMachine??""))
   return "ROLE_PINS_MISSING_OR_INVALID";
@@ -27,6 +27,9 @@ export function standingRoleCollisionKind(inputs){
   ["reviewer","rights","REVIEWER_AND_RIGHTS_SHARE_KEY"],
   ["reviewer","gro","REVIEWER_AND_GRO_SHARE_KEY"]
  ];
- for(const [a,b,label] of pairs)if(inputs[a]===inputs[b])return label;
+ for(const [a,b,label] of pairs){
+  if(label==="OWNER_AND_FACTS_SHARE_KEY"&&allowOwnerFactsReuse===true)continue;
+  if(inputs[a]===inputs[b])return label;
+ }
  return "NO_ROLE_COLLISION_FOUND";
 }
