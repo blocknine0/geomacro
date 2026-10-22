@@ -42,11 +42,18 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-concise-store-and-reader-redesign-20261023");
+    expect(config.lock_revision).toBe("founder-approved-home-clarity-gri-reader-20261023");
     const launch = config.three_chain_launch_presentation_approval;
     const toggle = config.approved_three_category_toggle_presentation;
     const redesign = config.approved_store_reader_redesign;
-    expect(redesign.approved_ui_commit).toBe(config.baseline_sha);
+    const home = config.approved_home_clarity_gri_reader;
+    expect(home.approved_ui_commit).toBe(config.baseline_sha);
+    expect(home.previous_baseline_sha).toBe(redesign.approved_ui_commit);
+    expect(home.global_risk_final_lock_unmodified).toBe(true);
+    expect(home.original_score_and_proof_clocks_preserved).toBe(true);
+    expect(home.current_scored_gri_published).toBe(false);
+    expect(home.funds_authorized).toBe(false);
+    expect(home.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(redesign.previous_baseline_sha).toBe(toggle.approved_ui_commit);
     expect(redesign.canonical_pricing_unmodified).toBe(true);
     expect(redesign.global_risk_final_lock_unmodified).toBe(true);
