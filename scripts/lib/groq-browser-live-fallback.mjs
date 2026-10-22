@@ -125,7 +125,7 @@ export function validateGroqBrowserLeadText(content,{categories,now=new Date()}=
 }
 export async function groqBrowserResearchForMissingOfficial({
  categories,country_iso3=null,country_name=null,
- env=process.env,fetchImpl=fetch,now=new Date()
+ env=process.env,fetchImpl=fetch,now=new Date(),budget=inMemoryBrowserBudget
 }={}){
  const plan=planBoundedGroqBrowserSearch({categories,country_iso3,country_name});
  // The owner has confirmed Groq FREE + the existing Lovable server
@@ -140,7 +140,7 @@ export async function groqBrowserResearchForMissingOfficial({
   return null;
  // Never consume a shared free-tier token until the official/index paths
  // have already failed and we have one supported fixed country/topic scope.
- if(!reserveBoundedFreeBrowserSlot(now.getTime()))return null;
+ if(!reserveBoundedFreeBrowserSlot(now.getTime(),budget))return null;
  if(typeof fetchImpl!=="function")reject();
  const input={
   country_iso3:plan.country_iso3,country:plan.country_name,
