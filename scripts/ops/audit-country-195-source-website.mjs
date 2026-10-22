@@ -3,6 +3,8 @@
 // One GET to existing hosted API; ZERO official-source fanout, writes, signing
 // or money. Unlike route catalogs, empty/gaps remain empty and observable.
 import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
+import {pathToFileURL} from "node:url";
+import {resolve} from "node:path";
 import {reconcileCountry195Publication}
  from "../lib/reconcile-country-195-publication.mjs";
 const URL="https://geomacro.live/api/v1/intelligence/query?view=country-coverage-195x3";
@@ -36,7 +38,7 @@ export async function readLiveCountryPublicationReconciliation({
   rolling,website:await getBoundedJson(fetchImpl),now
  });
 }
-if(import.meta.url===new URL("file://"+process.argv[1]).href){
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{
   if(process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
      process.env.GITHUB_REF!=="refs/heads/main"||
