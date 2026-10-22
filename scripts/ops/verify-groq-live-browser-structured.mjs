@@ -43,7 +43,7 @@ export async function runProtectedGroqBrowserAcceptance({
    browser200=true;
    providerToolEvidence=Array.isArray(data?.choices?.[0]?.message?.executed_tools)&&
     data.choices[0].message.executed_tools.some(x=>
-      typeof x?.type==="string"&&x.type==="browser_search");
+      typeof x?.type==="string"&&x.type.includes("browser_search"));
   }else converter200=true;
   // The mere presence of JSON/prose does not prove built-in web execution.
   if(stage===1&&!providerToolEvidence)throw Error(DENY);
