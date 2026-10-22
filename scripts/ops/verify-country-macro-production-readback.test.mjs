@@ -67,3 +67,44 @@ test("cannot relabel original-article response as verified annual source deliver
    source_mode:"DIRECT_ORIGINAL_PUBLISHERS"};
  assert.equal(inspectCountryAnnualResponse({country_iso3:"IND"},{httpStatus:200,body:x,now}).accepted,false);
 });
+
+test("production build marker rejects old published Lovable SHA before POST",async()=>{
+ const expected="a".repeat(40),observed="b".repeat(40),calls=[];
+ const out=await probeProductionCountryMacro({now,expectedSha:expected,
+  fetchImpl:async (url,opts)=>{
+    calls.push({url,method:opts.method});
+    return Response.json({schema_version:"geomacro.deployment-build.v1",
+      canonical_repository:"blocknine0/geomacro",canonical_main_sha:observed});
+  }});
+ assert.equal(out.status,"PUBLISHED_BUILD_NOT_AT_EXPECTED_MAIN_SHA");
+ assert.equal(out.countries_checked,0);
+ assert.equal(out.accepted_countries,0);
+ assert.equal(out.deployed_source.match,false);
+ assert.equal(out.deployed_source.observed_short,observed.slice(0,12));
+ assert.deepEqual(calls.map(x=>x.method),["GET"]);
+});
+test("match on deployed SHA is required before two real annual customer POSTs",async()=>{
+ const expected="c".repeat(40);const calls=[];
+ const out=await probeProductionCountryMacro({now,expectedSha:expected,
+  fetchImpl:async (url,opts)=>{
+   calls.push(opts.method);
+   if(opts.method==="GET")return Response.json({
+     schema_version:"geomacro.deployment-build.v1",
+     canonical_repository:"blocknine0/geomacro",
+     canonical_main_sha:expected
+   });
+   const country=JSON.parse(opts.body).country_iso3;
+   return Response.json(result(country));
+  }});
+ assert.equal(out.status,"PRODUCTION_ANNUAL_READBACK_ACCEPTED");
+ assert.equal(out.deployed_source.match,true);
+ assert.deepEqual(calls,["GET","POST","POST"]);
+});
+test("422 is classified by actual source failure, not assumed annual deficiency",()=>{
+ const a=inspectCountryAnnualResponse({country_iso3:"IND"},
+  {httpStatus:422,body:{reason:"NO_CURRENT_COUNTRY_TOPIC_ORIGINAL"},now});
+ const b=inspectCountryAnnualResponse({country_iso3:"IND"},
+  {httpStatus:422,body:{reason:"NO_COUNTRY_ANNUAL_REFERENCE_AVAILABLE"},now});
+ assert.equal(a.reason,"NO_CURRENT_COUNTRY_ORIGINAL_NEWS");
+ assert.equal(b.reason,"NO_COUNTRY_OFFICIAL_REFERENCE_AVAILABLE");
+});

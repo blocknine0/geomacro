@@ -8,6 +8,8 @@ on:
       - 'scripts/ops/verify-direct-canada-day-observation.ts'
       - 'scripts/ops/verify-country-macro-production-readback.mjs'
       - 'scripts/ops/verify-country-macro-production-readback.test.mjs'
+      - 'scripts/ops/diagnose-country-wdi-production.mjs'
+      - 'scripts/ops/diagnose-country-wdi-production.test.mjs'
       - 'src/lib/live-structured-on-demand.server.ts'
       - 'src/lib/ask-on-demand-original.server.ts'
       - 'src/lib/direct-publisher-intelligence.test.ts'
@@ -19,6 +21,8 @@ on:
       - 'scripts/ops/verify-direct-canada-day-observation.ts'
       - 'scripts/ops/verify-country-macro-production-readback.mjs'
       - 'scripts/ops/verify-country-macro-production-readback.test.mjs'
+      - 'scripts/ops/diagnose-country-wdi-production.mjs'
+      - 'scripts/ops/diagnose-country-wdi-production.test.mjs'
       - 'src/lib/live-structured-on-demand.server.ts'
       - 'src/lib/ask-on-demand-original.server.ts'
 permissions:
@@ -45,6 +49,8 @@ jobs:
         run: |
           node --check scripts/ops/verify-country-macro-production-readback.mjs
           node --test scripts/ops/verify-country-macro-production-readback.test.mjs
+          node --check scripts/ops/diagnose-country-wdi-production.mjs
+          node --test scripts/ops/diagnose-country-wdi-production.test.mjs
       - name: Read actual originals and generate own structured observations
         run: bun scripts/ops/verify-direct-publisher-intelligence.ts
       - name: Verify actual Canada calendar-day observation without inventing time
@@ -77,12 +83,17 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 22
+      - name: Diagnose genuine World Bank WDI origin independently from public website
+        continue-on-error: true
+        run: node scripts/ops/diagnose-country-wdi-production.mjs
       - name: Verify actually deployed annual Macro API for India and USA
         run: node scripts/ops/verify-country-macro-production-readback.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: actual-live-country-macro-readback-${{ github.run_id }}
-          path: artifacts/live-country-macro/production-readback.json
+          path: |
+            artifacts/live-country-macro/production-readback.json
+            artifacts/live-country-macro/direct-official-wdi.json
           retention-days: 3
           if-no-files-found: warn
