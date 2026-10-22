@@ -1,8 +1,9 @@
 name: Groq Real Browser + Strict Validator Production Acceptance
 
-# Live: one protected owner-Free-plan browser search and at most one
-# SAME-PROVIDER tool-free structured conversion. No article bytes logged.
-# No cron and no chat/editor credits or unattended repeating API spend.
+# Live: explicit operator-only, one protected owner-Free-plan search and
+# at most one SAME-PROVIDER tool-free strict conversion. No article bytes.
+# PR/push always run offline contract tests. No unattended repeated Free API
+# use on every commit. No cron, editor credit, or real-money operations.
 on:
   workflow_dispatch: {}
   push:
@@ -53,7 +54,7 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name != 'pull_request'
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 6
     environment: production
