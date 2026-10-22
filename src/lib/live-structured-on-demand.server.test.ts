@@ -146,4 +146,70 @@ describe("stateless live structured open-data output",()=>{
     {now,originalReader:reader});
   expect(out.statusCode).toBe(422); // 17 Oct 12:00 precedes 12:15 conservative bound.
  });
+
+ it("returns actual official annual macro evidence when a country has no recent original macro news",async()=>{
+  const original=vi.fn(async()=>null) as unknown as typeof answerFromOriginalPlan;
+  const macro=vi.fn(async(iso3:string)=>({
+    category:"macro-fx" as const,country_iso3:iso3,checked_at:now().toISOString(),
+    observations:[{kind:"FP.CPI.TOTL.ZG",observation_period:"2025",
+      clock_semantics:"reference_year" as const,
+      finding:"India's 2025 annual CPI inflation changed by -0.9 percentage points versus 2024.",
+      why_it_matters:"Historical annual reference, not current national CPI news.",
+      attribution:"World Bank WDI (CC BY 4.0); adapted Geomacro comparison",
+      source_rights_scope:"WDI_SOURCE_2_CC_BY_4_0" as const,
+      original_event_time_verified:false as const,score:null}],
+    source_native_statistical_release_time_verified:false as const,
+    fetch_time_is_not_publisher_release_time:true as const,
+    actual_current_macro_news_verified:false as const,
+    source_commercial_rights_verified:false as const,
+    customer_chargeable:false as const,
+  }));
+  const out=await liveStructuredData({category:"macro-fx",country_iso3:"IND"},
+    {now,originalReader:original,countryMacroReader:macro});
+  expect(out.statusCode).toBe(200);
+  expect(out.body).toMatchObject({
+    category:"macro-fx",country_iso3:"IND",source_mode:"WORLD_BANK_WDI_SOURCE_2",
+    status:"OFFICIAL_ANNUAL_REFERENCE_FETCHED",
+    coverage:"COUNTRY_OFFICIAL_ANNUAL_REFERENCE_ONLY_NOT_CURRENT_NEWS",
+    chargeable:false,payment_required:false,
+    source_period_is_not_retrieval_time:true,original_publication_time_verified:false,
+  });
+  expect((out.body as any).observations[0].observation_period).toBe("2025");
+  expect(macro).toHaveBeenCalledOnce();
+ });
+ it("does not substitute annual data for missing current original events in geopolitical or minerals responses",async()=>{
+  const original=vi.fn(async()=>null) as unknown as typeof answerFromOriginalPlan;
+  const macro=vi.fn();
+  for(const category of ["geopolitics","critical-minerals"]){
+   const out=await liveStructuredData({category,country_iso3:"IND"},
+     {now,originalReader:original,countryMacroReader:macro});
+   expect(out.statusCode).toBe(422);
+  }
+  expect(macro).not.toHaveBeenCalled();
+ });
+ it("country macro reference response remains unavailable when no official country value exists",async()=>{
+  const original=vi.fn(async()=>null) as unknown as typeof answerFromOriginalPlan;
+  const macro=vi.fn(async(iso3:string)=>({
+    category:"macro-fx" as const,country_iso3:iso3,checked_at:now().toISOString(),
+    observations:[],source_native_statistical_release_time_verified:false as const,
+    fetch_time_is_not_publisher_release_time:true as const,
+    actual_current_macro_news_verified:false as const,
+    source_commercial_rights_verified:false as const,customer_chargeable:false as const,
+  }));
+  const out=await liveStructuredData({category:"macro-fx",country_iso3:"VAT"},
+    {now,originalReader:original,countryMacroReader:macro});
+  expect(out.statusCode).toBe(422);
+  expect((out.body as any).reason).toBe("NO_COUNTRY_ANNUAL_REFERENCE_AVAILABLE");
+  expect((out.body as any).chargeable).toBe(false);
+ });
+ it("country macro provider 429 or transport failure remains explicit 503 and never bills",async()=>{
+  const original=vi.fn(async()=>null) as unknown as typeof answerFromOriginalPlan;
+  const macro=vi.fn(async()=>{throw Error("429 hidden source secret");});
+  const out=await liveStructuredData({category:"macro-fx",country_iso3:"IND"},
+    {now,originalReader:original,countryMacroReader:macro});
+  expect(out.statusCode).toBe(503);
+  expect((out.body as any).reason).toBe("OFFICIAL_COUNTRY_MACRO_TRANSPORT_UNAVAILABLE");
+  expect(JSON.stringify(out.body)).not.toContain("hidden source secret");
+  expect((out.body as any).chargeable).toBe(false);
+ });
 });

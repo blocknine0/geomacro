@@ -4,6 +4,7 @@ import {answerOfficialNumeric,planAskOfficialNumeric} from "./ask-official-numer
 import {answerFromOriginalPlan,type AskOriginalPlan} from "./ask-on-demand-original.server";
 import {country195ByIso3} from "./canonical-country-registry-195";
 import {conservativeDayReleaseMs} from "./stateless-intelligence-model";
+import {readCountryOfficialMacro,type CountryMacroReference} from "./country-official-macro.server";
 
 /** Stateless request-time observations only. No paid rights are implied by access. */
 type Category=(typeof OPEN_CONTEXT_CATEGORIES)[number];
@@ -13,6 +14,7 @@ type Dependencies={
   categoryReader?: (category:Category)=>Promise<CategorySnapshot>;
   numericReader?: (question:string)=>Promise<NumericAnswer>;
   originalReader?: typeof answerFromOriginalPlan;
+  countryMacroReader?: (iso3:string,options:{now:Date})=>Promise<CountryMacroReference>;
   now?:()=>Date;
 };
 const REVIEWED:Record<Category,Readonly<Record<string,{credit:string;rights:string}>>>={
@@ -72,10 +74,17 @@ export async function liveStructuredData(raw:unknown,dep:Dependencies={}){
   const plan:AskOriginalPlan={country_iso3:country.iso3,country_name:country.name,
     categories:[scope[input.category].category],topics:[...scope[input.category].topics],
     mineral:null,max_age_seconds:input.lookback_days*86400};
-  let answer:Awaited<ReturnType<typeof answerFromOriginalPlan>>;
+  let answer:Awaited<ReturnType<typeof answerFromOriginalPlan>>=null;
+  let originalFetchFailed=false;
   try{answer=await (dep.originalReader??answerFromOriginalPlan)(plan,
     {now:new Date(at),websiteDelay:false});}
-  catch{return {statusCode:503,body:denied(at,"ORIGINAL_PUBLISHER_FETCH_UNAVAILABLE")};}
+  catch{
+    originalFetchFailed=true;
+    // Macro country requests can still retrieve genuine, dated WDI annual
+    // observations after a missing/denied news feed. These are NOT news.
+    if(input.category!=="macro-fx")
+      return {statusCode:503,body:denied(at,"ORIGINAL_PUBLISHER_FETCH_UNAVAILABLE")};
+  }
   const stamp=Date.parse(answer?.latest_original_published_at??"");
   const precision=answer?.latest_original_date_precision??"exact";
   const day=answer?.latest_original_published_at??"";
@@ -88,8 +97,50 @@ export async function liveStructuredData(raw:unknown,dep:Dependencies={}){
     answer.source_identity_exposed===false&&answer.durable_live_storage_write===false&&
     answer.signed_gro_generated===false&&precisionValid&&Number.isFinite(stamp)&&stamp<=Date.parse(at)&&
     stamp>=Date.parse(at)-input.lookback_days*86400_000;
-  if(!answer||!valid)return {statusCode:422,body:{...denied(at,"NO_CURRENT_COUNTRY_TOPIC_ORIGINAL"),
-    category:input.category,country_iso3:input.country_iso3,lookback_days:input.lookback_days}};
+  if(!answer||!valid){
+    if(input.category==="macro-fx"){
+      let reference:CountryMacroReference;
+      try{
+        reference=await (dep.countryMacroReader??readCountryOfficialMacro)(
+          country.iso3,{now:new Date(at)});
+      }catch{
+        return {statusCode:503,body:{...denied(at,"OFFICIAL_COUNTRY_MACRO_TRANSPORT_UNAVAILABLE"),
+          category:input.category,country_iso3:input.country_iso3,
+          original_news_fetch_failed:originalFetchFailed}};
+      }
+      if(reference.category!=="macro-fx"||reference.country_iso3!==country.iso3||
+         reference.customer_chargeable!==false||
+         reference.actual_current_macro_news_verified!==false||
+         reference.source_commercial_rights_verified!==false||
+         reference.fetch_time_is_not_publisher_release_time!==true||
+         reference.observations.length===0||reference.observations.length>2||
+         reference.observations.some(x=>x.clock_semantics!=="reference_year"||
+           x.source_rights_scope!=="WDI_SOURCE_2_CC_BY_4_0"||
+           x.original_event_time_verified!==false||x.score!==null||
+           !/^(?:19|20)\d{2}$/u.test(x.observation_period)||
+           Number(x.observation_period)>new Date(at).getUTCFullYear()))
+        return {statusCode:422,body:{...denied(at,"NO_COUNTRY_ANNUAL_REFERENCE_AVAILABLE"),
+          category:input.category,country_iso3:input.country_iso3}};
+      return {statusCode:200,body:{
+        schema:"geomacro.live-structured.v1",
+        status:"OFFICIAL_ANNUAL_REFERENCE_FETCHED",category:input.category,
+        country_iso3:country.iso3,checked_at:at,source_checked_at:reference.checked_at,
+        coverage:"COUNTRY_OFFICIAL_ANNUAL_REFERENCE_ONLY_NOT_CURRENT_NEWS",
+        source_mode:"WORLD_BANK_WDI_SOURCE_2",
+        source_period_is_not_retrieval_time:true,
+        original_publication_time_verified:false,
+        original_news_fetch_failed:originalFetchFailed,
+        observations:reference.observations,observation_count:reference.observations.length,
+        independent_same_event_verified:false,
+        source_commercial_rights_verified:false,
+        signed_gro_required:false,signature:null,score:null,
+        payment_required:false,chargeable:false,settlement_performed:false,
+        durable_storage_written:false,raw_upstream_delivered:false,
+      }};
+    }
+    return {statusCode:422,body:{...denied(at,"NO_CURRENT_COUNTRY_TOPIC_ORIGINAL"),
+      category:input.category,country_iso3:input.country_iso3,lookback_days:input.lookback_days}};
+  }
   // Reuse Ask's own derived wording. Do not serialize its private evidence,
   // upstream titles, article URLs, original text, provider IDs or source hashes.
   return {statusCode:200,body:{schema:"geomacro.live-structured.v1",
