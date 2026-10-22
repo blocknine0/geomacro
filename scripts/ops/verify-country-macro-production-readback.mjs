@@ -129,7 +129,7 @@ export async function probeProductionCountryMacro({
    accepted_countries:accepted,
    status:accepted===samples.length?"PRODUCTION_ANNUAL_READBACK_ACCEPTED":
      "PRODUCTION_DATA_DELIVERY_UNVERIFIED",
-   195_country_route_configuration_not_195_observations:true,
+   country_195_route_configuration_not_observations:true,
    country_category_cells_proved:samples.length,
    claim_all_585_live_verified:false,
    signed_products_unaffected:true,
