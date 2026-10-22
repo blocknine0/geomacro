@@ -43,7 +43,7 @@ export async function readExactCurrentDerivedJournal({fetchImpl=fetch,now=new Da
   }catch{fail("D1_PUBLIC_READBACK_UNAVAILABLE");}
   const page=await strictPage(response,offset);
   for(const row of page.signals){
-   if(!verifyDerivedStory(row,epoch)||/https?:\\/\\/|www\\./iu.test(JSON.stringify(row))||seen.has(row.id)||
+   if(!verifyDerivedStory(row,epoch)||/https?:\/\/|www\./iu.test(JSON.stringify(row))||seen.has(row.id)||
       Date.parse(row.published_at)<epoch-72*3_600_000||
       (row.status==="official_feed_candidate_unscored"&&
        !row.topic.endsWith(" publisher candidate")))
@@ -64,7 +64,7 @@ export function buildDerivedJournalB2Plan(rows,now=new Date()){
     rows.length>600||new Set(rows.map(x=>x?.id)).size!==rows.length)
    fail("ARCHIVE_INPUT_INVALID");
  const nowMs=now.getTime();
- if(rows.some(row=>!verifyDerivedStory(row,nowMs)||/https?:\\/\\/|www\\./iu.test(JSON.stringify(row))||
+ if(rows.some(row=>!verifyDerivedStory(row,nowMs)||/https?:\/\/|www\./iu.test(JSON.stringify(row))||
     Date.parse(row.published_at)<nowMs-72*3_600_000))
    fail("ARCHIVE_SIGNAL_UNQUALIFIED");
  if(rows.length===0)return null; // no fabricated empty event/backup
