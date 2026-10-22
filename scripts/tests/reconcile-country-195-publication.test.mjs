@@ -55,7 +55,7 @@ test("actual 195x3 route receipt remains zero current evidence with no source pr
  assert.equal(x.website_country_mentioned_cells_last_72h,0);
  assert.equal(x.unprobed_or_stale_source_cells,585);
  assert.equal(x.domain_totals.macro.neither_current_original_probe_nor_journal_mention,195);
- assert.equal(x["195x3_current_signed_commercial_coverage_verified"],false);
+ assert.equal(x["country_195x3_current_signed_commercial_coverage_verified"],false);
  assert.equal(x.payments,0);
 });
 test("a recent source probe and actual journal are separate and counted once",()=>{
