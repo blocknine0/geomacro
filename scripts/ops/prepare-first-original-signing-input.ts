@@ -9,15 +9,21 @@ import {ORIGINAL_VERIFICATION_WINDOW_SECONDS} from "../../src/lib/original-verif
 import {createHash} from "node:crypto";
 import {existsSync,lstatSync,mkdirSync,realpathSync,writeFileSync} from "node:fs";
 import {isAbsolute,relative,resolve,sep} from "node:path";
-import {country195ByIso3} from "../../src/lib/canonical-country-registry-195";
+import {COUNTRIES_195,country195ByIso3} from "../../src/lib/canonical-country-registry-195";
 import {discoverDirectPublisherForPrivateQualification,
  verifyOnDemandOriginalArticlePages} from "../../src/lib/on-demand-global-discovery.server";
 import {verifyGeomacroUnclaimedOriginalPage} from "../lib/geomacro-original-page-readback.mjs";
 import {preparePrivateOriginalSigningReview} from "../lib/private-original-signing-review-intake.mjs";
 
-function countryForThisRun(now=new Date()){
- const candidates=["USA","GBR","CAN"];
- return candidates[Math.floor(now.getTime()/86_400_000)%candidates.length];
+// Existing 02,08,14,20 UTC cron: four genuinely independent country
+// candidates/day, with a 195-slot deterministic cycle instead of rechecking
+// only USA/GBR/CAN forever. One review lead is NOT a verified country event.
+export function countryForThisRun(now=new Date()){
+ if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
+   throw Error("PRIVATE_ORIGINAL_ROTATION_CLOCK_INVALID");
+ const slot=Math.floor((now.getTime()-2*3_600_000)/(6*3_600_000));
+ const index=((slot%COUNTRIES_195.length)+COUNTRIES_195.length)%COUNTRIES_195.length;
+ return COUNTRIES_195[index].iso3;
 }
 export function safePrivateReviewDir(target,repoRoot=process.cwd(),gha=false){
  if(gha||!isAbsolute(target??"")||!existsSync(target))
