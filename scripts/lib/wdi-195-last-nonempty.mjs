@@ -107,24 +107,31 @@ async function bounded(response){
 }
 
 // Read-only daily WDI gap recovery: split a large 2025-missing-only request
-// into at most TWO publisher-supported 17-country batches. The existing
-// daily quota permits <=5 source GETs total (195 bulk + 2 gap + 2 minerals).
+// into exactly ONE publisher-supported <=17-country batch per UTC day.
+// The daily quota permits <=5 source GETs (2 initial + 1 gap + 2 minerals).
 // Never infer a missing 2025 cell from a historical observation.
-export function planWdiMissingCountryBatches(codes,source){
+export function planWdiMissingCountryBatches(codes,source,now=new Date()){
  const canonical=canonical195(source);
+ if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
+   throw Error("WDI_BACKFILL_CLOCK_INVALID");
  if(!Array.isArray(codes)||codes.length<1||codes.length>195||
     new Set(codes).size!==codes.length||
     codes.some(x=>typeof x!=="string"||!canonical.has(x)))
    throw Error("WDI_BACKFILL_TARGET_INVALID");
  const sorted=[...codes].sort();
- const eligible=sorted.slice(0,34);
+ const slots=Math.ceil(sorted.length/17);
+ // Rotate by UTC calendar day. Every missing ISO3 is reached within
+ // ceil(missing/17) DAILY published slots, without repeating requests to
+ // a denied/limited provider or opening a second same-day quota lane.
+ const slot=Math.floor(now.getTime()/86_400_000)%slots;
+ const eligible=sorted.slice(slot*17,slot*17+17);
  return Object.freeze({
    requested_missing_country_count:sorted.length,
    unprobed_country_count:sorted.length-eligible.length,
-   batches:Object.freeze([eligible.slice(0,17),eligible.slice(17,34)]
-     .filter(rows=>rows.length).map(rows=>Object.freeze(rows))),
+   rotation_slot:slot,rotation_slots:slots,
+   batches:Object.freeze([Object.freeze(eligible)]),
    all_requested_gaps_checked:eligible.length===sorted.length,
-   max_extra_source_calls:2
+   max_extra_source_calls:1
  });
 }
 export function combineWdiMissingCountryBatches(plan,observed,{failure=null}={}){
