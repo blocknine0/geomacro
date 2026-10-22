@@ -2,6 +2,8 @@
 // ONE private, quota-governed B2 PUT+GET archive from the exact live D1
 // Intelligence journal, no issuer polling, no Supabase and no new cron.
 import {createB2Client} from "./b2-s3-client.mjs";
+import {resolve} from "node:path";
+import {pathToFileURL} from "node:url";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {archiveDerivedJournalToB2}
  from "../lib/derived-news-b2-readwrite-backup.mjs";
@@ -44,7 +46,7 @@ export async function runGovernedDerivedNewsBackup({
  });
  return archiveDerivedJournalToB2({fetchImpl,b2,now,force});
 }
-if(import.meta.url===new URL("file://"+process.argv[1]).href){
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{
   const receipt=await runGovernedDerivedNewsBackup();
   // No original headlines, private URLs, entire article bytes or tokens in logs.
