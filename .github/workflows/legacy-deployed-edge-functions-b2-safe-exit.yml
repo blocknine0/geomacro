@@ -37,6 +37,11 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/ops/legacy-deployed-edge-functions-b2-safe-exit.mjs
+          node - <<\'NODE\'
+          const f=require("node:fs").readFileSync("scripts/ops/legacy-deployed-edge-functions-b2-safe-exit.mjs","utf8");
+          for(const t of ["downloadActualDeployedSourceWithCli","functions\",\"download","PRIVATE_CLI_DOWNLOAD_SYMLINK_REJECTED","--project-ref", "old_supabase_deletion_authorized:false"])
+             if(!f.includes(t))throw Error("OFFICIAL_CLI_OR_SAFE_EXIT_BOUNDARY_MISSING");
+          NODE
           node --test scripts/ops/legacy-edge-source-body-format.test.mjs
           node scripts/ops/legacy-deployed-edge-functions-b2-safe-exit.mjs || test "$?" -eq 3
           node - <<'NODE'
@@ -67,6 +72,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
+      - uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359
+        with:
+          version: "2.117.0"
       - name: Resolve shared B2 quota D1 ledger from existing Cloudflare account
         shell: bash
         run: |
