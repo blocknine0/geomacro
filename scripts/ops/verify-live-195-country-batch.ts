@@ -17,6 +17,18 @@ const count=Number(process.env.GEOMACRO_COUNTRY_BATCH_COUNT??"1");
 if(!Number.isSafeInteger(from)||from<0||from>=195||
    !Number.isSafeInteger(count)||count<1||count>3||from+count>195)
  throw Error("COUNTRY_195_SAFE_BATCH_RANGE_INVALID");
+// The scheduled six-continent caller must bind the ONE exact ISO3 selected by
+// the canonical registry planner before any source network attempt.
+const expectedIso3=process.env.GEOMACRO_EXPECTED_COUNTRY_ISO3??"";
+const region=process.env.GEOMACRO_CONTINENT??"";
+if(region){
+ const {CONTINENT_COUNTRIES_195}=await import("../lib/continent-country-195-rotation.mjs");
+ if(!Object.hasOwn(CONTINENT_COUNTRIES_195,region)||count!==1||
+    !/^[A-Z]{3}$/u.test(expectedIso3)||
+    COUNTRIES_195[from]?.iso3!==expectedIso3||
+    !CONTINENT_COUNTRIES_195[region].includes(expectedIso3))
+   throw Error("COUNTRY_195_REGION_SOURCE_SCOPE_INVALID");
+}else if(expectedIso3!=="")throw Error("COUNTRY_195_REGION_SOURCE_SCOPE_INVALID");
 
 const observations:CoverageObservation195[]=[];
 const review=new Map<string,CountryBatchCellEvidence>();
@@ -113,8 +125,13 @@ const report={
  rights_checked:false,signing_checked:false,
  provider_requests:totalProviderRequests,original_page_requests:totalPageRequests,
  requests_per_country_cap:12,original_pages_per_country_cap:4,
- daily_batch_country_cap:3,physical_routing_sweep_days:65,
- checkpoints_required_for_complete_proof:65,
+ daily_batch_country_cap:region?1:3,
+ continent_source_group:region||null,
+ scheduled_country_iso3:expectedIso3||null,
+ continent_two_hour_source_scan:region!=="" ,
+ physical_routing_sweep_days:region?null:65,
+ scheduled_continent_scan_interval_hours:region?2:null,
+ checkpoints_required_for_complete_proof:region?195:65,
  source_urls_logged:false,source_titles_logged:false,raw_data_persisted:false,
  supabase_requests:0,b2_requests:0,real_money_payments:0,
  cells:cells.map(x=>{
