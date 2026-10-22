@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/legacy-deployed-edge-functions-b2-safe-exit.yml"
       - "scripts/ops/legacy-deployed-edge-functions-b2-safe-exit.mjs"
+      - "scripts/ops/legacy-edge-source-body-format.mjs"
+      - "scripts/ops/legacy-edge-source-body-format.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/legacy-deployed-edge-functions-b2-safe-exit.yml"
@@ -35,6 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/ops/legacy-deployed-edge-functions-b2-safe-exit.mjs
+          node --test scripts/ops/legacy-edge-source-body-format.test.mjs
           node scripts/ops/legacy-deployed-edge-functions-b2-safe-exit.mjs || test "$?" -eq 3
           node - <<'NODE'
           const r=require("./artifacts/legacy-exit/deployed-edge-b2-verified.json");

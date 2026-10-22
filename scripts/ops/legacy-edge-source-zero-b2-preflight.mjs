@@ -5,6 +5,7 @@
  * source bytes or tokens ever printed, persisted or uploaded to artifacts.
  */
 import {createHash} from "node:crypto";
+import {classifyDeployedSourceBody} from "./legacy-edge-source-body-format.mjs";
 import {mkdirSync,writeFileSync} from "node:fs";
 const REF="ldpwajisioljyjtojvfx";
 const OUTPUT="artifacts/legacy-exit/legacy-edge-source-readonly-preflight.json";
@@ -38,18 +39,6 @@ function classify(response,prefix) {
  if(response.status===429)return prefix+"_RATE_LIMITED";
  if(!response.ok)return prefix+"_OTHER_HTTP_FAILURE";
  return null;
-}
-function isRestorableSource(bytes) {
- if(bytes.length<25||bytes.length>3_000_000)return false;
- if(bytes.subarray(0,4).equals(Buffer.from("504b0304","hex")))return true;
- try{
-  const doc=JSON.parse(bytes.toString("utf8"));
-  const files=Array.isArray(doc)?doc:doc?.files;
-  return Array.isArray(files)&&files.length>0&&files.length<50&&
-   files.every(f=>typeof f.name==="string"&&typeof f.content==="string"&&
-     f.name.length>0&&f.name.length<=250&&
-     f.content.length>0&&f.content.length<2_000_000);
- }catch{return false}
 }
 async function get(url,token) {
  try{return await fetch(url,{method:"GET",headers:{
@@ -85,7 +74,12 @@ async function main() {
   let body;
   try{body=Buffer.from(await result.arrayBuffer())}
   catch{return fail("DEPLOYED_EDGE_BODY_UNREADABLE")}
-  if(!isRestorableSource(body))return fail("DEPLOYED_EDGE_BODY_FORMAT_INVALID");
+  const classification=classifyDeployedSourceBody(body,result.headers.get("content-type")||"");
+  if(!classification.restorable){
+   report.unrecognized_first_body_format=classification.kind;
+   return fail("DEPLOYED_EDGE_BODY_FORMAT_INVALID");
+  }
+  report.validated_first_body_format??=classification.kind;
   // Content is intentionally never logged, copied into report or persisted.
   createHash("sha256").update(body).digest("hex");
   report.deployed_source_bodies_accessible++;

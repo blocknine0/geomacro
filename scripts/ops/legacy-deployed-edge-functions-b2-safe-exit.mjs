@@ -7,6 +7,7 @@ import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,existsSync} from
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
+import {classifyDeployedSourceBody} from "./legacy-edge-source-body-format.mjs";
 const ref="ldpwajisioljyjtojvfx",endpoint="https://s3.us-east-005.backblazeb2.com";
 const bucket="geomacro-private-archive";
 const prefix="geomacro-evidence/v1/legacy-supabase-safe-exit/edge-functions/";
@@ -30,17 +31,6 @@ function aws(args){const r=spawnSync("aws",["--endpoint-url",endpoint,"s3api",..
  AWS_EC2_METADATA_DISABLED:"true",AWS_MAX_ATTEMPTS:"1"},encoding:"utf8",
  maxBuffer:15000,timeout:300000,stdio:["ignore","pipe","pipe"]});
  return r.status===0?r.stdout:null;
-}
-function isSourceBody(buffer){
- if(buffer.length<30||buffer.length>3_000_000)return false;
- if(buffer.subarray(0,4).equals(Buffer.from([0x50,0x4b,0x03,0x04])))return true;
- try{
-  const json=JSON.parse(buffer.toString("utf8"));
-  const files=Array.isArray(json)?json:json.files;
-  return Array.isArray(files)&&files.length>0&&files.length<50&&
-   files.every(f=>typeof f.name==="string"&&typeof f.content==="string"&&
-   f.content.length>0&&f.content.length<2_000_000);
- }catch{return false}
 }
 async function main(){
  if(env.SUPABASE_PROJECT_ID!==ref||!readOnlyMgmtToken||
@@ -79,7 +69,11 @@ async function main(){
   if(r.status===429)return halt("OLD_EDGE_SOURCE_BODY_RATE_LIMITED");
   if(r.status!==200)return halt("OLD_EDGE_SOURCE_BODY_NOT_AVAILABLE");
   const bytes=Buffer.from(await r.arrayBuffer());
-  if(!isSourceBody(bytes))return halt("OLD_EDGE_SOURCE_BODY_NOT_RESTORABLE");
+  const classification=classifyDeployedSourceBody(bytes,r.headers.get("content-type")||"");
+  if(!classification.restorable){
+   report.first_unrecognized_source_body_format=classification.kind;
+   return halt("OLD_EDGE_SOURCE_BODY_NOT_RESTORABLE");
+  }
   archived.push({slug,version:meta.version,verify_jwt:meta.verify_jwt,
    original_bundle_sha256:meta.ezbr_sha256,actual_source_body:bytes.toString("base64"),
    downloaded_sha256:hash(bytes)});
