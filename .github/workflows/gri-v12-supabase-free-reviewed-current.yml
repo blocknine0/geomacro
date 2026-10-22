@@ -56,6 +56,8 @@ jobs:
           set -euo pipefail
           node --check scripts/ops/verify-gri-independent-reviewer-pre-b2.mjs
           node --test scripts/ops/verify-gri-independent-reviewer-pre-b2.test.mjs
+          node --check scripts/ops/require-pallab-owner-signed-gri-ready.mjs
+          node --test scripts/tests/pallab-signed-ready-gri-gate.test.mjs
   verified-current:
     needs: no-secret-reviewer-preflight-contract
     if: >-
