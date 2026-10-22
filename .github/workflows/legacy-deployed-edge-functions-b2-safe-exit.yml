@@ -43,6 +43,13 @@ jobs:
              if(!f.includes(t))throw Error("OFFICIAL_CLI_OR_SAFE_EXIT_BOUNDARY_MISSING");
           NODE
           node --test scripts/ops/legacy-edge-source-body-format.test.mjs
+          node - <<'NODE'
+          const s=require("node:fs").readFileSync("scripts/ops/legacy-deployed-edge-functions-b2-safe-exit.mjs","utf8");
+          if(!s.includes('spawnSync("chmod",["-R","u+rwX",tmp]')||
+             !s.includes('rmSync(tmp,{recursive:true,force:true,maxRetries:3,retryDelay:50})')||
+             !s.includes('old_supabase_deletion_authorized:false'))
+              throw Error("PRIVATE_ORIGINAL_EPHEMERAL_CLEANUP_SAFETY_MISSING");
+          NODE
           node scripts/ops/legacy-deployed-edge-functions-b2-safe-exit.mjs || test "$?" -eq 3
           node - <<'NODE'
           const r=require("./artifacts/legacy-exit/deployed-edge-b2-verified.json");
