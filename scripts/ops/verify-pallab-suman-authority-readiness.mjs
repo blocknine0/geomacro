@@ -52,10 +52,28 @@ export function pallabSumanAuthorityReadiness(env=process.env){
   return createHash("sha256").update(key.export({format:"der",type:"spki"}))
    .digest("hex");
  }catch{return null;}})();
- const distinct=Boolean(owner&&reviewer&&gro&&owner!==reviewer&&
-    owner!==gro&&reviewer!==gro&&
-    other.length===2&&other.every(x=>SHA.test(x)&&x!==owner&&x!==reviewer&&x!==gro)&&
-    new Set([owner,reviewer,gro,...other]).size===5);
+ // Return only role-pair names, never PEMs, raw pin values, key bytes,
+ // substrings or identifiers. This distinguishes a duplicated owner/reviewer
+ // identity from an existing Facts/Rights/GRO clash after owners add keys.
+ const rolePins=[
+  ["PALLAB_OWNER",owner],["SUMAN_REVIEWER",reviewer],
+  ["GRO_SIGNER",gro],["FACTS_AUTHORITY",other[0]],
+  ["RIGHTS_AUTHORITY",other[1]],
+ ];
+ const conflictingRolePairs=[];
+ for(let i=0;i<rolePins.length;i++){
+  const [leftName,leftPin]=rolePins[i];
+  if(!SHA.test(leftPin??""))continue;
+  for(let j=i+1;j<rolePins.length;j++){
+   const [rightName,rightPin]=rolePins[j];
+   if(SHA.test(rightPin??"")&&leftPin===rightPin)
+    conflictingRolePairs.push(leftName+"__"+rightName);
+  }
+ }
+ const missingOrInvalidRoles=rolePins.filter(([,pin])=>!SHA.test(pin??""))
+  .map(([name])=>name);
+ const distinct=Boolean(missingOrInvalidRoles.length===0&&
+  conflictingRolePairs.length===0&&rolePins.length===5);
  const status= !owner?"PALLAB_OWNER_PUBLIC_PIN_MISSING_OR_INVALID":
     !reviewer?"SUMAN_REVIEWER_PUBLIC_PIN_MISSING_OR_INVALID":
     !gro?"GRO_PUBLIC_PIN_MISSING_OR_INVALID":
@@ -76,6 +94,9 @@ export function pallabSumanAuthorityReadiness(env=process.env){
   facts_rights_public_pins_present:other.length===2&&
     other.every(x=>SHA.test(x)),
   all_five_authority_keys_distinct:distinct,
+  // Whitelisted role labels only. Never serialize signature, PEM or digest.
+  duplicate_authority_role_pairs:conflictingRolePairs,
+  missing_or_invalid_authority_roles:missingOrInvalidRoles,
   reviewer_person_identity_confirmed_by_key_shape_only:false,
   owner_person_identity_confirmed_by_key_shape_only:false,
   owner_signature_uploaded_and_verified:false,
