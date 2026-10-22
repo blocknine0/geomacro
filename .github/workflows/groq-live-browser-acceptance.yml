@@ -1,0 +1,76 @@
+name: Actual Groq Browser Search Acceptance (Free Existing Key, No Funds)
+# EXACT one real search only after validated main branch, from protected GH
+# production secret. No new Groq API key, no Lovable credits, no money.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/groq-live-browser-acceptance.yml"
+      - "scripts/ops/verify-live-groq-browser-fallback.mjs"
+      - "scripts/ops/verify-live-groq-browser-fallback.test.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/groq-live-browser-acceptance.yml"
+      - "scripts/ops/verify-live-groq-browser-fallback.mjs"
+      - "scripts/ops/verify-live-groq-browser-fallback.test.mjs"
+
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-groq-real-browser-acceptance
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Prove public outputs never contain Groq response, content or secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/verify-live-groq-browser-fallback.mjs
+          node --test scripts/ops/verify-live-groq-browser-fallback.test.mjs
+
+  live-existing-free-groq-once:
+    needs: offline-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    environment: production
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GITHUB_REPOSITORY: blocknine0/geomacro
+      GITHUB_REF: refs/heads/main
+      GROQ_SMOKE_OWNER_FREE_PLAN: YES_OWNER_CONFIRMED_FREE
+      GROQ_BROWSER_SEARCH_ENABLED: "1"
+      GROQ_BROWSER_SEARCH_FREE_QUOTA_ACK: "YES_BROWSER_FREE_TIER_CONFIRMED"
+      COINBASE_API_KEY: ""
+      COINBASE_COMMERCE_API_KEY: ""
+      COINBASE_X402_MAINNET_ACK: ""
+      SUPABASE_DB_URL: ""
+      SUPABASE_URL: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Run exactly one supported Groq browser-search call, verify untrusted structured result
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = "$(git rev-parse HEAD)"
+          node scripts/ops/verify-live-groq-browser-fallback.mjs
