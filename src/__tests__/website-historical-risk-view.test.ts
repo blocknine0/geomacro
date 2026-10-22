@@ -1,107 +1,8 @@
 import {describe,it,expect} from 'vitest';
-import {websiteHistoricalRiskView} from '../lib/website-historical-risk-view';
+import {websiteHistoricalRiskView,newestWebsiteRiskSnapshot} from '../lib/website-historical-risk-view';
 import {validateGlobalRiskContinuity} from '../lib/global-risk-continuity';
 import type {GlobalRisk,RiskDomainReading,Timeframe} from '../lib/global-risk.types';
-const HOUR=3600_000,AS_OF=Date.parse('2026-10-08T06:38:59.944Z'),HEX='a'.repeat(64);
-function buckets(hours: number[], anchor = AS_OF) {
-  return hours.map((ago, index) => ({
-    t: anchor - ago * HOUR,
-    avg: 40 + index,
-    count: 12 + index,
-  }));
-}
-
-function series(timeframe: Timeframe, values: ReturnType<typeof buckets>) {
-  const sorted = [...values].sort((a, b) => a.t - b.t);
-  const scores = sorted.map((value) => value.avg);
-  return {
-    timeframe,
-    buckets: sorted,
-    low: Math.min(...scores),
-    high: Math.max(...scores),
-  };
-}
-
-function domainReading(
-  rawScore: number,
-  previousScore: number,
-  h24: ReturnType<typeof buckets>,
-  d7: ReturnType<typeof buckets>,
-  d30: ReturnType<typeof buckets>,
-  readingAsOf = new Date(AS_OF).toISOString(),
-  readingStatus: "current" | "last_verified" = "current",
-): RiskDomainReading {
-  return {
-    score: Math.round(rawScore),
-    rawScore,
-    previousScore,
-    changePoints: rawScore - previousScore,
-    confidence: 82,
-    eventCount: 7,
-    sourceCount: 5,
-    independentStoryCount: 6,
-    readingSnapshotId: "22222222-2222-4222-8222-222222222222",
-    readingAsOf,
-    readingStatus,
-    series: {
-      "24H": series("24H", h24),
-      "7D": series("7D", d7),
-      "30D": series("30D", d30),
-    },
-  };
-}
-
-function fixture(): GlobalRisk {
-  const h24 = buckets([20, 8, 0]);
-  const d7 = buckets([6 * 24, 5 * 24, 4 * 24, 3 * 24, 2 * 24, 24, 0]);
-  const d30 = buckets([28 * 24, 21 * 24, 14 * 24, 7 * 24, 5 * 24, 3 * 24, 24, 0]);
-  return {
-    snapshotId: "11111111-1111-4111-8111-111111111111",
-    score: 47,
-    rawScore: 46.75,
-    previous: 46,
-    previousRaw: 45.8,
-    low: 40,
-    high: 47,
-    eventCount: 19,
-    eventCountPrevious: null,
-    sourceCount: 9,
-    independentStoryCount: 11,
-    storyCorrelationVersion: "gri-story-correlation-v1.0.0",
-    storyCorrelationPromptVersion: "gri-story-correlation-prompt-v1.0.0",
-    coverage: 1,
-    weightedConfidence: 82,
-    methodologyVersion: "gri-v1.2.0",
-    auditPersisted: true,
-    proofVersion: "gri-proof-v1.2.0",
-    verificationStatus: "verified",
-    proofHash: HEX,
-    evidenceHash: HEX,
-    calculationHash: HEX,
-    dispositionHash: HEX,
-    candidateEventCount: 21,
-    inputHash: HEX,
-    methodologyHash: HEX,
-    changeHash: HEX,
-    reconciliationResidual: 0,
-    changeResidual: 0,
-    snapshotAsOf: new Date(AS_OF).toISOString(),
-    usedFallbackWindow: false,
-    series: {
-      "24H": series("24H", h24),
-      "7D": series("7D", d7),
-      "30D": series("30D", d30),
-    },
-    domainIndices: {
-      geopolitics: domainReading(51, 49, h24, d7, d30),
-      macro: domainReading(44, 45, h24, d7, d30),
-      rare_earth: domainReading(46, 44, h24, d7, d30),
-    },
-    drivers: [],
-    topDriver: null,
-    recentEvents: [],
-  };
-}
+import {fixture,shiftedFixture,HOUR,AS_OF} from "./fixtures/verified-global-risk";
 
 describe('immutable archived GRI ages into a website last-verified view',()=>{
  it('demotes expired display labels only, preserving all scores, hashes, series and original dates',()=>{
@@ -129,5 +30,31 @@ describe('immutable archived GRI ages into a website last-verified view',()=>{
   expect(websiteHistoricalRiskView(fixture(),AS_OF+59*60_000)).toBeNull();
   expect(websiteHistoricalRiskView(fixture(),AS_OF-1)).toBeNull();
   expect(websiteHistoricalRiskView(fixture(),AS_OF+31*86400_000)).toBeNull();
+ });
+});
+
+
+describe("website GRI chooses the newest eligible source clock",()=>{
+ it("a successful old archive cannot mask a newer verified eligible edge package",()=>{
+  const archive=fixture(),edge=shiftedFixture(2),now=AS_OF+4*HOUR;
+  expect(newestWebsiteRiskSnapshot([archive,edge],now)?.snapshotAsOf).toBe(edge.snapshotAsOf);
+  expect(newestWebsiteRiskSnapshot([edge,archive],now)?.snapshotAsOf).toBe(edge.snapshotAsOf);
+ });
+ it("an under-embargo edge result cannot replace the last eligible archive",()=>{
+  const archive=fixture(),edge=shiftedFixture(3.5),now=AS_OF+4*HOUR;
+  expect(newestWebsiteRiskSnapshot([archive,edge],now)?.snapshotAsOf).toBe(archive.snapshotAsOf);
+ });
+ it("invalid newest proof cannot hide an older verified result",()=>{
+  const archive=fixture(),edge=shiftedFixture(2);edge.proofHash="invalid";
+  expect(newestWebsiteRiskSnapshot([archive,edge],AS_OF+4*HOUR)?.snapshotAsOf).toBe(archive.snapshotAsOf);
+ });
+ it("an outage retains the same dated history and ages only the display status",()=>{
+  const archive=fixture(),before=JSON.stringify(archive),now=AS_OF+20*HOUR;
+  const selected=newestWebsiteRiskSnapshot([null,archive],now)!;
+  expect(selected.snapshotAsOf).toBe(archive.snapshotAsOf);
+  expect(selected.proofHash).toBe(archive.proofHash);
+  expect(selected.domainIndices.geopolitics?.readingStatus).toBe("last_verified");
+  expect(JSON.stringify(archive)).toBe(before);
+  expect(newestWebsiteRiskSnapshot([archive],AS_OF+31*24*HOUR)).toBeNull();
  });
 });

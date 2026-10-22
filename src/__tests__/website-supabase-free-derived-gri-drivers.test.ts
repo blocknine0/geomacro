@@ -20,7 +20,7 @@ describe("Supabase-frozen, strictly lagged source-private public GRI",()=>{
   expect(lag).toContain("/v1/public/website-lagged-global-risk");
   // Under quota exhaustion website never falls through to unmetered direct
   // S3. Cloudflare risk edge owns account-wide D1 B2 reservation/caching.
-  expect(lag).toContain('await import("./global-risk-edge.server")');
+  expect(lag).toContain('import("./global-risk-edge.server")');
   expect(lag).toContain("readGlobalRiskEdge()");
   expect(lag).not.toContain("const b2=await readB2PublicRisk();");
   const helper=read("src/lib/b2-live.server.ts");

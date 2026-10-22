@@ -48,7 +48,7 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(home).toContain("text-[clamp(3rem,6vw,5.5rem)]");
     expect(home).toContain("<LiveIntelligenceShowcase initialFindCards={initialFindCards} />");
     expect(home).toContain('to="/risk-indices"');
-    expect(home).toContain("Three lenses on a changing world.");
+    expect(home).toContain("Follow the risks that affect your work.");
     expect(home).not.toContain("Not another raw-data feed.");
   });
 

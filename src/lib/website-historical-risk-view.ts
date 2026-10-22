@@ -25,3 +25,19 @@ export function websiteHistoricalRiskView(risk:GlobalRisk,now=Date.now()):Global
  const projected={...risk,domainIndices};
  return validateGlobalRiskContinuity(projected,now).ok?projected:null;
 }
+
+
+/** Choose by the signed source clock, never archive priority or fetch time.
+ * Invalid/embargoed candidates cannot displace an eligible verified reading.
+ */
+export function newestWebsiteRiskSnapshot(
+ candidates: readonly (GlobalRisk | null | undefined)[], now=Date.now(),
+):GlobalRisk|null {
+ let newest:GlobalRisk|null=null;
+ for(const candidate of candidates){
+  if(!candidate)continue;
+  const view=websiteHistoricalRiskView(candidate,now);
+  if(view&&(!newest||Date.parse(view.snapshotAsOf)>Date.parse(newest.snapshotAsOf)))newest=view;
+ }
+ return newest;
+}

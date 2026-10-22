@@ -30,7 +30,7 @@ describe("commercial website surface", () => {
     const home = read("src/components/home/commercial-home.tsx");
     const contact = read("src/routes/contact.tsx");
     const institution = read("src/routes/institutional.tsx");
-    expect(home).toContain("Browse the Store");
+    expect(home).toContain("Ask Geomacro");
     expect(home).toContain("Visit the Store");
     expect(contact).toContain("Product & launch access");
     expect(contact).toContain("Support");

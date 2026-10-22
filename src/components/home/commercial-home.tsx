@@ -31,14 +31,14 @@ export function CommercialHome({ initialFindCards = [] }: { initialFindCards?: F
       <section className="gm-hero border-b border-border">
         <div className="gm-container grid items-center gap-12 py-14 sm:py-20 lg:grid-cols-2 lg:gap-16">
           <div>
-            <p className="gm-eyebrow">The world changes. Stay with it.</p>
+            <p className="gm-eyebrow">Global risk intelligence · For people & AI agents</p>
             <h1 className="mt-6 text-[clamp(3rem,6vw,5.5rem)] font-semibold leading-[1.02] tracking-[-0.055em]">
-              What changed.
+              Understand global risk.
               <br />
-              <span className="text-primary">Why it matters.</span>
+              <span className="text-primary">Know what matters.</span>
             </h1>
             <p className="mt-6 max-w-md text-lg leading-8 text-muted-foreground">
-              Geopolitics, Macro / FX and Critical Minerals. Clear findings for your next decision.
+              Geomacro explains developments in Geopolitics, Macro / FX and Critical Minerals: what changed, why it matters and what to watch next.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">
@@ -47,12 +47,13 @@ export function CommercialHome({ initialFindCards = [] }: { initialFindCards?: F
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link to="/pricing">Visit the Store</Link>
+                <Link to="/ask-geomacro">Ask Geomacro</Link>
               </Button>
             </div>
             <p className="mt-5 text-xs text-muted-foreground">
-              Free to explore · No account needed
+              For research, treasury and supply-chain decisions.
             </p>
+            <p className="mt-3 text-xs text-muted-foreground">Free to explore · No account needed</p>
           </div>
           <LiveIntelligenceShowcase initialFindCards={initialFindCards} />
         </div>
@@ -62,7 +63,7 @@ export function CommercialHome({ initialFindCards = [] }: { initialFindCards?: F
           <div>
             <p className="gm-eyebrow">Follow what matters to you</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight">
-              Three lenses on a changing world.
+              Follow the risks that affect your work.
             </h2>
           </div>
           <Link to="/risk-indices" className="gm-text-link">
@@ -94,12 +95,12 @@ export function CommercialHome({ initialFindCards = [] }: { initialFindCards?: F
       <section className="border-y border-border bg-card/30">
         <div className="gm-container grid gap-8 py-12 md:grid-cols-[1fr_auto] md:items-center">
           <div>
-            <p className="gm-eyebrow">Go from a finding to a question</p>
+            <p className="gm-eyebrow">Your next step</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight">
-              What does this mean for you?
+              Read it. Question it. Use the context.
             </h2>
             <p className="mt-3 text-muted-foreground">
-              Ask about a country, a corridor or a change you are following.
+              Browse free findings, ask a country or corridor question, or inspect the dates behind a Risk Index.
             </p>
           </div>
           <Button asChild variant="outline" size="lg">
@@ -120,7 +121,7 @@ export function CommercialHome({ initialFindCards = [] }: { initialFindCards?: F
           </p>
         </div>
         <Link to="/pricing" className="gm-text-link">
-          Browse the Store <ArrowRight className="h-4 w-4" />
+          Visit the Store <ArrowRight className="h-4 w-4" />
         </Link>
       </section>
     </>
