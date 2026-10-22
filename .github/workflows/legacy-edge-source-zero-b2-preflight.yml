@@ -1,0 +1,88 @@
+name: Legacy Edge Source Zero-B2 Readonly Preflight
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/legacy-edge-source-zero-b2-preflight.yml"
+      - "scripts/ops/legacy-edge-source-zero-b2-preflight.mjs"
+      - "scripts/ops/legacy-edge-source-zero-b2-preflight.test.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/legacy-edge-source-zero-b2-preflight.yml"
+      - "scripts/ops/legacy-edge-source-zero-b2-preflight.mjs"
+      - "scripts/ops/legacy-edge-source-zero-b2-preflight.test.mjs"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-legacy-edge-management-readonly
+  cancel-in-progress: false
+jobs:
+  no-secret-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      SUPABASE_LEGACY_EDGE_READ_TOKEN: ""
+      SUPABASE_ACCESS_TOKEN: ""
+      SUPABASE_PROJECT_ID: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Validate strict source-only code and fail-closed contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/legacy-edge-source-zero-b2-preflight.mjs
+          node --test scripts/ops/legacy-edge-source-zero-b2-preflight.test.mjs
+          node scripts/ops/legacy-edge-source-zero-b2-preflight.mjs || test "$?" -eq 3
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/legacy-edge-source-readonly-preflight.json");
+          if(r.status!=="BLOCKED_NO_DELETION"||
+             r.source_supabase_writes!==0||r.source_supabase_deletes!==0||
+             r.b2_requests!==0||r.b2_deletes!==0||r.payments!==0||
+             r.old_supabase_deletion_authorized!==false||
+             r.edge_sources_fully_accessible!==false)
+            throw Error("EDGE_NO_SECRET_NO_DELETION_SAFETY_VIOLATION");
+          NODE
+  protected-readonly-management-proof:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    env:
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_LEGACY_EDGE_READ_TOKEN: ${{ secrets.SUPABASE_LEGACY_EDGE_READ_TOKEN }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Confirm 10 deployed functions are readable, never store source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/legacy-edge-source-zero-b2-preflight.mjs || test "$?" -eq 3
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/legacy-edge-source-readonly-preflight.json");
+          if(r.source_supabase_writes!==0||r.source_supabase_deletes!==0||
+             r.b2_requests!==0||r.b2_deletes!==0||r.payments!==0||
+             r.old_supabase_deletion_authorized!==false)
+            throw Error("EDGE_READONLY_SOURCE_GUARD_FAILURE");
+          if(r.edge_sources_fully_accessible!==true)process.exitCode=3;
+          NODE
+      - name: Upload sanitized status only, never original sources
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: old-supabase-edge-readonly-permission-${{ github.run_id }}
+          path: artifacts/legacy-exit/legacy-edge-source-readonly-preflight.json
+          retention-days: 14
+          if-no-files-found: warn
