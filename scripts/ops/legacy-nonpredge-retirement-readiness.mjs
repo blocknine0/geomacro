@@ -17,6 +17,9 @@ const report={
  destination_writes:0,b2_deletions:0,payments:0,
  private_originals_exposed:false,
  predge_work_performed:false,
+ // Owner hold: keep any legacy Predge dependencies usable pending verified partner cutover.
+ predge_legacy_continuity_owner_hold:true,
+ predge_legacy_runtime_cutover_verified:false,
  verified_database_backup_run:"39598466442",
  verified_storage_full_restore_run:"39651599672",
  runtime_b2_historical_reads_accepted:false,
@@ -94,6 +97,10 @@ if(process.env.APP_SUPABASE_URL!==ORIGIN||!pinned(process.env.SUPABASE_DB_URL??"
      report.source_counts.live_structured_events===33138&&
      report.source_counts.risk_objects===21178&&
      report.source_counts.commercial_payment_events===5;
+   report.partner_preservation_holds=[
+    "PREDGE_OWNER_HOLD_KEEP_OLD_SUPABASE_ACTIVE",
+    "PREDGE_LEGACY_RUNTIME_DEPENDENCIES_NOT_INDEPENDENTLY_CUT_OVER"
+   ];
    report.open_nonpredge_dependencies=[
     "UNVERIFIED_PRODUCTION_HISTORICAL_FRAGMENT_B2_READ_CUTOVER",
     "UNVERIFIED_TESTER_AVATAR_PROFILE_AND_FILE_READ_CUTOVER",
