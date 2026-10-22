@@ -5,6 +5,7 @@ import {appendFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {parseWranglerMetadata} from "./classify-d1-hot-metadata.mjs";
+import {planSignedHotContinuation} from "./signed-hot-live-continuation.mjs";
 
 const PRODUCTS=Object.freeze({
   intelligence:Object.freeze({maxAge:720,lead:120}),
@@ -45,18 +46,26 @@ export function assessSignedHotExpiry(metadata,{nowMs=Date.now()}={}){
   };
  }
  // Immutable signed validity != live freshness: 60min is still the current
- // threshold for commercial health and buyer availability.
+ // threshold for commercial health and buyer availability. Warn at 45m, rather
+ // than waiting for a 3h/12h TTL or the real live 60m customer cutoff.
  const live_freshness_ready=NAMES.every(name=>products[name].live_freshness_eligible);
- const attention_required=NAMES.some(name=>products[name].status!=="WITHIN_WINDOW") ||
-   !live_freshness_ready;
- return {
+ const base={
   schema:"geomacro.signed-hot-expiry-early-warning.v1",
   checked_at:new Date(nowMs).toISOString(),
   all_three_within_safe_window:NAMES.every(name=>products[name].status==="WITHIN_WINDOW"),
-  live_freshness_ready,attention_required,products,
+  live_freshness_ready,products,
   signed_proof_or_b2_readback_verified:false,real_commercial_product_approved:false,
   new_snapshot_published:false,b2_requests:0,d1_writes:0,
   supabase_reads:0,supabase_writes:0,real_funds_touched:false,
+ };
+ const continuation=planSignedHotContinuation(base);
+ return {
+  ...base,
+  // Distinguish metadata-only source renewal from actually proven delivery.
+  three_product_continuation:continuation,
+  attention_required: !continuation.all_three_live_metadata_current ||
+    NAMES.some(name=>products[name].status!=="WITHIN_WINDOW") ||
+    !live_freshness_ready,
  };
 }
 export function signedHotExpirySummary(report){
@@ -73,7 +82,18 @@ export function signedHotExpirySummary(report){
   rows.push("| "+name+" | "+v.status+" | "+(v.live_freshness_eligible?"yes":"no")+" | "+(v.source_age_minutes??"n/a")+" | "+
     (v.effective_minutes_to_expiry??"n/a")+" | "+v.renewal_lead_minutes+" |");
  }
+ const followup=report.three_product_continuation;
  rows.push("",
+  "### Live source SLO early warning (45m of 60m; metadata-only, not signed-product approval)",
+  "",
+  "| Product | Live source renewal | Minutes before 60m cutoff |",
+  "|---|---|---:|");
+ for(const name of NAMES){
+   const v=followup.currentness[name];
+   rows.push("| "+name+" | "+v.state+" | "+(v.original_source_minutes_remaining??"n/a")+" |");
+ }
+ rows.push("","Priority bounded recovery work (actual approved signed inputs required):",
+  ...followup.blocking.map(x=>"- "+x),"",
   report.attention_required?
    "ACTION: obtain genuinely new independently reviewed sources. Submit immutable signed input to existing protected Intelligence/GRI publishers, then verify quota-budgeted B2/D1 readback. Do not reuse old timestamps.":
    "Metadata window intact; publisher signatures, B2/D1 byte proofs and paid status are NOT established.",
