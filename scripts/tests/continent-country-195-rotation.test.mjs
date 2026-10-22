@@ -11,9 +11,9 @@ import {
 
 const registry=readFileSync("src/lib/canonical-country-registry-195.ts","utf8");
 const regions=[
- ["africa","Africa",3,54],["asia","Asia",13,47],
- ["europe","Europe",23,45],["north_america","North America",33,23],
- ["south_america","South America",43,12],["oceania","Oceania",53,14],
+ ["africa","Africa",4,54,false],["asia","Asia",24,47,false],
+ ["europe","Europe",44,45,false],["north_america","North America",4,23,true],
+ ["south_america","South America",24,12,true],["oceania","Oceania",44,14,true],
 ];
 test("all 195 countries including 2 observers partitioned across exactly 6 unique inhabited continents",()=>{
  assert.equal(CONTINENTS_195.length,6);
@@ -36,10 +36,10 @@ test("all 195 countries including 2 observers partitioned across exactly 6 uniqu
  assert.throws(()=>assertContinentCanonical195(modified),/REGISTRY_PARTITION_MISMATCH/);
 });
 test("2h slot probes ONE continent ISO3 per scheduled tick, full region sweep with zero cross-duplication",()=>{
- for(const [continent,,minute,count] of regions){
+ for(const [continent,,minute,count,oddHour] of regions){
   const group=CONTINENT_COUNTRIES_195[continent],seen=[];
   for(let n=0;n<count;n++){
-   const time=new Date(SWEEP_EPOCH_MS+n*SWEEP_SLOT_MS+minute*60_000);
+   const time=new Date(SWEEP_EPOCH_MS+n*SWEEP_SLOT_MS+(oddHour?3600_000:0)+minute*60_000);
    const p=planTwoHourContinentCountrySweep({continent,
      registryText:registry,eventName:"schedule",now:time});
    assert.equal(p.continent_country_count,count);
@@ -56,19 +56,19 @@ test("2h slot probes ONE continent ISO3 per scheduled tick, full region sweep wi
   assert.equal(new Set(seen).size,count);
   const cycle=planTwoHourContinentCountrySweep({continent,
    registryText:registry,eventName:"schedule",
-   now:new Date(SWEEP_EPOCH_MS+count*SWEEP_SLOT_MS+minute*60_000)});
+   now:new Date(SWEEP_EPOCH_MS+count*SWEEP_SLOT_MS+(oddHour?3600_000:0)+minute*60_000)});
   assert.equal(cycle.country_iso3,group[0]);
  }
 });
 test("UTC slot stays stable across minute delays, without advancing missing scheduled runs",()=>{
  const a=planTwoHourContinentCountrySweep({continent:"asia",registryText:registry,
-   now:new Date("2026-10-22T02:13:00Z")});
+   now:new Date("2026-10-22T02:24:00Z")});
  const b=planTwoHourContinentCountrySweep({continent:"asia",registryText:registry,
    now:new Date("2026-10-22T03:59:59Z")});
  assert.equal(a.country_iso3,b.country_iso3);
  assert.equal(a.country_iso3,CONTINENT_COUNTRIES_195.asia[1]);
  assert.notEqual(planTwoHourContinentCountrySweep({continent:"asia",registryText:registry,
-   now:new Date("2026-10-22T04:13:00Z")}).country_iso3,a.country_iso3);
+   now:new Date("2026-10-22T04:24:00Z")}).country_iso3,a.country_iso3);
 });
 test("manual can target ONLY country in requested continent, never another country or 3-country blast",()=>{
  const a=planTwoHourContinentCountrySweep({
@@ -104,10 +104,16 @@ test("all six actual Github workflows have distinct 2h cron and ONE shared no-fu
  assert.match(shared,/scripts\/ops\/verify-live-195-country-batch.ts/);
  assert.match(shared,/retention-days: 14/);
  assert.doesNotMatch(shared,/RISK_OBJECT_SIGNING_PRIVATE|COINBASE_.*PRIVATE|SUPABASE_SERVICE_ROLE/);
+ // Each planned UTC offset is 20 minutes from the preceding group.
+ const slots=regions.map(([slug,,minute,,oddHour])=>(oddHour?60:0)+minute);
+ assert.deepEqual(slots,[4,24,44,64,84,104]);
+ assert.deepEqual(slots.slice(1).map((x,i)=>x-slots[i]),[20,20,20,20,20]);
+ assert.equal(124-slots[5],20);
+ assert.ok(shared.includes("timeout-minutes: 9"));
  const minutes=new Set();
- for(const [slug,label,minute] of regions){
+ for(const [slug,label,minute,,oddHour] of regions){
   const yaml=readFileSync(`.github/workflows/continent-country-${slug}-2h.yml`,"utf8");
-  assert.ok(yaml.includes(`cron: '${minute} */2 * * *'`));
+  assert.ok(yaml.includes(`cron: '${minute} ${oddHour?"1-23/2":"*/2"} * * *'`));
   assert.ok(yaml.includes(`continent: '${slug}'`));
   assert.ok(yaml.includes("continent-country-original-probe-reusable.yml"));
   assert.ok(yaml.includes("workflow_dispatch:"));
