@@ -4,6 +4,11 @@ name: GRI v1.2 Supabase-Free Current Promotion
 # evidence can wake publication through a narrowly scoped repository_dispatch.
 # The source triage/news queue itself cannot dispatch or authorize GRI scoring.
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/gri-v12-supabase-free-reviewed-current.yml"
+      - "scripts/ops/verify-gri-independent-reviewer-pre-b2.mjs"
+      - "scripts/ops/verify-gri-independent-reviewer-pre-b2.test.mjs"
   repository_dispatch:
     types: [gri_reviewed_current_ready]
   workflow_dispatch:
@@ -33,7 +38,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  no-secret-reviewer-preflight-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify approved reviewer must be distinct and pinned before any B2 GET
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/verify-gri-independent-reviewer-pre-b2.mjs
+          node --test scripts/ops/verify-gri-independent-reviewer-pre-b2.test.mjs
   verified-current:
+    needs: no-secret-reviewer-preflight-contract
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
@@ -132,6 +154,12 @@ jobs:
           const pub=createPublicKey(secret).export({format:'der',type:'spki'});
           appendFileSync(process.env.GITHUB_ENV,'RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64='+pub.toString('base64')+'\n');
           NODE
+
+      - name: Reject absent or reused independent reviewer pin before any B2 GET
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-gri-independent-reviewer-pre-b2.mjs
 
       - name: Read exact pinned signed current evidence from quota-governed B2
         # Separate Bun processes each create their own per-process counter.
