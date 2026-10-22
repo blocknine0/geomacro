@@ -22,9 +22,10 @@ test("expired GRI locks dependent indices, even if their own D1 row appears rece
  f.products["global-risk"].status="EXPIRED";
  f.products["global-risk"].live_freshness_eligible=false;
  const p=planSignedHotContinuation(f);
- assert.ok(p.blocking.includes("INDICES_WAIT_FOR_AUTHENTIC_CURRENT_GRI_PARENT")===false);
- // The child must be independently verified by the protected publisher; an
- // age-only risk-indices row cannot stand in for its expired parent.
+ // The child must never remain independently eligible when its parent
+ // cannot serve current, regardless of a newer child-looking D1 clock.
+ assert.ok(p.blocking.includes("INDICES_WAIT_FOR_AUTHENTIC_CURRENT_GRI_PARENT"));
+ assert.equal(p.currentness["risk-indices"].state,"WAITING_FOR_CURRENT_SIGNED_GRI_PARENT");
  assert.equal(p.currentness["global-risk"].state,"EXPIRED");
  assert.equal(p.three_public_signed_products_verified,false);
 });
