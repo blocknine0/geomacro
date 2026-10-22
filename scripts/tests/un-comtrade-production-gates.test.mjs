@@ -93,3 +93,18 @@ test("shared HS headings and TOTAL cannot imply mineral-specific trade",async()=
     reporterCode:842,period:"2024",cmdCode:"260500",maxRecords:10000,category:"CRITICAL_MINERALS"
   }),/UN_COMTRADE_RECORDS_LIMIT_INVALID/);
 });
+
+test("actual UN Comtrade preview and authenticated GET endpoints use the documented paths",async()=>{
+  delete process.env.UN_COMTRADE_API_KEY;
+  let calls=stub();
+  await fetchComtrade("USA",{reporterCode:842,period:"2024",
+    cmdCode:"260500",flowCode:"X",category:"CRITICAL_MINERALS"});
+  assert.equal(new URL(calls[0]).pathname,"/public/v1/preview/C/A/HS");
+  assert.equal(new URL(calls[0]).searchParams.get("reporterCode"),"842");
+  process.env.UN_COMTRADE_API_KEY="unit-test-secret-not-real";
+  calls=stub();
+  await fetchComtrade("USA",{reporterCode:842,period:"2024",
+    cmdCode:"260500",flowCode:"X",category:"CRITICAL_MINERALS"});
+  assert.equal(new URL(calls[0]).pathname,"/data/v1/get/C/A/HS");
+  assert.equal(new URL(calls[0]).searchParams.get("subscription-key"),"unit-test-secret-not-real");
+});

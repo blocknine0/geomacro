@@ -29,6 +29,9 @@ on:
       - "scripts/lib/ons-lms-official-release.mjs"
       - "scripts/tests/ons-lms-official-release.test.mjs"
       - "scripts/ops/observe-ons-lms-official-release.mjs"
+      - "scripts/lib/comtrade-195-actual-mineral-reference.mjs"
+      - "scripts/tests/comtrade-195-actual-mineral-reference.test.mjs"
+      - "scripts/ops/observe-comtrade-195-minerals.mjs"
       - "scripts/ops/audit-all-source-product-contract.mjs"
       - "config/operator-country-source-crosswalk.v1.json"
       - "config/operator-corridor-source-crosswalk.v1.json"
@@ -64,6 +67,9 @@ on:
       - "scripts/lib/ons-lms-official-release.mjs"
       - "scripts/tests/ons-lms-official-release.test.mjs"
       - "scripts/ops/observe-ons-lms-official-release.mjs"
+      - "scripts/lib/comtrade-195-actual-mineral-reference.mjs"
+      - "scripts/tests/comtrade-195-actual-mineral-reference.test.mjs"
+      - "scripts/ops/observe-comtrade-195-minerals.mjs"
       - "scripts/ops/audit-all-source-product-contract.mjs"
       - "config/operator-country-source-crosswalk.v1.json"
       - "config/operator-corridor-source-crosswalk.v1.json"
@@ -117,6 +123,9 @@ jobs:
           node --check scripts/lib/ons-lms-official-release.mjs
           node --check scripts/ops/observe-ons-lms-official-release.mjs
           node --test scripts/tests/ons-lms-official-release.test.mjs
+          node --check scripts/lib/comtrade-195-actual-mineral-reference.mjs
+          node --check scripts/ops/observe-comtrade-195-minerals.mjs
+          node --test scripts/tests/comtrade-195-actual-mineral-reference.test.mjs
           node --check scripts/ops/audit-all-source-product-contract.mjs
           node scripts/ops/audit-all-source-product-contract.mjs
       - name: Create private per-source product qualification ledger
@@ -293,5 +302,31 @@ jobs:
         with:
           name: ons-lms-national-release-${{ github.run_id }}
           path: artifacts/ons-labour-market-daily/receipt.json
+          retention-days: 3
+          if-no-files-found: warn
+
+
+  comtrade-195-actual-mineral-reference:
+    # Reuse the same daily free cron. Verify actual country reporter catalogue
+    # and three scoped annual mineral trade numeric observations; missing is red.
+    # NO raw article, Supabase, B2, D1 writes, settlement or paid entitlement.
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22
+      - name: Verify live UN Comtrade reporters and scoped reported mineral exports
+        run: node scripts/ops/observe-comtrade-195-minerals.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: actual-comtrade-mineral-reference-${{ github.run_id }}
+          path: artifacts/official-mineral-trade/comtrade-195-reference.json
           retention-days: 3
           if-no-files-found: warn
