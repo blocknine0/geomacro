@@ -42,9 +42,12 @@ export function assertAutomatedInput(p:AutomatedInputPayload,now=Date.now()){
 export function automatedInputSignable(p:AutomatedInputPayload){return AUTOMATED_INPUT_DOMAIN+canonicalJson(p);}
 // Native time/category and exact derived content define identity. Alternate
 // journal IDs cannot duplicate the same input; changed content is a revision.
-export async function automatedInputId(signal:StatelessIntelligenceSignal){
+export function automatedInputContent(signal:StatelessIntelligenceSignal){
  const {id:_,...content}=signal;
- return inputHash(canonicalJson(content));
+ return canonicalJson(content);
+}
+export async function automatedInputId(signal:StatelessIntelligenceSignal){
+ return inputHash(automatedInputContent(signal));
 }
 export async function verifyAutomatedInput(e:AutomatedInputEnvelope,keys:Keys,now=Date.now()){
  if(!e||!exact(e,['payload','integrity'])||!e.integrity||

@@ -1,3 +1,4 @@
+import {publicSignedNews} from './public-signed-news.mjs';
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
 import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
@@ -1292,6 +1293,8 @@ export default {
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
       return renderDerivedStoriesHtml(env);
     }
+    if(request.method==='GET'&&url.pathname==='/v1/public/intelligence-publications')
+      return publicSignedNews(env,url.searchParams);
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news") {
       // Only deterministic 250-row read pages of the existing 600-row D1
       // journal. No arbitrary SQL offsets or raw publisher payloads.
