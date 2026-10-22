@@ -1,0 +1,87 @@
+name: Old Supabase Customer Shadow to Private D1 (No Funds)
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/legacy-customer-private-d1-shadow.yml"
+      - "scripts/ops/legacy-customer-private-d1-shadow.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/legacy-customer-private-d1-shadow.yml"
+      - "scripts/ops/legacy-customer-private-d1-shadow.mjs"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-old-customer-private-d1-preservation
+  cancel-in-progress: false
+jobs:
+  no-credentials-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      APP_SUPABASE_URL: ""
+      SUPABASE_DB_URL: ""
+      CLOUDFLARE_ACCOUNT_ID: ""
+      CLOUDFLARE_API_TOKEN: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Require frozen private-only script and fail-closed receipt
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/legacy-customer-private-d1-shadow.mjs
+          node scripts/ops/legacy-customer-private-d1-shadow.mjs || test "$?" -eq 3
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/customer-d1-private-shadow.json");
+          if(r.status!=="BLOCKED_NO_DELETION"||
+             r.source_supabase_writes!==0||r.source_supabase_deletes!==0||
+             r.real_payment_operations!==0||r.old_supabase_deletion_authorized!==false||
+             r.live_customer_auth_cutover_verified!==false||
+             r.live_predge_cutover_verified!==false)
+            throw Error('CUSTOMER_SHADOW_CANNOT_IMPERSONATE_LIVE_CUTOVER');
+          NODE
+  preserve-private-customer-identity:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Materialize immutable private D1 customer snapshot, read back every row and hash
+        run: |
+          set -euo pipefail
+          node scripts/ops/legacy-customer-private-d1-shadow.mjs
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/customer-d1-private-shadow.json");
+          if(r.d1_shadow_parity_verified!==true||
+             r.live_customer_auth_cutover_verified!==false||
+             r.live_commercial_entitlement_cutover_verified!==false||
+             r.old_supabase_deletion_authorized!==false||
+             r.source_supabase_writes!==0||r.source_supabase_deletes!==0||
+             r.real_payment_operations!==0)
+            throw Error("PRIVATE_D1_SNAPSHOT_NOT_LIVE_CUSTOMER_ACCEPTANCE");
+          NODE
+      - name: Retain only sanitized counts, no principal/credential/payment data
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: old-supabase-customer-d1-shadow-${{ github.run_id }}
+          path: artifacts/legacy-exit/customer-d1-private-shadow.json
+          retention-days: 14
+          if-no-files-found: warn
