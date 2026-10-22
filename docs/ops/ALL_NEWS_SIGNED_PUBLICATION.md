@@ -41,3 +41,9 @@ Existing producer signing repairs absent signed inputs on its next authorized
 run. Source-review failures remain visible and cannot be repaired by an
 issuer signature alone. No new cron, paid provider, B2 request or Supabase
 operation is introduced by this readback.
+
+Original-page checking and LOW review use the shared 22-hour source verification
+window in `original-verification-policy.ts`, for all three categories. The
+original release clock, 72-hour retention, signed permission expiry and separate
+60-minute live freshness requirement are preserved. Inputs outside 22 hours
+remain dated retained signed inputs and never gain a new source timestamp.

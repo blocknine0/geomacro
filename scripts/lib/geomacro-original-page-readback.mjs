@@ -1,3 +1,4 @@
+import {ORIGINAL_VERIFICATION_WINDOW_MS} from "../../src/lib/original-verification-policy.ts";
 import {createHash} from "node:crypto";
 import {
   approvedFirstPartyOriginalArticleUrl,
@@ -36,7 +37,7 @@ function pinnedOriginalPage(url,category){
     return parsed;
   return null;
 }
-function checkedInputs(originals, now,{minOriginals=2,maxAgeMs=24*60*60*1000}={}){
+function checkedInputs(originals, now,{minOriginals=2,maxAgeMs=ORIGINAL_VERIFICATION_WINDOW_MS}={}){
   if(!Array.isArray(originals)||originals.length<minOriginals||
      originals.length>MAX_ORIGINALS ||!(now instanceof Date)||
      !Number.isFinite(now.getTime()))fail();
@@ -146,7 +147,7 @@ export async function verifyGeomacroOriginalPages({
 
 async function verifyOriginalPageSet({originals,now,fetchImpl,minOriginals,schema}){
   const {checked,category,claim}=checkedInputs(originals,now,{
-    minOriginals,maxAgeMs:minOriginals===1?6*60*60*1000:24*60*60*1000,
+    minOriginals,maxAgeMs:ORIGINAL_VERIFICATION_WINDOW_MS,
   });
   // One HTTPS GET per distinct original organization. No retries, redirects,
   // concurrent bursts, D1/B2/DB calls, customer traffic or hidden payments.
@@ -198,7 +199,7 @@ export async function verifyGeomacroSingleOriginalPage({
 /**
  * PRE-REVIEW ONLY: no semantic event identity has been approved yet.
  * The existing strict HTTPS publisher pin, bounded exact HTML bytes reader,
- * original publisher clock and six-hour time gate are reused without
+ * original publisher clock and shared 22-hour verification window are reused without
  * manufacturing a same-event claim SHA to satisfy the signed risk profile.
  *
  * This profile returns an actual HTML-byte digest for a private review lead.
@@ -222,7 +223,7 @@ export async function verifyGeomacroUnclaimedOriginalPage({
   const publication=Date.parse(original.original_published_at);
   if(!uri||publisher!==original.originating_reporting_organization_id||
      !Number.isFinite(publication)||publication>now.getTime()||
-     now.getTime()-publication>6*60*60*1000)
+     now.getTime()-publication>ORIGINAL_VERIFICATION_WINDOW_MS)
     fail();
   const readback=await exactReadback({
     url:uri.href,expected_at:publication,expected_sha:null,

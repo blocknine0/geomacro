@@ -65,7 +65,7 @@ describe('Geomacro internal LOW automated source review',()=>{
   }
   const changed=structuredClone(items[0]);changed.review.input_id='a'.repeat(64);
   await expect(verifyLowSourceReview(changed,trust,now.getTime())).rejects.toThrow();
-  await expect(verifyLowSourceReview(items[0],trust,now.getTime()+7*3600_000)).rejects.toThrow();
+  await expect(verifyLowSourceReview(items[0],trust,now.getTime()+23*3600_000)).rejects.toThrow();
  });
  it('accepts only the scoped review token and never returns reviewer/evidence details',async()=>{
   const {items}=await realReview(),root='x'.repeat(64),scoped=await lowReviewToken(root);

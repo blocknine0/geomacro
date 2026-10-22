@@ -4,6 +4,7 @@
  * reviewer. The private full-result JSON is never uploaded or printed.
  * An original-page SHA + native timestamp is not a Facts or Rights approval.
  */
+import {ORIGINAL_VERIFICATION_WINDOW_HOURS,ORIGINAL_VERIFICATION_EXPIRED} from '../../src/lib/original-verification-policy.ts';
 import {readFileSync, lstatSync} from "node:fs";
 import {resolve, isAbsolute} from "node:path";
 import {pathToFileURL} from "node:url";
@@ -21,6 +22,7 @@ const ORIGINAL_STATES=Object.freeze({
  "PRIVATE_ORIGINAL_REFERENCE_NOT_AVAILABLE":"missing_private_original_reference",
  "ORIGINAL_DAY_PRECISION_ONLY":"original_day_precision_only",
  "OUTSIDE_SIX_HOUR_CURRENT_PROOF_WINDOW":"outside_six_hour_current_proof_window",
+ [ORIGINAL_VERIFICATION_EXPIRED]:"outside_twenty_two_hour_original_verification_window",
  "ORIGINAL_ISSUER_NOT_REGISTERED_FOR_BYTE_RECHECK":"issuer_not_registered_for_html_readback",
  "ORIGINAL_PAGE_READBACK_DEFERRED_QUOTA":"quota_deferred",
  "ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED":"original_bytes_or_clock_rejected",
@@ -95,6 +97,7 @@ export function aggregateLowSourceReview(result){
  const rightCounts=Object.fromEntries(STATUSES.map(state=>[state,states[state]??0]));
  return Object.freeze({
   schema:"geomacro.low-source-review-safe-operator-status.v1",
+  original_verification_window_hours:ORIGINAL_VERIFICATION_WINDOW_HOURS,
   original_candidates_examined:audit.ingested_news_examined,
   exact_original_page_readbacks_attempted:audit.exact_page_byte_rereads_attempted,
   new_original_pages_and_native_time_verified:result.source_verified_items,

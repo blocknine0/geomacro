@@ -1,3 +1,4 @@
+import {ORIGINAL_VERIFICATION_WINDOW_SECONDS} from "../../src/lib/original-verification-policy";
 #!/usr/bin/env bun
 /**
  * Bounded first-party signing PREPARATION, not signing. No credentials or
@@ -70,11 +71,11 @@ export async function main(){
  };
  const discovery=await discoverDirectPublisherForPrivateQualification({
   country_iso3,categories:["geopolitics","macro","rare_earth"],
-  max_age_seconds:6*3600,
+  max_age_seconds:ORIGINAL_VERIFICATION_WINDOW_SECONDS,
  },{now,fetchImpl:boundedFetch("discovery")});
  const pages=await verifyOnDemandOriginalArticlePages(
   discovery.private_original_review_candidates,
-  {now,maxAgeSeconds:6*3600,fetchImpl:boundedFetch("page")});
+  {now,maxAgeSeconds:ORIGINAL_VERIFICATION_WINDOW_SECONDS,fetchImpl:boundedFetch("page")});
  const {receipt,leads}=await preparePrivateOriginalSigningReview({
   country_iso3,discovery,pages,now,
   readback:({original,now})=>verifyGeomacroUnclaimedOriginalPage({

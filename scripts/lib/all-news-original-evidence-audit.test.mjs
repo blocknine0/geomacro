@@ -62,11 +62,11 @@ test("ALL incoming news receive explicit status, even when per-category source p
 });
 test("feed-only news, day-precision dates and old originals are NOT falsely byte-verified",async()=>{
  const dateOnly=signal("10101010","macro","2026-10-21","day");
- const stale=signal("20202020","macro","2026-10-21T03:00:00.000Z");
+ const stale=signal("20202020","macro","2026-10-20T14:59:00.000Z");
  const noOriginal=signal("30303030","macro");
  let calls=0;
  const refs=new Map([[dateOnly.id,ref("2026-10-21")],
-  [stale.id,ref("2026-10-21T03:00:00.000Z")]]);
+  [stale.id,ref("2026-10-20T14:59:00.000Z")]]);
  const report=await auditEveryDerivedNewsOriginal({
   signals:[dateOnly,stale,noOriginal],originalRefs:refs,now,
   verify:async()=>{calls++;throw Error("UNEXPECTED_FETCH")},
@@ -77,7 +77,7 @@ test("feed-only news, day-precision dates and old originals are NOT falsely byte
  assert.equal(report.rows.find(x=>x.id===dateOnly.id).original_page_evidence_status,
   "ORIGINAL_DAY_PRECISION_ONLY");
  assert.equal(report.rows.find(x=>x.id===stale.id).original_page_evidence_status,
-  "OUTSIDE_SIX_HOUR_CURRENT_PROOF_WINDOW");
+  "OUTSIDE_TWENTY_TWO_HOUR_ORIGINAL_VERIFICATION_WINDOW");
  assert.equal(report.rows.find(x=>x.id===noOriginal.id).original_page_evidence_status,
   "PRIVATE_ORIGINAL_REFERENCE_NOT_AVAILABLE");
 });

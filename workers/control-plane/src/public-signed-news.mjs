@@ -1,3 +1,4 @@
+import {ORIGINAL_VERIFICATION_WINDOW_HOURS} from '../../../src/lib/original-verification-policy.ts';
 // Public proofs for the SAME derived-only newsroom rows. Existing issuer
 // signatures remain ingestion proofs; original-page review is a separate
 // narrow authority. Neither is silently upgraded to the legacy GRO/GRI proof.
@@ -110,7 +111,7 @@ export async function publicSignedNews(env,query=new URLSearchParams(),now=Date.
    checked_at:new Date(now).toISOString(),journal_rows:journal.length,unique_items:unique.size,
    duplicate_aliases_excluded:journal.length-unique.size,page_offset:offset,page_size:SIZE,
    next_offset:offset+SIZE<unique.size?offset+SIZE:null,page_counts:counts(items),items,
-   retention_hours:72,original_release_delay_minutes:15,
+   retention_hours:72,original_release_delay_minutes:15,original_verification_window_hours:ORIGINAL_VERIFICATION_WINDOW_HOURS,
    signature_scope:'GEOMACRO_ISSUANCE_AND_EXACT_DERIVED_INPUT_BYTES',
    source_review_scope:'ORIGINAL_PAGE_BYTES_AND_NATIVE_PUBLICATION_TIME',
    legacy_signed_hot_product_equivalent:false,independent_reviewed:false,

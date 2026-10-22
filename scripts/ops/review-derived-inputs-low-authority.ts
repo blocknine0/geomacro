@@ -1,3 +1,4 @@
+import {ORIGINAL_VERIFICATION_WINDOW_MS} from '../../src/lib/original-verification-policy.ts';
 import {createPrivateKey,createPublicKey,sign} from 'node:crypto';
 // @ts-expect-error Existing bounded JavaScript auditor has no declaration file.
 import {auditEveryDerivedNewsOriginal} from '../lib/all-news-original-evidence-audit.mjs';
@@ -43,7 +44,7 @@ export async function reviewDerivedInputs({signals,originalRefs,previousReviews=
     prior.review.source_published_at===signal.published_at;
   }catch{/* Untrusted or expired prior state cannot suppress checking. */}
   if(valid&&prior.review.verdict==='SOURCE_EVIDENCE_VERIFIED'&&
-   now.getTime()-Date.parse(signal.published_at)<=6*3600_000){reusedVerified++;continue;}
+   now.getTime()-Date.parse(signal.published_at)<=ORIGINAL_VERIFICATION_WINDOW_MS){reusedVerified++;continue;}
   if(valid&&prior.review.verdict==='SOURCE_EVIDENCE_REJECTED'&&
    now.getTime()-Date.parse(prior.review.reviewed_at)<30*60_000){cooldown++;continue;}
   pending.push(signal);

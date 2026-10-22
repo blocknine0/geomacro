@@ -133,3 +133,13 @@ test('public verification keys expose only explicitly public key fields',async()
  assert.equal(JSON.stringify(d).includes('DO_NOT_DISCLOSE_INTERNAL_CONFIGURATION'),false);
  assert.deepEqual(Object.keys(d.items[0].verification_key).sort(),['not_after','not_before','public_key_spki_b64','status']);
 });
+test('22h source verification remains separate from 60-minute live release freshness',async()=>{
+ const s=signal(1,21*60),f=await fixture([s]),doc=await (await f.get()).json();
+ assert.equal(doc.original_verification_window_hours,22);
+ assert.equal(doc.items[0].original_page_verified,true);
+ assert.equal(doc.items[0].source_current_under_60_minutes,false);
+ assert.equal(doc.items[0].current_source_verified_signed,false);
+ const result=await verifyAllNewsSignedPublications({keys,now,fetchImpl:f.fetchImpl,readJournal:async()=>[s]});
+ assert.equal(result.original_verification_window_hours,22);
+ assert.equal(result.original_page_verified_reported,1);
+});

@@ -1,3 +1,4 @@
+import {ORIGINAL_VERIFICATION_WINDOW_MS,ORIGINAL_VERIFICATION_EXPIRED} from './original-verification-policy.ts';
 import {canonicalJson} from './canonical-json.ts';
 import {inputHash} from './automated-intelligence-input.ts';
 export const LOW_REVIEW_DOMAIN='geomacro.internal-low-source-review.v1\n';
@@ -14,7 +15,7 @@ export type LowReviewTrust={public_spki_b64:string;public_sha256:string;issuer_p
 const hash=/^[a-f0-9]{64}$/;
 const exact=(v:object,keys:string[])=>Object.keys(v).sort().join(',')===[...keys].sort().join(',');
 const reasons=['ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME_VERIFIED','PRIVATE_ORIGINAL_REFERENCE_NOT_AVAILABLE',
- 'ORIGINAL_DAY_PRECISION_ONLY','OUTSIDE_SIX_HOUR_CURRENT_PROOF_WINDOW',
+ 'ORIGINAL_DAY_PRECISION_ONLY','OUTSIDE_SIX_HOUR_CURRENT_PROOF_WINDOW',ORIGINAL_VERIFICATION_EXPIRED,
  'ORIGINAL_ISSUER_NOT_REGISTERED_FOR_BYTE_RECHECK','ORIGINAL_PAGE_READBACK_DEFERRED_QUOTA',
  'ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED'];
 export const lowSourceReviewBytes=(review:LowSourceReview)=>new TextEncoder().encode(LOW_REVIEW_DOMAIN+canonicalJson(review));
@@ -42,11 +43,11 @@ export async function verifyLowSourceReview(envelope:SignedLowSourceReview,trust
   throw Error('LOW_REVIEW_SCOPE_INVALID');
  const reviewed=Date.parse(r.reviewed_at),source=Date.parse(r.source_published_at),expiry=Date.parse(r.expires_at);
  if(!Number.isFinite(now)||!Number.isFinite(reviewed)||!Number.isFinite(source)||source>reviewed||reviewed>now||
-  now-reviewed>6*3600_000||new Date(reviewed).toISOString()!==r.reviewed_at||
+  now-reviewed>ORIGINAL_VERIFICATION_WINDOW_MS||new Date(reviewed).toISOString()!==r.reviewed_at||
   expiry!==source+72*3600_000||expiry<=now||reviewed>=expiry||new Date(expiry).toISOString()!==r.expires_at)throw Error('LOW_REVIEW_CLOCK_INVALID');
  const verified=r.reason==='ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME_VERIFIED';
  const rejected=r.reason==='ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED';
- if(verified&&(!/^\d{4}-\d\d-\d\dT/.test(r.source_published_at)||reviewed-source<15*60_000||reviewed-source>6*3600_000))
+ if(verified&&(!/^\d{4}-\d\d-\d\dT/.test(r.source_published_at)||reviewed-source<15*60_000||reviewed-source>ORIGINAL_VERIFICATION_WINDOW_MS||now-source>ORIGINAL_VERIFICATION_WINDOW_MS))
   throw Error('LOW_REVIEW_CURRENT_EXACT_ORIGINAL_REQUIRED');
  if(r.verdict!==(verified?'SOURCE_EVIDENCE_VERIFIED':rejected?'SOURCE_EVIDENCE_REJECTED':'EVIDENCE_PENDING')||
   (verified?!hash.test(r.evidence_sha256??''):r.evidence_sha256!==null))throw Error('LOW_REVIEW_EVIDENCE_INVALID');

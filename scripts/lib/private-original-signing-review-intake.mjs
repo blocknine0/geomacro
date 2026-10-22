@@ -1,3 +1,4 @@
+import {ORIGINAL_VERIFICATION_WINDOW_MS} from "../../src/lib/original-verification-policy.ts";
 import {createHash} from "node:crypto";
 import {registeredOriginalPublisherOrganization} from "./independent-same-event-qualification.mjs";
 import {verifyGeomacroUnclaimedOriginalPage} from "./geomacro-original-page-readback.mjs";
@@ -14,7 +15,7 @@ import {verifyGeomacroUnclaimedOriginalPage} from "./geomacro-original-page-read
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const HASH=/^[a-f0-9]{64}$/u;
 const ISO3=/^[A-Z]{3}$/u;
-const MAX_AGE_MS=6*60*60_000;
+const MAX_AGE_MS=ORIGINAL_VERIFICATION_WINDOW_MS;
 const fail=code=>{throw Error("PRIVATE_ORIGINAL_REVIEW_"+code)};
 const sha=x=>createHash("sha256").update(x).digest("hex");
 export async function preparePrivateOriginalSigningReview({
