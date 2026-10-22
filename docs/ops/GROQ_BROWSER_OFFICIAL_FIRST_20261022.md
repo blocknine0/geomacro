@@ -40,31 +40,52 @@ See https://console.groq.com/docs/tool-use/built-in-tools/browser-search
   remain separate. This change does not touch paid/x402 code, entitlement
   catalog prices, frozen Supabase, B2, immutable hot snapshots or Risk Indices.
 
-## Production configuration: consent and zero-cost discipline
+## 2026-10-22 Free Plan + existing Lovable secret owner confirmation
 
-Existing server-side `GROQ_API_KEY` is reused. The module is **OFF**
-until the owner confirms *actual* project free-tier browser-search usage
-and explicitly sets these **SERVER-SIDE** environment values (not public
-frontend vars or source code):
+Owner explicitly confirmed the **same existing** Lovable Secrets
+`GROQ_API_KEY` is configured, the Groq organization is on the **Free Plan**,
+Lovable and GitHub repositories are already connected, and Lovable AI prompt
+credits are currently unavailable. Do not provision a second Groq key, new
+account, card or paid service. Implement by GitHub PR + existing sync, NOT
+a Lovable conversational edit prompt.
 
+For this narrow official-source/GDELT-miss **Ask research** path,
+`OWNER_CONFIRMED_EXISTING_GROQ_FREE_20261022=true` is a source-controlled,
+auditable feature approval. Browser fallback works with just the existing
+server-side secret, even when the two optional Lovable variables were never
+entered; no Lovable AI credits/secret edits are required for the code path.
+Live production success is still subject to actual website publish/parity
+and the server runtime seeing `GROQ_API_KEY`.
+
+The two optional runtime values may override and shut OFF the feature:
+```ini
+GROQ_BROWSER_SEARCH_ENABLED=0
+GROQ_BROWSER_SEARCH_FREE_QUOTA_ACK=DENY
 ```
-GROQ_BROWSER_SEARCH_ENABLED=1
-GROQ_BROWSER_SEARCH_FREE_QUOTA_ACK=YES_BROWSER_FREE_TIER_CONFIRMED
-```
 
-The opt-in is deliberately separate from any basic Groq classifier key or
-two-model AI-review allowance. Having a Groq key does **not** prove browser
-search is free, enabled or within remaining daily quota. Check project
-limits, remaining capacity and any provider-specific browser-search billing
-before enabling. Never add a card or paid subscription without owner
-permission. If no free browser entitlement, keep both variables unset and
-continue free first-party/GDELT facts-only output.
+Safety: one browser-search call only after official/news-index miss; at most
+**six browser calls per hour and twelve per UTC day per Node runtime**,
+bounded model/time budget, 429 fail closed, no retry. Per-runtime budgets
+are **not an atomic distributed per-org quota**, so the Groq Free Plan's
+organization limits remain the final safety backstop. If traffic or
+concurrency materially rises, do not promise unlimited free usage:
+implement shared D1/quota arbitration before increasing volumes. An
+operator changing the Groq organization to a paid tier must set the
+explicit opt-out or change this audited source approval before production
+traffic resumes.
 
-This per-request max-one-call limit is **not a distributed daily quota**.
-Before enabling high traffic, add exact shared server-side request budget/
-limiter (e.g. Cloudflare D1 immutable hourly counter with atomic reserve)
-or retain strict request-level upper bounds. Do not present this option as
-unlimited 195-country search or 24/7 guaranteed free requests.
+Groq's official free plan GPT-OSS 20B baseline (as of Oct 2026) reports
+30 RPM/1000 RPD/8K TPM/200K TPD, subject to the user's org's exact limits:
+https://console.groq.com/docs/rate-limits . Free Plan overages generally
+return 429. Browser-search tool usage and provider access are nonetheless
+subject to the actual Groq account and Groq's published terms.
+
+**GitHub-to-Lovable:** a successful GitHub/Lovable source mirror is
+NOT proof that `geomacro.live` was automatically published. Check deployed
+SHA, `/api/public-ask` contract, browser answer and current website lock
+without inventing health 200. Even with exhausted Lovable AI prompt credits,
+GitHub code can be committed; actual Lovable publish depends on the
+hosting project's existing publish workflow/controls.
 
 ## Evidence/security limitations
 
