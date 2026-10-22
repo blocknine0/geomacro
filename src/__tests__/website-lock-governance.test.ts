@@ -42,10 +42,15 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-three-category-toggle-actor-action-news-20261022");
+    expect(config.lock_revision).toBe("founder-approved-concrete-news-all-categories-20261022");
     const launch = config.three_chain_launch_presentation_approval;
     const toggle = config.approved_three_category_toggle_presentation;
-    expect(toggle.approved_ui_commit).toBe(config.baseline_sha);
+    const concrete=config.approved_concrete_news_presentation;
+    expect(concrete.approved_ui_commit).toBe(config.baseline_sha);
+    expect(concrete.previous_baseline_sha).toBe(toggle.approved_ui_commit);
+    expect(concrete.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(concrete.global_risk_final_lock_unmodified).toBe(true);
+    expect(concrete.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(toggle.previous_baseline_sha).toBe(launch.approved_ui_commit);
     expect(toggle.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
     expect(toggle.global_risk_final_lock_unmodified).toBe(true);

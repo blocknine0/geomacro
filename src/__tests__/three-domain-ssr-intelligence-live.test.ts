@@ -8,14 +8,14 @@ import type {StatelessIntelligenceResult} from "@/lib/stateless-public-intellige
 
 const now="2026-10-13T10:00:00.000Z";
 const headline:Record<StatelessCategory,string>={
-  geopolitics:"Geomacro finds security on UN Security Council activity",
-  macro:"Geomacro finds official economic statistics on consumer prices",
-  rare_earth:"Geomacro finds critical-minerals policy on rare-earth materials",
+  geopolitics:"Geomacro finds UN Security Council approved a ceasefire resolution",
+  macro:"Geomacro finds Statistics Canada reported inflation of 2.4%",
+  rare_earth:"Geomacro finds Canada approved a lithium-processing project",
 };
 const signal=(category:StatelessCategory):StatelessIntelligenceSignal=>({
   id:category+"-test9876",category,title:headline[category],
   why_it_matters:"Official first-party publication may affect monitored exposures but cannot imply an outcome or a scored risk.",
-  topic:"official release",what_changed:"An official publisher issued a dated release concerning the stated monitoring topic.",
+  topic:"official release",what_changed:headline[category].replace(/^Geomacro finds /u,"")+".",
   geography:null,development_type:"official update",published_at:"2026-10-12T09:00:00.000Z",
   date_precision:"exact",observed_release_count:1,sources_credited:[],
   status:"official_release_observed_unscored",same_event_corrob_verified:false,severity:null,
