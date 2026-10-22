@@ -13,7 +13,7 @@ test("active code pin accepted and revoked previous key untrusted",()=>{
   assert.throws(()=>trustedPredgeKey(r,OLD),/UNTRUSTED_SIGNING_KEY/);
 });
 test("absent or inactive pinned key rejected",()=>{
-  assert.throws(()=>verifyPredgeRotationRegistry({keys:[item(OLD,"revoked",false)]}),/UNTRUSTED_SIGNING_KEY/);
+  assert.throws(()=>verifyPredgeRotationRegistry({keys:[item(OLD,"revoked",false)]}),/KEY_NOT_ACTIVE/);
   assert.throws(()=>verifyPredgeRotationRegistry({keys:[item(PREDGE_ATTESTATION_PUBLIC_KEY,"revoked",false)]}),/KEY_NOT_ACTIVE/);
 });
 test("old compromised key cannot be reactivated",()=>{
