@@ -26,6 +26,7 @@ jobs:
     env:
       APP_SUPABASE_URL: ""
       SUPABASE_DB_URL: ""
+      LEGACY_SUPABASE_DB_URL: ""
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -45,6 +46,7 @@ jobs:
            'u.hostname==="db."+REF+".supabase.co"',
            'u.hostname.endsWith(".pooler.supabase.com")',
            'PGSSLMODE:"require"',
+           'process.env.LEGACY_SUPABASE_DB_URL',
            'PGOPTIONS:"-c default_transaction_read_only=on"',
            'project_deletion_authorized:false',
            'database/query/read-only',
@@ -71,6 +73,7 @@ jobs:
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      LEGACY_SUPABASE_DB_URL: ${{ secrets.LEGACY_SUPABASE_DB_URL }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_LEGACY_EDGE_READ_TOKEN: ${{ secrets.SUPABASE_LEGACY_EDGE_READ_TOKEN }}

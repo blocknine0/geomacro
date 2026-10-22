@@ -106,7 +106,10 @@ async function managementReadOnly(){
 }
 async function main(){
  if(process.env.APP_SUPABASE_URL!==URL)return fail("PINNED_OLD_SUPABASE_URL_REQUIRED");
- const db=readConfig(process.env.SUPABASE_DB_URL??"");
+ const dedicatedDb=readConfig(process.env.LEGACY_SUPABASE_DB_URL??"");
+ const db=dedicatedDb??readConfig(process.env.SUPABASE_DB_URL??"");
+ report.dedicated_legacy_db_secret_configured=Boolean(process.env.LEGACY_SUPABASE_DB_URL);
+ report.dedicated_legacy_db_identity_valid=Boolean(dedicatedDb);
  let data=null;
  if(db){
   const x=spawnSync("psql",[
@@ -120,6 +123,8 @@ async function main(){
   if(x.status===0&&!x.error){
    try{data=JSON.parse(x.stdout.trim())}catch{data=null}
    if(data)report.read_only_transport="pinned_tls_postgresql";
+  } else {
+    report.pinned_postgres_failure_class=x.error?"SPAWN_OR_TIMEOUT":"CONNECTION_OR_QUERY_REJECTED";
   }
  }
  if(!data){
