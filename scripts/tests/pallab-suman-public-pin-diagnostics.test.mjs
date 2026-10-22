@@ -46,7 +46,8 @@ test("safe finite diagnostics differentiate exact public-key setup mistakes",()=
   assert.equal(r.owner_public_key_check,expected);
   assert.equal(r.reviewer_public_key_check,"PUBLIC_PIN_VERIFIED");
   assert.equal(JSON.stringify(r).includes("BEGIN PUBLIC KEY"),false);
-  assert.equal(JSON.stringify(r).includes(config.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256),false);
+  if(config.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256)
+   assert.equal(JSON.stringify(r).includes(config.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256),false);
  }
 });
 test("Suman wrong pin, duplicate signer, and missing prior signer pins all stay red",()=>{
