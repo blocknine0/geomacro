@@ -101,3 +101,25 @@ test("no bypass via base64 whitespace or oversize payload",()=>{
   ownerPublicKeySpkiSha256:v.key.pin,now
  }),/ENCODED_ENVELOPE_INVALID/);
 });
+
+test("same-laptop password-encrypted owner key requires the correct private passphrase",()=>{
+ const {privateKey,publicKey}=generateKeyPairSync("ed25519");
+ const encrypted=privateKey.export({
+  format:"pem",type:"pkcs8",cipher:"aes-256-cbc",
+  passphrase:"owner-isolated-key-passphrase-test"
+ });
+ const pem=publicKey.export({format:"pem",type:"spki"}).toString();
+ const pin=createHash("sha256").update(publicKey.export({
+  format:"der",type:"spki"})).digest("hex");
+ const params={
+  privateKey:encrypted,publicKeyPem:pem,publicKeySpkiSha256:pin,
+  candidateSha256:a,evidenceSha256:b,now,nonceHex:nonce
+ };
+ assert.throws(()=>signOwnerReviewedCandidate(params),/OWNER_PRIVATE_KEY_UNUSABLE/);
+ assert.throws(()=>signOwnerReviewedCandidate({...params,
+  privateKeyPassphrase:"incorrect-password"}),/OWNER_PRIVATE_KEY_UNUSABLE/);
+ const owner=signOwnerReviewedCandidate({...params,
+  privateKeyPassphrase:"owner-isolated-key-passphrase-test"});
+ assert.equal(owner.payload.human_approver,"Pallab Das");
+ assert.equal(owner.signature_base64.length,88);
+});
