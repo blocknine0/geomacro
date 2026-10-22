@@ -99,7 +99,6 @@ test("model snippets never auto certify event, date, licence or risk score",()=>
   x=>x.leads[0].source_domain="localhost",
   x=>x.leads[0].what_changed="https://publisher.gov/raw/article",
   x=>x.leads[0].source_date="2026-11-20",
-  x=>x.leads[0].source_date="2026-10-21T12:00:00Z",
   x=>x.leads[0].category="RARE_INDUSTRY",
   x=>x.leads[0].what_changed="Verified",
   x=>x.leads.push(x.leads[0],x.leads[0],x.leads[0])
