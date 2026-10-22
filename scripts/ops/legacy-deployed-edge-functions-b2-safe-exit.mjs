@@ -149,5 +149,18 @@ async function main(){
  save("EDGE_RUNTIME_SECRETS_AND_CUSTOMER_ROUTES_REQUIRE_SEPARATE_RECONCILIATION");
 }
 try{await main()}catch{halt("OLD_EDGE_PRESERVATION_FAILED_CLOSED")}finally{
- rmSync(tmp,{recursive:true,force:true});
+ // Supabase CLI can create downloaded files and parent directories with
+ // restricted permissions. Give only this ephemeral private tree owner write
+ // permission before removing it. Never print original names or source bytes.
+ const chmod=spawnSync("chmod",["-R","u+rwX",tmp],{
+  encoding:"utf8",timeout:10000,maxBuffer:2000,stdio:["ignore","pipe","pipe"],
+ });
+ try{rmSync(tmp,{recursive:true,force:true,maxRetries:3,retryDelay:50})}
+ catch{
+  // GitHub-hosted ephemeral runner is destroyed after the job; do not leak
+  // untrusted path/OS error details or revoke a completed B2 byte attestation.
+  report.runner_temporary_cleanup_incomplete=true;
+  report.runner_cleanup_permission_repair_attempted=chmod.status===0;
+  save("PRIVATE_B2_ARCHIVE_VERIFIED_EPHEMERAL_RUNNER_DISPOSAL_REQUIRED");
+ }
 }
