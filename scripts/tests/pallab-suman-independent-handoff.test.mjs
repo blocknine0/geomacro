@@ -28,8 +28,8 @@ const inputs=keys=>{
   privateKey:suman.privateKey,reviewerPublicKeyPem:suman.pem,
   reviewerApprovedSpkiSha256:suman.pin,unsignedGri:evidence,
   unsignedCountryCertificates:certs});
- const griBytes=Buffer.from(JSON.stringify(reviewed.reviewedGri)+"\n");
- const certBytes=Buffer.from(JSON.stringify(reviewed.countryCertificates)+"\n");
+ const griBytes=Buffer.from(JSON.stringify(reviewed.reviewedGri));
+ const certBytes=Buffer.from(JSON.stringify(reviewed.countryCertificates));
  const approval=signOwnerReviewedCandidate({
   privateKey:pallab.privateKey,publicKeyPem:pallab.pem,
   publicKeySpkiSha256:pallab.pin,candidateSha256:sha(griBytes),
