@@ -1,15 +1,16 @@
-// Pallab Das owns a separately governed HUMAN batch-authorization lane.
-// An owner signature never becomes an independent-reviewer, Facts, Rights,
-// country certification, historical B2 proof, signed GRI or paid entitlement.
+// ONE Geomacro owner-human authority (Pallab Das) for a distinct OWNER-REVIEWED
+// factual/scoring-candidate trust profile. No second approval signature.
+// This owner is NOT an externally independent GRI v1.2 reviewer. The existing
+// independently reviewed GRI publisher stays unchanged and fail-closed.
 import {createHash,createPublicKey,verify as verifyEd25519} from "node:crypto";
-export const OWNER_APPROVAL_SCHEMA="geomacro.owner-human-current-gri-approval.v1";
+export const OWNER_APPROVAL_SCHEMA="geomacro.owner-reviewed-gri-candidate-approval.v1";
 export const OWNER_APPROVER="Pallab Das";
 const SHA=/^[a-f0-9]{64}$/u,NONCE=/^[a-f0-9]{32}$/u;
 const SIG=/^[A-Za-z0-9+/]{86}==$/u;
 const MAX_AGE_MS=90*60_000;
 const FAIL="OWNER_HUMAN_APPROVAL_";
-const payloadKeys=["schema","human_approver","decision","reviewed_gri_sha256",
- "country_certificates_sha256","approved_at","expires_at","nonce_hex"];
+const payloadKeys=["schema","human_approver","decision","candidate_gri_sha256",
+ "evidence_manifest_sha256","approved_at","expires_at","nonce_hex"];
 function fail(code){throw Error(FAIL+code);}
 export function ownerApprovalCanonicalPayload(payload){
  if(!payload||typeof payload!=="object"||Array.isArray(payload)||
@@ -18,9 +19,9 @@ export function ownerApprovalCanonicalPayload(payload){
     payload.schema!==OWNER_APPROVAL_SCHEMA||
     payload.human_approver!==OWNER_APPROVER||
     payload.decision!=="APPROVE_EXACT_INPUT_FOR_INDEPENDENT_REVIEW"||
-    !SHA.test(payload.reviewed_gri_sha256)||
-    !SHA.test(payload.country_certificates_sha256)||
-    payload.reviewed_gri_sha256===payload.country_certificates_sha256||
+    !SHA.test(payload.candidate_gri_sha256)||
+    !SHA.test(payload.evidence_manifest_sha256)||
+    payload.candidate_gri_sha256===payload.evidence_manifest_sha256||
     !NONCE.test(payload.nonce_hex)||
     typeof payload.approved_at!=="string"||
     typeof payload.expires_at!=="string"||
@@ -32,7 +33,7 @@ export function ownerApprovalCanonicalPayload(payload){
 }
 export function assertOwnerApprovalEnvelope({
  envelope,approvedOwnerPublicKeyPem,approvedOwnerSpkiSha256,
- expectedReviewedGriSha256,expectedCountryCertificatesSha256,
+ expectedCandidateGriSha256,expectedEvidenceManifestSha256,
  otherAuthoritySpkiSha256=[],now=new Date()
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))fail("CLOCK_INVALID");
@@ -49,10 +50,10 @@ export function assertOwnerApprovalEnvelope({
     expires<=now.getTime()||expires<=issued||
     expires-issued>MAX_AGE_MS)
     fail("HUMAN_APPROVAL_STALE_OR_FUTURE");
- if(!SHA.test(expectedReviewedGriSha256??"")||
-    !SHA.test(expectedCountryCertificatesSha256??"")||
-    p.reviewed_gri_sha256!==expectedReviewedGriSha256||
-    p.country_certificates_sha256!==expectedCountryCertificatesSha256)
+ if(!SHA.test(expectedCandidateGriSha256??"")||
+    !SHA.test(expectedEvidenceManifestSha256??"")||
+    p.candidate_gri_sha256!==expectedCandidateGriSha256||
+    p.evidence_manifest_sha256!==expectedEvidenceManifestSha256)
     fail("EXACT_SIGNED_INPUT_SHA_MISMATCH");
  if(!SHA.test(approvedOwnerSpkiSha256??"")||
     typeof approvedOwnerPublicKeyPem!=="string")
@@ -73,14 +74,16 @@ export function assertOwnerApprovalEnvelope({
  if(sig.length!==64||!verifyEd25519(null,signedBytes,key,sig))
     fail("HUMAN_SIGNATURE_INVALID");
  return Object.freeze({
-  schema:"geomacro.owner-human-approval-verification.v1",
-  status:"PALLAB_DAS_HUMAN_KEY_SIGNATURE_VERIFIED_ONLY",
+  schema:"geomacro.owner-reviewed-gri-candidate-verification.v1",
+  status:"OWNER_REVIEWED_CANDIDATE_APPROVAL_VERIFIED_ONLY",
+  trust_profile:"GEOMACRO_OWNER_REVIEWED_NOT_INDEPENDENT_V1",
   approver:OWNER_APPROVER,
-  exact_reviewed_gri_sha256_verified:true,
-  exact_country_certificates_sha256_verified:true,
+  exact_candidate_gri_sha256_verified:true,
+  exact_evidence_manifest_sha256_verified:true,
   signature_cryptographically_verified:true,
   human_physical_presence_automatically_verified:false,
   independent_gri_reviewer_approval_verified:false,
+  existing_independently_reviewed_gri_contract_satisfied:false,
   facts_signature_verified:false,rights_signature_verified:false,
   certified_country_category_events_verified:false,
   legal_derived_use_rights_verified:false,
