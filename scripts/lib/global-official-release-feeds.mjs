@@ -13,6 +13,15 @@ export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
  // Official Content API first_published_at must be validated for every item.
  {id:'govuk_global_trade_fx',category:'macro',url:'https://www.gov.uk/api/search.json?q=international%20trade&filter_format=news_article&count=10&order=-public_timestamp',format:'json',host:'www.gov.uk',path:/^\/government\/(?:news|speeches|statements|world-location-news)\/[a-z0-9-]+$/u,topic:macro,credit:'Contains public sector information licensed under the Open Government Licence v3.0.',family:'govuk_economy_global_original_publisher'},
  {id:'govuk_global_rare_earth',category:'rare_earth',url:'https://www.gov.uk/api/search.json?q=rare%20earth&filter_format=news_article&count=10&order=-public_timestamp',format:'json',host:'www.gov.uk',path:/^\/government\/(?:news|speeches|statements|world-location-news)\/[a-z0-9-]+$/u,topic:MINERAL_RELEASE_TOPIC,credit:'Contains public sector information licensed under the Open Government Licence v3.0.',family:'govuk_minerals_global_original_publisher'},
+ // UN Geneva officially advertises this first-party RSS endpoint. Filter
+ // only issuer-native press RELEASE permalinks; meeting/press feed indexes,
+ // unrelated pages, translations, redirects, and updated clock are not news.
+ {id:'ungeneva_press_global',category:'geopolitics',
+   url:'https://www.ungeneva.org/news-media/press-releases-list/rss.xml',
+   format:'rss',host:'www.ungeneva.org',
+   path:/^\\/en\\/news-media\\/press-release\\/20\\d{2}\\/(?:0[1-9]|1[0-2])\\/[a-z0-9-]{8,220}$/u,
+   topic:geo,credit:'United Nations Office at Geneva',
+   family:'un_geneva_original_press_release_publisher'},
  {id:'un_press_global',category:'geopolitics',url:'https://press.un.org/en/rss.xml',format:'rss',host:'press.un.org',path:/^\/en\/20\d{2}\/[a-z]+\d+[a-z0-9]*\.doc\.htm$/u,topic:geo,credit:'United Nations',family:'un_press_original_publisher'},
  {id:'un_news_economy',category:'macro',url:'https://news.un.org/feed/subscribe/en/news/topic/economic-development/feed/rss.xml',format:'rss',host:'news.un.org',path:/^\/en\/story\/20\d{2}\/\d{1,2}\/[a-z0-9-]+$/u,topic:macro,credit:'UN News',family:'un_economy_original_publisher'},
  {id:'bis_press_global',category:'macro',url:'https://www.bis.org/doclist/all_pressrels.rss',format:'rss',host:'www.bis.org',path:/^\/(?:press\/p\d{6}[a-z]?\.htm|media-releases\/20\d{6}-[a-z0-9-]+)$/u,topic:macro,credit:'Bank for International Settlements',family:'bis_original_publisher',rdf:true,websiteId:'bis_press'},
