@@ -108,3 +108,26 @@ test("actual UN Comtrade preview and authenticated GET endpoints use the documen
   assert.equal(new URL(calls[0]).pathname,"/data/v1/get/C/A/HS");
   assert.equal(new URL(calls[0]).searchParams.get("subscription-key"),"unit-test-secret-not-real");
 });
+
+test("public preview sends no invented optional zero filters and respects explicit constraints",async()=>{
+  delete process.env.UN_COMTRADE_API_KEY;
+  let calls=stub();
+  await fetchComtrade("USA",{
+    reporterCode:842,period:"2024",cmdCode:"260500",
+    flowCode:"X",partnerCode:"0",category:"CRITICAL_MINERALS"
+  });
+  const u=new URL(calls[0]);
+  assert.equal(u.searchParams.get("period"),"2024");
+  assert.equal(u.searchParams.get("partnerCode"),"0");
+  for(const param of ["partner2Code","motCode","customsCode","breakdownMode","includeDesc"])
+    assert.equal(u.searchParams.has(param),false);
+  calls=stub();
+  await fetchComtrade("USA",{
+    reporterCode:842,period:"2024",cmdCode:"260500",
+    flowCode:"X",partnerCode:"0",partner2Code:"156",
+    motCode:"0",category:"CRITICAL_MINERALS"
+  });
+  const specific=new URL(calls[0]);
+  assert.equal(specific.searchParams.get("partner2Code"),"156");
+  assert.equal(specific.searchParams.get("motCode"),"0");
+});
