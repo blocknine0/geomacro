@@ -36,7 +36,9 @@ export function reconcilePublicHotRecovery({publicDiagnostic,metadata,env={},now
      reasons,source_age_minutes:bounded(row?.source_age_minutes),
      expiry_in_minutes:bounded(row?.expiry_in_minutes),
      native_source_freshness_eligible:fresh,
-     public_hot_http_status:safeStatus(publicDiagnostic?.products?.[name]?.http_status),
+     public_hot_http_status:safeStatus(
+       publicDiagnostic?.products?.[name]?.status ??
+       publicDiagnostic?.products?.[name]?.http_status),
      current_signed_product_verified:false,
    };
  }
@@ -46,8 +48,12 @@ export function reconcilePublicHotRecovery({publicDiagnostic,metadata,env={},now
      blocking.push(name.toUpperCase().replaceAll("-","_")+"_CURRENT_ORIGINAL_SOURCE_AND_HOT_PROOF_REQUIRED");
  if(!machine.eligible)blocking.push("INTELLIGENCE_DUAL_SIGNED_MACHINE_INPUT_NOT_READY");
  if(!gri.externally_approved_fresh_hint_valid)blocking.push("GRI_INDEPENDENT_SIGNED_INPUT_AND_CERTIFICATES_NOT_READY");
- if(publicDiagnostic?.site?.historical_b2_baseline_readable &&
-   Object.values(publicDiagnostic.site.historical_b2_baseline_readable).some(x=>x===false))
+ // Production root-cause JSON exposes this at TOP LEVEL; older test
+ // fixtures used site.*. Recognize both without silently skipping 0/3.
+ const baseline=publicDiagnostic?.historical_b2_baseline_readable ??
+   publicDiagnostic?.site?.historical_b2_baseline_readable;
+ if(!baseline || ["intelligence","global_risk","risk_indices"]
+     .some(name=>baseline[name]!==true))
    blocking.push("HISTORICAL_B2_BASELINE_PROOF_UNREADABLE");
  if(!publicOk)blocking.push("PRODUCTION_PUBLIC_HEALTH_NOT_VERIFIED");
  return {
