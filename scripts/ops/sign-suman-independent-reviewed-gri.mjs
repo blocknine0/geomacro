@@ -7,16 +7,18 @@ import {isAbsolute,dirname,relative} from "node:path";
 import {createPrivateKey,createPublicKey,createHash,sign,verify} from "node:crypto";
 import {createInterface} from "node:readline/promises";
 import {pathToFileURL} from "node:url";
+import {readHumanKeyPassphrase} from "../lib/read-human-key-passphrase.mjs";
 const fail=s=>{throw Error("SUMAN_INDEPENDENT_REVIEW_"+s)};
 const sha=b=>createHash("sha256").update(b).digest("hex");
 const HEX=/^[a-f0-9]{64}$/u;
 export function signSumanIndependentReview({
- privateKey,reviewerPublicKeyPem,reviewerApprovedSpkiSha256,
+ privateKey,privateKeyPassphrase,reviewerPublicKeyPem,reviewerApprovedSpkiSha256,
  unsignedGri,unsignedCountryCertificates
 }={}){
  let priv,pub;
  try{
-  priv=createPrivateKey(privateKey);
+  priv=createPrivateKey(privateKeyPassphrase===undefined?privateKey:
+    {key:privateKey,passphrase:privateKeyPassphrase});
   pub=createPublicKey(reviewerPublicKeyPem);
   if(priv.asymmetricKeyType!=="ed25519"||pub.asymmetricKeyType!=="ed25519")
    fail("ED25519_KEY_REQUIRED");
@@ -106,8 +108,13 @@ async function main(env=process.env){
   const answer=await rl.question("After genuine independent review, type SIGN SUMAN EXACT REVIEW: ");
   if(answer!=="SIGN SUMAN EXACT REVIEW")fail("HUMAN_REVIEW_NOT_AUTHORIZED");
  }finally{rl.close();}
+ const encryptedKeyBytes=readFileSync(kp);
+ if(!encryptedKeyBytes.toString("ascii",0,80).includes("BEGIN ENCRYPTED PRIVATE KEY"))
+  fail("SHARED_LAPTOP_ENCRYPTED_PRIVATE_KEY_REQUIRED");
+ const privateKeyPassphrase=await readHumanKeyPassphrase(
+   "Suman: enter YOUR private signing-key passphrase (hidden): ");
  const result=signSumanIndependentReview({
-  privateKey:readFileSync(kp),
+  privateKey:encryptedKeyBytes,privateKeyPassphrase,
   reviewerPublicKeyPem:env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM,
   reviewerApprovedSpkiSha256:env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256,
   unsignedGri,unsignedCountryCertificates
