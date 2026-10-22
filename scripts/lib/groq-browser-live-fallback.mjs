@@ -13,6 +13,25 @@ const CATEGORIES=Object.freeze({
 });
 const BROWSER_MODEL="openai/gpt-oss-20b";
 const GROQ_URL="https://api.groq.com/openai/v1/chat/completions";
+// Owner confirmed on 2026-10-22: Groq organization is FREE and the existing
+// GROQ_API_KEY is already in Lovable server Secrets. Enable on this narrow
+// official-source MISS path without requiring scarce Lovable AI credits.
+// An explicit runtime opt-out overrides the owner confirmation immediately.
+// Free Groq traffic is quota-bound/429; never upgrade tiers or add a card.
+export const OWNER_CONFIRMED_EXISTING_GROQ_FREE_20261022=true;
+const MAX_PER_HOUR_PER_RUNTIME=6;
+const MAX_PER_DAY_PER_RUNTIME=12;
+const inMemoryBrowserBudget={hourStart:0,hourCount:0,dayStart:0,dayCount:0};
+export function reserveBoundedFreeBrowserSlot(nowMs=Date.now(),budget=inMemoryBrowserBudget){
+ if(!Number.isFinite(nowMs)||nowMs<0)reject();
+ const hour=Math.floor(nowMs/3600_000),day=Math.floor(nowMs/86400_000);
+ if(budget.hourStart!==hour){budget.hourStart=hour;budget.hourCount=0;}
+ if(budget.dayStart!==day){budget.dayStart=day;budget.dayCount=0;}
+ if(budget.hourCount>=MAX_PER_HOUR_PER_RUNTIME||
+    budget.dayCount>=MAX_PER_DAY_PER_RUNTIME)return false;
+ budget.hourCount++;budget.dayCount++;
+ return true;
+}
 const SOURCE_STATUS="BROWSER_SEARCH_LEAD_NOT_ORIGINAL_SOURCE_VERIFIED";
 const K=/^[A-Z]{3}$/u;
 const HOST=/^(?:[a-z0-9-]+\.)+[a-z]{2,}$/u;
@@ -88,12 +107,19 @@ export async function groqBrowserResearchForMissingOfficial({
  env=process.env,fetchImpl=fetch,now=new Date()
 }={}){
  const plan=planBoundedGroqBrowserSearch({categories,country_iso3,country_name});
- // Do not spend ANY provider quota without a verified user-owned free-tier
- // browser_search entitlement and a feature-specific production opt-in.
- if(env.GROQ_BROWSER_SEARCH_ENABLED!=="1"||
-    env.GROQ_BROWSER_SEARCH_FREE_QUOTA_ACK!=="YES_BROWSER_FREE_TIER_CONFIRMED"||
+ // The owner has confirmed Groq FREE + the existing Lovable server
+ // secret. No Lovable AI edit credits are required: the versioned code opt-in
+ // works with existing GROQ_API_KEY; explicit runtime 0/DENY stops it.
+ // Per-process slot limits are an additional conservative bound, NOT a
+ // distributed 195-country traffic governor. Groq Free returns 429 at limits.
+ if(!OWNER_CONFIRMED_EXISTING_GROQ_FREE_20261022||
+    env.GROQ_BROWSER_SEARCH_ENABLED==="0"||
+    env.GROQ_BROWSER_SEARCH_FREE_QUOTA_ACK==="DENY"||
     typeof env.GROQ_API_KEY!=="string"||!env.GROQ_API_KEY.trim())
   return null;
+ // Never consume a shared free-tier token until the official/index paths
+ // have already failed and we have one supported fixed country/topic scope.
+ if(!reserveBoundedFreeBrowserSlot(now.getTime()))return null;
  if(typeof fetchImpl!=="function")reject();
  const input={
   country_iso3:plan.country_iso3,country:plan.country_name,
