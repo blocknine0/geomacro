@@ -26,13 +26,21 @@ on:
       - "scripts/ops/verify-pallab-suman-authority-readiness.mjs"
       - "docs/ops/PALLAB_SUMAN_TWO_PERSON_SIGNED_GRI_HANDOFF.md"
   workflow_dispatch: {}
+  schedule:
+    # GitHub does not emit Actions events when environment secrets change.
+    # Check the two real people's *public* key pins twice daily, no private
+    # keys or raw signed-review payload, no B2/D1/API/network or payments.
+    # Cron is best-effort; the human can dispatch after enrolling keys.
+    - cron: "19 3,15 * * *"
 
 permissions:
   contents: read
 
 concurrency:
+  # This workflow is strictly read-only and has no staged publisher side
+  # effects. Older pending checks must not starve a newer credential check.
   group: pallab-suman-independent-gri-key-readiness-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   offline-two-person-signature-contract:
