@@ -77,3 +77,35 @@ test("catalog denial does not cause speculative country probes",async()=>{
   assert.equal(result.source_requests_attempted,1);
   assert.equal(calls,0);
 });
+
+test("first Comtrade 429 halts same-provider batch without rotating source or fabricating figures",async()=>{
+  let calls=0;
+  const out=await observeComtrade195Minerals({
+    now,registrySource:isoSource,fetchCatalog:async()=>catalog,
+    fetchRows:async()=>{calls++;throw Error("HTTP 429");}
+  });
+  assert.equal(calls,1);
+  assert.equal(out.source_requests_attempted,2); // catalog + first no-key preview
+  assert.equal(out.publisher_access_held_after_denial,true);
+  assert.equal(out.verified_annual_numeric_samples,0);
+  assert.deepEqual(out.observations.map(x=>x.status),[
+    "UNAVAILABLE","SKIPPED_PROVIDER_ACCESS_HOLD","SKIPPED_PROVIDER_ACCESS_HOLD"
+  ]);
+  assert.equal(out.observations[1].reason,"PROVIDER_DENIED_OR_QUOTA");
+  assert.equal(out.current_195x3_coverage_verified,false);
+});
+test("a non-denial source schema failure is independent and remaining official samples are attempted",async()=>{
+ let calls=0;
+ const out=await observeComtrade195Minerals({
+   now,registrySource:isoSource,fetchCatalog:async()=>catalog,
+   fetchRows:async(iso3,opts)=>{
+     calls++;
+     if(iso3==="CHN")throw Error("UN_COMTRADE_ROW_SCOPE_UNVERIFIED");
+     return sample(iso3,opts,50);
+   }
+ });
+ assert.equal(calls,3);
+ assert.equal(out.publisher_access_held_after_denial,false);
+ assert.equal(out.observations[0].reason,"DATA_SCOPE_UNVERIFIED");
+ assert.equal(out.verified_annual_numeric_samples,2);
+});
