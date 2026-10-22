@@ -110,3 +110,26 @@ The separate restricted low-review and free news pipelines continue only
 under their own credentials and schedules. This optional profile never
 changes commercial-use rights, partner permissions, x402, paid scoring,
 independent v1.2 GRI, Risk Indices or deep-health semantics.
+
+## Production trust-pin compatibility (2026-10-23)
+
+A signed local owner+Suman delegation is **not interchangeable** with older
+independent GRI v1.2 reviewer public-key registration. Production run
+39865101157 verified existing signed news but reported
+STANDING_DELEGATION_HUMAN_GOVERNANCE_SIGNATURE_INVALID against legacy public
+pins. Never overwrite the older GRI reviewer/owner trusted public keys to
+force this optional derived-only receipt to pass.
+
+This dedicated derived-only profile now enrolls its *OWN* owner and Suman
+consent PUBLIC PEMs and independently checked SPKI SHA-256 pins from the EXACT
+locally cryptographically verified governance signatures; no private human keys
+are uploaded and no old GRI publisher anchor is edited. The new cloud verifier
+checks the existing immutable signed consent against THESE scope-specific pins.
+
+After this change merges, **do not sign again**. From the existing clean
+`~/geomacro-delegation-main` worktree update to canonical main and rerun the
+SAME `node scripts/ops/enroll-standing-derived-cloud.mjs
+--enroll-two-signed-human-consents-no-funds` operator command. This safely
+verifies both old genuine human signatures and enrolls the four additional
+public-key secret fields before redispatch. It does not authorize numerical
+GRI, source commercial permissions or real-money payment.

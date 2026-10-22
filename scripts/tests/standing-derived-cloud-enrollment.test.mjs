@@ -23,9 +23,14 @@ function fixture(){
  }};
 }
 test("valid two-human signatures enroll exact new machine only and no funds",()=>{
- const {values,machine}=fixture();
+ const {values,machine,owner,reviewer}=fixture();
  const ready=prepareEnrollment(values);
  assert.equal(REPOSITORY,"blocknine0/geomacro");
+ assert.equal(ready.secrets.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM,values.ownerPem);
+ assert.equal(ready.secrets.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM,values.reviewerPem);
+ assert.equal(ready.secrets.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256,owner.pin);
+ assert.equal(ready.secrets.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256,reviewer.pin);
+
  assert.equal(ready.receipt.status,"STANDING_DELEGATION_VERIFIED_DERIVED_ONLY");
  assert.equal(ready.receipt.pallab_governance_signature_verified,true);
  assert.equal(ready.receipt.suman_governance_signature_verified,true);

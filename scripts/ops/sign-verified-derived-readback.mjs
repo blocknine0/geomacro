@@ -37,10 +37,10 @@ async function main(env=process.env){
   env.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256,groPin];
  if(other.some(x=>!hex.test(x??"")))fail();
  const delegation=validateDelegation(envelope,{
-  ownerPem:env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM,
-  ownerPin:env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256,
-  reviewerPem:env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM,
-  reviewerPin:env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256,
+  ownerPem:env.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM,
+  ownerPin:env.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256,
+  reviewerPem:env.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM,
+  reviewerPin:env.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256,
   machinePem:env.GEOMACRO_DELEGATED_MACHINE_PUBLIC_KEY_PEM,
   machinePin:env.GEOMACRO_DELEGATED_MACHINE_PUBLIC_KEY_SHA256,
   otherAuthorityPins:other,

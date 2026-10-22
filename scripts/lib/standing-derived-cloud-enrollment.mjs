@@ -7,7 +7,11 @@ export const SECRETS=Object.freeze([
  "GEOMACRO_DELEGATED_MACHINE_PRIVATE_PKCS8_B64",
  "GEOMACRO_DELEGATED_MACHINE_PUBLIC_KEY_PEM",
  "GEOMACRO_DELEGATED_MACHINE_PUBLIC_KEY_SHA256",
- "GEOMACRO_STANDING_DELEGATION_ENVELOPE_B64"
+ "GEOMACRO_STANDING_DELEGATION_ENVELOPE_B64",
+ "GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM",
+ "GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256",
+ "GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM",
+ "GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256"
 ]);
 export function prepareEnrollment({
  policy,ownerApproval,sumanApproval,ownerPem,reviewerPem,
@@ -37,6 +41,13 @@ export function prepareEnrollment({
   GEOMACRO_DELEGATED_MACHINE_PUBLIC_KEY_SHA256:machinePin,
   GEOMACRO_STANDING_DELEGATION_ENVELOPE_B64:
    Buffer.from(JSON.stringify(envelope),"utf8").toString("base64"),
+  // The actual local human key pairs have been signed and cryptographically
+  // verified in this limited delegation profile. Never overwrite the
+  // unrelated historical independent-GRI reviewer public-key anchors.
+  GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM:ownerPem,
+  GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256:spkiDigest(ownerPem),
+  GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM:reviewerPem,
+  GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256:spkiDigest(reviewerPem),
  };
  if(Object.keys(secrets).sort().join("|")!==SECRETS.slice().sort().join("|")||
     Object.values(secrets).some(v=>typeof v!=="string"||v.length===0))deny();
