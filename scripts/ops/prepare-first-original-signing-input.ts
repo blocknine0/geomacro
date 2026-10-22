@@ -1,5 +1,5 @@
-import {ORIGINAL_VERIFICATION_WINDOW_SECONDS} from "../../src/lib/original-verification-policy";
 #!/usr/bin/env bun
+import {ORIGINAL_VERIFICATION_WINDOW_SECONDS} from "../../src/lib/original-verification-policy";
 /**
  * Bounded first-party signing PREPARATION, not signing. No credentials or
  * source-rights license presumed; original URLs/titles remain process-private.
