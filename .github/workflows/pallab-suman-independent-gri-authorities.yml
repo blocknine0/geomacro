@@ -1,0 +1,89 @@
+name: Pallab and Suman Independent GRI Authority Readiness (No Funds)
+
+# Separate human owner approval and actual independent GRI reviewer.
+# No automatic signing, raw uploads in GitHub, or independent-review
+# override. This workflow checks PUBLIC identity pins only.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/pallab-suman-independent-gri-authorities.yml"
+      - "scripts/lib/pallab-human-gri-batch-approval.mjs"
+      - "scripts/lib/pallab-suman-reviewed-handoff.mjs"
+      - "scripts/ops/sign-pallab-owner-gri-candidate.mjs"
+      - "scripts/ops/sign-suman-independent-reviewed-gri.mjs"
+      - "scripts/ops/verify-pallab-owner-gri-candidate.mjs"
+      - "scripts/ops/verify-pallab-suman-independent-handoff.mjs"
+      - "scripts/ops/verify-pallab-suman-authority-readiness.mjs"
+      - "scripts/tests/pallab-one-authority-gri-owner-review.test.mjs"
+      - "scripts/tests/pallab-suman-independent-handoff.test.mjs"
+      - "docs/ops/PALLAB_SUMAN_TWO_PERSON_SIGNED_GRI_HANDOFF.md"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pallab-suman-independent-gri-authorities.yml"
+      - "scripts/ops/verify-pallab-suman-authority-readiness.mjs"
+      - "docs/ops/PALLAB_SUMAN_TWO_PERSON_SIGNED_GRI_HANDOFF.md"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pallab-suman-independent-gri-key-readiness-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-two-person-signature-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Validate exact human owner and Suman independent review envelopes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/pallab-human-gri-batch-approval.mjs
+          node --check scripts/lib/pallab-suman-reviewed-handoff.mjs
+          node --check scripts/ops/sign-pallab-owner-gri-candidate.mjs
+          node --check scripts/ops/sign-suman-independent-reviewed-gri.mjs
+          node --check scripts/ops/verify-pallab-suman-independent-handoff.mjs
+          node --check scripts/ops/verify-pallab-suman-authority-readiness.mjs
+          node --test scripts/tests/pallab-one-authority-gri-owner-review.test.mjs
+          node --test scripts/tests/pallab-suman-independent-handoff.test.mjs
+
+  protected-two-person-public-key-readiness:
+    needs: offline-two-person-signature-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    environment: production
+    env:
+      GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM }}
+      GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Validate distinct public-key pins, never claim uploaded signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_SHA}" = "$(git rev-parse HEAD)"
+          node scripts/ops/verify-pallab-suman-authority-readiness.mjs
