@@ -1,7 +1,7 @@
 import {getJson,observation} from "./http.mjs";
 
-const PREVIEW_BASE_URL="https://comtradeapi.un.org/public/v1";
-const DATA_BASE_URL="https://comtradeapi.un.org/data/v1";
+const PREVIEW_BASE_URL="https://comtradeapi.un.org/public/v1/preview";
+const DATA_BASE_URL="https://comtradeapi.un.org/data/v1/get";
 const REFERENCE_URL="https://comtradeapi.un.org/files/v1/app/reference/Reporters.json";
 
 let reporterCatalogPromise=null;
