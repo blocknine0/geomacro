@@ -12,6 +12,8 @@ on:
     paths:
       - ".github/workflows/signed-hot-pre-expiry-guard.yml"
       - "scripts/ops/watch-signed-hot-expiry.mjs"
+      - "scripts/ops/signed-hot-live-continuation.mjs"
+      - "scripts/ops/signed-hot-live-continuation.test.mjs"
       - "scripts/ops/classify-d1-hot-metadata.mjs"
       - "src/__tests__/signed-hot-expiry-prevention.test.ts"
 
@@ -43,6 +45,7 @@ jobs:
       - name: Check source and expiry guardian syntax
         run: |
           node --check scripts/ops/watch-signed-hot-expiry.mjs
+          node --test scripts/ops/signed-hot-live-continuation.test.mjs
           node --check scripts/ops/classify-d1-hot-metadata.mjs
       - name: Read only proof metadata and warn before 6h / 90min windows close
         shell: bash
