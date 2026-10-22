@@ -123,3 +123,13 @@ test('the all-news acceptance rejects omitted, duplicate and forged publication 
   }}));
  }
 });
+
+test('public verification keys expose only explicitly public key fields',async()=>{
+ const f=await fixture(),registry=JSON.parse(f.env.AUTOMATED_FINDS_VERIFY_KEYS_JSON);
+ registry.issuer.private_operator_note='DO_NOT_DISCLOSE_INTERNAL_CONFIGURATION';
+ f.env.AUTOMATED_FINDS_VERIFY_KEYS_JSON=JSON.stringify(registry);
+ const d=await (await f.get()).json();
+ assert.equal(d.items[0].signature_verified,true);
+ assert.equal(JSON.stringify(d).includes('DO_NOT_DISCLOSE_INTERNAL_CONFIGURATION'),false);
+ assert.deepEqual(Object.keys(d.items[0].verification_key).sort(),['not_after','not_before','public_key_spki_b64','status']);
+});

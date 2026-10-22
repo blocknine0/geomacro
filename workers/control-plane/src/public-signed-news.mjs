@@ -63,7 +63,14 @@ export async function publicSignedNews(env,query=new URLSearchParams(),now=Date.
     if(saved){
      const envelope=JSON.parse(saved);await verifyAutomatedInput(envelope,keys,now);
      if(await automatedInputId(envelope.payload.signal)!==id)throw Error('BINDING');
-     proof=envelope;verification_key=keys[envelope.integrity.signing_key_id];signature_verified=true;
+     proof=envelope;
+     const registered=keys[envelope.integrity.signing_key_id];
+     // Never reflect arbitrary configuration properties from a key registry.
+     verification_key={public_key_spki_b64:typeof registered==='string'?registered:registered.public_key_spki_b64,
+      status:typeof registered==='string'?'active':registered.status??'active',
+      not_before:typeof registered==='string'?null:registered.not_before??null,
+      not_after:typeof registered==='string'?null:registered.not_after??null};
+     signature_verified=true;
      signature_status='EXACT_DERIVED_INPUT_ED25519_VERIFIED';
     }
    }catch{signature_status='SIGNATURE_OR_CONTENT_NOT_VERIFIED';}
