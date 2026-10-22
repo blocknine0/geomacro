@@ -6,6 +6,7 @@ on:
     branches:
       - main
     paths:
+      - "src/lib/original-verification-policy.ts"
       - "lib/intelligence-publication-authority.mjs"
       - "workers/control-plane/**"
       - "scripts/ops/verify-all-news-signed-publications.mjs"

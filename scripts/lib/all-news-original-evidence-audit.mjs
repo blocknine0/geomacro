@@ -1,3 +1,4 @@
+import {ORIGINAL_VERIFICATION_WINDOW_MS,ORIGINAL_VERIFICATION_WINDOW_HOURS,ORIGINAL_VERIFICATION_EXPIRED} from "../../src/lib/original-verification-policy.ts";
 import {registeredOriginalPublisherOrganization} from "./independent-same-event-qualification.mjs";
 import {verifyGeomacroUnclaimedOriginalPage} from "./geomacro-original-page-readback.mjs";
 import {createBundledOriginalReadbackBudget,bundleRoundRobinNews} from "./bundled-original-source-quota.mjs";
@@ -21,12 +22,12 @@ const STATUSES=Object.freeze({
  VERIFIED:"ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME_VERIFIED",
  NO_REFERENCE:"PRIVATE_ORIGINAL_REFERENCE_NOT_AVAILABLE",
  DATE_ONLY:"ORIGINAL_DAY_PRECISION_ONLY",
- STALE:"OUTSIDE_SIX_HOUR_CURRENT_PROOF_WINDOW",
+ STALE:ORIGINAL_VERIFICATION_EXPIRED,
  NO_PIN:"ORIGINAL_ISSUER_NOT_REGISTERED_FOR_BYTE_RECHECK",
  QUOTA:"ORIGINAL_PAGE_READBACK_DEFERRED_QUOTA",
  REJECTED:"ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED",
 });
-const CURRENT_MS=6*60*60_000;
+const CURRENT_MS=ORIGINAL_VERIFICATION_WINDOW_MS;
 const MAX_SIGNALS=600;
 const SAFE_ID=/^(?:geopolitics|macro|rare_earth)-[a-f0-9]{8}$/u;
 const FIELDS=["id","category","published_at","date_precision","status"];
@@ -152,6 +153,7 @@ export async function auditEveryDerivedNewsOriginal({
  return Object.freeze({
   schema:"geomacro.all-derived-news-original-page-evidence-audit.v1",
   checked_at:now.toISOString(),
+  original_verification_window_hours:ORIGINAL_VERIFICATION_WINDOW_HOURS,
   ingested_news_examined:rows.length,
   exact_page_byte_rereads_attempted:rereads,
   exact_page_byte_rereads_limit:maxReadbacks,

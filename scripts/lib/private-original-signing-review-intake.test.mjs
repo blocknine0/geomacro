@@ -121,13 +121,13 @@ test("bounded reread budget and same original cannot be duplicated",async()=>{
  assert.equal(r.receipt.byte_exact_rereads_attempted,1);
  assert.equal(r.leads.length,1);
 });
-test("rejects spoofed publisher organization, old 6h clock and misdated HTML before commercial claims",async()=>{
+test("rejects spoofed publisher organization, old 22h clock and misdated HTML before commercial claims",async()=>{
  const original={category:"macro",originating_reporting_organization_id:"federal_reserve",
   original_article_url:URL,original_published_at:AT};
  for(const bad of [
   {...original,originating_reporting_organization_id:"ecb"},
   {...original,original_article_url:URL+"?redirect=1"},
-  {...original,original_published_at:"2026-10-21T06:00:00Z"},
+  {...original,original_published_at:"2026-10-20T14:59:00Z"},
  ]){
   await assert.rejects(verifyGeomacroUnclaimedOriginalPage({
    original:bad,now:NOW,fetchImpl:async()=>{throw Error("SHOULD_NOT_FETCH")},

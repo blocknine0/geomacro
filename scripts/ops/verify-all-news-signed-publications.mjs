@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {ORIGINAL_VERIFICATION_WINDOW_MS,ORIGINAL_VERIFICATION_WINDOW_HOURS} from '../../src/lib/original-verification-policy.ts';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client.ts';
@@ -51,7 +52,7 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
    if(item.original_page_verified){
     const at=Date.parse(item.source_reviewed_at??'');
     if(item.source_status!=='ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME_VERIFIED'||
-       !Number.isFinite(at)||at>now||now-at>6*3600_000)throw Error('SIGNED_NEWS_SOURCE_STATUS');
+       !Number.isFinite(at)||at>now||now-at>ORIGINAL_VERIFICATION_WINDOW_MS||age>ORIGINAL_VERIFICATION_WINDOW_MS)throw Error('SIGNED_NEWS_SOURCE_STATUS');
     original++;
    }
    signed++;if(isCurrent&&qualified)currentEligible++;
@@ -60,7 +61,7 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
   if(page.next_offset===null){
    if(seen.size!==expected.size)throw Error('SIGNED_NEWS_INCOMPLETE_COVERAGE');
    return {schema:'geomacro.all-news-signed-publication-acceptance.v1',journal_items:journal.length,
-    unique_items:expected.size,exact_signed_inputs_independently_verified:signed,
+    unique_items:expected.size,original_verification_window_hours:ORIGINAL_VERIFICATION_WINDOW_HOURS,exact_signed_inputs_independently_verified:signed,
     all_retained_unique_news_signature_verified:true,original_page_verified_reported:original,
     current_qualified_news:currentEligible,current_source_verified_signed_reported:current,
     all_current_qualified_news_source_verified_signed:currentEligible>0&&current===currentEligible,

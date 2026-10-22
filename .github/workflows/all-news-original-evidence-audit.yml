@@ -3,6 +3,8 @@ name: All News First-party Original Evidence Contract
 on:
   pull_request:
     paths:
+      - "src/lib/original-verification-policy.ts"
+      - "scripts/tests/original-verification-22h.test.mjs"
       - ".github/workflows/all-news-original-evidence-audit.yml"
       - "scripts/lib/all-news-original-evidence-audit.mjs"
       - "scripts/lib/bundled-original-source-quota.mjs"
@@ -14,6 +16,8 @@ on:
   push:
     branches: [main]
     paths:
+      - "src/lib/original-verification-policy.ts"
+      - "scripts/tests/original-verification-22h.test.mjs"
       - ".github/workflows/all-news-original-evidence-audit.yml"
       - "scripts/lib/all-news-original-evidence-audit.mjs"
       - "scripts/lib/all-news-original-evidence-audit.test.mjs"
@@ -45,6 +49,7 @@ jobs:
           node --test scripts/lib/bundled-original-source-quota.test.mjs
           node --check scripts/lib/geomacro-original-page-readback.mjs
           node --test scripts/lib/all-news-original-evidence-audit.test.mjs
+          node --test scripts/tests/original-verification-22h.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
       - name: Verify no audit script mints or delivers paid signed news
         shell: bash

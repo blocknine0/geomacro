@@ -12,6 +12,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "src/lib/original-verification-policy.ts"
       - "scripts/lib/global-official-release-feeds.mjs"
       - ".github/workflows/website-derived-news-continuity.yml"
       - "scripts/ops/publish-website-derived-news.ts"
