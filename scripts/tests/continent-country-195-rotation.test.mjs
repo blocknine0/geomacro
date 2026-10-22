@@ -117,8 +117,9 @@ test("all six actual Github workflows have distinct 2h cron and ONE shared no-fu
   assert.ok(yaml.includes(`continent: '${slug}'`));
   assert.ok(yaml.includes("continent-country-original-probe-reusable.yml"));
   assert.ok(yaml.includes("workflow_dispatch:"));
-  assert.equal(minutes.has(minute),false);
-  minutes.add(minute);
+  const uniqueUtcSlot=(oddHour?60:0)+minute;
+  assert.equal(minutes.has(uniqueUtcSlot),false);
+  minutes.add(uniqueUtcSlot);
  }
  const old=readFileSync(".github/workflows/live-on-demand-source-acceptance.yml","utf8");
  assert.match(old,/cron: "23 8 \* \* \*"/); // global API, not country scan
