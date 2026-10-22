@@ -169,8 +169,49 @@ export async function runRiskIndicesVerifiedParentBackstop({
       throw Error("INDICES_REPAIR_RUNS_INVALID");
     recentRuns=data.workflow_runs;
   }catch{throw Error("INDICES_REPAIR_RUN_LOOKUP_FAILED");}
+  // A workflow_run from a GRI contract-only push can finish green with
+  // the protected `publish` job SKIPPED. Run-level success must not suppress
+  // repair. Inspect jobs for relevant green runs only, using a fixed URL
+  // built from the numeric run ID (never an API-supplied jobs_url).
+  const reconciled=[];
+  for(const run of recentRuns){
+    const relevant=run?.head_sha===env.GITHUB_SHA && run.head_branch==="main" &&
+      ["workflow_dispatch","workflow_run"].includes(run.event) &&
+      Number.isFinite(Date.parse(run.created_at??"")) &&
+      Date.parse(run.created_at)>=Date.parse(gri.value.source_as_of) &&
+      Date.parse(run.created_at)<=now.getTime()+5*60_000;
+    if(relevant && run.status==="completed" && run.conclusion==="success"){
+      if(!Number.isSafeInteger(run.id)||run.id<=0)
+        throw Error("INDICES_REPAIR_PUBLISH_JOB_LOOKUP_FAILED");
+      let jobsResponse,jobs;
+      try{
+        jobsResponse=await fetchImpl("https://api.github.com/repos/"+REPO+
+          "/actions/runs/"+run.id+"/jobs?filter=latest&per_page=100",{
+          method:"GET",redirect:"error",signal:AbortSignal.timeout(15000),
+          headers:{authorization:"Bearer "+env.GITHUB_TOKEN,
+            accept:"application/vnd.github+json",
+            "x-github-api-version":"2022-11-28"},
+        });
+        if(jobsResponse?.status!==200||jobsResponse.redirected)
+          throw Error("BAD_JOB_RESPONSE");
+        jobs=await jobsResponse.json();
+        // Reject truncated, ambiguous or wrong-run metadata. Unknown states
+        // cannot be assumed to mean publication was skipped.
+        if(!Array.isArray(jobs.jobs)||!Number.isInteger(jobs.total_count)||
+           jobs.total_count!==jobs.jobs.length||jobs.total_count>100||
+           jobs.jobs.some(job=>job?.run_id!==run.id))
+          throw Error("BAD_JOB_METADATA");
+        const publisher=jobs.jobs.filter(job=>job.name==="publish");
+        if(publisher.length!==1||publisher[0].status!=="completed"||
+           !["success","skipped"].includes(publisher[0].conclusion))
+          throw Error("UNKNOWN_PUBLISH_JOB_RESULT");
+        if(publisher[0].conclusion==="skipped")continue;
+      }catch{throw Error("INDICES_REPAIR_PUBLISH_JOB_LOOKUP_FAILED");}
+    }
+    reconciled.push(run);
+  }
   const retry=decideVerifiedIndicesPublisherRetry({
-    runs:recentRuns,headSha:env.GITHUB_SHA,
+    runs:reconciled,headSha:env.GITHUB_SHA,
     parentSourceAsOf:gri.value.source_as_of,now,
   });
   if(!retry.dispatch)return Object.freeze({

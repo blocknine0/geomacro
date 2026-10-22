@@ -70,7 +70,7 @@ const response=(body,status=200)=>new Response(JSON.stringify(body),
   {status,headers:{"content-type":"application/json"}});
 function mock({gri=parent(),child=indices(gri),canonicalMain=main,
   griStatus=200,childStatus=200,postStatus=204,
-  existingRuns=[],metadataStatus=200}={}){
+  existingRuns=[],metadataStatus=200,publishConclusion="success",jobsStatus=200,jobPayload}={}){
   const calls=[];
   const fetchImpl=async(url,options)=>{
     calls.push({url,method:options.method});
@@ -79,6 +79,10 @@ function mock({gri=parent(),child=indices(gri),canonicalMain=main,
     if(String(url).endsWith("/risk-indices"))return response(child,childStatus);
     if(String(url).endsWith("/runs?per_page=20"))
       return response({workflow_runs:existingRuns},metadataStatus);
+    if(String(url).includes("/jobs?filter=latest&per_page=100"))
+      return response(jobPayload??{total_count:1,jobs:[{
+        name:"publish",run_id:1,status:"completed",conclusion:publishConclusion,
+      }]},jobsStatus);
     if(String(url).endsWith("/dispatches"))return new Response(null,{status:postStatus});
     throw Error("UNEXPECTED_NETWORK_URL");
   };
@@ -161,7 +165,7 @@ test("missing GitHub Action write token does not fake a dispatch",async()=>{
 });
 
 const repoRun=(overrides={})=>({
-  head_sha:gitSha,head_branch:"main",event:"workflow_dispatch",
+  id:1,head_sha:gitSha,head_branch:"main",event:"workflow_dispatch",
   status:"completed",conclusion:"failure",
   created_at:new Date(AT.getTime()-9*60_000).toISOString(),...overrides,
 });
@@ -250,4 +254,46 @@ test("unavailable or malformed canonical code identity cannot request publicatio
  }});
  assert.equal(r.dispatch_requested,false);
  assert.equal(calls.length,1);
+});
+
+// Regression: production run 39753818436 was green while publish was skipped.
+test("green contract-only workflow_run cannot suppress genuine parent repair",async()=>{
+  const f=mock({childStatus:503,existingRuns:[repoRun({
+    event:"workflow_run",conclusion:"success",
+  })],publishConclusion:"skipped"});
+  const result=await runRiskIndicesVerifiedParentBackstop({env,now:AT,fetchImpl:f.fetchImpl});
+  assert.equal(result.dispatch_requested,true);
+  assert.equal(f.calls.filter(x=>x.url.includes("/jobs?")).length,1);
+  assert.equal(f.calls.filter(x=>x.method==="POST").length,1);
+  assert.equal(result.b2_requests,0);
+});
+test("actual successful publication still suppresses repeated B2 work",async()=>{
+  const f=mock({childStatus:503,existingRuns:[repoRun({conclusion:"success"})]});
+  const result=await runRiskIndicesVerifiedParentBackstop({env,now:AT,fetchImpl:f.fetchImpl});
+  assert.equal(result.dispatch_requested,false);
+  assert.equal(f.calls.filter(x=>x.url.includes("/jobs?")).length,1);
+});
+test("unreadable ambiguous truncated or foreign jobs never authorize retry",async()=>{
+  for(const alteration of [
+    {jobsStatus:403},{jobsStatus:503},
+    {jobPayload:{total_count:2,jobs:[]}},
+    {jobPayload:{total_count:0,jobs:[]}},
+    {jobPayload:{total_count:1,jobs:[{name:"publish",run_id:2,status:"completed",conclusion:"skipped"}]}},
+    {jobPayload:{total_count:1,jobs:[{name:"publish",run_id:1,status:"in_progress",conclusion:null}]}},
+    {jobPayload:{total_count:2,jobs:Array.from({length:2},()=>({name:"publish",run_id:1,status:"completed",conclusion:"skipped"}))}},
+  ]){
+    const f=mock({childStatus:503,existingRuns:[repoRun({conclusion:"success"})],...alteration});
+    await assert.rejects(()=>runRiskIndicesVerifiedParentBackstop({env,now:AT,fetchImpl:f.fetchImpl}),
+      /PUBLISH_JOB_LOOKUP_FAILED/);
+    assert.equal(f.calls.some(x=>x.method==="POST"),false);
+  }
+});
+test("active foreign and old green runs need no job lookup",async()=>{
+  for(const run of [repoRun({status:"queued",conclusion:null}),
+    repoRun({head_sha:"b".repeat(40),conclusion:"success"}),
+    repoRun({created_at:new Date(AT.getTime()-20*60_000).toISOString(),conclusion:"success"})]){
+    const f=mock({childStatus:503,existingRuns:[run]});
+    await runRiskIndicesVerifiedParentBackstop({env,now:AT,fetchImpl:f.fetchImpl});
+    assert.equal(f.calls.some(x=>x.url.includes("/jobs?")),false);
+  }
 });

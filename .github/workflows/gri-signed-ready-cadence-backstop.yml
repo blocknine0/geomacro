@@ -100,6 +100,7 @@ jobs:
         with:
           node-version: "22"
       - name: Require protected exact main and strict canonical GRI target
+        id: targets
         shell: bash
         run: |
           set -euo pipefail
@@ -112,6 +113,9 @@ jobs:
         # attempts for the same main SHA and external approval timestamp.
         run: node scripts/ops/dispatch-gri-signed-ready-cadence.mjs
       - name: Recover missed publisher dispatch ONLY after already approved dual-signed machine B2 input
+        # Independent lanes: a GRI API/dispatch failure must not strand an
+        # already approved Intelligence input. Keep the job failure visible.
+        if: ${{ !cancelled() && steps.targets.outcome == 'success' }}
         # Reuse this existing 15m cadence; no extra cron, B2 GET, signing,
         # source scrape, paid action or new D1 storage in this job.
         # Missing/stale externally approved SHA short-circuits with zero calls.
