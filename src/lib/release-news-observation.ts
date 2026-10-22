@@ -40,6 +40,23 @@ export function releaseNewsObservation(title: string): {headline:string; change:
 export function actorActionNewsObservation(title:string):{headline:string;change:string}|null {
  if(typeof title!=="string"||title.length>500||/[<>]|https?:\/\/|[\r\n]/iu.test(title))return null;
  const text=title.replace(/\s*[\u2013\u2014]\s*/gu,", ").replace(/\s+/gu," ").trim();
+ // UN meeting headlines often put the reporting actor after the event.
+ // Keep allegations and warnings attributed; a hearing is not corroboration.
+ if(/^‘War on Narco-Terrorism’ Fuels Unlawful Killings, Third Committee Hears, as Experts Warn of Mass Displacement, Attacks on Justice$/iu.test(text))
+  return {headline:"Experts warn UN committee about unlawful killings linked to anti-drug campaigns",
+   change:"Experts told the UN General Assembly's Third Committee that campaigns described as a war on narco-terrorism were fuelling unlawful killings. They also warned about mass displacement and attacks on justice systems."};
+ if(/^Underscoring Need for Funding to Bolster Radiation Scientific Committee, Fourth Committee Approves Draft Lauding Its Valuable Inputs$/iu.test(text))
+  return {headline:"Fourth Committee approves draft recognizing radiation committee's work",
+   change:"The UN General Assembly's Fourth Committee approved a draft recognizing the radiation scientific committee's contributions and highlighting the need for funding to support its work."};
+ if(/^On World Cities Day, Secretary-General Urges Adequate Housing for All$/iu.test(text))
+  return {headline:"UN Secretary-General calls for adequate housing for everyone",
+   change:"The UN Secretary-General urged adequate housing for all in a message for World Cities Day."};
+ if(/^Invest in Children, Invest in Future, Urges Secretary-General in Message for World Summit$/iu.test(text))
+  return {headline:"UN Secretary-General urges investment in children",
+   change:"The UN Secretary-General called for investment in children in a message for the World Summit."};
+ if(/^World Can No Longer Avoid Overshooting 1[.]5-Degree Limit, Warns Secretary-General on Launch of New Emissions Gap Report$/iu.test(text))
+  return {headline:"UN Secretary-General warns warming will exceed the 1.5-degree limit",
+   change:"At the launch of a new Emissions Gap Report, the UN Secretary-General warned that the world can no longer avoid exceeding the 1.5-degree warming limit. This reports his warning rather than an observed future temperature."};
  // Reported uncertainty is a fact about what the named experts said, not a
  // confirmation of the fate of returned people.
  if(/fate unknown/iu.test(text)&&/returned/iu.test(text)&&/DPR Korea/iu.test(text)&&/China/iu.test(text)&&/UN independent experts/iu.test(text))
@@ -74,6 +91,7 @@ export function actorActionNewsObservation(title:string):{headline:string;change
   [/cuts?/iu,"cuts","cut"],[/lowers?/iu,"lowers","lowered"],
   [/raises?/iu,"raises","raised"],[/increases?/iu,"increases","increased"],
   [/reports?/iu,"reports","reported"],[/launches?/iu,"launches","launched"],
+  [/debates?/iu,"debates","debated"],
   [/agrees? to/iu,"agrees to","agreed to"],[/signs?/iu,"signs","signed"],
   [/rejects?/iu,"rejects","rejected"],[/denies/iu,"denies","denied"],
  ];
