@@ -76,3 +76,20 @@ it("retains genuine pre-style-update private references while newly rendered con
   await expect(verifyPrivateSourceHandoff(item,envelope,{[material.key_id]:material.public_key_spki_b64},now)).resolves.toBeTruthy();
  }
 });
+
+it("renders the screenshot's committee-hearing story as attributed actor/action facts",()=>{
+ const now=Date.now(),publishedAt=new Date(now-3600000).toISOString();
+ const ref={sourceId:'un_press_global',category:'geopolitics' as const,
+  title:'‘War on Narco-Terrorism’ Fuels Unlawful Killings, Third Committee Hears, as Experts Warn of Mass Displacement, Attacks on Justice ',
+  articleUrl:'https://press.un.org/en/2026/gashc00000.doc.htm',publishedAt,credit:'United Nations'};
+ const [signal]=deriveStatelessSignals([ref],now);
+ const [legacy]=deriveStatelessSignals([ref],now,{editorialVersion:'legacy_v1'});
+ expect(signal.id).toBe(legacy.id);expect(signal.published_at).toBe(publishedAt);
+ expect(signal.what_changed).toContain('Experts told');
+ expect(signal.what_changed).toContain('Third Committee');
+ expect(signal.what_changed).toContain('unlawful killings');
+ expect(signal.what_changed).not.toContain('An official publisher');
+ expect(legacy.what_changed).toContain('An official publisher');
+ expect(signal.geography).toBeNull();
+ expect(signal.same_event_corrob_verified).toBe(false);expect(signal.severity).toBeNull();
+});

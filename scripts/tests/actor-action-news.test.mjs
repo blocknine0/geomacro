@@ -61,3 +61,27 @@ print('SQLITE_REVISION_CLOCKS_PRESERVED')`;
  const r=spawnSync('python',['-c',python],{input:JSON.stringify({base,revised,queries:captured}),encoding:'utf8'});
  assert.equal(r.status,0,r.stderr);assert.match(r.stdout,/SQLITE_REVISION_CLOCKS_PRESERVED/);
 });
+
+test('UN committee hearing names the reporting actor, forum and actual allegation',()=>{
+ const title='‘War on Narco-Terrorism’ Fuels Unlawful Killings, Third Committee Hears, as Experts Warn of Mass Displacement, Attacks on Justice ';
+ const result=render(title);assert.ok(result);
+ assert.ok(result.headline.includes('Experts warn UN committee'));
+ for(const fact of ['Experts told',"Third Committee",'unlawful killings','mass displacement','attacks on justice'])
+  assert.ok(result.change.includes(fact));
+ assert.equal(result.change.includes('An official publisher'),false);
+ assert.equal(result.change.includes('independently confirmed'),false);
+ assert.equal(render(title.replace('Experts Warn','Experts Might Warn')),null);
+});
+test('UN trailing-actor headings preserve the specific request and committee action',()=>{
+ for(const [title,actor,action] of [
+  ['On World Cities Day, Secretary-General Urges Adequate Housing for All','UN Secretary-General','housing'],
+  ['Invest in Children, Invest in Future, Urges Secretary-General in Message for World Summit','UN Secretary-General','investment in children'],
+  ['World Can No Longer Avoid Overshooting 1.5-Degree Limit, Warns Secretary-General on Launch of New Emissions Gap Report','UN Secretary-General','warned'],
+  ['First Committee Debates Pathways to Prevent Weaponization of Outer Space','First Committee','debated'],
+  ['Underscoring Need for Funding to Bolster Radiation Scientific Committee, Fourth Committee Approves Draft Lauding Its Valuable Inputs','Fourth Committee','approved a draft'],
+ ]){
+  const result=render(title);assert.ok(result,title);
+  assert.ok(result.change.includes(actor));assert.ok(result.change.includes(action));
+  assert.notEqual(result.headline,title);
+ }
+});
