@@ -112,7 +112,7 @@ export function validateDelegation(envelope,{ownerPem,ownerPin,reviewerPem,revie
 }
 export function signPolicyForRole(policy,privateKey,role){
  if(!ROLES.includes(role))refuse("ROLE_INVALID");
- const key=createPrivateKey(privateKey);
+ const key=privateKey?.type==="private"?privateKey:createPrivateKey(privateKey);
  if(key.asymmetricKeyType!=="ed25519")refuse("PRIVATE_KEY_INVALID");
  validatePolicy(policy);
  return {role,signature_base64:sign(null,policyBytes(policy),key).toString("base64")};
