@@ -46,7 +46,9 @@ jobs:
            'u.hostname.endsWith(".pooler.supabase.com")',
            'PGSSLMODE:"require"',
            'PGOPTIONS:"-c default_transaction_read_only=on"',
-           'project_deletion_authorized:false'
+           'project_deletion_authorized:false',
+           'database/query/read-only',
+           'process.env.SUPABASE_PROJECT_ID!==REF'
           ])if(!s.includes(needle))throw Error('PINNED_READONLY_POSTGRES_CONTRACT_MISSING');
           NODE
           node scripts/ops/verify-retained-supabase-continuity.mjs || test "$?" -eq 3
@@ -69,6 +71,9 @@ jobs:
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_LEGACY_EDGE_READ_TOKEN: ${{ secrets.SUPABASE_LEGACY_EDGE_READ_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
