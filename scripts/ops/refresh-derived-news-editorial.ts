@@ -9,6 +9,16 @@ import {loadRiskObjectVerificationKeysFromEnv} from '../../src/lib/risk-object-s
 import {readPrivateSourceHandoffs} from './read-private-source-handoffs';
 import {prepareDerivedNewsBatches} from '../lib/derived-news-d1-batches.mjs';
 
+export function refreshRetainedSignal(signal:Parameters<typeof automatedInputId>[0],
+ ref:Parameters<typeof deriveStatelessSignals>[0][number],now:number){
+ const derived=deriveStatelessSignals([ref],now)[0];
+ // Equivalent UI aliases share authenticated content identity; retain each ID.
+ const next=derived?{...derived,id:signal.id}:null;
+ if(!next||next.category!==signal.category||next.published_at!==signal.published_at||
+  next.date_precision!==signal.date_precision)throw Error('CLOCK');
+ return next;
+}
+
 if(import.meta.main){
  try{
   const root=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??'').trim();
@@ -29,12 +39,7 @@ if(import.meta.main){
   for(const signal of journal){
    const ref=retained.originals.get(await automatedInputId(signal));
    if(!ref){missing++;continue;}
-   const derived=deriveStatelessSignals([ref],now.getTime())[0];
-   // input identity excludes UI IDs: equivalent retained aliases legitimately
-   // share one authenticated original. Preserve each existing journal ID.
-   const next=derived?{...derived,id:signal.id}:null;
-   if(!next||next.category!==signal.category||
-    next.published_at!==signal.published_at||next.date_precision!==signal.date_precision)throw Error('CLOCK');
+   const next=refreshRetainedSignal(signal,ref,now.getTime());
    if(await automatedInputId(next)!==await automatedInputId(signal))revised.push(next);
   }
   const {chunks}=prepareDerivedNewsBatches(revised);

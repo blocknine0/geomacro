@@ -61,8 +61,12 @@ it("retains genuine pre-style-update private references while newly rendered con
  // A second public UI ID is the same exact signed content identity.
  const alias={...legacy,id:'geopolitics-deadbeef'};
  expect(await automatedInputId(alias)).toBe(await automatedInputId(legacy));
- const refreshScript=(await import('node:fs')).readFileSync('scripts/ops/refresh-derived-news-editorial.ts','utf8');
- expect(refreshScript).toContain('const next=derived?{...derived,id:signal.id}:null');
+ const {refreshRetainedSignal}=await import('../../scripts/ops/refresh-derived-news-editorial');
+ const refreshed=refreshRetainedSignal(alias,ref,now);
+ expect(refreshed.id).toBe(alias.id);
+ expect(refreshed.published_at).toBe(alias.published_at);
+ expect(await automatedInputId(refreshed)).toBe(await automatedInputId(revised));
+ expect(()=>refreshRetainedSignal({...alias,published_at:new Date(now-7200000).toISOString()},ref,now)).toThrow('CLOCK');
  for(const signal of [legacy,revised]){
   const envelope=await signAutomatedIntelligenceInput({schema:'geomacro.automated-intelligence-input.v1',
    approval_mode:'AUTOMATED_INGESTION',approved_for:'derived_intelligence_input',generated_at:new Date(now).toISOString(),
