@@ -52,6 +52,12 @@ export function validatePallabSumanPrivateHandoff({
  const approval=safeJson(ownerApprovalBytes,MAX.owner);
  const gri=safeJson(reviewedGriBytes,MAX.gri);
  const certs=safeJson(countryCertificateBytes,MAX.certs);
+ // The existing publisher stages canonical JSON.stringify exact bytes.
+ // The owner must approve THESE EXACT B2 keys; CRLF/pretty/newline changes
+ // cannot silently substitute a different immutable payload SHA.
+ if(!reviewedGriBytes.equals(Buffer.from(JSON.stringify(gri),"utf8"))||
+    !countryCertificateBytes.equals(Buffer.from(JSON.stringify(certs),"utf8")))
+   fail("PUBLISHED_B2_BYTES_NOT_EXACT_OWNER_APPROVED_BYTES");
  const ownerVerified=assertOwnerApprovalEnvelope({
   envelope:approval,
   approvedOwnerPublicKeyPem:ownerPublicKeyPem,
