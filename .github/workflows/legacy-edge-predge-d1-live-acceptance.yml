@@ -1,0 +1,84 @@
+name: Legacy Edge Callers and Predge D1 Live No Funds Acceptance
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/legacy-edge-predge-d1-live-acceptance.yml"
+      - "scripts/ops/legacy-edge-predge-d1-live-acceptance.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/legacy-edge-predge-d1-live-acceptance.yml"
+      - "scripts/ops/legacy-edge-predge-d1-live-acceptance.mjs"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-legacy-edge-predge-d1-no-funds-acceptance
+  cancel-in-progress: false
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ""
+      CLOUDFLARE_API_TOKEN: ""
+      PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Static syntax and reject deletion/settlement claims without secrets
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/legacy-edge-predge-d1-live-acceptance.mjs
+          node scripts/ops/legacy-edge-predge-d1-live-acceptance.mjs
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/edge-predge-d1-caller-acceptance.json");
+          if(r.status!=="BLOCKED_NO_DELETION"||
+             r.old_supabase_deletion_authorized!==false||
+             r.predge_research_authenticated_d1!==false||
+             r.all_ten_old_edge_callers_migrated!==false||
+             r.payments!==0||r.source_supabase_writes!==0||
+             r.source_storage_deletions!==0)
+           throw Error("PREDGE_EDGE_DELETION_GATE_MUST_STAY_CLOSED");
+          NODE
+  protected-predge-and-edge-readback:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment: production
+    env:
+      PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Protected D1 research 200 + authenticated identical public feed + secrets-name census
+        run: |
+          set -euo pipefail
+          node scripts/ops/legacy-edge-predge-d1-live-acceptance.mjs
+          node - <<'NODE'
+          const r=require("./artifacts/legacy-exit/edge-predge-d1-caller-acceptance.json");
+          if(r.predge_research_authenticated_d1!==true||
+             r.all_ten_old_edge_callers_migrated!==false||
+             r.old_supabase_deletion_authorized!==false||
+             r.payments!==0)
+             throw Error("PREDGE_LIVE_RESEARCH_OR_PARTNER_GUARD_NOT_ACCEPTED");
+          NODE
+      - name: Public CI artifact never contains B2, secret, original article, customer record
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: predge-edge-readonly-census-${{ github.run_id }}
+          path: artifacts/legacy-exit/edge-predge-d1-caller-acceptance.json
+          retention-days: 14
+          if-no-files-found: warn
