@@ -167,6 +167,28 @@ test("actual browser-style cited prose receives SECOND strict schema model call 
  assert.equal(out.legal_commercial_rights_verified,false);
  assert.equal(out.paid_x402_authorized,false);
 });
+test("Groq Free request limiter also charges the optional strict conversion call",async()=>{
+ const hour=Math.floor(NOW.getTime()/3600_000);
+ const day=Math.floor(NOW.getTime()/86400_000);
+ const budget={hourStart:hour,hourCount:5,dayStart:day,dayCount:11};
+ let calls=0;
+ const result=await groqBrowserResearchForMissingOfficial({
+  categories:["MACRO"],country_iso3:"IND",country_name:"India",
+  now:NOW,env:flags,budget,
+  fetchImpl:async()=>{
+   calls++;
+   return {status:200,json:async()=>({choices:[{message:{
+    content:"A cited official monetary announcement needs conversion. 〖2†L6-L9〗"
+   }}]})};
+  }
+ });
+ assert.equal(result,null);
+ assert.equal(calls,1);
+ assert.equal(budget.hourCount,6);
+ assert.equal(budget.dayCount,12);
+ // No phantom third call after the actual two-call allowance is exhausted.
+ assert.equal(reserveBoundedFreeBrowserSlot(NOW.getTime(),budget),false);
+});
 test("empty strict list is valid but withheld instead of inventing current facts",async()=>{
  assert.deepEqual(validateGroqBrowserLeadText(
   JSON.stringify({schema:fixture.schema,leads:[]}),{categories:["MACRO"],now:NOW}),[]);

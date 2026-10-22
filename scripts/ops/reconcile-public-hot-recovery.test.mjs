@@ -62,3 +62,33 @@ test("stale or future approval hints cannot spuriously unblock publisher",()=>{
  assert.equal(r.intelligence_machine_input_hint,"MISSING_OR_STALE_HINT");
  assert.equal(r.gri_independent_input_hint,"MISSING_OR_STALE_HINT");
 });
+
+test("actual production root-level B2 0/3 and status:503 cannot disappear from handoff",()=>{
+ const actual={
+  schema:"geomacro.public-serving-readonly-diagnostic.v1",
+  ok:false,site_status:503,d1_status:200,
+  historical_b2_baseline_readable:{
+   intelligence:false,global_risk:false,risk_indices:false
+  },
+  products:{
+   intelligence:{status:503,error:"HOT_SNAPSHOT_STALE_OR_INVALID"},
+   "global-risk":{status:503,error:"HOT_SNAPSHOT_STALE_OR_INVALID"},
+   "risk-indices":{status:503,error:"HOT_SNAPSHOT_STALE_OR_INVALID"}
+  }
+ };
+ const report=reconcilePublicHotRecovery({publicDiagnostic:actual,metadata:meta,now:NOW});
+ assert.equal(report.production_health_verified,false);
+ assert(report.blocking.includes("HISTORICAL_B2_BASELINE_PROOF_UNREADABLE"));
+ for(const name of ["intelligence","global-risk","risk-indices"]){
+  assert.equal(report.products[name].public_hot_http_status,503);
+  assert.equal(report.products[name].current_signed_product_verified,false);
+ }
+ assert.equal(report.publisher_dispatched,false);
+ assert.equal(report.b2_gets,0);
+ assert.equal(report.payments,0);
+});
+test("no B2 evidence is not mistaken for history proof if diagnostic fields absent",()=>{
+ const r=reconcilePublicHotRecovery({now:NOW});
+ assert(r.blocking.includes("HISTORICAL_B2_BASELINE_PROOF_UNREADABLE"));
+ assert.equal(r.product_published,false);
+});
