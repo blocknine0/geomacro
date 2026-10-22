@@ -29,17 +29,54 @@ all three categories use the same retrieved evidence with issuer-specific
 scope checks. Separate native dates, exact country relevance, source-rights
 gates and no-money requirements remain unchanged.
 
-The index of each daily rotating slice uses the exact implemented
-`scripts/lib/country-195-daily-rotation.mjs` canonical calendar:
-epoch **2026-10-22 00:00 UTC**, at most **three countries/day**, and
-a **65-day complete scheduled sweep**, rather than the superseded
-two-countries/98-day plan. This is *daily original-source research*, not
-a guarantee of current evidence for all 195 countries each day. Each
-country's source attempts are bounded at 12 discovery calls and four
-originating-page checks, shared across the same three categories. GitHub
-cron is best effort; a missed real run remains an unprobed country.
+The legacy **3 countries/day / 65-day source scanner** is now
+**manual-only**. The existing daily global API acceptance remains scheduled,
+but its old country batch no longer runs automatically. Six separate
+continent source workflows have replaced it on protected `main`:
 
-The `Country 195 Rolling Original Proof Audit` now executes **daily** on
+| Workflow / geography | Canonical ISO3 | UTC cron | Full nominal rotation |
+| --- | ---: | --- | ---: |
+| Africa | 54 | `4 */2 * * *` | 108 hours |
+| Asia | 47 | `24 */2 * * *` | 94 hours |
+| Europe | 45 | `44 */2 * * *` | 90 hours |
+| North America, including Central America and Caribbean | 23 | `4 1-23/2 * * *` | 46 hours |
+| South America | 12 | `24 1-23/2 * * *` | 24 hours |
+| Oceania | 14 | `44 1-23/2 * * *` | 28 hours |
+| **Total** | **195 disjoint** | **Six schedules, 20 minutes apart** | **Longest 108 hours** |
+
+Africa begins 00:04 UTC, then Asia 00:24, Europe 00:44, North America
+01:04, South America 01:24, Oceania 01:44, and Africa again at 02:04.
+Every *same* geography repeats in 2 hours and selects its next canonical
+ISO3. Every scheduled scan checks the same three Geomacro categories with
+one bounded country source call (max 12 official discovery GETs plus 4
+publisher page checks); no per-category duplicate scan. No meaningless
+Antarctica workflow: 193 UN members plus PSE/VAT has no Antarctica ISO3.
+
+Transcontinental assignments are fixed once for unique source routing:
+Russia/Cyprus/VAT in Europe, Turkey/Georgia/Armenia/Azerbaijan/PSE in
+Asia. This is a practical routing partition, not a formal geographic
+or political jurisdiction claim.
+
+The shared `continent-country-original-probe-reusable.yml` has no
+cron, runs behind the six calls, keeps the same existing source verifier
+and 9-minute job upper bound; global concurrency prevents simultaneous
+source-heavy jobs. Runs superseded by GitHub queue limits remain
+UNPROBED. A 108-hour *routing sweep* is not 195 fresh verified current
+events; it is inherently too slow for a 24-hour global current-news SLA.
+Real-time new qualified releases are collected via the separate
+existing official-source fastlane/hourly derived D1 newsroom. The
+country source probes do not themselves publish any derived article.
+Current original identity, legitimate rights, independent signatures and
+B2/D1 signed publication remain separate validation gates.
+
+The country sweep does not need Groq and makes **zero Groq API calls**
+for a country without a verified new event. If Groq is used later for
+qualified news, it must first read verified native-dated original
+article evidence, check the existing D1 duplicate identity and reserve
+a shared free-tier quota slot. A Groq browser-search lead is not a real
+verified original and cannot be promoted as genuine signed news.
+
+The `Country 195 Rolling Original Proof Audit` executes **daily** on
 the existing GitHub free tier without starting another source probe. It
 aggregates exact bounded real success checkpoint artifacts retained for
 90 days and checks the 585 country-category cells, 24h source-probe
@@ -81,9 +118,8 @@ country events.
 
 ## Acceptance
 
-Run `node --test scripts/tests/country-195-daily-rotation.test.mjs
-scripts/tests/free-three-domain-country-gap-audit.test.mjs`. In GitHub Actions
-inspect the daily country batch `live-country-195-resume-*` artifact and the
+Run `node --test scripts/tests/continent-country-195-rotation.test.mjs scripts/tests/country-195-daily-rotation.test.mjs scripts/tests/free-three-domain-country-gap-audit.test.mjs`. In GitHub Actions
+inspect the six staggered country source `live-country-195-resume-*` artifacts and the
 daily `free-three-domain-iso3-gaps-*` artifact. Exact-head Product CI,
 CodeQL, the website lock and the real-source PR tests must pass before merge.
 After merge verify protected-main 195-country receipt with **585** declared
@@ -98,11 +134,10 @@ unconditional 100% availability guarantee on free infrastructure.
 
 ## Full-world live evidence completeness limitation
 
-No no-cost deterministic sweep of 3/195 countries/day can establish 195
-countries with newly published events in every category in the past 24
-hours: sources may be silent or block access, and even a perfectly
-executed full 65-day sample window is largely stale for a 24-hour news
-SLA. Customer on-demand queries still invoke worldwide original
+No no-cost deterministic 2-hour-per-continent-country rotation can prove 195
+countries with newly published events in all categories within 24 hours:
+providers may be silent, rate limited or block access, and a complete 108-hour
+source routing pass is older than a 24-hour current-news SLA. Customer on-demand queries still invoke worldwide original
 discovery within the approved per-question budget. The daily audit
 **monitors** proven gaps; it cannot invent an event, commercial-use
 rights, a reviewer signature or force upstream publication. 585
