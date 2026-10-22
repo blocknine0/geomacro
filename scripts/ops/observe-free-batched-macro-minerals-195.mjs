@@ -33,7 +33,7 @@ if(initialRows.length===195&&missingIso3.length>0){
  // Narrow publisher requests avoid single oversized/slow 33-country lookup.
  // A free-source access denial ends this provider's entire daily batch,
  // never rotates identities or bypasses quota. Only period metadata survives.
- const plan=planWdiMissingCountryBatches(missingIso3);
+ const plan=planWdiMissingCountryBatches(missingIso3,undefined,started);
  const accepted=[];let failed=null;
  for(const batch of plan.batches){
    wdiBackfillCalls++;
@@ -46,7 +46,8 @@ if(initialRows.length===195&&missingIso3.length>0){
      break;
    }
  }
- wdiBackfill=combineWdiMissingCountryBatches(plan,accepted,{failure:failed});
+ wdiBackfill={...combineWdiMissingCountryBatches(plan,accepted,{failure:failed}),
+   rotation_slot:plan.rotation_slot,rotation_slots:plan.rotation_slots};
 }
 const mineral=await observeTwoMineralIndices();
 const wdiOk=macro.schema==="geomacro.wdi-195-two-indicator-reference-audit.v1" &&
@@ -60,7 +61,7 @@ const verdict={
    "MACRO_REFERENCE_OBSERVED_MINERALS_DEGRADED",
  nominal_api_requests:3,max_api_requests:5,
  source_requests_observed:macro.source_calls+mineral.upstream_calls+wdiBackfillCalls,
- external_source_budgets:{world_bank_wdi_2025:1,world_bank_wdi_missing_only:2,peru_minem:1,canada_nrcan_geoscan:1},
+ external_source_budgets:{world_bank_wdi_2025:2,world_bank_wdi_missing_only:1,peru_minem:1,canada_nrcan_geoscan:1},
  targeted_missing_2025_countries:missingIso3.length,
  historical_reference_gap_lookup:wdiBackfill,
  wdi:macro,minerals:mineral,
@@ -77,6 +78,7 @@ console.log(JSON.stringify({
  schema:verdict.schema,status:verdict.status,
  nominal_api_requests:3,max_api_requests:5,source_requests_observed:verdict.source_requests_observed,
  historical_gap_lookup_targets:missingIso3.length,
+ historical_gap_rotation_slot:missingIso3.length?wdiBackfill?.rotation_slot??null:null,
  historical_gap_lookup_status:wdiBackfill?.status??"NOT_REQUIRED_OR_NOT_ELIGIBLE",
  historical_gap_countries_actually_queried:wdiBackfill?.actually_queried_missing_countries??0,
  historical_gap_countries_not_yet_queried:wdiBackfill?.not_yet_queried_missing_countries??0,
