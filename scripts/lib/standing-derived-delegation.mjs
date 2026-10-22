@@ -30,7 +30,7 @@ const exact=(o,keys)=>o&&!Array.isArray(o)&&typeof o==="object"&&
  Object.keys(o).sort().join("|")===keys.slice().sort().join("|");
 const digest=bytes=>createHash("sha256").update(bytes).digest("hex");
 export const policyBytes=p=>Buffer.from(POLICY_SCHEMA+"\n"+canonical(p),"utf8");
-export const spkiDigest=key=>digest(createPublicKey(key).export({format:"der",type:"spki"}));
+export const spkiDigest=key=>digest((key?.type==="public"?key:createPublicKey(key)).export({format:"der",type:"spki"}));
 export function validatePolicy(p,{now=new Date()}={}){
  if(!exact(p,["schema","repository","profile","owner","reviewer",
   "machine_public_spki_sha256","issued_at","expires_at","allowed_outputs",
