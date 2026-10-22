@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/legacy-edge-source-zero-b2-preflight.yml"
       - "scripts/ops/legacy-edge-source-zero-b2-preflight.mjs"
+      - "scripts/ops/legacy-edge-source-body-format.mjs"
+      - "scripts/ops/legacy-edge-source-body-format.test.mjs"
       - "scripts/ops/legacy-edge-source-zero-b2-preflight.test.mjs"
   pull_request:
     paths:
@@ -37,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/ops/legacy-edge-source-zero-b2-preflight.mjs
-          node --test scripts/ops/legacy-edge-source-zero-b2-preflight.test.mjs
+          node --test scripts/ops/legacy-edge-source-zero-b2-preflight.test.mjs scripts/ops/legacy-edge-source-body-format.test.mjs
           node scripts/ops/legacy-edge-source-zero-b2-preflight.mjs || test "$?" -eq 3
           node - <<'NODE'
           const r=require("./artifacts/legacy-exit/legacy-edge-source-readonly-preflight.json");
