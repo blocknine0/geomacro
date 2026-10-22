@@ -123,7 +123,7 @@ async function main(){
   if(x.status===0&&!x.error){
    try{data=JSON.parse(x.stdout.trim())}catch{data=null}
    if(data)report.read_only_transport="pinned_tls_postgresql";
-   else {
+  } else {
     report.pinned_postgres_failure_class=x.error?"SPAWN_OR_TIMEOUT":"CONNECTION_OR_QUERY_REJECTED";
   }
  }
