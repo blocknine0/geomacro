@@ -18,5 +18,4 @@ export const GEOMACRO_OFFICIAL_API_CATALOG = Object.freeze([
 
 export const GEOMACRO_OFFICIAL_API_DISPLAY_NAMES = Object.freeze(
   Object.fromEntries(GEOMACRO_OFFICIAL_API_CATALOG.map(({id,name})=>[id,name]))
-  as Record<(typeof GEOMACRO_OFFICIAL_API_CATALOG)[number]["id"],string>
 );
