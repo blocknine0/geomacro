@@ -108,7 +108,7 @@ export async function archivePrivateOriginalReviewLeads({
  if(!plan)return Object.freeze({
   schema:"geomacro.private-original-review-b2-handoff.v1",
   status:"NO_GENUINE_LEADS_TO_ARCHIVE",
-  private_original_leads_archived:0,originals_readback_verified:false,
+  private_original_leads_archived:0,private_review_leads_b2_readback_verified:false,
   private_review_hand_off_available:false,
   source_rights_or_facts_signed:false,signed_gri_created:false,
   b2_requests:0,d1_writes:0,payments:0
@@ -132,7 +132,7 @@ export async function archivePrivateOriginalReviewLeads({
   return Object.freeze({
    schema:"geomacro.private-original-review-b2-handoff.v1",
    status:"SHARED_B2_QUOTA_HELD_NOT_ARCHIVED",
-   private_original_leads_archived:0,originals_readback_verified:false,
+   private_original_leads_archived:0,private_review_leads_b2_readback_verified:false,
    private_review_hand_off_available:false,
    source_rights_or_facts_signed:false,signed_gri_created:false,
    b2_requests:0,d1_writes:0,payments:0
@@ -156,8 +156,9 @@ export async function archivePrivateOriginalReviewLeads({
   status:"GENUINE_PRE_REVIEW_LEADS_PRIVATELY_ARCHIVED",
   private_original_leads_archived:plan.leadCount,
   original_lead_category_counts:plan.categories,
-  original_proof_byte_sha_readback_verified:true,
-  originals_readback_verified:true,
+  private_lead_archive_compressed_sha_readback_verified:true,
+  original_html_bytes_archived:false,
+  private_review_leads_b2_readback_verified:true,
   private_review_hand_off_available:true,
   source_rights_or_facts_signed:false,
   independent_gri_review_verified:false,
