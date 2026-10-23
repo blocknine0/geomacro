@@ -13,28 +13,33 @@ import {createHash} from "node:crypto";
 
 const NOW=new Date("2026-10-23T18:40:00.000Z");
 const SOURCES=[
- {id:"un_geneva_press_original_rss_review",domain:"geopolitics",
-  endpoint:"https://www.ungeneva.org/news-media/press-releases-list/rss.xml",
-  original:"https://www.ungeneva.org/en/news-media/press-release/2026/10/security-council-ceasefire-statement",
-  title:"Security Council discusses peace and armed conflict",
-  org:"un_geneva"},
- {id:"boc_press_original_rss_review",domain:"macro",
-  endpoint:"https://www.bankofcanada.ca/content_type/press-releases/feed/",
-  original:"https://www.bankofcanada.ca/2026/10/monetary-policy-announcement/",
-  title:"Bank of Canada monetary policy interest rates announcement",
-  org:"bank_of_canada"},
+ {id:"uk_cabinet_security_original_atom_review",domain:"geopolitics",
+  media:"atom",
+  endpoint:"https://www.gov.uk/government/organisations/cabinet-office.atom",
+  original:"https://www.gov.uk/government/news/uk-national-security-briefing",
+  title:"Cabinet Office publishes new national security crisis briefing",
+  org:"uk_cabinet"},
+ {id:"uk_dbt_macro_trade_original_atom_review",domain:"macro",
+  media:"atom",
+  endpoint:"https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+  original:"https://www.gov.uk/government/news/business-trade-economic-growth-briefing",
+  title:"UK Department for Business and Trade announces economic growth briefing",
+  org:"uk_dbt"},
  {id:"bc_minerals_original_rss_review",domain:"rare_earth",
+  media:"rss",
   endpoint:"https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed",
   original:"https://news.gov.bc.ca/releases/2026MCM0001-000001",
   title:"British Columbia announces new critical minerals mining projects",
   org:"bc_ministry_mining"}
 ] as const;
-const xml=(title:string,link:string,date="Fri, 23 Oct 2026 18:22:00 GMT")=>
- `<rss version="2.0"><channel><item>
- <title>${title}</title><link>${link}</link><pubDate>${date}</pubDate>
- </item></channel></rss>`;
-const response=(s:string)=>new Response(s,{
- status:200,headers:{"content-type":"application/rss+xml"}
+const xml=(title:string,link:string,media:string,date="2026-10-23T18:22:00Z")=>
+ media==="atom"
+  ? `<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>${title}</title><link rel="alternate" href="${link}" /><published>${date}</published><updated>2026-10-23T18:35:00Z</updated></entry></feed>`
+  : `<rss version="2.0"><channel><item>
+   <title>${title}</title><link>${link}</link><pubDate>${new Date(date).toUTCString()}</pubDate>
+   </item></channel></rss>`;
+const response=(s:string,media:string)=>new Response(s,{
+ status:200,headers:{"content-type":media==="atom"?"application/atom+xml":"application/rss+xml"}
 });
 const digest=(s:string)=>createHash("sha256").update(s).digest("hex");
 
@@ -54,7 +59,7 @@ describe("three independently pinned public official feeds, no fake rights, 2 GE
   }
  });
  for(const def of SOURCES){
-  it(`${def.domain}: date-native actual first-party RSS article is private candidate, not saleable`,async()=>{
+  it(`${def.domain}: date-native actual first-party article is private candidate, not saleable`,async()=>{
    const source=EXPANDED_OFFICIAL_SOURCES.find(x=>x.id===def.id)!;
    expect(source).toBeDefined();
    expect(source.domain).toBe(def.domain);
@@ -62,8 +67,8 @@ describe("three independently pinned public official feeds, no fake rights, 2 GE
    expect(source.rights).toBe("UNVERIFIED");
    expect(source.event_intelligence).toBe(false);
    expect(source.country_coverage_verified).toBe(false);
-   const body=xml(def.title,def.original);
-   const fetchImpl=vi.fn(async()=>response(body));
+   const body=xml(def.title,def.original,def.media);
+   const fetchImpl=vi.fn(async()=>response(body,def.media));
    const observed=await probeExpandedSource(source,{
     now:NOW,fetchImpl,collectPrivateCandidates:true,openDiscovery:true
    });
@@ -82,7 +87,7 @@ describe("three independently pinned public official feeds, no fake rights, 2 GE
    expect(priv[0].article_category_relevance_verified).toBe(false);
    expect(priv[0].commercial_derived_use_rights_verified).toBe(false);
    expect(priv[0].eligible_for_scoring).toBe(false);
-   // Native RSS date is a review lead, not a trusted current event:
+   // Native RSS/Atom date is a review lead, not a trusted current event:
    // an independent same-origin HTML clock must remain verifiable.
    const nativePage='<html><head><meta property="article:published_time" '+
      'content="2026-10-23T18:22:00Z"></head><body>official article</body></html>';
@@ -119,10 +124,10 @@ describe("three independently pinned public official feeds, no fake rights, 2 GE
     "https://unrelated.example.invalid/government/news/fake",
    ];
    for(const spoof of spoofs)
-    expect(originalPublisherPrivateCandidates(xml(def.title,spoof),
+    expect(originalPublisherPrivateCandidates(xml(def.title,spoof,def.media),
       source,NOW,{captureAllTopics:true})).toHaveLength(0);
-   expect(originalPublisherPrivateCandidates(xml(def.title,def.original,
-     "Sat, 24 Oct 2026 18:22:00 GMT"),source,NOW,
+   expect(originalPublisherPrivateCandidates(xml(def.title,def.original,def.media,
+     "2026-10-24T18:22:00Z"),source,NOW,
       {captureAllTopics:true})).toHaveLength(0);
   });
  }
