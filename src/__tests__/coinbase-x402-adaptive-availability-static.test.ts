@@ -16,7 +16,7 @@ describe("Coinbase x402 adaptive availability boundary", () => {
   it("never returns internal rights contracts or provider identities to no-charge callers", () => {
     expect(availabilityRoute).toContain("publicAgentQueryAvailability");
     expect(availabilityRoute).toContain("availability: publicAgentQueryAvailability(availability)");
-    expect(availabilityRoute).not.toMatch(/\\n\\s+availability,\\n\\s+execution_authorized:/);
+    expect(availabilityRoute).not.toContain("            availability,");
     const sanitize = fs.readFileSync("src/lib/agent-query-deliverability.server.ts","utf8");
     expect(sanitize).toContain("ineligible_source_count: result.ineligible_source_ids.length");
     expect(sanitize).not.toContain("source_contracts: result.source_contracts");
