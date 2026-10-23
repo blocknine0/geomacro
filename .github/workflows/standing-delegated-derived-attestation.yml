@@ -27,6 +27,7 @@ on:
       - 'scripts/lib/complete-intelligence-gri-review.mjs'
       - 'scripts/lib/complete-intelligence-gri-review.test.mjs'
       - 'scripts/ops/triage-all-website-intelligence-for-gri.ts'
+      - 'scripts/tests/standing-derived-cleanup-contract.test.mjs'
       - 'scripts/ops/sign-gri-automated-derived-policy-readback.mjs'
       - 'scripts/tests/gri-automated-derived-policy-review.test.mjs'
       - 'scripts/tests/standing-derived-delegation.test.mjs'
@@ -67,6 +68,7 @@ jobs:
           node --check scripts/ops/sign-gri-automated-derived-policy-readback.mjs
           node --test scripts/tests/gri-automated-derived-policy-review.test.mjs
           node --test scripts/lib/complete-intelligence-gri-review.test.mjs
+          node --test scripts/tests/standing-derived-cleanup-contract.test.mjs
           node --check scripts/ops/enroll-standing-derived-cloud.mjs
           node --test scripts/tests/automated-approval-continuation.test.mjs scripts/tests/gri-news-wakeup.test.mjs scripts/tests/standing-derived-delegation.test.mjs scripts/tests/standing-derived-cloud-enrollment.test.mjs scripts/tests/signed-news-safe-diagnostic.test.mjs scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs scripts/tests/standing-delegation-role-separation.test.mjs
 
