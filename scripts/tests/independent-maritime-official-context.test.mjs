@@ -103,3 +103,44 @@ test("untrusted script/style and malformed script closing whitespace cannot forg
  assert.equal(got.index_metadata_candidate_count,1);
  assert.equal(got.current_signed_gro_verified,false);
 });
+
+test("a huge genuine ReCAAP page yields bounded prefix-only index, no full-source or event claim",async()=>{
+ const now=new Date("2026-10-24T01:00:00Z");
+ const listing='<html><h1>Reports</h1>'+
+   '<article>ReCAAP ISC Weekly Report (13-19 Oct) 2026</article>'+
+   '<article>ReCAAP ISC Weekly Report (06-12 Oct) 2026</article>';
+ const big=listing+" ".repeat(384*1024)+"</html>";
+ const observed=await observe({now,fetchImpl:async(url)=>{
+   if(url===SOURCES[1].url)
+     return new Response(big,{headers:{"content-type":"text/html",
+        "content-length":String(big.length)}});
+   if(url===SOURCES[0].url)
+     return new Response("denied",{status:403});
+   return new Response("<html>No index</html>",{headers:{"content-type":"text/html"}});
+ }});
+ const entry=observed.sources.find(x=>x.id==="recaap_isc_weekly_reports");
+ assert.equal(entry.transport_state,"BOUNDED_OFFICIAL_INDEX_PREFIX_READ");
+ assert.equal(entry.index_state,"OFFICIAL_PERIODIC_REPORT_PREFIX_ONLY");
+ assert.equal(entry.metadata_candidate_count,2);
+ assert.equal(observed.independently_accessible_publishers,1);
+ assert.equal(observed.individual_maritime_incidents_verified,0);
+ assert.equal(observed.current_signed_intelligence_verified,false);
+ assert.equal(observed.source_rights_for_commercial_reuse_verified,false);
+ assert.equal(observed.http_requests,3);
+ assert.equal(observed.ukmto_requests,0);
+});
+test("oversized non-ReCAAP issuer stays denied; fake partial HTML cannot supply event proof",async()=>{
+ const tooLarge="<!doctype html><html>"+ " ".repeat(384*1024) +"</html>";
+ const observed=await observe({now,fetchImpl:async(url)=>{
+  if(url===SOURCES[0].url)return new Response(tooLarge,{
+   headers:{"content-type":"text/html",
+     "content-length":String(tooLarge.length)}});
+  if(url===SOURCES[1].url)return new Response("x".repeat(400_000),{
+   headers:{"content-type":"text/html"}});
+  return new Response("",{status:503});
+ }});
+ assert.equal(observed.sources[0].transport_state,"BODY_LIMIT");
+ assert.equal(observed.sources[1].transport_state,"BOUNDED_OFFICIAL_INDEX_PREFIX_READ");
+ assert.equal(observed.sources[1].index_state,"SOURCE_INDEX_UNVERIFIED");
+ assert.equal(observed.independently_accessible_publishers,0);
+});

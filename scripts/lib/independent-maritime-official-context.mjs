@@ -117,22 +117,40 @@ async function boundedHtml(spec,fetchImpl){
  if(!response.ok)return {state:"UPSTREAM_HTTP_UNAVAILABLE"};
  if(!/^text\/html(?:;|$)/iu.test(response.headers.get("content-type")??""))
    return {state:"MIME_UNVERIFIED"};
- if(Number(response.headers.get("content-length")||0)>LIMIT||!response.body)
-   return {state:"BODY_UNAVAILABLE"};
- let n=0;const parts=[],reader=response.body.getReader();
+ const partialAllowed=spec.id==="recaap_isc_weekly_reports";
+ if(!response.body)return {state:"BODY_UNAVAILABLE"};
+ if(Number(response.headers.get("content-length")||0)>LIMIT&&!partialAllowed)
+   return {state:"BODY_LIMIT"};
+ let n=0,truncated=false;const parts=[],reader=response.body.getReader();
  try{
    while(true){
      const {done,value}=await reader.read();if(done)break;
-     n+=value.byteLength;
-     if(n>LIMIT)return {state:"BODY_LIMIT"};
-     parts.push(value);
+     const remaining=LIMIT-n;
+     if(value.byteLength>remaining){
+       if(!partialAllowed)return {state:"BODY_LIMIT"};
+       if(remaining>0){parts.push(value.subarray(0,remaining));n+=remaining;}
+       truncated=true;
+       break;
+     }
+     n+=value.byteLength;parts.push(value);
    }
  }catch{return {state:"BODY_READ_UNAVAILABLE"}}
  finally{try{await reader.cancel()}catch{}reader.releaseLock()}
  try{
    const all=new Uint8Array(n);let p=0;
    for(const chunk of parts){all.set(chunk,p);p+=chunk.length;}
-   return {state:"HTML_BYTES_READ",body:new TextDecoder("utf-8",{fatal:true}).decode(all)};
+   // Incomplete UTF-8 at the exact prefix boundary is not a missing report.
+   // Decode only the bounded bytes; the last incomplete character may be
+   // replaced, but no publisher-native clock or event proof is inferred.
+   const decoder=new TextDecoder("utf-8",{fatal:true});
+   let html=null;
+   for(let drop=0;drop<=(truncated?3:0);drop++){
+     try{html=decoder.decode(all.subarray(0,n-drop));break;}
+     catch{/* Only an incomplete final UTF-8 code point may be truncated. */}
+   }
+   if(html===null)return {state:"UTF8_INVALID"};
+   return {state:truncated?"BOUNDED_OFFICIAL_INDEX_PREFIX_READ":"HTML_BYTES_READ",
+     body:html};
  }catch{return {state:"UTF8_INVALID"}}
 }
 export async function observeIndependentMaritimeOfficialContext({
@@ -144,10 +162,16 @@ export async function observeIndependentMaritimeOfficialContext({
  for(const spec of SOURCES){
    const read=await boundedHtml(spec,fetchImpl);
    let proof=null;
-   if(read.state==="HTML_BYTES_READ"){
+   if(read.state==="HTML_BYTES_READ"||
+      read.state==="BOUNDED_OFFICIAL_INDEX_PREFIX_READ"){
      try{proof=summarizeIndependentMaritimeIndex(spec.id,read.body,{now});}
      catch{/* Only issuer-specific bounded index shape may pass. */}
    }
+   // Partial ReCAAP report-list prefix is not a complete publication index.
+   if(read.state==="BOUNDED_OFFICIAL_INDEX_PREFIX_READ"&&proof)
+     proof=Object.freeze({...proof,reason:proof.reason===
+       "OFFICIAL_PERIODIC_REPORT_INDEX_OBSERVED"?
+       "OFFICIAL_PERIODIC_REPORT_PREFIX_ONLY":"SOURCE_INDEX_UNVERIFIED"});
    const {body,...metadata}=read; // NEVER retain fetched markup.
    rows.push(Object.freeze({
      id:spec.id,publisher_family:spec.publisher,coverage_scope:spec.scope,
