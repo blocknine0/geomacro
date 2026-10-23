@@ -242,7 +242,7 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     const report=await acceptEarningPilotLive({
       expectedSha:sha,diagnosticOnly:true,fetchImpl,
     });
-    expect(received).toHaveLength(5);
+    expect(received).toHaveLength(6);
     expect(received.filter(x=>x.method==="POST")).toHaveLength(3);
     expect(report.exact_main_published).toBe(false);
     expect(report.diagnostic_only).toBe(true);
