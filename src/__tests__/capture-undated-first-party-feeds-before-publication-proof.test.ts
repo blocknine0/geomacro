@@ -102,11 +102,11 @@ describe("#2041 publication-unknown data no longer vanishes before discovery",()
       loadRows:async()=>db,
     });
     const inputs=[valid,feed(entry(url(60))+entry(url(1)))];
-    // Macro now rotates four approved issuers, two per window.
+    // Macro now rotates five approved issuers, two per window.
     // Choose the [Fed, StatCan] then [StatCan, ECB] adjacent windows
     // so both observations actually include the same StatCan origin.
     const baseSlot=Math.floor(now.getTime()/(30*60000));
-    const firstAt=new Date(now.getTime()+((4-baseSlot%4)%4)*30*60000);
+    const firstAt=new Date(now.getTime()+((5-baseSlot%5)%5)*30*60000);
     for(let idx=0;idx<2;idx++){
       const at=new Date(firstAt.getTime()+idx*30*60000);
       const xs=getObs(inputs[idx],at);
