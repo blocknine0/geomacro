@@ -1,5 +1,5 @@
 import {
- capabilityPricingCatalog,
+ publicCapabilityPricingCatalog,
  GEOMACRO_CAPABILITY_PRICING_VERSION,
 } from "./capability-pricing-catalog";
 
@@ -35,7 +35,7 @@ export function geomacroKeylessX402BuyerCatalog(){
     current_payability_unverified:true}
   },
   pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
-  capabilities:capabilityPricingCatalog().map(row=>({
+  capabilities:publicCapabilityPricingCatalog().map(row=>({
    ...row,
    pilot:["signed_risk_object","risk_gate_bundle"].includes(row.capability),
   })),

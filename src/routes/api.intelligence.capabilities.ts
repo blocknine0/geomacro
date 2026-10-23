@@ -5,7 +5,7 @@ import {
   GEOMACRO_INTELLIGENCE_PRODUCT_ID,
   GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
 } from "../lib/geomacro-intelligence-contract";
-import {GEOMACRO_CAPABILITY_PRICING_VERSION,capabilityPricingCatalog}
+import {GEOMACRO_CAPABILITY_PRICING_VERSION,publicCapabilityPricingCatalog}
   from "../lib/capability-pricing-catalog";
 import {GEOMACRO_PAID_PRICING_PATH} from "../lib/geomacro-paid-pricing-manifest.server";
 import {GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,geomacroStructuredOutputCatalog}
@@ -65,7 +65,7 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
             capability_pricing:{
               version:GEOMACRO_CAPABILITY_PRICING_VERSION,
               currency:"USDC",decimals:6,
-              capabilities:capabilityPricingCatalog(),
+              capabilities:publicCapabilityPricingCatalog(),
               available_before_payment:false,
               fixed_tier_only:true,automatic_upgrade:false,
               risk_gate_includes_signed_object:true,

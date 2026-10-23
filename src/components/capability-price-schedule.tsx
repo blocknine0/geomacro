@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowUpRight, Check } from "lucide-react";
 import {
   GEOMACRO_CAPABILITY_PRICES,
-  GEOMACRO_PRICING_GROUPS,
+  GEOMACRO_PUBLIC_PRICING_GROUPS,
   GEOMACRO_CAPABILITY_PRICING_VERSION,
   type PricedCapability,
 } from "@/lib/capability-pricing-catalog";
@@ -100,7 +100,7 @@ const VARIANTS: Record<string, string> = {
 /** Display the canonical catalog; a catalog view never starts a payment. */
 export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean }) {
   const [group, setGroup] = useState("All products");
-  const groups = GEOMACRO_PRICING_GROUPS;
+  const groups = GEOMACRO_PUBLIC_PRICING_GROUPS;
   const ids = groups
     .filter((g) => group === "All products" || group === g.label)
     .flatMap((g) => [...g.ids]);

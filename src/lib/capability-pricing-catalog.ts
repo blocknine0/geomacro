@@ -23,6 +23,11 @@ export const GEOMACRO_CAPABILITY_PRICES={
 } as const satisfies Record<GeomacroCreditCapability,Record<string,string>>;
 
 export type PricedCapability=keyof typeof GEOMACRO_CAPABILITY_PRICES;
+/** Public GRI sales retired by founder; existing signed historical ledger prices stay immutable. */
+export function isPublicStoreCapability(capability:string):boolean {
+  return capability !== "gri_read" && Object.hasOwn(GEOMACRO_CAPABILITY_PRICES,capability);
+}
+
 export type PriceVariant={ [K in PricedCapability]:
   keyof (typeof GEOMACRO_CAPABILITY_PRICES)[K] }[PricedCapability];
 export const GEOMACRO_PRICING_GROUPS=[
@@ -79,3 +84,11 @@ export function capabilityPricingCatalog(){
       availability:"CHECK_LIVE_PROOF_BEFORE_PAYMENT" as const,
     }));
 }
+
+/** Active Store / API / Agent offerings; NOT a rewrite of past USDC prices. */
+export function publicCapabilityPricingCatalog(){
+  return capabilityPricingCatalog().filter(row=>isPublicStoreCapability(row.capability));
+}
+export const GEOMACRO_PUBLIC_PRICING_GROUPS = GEOMACRO_PRICING_GROUPS
+  .filter(group=>group.ids.some(id=>isPublicStoreCapability(id)))
+  .map(group=>({...group,ids:group.ids.filter(id=>isPublicStoreCapability(id))}));
