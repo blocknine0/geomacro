@@ -74,6 +74,12 @@ const UPSTREAMS: readonly Provider[] = Object.freeze([
   { id: "usgs_mcs", category: "critical-minerals",
     url: "https://www.sciencebase.gov/catalog/item/69837e43b66b01367d7ec7c7?format=json",
     maxBytes: 400_000, timeoutMs: 6_000, method: "GET" },
+  // Same USGS MCS2026 report, separately verified through the official
+  // Publications Warehouse JSON service. This metadata-only read repairs
+  // ScienceBase outages, but not current mineral-event or signed GRI proof.
+  { id: "usgs_mcs_pubs", category: "critical-minerals",
+    url: "https://pubs.usgs.gov/pubs-services/publication/?reportNumber=mcs2026&page_size=2",
+    maxBytes: 110_000, timeoutMs: 6_000, method: "GET" },
   { id: "usaspending", category: "critical-minerals",
     url: "https://api.usaspending.gov/api/v2/search/spending_by_award/",
     maxBytes: 180_000, timeoutMs: 6_000, method: "POST",
@@ -202,6 +208,28 @@ function fromUsgsMcsCatalog(payload:unknown):Extracted|null {
     "usgs_mcs_dataset_catalog","edition:2026","2026","dataset_edition",
     "Geomacro finds the official USGS Mineral Commodity Summaries 2026 dataset listed in its source catalog.",
     "This verifies the dataset edition's catalog availability, not a new mineral discovery or individual production statistic."
+  )]:[],credits:[]};
+}
+function fromUsgsMcsPubs(payload:unknown):Extracted|null {
+  const data=payload as Record<string,unknown>;
+  if(!data||!Array.isArray(data.records)||data.records.length>2 ||
+     data.records.some(x=>!x||typeof x!=="object"||Array.isArray(x)))
+    return null;
+  // Do not accept search hit count, search index datetime, arbitrary USGS
+  // publication or mirror as the actual MCS2026 dataset edition. USGS's
+  // original first-party publications index and canonical report identity
+  // must both agree. Only the 2026 reference EDITION is emitted.
+  const found=data.records.some((unknown:unknown)=>{
+    const row=unknown as Record<string,unknown>;
+    const year=String(row.publicationYear??"");
+    const title=String(row.title??"").trim();
+    return row.indexId==="mcs2026" && year==="2026" &&
+      /^mineral commodity summaries 2026$/iu.test(title);
+  });
+  return {signals:found?[signal(
+    "usgs_mcs_dataset_catalog","pubs-edition:2026","2026","dataset_edition",
+    "Geomacro verifies the USGS Mineral Commodity Summaries 2026 edition in the official Publications Warehouse catalog.",
+    "The publication is historical mineral-sector reference context, not a new production observation, market price change or independently scored supply disruption."
   )]:[],credits:[]};
 }
 function fromNhc(payload:unknown,now:number):Extracted|null{
@@ -359,6 +387,7 @@ export function extractOpenData(specId: string, body:unknown, now=Date.now()): E
     case "unhcr_refugee_statistics":return fromUnhcrPopulation(body);
     case "bgs_world_minerals":return fromBgsMinerals(body);
     case "usgs_mcs":return fromUsgsMcsCatalog(body);
+    case "usgs_mcs_pubs":return fromUsgsMcsPubs(body);
     case "noaa_nhc":return fromNhc(body,now);
     case "federal_register":return fromFederalRegister(body,now);
     case "bls_cpi":return fromBls(body);
