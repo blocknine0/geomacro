@@ -127,3 +127,33 @@ class reads `MISSING_OR_INVALID`, check the existing approved key/credential
 *scope* in GitHub Settings. Do not copy credentials, source content or private
 signatures into issues, logs or a chat. No laptop cron, Windows Task
 Scheduler, or 24/7 local tunnel is required.
+
+
+## Automatic derived approvals across all news lanes (23 October)
+
+The already enrolled standing delegation continues without per-story human
+approval. The existing standing-derived workflow now wakes after Auto Ingest,
+Fastlane and all six continent sweeps, plus its existing hourly recovery. A
+completed source may be an actual ancestor of newer main; a foreign or
+unrelated source is rejected before any signing. No new cron is created.
+
+Each continuation reads the complete retained public derived journal, excludes
+duplicate IDs and already signed inputs, signs missing **derived-ingestion**
+envelopes with the existing production issuer, and independently verifies the
+complete retained input signatures. Only then may a separate runner use the
+already enrolled delegated machine to sign its readback audit. The issuer
+private key and delegated private key are never on the same runner. A failed
+producer/readback does not satisfy the dependent delegation job.
+
+This automatically covers retained derived stories from continent and 24-hour
+backfill runs; it does not claim that every story has an independently verified
+original page. Original-page reviews remain the existing separate low-authority
+Fastlane process. Invalid, unavailable or uncovered evidence stays unverified.
+
+The signed standing policy explicitly denies numerical GRI, independent review,
+upstream commercial-rights grants and paid settlement. Its existing signatures
+cannot authorize these additional scopes by changing code or an environment
+flag. Protected GRI and machine publishers continue automatically once their
+real scoped approval inputs are available. Numerical GRI is still blocked until
+that actual review package exists; this continuation does not remove that
+requirement or report 3/3 current scored products.

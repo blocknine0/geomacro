@@ -1,3 +1,6 @@
+# Automatic approval means derived-input ingestion and signed readback audit.
+# Human numerical review, upstream rights grants and payments keep their own
+# actual authority requirements; this workflow never claims those approvals.
 name: Standing Delegated Derived Contract No Funds
 on:
   pull_request:
@@ -6,6 +9,9 @@ on:
     paths:
       - '.github/workflows/standing-delegated-derived-attestation.yml'
       - 'scripts/ops/verify-all-news-signed-publications.mjs'
+      - 'scripts/ops/publish-automated-intelligence-inputs.ts'
+      - 'scripts/ops/verify-gri-news-wakeup.mjs'
+      - 'scripts/tests/automated-approval-continuation.test.mjs'
       - 'scripts/lib/signed-news-safe-diagnostic.mjs'
       - 'scripts/tests/signed-news-safe-diagnostic.test.mjs'
       - 'scripts/ops/sign-verified-derived-readback.mjs'
@@ -19,7 +25,15 @@ on:
       - 'scripts/tests/standing-derived-delegation.test.mjs'
   workflow_dispatch:
   workflow_run:
-    workflows: ["Five-Minute Original News Fastlane"]
+    workflows:
+      - "Auto Ingest News"
+      - "Five-Minute Original News Fastlane"
+      - "Africa Country Source Sweep (Every 2 Hours)"
+      - "Asia Country Source Sweep (Every 2 Hours)"
+      - "Europe Country Source Sweep (Every 2 Hours)"
+      - "North America Country Source Sweep (Every 2 Hours)"
+      - "South America Country Source Sweep (Every 2 Hours)"
+      - "Oceania Country Source Sweep (Every 2 Hours)"
     types: [completed]
     branches: [main]
   schedule:
@@ -38,18 +52,85 @@ jobs:
           node-version: '22'
       - run: |
           node --check scripts/ops/enroll-standing-derived-cloud.mjs
-          node --test scripts/tests/standing-derived-delegation.test.mjs scripts/tests/standing-derived-cloud-enrollment.test.mjs scripts/tests/signed-news-safe-diagnostic.test.mjs scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs scripts/tests/standing-delegation-role-separation.test.mjs
+          node --test scripts/tests/automated-approval-continuation.test.mjs scripts/tests/gri-news-wakeup.test.mjs scripts/tests/standing-derived-delegation.test.mjs scripts/tests/standing-derived-cloud-enrollment.test.mjs scripts/tests/signed-news-safe-diagnostic.test.mjs scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs scripts/tests/standing-delegation-role-separation.test.mjs
 
-  cloud-derived-only:
+  approve-retained-derived-inputs:
     needs: contract
     if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+        github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    concurrency:
+      # Every run examines the complete retained journal. Coalesce overlapping
+      # wakeups; the latest audit still covers all retained stories.
+      group: geomacro-retained-derived-automatic-approval
+      cancel-in-progress: false
+    env:
+      GEOMACRO_STANDING_DELEGATION_ENABLED: ${{ vars.GEOMACRO_STANDING_DELEGATION_ENABLED }}
+      GEOMACRO_STANDING_DELEGATION_REVOKED: ${{ vars.GEOMACRO_STANDING_DELEGATION_REVOKED }}
+    steps:
+      - name: Honor existing opt-in and revocation before automatic approval
+        id: optin
+        run: |
+          if [ "$GEOMACRO_STANDING_DELEGATION_ENABLED" = "YES_DELEGATED_DERIVED_ONLY" ] && [ "$GEOMACRO_STANDING_DELEGATION_REVOKED" != "YES" ]; then
+            echo 'active=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'active=false' >> "$GITHUB_OUTPUT"
+            echo STANDING_DELEGATION_NOT_ACTIVE_NO_AUTOMATIC_APPROVAL
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        if: steps.optin.outputs.active == 'true'
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        if: steps.optin.outputs.active == 'true'
+        with:
+          bun-version: '1.4.2'
+      - name: Admit only canonical main and genuine completed-news ancestry
+        if: steps.optin.outputs.active == 'true'
+        run: node scripts/ops/verify-gri-news-wakeup.mjs
+      - name: Install locked signing dependencies
+        if: steps.optin.outputs.active == 'true'
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Automatically approve and sign every unique retained derived input
+        if: steps.optin.outputs.active == 'true'
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+          RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+          RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+          RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
+          RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
+          RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
+        run: bun scripts/ops/publish-automated-intelligence-inputs.ts
+      - name: Independently verify all retained signed inputs before delegated attestation
+        if: steps.optin.outputs.active == 'true'
+        env:
+          RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+          RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+          RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
+          RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
+          RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
+        run: bun scripts/ops/verify-all-news-signed-publications.mjs
+
+  cloud-derived-only:
+    needs: [contract, approve-retained-derived-inputs]
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
       github.event_name != 'pull_request' &&
       github.ref == 'refs/heads/main' &&
       (github.event_name != 'workflow_run' ||
        (github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
-        github.event.workflow_run.head_branch == 'main' &&
-        github.event.workflow_run.head_sha == github.sha))
+        github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-24.04
     timeout-minutes: 9
     environment: production
@@ -88,6 +169,10 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+          fetch-depth: 0
+      - name: Verify trusted source ancestry for delegated processing
+        if: steps.optin.outputs.active == 'true'
+        run: node scripts/ops/verify-gri-news-wakeup.mjs
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         if: steps.optin.outputs.active == 'true'
         with:
