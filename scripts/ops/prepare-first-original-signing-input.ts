@@ -20,7 +20,7 @@ import {selectPriorityOriginalReviewCountry} from "../../src/lib/priority-origin
 import {archivePrivateOriginalReviewLeads} from "../lib/private-original-review-b2-handoff.mjs";
 import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
-import {chooseOriginalReviewCountry} from "../lib/original-review-opportunity-router.mjs";
+import {chooseOriginalReviewCountry,finalizeOriginalReviewCountry} from "../lib/original-review-opportunity-router.mjs";
 
 // Only when genuinely verified leads exist do we resolve the existing D1
 // governor. Empty candidate runs do not require a B2 credential or API call.
@@ -145,9 +145,13 @@ export async function main(){
    try {
      const sharedNews=await fetchAllDerivedNews(fetch,now.getTime());
      const decision=selectPriorityOriginalReviewCountry(sharedNews,rotatingCountry,now);
-     country_iso3=decision.country_iso3;
-     journalPriorityMode=decision.selection_mode;
-     journalCandidateCountries=decision.eligible_country_count;
+     const routed=finalizeOriginalReviewCountry({
+       opportunity,priority:decision,
+       existsInRegistry:code=>Boolean(country195ByIso3(code)),
+     });
+     country_iso3=routed.country_iso3;
+     journalPriorityMode=routed.mode;
+     journalCandidateCountries=routed.journal_eligible_countries;
    }catch{
      journalPriorityMode="SHARED_D1_UNAVAILABLE_"+opportunity.selection_mode;
    }
