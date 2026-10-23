@@ -111,7 +111,7 @@ test("all six actual Github workflows have distinct 2h cron and ONE shared no-fu
  assert.deepEqual(slots,[4,24,44,64,84,104]);
  assert.deepEqual(slots.slice(1).map((x,i)=>x-slots[i]),[20,20,20,20,20]);
  assert.equal(124-slots[5],20);
- assert.ok(shared.includes("timeout-minutes: 70"));
+ assert.ok(shared.includes("timeout-minutes: 95"));
  const minutes=new Set();
  for(const [slug,label,minute,,oddHour] of regions){
   const yaml=readFileSync(`.github/workflows/continent-country-${slug}-2h.yml`,"utf8");

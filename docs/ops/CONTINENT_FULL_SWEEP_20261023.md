@@ -24,7 +24,7 @@ its shared 12-discovery / 4-original-page cap for all three categories combined.
 The upper bound per complete global cycle is 2,340 discovery requests and 780
 original-page requests, distributed over the six lanes; these are limits, not
 promises of source availability. Per-country execution is capped at two minutes;
-the continent job timeout is 70 minutes, below its two-hour recurrence.
+the continent job timeout is 95 minutes (including same-run news release), below its two-hour recurrence.
 
 A failed or timed-out country is recorded and does not cancel the remaining
 countries. The job fails if any country has no valid checkpoint. Source denial,
@@ -43,5 +43,6 @@ country in each other lane to validate runtime integration without duplicating
 all six full sweeps immediately. Scheduled runs cannot opt into this smoke mode
 or a manual country pin. Explicit manual ISO3 checks remain available.
 
-The existing three-category website news publisher remains separate: source
-probe diagnostics are not automatically promoted to publishable findings.
+Updated by CONTINENT_NEWS_PUBLICATION_20261023.md: independently checked
+country originals now continue through the existing website deriver and publisher
+in the same run. Probe diagnostics alone are never promoted to findings.

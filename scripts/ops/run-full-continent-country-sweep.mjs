@@ -5,6 +5,8 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {appendFileSync,mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync,statSync} from 'node:fs';
 import {join} from 'node:path';
+import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client.ts';
+import {createContinentNewsPublisher} from '../lib/continent-news-publication.mjs';
 import {planFullContinentSweep,runFullContinentSweep} from '../lib/continent-country-full-sweep.mjs';
 const env=process.env;
 if(env.GITHUB_REPOSITORY!=='blocknine0/geomacro'||env.GITHUB_REF!=='refs/heads/main'||!env.RUNNER_TEMP)
@@ -13,21 +15,33 @@ const registryText=readFileSync('src/lib/canonical-country-registry-195.ts','utf
 const plan=planFullContinentSweep({continent:env.GEOMACRO_CONTINENT,registryText,
  eventName:env.GITHUB_EVENT_NAME,requestedIso3:env.GEOMACRO_REQUESTED_COUNTRY??'',
  canaryOnly:env.GEOMACRO_CONTINENT_CANARY_ONLY==='true'});
+let publisher=null,publicationFailure=false;
+if(env.GEOMACRO_CONTINENT_NEWS_PUBLICATION==='1'){
+ try{publisher=await createContinentNewsPublisher({root:env.GEOMACRO_COMMERCE_LEDGER_TOKEN,readJournal:fetchAllDerivedNews});}
+ catch{publicationFailure=true;console.error('::error::CONTINENT_NEWS_PUBLICATION_INITIALIZATION_FAILED');}
+}
 const root=mkdtempSync(join(env.RUNNER_TEMP,'geomacro-continent-'));
 let receipt;
 try{
  receipt=await runFullContinentSweep(plan,{registryText,runCountry:async(iso,index)=>{
-  const dir=join(root,iso),file=join(dir,'live-batch-checkpoint.v1.json');
+  const dir=join(root,iso),file=join(dir,'live-batch-checkpoint.v1.json'),newsFile=join(dir,'derived-news.json');
   mkdirSync(dir,{mode:0o700});
+  const {GEOMACRO_COMMERCE_LEDGER_TOKEN:_privateToken,...sourceEnv}=env;
   await promisify(execFile)(process.execPath,['scripts/ops/verify-live-195-country-batch.ts'],{
    timeout:120000,killSignal:'SIGKILL',maxBuffer:512000,
-   env:{...env,GEOMACRO_COUNTRY_BATCH_START:String(index),GEOMACRO_COUNTRY_BATCH_COUNT:'1',
+   env:{...sourceEnv,...(publisher?{GEOMACRO_CONTINENT_NEWS_FILE:newsFile}:{}),GEOMACRO_COUNTRY_BATCH_START:String(index),GEOMACRO_COUNTRY_BATCH_COUNT:'1',
     GEOMACRO_EXPECTED_COUNTRY_ISO3:iso,GEOMACRO_COUNTRY_CHECKPOINT_FILE:file},
   });
   if(statSync(file).size>500000)throw Error('COUNTRY_CHECKPOINT_OVERSIZE');
   const report=JSON.parse(readFileSync(file,'utf8'));
   console.log(JSON.stringify({continent:plan.continent,country_iso3:iso,category_cells:3,
    original_page_verified:report.original_page_verified,provider_requests:report.provider_requests}));
+  if(publisher){
+   try{
+    if(statSync(newsFile).size>100000)throw Error('CONTINENT_NEWS_FILE_OVERSIZE');
+    await publisher.accept(JSON.parse(readFileSync(newsFile,'utf8')));
+   }catch{publicationFailure=true;console.error('::error::CONTINENT_COUNTRY_NEWS_PUBLICATION_UNVERIFIED_'+iso);}
+  }
   return report;
  }});
 }finally{rmSync(root,{recursive:true,force:true});}
@@ -38,5 +52,12 @@ console.log(JSON.stringify(summary));
 if(env.GITHUB_STEP_SUMMARY)appendFileSync(env.GITHUB_STEP_SUMMARY,
  `### ${plan.continent}: ${receipt.countries_completed}/${plan.countries.length} countries\n\n`+
  `${receipt.completed_category_cells}/${receipt.expected_category_cells} category checks completed. Scope: ${plan.scope}.\n\n`+
- 'Source verification only; missing originals remain unverified.\n');
-if(!receipt.complete)process.exitCode=1;
+ 'Verified eligible derived findings are published to the existing website journal; missing originals remain unverified.\n');
+if(publisher){
+ try{
+  const publication=await publisher.finish();
+  writeFileSync('artifacts/country-195/continent-news-publication.v1.json',JSON.stringify(publication,null,2)+'\n',{mode:0o600});
+  console.log(JSON.stringify(publication));
+ }catch{publicationFailure=true;console.error('::error::CONTINENT_NEWS_FINAL_READBACK_UNVERIFIED');}
+}
+if(!receipt.complete||publicationFailure)process.exitCode=1;
