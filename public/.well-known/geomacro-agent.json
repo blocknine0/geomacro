@@ -1,12 +1,11 @@
 {
   "agent": {
     "id": "geomacro",
-    "name": "Geomacro AI Agent",
+    "name": "GeoMacro Global Risk Intelligence Agent",
     "version": "geomacro-agent-v2",
-    "description": "Geomacro provides derived, machine-readable Geopolitics, Macro/FX and Critical Minerals intelligence for humans, applications and AI agents. Verified source rights and current signed deliverability are required for any paid result.",
+    "description": "24/7 grounded geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI agents.",
     "mode": "read_and_recommend",
-    "execution_authorized": false,
-    "brand": "Geomacro"
+    "execution_authorized": false
   },
   "categories": [
     "GEOPOLITICS",
@@ -21,10 +20,7 @@
     "a2a_card": "https://geomacro.live/.well-known/agent-card.json",
     "a2a_interface": "https://geomacro.live/api/a2a",
     "x402": "https://geomacro.live/.well-known/x402.json",
-    "openapi": "https://geomacro.live/openapi-x402.json",
-    "official_api_agent": "https://geomacro.live/api/v1/agent",
-    "official_openapi": "https://geomacro.live/api/v1/agent?view=openapi",
-    "pricing": "https://geomacro.live/api/v1/pricing"
+    "openapi": "https://geomacro.live/openapi-x402.json"
   },
   "a2a": {
     "protocol": "A2A",
@@ -159,16 +155,5 @@
     "macro_fx_query",
     "critical_minerals_query"
   ],
-  "category_agent_discovery_requires_deployed_build": true,
-  "officialApis": {
-    "canonical": "https://geomacro.live/api/v1/intelligence/query",
-    "geopolitics": "https://geomacro.live/api/v1/intelligence/geopolitics",
-    "macro_fx": "https://geomacro.live/api/v1/intelligence/macro-fx",
-    "critical_minerals": "https://geomacro.live/api/v1/intelligence/critical-minerals",
-    "agent": "https://geomacro.live/api/v1/agent",
-    "pricing": "https://geomacro.live/api/v1/pricing",
-    "no_funds_availability": "https://geomacro.live/api/v1/intelligence/availability"
-  },
-  "three_category_aliases_share_canonical_engine": true,
-  "payment_eligibility_not_inferred_from_discovery": true
+  "category_agent_discovery_requires_deployed_build": true
 }
