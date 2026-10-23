@@ -21,7 +21,7 @@ const fail=code=>{throw Error("GRI_AUTO_POLICY_"+code)};
 const hex=b=>createHash("sha256").update(b).digest("hex");
 const isInt=x=>Number.isSafeInteger(x)&&x>=0&&x<=MAX;
 const message=(role,body)=>Buffer.from(
-  "GEOMACRO/GriAutomatedDerivedReviewV1\\n"+role+"\\n"+canonical(body),"utf8");
+  "GEOMACRO/GriAutomatedDerivedReviewV1\n"+role+"\n"+canonical(body),"utf8");
 
 export function qualifyDerivedNewsAuditForPolicy(audit){
  if(!audit||audit.schema!=="geomacro.all-news-signed-publication-acceptance.v1"||
