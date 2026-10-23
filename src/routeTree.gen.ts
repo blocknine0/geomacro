@@ -56,6 +56,7 @@ import { Route as ApiTameionConfirmRouteImport } from './routes/api.tameion.conf
 import { Route as ApiTameionDecisionRouteImport } from './routes/api.tameion.decision'
 import { Route as ApiTestnetTesterSplatRouteImport } from './routes/api/testnet-tester/$'
 import { Route as ApiV1AgentRouteImport } from './routes/api.v1.agent'
+import { Route as ApiV1CommerceCatalogRouteImport } from './routes/api.v1.commerce.catalog'
 import { Route as ApiV1FindsRouteImport } from './routes/api.v1.finds'
 import { Route as ApiV1PricingRouteImport } from './routes/api.v1.pricing'
 import { Route as ApiX402IntelligenceRouteImport } from './routes/api.x402.intelligence'
@@ -311,6 +312,11 @@ const ApiV1AgentRoute = ApiV1AgentRouteImport.update({
   path: '/api/v1/agent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1CommerceCatalogRoute = ApiV1CommerceCatalogRouteImport.update({
+  id: '/api/v1/commerce/catalog',
+  path: '/api/v1/commerce/catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1FindsRoute = ApiV1FindsRouteImport.update({
   id: '/api/v1/finds',
   path: '/api/v1/finds',
@@ -457,6 +463,7 @@ export interface FileRoutesByFullPath {
   '/api/tameion/decision': typeof ApiTameionDecisionRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/v1/agent': typeof ApiV1AgentRoute
+  '/api/v1/commerce/catalog': typeof ApiV1CommerceCatalogRoute
   '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/v1/pricing': typeof ApiV1PricingRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
@@ -524,6 +531,7 @@ export interface FileRoutesByTo {
   '/api/tameion/decision': typeof ApiTameionDecisionRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/v1/agent': typeof ApiV1AgentRoute
+  '/api/v1/commerce/catalog': typeof ApiV1CommerceCatalogRoute
   '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/v1/pricing': typeof ApiV1PricingRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
@@ -592,6 +600,7 @@ export interface FileRoutesById {
   '/api/tameion/decision': typeof ApiTameionDecisionRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/v1/agent': typeof ApiV1AgentRoute
+  '/api/v1/commerce/catalog': typeof ApiV1CommerceCatalogRoute
   '/api/v1/finds': typeof ApiV1FindsRoute
   '/api/v1/pricing': typeof ApiV1PricingRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
@@ -661,6 +670,7 @@ export interface FileRouteTypes {
     | '/api/tameion/decision'
     | '/api/testnet-tester/$'
     | '/api/v1/agent'
+    | '/api/v1/commerce/catalog'
     | '/api/v1/finds'
     | '/api/v1/pricing'
     | '/api/x402/intelligence'
@@ -728,6 +738,7 @@ export interface FileRouteTypes {
     | '/api/tameion/decision'
     | '/api/testnet-tester/$'
     | '/api/v1/agent'
+    | '/api/v1/commerce/catalog'
     | '/api/v1/finds'
     | '/api/v1/pricing'
     | '/api/x402/intelligence'
@@ -795,6 +806,7 @@ export interface FileRouteTypes {
     | '/api/tameion/decision'
     | '/api/testnet-tester/$'
     | '/api/v1/agent'
+    | '/api/v1/commerce/catalog'
     | '/api/v1/finds'
     | '/api/v1/pricing'
     | '/api/x402/intelligence'
@@ -863,6 +875,7 @@ export interface RootRouteChildren {
   ApiTameionDecisionRoute: typeof ApiTameionDecisionRoute
   ApiTestnetTesterSplatRoute: typeof ApiTestnetTesterSplatRoute
   ApiV1AgentRoute: typeof ApiV1AgentRoute
+  ApiV1CommerceCatalogRoute: typeof ApiV1CommerceCatalogRoute
   ApiV1FindsRoute: typeof ApiV1FindsRoute
   ApiV1PricingRoute: typeof ApiV1PricingRoute
   ApiX402IntelligenceRoute: typeof ApiX402IntelligenceRoute
@@ -1214,6 +1227,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1AgentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/commerce/catalog': {
+      id: '/api/v1/commerce/catalog'
+      path: '/api/v1/commerce/catalog'
+      fullPath: '/api/v1/commerce/catalog'
+      preLoaderRoute: typeof ApiV1CommerceCatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/finds': {
       id: '/api/v1/finds'
       path: '/api/v1/finds'
@@ -1391,6 +1411,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTameionDecisionRoute: ApiTameionDecisionRoute,
   ApiTestnetTesterSplatRoute: ApiTestnetTesterSplatRoute,
   ApiV1AgentRoute: ApiV1AgentRoute,
+  ApiV1CommerceCatalogRoute: ApiV1CommerceCatalogRoute,
   ApiV1FindsRoute: ApiV1FindsRoute,
   ApiV1PricingRoute: ApiV1PricingRoute,
   ApiX402IntelligenceRoute: ApiX402IntelligenceRoute,
