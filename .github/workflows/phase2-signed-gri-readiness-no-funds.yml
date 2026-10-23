@@ -10,12 +10,16 @@ on:
       - '.github/workflows/phase2-signed-gri-readiness-no-funds.yml'
       - 'scripts/ops/phase2-gri-recovery-readiness.mjs'
       - 'scripts/tests/phase2-gri-recovery-readiness.test.mjs'
+      - 'scripts/ops/dispatch-gri-immutable-history-once.mjs'
+      - 'scripts/tests/dispatch-gri-immutable-history-once.test.mjs'
   push:
     branches: [main]
     paths:
       - '.github/workflows/phase2-signed-gri-readiness-no-funds.yml'
       - 'scripts/ops/phase2-gri-recovery-readiness.mjs'
       - 'scripts/tests/phase2-gri-recovery-readiness.test.mjs'
+      - 'scripts/ops/dispatch-gri-immutable-history-once.mjs'
+      - 'scripts/tests/dispatch-gri-immutable-history-once.test.mjs'
   workflow_run:
     workflows: ['GRI Pinned Historical Version Recovery']
     types: [completed]
@@ -40,6 +44,7 @@ jobs:
         run: |
           node --check scripts/ops/phase2-gri-recovery-readiness.mjs
           node --test scripts/tests/phase2-gri-recovery-readiness.test.mjs
+          node --test scripts/tests/dispatch-gri-immutable-history-once.test.mjs
 
   production-readiness:
     needs: source-contract
@@ -59,6 +64,11 @@ jobs:
     environment: production
     runs-on: ubuntu-24.04
     timeout-minutes: 8
+    # Only the protected signed readiness job may wake the existing
+    # governed archive workflow. No source/payment/issuer write scope.
+    permissions:
+      contents: read
+      actions: write
     env:
       EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -104,6 +114,11 @@ jobs:
           JS
       - name: Assess genuine pinned history, shared GET quota, and external signer/certificate admission
         run: node scripts/ops/phase2-gri-recovery-readiness.mjs
+      - name: One-shot wake existing immutable B2 recovery after verified quota headroom (push only, no cycle)
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ops/dispatch-gri-immutable-history-once.mjs
       - name: Preserve safe no-funds Phase 2 readiness receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

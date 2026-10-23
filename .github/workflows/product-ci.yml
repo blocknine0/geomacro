@@ -63,6 +63,7 @@ jobs:
         run: |
           node --test scripts/tests/owner-private-503-recovery-preflight.test.mjs
           node --test scripts/tests/phase2-gri-recovery-readiness.test.mjs
+          node --test scripts/tests/dispatch-gri-immutable-history-once.test.mjs
 
       - name: Private handoff D1 production acceptance contract (offline, no funds)
         run: node --test scripts/tests/verify-private-handoff-production.test.mjs
