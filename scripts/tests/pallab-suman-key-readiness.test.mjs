@@ -15,7 +15,9 @@ const distinct=()=>{
    GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256:owner.pin,
    GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM:reviewer.pem,
    GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256:reviewer.pin,
+   GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM:facts.pem,
    GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256:facts.pin,
+   GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM:rights.pem,
    GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256:rights.pin,
    RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64:gro.spki};
 };
@@ -121,11 +123,14 @@ test("role-only diagnostics pinpoint duplicate human and machine signing identit
  assert.equal(ownerPair.configured_public_key_shapes_passed,false);
  const roleCases=[
   ["PALLAB_OWNER__FACTS_AUTHORITY",{
-     GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256:common.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256}],
+     GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256:common.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256,
+     GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM:common.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM}],
   ["SUMAN_REVIEWER__RIGHTS_AUTHORITY",{
-     GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256:common.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256}],
+     GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256:common.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256,
+     GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM:common.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM}],
   ["FACTS_AUTHORITY__RIGHTS_AUTHORITY",{
-     GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256:common.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256}],
+     GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256:common.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256,
+     GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM:common.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM}],
  ];
  for(const [expected,override] of roleCases){
   const result=pallabSumanAuthorityReadiness({...common,...override});
@@ -143,4 +148,30 @@ test("role-only diagnostics pinpoint duplicate human and machine signing identit
  assert.deepEqual(ok.duplicate_authority_role_pairs,[]);
  assert.deepEqual(ok.missing_or_invalid_authority_roles,[]);
  assert.equal(ok.configured_public_key_shapes_passed,true);
+});
+
+test("Facts or Rights SHA alone never passes actual GRI cloud public PEM admission",()=>{
+ const x=distinct();
+ const a=pallabSumanAuthorityReadiness({...x,
+  GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM:""});
+ assert.equal(a.configured_public_key_shapes_passed,false);
+ assert.equal(a.facts_public_pin_diagnostic,"PUBLIC_PEM_SECRET_MISSING");
+ assert.equal(a.rights_public_pin_diagnostic,"VERIFIED");
+ assert.deepEqual(a.missing_or_invalid_authority_roles,["FACTS_AUTHORITY"]);
+ const b=pallabSumanAuthorityReadiness({...x,
+  GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM:x.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM});
+ assert.equal(b.configured_public_key_shapes_passed,false);
+ assert.equal(b.rights_public_pin_diagnostic,"PUBLIC_PEM_SHA256_PIN_MISMATCH");
+ assert.deepEqual(b.missing_or_invalid_authority_roles,["RIGHTS_AUTHORITY"]);
+ assert.equal(b.facts_rights_public_pins_present,false);
+ for(const row of [a,b])
+  assert.doesNotMatch(JSON.stringify(row),/[a-f0-9]{64}|-----BEGIN/u);
+});
+test("missing Facts pin must not shift verified Rights authority into Facts position",()=>{
+ const x=distinct();
+ const a=pallabSumanAuthorityReadiness({...x,
+  GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256:""});
+ assert.equal(a.facts_public_pin_diagnostic,"SHA256_SECRET_MISSING");
+ assert.equal(a.rights_public_pin_diagnostic,"VERIFIED");
+ assert.deepEqual(a.missing_or_invalid_authority_roles,["FACTS_AUTHORITY"]);
 });

@@ -39,10 +39,15 @@ export function pallabSumanAuthorityReadiness(env=process.env){
  const reviewerDiagnostic=diagnosePin(env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM,
    env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256);
  const owner=ownerDiagnostic.pin,reviewer=reviewerDiagnostic.pin;
- const other=[
-  env.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256,
-  env.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256
- ].filter(Boolean);
+ // A SHA-looking GitHub secret is not proof that the associated actual
+ // Ed25519 PEM is configured, parseable, and bound to that exact SPKI pin.
+ // Preserve role positions even when one secret is absent: filtering missing
+ // Facts before indexing could incorrectly label a Rights key as Facts.
+ const factsDiagnostic=diagnosePin(env.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM,
+   env.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256);
+ const rightsDiagnostic=diagnosePin(env.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM,
+   env.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256);
+ const facts=factsDiagnostic.pin,rights=rightsDiagnostic.pin;
  const gro=(()=>{try{
   const raw=env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64;
   if(typeof raw!=="string"||!/^[A-Za-z0-9+/]+={0,2}$/.test(raw))return null;
@@ -57,8 +62,8 @@ export function pallabSumanAuthorityReadiness(env=process.env){
  // identity from an existing Facts/Rights/GRO clash after owners add keys.
  const rolePins=[
   ["PALLAB_OWNER",owner],["SUMAN_REVIEWER",reviewer],
-  ["GRO_SIGNER",gro],["FACTS_AUTHORITY",other[0]],
-  ["RIGHTS_AUTHORITY",other[1]],
+  ["GRO_SIGNER",gro],["FACTS_AUTHORITY",facts],
+  ["RIGHTS_AUTHORITY",rights],
  ];
  const conflictingRolePairs=[];
  for(let i=0;i<rolePins.length;i++){
@@ -91,8 +96,9 @@ export function pallabSumanAuthorityReadiness(env=process.env){
   suman_reviewer_public_pin_verified:Boolean(reviewer),
   suman_reviewer_public_pin_diagnostic:reviewerDiagnostic.reason,
   gro_public_identity_pin_verified:Boolean(gro),
-  facts_rights_public_pins_present:other.length===2&&
-    other.every(x=>SHA.test(x)),
+  facts_rights_public_pins_present:Boolean(facts&&rights),
+  facts_public_pin_diagnostic:factsDiagnostic.reason,
+  rights_public_pin_diagnostic:rightsDiagnostic.reason,
   all_five_authority_keys_distinct:distinct,
   // Whitelisted role labels only. Never serialize signature, PEM or digest.
   duplicate_authority_role_pairs:conflictingRolePairs,
