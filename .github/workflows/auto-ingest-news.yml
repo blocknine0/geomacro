@@ -70,7 +70,7 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           const targets={
-            d1_website:'https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news',
+            d1_website:'https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate',
             free_structured:'https://geomacro.live/api/v1/intelligence/query?view=structural-72h',
             recent_primary:'https://api.github.com/repos/blocknine0/geomacro/actions/workflows/website-derived-news-continuity.yml/runs?branch=main&per_page=4'
           };

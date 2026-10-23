@@ -231,7 +231,7 @@ jobs:
           path: artifacts/website-latency/served-samples.json
           retention-days: 7
       - name: Independently observe true original-to-website HTML visibility
-        # The 15-minute release delay and 5-minute Actions clock are not a
+        # The zero added release delay and 5-minute Actions clock are not a
         # guaranteed SLA. This public readback checks genuine original clocks
         # and the actual served SSR headings after each ingest without funds.
         # An unavailable website must not stop intake; its negative evidence

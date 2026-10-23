@@ -228,7 +228,7 @@ jobs:
           trap 'rm -f "$body"' EXIT
           code="$(curl -sS --max-time 12 --proto '=https' \
             -o "$body" -w '%{http_code}' \
-            https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news || true)"
+            https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate || true)"
           test "$code" = "200" || {
             echo "::error::DERIVED_NEWS_BACKSTOP_D1_READBACK_UNAVAILABLE"
             exit 3
@@ -237,7 +237,7 @@ jobs:
           const fs=require("node:fs");
           const body=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
           if(body.ok!==true || body.schema!=="geomacro.website-derived-news-feed.v1" ||
-             body.original_release_delay_minutes!==15 ||
+             (body.original_release_delay_minutes!==0&&body.original_release_delay_minutes!==15) ||
              body.delivery_scope!=="free_website_only" ||
              !Array.isArray(body.signals) || body.signals.length>250 ||
              body.signals.some(s=>s.severity!==null ||
@@ -255,7 +255,7 @@ jobs:
           console.log(JSON.stringify({
             schema:"geomacro.website-derived-news-backstop-readback.v1",
             verified:true,derived_rows:body.signals.length,domains:counts,
-            original_release_delay_minutes:15,source_content_logged:false,
+            original_release_delay_minutes:body.original_release_delay_minutes,source_content_logged:false,
             supabase_dependency:false,payments_performed:0,
           }));
           NODE
