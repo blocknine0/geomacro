@@ -53,7 +53,7 @@ describe("independent production website failure diagnostics", () => {
     const ask = read("src/routes/ask-geomacro.tsx");
     for (const phrase of ["Understand global risk.", "Know what matters."]) {
       expect(homepage).toContain(phrase);
-      expect(workflow).toContain("home.includes");
+      expect(workflow).toContain("if(!html.includes(marker))");
       expect(workflow).toContain("'" + phrase + "'");
     }
     expect(finds).toContain("Geomacro Finds");
