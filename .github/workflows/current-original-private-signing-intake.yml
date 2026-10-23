@@ -31,6 +31,8 @@ on:
       - "scripts/lib/private-original-signing-review-intake.mjs"
       - "scripts/lib/private-original-signing-review-intake.test.mjs"
       - "scripts/lib/private-original-intake-funnel.mjs"
+      - "scripts/lib/original-review-opportunity-router.mjs"
+      - "scripts/lib/original-review-opportunity-router.test.mjs"
       - "scripts/lib/private-original-review-b2-handoff.mjs"
       - "scripts/lib/private-original-review-b2-handoff.test.mjs"
       - "scripts/ops/export-private-original-review-lead.mjs"
@@ -55,6 +57,8 @@ on:
       - "scripts/lib/private-original-signing-review-intake.mjs"
       - "scripts/lib/private-original-signing-review-intake.test.mjs"
       - "scripts/lib/private-original-intake-funnel.mjs"
+      - "scripts/lib/original-review-opportunity-router.mjs"
+      - "scripts/lib/original-review-opportunity-router.test.mjs"
       - "scripts/lib/private-original-review-b2-handoff.mjs"
       - "scripts/lib/private-original-review-b2-handoff.test.mjs"
       - "scripts/ops/export-private-original-review-lead.mjs"
@@ -95,6 +99,7 @@ jobs:
           node --check scripts/lib/geomacro-original-page-readback.mjs
           node --test scripts/lib/private-original-signing-review-intake.test.mjs
           node --test scripts/lib/private-original-intake-funnel.test.mjs
+          node --test scripts/lib/original-review-opportunity-router.test.mjs
           node --test scripts/lib/private-original-review-b2-handoff.test.mjs
           node --test scripts/ops/export-private-original-review-lead.test.mjs
           node --test scripts/lib/govuk-original-content-clock.test.mjs
