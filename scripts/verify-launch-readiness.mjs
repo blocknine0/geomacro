@@ -168,7 +168,13 @@ const output =
   "artifacts/commercial-launch-readiness.json";
 const evidence = {
   schema_version: "geomacro.commercial-launch-readiness.v1",
-  status: "READY_FOR_OWNER_ACTIVATION",
+  status: "STATIC_PRELAUNCH_CODE_CHECKS_PASSED_LIVE_UNVERIFIED",
+  proof_scope: "repository-only; NOT production-data, x402 payable or settlement acceptance",
+  production_site_sha_verified: false,
+  current_signed_hot_3_of_3_verified: false,
+  commercial_data_eligibility_live_verified: false,
+  x402_live_buyer_availability_verified: false,
+  owner_real_money_activation_allowed_by_this_report: false,
   generated_at: new Date().toISOString(),
   candidate_sha: sha,
   production_activation_performed: false,
