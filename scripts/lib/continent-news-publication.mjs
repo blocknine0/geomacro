@@ -11,6 +11,20 @@ export async function createContinentNewsPublisher({root,readJournal,fetchImpl=f
  now=()=>Date.now(),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms))}){
  if(typeof root!=='string'||root.trim().length<32)throw Error('CONTINENT_NEWS_AUTH_MISSING');
  const authorization='Bearer '+createHmac('sha256',root.trim()).update('geomacro-control-plane-v1').digest('hex');
+ async function writeBatch(batch){
+ const response=await fetchImpl(URL,{method:'PUT',redirect:'error',cache:'no-store',
+    headers:{authorization,'Content-Type':'application/json'},
+    body:JSON.stringify({schema:'geomacro.website-derived-news-batch.v1',signals:batch}),
+    signal:AbortSignal.timeout(12000)});
+   if(!response.ok||response.redirected)throw Error('CONTINENT_NEWS_D1_WRITE_FAILED');
+   const raw=await response.text();if(raw.length>10000)throw Error('CONTINENT_NEWS_ACK_OVERSIZE');
+   const ack=JSON.parse(raw);
+   if(ack.ok!==true||ack.schema!=='geomacro.website-derived-news-write-receipt.v1'||ack.accepted!==batch.length)
+    throw Error('CONTINENT_NEWS_ACK_INVALID');
+ }
+ // An empty batch is the existing authenticated TTL sweep: verify real write
+ // permission even when publishers are quiet, without inventing a story.
+ await writeBatch([]);
  const baseline=await readJournal(fetchImpl,now());
  const known=new Map(baseline.map(s=>[s.id,s])),pending=new Map();
  let writes=0,duplicates=0,verified=0;
@@ -20,15 +34,7 @@ export async function createContinentNewsPublisher({root,readJournal,fetchImpl=f
   for(const batch of prepareDerivedNewsBatches(ready).chunks){
    if(!batch.length)continue;
    if(checkedDerivedNews(doc(batch),now()).length!==batch.length)throw Error('CONTINENT_NEWS_PUBLIC_GATE_FAILED');
-   const response=await fetchImpl(URL,{method:'PUT',redirect:'error',cache:'no-store',
-    headers:{authorization,'Content-Type':'application/json'},
-    body:JSON.stringify({schema:'geomacro.website-derived-news-batch.v1',signals:batch}),
-    signal:AbortSignal.timeout(12000)});
-   if(!response.ok||response.redirected)throw Error('CONTINENT_NEWS_D1_WRITE_FAILED');
-   const raw=await response.text();if(raw.length>10000)throw Error('CONTINENT_NEWS_ACK_OVERSIZE');
-   const ack=JSON.parse(raw);
-   if(ack.ok!==true||ack.schema!=='geomacro.website-derived-news-write-receipt.v1'||ack.accepted!==batch.length)
-    throw Error('CONTINENT_NEWS_ACK_INVALID');
+   await writeBatch(batch);
    const readback=await readJournal(fetchImpl,now());
    for(const signal of batch){
     if(!readback.some(s=>s.id===signal.id&&sameClock(s,signal)&&
@@ -73,7 +79,7 @@ export async function createContinentNewsPublisher({root,readJournal,fetchImpl=f
    }
    return {schema:'geomacro.continent-news-publication.v1',new_rows_written:writes,
     new_rows_readback_verified:verified,new_rows_by_category:{...byCategory},duplicate_rows_excluded:duplicates,pending_rows:pending.size,
-    public_delay_minutes:15,count_basis:"ABSENT_FROM_THIS_RUN_INITIAL_JOURNAL",
+    authenticated_write_verified:true,public_delay_minutes:15,count_basis:"ABSENT_FROM_THIS_RUN_INITIAL_JOURNAL",
     exact_first_writer_attribution_verified:false,signed_commercial_products_claimed:false,payments:0,b2_requests:0,supabase_requests:0};
   }),
  };

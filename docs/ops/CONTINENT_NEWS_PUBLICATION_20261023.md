@@ -24,7 +24,9 @@ same job waits only until their true original clock +15 minutes before publishin
 so they do not need to wait for another two-hour country scan. All private spools
 are removed; only safe counts and source-proof diagnostics enter artifacts.
 The D1 PUT acknowledgement AND independent complete journal GET must match before
-publication is counted as verified. Missing auth/readback makes the job visibly
+publication is counted as verified. An authenticated empty-batch TTL sweep
+verifies real D1 write permission even when no new story is available; it never
+creates a news item. Missing auth/readback makes the job visibly
 fail while country probes continue. No raw titles, URLs, bodies or publisher IDs
 are put in public D1 or the artifact.
 

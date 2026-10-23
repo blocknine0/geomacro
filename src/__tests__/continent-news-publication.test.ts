@@ -15,7 +15,7 @@ function harness(options:{ack?:boolean;readback?:boolean}={}){
  let clock=NOW;const journal:StatelessIntelligenceSignal[]=[],writes:{at:number;signals:StatelessIntelligenceSignal[]}[]=[];
  const readJournal=vi.fn(async()=>options.readback===false?[]:[...journal]);
  const fetchImpl=vi.fn(async(_url:string,init:RequestInit)=>{
-  const signals=JSON.parse(String(init.body)).signals;writes.push({at:clock,signals});
+  const signals=JSON.parse(String(init.body)).signals;if(signals.length)writes.push({at:clock,signals});
   journal.push(...signals);
   return Response.json({ok:true,schema:'geomacro.website-derived-news-write-receipt.v1',accepted:options.ack===false?999:signals.length});
  });
@@ -26,7 +26,7 @@ describe('same-run continent news publication',()=>{
  it('streams three categories to D1 and independently verifies the exact derived cards',async()=>{
   const h=harness(),publisher=await h.create();
   for(const category of ['geopolitics','macro','rare_earth'] as const)await publisher.accept([signal(category)]);
-  const result=await publisher.finish();expect(result.new_rows_readback_verified).toBe(3);
+  const result=await publisher.finish();expect(result.new_rows_readback_verified).toBe(3);expect(result.authenticated_write_verified).toBe(true);
   expect(result.new_rows_by_category).toEqual({geopolitics:1,macro:1,rare_earth:1});
   expect(h.writes).toHaveLength(3);expect(h.readJournal).toHaveBeenCalledTimes(4);
  });
@@ -52,9 +52,9 @@ describe('same-run continent news publication',()=>{
   }
  });
  it('does not report successful publication on missing acknowledgement or readback',async()=>{
-  for(const options of [{ack:false},{readback:false}]){
-   const h=harness(options),publisher=await h.create();await expect(publisher.accept([signal()])).rejects.toThrow();
-  }
+  await expect(harness({ack:false}).create()).rejects.toThrow(/ACK_INVALID/);
+  const h=harness({readback:false}),publisher=await h.create();
+  await expect(publisher.accept([signal()])).rejects.toThrow(/READBACK_MISSING/);
  });
  it('uses existing protected authorization and leaves source workers without the publisher secret',async()=>{
   await expect(createContinentNewsPublisher({root:'',readJournal:async()=>[]})).rejects.toThrow(/AUTH_MISSING/);
