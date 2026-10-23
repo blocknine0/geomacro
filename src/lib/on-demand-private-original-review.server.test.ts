@@ -126,13 +126,18 @@ describe("private originals survive presentation headline dedup",()=>{
   });
 
   it("rejects conflicting publisher first-publication clocks, modified-only dates and day-only metadata",async()=>{
-    for(const html of [
-      '<html><meta name="govuk:first-published-at" content="2026-10-11T07:00:00Z">'+
-        '<meta property="article:published_time" content="2026-10-11T08:30:00Z"></html>',
-      '<html><meta name="govuk:public-updated-at" content="2026-10-11T07:00:00Z"></html>',
-      '<html><meta property="article:published_time" content="2026-10-11"></html>',
-      '<html><meta name="govuk:first-published-at" content="2026-10-11T07:00:00"></html>',
-    ]){
+    // A missing/day-only HTML date now justifies ONE additional
+    // same-issuer Content API check (within the existing 4-page budget).
+    // The test's mock deliberately returns fake HTML instead of a genuine
+    // first-party Content API JSON, so it must remain UNVERIFIED.
+    // Conflicting precise or malformed clocks must not trigger rescue.
+    for(const [html,expectedCalls] of [
+      ['<html><meta name="govuk:first-published-at" content="2026-10-11T07:00:00Z">'+
+        '<meta property="article:published_time" content="2026-10-11T08:30:00Z"></html>',1],
+      ['<html><meta name="govuk:public-updated-at" content="2026-10-11T07:00:00Z"></html>',2],
+      ['<html><meta property="article:published_time" content="2026-10-11"></html>',2],
+      ['<html><meta name="govuk:first-published-at" content="2026-10-11T07:00:00"></html>',1],
+    ] as const){
       const fetchImpl=vi.fn(async()=>new Response(html,{
         headers:{"content-type":"text/html"}
       })) as unknown as typeof fetch;
@@ -140,7 +145,7 @@ describe("private originals survive presentation headline dedup",()=>{
       expect(proof.attempted).toBe(1);
       expect(proof.verified).toBe(0);
       expect(proof.verified_candidates).toHaveLength(0);
-      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(fetchImpl).toHaveBeenCalledTimes(expectedCalls);
     }
   });
 
