@@ -10,7 +10,7 @@ import {createHash} from "node:crypto";
 import {existsSync,lstatSync,mkdirSync,realpathSync,writeFileSync} from "node:fs";
 import {isAbsolute,relative,resolve,sep} from "node:path";
 import {COUNTRIES_195,country195ByIso3} from "../../src/lib/canonical-country-registry-195";
-import {discoverDirectPublisherForPrivateQualification,
+import {discoverOnDemandForPrivateQualification,
  verifyOnDemandOriginalArticlePages} from "../../src/lib/on-demand-global-discovery.server";
 import {verifyGeomacroUnclaimedOriginalPage} from "../lib/geomacro-original-page-readback.mjs";
 import {preparePrivateOriginalSigningReview} from "../lib/private-original-signing-review-intake.mjs";
@@ -97,7 +97,12 @@ export async function main(){
    throw Error("PRIVATE_ORIGINAL_SOURCE_REQUEST_INVALID");
   return fetch(input,init);
  };
- const discovery=await discoverDirectPublisherForPrivateQualification({
+ // Reuse the canonical worldwide index-plus-original search. GDELT is an
+ // untrusted first-party-URL discovery hint only. Downstream verifier still
+ // requires approved issuer host/path, native article page date and exact
+ // original HTML; no seendate is accepted as publisher publication time.
+ // The EXACT SAME existing 12 GET provider cap is preserved.
+ const discovery=await discoverOnDemandForPrivateQualification({
   country_iso3,categories:["geopolitics","macro","rare_earth"],
   max_age_seconds:ORIGINAL_VERIFICATION_WINDOW_SECONDS,
  },{now,fetchImpl:boundedFetch("discovery")});
