@@ -41,7 +41,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '22'
-      - run: node --test scripts/ops/web-candidate.test.mjs
+      - run: node --test scripts/ops/web-candidate.test.mjs scripts/ops/web-candidate-three-category-health-gate.test.mjs
 
   deploy-candidate:
     needs: fence-tests
