@@ -3,7 +3,7 @@ import {createPrivateKey,createPublicKey,sign} from 'node:crypto';
 // @ts-expect-error Existing bounded JavaScript auditor has no declaration file.
 import {auditEveryDerivedNewsOriginal} from '../lib/all-news-original-evidence-audit.mjs';
 // @ts-expect-error Existing byte/clock verifier has no declaration file.
-import {verifyGeomacroUnclaimedOriginalPage} from '../lib/geomacro-original-page-readback.mjs';
+import {verifyDerivedOriginalReferencePage} from '../lib/geomacro-original-page-readback.mjs';
 import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client';
 import {automatedInputId} from '../../src/lib/automated-intelligence-input';
 import {loadRiskObjectVerificationKeysFromEnv} from '../../src/lib/risk-object-signing.server';
@@ -25,7 +25,7 @@ export function lowReviewerMaterial(env=process.env){
  return {key,trust};
 }
 export async function reviewDerivedInputs({signals,originalRefs,previousReviews=new Map(),env=process.env,now=new Date(),
- verifyOriginal=verifyGeomacroUnclaimedOriginalPage,persist=async(_items:SignedLowSourceReview[])=>{},
+ verifyOriginal=verifyDerivedOriginalReferencePage,persist=async(_items:SignedLowSourceReview[])=>{},
 }:any){
  const {key,trust}=lowReviewerMaterial(env);await assertLowReviewTrust(trust);
  const dedup=new Map<string,any>();
@@ -34,7 +34,8 @@ export async function reviewDerivedInputs({signals,originalRefs,previousReviews=
   if(!prior||!originalRefs.has(prior.id)&&originalRefs.has(signal.id))dedup.set(id,signal);
  }
  signals=[...dedup.values()];
- const pending=[];let reusedVerified=0,cooldown=0;
+ const pending=[],trustedPrevious=new Map<string,SignedLowSourceReview>(),priorityById=new Map();
+ let reusedVerified=0,cooldown=0;
  for(const signal of signals){
   const id=await automatedInputId(signal),prior=previousReviews.get(id);
   let valid=false;
@@ -43,16 +44,20 @@ export async function reviewDerivedInputs({signals,originalRefs,previousReviews=
    valid=prior.review.input_id===id&&prior.review.category===signal.category&&
     prior.review.source_published_at===signal.published_at;
   }catch{/* Untrusted or expired prior state cannot suppress checking. */}
+  if(valid)trustedPrevious.set(id,prior);
   if(valid&&prior.review.verdict==='SOURCE_EVIDENCE_VERIFIED'&&
    now.getTime()-Date.parse(signal.published_at)<=ORIGINAL_VERIFICATION_WINDOW_MS){reusedVerified++;continue;}
   if(valid&&prior.review.verdict==='SOURCE_EVIDENCE_REJECTED'&&
    now.getTime()-Date.parse(prior.review.reviewed_at)<30*60_000){cooldown++;continue;}
   pending.push(signal);
+  // Signed first-queued time survives quota deferrals. Newly arriving
+  // headlines cannot indefinitely overtake an older unattempted original.
+  priorityById.set(signal.id,valid?Date.parse(prior.review.reviewed_at):now.getTime());
  }
  signals=pending;
  const evidence=new Map<string,string>();
  const proofKey=(o:any)=>JSON.stringify([o.category,o.original_article_url,o.original_published_at]);
- const audit=await auditEveryDerivedNewsOriginal({signals,originalRefs,now,maxReadbacks:6,maxPerCategory:4,
+ const audit=await auditEveryDerivedNewsOriginal({signals,originalRefs,now,maxReadbacks:6,maxPerCategory:4,priorityById,
   verify:async(args:any)=>{
    const proof=await verifyOriginal(args);
    if(proof?.accepted===true&&/^[a-f0-9]{64}$/.test(proof.original_article_sha256??''))
@@ -66,6 +71,13 @@ export async function reviewDerivedInputs({signals,originalRefs,previousReviews=
   const verified=row.original_page_evidence_status==='ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME_VERIFIED';
   const rejected=row.original_page_evidence_status==='ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED';
   const id=await automatedInputId(signal);
+  const previous=trustedPrevious.get(id);
+  // Do not reset the age of a still-unattempted queue item on every poll.
+  // Its signed pending result remains the exact same non-authorizing bytes.
+  if(!verified&&!rejected&&previous?.review.verdict==='EVIDENCE_PENDING'&&
+     previous.review.reason===row.original_page_evidence_status){
+   unique.set(id,previous);continue;
+  }
   const review:LowSourceReview={schema:'geomacro.internal-low-source-review.v1',
    authority:'GEOMACRO_INTERNAL_AUTOMATED_LOW_V1',scope:'ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME',
    input_id:id,category:signal.category,source_published_at:signal.published_at,

@@ -2,6 +2,7 @@ import {describe,it,expect,vi,afterEach} from 'vitest';
 import {generateKeyPairSync,createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {reviewDerivedInputs} from '../../scripts/ops/review-derived-inputs-low-authority';
+import {automatedInputId} from '../lib/automated-intelligence-input';
 import {verifyLowSourceReview} from '../lib/low-authority-source-review';
 import {handleLowSourceReviews,lowReviewToken} from '../../workers/control-plane/src/low-source-reviews';
 // @ts-expect-error The existing JavaScript Worker entry has no declaration file.
@@ -34,6 +35,46 @@ async function realReview(){
  return {result,items,fetcher,html};
 }
 describe('Geomacro internal LOW automated source review',()=>{
+ it('drains every retained item despite a continuing stream of newer same-host news, without resetting pending age',async()=>{
+  const rows=['geopolitics','macro','rare_earth'].flatMap((category,c)=>Array.from({length:3},(_,i)=>({
+   ...signal(category,(c*16+i+1).toString(16).padStart(8,'0')),
+   title:'Geomacro finds distinct offline policy development '+c+' '+i,
+   what_changed:'Distinct offline policy test action '+c+' '+i,
+  })));
+  const references=new Map(),previous=new Map(),attempted=new Set<string>();
+  const source:any={geopolitics:'uk_mod',macro:'uk_treasury',rare_earth:'uk_dbt'};
+  const ref=(s:any)=>({...reference,category:s.category,sourceId:source[s.category],
+   articleUrl:'https://www.gov.uk/government/news/offline-distinct-policy-'+s.id.replaceAll('_','-')});
+  for(const r of rows)references.set(r.id,ref(r));
+  const verifyOriginal=vi.fn(async({reference:r}:any)=>{
+   attempted.add(r.articleUrl);
+   return {schema:'geomacro.private-unclaimed-original-pre-review.v1',accepted:true,
+    status:'ORIGINAL_BYTES_AND_CLOCK_VERIFIED_REVIEW_PENDING',
+    original_article_sha256:'c'.repeat(64),original_native_published_at:reference.publishedAt,
+    source_article_rights_verified:false,facts_signature_verified:false,rights_signature_verified:false,
+    signed_gro_created:false,payment_authorized:false};
+  });
+  const fresh:any[]=[];let firstPending:any;
+  for(let n=0;n<13;n++){
+   const item={...signal('geopolitics',(0x90000000+n).toString(16)),
+    title:'Geomacro finds new offline policy '+n,what_changed:'New offline event description '+n};
+   fresh.push(item);references.set(item.id,ref(item));
+   const result=await reviewDerivedInputs({signals:[...rows,...fresh],originalRefs:references,
+    previousReviews:previous,env,now:new Date(now.getTime()+n*5*60000),verifyOriginal,
+    persist:async(items:any[])=>{for(const item of items)previous.set(item.review.input_id,item)}});
+   expect(result.audit.exact_page_byte_rereads_attempted).toBeLessThanOrEqual(1);
+   const pending=previous.get(await automatedInputId(rows[8]));
+   if(n===0)firstPending=pending;
+   if(n===1&&pending.review.verdict==='EVIDENCE_PENDING')expect(pending.signature).toBe(firstPending.signature);
+  }
+  for(const r of rows){
+   expect(attempted.has(references.get(r.id).articleUrl)).toBe(true);
+   const proof=previous.get(await automatedInputId(r));
+   await verifyLowSourceReview(proof,trust,now.getTime()+12*5*60000);
+   expect(proof.review.verdict).toBe('SOURCE_EVIDENCE_VERIFIED');
+   expect(proof.review.commercial_authorization).toBe(false);
+  }
+ });
  it('actually checks HTML bytes/native time and signs only its narrow evidence scope',async()=>{
   const {result,items,fetcher,html}=await realReview();
   expect(fetcher).toHaveBeenCalledOnce();expect(result.source_verified_items).toBe(1);

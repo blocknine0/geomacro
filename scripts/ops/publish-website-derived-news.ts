@@ -173,7 +173,7 @@ try {
   const signals=reports.flatMap(r=>r.signals);
   const reconciled=new Map<string,StatelessSourceCandidate>();
   for(const category of categories){
-    const sourceRefs=privateOriginals.filter(x=>x.category===category).slice(0,1000);
+    const sourceRefs=privateOriginals.filter(x=>x.category===category);
     const cards=signals.filter(x=>x.category===category);
     for(const [id,ref] of reconcilePrivateDerivedSourceRefs(
       sourceRefs,cards,now.getTime()))reconciled.set(id,ref);

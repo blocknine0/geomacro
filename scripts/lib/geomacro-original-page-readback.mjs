@@ -7,6 +7,7 @@ import {
 import {pinnedGovUkContentApiUrl,verifiedGovUkContentFirstPublishedAt} from "./govuk-original-content-clock.mjs";
 import {registeredOriginalPublisherOrganization} from
   "./independent-same-event-qualification.mjs";
+import {pinnedDerivedOriginalReference} from "./derived-original-reference-pins.mjs";
 
 // #2044: private, read-only source-authenticity continuation. This does NOT
 // derive claims, source rights, GRO status or independent reviewer approval.
@@ -289,4 +290,27 @@ export async function verifyGeomacroUnclaimedOriginalPage({
     raw_upstream_exposed:false,b2_requests:0,d1_writes:0,
     supabase_requests:0,payments:0,
   });
+}
+
+// All existing newsroom source lanes may obtain a narrowly scoped LOW proof.
+// This separate entry point never expands legacy commercial/GRI issuer pins.
+export async function verifyDerivedOriginalReferencePage({reference,now=new Date(),fetchImpl=fetch}={}){
+ const uri=pinnedDerivedOriginalReference(reference);
+ const at=Date.parse(reference?.publishedAt??"");
+ if(!uri||!(now instanceof Date)||!Number.isFinite(now.getTime())||
+    typeof fetchImpl!=="function"||!TIME.test(reference?.publishedAt??"")||
+    !Number.isFinite(at)||at>now.getTime()||now.getTime()-at>ORIGINAL_VERIFICATION_WINDOW_MS)fail();
+ const readback=await exactReadback({url:uri.href,expected_at:at,expected_sha:null},
+  now,fetchImpl,{unclaimedGovUkContentClock:true});
+ const accepted=readback.status==="PAGE_BYTES_AND_NATIVE_CLOCK_VERIFIED";
+ return Object.freeze({schema:"geomacro.private-unclaimed-original-pre-review.v1",
+  status:accepted?"ORIGINAL_BYTES_AND_CLOCK_VERIFIED_REVIEW_PENDING":readback.reason,
+  accepted,original_article_sha256:accepted?readback.article_sha256:null,
+  original_native_published_at:accepted?readback.original_published_at:null,
+  country_and_category_scope_review_pending:true,semantic_claim_reviewed:false,
+  source_article_rights_verified:false,facts_signature_verified:false,
+  rights_signature_verified:false,independent_corroboration_verified:false,
+  commercial_eligible:false,signed_gro_created:false,public_hot_published:false,
+  payment_authorized:false,raw_upstream_exposed:false,b2_requests:0,d1_writes:0,
+  supabase_requests:0,payments:0});
 }

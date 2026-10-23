@@ -1,6 +1,8 @@
 import {ORIGINAL_VERIFICATION_WINDOW_MS,ORIGINAL_VERIFICATION_WINDOW_HOURS,ORIGINAL_VERIFICATION_EXPIRED} from "../../src/lib/original-verification-policy.ts";
 import {registeredOriginalPublisherOrganization} from "./independent-same-event-qualification.mjs";
-import {verifyGeomacroUnclaimedOriginalPage} from "./geomacro-original-page-readback.mjs";
+import {verifyDerivedOriginalReferencePage} from "./geomacro-original-page-readback.mjs";
+import {pinnedDerivedOriginalReference} from "./derived-original-reference-pins.mjs";
+import {pinnedGovUkContentApiUrl} from "./govuk-original-content-clock.mjs";
 import {createBundledOriginalReadbackBudget,bundleRoundRobinNews} from "./bundled-original-source-quota.mjs";
 import {sourceRightsFollowupStatus} from "./commercial-rights-remediation.mjs";
 
@@ -34,14 +36,17 @@ const FIELDS=["id","category","published_at","date_precision","status"];
 const error=()=>{throw Error("ALL_NEWS_EVIDENCE_INPUT_INVALID")};
 
 export async function auditEveryDerivedNewsOriginal({
- signals,originalRefs,now=new Date(),verify=verifyGeomacroUnclaimedOriginalPage,
- maxReadbacks=6,maxPerCategory=4,
+ signals,originalRefs,now=new Date(),verify=verifyDerivedOriginalReferencePage,
+ maxReadbacks=6,maxPerCategory=4,priorityById,fetchImpl=fetch,
 }={}){
  if(!Array.isArray(signals)||signals.length>MAX_SIGNALS||
    !(originalRefs instanceof Map)||!(now instanceof Date)||
    !Number.isFinite(now.getTime())||typeof verify!=="function"||
    !Number.isSafeInteger(maxReadbacks)||maxReadbacks<0||maxReadbacks>6||
-   !Number.isSafeInteger(maxPerCategory)||maxPerCategory<0||maxPerCategory>6)
+   !Number.isSafeInteger(maxPerCategory)||maxPerCategory<0||maxPerCategory>6||
+   typeof fetchImpl!=="function"||priorityById!==undefined&&
+    (!(priorityById instanceof Map)||priorityById.size>MAX_SIGNALS||
+     [...priorityById].some(([id,p])=>!SAFE_ID.test(id)||!Number.isFinite(p)||p<0||p>now.getTime())))
   error();
  const seen=new Set(),rows=[],rereadByCategory=new Map(DOMAINS.map(x=>[x,0]));
  // Physical GETs are bundled, not partitioned into wasteful 2/2/2 lanes.
@@ -52,7 +57,7 @@ export async function auditEveryDerivedNewsOriginal({
    hardCeiling:maxReadbacks,reserved:maxReadbacks===6?2:0,perHostMax:1,
  });
  const proofCache=new Map();
- const ordered=bundleRoundRobinNews(signals);
+ const ordered=bundleRoundRobinNews(signals,{priorityById});
  let rereads=0;
  for(const signal of ordered){
   if(!signal||typeof signal!=="object"||Array.isArray(signal)||
@@ -82,19 +87,17 @@ export async function auditEveryDerivedNewsOriginal({
   }else{
    let organization=null,url=null;
    try{
-    url=new URL(reference.articleUrl);
-    if(url.protocol==="https:"&&!url.username&&!url.password&&!url.port&&
-       !url.search&&!url.hash)
+    url=pinnedDerivedOriginalReference(reference);
+    if(url)
      organization=registeredOriginalPublisherOrganization(url.hostname);
    }catch{/* untrusted reference is never fetched */}
-   if(!organization||
-      (url.hostname==="www.gov.uk"&&reference.sourceId!=="uk_fcdo")||
+   if(!url||
       reference.category!==signal.category||
       reference.publishedAt!==signal.published_at ||
       typeof reference.articleUrl!=="string"){
     row.original_page_evidence_status=STATUSES.NO_PIN;
    }else{
-    const key=JSON.stringify([signal.category,organization,url.href,signal.published_at]);
+    const key=JSON.stringify([signal.category,url.href,signal.published_at]);
     const cached=proofCache.get(key);
     // Exactly the SAME issuer/original/category/native publication time may
     // be reused for multiple derived views within this run. Never reuse a
@@ -109,8 +112,21 @@ export async function auditEveryDerivedNewsOriginal({
       rereads++;
       rereadByCategory.set(signal.category,rereadByCategory.get(signal.category)+1);
       let proof=null;
+      let firstRequest=true,supplementaryDeferred=false;
+      const api=pinnedGovUkContentApiUrl(reference.articleUrl);
+      const boundedFetch=async(input,init={})=>{
+       const target=String(input instanceof Request?input.url:input);
+       if((init.method??(input instanceof Request?input.method:"GET")).toUpperCase()!=="GET"||
+          (firstRequest?target!==reference.articleUrl:!api||target!==api))
+        throw Error("ORIGINAL_AUDIT_TRANSPORT_NOT_PINNED");
+       if(!firstRequest&&!bundle.admitSupplementary(url.hostname)){
+        supplementaryDeferred=true;throw Error("ORIGINAL_AUDIT_REQUEST_BUDGET_DEFERRED");
+       }
+       firstRequest=false;
+       return fetchImpl(input,{...init,method:"GET",redirect:"error"});
+      };
       try{
-       proof=await verify({original:{
+       proof=await verify({reference,fetchImpl:boundedFetch,original:{
         category:signal.category,
         originating_reporting_organization_id:organization,
         original_article_url:reference.articleUrl,
@@ -126,7 +142,8 @@ export async function auditEveryDerivedNewsOriginal({
         proof.facts_signature_verified===false&&
         proof.rights_signature_verified===false&&
         proof.signed_gro_created===false&&proof.payment_authorized===false;
-      row.original_page_evidence_status=verified?STATUSES.VERIFIED:STATUSES.REJECTED;
+      row.original_page_evidence_status=verified?STATUSES.VERIFIED:
+        supplementaryDeferred?STATUSES.QUOTA:STATUSES.REJECTED;
       row.exact_original_page_html_readback=verified;
       proofCache.set(key,{status:row.original_page_evidence_status,verified});
     }

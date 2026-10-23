@@ -137,7 +137,7 @@ if(process.env.GEOMACRO_LOW_SOURCE_REVIEW==='1'){
  try{
   const path=process.env.GEOMACRO_LOW_REVIEW_REFS_FILE??'',temp=process.env.RUNNER_TEMP??'';
   if(!temp||!path.startsWith(temp+'/')||path.includes('/../'))throw Error('PRIVATE_HANDOFF_PATH_INVALID');
-  const refs=reconcilePrivateDerivedSourceRefs(privateOriginals.slice(0,1000),reports.flatMap(r=>r.signals),runAt);
+  const refs=reconcilePrivateDerivedSourceRefs(privateOriginals,reports.flatMap(r=>r.signals),runAt);
   writeFileSync(path,JSON.stringify({refs:[...refs]}),{mode:0o600,flag:'wx'});
  }catch{failure=true;console.error('::error::FASTLANE_PRIVATE_HANDOFF_UNAVAILABLE');}
 }
