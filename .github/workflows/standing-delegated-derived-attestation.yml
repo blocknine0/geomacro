@@ -11,6 +11,7 @@ on:
       - 'scripts/ops/verify-all-news-signed-publications.mjs'
       - 'scripts/ops/publish-automated-intelligence-inputs.ts'
       - 'scripts/ops/verify-gri-news-wakeup.mjs'
+      - 'scripts/tests/gri-news-wakeup.test.mjs'
       - 'scripts/tests/automated-approval-continuation.test.mjs'
       - 'scripts/lib/signed-news-safe-diagnostic.mjs'
       - 'scripts/tests/signed-news-safe-diagnostic.test.mjs'
@@ -31,6 +32,11 @@ on:
     workflows:
       - "Auto Ingest News"
       - "Five-Minute Original News Fastlane"
+      # Both real D1 derived-news writers can publish new rows independent
+      # of the 5-minute fastlane. Complete retained-item signing/reconciliation
+      # on success, using exactly the existing protected issuer and hourly cron.
+      - "Website Derived News Continuity"
+      - "Website Derived News Cadence Backstop"
       - "Africa Country Source Sweep (Every 2 Hours)"
       - "Asia Country Source Sweep (Every 2 Hours)"
       - "Europe Country Source Sweep (Every 2 Hours)"
