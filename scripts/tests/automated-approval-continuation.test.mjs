@@ -38,3 +38,13 @@ test('automatic ingestion does not silently expand the signed human delegation',
  assert.match(policy,/p.numerical_gri_authorized!==false/u);
  assert.match(policy,/p.real_payments_authorized!==false/u);
 });
+
+test('signed derived audit must be owner-only before the one-time machine-policy approver reads it',()=>{
+ const workflow=readFileSync('.github/workflows/standing-delegated-derived-attestation.yml','utf8');
+ const step=workflow.slice(workflow.indexOf('- name: Independently read back all current derived input signatures'));
+ const before=step.split('- name: Sign only derived-readback audit aggregate')[0];
+ assert.match(before,/umask 077/u);
+ assert.match(before,/verify-all-news-signed-publications\.mjs > "\$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH"/u);
+ assert.ok(before.indexOf('umask 077')<before.indexOf('verify-all-news-signed-publications.mjs >'));
+ assert.match(step,/GEOMACRO_GRI_AUTO_DERIVED_APPROVAL_PATH/u);
+});
