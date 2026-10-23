@@ -56,6 +56,9 @@ jobs:
         with:
           bun-version: 1.4.2
 
+      - name: Verify committed integrity-pinned public npm tarball registry before network
+        run: node --test scripts/tests/bun-locked-registry-integrity.test.mjs
+
       - name: Install locked dependencies
         # No private mirror dependence: the inherited Lovable registry
         # began returning 429; use only public npm with frozen versions.
