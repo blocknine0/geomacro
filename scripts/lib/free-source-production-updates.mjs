@@ -20,6 +20,9 @@ export const PRODUCTION_FREE_SOURCE_D1_PIPELINE="free_source_production_updates_
 const BASELINE=new Set(['bls','world_bank_wdi','treasury_fiscaldata','usgs_mcs']);
 export const USGS_MCS_OFFICIAL_LANDING_URL =
   'https://www.usgs.gov/centers/national-minerals-information-center/mineral-commodity-summaries';
+// Official Fed same-origin monetary feed; never another independent issuer.
+export const FEDERAL_RESERVE_MONETARY_OFFICIAL_FALLBACK_URL =
+  'https://www.federalreserve.gov/feeds/press_monetary.xml';
 
 const EXTRA=[
  // Public GDELT dataset release pointer, 15-minute batching, no ZIP requests.
@@ -27,7 +30,7 @@ const EXTRA=[
  // original issuer workflow; it is NEVER an original article publication time.
  {id:'gdelt_events',reader_revision:1,category:'geopolitics',
   url:GDELT_PUBLIC_BATCH_MANIFEST,format:'manifest',maxBytes:4096},
- {id:'federal_reserve',category:'macro',url:'https://www.federalreserve.gov/feeds/press_all.xml',format:'rss',maxBytes:384000},
+ {id:'federal_reserve',reader_revision:2,category:'macro',url:'https://www.federalreserve.gov/feeds/press_all.xml',format:'rss',maxBytes:384000},
  {id:'noaa_nhc',category:'geopolitics',url:'https://www.nhc.noaa.gov/index-at.xml',format:'rss',maxBytes:256000},
  // Reuse the catalogued MARAD family, no new independent publisher or cron.
  {id:'marad_advisories',reader_revision:1,category:'geopolitics',url:MARAD_OFFICIAL_RSS_URL,
@@ -189,6 +192,34 @@ export async function probeProductionFreeUpdateSource(spec,fetchImpl=fetch,now=n
       fallbackObservation?.kind==='CONTEXT_ONLY_NO_UPDATE_RECORDS'){
      result=fallback;
      observed=fallbackObservation;
+     official_fallback_used=true;
+   }
+ }
+ // Production detected HTTP 404 on Federal Reserve's public press_all feed.
+ // Only retry one PINNED monetary RSS feed at the exact same first-party host
+ // when the primary has a transport failure, 404 or 5xx. Never use the
+ // alternate after 401/403/429 or malformed successful responses. This is
+ // one publisher's transport continuity, not an independent original, a
+ // native-page clock attestation, a financial event or commercial rights.
+ if(spec.id==='federal_reserve' && spec.category==='macro' &&
+    spec.url==='https://www.federalreserve.gov/feeds/press_all.xml' &&
+    spec.format==='rss' && (
+      result.state==='NETWORK_UNAVAILABLE' ||
+      (result.state==='HTTP_UNAVAILABLE' &&
+       (result.http_status===404 || (result.http_status>=500 && result.http_status<=599)))
+    )){
+   let alternativeObserved=null;
+   const fallback=await probeNoKeySource(
+     {...spec,url:FEDERAL_RESERVE_MONETARY_OFFICIAL_FALLBACK_URL},
+     fetchImpl,{
+      onPayload:body=>{
+       alternativeObserved=summarizeFreeSourceUpdates(spec,body,now);
+      }
+     });
+   if(fallback.state==='TRANSPORT_READABLE' &&
+      alternativeObserved?.kind==='PUBLISHER_FEED_CHANGE'){
+     result=fallback;
+     observed=alternativeObserved;
      official_fallback_used=true;
    }
  }
