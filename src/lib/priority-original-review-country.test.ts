@@ -84,8 +84,8 @@ it("rotates distinct recent tied original-country leads HOURLY without inventing
   signal("c-12345678","Malawi","macro","2026-10-23T09:35:00Z"),
  ];
  const a=selectPriorityOriginalReviewCountry(rows,"GBR",new Date("2026-10-23T09:55:00Z"));
- const b=selectPriorityOriginalReviewCountry(rows,"GBR",new Date("2026-10-23T11:00:00Z"));
- // After two hours, the former 09:35 source is expired: fallback,
+ const b=selectPriorityOriginalReviewCountry(rows,"GBR",new Date("2026-10-23T11:10:00Z"));
+ // After 95 minutes, the former 09:35 source is expired: fallback,
  // never fabricated as a current release or licence.
  expect(a.selection_mode).toBe("SHARED_D1_RECENT_COUNTRY_LEAD");
  expect(b.selection_mode).toBe("CANONICAL_195_ROTATION");
