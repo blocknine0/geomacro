@@ -15,6 +15,8 @@ import {prepareImmutableReviewedGriHandoff} from
   "../lib/gri-reviewed-immutable-b2-handoff.mjs";
 import {createB2Client} from "./b2-s3-client.mjs";
 import {verifyPallabSignedReadyGate} from "../lib/pallab-signed-ready-gri-gate.mjs";
+import {verifyStandingGriOwnerPublicationConsent,verifyStandingGriOwnerPublicationPolicy,authorizeStandingGriOwnerInput}
+ from "../lib/gri-standing-owner-publication-policy.mjs";
 
 const sha=bytes=>createHash("sha256").update(bytes).digest("hex");
 const HEX=/^[a-f0-9]{64}$/u;
@@ -36,8 +38,9 @@ function pinned(name,max,format){
   catch{fail("PRIVATE_SIGNED_JSON_INVALID");}
 }
 async function main(){
+  const standing=process.argv[2]==="--stage-approved-review-with-standing-owner-no-funds";
   if(process.argv.length!==3||
-     process.argv[2]!=="--stage-approved-review-no-funds")
+     process.argv[2]!=="--stage-approved-review-no-funds"&&!standing)
     fail("EXPLICIT_APPROVED_REVIEW_MODE_REQUIRED");
   for(const key of ["SUPABASE_URL","SUPABASE_DB_URL","APP_SUPABASE_URL",
       "SUPABASE_SERVICE_ROLE_KEY","APP_SUPABASE_SERVICE_ROLE_KEY",
@@ -56,11 +59,25 @@ async function main(){
   if(!pem)fail("APPROVED_INDEPENDENT_REVIEWER_PIN_REQUIRED");
   const [reviewedGri,countryCategoryCertificates,historicalB2Bytes]=
     sources.map(row=>pinned(...row));
-  // CRITICAL: private staging itself cannot PUT signed GRI to B2 unless
-  // Pallab has personally approved the exact Suman signed JSON and cert
-  // bytes. The canonical publisher independently repeats this check.
-  const ownerApproval=pinned("GEOMACRO_OWNER_SIGNED_APPROVAL",8192,"json");
-  const gate=verifyPallabSignedReadyGate({
+  // Private staging requires either the original exact-batch owner signature
+  // or explicitly selected verified standing owner consent. Neither replaces
+  // the actual independent review and canonical pre-upload checks below.
+  let ownerMode="HUMAN_EXACT_BATCH";
+  if(standing){
+   // Deliberately selected alternative owner authorization, not a fallback
+   // after a failed batch signature. Never use a policy to create GRI/certs.
+   if(process.env.GEOMACRO_OWNER_SIGNED_APPROVAL_PATH)
+    fail("EXPLICIT_BATCH_SIGNATURE_MUST_USE_HUMAN_MODE");
+   const verifyConsent=process.env.GITHUB_ACTIONS==="true"
+    ?verifyStandingGriOwnerPublicationPolicy:verifyStandingGriOwnerPublicationConsent;
+   verifyConsent({env:process.env});
+   const policy=authorizeStandingGriOwnerInput({env:process.env,
+    reviewedSha:process.env.GEOMACRO_REVIEWED_GRI_SHA256,
+    certificatesSha:process.env.GEOMACRO_COUNTRY_CERTIFICATES_SHA256});
+   ownerMode=policy.approval_mode;
+  }else{
+   const ownerApproval=pinned("GEOMACRO_OWNER_SIGNED_APPROVAL",8192,"json");
+   const gate=verifyPallabSignedReadyGate({
     ownerEnvelopeBase64:Buffer.from(JSON.stringify(ownerApproval),"utf8").toString("base64"),
     ownerPublicKeyPem:process.env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM,
     ownerPublicKeySpkiSha256:process.env.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256,
@@ -70,8 +87,9 @@ async function main(){
     reviewedSha256:process.env.GEOMACRO_REVIEWED_GRI_SHA256,
     certificatesSha256:process.env.GEOMACRO_COUNTRY_CERTIFICATES_SHA256
   });
-  if(gate.signed_owner_approval_verified!==true)
+   if(gate.signed_owner_approval_verified!==true)
     fail("REAL_OWNER_HUMAN_SIGNATURE_REQUIRED_BEFORE_B2");
+  }
   // No client initialization or quota reservation on invalid reviewer,
   // country certificates, independent event evidence or historical SHA.
   const input={reviewedGri,countryCategoryCertificates,
@@ -142,6 +160,8 @@ async function main(){
   }
   return Object.freeze({
     ...final.receipt,
+    owner_approval_mode:ownerMode,
+    owner_human_per_batch_review_attested:ownerMode==="HUMAN_EXACT_BATCH",
     immutable_b2_readback_verified:true,
     b2_writes:writes,
     publisher_dispatch_accepted:dispatched,

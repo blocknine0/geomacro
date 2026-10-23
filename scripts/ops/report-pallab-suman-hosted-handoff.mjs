@@ -33,6 +33,8 @@ export function buildPallabSumanHostedHandoff({env={},now=new Date()}={}){
   const ownerGate=bool(env.GEOMACRO_OWNER_GATE_APPROVED);
   const enrolled=env.GEOMACRO_GRI_AUTO_ENROLLED==="YES_CONSENT_ONLY" &&
     env.GEOMACRO_GRI_AUTO_REVOKED!=="YES";
+  const standing=enrolled&&bool(env.GEOMACRO_STANDING_OWNER_POLICY_VERIFIED);
+  const standingAdmission=standing&&env.GEOMACRO_OWNER_GATE_APPROVAL_MODE==="STANDING_OWNER_POLICY_CONDITIONAL";
   const status=gri.eligible&&ownerGate&&machine.eligible
     ?"APPROVED_POINTERS_PRESENT_PROTECTED_PUBLICATION_AND_READBACK_UNVERIFIED"
     :"HUMAN_AND_SOURCE_EVIDENCE_HANDOFF_PENDING";
@@ -40,12 +42,16 @@ export function buildPallabSumanHostedHandoff({env={},now=new Date()}={}){
     schema:"geomacro.pallab-suman-hosted-human-handoff.v1",
     mode:"HOSTED_READ_ONLY_NO_FUNDS",
     status,
-    delegation_scope:enrolled
+    delegation_scope:standing
+      ?"STANDING_OWNER_PUBLICATION_CONDITIONAL_ON_REAL_INDEPENDENT_REVIEW"
+      :enrolled
       ?"DERIVED_ONLY_POLICY_AUDIT_NOT_NUMERICAL_GRI"
       :"NO_ACTIVE_DERIVED_ONLY_CONSENT_DETECTED",
     public_machine_intelligence_hint_eligible:machine.eligible,
     independent_gri_hints_eligible:gri.eligible,
-    genuine_pallab_owner_signature_gate_passed:ownerGate,
+    genuine_pallab_owner_signature_gate_passed:ownerGate&&!standingAdmission,
+    standing_owner_policy_gate_verified:standing,
+    owner_admission_gate_passed:ownerGate,
     handoff:[
       {role:"APPROVED_FACTS_AND_RIGHTS_CUSTODIANS",
        action:machine.eligible
@@ -56,7 +62,9 @@ export function buildPallabSumanHostedHandoff({env={},now=new Date()}={}){
          ?"REVIEWED_GRI_AND_CERTIFICATE_POINTERS_PENDING_ACTUAL_B2_SIGNATURE_VERIFICATION"
          :"REVIEW_REAL_NUMERICAL_GRI_AND_SIGN_EACH_COUNTRY_CATEGORY_CERTIFICATE"},
       {role:"PALLAB_OWNER",
-       action:ownerGate
+       action:standing
+         ?"STANDING_OWNER_POLICY_READY_NO_REPEAT_OWNER_BATCH_SIGNATURE_REQUIRED"
+         :ownerGate
          ?"EXACT_BATCH_OWNER_SIGNATURE_GATE_PASSED_NO_NEW_OWNER_SIGNATURE_IN_THIS_RUN"
          :"APPROVE_ONLY_EXACT_SUMAN_SIGNED_GRI_AND_CERTIFICATE_BYTES"},
       {role:"HOSTED_GEOMACRO_PRODUCTION",
@@ -74,6 +82,8 @@ export function buildPallabSumanHostedHandoff({env={},now=new Date()}={}){
   });
 }
 const ACTION_TEXT=Object.freeze({
+ STANDING_OWNER_POLICY_READY_NO_REPEAT_OWNER_BATCH_SIGNATURE_REQUIRED:
+  "Pallab owner standing policy is cryptographically verified; no repeat owner batch signature is needed for this conditional path. Real independent signed GRI, country certificates and all existing source/scoring/B2/D1 checks remain mandatory. This is not automated independent numerical review.",
  OBTAIN_REAL_ORIGINALS_SOURCE_SCOPE_AND_DISTINCT_FACTS_RIGHTS_SIGNATURES:
   "Approved Facts and Rights custodians: verify original publisher bytes, actual per-original commercial rights, then separately sign the same qualified three-domain batch.",
  PROTECTED_CANONICAL_INTELLIGENCE_PUBLISHER_MUST_VALIDATE_SIGNED_B2_INPUT:

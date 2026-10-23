@@ -2,7 +2,9 @@
 // Public identities + signed consent only. No private keys or source/B2 reads.
 import {verifyGriAutomationConsent} from '../lib/gri-automation-consent.mjs';
 import {createPublicKey} from 'node:crypto';
+import {appendFileSync} from 'node:fs';
 import {spkiDigest} from '../lib/standing-derived-delegation.mjs';
+import {verifyStandingGriOwnerPublicationPolicy,verifyStandingOwnerMachineIdentity} from '../lib/gri-standing-owner-publication-policy.mjs';
 try{
  const e=process.env;
  if(e.GITHUB_REPOSITORY!=='blocknine0/geomacro'||e.GITHUB_REF!=='refs/heads/main'||
@@ -17,5 +19,10 @@ try{
   reviewMachinePem:e.GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PUBLIC_PEM,
   otherAuthorityPins:[e.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256,e.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256,spkiDigest(gro)],
   revoked:e.GEOMACRO_GRI_AUTO_REVOKED});
- console.log(JSON.stringify({...result,machine_private_keys_cloud_verified:false}));
+ const standing=e.GEOMACRO_GRI_STANDING_OWNER_ADMISSION==='VERIFIED_INPUTS_ONLY'
+  ?verifyStandingGriOwnerPublicationPolicy({env:e}):null;
+ const machine=standing?verifyStandingOwnerMachineIdentity({env:e}):null;
+ if(standing&&e.GITHUB_OUTPUT)appendFileSync(e.GITHUB_OUTPUT,'standing_owner_policy_verified=true\n');
+ console.log(JSON.stringify({...result,machine_private_keys_cloud_verified:false,
+  ...(standing?{standing_owner_publication_policy:standing,standing_owner_machine:machine}: {})}));
 }catch{console.error('GRI_AUTOMATION_CONSENT_NOT_VERIFIED_NO_PUBLISHER_ACTIVATION');process.exitCode=2}
