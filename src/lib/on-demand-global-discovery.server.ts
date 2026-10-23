@@ -215,7 +215,7 @@ async function boundedFetch(
         "www.gov.uk","news.un.org","www.federalreserve.gov","www.ecb.europa.eu",
         "www.minister.industry.gov.au","api.io.canada.ca",
         "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.bankofcanada.ca","news.gov.bc.ca",
-        "www.consilium.europa.eu","www.usgs.gov"].includes(target.hostname)) {
+        "www.consilium.europa.eu","www.usgs.gov","www.energy.gov"].includes(target.hostname)) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
   const maxBytes = accept === "text/html" ? MAX_FIRST_PARTY_HTML_BYTES : MAX_BODY_BYTES;
@@ -1220,7 +1220,7 @@ async function discoverOnDemandImpl(
       ]);
       const preferredNational=(category:OnDemandCategory):string|null=>
         category==="rare_earth" && country==="USA"
-          ?"usgs_minerals_original_publisher":
+          ?"us_doe_minerals_original_publisher":
         category==="rare_earth" && country==="CAN"
           ?"canada_nrcan_original_publisher":
         category==="rare_earth" && country==="AUS"

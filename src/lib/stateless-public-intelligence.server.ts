@@ -202,7 +202,9 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
 // Reuse the same international connector definitions in on-demand website
 // reads and the protected half-hour update collector. Existing BIS is reused.
 const GLOBAL_SOURCES:readonly StatelessSourceSpec[]=GLOBAL_OFFICIAL_RELEASE_FEEDS
-  .filter((s:{websiteId?:string})=>!SOURCES.some(old=>old.id===s.websiteId))
+  .filter((s:{websiteId?:string;url?:string;category?:string})=>
+    !SOURCES.some(old=>old.id===s.websiteId ||
+      (old.url===s.url && old.category===s.category)))
   .map((s:{id:string;category:StatelessCategory;format:string;url:string;host:string;credit:string})=>({
     id:s.id,category:s.category,media:s.format==='rss'?'rss' as const:'html_index' as const,
     url:s.url,allowedHosts:[s.host],credit:s.credit,...(s.format==='json'?{govContentApi:true}:{}),

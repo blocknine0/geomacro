@@ -9,12 +9,12 @@ not verified real-time delivery or blanket commercial-use licenses:
 | --- | --- | --- | --- |
 | Geopolitics | UN Geneva and UN press / first-party FCDO / eligible GOV.UK | EU Council of Ministers original press-release RSS `https://www.consilium.europa.eu/en/rss/pressreleases.ashx` | `www.consilium.europa.eu/en/press/press-releases/YYYY/MM/DD/<slug>/` |
 | Macro/FX | ECB press `https://www.ecb.europa.eu/rss/press.html`, BIS, BoJ, BoC, Fed, GOV.UK | **Same ECB publisher** `https://www.ecb.europa.eu/rss/statpress.html` only if press RSS transport/5xx fails | existing ECB exact original paths; **not** a second independent original |
-| Critical Minerals | official UK/Canadian/BC/Australian/IEA feeds | USGS Minerals News official RSS `https://www.usgs.gov/news/minerals/feed` | `www.usgs.gov/news/(national-news-release|state-news-release|featured-story|science-snippet)/<slug>` |
+| Critical Minerals | official UK/Canadian/BC/Australian/IEA feeds | U.S. DOE official general news RSS `https://www.energy.gov/rss/energygov/2193718` (already used in free-source and website pipeline) | `www.energy.gov/(articles|cmei/articles|em/articles)/<slug>` |
 
 Official human-readable publisher pages:
 `https://www.consilium.europa.eu/about-site/rss/`,
 `https://www.ecb.europa.eu/home/html/rss.pl.html`,
-`https://www.usgs.gov/programs/mineral-resources-program/news`.
+`https://www.energy.gov/cmm/critical-minerals-and-materials-program`.
 **These publisher pages were externally inspected; source-runner transport and
 source-native clock acceptance must be demonstrated by actual GitHub main
 workflow.** Do not represent these as current commercial data just because
@@ -34,9 +34,9 @@ Rights require real scrutiny:
 - EU Council website reuse permits reproduction under conditions including
   source acknowledgement, unchanged message and disclosure of changes. A
   product with no end-user attribution must not assume it meets those terms.
-- USGS generally provides USGS-authored material in public domain, but asks
-  that the USGS be acknowledged; third-party photos/data may remain covered
-  by another rightsholder. No blanket article rights grant is coded.
+- U.S. DOE is a government issuer already used by the public website and the
+  free-source updates; third-party material can remain restricted. No blanket
+  article or commercial-use rights grant is coded.
 - ECB statistical and general press sources remain one institution; two
   feeds cannot count as two independent same-event originals. Free access
   does not amount to commercial license proof or source data freshness.
@@ -97,3 +97,4 @@ Then:
 No country has a guaranteed hourly geopolitical, central-bank and minerals
 event. `NO_CURRENT_QUALIFYING_EVENT` is a truthful successful source
 examination outcome where nothing qualifies, not an outage or invented event.
+\n## 2026-10-24 actual post-merge host acceptance\n\n[main original intake #40021850893](https://github.com/blocknine0/geomacro/actions/runs/40021850893)\ncontinued to yield zero current country-matched qualified originals for KGZ;\nit did not exercise the USA DOE selector.\n[main stateless acceptance #40021850932](https://github.com/blocknine0/geomacro/actions/runs/40021850932)\nshowed the newly inserted USGS Minerals News RSS as `http_4xx` and no\ncurrent 24h qualifying mineral signal (`rare_earth` 0), even though\nother first-party feeds worked. USGS was therefore disabled in the shared\noriginal RSS registry and the **existing DOE RSS used by the free-source\ncollector and public stateless reader** was wired in its place, with one upstream URL per free-update and website reader (34 distinct\nfree-update source IDs) and preserving the original-GET budget. New publisher\nstill needs actual first-party article/native timestamp/rights proof.\n

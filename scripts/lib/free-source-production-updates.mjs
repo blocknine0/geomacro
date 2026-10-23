@@ -38,7 +38,12 @@ export const PRODUCTION_FREE_UPDATE_SOURCES=Object.freeze([
    // shortening provider 401/403/429 denial backoff.
    reader_revision:s.id==='usgs_mcs'?2:s.reader_revision})),
  ...EXTRA.map(s=>({...s,production_update_reader:true})),
- ...GLOBAL_OFFICIAL_RELEASE_FEEDS,
+ // The DOE feed was already inventoried under the established us_doe id.
+ // One upstream URL deserves ONE cache/poll budget and ONE D1 fingerprint.
+ // Keep the global pinned publisher registry available to on-demand originals
+ // without fetching the same DOE feed twice in the free update collector.
+ ...GLOBAL_OFFICIAL_RELEASE_FEEDS.filter(s=>
+   !EXTRA.some(existing=>existing.url===s.url&&existing.category===s.category)),
 ].map(s=>{
  const source=SOURCE_LINEUP_BY_ID.get(s.id),u=new URL(s.url);
  const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.some(x=>x.id===s.id&&x.category===s.category&&x.url===s.url);
