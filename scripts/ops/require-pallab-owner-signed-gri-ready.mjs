@@ -8,7 +8,7 @@ import {verifyPallabSignedReadyGate} from
  "../lib/pallab-signed-ready-gri-gate.mjs";
 import {explainGriSignedInputBlockers,safeGriBlockerJobSummary} from
  "../lib/gri-signed-ready-cadence-hint.mjs";
-import {verifyStandingGriOwnerPublicationPolicy} from
+import {verifyStandingGriOwnerPublicationPolicy,authorizeStandingGriOwnerInput} from
  "../lib/gri-standing-owner-publication-policy.mjs";
 const SHA=/^[a-f0-9]{64}$/u;
 export function checkCurrentOwnerSignedReady({env=process.env,now=new Date(),allowEmpty=false}={}){
@@ -35,9 +35,11 @@ export function checkCurrentOwnerSignedReady({env=process.env,now=new Date(),all
  if(!envelope&&standing){
   if(!SHA.test(reviewedSha)||!SHA.test(certSha)||reviewedSha===certSha)
    throw Error("GRI_STANDING_EXACT_REVIEWED_INPUT_PINS_REQUIRED");
-  const policy=verifyStandingGriOwnerPublicationPolicy({env,now});
+  verifyStandingGriOwnerPublicationPolicy({env,now});
+  const policy=authorizeStandingGriOwnerInput({env,now,reviewedSha,certificatesSha:certSha});
   return {status:policy.status,approved:true,approval_mode:policy.approval_mode,
    owner_human_per_batch_review_attested:false,
+   owner_machine_exact_input_authorization_verified:true,
    independent_review_and_country_certificates_still_required:true};
  }
  const result=verifyPallabSignedReadyGate({
@@ -82,6 +84,7 @@ if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
    status:r.status,approved:r.approved,
    ...(r.approval_mode?{approval_mode:r.approval_mode,
      owner_human_per_batch_review_attested:false,
+     owner_machine_exact_input_authorization_verified:r.owner_machine_exact_input_authorization_verified===true,
      independent_review_and_country_certificates_still_required:true}:{}),
    reviewer_signature_verified:false,publisher_not_yet_run:true,
    b2_requests:0,payments:0}));

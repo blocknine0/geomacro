@@ -2,7 +2,7 @@
 // This is not Suman's per-batch review, source rights, a score or a signature
 // on an unseen input. The unchanged reviewed publisher must verify all of
 // those before any public B2 write or D1 promotion.
-import {createPublicKey} from "node:crypto";
+import {createPublicKey,createPrivateKey,sign,verify} from "node:crypto";
 import {verifyGriAutomationConsent} from "./gri-automation-consent.mjs";
 import {spkiDigest} from "./standing-derived-delegation.mjs";
 
@@ -57,4 +57,40 @@ export function verifyStandingGriOwnerPublicationConsent({env=process.env,now=ne
   signed_gri_published:false,real_payments_authorized:false,
   b2_requests:0,d1_writes:0,payments:0,
  });
+}
+
+// The enrolled OWNER machine authorizes verification of these exact two
+// immutable inputs. Never use the owner's or Suman's human private key.
+// The signature is deliberately not returned to public logs or re-used as
+// an independent review/source-rights certificate by any publisher.
+export function authorizeStandingGriOwnerInput({env,reviewedSha,certificatesSha,now=new Date()}={}) {
+ const policy=verifyStandingGriOwnerPublicationConsent({env,now});
+ if(!/^[a-f0-9]{64}$/u.test(reviewedSha??"")||
+    !/^[a-f0-9]{64}$/u.test(certificatesSha??"")||reviewedSha===certificatesSha)
+  throw Error("GRI_STANDING_EXACT_REVIEWED_INPUT_PINS_REQUIRED");
+ const key=standingOwnerMachineKey(env);
+ const message=Buffer.from("GEOMACRO/StandingOwnerConditionalInputAdmissionV1\n"+
+  reviewedSha+"\n"+certificatesSha+"\n"+now.toISOString()+"\nINDEPENDENT_REVIEW_STILL_REQUIRED");
+ const signature=sign(null,message,key);
+ if(!verify(null,message,createPublicKey(key),signature))
+  throw Error("GRI_STANDING_OWNER_MACHINE_SIGNATURE_INVALID");
+ return Object.freeze({...policy,owner_machine_exact_input_authorization_verified:true});
+}
+function standingOwnerMachineKey(env){
+ const raw=env.GEOMACRO_GRI_AUTO_OWNER_MACHINE_PRIVATE_PKCS8_B64??"";
+ if(raw.length<40||raw.length>8192||!/^[A-Za-z0-9+/]+={0,2}$/u.test(raw))
+  throw Error("GRI_STANDING_OWNER_MACHINE_KEY_REQUIRED");
+ let key;
+ try{key=createPrivateKey({key:Buffer.from(raw,"base64"),format:"der",type:"pkcs8"})}
+ catch{throw Error("GRI_STANDING_OWNER_MACHINE_KEY_INVALID")}
+ if(key.asymmetricKeyType!=="ed25519"||
+    spkiDigest(createPublicKey(key))!==spkiDigest(env.GEOMACRO_GRI_AUTO_OWNER_MACHINE_PUBLIC_PEM))
+  throw Error("GRI_STANDING_OWNER_MACHINE_KEY_NOT_ENROLLED");
+ return key;
+}
+export function verifyStandingOwnerMachineIdentity({env=process.env,now=new Date()}={}){
+ verifyStandingGriOwnerPublicationPolicy({env,now});
+ standingOwnerMachineKey(env);
+ return Object.freeze({owner_machine_private_identity_verified:true,
+  actual_input_admission_signed:false,human_private_key_used:false});
 }

@@ -11,8 +11,9 @@ There is no new consent or signing-key setup. These protected workflows
 explicitly enable `GEOMACRO_GRI_STANDING_OWNER_ADMISSION=VERIFIED_INPUTS_ONLY`.
 They validate the actual two signed consents, the approved human and machine
 public identities, separate Facts/Rights/GRO pins, canonical main and
-revocation before admitting an input for verification. No human or machine
-private key is needed by the owner admission gate.
+revocation before admitting an input for verification. Only the already enrolled dedicated owner machine key signs the exact
+conditional input admission. No human private key or reviewer-machine
+private key enters this path.
 
 This is conditional owner authorization, **not** a new Suman signature on
 the GRI or country certificates. The reviewed publisher still requires the
@@ -40,7 +41,8 @@ bun scripts/ops/stage-approved-reviewed-gri-private-b2.mjs \
   --stage-approved-review-with-standing-owner-no-funds
 ```
 
-Set `GEOMACRO_GRI_STANDING_OWNER_ADMISSION=VERIFIED_INPUTS_ONLY` and use the
+Set `GEOMACRO_GRI_STANDING_OWNER_ADMISSION=VERIFIED_INPUTS_ONLY` and provide the existing enrolled dedicated owner-machine PKCS8 key through
+`GEOMACRO_GRI_AUTO_OWNER_MACHINE_PRIVATE_PKCS8_B64`. Use the
 existing genuine signed consent in `GEOMACRO_GRI_AUTO_POLICY_ENVELOPE_B64`,
 approved public identity environment and enrollment/revocation state. Supply
 no `GEOMACRO_OWNER_SIGNED_APPROVAL_PATH` in this mode. The original human

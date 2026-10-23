@@ -15,7 +15,7 @@ import {prepareImmutableReviewedGriHandoff} from
   "../lib/gri-reviewed-immutable-b2-handoff.mjs";
 import {createB2Client} from "./b2-s3-client.mjs";
 import {verifyPallabSignedReadyGate} from "../lib/pallab-signed-ready-gri-gate.mjs";
-import {verifyStandingGriOwnerPublicationConsent,verifyStandingGriOwnerPublicationPolicy}
+import {verifyStandingGriOwnerPublicationConsent,verifyStandingGriOwnerPublicationPolicy,authorizeStandingGriOwnerInput}
  from "../lib/gri-standing-owner-publication-policy.mjs";
 
 const sha=bytes=>createHash("sha256").update(bytes).digest("hex");
@@ -70,7 +70,10 @@ async function main(){
     fail("EXPLICIT_BATCH_SIGNATURE_MUST_USE_HUMAN_MODE");
    const verifyConsent=process.env.GITHUB_ACTIONS==="true"
     ?verifyStandingGriOwnerPublicationPolicy:verifyStandingGriOwnerPublicationConsent;
-   const policy=verifyConsent({env:process.env});
+   verifyConsent({env:process.env});
+   const policy=authorizeStandingGriOwnerInput({env:process.env,
+    reviewedSha:process.env.GEOMACRO_REVIEWED_GRI_SHA256,
+    certificatesSha:process.env.GEOMACRO_COUNTRY_CERTIFICATES_SHA256});
    ownerMode=policy.approval_mode;
   }else{
    const ownerApproval=pinned("GEOMACRO_OWNER_SIGNED_APPROVAL",8192,"json");

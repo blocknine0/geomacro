@@ -5,7 +5,7 @@ import {readFileSync} from "node:fs";
 import {makeGriAutomationPolicy,signGriAutomationConsent,ROLES,ENVELOPE}
  from "../lib/gri-automation-consent.mjs";
 import {spkiDigest} from "../lib/standing-derived-delegation.mjs";
-import {verifyStandingGriOwnerPublicationPolicy,verifyStandingGriOwnerPublicationConsent}
+import {verifyStandingGriOwnerPublicationPolicy,verifyStandingGriOwnerPublicationConsent,authorizeStandingGriOwnerInput,verifyStandingOwnerMachineIdentity}
  from "../lib/gri-standing-owner-publication-policy.mjs";
 import {checkCurrentOwnerSignedReady} from "../ops/require-pallab-owner-signed-gri-ready.mjs";
 import {buildPallabSumanHostedHandoff,humanHandoffMarkdown} from "../ops/report-pallab-suman-hosted-handoff.mjs";
@@ -26,6 +26,7 @@ function fixture(){
   GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM:owner.pem,GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256:owner.pin,
   GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM:reviewer.pem,GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256:reviewer.pin,
   GEOMACRO_GRI_AUTO_OWNER_MACHINE_PUBLIC_PEM:om.pem,GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PUBLIC_PEM:rm.pem,
+  GEOMACRO_GRI_AUTO_OWNER_MACHINE_PRIVATE_PKCS8_B64:om.privateKey.export({format:"der",type:"pkcs8"}).toString("base64"),
   GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256:facts.pin,GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256:rights.pin,
   RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64:gro.publicKey.export({format:"der",type:"spki"}).toString("base64"),
   GRI_READY_REVIEWED_SHA256:"a".repeat(64),GRI_READY_CERTIFICATES_SHA256:"b".repeat(64),
@@ -46,6 +47,7 @@ test("existing real two-person scope authorizes conditional owner admission, nev
  assert.equal(gate.approval_mode,"STANDING_OWNER_POLICY_CONDITIONAL");
  assert.equal(gate.independent_review_and_country_certificates_still_required,true);
  assert.equal(gate.owner_human_per_batch_review_attested,false);
+ assert.equal(gate.owner_machine_exact_input_authorization_verified,true);
 });
 test("standing consent alone, stale hint, identical input pins never dispatch the publisher",()=>{
  const {env}=fixture();
@@ -84,6 +86,20 @@ test("an explicit invalid human batch signature cannot fall back to standing aut
  assert.throws(()=>checkCurrentOwnerSignedReady({env:{...env,
   GEOMACRO_OWNER_HUMAN_SIGNED_ENVELOPE_B64:"corrupted"},now,allowEmpty:true}));
 });
+test("only the genuinely enrolled owner machine can authorize an exact input pair",()=>{
+ const {env}=fixture(),other=generateKeyPairSync("ed25519").privateKey.export({format:"der",type:"pkcs8"}).toString("base64");
+ for(const privateKey of ["",other,"malformed"])
+  assert.throws(()=>authorizeStandingGriOwnerInput({env:{...env,
+   GEOMACRO_GRI_AUTO_OWNER_MACHINE_PRIVATE_PKCS8_B64:privateKey},now,
+   reviewedSha:env.GRI_READY_REVIEWED_SHA256,certificatesSha:env.GRI_READY_CERTIFICATES_SHA256}));
+ const receipt=authorizeStandingGriOwnerInput({env,now,
+  reviewedSha:env.GRI_READY_REVIEWED_SHA256,certificatesSha:env.GRI_READY_CERTIFICATES_SHA256});
+ assert.equal(receipt.owner_machine_exact_input_authorization_verified,true);
+ assert.equal(receipt.independent_reviewer_signature_verified,false);
+ assert.equal(JSON.stringify(receipt).includes(env.GRI_READY_REVIEWED_SHA256),false);
+ assert.deepEqual(verifyStandingOwnerMachineIdentity({env,now}),{
+  owner_machine_private_identity_verified:true,actual_input_admission_signed:false,human_private_key_used:false});
+});
 test("explicit private staging can verify genuine public consent without pretending to be protected CI",()=>{
  const {env}=fixture(),local={...env,GITHUB_ACTIONS:"",GITHUB_REF:"",GITHUB_REPOSITORY:""};
  assert.equal(verifyStandingGriOwnerPublicationConsent({env:local,now}).two_genuine_policy_signatures_verified,true);
@@ -117,13 +133,13 @@ test("hosted queue stops asking owner to sign again but never labels conditional
   GEOMACRO_STANDING_OWNER_POLICY_VERIFIED:"true",GEOMACRO_GRI_AUTO_REVOKED:"YES"},now});
  assert.equal(revoked.standing_owner_policy_gate_verified,false);
 });
-test("both cloud admission sites receive public consent only and preserve actual independent source checks",()=>{
+test("cloud sites receive the enrolled owner-machine key and consent, with independent source checks unchanged",()=>{
  for(const name of ["gri-signed-ready-cadence-backstop.yml","gri-v12-supabase-free-reviewed-current.yml"]){
   const w=readFileSync(new URL("../../.github/workflows/"+name,import.meta.url),"utf8");
   assert.match(w,/GEOMACRO_GRI_STANDING_OWNER_ADMISSION: "VERIFIED_INPUTS_ONLY"/u);
   for(const key of ["GEOMACRO_GRI_AUTO_POLICY_ENVELOPE_B64","GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM",
    "GEOMACRO_GRI_AUTO_OWNER_MACHINE_PUBLIC_PEM"])assert.ok(w.includes(key));
-  assert.equal(w.includes("GEOMACRO_GRI_AUTO_OWNER_MACHINE_PRIVATE"),false);
+  assert.ok(w.includes("GEOMACRO_GRI_AUTO_OWNER_MACHINE_PRIVATE_PKCS8_B64"));
   assert.equal(w.includes("GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PRIVATE"),false);
  }
  const publisher=readFileSync(new URL("../lib/supabase-free-gri-v12-current.mjs",import.meta.url),"utf8");
