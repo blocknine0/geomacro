@@ -101,3 +101,52 @@ Acceptance: `node --test scripts/tests/material-gri-news-review.test.mjs
 scripts/tests/material-gri-country-evidence-worklist.test.mjs`. GitHub
 artifacts: `primary-gri-country-review-*`,
 `recovered-gri-country-review-*`, and `auto-ingest-gri-country-review-*`.
+
+## One shared 72-hour Intelligence journal → all GRI materiality review (2026-10-24)
+
+The public website's three categories and **the private GRI review queue**
+now read the exact same bounded Cloudflare D1 derived-news journal. Under
+already-enrolled, revocable Pallab/Suman standing derived consent, the
+`Standing Delegated Derived Contract No Funds` hourly/wakeup job reads
+the verified, paginated 72h D1 source-neutral journal (at most 600
+retained IDs) and routes **ALL** retained cards, including nonmaterial
+context, through 25-source-record-per-category deterministic review batches.
+This fixes the previous first-page/first-25 implicit omission. No extra
+upstream publisher GET, second source collection, new B2 write, Supabase,
+new cron, human private key or USDC settlement is introduced. The
+`complete-intelligence-gri-review-<run_id>` artifact is source-free
+and retained for 3 days. It contains country/category review *hints*
+for legitimate material events plus counted nonmaterial context; no raw
+original article body, URL, credential, independent human signature or
+new commercial licence.
+
+The **product distinction** remains mandatory:
+* Geomacro creates and can license its own original structured analysis
+  subject to underlying rights; the public newsroom is derived-only and
+  its no-raw policy does not itself prohibit offering original analysis.
+* A blanket *per-article external commercialization certificate* is not
+  inherently a legal prerequisite for an independently written report.
+  Instead record/reuse genuine applicable source-use terms and attribution
+  obligations at the **source/dataset/API scope**; item-specific exceptions
+  still need handling. A publisher's raw-article copyright, contractual
+  restrictions, database rights or legally required credit do not
+  disappear merely because Geomacro rewrites/summarizes facts.
+* All newsroom items route to **materiality review**, not all materialize
+  numeric GRI changes. The separate existing *human-reviewed GRI v1.2*
+  publisher requires real first-party proof, independent same-event
+  corroboration, lawful source use, exact signed numerical review,
+  country/category certification and B2-history continuity.
+  An independently reviewed **automated** scored GRI product, if
+  introduced, must have its own accurate authority/profile; one-time
+  policy consent cannot silently manufacture Suman's future human
+  signatures. No arbitrary website card is chargeable by default.
+* Genuine review input and accepted current signed Intelligence/GRI/Risk
+  Indices must still receive immutable B2/D1 readback before the paid
+  endpoint or Deep Health can claim readiness. There is no promotion from
+  `official_feed_candidate_unscored` to `CERTIFIED` without actual evidence.
+
+Verification:
+`node --test scripts/lib/complete-intelligence-gri-review.test.mjs`
+and source path
+`scripts/ops/triage-all-website-intelligence-for-gri.ts`.
+A successful *review-batch* job is not 3/3 signed hot acceptance.
