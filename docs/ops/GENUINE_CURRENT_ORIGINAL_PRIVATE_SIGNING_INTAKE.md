@@ -32,8 +32,21 @@ Action receipts contain ONLY aggregate counts and no private original URL,
 article title, raw source bytes, HTML hash, source identity or signing
 material. If no qualifying original exists, the receipt says
 `NO_CURRENT_BYTE_VERIFIED_SOURCE_FOR_REVIEW` rather than generating a fake
-input. The actions runner keeps original identities ephemeral; it cannot
-automatically sign or persist private review packages into public artifacts.
+input. **Current genuine verified review leads are retained in the EXISTING
+private B2 bucket** with per-request D1 shared quota admission, exact
+compressed upload/full-body readback and SHA/gzip restoration. Public job
+logs/artifacts contain only category counts and boolean storage status:
+the private B2 object key, full compressed SHA, upstream publisher, URLs,
+titles and article bytes never appear there.
+
+There is no B2 request or client for a zero-lead intake. If quota is held,
+credentials are unavailable or B2 readback fails, the job fails closed and
+must NOT claim a durable handoff. Owner-authorized custodians retrieve the
+date-partitioned `geomacro-evidence/v1/private/original-pre-review/YYYY/MM/DD/`
+objects using their *already-scoped* private B2 read credentials; do not
+expose object contents to public GitHub artifacts or the website. The
+retained lead is explicitly **not** a reviewed GRI input, an approved
+Facts/Rights grant, or a country/category certificate.
 
 ## Local authorized operator handoff (optional; private key never needed here)
 
@@ -80,3 +93,27 @@ node --test scripts/lib/geomacro-original-page-readback.test.mjs
 See the GitHub Actions receipt for **real** pre-review leads found on a given
 run. If it reports zero, the work is still provisioned and safe but there is
 no genuine fresh qualified article/signature to claim.
+
+## What this permanently fixes, and what it does NOT
+
+The earlier schedule lost source-identifiable verified pre-review lead records
+when the hosted runner exited: a genuine byte-verified original found by a
+private intake did not reach a custodian. The protected main job now
+*privately retains* each available lead with exact immutable B2 readback,
+using the same B2/D1 quota governor as current signed producers. Source-free
+receipts state one of:
+`NO_GENUINE_LEADS_TO_ARCHIVE`,
+`GENUINE_PRE_REVIEW_LEADS_PRIVATELY_ARCHIVED`, or
+`SHARED_B2_QUOTA_HELD_NOT_ARCHIVED`.
+A quota-held genuine lead causes the main job to fail instead of silently
+claiming successful preservation.
+
+This does **not** make the 195×3 sources verified, increase Backblaze provider
+free caps, or produce original articles where none were released. The
+first-party page readback still requires genuine publisher HTML/native
+clocks; Suman still requires separately lawful Facts/Rights evidence,
+independent current GRI numerical scoring, same-event original corroboration,
+and reviewable unsigned GRI/certification JSON. A genuine signature must
+follow that real review and an owner signature after Suman. Deep Health
+may remain 503 until independently published 3/3 exact B2/D1 signed products
+exist. No raw source delivered to customers, no Supabase and no funds.
