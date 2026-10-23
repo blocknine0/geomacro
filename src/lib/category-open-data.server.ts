@@ -468,7 +468,8 @@ async function fetchOne(spec:Provider,now:number,fetcher:typeof fetch):
   }catch{return {readable:false,data:null};}
 }
 function buildSnapshot(category:Domain,rows:{readable:boolean;data:Extracted|null}[],at:number){
-  const out=rows.flatMap(x=>x.data?.signals??[]);
+  const out=[...new Map(rows.flatMap(x=>x.data?.signals??[])
+    .map(item=>[item.finding_key,item])).values()];
   const credits=[...new Set(rows.flatMap(x=>x.data?.credits??[]))];
   // No duplicate source IDs or raw values are returned to customers.
   return {
