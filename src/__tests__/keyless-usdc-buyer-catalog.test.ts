@@ -37,9 +37,11 @@ describe("keyless merchant x402 buyer catalog is exact-price and no-funds",()=>{
   expect(manifest.resources).toEqual([]);
  });
  it("protects published website lock and creates backend-only public endpoint",()=>{
-  const route=readFileSync("src/routes/api.v1.commerce.catalog.ts","utf8");
-  expect(route).toContain('createFileRoute("/api/v1/commerce/catalog")');
+  const route=readFileSync("src/routes/api.v1.pricing.ts","utf8");
+  expect(route).toContain('createFileRoute("/api/v1/pricing")');
   expect(route).toContain("geomacroKeylessX402BuyerCatalog()");
+  expect(route).toContain("url.searchParams.getAll('view').length===1");
+  expect(route).toContain("url.searchParams.get('view')==='buyer'");
   expect(route).not.toContain("PAYMENT-SIGNATURE");
   const price=readFileSync("src/routes/pricing.tsx","utf8");
   const dataApi=readFileSync("src/routes/data-api.tsx","utf8");
