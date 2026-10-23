@@ -24,6 +24,9 @@ on:
       - 'scripts/tests/standing-delegation-role-separation.test.mjs'
       - 'scripts/lib/standing-derived-delegation.mjs'
       - 'scripts/lib/gri-automated-derived-policy-review.mjs'
+      - 'scripts/lib/complete-intelligence-gri-review.mjs'
+      - 'scripts/lib/complete-intelligence-gri-review.test.mjs'
+      - 'scripts/ops/triage-all-website-intelligence-for-gri.ts'
       - 'scripts/ops/sign-gri-automated-derived-policy-readback.mjs'
       - 'scripts/tests/gri-automated-derived-policy-review.test.mjs'
       - 'scripts/tests/standing-derived-delegation.test.mjs'
@@ -63,6 +66,7 @@ jobs:
       - run: |
           node --check scripts/ops/sign-gri-automated-derived-policy-readback.mjs
           node --test scripts/tests/gri-automated-derived-policy-review.test.mjs
+          node --test scripts/lib/complete-intelligence-gri-review.test.mjs
           node --check scripts/ops/enroll-standing-derived-cloud.mjs
           node --test scripts/tests/automated-approval-continuation.test.mjs scripts/tests/gri-news-wakeup.test.mjs scripts/tests/standing-derived-delegation.test.mjs scripts/tests/standing-derived-cloud-enrollment.test.mjs scripts/tests/signed-news-safe-diagnostic.test.mjs scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs scripts/tests/standing-delegation-role-separation.test.mjs
 
@@ -201,6 +205,22 @@ jobs:
           # audit files. Preserve existing receipt content and safe pathname.
           umask 077
           bun scripts/ops/verify-all-news-signed-publications.mjs > "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH"
+      - name: Route EVERY retained three-domain website news card to bounded private GRI materiality review
+        if: steps.optin.outputs.active == 'true'
+        env:
+          GEOMACRO_COMPLETE_GRI_REVIEW_PATH: ${{ runner.temp }}/complete-intelligence-gri-review.json
+        run: |
+          set -euo pipefail
+          umask 077
+          bun scripts/ops/triage-all-website-intelligence-for-gri.ts --triage-all-intelligence-no-funds
+      - name: Retain private source-free complete Intelligence to GRI review worklist
+        if: steps.optin.outputs.active == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: complete-intelligence-gri-review-${{ github.run_id }}
+          path: ${{ runner.temp }}/complete-intelligence-gri-review.json
+          retention-days: 3
+          if-no-files-found: error
       - name: Sign only derived-readback audit aggregate
         if: steps.optin.outputs.active == 'true'
         run: node scripts/ops/sign-verified-derived-readback.mjs --sign-verified-derived
@@ -239,4 +259,4 @@ jobs:
           if-no-files-found: error
       - name: Delete temporary receipt bytes
         if: always()
-        run: rm -f -- "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH" "$GEOMACRO_DELEGATED_RECEIPT_OUTPUT_PATH" "${RUNNER_TEMP}/gri-auto-policy-derived.json"
+        run: rm -f -- "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH" "$GEOMACRO_DELEGATED_RECEIPT_OUTPUT_PATH" "${RUNNER_TEMP}/gri-auto-policy-derived.json "${RUNNER_TEMP}/complete-intelligence-gri-review.json"
