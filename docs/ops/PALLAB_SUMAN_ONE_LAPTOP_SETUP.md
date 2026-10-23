@@ -98,6 +98,18 @@ on `main`. It verifies key shape/pins and separation from the machine
 Facts, Rights and GRO signing identities. A successful key readiness
 does NOT certify either review, license or current signed GRI.
 
+## D0. Read-only preflight before Suman signs (no funds)
+
+If the command `node scripts/ops/sign-suman-independent-reviewed-gri.mjs --human-sign-reviewed-gri` immediately prints `SUMAN_INDEPENDENT_REVIEW_SIGNING_REFUSED` without asking for confirmation, it **has not signed**. The owner shell `daspa@Pallab` is not Suman's independent interactive account. The script requires five configured absolute path environment variables (encrypted Suman key, genuine reviewed unsigned GRI, genuine unsigned country certificates, two new output files in a private directory) and Suman's **already approved** Ed25519 public PEM plus 64-character hex SHA pin. Do not forge absent source/rights review or sign a sample batch.
+
+The owner may update the public repository without signing. Once Suman is physically present, he signs into his own account on the **same computer**, obtains a readable checkout of Geomacro without copying private signing keys to the owner account, and independently examines the inputs. Suman can then run from the readable repository root:
+
+```bash
+node scripts/ops/inspect-suman-signing-preflight.mjs --inspect-only-no-funds
+```
+
+If using his established local Node binary, replace `node` with `~/.local/bin/geomacro-node`. This prints **only** issue codes, whether the OS username matches the documented Suman account, and zero-write/no-signature flags. It never prints private file paths, PEM bytes, passphrases, source articles or file hashes, and never opens the private signing key. Example issues: `USE_SUMAN_OWN_PROTECTED_OS_SESSION`, `ABSOLUTE_PATH_UNSET_OR_INVALID_GRI`, `FILE_MISSING_OR_UNREADABLE_CERTS`, `REVIEWER_PUBLIC_PEM_OR_APPROVED_PIN_UNSET`. Fix only the real missing private setup with Suman's informed participation. `INPUT_SHAPES_PRESENT_REQUIRES_INDEPENDENT_HUMAN_REVIEW` is **not** an independent review, rights certificate, signed product or release acceptance. Suman's existing human signer, not this diagnostic, performs the later genuine signing.
+
 ## D. Actual review and file transfer on the SAME computer
 
 Only after genuine evidence exists:
