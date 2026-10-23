@@ -57,6 +57,9 @@ jobs:
     env:
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      # Separate exact immutable GRI historical file-version GET scope.
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
