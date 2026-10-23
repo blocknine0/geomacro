@@ -21,6 +21,8 @@ on:
       - "src/lib/original-verification-policy.ts"
       - "src/lib/priority-original-review-country.test.ts"
       - "src/lib/priority-original-review-country.ts"
+      - "src/lib/country-195-search-slot-recovery.test.ts"
+      - "src/lib/on-demand-global-index-rescue.server.test.ts"
       - ".github/workflows/current-original-private-signing-intake.yml"
       - "scripts/ops/prepare-first-original-signing-input.ts"
       - "scripts/ops/prepare-first-original-signing-input.test.ts"
@@ -34,6 +36,8 @@ on:
       - "src/lib/original-verification-policy.ts"
       - "src/lib/priority-original-review-country.test.ts"
       - "src/lib/priority-original-review-country.ts"
+      - "src/lib/country-195-search-slot-recovery.test.ts"
+      - "src/lib/on-demand-global-index-rescue.server.test.ts"
       - ".github/workflows/current-original-private-signing-intake.yml"
       - "scripts/ops/prepare-first-original-signing-input.ts"
       - "scripts/ops/prepare-first-original-signing-input.test.ts"
@@ -72,7 +76,7 @@ jobs:
           node --test scripts/lib/private-original-signing-review-intake.test.mjs
           node --test scripts/lib/private-original-intake-funnel.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
-          bunx --no-install vitest run scripts/ops/prepare-first-original-signing-input.test.ts src/lib/priority-original-review-country.test.ts
+          bunx --no-install vitest run scripts/ops/prepare-first-original-signing-input.test.ts src/lib/priority-original-review-country.test.ts src/lib/on-demand-global-index-rescue.server.test.ts src/lib/country-195-search-slot-recovery.test.ts
       - name: Attempt genuine 22h publisher original readbacks without charge
         # PR tests NEVER probe official publishers; main only, 12+4+2 GET cap.
         # Without eligible current releases the result is cleanly NO_CANDIDATE,
