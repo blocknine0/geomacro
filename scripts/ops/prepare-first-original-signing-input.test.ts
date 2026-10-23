@@ -1,7 +1,38 @@
 import {describe,it,expect} from "vitest";
 import {readFileSync} from "node:fs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195";
-import {countryForThisRun} from "./prepare-first-original-signing-input";
+import {countryForThisRun,requireProtectedOriginalArchiveMain} from "./prepare-first-original-signing-input";
+
+describe("protected original private B2 archive dispatch context",()=>{
+ const approved={
+  GITHUB_ACTIONS:"true",
+  GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",
+  GITHUB_RUN_ID:"39988425120",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",
+  B2_ACCOUNT_QUOTA_WORKFLOW_ID:"original_review_leads",
+  B2_REQUEST_BUDGET:"6",
+ };
+ it("accepts numeric real GitHub Actions run IDs after private lead archival wiring",()=>{
+  expect(requireProtectedOriginalArchiveMain(approved)).toBe(true);
+  expect(requireProtectedOriginalArchiveMain({...approved,GITHUB_RUN_ID:"1"})).toBe(true);
+ });
+ it("fails closed for nonnumeric, missing, foreign, PR or ungoverned dispatch",()=>{
+  for(const bad of [
+   {GITHUB_RUN_ID:""},
+   {GITHUB_RUN_ID:"not-a-number"},
+   {GITHUB_RUN_ID:"123\\d"},
+   {GITHUB_ACTIONS:"false"},
+   {GITHUB_REPOSITORY:"other/other"},
+   {GITHUB_REF:"refs/pull/1/merge"},
+   {B2_REQUEST_BUDGET:"99"},
+   {B2_ACCOUNT_QUOTA_REQUIRED:"0"},
+  ]){
+   expect(()=>requireProtectedOriginalArchiveMain({...approved,...bad}))
+    .toThrow("PRIVATE_ORIGINAL_ARCHIVE_PROTECTED_MAIN_ONLY");
+  }
+ });
+});
 
 describe("bounded genuine original review scheduler",()=>{
  it("keeps Bun shebang at byte zero before any import",()=>{
