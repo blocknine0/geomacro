@@ -6,6 +6,9 @@ const at=new Date('2026-10-16T07:10:00.000Z');
 const rss=(id='one',date='Fri, 16 Oct 2026 07:00:00 GMT')=>'<rss><channel><item><guid>'+id+'</guid><title>Private source publication</title><pubDate>'+date+'</pubDate></item></channel></rss>';
 const byUrl=new Map(PRODUCTION_FREE_UPDATE_SOURCES.map(s=>[s.url,s]));
 function validBody(s,version='one'){
+ if(s.id==='gdelt_events')return ['export.CSV','mentions.CSV','gkg.csv'].map((kind,i)=>
+   (80000+i*2000)+' '+(version==='one'?'a':'b').repeat(32)+
+   ' http://data.gdeltproject.org/gdeltv2/20261016070000.'+kind+'.zip').join('\\n');
  if(s.id.startsWith('govuk_global_'))return JSON.stringify({total:1,results:[{title:'Zambia copper minerals economy '+version,link:'/government/news/zambia-copper-policy'}]});
  if(s.rdf)return '<rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/"><item><link>https://www.bis.org/press/p261016.htm</link><title>Zambia banking monetary policy '+version+'</title><dc:date>2026-10-16T07:00:00Z</dc:date></item></rdf:RDF>';
  if(s.format==='rss')return rss(version);
@@ -33,14 +36,14 @@ function network(version='one',deny=null){return async(url,options)=>{
  return s.id===deny?new Response('private upstream denial',{status:403}):new Response(validBody(s,version));
 };}
 test('all configured production sources are unique and baseline clocks remain distinct from intraday publication',()=>{
- assert.equal(PRODUCTION_FREE_UPDATE_SOURCES.length,34);
- assert.equal(new Set(PRODUCTION_FREE_UPDATE_SOURCES.map(s=>s.id)).size,34);
+ assert.equal(PRODUCTION_FREE_UPDATE_SOURCES.length,35);
+ assert.equal(new Set(PRODUCTION_FREE_UPDATE_SOURCES.map(s=>s.id)).size,35);
  assert.ok(PRODUCTION_FREE_UPDATE_SOURCES.some(s=>s.category==='rare_earth'&&s.id==='us_doe'));
  for(const s of PRODUCTION_FREE_UPDATE_SOURCES){assert.equal(new URL(s.url).protocol,'https:');assert.ok([30,1440].includes(s.poll_minutes));}
 });
 test('first actual collection establishes a baseline, persists only hashes and verifies all D1 readback',async()=>{
  const state=memoryState();const r=await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network(),now:at});
- assert.equal(r.attempted,34);assert.equal(r.unavailable,0);assert.equal(r.d1_exact_metadata_readback_verified,true);
+ assert.equal(r.attempted,35);assert.equal(r.unavailable,0);assert.equal(r.d1_exact_metadata_readback_verified,true);
  assert.ok(Object.values(r.per_category).every(x=>x.newly_detected_update_fingerprints===0));
  assert.equal(state.rows.size,3);assert.equal(state.loads,2);
  const stored=JSON.stringify([...state.rows]);
