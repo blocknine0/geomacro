@@ -9,6 +9,8 @@ import {parseCanonical195Codes,rollupCountry195Proofs}
 import {CONTINENT_COUNTRIES_195,CONTINENTS_195,
  assertContinentCanonical195} from "../lib/continent-country-195-rotation.mjs";
 
+import {fullSweepCountryReports} from "../lib/continent-country-full-sweep.mjs";
+
 const REPO="blocknine0/geomacro",TOKEN=process.env.GH_TOKEN;
 if(process.env.GITHUB_REPOSITORY!==REPO||!TOKEN||TOKEN.length<20)
  throw Error("COUNTRY_195_ROLLUP_GITHUB_READ_SCOPE_REQUIRED");
@@ -27,14 +29,14 @@ function locate(dir,depth=0){
  if(depth>4)return null;
  for(const entry of readdirSync(dir,{withFileTypes:true})){
   const path=join(dir,entry.name);
-  if(entry.isFile()&&entry.name==="live-batch-checkpoint.v1.json")return path;
+  if(entry.isFile()&&["continent-sweep-checkpoint.v1.json","live-batch-checkpoint.v1.json"].includes(entry.name))return path;
   if(entry.isDirectory()){const found=locate(path,depth+1);if(found)return found;}
  }
  return null;
 }
 // Six independent 2h source runners now own the actual country network
 // checks. Read each *separate* continent workflow's successful recent
-// artifacts. Up to one full geography sweep per continent is needed;
+// artifacts. Each new scheduled artifact contains a complete continent;
 // never infer global 195 completion from 195 configured route codes.
 const canonicalText=readFileSync("src/lib/canonical-country-registry-195.ts","utf8");
 assertContinentCanonical195(canonicalText);
@@ -51,9 +53,9 @@ for(const continent of CONTINENTS_195){
    Number.isSafeInteger(r.id)&&
    Date.parse(r.created_at)>=epoch&&
    Date.parse(r.created_at)>=now.getTime()-14*86400_000);
- const cap=CONTINENT_COUNTRIES_195[continent].length;
+ const cap=1; // One complete continent per successful scheduled run.
  selected.push(...good.slice(0,cap).map(r=>({...r,_continent:continent})));
- laneStatus[continent]={known_countries:cap,
+ laneStatus[continent]={known_countries:CONTINENT_COUNTRIES_195[continent].length,
    scheduled_success_runs_in_recent_window:good.length,
    checkpoint_candidates_selected:Math.min(good.length,cap)};
 }
@@ -75,15 +77,15 @@ for(const run of runs){
   });
  }catch{downloadUnavailable++;continue;}
  const file=locate(destination);
- if(!file||statSync(file).size>500000)throw Error("COUNTRY_195_DOWNLOADED_PROOF_MISSING");
- reports.push(JSON.parse(readFileSync(file,"utf8")));
+ if(!file||statSync(file).size>2000000)throw Error("COUNTRY_195_DOWNLOADED_PROOF_MISSING");
+ reports.push(...fullSweepCountryReports(JSON.parse(readFileSync(file,"utf8")),run._continent,canonicalText,now));
 }
 const known=parseCanonical195Codes(canonicalText);
 const audit=rollupCountry195Proofs(reports,known,{now});
 const receipt={...audit,scheduled_runs_seen:runs.length,
- schedule_mode:"SIX_INDEPENDENT_CONTINENT_COUNTRY_TWO_HOUR_ROTATIONS",
+ schedule_mode:"SIX_FULL_CONTINENT_THREE_CATEGORY_SWEEPS_EVERY_TWO_HOURS",
  continent_source_lanes:laneStatus,
- planned_sweep_hours_max:108,
+ planned_sweep_hours_max:2,
  provider_api_quota_globally_verified:false,
  missing_artifacts:missingArtifacts,download_unavailable:downloadUnavailable,
  archive_backed_input_only:true,upstream_source_requests:0,

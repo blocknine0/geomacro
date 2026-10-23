@@ -3,7 +3,8 @@ name: Six-Continent Country Sweep Bootstrap (Main No Funds)
 # Scheduled GitHub Actions are best-effort and can be skipped. When the
 # continent automation source changes, run a bounded 6-continent canary
 # immediately instead of waiting for the next unreliable cron.
-# This is one real country-source probe per continent, NOT a news publisher.
+# Smoke-check five lanes and the full smallest continent (South America).
+# Scheduled workflows always cover their entire continent. This is not a publisher.
 on:
   push:
     branches: [main]
@@ -12,6 +13,10 @@ on:
       - '.github/workflows/continent-country-original-probe-reusable.yml'
       - '.github/workflows/continent-country-first-run-bootstrap.yml'
       - 'scripts/lib/continent-country-195-rotation.mjs'
+      - 'scripts/lib/continent-country-full-sweep.mjs'
+      - 'scripts/ops/run-full-continent-country-sweep.mjs'
+      - 'scripts/tests/continent-country-full-sweep.test.mjs'
+      - 'scripts/ops/verify-live-195-country-batch.ts'
       - 'scripts/lib/continent-country-resume.mjs'
       - 'scripts/ops/restore-continent-country-cursor.mjs'
       - 'scripts/tests/continent-country-resume.test.mjs'
@@ -43,3 +48,4 @@ jobs:
     with:
       continent: ${{ matrix.continent }}
       country_iso3: ''
+      canary_only: ${{ matrix.continent != 'south_america' }}

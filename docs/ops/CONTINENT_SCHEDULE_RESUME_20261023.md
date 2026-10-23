@@ -1,5 +1,7 @@
 # Six-continent automatic country probes
 
+Superseded by the owner clarification in `CONTINENT_FULL_SWEEP_20261023.md`: scheduled runs now visit the ENTIRE continent every two hours. The single-country cursor below is retained only as history/compatibility, not the active scheduled plan.
+
 The existing six main-branch cron workflows remain on their two-hour cadence,
 with 20-minute planned UTC offsets: Africa 00:04, Asia 00:24, Europe 00:44,
 North America 01:04, South America 01:24, Oceania 01:44, repeated every two hours.

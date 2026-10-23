@@ -103,7 +103,7 @@ export function rollupCountry195Proofs(reports,knownCodes,{now=new Date()}={}){
   cells,repair_queue:cells.filter(c=>!c.current_original_proof_verified),
   repair_queue_is_not_automatic_unbounded_source_polling:true,
   proof_window_days:90,nominal_calendar_sweep_days:null,
-  active_continent_two_hour_sweep_max_hours:108,
+  active_continent_two_hour_sweep_max_hours:2,
   continent_195_route_configuration_is_not_actual_source_proofs:true,
   proof_reports_accepted:acceptedRuns,category_coverage:categories,
   publisher_reachable_does_not_mean_current_news:true,

@@ -1,7 +1,7 @@
 name: Oceania Country Source Sweep (Every 2 Hours)
 
 # Globally staggered exactly 20 UTC minutes apart, one continent at a time.
-# 1 canonical ISO3 per 2h; a full Oceania loop visits each country once.
+# Every canonical ISO3 per 2h; the full Oceania group runs in each scheduled sweep.
 # The 3 product categories share a single bounded source network probe.
 # No raw article publication, rights waiver, B2, D1, Supabase or payments.
 on:

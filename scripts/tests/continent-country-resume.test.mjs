@@ -90,7 +90,7 @@ test('wrapper permissions permit checkpoint reads; reusable keeps canary and man
   assert.match(readFileSync(`.github/workflows/continent-country-${continent}-2h.yml`,'utf8'),/actions: read/);
  }
  const shared=readFileSync('.github/workflows/continent-country-original-probe-reusable.yml','utf8');
- assert.match(shared,/if: github.event_name == 'schedule'/);
+ assert.match(shared,/GEOMACRO_CONTINENT_CANARY_ONLY/);
  assert.ok(shared.includes('name: live-country-195-resume-${{ github.run_id }}-${{ inputs.continent }}-${{ github.run_attempt }}'));
  const audit=readFileSync('scripts/ops/aggregate-country-195-proofs.mjs','utf8');
  assert.ok(audit.includes('run._continent'));
