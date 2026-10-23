@@ -59,6 +59,11 @@ export function independentReviewerPublicKeyIssue(env=process.env,{facts,rights,
 export function cloudAuthorityReadiness(env=process.env) {
  const noFunds=BLOCKED.every(k=>!PRESENT(env[k]));
  const b2=PRESENT(env.B2_KEY_ID)&&PRESENT(env.B2_APPLICATION_KEY);
+ // Historical immutable GRI recovery is a DIFFERENT protected workflow,
+ // using a distinct read-scoped B2 credential pair. Generic B2 presence
+ // must never imply historical file-version GET readiness.
+ const historicalB2Read=PRESENT(env.B2_ARCHIVE_READ_KEY_ID)&&
+  PRESENT(env.B2_ARCHIVE_READ_APPLICATION_KEY);
  const d1=PRESENT(env.CLOUDFLARE_ACCOUNT_ID)&&
   PRESENT(env.CLOUDFLARE_API_TOKEN)&&
   (env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").length>=32;
@@ -73,6 +78,7 @@ export function cloudAuthorityReadiness(env=process.env) {
  const reviewerIndependent=reviewerIssue==="READY_PUBLIC_PIN_ONLY_NOT_A_REVIEW_SIGNATURE";
  const endpoints={
   archive_storage_credentials:state(b2),
+  historical_immutable_b2_version_read_credentials:state(historicalB2Read),
   cloudflare_control_plane_credentials:state(d1),
   three_distinct_facts_rights_gro_public_key_pins:distinct
     ?"PINS_CRYPTOGRAPHICALLY_MATCH_AND_DISTINCT":"MISSING_OR_INVALID",
@@ -84,6 +90,7 @@ export function cloudAuthorityReadiness(env=process.env) {
  // A short reason list is a safe whitelist, not a diagnostic copy of env.
  const actions=[];
  if(!b2)actions.push("RESTORE_EXISTING_PRODUCTION_B2_SCOPED_CREDENTIALS");
+ if(!historicalB2Read)actions.push("RESTORE_EXISTING_PRODUCTION_GRI_B2_ARCHIVE_READ_SCOPE");
  if(!d1)actions.push("RESTORE_EXISTING_PRODUCTION_CLOUDFLARE_D1_SCOPE");
  if(!distinct)actions.push("CONFIGURE_ACTUAL_DISTINCT_APPROVED_PUBLIC_FACTS_RIGHTS_GRO_PINS");
  if(!reviewerIndependent)actions.push("CONFIGURE_APPROVED_INDEPENDENT_GRI_REVIEWER_PUBLIC_PIN");
@@ -97,7 +104,7 @@ export function cloudAuthorityReadiness(env=process.env) {
   laptop_continuous_runtime_required:false,
   authority_public_pins_checked:true,
   configuration:endpoints,
-  configuration_passed:b2&&d1&&distinct&&reviewerIndependent&&noFunds,
+  configuration_passed:b2&&historicalB2Read&&d1&&distinct&&reviewerIndependent&&noFunds,
   next_actions:actions,
   facts_signature_verified:false,
   rights_signature_verified:false,
