@@ -4,6 +4,7 @@
  * Checks actual deployed code + data eligibility + optional x402 quote only.
  * Never includes PAYMENT-SIGNATURE, credentials, payer wallet or settlement.
  */
+import {verifyFirstSalePriceManifest} from "./first-sale-price-proof.mjs";
 export const EARNING_PILOT_CASES = [
   { name: "geopolitics", topic: "conflict_geopolitics", country: "USA" },
   { name: "macro_fx", topic: "macro_risk", country: "USA" },
@@ -148,6 +149,9 @@ export async function acceptEarningPilotLive({
      !Array.isArray(offers.offers))
     throw Error("EARNING_PILOT_DISCOVERY_CONTRACT_INVALID");
   steps.push({check:"three_domain_offer_catalog",status:"PASS"});
+  // Read one extra PUBLIC catalog; never call the paid POST or accept payment.
+  // A merchant's exact-price receipt MUST still come from the canonical 402.
+  const firstSalePrice=verifyFirstSalePriceManifest(await get("/api/v1/pricing"));
 
   let eligibleCount=0,lockedCount=0,quoteReadyCount=0;
   let governedUnavailableCount=0,requestFailureCount=0;
@@ -250,13 +254,14 @@ export async function acceptEarningPilotLive({
     checkout_or_settlement_attempted:false,
     real_funds_touched:false,
     price_advertised_as_authoritative:false,
+    first_sale_catalog_only: firstSalePrice,
     eligible_category_count:eligibleCount,
     payment_locked_category_count:lockedCount,
     quote_ready_category_count:quoteReadyCount,
     governed_no_payable_category_count:governedUnavailableCount,
     preflight_transport_error_category_count:requestFailureCount,
     first_earning_ready:!diagnosticOnly && !alternateProfile &&
-      exactMainPublished && quoteReadyCount>0,
+      exactMainPublished && firstSalePrice.founder_price_catalog_verified && quoteReadyCount>0,
     no_funds_preflight_complete:true,
     checks:steps,
   };
