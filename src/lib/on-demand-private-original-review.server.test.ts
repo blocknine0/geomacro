@@ -125,6 +125,35 @@ describe("private originals survive presentation headline dedup",()=>{
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  it("restores a true GOV.UK first-published date through the official Content API, without declaring rights",async()=>{
+    const h1="<h1>"+u.article_title+"</h1>";
+    const html="<html><head><meta name='govuk:public-updated-at' content='2026-10-11T11:59:00Z'></head><body>"+h1+"</body></html>";
+    const path=new URL(u.article_url).pathname;
+    const apiUrl="https://www.gov.uk/api/content"+path;
+    const urls:string[]=[];
+    const fetchImpl=vi.fn(async(input:RequestInfo|URL,options?:RequestInit)=>{
+      urls.push(String(input));
+      expect(options?.method).toBe("GET");
+      expect(options?.redirect).toBe("manual");
+      if(String(input)===u.article_url)
+        return new Response(html,{headers:{"content-type":"text/html"}});
+      if(String(input)===apiUrl)
+        return new Response(JSON.stringify({
+          base_path:path,title:u.article_title,document_type:"news_story",
+          first_published_at:date,public_updated_at:"2026-10-11T11:59:00Z"
+        }),{headers:{"content-type":"application/json"}});
+      throw Error("UNTRUSTED_ORIGIN");
+    }) as unknown as typeof fetch;
+    const proof=await verifyOnDemandOriginalArticlePages([u],{fetchImpl,now});
+    expect(proof.attempted).toBe(1);
+    expect(proof.verified).toBe(1);
+    expect(urls).toEqual([u.article_url,apiUrl]);
+    expect(proof.verified_candidates[0].page_original_published_at).toBe(date);
+    expect(proof.verified_candidates[0].derived_commercial_rights_verified).toBe(false);
+    expect(proof.verified_candidates[0].signed_gro_verified).toBe(false);
+    expect(proof.verified_candidates[0].paid_delivery_allowed).toBe(false);
+  });
+
   it("rejects conflicting publisher first-publication clocks, modified-only dates and day-only metadata",async()=>{
     // A missing/day-only HTML date now justifies ONE additional
     // same-issuer Content API check (within the existing 4-page budget).
