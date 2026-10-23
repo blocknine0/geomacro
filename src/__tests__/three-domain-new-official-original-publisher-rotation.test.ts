@@ -7,6 +7,8 @@ import {originalPublisherPrivateCandidates}
  from "../../scripts/lib/private-original-publisher-candidates.mjs";
 import {parsePulseRotatedOriginals}
  from "../../scripts/lib/pulse-rotated-original-scorer.mjs";
+import {fetchVerifiedPublisherPageDate}
+ from "../../scripts/lib/official-original-article-date.mjs";
 import {createHash} from "node:crypto";
 
 const NOW=new Date("2026-10-23T18:40:00.000Z");
@@ -80,6 +82,29 @@ describe("three independently pinned public official feeds, no fake rights, 2 GE
    expect(priv[0].article_category_relevance_verified).toBe(false);
    expect(priv[0].commercial_derived_use_rights_verified).toBe(false);
    expect(priv[0].eligible_for_scoring).toBe(false);
+   // Native RSS date is a review lead, not a trusted current event:
+   // an independent same-origin HTML clock must remain verifiable.
+   const nativePage='<html><head><meta property="article:published_time" '+
+     'content="2026-10-23T18:22:00Z"></head><body>official article</body></html>';
+   const pageFetcher=vi.fn(async()=>new Response(nativePage,{
+     status:200,headers:{"content-type":"text/html"}
+   }));
+   expect(await fetchVerifiedPublisherPageDate(def.original,def.domain,{
+     now:NOW,fetchImpl:pageFetcher
+   })).toBe("2026-10-23T18:22:00.000Z");
+   expect(pageFetcher).toHaveBeenCalledTimes(1);
+   let network=0;
+   for(const invalid of [
+     def.original.replace("https://","http://"),
+     def.original.replace("://","://evil."),
+     def.original+"?redirect=evil",
+   ]){
+    const untrusted=await fetchVerifiedPublisherPageDate(invalid,def.domain,{
+      now:NOW,fetchImpl:async()=>{network++;throw Error("UNEXPECTED_FETCH");},
+    });
+    expect(untrusted).toBeNull();
+   }
+   expect(network).toBe(0);
    const fromD1=parsePulseRotatedOriginals(body,source,{
     refs:new Set([digest(def.original)]),
     expectedClocks:new Map([[digest(def.original),"2026-10-23T18:22:00.000Z"]]),
