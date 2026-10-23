@@ -142,7 +142,13 @@ async function boundedHtml(spec,fetchImpl){
    // Incomplete UTF-8 at the exact prefix boundary is not a missing report.
    // Decode only the bounded bytes; the last incomplete character may be
    // replaced, but no publisher-native clock or event proof is inferred.
-   const html=new TextDecoder("utf-8",{fatal:!truncated}).decode(all);
+   const decoder=new TextDecoder("utf-8",{fatal:true});
+   let html=null;
+   for(let drop=0;drop<=(truncated?3:0);drop++){
+     try{html=decoder.decode(all.subarray(0,n-drop));break;}
+     catch{/* Only an incomplete final UTF-8 code point may be truncated. */}
+   }
+   if(html===null)return {state:"UTF8_INVALID"};
    return {state:truncated?"BOUNDED_OFFICIAL_INDEX_PREFIX_READ":"HTML_BYTES_READ",
      body:html};
  }catch{return {state:"UTF8_INVALID"}}
