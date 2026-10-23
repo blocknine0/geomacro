@@ -28,7 +28,7 @@ describe("commercial access is explained sitewide", () => {
     const schedule=read("src/components/capability-price-schedule.tsx");
     const dataApi=read("src/routes/data-api.tsx");
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICES");
-    expect(schedule).toContain("GEOMACRO_PRICING_GROUPS");
+    expect(schedule).toContain("GEOMACRO_PUBLIC_PRICING_GROUPS");
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
     expect(schedule).toContain("without a second object charge");
     expect(pricing).toContain("<CapabilityPriceSchedule />");

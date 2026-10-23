@@ -32,6 +32,13 @@ describe("founder locked three-chain native USDC x402 v2 discovery",()=>{
     const caps=Object.entries(GEOMACRO_CAPABILITY_PRICES);
     let count=0;
     for(const [capability,variants] of caps){
+      // Historic GRI price remains pinned for audit, not a new payable/preview offer.
+      if(capability==="gri_read"){
+        for(const variant of Object.keys(variants))for(const network of ["base","arc","polygon"])
+          expect(()=>quoteGeomacroUsdcCapabilityPreflight({capability,variant,network}))
+            .toThrow("CAPABILITY_RETIRED_NO_CHARGE");
+        continue;
+      }
       for(const variant of Object.keys(variants)){
         const standard=resolveGeomacroCapabilityPrice(capability,variant);
         for(const network of ["base","arc","polygon"]){

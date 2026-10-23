@@ -43,6 +43,11 @@ describe("founder-approved deterministic capability pricing — NO FUNDS",()=>{
    expect(GEOMACRO_CREDIT_COSTS.risk_gate_bundle).toBe(15);
    expect(Object.keys(GEOMACRO_CAPABILITY_PRICES).length).toBe(8);
  });
+ it("retires new gri_read quotes without rewriting signed historical rates",()=>{
+    expect(()=>quoteGeomacroCapability({...opts,capability:"gri_read",variant:"verified_cached"}))
+      .toThrow("CAPABILITY_RETIRED_NO_CHARGE");
+    expect(resolveGeomacroCapabilityPrice("gri_read","verified_cached").amount_atomic).toBe("5000");
+  });
  it("does not float-convert money, invent variants or charge outside bounds",()=>{
    for(const value of ["0","0.0000001","0.0010e2","-0.01","00.01",
      "0.250001","0.50","1","Infinity","","0.05 USDC"]){

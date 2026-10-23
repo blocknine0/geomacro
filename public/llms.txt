@@ -23,7 +23,7 @@ The separate public Risk Indices preserve the versioned `gri-v1.2.0` parent meth
 
 - Home: https://geomacro.live/
 - Risk Intelligence: https://geomacro.live/intelligence
-- Risk Indices: https://geomacro.live/global-risk
+- Risk Indices: https://geomacro.live/risk-indices
 - Risk Gate: https://geomacro.live/risk-gate
 - Ask Geomacro: https://geomacro.live/ask-geomacro
 - Data & API: https://geomacro.live/data-api

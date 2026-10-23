@@ -17,7 +17,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     for (const route of ["/intelligence", "/risk-indices", "/ask-geomacro", "/data-api", "/institutional", "/pricing"]) {
       expect(shell).toContain(`to: "${route}"`);
     }
-    expect(shell).toContain('to: "/global-risk", label: "Global Risk History"');
+    expect(shell).not.toContain('to: "/global-risk"');
     expect(shell).toContain('<Link to="/risk-indices" className="hover:text-foreground">Risk Indices</Link>');
     expect(shell).toContain('<Link to="/about" className="hover:text-foreground">About & Trust</Link>');
     expect(institutional).toContain('href: "/intelligence"');

@@ -1,6 +1,9 @@
-import { createError, defineEventHandler, getRequestURL, sendRedirect } from "h3";
+import { createError, defineEventHandler, getRequestURL, sendRedirect, setResponseHeader } from "h3";
 
 const RETIRED_PUBLIC_PATHS = new Map<string, string>([
+  // Founder-retired 24 October 2026: source and historic proofs remain internal.
+  ["/global-risk", "/intelligence"],
+  ["/docs/gri-architecture", "/research"],
   ["/testnet-access", "/data-api"],
   ["/testnet-console", "/data-api"],
   ["/arena", "/intelligence"],
@@ -38,6 +41,10 @@ export default defineEventHandler((event) => {
 
   const redirectTarget = RETIRED_PUBLIC_PATHS.get(pathname);
   if (redirectTarget && (method === "GET" || method === "HEAD")) {
+    if (pathname === "/global-risk" || pathname === "/docs/gri-architecture") {
+      setResponseHeader(event, "X-Robots-Tag", "noindex, nofollow, noarchive");
+      setResponseHeader(event, "Cache-Control", "public, max-age=300");
+    }
     return sendRedirect(event, redirectTarget, 308);
   }
 

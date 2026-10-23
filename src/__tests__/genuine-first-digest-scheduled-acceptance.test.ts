@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import {describe,expect,it} from "vitest";
 import {GEOMACRO_CAPABILITY_PRICES} from "../lib/capability-pricing-catalog";
-import {geomacroStructuredOutputCatalog} from "../lib/capability-structured-output-contract";
+import {geomacroStructuredOutputCatalog,publicGeomacroStructuredOutputCatalog} from "../lib/capability-structured-output-contract";
 import {quoteGeomacroUsdcCapabilityPreflight} from "../lib/geomacro-multichain-usdc.server";
 import {GEOMACRO_USDC_NATIVE_RAILS} from "../lib/usdc-native-rail-identities";
 
@@ -46,8 +46,9 @@ describe("genuine first paid-capability source acceptance, strictly no funds",()
     expect(proofScript).toContain("prepared_answer_sha256: hash");
   });
   it("keeps every locked price and 14 structured variants identical on all 3 USDC previews",()=>{
-    const outputs=geomacroStructuredOutputCatalog();
-    expect(outputs).toHaveLength(14);
+    expect(geomacroStructuredOutputCatalog()).toHaveLength(14); // immutable historical contracts
+    const outputs=publicGeomacroStructuredOutputCatalog();
+    expect(outputs).toHaveLength(12);
     let checks=0;
     for(const output of outputs){
       for(const net of Object.keys(GEOMACRO_USDC_NATIVE_RAILS)){
@@ -67,6 +68,6 @@ describe("genuine first paid-capability source acceptance, strictly no funds",()
       }
     }
     expect(Object.keys(GEOMACRO_CAPABILITY_PRICES)).toHaveLength(8);
-    expect(checks).toBe(42);
+    expect(checks).toBe(36);
   });
 });

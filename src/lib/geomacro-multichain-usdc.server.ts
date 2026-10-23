@@ -2,6 +2,7 @@ import {createHash} from "node:crypto";
 import {resolveSharedUsdcReceiver} from "./shared-usdc-receiver.server";
 import {
   GEOMACRO_CAPABILITY_PRICING_VERSION,
+  isPublicStoreCapability,
   resolveGeomacroCapabilityPrice,
 } from "./capability-pricing-catalog";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
@@ -39,6 +40,7 @@ export function quoteGeomacroUsdcCapabilityPreflight(input:unknown){
      typeof body.network!=="string"||
      !Object.hasOwn(GEOMACRO_USDC_NETWORKS,body.network))
     throw Error("USDC_PREFLIGHT_SCOPE_UNSUPPORTED");
+  if(!isPublicStoreCapability(body.capability))throw Error("CAPABILITY_RETIRED_NO_CHARGE");
   const rail=GEOMACRO_USDC_NETWORKS[body.network as GeomacroUsdcNetwork];
   if(!address.test(rail.asset))throw Error("USDC_NATIVE_ASSET_INVALID");
   const price=resolveGeomacroCapabilityPrice(body.capability,body.variant);

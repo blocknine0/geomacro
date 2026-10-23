@@ -79,11 +79,8 @@ export function resolveVerifiedPublishedPlanPrice(
 
   if (topics.has("gri_context") &&
       [...topics].every(t => t === "gri_context" || t === "risk_object")) {
-    if (plan.intent === "change_since" && !proof.change_attribution_verified) {
-      throw new Error("CAPABILITY_PRICE_GRI_ATTRIBUTION_UNVERIFIED");
-    }
-    return resolveGeomacroCapabilityPrice("gri_read", plan.intent === "change_since"
-      ? "verified_change_attribution" : "verified_cached");
+    // Founder-retired GRI is never remapped to an unrelated payable plan.
+    throw new Error("CAPABILITY_RETIRED_NO_CHARGE");
   }
 
   if (plan.delivery_tier !== "signed_risk_intelligence") {

@@ -1,6 +1,6 @@
 import {
   GEOMACRO_CAPABILITY_PRICING_VERSION,
-  capabilityPricingCatalog,
+  publicCapabilityPricingCatalog,
 } from "./capability-pricing-catalog";
 import {GEOMACRO_USDC_NETWORKS} from "./geomacro-multichain-usdc.server";
 import {GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,geomacroPricedStructuredOutput}
@@ -19,7 +19,7 @@ export const GEOMACRO_PAID_PRICING_SCHEMA="geomacro.public-capability-price-cata
 
 export function publicGeomacroPaidPricingManifest(){
   const rails=Object.values(GEOMACRO_USDC_NETWORKS);
-  const catalog=capabilityPricingCatalog();
+  const catalog=publicCapabilityPricingCatalog();
   const capabilities=catalog.map(({capability,variants})=>({
     capability,
     variants:variants.map(price=>({

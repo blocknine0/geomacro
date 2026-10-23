@@ -41,12 +41,12 @@ describe("capability prices selected only from verified canonical plans (NO FUND
   });
   it("cannot pretend GRI change attribution or structural rights",()=>{
     const gri=plan({topics:["gri_context"]});
-    expect(resolveVerifiedPublishedPlanPrice(gri,proof)).toMatchObject({
-      capability:"gri_read",variant:"verified_cached",amount_atomic:"5000"});
+    expect(()=>resolveVerifiedPublishedPlanPrice(gri,proof))
+      .toThrow("CAPABILITY_RETIRED_NO_CHARGE");
     const changed=plan({topics:["gri_context"],intent:"change_since",change:{baseline:"previous_published"}});
-    expect(()=>resolveVerifiedPublishedPlanPrice(changed,proof)).toThrow("CAPABILITY_PRICE_GRI_ATTRIBUTION_UNVERIFIED");
-    expect(resolveVerifiedPublishedPlanPrice(changed,{...proof,change_attribution_verified:true}))
-      .toMatchObject({variant:"verified_change_attribution",amount_atomic:"10000"});
+    expect(()=>resolveVerifiedPublishedPlanPrice(changed,proof)).toThrow("CAPABILITY_RETIRED_NO_CHARGE");
+    expect(()=>resolveVerifiedPublishedPlanPrice(changed,{...proof,change_attribution_verified:true}))
+      .toThrow("CAPABILITY_RETIRED_NO_CHARGE");
     const structural=plan({delivery_tier:"structural_baseline"});
     // Historical structural digests never claim a signed current GRO.
     expect(resolveVerifiedPublishedPlanPrice(structural,{

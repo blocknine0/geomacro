@@ -12,7 +12,7 @@ import {
 } from "./nevermined-x402.server";
 import { providerRealFundsSecurityState } from "./provider-real-funds-security.server";
 import { getCommercialLaunchState } from "./commercial-launch-gate.server";
-import {capabilityPricingCatalog,GEOMACRO_CAPABILITY_PRICING_VERSION}
+import {publicCapabilityPricingCatalog,GEOMACRO_CAPABILITY_PRICING_VERSION}
   from "./capability-pricing-catalog";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
   from "./geomacro-structured-commercial-license";
@@ -156,7 +156,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
     capabilityPricing:{
       version:GEOMACRO_CAPABILITY_PRICING_VERSION,
       unit:"USDC",decimals:6,
-      capabilities:capabilityPricingCatalog(),
+      capabilities:publicCapabilityPricingCatalog(),
       price_requires_exact_capability_variant:true,
       price_is_not_runtime_availability:true,
       buyer_must_accept_changed_tier:true,

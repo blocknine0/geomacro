@@ -7,7 +7,7 @@ import {GEOMACRO_AGENT_TOOLS,GEOMACRO_CATEGORY_AGENT_PROFILES,geomacroAgentTool,
  geomacroAgentToolToCanonicalQuery} from "./geomacro-agent-tools";
 import {AGENT_QUERY_SCHEMA_VERSION} from "./agent-query-plan";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION,
- capabilityPricingCatalog} from "./capability-pricing-catalog";
+ publicCapabilityPricingCatalog} from "./capability-pricing-catalog";
 import {GEOMACRO_PAID_PRICING_PATH} from "./geomacro-paid-pricing-manifest.server";
 import {GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION}
  from "./capability-structured-output-contract";
@@ -83,7 +83,7 @@ export function officialGeomacroAgentDiscovery(){
   commercial_license:GEOMACRO_STRUCTURED_LICENSE_DISCOVERY,
   usdc_rails:publicGeomacroUsdcRailDiscovery(),
   pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
-  pricing:capabilityPricingCatalog(),
+  pricing:publicCapabilityPricingCatalog(),
   structured_output_contract_version:GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,
   per_variant_output_fields_endpoint:endpoints.priced_output_fields,
   discovery_does_not_prove_delivery:true,
@@ -181,7 +181,7 @@ export function officialGeomacroAgentOpenApi(){
     summary:"Discover exact approved per-variant structured fields via view=outputs or terms via view=license; never a payable offer",
     operationId:"discoverGeomacroPaidStructuredOutputFields",
     parameters:[{in:"query",name:"view",schema:{type:"string",enum:["outputs","license"]}}],
-    responses:{"200":{description:"Fourteen approved per-variant structured deliverables with source-free boundaries"}},
+    responses:{"200":{description:"Active public structured deliverables with source-free boundaries"}},
    }},
    [GEOMACRO_PAID_PRICING_PATH]:{get:{
     summary:"Approved exact per-call USDC prices for API and AI agent on Base Arc Polygon, never a payment offer",
@@ -218,7 +218,7 @@ export function officialGeomacroAgentOpenApi(){
    official_api_catalog:GEOMACRO_OFFICIAL_API_CATALOG,
    branding_does_not_change_http_method:true,
    pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
-   pricing:capabilityPricingCatalog(),
+   pricing:publicCapabilityPricingCatalog(),
    locked_pricing_endpoint:GEOMACRO_PAID_PRICING_PATH,
    agent_discovery:OFFICIAL_AGENT_PATH,agent_card:endpoints.agent_card,
    mcp:endpoints.mcp,a2a:endpoints.a2a,

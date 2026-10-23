@@ -26,7 +26,7 @@ export function RiskIndicesPreview({
             Geopolitical, macroeconomic and critical-mineral risk are shown independently so one domain does not hide movement in another. Each reading stays tied to the verified evidence and proof package behind it.
           </p>
           <Button asChild className="mt-6 gap-2">
-            <Link to="/global-risk">
+            <Link to="/risk-indices">
               Open the risk indices workspace <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>

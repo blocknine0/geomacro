@@ -67,8 +67,7 @@ export async function preflightTestnetIntelligenceAvailability(
   if (request.capability === "intelligence_query") return;
 
   if (request.capability === "gri_read") {
-    await readProductionGlobalRisk();
-    return;
+    throw new Error("CAPABILITY_RETIRED_NO_CHARGE");
   }
 
   const subject = requireConcreteSubject(request);

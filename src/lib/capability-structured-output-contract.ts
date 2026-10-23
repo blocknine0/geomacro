@@ -253,3 +253,8 @@ export function geomacroStructuredOutputCatalog(){
     Object.keys(variants).map(variant=>
       geomacroPricedStructuredOutput(capability,variant)));
 }
+
+/** Active public structured-output catalog excludes retired GRI sale variants. */
+export function publicGeomacroStructuredOutputCatalog(){
+  return geomacroStructuredOutputCatalog().filter(row=>row.capability!=="gri_read");
+}

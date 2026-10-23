@@ -31,7 +31,6 @@ const PRIMARY_NAV = [
 const EXPLORE_NAV = [
   { to: "/data-api", label: "API & Agents", description: "API keys coming soon" },
   { to: "/institutional", label: "For teams", description: "Risk, treasury and supply-chain workflows" },
-  { to: "/global-risk", label: "Global Risk History", description: "Historical global risk conditions and context" },
   { to: "/ecosystem", label: "Ecosystem & Partnerships", description: "Integrations, partnerships and commercial ecosystem" },
   { to: "/research", label: "Research & Evidence", description: "Methodology, coverage evidence and limitations" },
   { to: "/docs", label: "Documentation", description: "Product architecture and technical reference" },
@@ -233,7 +232,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
                   <Link to="/risk-indices" className="hover:text-foreground">Risk Indices</Link>
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
-                  <Link to="/global-risk" className="hover:text-foreground">Global Risk History</Link>
                   <Link to="/pricing" className="hover:text-foreground">Store</Link>
                 </div>
               </div>

@@ -31,12 +31,13 @@ describe("exact founder prices in one API + AI Agent on Base/Arc/Polygon (NO FUN
     const manifest=publicGeomacroPaidPricingManifest();
     expect(GEOMACRO_PAID_PRICING_PATH).toBe("/api/v1/pricing");
     expect(manifest.pricing_version).toBe(GEOMACRO_CAPABILITY_PRICING_VERSION);
-    expect(manifest.capability_count).toBe(8);
-    expect(manifest.price_variant_count).toBe(14);
+    expect(manifest.capability_count).toBe(7);
+    expect(manifest.price_variant_count).toBe(12);
     expect(Object.keys(GEOMACRO_CAPABILITY_PRICES).length).toBe(8);
     const table=manifest.capabilities.flatMap(c=>c.variants.map(v=>
       [c.capability,v.variant,v.price_usdc,v.amount_atomic]));
-    expect(table).toEqual(LOCKED);
+    expect(table).toEqual(LOCKED.filter(row=>row[0]!=="gri_read"));
+    expect(manifest.capabilities.some(c=>c.capability==="gri_read")).toBe(false);
     for(const [c,v,price,atomic] of LOCKED){
       expect(resolveGeomacroCapabilityPrice(c,v)).toMatchObject({
         amount_usdc:price,amount_atomic:atomic,currency:"USDC",
@@ -66,7 +67,7 @@ describe("exact founder prices in one API + AI Agent on Base/Arc/Polygon (NO FUN
         }
       }
     }
-    expect(checks).toBe(42);
+    expect(checks).toBe(36);
     expect(x.payment_authorized).toBe(false);
     expect(x.x402_payment_requirement_issued).toBe(false);
     expect(x.raw_upstream_data_delivered).toBe(false);

@@ -1,5 +1,5 @@
 import {createHash} from "node:crypto";
-import {resolveGeomacroCapabilityPrice,
+import {isPublicStoreCapability,resolveGeomacroCapabilityPrice,
   type CapabilityPrice,type PricedCapability,
 } from "./capability-pricing-catalog";
 export * from "./capability-pricing-catalog";
@@ -22,6 +22,7 @@ export function quoteGeomacroCapability(input:Readonly<{
   rail:"coinbase_x402"|"circle_gateway_x402";
   availabilityVerified:boolean;now?:Date;
 }>):CapabilityQuote{
+  if(!isPublicStoreCapability(input.capability))throw Error("CAPABILITY_RETIRED_NO_CHARGE");
   if(input.availabilityVerified!==true)throw Error("CAPABILITY_NOT_DELIVERABLE_NO_CHARGE");
   if(!SHA.test(input.requestFingerprint)||!/^eip155:\d+$/.test(input.network)||
     !ADDRESS.test(input.asset)||!ADDRESS.test(input.recipient))
@@ -54,6 +55,7 @@ export function quoteGeomacroCapability(input:Readonly<{
 export function verifyGeomacroCapabilityQuote(
   supplied:unknown,expected:CapabilityQuote,now=new Date(),
 ):void{
+  if(!isPublicStoreCapability(expected.capability))throw Error("CAPABILITY_RETIRED_NO_CHARGE");
   if(!Number.isFinite(now.getTime())||now.getTime()>=Date.parse(expected.expires_at))
     throw Error("CAPABILITY_QUOTE_EXPIRED");
   if(!supplied||typeof supplied!=="object"||Array.isArray(supplied))
