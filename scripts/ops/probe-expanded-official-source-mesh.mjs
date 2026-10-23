@@ -919,7 +919,7 @@ export async function probeExpandedSource(source,{
     // No article URLs, response bodies or original date text appear in logs.
     const pageCodes=Object.create(null);
     const dateReasons=Object.create(null);
-    let topicalOriginalPages=0,physicalPageGets=0;
+    let topicalOriginalPages=0,physicalPageGets=0,dayOnlyOriginalPages=0;
     // The same TWO page-side requests also cover an optional first-party
     // GOV.UK Content API check. Two article pages OR one HTML+API pair,
     // never both. Feed GET remains accounted by its existing source reader.
@@ -935,6 +935,7 @@ export async function probeExpandedSource(source,{
       const published=await fetchVerifiedPublisherPageDate(article,source.domain,{
         now,fetchImpl:boundedPageFetch,diagnostics:pageDiagnostics,
         allowGovUkContentApi:true,
+        allowCanadaDayObservation:true,
       });
       const safeCode=pageDiagnostics.code;
       if(SAFE_PUBLISHER_PAGE_PROBE_CODES.includes(safeCode))
@@ -943,6 +944,8 @@ export async function probeExpandedSource(source,{
       if(SAFE_ORIGINAL_PAGE_DATE_REASONS.includes(safeReason))
         dateReasons[safeReason]=(dateReasons[safeReason]??0)+1;
       row.original_page_precise_date_checks++;
+      if(pageDiagnostics.original_day_precision_verified===true)
+        dayOnlyOriginalPages++;
       if(!published)continue;
       // An independently checked publisher article page date can rescue an
       // undated feed entry. Retrieval and feed-update clocks never substitute.
@@ -973,6 +976,8 @@ export async function probeExpandedSource(source,{
     }
     row.topical_private_release_links_24h+=topicalOriginalPages;
     row.original_page_physical_gets=physicalPageGets;
+    row.original_page_day_precision_verified_count=dayOnlyOriginalPages;
+    row.original_page_day_precision_is_current_signed_evidence=false;
     row.first_party_original_page_probe_codes=pageCodes;
     row.first_party_original_page_date_reason_codes=dateReasons;
   }
