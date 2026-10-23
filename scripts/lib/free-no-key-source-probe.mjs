@@ -1,4 +1,5 @@
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS} from "./global-official-release-feeds.mjs";
+import {GDELT_PUBLIC_BATCH_MANIFEST,parseGdeltBatchManifest} from "./gdelt-free-batch-manifest.mjs";
 import { SOURCE_LINEUP_BY_ID } from "./operator-commercial-free-source-lineup.mjs";
 
 /**
@@ -67,6 +68,12 @@ export const FREE_NO_KEY_TRANSPORT_SPECS = Object.freeze(SPECS.map(spec => {
 }));
 
 export function validateFreeLineupProbePayload(spec, payload) {
+  if(spec.id==="gdelt_events"&&spec.category==="geopolitics"&&
+     spec.url===GDELT_PUBLIC_BATCH_MANIFEST&&spec.format==="manifest"){
+    const parsed=parseGdeltBatchManifest(payload);
+    return {valid:parsed!==null,format_checked:true,
+      kind:"LICENSED_GDELT_RELEASE_INDEX_NOT_ORIGINAL_ARTICLE"};
+  }
   if(spec.production_update_reader===true){
     const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.find(s=>s.id===spec.id&&s.url===spec.url);
     if(global){
@@ -189,7 +196,8 @@ export async function probeNoKeySource(spec, fetchImpl = fetch, {onPayload=null}
     const options={
       method: spec.format === "head" ? "HEAD" : "GET",
       redirect: unDistribution?"manual":"error",
-      headers: { Accept: spec.format === "html" ? "text/html" :
+      headers: { Accept: spec.format === "manifest" ? "text/plain" :
+        spec.format === "html" ? "text/html" :
         ['atom','rss','xml'].includes(spec.format) ? "application/rss+xml, application/atom+xml, application/xml, text/xml" :
           "application/json", 'user-agent':'Geomacro-Source-Updates/1.0 (contact@geomacro.live)' },
       signal: AbortSignal.timeout(7_000),
