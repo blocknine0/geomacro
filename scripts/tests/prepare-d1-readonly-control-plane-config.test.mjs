@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {existingReadOnlyControlPlaneD1Config as make}
   from "../ops/prepare-d1-readonly-control-plane-config.mjs";
 const name="geomacro-control-plane",id="01234567-89ab-4cde-8fed-0123456789ab";
@@ -32,7 +33,6 @@ test("missing, duplicate, wrong binding or forged ID fail closed",()=>{
   ])assert.throws(()=>make(JSON.stringify([{name,uuid:id}]),JSON.stringify(wrong)));
 });
 test("strict read-only workflow calls list, temp config and only SELECT",()=>{
-  const {readFileSync}=await import("node:fs");
   for(const path of [".github/workflows/expanded-official-source-observation.yml",
     ".github/workflows/free-three-domain-country-gap-ledger.yml"]){
     const text=readFileSync(path,"utf8");
