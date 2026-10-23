@@ -9,6 +9,11 @@ const REPO='blocknine0/geomacro';
 const SHA=/^[a-f0-9]{40}$/u;
 export const GRI_NEWS_WORKFLOWS=Object.freeze([
  'Auto Ingest News','Five-Minute Original News Fastlane',
+ // Both existing D1 newsroom writers must wake exact derived-input signer.
+ // These completion events prove only trusted source ancestry, never signed
+ // Facts/Rights, numerical GRI eligibility or a commercial licence.
+ 'Website Derived News Continuity',
+ 'Website Derived News Cadence Backstop',
  ...['Africa','Asia','Europe','North America','South America','Oceania']
   .map(c=>`${c} Country Source Sweep (Every 2 Hours)`),
 ]);
@@ -23,7 +28,10 @@ export function verifyGriNewsWakeup({env,event={},checkoutSha,isAncestor=false}=
   const run=event.workflow_run;
   if(!GRI_NEWS_WORKFLOWS.includes(run?.name)||run.conclusion!=='success'||
      run.head_repository?.full_name!==REPO||run.head_branch!=='main'||
-     !['schedule','workflow_dispatch','push'].includes(run.event)||
+     !(['schedule','workflow_dispatch','push'].includes(run.event) ||
+       (run.event==='workflow_run' &&
+        ['Website Derived News Continuity',
+         'Website Derived News Cadence Backstop'].includes(run.name)))||
      !SHA.test(run.head_sha??'')||isAncestor!==true)
    throw Error('GRI_NEWS_WAKEUP_TRUSTED_ANCESTOR_REQUIRED');
  }
