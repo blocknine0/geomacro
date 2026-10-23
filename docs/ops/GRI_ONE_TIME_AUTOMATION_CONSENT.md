@@ -23,6 +23,54 @@ compares existing enrolled human pins and checks that machine identities do
 not collide with Facts, Rights or the production issuer. It uploads no human
 private key, pays nothing and does not activate/dispatch a GRI publisher.
 
+## Running one-time consent after enrollment: automated per-audit policy review
+
+Once BOTH actual human consents have passed protected enrollment
+(`GEOMACRO_GRI_AUTO_ENROLLED=YES_CONSENT_ONLY`, no revocation),
+the existing `Standing Delegated Derived Contract No Funds` already listens
+for completed source jobs and has an hourly backstop. It now takes its
+independently validated, already GRO-signed **DERIVED-ONLY** news readback and
+runs `sign-gri-automated-derived-policy-readback.mjs` using two dedicated,
+isolated automated machine roles. It binds the hash of the exact verified
+journal readback and the exact human-authorized GRI policy, verifies both
+cloud signer public identities, and cryptographically signs the
+`geomacro.gri-auto-policy-derived-audit.v1` aggregate.
+
+This is real recurring **machine policy review** under one-time authorization,
+not a new human signature per batch. The two human encrypted private keys
+remain on the owner/reviewer machines and are never uploaded to Actions.
+Production stores only the distinct, consent-authorized dedicated machine
+private keys already enrolled through `--enroll`. These machine identities
+also stay distinct from Facts, Rights and GRO production signers.
+
+The review produces no output when there is no genuinely current, original-page
+byte-verified signed news; otherwise it emits an optional seven-day
+**derived-only** machine-signed audit artifact. Read-only, no B2/D1 writes,
+no Supabase, no charged x402, no new source retrieval budget or cron.
+Revocation (`GEOMACRO_GRI_AUTO_REVOKED=YES`) immediately prevents the step,
+without affecting the separate existing derived-only news pipeline.
+
+The signed **derived-audit** result is *not* an independent external human
+numerical GRI v1.2 review, current scoring approval, country/corridor certificate
+or third-party rights grant. The existing paid signed GRI v1.2 publisher remains
+under its independent reviewed input contract. To truly transition GRI scoring
+onto automated review, a future separately validated automated-profile GRI
+scorer/publisher must independently verify genuine original proofs, sufficient
+legally reusable sources, current B2 history lineage, scoring and country
+certification; it must label outputs as *automated policy reviewed*, not
+human reviewed. The one-time policy cannot bypass any of those requirements.
+
+Operator verification after enrollment: open the latest
+`Standing Delegated Derived Contract No Funds` workflow. It will automatically
+attempt machine policy review only if `YES_CONSENT_ONLY` is genuinely enrolled,
+revocation is not `YES`, and retained source audit qualifies. In a qualifying
+run, inspect the `gri-automated-derived-policy-<run-id>` safe artifact;
+`AUTOMATED_POLICY_DERIVED_AUDIT_SIGNED_NOT_CURRENT_GRI` is truthful.
+`SKIPPED_NO_VERIFIED_CURRENT_ORIGINAL` means no new original, not a broken
+human consent. Always keep x402 settlement closed without owner ACK.
+
+---
+
 **Publisher integration is pending the genuine new consent.** The currently
 live independently human-reviewed publisher still requires its existing exact
 human-reviewed input. Enrollment does not bypass that contract. After consent
