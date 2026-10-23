@@ -77,7 +77,7 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
     event_intelligence:false,country_coverage_verified:false,
     original_hosts:Object.freeze(["www.ungeneva.org"]),
-    topic:/\\b(?:security council|peace|armed conflict|human rights|disarmament|ceasefire|diplomacy|military|humanitarian|sanctions?)\\b/iu,
+    topic:/\b(?:security council|peace|armed conflict|human rights|disarmament|ceasefire|diplomacy|military|humanitarian|sanctions?)\b/iu,
   }),
   Object.freeze({
     id:"boc_press_original_rss_review",
@@ -86,7 +86,7 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
     event_intelligence:false,country_coverage_verified:false,
     original_hosts:Object.freeze(["www.bankofcanada.ca"]),
-    topic:/\\b(?:interest rates?|monetary policy|inflation|central bank|financial|economy|economic|currency|exchange rates?|banking|policy rate|liquidity)\\b/iu,
+    topic:/\b(?:interest rates?|monetary policy|inflation|central bank|financial|economy|economic|currency|exchange rates?|banking|policy rate|liquidity)\b/iu,
   }),
   Object.freeze({
     id:"bc_minerals_original_rss_review",
@@ -95,7 +95,7 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
     event_intelligence:false,country_coverage_verified:false,
     original_hosts:Object.freeze(["news.gov.bc.ca"]),
-    topic:/\\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mining|minerals?|processing|supply chain)\\b/iu,
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mining|minerals?|processing|supply chain)\b/iu,
   }),
   // Additional independent original publisher lanes. Existing EITI and
   // Simply Science failures remain observable; never silently replace them.
