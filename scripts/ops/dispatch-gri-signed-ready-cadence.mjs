@@ -14,12 +14,16 @@ const REPO="blocknine0/geomacro";
 // Unknown run state, an active job, completed success, or 2 failed attempts
 // suppress retries. This does not relax any downstream source/rights guards.
 export function decideGriSignedPublisherRetry({runs,headSha,approvedAt,now}={}){
-  if(!Array.isArray(runs)||!Number.isFinite(Date.parse(approvedAt))||
+  if(!Array.isArray(runs)||!/^[a-f0-9]{40}$/u.test(headSha??"")||
+     !Number.isFinite(Date.parse(approvedAt))||
      !(now instanceof Date)||!Number.isFinite(now.getTime()))
     throw Error("GRI_SIGNED_READY_RUN_METADATA_INVALID");
   const approvalMs=Date.parse(approvedAt);
+  // The protected workflow runs on main. A newer main commit is NOT a new
+  // approval or retry budget: dedupe the approval window across main SHAs.
+  // Suppression is conservative; this metadata never authorizes publication.
   const matching=runs.filter(run=>
-    run?.head_sha===headSha&&run.head_branch==="main"&&
+    /^[a-f0-9]{40}$/u.test(run?.head_sha??"")&&run.head_branch==="main"&&
     ["workflow_dispatch","repository_dispatch"].includes(run.event)&&
     typeof run.created_at==="string"&&
     Number.isFinite(Date.parse(run.created_at))&&
@@ -66,7 +70,7 @@ export async function requestGriSignedReadyCadence({
     b2_gets:0,d1_writes:0,supabase_writes:0,payments:0,
   };
   if(env.GITHUB_REPOSITORY!==REPO||env.GITHUB_REF!=="refs/heads/main"||
-     !(["schedule","workflow_dispatch"].includes(env.GITHUB_EVENT_NAME)||
+     !(["schedule","workflow_dispatch","push"].includes(env.GITHUB_EVENT_NAME)||
        (env.GITHUB_EVENT_NAME==="workflow_run"&&
         env.GRI_SOURCE_WORKFLOW_VERIFIED==="1"))||
      !/^[a-f0-9]{40}$/u.test(env.GITHUB_SHA??"")||

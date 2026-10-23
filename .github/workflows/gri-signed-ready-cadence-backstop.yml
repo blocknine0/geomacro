@@ -14,7 +14,15 @@ on:
   # This event is just a wakeup: independently approved pinned signed GRI
   # inputs remain mandatory before the protected publisher can run.
   workflow_run:
-    workflows: ["Auto Ingest News"]
+    workflows:
+      - "Auto Ingest News"
+      - "Five-Minute Original News Fastlane"
+      - "Africa Country Source Sweep (Every 2 Hours)"
+      - "Asia Country Source Sweep (Every 2 Hours)"
+      - "Europe Country Source Sweep (Every 2 Hours)"
+      - "North America Country Source Sweep (Every 2 Hours)"
+      - "South America Country Source Sweep (Every 2 Hours)"
+      - "Oceania Country Source Sweep (Every 2 Hours)"
     types: [completed]
     branches: [main]
   pull_request:
@@ -23,6 +31,8 @@ on:
       - "scripts/lib/gri-signed-ready-cadence-hint.mjs"
       - "scripts/lib/gri-signed-ready-cadence-hint.test.mjs"
       - "scripts/ops/dispatch-gri-signed-ready-cadence.mjs"
+      - "scripts/ops/verify-gri-news-wakeup.mjs"
+      - "scripts/tests/gri-news-wakeup.test.mjs"
       - "scripts/lib/pallab-signed-ready-gri-gate.mjs"
       - "scripts/ops/require-pallab-owner-signed-gri-ready.mjs"
       - "scripts/lib/machine-intelligence-signed-ready-hint.mjs"
@@ -35,6 +45,8 @@ on:
       - "scripts/lib/gri-signed-ready-cadence-hint.mjs"
       - "scripts/lib/gri-signed-ready-cadence-hint.test.mjs"
       - "scripts/ops/dispatch-gri-signed-ready-cadence.mjs"
+      - "scripts/ops/verify-gri-news-wakeup.mjs"
+      - "scripts/tests/gri-news-wakeup.test.mjs"
       - "scripts/lib/pallab-signed-ready-gri-gate.mjs"
       - "scripts/ops/require-pallab-owner-signed-gri-ready.mjs"
       - "scripts/lib/machine-intelligence-signed-ready-hint.mjs"
@@ -58,8 +70,8 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
-      - name: Fail-closed immutable reviewed input hint tests
-        run: node --test scripts/lib/gri-signed-ready-cadence-hint.test.mjs
+      - name: Fail-closed immutable reviewed input hint and trusted news wakeup tests
+        run: node --test scripts/lib/gri-signed-ready-cadence-hint.test.mjs scripts/tests/gri-news-wakeup.test.mjs
       - name: Verify real Pallab signature admission before any GRI publisher dispatch
         run: |
           node --check scripts/lib/pallab-signed-ready-gri-gate.mjs
@@ -75,12 +87,11 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' ||
        (github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
         github.event.workflow_run.head_branch == 'main' &&
-        github.event.workflow_run.head_sha == github.sha &&
         (github.event.workflow_run.event == 'schedule' ||
          github.event.workflow_run.event == 'workflow_dispatch' ||
          github.event.workflow_run.event == 'push')))
@@ -101,22 +112,23 @@ jobs:
       GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256 }}
       GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
       GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
-      GRI_SOURCE_WORKFLOW_VERIFIED: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_sha == github.sha && '1' || '0' }}
       # Repository variables are immutable, short-lived externally approved
       # SHA hints only. The machine publisher independently verifies exact
       # separate Facts/Rights signatures before ANY B2/D1 promotion.
       MACHINE_INTELLIGENCE_READY_INPUT_SHA256: ${{ vars.MACHINE_INTELLIGENCE_READY_INPUT_SHA256 }}
       MACHINE_INTELLIGENCE_READY_APPROVED_AT: ${{ vars.MACHINE_INTELLIGENCE_READY_APPROVED_AT }}
-      MACHINE_SOURCE_WORKFLOW_VERIFIED: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_sha == github.sha && '1' || '0' }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+          fetch-depth: 0 # completed news may be a trusted ancestor of main
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
+      - name: Verify exact main and completed news ancestry before considering any signed inputs
+        run: node scripts/ops/verify-gri-news-wakeup.mjs
       - name: Require protected exact main and strict canonical GRI target
         id: targets
         shell: bash

@@ -6,6 +6,8 @@ import {appendFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import {verifyPallabSignedReadyGate} from
  "../lib/pallab-signed-ready-gri-gate.mjs";
+import {explainGriSignedInputBlockers,safeGriBlockerJobSummary} from
+ "../lib/gri-signed-ready-cadence-hint.mjs";
 const SHA=/^[a-f0-9]{64}$/u;
 export function checkCurrentOwnerSignedReady({env=process.env,now=new Date(),allowEmpty=false}={}){
  const reviewedSha=env.GRI_READY_REVIEWED_SHA256||
@@ -44,6 +46,18 @@ if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
      process.env.GITHUB_ACTIONS!=="true")
     throw Error("PALLAB_SIGNED_GATE_PROTECTED_MAIN_REQUIRED");
   const scheduled=process.argv[2]==="--scheduled-owner-gate";
+  // Always report admission blockers, even when the publisher step is skipped.
+  // No private hashes, envelopes, source payloads or keys enter this report.
+  if(scheduled){
+   const report=explainGriSignedInputBlockers({
+    reviewedSha:process.env.GRI_READY_REVIEWED_SHA256,
+    certificatesSha:process.env.GRI_READY_CERTIFICATES_SHA256,
+    readyAt:process.env.GRI_READY_APPROVED_AT,
+   });
+   console.log(JSON.stringify(report));
+   if(process.env.GITHUB_STEP_SUMMARY)
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY,safeGriBlockerJobSummary(report));
+  }
   const r=checkCurrentOwnerSignedReady({allowEmpty:scheduled});
   if(process.env.GITHUB_OUTPUT)
     appendFileSync(process.env.GITHUB_OUTPUT,

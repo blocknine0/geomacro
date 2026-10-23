@@ -155,7 +155,7 @@ test("newly approved same-source review wakes after successful Auto Ingest workf
       calls.push(opts.method);
       return opts.method==="GET"?
         {status:200,json:async()=>({workflow_runs:[
-          {head_sha:"d".repeat(40),head_branch:"main",
+          {head_sha:"d".repeat(40),head_branch:"feature",
            event:"workflow_dispatch",created_at:"2026-10-18T11:18:00Z"},
         ]})}:{status:204};
     },
@@ -173,9 +173,10 @@ test("scheduled backstop is separate from original GRI proof, no Supabase or pay
   const protectedGri=readFileSync(".github/workflows/gri-v12-supabase-free-reviewed-current.yml","utf8");
   const code=readFileSync("scripts/ops/dispatch-gri-signed-ready-cadence.mjs","utf8");
   assert.match(w,/cron: "13,28,43,58 \* \* \* \*"/u);
-  assert.match(w,/workflows: \["Auto Ingest News"\]/u);
+  assert.match(w,/"Auto Ingest News"/u);
   assert.match(w,/github.event.workflow_run.conclusion == 'success'/u);
-  assert.match(w,/github.event.workflow_run.head_sha == github.sha/u);
+  assert.match(w,/fetch-depth: 0/u);
+  assert.match(w,/node scripts\/ops\/verify-gri-news-wakeup.mjs/u);
   assert.match(code,/SIGNED_GRI_PUBLISHER_ALREADY_RUNNING_OR_UNKNOWN/u);
   assert.match(w,/actions: write/u);
   assert.match(w,/github.ref == 'refs\/heads\/main'/u);
@@ -242,7 +243,7 @@ test("no repeated B2 attempt while live, successful, unreviewed, cooling down or
     assert.equal(result.payments,0);
   }
 });
-test("pure retry policy never treats a different commit or pre-approval failed run as same signed package",()=>{
+test("new main does not reset approval retry budget; pre-approval runs do not suppress it",()=>{
   const old={head_sha:"f".repeat(40),head_branch:"main",
     event:"workflow_dispatch",status:"completed",conclusion:"failure",
     created_at:"2026-10-18T11:20:00.000Z"};
@@ -250,7 +251,7 @@ test("pure retry policy never treats a different commit or pre-approval failed r
     runs:[old],headSha:env.GITHUB_SHA,
     approvedAt:env.GRI_READY_APPROVED_AT,now:date,
   });
-  assert.equal(a.dispatch,true);
+  assert.equal(a.status,"SIGNED_GRI_PUBLISHER_RETRY_ONCE_AFTER_FAILURE");
   const b=decideGriSignedPublisherRetry({
     runs:[{...old,head_sha:env.GITHUB_SHA,
       created_at:"2026-10-18T11:12:00.000Z"}],
@@ -306,4 +307,15 @@ test("forged or stale reviewed pointers cannot give green numerical recovery",()
   }
   assert.throws(()=>safeGriBlockerJobSummary({schema:"malicious",missing_requirements:[]}));
   assert.throws(()=>safeGriBlockerJobSummary({schema:"geomacro.gri-v12-signed-input-blockers.v1",missing_requirements:["LEAK_ARTICLE"]}));
+});
+
+test("new main cannot repeat a successful publisher or reset the two-attempt budget",()=>{
+ const prior={head_sha:"f".repeat(40),head_branch:"main",event:"workflow_dispatch",
+  status:"completed",conclusion:"success",created_at:"2026-10-18T11:17:00.000Z"};
+ const check=runs=>decideGriSignedPublisherRetry({runs,headSha:env.GITHUB_SHA,
+  approvedAt:env.GRI_READY_APPROVED_AT,now:date});
+ assert.equal(check([prior]).status,"SIGNED_GRI_PUBLISHER_SUCCEEDED_NO_REPEAT");
+ assert.equal(check([{...prior,conclusion:"failure"},
+  {...prior,head_sha:env.GITHUB_SHA,conclusion:"failure"}]).status,
+  "SIGNED_GRI_PUBLISHER_RETRY_LIMIT_REACHED");
 });
