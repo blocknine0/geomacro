@@ -199,7 +199,7 @@ async function main() {
       network: body.exact_price?.network === BASE_SEPOLIA_NETWORK
         ? BASE_SEPOLIA_NETWORK : "UNRECOGNIZED_OR_MISSING",
       amount_usdc: typeof body.exact_price?.amount_usdc === "string" &&
-        /^(?:0|[1-9][0-9]{0,2})(?:\\.[0-9]{1,6})?$/.test(body.exact_price.amount_usdc)
+        /^(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,6})?$/.test(body.exact_price.amount_usdc)
         ? body.exact_price.amount_usdc : null,
       query_plan_hash: typeof body.query_plan_hash === "string" &&
         /^[0-9a-f]{64}$/.test(body.query_plan_hash) ? body.query_plan_hash : null,
