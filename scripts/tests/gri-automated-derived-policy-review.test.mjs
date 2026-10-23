@@ -64,8 +64,8 @@ test("once both HUMAN consents are real, same already-verified derived audit can
  assert.equal(signed.legacy_signed_hot_products_verified,false);
  assert.equal(signed.paid_delivery_authorized,false);
  for(const [i,k] of [f.autoOwner,f.autoSuman].entries()){
-   const bytes=Buffer.from("GEOMACRO/GriAutomatedDerivedReviewV1\\n"+ROLES[i]+
-     "\\n"+canonical(signed.payload));
+   const bytes=Buffer.from("GEOMACRO/GriAutomatedDerivedReviewV1\n"+ROLES[i]+
+     "\n"+canonical(signed.payload));
    assert.ok(cryptoVerify(null,bytes,createPublicKey(k.pub),
      Buffer.from(signed.approvals[i].signature_base64,"base64")));
  }
