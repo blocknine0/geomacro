@@ -42,9 +42,12 @@ export function selectPriorityOriginalReviewCountry(
       record.status!=="official_release_observed_unscored"||
       record.same_event_corrob_verified!==false||
       record.severity!==null||!Array.isArray(record.sources_credited)||
-      record.sources_credited.length!==0)
+      record.sources_credited.length>2||
+      record.sources_credited.some(c=>typeof c!=="string"||c.length>250))
      continue;
    seen.add(record.id);
+   // Required attribution does not make a PRIVATE review lead unusable.
+   // Never remove that credit or infer commercial rights from this choice.
    const published=Date.parse(record.published_at);
    if(!Number.isFinite(published)||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u.test(record.published_at)||
       published>clock-MIN_DELAY_MS||

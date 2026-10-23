@@ -41,7 +41,7 @@ const privateLead=lead=>{
  return true;
 };
 export function buildPrivateOriginalReviewArchive(leads,{now=new Date(),countryIso3}={}){
- if(!Array.isArray(leads)||leads.length>2||
+ if(!Array.isArray(leads)||leads.length>3||
     !(now instanceof Date)||!Number.isFinite(now.getTime())||
     !/^[A-Z]{3}$/u.test(countryIso3??""))
    fail("SCOPE_INVALID");

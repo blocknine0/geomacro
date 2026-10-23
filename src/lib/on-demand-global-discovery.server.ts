@@ -1528,12 +1528,14 @@ const MAX_ARTICLE_PAGE_PROBES = 4;
 /** Internal-only evidence continuation; never serialize verified_candidates. */
 export async function verifyOnDemandOriginalArticlePages(
   candidates: readonly PrivateOriginalCandidate[],
-  options: {fetchImpl?:typeof fetch; now?:Date; maxAgeSeconds?:number;diagnostics?:boolean}={},
+  options: {fetchImpl?:typeof fetch; now?:Date; maxAgeSeconds?:number;diagnostics?:boolean;maxProbes?:number}={},
 ): Promise<PrivatePageDateResult> {
   const now=options.now ?? new Date();
+  const maxProbes=options.maxProbes??MAX_ARTICLE_PAGE_PROBES;
   const maxAgeMs=options.maxAgeSeconds===undefined?ONE_DAY_MS:
     Math.min(MAX_NEWS_AGE_MS,options.maxAgeSeconds*1000);
-  if(!Number.isFinite(now.getTime()) || !Number.isFinite(maxAgeMs) || maxAgeMs<=0)
+  if(!Number.isSafeInteger(maxProbes)||maxProbes<1||maxProbes>MAX_ARTICLE_PAGE_PROBES||
+     !Number.isFinite(now.getTime()) || !Number.isFinite(maxAgeMs) || maxAgeMs<=0)
     throw Error("ON_DEMAND_CLOCK_INVALID");
   const eligible=candidates.slice(0,16).filter((candidate)=>{
     const def=[...ORIGINAL_FALLBACK_FEEDS,...INTERNATIONAL_ORIGINAL_FEEDS,...GOVUK_SEARCH_FALLBACKS].find((feed)=>
@@ -1574,7 +1576,7 @@ export async function verifyOnDemandOriginalArticlePages(
   const chosen:PrivateOriginalCandidate[]=[];
   const used=new Set<string>();
   const add=(candidate:PrivateOriginalCandidate)=>{
-    if(chosen.length>=MAX_ARTICLE_PAGE_PROBES ||
+    if(chosen.length>=maxProbes ||
        used.has(candidate.publisher_family))return;
     chosen.push(candidate);
     used.add(candidate.publisher_family);
@@ -1729,7 +1731,7 @@ export async function verifyOnDemandOriginalArticlePages(
   let attempted=chosen.length;
   // Try at most one different original article per failed publisher.
   // Keep independent source identity intact and never exceed total page quota.
-  for(let i=0;i<chosen.length && attempted<MAX_ARTICLE_PAGE_PROBES;i++){
+  for(let i=0;i<chosen.length && attempted<maxProbes;i++){
     const family=chosen[i].publisher_family;
     if(successfulFamilies.has(family) || blockedFamilies.has(family))continue;
     const alternate=eligible.find(x=>x.publisher_family===family &&

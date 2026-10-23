@@ -1,7 +1,7 @@
 import {describe,it,expect} from "vitest";
 import {readFileSync} from "node:fs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195";
-import {countryForThisRun,requireProtectedOriginalArchiveMain} from "./prepare-first-original-signing-input";
+import {countryForThisRun,requireProtectedOriginalArchiveMain,privateOriginalBudgetedFetch,ORIGINAL_REVIEW_GET_BUDGET} from "./prepare-first-original-signing-input";
 
 describe("protected original private B2 archive dispatch context",()=>{
  const approved={
@@ -60,5 +60,38 @@ describe("bounded genuine original review scheduler",()=>{
    expect(a).toBe(b);
    expect(countryForThisRun(new Date("2026-10-22T08:00:00Z"))).not.toBe(a);
    expect(()=>countryForThisRun(new Date("invalid"))).toThrow();
+ });
+});
+
+describe("three-domain first-party network capacity",()=>{
+ it("admits HTML plus precise issuer API per category in both stages, with a strict 24 GET total",async()=>{
+  let actual=0;
+  const network=privateOriginalBudgetedFetch(async()=>{actual++;return new Response("fixture");});
+  for(const phase of ["discovery","page","bytes"] as const){
+   const fetchPhase=network.forPhase(phase);
+   for(let i=0;i<ORIGINAL_REVIEW_GET_BUDGET[phase];i++)
+    await fetchPhase("https://example.invalid/fixture",{method:"GET",redirect:"error"});
+   await expect(fetchPhase("https://example.invalid/overflow",{redirect:"manual"})).rejects.toThrow(/BUDGET_EXCEEDED/);
+  }
+  expect(network.counts()).toEqual({discovery:12,page:6,bytes:6});
+  expect(actual).toBe(24);
+  const snapshot=network.counts();snapshot.bytes=0;
+  expect(network.counts().bytes).toBe(6);
+ });
+ it("rejects unsafe transport before making or counting any request",async()=>{
+  let actual=0;const network=privateOriginalBudgetedFetch(async()=>{actual++;return new Response();});
+  for(const [url,init] of [["http://example.invalid",{redirect:"error"}],
+   ["https://user:password@example.invalid",{redirect:"error"}],
+   ["https://example.invalid",{method:"POST",redirect:"error"}],
+   ["https://example.invalid",{redirect:"follow"}]] as const)
+   await expect(network.forPhase("page")(url,init)).rejects.toThrow(/SOURCE_REQUEST_INVALID/);
+  expect(actual).toBe(0);expect(network.counts()).toEqual({discovery:0,page:0,bytes:0});
+ });
+ it("uses canonical current direct publisher discovery and three-domain capacity without new authority",()=>{
+  const code=readFileSync("scripts/ops/prepare-first-original-signing-input.ts","utf8");
+  expect(code).toContain("await discoverDirectPublisherForPrivateQualification({");
+  expect(code).toContain("maxProbes:3");expect(code).toContain("maxRereads:3");
+  expect(code).toContain('receipt.signed_machine_input_created!==false');
+  expect(code).toContain('receipt.article_specific_commercial_rights_verified!==false');
  });
 });

@@ -92,3 +92,15 @@ test("tampered original packed bytes cannot create a local private JSON file",as
   assert.throws(()=>readFileSync(t.path),{code:"ENOENT"});
  }finally{t.close()}
 });
+
+test("one private owner export restores the same three-category batch without elevating review status",async()=>{
+ const t=setup();try{
+  const records=["geopolitics","macro","rare_earth"].map((category,i)=>({...lead,category,original_article_identity_sha256:String(i+1).repeat(64)}));
+  const plan=buildPrivateOriginalReviewArchive(records,{now,countryIso3:"IND"});
+  const receipt=await exportPrivateOriginalLeadArchive({env:{...t.env,GEOMACRO_PRIVATE_ORIGINAL_ARCHIVE_KEY:plan.key},cwd:t.cwd,
+    b2Factory:()=>({async get(){return plan.compressed;}})});
+  assert.equal(receipt.private_review_leads,3);
+  assert.equal(receipt.source_rights_verified,false);assert.equal(receipt.GRI_score_or_certificates_signed,false);
+  assert.equal(JSON.parse(readFileSync(t.path,"utf8")).leads.length,3);
+ }finally{t.close()}
+});

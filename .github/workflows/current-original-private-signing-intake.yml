@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       country_iso3:
-        description: "Optional canonical ISO3 (default rotates USA/GBR/CAN)"
+        description: "Optional canonical ISO3 (default uses current journal leads or canonical 195 rotation)"
         required: false
         type: string
         default: ""
@@ -97,7 +97,7 @@ jobs:
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
           bunx --no-install vitest run scripts/ops/prepare-first-original-signing-input.test.ts src/lib/priority-original-review-country.test.ts src/lib/on-demand-global-index-rescue.server.test.ts src/lib/country-195-search-slot-recovery.test.ts
       - name: Attempt genuine 22h publisher original readbacks without charge
-        # PR tests NEVER probe official publishers; main only, 12+4+2 GET cap.
+        # PR tests NEVER probe official publishers; main only, 12+6+6 GET cap.
         # Without eligible current releases the result is cleanly NO_CANDIDATE,
         # not a false ready-for-signing or a fake source rights statement.
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
