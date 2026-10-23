@@ -20,15 +20,35 @@ export function assessLiveNoFundsReadiness({canonicalSha,build,health,discovery,
   disc?.productionFundsAuthorized===false&&Array.isArray(disc?.resources)&&disc.resources.length===0;
  const noFunds=(aStatus===200||aStatus===422)&&avail?.payment_required_now===false&&
   avail?.execution_authorized===false;
- const deliverable=noFunds&&aStatus===200&&avail?.availability?.deliverable===true&&
-  avail?.availability?.code==='AVAILABLE'&&typeof avail?.query_plan_hash==='string'&&
-  /^[a-f0-9]{64}$/.test(avail.query_plan_hash)&&avail?.exact_price?.asset==='USDC'&&
-  /^(?:\d+)(?:\.\d{1,6})?$/.test(String(avail?.exact_price?.amount_usdc??''));
+ // A live no-funds quote must disclose a strictly positive, internally
+ // consistent atomic USDC price, not just a syntactically numeric label.
+ // Actual capability/variant correctness remains enforced by the server's
+ // canonical eligibility resolver and later immutable x402 payment binding.
+ const price=obj(avail?.exact_price);
+ const decimal=typeof price?.amount_usdc==='string'?price.amount_usdc:'';
+ const decimalValid=/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(decimal);
+ let correctAtomic=false;
+ if(decimalValid){
+  const [whole,fraction='']=decimal.split('.');
+  const atomic=BigInt(whole)*1_000_000n+BigInt(fraction.padEnd(6,'0'));
+  correctAtomic=atomic>0n&&atomic<=250_000n&&price?.amount_atomic===atomic.toString();
+ }
+ const deliverable=noFunds&&aStatus===200&&avail?.ok===true&&avail?.chargeable===true&&
+  avail?.availability?.deliverable===true&&avail?.availability?.code==='AVAILABLE'&&
+  typeof avail?.query_plan_hash==='string'&&/^[a-f0-9]{64}$/.test(avail.query_plan_hash)&&
+  price?.asset==='USDC'&&correctAtomic;
  const blockers=[];
  const require=(flag,code)=>{if(!flag)blockers.push(code);};
  require(deployed,'WEBSITE_PUBLISH_SHA_NOT_CURRENT');
  require(hStatus===200,'DEEP_HEALTH_NOT_HTTP_200');
  require(h?.production_data_runtime_configured===true,'PRODUCTION_DATA_RUNTIME_NOT_READY');
+ // A successful HTTP status and three hot booleans are insufficient: require
+ // the SAME complete B2-backed deep-health predicate used by the gate itself.
+ // Do not report a ready verdict when the origin explicitly says ok:false or
+ // when the independent B2-backed edge has not been authenticated.
+ require(h?.ok===true,'DEEP_HEALTH_REPORTED_NOT_OK');
+ require(pub?.b2_runtime_configured===true,'B2_BACKED_SIGNED_EDGE_NOT_VERIFIED');
+ require(data,'CURRENT_SIGNED_3_OF_3_NOT_VERIFIED');
  for(const k of HOT)require(hot?.[k]?.ok===true&&current?.[k]===true,'CURRENT_SIGNED_'+k.toUpperCase()+'_NOT_VERIFIED');
  require(prelaunch,'X402_ZERO_PAYABLE_PRELAUNCH_DISCOVERY_NOT_VERIFIED');
  require(noFunds,'X402_NO_FUNDS_AVAILABILITY_CONTRACT_NOT_VERIFIED');
