@@ -12,12 +12,16 @@ on:
       - '.github/workflows/continent-country-original-probe-reusable.yml'
       - '.github/workflows/continent-country-first-run-bootstrap.yml'
       - 'scripts/lib/continent-country-195-rotation.mjs'
+      - 'scripts/lib/continent-country-resume.mjs'
+      - 'scripts/ops/restore-continent-country-cursor.mjs'
+      - 'scripts/tests/continent-country-resume.test.mjs'
       - 'scripts/ops/plan-continent-country-195-rotation.mjs'
       - 'scripts/tests/continent-country-195-rotation.test.mjs'
   workflow_dispatch: {}
 
 permissions:
   contents: read
+  actions: read
 
 # Never auto-cancel 1 of the 6 region canaries on a fresh main commit.
 concurrency:
