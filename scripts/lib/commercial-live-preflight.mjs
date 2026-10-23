@@ -26,7 +26,7 @@ export function assessLiveNoFundsReadiness({canonicalSha,build,health,discovery,
  // canonical eligibility resolver and later immutable x402 payment binding.
  const price=obj(avail?.exact_price);
  const decimal=typeof price?.amount_usdc==='string'?price.amount_usdc:'';
- const decimalValid=/^(?:0|[1-9]\\d*)(?:\\.\\d{1,6})?$/.test(decimal);
+ const decimalValid=/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(decimal);
  let correctAtomic=false;
  if(decimalValid){
   const [whole,fraction='']=decimal.split('.');
