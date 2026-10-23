@@ -2,8 +2,8 @@
   "schema_version": "geomacro.agent-commerce.v2",
   "service": {
     "id": "geomacro-global-risk-intelligence",
-    "name": "GeoMacro Global Risk Intelligence",
-    "description": "Machine-readable geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI-agent decisions.",
+    "name": "Geomacro",
+    "description": "Geomacro provides derived, machine-readable Geopolitics, Macro/FX and Critical Minerals intelligence for humans, applications and AI agents. Verified source rights and current signed deliverability are required for any paid result.",
     "status": "prelaunch",
     "canonical_origin": "https://geomacro.live",
     "categories": [
@@ -11,7 +11,13 @@
       "MACRO",
       "CRITICAL_MINERALS"
     ],
-    "execution_authorized": false
+    "execution_authorized": false,
+    "brand": "Geomacro",
+    "official_category_apis": {
+      "geopolitics": "https://geomacro.live/api/v1/intelligence/geopolitics",
+      "macro_fx": "https://geomacro.live/api/v1/intelligence/macro-fx",
+      "critical_minerals": "https://geomacro.live/api/v1/intelligence/critical-minerals"
+    }
   },
   "discovery": {
     "a2a_agent_card": "https://geomacro.live/.well-known/agent-card.json",
@@ -24,7 +30,11 @@
     "llms": "https://geomacro.live/llms.txt",
     "openapi": "https://geomacro.live/openapi-x402.json",
     "full_openapi": "https://geomacro.live/docs/openapi/geomacro-v1.yaml",
-    "availability": "https://geomacro.live/api/x402/risk/availability"
+    "availability": "https://geomacro.live/api/x402/risk/availability",
+    "official_canonical_api": "https://geomacro.live/api/v1/intelligence/query",
+    "official_agent": "https://geomacro.live/api/v1/agent",
+    "official_openapi": "https://geomacro.live/api/v1/agent?view=openapi",
+    "pricing": "https://geomacro.live/api/v1/pricing"
   },
   "commercial_contract": {
     "launch_state": "prelaunch",
@@ -36,13 +46,14 @@
     "freshness_policy_required": true,
     "idempotency_required": true,
     "reconciliation_required": true,
-    "paid_but_undelivered_requires_reconciliation": true
+    "paid_but_undelivered_requires_reconciliation": true,
+    "verified_data_and_rights_required_for_payment": true
   },
   "offers": [
     {
       "id": "adaptive-risk-intelligence-v1",
-      "name": "Adaptive Global Risk Intelligence",
-      "description": "A bounded country or directional-corridor assessment assembled only from currently deliverable governed GeoMacro modules requested by topic and intent.",
+      "name": "Geomacro Structured Intelligence",
+      "description": "A bounded country or directional-corridor assessment assembled only from currently deliverable governed Geomacro modules requested by topic and intent.",
       "categories": [
         "GEOPOLITICS",
         "MACRO",
@@ -110,7 +121,8 @@
         "commercially_ineligible_is_not_payable": true,
         "duplicate_charge_blocked": true,
         "execution_authorized": false
-      }
+      },
+      "canonical_endpoint": "https://geomacro.live/api/v1/intelligence/query"
     }
   ],
   "discovery_terms": [
