@@ -38,6 +38,8 @@ on:
       - "scripts/lib/machine-intelligence-signed-ready-hint.mjs"
       - "scripts/lib/machine-intelligence-signed-ready-hint.test.mjs"
       - "scripts/ops/dispatch-machine-intelligence-signed-ready.mjs"
+      - "scripts/ops/report-pallab-suman-hosted-handoff.mjs"
+      - "scripts/tests/report-pallab-suman-hosted-handoff.test.mjs"
   push:
     branches: [main]
     paths:
@@ -52,6 +54,8 @@ on:
       - "scripts/lib/machine-intelligence-signed-ready-hint.mjs"
       - "scripts/lib/machine-intelligence-signed-ready-hint.test.mjs"
       - "scripts/ops/dispatch-machine-intelligence-signed-ready.mjs"
+      - "scripts/ops/report-pallab-suman-hosted-handoff.mjs"
+      - "scripts/tests/report-pallab-suman-hosted-handoff.test.mjs"
 
 permissions:
   contents: read
@@ -80,7 +84,9 @@ jobs:
           node --test scripts/tests/pallab-signed-ready-gri-gate.test.mjs
           node --test scripts/tests/activate-pallab-suman-signed-automation.test.mjs
       - name: Fail-closed machine dual-authority input hints and no-funds dispatch tests
-        run: node --test scripts/lib/machine-intelligence-signed-ready-hint.test.mjs
+        run: |
+          node --test scripts/lib/machine-intelligence-signed-ready-hint.test.mjs
+          node --test scripts/tests/report-pallab-suman-hosted-handoff.test.mjs
 
   enqueue-approved-review:
     needs: admission-contract
@@ -117,6 +123,8 @@ jobs:
       # separate Facts/Rights signatures before ANY B2/D1 promotion.
       MACHINE_INTELLIGENCE_READY_INPUT_SHA256: ${{ vars.MACHINE_INTELLIGENCE_READY_INPUT_SHA256 }}
       MACHINE_INTELLIGENCE_READY_APPROVED_AT: ${{ vars.MACHINE_INTELLIGENCE_READY_APPROVED_AT }}
+      GEOMACRO_GRI_AUTO_ENROLLED: ${{ vars.GEOMACRO_GRI_AUTO_ENROLLED }}
+      GEOMACRO_GRI_AUTO_REVOKED: ${{ vars.GEOMACRO_GRI_AUTO_REVOKED }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -163,3 +171,12 @@ jobs:
           grep -Fq 'types: [machine_intelligence_dual_signed_ready]' .github/workflows/intelligence-machine-current.yml
           grep -Fq 'MACHINE_INTELLIGENCE_AUTHORITY_OR_PIN_INVALID' .github/workflows/intelligence-machine-current.yml
           node scripts/ops/dispatch-machine-intelligence-signed-ready.mjs
+      - name: Keep a no-laptop human work queue for genuine Pallab Suman signoff
+        # Job summary only. No extra cron, network, issue spam, credentials,
+        # keys, B2/D1 writes, signing, rights waiver or payment. Runs even
+        # when genuinely approved signed input is not yet available.
+        if: ${{ !cancelled() && steps.targets.outcome == 'success' }}
+        env:
+          GEOMACRO_OWNER_GATE_APPROVED: ${{ steps.owner.outputs.owner_approved }}
+        run: node scripts/ops/report-pallab-suman-hosted-handoff.mjs
+
