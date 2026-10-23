@@ -485,9 +485,12 @@ jobs:
           set -euo pipefail
           # GitHub schedules can drift; the source is intentionally sampled at
           # most once per UTC day on its existing schedule, not every 90 min.
-          if [[ "${GITHUB_EVENT_NAME}" == "schedule" && "$(date -u +%H)" != "00" ]]; then
+          if [[ "${GITHUB_EVENT_NAME}" != "schedule" && "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ]]; then
             echo 'probe=false' >> "$GITHUB_OUTPUT"
-            echo 'UKMTO_ACCESS_DENIED_HOLD: only daily official-index probe, no alternate scraping'
+            echo 'UKMTO_UPSTREAM_DENIED_HOLD: push/release not a fresh provider retry'
+          elif [[ "${GITHUB_EVENT_NAME}" == "schedule" && "$(date -u +%H)" != "00" ]]; then
+            echo 'probe=false' >> "$GITHUB_OUTPUT"
+            echo 'UKMTO_UPSTREAM_DENIED_HOLD: at most one scheduled UTC-day retry'
           else
             echo 'probe=true' >> "$GITHUB_OUTPUT"
           fi
