@@ -6,6 +6,8 @@ import {GEOMACRO_USDC_NETWORKS} from "./geomacro-multichain-usdc.server";
 import {GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,geomacroPricedStructuredOutput}
   from "./capability-structured-output-contract";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY} from "./geomacro-structured-commercial-license";
+import {GEOMACRO_OFFICIAL_API_CATALOG,GEOMACRO_OFFICIAL_API_DISPLAY_NAMES}
+  from "./geomacro-official-api-branding";
 
 /**
  * Machine-readable founder-locked catalog. Prices are fetched from ONE
@@ -61,6 +63,10 @@ export function publicGeomacroPaidPricingManifest(){
       decimals:rail.decimals,
       merchant_settlement_verified:false as const,
     })),
+    // Human-facing names start with GEOMACRO, never the HTTP verb POST.
+    // Legacy official_api method/path strings remain stable for clients.
+    official_api_display_names:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,
+    official_api_catalog:GEOMACRO_OFFICIAL_API_CATALOG,
     official_api:{
       intelligence:"POST /api/v1/intelligence/query",
       geopolitics:"POST /api/v1/intelligence/geopolitics",

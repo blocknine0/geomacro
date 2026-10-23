@@ -13,6 +13,8 @@ import {GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION}
  from "./capability-structured-output-contract";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
  from "./geomacro-structured-commercial-license";
+import {GEOMACRO_OFFICIAL_API_CATALOG,GEOMACRO_OFFICIAL_API_DISPLAY_NAMES}
+ from "./geomacro-official-api-branding";
 import {GEOMACRO_USDC_NETWORKS_PATH,GEOMACRO_USDC_QUOTE_PREFLIGHT_PATH,
   publicGeomacroUsdcRailDiscovery} from "./geomacro-multichain-usdc.server";
 
@@ -60,8 +62,12 @@ export function officialGeomacroAgentDiscovery(){
   countries_routable:195,domains:["geopolitics","macro","rare_earth"],
   protocols:["HTTPS JSON","MCP","A2A","x402-v2"],
   endpoints,
+  official_api_display_names:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,
+  official_api_catalog:GEOMACRO_OFFICIAL_API_CATALOG,
   category_agents:GEOMACRO_CATEGORY_AGENT_PROFILES.map(profile=>({
-   ...profile,agent_endpoint:OFFICIAL_AGENT_PATH,
+   ...profile,
+   display_name:GEOMACRO_OFFICIAL_API_CATALOG.find(api=>api.path===profile.api)?.name ?? profile.name,
+   agent_endpoint:OFFICIAL_AGENT_PATH,
    agent_request:{tool:profile.tool,arguments:{country_iso3:"IND",
     question:profile.id==="geopolitics"?"What are the geopolitical risks for India?":
      profile.id==="macro-fx"?"What are the macro and FX risks for India?":
@@ -125,7 +131,7 @@ export function officialGeomacroAgentOpenApi(){
  });
  return {
   openapi:"3.1.0",
-  info:{title:"Geomacro Official API and AI Agent v1",version:"1.0.0-prelaunch",
+  info:{title:"GEOMACRO Official APIs and AI Agent v1",version:"1.0.0-prelaunch",
    description:"One canonical intelligence engine; free-derived Finds and machine discovery are not commercially signed GROs. All payable operations remain fail-closed and priced by the approved canonical capability catalog."},
   servers:[{url:"https://geomacro.live"}],
   paths:{
@@ -134,6 +140,7 @@ export function officialGeomacroAgentOpenApi(){
      operationId:"discoverOfficialGeomacroAgent",
      responses:{"200":{description:"Public discovery only; never implies paid readiness."}}},
     post:{...op("Call a Geomacro tool using canonical x402 evidence gates","post"),
+     summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.agent,
      requestBody:{required:true,content:{"application/json":{
       schema:{
        type:"object",additionalProperties:false,required:["tool","arguments"],
@@ -153,10 +160,22 @@ export function officialGeomacroAgentOpenApi(){
       ])),
      }}}},
    },
-   [endpoints.canonical_intelligence]:{post:op("Query canonical Geomacro paid intelligence","post")},
-   [endpoints.geopolitics]:{post:op("Query geopolitics scoped intelligence","post")},
-   [endpoints.macro_fx]:{post:op("Query macro FX scoped intelligence","post")},
-   [endpoints.critical_minerals]:{post:op("Query critical minerals scoped intelligence","post")},
+   [endpoints.canonical_intelligence]:{post:{
+    ...op("Query canonical Geomacro paid intelligence","post"),
+    summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.intelligence,
+   }},
+   [endpoints.geopolitics]:{post:{
+    ...op("Query geopolitics scoped intelligence","post"),
+    summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.geopolitics,
+   }},
+   [endpoints.macro_fx]:{post:{
+    ...op("Query macro FX scoped intelligence","post"),
+    summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.macro_fx,
+   }},
+   [endpoints.critical_minerals]:{post:{
+    ...op("Query critical minerals scoped intelligence","post"),
+    summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.critical_minerals,
+   }},
    [endpoints.availability]:{post:op("Check no funds Geomacro query availability","post")},
    ["/api/intelligence/capabilities"]:{get:{
     summary:"Discover exact approved per-variant structured fields via view=outputs or terms via view=license; never a payable offer",
@@ -195,6 +214,9 @@ export function officialGeomacroAgentOpenApi(){
      "503":{description:"Publisher journal unavailable"}}}},
   },
   "x-geomacro":{
+   official_api_display_names:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,
+   official_api_catalog:GEOMACRO_OFFICIAL_API_CATALOG,
+   branding_does_not_change_http_method:true,
    pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
    pricing:capabilityPricingCatalog(),
    locked_pricing_endpoint:GEOMACRO_PAID_PRICING_PATH,

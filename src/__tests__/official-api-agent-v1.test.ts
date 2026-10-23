@@ -1,6 +1,9 @@
 import {readFileSync} from "node:fs";
 import {describe,it,expect,vi} from "vitest";
 import {GEOMACRO_AGENT_TOOLS} from "../lib/geomacro-agent-tools";
+import {GEOMACRO_OFFICIAL_API_CATALOG,GEOMACRO_OFFICIAL_API_DISPLAY_NAMES}
+ from "../lib/geomacro-official-api-branding";
+import {publicGeomacroPaidPricingManifest} from "../lib/geomacro-paid-pricing-manifest.server";
 import {buildAgentQueryPlan} from "../lib/agent-query-plan";
 import {GEOMACRO_CAPABILITY_PRICES,GEOMACRO_CAPABILITY_PRICING_VERSION}
  from "../lib/capability-pricing-catalog";
@@ -61,6 +64,32 @@ describe("official Geomacro API and AI Agent v1",()=>{
   expect(d.buyer_integration.no_automatic_payment_retry).toBe(true);
   expect(d.buyer_integration.baseline_preflight_scope).toBe("structural_baseline_only");
   expect(openapi["x-geomacro"].execution_authorized).toBe(false);
+ });
+ it("uses GEOMACRO product names, not HTTP verbs, as the official API labels",()=>{
+  const agent=officialGeomacroAgentDiscovery();
+  const openapi=officialGeomacroAgentOpenApi();
+  const pricing=publicGeomacroPaidPricingManifest();
+  expect(GEOMACRO_OFFICIAL_API_CATALOG).toHaveLength(5);
+  expect(agent.official_api_display_names).toEqual(GEOMACRO_OFFICIAL_API_DISPLAY_NAMES);
+  expect(agent.official_api_catalog).toEqual(GEOMACRO_OFFICIAL_API_CATALOG);
+  expect(pricing.official_api_display_names).toEqual(GEOMACRO_OFFICIAL_API_DISPLAY_NAMES);
+  expect(pricing.official_api_catalog).toEqual(GEOMACRO_OFFICIAL_API_CATALOG);
+  expect(openapi["x-geomacro"].official_api_display_names)
+    .toEqual(GEOMACRO_OFFICIAL_API_DISPLAY_NAMES);
+  for(const api of GEOMACRO_OFFICIAL_API_CATALOG){
+    expect(api.name).toMatch(/^GEOMACRO /);
+    expect(api.name).not.toMatch(/\b(?:GET|POST)\b/);
+    expect(api.method).toBe("POST");
+    const operation=(openapi.paths as any)[api.path].post;
+    expect(operation.summary).toBe(api.name);
+    // Existing stable operation IDs, route URLs and request methods remain untouched.
+    expect(operation.operationId).toBeTruthy();
+  }
+  expect(pricing.official_api.geopolitics).toBe("POST /api/v1/intelligence/geopolitics");
+  expect(pricing.official_api.macro_fx).toBe("POST /api/v1/intelligence/macro-fx");
+  expect(pricing.official_api.critical_minerals).toBe("POST /api/v1/intelligence/critical-minerals");
+  expect(agent.payment_authorized_by_discovery).toBe(false);
+  expect(pricing.payment_authorized).toBe(false);
  });
  it.each(["country_risk","corridor_risk","change_since_last_verified",
     "why_changed","three_domain_state","risk_gate_decision_context"] as const)(
