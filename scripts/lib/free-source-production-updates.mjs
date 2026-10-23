@@ -6,6 +6,7 @@ import {MARAD_OFFICIAL_RSS_URL,summarizeMaradCorridorContext} from './marad-offi
 import {FREE_NO_KEY_TRANSPORT_SPECS,probeNoKeySource} from './free-no-key-source-probe.mjs';
 import {SOURCE_LINEUP_BY_ID,SOURCE_LINEUP} from './operator-commercial-free-source-lineup.mjs';
 import {officialItemNativePublicationMs} from './official-native-item-publication-date.mjs';
+import {GDELT_PUBLIC_BATCH_MANIFEST,parseGdeltBatchManifest} from './gdelt-free-batch-manifest.mjs';
 
 const DOMAINS=['geopolitics','macro','rare_earth'];
 const sha=x=>createHash('sha256').update(x).digest('hex');
@@ -21,6 +22,11 @@ export const USGS_MCS_OFFICIAL_LANDING_URL =
   'https://www.usgs.gov/centers/national-minerals-information-center/mineral-commodity-summaries';
 
 const EXTRA=[
+ // Public GDELT dataset release pointer, 15-minute batching, no ZIP requests.
+ // GDELT index metadata may discover leads for the canonical 195-country
+ // original issuer workflow; it is NEVER an original article publication time.
+ {id:'gdelt_events',reader_revision:1,category:'geopolitics',
+  url:GDELT_PUBLIC_BATCH_MANIFEST,format:'manifest',maxBytes:4096},
  {id:'federal_reserve',category:'macro',url:'https://www.federalreserve.gov/feeds/press_all.xml',format:'rss',maxBytes:384000},
  {id:'noaa_nhc',category:'geopolitics',url:'https://www.nhc.noaa.gov/index-at.xml',format:'rss',maxBytes:256000},
  // Reuse the catalogued MARAD family, no new independent publisher or cron.
@@ -76,7 +82,15 @@ export function summarizeFreeSourceUpdates(spec,payload,now){
    fingerprints.push(hash);sampled++;
    if(clock)nativeTimes.push(clock);
  }
- if(['rss','atom'].includes(spec.format)){
+ if(spec.format==='manifest'&&spec.id==='gdelt_events'&&
+    spec.url===GDELT_PUBLIC_BATCH_MANIFEST){
+   const batch=parseGdeltBatchManifest(payload,{now});
+   if(!batch)throw Error('GDELT_FREE_RELEASE_INDEX_INVALID');
+   kind='GDELT_FREE_DATASET_BATCH_DISCOVERY_ONLY';
+   record(batch.internal_batch_identity);
+   // Even a 15-minute GDELT index says NOTHING about a publisher's precise
+   // native publication clock. Native articles still need independent review.
+ }else if(['rss','atom'].includes(spec.format)){
    kind='PUBLISHER_FEED_CHANGE';
    // A feed's updated clock, fetch time and date-only fields are not original
    // publication. Future or invalid explicit publication is never accepted.
