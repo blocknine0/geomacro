@@ -15,6 +15,8 @@ import {discoverDirectPublisherForPrivateQualification,
 import {verifyGeomacroUnclaimedOriginalPage} from "../lib/geomacro-original-page-readback.mjs";
 import {preparePrivateOriginalSigningReview} from "../lib/private-original-signing-review-intake.mjs";
 import {summarizePrivateOriginalIntakeFunnel} from "../lib/private-original-intake-funnel.mjs";
+import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
+import {selectPriorityOriginalReviewCountry} from "../../src/lib/priority-original-review-country";
 
 // Existing 02,08,14,20 UTC cron: four genuinely independent country
 // candidates/day, with a 195-slot deterministic cycle instead of rechecking
@@ -59,8 +61,27 @@ export function persistLocalPrivateOriginals({leads,dir,now,gha=false}){
 }
 export async function main(){
  const now=new Date();
- const country_iso3=process.env.GEOMACRO_REVIEW_COUNTRY_ISO3 ||
-  countryForThisRun(now);
+ // A manual owner selection always wins, with no extra D1 GET.
+ // The scheduled private review may prioritize the SAME source-neutral 72h
+ // D1 journal that Intelligence, Ask and the free/API research consume.
+ // This chooses WHAT country to verify, NEVER signs/verifies the D1 lead.
+ const manuallyRequested=process.env.GEOMACRO_REVIEW_COUNTRY_ISO3||"";
+ const rotatingCountry=countryForThisRun(now);
+ let country_iso3=manuallyRequested||rotatingCountry;
+ let journalPriorityMode=manuallyRequested?
+   "MANUAL_COUNTRY_ORIGINAL_REVIEW":"CANONICAL_195_ROTATION";
+ let journalCandidateCountries=0;
+ if(!manuallyRequested){
+   try {
+     const sharedNews=await fetchAllDerivedNews(fetch,now.getTime());
+     const decision=selectPriorityOriginalReviewCountry(sharedNews,rotatingCountry,now);
+     country_iso3=decision.country_iso3;
+     journalPriorityMode=decision.selection_mode;
+     journalCandidateCountries=decision.eligible_country_count;
+   }catch{
+     journalPriorityMode="SHARED_D1_UNAVAILABLE_CANONICAL_195_ROTATION";
+   }
+ }
  if(!country195ByIso3(country_iso3))
   throw Error("PRIVATE_ORIGINAL_COUNTRY_NOT_IN_CANONICAL_195");
  let discoveryCalls=0,pageCalls=0,byteCalls=0;
@@ -107,6 +128,11 @@ export async function main(){
  }
  const safe={...receipt,
   discovery_funnel:summarizePrivateOriginalIntakeFunnel({discovery,pages,receipt}),
+  country_selection_mode:journalPriorityMode,
+  shared_journal_candidate_country_count:journalCandidateCountries,
+  journal_observation_is_not_original_page_evidence:true,
+  shared_journal_does_not_grant_rights_or_signatures:true,
+  scheduled_ingest_and_on_demand_engine_are_shared:true,
   local_custodian_save_enabled:persist.local_file_created,
   private_leads_persisted_to_custodian:persist.private_leads_persisted,
   signed_input_created:false};
