@@ -80,6 +80,13 @@ function canonicalOriginalUrl(raw,source) {
      (!/^\/(?!\/)/u.test(url.pathname) ||
      !(ORIGINAL_ARTICLE_PATHS[source.id]?.test(url.pathname) ||
        documentedStatcanRootDaily))) return null;
+  // These three newly approved first-party page verifiers accept only an
+  // exact query-free official article URL. A redirect/search parameter must
+  // never be a canonical article identity or private signed review hint.
+  if(["uk_cabinet_security_original_atom_review",
+      "uk_dbt_macro_trade_original_atom_review",
+      "bc_minerals_original_rss_review"].includes(source.id) && url.search)
+    return null;
   // Tracking parameters are not article identity. Preserve nontracking query.
   for(const key of [...url.searchParams.keys()]) {
     if(/^utm_|^(?:fbclid|gclid|mc_cid|mc_eid)$/iu.test(key))
