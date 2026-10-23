@@ -9,20 +9,27 @@ reviewed GRI input, signed GRO, hot snapshot or payable x402 product.
 ## Always-on, zero-subscription intake
 
 `.github/workflows/current-original-private-signing-intake.yml` runs
-best-effort four times daily, and can also be manually dispatched. Default
-country rotation uses all 195 canonical ISO3 codes through the existing
-02:17 / 08:17 / 14:17 / 20:17 UTC slots, four distinct countries/day
-and a 49-day source-probe cycle (195 runs). This is NOT 195-country
-current factual coverage: each candidate still needs new real publisher
-releases, verified HTML bytes, native timestamps and separate review.
+best-effort every hour at :17 UTC, and can also be manually dispatched.
+The source scheduler now has a realistic opportunity to see releases during
+the existing 90-minute reviewed GRI freshness window, rather than waiting
+six hours. Default canonical 195-country rotation spans 195 hourly slots,
+about 8.1 days, but recent shared-journal leads may prioritize one country.
+This is NOT real-time coverage or 195-country current factual evidence:
+each candidate still needs genuine publisher releases, immutable verified
+HTML bytes, native timestamps, legally usable source scope and actual review.
 A manual dispatch can specify any canonical 195-country ISO3.
 
 Exactly one existing canonical three-category discovery run is shared across
 the categories: max **12** direct-publisher discovery GETs, **3** original page candidates
 (up to **6** GETs including pinned first-party precision APIs), and **3**
 independent exact HTML byte readbacks (up to **6** GETs), per execution.
-The total cap is **24** source GETs. B2 remains under the existing six-request
-shared governor; there is no new cron or API subscription.
+The total cap is **24** source GETs PER hourly run (maximum 576
+read attempts/day across issuer families, though actual requests are often
+much lower when no page qualifies). B2 stays under the existing six-request
+shared governor. This increases scheduled invocations from 4 to 24 daily,
+not the per-run request cap. It uses no new API subscription; official free
+provider 403/429, real free quota exhaustion, or delayed GitHub schedules
+must still fail closed. Zero qualifying leads means zero private B2 writes.
 Neither a third-party aggregator, article URL hash, website first-seen clock,
 feed `updated`, nor B2/D1 restore time can become an article byte proof.
 
@@ -261,3 +268,15 @@ in one run; a single precise GOV.UK proof could consume the entire byte-stage
 budget. The same archive now accepts at most three pending leads. No reviewer,
 Facts/Rights, independent corroboration, signed score or hot-publication gate
 is waived. Empty or unsupported country/category results remain unavailable.
+
+## Consent, scoring and original release clocks remain separate
+
+The previously enrolled one-time human consent runs the **derived-only**
+automation policy audit and conditional owner-scoped handoff; it does NOT
+generate Suman's human-reviewed numerical GRI or independent country-cell
+certificates. The signed commercial GRI publisher still requires
+independently validated two-original same-event proofs, article-specific
+Facts/Rights signatures, actual numerical scores, signed country cells and
+immutable historical B2 readback. An hourly attempt can be healthy while
+all three categories have zero genuinely new qualifying publications.
+Never retimestamp old articles to force the <=90-minute GRI contract.
