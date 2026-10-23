@@ -6,6 +6,7 @@ import {
   SAFE_ORIGINAL_PAGE_DATE_REASONS,
 } from "../../scripts/lib/official-original-article-date.mjs";
 import { fetchOriginalAlternate } from "../../scripts/lib/official-native-alternates.mjs";
+import {verifyCanadaOriginalDayEvidence} from "../../scripts/lib/official-original-day-evidence.mjs";
 
 const now = new Date("2026-10-09T13:30:00Z");
 const official = "https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals-supply-chain.html";
@@ -305,5 +306,62 @@ describe("bounded original-publisher article precise-date fallback", () => {
       .toEqual([]);
     expect(d.alternate_article_page_probes).toBe(1);
     expect(d.alternate_article_page_admitted).toBe(0);
+  });
+});
+
+describe("#2041 first-party Canada/StatCan day-precision original without invented clock",()=>{
+  const at=new Date("2026-10-24T14:00:00Z");
+  const canadian="https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals-project.html";
+  const stats="https://www150.statcan.gc.ca/n1/daily-quotidien/261023/dq261023a-eng.htm";
+  const valid='<html><head><meta name="dcterms.issued" content="2026-10-23"></head>'+
+    '<body>Natural Resources Canada official article</body></html>';
+  it("retains original day as coarse date only, never exact signed time",async()=>{
+    expect(verifyCanadaOriginalDayEvidence({articleUrl:canadian,html:valid,now:at}))
+      .toMatchObject({publication_day:"2026-10-23",precision:"day",
+        verified_precise_publication_instant:false,
+        commercial_rights_verified:false,independently_signed:false,chargeable:false});
+    expect(verifiedPublisherPageDate(valid,at)).toBeNull();
+    const d:Record<string,unknown>={};
+    expect(await fetchVerifiedPublisherPageDate(canadian,"rare_earth",{
+      now:at,diagnostics:d,allowCanadaDayObservation:true,
+      fetchImpl:async()=>new Response(valid,{headers:{"content-type":"text/html"}}),
+    })).toBeNull();
+    expect(d.original_day_precision_verified).toBe(true);
+    expect(d.code).toBe("PRECISE_PUBLICATION_UNVERIFIED");
+    expect(JSON.stringify(d)).not.toContain("2026-10-23");
+  });
+  it("verifies StatCan daily source-native article date against exact path",()=>{
+    const html='<meta name="dcterms.issued" content="2026-10-23">';
+    expect(verifyCanadaOriginalDayEvidence({articleUrl:stats,html,now:at}))
+      ?.publication_day).toBe("2026-10-23");
+    expect(verifyCanadaOriginalDayEvidence({articleUrl:stats,
+      html:html.replace("2026-10-23","2026-10-22"),now:at})).toBeNull();
+  });
+  it("rejects modified only, missing, conflicting, future, stale, forged URLs",()=>{
+    for(const html of [
+      '<meta name="dcterms.modified" content="2026-10-23">',
+      '<meta property="article:modified_time" content="2026-10-23">',
+      '<meta name="dcterms.issued" content="2026-10-23">'+
+        '<meta name="datePublished" content="2026-10-22">',
+      '<meta name="dcterms.issued" content="2026-10-25">',
+      '<meta name="dcterms.issued" content="2026-02-30">',
+    ])expect(verifyCanadaOriginalDayEvidence({articleUrl:canadian,html,now:at})).toBeNull();
+    for(const url of [
+      "https://www.canada.ca.evil.example/en/natural-resources-canada/news/2026/10/critical-minerals-project.html",
+      canadian+"?next=https://evil.example",
+      canadian.replace("https://","http://"),
+      "https://www.canada.ca/en/other-agency/news/2026/10/critical-minerals-project.html",
+    ])expect(verifyCanadaOriginalDayEvidence({articleUrl:url,html:valid,now:at})).toBeNull();
+    expect(verifyCanadaOriginalDayEvidence({articleUrl:canadian,html:valid,
+      now:new Date("2026-11-03T14:00:00Z")})).toBeNull();
+  });
+  it("does not add day evidence unless explicitly opted into private observer",async()=>{
+    const d:Record<string,unknown>={};
+    await fetchVerifiedPublisherPageDate(canadian,"rare_earth",{
+      now:at,diagnostics:d,
+      fetchImpl:async()=>new Response(valid,{headers:{"content-type":"text/html"}}),
+    });
+    expect(d.original_day_precision_verified).toBeUndefined();
+    expect(d.code).toBe("PRECISE_PUBLICATION_UNVERIFIED");
   });
 });
