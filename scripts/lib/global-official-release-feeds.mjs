@@ -40,14 +40,18 @@ export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
    path:/^\/en\/press\/press-releases\/20\d{2}\/(?:0[1-9]|1[0-2])\/(?:0[1-9]|[12]\d|3[01])\/[a-z0-9]+(?:-[a-z0-9]+){2,100}\/$/u,
    topic:geo,credit:'© European Union, 2026. Source attribution required.',
    family:'eu_council_original_publisher'},
- // USGS publicly advertises its actual mineral program RSS endpoint;
- // the site distinguishes USGS-owned public domain from 3rd-party content.
- {id:'usgs_minerals_news_original',category:'rare_earth',
-   url:'https://www.usgs.gov/news/minerals/feed',
-   format:'rss',host:'www.usgs.gov',
-   path:/^\/news\/(?:national-news-release|state-news-release|featured-story|science-snippet)\/[a-z0-9]+(?:-[a-z0-9]+){2,100}$/u,
-   topic:MINERAL_RELEASE_TOPIC,credit:'U.S. Geological Survey. Credit required where applicable; no third-party rights granted.',
-   family:'usgs_minerals_original_publisher'},
+ // PR #2780's USGS minerals RSS returned HTTP 4xx from the live hosted
+ // runner (#40021850932). Stop wasting a scarce first-party GET on it.
+ // Reuse the ALREADY OPERATIONAL same DOE origin/feed used in Geomacro's
+ // stateless website and free-source source-inventory, not a novel source.
+ // Each RSS pubDate is only a hint pending official original-page byte/time
+ // verification; third-party reuse rights remain unapproved.
+ {id:'us_doe_minerals_global',category:'rare_earth',
+   url:'https://www.energy.gov/rss/energygov/2193718',
+   format:'rss',host:'www.energy.gov',
+   path:/^\/(?:articles|cmei\/articles|em\/articles)\/[a-z0-9]+(?:-[a-z0-9]+){2,120}$/u,
+   topic:MINERAL_RELEASE_TOPIC,credit:'U.S. Department of Energy; first-party U.S. government original; external materials still require individual rights review.',
+   family:'us_doe_minerals_original_publisher'},
  {id:'iea_minerals_global',category:'rare_earth',url:'https://www.iea.org/news?topic%5B0%5D=critical-minerals',format:'html',host:'www.iea.org',path:/^\/news\/[a-z0-9]+(?:-[a-z0-9]+){1,35}$/u,topic:MINERAL_RELEASE_TOPIC,credit:'International Energy Agency',family:'iea_minerals_original_publisher'},
 ].map(s=>{
  const u=new URL(s.url);if(u.protocol!=='https:'||u.hostname!==s.host||u.username||u.password||u.port||u.hash)throw Error('GLOBAL_RELEASE_REGISTRY_INVALID');
