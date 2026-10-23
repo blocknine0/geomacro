@@ -10,7 +10,7 @@ function available(c:any){
   deliverable:true,signed_object_lifecycle:'existing',change_attribution_verified:false});
  return {ok:true,chargeable:true,payment_required_now:false,execution_authorized:false,query_plan_hash:plan.query_plan_hash,
   exact_price:{...p,asset:'USDC'},availability:{deliverable:true,code:'AVAILABLE',query_plan_hash:plan.query_plan_hash,
-   missing_modules:[],stale_modules:[],ineligible_source_ids:[],subjects:plan.subjects.map(subject=>({subject,available_modules:plan.required_modules}))}};
+   missing_modules:[],stale_modules:[],ineligible_source_count:0,subjects:plan.subjects.map(subject=>({subject,available_modules:plan.required_modules}))}};
 }
 describe('Supabase-free canonical global no-funds verification',()=>{
  it('covers all 585 exact country/category cells with signed module checks and no substitute territories',()=>{

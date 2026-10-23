@@ -152,8 +152,8 @@ async function fetchAvailability(entity) {
           outcome: "UNSAFE",
           status: response.status,
           code: "PRELAUNCH_BOUNDARY_VIOLATION",
-          network: body?.exact_price?.network ?? null,
-          query_plan_hash: body?.query_plan_hash ?? null,
+          network: null,
+          query_plan_hash: null,
         };
       }
 
@@ -183,14 +183,12 @@ async function fetchAvailability(entity) {
           outcome: "FAIL_CLOSED",
           status: response.status,
           code: body.availability.code,
-          network: body?.exact_price?.network ?? null,
+          network: null,
           query_plan_hash: body.query_plan_hash,
-          missing_modules: Array.isArray(body?.availability?.missing_modules)
-            ? body.availability.missing_modules.slice(0, 20)
-            : [],
-          stale_modules: Array.isArray(body?.availability?.stale_modules)
-            ? body.availability.stale_modules.slice(0, 20)
-            : [],
+          missing_module_count: Array.isArray(body?.availability?.missing_modules)
+            ? Math.min(body.availability.missing_modules.length, 1000) : null,
+          stale_module_count: Array.isArray(body?.availability?.stale_modules)
+            ? Math.min(body.availability.stale_modules.length, 1000) : null,
         };
       }
 
@@ -198,12 +196,14 @@ async function fetchAvailability(entity) {
         ...entity,
         outcome: "UNSAFE",
         status: response.status,
-        code: body?.availability?.code ?? `UNEXPECTED_HTTP_${response.status}`,
-        network: body?.exact_price?.network ?? null,
-        query_plan_hash: body?.query_plan_hash ?? null,
+        // Never echo arbitrary private availability fields in public artifacts.
+        code: "UNEXPECTED_AVAILABILITY_STATE",
+        network: null,
+        query_plan_hash: null,
       };
     } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
+      // The transport's exception text may carry private response context.
+      lastError = "TRANSPORT_FAILURE";
       if (attempt < 3) {
         await new Promise((resolve) => setTimeout(resolve, attempt * 750));
         continue;
@@ -215,7 +215,7 @@ async function fetchAvailability(entity) {
     ...entity,
     outcome: "INCOMPLETE",
     status: null,
-    code: `REQUEST_FAILED:${String(lastError ?? "unknown").slice(0, 120)}`,
+    code: lastError === "TRANSPORT_FAILURE" ? "REQUEST_FAILED_TRANSPORT" : "REQUEST_FAILED",
     network: null,
     query_plan_hash: null,
   };
@@ -300,8 +300,8 @@ const evidence = {
     iso3: row.iso3,
     scope: row.scope,
     code: row.code,
-    missing_modules: row.missing_modules ?? [],
-    stale_modules: row.stale_modules ?? [],
+    missing_module_count: row.missing_module_count ?? null,
+    stale_module_count: row.stale_module_count ?? null,
   })),
   unsafe_entities: unsafe,
   incomplete_entities: incomplete,

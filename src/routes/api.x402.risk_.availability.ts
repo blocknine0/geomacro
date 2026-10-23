@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
 import { buildAgentQueryPlan } from "../lib/agent-query-plan";
-import { checkAgentQueryDeliverability } from "../lib/agent-query-deliverability.server";
+import { checkAgentQueryDeliverability, publicAgentQueryAvailability } from "../lib/agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "../lib/agent-query-external-modules.server";
 import { getCoinbaseX402Config } from "../lib/coinbase-x402.server";
 import {resolveEligibleCoinbaseCapabilityConfig} from "../lib/verified-capability-coinbase-binding.server";
@@ -103,7 +103,7 @@ export const Route = createFileRoute("/api/x402/risk/availability")({
               asset_contract: pricedConfig.asset,
               network: pricedConfig.network,
             } : null,
-            availability,
+            availability: publicAgentQueryAvailability(availability),
             execution_authorized: false,
             note: availability.deliverable
               ? "No-charge check passed. The exact requested product is currently deliverable; payment occurs only on the paid resource."

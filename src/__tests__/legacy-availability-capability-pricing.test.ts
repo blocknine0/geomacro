@@ -1,7 +1,10 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
 vi.mock('@tanstack/react-router',()=>({createFileRoute:()=>options=>({options})}));
 const mocks=vi.hoisted(()=>({check:vi.fn(),config:vi.fn()}));
-vi.mock('../lib/agent-query-deliverability.server',()=>({checkAgentQueryDeliverability:mocks.check}));
+vi.mock('../lib/agent-query-deliverability.server',async(importOriginal)=>{
+ const actual=await importOriginal<typeof import('../lib/agent-query-deliverability.server')>();
+ return {...actual,checkAgentQueryDeliverability:mocks.check};
+});
 vi.mock('../lib/agent-query-external-modules.server',()=>({checkAgentQueryExternalModule:vi.fn()}));
 vi.mock('../lib/coinbase-x402.server',()=>({getCoinbaseX402Config:mocks.config}));
 import {Route} from '../routes/api.x402.risk_.availability';
@@ -21,6 +24,9 @@ describe('legacy no-charge availability respects the canonical capability catalo
   mocks.check.mockResolvedValue(good());const r=await call();const d=await r.json();
   expect(r.status).toBe(200);expect(d.exact_price.amount_usdc).toBe('0.02');expect(d.exact_price.amount_atomic).toBe('20000');
   expect(d.payment_required_now).toBe(false);expect(d.execution_authorized).toBe(false);
+  expect(d.availability.source_contracts).toBeUndefined();
+  expect(d.availability.ineligible_source_ids).toBeUndefined();
+  expect(d.availability.ineligible_source_count).toBe(0);
  });
  it('does not advertise a price for unavailable or unbound evidence',async()=>{
   mocks.check.mockResolvedValue({...good(),deliverable:false,code:'INSUFFICIENT_COVERAGE'});

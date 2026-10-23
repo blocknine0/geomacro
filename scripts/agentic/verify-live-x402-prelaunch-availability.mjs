@@ -181,26 +181,42 @@ async function main() {
     try {
       body = JSON.parse(text);
     } catch {
-      throw new Error(`${testCase.id}: availability response was not JSON: ${text.slice(0, 500)}`);
+      // Never log raw origin HTML, source internals or arbitrary error text.
+      // A transient gateway 502 is still a RED failure, not an available product.
+      throw new Error(`${testCase.id}: X402_AVAILABILITY_NON_JSON_HTTP_${response.status}`);
     }
+    if(!body || typeof body !== "object" || Array.isArray(body))
+      throw new Error(`${testCase.id}: X402_AVAILABILITY_RESPONSE_INVALID`);
 
     const result = {
       id: testCase.id,
       region: testCase.region,
       status: response.status,
-      product: body.product ?? null,
-      network: body.exact_price?.network ?? null,
-      amount_usdc: body.exact_price?.amount_usdc ?? null,
-      query_plan_hash: body.query_plan_hash ?? null,
-      deliverable: body.availability?.deliverable ?? false,
-      code: body.availability?.code ?? null,
-      missing_modules: body.availability?.missing_modules ?? [],
-      stale_modules: body.availability?.stale_modules ?? [],
-      ineligible_source_ids: body.availability?.ineligible_source_ids ?? [],
-      source_contracts: body.availability?.source_contracts ?? [],
-      subjects: body.availability?.subjects ?? [],
-      execution_authorized: body.execution_authorized ?? null,
-      payment_required_now: body.payment_required_now ?? null,
+      // This JSON is printed to PUBLIC GitHub Actions logs. Only bounded
+      // scalar, allow-listed fields may leave the private availability reply.
+      product: body.product === "geomacro_adaptive_risk_intelligence_v1"
+        ? body.product : null,
+      network: body.exact_price?.network === BASE_SEPOLIA_NETWORK
+        ? BASE_SEPOLIA_NETWORK : "UNRECOGNIZED_OR_MISSING",
+      amount_usdc: typeof body.exact_price?.amount_usdc === "string" &&
+        /^(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,6})?$/.test(body.exact_price.amount_usdc)
+        ? body.exact_price.amount_usdc : null,
+      query_plan_hash: typeof body.query_plan_hash === "string" &&
+        /^[0-9a-f]{64}$/.test(body.query_plan_hash) ? body.query_plan_hash : null,
+      deliverable: body.availability?.deliverable === true,
+      code: SAFE_FAIL_CLOSED_CODES.has(body.availability?.code) ||
+        body.availability?.code === "AVAILABLE" ? body.availability.code : null,
+      missing_module_count: Array.isArray(body.availability?.missing_modules)
+        ? Math.min(body.availability.missing_modules.length, 1000) : null,
+      stale_module_count: Array.isArray(body.availability?.stale_modules)
+        ? Math.min(body.availability.stale_modules.length, 1000) : null,
+      ineligible_source_count: Number.isSafeInteger(body.availability?.ineligible_source_count) &&
+        body.availability.ineligible_source_count >= 0
+        ? Math.min(body.availability.ineligible_source_count, 1000) : null,
+      subject_count: Array.isArray(body.availability?.subjects)
+        ? Math.min(body.availability.subjects.length, 1000) : null,
+      execution_authorized: body.execution_authorized === false ? false : null,
+      payment_required_now: body.payment_required_now === false ? false : null,
     };
     results.push(result);
 

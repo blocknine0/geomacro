@@ -45,6 +45,22 @@ describe("live x402 prelaunch safety probe", () => {
     expect(source).toContain("representative_availability_enforced");
     expect(source).toContain("#1414 representative commercial x402 scopes are not all currently AVAILABLE");
   });
+  it("never logs upstream contracts, source IDs, raw bodies or unconstrained fields in public Actions", () => {
+    const source = readFileSync("scripts/agentic/verify-live-x402-prelaunch-availability.mjs", "utf8");
+    expect(source).not.toContain("source_contracts: body.availability");
+    expect(source).not.toContain("ineligible_source_ids: body.availability");
+    expect(source).not.toContain("subjects: body.availability");
+    expect(source).not.toContain("missing_modules: body.availability");
+    expect(source).not.toContain("stale_modules: body.availability");
+    expect(source).not.toContain("text.slice(0, 500)");
+    expect(source).toContain("ineligible_source_count:");
+    expect(source).toContain("missing_module_count:");
+    expect(source).toContain("subject_count:");
+    expect(source).toContain("X402_AVAILABILITY_NON_JSON_HTTP_");
+    expect(source).toContain("body.payment_required_now === false");
+    expect(source).toContain("body.execution_authorized === false");
+  });
+
   it("requires a no-funds 195+ global country paid-path census from the canonical 250 entity universe", () => {
     const census = readFileSync(
       "scripts/agentic/verify-live-x402-country-availability-census.mjs",
@@ -71,6 +87,16 @@ describe("live x402 prelaunch safety probe", () => {
     expect(census).toContain("X402_COUNTRY_DELIVERABILITY_BELOW_1414_TARGET");
     expect(census).toContain("X402_COUNTRY_CENSUS_INCOMPLETE_PATHS");
     expect(census).toContain('outcome: "INCOMPLETE"');
+    // The same publicly uploaded 250-entity audit must never echo untrusted
+    // source URLs, arbitrary upstream error text or private module lists.
+    expect(census).not.toContain('error instanceof Error ? error.message');
+    expect(census).not.toContain('code: body?.availability?.code ??');
+    expect(census).not.toContain('missing_modules: row.missing_modules');
+    expect(census).not.toContain('stale_modules: row.stale_modules');
+    expect(census).toContain('missing_module_count:');
+    expect(census).toContain('stale_module_count:');
+    expect(census).toContain('code: "UNEXPECTED_AVAILABILITY_STATE"');
+
     expect(census).toContain('code: "RATE_LIMITED"');
     expect(census).toContain("const ENFORCE =");
     expect(workflow).toContain("GEOMACRO_X402_COUNTRY_CENSUS_ENFORCE");

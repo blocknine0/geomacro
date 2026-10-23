@@ -32,7 +32,7 @@ export function verifyCoverageAvailability(testCase,response,status){
  const a=response.availability;
  check(a?.deliverable===true&&a.code==='AVAILABLE'&&a.query_plan_hash===plan.query_plan_hash&&
   response.query_plan_hash===plan.query_plan_hash&&a.subjects?.length===plan.subjects.length&&
-  a.missing_modules?.length===0&&a.stale_modules?.length===0&&a.ineligible_source_ids?.length===0,
+  a.missing_modules?.length===0&&a.stale_modules?.length===0&&a.ineligible_source_count===0,
   'X402_AVAILABILITY_PLAN_NOT_BOUND');
  for(let i=0;i<plan.subjects.length;i++){
   check(JSON.stringify(a.subjects[i].subject)===JSON.stringify(plan.subjects[i])&&
