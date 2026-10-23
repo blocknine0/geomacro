@@ -5,7 +5,7 @@ const now=Date.parse("2026-10-13T18:00:00Z");
 describe("no-card original government structured data adapters",()=>{
   it("uses seven pinned no-card official sources across three launch endpoints",()=>{
     expect(OPEN_DATA_SOURCE_FAMILIES).toEqual({
-      geopolitics:5,"macro-fx":4,"critical-minerals":3,
+      geopolitics:5,"macro-fx":4,"critical-minerals":4,
     });
   });
   it("separates native seismic occurrence from political conflict and source URL",()=>{
@@ -167,6 +167,76 @@ describe("no-card original government structured data adapters",()=>{
     expect(JSON.stringify(data)).not.toContain("Lithium");
     expect(JSON.stringify(data)).not.toContain("private-source-record-id");
     expect(extractOpenData("bgs_world_minerals",{type:"bad",features:[]},now)).toBeNull();
+  });
+  it("accepts BGS documented Jan-1 midnight year and country_trans as historical context only",()=>{
+    const data=extractOpenData("bgs_world_minerals",{type:"FeatureCollection",features:[
+      {properties:{year:"2022-01-01 00:00:00",country_trans:"United States",
+        bgs_commodity_trans:"Lithium",secret_code:"PRIVATE"}},
+      {properties:{year:"2021-01-01T00:00:00Z",country_trans:"Canada"}},
+      {properties:{year:"2022-04-01 12:00:00",country_trans:"Canada"}},
+    ]},now);
+    expect(data?.signals).toHaveLength(1);
+    expect(data?.signals[0]).toMatchObject({
+      observation_type:"bgs_world_mineral_statistics_period",
+      observation_period:"2022",clock_semantics:"reference_year",
+      score:null,independent_same_event_verification:false,
+    });
+    expect(JSON.stringify(data)).not.toContain("Lithium");
+    expect(JSON.stringify(data)).not.toContain("PRIVATE");
+    const invalid=extractOpenData("bgs_world_minerals",{type:"FeatureCollection",features:[
+      {properties:{year:"2022-09-02T11:00:00Z",country_trans:"Canada"}},
+      {properties:{year:"2022-01-01 00:00:00",country_trans:"https://untrusted.example"}},
+    ]},now);
+    expect(invalid?.signals).toHaveLength(0);
+  });
+  it("recovers USGS MCS 2026 official catalog from independent Publications Warehouse JSON",()=>{
+    const record={indexId:"mcs2026",publicationYear:"2026",
+      title:"Mineral commodity summaries 2026",source_url:"https://secret.invalid"};
+    const found=extractOpenData("usgs_mcs_pubs",{records:[record]},now);
+    expect(found?.signals).toHaveLength(1);
+    expect(found?.signals[0]).toMatchObject({
+      observation_type:"usgs_mcs_dataset_catalog",
+      observation_period:"2026",clock_semantics:"dataset_edition",
+      score:null,independent_same_event_verification:false,
+    });
+    expect(JSON.stringify(found)).not.toContain("secret.invalid");
+    expect(JSON.stringify(found)).not.toContain("mcs2026");
+    for(const bad of [
+      {...record,indexId:"mcs2025"},
+      {...record,publicationYear:"2025"},
+      {...record,title:"Mineral commodity summaries 2025"},
+      {...record,indexId:"unrelated-report"},
+    ]){
+      expect(extractOpenData("usgs_mcs_pubs",{records:[bad]},now)?.signals).toHaveLength(0);
+    }
+    expect(extractOpenData("usgs_mcs_pubs",{records:"invalid"},now)).toBeNull();
+  });
+  it("free Critical Minerals remains readable via USGS Publications when three other issuers fail",async()=>{
+    const hit:string[]=[];
+    const source=vi.fn(async (input:RequestInfo|URL,init?:RequestInit)=>{
+      const url=new URL(String(input));
+      hit.push(url.hostname);
+      expect(init?.redirect).toBe("manual");
+      expect(init?.cache).toBe("no-store");
+      if(url.hostname==="pubs.usgs.gov")
+        return Response.json({records:[{
+          indexId:"mcs2026",publicationYear:"2026",
+          title:"Mineral commodity summaries 2026",
+        }]},{headers:{"content-type":"application/json"}});
+      throw Error("PROVIDER_UNAVAILABLE");
+    }) as typeof fetch;
+    const result=await readCategoryOpenData("critical-minerals",{now,fetcher:source,
+      fallbackToD1:false});
+    expect(hit).toContain("pubs.usgs.gov");
+    expect(result.source_families_attempted).toBe(4);
+    expect(result.source_families_readable).toBe(1);
+    expect(result.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({observation_type:"usgs_mcs_dataset_catalog",
+        observation_period:"2026",clock_semantics:"dataset_edition",score:null})
+    ]));
+    expect(result.chargeable).toBe(false);
+    expect(result.signed_gro_generated).toBe(false);
+    expect(result.persistent_storage_written).toBe(false);
   });
   it("verifies pinned USGS MCS edition catalog metadata without claiming CSV rows are loaded",()=>{
     const catalog={id:"69837e43b66b01367d7ec7c7",files:[
