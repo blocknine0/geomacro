@@ -27,7 +27,8 @@ test("three fixed no-key sources, one independent origin each; no UKMTO",()=>{
  assert.equal(new Set(SOURCES.map(s=>s.publisher)).size,3);
  for(const s of SOURCES){const u=new URL(s.url);
    assert.equal(u.protocol,"https:");assert.equal(u.hostname,s.host);
-   assert.equal(s.url.includes("ukmto.org"),false);}
+   assert.notEqual(u.hostname,"ukmto.org");
+   assert.notEqual(u.hostname,"www.ukmto.org");}
 });
 test("MARAD active advisory effective dates never become incident timestamps",()=>{
  const v=parse(SOURCES[0].id,marad,{now});
@@ -90,4 +91,15 @@ test("untrusted mutated ID, invalid calendar and stale date-only never create si
  assert.equal(r.current_signed_gro_verified,false);
  assert.throws(()=>parse("ukmto_recent_incidents",marad,{now}));
  assert.throws(()=>parse(SOURCES[1].id,"x".repeat(400_000),{now}));
+});
+
+test("untrusted script/style and malformed script closing whitespace cannot forge advisory rows",()=>{
+ const injected='<html><style>2026-099-Hormuz Active 10/20/2026 11/20/2026</style>'+
+   '<script type="application/json">2026-098-Red Sea Active 10/20/2026 11/20/2026'+
+   '</script\t\n bar><h2>Active Advisories</h2><p>Expire Date</p>'+
+   '<!-- 2026-097-Piracy Active 10/20/2026 11/20/2026 -->'+
+   '<div>2026-015-Cyber Influence Active 10/21/2026 04/19/2027</div></html>';
+ const got=parse(SOURCES[0].id,injected,{now});
+ assert.equal(got.index_metadata_candidate_count,1);
+ assert.equal(got.current_signed_gro_verified,false);
 });
