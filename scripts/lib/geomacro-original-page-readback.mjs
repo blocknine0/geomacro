@@ -4,6 +4,7 @@ import {
   approvedFirstPartyOriginalArticleUrl,
   verifiedPublisherPageDate,
 } from "./official-original-article-date.mjs";
+import {pinnedGovUkContentApiUrl,verifiedGovUkContentFirstPublishedAt} from "./govuk-original-content-clock.mjs";
 import {registeredOriginalPublisherOrganization} from
   "./independent-same-event-qualification.mjs";
 
@@ -76,7 +77,7 @@ function checkedInputs(originals, now,{minOriginals=2,maxAgeMs=ORIGINAL_VERIFICA
   }
   return {checked,category,claim};
 }
-async function exactReadback(row,now,fetchImpl){
+async function exactReadback(row,now,fetchImpl,{unclaimedGovUkContentClock=false}={}){
   const bad=(reason)=>({status:"REJECTED",reason,
     article_sha256:null,original_published_at:null});
   let response;
@@ -120,7 +121,51 @@ async function exactReadback(row,now,fetchImpl){
   let html;
   try{html=new TextDecoder("utf-8",{fatal:true}).decode(bytes)}
   catch{return bad("ORIGINAL_ENCODING_INVALID")}
-  const originalAt=verifiedPublisherPageDate(html,now);
+  const diagnostics={};
+  let originalAt=verifiedPublisherPageDate(html,now,diagnostics);
+  // Scope deliberately LIMITED to the noncommercial unclaimed original
+  // review lead: do not silently widen strict two-source/commercial GRI.
+  // A first-party GOV.UK Content API rescue requires a matching, re-read
+  // same-origin HTML body AND the publisher's original first_published_at.
+  const apiUrl=unclaimedGovUkContentClock &&
+    ["MISSING_PUBLISHER_PUBLICATION_METADATA","IMPRECISE_DATE_ONLY"]
+      .includes(diagnostics.date_reason)
+      ?pinnedGovUkContentApiUrl(row.url):null;
+  if(originalAt===null && apiUrl){
+    try{
+      const response=await fetchImpl(apiUrl,{
+        method:"GET",redirect:"error",
+        headers:{accept:"application/json"},
+        signal:AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if(response?.ok===true && response.status===200 &&
+         response.redirected!==true &&
+         (!response.url||response.url===apiUrl) &&
+         /^application\\/json(?:;|$)/iu.test(response.headers?.get("content-type")??"") &&
+         Number(response.headers?.get("content-length")??0)<=128*1024 &&
+         response.body){
+        const reader=response.body.getReader();
+        const pieces=[];let total=0;
+        try{
+          while(true){
+            const part=await reader.read();
+            if(part.done)break;
+            total+=part.value.byteLength;
+            if(total>128*1024)break;
+            pieces.push(Buffer.from(part.value));
+          }
+        }finally{reader.releaseLock();}
+        if(total<=128*1024){
+          const contentJson=new TextDecoder("utf-8",{fatal:true})
+            .decode(Buffer.concat(pieces));
+          originalAt=verifiedGovUkContentFirstPublishedAt({
+            articleUrl:row.url,html,contentJson,now,
+            maxAgeMs:ORIGINAL_VERIFICATION_WINDOW_MS
+          });
+        }
+      }
+    }catch{/* No new origin, no fallback via caller-supplied timestamp. */}
+  }
   if(originalAt===null)return bad("ORIGINAL_NATIVE_CLOCK_NOT_PROVEN");
   const native=Date.parse(originalAt);
   if(Math.abs(native-row.expected_at)>MAX_FEED_PAGE_CLOCK_DRIFT_MS)
@@ -227,7 +272,7 @@ export async function verifyGeomacroUnclaimedOriginalPage({
     fail();
   const readback=await exactReadback({
     url:uri.href,expected_at:publication,expected_sha:null,
-  },now,fetchImpl);
+  },now,fetchImpl,{unclaimedGovUkContentClock:true});
   const accepted=readback.status==="PAGE_BYTES_AND_NATIVE_CLOCK_VERIFIED";
   return Object.freeze({
     schema:"geomacro.private-unclaimed-original-pre-review.v1",
