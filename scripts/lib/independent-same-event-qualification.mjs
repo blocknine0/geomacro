@@ -31,6 +31,10 @@ const PUBLISHER_REGISTRY=Object.freeze({
   "www.federalreserve.gov":"federal_reserve",
   "www.ecb.europa.eu":"ecb",
   "www.usgs.gov":"usgs",
+  // EU Council genuine institutional identity only. Individual reuse
+  // conditions (including credit), Facts/Rights and event corroboration
+  // remain fully independent cryptographic prerequisites.
+  "www.consilium.europa.eu":"eu_council",
   "www150.statcan.gc.ca":"statistics_canada",
   "www.canada.ca":"natural_resources_canada",
 });
