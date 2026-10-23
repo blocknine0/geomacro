@@ -126,10 +126,16 @@ export async function main(){
   throw Error("PRIVATE_ORIGINAL_COUNTRY_NOT_IN_CANONICAL_195");
  let discoveryCalls=0,pageCalls=0,byteCalls=0;
  const boundedFetch=(phase)=>async(input,init)=>{
-  if((phase==="discovery"?++discoveryCalls:
-      phase==="page"?++pageCalls:++byteCalls)>
-     (phase==="discovery"?12:phase==="page"?4:2))
-   throw Error("PRIVATE_ORIGINAL_SOURCE_REQUEST_BUDGET_EXCEEDED");
+  // Consume the SAME quota for exact publisher HTML and its first-party
+  // Content API precision proof. An over-budget call is refused BEFORE
+  // incrementing real-network-request counters.
+  const used=phase==="discovery"?discoveryCalls:
+    phase==="page"?pageCalls:byteCalls;
+  const cap=phase==="discovery"?12:phase==="page"?4:2;
+  if(used>=cap)throw Error("PRIVATE_ORIGINAL_SOURCE_REQUEST_BUDGET_EXCEEDED");
+  if(phase==="discovery")discoveryCalls++;
+  else if(phase==="page")pageCalls++;
+  else byteCalls++;
   const u=new URL(String(input));
   if(u.protocol!=="https:"||u.username||u.password||u.port||
      (init?.method??"GET")!=="GET"||
@@ -158,8 +164,11 @@ export async function main(){
  });
  if(discoveryCalls>12||pageCalls>4||byteCalls>2||
     receipt.discovery_attempts!==discoveryCalls||
-    receipt.original_page_attempts!==pageCalls||
-    receipt.byte_exact_rereads_attempted!==byteCalls||
+    receipt.original_page_attempts!==pages.attempted||
+    pageCalls<pages.attempted||
+    pageCalls>pages.attempted*2||
+    receipt.byte_exact_rereads_attempted>byteCalls||
+    byteCalls>receipt.byte_exact_rereads_attempted*2||
     receipt.signed_machine_input_created!==false||
     receipt.article_specific_commercial_rights_verified!==false||
     receipt.x402_payment_authorized!==false)
@@ -201,6 +210,9 @@ export async function main(){
   // top-level claim that NO B2 request happened.
   B2_requests:privateArchive.private_review_hand_off_available?undefined:0,
   private_original_archive_handoff:privateArchive,
+  original_page_related_network_requests:pageCalls,
+  original_byte_stage_network_requests:byteCalls,
+  extra_first_party_api_reads_accounted_for_within_existing_quota:true,
   discovery_funnel:summarizePrivateOriginalIntakeFunnel({discovery,pages,receipt}),
   country_selection_mode:journalPriorityMode,
   shared_journal_candidate_country_count:journalCandidateCountries,

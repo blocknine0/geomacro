@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {verifyGeomacroOriginalPages} from "./geomacro-original-page-readback.mjs";
+import {verifyGeomacroOriginalPages,verifyGeomacroUnclaimedOriginalPage} from "./geomacro-original-page-readback.mjs";
 const sha=t=>createHash("sha256").update(t).digest("hex");
 const now=new Date("2026-10-10T11:00:00Z");
 const claim=sha("synthetic exact monetary-policy claim, not real-world evidence");
@@ -106,4 +106,49 @@ test("legacy article URL fingerprint cannot be silently substituted for actual H
   const result=await run(legacy,fakeFetch(calls));
   assert.equal(result.results[0].reason,"ORIGINAL_HTML_HASH_CHANGED");
   assert.equal(result.commercial_eligible,false);
+});
+
+test("UK original review lead rescues genuine precise GOV.UK Content API clock and exact HTML SHA only",async()=>{
+ const url="https://www.gov.uk/government/news/uk-government-publishes-new-critical-minerals-strategy";
+ const at="2026-10-23T19:20:00.000Z";
+ const actualNow=new Date("2026-10-23T19:50:00.000Z");
+ const original={
+  category:"rare_earth",original_article_url:url,original_published_at:at,
+  originating_reporting_organization_id:"uk_fcdo"
+ };
+ const headline="UK government publishes new critical minerals strategy";
+ const html="<html><head><meta property='article:modified_time' content='2026-10-23T19:40:00Z'></head><body><h1>"+headline+"</h1></body></html>";
+ const json=JSON.stringify({base_path:new URL(url).pathname,title:headline,
+  document_type:"news_story",first_published_at:at,
+  public_updated_at:"2026-10-23T19:40:00Z"});
+ const calls=[];
+ const fetchImpl=async input=>{
+  calls.push(String(input));
+  if(String(input)===url)return new Response(html,{headers:{"content-type":"text/html"}});
+  if(String(input)==="https://www.gov.uk/api/content"+new URL(url).pathname)
+   return new Response(json,{headers:{"content-type":"application/json"}});
+  throw Error("UNAPPROVED_HOST");
+ };
+ const result=await verifyGeomacroUnclaimedOriginalPage({original,now:actualNow,fetchImpl});
+ assert.equal(result.accepted,true);
+ assert.equal(result.original_article_sha256,sha(Buffer.from(html)));
+ assert.equal(result.original_native_published_at,at);
+ assert.equal(result.country_and_category_scope_review_pending,true);
+ assert.equal(result.source_article_rights_verified,false);
+ assert.equal(result.independent_corroboration_verified,false);
+ assert.equal(result.signed_gro_created,false);
+ assert.equal(result.payment_authorized,false);
+ assert.equal(calls.length,2);
+ assert.equal(Object.hasOwn(result,"original_article_url"),false);
+ assert.equal(Object.hasOwn(result,"publisher_article_url"),false);
+ const denied=await verifyGeomacroUnclaimedOriginalPage({
+  original,now:actualNow,fetchImpl:async input=>{
+   if(String(input)===url)return new Response(html,{headers:{"content-type":"text/html"}});
+   return new Response(JSON.stringify({base_path:"/government/news/wrong",
+    title:headline,document_type:"news_story",first_published_at:at}),
+    {headers:{"content-type":"application/json"}});
+  }
+ });
+ assert.equal(denied.accepted,false);
+ assert.equal(denied.status,"ORIGINAL_NATIVE_CLOCK_NOT_PROVEN");
 });

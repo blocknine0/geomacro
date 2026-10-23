@@ -196,3 +196,46 @@ original-review PUTs and no paid quote.
 
 This diagnostic is a troubleshooting aid only, not a new production
 approval and not the missing fully automated numerical GRI policy profile.
+
+## GOV.UK issuer-original precise clock rescue (all three categories)
+
+The 2026-10-23 GBR protected discovery located one real geopolitical
+original article candidate, but **zero** actual native original clocks and
+zero exact HTML SHA proofs. GOV.UK sometimes displays just a calendar date
+in its HTML, while its **same-publisher** Content API provides genuine
+`first_published_at` for that exact article. The free website news reader
+already used Content API as an original-publisher timestamp; the private
+review-eligible verifier previously did not.
+
+For pinned `https://www.gov.uk/government/{news|speeches|...}/{slug}`
+articles in ANY of the three categories, when and ONLY when original HTML
+publication metadata is missing or day-only (not contradictory/stale/future),
+the verifier may spend ONE additional counted `https://www.gov.uk/api/content`
+GET. It requires exact original `base_path`, issuer document type,
+first-party Content API title matching the HTML H1 and discovery headline,
+a precise timezone-bearing `first_published_at` no older than the original
+22-hour verification window, and no redirects. This issuer precision is
+rechecked alongside the *actual original HTML bytes SHA* during private
+pre-review lead intake. All GETs consume the SAME 12 discovery, 4 page/API
+and 2 byte-stage/API request caps; no quota increase or bypass is allowed.
+
+Safe receipts separate original-page attempts from actual first-party issuer
+network-request counts. These counts do not reveal URL or publisher names.
+No Content API timestamp may backdate a changed article. `public_updated_at`,
+fetch time, website display time and slug date are never original publication
+time. A different source of the same article does not produce a second
+independent original. Zero valid publisher-native events still produces
+`NO_CURRENT_BYTE_VERIFIED_SOURCE_FOR_REVIEW` and no private B2 write.
+
+This FIXES the documented missing evidence path for existing UK FCDO,
+DBT, Treasury and energy/minerals publisher candidates **when their
+real Content API returns an exact matching clock**. It neither proves
+every such current original exists nor guarantees all 195×3 country-domain
+cells have a new event within 22h. Private first-party original leads remain
+UNREVIEWED and NOT commercially billable. Numerical GRI/certificates
+still require two distinct real same-event publishers, exact Facts/Rights
+licenses and signatures, independently verified historical B2, genuine
+per-batch human review (or an explicitly *different* audited automated
+numerical profile), and protected publication/readback. The already enrolled
+Pallab+Suman one-time automated policy only authorizes **derived-news
+policy audits**, not false new human reviewer signatures.

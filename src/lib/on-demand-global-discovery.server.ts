@@ -6,6 +6,7 @@ import {fetchGdeltDocWithBudget,gdeltRetryAfterMs} from "../../scripts/lib/gdelt
 import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 // One strict original-publication verifier for BOTH 30m and customer on-demand paths.
 import { verifiedPublisherPageDate } from "../../scripts/lib/official-original-article-date.mjs";
+import {pinnedGovUkContentApiUrl,verifiedGovUkContentFirstPublishedAt} from "../../scripts/lib/govuk-original-content-clock.mjs";
 import { country195ByIso3 } from "./canonical-country-registry-195";
 import { classifyGlobalEntity } from "./global-entity-classification";
 import { verifiedFedBoardDiscountMinutesOriginal } from "./on-demand-fed-board-discount-release.server";
@@ -1614,7 +1615,26 @@ export async function verifyOnDemandOriginalArticlePages(
         return reason("PUBLISHER_ORIGINAL_BODY_DATE_UNVERIFIED");
       // A pinned issuer-specific visible original may rescue absent metadata,
       // never conflicting, stale, future or malformed original metadata.
-      const precise=metadataDate??(publisherDateDiagnostics.date_reason==='MISSING_PUBLISHER_PUBLICATION_METADATA'?ieaDate:null);
+      // GOV.UK often has only publication DAY in HTML. Recover the
+      // first-party, precise first_published_at ONLY from its pinned Content
+      // API after matching original HTML H1, canonical path and issuer title.
+      // Do not override conflicting HTML clocks or leave the page GET cap.
+      let govPrecise:string|null=null;
+      const apiUrl=candidate.publisher_family.startsWith("uk_")?
+        pinnedGovUkContentApiUrl(candidate.article_url):null;
+      if(apiUrl && metadataDate===null &&
+        ["MISSING_PUBLISHER_PUBLICATION_METADATA","IMPRECISE_DATE_ONLY"]
+          .includes(publisherDateDiagnostics.date_reason??"")){
+        try {
+          const contentJson=await boundedFetch(options.fetchImpl??fetch,apiUrl,"application/json");
+          govPrecise=verifiedGovUkContentFirstPublishedAt({
+            articleUrl:candidate.article_url,html,contentJson,
+            articleTitle:candidate.article_title,now,maxAgeMs
+          });
+        }catch{govPrecise=null}
+      }
+      const precise=metadataDate??govPrecise??(
+        publisherDateDiagnostics.date_reason==='MISSING_PUBLISHER_PUBLICATION_METADATA'?ieaDate:null);
       // For a Board discount-meeting minutes original whose page has a
       // timezone-labelled release line but not machine-readable precise
       // metadata, independently bind issuer URL, native feed clock, the
