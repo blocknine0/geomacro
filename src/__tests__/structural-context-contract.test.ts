@@ -112,6 +112,19 @@ describe("structural context contract", () => {
       .toEqual(new Set(dimensions));
   });
 
+  it("does not let newly retrieved undated/future duplicates evict a usable original",()=>{
+    const current=row({observation_id:"dated",observed_at:"2026-01-02T00:00:00Z"});
+    const undated={...current,observation_id:"retrieval-only",observed_at:null,
+      published_at:null,retrieved_at:new Date().toISOString()};
+    const future={...current,observation_id:"future",observed_at:"2999-01-01T00:00:00Z"};
+    const invalid={...current,observation_id:"invalid",observed_at:"invalid"};
+    expect(latestStructuralObservations([undated,future,invalid,current],1))
+      .toEqual([current]);
+    const mixedClocks={...current,observation_id:"old-native",observed_at:"2026-01-03T00:00:00Z",
+      published_at:"2024-01-01T00:00:00Z"};
+    expect(latestStructuralObservations([mixedClocks,current],1)).toEqual([current]);
+  });
+
   it("requires historical service credentials to stay server-only", () => {
     const source = readFileSync(
       join(ROOT, "src/lib/structural-context.server.ts"),

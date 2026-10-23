@@ -7,6 +7,7 @@ import {
 import { supabaseReadFallbackAllowed } from "./supabase-runtime-mode.server";
 import { loadQualifiedMcsCountryContext } from "./qualified-mcs-country-digest.server";
 import { loadQualifiedTreasuryFxCountryContext } from "./qualified-treasury-fx.server";
+import {sourceNativeObservationTime} from "./source-native-observation-time";
 
 export const STRUCTURAL_METHODOLOGY_STATUS =
   "EVIDENCE_ONLY_NOT_IN_GRI_V1_2" as const;
@@ -166,11 +167,10 @@ function normalizeSubject(subject: StructuralSubject): StructuralSubject {
   };
 }
 
-function rowTime(row: StructuralObservation): number {
-  const value = row.observed_at ?? row.published_at ?? row.retrieved_at;
-  if (!value) return 0;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+function rowTime(row: StructuralObservation,asOfMs:number): number {
+  // An undated/future/invalid freshly fetched duplicate must not replace an
+  // actually dated observation before the commercial freshness gate sees it.
+  return sourceNativeObservationTime(row,asOfMs)??0;
 }
 
 export function latestStructuralObservations(
@@ -178,7 +178,8 @@ export function latestStructuralObservations(
   limit = 12,
 ): StructuralObservation[] {
   if(!Number.isSafeInteger(limit)||limit<=0)return [];
-  const sorted = [...rows].sort((a, b) => rowTime(b) - rowTime(a));
+  const asOfMs=Date.now();
+  const sorted = [...rows].sort((a, b) => rowTime(b,asOfMs) - rowTime(a,asOfMs));
   const seen = new Set<string>();
   const dimensions=new Map<string,StructuralObservation[]>();
   for (const row of sorted) {
@@ -206,7 +207,7 @@ export function latestStructuralObservations(
     }
     if(!added)break;
   }
-  return output.sort((a,b)=>rowTime(b)-rowTime(a));
+  return output.sort((a,b)=>rowTime(b,asOfMs)-rowTime(a,asOfMs));
 }
 
 function isStructuralObservation(value: unknown): value is StructuralObservation {
