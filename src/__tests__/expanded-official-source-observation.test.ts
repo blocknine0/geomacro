@@ -667,3 +667,33 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect(probe).not.toContain("supabase.from(");
   });
 });
+
+describe("#2041 Canada NRCan original day observation is private and never signed",()=>{
+ it("retains first-party publication day while exact 24h candidate remains zero",async()=>{
+   const now=new Date("2026-10-24T12:00:00Z");
+   const issuer=EXPANDED_OFFICIAL_SOURCES.find((s:any)=>
+     s.id==="nrcan_government_news_original_atom_review")!;
+   const article="https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals-industry-project.html";
+   const feed='<feed><entry><title>Natural Resources Canada critical minerals supply investment</title>'+
+     '<updated>2026-10-24T10:00:00Z</updated><link rel="alternate" href="'+
+     article+'"/></entry></feed>';
+   const html='<html><head><meta name="dcterms.issued" content="2026-10-23"></head>'+
+     '<body>Canada Natural Resources Canada</body></html>';
+   const requested:string[]=[];
+   const result=await probeExpandedSource(issuer,{now,fetchImpl:async(url:string)=>{
+     requested.push(url);
+     if(url===issuer.url)return response(feed,"application/atom+xml");
+     expect(url).toBe(article);
+     return response(html,"text/html");
+   }});
+   expect(requested).toEqual([issuer.url,article]);
+   expect(result.original_page_day_precision_verified_count).toBe(1);
+   expect(result.original_page_day_precision_is_current_signed_evidence).toBe(false);
+   expect(result.original_page_precise_date_24h).toBe(0);
+   expect(result.topical_private_release_links_24h).toBe(0);
+   expect(result.commercial_eligible).toBe(false);
+   expect(result.first_party_original_page_probe_codes.PRECISE_PUBLICATION_UNVERIFIED).toBe(1);
+   expect(JSON.stringify(result)).not.toContain("2026-10-23");
+   expect(JSON.stringify(result)).not.toContain("industry-project");
+ });
+});
