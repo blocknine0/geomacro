@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {safeFreeSourceProductionFailure} from "./free-source-production-failure.mjs";
+import {safeFreeSourceProductionFailure} from "../lib/free-source-production-failure.mjs";
 
 test("map known D1 source checkpoint failures without leaking raw errors",()=>{
  const examples=new Map([
