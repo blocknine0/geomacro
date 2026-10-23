@@ -13,6 +13,15 @@ describe("Coinbase x402 adaptive availability boundary", () => {
     expect(availabilityRoute).toContain("payment_required_now: false");
   });
 
+  it("never returns internal rights contracts or provider identities to no-charge callers", () => {
+    expect(availabilityRoute).toContain("publicAgentQueryAvailability");
+    expect(availabilityRoute).toContain("availability: publicAgentQueryAvailability(availability)");
+    expect(availabilityRoute).not.toMatch(/\\n\\s+availability,\\n\\s+execution_authorized:/);
+    const sanitize = fs.readFileSync("src/lib/agent-query-deliverability.server.ts","utf8");
+    expect(sanitize).toContain("ineligible_source_count: result.ineligible_source_ids.length");
+    expect(sanitize).not.toContain("source_contracts: result.source_contracts");
+  });
+
   it("never verifies or settles a payment on the availability endpoint", () => {
     expect(availabilityRoute).not.toContain("verifyCoinbaseX402");
     expect(availabilityRoute).not.toContain("settleCoinbaseX402");
