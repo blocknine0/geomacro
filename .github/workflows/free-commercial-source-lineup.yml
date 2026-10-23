@@ -10,6 +10,8 @@ on:
       - "scripts/tests/global-official-release-feeds.test.mjs"
       - "scripts/lib/operator-commercial-free-source-lineup.mjs"
       - "scripts/lib/free-no-key-source-probe.mjs"
+      - "scripts/lib/gdelt-free-batch-manifest.mjs"
+      - "scripts/tests/gdelt-free-batch-manifest.test.mjs"
       - "scripts/lib/free-source-production-updates.mjs"
       - "scripts/lib/marad-official-corridor-context.mjs"
       - "scripts/tests/marad-official-corridor-context.test.mjs"
@@ -31,6 +33,8 @@ on:
       - "scripts/tests/global-official-release-feeds.test.mjs"
       - "scripts/lib/operator-commercial-free-source-lineup.mjs"
       - "scripts/lib/free-no-key-source-probe.mjs"
+      - "scripts/lib/gdelt-free-batch-manifest.mjs"
+      - "scripts/tests/gdelt-free-batch-manifest.test.mjs"
       - "scripts/lib/free-source-production-updates.mjs"
       - "scripts/lib/marad-official-corridor-context.mjs"
       - "scripts/tests/marad-official-corridor-context.test.mjs"
@@ -68,7 +72,7 @@ jobs:
         with:
           node-version: "22"
       - name: Exact dataset rights plus 3-category source transport contracts
-        run: node --test scripts/tests/operator-commercial-free-source-lineup.test.mjs scripts/tests/free-source-production-updates.test.mjs scripts/tests/global-official-release-feeds.test.mjs scripts/tests/free-source-operational-verdict.test.mjs scripts/tests/free-source-production-failure.test.mjs scripts/tests/marad-official-corridor-context.test.mjs scripts/tests/zoho-maritime-subscription-mail.test.mjs
+        run: node --test scripts/tests/gdelt-free-batch-manifest.test.mjs scripts/tests/operator-commercial-free-source-lineup.test.mjs scripts/tests/free-source-production-updates.test.mjs scripts/tests/global-official-release-feeds.test.mjs scripts/tests/free-source-operational-verdict.test.mjs scripts/tests/free-source-production-failure.test.mjs scripts/tests/marad-official-corridor-context.test.mjs scripts/tests/zoho-maritime-subscription-mail.test.mjs
 
   read-only-production-mesh:
     needs: source-contract
