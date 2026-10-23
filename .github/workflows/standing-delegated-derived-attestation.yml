@@ -189,7 +189,11 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Independently read back all current derived input signatures
         if: steps.optin.outputs.active == 'true'
-        run: bun scripts/ops/verify-all-news-signed-publications.mjs > "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH"
+        run: |
+          # The once-consented machine policy refuses group/world-readable
+          # audit files. Preserve existing receipt content and safe pathname.
+          umask 077
+          bun scripts/ops/verify-all-news-signed-publications.mjs > "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH"
       - name: Sign only derived-readback audit aggregate
         if: steps.optin.outputs.active == 'true'
         run: node scripts/ops/sign-verified-derived-readback.mjs --sign-verified-derived
