@@ -8,7 +8,7 @@ const byUrl=new Map(PRODUCTION_FREE_UPDATE_SOURCES.map(s=>[s.url,s]));
 function validBody(s,version='one'){
  if(s.id==='gdelt_events')return ['export.CSV','mentions.CSV','gkg.csv'].map((kind,i)=>
    (80000+i*2000)+' '+(version==='one'?'a':'b').repeat(32)+
-   ' http://data.gdeltproject.org/gdeltv2/20261016070000.'+kind+'.zip').join('\\n');
+   ' http://data.gdeltproject.org/gdeltv2/20261016070000.'+kind+'.zip').join('\n');
  if(s.id.startsWith('govuk_global_'))return JSON.stringify({total:1,results:[{title:'Zambia copper minerals economy '+version,link:'/government/news/zambia-copper-policy'}]});
  if(s.rdf)return '<rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/"><item><link>https://www.bis.org/press/p261016.htm</link><title>Zambia banking monetary policy '+version+'</title><dc:date>2026-10-16T07:00:00Z</dc:date></item></rdf:RDF>';
  if(s.format==='rss')return rss(version);
