@@ -50,7 +50,7 @@ test("fail-closed if hub drift, missing canonical country registry, clock or ori
 test("canonical 195 fairness survives even rich recent unscored journal priorities",()=>{
  const d1={country_iso3:"CAN",selection_mode:"SHARED_D1_RECENT_COUNTRY_LEAD",
    eligible_country_count:9,selected_country_observed_categories:3};
- let fair=0,hubs=0;
+ let fair=0,hubs=0,journal=0;
  const saw=new Set();
  for(let hour=0;hour<120;hour++){
   const op=select(hour);
@@ -64,14 +64,19 @@ test("canonical 195 fairness survives even rich recent unscored journal prioriti
     assert.equal(out.country_iso3,op.country_iso3);
     assert.equal(out.fairness_slot_preserved,true);
     assert.equal(out.mode,"CANONICAL_195_FAIRNESS_ORIGINAL_REVIEW");
-  }else{
+  }else if(hour%4===1){
     hubs++;
+    assert.equal(out.country_iso3,op.country_iso3);
+    assert.equal(out.publisher_hub_slot_preserved,true);
+    assert.equal(out.mode,"FIRST_PARTY_ISSUER_OPPORTUNITY_HEURISTIC");
+  }else{
+    journal++;
     assert.equal(out.country_iso3,"CAN");
     assert.equal(out.fairness_slot_preserved,false);
     assert.equal(out.mode,"SHARED_D1_RECENT_COUNTRY_LEAD");
   }
  }
- assert.equal(fair,30);assert.equal(hubs,90);
+ assert.equal(fair,30);assert.equal(hubs,30);assert.equal(journal,60);
  assert.deepEqual([...saw].sort(),["MWI","PSE","VAT"]);
 });
 test("manual owner dispatch wins; invalid priority falls back to issuer hub",()=>{
