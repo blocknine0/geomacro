@@ -11,7 +11,7 @@ import {pathToFileURL} from "node:url";
 
 const DOMAINS=["geopolitics","macro","rare_earth"];
 const CATEGORIES={geopolitics:"geopolitics",macro:"macro / fx",rare_earth:"critical minerals"};
-const PUBLIC_D1="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news";
+const PUBLIC_D1="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 const SITE="https://geomacro.live/intelligence";
 const DAY=86_400_000;
 // Audit the real React Story card, whose displayed heading intentionally drops
@@ -47,7 +47,7 @@ function categoryIsActive(html,domain){
 
 export function evaluatePublicNews(doc,dom,now=Date.now(),categoryPages={}) {
   if(!doc || doc.ok!==true || doc.schema!=="geomacro.website-derived-news-feed.v1" ||
-     doc.original_release_delay_minutes!==15 || doc.retention_days!==3 || doc.retention_hours!==72 ||
+     (doc.original_release_delay_minutes!==0&&doc.original_release_delay_minutes!==15) || doc.retention_days!==3 || doc.retention_hours!==72 ||
      doc.delivery_scope!=="free_website_only" || !Array.isArray(doc.signals) ||
      doc.signals.length>250) throw Error("PUBLIC_NEWS_D1_SCHEMA_FAILED");
   if(typeof dom!=="string" || dom.length>6_000_000)throw Error("PUBLIC_NEWS_BROWSER_DOM_INVALID");

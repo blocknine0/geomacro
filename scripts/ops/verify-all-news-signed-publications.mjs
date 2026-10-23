@@ -42,7 +42,7 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
    await verifyAutomatedInput(item.proof,keys,now);
    if(await automatedInputId(item.proof.payload.signal)!==id)throw Error('SIGNED_NEWS_PROOF_BINDING');
    const age=now-Date.parse(item.signal.published_at);
-   const isCurrent=item.signal.date_precision==='exact'&&age>=15*60_000&&age<=60*60_000;
+   const isCurrent=item.signal.date_precision==='exact'&&age>=0&&age<=60*60_000;
    const qualified=item.signal.status==='official_release_observed_unscored';
    if(item.original_published_at!==item.signal.published_at||
     item.source_current_under_60_minutes!==isCurrent||item.qualified_topic_release!==qualified||

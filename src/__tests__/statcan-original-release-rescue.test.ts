@@ -93,8 +93,8 @@ describe("Statistics Canada source-native Daily publication rescue", () => {
       category: "macro" as const, credit: source.credit,
     };
     expect(conservativeDayReleaseMs("2026-10-13")).toBe(
-      Date.parse("2026-10-14T12:15:00Z"));
-    expect(deriveStatelessSignals([reviewed],Date.parse("2026-10-14T12:14:59Z")))
+      Date.parse("2026-10-14T12:00:00Z"));
+    expect(deriveStatelessSignals([reviewed],Date.parse("2026-10-14T11:59:59Z")))
       .toEqual([]);
     const signals = deriveStatelessSignals([reviewed],now);
     expect(signals).toHaveLength(1);

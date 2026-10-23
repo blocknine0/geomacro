@@ -42,7 +42,7 @@ for (const { category, result, error } of results) {
   const cutoff = Date.parse(result?.website_release_cutoff ?? "");
   const checked = Date.parse(result?.checked_at ?? "");
   const correctDelay = Number.isFinite(cutoff) && Number.isFinite(checked) &&
-    Math.abs((checked - cutoff) - 900_000) <= 2_000;
+    Math.abs((checked - cutoff)) <= 2_000;
   // Day-only Macro observations are admitted exclusively by the pinned
   // Statistics Canada first-party article/date verifier upstream. Enforce the
   // same next-day 12:15 UTC conservative cutoff as existing day-only domains.
@@ -85,7 +85,7 @@ for (const { category, result, error } of results) {
     eligible_distinct_findings_last_30d: signals.length,
     eligible_findings_last_7d: result?.last_7d_count ?? 0,
     eligible_findings_last_24h: result?.current_24h_count ?? 0,
-    exactly_15m_cutoff: correctDelay,
+    no_added_publication_delay: correctDelay,
     original_dates_verified: strictlyOriginalDates,
     derived_source_private_story_contract: storiesSafe,
     unique_event_ids: unique,

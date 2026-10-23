@@ -8,7 +8,7 @@ const sample=(id,cat,at,ingested,date_precision="exact")=>({
 });
 const p=(rows,hasMore=false,offset=0)=>({
  ok:true,schema:"geomacro.website-derived-news-feed.v1",
- checked_at:NOW.toISOString(),original_release_delay_minutes:15,
+ checked_at:NOW.toISOString(),original_release_delay_minutes:0,
  retention_hours:72,delivery_scope:"free_website_only",
  ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
  page_offset:offset,page_size:250,has_more:hasMore,next_offset:hasMore?offset+250:null,
@@ -31,7 +31,7 @@ test("counts real D1 first-insert delay without claiming website display",()=>{
 });
 test("fails closed on duplicate ID, forged clock and a missing audit field",()=>{
  assert.throws(()=>auditDerivedJournalPages([p([a,a])],NOW),/IDENTITY_MISMATCH/);
- const forged={...a,clock:{...a.clock,first_seen_at:"2026-10-21T11:01:00.000Z"}};
+ const forged={...a,clock:{...a.clock,first_seen_at:"2026-10-21T10:59:59.999Z"}};
  assert.throws(()=>auditDerivedJournalPages([p([forged])],NOW),/TIME_OR_PROVENANCE_INVALID/);
  assert.throws(()=>auditDerivedJournalPages([{...p([a]),first_ingest:undefined}],NOW),/PAGE_INVALID/);
  assert.throws(()=>auditDerivedJournalPages([p([a],true,0)],NOW),/PAGE_INVALID/);
@@ -43,7 +43,7 @@ test("reads only 250-row pages and doesn't echo source content",async()=>{
   return Response.json(p([a]));
  },NOW);
  assert.equal(seen.length,1);
- assert.ok(seen[0].url.endsWith("/website-derived-news"));
+ assert.ok(seen[0].url.endsWith("/website-derived-news-immediate"));
  assert.equal(seen[0].opts.method,"GET");
  assert.equal(out.raw_upstream_content_logged,false);
  assert.equal(out.commercial_rights_verified,false);
@@ -70,7 +70,7 @@ test("proves a served 17-minute sample only from article markup, not embedded JS
   .actual_website_20min_sample_verified,false);
  assert.equal(auditObservedWebsiteLatency({signals:[row]},html,new Date("2026-10-21T11:21:00Z"))
   .actual_website_20min_sample_verified,false);
- assert.equal(auditObservedWebsiteLatency({signals:[row]},html,new Date("2026-10-21T11:14:00Z"))
+ assert.equal(auditObservedWebsiteLatency({signals:[row]},html,new Date("2026-10-21T10:59:59Z"))
   .actual_website_20min_sample_verified,false);
  assert.equal(auditObservedWebsiteLatency({signals:[{...row,date_precision:"day"}]},html,at)
   .actual_website_20min_sample_verified,false);

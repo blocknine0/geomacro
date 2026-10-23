@@ -29,7 +29,7 @@ export async function publicFindCardsResponse(
   return Response.json({ok:true,schema:"geomacro.find-card-feed.v1",
     version:"v1",cards,chargeable:false,scored:false,
     independent_same_event_verified:false,source_metadata_returned:false,
-    original_release_delay_minutes:15},
+    original_release_delay_minutes:0},
    {headers:NO_STORE});
  }catch{
   return Response.json({ok:false,error:"FIND_CARD_SOURCE_JOURNAL_UNAVAILABLE",

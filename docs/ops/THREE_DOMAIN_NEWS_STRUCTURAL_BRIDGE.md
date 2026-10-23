@@ -12,8 +12,8 @@ No additional scraping fleet, raw-feed database, paid API or duplicate engine.
   sends 40-observation authenticated/idempotent D1 batches, and retains the
   existing 600-row cross-category D1 maximum and original/first-seen 72-hour TTL.
 - The existing website/Find Cards and signed archival publication remain
-  compatible, and the canonical original-native time and 15-minute delay (or
-  conservative next-day 12:15 UTC for day-only releases) are unchanged.
+  compatible, and exact native timestamps are eligible immediately; day-only releases retain
+  the conservative next-day 12:00 UTC date-uncertainty boundary.
 - The control plane exposes strictly bounded D1 journal pages at offsets 0,
   250 and 500. A fail-closed consumer combines all pages, rejecting missing
   pagination metadata, incomplete cursors and duplicate IDs. **No new storage**.
@@ -39,7 +39,7 @@ NOT turn a source-inventory reference into an active feed, guarantee that an
 unavailable/429 publisher has new releases, or certify 195 × 3 current cells.
 
 Unreachable feeds, unclassified reports, release events outside the 72-hour
-window, bad clocks and records that cannot satisfy the 15-minute delay remain
+window, bad clocks and records with future publication timestamps remain
 excluded. Where upstream attribution is obligatory, the no-source public
 structural view *does not* present it as attribution-free licensed content.
 Such cases need a separately approved presentation/licence contract.
@@ -74,3 +74,17 @@ than claiming infinite coverage.
 
 A green test or PR merge alone is not proof of a new live event, exactly
 complete active-source inventory, paid readiness or website deploy parity.
+
+## Publication-delay removal (23 October 2026)
+
+Exact source-native publication timestamps are eligible immediately after the
+existing derivation and verification checks. The current reader route is
+`/v1/public/website-derived-news-immediate`, backed by the same bounded D1
+journal. The old route preserves its 15-minute envelope/filter solely for
+already deployed browsers during rollout; current app, API and operations
+readers use the immediate route. No second collector or storage is introduced.
+Day-only originals retain the next-day 12:00 UTC uncertainty boundary and
+never gain an invented publication hour. Future/stale clocks, required-credit,
+commercial-rights, independent-review and scored-product gates remain in force.
+The five-minute hosted cadence remains best-effort; removing an artificial
+wait is not a verified universal realtime SLA.

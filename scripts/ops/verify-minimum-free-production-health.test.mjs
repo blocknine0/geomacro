@@ -14,7 +14,7 @@ const goodStory=()=>({
 function fixture(stories=[goodStory()]){
   return {journalStatus:200,journal:{
     ok:true,schema:"geomacro.website-derived-news-feed.v1",
-    original_release_delay_minutes:15,retention_hours:72,retention_days:3,
+    original_release_delay_minutes:0,retention_hours:72,retention_days:3,
     delivery_scope:"free_website_only",signals:stories,
   },siteStatus:200,siteHtml:"<html>What changed in the world GEOMACRO FINDS "+
     stories.map(x=>x.title).join(" ")+"</html>",
@@ -44,8 +44,8 @@ test("all three categories can be observed but without manufacturing a score",()
   assert.equal(r.all_three_categories_have_recent_originals,true);
   assert.equal(r.legacy_signed_hot_products_verified,false);
 });
-test("rejects expired, too fresh and future first-party event timestamps",()=>{
-  for(const stamp of ["2026-10-17T12:00:00.000Z","2026-10-20T23:50:00.000Z",
+test("rejects expired, invalid and future first-party event timestamps",()=>{
+  for(const stamp of ["2026-10-17T12:00:00.000Z","invalid",
     "2026-10-21T01:00:00.000Z"]){
     const r=classifyMinimumFreeProduction(fixture([{...goodStory(),published_at:stamp}]));
     assert.equal(r.ok,false,stamp);

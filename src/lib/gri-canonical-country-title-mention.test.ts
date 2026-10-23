@@ -56,7 +56,7 @@ describe("195-country first-party original-title GRI review coverage",()=>{
     expect(JSON.stringify(signals)).not.toContain("example.org");
     expect(JSON.stringify(signals)).not.toContain("Kazakhstan launches lithium");
   });
-  it("retains a real 15-minute freshness embargo and excludes incorrect original publication",()=>{
+  it("allows recent originals while excluding incorrect original publication",()=>{
     const fresh=deriveStatelessSignals([{
       category:"geopolitics" as const,
       sourceId:"official_issuer_original",
@@ -64,7 +64,7 @@ describe("195-country first-party original-title GRI review coverage",()=>{
       articleUrl:"https://example.org/original/2026/10/18/one",
       publishedAt:"2026-10-18T17:55:00Z",credit:null,
     }],NOW,{websiteDelay:true});
-    expect(fresh).toEqual([]);
+    expect(fresh).toHaveLength(1);
     const older=deriveStatelessSignals([{
       category:"macro" as const,
       sourceId:"official_issuer_original",

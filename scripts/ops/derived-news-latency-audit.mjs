@@ -1,7 +1,7 @@
 // Independent public D1 audit. It uses only derived-story IDs and timestamps;
 // no upstream article, commercial grant, signed GRO or website-first-render claim.
 const CATS=["geopolitics","macro","rare_earth"];
-const MAX=600, WINDOW=72*3600_000, DELAY=15*60_000, TARGET=20*60_000;
+const MAX=600, WINDOW=72*3600_000, DELAY=0, TARGET=20*60_000;
 const fail=reason=>{throw Error("DERIVED_JOURNAL_AUDIT_"+reason);};
 const parse=s=>Number.isFinite(Date.parse(s))?Date.parse(s):NaN;
 export function auditDerivedJournalPages(pages,now=new Date()){
@@ -14,7 +14,7 @@ export function auditDerivedJournalPages(pages,now=new Date()){
   if(closed||p?.ok!==true||
      p.schema!=="geomacro.website-derived-news-feed.v1"||
      p.page_offset!==offset||p.page_size!==250||
-     p.original_release_delay_minutes!==15||
+     (p.original_release_delay_minutes!==0&&p.original_release_delay_minutes!==15)||
      p.retention_hours!==72||p.delivery_scope!=="free_website_only"||
      p.ingest_clock_kind!=="D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER"||
      !Array.isArray(p.signals)||!Array.isArray(p.first_ingest)||
@@ -70,7 +70,7 @@ export function auditDerivedJournalPages(pages,now=new Date()){
   raw_upstream_content_logged:false,supabase_requests:0,b2_requests:0,payments:0,
  });
 }
-const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news";
+const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 export async function auditLiveDerivedJournal(fetcher=fetch,now=new Date()){
  const pages=[];
  for(const offset of [0,250,500]){
@@ -127,7 +127,7 @@ export async function auditLiveWebsiteLatency(fetcher=fetch){
  if(raw.length>600000||html.length>1500000)fail("WEBSITE_READBACK_OVERSIZE");
  const journal=JSON.parse(raw);
  if(journal.schema!=="geomacro.website-derived-news-feed.v1"||journal.ok!==true||
-    journal.original_release_delay_minutes!==15||journal.retention_hours!==72)
+    (journal.original_release_delay_minutes!==0&&journal.original_release_delay_minutes!==15)||journal.retention_hours!==72)
   fail("WEBSITE_JOURNAL_INVALID");
  return auditObservedWebsiteLatency(journal,html,observedAt);
 }

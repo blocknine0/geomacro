@@ -25,7 +25,7 @@ const rows=[
 const page=(signals,offset=0,more=false)=>({
  ok:true,schema:"geomacro.website-derived-news-feed.v1",
  delivery_scope:"free_website_only",retention_hours:72,
- original_release_delay_minutes:15,page_offset:offset,page_size:250,
+ original_release_delay_minutes:0,page_offset:offset,page_size:250,
  has_more:more,next_offset:more?offset+250:null,signals
 });
 const fetchDoc=(doc=page(rows))=>async(url,init)=>{

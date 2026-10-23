@@ -30,10 +30,10 @@ export async function backfillLast24HourNews({readCategory,publisher,retainedClo
    const eligible=report.signals.filter(signal=>{
     const at=Date.parse(signal.published_at);
     return signal.status==='official_release_observed_unscored'&&
-     signal.date_precision==='exact'&&Number.isFinite(at)&&at>=now-DAY&&at<=now-15*60000;
+     signal.date_precision==='exact'&&Number.isFinite(at)&&at>=now-DAY&&at<=now;
    });
    const safe=checkedDerivedNews({ok:true,schema:'geomacro.website-derived-news-feed.v1',
-    original_release_delay_minutes:15,retention_days:3,retention_hours:72,
+    original_release_delay_minutes:0,retention_days:3,retention_hours:72,
     delivery_scope:'free_website_only',signals:eligible},now);
    if(safe.length!==eligible.length)throw Error('LAST_24H_DERIVED_SHAPE_INVALID');
    eligibleCount=safe.length;
@@ -45,7 +45,7 @@ export async function backfillLast24HourNews({readCategory,publisher,retainedClo
     if(!previous||previous.published_at===signal.published_at)return true;
     const at=Date.parse(previous.published_at);
     if(previous.category!==category||previous.date_precision!==signal.date_precision||
-       !Number.isFinite(at)||at<now-DAY||at>now-15*60000)
+       !Number.isFinite(at)||at<now-DAY||at>now)
      throw Error('LAST_24H_RETAINED_CLOCK_OUTSIDE_WINDOW');
     retainedClockVariants++;return false;
    });
@@ -67,8 +67,8 @@ export async function backfillLast24HourNews({readCategory,publisher,retainedClo
  const publication=await publisher.finish();
  return {schema:'geomacro.last-24-hour-news-backfill.v1',checked_at:new Date(now).toISOString(),
   window_start_original_utc:new Date(now-DAY).toISOString(),
-  public_cutoff_original_utc:new Date(now-15*60000).toISOString(),
-  original_lookback_hours:24,public_delay_minutes:15,retention_hours:72,
+  public_cutoff_original_utc:new Date(now).toISOString(),
+  original_lookback_hours:24,public_delay_minutes:0,retention_hours:72,
   source_reader_cap_per_category:200,world_news_coverage_exhaustive:false,
   categories,complete:categories.every(c=>c.status==='LAST_24H_BACKFILL_COMPLETED'),publication,
   original_dates_rewritten:false,raw_source_data_persisted:false,

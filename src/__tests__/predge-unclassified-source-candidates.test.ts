@@ -19,7 +19,7 @@ const entry=(category:typeof cats[number],i:number,title:string)=>
  ({category,sourceId:"publisher_lane_"+i,articleUrl:"https://gov.example.net/approved/original/"+i,
    publishedAt:PUBLISHED,title,credit:null});
 const feed=(rows:unknown[])=>({ok:true,
- schema:"geomacro.website-derived-news-feed.v1",original_release_delay_minutes:15,
+ schema:"geomacro.website-derived-news-feed.v1",original_release_delay_minutes:0,
  retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
  page_offset:0,page_size:250,has_more:false,next_offset:null,signals:rows});
 function env(rows:any[]){
@@ -62,17 +62,17 @@ describe("low-friction genuine original-source candidate tier for Predge",()=>{
    expect(rows[0].status).toBe("official_release_observed_unscored");
    expect(buildDerivedNewsStructural(rows,NOW)[0].qualifying_topic_release_verified).toBe(true);
  });
- it("preserves original time, 15min delay, and never turns an offsite or future title into D1 news",()=>{
+ it("preserves original time, no added delay, and never turns an offsite or future title into D1 news",()=>{
    const early=deriveStatelessSignals([entry("macro",1,"New office appointment")],NOW);
    expect(early).toHaveLength(1);
-   expect(deriveStatelessSignals([entry("macro",1,"New office appointment")],Date.parse(PUBLISHED)+1000)).toEqual([]);
+   expect(deriveStatelessSignals([entry("macro",1,"New office appointment")],Date.parse(PUBLISHED)-1)).toEqual([]);
    expect(deriveStatelessSignals([{...entry("macro",1,"New office appointment"),
       articleUrl:"http://not-allowed.example.com/"}],NOW)).toEqual([]);
    expect(deriveStatelessSignals([{...entry("macro",1,"New office appointment"),
       publishedAt:"2026-10-20T16:00:00Z"}],NOW)).toEqual([]);
    const rows=checkedDerivedNews(feed(early),NOW);
    expect(rows).toHaveLength(1);
-   expect(checkedDerivedNews(feed([{...early[0],published_at:"2026-10-19T16:39:00.000Z"}]),NOW)).toEqual([]);
+   expect(checkedDerivedNews(feed([{...early[0],published_at:"2026-10-19T16:40:00.001Z"}]),NOW)).toEqual([]);
    expect(checkedDerivedNews(feed([{...early[0],status:"official_feed_candidate_unscored",topic:"monetary policy"}]),NOW)).toEqual([]);
  });
  it("website D1 journal IDs and Predge direct feed match, but candidates never enter signed GRI review",async()=>{

@@ -243,6 +243,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # An unrelated source/publication deployment must never overwrite
+          # an existing partner credential with the rotation sentinel. Stop
+          # before any deployment or secret mutation when rotation is absent.
+          test "$PREDGE_RESEARCH_NEWS_TOKEN" != "REVOKED_ROTATION_REQUIRED" || {
+            echo "::error::PREDGE_PROTECTED_ROTATED_TOKEN_REQUIRED_BEFORE_DEPLOY"; exit 5;
+          }
           DEPLOY_LOG="$(mktemp)"
           npx -y "wrangler@${WRANGLER_VERSION}" deploy --config wrangler.runtime.jsonc 2>&1 | tee "$DEPLOY_LOG"
           DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"

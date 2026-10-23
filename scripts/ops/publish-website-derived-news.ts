@@ -57,7 +57,7 @@ for (const category of categories) {
     if (report.healthy_feed_count === 0) throw Error("OFFICIAL_FEEDS_UNREACHABLE");
     reports.push(report);
     // Already derived by the publisher model; this is a belt-and-braces
-    // 15-minute gate before D1 writes. Day-only releases conservatively wait.
+    // future-clock gate before D1 writes. Day-only releases conservatively wait.
     const checked=Date.parse(report.checked_at);
     const eligible=report.signals.filter(signal=>{
       const at=Date.parse(signal.published_at);
@@ -65,7 +65,7 @@ for (const category of categories) {
         at>=checked-72*60*60_000 && at<=checked &&
         (signal.date_precision==="day"
           ? (conservativeDayReleaseMs(signal.published_at)??Infinity)<=checked
-          : at+15*60_000<=checked) &&
+          : at<=checked) &&
         signal.severity===null && signal.same_event_corrob_verified===false &&
         signal.sources_credited.every(v=>typeof v==="string");
     });
@@ -267,7 +267,7 @@ if(process.env.GEOMACRO_AUTOMATED_FINDS_PUBLICATION==="1"){
 // newsroom continues even when this optional trace cannot recover its source.
 try {
   const reply=await fetch(
-    "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news",{
+    "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate",{
     method:"GET",redirect:"error",cache:"no-store",
     headers:{Accept:"application/json"},
     signal:AbortSignal.timeout(8_000),

@@ -14,7 +14,7 @@ const prior=item("geopolitics-1234abcd","geopolitics","2026-10-21T12:39:00.000Z"
   "2026-10-21T12:58:00.000Z");
 function report(records){
  return {ok:true,schema:"geomacro.website-derived-news-feed.v1",
-  original_release_delay_minutes:15,retention_hours:72,
+  original_release_delay_minutes:0,retention_hours:72,
   ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
   signals:records.map(x=>x.story),first_ingest:records.map(x=>x.meta)};
 }
@@ -54,7 +54,7 @@ test("no fresh originals or blocked HTML cannot be certified",()=>{
  assert.equal(rejected.candidates_visible_in_actual_website_ssr,0);
 });
 test("forged first insert is not accepted and doesn't hide existing story",()=>{
- const f={...fresh,meta:{id:fresh.story.id,first_seen_at:"2026-10-21T12:45:00.000Z"}};
+ const f={...fresh,meta:{id:fresh.story.id,first_seen_at:"2026-10-21T12:42:59.999Z"}};
  const v=assessWebsiteVisibleOriginals({journal:report([f]),html:website(),now:NOW});
  assert.equal(v.record_first_ingest_clock_verified,0);
  assert.equal(v.candidates_visible_and_first_d1_ingest_verified_under_20min,0);
@@ -78,4 +78,13 @@ test("two read-only outside-in requests; never introduces upstream requests or t
  assert.equal(urls.every(x=>x.opts.method==="GET"&&x.opts.cache==="no-store"),true);
  assert.equal(found.payments,0);
  assert.equal(found.upstream_titles_logged,false);
+});
+
+test("a genuine three-minute source-to-HTML observation qualifies without an artificial 15m floor",()=>{
+ const recent=item("macro-1234abcd","macro","2026-10-21T12:57:00.000Z","2026-10-21T12:58:00.000Z");
+ const v=assessWebsiteVisibleOriginals({journal:report([recent]),html:website(),now:NOW});
+ assert.equal(v.record_first_ingest_clock_verified,1);
+ assert.equal(v.observed_visible_upper_bound_max_minutes,3);
+ assert.equal(v.candidates_visible_and_first_d1_ingest_verified_under_20min,1);
+ assert.equal(v.universal_195x3_20min_sla_verified,false);
 });

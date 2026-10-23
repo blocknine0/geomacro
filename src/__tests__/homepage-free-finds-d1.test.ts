@@ -27,7 +27,7 @@ function card(category:"geopolitics"|"macro"|"rare_earth",at:string){
 function feed(cards:FindCardV1[]){
  return {ok:true,schema:"geomacro.find-card-feed.v1",version:"v1",cards,
   chargeable:false,scored:false,independent_same_event_verified:false,
-  source_metadata_returned:false,original_release_delay_minutes:15};
+  source_metadata_returned:false,original_release_delay_minutes:0};
 }
 describe("unscored three-domain homepage from existing public D1 journal",()=>{
  it("retains a dated winner after an empty healthy poll without extending its age",()=>{
@@ -58,15 +58,15 @@ describe("unscored three-domain homepage from existing public D1 journal",()=>{
   expect(selectHomepageFreeFind([old],NOW)?.isCurrent).toBe(false);
   expect(selectHomepageFreeFind([old],NOW)?.originalAt).toBe(old.published_at);
  });
- it("does not bypass original 15-minute embargo, future, 30-day retention or day-only embargo",()=>{
+ it("rejects future, 30-day retention or day-only embargo",()=>{
   const v=card("macro","2026-10-17T15:00:00Z");
   const early={...v,published_at:"2026-10-17T16:50:00Z"};
   const future={...v,published_at:"2026-10-18T16:00:00Z"};
   const ancient={...v,published_at:"2026-09-01T11:00:00Z"};
-  expect(eligibleHomeFindCards([early,future,ancient],NOW)).toEqual([]);
+  expect(eligibleHomeFindCards([early,future,ancient],NOW)).toEqual([early]);
   const day={...v,date_precision:"day" as const,published_at:"2026-10-17T00:00:00.000Z"};
   expect(eligibleHomeFindCards([day],NOW)).toEqual([]);
-  expect(eligibleHomeFindCards([day],Date.parse("2026-10-18T12:15:00Z"))).toHaveLength(1);
+  expect(eligibleHomeFindCards([day],Date.parse("2026-10-18T12:00:00Z"))).toHaveLength(1);
  });
  it("never accepts client-supplied price, score, upstream URL or fabricated signed-review status",()=>{
   const safe=card("geopolitics","2026-10-17T15:00:00Z");

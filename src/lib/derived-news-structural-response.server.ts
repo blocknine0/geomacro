@@ -75,7 +75,7 @@ export async function derivedNewsStructuralResponse(
     return Response.json({
       ok:true,schema:"geomacro.derived-news-structural-feed.v1",
       item_schema:NEWS_STRUCTURAL_SCHEMA,retention_hours:72,
-      original_release_delay_minutes:15,
+      original_release_delay_minutes:0,
       source_scope:"ELIGIBLE_RELEASES_PRESENT_IN_BOUNDED_D1_JOURNAL",
       exhaustive_all_global_sources:false,
       independent_same_event_verified:false,commercial_rights_verified:false,

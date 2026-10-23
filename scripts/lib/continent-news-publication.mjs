@@ -4,8 +4,8 @@ import {checkedDerivedNews} from '../../src/lib/public-derived-news-client.ts';
 import {prepareDerivedNewsBatches} from './derived-news-d1-batches.mjs';
 const URL='https://geomacro-control-plane.daspallab202391.workers.dev/v1/website-derived-news';
 const doc=signals=>({ok:true,schema:'geomacro.website-derived-news-feed.v1',
- original_release_delay_minutes:15,retention_days:3,retention_hours:72,delivery_scope:'free_website_only',signals});
-const releaseAt=s=>Date.parse(s.published_at)+15*60000;
+ original_release_delay_minutes:0,retention_days:3,retention_hours:72,delivery_scope:'free_website_only',signals});
+const releaseAt=s=>Date.parse(s.published_at);
 const sameClock=(a,b)=>a.category===b.category&&a.published_at===b.published_at&&a.date_precision===b.date_precision;
 export async function createContinentNewsPublisher({root,readJournal,fetchImpl=fetch,
  now=()=>Date.now(),wait=ms=>new Promise(resolve=>setTimeout(resolve,ms))}){
@@ -70,8 +70,8 @@ export async function createContinentNewsPublisher({root,readJournal,fetchImpl=f
    await publishReady();
   }),
   finish:()=>enqueue(async()=>{
-   // No source re-fetch. Hold only already derived rows for at most 15m.
-   const deadline=now()+15*60000+1000;
+   // No artificial wait: every admitted exact original is already published.
+   const deadline=now()+1000;
    while(pending.size){
     await publishReady();if(!pending.size)break;
     const delay=Math.min(...[...pending.values()].map(releaseAt))-now();
@@ -80,7 +80,7 @@ export async function createContinentNewsPublisher({root,readJournal,fetchImpl=f
    }
    return {schema:'geomacro.continent-news-publication.v1',new_rows_written:writes,
     new_rows_readback_verified:verified,new_rows_by_category:{...byCategory},duplicate_rows_excluded:duplicates,pending_rows:pending.size,
-    authenticated_write_verified:true,public_delay_minutes:15,count_basis:"ABSENT_FROM_THIS_RUN_INITIAL_JOURNAL",
+    authenticated_write_verified:true,public_delay_minutes:0,count_basis:"ABSENT_FROM_THIS_RUN_INITIAL_JOURNAL",
     exact_first_writer_attribution_verified:false,signed_commercial_products_claimed:false,payments:0,b2_requests:0,supabase_requests:0};
   }),
  };

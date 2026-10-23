@@ -23,7 +23,7 @@ describe("shared D1 observation to PRIVATE original-signing intake routing",()=>
    expect(x.source_rights_or_signature_verified).toBe(false);
    expect(x.paid_output_authorized).toBe(false);
  });
- it("rejects ambiguous or non-country, source-credited, day-only, stale, future, pre-15m, and unclassified leads",()=>{
+ it("rejects ambiguous or non-country, source-credited, day-only, stale, future, invalid clocks, and unclassified leads",()=>{
    const s=signal("macro-12345678","Malawi","macro");
    const inputs=[
      {...s,geography:"Africa"}, {...s,geography:"https://bad.example"},
@@ -31,7 +31,7 @@ describe("shared D1 observation to PRIVATE original-signing intake routing",()=>
      {...s,date_precision:"day",published_at:"2026-10-23"},
      {...s,published_at:"2026-10-22T10:00:00Z"},
      {...s,published_at:"2026-10-23T10:01:00Z"},
-     {...s,published_at:"2026-10-23T09:50:00Z"},
+     {...s,published_at:"invalid"},
      {...s,status:"official_feed_candidate_unscored"},
      {...s,severity:4}, {...s,same_event_corrob_verified:true},
    ] as StatelessIntelligenceSignal[];

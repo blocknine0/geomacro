@@ -19,7 +19,7 @@ export type AutomatedFindsPayload = {
   scored: false;
   chargeable: false;
   delivery_scope: "free_website_only";
-  original_release_delay_minutes: 15;
+  original_release_delay_minutes: 0;
   retention_days: 30;
   healthy_feed_count: number;
   feed_count: number;
@@ -42,7 +42,7 @@ export function assertAutomatedFindsPayload(p: AutomatedFindsPayload, now = Date
       !/^\d{1,20}$/.test(p.source_run_id) || !/^[a-f0-9]{40}$/.test(p.source_sha) ||
       p.source_verification !== "publisher_native_release" || p.independent_reviewed !== false ||
       p.scored !== false || p.chargeable !== false || p.delivery_scope !== "free_website_only" ||
-      p.original_release_delay_minutes !== 15 || p.retention_days !== 30 ||
+      (p.original_release_delay_minutes!==0&&p.original_release_delay_minutes!==15) || p.retention_days !== 30 ||
       !Number.isSafeInteger(p.feed_count) || p.feed_count < 1 || p.feed_count > 100 ||
       !Number.isSafeInteger(p.healthy_feed_count) || p.healthy_feed_count < 1 || p.healthy_feed_count > p.feed_count ||
       !Array.isArray(p.signals) || p.signals.length > 50 ||

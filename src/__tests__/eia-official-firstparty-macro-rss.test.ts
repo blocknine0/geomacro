@@ -23,7 +23,7 @@ describe("EIA first-party press releases: derived-only original clock",()=>{
     expect(s).toContain('allowedHosts: ["www.eia.gov"], credit: "U.S. Energy Information Administration"');
     expect(s).not.toContain('id: "eia_press_macro", category: "rare_earth"');
   });
-  it("accepts genuinely issuer-native dated macro release with 15 minute publication delay",()=>{
+  it("accepts genuinely issuer-native dated macro release without added publication delay",()=>{
     const parsed=parseFirstPartyFeed(
       fixture("Sun, 18 Oct 2026 10:00:00 GMT"),source,now);
     expect(parsed.dated).toHaveLength(1);
@@ -38,7 +38,7 @@ describe("EIA first-party press releases: derived-only original clock",()=>{
     expect(JSON.stringify(out)).not.toContain("press593.php");
     expect(JSON.stringify(out)).not.toContain("mixed picture for winter");
     const recent=parseFirstPartyFeed(fixture("Sun, 18 Oct 2026 12:25:00 GMT"),source,now);
-    expect(deriveStatelessSignals(recent.dated,now)).toHaveLength(0);
+    expect(deriveStatelessSignals(recent.dated,now)).toHaveLength(1);
   });
   it("rejects future/updated-only clocks, non-original or foreign press-room links",()=>{
     const changed=[

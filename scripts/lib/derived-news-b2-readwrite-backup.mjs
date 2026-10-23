@@ -24,7 +24,7 @@ async function strictPage(response,offset){
  let doc;try{doc=JSON.parse(text);}catch{fail("D1_PUBLIC_JSON_INVALID");}
  if(doc?.ok!==true||doc.schema!=="geomacro.website-derived-news-feed.v1"||
     doc.delivery_scope!=="free_website_only"||doc.retention_hours!==72||
-    doc.original_release_delay_minutes!==15||doc.page_offset!==offset||
+    (doc.original_release_delay_minutes!==0&&doc.original_release_delay_minutes!==15)||doc.page_offset!==offset||
     doc.page_size!==250||typeof doc.has_more!=="boolean"||
     !Array.isArray(doc.signals)||doc.signals.length>250)
   fail("D1_PUBLIC_CONTRACT_INVALID");

@@ -55,7 +55,7 @@ independently confirmed.** A 200 with no eligible items is a valid empty
 observation, not invented macro or minerals coverage.
 
 Both free routes are **non-commercial, source-neutral research-only**. They
-retain native clocks, original content-credit exclusions, the 15-minute
+retain native clocks, original content-credit exclusions, no added publication
 delay, 72-hour retention and existing 500/UTC-day authenticated hard cap.
 They cannot authorize resale, source-rights elevation, scoring, payment or
 trade execution.

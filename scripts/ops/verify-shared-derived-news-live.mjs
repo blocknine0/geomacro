@@ -78,7 +78,7 @@ export async function verifySharedNewsLive(fetcher=fetch){
  }
  return {schema:"geomacro.shared-d1-predge-live-proof.v1",
   same_journal_ids_verified:true,counts:feed.counts,
-  retention_hours:72,original_release_delay_minutes:15,
+  retention_hours:72,original_release_delay_minutes:0,
   commercial_rights_verified:false,b2_requests:0,d1_writes:0,payments:0};
 }
 if(process.argv[1]?.endsWith("verify-shared-derived-news-live.mjs")){

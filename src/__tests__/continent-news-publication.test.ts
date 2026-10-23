@@ -36,11 +36,11 @@ describe('same-run continent news publication',()=>{
   const result=await publisher.finish();expect(result.new_rows_written).toBe(1);expect(result.duplicate_rows_excluded).toBe(2);
   await expect(publisher.accept([signal('geopolitics','2026-10-23T06:01:00.000Z')])).rejects.toThrow(/CLOCK_CONFLICT/);
  });
- it('holds a five-minute-old original in private memory and releases it in this run only after 15m',async()=>{
+ it('publishes a five-minute-old original immediately without waiting or redating',async()=>{
   const h=harness(),publisher=await h.create(),news=signal('geopolitics','2026-10-23T06:25:00.000Z');
-  await publisher.accept([news]);expect(h.writes).toHaveLength(0);
+  await publisher.accept([news]);expect(h.writes).toHaveLength(1);
   const result=await publisher.finish();expect(result.pending_rows).toBe(0);
-  expect(h.writes[0].at).toBe(Date.parse(news.published_at)+15*60000);
+  expect(h.writes[0].at).toBe(NOW);
   expect(h.writes[0].signals[0].published_at).toBe(news.published_at);
  });
  it('rejects raw metadata, future originals, extra categories and fabricated scoring',async()=>{

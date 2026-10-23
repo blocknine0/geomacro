@@ -297,7 +297,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         </p>
         <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Clock3 className="h-4 w-4" aria-hidden />
-          <span>15-minute public delay · Original dates shown · Unscored findings</span>
+          <span>No added publication delay · Original dates shown · Unscored findings</span>
         </p>
       </header>
 

@@ -34,7 +34,7 @@ export function assertAutomatedInput(p:AutomatedInputPayload,now=Date.now()){
  // Reuse the existing derived-only, native-clock, delayed journal contract.
  for(const clock of [generated,now]){
   const rows=checkedDerivedNews({ok:true,schema:'geomacro.website-derived-news-feed.v1',
-   original_release_delay_minutes:15,retention_days:3,retention_hours:72,
+   original_release_delay_minutes:0,retention_days:3,retention_hours:72,
    delivery_scope:'free_website_only',signals:[p.signal]},clock);
   if(rows.length!==1)throw Error('AUTOMATED_INPUT_STORY_INVALID');
  }

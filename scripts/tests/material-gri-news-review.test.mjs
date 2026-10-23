@@ -60,11 +60,11 @@ test("dedup same exact derived event, reject fabricated independent corroboratio
   const r=buildMaterialGriNewsReviewQueue(reports({geopolitics:[geo,duplicate,falseProof,wrong]}),now);
   assert.equal(r.categories[0].candidates_count,1);
 });
-test("fail closed for future, over-72h, early embargo or day-only date",()=>{
+test("fail closed for future, over-72h, invalid clock or day-only date",()=>{
   const samples=[
     base("macro","monetary policy","2026-10-18T10:01:00Z"),
     base("macro","monetary policy","2026-10-15T09:00:00Z"),
-    base("macro","monetary policy","2026-10-18T09:50:00Z"),
+    base("macro","monetary policy","invalid"),
     {...base("macro","monetary policy","2026-10-18"),date_precision:"day"},
   ];
   const r=buildMaterialGriNewsReviewQueue(reports({macro:samples}),now);
@@ -81,7 +81,7 @@ test("reject missing full three-domain report or stale source-health read",()=>{
 test("Auto Ingest read-only D1 path never claims reverified issuer or scored GRI",()=>{
   const doc={ok:true,schema:"geomacro.website-derived-news-feed.v1",
     delivery_scope:"free_website_only",retention_days:3,retention_hours:72,
-    original_release_delay_minutes:15,
+    original_release_delay_minutes:0,
     signals:[base("geopolitics","security"),base("macro","price data"),
       base("rare_earth","trade restriction")]};
   const q=buildMaterialGriReviewFromDerivedD1(doc,now);
@@ -96,11 +96,11 @@ test("Auto Ingest read-only D1 path never claims reverified issuer or scored GRI
 });
 test("Auto Ingest fails closed if D1 journal is not 72h derived-only",()=>{
   for(const field of [{retention_hours:720},{retention_days:30},
-    {delivery_scope:"raw_article"},{original_release_delay_minutes:0},
+    {delivery_scope:"raw_article"},{original_release_delay_minutes:1},
     {signals:new Array(251).fill(base("macro","price data"))}]){
     const doc={ok:true,schema:"geomacro.website-derived-news-feed.v1",
       delivery_scope:"free_website_only",retention_days:3,retention_hours:72,
-      original_release_delay_minutes:15,signals:[],...field};
+      original_release_delay_minutes:0,signals:[],...field};
     assert.throws(()=>buildMaterialGriReviewFromDerivedD1(doc,now),/DERIVED_ONLY/);
   }
 });

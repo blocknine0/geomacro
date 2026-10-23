@@ -178,9 +178,9 @@ test("90m verified-native review triage is distinct from 6h recheck and stale 72
     assert.equal(serialized.includes(forbidden),false);
 });
 
-test("calendar-day releases and timestamps within 15-minute embargo cannot trigger numerical GRI",()=>{
+test("calendar-day releases and future timestamps cannot trigger numerical GRI",()=>{
   const signals=[
-    signal("geopolitics","embargo1","India","2026-10-18T09:50:00Z"),
+    signal("geopolitics","embargo1","India","2026-10-18T10:00:01Z"),
     {...signal("geopolitics","daytime","India","2026-10-16T00:00:00Z"),
       date_precision:"day",published_at:"2026-10-16"},
   ];

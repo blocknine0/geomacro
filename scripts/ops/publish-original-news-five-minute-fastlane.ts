@@ -38,15 +38,15 @@ for(const category of categories){
    console.warn("::warning::FASTLANE_ORIGINAL_PUBLISHER_UNAVAILABLE_"+category.toUpperCase());
    continue;
  }
- // Existing verifier already requires original-native published clock plus
- // 15m minimum delay. Do not override it, including day-only conservative lag.
+ // Preserve native publication clocks and reject future originals.
+ // Exact clocks have no added delay; day-only date uncertainty remains.
  const candidates=report.signals.filter(s=>
    s.category===category&&s.severity===null&&
    s.same_event_corrob_verified===false&&!existingIds.has(s.id)&&
    Date.parse(s.published_at)>=runAt-72*3600000&&
    (s.date_precision==="exact"
-      ?Date.parse(s.published_at)+15*60000<=runAt
-      :Date.parse(s.published_at)+36*3600000+15*60000<=runAt));
+      ?Date.parse(s.published_at)<=runAt
+      :Date.parse(s.published_at)+36*3600000<=runAt));
  try {
   for(let i=0;i<candidates.length;i+=20){
    const batch=candidates.slice(i,i+20);
@@ -96,13 +96,13 @@ if(allPublished.length){
   const originalExact=allPublished.filter(s=>s.date_precision==="exact");
   const counts=originalExact.reduce((a,s)=>{
    const delay=ackNow-Date.parse(s.published_at);
-   if(delay>=15*60000 && delay<=20*60000)a.in_target++;
+   if(delay>=0 && delay<=20*60000)a.in_target++;
    else a.outside_target++;
    return a;
   },{in_target:0,outside_target:0});
   console.log(JSON.stringify({
     schema:"geomacro.5min-original-news-latency.v1",
-    objective_minutes:20,minimum_public_delay_minutes:15,
+    objective_minutes:20,minimum_public_delay_minutes:0,
     github_schedule_guaranteed:false,
     source_portfolio_exhaustive_195x3:false,
     original_exact_publications_verified:originalExact.length,

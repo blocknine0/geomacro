@@ -27,7 +27,7 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
     doc.not_observed_means_no_news!==false||
     doc.exhaustive_country_news_coverage_verified!==false||
     doc.producer_country_original_coverage_verified!==false||
-    doc.original_release_delay_minutes!==15||doc.retention_hours!==72||
+    (doc.original_release_delay_minutes!==0&&doc.original_release_delay_minutes!==15)||doc.retention_hours!==72||
     doc.payment_required_now!==false||doc.chargeable!==false||
     doc.scored!==false||doc.signed!==false||doc.raw_upstream_delivered!==false||
     !Number.isSafeInteger(doc.source_neutral_derived_records_in_journal)||

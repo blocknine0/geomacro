@@ -39,7 +39,7 @@ try{
           ["event_occurrence","catalog_added_day","reference_year","reference_month","award_obligation_day"].includes(row?.clock_semantics)&&
           row?.score===null&&row?.independent_same_event_verification===false);
         const releaseDates=news.every(row=>Number.isFinite(Date.parse(row?.published_at))&&
-          Date.now()-Date.parse(row.published_at)>=900_000&&
+          Date.now()-Date.parse(row.published_at)>=0&&
           Date.now()-Date.parse(row.published_at)<=86_400_000&&
           row?.risk_score===null&&row?.same_event_corroborated===false);
         const safe=JSON.stringify(typedFindings);

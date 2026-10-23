@@ -6,7 +6,7 @@
  */
 const HASH = /^[a-f0-9]{40}$/u;
 const DAY = 86_400_000;
-const EMBARGO = 900_000;
+const EMBARGO = 0;
 
 export function inspectPublishedBuild(marker, expectedSha) {
   const actual = String(marker?.canonical_main_sha ?? "").toLowerCase();

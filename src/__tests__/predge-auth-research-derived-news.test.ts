@@ -94,9 +94,9 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   const r=await predgeResearchDerivedNewsFeed(make(),env(),Date.parse(PREDGE_RESEARCH_PILOT_END_UTC));
   expect(r.status).toBe(403);
  });
- it("stops credited upstream-required items, embargoed releases and unclassified false claims",async()=>{
+ it("stops credited upstream-required items, future releases and unclassified false claims",async()=>{
   const rows=[signal(0),{...signal(1),sources_credited:["Publisher attribution required"]},
-    {...signal(2),published_at:"2026-10-19T14:55:00.000Z"}];
+    {...signal(2),published_at:"2026-10-19T15:01:00.000Z"}];
   const r=await predgeResearchDerivedNewsFeed(make(),env(rows),NOW);
   expect(r.status).toBe(200);
   const data=await r.json();expect(data.items).toHaveLength(1);
