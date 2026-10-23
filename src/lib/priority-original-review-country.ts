@@ -11,7 +11,12 @@ import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
  * signing-intake slot prioritizes countries with already-seen exact native
  * release clocks. Missing/D1-degraded journal => bounded original rotation.
  */
-export const JOURNAL_ORIGINAL_REVIEW_WINDOW_MS = 22*60*60_000;
+// First-party source lead priority is intended to reach GRI <=90m current
+// proof admission. The separate public 22h news/reference window is NOT
+// shortened and cannot turn a historical release into current GRI.
+// An older D1 observation must not pin hourly private source probes to one
+// expired country until its 22h journal retention naturally lapses.
+export const JOURNAL_ORIGINAL_REVIEW_WINDOW_MS = 90*60_000;
 const MIN_DELAY_MS=0;
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 type Summary=Readonly<{
@@ -68,7 +73,10 @@ export function selectPriorityOriginalReviewCountry(
  const topCategories=ranked[0]?.[1].categories.size??0;
  const tied=ranked.filter(([,value])=>value.categories.size===topCategories)
    .slice(0,12);
- const slot=Math.floor((clock-2*3_600_000)/(6*3_600_000));
+ // Align ties with the new existing hourly original review cadence.
+ // A six-hour tie step would retry the same possibly invalid article
+ // for six consecutive hourly original-intake runs.
+ const slot=Math.floor(clock/3_600_000);
  const selected=tied.length?tied[((slot%tied.length)+tied.length)%tied.length]:null;
  return Object.freeze({
    country_iso3:selected?.[0]??fallbackIso3,
