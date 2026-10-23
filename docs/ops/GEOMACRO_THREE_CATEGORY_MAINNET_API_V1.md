@@ -43,7 +43,7 @@ No price changes in this update. All 8 capabilities / 14 approved variants conti
 
 ## Public brand/discovery equality
 
-Dynamic `/.well-known/x402` and `/.well-known/x402.json` and static fallbacks declare `name: "Geomacro"`, the three official routes, one canonical payable resource, and explicitly distinguish advertised routability from current verified available data. `/.well-known/geomacro-agent.json` declares `Geomacro AI Agent`, while `/.well-known/geomacro-commerce.json` names the merchant product `Geomacro Structured Intelligence`. Static fallback must stay `prelaunch`, `resources: []`, and `productionFundsAuthorized: false` until externally established; it cannot claim runtime funds status.
+The **runtime** `/.well-known/x402` and `/.well-known/x402.json` discovery now declare `name: "Geomacro"`, the three official category routes, the one canonical payment-bound query resource, and explicit boundaries separating routability from current signed data coverage. The official dynamic `/api/v1/agent` already presents the Geomacro brand and governed category tools. **Owner-locked static** `public/.well-known/x402`, `x402.json`, `geomacro-agent.json` and `geomacro-commerce.json` are deliberately unchanged because the website lock rejects their modification. They remain frozen `prelaunch`, `resources: []`, `productionFundsAuthorized: false` fallback assets. Separately approve and baseline-update website static naming before claiming public fallback branding is finalized. Never bypass the website lock by changing the verifier.
 
 ## Verification required before calling this live
 
