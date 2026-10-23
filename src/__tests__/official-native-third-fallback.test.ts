@@ -471,3 +471,99 @@ describe("#1827 three-domain third publisher RSS/Atom strict private originals",
     expect(ingest).not.toContain("publishThirdSourceToCommercial");
   });
 });
+
+
+describe("#2041 same-issuer GOV.UK Atom first-published Content API rescue",()=>{
+  const clock="2026-10-09T17:55:00.000Z";
+  const title="UK Foreign Secretary statement on ceasefire and border conflict";
+  const item="https://www.gov.uk/government/news/uk-foreign-policy-security-statement";
+  const api="https://www.gov.uk/api/content"+new URL(item).pathname;
+  const atom=(count=1)=>'<feed>'+Array.from({length:count},(_,n)=>
+    '<entry><title>'+title+'</title><updated>2026-10-09T18:09:00Z</updated>'+
+    '<link rel="alternate" href="'+(n===0?item:
+      "https://www.gov.uk/government/news/second-diplomatic-security-statement")+'"/></entry>').join('')+'</feed>';
+  const page='<html><head><title>Official original publication</title></head>'+
+    '<body><h1>'+title+'</h1><p>Last updated 2026-10-09 18:09</p></body></html>';
+  const publisher=(options:Record<string,unknown>={})=>({
+    base_path:new URL(item).pathname,title,document_type:"news_story",
+    first_published_at:clock, ...options,
+  });
+  it("recovers authoritative first_published_at only after real HTML and within TWO origin GETs",async()=>{
+    const calls:string[]=[];
+    const fetchImpl=vi.fn(async(u:string,init:RequestInit)=>{
+      calls.push(u);
+      expect(init.redirect).toBe("error");
+      if(u===OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url)
+        return res(atom(2),"application/atom+xml");
+      if(u===item)return res(page,"text/html");
+      if(u===api)return Response.json(publisher());
+      throw Error("THIRD_UNBUDGETED_GET");
+    });
+    const d:Record<string,number>={};
+    const results=await fetchOfficialThirdPublisherArticles("geopolitics",{
+      now,fetchImpl,diagnostics:d,maxAgeMs:6*3600000,
+    });
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      publishedAt:clock,nativePublishedAtVerified:true,privateOnly:true,
+      rightsVerified:false,commercialEligible:false,
+      nativeTimeEvidence:"publisher_original_article_datePublished",
+    });
+    expect(calls).toEqual([OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url,item,api]);
+    expect(d.third_original_page_date_checks).toBe(1);
+    expect(d.third_original_page_network_gets).toBe(2);
+    expect(d.third_original_page_date_admitted).toBe(1);
+  });
+  it.each([
+    ["updated-only API",{first_published_at:undefined,public_updated_at:clock}],
+    ["wrong article path",{base_path:"/government/news/not-this-original"}],
+    ["future publication",{first_published_at:"2026-10-10T17:55:00.000Z"}],
+    ["wrong title",{title:"Unrelated publication from other department"}],
+  ])("rejects %s without promoting Atom updated time",async(_label,override)=>{
+    const calls:string[]=[];
+    const rejected=await fetchOfficialThirdPublisherArticles("geopolitics",{
+      now,maxAgeMs:6*3600000,fetchImpl:async(u:string)=>{
+        calls.push(u);
+        if(u===OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url)
+          return res(atom(),"application/atom+xml");
+        if(u===item)return res(page,"text/html");
+        if(u===api)return Response.json(publisher(override));
+        throw Error("UNPINNED");
+      },
+    });
+    expect(rejected).toEqual([]);
+    expect(calls).toEqual([OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url,item,api]);
+  });
+  it("does not spend second GET when HTML already has precise original clock",async()=>{
+    const fetched:string[]=[];
+    const precise=page.replace("</head>",
+      '<meta name="govuk:first-published-at" content="'+clock+'"></head>');
+    const rows=await fetchOfficialThirdPublisherArticles("geopolitics",{
+      now,fetchImpl:async(u:string)=>{
+        fetched.push(u);
+        if(u===OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url)
+          return res(atom(),"application/atom+xml");
+        if(u===item)return res(precise,"text/html");
+        throw Error("NO_CONTENT_API_REQUIRED");
+      },
+    });
+    expect(rows).toHaveLength(1);
+    expect(fetched).toEqual([OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url,item]);
+  });
+  it("never calls Content API for explicit stale or conflicting HTML clocks",async()=>{
+    const calls:string[]=[];
+    const stale=page.replace("</head>",
+      '<meta name="govuk:first-published-at" content="2026-10-07T17:55:00Z"></head>');
+    const rows=await fetchOfficialThirdPublisherArticles("geopolitics",{
+      now,fetchImpl:async(u:string)=>{
+        calls.push(u);
+        if(u===OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url)
+          return res(atom(),"application/atom+xml");
+        if(u===item)return res(stale,"text/html");
+        throw Error("MUST_NOT_SAFELY_RESCUE_STALE_HTML");
+      },
+    });
+    expect(rows).toEqual([]);
+    expect(calls).toEqual([OFFICIAL_NATIVE_THIRD_FEEDS.geopolitics.url,item]);
+  });
+});
