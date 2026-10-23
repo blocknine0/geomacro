@@ -192,3 +192,50 @@ gh variable set GEOMACRO_GRI_AUTO_REVOKED --repo blocknine0/geomacro --body YES
 
 No added schedule, paid source, Supabase activation, source-rights grant or
 real-money settlement is part of this setup.
+
+
+## Current original-source completion wakes the existing consented cloud machinery
+
+Previously the cloud standing-policy audit woke on free D1 newsroom writers
+and the six continent sweeps; it did **not** wake directly when the protected
+`Current Original Private Signing Review Intake (No Funds)` completed.
+That made the first-party original proof intake a disconnected lane.
+The standing-approval workflow and the separate **15-minute signed-ready
+backstop** now also accept a successful completed original-intake run as an
+event-driven wakeup (no new cron, no laptop and no extra original-source
+fetch in the wakeup). The existing exact-main/ancestry verifier accepts
+only a real completed success from `blocknine0/geomacro` main, with a
+trusted `push`, `schedule` or human workflow dispatch origin. Any failed,
+forked, PR, unknown or non-ancestor run is rejected.
+
+On each genuine wakeup the already enrolled, revocable human consent and
+dedicated machine keys can sign the **derived-news policy readback audit**
+if actual original-page-reviewed signed source data is currently available;
+the policy step returns `SKIPPED_NO_VERIFIED_CURRENT_ORIGINAL` if not.
+The existing signed-ready backstop continues only **already Suman-signed
+and Pallab-approved exact batches**. No additional human-signing step
+is silently inserted or automated; new GRI v1.2 batches and country cells
+still need actual independently reviewed inputs, lawful article-specific
+rights, two true original publishers, full immutable historic B2 continuity
+and a separate owner signature before the old *human-reviewed* commercial
+product can be released.
+
+This is one-time standing policy authorization for the workflows it actually
+covers, not a way to generate unlimited new human GRI signatures. A future
+**separately labeled and independently validated** automated numerical
+GRI publisher would be needed for fully unattended paid GRI, not a relaxation
+of the human-reviewed GRI v1.2 trust gate. Where upstream original source
+or legal-use proof does not exist, retain the last independently verified
+public snapshot with truthful age; never invent a 200, fresh news, country
+certificate or payable x402 offer.
+
+Observed protected main check (2026-10-23):
+`Standing Delegated Derived Contract No Funds` run 39991090542
+successfully executed all cloud jobs with already enrolled
+`GEOMACRO_GRI_AUTO_ENROLLED=YES_CONSENT_ONLY` and
+`GEOMACRO_GRI_AUTO_REVOKED=NO`; the automatic GRI policy step correctly
+returned `SKIPPED_NO_VERIFIED_CURRENT_ORIGINAL`. This proves the existing
+one-time authorization **is active for the derived-only audit**; it does not
+prove original source eligibility, three-category numerical GRI or payment
+readiness. Do **not** ask Suman to sign the already-enrolled policy again
+or replace his existing independent GRI public key.
