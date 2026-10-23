@@ -16,7 +16,7 @@ prices of Predge or any other merchant.
 ## Discover without an account or wallet
 
 ```bash
-curl -fsS https://geomacro.live/api/v1/commerce/catalog
+curl -fsS https://geomacro.live/api/v1/pricing?view=buyer
 curl -fsS https://geomacro.live/.well-known/x402.json
 curl -fsS https://geomacro.live/openapi-x402.json
 ```
@@ -125,4 +125,6 @@ required genuine protected publisher, B2/D1 and Lovable deployment sequence.
 
 ## Founder-published website lock
 
-For security, approved website pages and public static discovery are pinned to a founder-approved published baseline. The free read-only **runtime GET /api/v1/commerce/catalog** is a backend-only API route, so it can ship and be validated without bypassing that lock. Public storefront layout and `/.well-known/x402.json` publication changes require a dedicated owner-approved website publish/baseline process; they are not claimed complete by this API change.
+For security, approved website pages and public static discovery are pinned to a founder-approved published baseline. The free read-only **runtime GET /api/v1/pricing?view=buyer** is a backend-only API route, so it can ship and be validated without bypassing that lock. Public storefront layout and `/.well-known/x402.json` publication changes require a dedicated owner-approved website publish/baseline process; they are not claimed complete by this API change.
+
+This catalog reuses the existing **free** \`GET /api/v1/pricing\` endpoint with exactly one \`view=buyer\` parameter; every other query parameter remains rejected. No additional filesystem route is introduced or added to the released TanStack router tree.\n
