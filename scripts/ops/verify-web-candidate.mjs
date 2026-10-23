@@ -3,6 +3,7 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {PINNED_ASSETS} from './materialize-web-candidate-assets.mjs';
 import {waitForCandidateMarker} from './web-candidate-propagation.mjs';
+import {inspectWebCandidateThreeCategoryHealth} from "./web-candidate-three-category-health-gate.mjs";
 const base="https://geomacro-web-candidate.daspallab202391.workers.dev";
 const expected=process.env.EXPECTED_CANONICAL_MAIN_SHA;
 if(!/^[a-f0-9]{40}$/.test(expected??""))throw Error("CANDIDATE_EXPECTED_SHA_REQUIRED");
@@ -51,16 +52,13 @@ if(machine.res.status!==200 ||
  throw Error("CANDIDATE_MACHINE_DISCOVERY_NO_FUNDS_CONTRACT_INVALID");
 const live=await get("/api/health?deep=1&profile=live-structured");
 const categories=["geopolitics","macro-fx","critical-minerals"];
-if(live.res.status!==200||live.json.schema!=="geomacro.product-scoped-deep-health.v1"||
- live.json.ok!==true||live.json.x402_payment_authorized!==false||
- live.json.fresh_signed_snapshot_readiness_attested!==false||
- live.json.all_195_countries_fresh_news_verified!==false||
- !Number.isFinite(Date.parse(live.json.checked_at))||
- Date.now()-Date.parse(live.json.checked_at)>120000||
- Date.parse(live.json.checked_at)>Date.now()+5000||
- live.json.legacy_signed_intelligence_gri_risk_indices!=="NOT_EVALUATED_IN_THIS_PROFILE"||
- !categories.every(c=>live.json.categories?.[c]?.source_fetch_accepted===true))
+const sourceHealth=inspectWebCandidateThreeCategoryHealth(live.res.status,live.json);
+if(!sourceHealth.ready){
+ // Only a fixed enum/counter diagnostic. Never log upstream source body,
+ // original URL, publisher identity, article text or any secret.
+ console.error(JSON.stringify(sourceHealth));
  throw Error("CANDIDATE_THREE_CATEGORY_SOURCE_HEALTH_FAILED");
+}
 const legacy=await get("/api/health?deep=1");
 if(![200,503].includes(legacy.res.status)||legacy.json.ok!==(legacy.res.status===200)||
  legacy.json.public_production?.deep_checked!==true)
