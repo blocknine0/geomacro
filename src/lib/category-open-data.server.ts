@@ -79,7 +79,9 @@ const UPSTREAMS: readonly Provider[] = Object.freeze([
   // Publications Warehouse JSON service. This metadata-only read repairs
   // ScienceBase outages, but not current mineral-event or signed GRI proof.
   { id: "usgs_mcs_pubs", category: "critical-minerals",
-    url: "https://pubs.usgs.gov/pubs-services/publication/?reportNumber=mcs2026&page_size=2",
+    // USGS filters reportNumber against series_number (2026), NOT index_id
+    // (mcs2026). Bind the canonical report using its exact index identity.
+    url: "https://pubs.usgs.gov/pubs-services/publication/?indexId=mcs2026&page_size=2",
     maxBytes: 110_000, timeoutMs: 6_000, method: "GET" },
   // First-party report landing page remains a separate transport when both
   // ScienceBase and Publications Warehouse JSON are unavailable. Edition
