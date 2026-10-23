@@ -20,6 +20,7 @@ import {selectPriorityOriginalReviewCountry} from "../../src/lib/priority-origin
 import {archivePrivateOriginalReviewLeads} from "../lib/private-original-review-b2-handoff.mjs";
 import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
+import {chooseOriginalReviewCountry} from "../lib/original-review-opportunity-router.mjs";
 
 // Only when genuinely verified leads exist do we resolve the existing D1
 // governor. Empty candidate runs do not require a B2 credential or API call.
@@ -128,10 +129,17 @@ export async function main(){
  // D1 journal that Intelligence, Ask and the free/API research consume.
  // This chooses WHAT country to verify, NEVER signs/verifies the D1 lead.
  const manuallyRequested=process.env.GEOMACRO_REVIEW_COUNTRY_ISO3||"";
- const rotatingCountry=countryForThisRun(now);
+ // The 195 fairness slot remains mandatory, while known direct-issuer
+ // country SUBJECTS get additional chances rather than wasting every
+ // hourly scan on a quiet randomized country. No provider GET added.
+ const opportunity=chooseOriginalReviewCountry({
+   now,fairnessCountryForRun:countryForThisRun,
+   existsInRegistry:code=>Boolean(country195ByIso3(code))
+ });
+ const rotatingCountry=opportunity.country_iso3;
  let country_iso3=manuallyRequested||rotatingCountry;
  let journalPriorityMode=manuallyRequested?
-   "MANUAL_COUNTRY_ORIGINAL_REVIEW":"CANONICAL_195_ROTATION";
+   "MANUAL_COUNTRY_ORIGINAL_REVIEW":opportunity.selection_mode;
  let journalCandidateCountries=0;
  if(!manuallyRequested){
    try {
@@ -141,7 +149,7 @@ export async function main(){
      journalPriorityMode=decision.selection_mode;
      journalCandidateCountries=decision.eligible_country_count;
    }catch{
-     journalPriorityMode="SHARED_D1_UNAVAILABLE_CANONICAL_195_ROTATION";
+     journalPriorityMode="SHARED_D1_UNAVAILABLE_"+opportunity.selection_mode;
    }
  }
  if(!country195ByIso3(country_iso3))
@@ -220,6 +228,11 @@ export async function main(){
   extra_first_party_api_reads_accounted_for_within_existing_quota:true,
   discovery_funnel:summarizePrivateOriginalIntakeFunnel({discovery,pages,receipt}),
   country_selection_mode:journalPriorityMode,
+  fallback_country_selection_mode:opportunity.selection_mode,
+  fallback_publisher_heuristic_only:opportunity.publisher_hub_heuristic_only,
+  fallback_global_fairness_preserved:true,
+  original_source_not_certified_by_country_routing:true,
+  additional_original_source_requests_from_router:0,
   shared_journal_candidate_country_count:journalCandidateCountries,
   journal_observation_is_not_original_page_evidence:true,
   shared_journal_does_not_grant_rights_or_signatures:true,
