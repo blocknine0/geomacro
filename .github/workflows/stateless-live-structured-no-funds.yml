@@ -7,9 +7,12 @@ on:
     paths:
       - ".github/workflows/stateless-live-structured-no-funds.yml"
       - "scripts/ops/verify-live-structured-no-funds.mjs"
+      - "scripts/tests/verify-live-structured-no-funds.test.mjs"
       - "src/routes/api.health.ts"
       - "src/lib/live-structured-deep-health.server.ts"
       - "src/lib/live-structured-on-demand.server.ts"
+      - "src/lib/category-open-data.server.ts"
+      - "src/lib/stateless-publisher-text.ts"
       - "src/routes/api.v1.intelligence.live-structured.ts"
   schedule:
     - cron: "37 */6 * * *"
@@ -30,5 +33,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Verify complete no-funds diagnostics contract
+        run: node --test scripts/tests/verify-live-structured-no-funds.test.mjs
       - name: Check real stateless provider responses with no funds
         run: node scripts/ops/verify-live-structured-no-funds.mjs

@@ -29,8 +29,12 @@ console.log(JSON.stringify({check:"product_scoped_deep_health",
  http_status:health.status,category_accepted:healthStatuses,
  ready:health.status===200&&healthBody.ok===true,
  signed_legacy_products_claimed:false,payment_attempted:false}));
-assert(health.status===200&&healthBody.ok===true&&
- Object.values(healthStatuses).every(Boolean),"LIVE_STRUCTURED_DEEP_HEALTH_NOT_READY");
+const healthReady=health.status===200&&healthBody.ok===true&&
+ Object.values(healthStatuses).every(Boolean);
+// An unavailable category must fail acceptance without hiding the other
+// categories and numeric routes behind an early exit. Contract/privacy
+// violations still abort immediately through the assertions above/below.
+if(!healthReady)process.exitCode=2;
 const safe=(s)=>String(s??"").replace(/[^A-Z0-9_-]/giu,"").slice(0,90);
 const discovery=await fetch(host,{method:"GET",signal:AbortSignal.timeout(12000),redirect:"manual",
  headers:{Accept:"application/json"}});
@@ -62,5 +66,6 @@ for(const [i,input] of requests.entries()){
  if(valid)passed++;else process.exitCode=2;
 }
 console.log(JSON.stringify({schema:"geomacro.stateless-live-no-funds-acceptance.v1",
- checked:requests.length,passed,accepted:passed===requests.length,
+ checked:requests.length,passed,product_scoped_health_ready:healthReady,
+ accepted:healthReady&&passed===requests.length,
  payment_attempts:0,new_durable_intelligence_storage:0}));

@@ -5,7 +5,7 @@ const now=Date.parse("2026-10-13T18:00:00Z");
 describe("no-card original government structured data adapters",()=>{
   it("uses seven pinned no-card official sources across three launch endpoints",()=>{
     expect(OPEN_DATA_SOURCE_FAMILIES).toEqual({
-      geopolitics:5,"macro-fx":4,"critical-minerals":4,
+      geopolitics:5,"macro-fx":4,"critical-minerals":5,
     });
   });
   it("separates native seismic occurrence from political conflict and source URL",()=>{
@@ -228,7 +228,7 @@ describe("no-card original government structured data adapters",()=>{
     const result=await readCategoryOpenData("critical-minerals",{now,fetcher:source,
       fallbackToD1:false});
     expect(hit).toContain("pubs.usgs.gov");
-    expect(result.source_families_attempted).toBe(4);
+    expect(result.source_families_attempted).toBe(5);
     expect(result.source_families_readable).toBe(1);
     expect(result.findings).toEqual(expect.arrayContaining([
       expect.objectContaining({observation_type:"usgs_mcs_dataset_catalog",
@@ -237,6 +237,44 @@ describe("no-card original government structured data adapters",()=>{
     expect(result.chargeable).toBe(false);
     expect(result.signed_gro_generated).toBe(false);
     expect(result.persistent_storage_written).toBe(false);
+  });
+  it("recovers the same edition from the first-party citation when JSON services fail",async()=>{
+    const html=`<html><h1>Mineral commodity summaries 2026</h1><table>
+      <tr><th>Publication Year</th><td>2026</td></tr>
+      <tr><th>DOI</th><td><a href="https://doi.org/10.3133/mcs2026">10.3133/mcs2026</a></td></tr>
+      <tr><th>Index ID</th><td>mcs2026</td></tr>
+      <tr><th>Record Source</th><td>USGS Publications Warehouse</td></tr>
+      </table></html>`;
+    const fetcher=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+      if(new URL(String(input)).hostname!=="www.usgs.gov")
+        return new Response("Unavailable",{status:403});
+      expect(init?.redirect).toBe("manual");
+      expect(init?.headers).toMatchObject({Accept:"text/html"});
+      return new Response(html,{headers:{"content-type":"text/html; charset=utf-8"}});
+    }) as typeof fetch;
+    const snapshot=await readCategoryOpenData("critical-minerals",{now,fetcher,fallbackToD1:false});
+    expect(snapshot.source_families_readable).toBe(1);
+    expect(snapshot.findings).toHaveLength(1);
+    expect(snapshot.findings[0]).toMatchObject({observation_type:"usgs_mcs_dataset_catalog",
+      observation_period:"2026",clock_semantics:"dataset_edition",score:null});
+    expect(snapshot.chargeable).toBe(false);
+    expect(JSON.stringify(snapshot)).not.toMatch(/https?:|<html|10\.3133/u);
+    const withBoth=await readCategoryOpenData("critical-minerals",{now,fallbackToD1:false,
+      fetcher:(async(input,init)=>new URL(String(input)).hostname==="pubs.usgs.gov"
+        ?Response.json({records:[{indexId:"mcs2026",publicationYear:"2026",
+          title:"Mineral commodity summaries 2026"}]})
+        :new URL(String(input)).hostname==="www.sciencebase.gov"
+        ?Response.json({id:"69837e43b66b01367d7ec7c7",
+          files:[{name:"MCS2026_Commodities_Data.csv"}]})
+        :fetcher(input,init)) as typeof fetch});
+    expect(withBoth.source_families_readable).toBe(3);
+    expect(withBoth.findings).toHaveLength(1);
+    for(const invalid of [html.replace("10.3133/mcs2026</a>","10.3133/mcs2025</a>"),
+      html.replace("<td>2026</td>","<td>2025</td>"),
+      html.replace("<td>mcs2026</td>","<td>mcs2025</td>"),
+      html.replace("<h1>Mineral commodity summaries 2026</h1>","<h1>Access denied</h1>"),
+      `<script>${html}</script>`, `<template>${html}</template>`])
+      expect(extractOpenData("usgs_mcs_publication",invalid,now)).toBeNull();
   });
   it("verifies pinned USGS MCS edition catalog metadata without claiming CSV rows are loaded",()=>{
     const catalog={id:"69837e43b66b01367d7ec7c7",files:[
