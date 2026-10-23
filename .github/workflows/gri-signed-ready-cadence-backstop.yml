@@ -38,6 +38,8 @@ on:
       - "scripts/tests/gri-news-wakeup.test.mjs"
       - "scripts/lib/pallab-signed-ready-gri-gate.mjs"
       - "scripts/ops/require-pallab-owner-signed-gri-ready.mjs"
+      - "scripts/lib/gri-standing-owner-publication-policy.mjs"
+      - "scripts/tests/gri-standing-owner-publication-policy.test.mjs"
       - "scripts/lib/machine-intelligence-signed-ready-hint.mjs"
       - "scripts/lib/machine-intelligence-signed-ready-hint.test.mjs"
       - "scripts/ops/dispatch-machine-intelligence-signed-ready.mjs"
@@ -54,6 +56,8 @@ on:
       - "scripts/tests/gri-news-wakeup.test.mjs"
       - "scripts/lib/pallab-signed-ready-gri-gate.mjs"
       - "scripts/ops/require-pallab-owner-signed-gri-ready.mjs"
+      - "scripts/lib/gri-standing-owner-publication-policy.mjs"
+      - "scripts/tests/gri-standing-owner-publication-policy.test.mjs"
       - "scripts/lib/machine-intelligence-signed-ready-hint.mjs"
       - "scripts/lib/machine-intelligence-signed-ready-hint.test.mjs"
       - "scripts/ops/dispatch-machine-intelligence-signed-ready.mjs"
@@ -84,7 +88,7 @@ jobs:
           node --check scripts/lib/pallab-signed-ready-gri-gate.mjs
           node --check scripts/ops/require-pallab-owner-signed-gri-ready.mjs
           node --check scripts/ops/activate-pallab-suman-signed-automation.mjs
-          node --test scripts/tests/pallab-signed-ready-gri-gate.test.mjs
+          node --test scripts/tests/pallab-signed-ready-gri-gate.test.mjs scripts/tests/gri-standing-owner-publication-policy.test.mjs
           node --test scripts/tests/activate-pallab-suman-signed-automation.test.mjs
       - name: Fail-closed machine dual-authority input hints and no-funds dispatch tests
         run: |
@@ -126,6 +130,17 @@ jobs:
       # separate Facts/Rights signatures before ANY B2/D1 promotion.
       MACHINE_INTELLIGENCE_READY_INPUT_SHA256: ${{ vars.MACHINE_INTELLIGENCE_READY_INPUT_SHA256 }}
       MACHINE_INTELLIGENCE_READY_APPROVED_AT: ${{ vars.MACHINE_INTELLIGENCE_READY_APPROVED_AT }}
+      # Explicit integration: consent authorizes conditional owner admission,
+      # never independent review or source permission. No private human keys.
+      GEOMACRO_GRI_STANDING_OWNER_ADMISSION: "VERIFIED_INPUTS_ONLY"
+      GEOMACRO_GRI_AUTO_POLICY_ENVELOPE_B64: ${{ secrets.GEOMACRO_GRI_AUTO_POLICY_ENVELOPE_B64 }}
+      GEOMACRO_GRI_AUTO_OWNER_MACHINE_PUBLIC_PEM: ${{ secrets.GEOMACRO_GRI_AUTO_OWNER_MACHINE_PUBLIC_PEM }}
+      GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PUBLIC_PEM: ${{ secrets.GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PUBLIC_PEM }}
+      GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM }}
+      GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM }}
+      GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
       GEOMACRO_GRI_AUTO_ENROLLED: ${{ vars.GEOMACRO_GRI_AUTO_ENROLLED }}
       GEOMACRO_GRI_AUTO_REVOKED: ${{ vars.GEOMACRO_GRI_AUTO_REVOKED }}
       GITHUB_TOKEN: ${{ github.token }}
@@ -149,7 +164,11 @@ jobs:
           test -f .github/workflows/gri-v12-supabase-free-reviewed-current.yml
           grep -Fq 'types: [gri_reviewed_current_ready]' .github/workflows/gri-v12-supabase-free-reviewed-current.yml
           grep -Fq 'CURRENT_GRI_IMMUTABLE_INPUT_KEY_SHA_NOT_BOUND' .github/workflows/gri-v12-supabase-free-reviewed-current.yml
-      - name: Admit only an actual fresh Pallab human signature on Suman's immutable GRI and country certificates
+      - name: Verify enrolled standing owner policy without source or B2 requests
+        id: standing
+        if: vars.GEOMACRO_GRI_AUTO_ENROLLED == 'YES_CONSENT_ONLY'
+        run: node scripts/ops/verify-gri-automation-consent.mjs
+      - name: Admit exact reviewed input under genuine owner batch signature or verified standing policy
         id: owner
         shell: bash
         run: |
@@ -181,5 +200,7 @@ jobs:
         if: ${{ !cancelled() && steps.targets.outcome == 'success' }}
         env:
           GEOMACRO_OWNER_GATE_APPROVED: ${{ steps.owner.outputs.owner_approved }}
+          GEOMACRO_OWNER_GATE_APPROVAL_MODE: ${{ steps.owner.outputs.owner_approval_mode }}
+          GEOMACRO_STANDING_OWNER_POLICY_VERIFIED: ${{ steps.standing.outputs.standing_owner_policy_verified }}
         run: node scripts/ops/report-pallab-suman-hosted-handoff.mjs
 

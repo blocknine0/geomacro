@@ -8,6 +8,8 @@ import {verifyPallabSignedReadyGate} from
  "../lib/pallab-signed-ready-gri-gate.mjs";
 import {explainGriSignedInputBlockers,safeGriBlockerJobSummary} from
  "../lib/gri-signed-ready-cadence-hint.mjs";
+import {verifyStandingGriOwnerPublicationPolicy} from
+ "../lib/gri-standing-owner-publication-policy.mjs";
 const SHA=/^[a-f0-9]{64}$/u;
 export function checkCurrentOwnerSignedReady({env=process.env,now=new Date(),allowEmpty=false}={}){
  const reviewedSha=env.GRI_READY_REVIEWED_SHA256||
@@ -15,7 +17,9 @@ export function checkCurrentOwnerSignedReady({env=process.env,now=new Date(),all
  const certSha=env.GRI_READY_CERTIFICATES_SHA256||
    env.REVIEWED_CERTIFICATES_B2_SHA256||"";
  const envelope=env.GEOMACRO_OWNER_HUMAN_SIGNED_ENVELOPE_B64||"";
- if(allowEmpty&&(!envelope||!SHA.test(reviewedSha)||!SHA.test(certSha)))
+ const standing=env.GEOMACRO_GRI_STANDING_OWNER_ADMISSION==="VERIFIED_INPUTS_ONLY"&&
+   env.GEOMACRO_GRI_AUTO_ENROLLED==="YES_CONSENT_ONLY";
+ if(allowEmpty&&(!SHA.test(reviewedSha)||!SHA.test(certSha)||(!envelope&&!standing)))
    return {status:"AWAITING_REAL_HUMAN_SIGNED_INPUT",approved:false};
  // A 90min human signature MUST NOT be reused as if signed recently.
  // Existing signed-input hints expire in 28min. For scheduled runs, skip
@@ -25,6 +29,16 @@ export function checkCurrentOwnerSignedReady({env=process.env,now=new Date(),all
    if(!Number.isFinite(readyAt)||readyAt>now.getTime()||
       now.getTime()-readyAt>=28*60_000)
      return {status:"STALE_OR_MISSING_HUMAN_SIGNED_READY_HINT",approved:false};
+ }
+ // An explicit human envelope is always checked as such. Never hide an
+ // invalid/expired human decision by falling back to standing authorization.
+ if(!envelope&&standing){
+  if(!SHA.test(reviewedSha)||!SHA.test(certSha)||reviewedSha===certSha)
+   throw Error("GRI_STANDING_EXACT_REVIEWED_INPUT_PINS_REQUIRED");
+  const policy=verifyStandingGriOwnerPublicationPolicy({env,now});
+  return {status:policy.status,approved:true,approval_mode:policy.approval_mode,
+   owner_human_per_batch_review_attested:false,
+   independent_review_and_country_certificates_still_required:true};
  }
  const result=verifyPallabSignedReadyGate({
    ownerEnvelopeBase64:envelope,
@@ -61,9 +75,14 @@ if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
   const r=checkCurrentOwnerSignedReady({allowEmpty:scheduled});
   if(process.env.GITHUB_OUTPUT)
     appendFileSync(process.env.GITHUB_OUTPUT,
-      "owner_approved="+(r.approved?"true":"false")+"\n");
-  console.log(JSON.stringify({schema:"geomacro.owner-human-signed-gri-gate.v1",
+      "owner_approved="+(r.approved?"true":"false")+"\n"+
+      "owner_approval_mode="+(r.approval_mode??"HUMAN_EXACT_BATCH")+"\n");
+  console.log(JSON.stringify({schema:r.approval_mode=== "STANDING_OWNER_POLICY_CONDITIONAL"
+    ?"geomacro.gri-standing-owner-publication-gate.v1":"geomacro.owner-human-signed-gri-gate.v1",
    status:r.status,approved:r.approved,
+   ...(r.approval_mode?{approval_mode:r.approval_mode,
+     owner_human_per_batch_review_attested:false,
+     independent_review_and_country_certificates_still_required:true}:{}),
    reviewer_signature_verified:false,publisher_not_yet_run:true,
    b2_requests:0,payments:0}));
   if(!r.approved&&!scheduled)process.exitCode=2;

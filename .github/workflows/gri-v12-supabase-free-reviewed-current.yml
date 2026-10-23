@@ -11,6 +11,8 @@ on:
       - "scripts/ops/verify-gri-independent-reviewer-pre-b2.test.mjs"
       - "scripts/lib/pallab-signed-ready-gri-gate.mjs"
       - "scripts/ops/require-pallab-owner-signed-gri-ready.mjs"
+      - "scripts/lib/gri-standing-owner-publication-policy.mjs"
+      - "scripts/tests/gri-standing-owner-publication-policy.test.mjs"
   repository_dispatch:
     types: [gri_reviewed_current_ready]
   workflow_dispatch:
@@ -88,6 +90,17 @@ jobs:
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM }}
       GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256 }}
+      # User-authorized integration of the already signed standing policy.
+      GEOMACRO_GRI_STANDING_OWNER_ADMISSION: "VERIFIED_INPUTS_ONLY"
+      GEOMACRO_GRI_AUTO_ENROLLED: ${{ vars.GEOMACRO_GRI_AUTO_ENROLLED }}
+      GEOMACRO_GRI_AUTO_REVOKED: ${{ vars.GEOMACRO_GRI_AUTO_REVOKED }}
+      GEOMACRO_GRI_AUTO_POLICY_ENVELOPE_B64: ${{ secrets.GEOMACRO_GRI_AUTO_POLICY_ENVELOPE_B64 }}
+      GEOMACRO_GRI_AUTO_OWNER_MACHINE_PUBLIC_PEM: ${{ secrets.GEOMACRO_GRI_AUTO_OWNER_MACHINE_PUBLIC_PEM }}
+      GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PUBLIC_PEM: ${{ secrets.GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PUBLIC_PEM }}
+      GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM }}
+      GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM }}
+      GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256 }}
       GEOMACRO_OWNER_HUMAN_SIGNED_ENVELOPE_B64: ${{ secrets.GEOMACRO_OWNER_HUMAN_SIGNED_ENVELOPE_B64 }}
       GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM }}
       GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256 }}
@@ -170,7 +183,7 @@ jobs:
           set -euo pipefail
           node scripts/ops/verify-gri-independent-reviewer-pre-b2.mjs
 
-      - name: Require freshly signed Pallab human approval for exact Suman reviewed GRI and certificates before B2 GET
+      - name: Require genuine owner batch or standing-policy admission before B2 GET
         shell: bash
         run: |
           set -euo pipefail
