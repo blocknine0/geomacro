@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { verifyProductionHistoryOnlyMigrations } from './production-history-only.mjs';
@@ -9,7 +8,10 @@ import { verifyProductionHistoryOnlyMigrations } from './production-history-only
 const root = process.cwd();
 const migrationsDir = path.resolve(root, 'supabase/migrations');
 const { verified } = verifyProductionHistoryOnlyMigrations(root);
-const quarantineDir = fs.mkdtempSync(path.join(os.tmpdir(), 'geomacro-history-only-'));
+// The GitHub workspace and /tmp may be on different mount points (EXDEV).
+// Quarantine history-only, independently verified migration files ON THE
+// SAME filesystem as the checkout. Actual safety verification still runs.
+const quarantineDir = fs.mkdtempSync(path.join(root, '.geomacro-history-only-'));
 
 try {
   for (const file of verified.keys()) {
