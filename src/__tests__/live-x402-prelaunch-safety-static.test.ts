@@ -88,6 +88,16 @@ describe("live x402 prelaunch safety probe", () => {
     expect(census).toContain("X402_COUNTRY_DELIVERABILITY_BELOW_1414_TARGET");
     expect(census).toContain("X402_COUNTRY_CENSUS_INCOMPLETE_PATHS");
     expect(census).toContain('outcome: "INCOMPLETE"');
+    // The same publicly uploaded 250-entity audit must never echo untrusted
+    // source URLs, arbitrary upstream error text or private module lists.
+    expect(census).not.toContain('error instanceof Error ? error.message');
+    expect(census).not.toContain('code: body?.availability?.code ??');
+    expect(census).not.toContain('missing_modules: row.missing_modules');
+    expect(census).not.toContain('stale_modules: row.stale_modules');
+    expect(census).toContain('missing_module_count:');
+    expect(census).toContain('stale_module_count:');
+    expect(census).toContain('code: "UNEXPECTED_AVAILABILITY_STATE"');
+
     expect(census).toContain('code: "RATE_LIMITED"');
     expect(census).toContain("const ENFORCE =");
     expect(workflow).toContain("GEOMACRO_X402_COUNTRY_CENSUS_ENFORCE");
