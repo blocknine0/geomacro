@@ -41,6 +41,7 @@ export function chooseOriginalReviewCountry({
    country_iso3:country,
    selection_mode:"CANONICAL_195_FAIRNESS_ORIGINAL_REVIEW",
    publisher_hub_heuristic_only:false,
+   publisher_hub_slot_mandatory:false,
    verification_guaranteed:false,category_coverage_verified:false,
    commercial_rights_verified:false,network_requests_added:0
   });
@@ -56,6 +57,9 @@ export function chooseOriginalReviewCountry({
  return Object.freeze({
   country_iso3:country,selection_mode:"FIRST_PARTY_ISSUER_OPPORTUNITY_HEURISTIC",
   publisher_hub_heuristic_only:true,
+  // Retain one of the three hub hours even if the unscored D1 journal
+  // continually prioritizes a quiet, independently unverified country.
+  publisher_hub_slot_mandatory:phase===1,
   verification_guaranteed:false,category_coverage_verified:false,
   commercial_rights_verified:false,network_requests_added:0
  });
@@ -90,6 +94,16 @@ export function finalizeOriginalReviewCountry({
      country_iso3:opportunity.country_iso3,
      mode:opportunity.selection_mode,
      fairness_slot_preserved:true,
+     journal_eligible_countries:Number.isSafeInteger(priority?.eligible_country_count)?
+       priority.eligible_country_count:0,
+     actual_native_source_qualified:false,review_approved:false,
+   });
+ // A bounded dedicated known first-party publisher search every fourth
+ // hour is the minimum to make a genuine first current signed input plausible.
+ if(opportunity.publisher_hub_slot_mandatory===true)
+   return Object.freeze({
+     country_iso3:opportunity.country_iso3,mode:opportunity.selection_mode,
+     fairness_slot_preserved:false,publisher_hub_slot_preserved:true,
      journal_eligible_countries:Number.isSafeInteger(priority?.eligible_country_count)?
        priority.eligible_country_count:0,
      actual_native_source_qualified:false,review_approved:false,
