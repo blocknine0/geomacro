@@ -43,6 +43,8 @@ on:
       - "scripts/lib/govuk-original-content-clock.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.test.mjs"
       - "src/lib/on-demand-global-discovery.server.ts"
+      - "scripts/lib/global-official-release-feeds.mjs"
+      - "scripts/lib/global-official-release-fallbacks.test.mjs"
       - "src/lib/on-demand-original-feed-freshness.test.ts"
   pull_request:
     paths:
@@ -69,6 +71,8 @@ on:
       - "scripts/lib/govuk-original-content-clock.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.test.mjs"
       - "src/lib/on-demand-global-discovery.server.ts"
+      - "scripts/lib/global-official-release-feeds.mjs"
+      - "scripts/lib/global-official-release-fallbacks.test.mjs"
       - "src/lib/on-demand-original-feed-freshness.test.ts"
 
 permissions:
@@ -104,6 +108,7 @@ jobs:
           node --test scripts/ops/export-private-original-review-lead.test.mjs
           node --test scripts/lib/govuk-original-content-clock.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
+          node --test scripts/lib/global-official-release-fallbacks.test.mjs
           bunx --no-install vitest run scripts/ops/prepare-first-original-signing-input.test.ts src/lib/priority-original-review-country.test.ts src/lib/on-demand-global-index-rescue.server.test.ts src/lib/country-195-search-slot-recovery.test.ts src/lib/on-demand-original-feed-freshness.test.ts
       - name: Attempt genuine 22h publisher original readbacks without charge
         # PR tests NEVER probe official publishers; main only, 12+6+6 GET cap.
