@@ -237,20 +237,6 @@ function fixedPublisherArticle(rawUrl, category) {
       if (!match) return null;
       return "https://www.gov.uk/government/" + match[1] + "/" + match[2];
     }
-    if (category === "geopolitics" &&
-        candidate.hostname === "www.ungeneva.org") {
-      const match=/^\/en\/news-media\/press-release\/(20\d{2})\/(0[1-9]|1[0-2])\/([a-z0-9-]{8,220})$/u.exec(path);
-      if(!match)return null;
-      return "https://www.ungeneva.org/en/news-media/press-release/" +
-        match[1]+"/"+match[2]+"/"+match[3];
-    }
-    if (category === "macro" &&
-        candidate.hostname === "www.bankofcanada.ca") {
-      const match=/^\/(20\d{2})\/(0[1-9]|1[0-2])\/([a-z0-9-]{1,180})\/$/u.exec(path);
-      if(!match)return null;
-      return "https://www.bankofcanada.ca/" +
-        match[1]+"/"+match[2]+"/"+match[3]+"/";
-    }
     if (category === "rare_earth" &&
         candidate.hostname === "news.gov.bc.ca") {
       const match=/^\/releases\/(20\d{2}[A-Z]{2,6}\d{4}-\d{6})$/u.exec(path);
