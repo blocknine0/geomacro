@@ -64,8 +64,8 @@ describe("#2170 activating three first-party GOV departmental original feeds",()
       expect(spoof.commercial_eligible).toBe(false);
     });
   }
-  it("cycles four original issuers per macro/minerals and three per geopolitics, at two GETs per half-hour",()=>{
-    const count={geopolitics:3,macro:4,rare_earth:4};
+  it("cycles five independent publishers per category at two GETs per half-hour",()=>{
+    const count={geopolitics:4,macro:5,rare_earth:5};
     for(const [domain,n] of Object.entries(count)){
       const list=THIRTY_MIN_PUBLISHER_PAIRS[domain];
       expect(list).toHaveLength(n);
