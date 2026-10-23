@@ -38,6 +38,16 @@ vi.mock("../lib/on-demand-telegram-fallback.server",()=>({
   lookupTelegramFallback:mocks.telegram,
 }));
 
+// This suite verifies payment/search separation, not live network availability.
+// Keep optional D1 lookups deterministic and leave their contracts to their
+// own tests; a slow/unpublished journal route must not trigger real requests.
+vi.mock("../lib/auto-ingest-72h-context.server",()=>({
+  readAllAutoIngest72hStructuredDrafts:vi.fn(async()=>[]),
+}));
+vi.mock("../lib/d1-country-gro-hot.server",()=>({
+  readD1VerifiedHotCountryGro:vi.fn(async()=>null),
+}));
+
 import { mainnetIntelligenceHandlers } from "../lib/mainnet-intelligence-endpoint.server";
 
 function post(fulfillment_mode:"live_on_demand"|"published_only",payment=false) {
