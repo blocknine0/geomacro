@@ -24,6 +24,8 @@ on:
       - "scripts/ops/prepare-first-original-signing-input.test.ts"
       - "scripts/lib/private-original-signing-review-intake.mjs"
       - "scripts/lib/private-original-signing-review-intake.test.mjs"
+      - "scripts/lib/private-original-intake-funnel.mjs"
+      - "scripts/lib/private-original-intake-funnel.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
   pull_request:
     paths:
@@ -33,6 +35,8 @@ on:
       - "scripts/ops/prepare-first-original-signing-input.test.ts"
       - "scripts/lib/private-original-signing-review-intake.mjs"
       - "scripts/lib/private-original-signing-review-intake.test.mjs"
+      - "scripts/lib/private-original-intake-funnel.mjs"
+      - "scripts/lib/private-original-intake-funnel.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
 
 permissions:
@@ -62,6 +66,7 @@ jobs:
           node --check scripts/lib/private-original-signing-review-intake.mjs
           node --check scripts/lib/geomacro-original-page-readback.mjs
           node --test scripts/lib/private-original-signing-review-intake.test.mjs
+          node --test scripts/lib/private-original-intake-funnel.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
           bunx --no-install vitest run scripts/ops/prepare-first-original-signing-input.test.ts
       - name: Attempt genuine 22h publisher original readbacks without charge
