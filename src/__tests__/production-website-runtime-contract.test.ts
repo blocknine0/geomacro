@@ -172,7 +172,7 @@ describe("production website runtime contract", () => {
     expect(workflow).toContain('/api/public/risk-indices');
     expect(workflow).toContain('/api/public-ask');
     expect(workflow).toContain("This page didn't load");
-    expect(workflow).toContain("/intelligence|What changed in the world");
+    expect(workflow).toContain("/intelligence|Risk Intelligence");
     expect(workflow).toContain("/global-risk|");
     expect(workflow).toContain("/ask-geomacro|Ask Geomacro");
     expect(workflow).toContain("/pricing|Geomacro Store");
