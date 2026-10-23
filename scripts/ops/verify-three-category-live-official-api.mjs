@@ -56,7 +56,7 @@ if (!result.exact_deployment) {
       const originalClockSafe = findings.every(row => {
         const ts = Date.parse(String(row?.published_at || ""));
         const elapsed = Date.now() - ts;
-        return Number.isFinite(ts) && elapsed >= 15 * 60_000 &&
+        return Number.isFinite(ts) && elapsed >= 0 &&
           elapsed <= 24 * 3600_000 && row?.risk_score === null &&
           row?.same_event_corroborated === false &&
           row?.evidence_class === "original_publisher_release_unscored";

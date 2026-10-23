@@ -60,10 +60,10 @@ describe("original-release GET view for three fixed category API endpoints", () 
     expect(result.findings).toHaveLength(1);
   });
 
-  it("never rewrites stale source dates, day-only publication or 15-min embargo", () => {
+  it("never rewrites stale source dates, day-only publication or future clocks", () => {
     const obj = base();
     obj.signals = [
-      { ...signals[0], id: "too-recent", published_at: "2026-10-13T13:50:00.000Z" },
+      { ...signals[0], id: "too-recent", published_at: "2026-10-13T14:01:00.000Z" },
       { ...signals[0], id: "too-old", published_at: "2026-10-09T11:00:00.000Z" },
     ];
     const result = buildCategoryLiveObservation("macro-fx", obj, now);

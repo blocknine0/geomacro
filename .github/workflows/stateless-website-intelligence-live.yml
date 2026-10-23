@@ -52,9 +52,9 @@ jobs:
           for(const x of ["writeFileSync(", ".insert(", ".upsert(", ".put(", "SUPABASE_DB_URL", "B2_KEY_ID", "localStorage", "sessionStorage", "caches.open("]) {
             if(server.includes(x)||page.includes(x)) throw Error("STATELESS_WEBSITE_WRITE_SURFACE:"+x);
           }
-          if(!model.includes("STATELESS_WEBSITE_DELAY_MS = 15 * 60_000") ||
+          if(!model.includes("STATELESS_WEBSITE_DELAY_MS = 0") ||
              !page.includes("What changed") || !page.includes("Why it matters") ||
-             !page.includes('15-minute public delay'))
+             !page.includes('No added publication delay'))
             throw Error("STATELESS_PUBLIC_UI_CONTRACT_NOT_READY");
           NODE
       - name: Three-category actual official network reads and derived findings

@@ -53,10 +53,10 @@ describe("Australian resources original HTML-index fallback", () => {
   });
   it("preserves original-day website embargo and explicitly unscored output", () => {
     const candidate=australianResourcesIndexCandidates(index,"rare_earth",clock)[0];
-    expect(deriveStatelessSignals([candidate],Date.parse("2026-10-09T12:14:59Z")))
+    expect(deriveStatelessSignals([candidate],Date.parse("2026-10-09T11:59:59Z")))
       .toEqual([]);
     expect(conservativeDayReleaseMs("2026-10-08"))
-      .toBe(Date.parse("2026-10-09T12:15:00Z"));
+      .toBe(Date.parse("2026-10-09T12:00:00Z"));
     const result=deriveStatelessSignals([candidate],clock);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ category:"rare_earth",date_precision:"day",

@@ -96,7 +96,7 @@ describe("first-party bank Macro release and bounded mineral redirect",()=>{
     expect(out[0].published_at).toBe("2026-10-05T02:00:00.000Z");
     expect(JSON.stringify(out)).not.toContain("https://");
     expect(JSON.stringify(out)).not.toContain("Basel III applicable in almost all member");
-    expect(deriveStatelessSignals(parsed.dated.filter(x=>x.publishedAt.startsWith("2026-10-05")),Date.parse("2026-10-05T02:14:59.000Z")))
+    expect(deriveStatelessSignals(parsed.dated.filter(x=>x.publishedAt.startsWith("2026-10-05")),Date.parse("2026-10-05T01:59:59.999Z")))
       .toHaveLength(0);
   });
 

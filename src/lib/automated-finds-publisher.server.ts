@@ -21,7 +21,7 @@ export async function publishAutomatedFinds({reports,archive,promote,now=new Dat
     snapshot.batches.push(await sign({schema:"geomacro.automated-finds.v1",category,
       generated_at:now.toISOString(),source_run_id:runId,source_sha:sourceSha,
       source_verification:"publisher_native_release",independent_reviewed:false,scored:false,
-      chargeable:false,delivery_scope:"free_website_only",original_release_delay_minutes:15,retention_days:30,
+      chargeable:false,delivery_scope:"free_website_only",original_release_delay_minutes:0,retention_days:30,
       healthy_feed_count:r.healthy_feed_count,feed_count:r.feed_count,
       // Leave a full snapshot lifetime before the rolling 30d expiry. This
       // never changes an original timestamp or expands the current window.

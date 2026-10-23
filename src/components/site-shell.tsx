@@ -269,7 +269,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-              <span>Intelligence findings delayed at least 15 minutes · Risk Indices retain their 60-minute delay · API keys coming soon</span>
+              <span>Intelligence findings have no added publication delay · Risk Indices retain their 60-minute delay · API keys coming soon</span>
               <Link to="/about" className="hover:text-foreground">Privacy · Product use · Trust</Link>
             </div>
           </div>

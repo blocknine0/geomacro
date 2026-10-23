@@ -120,7 +120,7 @@ describe("independent production website failure diagnostics", () => {
   it("keeps free canary strict on actual public responses and paid-health independence", () => {
     expect(workflow).toContain("if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'");
     expect(workflow).toContain("read('/api/v1/finds','json')");
-    expect(workflow).toContain("read(d1+'/v1/public/website-derived-news','json')");
+    expect(workflow).toContain("read(d1+'/v1/public/website-derived-news-immediate','json')");
     expect(workflow).toContain("if(r.status!==200)throw Error('PUBLIC_FREE_ROUTE_HTTP_'");
     expect(workflow).toContain("PUBLIC_FREE_D1_JOURNAL_INVALID");
     expect(workflow).toContain("PUBLIC_FREE_FINDS_CONTRACT_INVALID");

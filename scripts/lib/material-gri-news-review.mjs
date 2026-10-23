@@ -49,11 +49,11 @@ function eligible(signal,category,now){
      (signal.date_precision!=="exact"&&signal.date_precision!=="day"))return false;
   const ms=Date.parse(signal.published_at);
   if(!Number.isFinite(ms)||ms>now||now-ms>AGE_MS)return false;
-  // Existing canonical reader already enforced full 15-min / conservative
+  // Existing canonical reader already enforced future-clock / conservative
   // verified-original day gating. This independent downstream guard keeps
   // future clocks and early timestamps out of private watch material.
-  if(signal.date_precision==="exact"&&ms+15*60_000>now)return false;
-  if(signal.date_precision==="day"&&ms+36*60*60_000+15*60_000>now)return false;
+  if(signal.date_precision==="exact"&&ms>now)return false;
+  if(signal.date_precision==="day"&&ms+36*60*60_000>now)return false;
   return true;
 }
 function candidatesForCategory(category,signals,now){
@@ -142,7 +142,7 @@ export function buildMaterialGriReviewFromDerivedD1(feed,now=Date.now()){
      feed.schema!=="geomacro.website-derived-news-feed.v1"||
      feed.retention_hours!==72||feed.retention_days!==3||
      feed.delivery_scope!=="free_website_only"||
-     feed.original_release_delay_minutes!==15||
+     (feed.original_release_delay_minutes!==0&&feed.original_release_delay_minutes!==15)||
      !Array.isArray(feed.signals)||feed.signals.length>250||
      !Number.isFinite(now))throw Error("MATERIAL_GRI_D1_DERIVED_ONLY_SOURCE_REQUIRED");
   const categories=CATEGORIES.map(category=>{

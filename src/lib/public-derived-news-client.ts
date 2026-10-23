@@ -8,7 +8,7 @@ import {fetchWithoutRedirectUsing} from "./fetch-without-redirect.ts";
 import type { StatelessIntelligenceSignal } from "./stateless-intelligence-model.ts";
 
 export const GEOMACRO_DERIVED_JOURNAL_URL =
-  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news";
+  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 
 const SIGNAL_FIELDS = new Set(["id","category","title","what_changed","why_it_matters",
   "topic","geography","development_type","published_at","date_precision",
@@ -52,13 +52,13 @@ function safeSignal(value: unknown, now: number): value is StatelessIntelligence
        new Date(ms).toISOString().slice(0,19)!==original.slice(0,19))) return false;
   // D1 accepts verified publisher-day (without inventing a publication hour)
   // from the three domains, including Statistics Canada original article day.
-  // All day-only issues wait the complete next-day 12:15 UTC embargo.
+  // All day-only issues wait the complete next-day 12:00 UTC date-uncertainty boundary.
   const embargoEnd = s.date_precision === "day" &&
     ["rare_earth", "geopolitics", "macro"].includes(String(s.category)) &&
     /^\d{4}-\d{2}-\d{2}$/u.test(original)
-    ? ms + 36 * 60 * 60_000 + 15 * 60_000
+    ? ms + 36 * 60 * 60_000
     : s.date_precision === "exact" && /^\d{4}-\d{2}-\d{2}T/u.test(original)
-      ? ms + 15 * 60_000
+      ? ms
       : Infinity;
   if (embargoEnd > now ||
       JSON.stringify(s).length > 5_000 ||
@@ -73,7 +73,7 @@ export function checkedDerivedNews(doc: unknown, now = Date.now()): StatelessInt
   const value = doc as Record<string, unknown>;
   if (value.ok !== true ||
       value.schema !== "geomacro.website-derived-news-feed.v1" ||
-      value.original_release_delay_minutes !== 15 ||
+      (value.original_release_delay_minutes!==0&&value.original_release_delay_minutes!==15) ||
       value.retention_days !== 3 || value.retention_hours !== 72 ||
       value.delivery_scope !== "free_website_only" ||
       !Array.isArray(value.signals) || value.signals.length > 250) {

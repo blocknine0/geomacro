@@ -135,7 +135,7 @@ function fromUsgs(payload: unknown, now: number): Extracted | null {
     const ms=boundedNumeric(p?.time, 1_000_000_000_000, now+NOW_MAX_SKEW);
     const mag=boundedNumeric(p?.mag, 4.5, 10);
     const id=typeof item?.id==="string"&&/^[a-z0-9]{4,32}$/iu.test(item.id)?item.id:"";
-    if (!ms || mag===null || !id || ms>now-15*60_000 ||
+    if (!ms || mag===null || !id || ms>now ||
         ms<now-24*3600_000) return [];
     return [{id,ms}];
   }).sort((a,b)=>b.ms-a.ms).slice(0,3);
@@ -297,12 +297,12 @@ function fromCisa(payload: unknown, now: number): Extracted | null {
   if(typeof data?.catalogVersion!=="string"||!Array.isArray(data.vulnerabilities))
     return null;
   // Date added is a DAY, not a timestamp of the exploit. Conservative
-  // next-day 12:15 UTC embargo prevents publication-before-fact claims.
+  // next-day 12:00 UTC date-uncertainty boundary prevents publication-before-fact claims.
   const rows=data.vulnerabilities.slice(-180).flatMap((row:unknown):{day:string;key:string}[]=>{
     const x=row as Record<string,unknown>;
     const day=dateOnly(x?.dateAdded);
     const cve=typeof x?.cveID==="string" && /^CVE-\d{4}-\d{4,10}$/u.test(x.cveID)?x.cveID:null;
-    const t=day ? Date.parse(day+"T00:00:00Z")+36*3600_000+15*60_000 : 0;
+    const t=day ? Date.parse(day+"T00:00:00Z")+36*3600_000 : 0;
     if (!day || !cve || t>now || now-t>7*86_400_000) return [];
     return [{day,key:cve}];
   }).sort((a,b)=>b.day.localeCompare(a.day)).slice(0,2);
@@ -321,7 +321,7 @@ function fromFederalRegister(payload:unknown,now:number):Extracted|null{
         !/\b(?:sanctions?|embargo|assets? freeze|foreign assets? control)\b/iu.test(item.title))
       return [];
     const day=dateOnly(item.publication_date);
-    const ms=day?Date.parse(day+"T00:00:00Z")+36*3600_000+15*60_000:0;
+    const ms=day?Date.parse(day+"T00:00:00Z")+36*3600_000:0;
     return day && ms<=now && now-ms<=14*86_400_000 ? [{day}] : [];
   }).sort((a,b)=>b.day.localeCompare(a.day)).slice(0,2);
   return {signals:rows.map((r,i)=>signal(
@@ -393,7 +393,7 @@ function fromUsaSpending(payload:unknown,now:number): Extracted | null {
     if(!/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium)\b/iu.test(description))
       return [];
     const day=dateOnly(row["Base Obligation Date"]);
-    const t=day?Date.parse(day+"T00:00:00Z")+36*3600_000+15*60_000:0;
+    const t=day?Date.parse(day+"T00:00:00Z")+36*3600_000:0;
     if(!day||t>now||now-t>90*86_400_000)return [];
     return [{day,idx:0}];
   }).sort((a,b)=>b.day.localeCompare(a.day)).slice(0,2);

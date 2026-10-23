@@ -271,14 +271,14 @@ jobs:
           set -euo pipefail
           body="$(mktemp)"
           trap 'rm -f "$body"' EXIT
-          code="$(curl -sS --max-time 12 -o "$body" -w '%{http_code}' https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news || true)"
+          code="$(curl -sS --max-time 12 -o "$body" -w '%{http_code}' https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate || true)"
           test "$code" = "200" || { echo "::error::Derived D1 website feed unavailable"; exit 3; }
           node - "$body" <<'NODE'
           const fs = require("fs");
           const doc=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
           const now=Date.now(),retentionMs=72*60*60*1000;
           if(doc.ok!==true || doc.schema!=="geomacro.website-derived-news-feed.v1" ||
-             doc.original_release_delay_minutes!==15 ||
+             (doc.original_release_delay_minutes!==0&&doc.original_release_delay_minutes!==15) ||
              doc.retention_days!==3 || doc.retention_hours!==72 ||
              doc.delivery_scope!=="free_website_only" ||
              !Array.isArray(doc.signals) || doc.signals.length>250 ||
@@ -298,7 +298,7 @@ jobs:
              }))
             throw Error("DERIVED_NEWS_72H_ORIGINAL_OR_PRIVACY_READBACK_MISMATCH");
           console.log(JSON.stringify({schema:"geomacro.website-derived-news-readback-receipt.v1",
-            verified:true,derived_rows:doc.signals.length,release_delay_minutes:15,
+            verified:true,derived_rows:doc.signals.length,release_delay_minutes:doc.original_release_delay_minutes,
             retention_hours_verified:72,original_clock_window_verified:true,
             raw_upstream_disclosed:false,supabase_dependency:false}));
           NODE
@@ -371,7 +371,7 @@ jobs:
     needs: refresh-derived-news
     # Independently archive only the VALID 72h public D1 journal even if
     # unrelated signed-Finds, website SHA or GRI checks failed earlier.
-    # Source scope / 15min delay / 72h must pass again before any B2 PUT.
+    # Source scope / native publication time / 72h must pass again before any B2 PUT.
     if: >-
       always() &&
       github.repository == 'blocknine0/geomacro' &&

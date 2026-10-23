@@ -49,9 +49,9 @@ describe("#2124 one-shot production audit cannot regress previously accepted ser
     expect(audit).toContain("supabase_requests:0");
     expect(audit).toContain("payments:0");
   });
-  it("preserves website 15-minute delay and original 60-minute GRI delay",()=>{
+  it("removes website artificial delay and original 60-minute GRI delay",()=>{
     expect(read("workers/control-plane/src/website-derived-intelligence.mjs"))
-      .toContain("const DELAY_MS = 15 * 60_000;");
+      .toContain("const DELAY_MS = 0;");
     expect(read("workers/control-plane/src/website-gri-history.mjs"))
       .toContain("export const WEBSITE_GRI_DELAY_MS=60*60*1000;");
   });

@@ -41,7 +41,7 @@ async function fixture(signals=[signal()]){
   DB:{prepare:sql=>({bind:(...ids)=>({all:async()=>{queries.push(ids);return {success:true,
    results:ids.filter(id=>rows.has(id)).map(key=>({key,value_json:rows.get(key)}))};}})})}};
  const readStories=async(_env,_now,offset)=>Response.json({ok:true,schema:'geomacro.website-derived-news-feed.v1',
-  delivery_scope:'free_website_only',retention_hours:72,retention_days:3,original_release_delay_minutes:15,
+  delivery_scope:'free_website_only',retention_hours:72,retention_days:3,original_release_delay_minutes:0,
   page_offset:offset,page_size:250,has_more:offset+250<signals.length,
   next_offset:offset+250<signals.length?offset+250:null,signals:signals.slice(offset,offset+250)});
  const get=(query='')=>publicSignedNews(env,new URLSearchParams(query),now,{readStories});

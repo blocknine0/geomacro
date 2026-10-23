@@ -12,6 +12,10 @@ describe("19 October emailed Predge research token revocation",()=>{
   expect(deploy).toContain('PREDGE_REVOKED_OLD_TOKEN');
   expect(deploy).not.toContain("PREDGE_RESEARCH_GRANT_MODE=EXISTING_SEPARATE_HMAC_TOKEN");
   expect(deploy).toContain("secret put PREDGE_RESEARCH_NEWS_TOKEN");
+  const guard=deploy.indexOf('test "$PREDGE_RESEARCH_NEWS_TOKEN" != "REVOKED_ROTATION_REQUIRED"');
+  expect(guard).toBeGreaterThan(0);
+  expect(guard).toBeLessThan(deploy.indexOf('npx -y "wrangler@${WRANGLER_VERSION}" deploy'));
+  expect(deploy).toContain("PREDGE_PROTECTED_ROTATED_TOKEN_REQUIRED_BEFORE_DEPLOY");
   expect(deploy).toContain("verify-predge-auth-research-delivery.mjs");
  });
  it("rejects missing override, old emailed token and privileged root/admin grants",()=>{

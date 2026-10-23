@@ -1293,15 +1293,18 @@ export default {
     }
     if(request.method==='GET'&&url.pathname==='/v1/public/intelligence-publications')
       return publicSignedNews(env,url.searchParams);
-    if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news") {
+    if (request.method === "GET" && ["/v1/public/website-derived-news","/v1/public/website-derived-news-immediate"].includes(url.pathname)) {
+      // Same D1 journal, no additional publisher/storage. Preserve the old
+      // envelope and filter for already published browsers during rollout.
+      const legacyDelay=url.pathname==="/v1/public/website-derived-news"?15:0;
       // Only deterministic 250-row read pages of the existing 600-row D1
       // journal. No arbitrary SQL offsets or raw publisher payloads.
       const q=url.searchParams;
-      if(q.size===0)return readDerivedStories(env);
+      if(q.size===0)return readDerivedStories(env,Date.now(),0,legacyDelay);
       if(q.size!==1||q.getAll("offset").length!==1||
          !["250","500"].includes(q.get("offset")))
         return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID",chargeable:false},400);
-      return readDerivedStories(env,Date.now(),Number(q.get("offset")));
+      return readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay);
     }
     if (request.method === "GET" && url.pathname === "/v1/public/source-pulse-30m") {
       return getPublicThreeDomain30MinSourcePulse(env);

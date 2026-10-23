@@ -80,9 +80,9 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(verifyDerivedStory({...story,topic:"unreviewed fabricated claim"},NOW)).toBe(false);
   });
 
-  it("admits old-but-original 30d publications and rejects 15m unreleased/future/historical",()=>{
+  it("admits old-but-original 30d publications and rejects future/historical",()=>{
     expect(verifyDerivedStory(sample(),NOW)).toBe(true);
-    expect(verifyDerivedStory(sample("macro","2026-10-12T19:45:01.000Z"),NOW)).toBe(false);
+    expect(verifyDerivedStory(sample("macro","2026-10-12T19:45:01.000Z"),NOW)).toBe(true);
     expect(verifyDerivedStory(sample("macro","2026-10-13T19:00:00.000Z"),NOW)).toBe(false);
     expect(verifyDerivedStory(sample("macro","2026-08-01T19:00:00.000Z"),NOW)).toBe(false);
   });
@@ -190,11 +190,11 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const day={...sample("rare_earth","2026-10-09"),date_precision:"day",
       title:"Geomacro finds critical-minerals policy on rare-earth materials",
       topic:"rare-earth supply",development_type:"policy update"};
-    expect(verifyDerivedStory(day,Date.parse("2026-10-10T12:14:59.000Z"))).toBe(false);
-    expect(verifyDerivedStory(day,Date.parse("2026-10-10T12:15:00.000Z"))).toBe(true);
+    expect(verifyDerivedStory(day,Date.parse("2026-10-10T11:59:59.000Z"))).toBe(false);
+    expect(verifyDerivedStory(day,Date.parse("2026-10-10T12:00:00.000Z"))).toBe(true);
   });
   it("preserves actual verified StatCan first-party DAY into the D1-only Macro projection",()=>{
-    const now=Date.parse("2026-10-13T12:15:00Z");
+    const now=Date.parse("2026-10-13T12:00:00Z");
     const candidate={
       sourceId:"statcan_prices",category:"macro" as const,
       title:"Canada Consumer Price Index for September 2026",
@@ -213,11 +213,11 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(derived[0].same_event_corrob_verified).toBe(false);
   });
 
-  it.each(["geopolitics","macro","rare_earth"])("admits only genuinely original day-only %s after next-day 12:15 UTC",category=>{
+  it.each(["geopolitics","macro","rare_earth"])("admits only genuinely original day-only %s after next-day 12:00 UTC",category=>{
     const day={...sample(category,"2026-10-12"),date_precision:"day",
       topic:category==="macro"?"official economic statistics":category==="rare_earth"?"rare-earth supply":"foreign policy"};
-    const early=Date.parse("2026-10-13T12:14:59Z");
-    const eligible=Date.parse("2026-10-13T12:15:00Z");
+    const early=Date.parse("2026-10-13T11:59:59Z");
+    const eligible=Date.parse("2026-10-13T12:00:00Z");
     expect(verifyDerivedStory(day,early)).toBe(false);
     expect(verifyDerivedStory(day,eligible)).toBe(true);
     for (const invalid of ["2026-02-30","2026-10-12T12:00:00Z","2026-10-14"]) {
@@ -227,7 +227,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(verifyDerivedStory({...day,same_event_corrob_verified:true},eligible)).toBe(false);
   });
   it("accepts originally day-dated Stats Canada Macro into private derived-only D1, never paid score",async()=>{
-    const now=Date.parse("2026-10-13T12:15:00Z");
+    const now=Date.parse("2026-10-13T12:00:00Z");
     const day={...sample("macro","2026-10-12"),date_precision:"day",
       topic:"official economic statistics",title:"Geomacro finds official economic statistics on labour-market developments"};
     const {data,env}=db();
@@ -245,12 +245,27 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(JSON.stringify(doc)).not.toContain("source_url");
   });
 
+  it("serves just-published originals immediately while preserving already deployed legacy browsers",async()=>{
+    const {env}=db();
+    const recent=sample("macro",new Date(NOW-60_000).toISOString());
+    const old=sample("geopolitics");
+    expect((await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[recent,old]},NOW)).status).toBe(200);
+    const current=await (await readDerivedStories(env,NOW)).json();
+    expect(current.original_release_delay_minutes).toBe(0);
+    expect(current.signals).toHaveLength(2);
+    const legacy=await (await readDerivedStories(env,NOW,0,15)).json();
+    expect(legacy.original_release_delay_minutes).toBe(15);
+    expect(legacy.signals).toHaveLength(1);
+    expect(legacy.signals[0].id).toBe(old.id);
+    expect((await readDerivedStories(env,NOW,0,1)).status).toBe(400);
+  });
+
   it("free website journal is not a payment or B2 hot-snapshot promotion",()=>{
     const worker=readFileSync("workers/control-plane/src/website-derived-intelligence.mjs","utf8");
     const route=readFileSync("workers/control-plane/src/index.mjs","utf8");
     const cron=readFileSync(".github/workflows/website-derived-news-continuity.yml","utf8");
     const ui=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
-    expect(route).toContain('url.pathname === "/v1/public/website-derived-news"');
+    expect(route).toContain('"/v1/public/website-derived-news-immediate"');
     expect(route).toContain('url.pathname === "/v1/website-derived-news"');
     expect(cron).toContain('cron: "7 * * * *"');
     expect(cron).toContain("bun scripts/ops/publish-website-derived-news.ts");

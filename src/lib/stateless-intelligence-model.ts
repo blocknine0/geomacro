@@ -52,7 +52,7 @@ export type StatelessIntelligenceSignal = {
 };
 
 const DAY = 24 * 60 * 60_000;
-export const STATELESS_WEBSITE_DELAY_MS = 15 * 60_000;
+export const STATELESS_WEBSITE_DELAY_MS = 0;
 export const STATELESS_LOOKBACK_MS = 30 * DAY;
 
 const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; implication: string }[]> = {
@@ -481,7 +481,7 @@ function developmentSummary(focus: string, kind: string, geography: string | nul
 /**
  * Conservative release eligibility for a first-party calendar DAY when a
  * publisher does not give an original hour. The last possible timezone day
- * ends by 12:00 UTC of the next day; add the full website 15m delay.
+ * ends by 12:00 UTC of the next day; no extra publication delay.
  * We publish the exact original date label, never an invented clock.
  */
 export function conservativeDayReleaseMs(day: string): number | null {

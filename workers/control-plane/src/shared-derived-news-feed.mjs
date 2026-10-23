@@ -15,7 +15,7 @@ const reply=(data,status=200)=>Response.json(data,{status,headers});
 const contractPage=(value,offset)=>value?.ok===true &&
   value.schema==="geomacro.website-derived-news-feed.v1" &&
   value.delivery_scope==="free_website_only" &&
-  value.retention_hours===72 && value.original_release_delay_minutes===15 &&
+  value.retention_hours===72 && (value.original_release_delay_minutes===0||value.original_release_delay_minutes===15) &&
   value.page_offset===offset && value.page_size===250 &&
   typeof value.has_more==="boolean" && Array.isArray(value.signals) &&
   value.signals.length<=250;
@@ -111,7 +111,7 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
       journal_origin:"SAME_D1_ROWS_AS_GEOMACRO_INTELLIGENCE",
       consumer_scope:"public_research_and_partner_pilot_evaluation_only",
       partner_resale_or_commercial_redistribution_authorized:false,
-      retention_hours:72,original_release_delay_minutes:15,
+      retention_hours:72,original_release_delay_minutes:0,
       source_scope:"ELIGIBLE_RELEASES_PRESENT_IN_BOUNDED_D1_JOURNAL",
       exhaustive_all_global_sources:false,
       independent_same_event_verified:false,commercial_rights_verified:false,

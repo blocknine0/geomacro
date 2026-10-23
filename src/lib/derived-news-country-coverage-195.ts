@@ -93,7 +93,7 @@ export function observed195x3Coverage(
   not_observed_means_no_news:false,
   exhaustive_country_news_coverage_verified:false,
   producer_country_original_coverage_verified:false,
-  original_release_delay_minutes:15,retention_hours:72,
+  original_release_delay_minutes:0,retention_hours:72,
   generated_at:new Date(now).toISOString(),
   source_neutral_derived_records_in_journal:rows.length,
   unassigned_or_regional_derived_records_72h:unassigned,

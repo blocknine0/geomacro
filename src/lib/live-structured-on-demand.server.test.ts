@@ -143,8 +143,8 @@ describe("stateless live structured open-data output",()=>{
     durable_live_storage_write:false,signed_gro_generated:false,latest_original_published_at:"2026-10-16",
     latest_original_date_precision:"day"})) as unknown as typeof answerFromOriginalPlan;
   const out=await liveStructuredData({country_iso3:"CAN",category:"critical-minerals",lookback_days:7},
-    {now,originalReader:reader});
-  expect(out.statusCode).toBe(422); // 17 Oct 12:00 precedes 12:15 conservative bound.
+    {now:()=>new Date(now().getTime()-1000),originalReader:reader});
+  expect(out.statusCode).toBe(422); // Before the next-day 12:00 date-uncertainty bound.
  });
 
  it("returns actual official annual macro evidence when a country has no recent original macro news",async()=>{

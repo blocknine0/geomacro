@@ -19,7 +19,7 @@ export const CATEGORY_TO_ORIGINAL = {
 const CACHE_MS = 60_000;
 const MAX_FINDINGS = 3;
 const MAX_AGE_MS = 86_400_000;
-const RELEASE_DELAY_MS = 15 * 60_000;
+const RELEASE_DELAY_MS = 0;
 
 export type CategoryLiveFinding = {
   id: string;
@@ -79,7 +79,7 @@ export function buildCategoryLiveObservation(
     checked_at: source.checked_at,
     latest_original_published_at: accepted[0]?.published_at ?? null,
     max_original_age_hours: 24,
-    publication_delay_minutes: 15,
+    publication_delay_minutes: 0,
     findings: accepted.map((signal): CategoryLiveFinding => ({
       id: signal.id,
       topic: signal.topic,

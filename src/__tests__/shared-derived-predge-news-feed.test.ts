@@ -56,7 +56,7 @@ describe("same 72h D1 news journal powers Geomacro website and Predge research",
  });
  it("does not leak credited publisher content or premature unverified releases",async()=>{
   const bad=[{...signal(0),sources_credited:["Copyright attribution required"]},
-    {...signal(1),published_at:"2026-10-19T09:58:00.000Z"},
+    {...signal(1),published_at:"2026-10-19T10:01:00.000Z"},
     {...signal(2),published_at:"2026-10-19T11:00:00.000Z"}];
   const r=await publicSharedDerivedNewsFeed(env(bad),new URLSearchParams(),NOW);
   const d=await r.json();

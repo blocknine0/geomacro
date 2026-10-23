@@ -50,7 +50,7 @@ describe("72h auto ingest -> own structured Intelligence and API research drafts
   });
   it("reads the same public derived D1 contract and never accepts raw upstream material",async()=>{
     const doc={ok:true,schema:"geomacro.website-derived-news-feed.v1",
-      checked_at:new Date(NOW).toISOString(),original_release_delay_minutes:15,
+      checked_at:new Date(NOW).toISOString(),original_release_delay_minutes:0,
       retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
       signals:[signal()]};
     const fetcher=vi.fn(async()=>Response.json(doc));

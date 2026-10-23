@@ -241,6 +241,6 @@ console.log(JSON.stringify({schema:"geomacro.backfill-independent-d1-readback.v1
   historical_candidates_written:backfillTotal,derived_rows_in_d1:body.signals.length,
   verified_original_date_buckets:dateBuckets,
   source_raw_stored:false,backdated_stories:false,
-  website_release_delay_minutes:15,supabase_dependency:false}));
+  website_release_delay_minutes:0,supabase_dependency:false}));
 if(sourceOk===0||body.signals.length===0)process.exitCode=2;
 }

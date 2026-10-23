@@ -26,8 +26,8 @@ const mineral: StatelessSourceSpec = {
 };
 
 describe("no-storage public Intelligence original-release reader", () => {
-  it("enforces 15m public Intelligence delay independently of the frozen 60m Global Risk embargo", () => {
-    expect(STATELESS_WEBSITE_DELAY_MS).toBe(900_000);
+  it("removes artificial public Intelligence delay independently of the frozen 60m Global Risk embargo", () => {
+    expect(STATELESS_WEBSITE_DELAY_MS).toBe(0);
     expect(WEBSITE_RELEASE_DELAY_MS).toBe(3_600_000);
     expect(originalPublicationMs("2026-10-12T14:00:00.000Z", NOW))
       .toBe(Date.parse("2026-10-12T14:00:00Z"));
@@ -67,7 +67,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     });
     expect(JSON.stringify(signals)).not.toContain("Federal Reserve releases");
     expect(JSON.stringify(signals)).not.toContain("federalreserve.gov/");
-    const early = parseFirstPartyFeed(xml.replace("14:00:00", "15:45:01"), fed, NOW);
+    const early = parseFirstPartyFeed(xml.replace("14:00:00", "16:00:01"), fed, NOW);
     expect(deriveStatelessSignals(early.dated, NOW)).toHaveLength(0);
   });
 
@@ -204,9 +204,9 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(verified.candidates).toHaveLength(1);
     expect(verified.candidates[0].publishedAt).toBe("2026-10-09");
     expect(verified.candidates[0].datePrecision).toBe("day");
-    expect(conservativeDayReleaseMs("2026-10-09")).toBe(Date.parse("2026-10-10T12:15:00Z"));
+    expect(conservativeDayReleaseMs("2026-10-09")).toBe(Date.parse("2026-10-10T12:00:00Z"));
     expect(conservativeDayReleaseMs("2026-02-30")).toBeNull();
-    expect(deriveStatelessSignals(verified.candidates, Date.parse("2026-10-10T12:14:59Z"))).toEqual([]);
+    expect(deriveStatelessSignals(verified.candidates, Date.parse("2026-10-10T11:59:59Z"))).toEqual([]);
     const finds = deriveStatelessSignals(verified.candidates, now);
     expect(finds).toHaveLength(1);
     expect(finds[0].date_precision).toBe("day");
@@ -261,7 +261,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(desk).toContain('New in the last 24 hours');
     expect(desk).toContain('Earlier original releases · Dated');
 
-    expect(desk).toContain("15-minute public delay");
+    expect(desk).toContain("No added publication delay");
     expect(desk).not.toContain("RiskBadge");
     expect(desk).not.toContain("RiskTrend");
     expect(desk).not.toContain("Score evidence");

@@ -3,9 +3,9 @@
  * product. This is NOT the legacy signed Intelligence/GRI/Risk Indices health.
  * Every 200 is backed by real original-dated unscored D1 records.
  */
-const FEED_URL="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news";
+const FEED_URL="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 const RETENTION=72*60*60_000;
-const MIN_DELAY=15*60_000;
+const MIN_DELAY=0;
 const CAT=["geopolitics","macro","rare_earth"] as const;
 type Category=typeof CAT[number];
 type FreeStory={
@@ -46,7 +46,7 @@ function result(ok:boolean,reason:string,counts=empty()){
     categories:counts,
     all_three_categories_have_recent_originals:
       ok&&CAT.every(c=>counts[c]>0),
-    original_release_delay_minutes:15,original_retention_hours:72,
+    original_release_delay_minutes:0,original_retention_hours:72,
     legacy_signed_intelligence_gri_risk_indices:"NOT_EVALUATED_IN_THIS_PROFILE",
     current_signed_hot_snapshots_attested:false,
     current_numerical_gri_verified:false,
@@ -60,7 +60,7 @@ function result(ok:boolean,reason:string,counts=empty()){
 export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
   if(!Number.isFinite(now)||!input||input.ok!==true||
      input.schema!=="geomacro.website-derived-news-feed.v1"||
-     input.original_release_delay_minutes!==15||
+     (input.original_release_delay_minutes!==0&&input.original_release_delay_minutes!==15)||
      input.retention_hours!==72||input.retention_days!==3||
      input.delivery_scope!=="free_website_only"||
      input.scored!==false||input.chargeable!==false||

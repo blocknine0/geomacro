@@ -46,7 +46,7 @@ test("stale original clocks, no evidence, payment/signed claims and raw URLs fai
   old.data.latest_original_published_at = "2026-10-09T10:00:00Z";
   assert.equal(inspectUnscoredAsk(old, "macro", NOW).ok, false);
   const embargo = observed();
-  embargo.data.latest_original_published_at = "2026-10-13T13:59:00Z";
+  embargo.data.latest_original_published_at = "2026-10-13T14:00:01Z";
   assert.equal(inspectUnscoredAsk(embargo, "macro", NOW).ok, false);
   const signed = observed();
   signed.data.signed_gro_generated = true;

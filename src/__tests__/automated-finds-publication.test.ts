@@ -25,7 +25,7 @@ const story=(category:typeof FINDS_CATEGORIES[number])=>({
 const payload=(category=FINDS_CATEGORIES[0]):AutomatedFindsPayload=>({schema:"geomacro.automated-finds.v1",category,
   generated_at:new Date(NOW).toISOString(),source_run_id:"123456",source_sha:"a".repeat(40),
   source_verification:"publisher_native_release",independent_reviewed:false,scored:false,chargeable:false,
-  delivery_scope:"free_website_only",original_release_delay_minutes:15,retention_days:30,
+  delivery_scope:"free_website_only",original_release_delay_minutes:0,retention_days:30,
   healthy_feed_count:1,feed_count:2,signals:[story(category)],
 });
 const sign=(p:AutomatedFindsPayload)=>signAutomatedFindsBatch(p,material);
@@ -106,9 +106,9 @@ describe("Supabase-free automated issuer-signed Finds",()=>{
     vi.stubEnv("RISK_OBJECT_VERIFY_KEYS_JSON",JSON.stringify({[material.key_id]:{public_key_spki_b64:pub,status:"revoked"}}));
     await expect(signAutomatedFindsBatch(payload())).rejects.toThrow();
   });
-  it("rejects future, embargoed, raw, scored, independently-reviewed and cross-category claims",async()=>{
+  it("rejects future, raw, scored, independently-reviewed and cross-category claims",async()=>{
     for(const change of [{published_at:new Date(NOW+1000).toISOString()},
-      {published_at:new Date(NOW-60_000).toISOString()},{severity:50},{source_url:"https://private.invalid"},{category:"macro"}]){
+      {severity:50},{source_url:"https://private.invalid"},{category:"macro"}]){
       const p=payload();Object.assign(p.signals[0],change);await expect(sign(p)).rejects.toThrow();}
     await expect(sign({...payload(),independent_reviewed:true} as any)).rejects.toThrow();
     const p=payload();p.signals[0].date_precision="day";p.signals[0].published_at="2026-10-16";

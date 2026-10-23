@@ -72,7 +72,7 @@ async function readJournal(env,now){
         typeof page.has_more!=="boolean"||!Array.isArray(page.signals)||
         page.signals.length>250)throw Error("JOURNAL_CONTRACT_INVALID");
       // Only already-derived, non-credited, native-dated free news;
-      // the journal reader independently checks the 15min embargo and 72h.
+      // the journal reader independently checks the future-clock rejection and 72h.
       for(const row of page.signals){
         if(row.sources_credited?.length!==0)continue;
         if(!FIXED_FIELDS.every(k=>Object.hasOwn(row,k)))continue;

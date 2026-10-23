@@ -572,7 +572,7 @@ jobs:
           d1_code="$(curl --fail-with-body --silent --show-error --max-time 14 \
             -H 'Cache-Control: no-cache' \
             -o "$journal" -w '%{http_code}' \
-            'https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news' || true)"
+            'https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate' || true)"
           page_code="$(curl --fail-with-body --silent --show-error --max-time 20 \
             -H 'Cache-Control: no-cache' -o "$page" -w '%{http_code}' \
             "$BASE_URL/intelligence" || true)"
@@ -590,7 +590,7 @@ jobs:
           stories=journal.get("signals")
           if (journal.get("ok") is not True or
               journal.get("schema")!="geomacro.website-derived-news-feed.v1" or
-              journal.get("original_release_delay_minutes")!=15 or
+              (type(journal.get("original_release_delay_minutes")) is not int or journal.get("original_release_delay_minutes") not in (0,15)) or
               not isinstance(stories,list) or not stories):
               raise SystemExit("LIVE_DERIVED_NEWS_D1_READBACK_MISSING")
           if ("What changed in the world" not in rendered or
@@ -608,7 +608,7 @@ jobs:
               "live_website_page":True,
               "first_html_contains_derived_story":True,
               "d1_derived_story_count":len(titles),
-              "original_delay_minutes":15,
+              "original_delay_minutes":journal.get("original_release_delay_minutes"),
               "source_urls_or_raw_feed_logged":False
           }))
           PY
@@ -828,7 +828,7 @@ jobs:
           }
           const [home,ask,journal,finds]=await Promise.all([
             read('/'),read('/ask-geomacro'),
-            read(d1+'/v1/public/website-derived-news','json'),
+            read(d1+'/v1/public/website-derived-news-immediate','json'),
             read('/api/v1/finds','json'),
           ]);
           // Match the locked, currently rendered Geomacro homepage and Ask
@@ -844,14 +844,14 @@ jobs:
           }
           if(journal?.ok!==true||
              journal?.schema!=='geomacro.website-derived-news-feed.v1'||
-             journal?.original_release_delay_minutes!==15||
+             (journal?.original_release_delay_minutes!==0&&journal?.original_release_delay_minutes!==15)||
              !Array.isArray(journal?.signals))
              throw Error('PUBLIC_FREE_D1_JOURNAL_INVALID');
           if(finds?.ok!==true||finds?.schema!=='geomacro.find-card-feed.v1'||
              finds?.chargeable!==false||finds?.scored!==false||
              finds?.independent_same_event_verified!==false||
              finds?.source_metadata_returned!==false||
-             finds?.original_release_delay_minutes!==15||
+             (finds?.original_release_delay_minutes!==0&&finds?.original_release_delay_minutes!==15)||
              !Array.isArray(finds.cards))
              throw Error('PUBLIC_FREE_FINDS_CONTRACT_INVALID');
           if(finds.cards.some(card=>card?.schema!=='geomacro.find.v1'||

@@ -206,7 +206,7 @@ export function officialGeomacroAgentOpenApi(){
       "400":{description:"Invalid rail or pricing tier, no charge"}},
    }},
    [endpoints.free_finds]:{get:{
-    summary:"Get 15 minute delayed public no attribution Find Cards",
+    summary:"Get public no attribution Find Cards without added publication delay",
     operationId:"listGeomacroFindCards",
     parameters:[{name:"domain",in:"query",required:false,
      schema:{type:"string",enum:["geopolitics","macro","rare_earth"]}}],

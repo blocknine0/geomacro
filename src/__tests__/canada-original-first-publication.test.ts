@@ -69,8 +69,8 @@ describe("Canada official original publication day; never updated/crawl timestam
     const candidate={sourceId:"nrcan_releases",category:"rare_earth" as const,
       title:"Canada critical minerals funding announcement",articleUrl:news,
       publishedAt:"2026-10-12",datePrecision:"day" as const,credit:"Natural Resources Canada"};
-    expect(deriveStatelessSignals([candidate],Date.parse("2026-10-13T12:14:59.000Z"))).toEqual([]);
-    const found=deriveStatelessSignals([candidate],Date.parse("2026-10-13T12:15:00.000Z"));
+    expect(deriveStatelessSignals([candidate],Date.parse("2026-10-13T11:59:59.000Z"))).toEqual([]);
+    const found=deriveStatelessSignals([candidate],Date.parse("2026-10-13T12:00:00.000Z"));
     expect(found).toHaveLength(1);
     expect(found[0].date_precision).toBe("day");
     expect(found[0].severity).toBeNull();

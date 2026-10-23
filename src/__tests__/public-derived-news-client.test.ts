@@ -15,8 +15,20 @@ const signal={
   same_event_corrob_verified:false,severity:null,
 };
 const doc=(signals:unknown[]=[])=>({ok:true,schema:"geomacro.website-derived-news-feed.v1",
-  original_release_delay_minutes:15,retention_days:3,retention_hours:72,delivery_scope:"free_website_only",signals});
+  original_release_delay_minutes:0,retention_days:3,retention_hours:72,delivery_scope:"free_website_only",signals});
 describe("browser public journal fallback",()=>{
+  it.each(["geopolitics","macro","rare_earth"])("admits newly published %s immediately across old/new feed envelopes, with strict future rejection",category=>{
+    for(const age of [0,1_000,5*60_000]){
+      const row={...signal,id:category+"-1234abcd",category,
+        published_at:new Date(NOW-age).toISOString()};
+      for(const metadata of [0,15]){
+        const envelope={...doc([row]),original_release_delay_minutes:metadata};
+        expect(checkedDerivedNews(envelope,NOW)).toEqual([row]);
+        expect(checkedDerivedNews({...envelope,signals:[{...row,published_at:new Date(NOW+1).toISOString()}]},NOW)).toEqual([]);
+      }
+    }
+  });
+
   it("serves original-dated derived cards without browser server-RPC dependency",async()=>{
     const f=vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(doc([signal])),{
       status:200,headers:{"content-type":"application/json"},
@@ -29,32 +41,32 @@ describe("browser public journal fallback",()=>{
   it("rejects early/old/unverified/source-leaking objects and unrecognized document scope",()=>{
     expect(checkedDerivedNews(doc([
       signal,
-      {...signal,id:"macro-87654321",published_at:"2026-10-12T19:55:00.000Z"},
+      {...signal,id:"macro-87654321",published_at:"2026-10-12T20:00:01.000Z"},
       {...signal,id:"macro-87654322",published_at:"2026-08-20T19:00:00.000Z"},
       {...signal,id:"macro-87654323",severity:90},
       {...signal,id:"macro-87654324",source_url:"https://private-source.example.com"},
       {...signal,id:"macro-87654325",same_event_corrob_verified:true},
     ]),NOW)).toEqual([signal]);
-    expect(()=>checkedDerivedNews({...doc([signal]),original_release_delay_minutes:0},NOW)).toThrow();
+    expect(()=>checkedDerivedNews({...doc([signal]),original_release_delay_minutes:1},NOW)).toThrow();
   });
   it.each(["geopolitics","macro","rare_earth"])("reads verified D1 original publication DAY in %s without fabricating time",category=>{
     const day={...signal,
       id:category+"-1234abcd",category,date_precision:"day",
       published_at:"2026-10-12"};
-    expect(checkedDerivedNews(doc([day]),Date.parse("2026-10-13T12:14:59Z"))).toEqual([]);
-    expect(checkedDerivedNews(doc([day]),Date.parse("2026-10-13T12:15:00Z"))).toEqual([day]);
+    expect(checkedDerivedNews(doc([day]),Date.parse("2026-10-13T11:59:59Z"))).toEqual([]);
+    expect(checkedDerivedNews(doc([day]),Date.parse("2026-10-13T12:00:00Z"))).toEqual([day]);
     for (const invalid of ["2026-02-30","2026-10-13","2026-10-12T12:00:00Z"]){
       expect(checkedDerivedNews(doc([{...day,published_at:invalid}]),
-        Date.parse("2026-10-13T12:15:00Z"))).toEqual([]);
+        Date.parse("2026-10-13T12:00:00Z"))).toEqual([]);
     }
     expect(checkedDerivedNews(doc([{...day,severity:70}]),
-      Date.parse("2026-10-13T12:15:00Z"))).toEqual([]);
+      Date.parse("2026-10-13T12:00:00Z"))).toEqual([]);
   });
   it("does not invent an EU original hour and waits full day-only release delay",()=>{
     const day={...signal,id:"rare_earth-1234abcd",category:"rare_earth",
       published_at:"2026-10-09",date_precision:"day"};
-    expect(checkedDerivedNews(doc([day]),Date.parse("2026-10-10T12:14:59Z"))).toEqual([]);
-    expect(checkedDerivedNews(doc([day]),Date.parse("2026-10-10T12:15:00Z"))).toEqual([day]);
+    expect(checkedDerivedNews(doc([day]),Date.parse("2026-10-10T11:59:59Z"))).toEqual([]);
+    expect(checkedDerivedNews(doc([day]),Date.parse("2026-10-10T12:00:00Z"))).toEqual([day]);
   });
   it("uses workerd-supported manual mode and rejects every redirect without retry",async()=>{
     for(const status of [301,302,303,307,308]){

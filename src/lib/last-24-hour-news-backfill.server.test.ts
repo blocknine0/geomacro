@@ -22,10 +22,10 @@ describe('live plus rolling last-24-hour website backfill',()=>{
   const p=publisher();const result=await backfillLast24HourNews({now:NOW,publisher:p,
    readCategory:async category=>report(category,[signal(category,15,1),signal(category,23*60,2),
     signal(category,24*60,3),signal(category,24*60+1,4),signal(category,14,5),signal(category,-1,6)])});
-  expect(result.complete).toBe(true);expect(result.categories.map(c=>c.eligible_original_last_24h)).toEqual([3,3,3]);
-  expect(p.accept.mock.calls.flatMap(([rows])=>rows)).toHaveLength(9);
+  expect(result.complete).toBe(true);expect(result.categories.map(c=>c.eligible_original_last_24h)).toEqual([4,4,4]);
+  expect(p.accept.mock.calls.flatMap(([rows])=>rows)).toHaveLength(12);
   expect(p.accept.mock.calls[0][0].map(s=>s.published_at)).toEqual([
-   '2026-10-23T11:45:00.000Z','2026-10-22T13:00:00.000Z','2026-10-22T12:00:00.000Z']);
+   '2026-10-23T11:45:00.000Z','2026-10-22T13:00:00.000Z','2026-10-22T12:00:00.000Z','2026-10-23T11:46:00.000Z']);
  });
  it('does not truncate to the fastlane newest 20; publishes a full bounded 200-row reader result',async()=>{
   const p=publisher();await backfillLast24HourNews({now:NOW,publisher:p,

@@ -24,7 +24,7 @@ const story=(index:number):StatelessIntelligenceSignal=>{
 };
 const feed=(signals:unknown[],offset=0,has_more=false)=>({
   ok:true,schema:"geomacro.website-derived-news-feed.v1",
-  original_release_delay_minutes:15,retention_days:3,retention_hours:72,
+  original_release_delay_minutes:0,retention_days:3,retention_hours:72,
   delivery_scope:"free_website_only",page_offset:offset,page_size:250,
   has_more,next_offset:has_more?offset+250:null,signals,
 });
@@ -47,12 +47,12 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    }
    expect(JSON.stringify(rows)).not.toMatch(/(?:https?:\/\/|publisher_id|source_url|original_title|raw_html)/iu);
  });
- it("rejects attribution-hidden releases and stale, early, future, scored and forged rows",()=>{
+ it("rejects attribution-hidden releases and stale, invalid, future, scored and forged rows",()=>{
    const good=story(4);
    const bad=[
      {...story(3),sources_credited:["Attribution required"]},
      {...story(5),published_at:"2026-10-10T12:00:00.000Z"},
-     {...story(6),published_at:"2026-10-18T17:59:00.000Z"},
+     {...story(6),published_at:"invalid"},
      {...story(7),published_at:"2026-10-19T00:00:00.000Z"},
      {...story(8),severity:80},
      {...story(9),source_url:"https://upstream.invalid"},

@@ -7,9 +7,9 @@
 import {fileURLToPath} from "node:url";
 
 const ROOT="https://geomacro.live";
-const JOURNAL="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news";
+const JOURNAL="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 const RETENTION_MS=72*60*60_000;
-const DELAY_MS=15*60_000;
+const DELAY_MS=0;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const validSha=(s)=>typeof s==="string"&&/^[a-f0-9]{40}$/u.test(s);
 /**
@@ -109,7 +109,7 @@ export function classifyMinimumFreeProduction({
     return invalid("LIVE_BUILD_PARITY_UNVERIFIED");
   if(journalStatus!==200||!journal||journal.ok!==true||
     journal.schema!=="geomacro.website-derived-news-feed.v1"||
-    journal.original_release_delay_minutes!==15||
+    (journal.original_release_delay_minutes!==0&&journal.original_release_delay_minutes!==15)||
     journal.retention_hours!==72||journal.retention_days!==3||
     journal.delivery_scope!=="free_website_only"||
     !Array.isArray(journal.signals)||journal.signals.length>250)

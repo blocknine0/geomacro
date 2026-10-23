@@ -12,7 +12,7 @@ import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
  * release clocks. Missing/D1-degraded journal => bounded original rotation.
  */
 export const JOURNAL_ORIGINAL_REVIEW_WINDOW_MS = 22*60*60_000;
-const MIN_DELAY_MS=15*60_000;
+const MIN_DELAY_MS=0;
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 type Summary=Readonly<{
  country_iso3:string;

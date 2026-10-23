@@ -27,13 +27,13 @@ describe('international original releases in the existing global pipeline',()=>{
   for(const t of Object.values(titles))expect(publicPayload).not.toContain(t);
   expect(publicPayload).not.toContain('https://');expect(r.discovery.supabase_requests+r.discovery.b2_requests).toBe(0);
  });
- it('each existing category reader derives original-clock findings from international feeds with the fifteen-minute delay',async()=>{
+ it('each existing category reader derives original-clock findings from international feeds without an added publication delay',async()=>{
   vi.stubGlobal('fetch',network);
   for(const [category,api] of [['geopolitics','geopolitics'],['macro','macro-fx'],['rare_earth','critical-minerals']] as const){
    const source=await readStatelessWebsiteIntelligence(category,now.getTime());
    expect(source.current_24h_count).toBeGreaterThan(0);
    const observed=await readCategoryLiveObservation(api,{now:now.getTime(),reader:async()=>source});
-   expect(observed.findings.length).toBeGreaterThan(0);expect(observed.publication_delay_minutes).toBe(15);
+   expect(observed.findings.length).toBeGreaterThan(0);expect(observed.publication_delay_minutes).toBe(0);
    expect(observed.latest_original_published_at).toBe('2026-10-16T07:00:00.000Z');
    expect(observed.raw_publisher_content_delivered).toBe(false);expect(observed.signed_gro_generated).toBe(false);
    const output=JSON.stringify(observed);expect(output).not.toContain('https://');

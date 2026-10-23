@@ -33,7 +33,7 @@ describe("website derived-only topic contract alignment",()=>{
     expect(verifyDerivedStory({...sample,source_url:"https://upstream.example"},now)).toBe(false);
     expect(verifyDerivedStory({...sample,severity:75},now)).toBe(false);
     expect(verifyDerivedStory({...sample,topic:"unknown policy"},now)).toBe(false);
-    expect(verifyDerivedStory({...sample,published_at:"2026-10-12T23:59:59.000Z"},now)).toBe(false);
+    expect(verifyDerivedStory({...sample,published_at:"2026-10-13T00:00:00.001Z"},now)).toBe(false);
     expect(verifyDerivedStory({...sample,what_changed:"Raw https://www.other.example/article"},now)).toBe(false);
   });
 });

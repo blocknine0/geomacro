@@ -155,7 +155,7 @@ export async function answerFromOriginalPlan(plan:AskOriginalPlan,options:Origin
     category:item.domain,credit:null,
   })),...dayCandidates],now.getTime(),{websiteDelay:options.websiteDelay}).filter(item=>{
     const at=Date.parse(item.published_at);
-    return Number.isFinite(at) && at<=now.getTime()-(options.websiteDelay===false?0:15*60_000) &&
+    return Number.isFinite(at) && at<=now.getTime() &&
       at>=now.getTime()-plan.max_age_seconds*1000;
   }).slice(0,3);
   if(!signals.length)return null;

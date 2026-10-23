@@ -113,8 +113,8 @@ const changed:Record<StatelessCategory,string>={
 export function findCardFromObservedRelease(
  s:StatelessIntelligenceSignal, now=Date.now(),
 ):FindCardV1|null{
- // Existing public derived-journal proof gates: original date + 15m (or
- // next-day 12:15 for day-only), no copied source title or URL.
+ // Existing public derived-journal proof gates: original date without added wait (or
+ // next-day 12:00 for day-only), no copied source title or URL.
  // A required-credit source cannot become an attribution-free Find Card.
  if(s.status!=="official_release_observed_unscored"||
     !verifyDerivedStory(s,now)||s.sources_credited.length>0||

@@ -24,7 +24,7 @@ async function strictPage(response,offset){
  let doc;try{doc=JSON.parse(text);}catch{fail("D1_PUBLIC_JSON_INVALID");}
  if(doc?.ok!==true||doc.schema!=="geomacro.website-derived-news-feed.v1"||
     doc.delivery_scope!=="free_website_only"||doc.retention_hours!==72||
-    doc.original_release_delay_minutes!==15||doc.page_offset!==offset||
+    (doc.original_release_delay_minutes!==0&&doc.original_release_delay_minutes!==15)||doc.page_offset!==offset||
     doc.page_size!==250||typeof doc.has_more!=="boolean"||
     !Array.isArray(doc.signals)||doc.signals.length>250)
   fail("D1_PUBLIC_CONTRACT_INVALID");
@@ -75,7 +75,7 @@ export function buildDerivedJournalB2Plan(rows,now=new Date()){
   schema:"geomacro.private-derived-news-journal-b2.v1",
   origin:"SAME_72H_D1_ROWS_AS_PUBLIC_INTELLIGENCE",
   snapshot_as_of:now.toISOString(),
-  observation_window_hours:72,website_delay_minutes:15,
+  observation_window_hours:72,website_delay_minutes:0,
   rights_reviewed:false,independent_gri_reviewed:false,
   signed_hot_product:false,commercial_resale_authorized:false,
   raw_original_content_stored:false,

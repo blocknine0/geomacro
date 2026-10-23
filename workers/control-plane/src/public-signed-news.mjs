@@ -94,7 +94,7 @@ export async function publicSignedNews(env,query=new URLSearchParams(),now=Date.
    }
    const original_page_verified=sourceReview?.verdict==='SOURCE_EVIDENCE_VERIFIED';
    const sourceAge=now-Date.parse(signal.published_at);
-   const current=signal.date_precision==='exact'&&sourceAge>=15*60_000&&sourceAge<=60*60_000;
+   const current=signal.date_precision==='exact'&&sourceAge>=0&&sourceAge<=60*60_000;
    const qualified=signal.status==='official_release_observed_unscored';
    const current_source_verified_signed=signature_verified&&original_page_verified&&current&&qualified;
    items.push({input_id:id,signal,signature_verified,signature_status,proof,verification_key,
@@ -111,7 +111,7 @@ export async function publicSignedNews(env,query=new URLSearchParams(),now=Date.
    checked_at:new Date(now).toISOString(),journal_rows:journal.length,unique_items:unique.size,
    duplicate_aliases_excluded:journal.length-unique.size,page_offset:offset,page_size:SIZE,
    next_offset:offset+SIZE<unique.size?offset+SIZE:null,page_counts:counts(items),items,
-   retention_hours:72,original_release_delay_minutes:15,original_verification_window_hours:ORIGINAL_VERIFICATION_WINDOW_HOURS,
+   retention_hours:72,original_release_delay_minutes:0,original_verification_window_hours:ORIGINAL_VERIFICATION_WINDOW_HOURS,
    signature_scope:'GEOMACRO_ISSUANCE_AND_EXACT_DERIVED_INPUT_BYTES',
    source_review_scope:'ORIGINAL_PAGE_BYTES_AND_NATIVE_PUBLICATION_TIME',
    legacy_signed_hot_product_equivalent:false,independent_reviewed:false,

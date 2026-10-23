@@ -132,9 +132,9 @@ export function buildMaterialGriCountryEvidenceWorklist(queue,registrySource,now
       // of commercial rights, independent originals or current score.
       const elapsed=now-published;
       const mayCheckOriginal=exact&&elapsed<=6*3600_000&&
-        elapsed>=15*60_000;
+        elapsed>=0;
       // The canonical signed GRI reviewed-current acceptance only admits a
-      // NEW native original no older than 90 minutes after the 15m embargo.
+      // NEW native original no older than 90 minutes without an extra publication wait.
       // A source can remain an eligible private original recheck for six hours
       // while already being too old to independently trigger a GRI rescore.
       const inNewGriWindow=mayCheckOriginal&&elapsed<=90*60_000;

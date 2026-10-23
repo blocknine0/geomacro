@@ -15,7 +15,7 @@ const story=(category="geopolitics",overrides:Record<string,unknown>={})=>({
 const feed=(signals:unknown[]=[story()],updates:Record<string,unknown>={})=>({
   ok:true,schema:"geomacro.website-derived-news-feed.v1",
   checked_at:"2026-10-21T00:00:00.000Z",
-  original_release_delay_minutes:15,retention_hours:72,retention_days:3,
+  original_release_delay_minutes:0,retention_hours:72,retention_days:3,
   delivery_scope:"free_website_only",
   scored:false,chargeable:false,supabase_dependency:false,
   page_offset:0,page_size:250,has_more:false,next_offset:null,
@@ -44,10 +44,10 @@ describe("authentic free-derived D1 product deep-health",()=>{
     expect(v.body.all_three_categories_have_recent_originals).toBe(true);
     expect(v.body.current_numerical_gri_verified).toBe(false);
   });
-  it("fails empty, stale, future, pre-embargo, duplicate or scored stories",()=>{
+  it("fails empty, stale, future, invalid, duplicate or scored stories",()=>{
     expect(classifyFreeDerivedFeed(feed([]),time).statusCode).toBe(503);
     for(const published_at of ["2026-10-16T00:00:00.000Z",
-      "2026-10-20T23:50:00.000Z","2026-10-21T01:00:00.000Z"]){
+      "invalid","2026-10-21T01:00:00.000Z"]){
       expect(classifyFreeDerivedFeed(feed([story("geopolitics",{published_at})]),time)
         .statusCode).toBe(503);
     }
@@ -64,7 +64,7 @@ describe("authentic free-derived D1 product deep-health",()=>{
   });
   it("rejects invalid metadata, old replayed checked_at, and commercial flags",()=>{
     for(const overrides of [
-      {original_release_delay_minutes:0},{retention_hours:720},
+      {original_release_delay_minutes:1},{retention_hours:720},
       {chargeable:true},{scored:true},{supabase_dependency:true},
       {delivery_scope:"paid"},{checked_at:"2026-10-20T18:00:00.000Z"},
       {page_offset:250},{page_size:1000},{signals:"invalid"},

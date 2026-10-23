@@ -77,7 +77,7 @@ describe("geopolitics 24-hour original-source recovery", () => {
     }
     const original = parseFirstPartyFeed(xml(item("Security Council sanctions update")),
       source,now).dated;
-    expect(deriveStatelessSignals(original,Date.parse("2026-10-13T16:10:00.000Z")))
+    expect(deriveStatelessSignals(original,Date.parse("2026-10-13T15:59:59.999Z")))
       .toHaveLength(0);
   });
 });

@@ -10,7 +10,7 @@ export const AUTO_INGEST_RETENTION_MS = 72 * 60 * 60_000;
 // Backward compatible verification of separately signed historical Finds.
 // ONLY the auto-ingest journal below has the founder-approved 72h TTL.
 const LOOKBACK_MS = 30 * 86400_000;
-const DELAY_MS = 15 * 60_000;
+const DELAY_MS = 0;
 const CATEGORIES = new Set(["geopolitics", "macro", "rare_earth"]);
 const TOPICS = new Set(["sanctions and trade restrictions","security and diplomacy",
   "geopolitical security","foreign policy","banking and capital regulation",
@@ -119,8 +119,8 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
     return json({ok:false,error:"DERIVED_NEWS_D1_WRITE_UNAVAILABLE"},503);
   }
 }
-export async function readDerivedStories(env,now=Date.now(),offset=0) {
-  if(!Number.isSafeInteger(offset)||![0,250,500].includes(offset))
+export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelayMinutes=0) {
+  if(![0,15].includes(legacyDelayMinutes)||!Number.isSafeInteger(offset)||![0,250,500].includes(offset))
     return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID"},400);
   try {
     const {results=[]}=await env.DB.prepare(
@@ -133,6 +133,7 @@ export async function readDerivedStories(env,now=Date.now(),offset=0) {
       try {
         const signal=JSON.parse(row.story_json);
         if (verifyDerivedStory(signal,now) &&
+            (originalTime(signal,now)?.eligibleAt??Infinity)+legacyDelayMinutes*60_000<=now &&
             (originalTime(signal,now)?.at??-Infinity)>=now-AUTO_INGEST_RETENTION_MS) {
           // Audit provenance: server-generated D1 first insertion timestamp,
           // not upstream fetch time and not a claim that website was rendered.
@@ -151,7 +152,7 @@ export async function readDerivedStories(env,now=Date.now(),offset=0) {
     }
     return json({ok:true,schema:"geomacro.website-derived-news-feed.v1",
       checked_at:new Date(now).toISOString(),
-      original_release_delay_minutes:15,
+      original_release_delay_minutes:legacyDelayMinutes,
       retention_days:3,retention_hours:72,
       delivery_scope:"free_website_only",
       scored:false,chargeable:false,supabase_dependency:false,

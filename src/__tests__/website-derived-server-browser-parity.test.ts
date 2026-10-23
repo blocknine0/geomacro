@@ -9,7 +9,7 @@ const story={id:'macro-1234abcd',category:'macro',title:'Geomacro finds official
  published_at:'2026-10-15',date_precision:'day',observed_release_count:1,sources_credited:[],
  status:'official_release_observed_unscored',same_event_corrob_verified:false,severity:null};
 const doc=(signals:unknown[])=>({ok:true,schema:'geomacro.website-derived-news-feed.v1',checked_at:new Date(now).toISOString(),
- original_release_delay_minutes:15,retention_days:3,retention_hours:72,delivery_scope:'free_website_only',signals});
+ original_release_delay_minutes:0,retention_days:3,retention_hours:72,delivery_scope:'free_website_only',signals});
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
 describe('website server/browser source and native-day parity',()=>{
  it('retains the same embargo-eligible macro publisher-day as the browser without inventing an hour',async()=>{

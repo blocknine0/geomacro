@@ -12,7 +12,7 @@ function row(category,i=1,when="2026-10-12T12:00:00Z"){
 }
 function doc(signals=names.map(x=>row(x))){
   return {ok:true,schema:"geomacro.website-derived-news-feed.v1",
-    original_release_delay_minutes:15,retention_days:3,retention_hours:72,
+    original_release_delay_minutes:0,retention_days:3,retention_hours:72,
     delivery_scope:"free_website_only",signals};
 }
 const article=(label)=>{
@@ -107,7 +107,7 @@ test("reject old, future, malformed and unscored-contract-breaking rows",()=>{
   }
 });
 test("reject compromised D1 schema and missing category even if browser paints three",()=>{
-  assert.throws(()=>evaluatePublicNews({...doc(),original_release_delay_minutes:0},html(),NOW));
+  assert.throws(()=>evaluatePublicNews({...doc(),original_release_delay_minutes:1},html(),NOW));
   const x=evaluatePublicNews(doc([row("geopolitics"),row("rare_earth")]),html(),NOW);
   assert.equal(x.accepted,true);
   assert.equal(evaluatePublicNews(doc(),tabs+article("Geopolitics")+"</main>",NOW).accepted,false);

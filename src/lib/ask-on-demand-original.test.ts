@@ -55,11 +55,11 @@ describe("Ask question-driven original publisher retrieval",()=>{
   ]})) as never;
   expect(await answerFromCurrentOriginals("China latest lithium news",{now,discover,verifyPages:stale})).toBeNull();
  });
- it("keeps the website delay while allowing the live API to use a just-published original",async()=>{
+ it("allows website and live API to use the same just-published original",async()=>{
   const recent=vi.fn(async()=>({attempted:1,verified:1,verified_candidates:[
    {...original,publisher_article_page_date_verified:true,page_original_published_at:"2026-10-17T11:58:00.000Z"}
   ]})) as never;
-  expect(await answerFromCurrentOriginals("China latest lithium news",{now,discover,verifyPages:recent})).toBeNull();
+  expect(await answerFromCurrentOriginals("China latest lithium news",{now,discover,verifyPages:recent})).toMatchObject({latest_original_published_at:"2026-10-17T11:58:00.000Z",signed_gro_generated:false});
   expect(await answerFromCurrentOriginals("China latest lithium news",{now,discover,verifyPages:recent,websiteDelay:false}))
    .toMatchObject({latest_original_published_at:"2026-10-17T11:58:00.000Z",signed_gro_generated:false});
  });

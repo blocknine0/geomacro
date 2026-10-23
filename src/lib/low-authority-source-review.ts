@@ -47,7 +47,7 @@ export async function verifyLowSourceReview(envelope:SignedLowSourceReview,trust
   expiry!==source+72*3600_000||expiry<=now||reviewed>=expiry||new Date(expiry).toISOString()!==r.expires_at)throw Error('LOW_REVIEW_CLOCK_INVALID');
  const verified=r.reason==='ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME_VERIFIED';
  const rejected=r.reason==='ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED';
- if(verified&&(!/^\d{4}-\d\d-\d\dT/.test(r.source_published_at)||reviewed-source<15*60_000||reviewed-source>ORIGINAL_VERIFICATION_WINDOW_MS||now-source>ORIGINAL_VERIFICATION_WINDOW_MS))
+ if(verified&&(!/^\d{4}-\d\d-\d\dT/.test(r.source_published_at)||reviewed-source<0||reviewed-source>ORIGINAL_VERIFICATION_WINDOW_MS||now-source>ORIGINAL_VERIFICATION_WINDOW_MS))
   throw Error('LOW_REVIEW_CURRENT_EXACT_ORIGINAL_REQUIRED');
  if(r.verdict!==(verified?'SOURCE_EVIDENCE_VERIFIED':rejected?'SOURCE_EVIDENCE_REJECTED':'EVIDENCE_PENDING')||
   (verified?!hash.test(r.evidence_sha256??''):r.evidence_sha256!==null))throw Error('LOW_REVIEW_EVIDENCE_INVALID');

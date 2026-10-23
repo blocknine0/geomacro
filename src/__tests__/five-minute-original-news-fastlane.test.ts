@@ -82,7 +82,7 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(impl).toContain("const fallbackBatches=await Promise.all(");
    expect(impl).toContain("p.category===category?[fallbackBatches[i]]:[]");
  });
- it("leaves native original time and the 15-minute presentation embargo mandatory",()=>{
+ it("leaves native original time mandatory without added delay",()=>{
    const at=Date.parse("2026-10-20T12:00:00.000Z");
    const source={
      title:"Federal Reserve announces new sanctions on interest rates",
@@ -91,9 +91,9 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
      category:"macro" as const,credit:"Federal Reserve Board",
    };
    // Only a synthetic time-bound unit test, never a claimed actual release.
-   const early=deriveStatelessSignals([source],at+14*60_000);
+   const early=deriveStatelessSignals([source],at-1);
    expect(early).toEqual([]);
-   const ontime=deriveStatelessSignals([source],at+16*60_000);
+   const ontime=deriveStatelessSignals([source],at);
    expect(ontime).toHaveLength(1);
    for(const s of ontime){
      expect(s.same_event_corrob_verified).toBe(false);
@@ -150,14 +150,14 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(()=>decideFiveMinuteFallbackCategories([{category:"macro",healthy:true,recent_releases:-1}])).toThrow();
    expect(()=>decideFiveMinuteFallbackCategories([{category:"macro",healthy:true,recent_releases:NaN}])).toThrow();
  });
- it("counts source-native exact releases only after the existing 15-minute delay",()=>{
+ it("counts just-published source-native exact releases without added delay",()=>{
    const now=Date.parse("2026-10-23T12:00:00Z");
    const source={title:"Federal Reserve announces monetary policy interest rates",
      articleUrl:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261023a.htm",
      publishedAt:new Date(now-20*60_000).toISOString(),sourceId:"fed_press",
      category:"macro" as const,credit:"Federal Reserve Board"};
    expect(recentFastlaneReleaseCount([source],now)).toBe(1);
-   for(const age of [-60_000,14*60_000,61*60_000])
+   for(const age of [-60_000,61*60_000])
      expect(recentFastlaneReleaseCount([{...source,publishedAt:new Date(now-age).toISOString()}],now)).toBe(0);
    expect(recentFastlaneReleaseCount([{...source,datePrecision:"day" as const,publishedAt:"2026-10-23T00:00:00Z"}],now)).toBe(0);
  });

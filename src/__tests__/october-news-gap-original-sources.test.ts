@@ -19,13 +19,13 @@ describe("October 11–13 original-publisher news gap recovery",()=>{
    expect(pibOriginalIstMs("Posted On: 32 OCT 2026 7:13PM by PIB Delhi")).toBeNull();
    expect(pibOriginalIstMs("Posted On: 12 OCT 2026 0:13PM by PIB Delhi")).toBeNull();
  });
- it("admits 12 Oct India original after 15m, but never falsely labels a risk score or recirculated article",()=>{
+ it("admits 12 Oct India original at publication, but never falsely labels a risk score or recirculated article",()=>{
    const item={title:"India mineral research: Union Minister Launches Commercialisation Catalogue of Technologies",
      articleUrl:"https://www.pib.gov.in/PressReleasePage.aspx?PRID=2322448",
      publishedAt:"2026-10-12T13:43:00.000Z",
      sourceId:"in_pib_mines",category:"rare_earth" as const,credit:null};
-   expect(deriveStatelessSignals([item],Date.parse("2026-10-12T13:57:59.000Z"))).toHaveLength(0);
-   const data=deriveStatelessSignals([item],Date.parse("2026-10-12T13:58:00.000Z"));
+   expect(deriveStatelessSignals([item],Date.parse("2026-10-12T13:42:59.999Z"))).toHaveLength(0);
+   const data=deriveStatelessSignals([item],Date.parse("2026-10-12T13:43:00.000Z"));
    expect(data).toHaveLength(1);
    expect(data[0].published_at).toBe("2026-10-12T13:43:00.000Z");
    expect(data[0].severity).toBeNull();

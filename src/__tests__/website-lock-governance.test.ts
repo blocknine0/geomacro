@@ -42,12 +42,19 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-home-clarity-gri-reader-20261023");
+    expect(config.lock_revision).toBe("owner-approved-no-added-news-publication-delay-20261023");
     const launch = config.three_chain_launch_presentation_approval;
     const toggle = config.approved_three_category_toggle_presentation;
     const redesign = config.approved_store_reader_redesign;
     const home = config.approved_home_clarity_gri_reader;
-    expect(home.approved_ui_commit).toBe(config.baseline_sha);
+    const immediate=config.approved_no_added_news_publication_delay;
+    expect(immediate.approved_ui_commit).toBe(config.baseline_sha);
+    expect(immediate.previous_baseline_sha).toBe(home.approved_ui_commit);
+    expect(immediate.global_risk_final_lock_unmodified).toBe(true);
+    expect(immediate.canonical_pricing_unmodified).toBe(true);
+    expect(immediate.funds_authorized).toBe(false);
+    expect(immediate.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    expect(immediate.scope).toEqual(["src/routes/intelligence.tsx","src/routes/about.tsx","src/components/site-shell.tsx","src/components/intelligence/stateless-live-desk.tsx"]);
     expect(home.previous_baseline_sha).toBe(redesign.approved_ui_commit);
     expect(home.global_risk_final_lock_unmodified).toBe(true);
     expect(home.original_score_and_proof_clocks_preserved).toBe(true);

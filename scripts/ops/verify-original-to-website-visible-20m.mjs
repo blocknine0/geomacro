@@ -6,10 +6,10 @@
  * actual browser's earliest render). Never certify a global 20-minute SLA
  * from an empty window or a single successful event.
  */
-const D1="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news";
+const D1="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 const SITE="https://geomacro.live/intelligence";
 const DAY=86400_000,MINUTE=60_000;
-const AGE_LIMIT=72*3600_000,MIN_DELAY=15*MINUTE,TARGET=20*MINUTE;
+const AGE_LIMIT=72*3600_000,MIN_DELAY=0,TARGET=20*MINUTE;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const fail=(s)=>{throw Error("WEBSITE_VISIBILITY_PROOF_"+s);};
 const date=(s)=>typeof s==="string"&&Number.isFinite(Date.parse(s))?Date.parse(s):NaN;
@@ -25,7 +25,7 @@ const textOnly=(s)=>typeof s==="string"&&s.length<=1250&&
 export function assessWebsiteVisibleOriginals({journal,html,now=new Date(),siteStatus=200}={}){
  if(!journal||journal.ok!==true||
     journal.schema!=="geomacro.website-derived-news-feed.v1"||
-    journal.original_release_delay_minutes!==15||
+    (journal.original_release_delay_minutes!==0&&journal.original_release_delay_minutes!==15)||
     journal.retention_hours!==72||
     journal.ingest_clock_kind!=="D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER"||
     !Array.isArray(journal.signals)||!Array.isArray(journal.first_ingest)||

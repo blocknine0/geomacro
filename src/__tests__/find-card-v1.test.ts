@@ -25,7 +25,7 @@ const safe=(category:"geopolitics"|"macro"|"rare_earth"="macro",
  same_event_corrob_verified:false,severity:null,
 });
 const feed=(signals:unknown[])=>({ok:true,schema:"geomacro.website-derived-news-feed.v1",
- original_release_delay_minutes:15,retention_days:3,retention_hours:72,delivery_scope:"free_website_only",signals});
+ original_release_delay_minutes:0,retention_days:3,retention_hours:72,delivery_scope:"free_website_only",signals});
 
 describe("Geomacro Find Card v1—supplied exact public JSON Schema",()=>{
  it("publishes the canonical 2020-12 schema, all required fields and five conditional rules",()=>{
@@ -76,15 +76,15 @@ describe("Geomacro Find Card v1—supplied exact public JSON Schema",()=>{
  });
  it("uses a calendar-day sentinel, not an asserted clock, and respects day-only embargo",()=>{
   const s=safe("rare_earth","2026-10-14","day");
-  expect(findCardFromObservedRelease(s,Date.parse("2026-10-15T12:14:59Z"))).toBeNull();
-  const card=findCardFromObservedRelease(s,Date.parse("2026-10-15T12:15:00Z"));
+  expect(findCardFromObservedRelease(s,Date.parse("2026-10-15T11:59:59Z"))).toBeNull();
+  const card=findCardFromObservedRelease(s,Date.parse("2026-10-15T12:00:00Z"));
   expect(card?.published_at).toBe("2026-10-14T00:00:00.000Z");
   expect(card?.date_precision).toBe("day");
   expect(card?.freshness).toBe("daily");
   const invalid={...card,published_at:"2026-10-14T12:00:00.000Z"};
   expect(isFindCardV1(invalid)).toBe(false);
   expect(findCardFromObservedRelease({...s,published_at:"2026-02-30"},NOW)).toBeNull();
-  expect(findCardFromObservedRelease(safe("macro","2026-10-16T17:50:00.000Z"),NOW)).toBeNull();
+  expect(findCardFromObservedRelease(safe("macro","2026-10-16T18:00:01.000Z"),NOW)).toBeNull();
  });
  it("requires per-domain FULL facts, sane confidence, no unscored numeric severity, no URLs",()=>{
   const card=findCardFromObservedRelease(safe(),NOW)!;

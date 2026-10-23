@@ -6,7 +6,7 @@ export type WebsiteDerivedNewsResult = {
   ok: true;
   schema: "geomacro.website-derived-news-feed.v1";
   checked_at: string;
-  original_release_delay_minutes: 15;
+  original_release_delay_minutes: 0;
   retention_days: 3;
   retention_hours: 72;
   delivery_scope: "free_website_only";
@@ -14,7 +14,7 @@ export type WebsiteDerivedNewsResult = {
 };
 
 
-const JOURNAL = "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news";
+const JOURNAL = "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 
 /** Exact shared embargo/privacy checks; no provider, B2, Supabase or paid call. */
 export async function readWebsiteDerivedNews(fetchImpl:typeof fetch=fetch,now=Date.now()):Promise<WebsiteDerivedNewsResult>{
@@ -31,7 +31,7 @@ export async function readWebsiteDerivedNews(fetchImpl:typeof fetch=fetch,now=Da
     const data = JSON.parse(raw) as WebsiteDerivedNewsResult;
     if (data.ok !== true ||
         data.schema !== "geomacro.website-derived-news-feed.v1" ||
-        data.original_release_delay_minutes !== 15 ||
+        (data.original_release_delay_minutes!==0&&data.original_release_delay_minutes!==15) ||
         data.retention_days !== 3 || data.retention_hours !== 72 ||
         data.delivery_scope !== "free_website_only" ||
         !Array.isArray(data.signals) || data.signals.length > 250) {

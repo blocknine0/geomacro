@@ -30,8 +30,8 @@ describe("verified BLS Atom publisher originals", () => {
       expect(parsed.dated).toHaveLength(1);
       expect(parsed.dated[0].publishedAt).toBe(original.replace("Z", ".000Z"));
       const at = Date.parse(original);
-      expect(deriveStatelessSignals(parsed.dated, at + 14 * 60000)).toHaveLength(0);
-      const signals = deriveStatelessSignals(parsed.dated, at + 15 * 60000);
+      expect(deriveStatelessSignals(parsed.dated, at - 1)).toHaveLength(0);
+      const signals = deriveStatelessSignals(parsed.dated, at);
       expect(signals).toHaveLength(1);
       expect(signals[0]).toMatchObject({ category: "macro", severity: null,
         same_event_corrob_verified: false, status: "official_release_observed_unscored" });

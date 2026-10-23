@@ -60,7 +60,7 @@ function AboutPage() {
         },
       ]}
       note={
-        "Public findings have a 15-minute delay; Risk Indices have a 60-minute delay. Missing evidence is not a zero-risk reading. API keys and self-service checkout are coming soon. We do not sell personal information. Privacy or data-removal enquiries: contact@geomacro.live."
+        "Public findings have no added publication delay; Risk Indices have a 60-minute delay. Missing evidence is not a zero-risk reading. API keys and self-service checkout are coming soon. We do not sell personal information. Privacy or data-removal enquiries: contact@geomacro.live."
       }
     >
       <details id="privacy" className="mt-8 border-t border-border pt-4"><summary className="cursor-pointer text-sm font-medium">Privacy</summary><p className="mt-3 text-sm leading-7 text-muted-foreground">Category preferences, visit time and saved finding identifiers stay in your browser. We do not store story text in reader preferences. Email contact@geomacro.live for privacy or removal enquiries. No independent external security certification or production SLA is claimed unless actually completed or contracted.</p></details>

@@ -26,8 +26,8 @@ import { currentVerifiedDeskEvents } from "@/lib/intelligence-current-desk";
 import { SourceNetworkMonitor } from "@/components/intelligence/source-network-monitor";
 import { intelligenceCategorySearch } from "@/lib/intelligence-desk-view";
 
-const TITLE = "Geomacro Finds | Live 15-Minute Delayed Intelligence";
-const DESCRIPTION = "Geomacro Finds: on-demand geopolitical, Macro/FX and critical-minerals developments, updated as eligible official releases arrive with a 15-minute public delay. No scores or persistent source storage.";
+const TITLE = "Geomacro Finds | Latest Intelligence";
+const DESCRIPTION = "Geomacro Finds: on-demand geopolitical, Macro/FX and critical-minerals developments, updated as eligible official releases arrive without an added publication delay. No scores or persistent source storage.";
 const URL = "https://geomacro.live/intelligence";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 

@@ -32,10 +32,10 @@ describe("Australian minister original-source, website-only activation",()=>{
   expect(JSON.stringify(out)).not.toContain(title);
   expect(JSON.stringify(out)).not.toContain("www.minister.industry.gov.au");
  });
- it("enforces exact 15-minute website embargo and native publication cutoff",()=>{
+ it("enforces exact original future-clock rejection and native publication cutoff",()=>{
   const a=parseFirstPartyFeed(xml(title),feed,now);
-  expect(deriveStatelessSignals(a.dated,issued+14*60_000)).toHaveLength(0);
-  expect(deriveStatelessSignals(a.dated,issued+15*60_000)).toHaveLength(1);
+  expect(deriveStatelessSignals(a.dated,issued-1)).toHaveLength(0);
+  expect(deriveStatelessSignals(a.dated,issued)).toHaveLength(1);
   expect(deriveStatelessSignals(a.dated,issued+31*86400_000)).toHaveLength(0);
   for(const date of ["","2026-10-08","Tue, 13 Oct 2026 09:40:00"]){
    expect(parseFirstPartyFeed(xml(title,uri,date),feed,now).dated).toHaveLength(0);

@@ -767,7 +767,7 @@ export async function readStatelessWebsiteIntelligence(
 
 // A narrowly scoped rapid-response ORIGINAL publisher lane. This is not 195
 // local publishers or a guarantee of one published story every five minutes.
-// Source specs, RSS/Atom parsing, source-native clocks, credits, 15-minute
+// Source specs, RSS/Atom parsing, source-native clocks, credits, zero-added-delay
 // delay, and Geomacro-authored text all come from the EXISTING canonical
 // first-party reader; do not construct a new license-agnostic news crawler.
 export const FIVE_MINUTE_NEWS_FASTLANE = Object.freeze([
@@ -876,7 +876,7 @@ export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20,
  const fallbackBatches=await Promise.all(fallbackSelected.map(
    ({source})=>safely(source)));
  // Retain the EXISTING bounded three-domain derivation, original dates,
- // source credits, privacy and 15-minute publisher embargo.
+ // source credits, privacy and source-native future-clock rejection.
  const domains=["geopolitics","macro","rare_earth"] as const;
  return domains.map(category=>{
    const scopes=[
