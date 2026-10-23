@@ -198,3 +198,38 @@ Human actions are **on demand**, not 24/7 laptop work; each genuinely reviewed
 signed batch can be handed off once and resumed by the existing cloud cadence
 with immutable B2 paths and actual protected validation. No artificial
 source freshness, scope enlargement or synthetic score is authorized.
+
+
+## Every retained news item gets a signed **derived** input (23 October 2026)
+
+All three categories use the exact same 72-hour D1 derived journal.
+The current automated publisher `publish-automated-intelligence-inputs.ts`
+already signs every canonical content-unique retained item with the approved
+**derived-ingestion Ed25519 issuer**, persists the envelope to existing D1
+and independently verifies publication using
+`verify-all-news-signed-publications.mjs`. Each new canonical content
+revision is separately signed; identical duplicates are not reissued.
+Failed or missing signatures are NOT hidden by successful collection jobs.
+
+Previously the standalone 15-minute-independent derived signing continuation
+listened for Fastlane, Auto Ingest and six continent sweeps, but not both
+distinct direct D1 writer completion events. The signed derived backstop
+now also wakes after:
+- `Website Derived News Continuity` (primary D1 derived publisher)
+- `Website Derived News Cadence Backstop` (conditional recovery publisher)
+
+The existing main-only ancestry verifier checks the trusted repository,
+successful producer, protected canonical main and commit ancestry; an
+indirect workflow_run producer event is admitted ONLY for these two named
+trusted D1 writers. All other untrusted nested events are rejected.
+The same **existing hourly fallback** remains; there is no extra cron,
+always-on laptop, new B2 ticket, Supabase, paid API or human key export.
+Cloud scheduler delays and failures remain possible. The independent
+signed-readback step will fail closed when an item lacks its proof.
+
+A Geomacro ingestion signature proves exact owned *derived content
+integrity only*. An unverified source candidate remains unverified;
+signing it does not imply original HTML-byte verification, legal rights,
+independent Facts and Rights authority, country/category certificate,
+numerical GRI v1.2, Risk Indices publication, a signed GRO or x402
+commercial delivery. Those are separate genuine-input requirements.

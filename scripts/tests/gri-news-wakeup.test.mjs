@@ -33,3 +33,21 @@ test('schedule, owner dispatch and scoped main push check exact checkout, withou
   {GITHUB_REPOSITORY:'fork/geomacro'},{GITHUB_EVENT_NAME:'pull_request'}])
   assert.throws(()=>verifyGriNewsWakeup({...args,env:{...env,...change}}));
 });
+
+test('trusted canonical D1 primary and recovery writer completions wake all-news signing',()=>{
+ for(const name of ['Website Derived News Continuity','Website Derived News Cadence Backstop']){
+  const result=verifyGriNewsWakeup({...args,event:{workflow_run:{...run,name,event:'schedule'}}});
+  assert.equal(result.allowed,true);
+  assert.equal(result.signed_gri_input_verified,false);
+  assert.equal(result.published,false);
+  // These canonical source publishers may themselves be woken by a trusted
+  // prior workflow. That chain must still bind canonical main and ancestry.
+  const chained=verifyGriNewsWakeup({...args,event:{workflow_run:{...run,name,event:'workflow_run'}}});
+  assert.equal(chained.allowed,true);
+  assert.equal(chained.news_workflow_ancestry_verified,true);
+  assert.throws(()=>verifyGriNewsWakeup({...args,isAncestor:false,
+    event:{workflow_run:{...run,name,event:'workflow_run'}}}));
+ }
+ assert.throws(()=>verifyGriNewsWakeup({...args,event:{workflow_run:{
+  ...run,name:'Five-Minute Original News Fastlane',event:'workflow_run'}}}));
+});
