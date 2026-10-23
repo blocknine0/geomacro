@@ -141,7 +141,7 @@ async function exactReadback(row,now,fetchImpl,{unclaimedGovUkContentClock=false
       if(response?.ok===true && response.status===200 &&
          response.redirected!==true &&
          (!response.url||response.url===apiUrl) &&
-         /^application\\/json(?:;|$)/iu.test(response.headers?.get("content-type")??"") &&
+         /^application\/json(?:;|$)/iu.test(response.headers?.get("content-type")??"") &&
          Number(response.headers?.get("content-length")??0)<=128*1024 &&
          response.body){
         const reader=response.body.getReader();
