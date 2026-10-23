@@ -10,11 +10,13 @@ on:
     paths:
       - ".github/workflows/predge-shared-d1-news-live-acceptance.yml"
       - "scripts/ops/verify-shared-derived-news-live.mjs"
+      - "scripts/tests/verify-shared-derived-news-live-safe-diagnostic.test.mjs"
       - "docs/partners/predge/**"
   pull_request:
     paths:
       - ".github/workflows/predge-shared-d1-news-live-acceptance.yml"
       - "scripts/ops/verify-shared-derived-news-live.mjs"
+      - "scripts/tests/verify-shared-derived-news-live-safe-diagnostic.test.mjs"
       - "src/__tests__/predge-shared-feed-live-workflow.test.ts"
   workflow_run:
     workflows: ["Website Derived News Continuity"]
@@ -42,6 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/ops/verify-shared-derived-news-live.mjs
+          node --test scripts/tests/verify-shared-derived-news-live-safe-diagnostic.test.mjs
           grep -Fq 'same_journal_ids_verified:true' scripts/ops/verify-shared-derived-news-live.mjs
           grep -Fq 'partner_resale_or_commercial_redistribution_authorized!==false' scripts/ops/verify-shared-derived-news-live.mjs
           ! grep -Eq 'PAYMENT-SIGNATURE|secrets.B2_|SUPABASE_SERVICE_ROLE_KEY' scripts/ops/verify-shared-derived-news-live.mjs
