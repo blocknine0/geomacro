@@ -9,6 +9,11 @@ on:
         description: "One of the fixed 6 continent groups"
         required: true
         type: string
+      canary_only:
+        description: "One-country post-merge smoke only; forbidden on schedule"
+        required: false
+        default: false
+        type: boolean
       country_iso3:
         description: "Optional manual country ISO3, must belong to this continent"
         required: false
@@ -28,14 +33,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  one-country-three-domain-source-readback:
+  full-continent-three-domain-source-readback:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
        github.event_name == 'push')
     runs-on: ubuntu-24.04
-    timeout-minutes: 9
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -45,38 +50,22 @@ jobs:
           bun-version: '1.4.2'
       - name: Install exact locked source dependencies without install scripts
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: Verify canonical 195-country disjoint partition and strict two-hour source budget
+      - name: Verify full 195-country partition, three categories and bounded complete sweeps
         run: |
-          set -euo pipefail
-          node --check scripts/lib/continent-country-195-rotation.mjs
-          node --check scripts/ops/plan-continent-country-195-rotation.mjs
-          node --test scripts/tests/continent-country-195-rotation.test.mjs scripts/tests/continent-country-resume.test.mjs
-      - name: Restore last successful scheduled country without clock-based skips
-        if: github.event_name == 'schedule' || github.event_name == 'push'
-        id: resume
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GEOMACRO_CONTINENT: ${{ inputs.continent }}
-        run: node scripts/ops/restore-continent-country-cursor.mjs
-      - name: Select exactly one scheduled ISO3 for this continent
-        id: continent_plan
+          node --check scripts/lib/continent-country-full-sweep.mjs
+          node --check scripts/ops/run-full-continent-country-sweep.mjs
+          node --test scripts/tests/continent-country-full-sweep.test.mjs scripts/tests/continent-country-195-rotation.test.mjs scripts/tests/continent-country-resume.test.mjs
+      - name: Check EVERY country in this continent across exactly three categories
         env:
           GEOMACRO_CONTINENT: ${{ inputs.continent }}
-          GEOMACRO_PREVIOUS_COUNTRY: ${{ steps.resume.outputs.previous_country }}
           GEOMACRO_REQUESTED_COUNTRY: ${{ inputs.country_iso3 }}
-        run: node scripts/ops/plan-continent-country-195-rotation.mjs
-      - name: Read existing real country-source originals across three categories without money
-        env:
-          GEOMACRO_COUNTRY_BATCH_START: ${{ steps.continent_plan.outputs.batch_start }}
-          GEOMACRO_COUNTRY_BATCH_COUNT: "1"
-          GEOMACRO_EXPECTED_COUNTRY_ISO3: ${{ steps.continent_plan.outputs.expected_country }}
-          GEOMACRO_CONTINENT: ${{ steps.continent_plan.outputs.continent }}
-        run: bun scripts/ops/verify-live-195-country-batch.ts
+          GEOMACRO_CONTINENT_CANARY_ONLY: ${{ inputs.canary_only }}
+        run: bun scripts/ops/run-full-continent-country-sweep.mjs
       - name: Persist exact bounded private source-only country artifact
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: live-country-195-resume-${{ github.run_id }}-${{ inputs.continent }}-${{ github.run_attempt }}
-          path: artifacts/country-195/live-batch-checkpoint.v1.json
+          path: artifacts/country-195/continent-sweep-checkpoint.v1.json
           retention-days: 14
           if-no-files-found: error

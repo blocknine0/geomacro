@@ -35,7 +35,7 @@ test("all 195 countries including 2 observers partitioned across exactly 6 uniqu
  const modified=registry.replace("AFG|AF|Afghanistan","FAK|AF|Fake");
  assert.throws(()=>assertContinentCanonical195(modified),/REGISTRY_PARTITION_MISMATCH/);
 });
-test("2h slot probes ONE continent ISO3 per scheduled tick, full region sweep with zero cross-duplication",()=>{
+test("legacy single-country planner still rotates deterministically for compatibility",()=>{
  for(const [continent,,minute,count,oddHour] of regions){
   const group=CONTINENT_COUNTRIES_195[continent],seen=[];
   for(let n=0;n<count;n++){
@@ -60,7 +60,7 @@ test("2h slot probes ONE continent ISO3 per scheduled tick, full region sweep wi
   assert.equal(cycle.country_iso3,group[0]);
  }
 });
-test("UTC slot stays stable across minute delays, without advancing missing scheduled runs",()=>{
+test("legacy UTC planner stays stable inside its old two-hour window",()=>{
  const a=planTwoHourContinentCountrySweep({continent:"asia",registryText:registry,
    now:new Date("2026-10-22T02:24:00Z")});
  const b=planTwoHourContinentCountrySweep({continent:"asia",registryText:registry,
@@ -101,9 +101,9 @@ test("all six actual Github workflows have distinct 2h cron and ONE shared no-fu
  assert.match(shared,/workflow_call:/);
  assert.ok(shared.includes("group: geomacro-continent-country-source-${{ inputs.continent }}"));
  assert.doesNotMatch(shared,/group: geomacro-continent-country-six-lanes-protected-sources/);
- assert.match(shared,/GEOMACRO_COUNTRY_BATCH_COUNT: "1"/);
- assert.match(shared,/GEOMACRO_EXPECTED_COUNTRY_ISO3/);
- assert.match(shared,/scripts\/ops\/verify-live-195-country-batch.ts/);
+ assert.match(shared,/Check EVERY country in this continent/);
+ assert.match(shared,/GEOMACRO_CONTINENT_CANARY_ONLY/);
+ assert.match(shared,/scripts\/ops\/run-full-continent-country-sweep.mjs/);
  assert.match(shared,/retention-days: 14/);
  assert.doesNotMatch(shared,/RISK_OBJECT_SIGNING_PRIVATE|COINBASE_.*PRIVATE|SUPABASE_SERVICE_ROLE/);
  // Each planned UTC offset is 20 minutes from the preceding group.
@@ -111,7 +111,7 @@ test("all six actual Github workflows have distinct 2h cron and ONE shared no-fu
  assert.deepEqual(slots,[4,24,44,64,84,104]);
  assert.deepEqual(slots.slice(1).map((x,i)=>x-slots[i]),[20,20,20,20,20]);
  assert.equal(124-slots[5],20);
- assert.ok(shared.includes("timeout-minutes: 9"));
+ assert.ok(shared.includes("timeout-minutes: 70"));
  const minutes=new Set();
  for(const [slug,label,minute,,oddHour] of regions){
   const yaml=readFileSync(`.github/workflows/continent-country-${slug}-2h.yml`,"utf8");

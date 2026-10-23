@@ -4,6 +4,7 @@
  * Bounded read-only verified-source acceptance, NEVER product readiness.
  */
 import {mkdirSync,writeFileSync} from "node:fs";
+import {dirname,relative,isAbsolute,resolve} from "node:path";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195";
 import {COVERAGE_DOMAINS_195,buildCanonical195x3CoverageMatrix,
   type CoverageObservation195} from "../../src/lib/canonical-195-country-coverage-matrix";
@@ -171,7 +172,14 @@ const report={
    };
  }),
 };
-mkdirSync("artifacts/country-195",{recursive:true,mode:0o700});
-writeFileSync("artifacts/country-195/live-batch-checkpoint.v1.json",
+const checkpointFile=process.env.GEOMACRO_COUNTRY_CHECKPOINT_FILE??"artifacts/country-195/live-batch-checkpoint.v1.json";
+if(process.env.GEOMACRO_COUNTRY_CHECKPOINT_FILE){
+ const temp=process.env.RUNNER_TEMP;
+ const rel=temp?relative(resolve(temp),resolve(checkpointFile)):"..";
+ if(!isAbsolute(checkpointFile)||rel===""||rel.startsWith("..")||isAbsolute(rel))
+  throw Error("COUNTRY_195_CHECKPOINT_TEMP_SCOPE_INVALID");
+}
+mkdirSync(dirname(checkpointFile),{recursive:true,mode:0o700});
+writeFileSync(checkpointFile,
   JSON.stringify(report,null,2)+"\n",{mode:0o600});
 console.log(JSON.stringify(report));
