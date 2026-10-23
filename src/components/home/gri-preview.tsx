@@ -30,8 +30,8 @@ export function GriPreview({
             One verified reading of current geopolitical, macro and critical-mineral risk. The dedicated GRI workspace contains the history, exact change attribution, evidence, methodology and integrity proof.
           </p>
           <Button asChild className="mt-6 gap-2">
-            <Link to="/global-risk">
-              Open the full GRI workspace <ArrowRight className="h-4 w-4" />
+            <Link to="/risk-indices">
+              View the Risk Indices <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
         </div>
@@ -49,7 +49,7 @@ export function GriPreview({
                 {error?.message ?? "Geomacro could not load the canonical GRI reading."}
               </p>
               <p className="mt-3 text-xs text-muted-foreground">
-                The dedicated GRI page remains the canonical verification surface.
+                Live proof requires independently validated signed publication.
               </p>
             </div>
           ) : (
