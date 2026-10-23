@@ -4,7 +4,7 @@ import {deriveStatelessSignals} from "../lib/stateless-intelligence-model";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS} from "../../scripts/lib/global-official-release-feeds.mjs";
 import {FIVE_MINUTE_NEWS_FASTLANE,FIVE_MINUTE_NEWS_FALLBACK,
  FASTLANE_MAX_FALLBACK_READS_PER_RUN,FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN,decideFiveMinuteFallbackCategories,
- readFiveMinuteNewsFastlane} from "../lib/stateless-public-intelligence.server";
+ recentFastlaneReleaseCount,readFiveMinuteNewsFastlane} from "../lib/stateless-public-intelligence.server";
 
 const read=(p:string)=>readFileSync(p,"utf8");
 const CATS=["geopolitics","macro","rare_earth"];
@@ -122,7 +122,7 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(pub).toContain("report.healthy_feed_count<1");
    expect(pub).toContain("report.feed_count>expectedOrigins+1");
    expect(pub).toContain("conditional_fallback_attempted:report.feed_count>expectedOrigins");
-   expect(pub).toContain("fallback_only_for_complete_primary_category_outage:true");
+   expect(pub).toContain("fallback_for_primary_outage_or_no_recent_release:true");
    expect(pub).toContain("const baseline=await fetchAllDerivedNews(fetch,runAt)");
    expect(pub).toContain("!existingIds.has(s.id)");
    expect(pub).toContain("fetchAllDerivedNews(fetch,Date.now())");
@@ -140,5 +140,58 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(pub).not.toContain("COINBASE_X402_MAINNET_ACK");
    expect(pub).not.toContain("RISK_OBJECT_SIGNING_PRIVATE_KEY");
    expect(pub).not.toContain("https://api.gdeltproject.org");
+ });
+ it("tries one alternative when reachable primary feeds contain no recent qualifying release",()=>{
+   const primary=FIVE_MINUTE_NEWS_FASTLANE.map(x=>({category:x.category,healthy:true,recent_releases:0}));
+   expect(decideFiveMinuteFallbackCategories(primary)).toEqual(CATS);
+   primary.find(x=>x.category==="macro")!.recent_releases=1;
+   expect(decideFiveMinuteFallbackCategories(primary)).toEqual(["geopolitics","rare_earth"]);
+   expect(()=>decideFiveMinuteFallbackCategories([{category:"macro",healthy:true,recent_releases:-1}])).toThrow();
+   expect(()=>decideFiveMinuteFallbackCategories([{category:"macro",healthy:true,recent_releases:NaN}])).toThrow();
+ });
+ it("counts source-native exact releases only after the existing 15-minute delay",()=>{
+   const now=Date.parse("2026-10-23T12:00:00Z");
+   const source={title:"Federal Reserve announces monetary policy interest rates",
+     articleUrl:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261023a.htm",
+     publishedAt:new Date(now-20*60_000).toISOString(),sourceId:"fed_press",
+     category:"macro" as const,credit:"Federal Reserve Board"};
+   expect(recentFastlaneReleaseCount([source],now)).toBe(1);
+   for(const age of [-60_000,14*60_000,61*60_000])
+     expect(recentFastlaneReleaseCount([{...source,publishedAt:new Date(now-age).toISOString()}],now)).toBe(0);
+   expect(recentFastlaneReleaseCount([{...source,datePrecision:"day" as const,publishedAt:"2026-10-23T00:00:00Z"}],now)).toBe(0);
+ });
+ it("recovers a quiet category through the real bounded collector without a polling cascade",async()=>{
+   const now=Date.parse("2026-10-23T12:00:00Z"),reads:string[]=[];
+   const reports=await readFiveMinuteNewsFastlane(now,20,undefined,{readPinnedSource:async source=>{
+     reads.push(source.id);
+     return {healthy:true,candidates:source.id==="bis_press"?[{
+       title:"Bank for International Settlements announces monetary policy interest rates",
+       articleUrl:"https://www.bis.org/press/p261023.htm",publishedAt:new Date(now-20*60_000).toISOString(),
+       sourceId:source.id,category:"macro",credit:source.credit,
+     }]:[]};
+   }});
+   expect(reads).toHaveLength(13);
+   expect(new Set(reads).size).toBe(13);
+   const macro=reports.find(r=>r.category==="macro")!;
+   expect(macro.signals).toHaveLength(1);
+   expect(macro.primary_healthy_feed_count).toBe(4);
+   expect(macro.healthy_feed_count).toBe(5);
+   expect(macro.fallback_reason).toBe("NO_RECENT_QUALIFYING_PRIMARY_RELEASE");
+   expect(macro.signals[0].published_at).toBe(new Date(now-20*60_000).toISOString());
+   expect(JSON.stringify(reports)).not.toContain("https://");
+ });
+ it("retains truthful healthy-but-quiet status when the bounded alternative also fails",async()=>{
+   const reads:string[]=[];
+   const fallbackIds=new Set(FIVE_MINUTE_NEWS_FALLBACK.map(x=>x.id));
+   const reports=await readFiveMinuteNewsFastlane(Date.parse("2026-10-23T12:00:00Z"),20,undefined,
+     {readPinnedSource:async source=>{
+       reads.push(source.id);
+       if(fallbackIds.has(source.id as any))throw Error("SYNTHETIC_PROVIDER_UNAVAILABLE");
+       return {healthy:true,candidates:[]};
+     }});
+   expect(reads).toHaveLength(13);
+   expect(reports.every(r=>r.status==="no_eligible_original_releases"&&r.signals.length===0)).toBe(true);
+   expect(reports.every(r=>r.healthy_feed_count===r.primary_healthy_feed_count)).toBe(true);
+   expect(reports.every(r=>r.fallback_reason==="NO_RECENT_QUALIFYING_PRIMARY_RELEASE")).toBe(true);
  });
 });

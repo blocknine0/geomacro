@@ -687,6 +687,9 @@ export type StatelessIntelligenceResult = {
   releases_examined: number;
   feed_count: number;
   healthy_feed_count: number;
+  primary_healthy_feed_count?:number;
+  recent_primary_release_count?:number;
+  fallback_reason?:"PRIMARY_TRANSPORT_UNAVAILABLE"|"NO_RECENT_QUALIFYING_PRIMARY_RELEASE"|null;
   current_24h_count: number;
   last_7d_count: number;
   last_30d_count: number;
@@ -790,7 +793,7 @@ export const FIVE_MINUTE_NEWS_FASTLANE = Object.freeze([
 export const FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN=10 as const;
 /**
  * Conditional first-party alternatives, only if EVERY primary issuer within
- * that category failed transport. No additional steady-state source polling,
+ * that category failed transport or has no qualifying recent release.
  * no new credential/rights model, no raw redistribution.
  * Different origin families reduce the correlated-outage risk.
  */
@@ -800,20 +803,29 @@ export const FIVE_MINUTE_NEWS_FALLBACK=Object.freeze([
   {category:"rare_earth",id:"uk_dbt"},
 ] as const);
 export const FASTLANE_MAX_FALLBACK_READS_PER_RUN=3 as const;
+export const FASTLANE_RECENT_RELEASE_MS=60*60_000;
+export function recentFastlaneReleaseCount(candidates:readonly StatelessSourceCandidate[],now:number,maxSignals=20){
+ return deriveStatelessSignals([...candidates],now,{maxSignals}).filter(s=>
+   s.date_precision==="exact"&&Date.parse(s.published_at)>=now-FASTLANE_RECENT_RELEASE_MS).length;
+}
 export function decideFiveMinuteFallbackCategories(
-  primary: readonly {category:string;healthy:boolean}[],
+  primary: readonly {category:string;healthy:boolean;recent_releases?:number}[],
 ): Array<"geopolitics"|"macro"|"rare_earth"> {
   const domains=["geopolitics","macro","rare_earth"] as const;
   if(!Array.isArray(primary)||
      primary.some(x=>!x||!domains.includes(x.category as typeof domains[number])||
-       typeof x.healthy!=="boolean"))
+       typeof x.healthy!=="boolean"||
+       (x.recent_releases!==undefined&&(!Number.isSafeInteger(x.recent_releases)||
+         x.recent_releases<0||x.recent_releases>40))))
     throw Error("ORIGINAL_FASTLANE_PRIMARY_HEALTH_INVALID");
   return domains.filter(category=>
     primary.some(x=>x.category===category)&&
-    !primary.some(x=>x.category===category&&x.healthy));
+    (!primary.some(x=>x.category===category&&x.healthy)||
+     primary.filter(x=>x.category===category).every(x=>x.recent_releases===0)));
 }
 export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20,
- onPrivateOriginalCandidates?:(candidates:readonly StatelessSourceCandidate[])=>void):
+ onPrivateOriginalCandidates?:(candidates:readonly StatelessSourceCandidate[])=>void,
+ dependencies:{readPinnedSource?:typeof readSource}={}):
  Promise<StatelessIntelligenceResult[]>{
  if(!Number.isFinite(now)||!Number.isSafeInteger(maxSignals)||
     maxSignals<1||maxSignals>40)throw Error("ORIGINAL_FASTLANE_CLOCK_OR_BUDGET_INVALID");
@@ -830,14 +842,17 @@ export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20,
  // One unreachable origin must not suppress healthy independent publishers.
  // Do not let a rare parsing exception escape Promise.all and cancel other
  // categories; a health=false lane is still correctly reported as degraded.
- const safely=(source:StatelessSourceSpec)=>readSource(source,now)
+ const safely=(source:StatelessSourceSpec)=>(dependencies.readPinnedSource
+   ?dependencies.readPinnedSource(source,now):readSource(source,now))
    .catch(()=>({candidates:[] as StatelessSourceCandidate[],healthy:false}));
  const batches=await Promise.all(selected.map(({source})=>safely(source)));
- // Only failed primary categories pay the marginal zero-subscription cost
- // of exactly ONE separately pre-registered first-party fallback. A quiet
- // but healthy source is not an outage and triggers no additional fetch.
+ // Reachable feeds with no recent qualifying release cannot satisfy the
+ // near-realtime lane. Try one existing alternative without declaring the
+ // healthy primary down, widening clocks, or adding an unbounded search.
+ const primaryHealth=selected.map((p,i)=>({category:p.category,healthy:batches[i].healthy,
+   recent_releases:recentFastlaneReleaseCount(batches[i].candidates,now,maxSignals)}));
  const fallbackCategories=decideFiveMinuteFallbackCategories(
-   selected.map((p,i)=>({category:p.category,healthy:batches[i].healthy})));
+   primaryHealth);
  const fallbackSelected=fallbackCategories.map(category=>{
    const entry=FIVE_MINUTE_NEWS_FALLBACK.find(x=>x.category===category);
    if(!entry)throw Error("ORIGINAL_FASTLANE_FALLBACK_CATEGORY_UNREGISTERED");
@@ -870,6 +885,12 @@ export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20,
      earliest_original:new Date(now-STATELESS_LOOKBACK_MS).toISOString(),
      releases_examined:candidates.length,feed_count:scopes.length,
      healthy_feed_count:healthy,
+     primary_healthy_feed_count:primaryHealth.filter(p=>p.category===category&&p.healthy).length,
+     recent_primary_release_count:primaryHealth.filter(p=>p.category===category)
+       .reduce((n,p)=>n+p.recent_releases,0),
+     fallback_reason:fallbackCategories.includes(category)?
+       primaryHealth.some(p=>p.category===category&&p.healthy)?
+         "NO_RECENT_QUALIFYING_PRIMARY_RELEASE":"PRIMARY_TRANSPORT_UNAVAILABLE":null,
      current_24h_count:signals.filter(s=>Date.parse(s.published_at)>=now-86400000).length,
      last_7d_count:signals.filter(s=>Date.parse(s.published_at)>=now-7*86400000).length,
      last_30d_count:signals.length,
