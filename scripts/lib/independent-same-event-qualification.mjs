@@ -31,6 +31,7 @@ const PUBLISHER_REGISTRY=Object.freeze({
   "www.federalreserve.gov":"federal_reserve",
   "www.ecb.europa.eu":"ecb",
   "www.usgs.gov":"usgs",
+  "www.energy.gov":"us_doe",
   // EU Council genuine institutional identity only. Individual reuse
   // conditions (including credit), Facts/Rights and event corroboration
   // remain fully independent cryptographic prerequisites.
