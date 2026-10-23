@@ -163,9 +163,10 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
 
   it("checks an independent publisher in the same 30m window when the first has zero articles",async()=>{
     const calls:string[]=[];
+    const selectedGeoPublisher=select30MinPublishers(NOW).geopolitics[0].id;
     const probe=vi.fn(async(source:{id:string,domain:string})=>{
       calls.push(source.id);
-      return verifiedDateResponse(source,source.id==="un_news_security_original_rss_review"?3:0);
+      return verifiedDateResponse(source,source.id===selectedGeoPublisher?3:0);
     });
     const x=await probe30MinThreeDomainPulse({now:NOW,probe});
     expect(probe).toHaveBeenCalledTimes(6);
