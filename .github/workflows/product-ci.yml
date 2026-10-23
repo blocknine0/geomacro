@@ -59,8 +59,10 @@ jobs:
       - name: Private source handoff SQLite binding and safe rejection contracts (offline)
         run: bun test scripts/tests/private-source-handoff-sqlite.test.ts
 
-      - name: Genuine signed 503 recovery owner-private preflight (offline, no secrets)
-        run: node --test scripts/tests/owner-private-503-recovery-preflight.test.mjs
+      - name: Genuine signed 503 recovery owner-private preflight and historical B2 truth gate (offline)
+        run: |
+          node --test scripts/tests/owner-private-503-recovery-preflight.test.mjs
+          node --test scripts/tests/phase2-gri-recovery-readiness.test.mjs
 
       - name: Private handoff D1 production acceptance contract (offline, no funds)
         run: node --test scripts/tests/verify-private-handoff-production.test.mjs

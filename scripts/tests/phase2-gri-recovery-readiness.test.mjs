@@ -34,7 +34,9 @@ test("existing historical D1 row is not proof of a current B2 immutable readback
     signers,now});
   assert.equal(r.historical_d1_metadata_recorded,true);
   assert.equal(r.immutable_historical_b2_readback_now_verified,false);
-  assert.equal(r.next_safe_action,"STAGE_REAL_EXTERNAL_REVIEW_AND_COUNTRY_CERTIFICATES");
+  assert.equal(r.historical_b2_readback_needs_governed_verification,true);
+  assert.equal(r.next_safe_action,"RUN_EXISTING_GRI_PINNED_VERSION_RECOVERY");
+  assert.ok(r.blockers.includes("IMMUTABLE_GRI_HISTORY_READBACK_NOT_YET_VERIFIED"));
   assert.equal(r.current_signed_publication_verified,false);
 });
 test("valid SHA-shaped pointers are still unverified signed material, not permission to publish",()=>{
@@ -47,7 +49,19 @@ test("valid SHA-shaped pointers are still unverified signed material, not permis
   assert.equal(r.signed_pointer_hint_present,true);
   assert.equal(r.independently_verified_reviewer_signature_now,false);
   assert.equal(r.eligible_to_run_current_signed_gri_publisher_now,false);
-  assert.equal(r.next_safe_action,"PROTECTED_GRI_PUBLISHER_MUST_REVALIDATE_ALL_EVIDENCE");
+  assert.equal(r.historical_route,"PINNED_D1_HISTORICAL_ROW_EXISTS_B2_RECHECK_REQUIRED");
+  assert.equal(r.next_safe_action,"RUN_EXISTING_GRI_PINNED_VERSION_RECOVERY");
+  assert.ok(r.blockers.includes("IMMUTABLE_GRI_HISTORY_READBACK_NOT_YET_VERIFIED"));
+});
+test("existing D1 row with exhausted B2 GET quota cannot tell owner staging is ready",()=>{
+  const r=phase2ReadinessReceipt({history:{...hist,already_present:true,
+    status:"PINNED_HISTORICAL_D1_ROW_PRESENT_NO_B2_REPLAY"},
+    quota,signers,now});
+  assert.equal(r.historical_d1_metadata_recorded,true);
+  assert.equal(r.historical_b2_readback_needs_governed_verification,true);
+  assert.equal(r.next_safe_action,"WAIT_FOR_GOVERNED_B2_GET_HEADROOM");
+  assert.equal(r.current_signed_publication_verified,false);
+  assert.equal(r.b2_requests,0);
 });
 test("D1 read errors are unknown, never guessed as missing or restored",async()=>{
   const r=await runPhase2Readiness({
