@@ -57,7 +57,9 @@ jobs:
           bun-version: 1.4.2
 
       - name: Install locked dependencies
-        run: bun install --frozen-lockfile --ignore-scripts
+        # No private mirror dependence: the inherited Lovable registry
+        # began returning 429; use only public npm with frozen versions.
+        run: bun install --frozen-lockfile --ignore-scripts --registry=https://registry.npmjs.org/ --network-concurrency=8
 
       - name: Production build
         run: bun run build
