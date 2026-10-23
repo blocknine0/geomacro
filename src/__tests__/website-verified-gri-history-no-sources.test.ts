@@ -50,7 +50,7 @@ function stored(asOf=time(-61)){
  };
 }
 describe("bounded privacy-safe genuine prior verified website GRI history",()=>{
- it("retains at most 12 records for 72h, exact one-hour original snapshot embargo",()=>{
+ it("keeps rolling history and an indefinitely readable verified score with exact one-hour embargo",()=>{
   expect(WEBSITE_GRI_DELAY_MS).toBe(3_600_000);
   expect(WEBSITE_GRI_HISTORY_LIMIT).toBe(12);
   expect(WEBSITE_GRI_HISTORY_RETENTION_MS).toBe(2_592_000_000);
@@ -58,7 +58,8 @@ describe("bounded privacy-safe genuine prior verified website GRI history",()=>{
   expect(eligible?.ok).toBe(true);
   expect(privateVerifiedGriHistoryProjection(stored(time(-59)),{now})).toBeNull();
   expect(privateVerifiedGriHistoryProjection(stored(time(+3)),{now})).toBeNull();
-  expect(privateVerifiedGriHistoryProjection(stored(time(-31*24*60)),{now})).toBeNull();
+  const old=stored(time(-365*24*60));
+  expect(privateVerifiedGriHistoryProjection(old,{now})?.data.snapshotAsOf).toBe(old.source_as_of);
  });
  it("returns only true risk-derived values, never private original event/source identities",()=>{
   const r=privateVerifiedGriHistoryProjection(stored(),{now});

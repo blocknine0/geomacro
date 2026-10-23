@@ -20,6 +20,7 @@ import {
   privateVerifiedGriHistoryProjection,
   VERIFIED_GRI_B2_PROOF_SCHEMA,
   WEBSITE_GRI_HISTORY_LIMIT,
+  WEBSITE_GRI_HISTORY_PRUNE_SQL,
   WEBSITE_GRI_HISTORY_RETENTION_MS,
   WEBSITE_GRI_DELAY_MS,
 } from "./website-gri-history.mjs";
@@ -793,12 +794,9 @@ async function putPublicHotSnapshot(env, product, body) {
     `).bind(row.sourceAsOf,row.payloadSha256,row.b2Sha256,
       row.generatedAt,row.verifiedAt,row.proofSchema,row.payloadJson,nowIso());
     const cutoffIso=new Date(Date.now()-WEBSITE_GRI_HISTORY_RETENTION_MS).toISOString();
-    const prune=env.DB.prepare(`
-      DELETE FROM website_verified_gri_snapshot_history
-      WHERE source_as_of < ? OR rowid NOT IN
-      (SELECT rowid FROM website_verified_gri_snapshot_history
-       ORDER BY source_as_of DESC LIMIT ?)
-    `).bind(cutoffIso,WEBSITE_GRI_HISTORY_LIMIT);
+    const websiteCutoff=new Date(Date.now()-WEBSITE_GRI_DELAY_MS).toISOString();
+    const prune=env.DB.prepare(WEBSITE_GRI_HISTORY_PRUNE_SQL)
+      .bind(cutoffIso,WEBSITE_GRI_HISTORY_LIMIT,websiteCutoff);
     // D1 batch is transactional: do not promote current if the history
     // migration is missing or the verified predecessor cannot be retained.
     await env.DB.batch([currentStatement,historicalInsert,prune]);

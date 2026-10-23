@@ -1,0 +1,69 @@
+name: GRI Automated Policy Consent Readiness (No Funds)
+# Enrollment verifies genuine new scope only. This does NOT activate a scorer
+# or substitute automated policy review for a human per-batch review claim.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/gri-automation-consent-readiness.yml'
+      - 'scripts/lib/gri-automation-consent.mjs'
+      - 'scripts/ops/setup-gri-automation-consent.mjs'
+      - 'scripts/ops/verify-gri-automation-consent.mjs'
+      - 'scripts/tests/gri-automation-consent.test.mjs'
+      - 'scripts/tests/gri-history-last-score-retention.test.mjs'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/gri-automation-consent-readiness.yml'
+      - 'scripts/lib/gri-automation-consent.mjs'
+      - 'scripts/ops/setup-gri-automation-consent.mjs'
+      - 'scripts/ops/verify-gri-automation-consent.mjs'
+      - 'scripts/tests/gri-automation-consent.test.mjs'
+      - 'scripts/tests/gri-history-last-score-retention.test.mjs'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  consent-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - run: |
+          node --check scripts/ops/setup-gri-automation-consent.mjs
+          node --check scripts/ops/verify-gri-automation-consent.mjs
+          node --test scripts/tests/gri-automation-consent.test.mjs scripts/tests/gri-history-last-score-retention.test.mjs
+  protected-consent-readiness:
+    needs: consent-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' && github.event_name != 'pull_request' &&
+      vars.GEOMACRO_GRI_AUTO_ENROLLED == 'YES_CONSENT_ONLY'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    environment: production
+    env:
+      GEOMACRO_GRI_AUTO_ENROLLED: ${{ vars.GEOMACRO_GRI_AUTO_ENROLLED }}
+      GEOMACRO_GRI_AUTO_REVOKED: ${{ vars.GEOMACRO_GRI_AUTO_REVOKED }}
+      GEOMACRO_GRI_AUTO_POLICY_ENVELOPE_B64: ${{ secrets.GEOMACRO_GRI_AUTO_POLICY_ENVELOPE_B64 }}
+      GEOMACRO_GRI_AUTO_OWNER_MACHINE_PUBLIC_PEM: ${{ secrets.GEOMACRO_GRI_AUTO_OWNER_MACHINE_PUBLIC_PEM }}
+      GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PUBLIC_PEM: ${{ secrets.GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PUBLIC_PEM }}
+      GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM }}
+      GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM }}
+      GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - run: node scripts/ops/verify-gri-automation-consent.mjs
