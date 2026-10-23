@@ -64,7 +64,7 @@ mkdirSync(root,{recursive:true,mode:0o700});
 const reports=[];let missingArtifacts=0,downloadUnavailable=0;
 for(const run of runs){
  const a=await github("/actions/runs/"+run.id+"/artifacts?per_page=50");
- const artifact=a.artifacts?.find(x=>x.name==="live-country-195-resume-"+run.id&&
+ const artifact=a.artifacts?.find(x=>(x.name===`live-country-195-resume-${run.id}-${run._continent}-${run.run_attempt??1}`||x.name==="live-country-195-resume-"+run.id)&&
    x.expired===false);
  if(!artifact){missingArtifacts++;continue;}
  const destination=join(root,String(run.id));mkdirSync(destination,{recursive:true,mode:0o700});

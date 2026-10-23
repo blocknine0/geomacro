@@ -32,7 +32,7 @@ export function assertContinentCanonical195(registryText){
 }
 export function planTwoHourContinentCountrySweep({
  continent,registryText,eventName="schedule",now=new Date(),
- requestedIso3=""
+ requestedIso3="",previousCountryIso3
 }={}){
  if(!CONTINENTS_195.includes(continent))fail("CONTINENT_UNRECOGNIZED");
  assertContinentCanonical195(registryText);
@@ -50,10 +50,18 @@ export function planTwoHourContinentCountrySweep({
   position=members.indexOf(requestedIso3);trigger="MANUAL_PINNED_ISO3";
  }else{
   if(requestedIso3!=="")fail("NON_MANUAL_CANNOT_OVERRIDE_COUNTRY");
+  if(previousCountryIso3!==undefined){
+   if(eventName!=="schedule"||
+      (previousCountryIso3!==""&&!members.includes(previousCountryIso3)))
+    fail("PREVIOUS_SCHEDULED_COUNTRY_INVALID");
+   position=previousCountryIso3===""?0:(members.indexOf(previousCountryIso3)+1)%members.length;
+   trigger="RESUME_SUCCESSFUL_SCHEDULE";
+  }else{
   const slot=Math.floor((now.getTime()-SWEEP_EPOCH_MS)/SWEEP_SLOT_MS);
   position=slot%members.length;
   trigger=eventName==="schedule"?"TWO_HOUR_UTC_ROTATION":
     eventName==="push"?"POST_MERGE_CANARY_ONE_COUNTRY":"MANUAL_CURRENT_SLOT";
+  }
  }
  const iso3=members[position],globalStart=registered.indexOf(iso3);
  if(globalStart<0)fail("COUNTRY_GLOBAL_INDEX_MISSING");
@@ -62,6 +70,7 @@ export function planTwoHourContinentCountrySweep({
   continent_country_index:position,continent_country_count:members.length,
   global_country_baseline:195,all_categories:3,
   sweep_slots:members.length,sweep_duration_hours:members.length*2,
+  sweep_duration_is_nominal:true,
   two_hour_cadence:true,trigger,
   original_checks_per_country_cap:4,discovery_requests_per_country_cap:12,
   actual_country_original_verified:false,source_rights_verified:false,

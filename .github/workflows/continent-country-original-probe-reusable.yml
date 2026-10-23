@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 # Isolate each geographic lane. A single global concurrency group
 # silently supersedes 4+ pending runs when GitHub schedules are delayed
@@ -49,11 +50,19 @@ jobs:
           set -euo pipefail
           node --check scripts/lib/continent-country-195-rotation.mjs
           node --check scripts/ops/plan-continent-country-195-rotation.mjs
-          node --test scripts/tests/continent-country-195-rotation.test.mjs
+          node --test scripts/tests/continent-country-195-rotation.test.mjs scripts/tests/continent-country-resume.test.mjs
+      - name: Restore last successful scheduled country without clock-based skips
+        if: github.event_name == 'schedule' || github.event_name == 'push'
+        id: resume
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEOMACRO_CONTINENT: ${{ inputs.continent }}
+        run: node scripts/ops/restore-continent-country-cursor.mjs
       - name: Select exactly one scheduled ISO3 for this continent
         id: continent_plan
         env:
           GEOMACRO_CONTINENT: ${{ inputs.continent }}
+          GEOMACRO_PREVIOUS_COUNTRY: ${{ steps.resume.outputs.previous_country }}
           GEOMACRO_REQUESTED_COUNTRY: ${{ inputs.country_iso3 }}
         run: node scripts/ops/plan-continent-country-195-rotation.mjs
       - name: Read existing real country-source originals across three categories without money
@@ -67,7 +76,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: live-country-195-resume-${{ github.run_id }}
+          name: live-country-195-resume-${{ github.run_id }}-${{ inputs.continent }}-${{ github.run_attempt }}
           path: artifacts/country-195/live-batch-checkpoint.v1.json
           retention-days: 14
-          if-no-files-found: warn
+          if-no-files-found: error
