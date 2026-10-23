@@ -17,6 +17,34 @@ import {preparePrivateOriginalSigningReview} from "../lib/private-original-signi
 import {summarizePrivateOriginalIntakeFunnel} from "../lib/private-original-intake-funnel.mjs";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
 import {selectPriorityOriginalReviewCountry} from "../../src/lib/priority-original-review-country";
+import {archivePrivateOriginalReviewLeads} from "../lib/private-original-review-b2-handoff.mjs";
+import {createB2Client} from "./b2-s3-client.mjs";
+import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
+
+// Only when genuinely verified leads exist do we resolve the existing D1
+// governor. Empty candidate runs do not require a B2 credential or API call.
+async function resolveOriginalReviewD1Id(env:NodeJS.ProcessEnv,fetchImpl=fetch){
+ const account=String(env.CLOUDFLARE_ACCOUNT_ID??"");
+ const token=String(env.CLOUDFLARE_API_TOKEN??"");
+ if(!/^[a-z0-9-]{16,64}$/i.test(account)||token.length<20)
+  throw Error("PRIVATE_ORIGINAL_ARCHIVE_D1_CREDENTIALS_MISSING");
+ const endpoint="https://api.cloudflare.com/client/v4/accounts/"+
+   encodeURIComponent(account)+"/d1/database?per_page=100";
+ const res=await fetchImpl(endpoint,{
+  method:"GET",redirect:"error",headers:{Authorization:"Bearer "+token},
+  signal:AbortSignal.timeout(15000),
+ });
+ if(!res.ok||res.redirected)throw Error("PRIVATE_ORIGINAL_ARCHIVE_D1_LOOKUP_UNAVAILABLE");
+ const doc=await res.json();
+ const rows=doc?.result;
+ if(doc?.success!==true||!Array.isArray(rows)||rows.length>100)
+  throw Error("PRIVATE_ORIGINAL_ARCHIVE_D1_LOOKUP_UNVERIFIED");
+ const matches=rows.filter((x:any)=>x?.name==="geomacro-control-plane");
+ const id=matches.length===1?String(matches[0].uuid??matches[0].id??""):"";
+ if(!/^[a-z0-9-]{16,64}$/i.test(id))
+  throw Error("PRIVATE_ORIGINAL_ARCHIVE_D1_ID_NOT_VERIFIED");
+ return id;
+}
 
 // Existing 02,08,14,20 UTC cron: four genuinely independent country
 // candidates/day, with a 195-slot deterministic cycle instead of rechecking
@@ -131,7 +159,38 @@ export async function main(){
   persist=persistLocalPrivateOriginals({leads,
    dir:process.env.GEOMACRO_PRIVATE_REVIEW_DIR,now});
  }
+ let privateArchive={
+  schema:"geomacro.private-original-review-b2-handoff.v1",
+  status:"NOT_ENABLED_LOCAL_OPERATOR_ONLY",
+  private_original_leads_archived:0,
+  private_review_hand_off_available:false,
+  rights_or_gri_signed:false,b2_requests:0,d1_writes:0,payments:0
+ };
+ if(process.env.GEOMACRO_ORIGINAL_PRIVATE_ARCHIVE_ENABLED==="1"){
+   if(process.env.GITHUB_ACTIONS!=="true"||
+      process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
+      process.env.GITHUB_REF!=="refs/heads/main"||
+      !/^\\d{1,20}$/.test(process.env.GITHUB_RUN_ID??"")||
+      process.env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
+      process.env.B2_ACCOUNT_QUOTA_WORKFLOW_ID!=="original_review_leads"||
+      process.env.B2_REQUEST_BUDGET!=="6")
+     throw Error("PRIVATE_ORIGINAL_ARCHIVE_PROTECTED_MAIN_ONLY");
+   if(leads.length>0){
+     process.env.D1_DATABASE_ID=await resolveOriginalReviewD1Id(process.env);
+   }
+   privateArchive=await archivePrivateOriginalReviewLeads({
+    leads,now,countryIso3:country_iso3,
+    quotaGovernor:leads.length>0?createB2D1AccountGovernor():null,
+    b2Factory:()=>createB2Client({
+     endpointUrl:"https://s3.us-east-005.backblazeb2.com",
+     bucket:"geomacro-private-archive",
+     accessKey:process.env.B2_KEY_ID,
+     secretKey:process.env.B2_APPLICATION_KEY,
+    }),
+   });
+ }
  const safe={...receipt,
+  private_original_archive_handoff:privateArchive,
   discovery_funnel:summarizePrivateOriginalIntakeFunnel({discovery,pages,receipt}),
   country_selection_mode:journalPriorityMode,
   shared_journal_candidate_country_count:journalCandidateCountries,
@@ -145,6 +204,10 @@ export async function main(){
  writeFileSync("artifacts/original-evidence/pre-review-receipt.json",
   JSON.stringify(safe,null,2)+"\n",{mode:0o600});
  console.log(JSON.stringify(safe));
+ if(leads.length>0&&
+    process.env.GEOMACRO_ORIGINAL_PRIVATE_ARCHIVE_ENABLED==="1"&&
+    privateArchive.private_review_hand_off_available!==true)
+   throw Error("PRIVATE_ORIGINAL_VERIFIED_LEAD_NOT_PRIVATELY_RETAINED");
 }
 if(import.meta.main){
  try{await main()}catch{
