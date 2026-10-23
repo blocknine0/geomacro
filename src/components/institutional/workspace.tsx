@@ -49,7 +49,7 @@ export function InstitutionalWorkspace({ risk, intel }: { risk: RiskFeed; intel:
       subtitle="Live readings from the same intelligence layer the rest of the product uses."
       aside={
         <Button asChild variant="outline" className="tap-target">
-          <Link to="/global-risk">Open Global Risk Index</Link>
+          <Link to="/risk-indices">Open Risk Indices</Link>
         </Button>
       }
     >
