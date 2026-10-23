@@ -111,9 +111,9 @@ jobs:
             echo "## Geomacro exact-head commercial launch readiness"
             echo
             echo "- Candidate SHA: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}"
-            echo "- Repository-side result: READY_FOR_OWNER_ACTIVATION when all steps pass"
+            echo "- Repository-side result: STATIC_PRELAUNCH_CODE_CHECKS_PASSED_LIVE_UNVERIFIED when all steps pass"
             echo "- Federico/partner-specific assurance: explicitly outside #1414 launch scope"
-            echo "- Production funds: disabled"
+            echo "- Live production health/3-of-3/x402 are NOT checked by this static job"\n          echo "- Run Live Commercial Go-No-Go No Funds for the separate actual production gates"\n          echo "- Production funds: disabled"
             echo "- Official launch announcement: disabled"
             echo "- Real payment settlement: not performed by this workflow"
             echo "- Revenue claim: requires reconciled external production purchase"
