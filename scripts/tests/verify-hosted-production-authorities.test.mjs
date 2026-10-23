@@ -12,6 +12,8 @@ const mk=()=>{
 };
 const env=(a,b,c,d)=>({
  B2_KEY_ID:"test key",B2_APPLICATION_KEY:"synthetic secret not real",
+ B2_ARCHIVE_READ_KEY_ID:"historical test key",
+ B2_ARCHIVE_READ_APPLICATION_KEY:"historical synthetic secret not real",
  CLOUDFLARE_ACCOUNT_ID:"test account",CLOUDFLARE_API_TOKEN:"test secret",
  GEOMACRO_COMMERCE_LEDGER_TOKEN:"x".repeat(48),
  GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM:a.pem,
@@ -36,6 +38,8 @@ test("cryptographically matched four separate approved public-key shapes, no sig
  const [a,b,c,d]=Array.from({length:4},mk);
  const input=env(a,b,c,d),x=cloudAuthorityReadiness(input);
  assert.equal(x.configuration_passed,true);
+ assert.equal(x.configuration.historical_immutable_b2_version_read_credentials,
+  "PRESENT_NOT_LIVE_VERIFIED");
  assert.equal(x.configuration.three_distinct_facts_rights_gro_public_key_pins,
   "PINS_CRYPTOGRAPHICALLY_MATCH_AND_DISTINCT");
  assert.equal(x.configuration.independent_gri_reviewer_public_key,
@@ -43,7 +47,7 @@ test("cryptographically matched four separate approved public-key shapes, no sig
  assert.equal(x.approved_signed_batches_present_verified,false);
  assert.equal(x.actual_article_commercial_rights_verified,false);
  const output=JSON.stringify(x);
- for(const value of [a.pem,b.pem,c.b64,d.pem,"synthetic secret","test account"])
+ for(const value of [a.pem,b.pem,c.b64,d.pem,"synthetic secret","historical test key","test account"])
   assert.equal(output.includes(value),false);
 });
 test("rejects forged or reused Facts/Rights/GRO/reviewer pin material",()=>{
@@ -100,4 +104,27 @@ test("cannot mark configured with an active Supabase/payment env or invalid publ
  assert.equal(a2.configuration_passed,false);
  const a3=cloudAuthorityReadiness({...v,CLOUDFLARE_API_TOKEN:""});
  assert.equal(a3.configuration.cloudflare_control_plane_credentials,"MISSING_OR_INVALID");
+});
+
+test("generic B2 storage keys never prove the separate immutable GRI archive read scope",()=>{
+ const [a,b,c,d]=Array.from({length:4},mk);
+ const v=env(a,b,c,d);
+ const noArchiveId=cloudAuthorityReadiness({...v,B2_ARCHIVE_READ_KEY_ID:""});
+ assert.equal(noArchiveId.configuration.archive_storage_credentials,"PRESENT_NOT_LIVE_VERIFIED");
+ assert.equal(noArchiveId.configuration.historical_immutable_b2_version_read_credentials,
+  "MISSING_OR_INVALID");
+ assert.equal(noArchiveId.configuration_passed,false);
+ assert.ok(noArchiveId.next_actions.includes(
+  "RESTORE_EXISTING_PRODUCTION_GRI_B2_ARCHIVE_READ_SCOPE"));
+ assert.equal(noArchiveId.b2_object_get_performed,false);
+ const noArchiveSecret=cloudAuthorityReadiness({...v,B2_ARCHIVE_READ_APPLICATION_KEY:""});
+ assert.equal(noArchiveSecret.configuration_passed,false);
+ const onlyArchive=cloudAuthorityReadiness({...v,B2_KEY_ID:"",B2_APPLICATION_KEY:""});
+ assert.equal(onlyArchive.configuration.historical_immutable_b2_version_read_credentials,
+  "PRESENT_NOT_LIVE_VERIFIED");
+ assert.equal(onlyArchive.configuration.archive_storage_credentials,"MISSING_OR_INVALID");
+ assert.equal(onlyArchive.configuration_passed,false);
+ const printed=JSON.stringify(noArchiveId)+JSON.stringify(onlyArchive);
+ for(const value of ["historical test key","historical synthetic secret not real",a.pem,b.pem,c.b64,d.pem])
+  assert.equal(printed.includes(value),false);
 });
