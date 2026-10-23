@@ -40,6 +40,12 @@ export function createBundledOriginalReadbackBudget({
    used++;
    return true;
   },
+  admitSupplementary(host){
+   // A pinned first-party publication-clock API consumes a REAL request.
+   // It belongs to an already admitted original, not a second article slot.
+   if(!hosts.has(host)||used>=available)return false;
+   used++;return true;
+  },
   snapshot(){
    return Object.freeze({
     schema:"geomacro.original-source-shared-bundle.v1",
@@ -59,7 +65,7 @@ export function createBundledOriginalReadbackBudget({
  * one turn per round, using the newest news FIRST inside each category.
  * No extra GET, and unclassified or stale cards remain in the audit output.
  */
-export function bundleRoundRobinNews(signals){
+export function bundleRoundRobinNews(signals,{priorityById}={}){
  if(!Array.isArray(signals))throw Error("ORIGINAL_BUNDLE_NEWS_INVALID");
  const domains=["geopolitics","macro","rare_earth"];
  const groups=new Map(domains.map(c=>[c,[]]));
@@ -69,14 +75,16 @@ export function bundleRoundRobinNews(signals){
    remaining.push(item);
   else groups.get(item.category).push(item);
  }
- const sort=(a,b)=>String(b?.published_at??"").localeCompare(
+ const priority=item=>priorityById?.get(item?.id)??Infinity;
+ const sort=(a,b)=>(priority(a)-priority(b)||0)||String(b?.published_at??"").localeCompare(
    String(a?.published_at??""))||
    String(a?.id??"").localeCompare(String(b?.id??""));
  for(const group of groups.values())group.sort(sort);
+ const categoryOrder=[...domains].sort((a,b)=>(priority(groups.get(a)[0])-priority(groups.get(b)[0])||0));
  const rows=[];
  let index=0;
  while([...groups.values()].some(x=>x.length>index)){
-  for(const domain of domains){
+  for(const domain of categoryOrder){
    const next=groups.get(domain)[index];
    if(next)rows.push(next);
   }

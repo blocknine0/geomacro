@@ -597,7 +597,9 @@ export function reconcilePrivateDerivedSourceRefs(
   const expected=new Map(published.map(s=>[s.id,s]));
   const found=new Map<string,StatelessSourceCandidate>();
   const collisions=new Set<string>();
-  if(!Number.isFinite(now)||published.length>250||candidates.length>1_000)
+  // All fixed collectors remain bounded. Do not silently drop a later
+  // publisher's genuine reference merely because earlier feeds had 1000 items.
+  if(!Number.isFinite(now)||published.length>250||candidates.length>10_000)
     return new Map();
   for(const c of candidates){
     if(!c || typeof c.articleUrl!=="string"||!c.articleUrl.startsWith("https://"))continue;

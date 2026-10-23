@@ -11,6 +11,14 @@ const original={
  publishedAt:"2026-10-13T18:00:00.000Z",credit:"Federal Reserve Board",
 };
 describe("ephemeral first-party original-reference crosswalk for D1-derived lead verification",()=>{
+ it("retains a genuine later publisher reference beyond the old 1000-candidate truncation",()=>{
+  const [signal]=deriveStatelessSignals([original],NOW);
+  const earlier=Array.from({length:1000},(_,i)=>({...original,
+   articleUrl:'https://www.federalreserve.gov/newsevents/pressreleases/other'+i+'.htm'}));
+  const refs=reconcilePrivateDerivedSourceRefs([...earlier,original],[signal],NOW);
+  expect(refs.get(signal.id)?.articleUrl).toBe(original.articleUrl);
+  expect(reconcilePrivateDerivedSourceRefs(Array.from({length:10001},()=>original),[signal],NOW).size).toBe(0);
+ });
  it("reconstructs precise source identity only when the exact preexisting derived bytes agree",()=>{
   const [signal]=deriveStatelessSignals([original],NOW);
   expect(signal.id).toMatch(/^macro-[0-9a-f]{8}$/);
