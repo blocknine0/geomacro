@@ -156,7 +156,7 @@ function previousSnapshot(row,category){
       !(s.reader_revision===undefined||(Number.isInteger(s.reader_revision)&&s.reader_revision>=1&&s.reader_revision<=100))||
       Object.keys(s).some(k=>!['reader_revision','fingerprints','last_attempt_at','last_success_at','state','kind','latest_native_publication_at','http_status'].includes(k))||
       !(s.http_status===null||(Number.isInteger(s.http_status)&&s.http_status>=100&&s.http_status<=599))||
-      !(s.kind===null||['REFERENCE_DATASET_CHANGE','PUBLISHER_FEED_CHANGE','HAZARD_OBSERVATION_CHANGE','SECURITY_CATALOGUE_CHANGE','REGULATORY_DOCUMENT_CHANGE','ADVISORY_DOCUMENT_CHANGE','DATASET_SNAPSHOT_CHANGE','CONTEXT_ONLY_NO_UPDATE_RECORDS','PUBLISHER_INDEX_CHANGE'].includes(s.kind))||
+      !(s.kind===null||['GDELT_FREE_DATASET_BATCH_DISCOVERY_ONLY','REFERENCE_DATASET_CHANGE','PUBLISHER_FEED_CHANGE','HAZARD_OBSERVATION_CHANGE','SECURITY_CATALOGUE_CHANGE','REGULATORY_DOCUMENT_CHANGE','ADVISORY_DOCUMENT_CHANGE','DATASET_SNAPSHOT_CHANGE','CONTEXT_ONLY_NO_UPDATE_RECORDS','PUBLISHER_INDEX_CHANGE'].includes(s.kind))||
       !['TRANSPORT_READABLE','NETWORK_UNAVAILABLE','DENIED_OR_RATE_LIMIT','HTTP_UNAVAILABLE','FORMAT_OR_SIZE_UNVERIFIED'].includes(s.state)||
       ['last_attempt_at','last_success_at','latest_native_publication_at'].some(k=>
         s[k]!==null&&(typeof s[k]!=='string'||!Number.isFinite(Date.parse(s[k]))||new Date(s[k]).toISOString()!==s[k])))throw Error('FREE_SOURCE_UPDATE_PREVIOUS_STATE_INVALID');
