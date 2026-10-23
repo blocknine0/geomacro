@@ -53,6 +53,23 @@ describe('live plus rolling last-24-hour website backfill',()=>{
   expect(filterIntelligenceDesk([older,backfilled,fresh],{category:'macro',query:'',period:'24h'},NOW)).toEqual([fresh,backfilled]);
   expect(backfilled.published_at).toBe('2026-10-22T13:00:00.000Z');
  });
+ it('keeps an already retained native clock when feed and page differ, without rewriting or republishing it',async()=>{
+  const p=publisher(),incoming=signal('macro',120);
+  const previous={...incoming,published_at:'2026-10-23T10:00:02.000Z'};
+  const result=await backfillLast24HourNews({now:NOW,publisher:p,retainedClocks:[previous],
+   readCategory:async category=>report(category,category==='macro'?[incoming]:[])});
+  expect(result.complete).toBe(true);expect(p.accept).not.toHaveBeenCalled();
+  expect(result.categories[1].existing_clock_variants_retained).toBe(1);
+  expect(previous.published_at).toBe('2026-10-23T10:00:02.000Z');
+  expect(incoming.published_at).toBe('2026-10-23T10:00:00.000Z');
+ });
+ it('cannot use an older retained clock to claim last-24h recovery for a conflicting new date',async()=>{
+  const p=publisher(),incoming=signal('macro',120),previous=signal('macro',25*60);
+  const result=await backfillLast24HourNews({now:NOW,publisher:p,retainedClocks:[previous],
+   readCategory:async category=>report(category,category==='macro'?[incoming]:[])});
+  expect(result.complete).toBe(false);expect(p.accept).not.toHaveBeenCalled();
+  expect(result.categories[1].status).toBe('LAST_24H_BACKFILL_UNAVAILABLE');
+ });
  it('same continent run performs wide 24h backfill plus the existing near-real-time fastlane',()=>{
   const workflow=readFileSync('.github/workflows/continent-country-original-probe-reusable.yml','utf8');
   expect(workflow).toContain('run: bun scripts/ops/publish-last-24-hour-website-news.ts');
