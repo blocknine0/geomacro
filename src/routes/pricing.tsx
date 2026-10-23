@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
 import { ApiKeysNotice } from "@/components/api-keys-notice";
+import { KeylessBuyerQuickstart } from "@/components/keyless-buyer-quickstart";
 
 const TITLE = "Store & Pricing | Geomacro";
 const DESCRIPTION =
@@ -36,6 +37,7 @@ function PricingPage() {
         </p>
       </header>
       <ApiKeysNotice />
+      <div className="mt-6"><KeylessBuyerQuickstart /></div>
       <div className="mt-10">
         <CapabilityPriceSchedule />
       </div>
