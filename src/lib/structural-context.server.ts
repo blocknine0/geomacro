@@ -7,6 +7,7 @@ import {
 import { supabaseReadFallbackAllowed } from "./supabase-runtime-mode.server";
 import { loadQualifiedMcsCountryContext } from "./qualified-mcs-country-digest.server";
 import { loadQualifiedTreasuryFxCountryContext } from "./qualified-treasury-fx.server";
+import {sourceNativeObservationTime} from "./source-native-observation-time";
 
 export const STRUCTURAL_METHODOLOGY_STATUS =
   "EVIDENCE_ONLY_NOT_IN_GRI_V1_2" as const;
@@ -166,20 +167,21 @@ function normalizeSubject(subject: StructuralSubject): StructuralSubject {
   };
 }
 
-function rowTime(row: StructuralObservation): number {
-  const value = row.observed_at ?? row.published_at ?? row.retrieved_at;
-  if (!value) return 0;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+function rowTime(row: StructuralObservation,asOfMs:number): number {
+  // An undated/future/invalid freshly fetched duplicate must not replace an
+  // actually dated observation before the commercial freshness gate sees it.
+  return sourceNativeObservationTime(row,asOfMs)??0;
 }
 
 export function latestStructuralObservations(
   rows: StructuralObservation[],
   limit = 12,
 ): StructuralObservation[] {
-  const sorted = [...rows].sort((a, b) => rowTime(b) - rowTime(a));
+  if(!Number.isSafeInteger(limit)||limit<=0)return [];
+  const asOfMs=Date.now();
+  const sorted = [...rows].sort((a, b) => rowTime(b,asOfMs) - rowTime(a,asOfMs));
   const seen = new Set<string>();
-  const output: StructuralObservation[] = [];
+  const dimensions=new Map<string,StructuralObservation[]>();
   for (const row of sorted) {
     const key = [
       row.dimension,
@@ -189,10 +191,23 @@ export function latestStructuralObservations(
     ].join("|");
     if (seen.has(key)) continue;
     seen.add(key);
-    output.push(row);
-    if (output.length >= limit) break;
+    const bucket=dimensions.get(row.dimension)??[];
+    bucket.push(row);
+    dimensions.set(row.dimension,bucket);
   }
-  return output;
+  // A busy dimension must not consume the entire bounded serving profile
+  // and silently drop another required module whose observations exist.
+  // Take one newest metric per dimension per round, retaining the same cap.
+  const output:StructuralObservation[]=[];
+  for(let round=0;output.length<limit;round++){
+    let added=false;
+    for(const bucket of dimensions.values()){
+      if(bucket[round]){output.push(bucket[round]);added=true;}
+      if(output.length===limit)break;
+    }
+    if(!added)break;
+  }
+  return output.sort((a,b)=>rowTime(b,asOfMs)-rowTime(a,asOfMs));
 }
 
 function isStructuralObservation(value: unknown): value is StructuralObservation {

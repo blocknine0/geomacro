@@ -1,5 +1,6 @@
 import type { AgentQueryPlan } from "./agent-query-plan";
 import { sourceNativeObservationTime } from "./source-native-observation-time";
+import {retainQualifiedStructuralEvidence,type QualifiedSubjectEvidence} from "./agent-query-qualified-evidence.server";
 import {
   assertCommercialSourcesEligible,
   type CommercialSourceEligibility,
@@ -183,6 +184,7 @@ export async function checkAgentQueryDeliverability(
   const subjects: AgentQueryDeliverability["subjects"] = [];
   const sourceChecker = options?.sourceEligibilityChecker ?? assertCommercialSourcesEligible;
   const asOf = plan.as_of ?? now.toISOString();
+  const qualifiedSubjects:QualifiedSubjectEvidence[]=[];
 
   for (const subject of plan.subjects) {
     const context = await loadStructuralContext(subject, {
@@ -191,6 +193,8 @@ export async function checkAgentQueryDeliverability(
       qualifiedReleaseTopic: plan.topics[0],
     });
     const available = structuralModulesFor(context);
+    const qualifiedSubject:QualifiedSubjectEvidence={context,worldBank:{}};
+    qualifiedSubjects.push(qualifiedSubject);
     const structuralModulesUsed = new Set<string>();
     const governedFallbackModules = new Set<string>();
     const governedFallbackSourceIds = new Set<string>();
@@ -227,6 +231,7 @@ export async function checkAgentQueryDeliverability(
           max_age_seconds: plan.module_max_age_seconds[module],
         });
         if (fallback.deliverable) {
+          qualifiedSubject.governance=fallback;
           available.add(module);
           governedFallbackModules.add(module);
           governedFallbackSourceIds.add(AGENT_POLITICAL_GOVERNANCE_SOURCE_ID);
@@ -270,6 +275,7 @@ export async function checkAgentQueryDeliverability(
           fallback = null;
         }
         if (fallback?.deliverable) {
+          qualifiedSubject.worldBank[module as AgentWorldBankModuleName]=fallback;
           available.add(module);
           governedFallbackModules.add(module);
           governedFallbackSourceIds.add(AGENT_WORLD_BANK_SOURCE_ID);
@@ -309,6 +315,7 @@ export async function checkAgentQueryDeliverability(
           fallback = null;
         }
         if (fallback?.deliverable && fallback.state && fallback.source_contract) {
+          qualifiedSubject.minerals=fallback;
           available.add(module);
           governedFallbackModules.add(module);
           governedDerivedFallbackSourceIds.add(AGENT_CRITICAL_MINERALS_SOURCE_ID);
@@ -412,7 +419,7 @@ export async function checkAgentQueryDeliverability(
           ? "INSUFFICIENT_COVERAGE"
           : "STALE_REQUIRED_DATA";
 
-  return {
+  const result:AgentQueryDeliverability={
     deliverable,
     code,
     query_plan_hash: plan.query_plan_hash,
@@ -423,6 +430,8 @@ export async function checkAgentQueryDeliverability(
     source_contracts: [...sourceContracts.values()].sort((a, b) => a.source_id.localeCompare(b.source_id)),
     subjects,
   };
+  retainQualifiedStructuralEvidence(result,plan,qualifiedSubjects,asOf);
+  return result;
 }
 
 export function publicAgentQueryAvailability(

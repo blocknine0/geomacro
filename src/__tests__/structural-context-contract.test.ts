@@ -82,6 +82,49 @@ describe("structural context contract", () => {
     );
   });
 
+  it("does not let a busy macro dimension erase available geopolitical/mineral evidence",()=>{
+    const macro=Array.from({length:30},(_,i)=>row({
+      observation_id:"macro-"+i,dimension:"macro_monetary",metric:"metric-"+i,
+      observed_at:"2026-01-03T00:00:00.000Z",
+    }));
+    const mineral=row({observation_id:"mineral",dimension:"critical_minerals",metric:"production"});
+    const geopolitical=row({observation_id:"security",dimension:"geopolitical_security",metric:"events"});
+    const input=[...macro,mineral,geopolitical];
+    const result=latestStructuralObservations(input,12);
+    expect(result).toHaveLength(12);
+    expect(new Set(result.map(x=>x.dimension))).toEqual(new Set([
+      "macro_monetary","critical_minerals","geopolitical_security",
+    ]));
+    expect(result.map(x=>x.observation_id)).toContain("macro-0");
+    expect(input).toEqual([...macro,mineral,geopolitical]);
+    expect(latestStructuralObservations(input,0)).toEqual([]);
+  });
+
+  it("preserves every available dimension when the bounded profile can hold them",()=>{
+    const dimensions=["sovereign_fiscal","political_governance","macro_monetary","external_fx",
+      "sanctions_restrictions","geopolitical_security","trade_corridor","energy_commodities",
+      "critical_minerals","banking_financial_system","food_agriculture","natural_hazards"];
+    const input=dimensions.flatMap((dimension,n)=>Array.from({length:5},(_,i)=>row({
+      observation_id:dimension+"-"+i,dimension,metric:"metric-"+i,
+      observed_at:new Date(Date.UTC(2026,0,1+n)).toISOString(),
+    })));
+    expect(new Set(latestStructuralObservations(input,12).map(x=>x.dimension)))
+      .toEqual(new Set(dimensions));
+  });
+
+  it("does not let newly retrieved undated/future duplicates evict a usable original",()=>{
+    const current=row({observation_id:"dated",observed_at:"2026-01-02T00:00:00Z"});
+    const undated={...current,observation_id:"retrieval-only",observed_at:null,
+      published_at:null,retrieved_at:new Date().toISOString()};
+    const future={...current,observation_id:"future",observed_at:"2999-01-01T00:00:00Z"};
+    const invalid={...current,observation_id:"invalid",observed_at:"invalid"};
+    expect(latestStructuralObservations([undated,future,invalid,current],1))
+      .toEqual([current]);
+    const mixedClocks={...current,observation_id:"old-native",observed_at:"2026-01-03T00:00:00Z",
+      published_at:"2024-01-01T00:00:00Z"};
+    expect(latestStructuralObservations([mixedClocks,current],1)).toEqual([current]);
+  });
+
   it("requires historical service credentials to stay server-only", () => {
     const source = readFileSync(
       join(ROOT, "src/lib/structural-context.server.ts"),

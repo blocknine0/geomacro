@@ -11,6 +11,7 @@ import {sanitizeAndRehashPaidPreparedResponse,assertPublicPaidOutputBoundary} fr
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY} from "./geomacro-structured-commercial-license";
 import {assertGeomacroIntelligenceResponseContract} from "./geomacro-intelligence-contract";
 import {assertPricedStructuredDelivery} from "./capability-structured-delivery.server";
+import {readQualifiedStructuralEvidence} from "./agent-query-qualified-evidence.server";
 
 /** One price classifier, governed assembler and existing durable vault.
  * No client-provided evidence or flags, synthetic signature, new scoring or
@@ -23,9 +24,11 @@ export async function prepareVerifiedCapabilityOffer(input:{
   network:string;asset:string;recipient:string;
 }) {
   const price=resolveEligiblePublishedCapabilityPrice(input.plan,input.availability);
+  const qualifiedStructural=readQualifiedStructuralEvidence(input.availability,input.plan);
   const assembled=await assembleAgentQueryResponse({
     plan:input.plan,requestId:randomUUID(),clientRequestId:input.clientRequestId,
     priceUsdc:price.amount_usdc,
+    ...(qualifiedStructural?{qualifiedStructural}:{}),
   });
   if(assembled.query_plan_hash!==input.plan.query_plan_hash || assembled.execution_authorized!==false)
     throw Error("CAPABILITY_PREQUOTE_QUERY_MISMATCH");
