@@ -148,7 +148,8 @@ export async function main(){
  },{now,fetchImpl:boundedFetch("discovery")});
  const pages=await verifyOnDemandOriginalArticlePages(
   discovery.private_original_review_candidates,
-  {now,maxAgeSeconds:ORIGINAL_VERIFICATION_WINDOW_SECONDS,fetchImpl:boundedFetch("page")});
+  {now,maxAgeSeconds:ORIGINAL_VERIFICATION_WINDOW_SECONDS,
+   fetchImpl:boundedFetch("page"),diagnostics:true});
  const {receipt,leads}=await preparePrivateOriginalSigningReview({
   country_iso3,discovery,pages,now,
   readback:({original,now})=>verifyGeomacroUnclaimedOriginalPage({

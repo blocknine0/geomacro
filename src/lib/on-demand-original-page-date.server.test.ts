@@ -64,6 +64,49 @@ function articleHtml(meta:string){
   return '<html><head>'+meta+'</head><body>Not emitted to customer</body></html>';
 }
 
+describe("privileged privacy-safe original-page reason accounting",()=>{
+ it("reports missing native publication metadata, never issuer identity, URL or title",async()=>{
+  const one=(await candidates())[0];
+  const fetchImpl=vi.fn(async()=>new Response(articleHtml(
+   '<meta property="article:modified_time" content="'+published+'">'),
+    {headers:{"content-type":"text/html"}})) as unknown as typeof fetch;
+  const result=await verifyOnDemandOriginalArticlePages([one],{
+   fetchImpl,now,diagnostics:true
+  });
+  expect(result.attempted).toBe(1);
+  expect(result.verified).toBe(0);
+  expect(result.page_rejection_counts).toEqual({
+   PUBLISHER_PUBLICATION_METADATA_MISSING:1
+  });
+  const safe=JSON.stringify(result.page_rejection_counts);
+  expect(safe).not.toContain(one.article_url);
+  expect(safe).not.toContain(one.article_title);
+  expect(safe).not.toContain(one.publisher_family);
+ });
+ it("treats native feed conflict as a separate non-certifying reason, with no extra GET",async()=>{
+  const one=(await candidates())[0];
+  const fetchImpl=vi.fn(async()=>new Response(articleHtml(
+   '<meta property="article:published_time" content="2026-10-11T10:00:00Z">'),
+    {headers:{"content-type":"text/html"}})) as unknown as typeof fetch;
+  const result=await verifyOnDemandOriginalArticlePages([one],{
+   fetchImpl,now,diagnostics:true
+  });
+  expect(result.verified).toBe(0);
+  expect(result.page_rejection_counts).toEqual({
+   ORIGINAL_FEED_AND_PAGE_CLOCK_MISMATCH:1
+  });
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
+ });
+ it("does not expose aggregate reasons to ordinary callers without explicit private opt-in",async()=>{
+  const one=(await candidates())[0];
+  const fetchImpl=vi.fn(async()=>new Response(articleHtml(
+    '<meta property="article:modified_time" content="'+published+'">'),
+    {headers:{"content-type":"text/html"}})) as unknown as typeof fetch;
+  const result=await verifyOnDemandOriginalArticlePages([one],{fetchImpl,now});
+  expect(result.page_rejection_counts).toBeUndefined();
+ });
+});
+
 describe("private on-demand publisher page date checks",()=>{
   it("checks a maximum of 4 distinct originating publisher pages and never grants paid rights",async()=>{
     const urls:string[]=[];

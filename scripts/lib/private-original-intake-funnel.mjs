@@ -12,6 +12,19 @@ const RETRIEVAL_STATES=Object.freeze([
   "ACCESS_RESTRICTED","TRANSPORT_UNAVAILABLE","COOLDOWN_ACTIVE",
   "PROVIDER_INVALID","UNSPECIFIED",
 ]);
+const PAGE_REASONS=Object.freeze([
+ "ISSUER_FIRST_PUBLICATION_DAY_INVALID",
+ "PUBLISHER_ORIGINAL_BODY_DATE_UNVERIFIED",
+ "PUBLISHER_PUBLICATION_METADATA_MISSING",
+ "PUBLISHER_PUBLICATION_TIME_IMPRECISE",
+ "PUBLISHER_PUBLICATION_METADATA_CONFLICT",
+ "PUBLISHER_PUBLICATION_DATE_INVALID_OR_EXPIRED",
+ "INDEX_HEADLINE_OR_PAGE_IDENTITY_MISMATCH",
+ "ORIGINAL_FEED_AND_PAGE_CLOCK_MISMATCH",
+ "PAGE_DATE_OR_ISSUER_SCOPE_UNVERIFIED",
+ "FIRST_PARTY_SOURCE_ACCESS_DENIED",
+ "SOURCE_FETCH_TRANSPORT_OR_MIME_FAILURE",
+]);
 const FEED_STAGES=Object.freeze([
   "inspected","native_dated","country_mentioned","scope_matched",
   "eligible_pub_date","allowed_article_paths",
@@ -31,6 +44,24 @@ export function summarizePrivateOriginalIntakeFunnel({discovery,pages,receipt}={
       !numeric(receipt.distinct_source_verified_pre_review_leads) ||
       !CATEGORIES.every(c=>numeric(receipt.verified_original_counts_by_category?.[c])))
     throw Error("ORIGINAL_INTAKE_FUNNEL_INVALID");
+  // Diagnostics come ONLY from the privileged per-page bounded verifier;
+  // refuse arbitrary/public caller keys and impossible counters. No reason
+  // contains source title, URL, publisher organization or exact clock.
+  const reasonCounts=counter(PAGE_REASONS);
+  if(pages.page_rejection_counts!==undefined){
+   if(!pages.page_rejection_counts ||
+      typeof pages.page_rejection_counts!=="object" ||
+      Array.isArray(pages.page_rejection_counts))
+     throw Error("ORIGINAL_INTAKE_PAGE_DIAGNOSTICS_INVALID");
+   for(const [code,num] of Object.entries(pages.page_rejection_counts)){
+    if(!PAGE_REASONS.includes(code)||!numeric(num)||
+       num>pages.attempted)
+     throw Error("ORIGINAL_INTAKE_PAGE_DIAGNOSTICS_INVALID");
+    reasonCounts[code]=num;
+   }
+   if(Object.values(reasonCounts).reduce((a,b)=>a+b,0)>pages.attempted)
+    throw Error("ORIGINAL_INTAKE_PAGE_DIAGNOSTICS_INVALID");
+  }
   const candidateCounts=zeroCategories(),pageCounts=zeroCategories();
   const probeCounts=counter(RETRIEVAL_STATES),feedStages=counter(FEED_STAGES);
   const observedByDomain=zeroCategories();
@@ -93,6 +124,7 @@ export function summarizePrivateOriginalIntakeFunnel({discovery,pages,receipt}={
     feed_stage_counter_sums_not_unique_events:feedStages,
     original_candidates_by_category:candidateCounts,
     original_page_readback_attempts:pages.attempted,
+    original_page_rejection_reason_counts:reasonCounts,
     page_date_verified_candidates_by_category:pageCounts,
     exact_original_byte_readback_attempts:receipt.byte_exact_rereads_attempted,
     byte_verified_pre_review_leads:receipt.distinct_source_verified_pre_review_leads,

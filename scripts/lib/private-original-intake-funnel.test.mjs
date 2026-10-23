@@ -74,3 +74,27 @@ test("Counter semantics and impossible stage promotions fail closed",()=>{
    private_original_review_candidates:[]}
  }),/INVALID/);
 });
+
+test("Only bounded aggregate publisher page rejection reasons enter safe private receipt",()=>{
+ const args=input({
+  country:"GBR",candidates:[{domain:"geopolitics"}],attempts:1
+ });
+ args.pages.page_rejection_counts={PUBLISHER_PUBLICATION_METADATA_MISSING:1};
+ const r=summarizePrivateOriginalIntakeFunnel(args);
+ assert.equal(r.original_page_rejection_reason_counts.PUBLISHER_PUBLICATION_METADATA_MISSING,1);
+ assert.equal(r.next_required_gate,"ORIGINAL_PAGE_OR_NATIVE_DATE_UNVERIFIED");
+ assert.equal(r.payment_authorized,false);
+ assert.equal(r.gri_scored,false);
+ const redacted=JSON.stringify(r);
+ assert.equal(redacted.includes("source_url"),false);
+ for(const invalid of [
+  {"https://secret.example/private":1},
+  {PUBLISHER_PUBLICATION_METADATA_MISSING:2},
+  {PUBLISHER_PUBLICATION_METADATA_MISSING:-1},
+  {PUBLISHER_PUBLICATION_METADATA_MISSING:"one"},
+ ]){
+  args.pages.page_rejection_counts=invalid;
+  assert.throws(()=>summarizePrivateOriginalIntakeFunnel(args),
+   /ORIGINAL_INTAKE_PAGE_DIAGNOSTICS_INVALID/);
+ }
+});

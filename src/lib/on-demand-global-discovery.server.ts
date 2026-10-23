@@ -1500,7 +1500,23 @@ export type PrivatePageDateResult = {
   // Present only for a verified Canada.ca calendar-day original. This is
   // NEVER admitted as an exact-dated or signed customer evidence object.
   day_only_originals?: PrivatePageDayOriginal[];
+  // Only populated by privileged bounded source-intake operators when
+  // explicitly requested. Coarse counts: no URLs, article titles or hashes.
+  page_rejection_counts?: Partial<Record<PrivatePageRejectReason,number>>;
 };
+export type PrivatePageRejectReason =
+  "ISSUER_FIRST_PUBLICATION_DAY_INVALID" |
+  "PUBLISHER_ORIGINAL_BODY_DATE_UNVERIFIED" |
+  "PUBLISHER_PUBLICATION_METADATA_MISSING" |
+  "PUBLISHER_PUBLICATION_TIME_IMPRECISE" |
+  "PUBLISHER_PUBLICATION_METADATA_CONFLICT" |
+  "PUBLISHER_PUBLICATION_DATE_INVALID_OR_EXPIRED" |
+  "INDEX_HEADLINE_OR_PAGE_IDENTITY_MISMATCH" |
+  "ORIGINAL_FEED_AND_PAGE_CLOCK_MISMATCH" |
+  "PAGE_DATE_OR_ISSUER_SCOPE_UNVERIFIED" |
+  "FIRST_PARTY_SOURCE_ACCESS_DENIED" |
+  "SOURCE_FETCH_TRANSPORT_OR_MIME_FAILURE";
+
 
 const MAX_ARTICLE_PAGE_PROBES = 4;
 // Do not maintain a second, permissive on-demand <meta> scraper. The shared
@@ -1511,7 +1527,7 @@ const MAX_ARTICLE_PAGE_PROBES = 4;
 /** Internal-only evidence continuation; never serialize verified_candidates. */
 export async function verifyOnDemandOriginalArticlePages(
   candidates: readonly PrivateOriginalCandidate[],
-  options: {fetchImpl?:typeof fetch; now?:Date; maxAgeSeconds?:number}={},
+  options: {fetchImpl?:typeof fetch; now?:Date; maxAgeSeconds?:number;diagnostics?:boolean}={},
 ): Promise<PrivatePageDateResult> {
   const now=options.now ?? new Date();
   const maxAgeMs=options.maxAgeSeconds===undefined?ONE_DAY_MS:
@@ -1576,7 +1592,11 @@ export async function verifyOnDemandOriginalArticlePages(
   const verifyCandidate=async(candidate:PrivateOriginalCandidate):Promise<{
     verified:PrivatePageDatedOriginal|null;
     dayOnly:PrivatePageDayOriginal|null; denied:boolean;
+    reason?:PrivatePageRejectReason;
   }>=>{
+    const reason=(reason:PrivatePageRejectReason,denied=false)=>({
+      verified:null,dayOnly:null,denied,reason
+    });
     try{
       const html=await boundedFetch(options.fetchImpl??fetch,candidate.article_url,"text/html");
       const isCanada=candidate.publisher_family==="canada_nrcan_original_publisher";
@@ -1585,13 +1605,13 @@ export async function verifyOnDemandOriginalArticlePages(
       // Atom <updated>, crawl clocks, or article URL month for issue date.
       const canadaDay=isCanada?canadaOriginalPublicationDay(
         html,candidate.article_url,candidate.article_title,now.getTime()):null;
-      if(isCanada && !canadaDay)return {verified:null,dayOnly:null,denied:false};
+      if(isCanada && !canadaDay)return reason("ISSUER_FIRST_PUBLICATION_DAY_INVALID");
       const publisherDateDiagnostics:{date_reason?:string}={};
       const metadataDate=verifiedPublisherPageDate(html,now,publisherDateDiagnostics,{maxAgeMs});
       const ieaDate=candidate.publisher_family==='iea_minerals_original_publisher'
         ?verifiedIeaOriginalPublication(html,{title:candidate.article_title,articleUrl:candidate.article_url},now,maxAgeMs):null;
       if(candidate.publisher_family==='iea_minerals_original_publisher'&&!ieaDate)
-        return {verified:null,dayOnly:null,denied:false};
+        return reason("PUBLISHER_ORIGINAL_BODY_DATE_UNVERIFIED");
       // A pinned issuer-specific visible original may rescue absent metadata,
       // never conflicting, stale, future or malformed original metadata.
       const precise=metadataDate??(publisherDateDiagnostics.date_reason==='MISSING_PUBLISHER_PUBLICATION_METADATA'?ieaDate:null);
@@ -1638,21 +1658,46 @@ export async function verifyOnDemandOriginalArticlePages(
            original_issuer_page_verified:true as const,
            article_commercial_rights_verified:false as const,
            signed_customer_answer_verified:false as const}:null;
-      return {verified:null,dayOnly,denied:false};
+      if(dayOnly)return {verified:null,dayOnly,denied:false,
+        reason:"PUBLISHER_PUBLICATION_TIME_IMPRECISE"};
+      if(!originalDate){
+        const why=publisherDateDiagnostics.date_reason;
+        const kind:PrivatePageRejectReason=
+          why==="MISSING_PUBLISHER_PUBLICATION_METADATA"
+            ?"PUBLISHER_PUBLICATION_METADATA_MISSING":
+          why==="IMPRECISE_DATE_ONLY"
+            ?"PUBLISHER_PUBLICATION_TIME_IMPRECISE":
+          why==="CONFLICTING_PUBLISHER_PUBLICATION"
+            ?"PUBLISHER_PUBLICATION_METADATA_CONFLICT":
+            "PUBLISHER_PUBLICATION_DATE_INVALID_OR_EXPIRED";
+        return reason(kind);
+      }
+      if(candidate.index_original_page_pending===true &&
+          (!indexedHeadlineMatchesOriginalPage(candidate.article_title,html) ||
+           !indexedPublisherHasOriginalMetaOutsideScripts(html)))
+        return reason("INDEX_HEADLINE_OR_PAGE_IDENTITY_MISMATCH");
+      if(candidate.feed_item_published_at!==null &&
+          Math.abs(Date.parse(originalDate)-Date.parse(candidate.feed_item_published_at))>
+            10*60*1000)
+        return reason("ORIGINAL_FEED_AND_PAGE_CLOCK_MISMATCH");
+      return reason("PAGE_DATE_OR_ISSUER_SCOPE_UNVERIFIED");
     }catch(error){
       const code=error instanceof Error?error.message:"";
-      return {verified:null,dayOnly:null,denied:[
-        "ON_DEMAND_SOURCE_ACCESS_RESTRICTED","ON_DEMAND_SOURCE_RATE_LIMITED"
-      ].includes(code)};
+      const denied=["ON_DEMAND_SOURCE_ACCESS_RESTRICTED",
+        "ON_DEMAND_SOURCE_RATE_LIMITED"].includes(code);
+      return reason(denied?"FIRST_PARTY_SOURCE_ACCESS_DENIED":
+        "SOURCE_FETCH_TRANSPORT_OR_MIME_FAILURE",denied);
     }
   };
   const first=await Promise.all(chosen.map(verifyCandidate));
   const verified_candidates:PrivatePageDatedOriginal[]=[];
   const day_only_originals:PrivatePageDayOriginal[]=[];
+  const rejected:PrivatePageRejectReason[]=[];
   const blockedFamilies=new Set<string>();
   const successfulFamilies=new Set<string>();
   const seenIds=new Set(chosen.map(x=>x.article_identity_sha256));
   for(let i=0;i<chosen.length;i++){
+    if(!first[i].verified && first[i].reason) rejected.push(first[i].reason);
     if(first[i].verified){
       verified_candidates.push(first[i].verified!);
       successfulFamilies.add(chosen[i].publisher_family);
@@ -1673,6 +1718,7 @@ export async function verifyOnDemandOriginalArticlePages(
     seenIds.add(alternate.article_identity_sha256);
     attempted++;
     const outcome=await verifyCandidate(alternate);
+    if(!outcome.verified && outcome.reason)rejected.push(outcome.reason);
     if(outcome.verified){
       verified_candidates.push(outcome.verified);
       successfulFamilies.add(family);
@@ -1680,8 +1726,14 @@ export async function verifyOnDemandOriginalArticlePages(
     if(outcome.dayOnly){day_only_originals.push(outcome.dayOnly);successfulFamilies.add(family);}
     if(outcome.denied)blockedFamilies.add(family);
   }
+  const page_rejection_counts:Partial<Record<PrivatePageRejectReason,number>>={};
+  if(options.diagnostics===true){
+    for(const code of rejected)
+      page_rejection_counts[code]=(page_rejection_counts[code]??0)+1;
+  }
   return {attempted,verified:verified_candidates.length,verified_candidates,
-    ...(day_only_originals.length?{day_only_originals}:{})};
+    ...(day_only_originals.length?{day_only_originals}:{}),
+    ...(options.diagnostics===true?{page_rejection_counts}:{})};
 }
 
 /** Client-safe shape: no upstream article, URLs, text, or private evidence. */
