@@ -20,7 +20,7 @@ describe('immutable archived GRI ages into a website last-verified view',()=>{
   risk.domainIndices.macro!.readingStatus='last_verified';
   expect(websiteHistoricalRiskView(risk,AS_OF+2*HOUR)).toBeNull();
  });
- it('cannot rescue a bad proof/history, under-embargo, future, or beyond-retention snapshot',()=>{
+ it('cannot rescue a bad proof/history, under-embargo, future snapshot',()=>{
   const now=AS_OF+8*86400_000;
   for(const mutate of [(x:GlobalRisk)=>{x.proofHash='invalid'},
     (x:GlobalRisk)=>{x.domainIndices.macro!.series['7D'].buckets=[]},
@@ -29,7 +29,7 @@ describe('immutable archived GRI ages into a website last-verified view',()=>{
   }
   expect(websiteHistoricalRiskView(fixture(),AS_OF+59*60_000)).toBeNull();
   expect(websiteHistoricalRiskView(fixture(),AS_OF-1)).toBeNull();
-  expect(websiteHistoricalRiskView(fixture(),AS_OF+31*86400_000)).toBeNull();
+  expect(websiteHistoricalRiskView(fixture(),AS_OF+365*86400_000)?.snapshotAsOf).toBe(fixture().snapshotAsOf);
  });
 });
 
@@ -55,6 +55,9 @@ describe("website GRI chooses the newest eligible source clock",()=>{
   expect(selected.proofHash).toBe(archive.proofHash);
   expect(selected.domainIndices.geopolitics?.readingStatus).toBe("last_verified");
   expect(JSON.stringify(archive)).toBe(before);
-  expect(newestWebsiteRiskSnapshot([archive],AS_OF+31*24*HOUR)).toBeNull();
+  const quiet=newestWebsiteRiskSnapshot([archive],AS_OF+365*24*HOUR)!;
+  expect(quiet.snapshotAsOf).toBe(archive.snapshotAsOf);
+  expect(quiet.proofHash).toBe(archive.proofHash);
+  expect(quiet.domainIndices.macro?.readingStatus).toBe('last_verified');
  });
 });

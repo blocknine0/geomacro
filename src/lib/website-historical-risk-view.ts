@@ -10,7 +10,9 @@ import {websiteVerifiedSnapshotPastEmbargo} from './website-publication-delay';
 export function websiteHistoricalRiskView(risk:GlobalRisk,now=Date.now()):GlobalRisk|null{
  if(!Number.isFinite(now)||!risk||!websiteVerifiedSnapshotPastEmbargo(risk,now))return null;
  const snapshot=Date.parse(risk.snapshotAsOf);
- if(!Number.isFinite(snapshot)||now-snapshot>30*86400_000)return null;
+ // Keep the last genuine score until a newer eligible proof replaces it.
+ // Its source clock stays immutable and aged readings become last_verified.
+ if(!Number.isFinite(snapshot))return null;
  const checked=validateGlobalRiskContinuity(risk,now);
  if(checked.ok)return risk;
  if(!checked.code.endsWith('_STATUS_TIME_MISMATCH')||!risk.domainIndices)return null;

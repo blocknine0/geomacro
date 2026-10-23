@@ -10,6 +10,17 @@ export const WEBSITE_GRI_HISTORY_SCHEMA="geomacro.website-lagged-global-risk.v1"
 export const WEBSITE_GRI_DELAY_MS=60*60*1000;
 export const WEBSITE_GRI_HISTORY_RETENTION_MS=30*24*60*60*1000;
 export const WEBSITE_GRI_HISTORY_LIMIT=12;
+// Keep a bounded rolling ring PLUS the newest website-release-eligible anchor.
+// A burst of under-embargo updates or a long quiet period cannot delete it.
+export const WEBSITE_GRI_HISTORY_PRUNE_SQL=`
+ DELETE FROM website_verified_gri_snapshot_history
+ WHERE (source_as_of < ? OR rowid NOT IN
+  (SELECT rowid FROM website_verified_gri_snapshot_history
+   ORDER BY source_as_of DESC LIMIT ?))
+ AND rowid NOT IN
+  (SELECT rowid FROM website_verified_gri_snapshot_history
+   WHERE source_as_of <= ? ORDER BY source_as_of DESC LIMIT 1)
+`;
 export const VERIFIED_GRI_B2_PROOF_SCHEMA="geomacro.public-global-risk-live-proof.v1";
 const HASH=/^[a-f0-9]{64}$/u;
 const PRIVATE_FIELDS=new Set([
@@ -40,7 +51,6 @@ export function privateVerifiedGriHistoryProjection(row,{now=Date.now()}={}){
  const cutoff=now-WEBSITE_GRI_DELAY_MS;
  const asOf=time(row.source_as_of),verifiedAt=time(row.original_verified_at);
  if(!Number.isFinite(asOf)||asOf>cutoff||
-    now-asOf>30*24*60*60*1000||
     !Number.isFinite(verifiedAt)||verifiedAt>now+5*60_000||
     row.proof_schema!==VERIFIED_GRI_B2_PROOF_SCHEMA||
     !HASH.test(String(row.payload_sha256??""))||
