@@ -43,8 +43,10 @@ async function main(env=process.env){
  const source=env.GEOMACRO_APPROVED_FACTS_PUBLIC_PEM_PATH;
  if(typeof source!=='string'||!source.startsWith('/')||!source.trim())fail();
  const path=resolve(source);
- const repoDir=resolve(env.HOME||'/__none__','geomacro');
- if(path===repoDir||path.startsWith(repoDir+sep))fail();
+ // Require an owner-private *directory* outside every repository checkout.
+ // Only the PUBLIC key is read; actual Facts private key is never accessed.
+ const privateDir=resolve(env.HOME||'/__none__','geomacro-private');
+ if(!path.startsWith(privateDir+sep))fail();
  if(lstatSync(path).isSymbolicLink()||!lstatSync(path).isFile()||
    lstatSync(path).size<64||lstatSync(path).size>8192)fail();
  if(realpathSync(path)!==path)fail();
