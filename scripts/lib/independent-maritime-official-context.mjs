@@ -37,8 +37,7 @@ export function summarizeIndependentMaritimeIndex(id,html,{now=new Date()}={}){
  const text=visible(html);
  let count=0,reason="SOURCE_INDEX_SHAPE_UNVERIFIED",latestDay=null;
  if(id==="us_msci_maritime_advisories"){
-   if(/Active Advisories/u.test(text)&&/Expire Date/u.test(text)&&
-      /maritime advisory/iu.test(text)){
+   if(/Active Advisories/u.test(text)&&/Expire Date/u.test(text)){
      reason="OFFICIAL_ADVISORY_INDEX_OBSERVED";
      // The issued/effective day is distinct from the actual incident day.
      // Limit to the Active section and require exact advisory ID + status.
@@ -126,7 +125,7 @@ export async function observeIndependentMaritimeOfficialContext({
      metadata_candidate_count:proof?.index_metadata_candidate_count??0,
      official_effective_day_only:proof?.latest_marad_effective_day_only??null,
      no_original_incident_clock:true,independently_reviewed:false,
-     source_commercial_rights_verified:false,commerical_score_eligible:false,
+     source_commercial_rights_verified:false,commercial_score_eligible:false,
    }));
  }
  return Object.freeze({
