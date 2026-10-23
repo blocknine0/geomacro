@@ -11,6 +11,11 @@ const DOMAINS=['geopolitics','macro','rare_earth'];
 const sha=x=>createHash('sha256').update(x).digest('hex');
 const MAX_HASHES=96;
 const SCHEMA='geomacro.free-source-production-update-checkpoint.v1';
+// This checkpoint namespace is intentionally separate from the 2026-10
+// legacy free_source_production_updates rows, whose stored schema/hash
+// failed actual protected D1 readback. Do not DELETE, overwrite or promote
+// the legacy metadata. v2 starts a fresh, explicitly non-event baseline.
+export const PRODUCTION_FREE_SOURCE_D1_PIPELINE="free_source_production_updates_v2";
 const BASELINE=new Set(['bls','world_bank_wdi','treasury_fiscaldata','usgs_mcs']);
 export const USGS_MCS_OFFICIAL_LANDING_URL =
   'https://www.usgs.gov/centers/national-minerals-information-center/mineral-commodity-summaries';

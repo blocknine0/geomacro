@@ -7,7 +7,7 @@
  */
 import { observeNoKeyLineup } from "../lib/free-no-key-source-probe.mjs";
 import { sourceLineupSummary } from "../lib/operator-commercial-free-source-lineup.mjs";
-import {collectProductionFreeSourceUpdates} from '../lib/free-source-production-updates.mjs';
+import {collectProductionFreeSourceUpdates,PRODUCTION_FREE_SOURCE_D1_PIPELINE} from '../lib/free-source-production-updates.mjs';
 import {assessFreeSourceOperationalVerdict} from '../lib/free-source-operational-verdict.mjs';
 import {safeFreeSourceProductionFailure} from '../lib/free-source-production-failure.mjs';
 import {createD1ControlPlaneStateClient} from '../lib/d1-control-plane-state.mjs';
@@ -24,7 +24,7 @@ if(process.argv.includes('--production-updates')){
      'B2_APPLICATION_KEY','COINBASE_API_KEY','RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64'])
      if(process.env[key])throw Error('SOURCE_READER_FORBIDDEN_CREDENTIAL');
    phase="d1_load_and_source_collection";
-   const client=createD1ControlPlaneStateClient({pipeline:'free_source_production_updates'});
+   const client=createD1ControlPlaneStateClient({pipeline:PRODUCTION_FREE_SOURCE_D1_PIPELINE});
    const receipt=await collectProductionFreeSourceUpdates({stateClient:client,onObservation:row=>console.log(JSON.stringify({schema:"geomacro.free-source-reader-outcome.v1",...row}))});
    // A real D1 readback mismatch throws before this point. Cached 403/429
    // provider diagnoses must remain red in metadata but must not make a

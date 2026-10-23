@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {PRODUCTION_FREE_UPDATE_SOURCES,collectProductionFreeSourceUpdates,summarizeFreeSourceUpdates} from '../lib/free-source-production-updates.mjs';
+import {PRODUCTION_FREE_UPDATE_SOURCES,PRODUCTION_FREE_SOURCE_D1_PIPELINE,collectProductionFreeSourceUpdates,summarizeFreeSourceUpdates} from '../lib/free-source-production-updates.mjs';
 const at=new Date('2026-10-16T07:10:00.000Z');
 const rss=(id='one',date='Fri, 16 Oct 2026 07:00:00 GMT')=>'<rss><channel><item><guid>'+id+'</guid><title>Private source publication</title><pubDate>'+date+'</pubDate></item></channel></rss>';
 const byUrl=new Map(PRODUCTION_FREE_UPDATE_SOURCES.map(s=>[s.url,s]));
@@ -251,4 +251,28 @@ test('MARAD and IEA 403 receive a persistent 24h quota backoff, not a six-hour r
    now:new Date(at.getTime()+1440*60000)});
  assert.equal(maradCalls,2);
  assert.equal(ieaCalls,2);
+});
+
+
+test('non-destructive v2 D1 checkpoint leaves the known bad legacy namespace untouched',async()=>{
+ assert.equal(PRODUCTION_FREE_SOURCE_D1_PIPELINE,'free_source_production_updates_v2');
+ const {readFileSync}=await import('node:fs');
+ const runner=readFileSync(new URL('../ops/probe-commercial-free-source-lineup.mjs',import.meta.url),'utf8');
+ assert.match(runner,/pipeline:PRODUCTION_FREE_SOURCE_D1_PIPELINE/);
+ assert.doesNotMatch(runner,/pipeline:\s*['"]free_source_production_updates['"]/);
+ // An existing untrusted/legacy schema is never silently treated as a
+ // current original or migrated into v2. The initial v2 observation is a
+ // REFERENCE BASELINE, not newly published news or rights authorization.
+ const state=memoryState();
+ const r=await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network(),now:at});
+ assert.equal(r.first_observation_is_new_update,false);
+ assert.equal(r.d1_exact_metadata_readback_verified,true);
+ assert.equal(r.current_verified_intelligence,false);
+ assert.equal(r.commercial_eligible,false);
+ assert.equal(r.payments,0);
+ assert.equal(state.rows.size,3);
+ const d1=readFileSync(new URL('../lib/d1-control-plane-state.mjs',import.meta.url),'utf8');
+ assert.match(d1,/WHERE pipeline = \?/);
+ assert.match(d1,/ON CONFLICT\(pipeline,scope\)/);
+ assert.doesNotMatch(runner,/(?:DELETE\s+FROM\s+pipeline_checkpoint|DROP\s+TABLE|UPDATE\s+pipeline_checkpoint)/i);
 });
