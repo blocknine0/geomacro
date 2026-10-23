@@ -159,10 +159,24 @@ function fromBgsMinerals(payload:unknown):Extracted|null {
      data.features.length>100)return null;
   const years=data.features.flatMap((f:unknown):string[]=>{
     const properties=(f as Record<string,unknown>)?.properties as Record<string,unknown>|undefined;
-    const year=Number(properties?.year);
-    if(!Number.isInteger(year)||year<1900||year>2026||
-       typeof properties?.country_iso3_code!=="string" ||
-       !/^[A-Z]{3}$/u.test(properties.country_iso3_code))return [];
+    // BGS OGC API's documented 'year' may be an ISO-style database
+    // timestamp, e.g. "2006-01-01 00:00:00", not an integer. Accept only
+    // an exact 1-Jan midnight YEAR marker; never convert a publication,
+    // fetch or arbitrary date into a mineral event clock.
+    const original=properties?.year;
+    const text=typeof original==="number"&&Number.isSafeInteger(original)
+      ?String(original):typeof original==="string"?original:"";
+    if(!/^(?:19|20)\d{2}(?:-01-01(?:[ T]00:00:00(?:\.0{1,6})?Z?)?)?$/u.test(text))
+      return [];
+    const year=Number(text.slice(0,4));
+    // Some BGS feature schemas use ISO3, others the documented country_trans
+    // label. Neither becomes a verified 195-country event subject: this
+    // extractor emits only the source dataset's historical year.
+    const iso=properties?.country_iso3_code;
+    const label=properties?.country_trans;
+    const countryPresent=typeof iso==="string"&&/^[A-Z]{3}$/u.test(iso)||
+      typeof label==="string"&&/^[\p{L}][\p{L}\p{M} .'(),-]{1,89}$/u.test(label);
+    if(year<1900||year>2026||!countryPresent)return [];
     return [String(year)];
   }).sort().reverse();
   // A BGS minerals dataset page is not proof any *specific* critical mineral
