@@ -31,7 +31,12 @@ export function phase2ReadinessReceipt({history=null,quota=null,signers,now=new 
     history.b2_requests===0&&history.d1_writes===0;
   const historyPresent=historyKnown&&history.already_present===true&&
     history.status==="PINNED_HISTORICAL_D1_ROW_PRESENT_NO_B2_REPLAY";
-  const needsHistoricalReadback=historyKnown&&!historyPresent;
+  // Metadata-only D1 existence can NEVER prove the original immutable B2
+  // file-version still exists, can be retrieved, or matches gzip/SHA now.
+  // This preflight does not consume a verified B2 readback receipt; thus
+  // EVERY known historical row requires a separate governed exact readback,
+  // including when its history was already restored to D1.
+  const needsHistoricalReadback=historyKnown;
   const quotaKnown=quota?.schema==="geomacro.gri-historical-shared-quota-preflight.v1"&&
     typeof quota.quota_allows_attempt==="boolean"&&
     quota.b2_requests===0&&quota.d1_writes===0;
@@ -45,7 +50,7 @@ export function phase2ReadinessReceipt({history=null,quota=null,signers,now=new 
     ...(!quotaEligible?[blocked.quota]:[]),
     ...(!hintsValid?[blocked.signed]:[]),
   ];
-  const historicalRoute=historyPresent?"PINNED_D1_HISTORICAL_ROW_EXISTS_NOT_CURRENT":
+  const historicalRoute=historyPresent?"PINNED_D1_HISTORICAL_ROW_EXISTS_B2_RECHECK_REQUIRED":
     historyKnown?"PINNED_B2_VERSION_REQUIRED":"HISTORICAL_D1_VERIFICATION_UNAVAILABLE";
   const next= !historyKnown?"VERIFY_HISTORICAL_D1_ANCHOR_AND_ACCOUNT_GOVERNOR":
     needsHistoricalReadback&&!quotaEligible?"WAIT_FOR_GOVERNED_B2_GET_HEADROOM":
