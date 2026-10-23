@@ -622,7 +622,7 @@ jobs:
           set -euo pipefail
           routes="$(cat <<'EOF'
           /|What changed.
-          /intelligence|What changed in the world
+          /intelligence|Risk Intelligence
           /global-risk|Geomacro Global Risk
           /risk-indices|Geomacro Risk Indices
           /ask-geomacro|Ask Geomacro
