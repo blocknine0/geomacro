@@ -28,7 +28,13 @@ export async function verifySharedNewsLive(fetcher=fetch){
    throw Error("D1_SHARED_NEWS_CONTRACT_INVALID");
  const journal=new Map();
  for(const offset of [0,250,500]){
-  const page=await read("website-derived-news"+(offset?"?offset="+offset:""),fetcher);
+  // The shared 72h public research feed reads zero-delay D1 rows. The
+  // legacy /website-derived-news alias has a 15-minute presentation hold;
+  // comparing it with the immediate shared feed creates false parity reds
+  // precisely when new genuine rows arrive. Compare the SAME immediate D1
+  // journal, never reassign first-seen or publisher publication timestamps.
+  const page=await read("website-derived-news-immediate"+
+    (offset?"?offset="+offset:""),fetcher);
   if(page.ok!==true||page.page_offset!==offset||page.page_size!==250||
      !Array.isArray(page.signals)||page.signals.length>250||
      typeof page.has_more!=="boolean")throw Error("D1_SHARED_NEWS_PAGE_INVALID");
