@@ -68,3 +68,44 @@ test("schema or rights not actually approved remains red",async()=>{
   safeSharedNewsParityFailure(e).reason==="D1_SHARED_NEWS_CONTRACT_INVALID");
  assert.equal(calls,1);
 });
+
+test("Predge shared D1 parity reads the zero-delay website journal, never the delayed legacy alias",async()=>{
+ const domains=["geopolitics","macro","rare_earth"];
+ const counts=Object.fromEntries(domains.map(c=>[c,0]));
+ const availability_by_category=Object.fromEntries(domains.map(c=>[c,{
+  latest_source_check:{current_source_check_verified:false,
+   commercial_rights_verified:false,paid_delivery_authorized:false},
+  journal_derived_records_72h:0,
+  journal_credit_required_records_72h:0,
+  withheld_from_source_neutral_view_72h:0,
+  producer_run_freshness_verified:false,
+  reference_data_is_not_a_new_official_release:true
+ }]));
+ const urls=[];
+ const fetcher=async(url)=>{
+  urls.push(url);
+  if(url.endsWith("/derived-structural-72h")){
+   return new Response(JSON.stringify({
+    schema:"geomacro.derived-news-structural-feed.v1",ok:true,
+    chargeable:false,commercial_rights_verified:false,
+    partner_resale_or_commercial_redistribution_authorized:false,
+    raw_upstream_delivered:false,items:[],counts,availability_by_category
+   }),{status:200,headers:{"content-type":"application/json"}});
+  }
+  if(url.endsWith("/website-derived-news-immediate")){
+   return new Response(JSON.stringify({
+    ok:true,page_offset:0,page_size:250,signals:[],
+    has_more:false,next_offset:null
+   }),{status:200,headers:{"content-type":"application/json"}});
+  }
+  assert.fail("unexpected or delayed legacy derived news endpoint: "+url);
+ };
+ const result=await verifySharedNewsLive(fetcher);
+ assert.equal(result.same_journal_ids_verified,true);
+ assert.deepEqual(result.counts,counts);
+ assert.equal(result.original_release_delay_minutes,0);
+ assert.equal(result.commercial_rights_verified,false);
+ assert.equal(result.payments,0);
+ assert.equal(urls.length,2);
+ assert.equal(urls[1].endsWith("/website-derived-news-immediate"),true);
+});
