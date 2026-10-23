@@ -61,7 +61,7 @@ describe('publisher/page rotation composition',()=>{
  });
  it('visits all Treasury pages under the actual publisher schedule without increasing its two-page budget',async()=>{
   const pages=new Set<string>();let visits=0;
-  for(let slot=0;slot<32;slot++){
+  for(let slot=0;slot<40;slot++){
    const now=new Date(start+slot*30*60000);
    await probe30MinThreeDomainPulse({now,probe:async(source:any,options:any)=>{
     if(source.id!=='uk_hmt_original_treasury_atom_review')return observed(source);
