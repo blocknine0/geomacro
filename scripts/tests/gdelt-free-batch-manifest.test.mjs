@@ -79,7 +79,7 @@ test("GDELT batch producer has no Telegram imports, paid credentials, ZIP fetch,
  const manifestSource=readFileSync("scripts/lib/gdelt-free-batch-manifest.mjs","utf8");
  const workflow=readFileSync(".github/workflows/free-commercial-source-lineup.yml","utf8");
  assert.ok(!/telegram\.org|t\.me\//iu.test(source+manifestSource));
- assert.ok(!/\.zip\s*\)|fetch\(.+\.zip/iu.test(manifestSource));
+ assert.ok(!/await fetch|fetchImpl\(/iu.test(manifestSource));
  assert.ok(workflow.includes('cron: "17,47 * * * *"'));
  assert.ok(workflow.includes("--production-updates"));
  assert.ok(workflow.includes("CLOUDFLARE_API_TOKEN"));
