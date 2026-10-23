@@ -8,6 +8,17 @@ const marker={schema_version:"geomacro.deployment-build.v1",
 const catalog={schema_version:"geomacro.earn-first-offers.v1",
   chargeable:false,payment_required_now:false,signed_current_risk_object:false,
   offers:[{category:"Macro/FX",topics:["macro_risk"]}]};
+const pricingCatalog={schema:"geomacro.public-capability-price-catalog.v1",
+  pricing_version:"geomacro.capability-usdc.v1",
+  pricing_status:"FOUNDER_LOCKED_APPROVED_SCHEDULE",
+  payment_authorized:false,money_transferred:false,
+  x402_payment_requirement_issued:false,source_and_rights_required:true,
+  capabilities:[{capability:"structural_country_digest",variants:[{
+    variant:"standard",price_usdc:"0.02",amount_atomic:"20000",
+    currency:"USDC",decimals:6,output_contract:"GEOMACRO_DERIVED_STRUCTURED_ONLY",
+    structured_delivery:{schema:"geomacro.derived-structured.v1"},
+    included_signed_object_charge:"NOT_APPLICABLE",
+  }]}]};
 const eligible={ok:true,chargeable:false,payment_required_now:false,
   execution_authorized:false,delivery_tier:"structural_baseline",
   query_plan_hash:"b".repeat(64),status:"ELIGIBLE_FOR_X402_QUOTE"};
@@ -23,6 +34,7 @@ function calls(outcomes: unknown[]= [unavailable,eligible,unavailable],
     received.push({url:path,method:init?.method??"GET",
       body:init?.body as string|undefined,headers:new Headers(init?.headers)});
     if(path==="/.well-known/geomacro-build.json")return Response.json(markerData);
+    if(path==="/api/v1/pricing")return Response.json(pricingCatalog);
     if(path==="/api/v1/intelligence/availability"){
       if(init?.method==="GET")return Response.json(catalog);
       const k=received.filter(x=>x.method==="POST").length-1;
@@ -41,11 +53,13 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     expect(report.no_funds_preflight_complete).toBe(true);
     expect(report.first_earning_ready).toBe(true);
     expect(report.quote_ready_category_count).toBe(1);
+    expect(report.first_sale_catalog_only.catalog_only_usdc).toBe("0.02");
+    expect(report.first_sale_catalog_only.payable_quote_verified).toBe(false);
     expect(report.eligible_category_count).toBe(1);
     expect(report.real_funds_touched).toBe(false);
     expect(report.payment_header_submitted).toBe(false);
     expect(report.checkout_or_settlement_attempted).toBe(false);
-    expect(received).toHaveLength(5); // build SHA, catalog, three categories
+    expect(received).toHaveLength(6); // build SHA, offer catalog, price catalog, three categories
     expect(received.filter(x=>x.method==="POST")).toHaveLength(3);
     expect(report.checks.slice(2).map(x=>x.country_iso3)).toEqual(["USA","USA","USA"]);
     for(const x of received){
@@ -228,7 +242,7 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     const report=await acceptEarningPilotLive({
       expectedSha:sha,diagnosticOnly:true,fetchImpl,
     });
-    expect(received).toHaveLength(5);
+    expect(received).toHaveLength(6);
     expect(received.filter(x=>x.method==="POST")).toHaveLength(3);
     expect(report.exact_main_published).toBe(false);
     expect(report.diagnostic_only).toBe(true);
