@@ -157,3 +157,42 @@ independently reviews the canonical three-domain numerical GRI package
 AFTER those prerequisites; an original pre-review lead is never
 `GEOMACRO_SUMAN_UNSIGNED_GRI_PATH` or
 `GEOMACRO_SUMAN_UNSIGNED_CERTIFICATES_PATH`.
+
+## Safe publisher-page failure diagnosis after a successful source-discovery run
+
+The page-verifier already accepts first-party article HTML ONLY when its
+precise original publisher date is independently established, the exact
+article/source identity matches, and issuer feed clock agrees. A country
+can have `original_candidates_by_category.geopolitics=1` and still have
+zero published originals. Prior receipts reported only
+`ORIGINAL_PAGE_OR_NATIVE_DATE_UNVERIFIED`, leaving the concrete source
+repair impossible without accessing private article details.
+
+The protected intake now opts into bounded `page_rejection_counts`, which
+the receipt publishes as `discovery_funnel.original_page_rejection_reason_counts`.
+It contains ONLY coarse fixed enum counts:
+`PUBLISHER_PUBLICATION_METADATA_MISSING`,
+`PUBLISHER_PUBLICATION_TIME_IMPRECISE`,
+`PUBLISHER_PUBLICATION_METADATA_CONFLICT`,
+`PUBLISHER_PUBLICATION_DATE_INVALID_OR_EXPIRED`,
+`ORIGINAL_FEED_AND_PAGE_CLOCK_MISMATCH`,
+`INDEX_HEADLINE_OR_PAGE_IDENTITY_MISMATCH`,
+`FIRST_PARTY_SOURCE_ACCESS_DENIED`,
+`SOURCE_FETCH_TRANSPORT_OR_MIME_FAILURE`, plus issuer-specific/scope
+failures. No article title, URL, publisher, HTML body, native date or hash
+is added to the receipt. Invalid codes, impossible counts and attempts over
+the strict four-page budget fail closed.
+
+If `PUBLISHER_PUBLICATION_METADATA_MISSING`, use a real additional issuer
+original-publication metadata verification contract, not a guessed hour,
+crawl time, indexed time or current timestamp. If
+`ORIGINAL_FEED_AND_PAGE_CLOCK_MISMATCH`, check exact first-publication
+versus feed `published` with the original publisher and fix source
+mapping only from genuine issuer-native evidence. If `ACCESS_DENIED`,
+respect legal/provider access controls and use separately authorized source
+alternates, never a 403/429 bypass. An empty evidence day correctly has
+zero GRI signatures, no invented GRI country certificates, zero B2
+original-review PUTs and no paid quote.
+
+This diagnostic is a troubleshooting aid only, not a new production
+approval and not the missing fully automated numerical GRI policy profile.
