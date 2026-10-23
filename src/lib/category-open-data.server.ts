@@ -234,7 +234,7 @@ function fromUsgsMcsPubs(payload:unknown):Extracted|null {
       /^mineral commodity summaries 2026$/iu.test(title);
   });
   return {signals:found?[signal(
-    "usgs_mcs_dataset_catalog","pubs-edition:2026","2026","dataset_edition",
+    "usgs_mcs_dataset_catalog","edition:2026","2026","dataset_edition",
     "Geomacro verifies the USGS Mineral Commodity Summaries 2026 edition in the official Publications Warehouse catalog.",
     "The publication is historical mineral-sector reference context, not a new production observation, market price change or independently scored supply disruption."
   )]:[],credits:[]};

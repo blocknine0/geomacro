@@ -263,8 +263,11 @@ describe("no-card original government structured data adapters",()=>{
       fetcher:(async(input,init)=>new URL(String(input)).hostname==="pubs.usgs.gov"
         ?Response.json({records:[{indexId:"mcs2026",publicationYear:"2026",
           title:"Mineral commodity summaries 2026"}]})
+        :new URL(String(input)).hostname==="www.sciencebase.gov"
+        ?Response.json({id:"69837e43b66b01367d7ec7c7",
+          files:[{name:"MCS2026_Commodities_Data.csv"}]})
         :fetcher(input,init)) as typeof fetch});
-    expect(withBoth.source_families_readable).toBe(2);
+    expect(withBoth.source_families_readable).toBe(3);
     expect(withBoth.findings).toHaveLength(1);
     for(const invalid of [html.replace("10.3133/mcs2026</a>","10.3133/mcs2025</a>"),
       html.replace("<td>2026</td>","<td>2025</td>"),
