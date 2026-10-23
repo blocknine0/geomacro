@@ -1,0 +1,101 @@
+name: GRI Legacy Automatic Recompute (Private, No Funds)
+# Restores the original testnet-era change-driven GRI compute/verify RHYTHM
+# without frozen Supabase, prediction-market actions or waived rights.
+# Existing one-time Pallab/Suman policy controls the research-only profile.
+on:
+  schedule:
+    - cron: "17 */2 * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/gri-legacy-automatic-recompute.yml"
+      - "scripts/lib/gri-legacy-auto-recompute.mjs"
+      - "scripts/lib/gri-legacy-auto-recompute.test.mjs"
+      - "scripts/ops/run-gri-legacy-auto-recompute.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/gri-legacy-automatic-recompute.yml"
+      - "scripts/lib/gri-legacy-auto-recompute.mjs"
+      - "scripts/lib/gri-legacy-auto-recompute.test.mjs"
+      - "scripts/ops/run-gri-legacy-auto-recompute.mjs"
+  workflow_run:
+    workflows:
+      - "Five-Minute Original News Fastlane"
+      - "Website Derived News Continuity"
+      - "Current Original Private Signing Review Intake (No Funds)"
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-legacy-gri-research-recompute
+  cancel-in-progress: false
+jobs:
+  private-compute-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Reproducible old-style three-domain GRI compute no-funds tests
+        run: |
+          node --check scripts/lib/gri-legacy-auto-recompute.mjs
+          node --check scripts/ops/run-gri-legacy-auto-recompute.mjs
+          node --test scripts/lib/gri-legacy-auto-recompute.test.mjs
+  automatically-recompute-only-real-scored-input:
+    needs: private-compute-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
+       github.event_name == 'push' ||
+       (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        (github.event.workflow_run.event == 'schedule' ||
+         github.event.workflow_run.event == 'push' ||
+         github.event.workflow_run.event == 'workflow_dispatch')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: production
+    env:
+      EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
+      GEOMACRO_GRI_AUTO_ENROLLED: ${{ vars.GEOMACRO_GRI_AUTO_ENROLLED }}
+      GEOMACRO_GRI_AUTO_REVOKED: ${{ vars.GEOMACRO_GRI_AUTO_REVOKED }}
+      GEOMACRO_GRI_AUTO_SCORED_INPUT_SHA256: ${{ vars.GEOMACRO_GRI_AUTO_SCORED_INPUT_SHA256 }}
+      GEOMACRO_GRI_AUTO_SCORED_INPUT_B2_KEY: ${{ vars.GEOMACRO_GRI_AUTO_SCORED_INPUT_B2_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: gri_legacy_recompute
+      B2_REQUEST_BUDGET: "3"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Require trusted main + successful source ancestry (wakeup != signing)
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_CANONICAL_MAIN_SHA" = "$(git rev-parse HEAD)"
+          node scripts/ops/verify-gri-news-wakeup.mjs
+      - name: Conditionally read exact immutable private scored candidate and compute canonical v1.2
+        env:
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+          B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node scripts/ops/run-gri-legacy-auto-recompute.mjs --approved-private-recompute-no-funds
+      # No artifacts: even a research-only portable proof may embed private
+      # source identities. Never upload to GitHub or publish into B2/D1.
