@@ -29,6 +29,10 @@ on:
       - "scripts/lib/private-original-signing-review-intake.mjs"
       - "scripts/lib/private-original-signing-review-intake.test.mjs"
       - "scripts/lib/private-original-intake-funnel.mjs"
+      - "scripts/lib/private-original-review-b2-handoff.mjs"
+      - "scripts/lib/private-original-review-b2-handoff.test.mjs"
+      - "scripts/ops/export-private-original-review-lead.mjs"
+      - "scripts/ops/export-private-original-review-lead.test.mjs"
       - "scripts/lib/private-original-intake-funnel.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
   pull_request:
@@ -44,6 +48,10 @@ on:
       - "scripts/lib/private-original-signing-review-intake.mjs"
       - "scripts/lib/private-original-signing-review-intake.test.mjs"
       - "scripts/lib/private-original-intake-funnel.mjs"
+      - "scripts/lib/private-original-review-b2-handoff.mjs"
+      - "scripts/lib/private-original-review-b2-handoff.test.mjs"
+      - "scripts/ops/export-private-original-review-lead.mjs"
+      - "scripts/ops/export-private-original-review-lead.test.mjs"
       - "scripts/lib/private-original-intake-funnel.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
 
@@ -75,6 +83,8 @@ jobs:
           node --check scripts/lib/geomacro-original-page-readback.mjs
           node --test scripts/lib/private-original-signing-review-intake.test.mjs
           node --test scripts/lib/private-original-intake-funnel.test.mjs
+          node --test scripts/lib/private-original-review-b2-handoff.test.mjs
+          node --test scripts/ops/export-private-original-review-lead.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
           bunx --no-install vitest run scripts/ops/prepare-first-original-signing-input.test.ts src/lib/priority-original-review-country.test.ts src/lib/on-demand-global-index-rescue.server.test.ts src/lib/country-195-search-slot-recovery.test.ts
       - name: Attempt genuine 22h publisher original readbacks without charge
@@ -84,6 +94,17 @@ jobs:
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
           GEOMACRO_REVIEW_COUNTRY_ISO3: ${{ github.event_name == 'workflow_dispatch' && inputs.country_iso3 || '' }}
+          # Only genuine privately verified leads justify any B2 operation.
+          # Every attempt is admitted by the existing shared D1 atomic quota
+          # and original source/private URL bytes never enter Actions artifacts.
+          GEOMACRO_ORIGINAL_PRIVATE_ARCHIVE_ENABLED: "1"
+          B2_ACCOUNT_QUOTA_REQUIRED: "1"
+          B2_ACCOUNT_QUOTA_WORKFLOW_ID: original_review_leads
+          B2_REQUEST_BUDGET: "6"
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: bun scripts/ops/prepare-first-original-signing-input.ts
       - name: Upload aggregate-only verification receipt
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && always()
