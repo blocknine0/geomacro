@@ -53,7 +53,7 @@ on:
   schedule:
     # Sixteen intended slots/day: every 90 minutes in UTC. GitHub may
     # delay or skip runs; monitor reports observed lag, not guaranteed SLA.
-    # 15 source GETs + bounded first-party article-date checks + 1 Eurostat fallback; private only.
+    # 18 active source GETs + bounded first-party article-date checks + 1 Eurostat fallback; private only.
     - cron: "17 0,3,6,9,12,15,18,21 * * *"
     - cron: "47 1,4,7,10,13,16,19,22 * * *"
   workflow_dispatch:
@@ -76,7 +76,7 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
-      - name: Probe fifteen active official transports and retain three quarantined routes
+      - name: Probe eighteen active official transports and retain three quarantined routes
         shell: bash
         run: |
           set -uo pipefail
@@ -85,8 +85,8 @@ jobs:
           proof=artifacts/expanded-official-source/transport.json
           jq -e '
             .schema == "geomacro.expanded-official-source-observation.v1" and
-            (.sources|length)==18 and
-            .active_source_count==15 and
+            (.sources|length)==21 and
+            .active_source_count==18 and
             .quarantined_source_count==3 and
             .all_registered_sources_transport_healthy==false and
             ([.sources[] | select(.quarantined==true)]|length)==3 and
@@ -119,7 +119,7 @@ jobs:
               (.organizations_with_90m_originals | type)=="number" and
               .organizations_with_90m_originals>=0 and
               .organizations_with_90m_originals<=.organizations_with_6h_originals and
-              .organizations_with_6h_originals<=4 and
+              .organizations_with_6h_originals<=6 and
               .possible_two_independent_origins_in_6h == (.organizations_with_6h_originals>=2) and
               .same_event_independent_corroboration_verified==false and
               .source_rights_verified==false and
@@ -145,7 +145,7 @@ jobs:
             jq -e '.status=="ACTIVE_SOURCE_TRANSPORT_OBSERVED_WITH_QUARANTINE" and
               .active_source_transport_healthy==true and
               ([.sources[] | select(.quarantined!=true) | .format_valid]|all(.==true))' "$proof" >/dev/null
-            echo "::notice title=Active official issuer mesh::15 official source endpoints sampled; 3 known blocked routes remain QUARANTINED, not healthy. Source rights and event publication remain unverified."
+            echo "::notice title=Active official issuer mesh::18 official source endpoints sampled; 3 known blocked routes remain QUARANTINED, not healthy. Source rights and event publication remain unverified."
           elif [[ "$rc" == "3" ]]; then
             jq -e '.status=="ACTIVE_SOURCE_TRANSPORT_DEGRADED" and
               .active_source_transport_healthy==false and

@@ -204,6 +204,36 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
     topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|copper|magnet|battery|materials? supply|supply chain|mineral processing|energy security)\b/iu,
   }),
+  // Verified first-party public publisher feeds, private review only.
+  // Feed authorship proves NO legal permission or independent same-event
+  // corroboration. Pages still need exact native clock/body readback.
+  Object.freeze({
+    id:"uk_cabinet_security_original_atom_review",
+    domain:"geopolitics",kind:"original_publisher_uk_cabinet_security",
+    url:"https://www.gov.uk/government/organisations/cabinet-office.atom",
+    media:"atom",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
+    topic:/\b(?:security|national security|government|international|foreign policy|conflict|sanctions?|crisis|terrorism|defence|border|emergency|diplomatic)\b/iu,
+  }),
+  Object.freeze({
+    id:"uk_dbt_macro_trade_original_atom_review",
+    domain:"macro",kind:"original_publisher_uk_trade_economic",
+    url:"https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+    media:"atom",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.gov.uk","gov.uk"]),
+    topic:/\b(?:trade|economic|economy|exports?|imports?|tariffs?|industry|business|growth|financial|currency|foreign investment|supply chains?)\b/iu,
+  }),
+  Object.freeze({
+    id:"bc_minerals_original_rss_review",
+    domain:"rare_earth",kind:"original_publisher_british_columbia_minerals",
+    url:"https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed",
+    media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["news.gov.bc.ca"]),
+    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mining|minerals?|processing|supply chain)\b/iu,
+  }),
 ]);
 
 const XML_MIME=/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
@@ -214,8 +244,11 @@ const SOURCE_DOMAINS=["geopolitics","macro","rare_earth"];
 // institution; a second feed from one institution is NOT two corroborators.
 const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
   un_news_security_original_rss_review:"un_news",
+  uk_cabinet_security_original_atom_review:"uk_cabinet",
   statcan_prices_original_atom_review:"statistics_canada",
+  uk_dbt_macro_trade_original_atom_review:"uk_dbt",
   nrcan_government_news_original_atom_review:"natural_resources_canada",
+  bc_minerals_original_rss_review:"bc_ministry_mining",
   uk_fcdo_original_foreign_policy_atom_review:"uk_fcdo",
   fed_monetary_original_press_rss_review:"federal_reserve",
   ecb_press_original_rss_review:"ecb",
@@ -232,8 +265,11 @@ const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
 // conservative: an unknown news URL requires a separately reviewed adapter.
 const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   un_news_security_original_rss_review:/^\/en\/story\/\d{4}\/\d{1,2}\//u,
+  uk_cabinet_security_original_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\/[a-z0-9-]+$/u,
   statcan_prices_original_atom_review:/^\/n1\/(?:en\/)?daily-quotidien\/\d{6}\//u,
+  uk_dbt_macro_trade_original_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\/[a-z0-9-]+$/u,
   nrcan_government_news_original_atom_review:/^\/en\/natural-resources-canada\/news\//u,
+  bc_minerals_original_rss_review:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,
   uk_fcdo_original_foreign_policy_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
   fed_monetary_original_press_rss_review:/^\/newsevents\/pressreleases\/[A-Za-z0-9][^/?#]*/u,
   // Only actual ECB first-party original release pages, never RSS indexes.

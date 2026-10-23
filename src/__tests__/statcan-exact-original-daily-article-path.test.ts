@@ -4,7 +4,7 @@ import {
 } from "../../scripts/ops/probe-expanded-official-source-mesh.mjs";
 import {originalPublisherPrivateCandidates} from "../../scripts/lib/private-original-publisher-candidates.mjs";
 import {fetchVerifiedPublisherPageDate} from "../../scripts/lib/official-original-article-date.mjs";
-import {probe30MinThreeDomainPulse} from "../../scripts/ops/probe-30min-three-domain-pulse.mjs";
+import {probe30MinThreeDomainPulse,select30MinPublishers} from "../../scripts/ops/probe-30min-three-domain-pulse.mjs";
 import {projectSourcePulseForD1} from "../../scripts/ops/write-30min-source-pulse-d1.mjs";
 
 const NOW=new Date("2026-10-11T18:00:00Z");
@@ -133,7 +133,13 @@ describe("#2041 exact StatCan original /n1/en/daily-quotidien article alias",()=
         },
       },
     }));
-    const pulse=await probe30MinThreeDomainPulse({now:NOW,probe});
+    // Pick an actual StatCan slot after expansion from 4 to 5 Macro issuers.
+    // The test checks the same first-party provenance, not a made-up date.
+    const slot=[0,1,2,3,4,5].map(i=>new Date(NOW.getTime()+i*30*60_000))
+      .find(time=>select30MinPublishers(time).macro.some(
+        (source:{id:string})=>source.id==="statcan_prices_original_atom_review"));
+    expect(slot).toBeDefined();
+    const pulse=await probe30MinThreeDomainPulse({now:slot!,probe});
     const rows=projectSourcePulseForD1(pulse);
     expect(rows).toHaveLength(3);
     const macro=rows.find(x=>x.domain==="macro")!;

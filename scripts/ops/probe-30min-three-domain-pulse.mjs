@@ -20,18 +20,21 @@ export const THIRTY_MIN_PUBLISHER_PAIRS=Object.freeze({
     "un_news_security_original_rss_review",
     "uk_fcdo_original_foreign_policy_atom_review",
     "uk_mod_original_defence_atom_review",
+    "uk_cabinet_security_original_atom_review",
   ]),
   macro:Object.freeze([
     "fed_monetary_original_press_rss_review",
     "statcan_prices_original_atom_review",
     "ecb_press_original_rss_review",
     "uk_hmt_original_treasury_atom_review",
+    "uk_dbt_macro_trade_original_atom_review",
   ]),
   rare_earth:Object.freeze([
     "nrcan_government_news_original_atom_review",
     "uk_dbt_critical_minerals_atom_pending_review",
     "australia_industry_minister_original_rss_review",
     "uk_desnz_original_energy_minerals_atom_review",
+    "bc_minerals_original_rss_review",
   ]),
 });
 // Reviewed issuing institutions (not hostnames); this proves distinct
@@ -39,11 +42,14 @@ export const THIRTY_MIN_PUBLISHER_PAIRS=Object.freeze({
 // reporting or legal rights for any shared event.
 const ORIGINAL_PUBLISHER_ORG=Object.freeze({
   un_news_security_original_rss_review:"united_nations",
+  uk_cabinet_security_original_atom_review:"uk_cabinet_office",
   uk_fcdo_original_foreign_policy_atom_review:"united_kingdom_fcdo",
   fed_monetary_original_press_rss_review:"federal_reserve",
+  uk_dbt_macro_trade_original_atom_review:"uk_department_business_trade",
   ecb_press_original_rss_review:"european_central_bank",
   statcan_prices_original_atom_review:"statistics_canada",
   nrcan_government_news_original_atom_review:"natural_resources_canada",
+  bc_minerals_original_rss_review:"british_columbia_mining_ministry",
   usgs_minerals_original_news_rss_review:"us_geological_survey",
   uk_dbt_critical_minerals_atom_pending_review:"uk_department_business_trade",
   australia_industry_minister_original_rss_review:"australian_industry_department",
@@ -59,7 +65,7 @@ export function select30MinPublishers(now=new Date()) {
   const slot=Math.floor(now.getTime()/INTERVAL_MS);
   return Object.fromEntries(DOMAINS.map(domain=>{
     const pair=THIRTY_MIN_PUBLISHER_PAIRS[domain];
-    if(![2,3,4].includes(pair.length)||
+    if(!Number.isInteger(pair.length)||pair.length<2||pair.length>6||
        pair.some(id=>lookup[id]?.domain!==domain||!lookup[id]?.original_hosts?.length)||
        new Set(pair).size!==pair.length ||
        pair.some(id=>!ORIGINAL_PUBLISHER_ORG[id]) ||

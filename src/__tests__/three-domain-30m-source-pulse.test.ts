@@ -34,7 +34,8 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
       const registry=THIRTY_MIN_PUBLISHER_PAIRS[domain];
       expect(pairs[domain]).toHaveLength(2);
       expect(pairs[domain][1].id).toBe(next[domain][0].id);
-      expect([2,3,4]).toContain(registry.length);
+      expect(registry.length).toBeGreaterThanOrEqual(2);
+      expect(registry.length).toBeLessThanOrEqual(6);
       const covered=new Set<string>();
       for(let slot=0;slot<registry.length;slot++){
         const current=select30MinPublishers(
@@ -52,6 +53,7 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
       "uk_dbt_critical_minerals_atom_pending_review",
       "australia_industry_minister_original_rss_review",
       "uk_desnz_original_energy_minerals_atom_review",
+      "bc_minerals_original_rss_review",
     ]);
     // USGS is retained independently for other reviewed source lanes.
     expect(EXPANDED_OFFICIAL_SOURCES.map(s=>s.id)).toContain(
@@ -161,9 +163,10 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
 
   it("checks an independent publisher in the same 30m window when the first has zero articles",async()=>{
     const calls:string[]=[];
+    const selectedGeoPublisher=select30MinPublishers(NOW).geopolitics[0].id;
     const probe=vi.fn(async(source:{id:string,domain:string})=>{
       calls.push(source.id);
-      return verifiedDateResponse(source,source.id==="un_news_security_original_rss_review"?3:0);
+      return verifiedDateResponse(source,source.id===selectedGeoPublisher?3:0);
     });
     const x=await probe30MinThreeDomainPulse({now:NOW,probe});
     expect(probe).toHaveBeenCalledTimes(6);
@@ -196,8 +199,9 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
   });
 
   it("never reports zero-news complete coverage when the second publisher is unavailable",async()=>{
+    const selectedGeoPublisher=select30MinPublishers(NOW).geopolitics[0].id;
     const probe=vi.fn(async(source:{id:string,domain:string})=>{
-      if(source.id==="un_news_security_original_rss_review"){
+      if(source.id===selectedGeoPublisher){
         return {source_id:source.id,domain:source.domain,format_valid:false,primary_http_status:503};
       }
       return verifiedDateResponse(source,0);

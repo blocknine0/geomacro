@@ -237,6 +237,12 @@ function fixedPublisherArticle(rawUrl, category) {
       if (!match) return null;
       return "https://www.gov.uk/government/" + match[1] + "/" + match[2];
     }
+    if (category === "rare_earth" &&
+        candidate.hostname === "news.gov.bc.ca") {
+      const match=/^\/releases\/(20\d{2}[A-Z]{2,6}\d{4}-\d{6})$/u.exec(path);
+      if(!match)return null;
+      return "https://news.gov.bc.ca/releases/"+match[1];
+    }
     if (category === "macro" && candidate.hostname === "www.ecb.europa.eu") {
       // Only precise ECB original press/key release pages; no RSS index,
       // data API, external redirect or origin supplied by the feed.
