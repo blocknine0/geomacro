@@ -31,6 +31,8 @@ on:
       - "scripts/lib/private-original-intake-funnel.mjs"
       - "scripts/lib/private-original-review-b2-handoff.mjs"
       - "scripts/lib/private-original-review-b2-handoff.test.mjs"
+      - "scripts/ops/export-private-original-review-lead.mjs"
+      - "scripts/ops/export-private-original-review-lead.test.mjs"
       - "scripts/lib/private-original-intake-funnel.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
   pull_request:
@@ -46,6 +48,10 @@ on:
       - "scripts/lib/private-original-signing-review-intake.mjs"
       - "scripts/lib/private-original-signing-review-intake.test.mjs"
       - "scripts/lib/private-original-intake-funnel.mjs"
+      - "scripts/lib/private-original-review-b2-handoff.mjs"
+      - "scripts/lib/private-original-review-b2-handoff.test.mjs"
+      - "scripts/ops/export-private-original-review-lead.mjs"
+      - "scripts/ops/export-private-original-review-lead.test.mjs"
       - "scripts/lib/private-original-intake-funnel.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
 
@@ -78,6 +84,7 @@ jobs:
           node --test scripts/lib/private-original-signing-review-intake.test.mjs
           node --test scripts/lib/private-original-intake-funnel.test.mjs
           node --test scripts/lib/private-original-review-b2-handoff.test.mjs
+          node --test scripts/ops/export-private-original-review-lead.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
           bunx --no-install vitest run scripts/ops/prepare-first-original-signing-input.test.ts src/lib/priority-original-review-country.test.ts src/lib/on-demand-global-index-rescue.server.test.ts src/lib/country-195-search-slot-recovery.test.ts
       - name: Attempt genuine 22h publisher original readbacks without charge
