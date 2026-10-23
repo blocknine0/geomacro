@@ -60,3 +60,51 @@ export function chooseOriginalReviewCountry({
   commercial_rights_verified:false,network_requests_added:0
  });
 }
+
+/**
+ * Keep one in four scheduled country-original opportunities genuinely fair.
+ * A source-neutral, unscored D1 journal lead must never silently overwrite
+ * that fairness slot and starve VAT/PSE and the long-tail 195 registry.
+ * Manual owner dispatch still wins. Other hours may prioritize actual
+ * recently observed publisher leads over heuristic issuer hubs.
+ */
+export function finalizeOriginalReviewCountry({
+  opportunity,priority=null,manualCountry="",existsInRegistry,
+}={}){
+ if(!opportunity||typeof opportunity!=="object"||
+    typeof existsInRegistry!=="function"||
+    !ISO.test(opportunity.country_iso3??"")||
+    !existsInRegistry(opportunity.country_iso3)||
+    !["CANONICAL_195_FAIRNESS_ORIGINAL_REVIEW",
+      "FIRST_PARTY_ISSUER_OPPORTUNITY_HEURISTIC"].includes(opportunity.selection_mode)||
+    typeof manualCountry!=="string"||
+    (manualCountry!==""&&(!ISO.test(manualCountry)||!existsInRegistry(manualCountry))))
+   fail();
+ if(manualCountry)return Object.freeze({
+   country_iso3:manualCountry,mode:"MANUAL_COUNTRY_ORIGINAL_REVIEW",
+   fairness_slot_preserved:false,journal_eligible_countries:0,
+   actual_native_source_qualified:false,review_approved:false,
+ });
+ if(opportunity.selection_mode==="CANONICAL_195_FAIRNESS_ORIGINAL_REVIEW")
+   return Object.freeze({
+     country_iso3:opportunity.country_iso3,
+     mode:opportunity.selection_mode,
+     fairness_slot_preserved:true,
+     journal_eligible_countries:Number.isSafeInteger(priority?.eligible_country_count)?
+       priority.eligible_country_count:0,
+     actual_native_source_qualified:false,review_approved:false,
+   });
+ const journalUsable=priority?.selection_mode==="SHARED_D1_RECENT_COUNTRY_LEAD" &&
+    ISO.test(priority.country_iso3??"")&&
+    existsInRegistry(priority.country_iso3)&&
+    Number.isSafeInteger(priority.eligible_country_count)&&
+    priority.eligible_country_count>0;
+ return Object.freeze({
+   country_iso3:journalUsable?priority.country_iso3:opportunity.country_iso3,
+   mode:journalUsable?priority.selection_mode:opportunity.selection_mode,
+   fairness_slot_preserved:false,
+   journal_eligible_countries:Number.isSafeInteger(priority?.eligible_country_count)?
+     priority.eligible_country_count:0,
+   actual_native_source_qualified:false,review_approved:false,
+ });
+}
