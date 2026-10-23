@@ -101,8 +101,8 @@ describe("founder-locked USD prices: precise output fields per product",()=>{
     const pricing=publicGeomacroPaidPricingManifest();
     expect(pricing.structured_output_contract_version).toBe(GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION);
     expect(pricing.all_prices_map_to_structured_output_contracts).toBe(true);
-    expect(pricing.capability_count).toBe(8);
-    expect(pricing.price_variant_count).toBe(14);
+    expect(pricing.capability_count).toBe(7);
+    expect(pricing.price_variant_count).toBe(12);
     for(const capability of pricing.capabilities){
       for(const variant of capability.variants){
         expect(variant.structured_delivery.capability).toBe(capability.capability);
@@ -122,7 +122,7 @@ describe("founder-locked USD prices: precise output fields per product",()=>{
     expect(agent).toContain("per_variant_output_fields_endpoint:endpoints.priced_output_fields");
     expect(agent).toContain('["/api/intelligence/capabilities"]');
     expect(discover).toContain('if(view==="outputs")');
-    expect(discover).toContain("geomacroStructuredOutputCatalog()");
+    expect(discover).toContain("publicGeomacroStructuredOutputCatalog()");
     expect(discover).toContain("this_discovery_is_not_a_payment_offer:true");
     expect(route).toContain("publicGeomacroPaidPricingManifest()");
     expect(route).not.toContain("settleCoinbaseX402");

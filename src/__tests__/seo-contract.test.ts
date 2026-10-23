@@ -10,7 +10,6 @@ type DocsManifestEntry = { route: string };
 const PRIMARY_INDEXABLE_ROUTES = [
   "https://geomacro.live/",
   "https://geomacro.live/intelligence",
-  "https://geomacro.live/global-risk",
   "https://geomacro.live/risk-gate",
   "https://geomacro.live/ask-geomacro",
   "https://geomacro.live/data-api",
@@ -36,7 +35,7 @@ describe("public SEO contract", () => {
   it("keeps every commercial route in the sitemap and retired product routes out", () => {
     const sitemap = read("public/sitemap.xml");
     for (const url of PRIMARY_INDEXABLE_ROUTES) expect(sitemap).toContain("<loc>" + url + "</loc>");
-    for (const marker of ["testnet", "bridge-swap", "prediction-market", "arc-testnet", "/arena", "/onchain"]) {
+    for (const marker of ["testnet", "bridge-swap", "prediction-market", "arc-testnet", "/arena", "/onchain", "/global-risk", "/docs/gri-architecture"]) {
       expect(sitemap.toLowerCase()).not.toContain(marker);
     }
   });

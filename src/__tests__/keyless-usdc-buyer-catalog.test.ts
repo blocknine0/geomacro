@@ -1,6 +1,7 @@
 import {describe,it,expect} from "vitest";
 import {readFileSync} from "node:fs";
 import {GEOMACRO_CAPABILITY_PRICES,GEOMACRO_CAPABILITY_PRICING_VERSION,
+ isPublicStoreCapability,
  resolveGeomacroCapabilityPrice} from "../lib/capability-pricing-catalog";
 import {geomacroKeylessX402BuyerCatalog} from "../lib/keyless-x402-buyer-catalog";
 const read=(file:string)=>JSON.parse(readFileSync(file,"utf8"));
@@ -9,10 +10,12 @@ describe("keyless merchant x402 buyer catalog is exact-price and no-funds",()=>{
  const manifest=read("public/.well-known/x402.json");
  it("exposes every exact immutable catalog price through the same canonical resolver",()=>{
   const expected=Object.entries(GEOMACRO_CAPABILITY_PRICES)
+    .filter(([capability])=>isPublicStoreCapability(capability))
     .flatMap(([capability,variants])=>Object.keys(variants).map(variant=>
      resolveGeomacroCapabilityPrice(capability,variant)));
   const actual=catalog.capabilities.flatMap(row=>row.variants);
   expect(catalog.pricing_version).toBe(GEOMACRO_CAPABILITY_PRICING_VERSION);
+  expect(catalog.capabilities.some(x=>x.capability==="gri_read")).toBe(false);
   expect(actual).toHaveLength(expected.length);
   expect(new Set(actual.map(x=>x.capability+":"+x.variant)).size).toBe(expected.length);
   for(const x of expected){
