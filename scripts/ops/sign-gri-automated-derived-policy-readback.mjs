@@ -31,7 +31,7 @@ export function signGriDerivedPolicyFromExistingReceipt({
   return {schema:"geomacro.gri-auto-policy-signed-run.v1",
     status:result.status,approval_written:false,
     commercial_rights_attested:false,numerical_gri_scored:false,payments:0};
- const contents=JSON.stringify(result)+"\\n";
+ const contents=JSON.stringify(result)+"\n";
  if(contents.length>18000)fail("SIGNATURE_RECEIPT_OVERSIZE");
  if(typeof write==="function"){write(output,contents)}
  else {
