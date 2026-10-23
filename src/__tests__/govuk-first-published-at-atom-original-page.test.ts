@@ -80,3 +80,61 @@ describe("#2041 UK FCDO/DBT source-original publication clocks",()=>{
     }
   });
 });
+describe("#2041 real expanded 30m mesh honors first_published_at with a shared two-GET budget",()=>{
+  it("rescues an undated UK DBT original only by paired Content API publisher clock",async()=>{
+    const first="2026-10-11T17:30:00+00:00";
+    const html="<html><head><title>Government publication</title></head><body>"+
+      "<h1>UK government publishes critical mineral supply assessment</h1>"+
+      "<p>Last modified on 11 October 2026</p></body></html>";
+    const calls:string[]=[];
+    const api="https://www.gov.uk/api/content"+new URL(article).pathname;
+    const result=await probeExpandedSource(dbt,{
+      now:NOW,openDiscovery:true,collectPrivateCandidates:true,
+      fetchImpl:async(u:string,options:RequestInit)=>{
+        calls.push(u);
+        expect(options.redirect).toBe("error");
+        if(u===dbt.url)return http(feed,"application/atom+xml");
+        if(u===article)return http(html,"text/html");
+        if(u===api)return Response.json({
+          base_path:new URL(article).pathname,
+          title:"UK government publishes critical mineral supply assessment",
+          document_type:"publication",first_published_at:first,
+          public_updated_at:"2026-10-11T17:58:00+00:00",
+        });
+        throw Error("UNPINNED_OR_EXTRA_SOURCE_READ");
+      },
+    });
+    expect(calls).toEqual([dbt.url,article,api]);
+    expect(result.original_page_physical_gets).toBe(2);
+    expect(result.original_page_precise_date_checks).toBe(1);
+    expect(result.original_page_precise_date_24h).toBe(1);
+    expect(result.private_original_article_candidates?.some(
+      (x:{native_published_at:string})=>x.native_published_at==="2026-10-11T17:30:00.000Z")).toBe(true);
+    expect(result.commercial_eligible).toBe(false);
+  });
+  it("rejects Content API updated-only fallback and does not exceed article quota",async()=>{
+    const html="<html><head><title>Government publication</title></head><body>"+
+      "<h1>UK government publishes critical mineral supply assessment</h1></body></html>";
+    const api="https://www.gov.uk/api/content"+new URL(article).pathname;
+    const calls:string[]=[];
+    const result=await probeExpandedSource(dbt,{
+      now:NOW,openDiscovery:true,collectPrivateCandidates:true,
+      fetchImpl:async(u:string,options:RequestInit)=>{
+        calls.push(u);expect(options.redirect).toBe("error");
+        if(u===dbt.url)return http(feed,"application/atom+xml");
+        if(u===article)return http(html,"text/html");
+        if(u===api)return Response.json({
+          base_path:new URL(article).pathname,
+          title:"UK government publishes critical mineral supply assessment",
+          document_type:"publication",
+          public_updated_at:"2026-10-11T17:58:00+00:00",
+        });
+        throw Error("NO_MORE_THAN_TWO_PAGE_GETS");
+      },
+    });
+    expect(calls).toEqual([dbt.url,article,api]);
+    expect(result.original_page_precise_date_24h).toBe(0);
+    expect(result.original_page_physical_gets).toBe(2);
+    expect(result.commercial_eligible).toBe(false);
+  });
+});

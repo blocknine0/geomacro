@@ -919,11 +919,22 @@ export async function probeExpandedSource(source,{
     // No article URLs, response bodies or original date text appear in logs.
     const pageCodes=Object.create(null);
     const dateReasons=Object.create(null);
-    let topicalOriginalPages=0;
+    let topicalOriginalPages=0,physicalPageGets=0;
+    // The same TWO page-side requests also cover an optional first-party
+    // GOV.UK Content API check. Two article pages OR one HTML+API pair,
+    // never both. Feed GET remains accounted by its existing source reader.
+    const boundedPageFetch=async(input,init)=>{
+      if(physicalPageGets>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)
+        throw Error("ORIGINAL_ISSUER_PAGE_BUDGET_HELD");
+      physicalPageGets++;
+      return fetchImpl(input,init);
+    };
     for(const article of articles){
+      if(physicalPageGets>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
       const pageDiagnostics={};
       const published=await fetchVerifiedPublisherPageDate(article,source.domain,{
-        now,fetchImpl,diagnostics:pageDiagnostics,
+        now,fetchImpl:boundedPageFetch,diagnostics:pageDiagnostics,
+        allowGovUkContentApi:true,
       });
       const safeCode=pageDiagnostics.code;
       if(SAFE_PUBLISHER_PAGE_PROBE_CODES.includes(safeCode))
@@ -961,6 +972,7 @@ export async function probeExpandedSource(source,{
         row.original_publisher_topical_30m++;
     }
     row.topical_private_release_links_24h+=topicalOriginalPages;
+    row.original_page_physical_gets=physicalPageGets;
     row.first_party_original_page_probe_codes=pageCodes;
     row.first_party_original_page_date_reason_codes=dateReasons;
   }

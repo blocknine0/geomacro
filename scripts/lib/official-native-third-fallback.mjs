@@ -206,7 +206,16 @@ export async function fetchOfficialThirdPublisherArticles(category,{
   // GOV.UK department Atom sometimes has entry <updated> without original <published>.
   // Up to TWO exactly validated GOV.UK article URLs may be inspected for
   // authoritative datePublished. Never substitute feed updated or crawl time.
-  let probes=0,admitted=0;
+  let probes=0,admitted=0,physicalPageGets=0;
+  // The GOV.UK HTML plus optional SAME-ISSUER Content API probe must share
+  // precisely the two existing normal page requests. Never count two GETs
+  // as one "page attempt" and silently exceed the free upstream ceiling.
+  const cappedPageFetch=async(input,init)=>{
+    if(physicalPageGets>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)
+      throw Error("ORIGINAL_ISSUER_PAGE_BUDGET_HELD");
+    physicalPageGets++;
+    return fetchImpl(input,init);
+  };
   const seen=new Set();
   for(const [,block] of [...xml.matchAll(/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu)].slice(0,MAX_ITEMS)){
     if(/<(?:atom:)?published(?:\s[^>]*)?>/iu.test(block))continue;
@@ -220,10 +229,14 @@ export async function fetchOfficialThirdPublisherArticles(category,{
     if(pulseRefs instanceof Set &&
        (!digest || !pulseRefs.has(digest) || !pulseExpectedClocks.has(digest)))
       continue;
+    if(physicalPageGets>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
     seen.add(url);probes++;
     let published=null;
     try{
-      published=await fetchVerifiedPublisherPageDate(url,category,{now,fetchImpl});
+      published=await fetchVerifiedPublisherPageDate(url,category,{
+        now,fetchImpl:cappedPageFetch,allowGovUkContentApi:true,
+        articleTitle:title,maxAgeMs,
+      });
     }catch{/* bounded verifier failure is not event evidence */}
     const at=Date.parse(published??"");
     if(pulseRefs instanceof Set &&
@@ -239,10 +252,11 @@ export async function fetchOfficialThirdPublisherArticles(category,{
         privateOnly:true,rightsVerified:false,commercialEligible:false});
       admitted++;
     }
-    if(probes>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
+    if(physicalPageGets>=ORIGINAL_ARTICLE_MAX_PROBES_PER_DOMAIN)break;
   }
   if(diagnostics&&typeof diagnostics==="object"&&!Array.isArray(diagnostics)){
     diagnostics.third_original_page_date_checks=probes;
+    diagnostics.third_original_page_network_gets=physicalPageGets;
     diagnostics.third_original_page_date_admitted=admitted;
   }
   return accepted.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));

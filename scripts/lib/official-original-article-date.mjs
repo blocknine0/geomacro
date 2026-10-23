@@ -1,3 +1,9 @@
+import {pinnedGovUkContentApiUrl,verifiedGovUkContentFirstPublishedAt}
+  from "./govuk-original-content-clock.mjs";
+
+// Publisher Content API read is not a second source: it must be coupled to
+// the exact first-party HTML and consume the same bounded two-GET pool.
+const GOVUK_API_MAX_BYTES=128*1024;
 // Private, bounded, same-original-publisher verification for Atom feeds that
 // omit per-entry <published>. An Atom <updated> is NEVER publication proof.
 // No raw HTML/title/URL is persisted to a public proof, log or paid response.
@@ -289,6 +295,7 @@ function pageStatus(diagnostics,code) {
 }
 export async function fetchVerifiedPublisherPageDate(url, category, {
   now = new Date(), fetchImpl = fetch, diagnostics = null,
+  allowGovUkContentApi = false, articleTitle = null, maxAgeMs = ONE_DAY_MS,
 } = {}) {
   const articleUrl = fixedPublisherArticle(url, category);
   if (!articleUrl) {
@@ -353,7 +360,48 @@ export async function fetchVerifiedPublisherPageDate(url, category, {
     pageStatus(diagnostics,"UTF8_INVALID");
     return null;
   }
-  const publishedAt=verifiedPublisherPageDate(html,now,diagnostics);
+  const originalDiagnostics=diagnostics??{};
+  let publishedAt=verifiedPublisherPageDate(html,now,originalDiagnostics);
+  // GOV.UK Atom entries routinely contain only <updated>; missing ORIGINAL
+  // HTML metadata can be rescued by an actual independently path/title-bound
+  // first_published_at from the SAME publisher. This opt-in never promotes a
+  // stale/future/conflicting/modified first-published HTML clock.
+  const api=allowGovUkContentApi===true &&
+    originalDiagnostics.date_reason==="MISSING_PUBLISHER_PUBLICATION_METADATA" &&
+    Number.isSafeInteger(maxAgeMs)&&maxAgeMs>=60_000&&maxAgeMs<=ONE_DAY_MS
+      ? pinnedGovUkContentApiUrl(articleUrl):null;
+  if(!publishedAt&&api){
+    try{
+      const second=await fetchImpl(api,{
+        method:"GET",redirect:"error",signal:AbortSignal.timeout(PAGE_TIMEOUT_MS),
+        headers:{accept:"application/json",
+          "user-agent":"Geomacro-Private-Original-Publisher-Date-Verification/1.0"},
+      });
+      if(second.ok&&/^application\/json(?:;|$)/iu.test(
+          second.headers.get("content-type")??"")&&
+        Number(second.headers.get("content-length")||0)<=GOVUK_API_MAX_BYTES&&
+        second.body){
+        const pieces=[],reader=second.body.getReader();let length=0,over=false;
+        try{
+          while(true){
+            const {done,value}=await reader.read();
+            if(done)break;
+            length+=value.byteLength;
+            if(length>GOVUK_API_MAX_BYTES){over=true;break;}
+            pieces.push(Buffer.from(value));
+          }
+        }finally{reader.releaseLock();}
+        if(!over){
+          const json=new TextDecoder("utf-8",{fatal:true})
+            .decode(Buffer.concat(pieces));
+          publishedAt=verifiedGovUkContentFirstPublishedAt({
+            articleUrl,html,contentJson:json,articleTitle,now,maxAgeMs,
+          });
+          if(publishedAt)originalDiagnostics.date_reason="PRECISE_PUBLICATION_ACCEPTED";
+        }
+      }
+    }catch{/* 403, 429, redirects, quota exhaustion, parse and transport fail closed */}
+  }
   pageStatus(diagnostics,publishedAt
     ? "PRECISE_PUBLICATION_VERIFIED" : "PRECISE_PUBLICATION_UNVERIFIED");
   return publishedAt;
