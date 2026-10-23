@@ -4,7 +4,6 @@ import { AgentCommerceStatus } from "@/components/agent-commerce-status";
 import { CategoryApiLaunchPanel } from "@/components/category-api-launch-panel";
 import { ApiKeysNotice } from "@/components/api-keys-notice";
 import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
-import { KeylessBuyerQuickstart } from "@/components/keyless-buyer-quickstart";
 const TITLE = "API & Agents | Geomacro";
 const DESCRIPTION =
   "Structured geopolitical, Macro/FX and critical-minerals intelligence for applications and AI agents. API keys coming soon.";
@@ -41,7 +40,6 @@ function DataApiPage() {
       <div className="mt-8">
         <ApiKeysNotice />
       </div>
-      <div className="mt-6"><KeylessBuyerQuickstart /></div>
       <div className="my-10 grid gap-4 md:grid-cols-3">
         {[
           {
