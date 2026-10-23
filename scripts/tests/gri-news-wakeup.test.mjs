@@ -34,6 +34,27 @@ test('schedule, owner dispatch and scoped main push check exact checkout, withou
   assert.throws(()=>verifyGriNewsWakeup({...args,env:{...env,...change}}));
 });
 
+test('one-time consent continuation wakes only on genuine successful private original source intake',()=>{
+ const name='Current Original Private Signing Review Intake (No Funds)';
+ assert.ok(GRI_NEWS_WORKFLOWS.includes(name));
+ for(const event of ['schedule','workflow_dispatch','push']){
+  const result=verifyGriNewsWakeup({...args,event:{workflow_run:{...run,name,event}}});
+  assert.equal(result.news_workflow_ancestry_verified,true);
+  assert.equal(result.signed_gri_input_verified,false);
+  assert.equal(result.published,false);
+  assert.equal(result.payments,0);
+ }
+ for(const bad of [
+  {conclusion:'failure'},{event:'workflow_run'},{event:'pull_request'},
+  {head_repository:{full_name:'other/geomacro'}},{head_branch:'reviewer-private'}
+ ]){
+  assert.throws(()=>verifyGriNewsWakeup({...args,
+   event:{workflow_run:{...run,name,...bad}}}));
+ }
+ assert.throws(()=>verifyGriNewsWakeup({...args,isAncestor:false,
+  event:{workflow_run:{...run,name}}}));
+});
+
 test('trusted canonical D1 primary and recovery writer completions wake all-news signing',()=>{
  for(const name of ['Website Derived News Continuity','Website Derived News Cadence Backstop']){
   const result=verifyGriNewsWakeup({...args,event:{workflow_run:{...run,name,event:'schedule'}}});
