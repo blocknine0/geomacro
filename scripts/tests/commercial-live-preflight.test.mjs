@@ -9,8 +9,8 @@ const good={canonicalSha:sha,
   current_hot_product_ready:{intelligence:true,global_risk:true,risk_indices:true},
   hot_snapshot_serving:{intelligence:{ok:true},global_risk:{ok:true},risk_indices:{ok:true}}}}},
  discovery:{status:200,body:{status:'prelaunch',productionFundsAuthorized:false,resources:[]}},
- availability:{status:200,body:{payment_required_now:false,execution_authorized:false,query_plan_hash:'f'.repeat(64),
-  availability:{deliverable:true,code:'AVAILABLE'},exact_price:{asset:'USDC',amount_usdc:'0.05'}}}};
+ availability:{status:200,body:{ok:true,chargeable:true,payment_required_now:false,execution_authorized:false,query_plan_hash:'f'.repeat(64),
+  availability:{deliverable:true,code:'AVAILABLE'},exact_price:{asset:'USDC',amount_usdc:'0.05',amount_atomic:'50000'}}}};
 test('even positive live no-funds probe is not authorization for payment, rights or 195 countries',()=>{
  const r=assessLiveNoFundsReadiness(good);
  assert.equal(r.status,'READY_FOR_SEPARATE_OWNER_PAYMENT_ACCEPTANCE_NOT_LAUNCHED');
@@ -71,4 +71,22 @@ test('exact-head no-funds summary must use separate shell lines',()=>{
  const source=readFileSync(new URL('../../.github/workflows/exact-head-commercial-launch-readiness.yml',import.meta.url),'utf8');
  assert.doesNotMatch(source,/\\n[ \\t]+echo[ \\t]+/);
  assert.match(source,/echo "- Run Live Commercial Go-No-Go No Funds/);
+});
+
+test('a purported eligible prequote cannot be zero, undercounted or not chargeable',()=>{
+ for(const modified of [
+  {exact_price:{asset:'USDC',amount_usdc:'0',amount_atomic:'0'}},
+  {exact_price:{asset:'USDC',amount_usdc:'0.05',amount_atomic:'5000'}},
+  {exact_price:{asset:'USDC',amount_usdc:'1.00',amount_atomic:'1000000'}},
+  {chargeable:false},
+  {ok:false}
+ ]){
+  const r=assessLiveNoFundsReadiness({...good,
+   availability:{...good.availability,body:{...good.availability.body,...modified}}
+  });
+  assert.equal(r.status,'BLOCKED_NO_REAL_FUNDS');
+  assert.equal(r.gates.one_representative_product_deliverable,false);
+  assert.ok(r.blockers.includes('REPRESENTATIVE_PAID_PRODUCT_NOT_DELIVERABLE'));
+  assert.equal(r.real_funds_authorized,false);
+ }
 });
