@@ -45,7 +45,7 @@ for (const { category, result, error } of results) {
     Math.abs((checked - cutoff)) <= 2_000;
   // Day-only Macro observations are admitted exclusively by the pinned
   // Statistics Canada first-party article/date verifier upstream. Enforce the
-  // same next-day 12:15 UTC conservative cutoff as existing day-only domains.
+  // same next-day 12:00 UTC conservative cutoff as existing day-only domains.
   const strictlyOriginalDates = signals.every(s => {
     const date = Date.parse(s.published_at);
     const originalTrusted = s.date_precision === "day"
@@ -98,7 +98,7 @@ console.log(JSON.stringify({ schema: "geomacro.stateless-supabase-blackout.v1",
   supabase_requests: forbiddenSupabaseAttempts,
   supabase_read_dependency: false,
   categories_with_genuine_releases: results.filter(x => (x.result?.signals.length ?? 0) > 0).length,
-  website_release_delay_minutes: 15,
+  website_release_delay_minutes: 0,
 }));
 if (forbiddenSupabaseAttempts > 0) healthy = false;
 if (!healthy) {

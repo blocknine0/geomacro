@@ -608,7 +608,7 @@ jobs:
               "live_website_page":True,
               "first_html_contains_derived_story":True,
               "d1_derived_story_count":len(titles),
-              "original_delay_minutes":15,
+              "original_delay_minutes":journal.get("original_release_delay_minutes"),
               "source_urls_or_raw_feed_logged":False
           }))
           PY
