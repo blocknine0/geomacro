@@ -63,7 +63,6 @@ import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
 import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
 import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.order'
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
-import { Route as ApiV1CommerceCatalogRouteImport } from './routes/api.v1.commerce.catalog'
 import { Route as ApiV1IntelligenceAvailabilityRouteImport } from './routes/api.v1.intelligence.availability'
 import { Route as ApiV1IntelligenceCriticalMineralsRouteImport } from './routes/api.v1.intelligence.critical-minerals'
 import { Route as ApiV1IntelligenceGeopoliticsRouteImport } from './routes/api.v1.intelligence.geopolitics'
@@ -347,11 +346,6 @@ const ApiGoatPilotStatusRoute = ApiGoatPilotStatusRouteImport.update({
   path: '/api/goat/pilot/status',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiV1CommerceCatalogRoute = ApiV1CommerceCatalogRouteImport.update({
-  id: '/api/v1/commerce/catalog',
-  path: '/api/v1/commerce/catalog',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiV1IntelligenceAvailabilityRoute =
   ApiV1IntelligenceAvailabilityRouteImport.update({
     id: '/api/v1/intelligence/availability',
@@ -470,7 +464,6 @@ export interface FileRoutesByFullPath {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
-  '/api/v1/commerce/catalog': typeof ApiV1CommerceCatalogRoute
   '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
@@ -538,7 +531,6 @@ export interface FileRoutesByTo {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
-  '/api/v1/commerce/catalog': typeof ApiV1CommerceCatalogRoute
   '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
@@ -607,7 +599,6 @@ export interface FileRoutesById {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
-  '/api/v1/commerce/catalog': typeof ApiV1CommerceCatalogRoute
   '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
@@ -677,7 +668,6 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
-    | '/api/v1/commerce/catalog'
     | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
@@ -745,7 +735,6 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
-    | '/api/v1/commerce/catalog'
     | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
@@ -813,7 +802,6 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
-    | '/api/v1/commerce/catalog'
     | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
@@ -882,7 +870,6 @@ export interface RootRouteChildren {
   ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
   ApiGoatPilotOrderRoute: typeof ApiGoatPilotOrderRoute
   ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
-  ApiV1CommerceCatalogRoute: typeof ApiV1CommerceCatalogRoute
   ApiV1IntelligenceAvailabilityRoute: typeof ApiV1IntelligenceAvailabilityRoute
   ApiV1IntelligenceCriticalMineralsRoute: typeof ApiV1IntelligenceCriticalMineralsRoute
   ApiV1IntelligenceGeopoliticsRoute: typeof ApiV1IntelligenceGeopoliticsRoute
@@ -1276,13 +1263,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoatPilotStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/v1/commerce/catalog': {
-      id: '/api/v1/commerce/catalog'
-      path: '/api/v1/commerce/catalog'
-      fullPath: '/api/v1/commerce/catalog'
-      preLoaderRoute: typeof ApiV1CommerceCatalogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/v1/intelligence/availability': {
       id: '/api/v1/intelligence/availability'
       path: '/api/v1/intelligence/availability'
@@ -1418,7 +1398,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,
   ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
-  ApiV1CommerceCatalogRoute: ApiV1CommerceCatalogRoute,
   ApiV1IntelligenceAvailabilityRoute: ApiV1IntelligenceAvailabilityRoute,
   ApiV1IntelligenceCriticalMineralsRoute:
     ApiV1IntelligenceCriticalMineralsRoute,
