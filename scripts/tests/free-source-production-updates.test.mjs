@@ -195,7 +195,7 @@ test('cron startup jitter cannot suppress the next half-hour slot or reset denia
    id:x.id,category:x.category,state:x.state
  })),[{id:'us_doe',category:'rare_earth',state:'DENIED_OR_RATE_LIMIT'}]);
  const calendar=await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('two'),now:new Date('2026-10-17T00:17:00.000Z')});
- assert.equal(calendar.attempted,34);
+ assert.equal(calendar.attempted,35);
 });
 test('USGS MCS repair revision rechecks same-publisher fallback before annual interval without event promotion',async()=>{
  const state=memoryState();
