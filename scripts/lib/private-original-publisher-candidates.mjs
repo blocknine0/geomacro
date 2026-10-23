@@ -17,11 +17,14 @@ const MAX_AGE_MS=24*60*60*1000;
 const MAX_TITLE=300;
 const MAX_URL=1600;
 const ORIGINAL_ARTICLE_PATHS=Object.freeze({
+  un_geneva_press_original_rss_review:/^\/en\/news-media\/press-release\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]{8,220}$/u,
   un_news_security_original_rss_review:/^\/en\/story\/\d{4}\/\d{1,2}\//u,
   uk_fcdo_original_foreign_policy_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
   fed_monetary_original_press_rss_review:/^\/newsevents\/pressreleases\/[A-Za-z0-9][^/?#]*/u,
   ecb_press_original_rss_review:/^\/press\/(?:pr|key)\/date\/20[0-9]{2}\/html\/[a-zA-Z0-9.~_-]{6,190}\.html$/u,
+  boc_press_original_rss_review:/^\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\/$/u,
   statcan_prices_original_atom_review:/^\/n1\/(?:en\/)?daily-quotidien\/\d{6}\//u,
+  bc_minerals_original_rss_review:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,
   nrcan_government_news_original_atom_review:/^\/en\/natural-resources-canada\/news\//u,
   usgs_minerals_original_news_rss_review:/^\/(?:news|programs\/mineral-resources-program\/news)(?:\/|$)/u,
   australia_industry_minister_original_rss_review:/^\/(?:t-ayres|king)\/media\//u,
@@ -31,11 +34,14 @@ const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   uk_desnz_original_energy_minerals_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
 });
 const APPROVED_SOURCE_ORGS=Object.freeze({
+  un_geneva_press_original_rss_review:"un_geneva",
   un_news_security_original_rss_review:"un_news",
   uk_fcdo_original_foreign_policy_atom_review:"uk_fcdo",
   fed_monetary_original_press_rss_review:"federal_reserve",
   ecb_press_original_rss_review:"ecb",
+  boc_press_original_rss_review:"bank_of_canada",
   statcan_prices_original_atom_review:"statistics_canada",
+  bc_minerals_original_rss_review:"bc_ministry_mining",
   nrcan_government_news_original_atom_review:"natural_resources_canada",
   usgs_minerals_original_news_rss_review:"usgs",
   australia_industry_minister_original_rss_review:"australian_industry_minister",
