@@ -60,5 +60,5 @@ test("Counter semantics and impossible stage promotions fail closed",()=>{
  assert.throws(()=>summarizePrivateOriginalIntakeFunnel({
   ...input(),discovery:{discovery:{network_attempts:-1,source_probes:[]},
    private_original_review_candidates:[]}
- })),/INVALID/);
+ }),/INVALID/);
 });
