@@ -177,9 +177,10 @@ export function latestStructuralObservations(
   rows: StructuralObservation[],
   limit = 12,
 ): StructuralObservation[] {
+  if(!Number.isSafeInteger(limit)||limit<=0)return [];
   const sorted = [...rows].sort((a, b) => rowTime(b) - rowTime(a));
   const seen = new Set<string>();
-  const output: StructuralObservation[] = [];
+  const dimensions=new Map<string,StructuralObservation[]>();
   for (const row of sorted) {
     const key = [
       row.dimension,
@@ -189,10 +190,23 @@ export function latestStructuralObservations(
     ].join("|");
     if (seen.has(key)) continue;
     seen.add(key);
-    output.push(row);
-    if (output.length >= limit) break;
+    const bucket=dimensions.get(row.dimension)??[];
+    bucket.push(row);
+    dimensions.set(row.dimension,bucket);
   }
-  return output;
+  // A busy dimension must not consume the entire bounded serving profile
+  // and silently drop another required module whose observations exist.
+  // Take one newest metric per dimension per round, retaining the same cap.
+  const output:StructuralObservation[]=[];
+  for(let round=0;output.length<limit;round++){
+    let added=false;
+    for(const bucket of dimensions.values()){
+      if(bucket[round]){output.push(bucket[round]);added=true;}
+      if(output.length===limit)break;
+    }
+    if(!added)break;
+  }
+  return output.sort((a,b)=>rowTime(b)-rowTime(a));
 }
 
 function isStructuralObservation(value: unknown): value is StructuralObservation {

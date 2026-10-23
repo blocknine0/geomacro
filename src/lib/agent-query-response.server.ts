@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { AgentQueryPlan } from "./agent-query-plan";
+import type {QualifiedSubjectEvidence} from "./agent-query-qualified-evidence.server";
 import { demoPolicyFromPreset } from "./agentic-demo-contract";
 import { loadCommercialRiskObjectForAgentQuery } from "./agent-query-external-modules.server";
 import { loadAgentHotTopics } from "./agent-query-hot-topics.server";
@@ -90,8 +91,8 @@ export function latestModuleTimestamp(
   return values.length ? Math.max(...values) : null;
 }
 
-async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["subjects"][number]) {
-  const context = await loadStructuralContext(subject, {
+async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["subjects"][number],qualified?:QualifiedSubjectEvidence) {
+  const context = qualified?.context ?? await loadStructuralContext(subject, {
     allowQualifiedRelease: plan.delivery_tier === "structural_baseline" && plan.topics.length === 1 &&
       ["critical_minerals", "fx_external_risk"].includes(plan.topics[0]),
     qualifiedReleaseTopic: plan.topics[0],
@@ -132,7 +133,7 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
       asOfMs - latest <= maxAgeSeconds * 1_000;
 
     if (module === "political_governance" && !structuralFresh) {
-      const fallback = await loadAgentPoliticalGovernanceModule({
+      const fallback = qualified?.governance ?? await loadAgentPoliticalGovernanceModule({
         subject,
         as_of: asOf,
         max_age_seconds: maxAgeSeconds,
@@ -166,7 +167,7 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
         module === "external_fx") &&
       !structuralFresh
     ) {
-      const fallback = await loadAgentWorldBankModule({
+      const fallback = qualified?.worldBank[module as AgentWorldBankModuleName] ?? await loadAgentWorldBankModule({
         module: module as AgentWorldBankModuleName,
         subject,
         as_of: asOf,
@@ -194,7 +195,7 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
     }
 
     if (module === "critical_minerals" && !structuralFresh) {
-      const fallback = await loadAgentCriticalMineralsModule({
+      const fallback = qualified?.minerals ?? await loadAgentCriticalMineralsModule({
         subject,
         as_of: asOf,
         max_age_seconds: maxAgeSeconds,
@@ -832,9 +833,11 @@ export async function assembleAgentQueryResponse(input: {
   requestId: string;
   clientRequestId?: string | null;
   priceUsdc?: string | null;
+  qualifiedStructural?:{asOf:string;subjects:QualifiedSubjectEvidence[]};
 }) {
-  const { plan } = input;
-  const structural = await Promise.all(plan.subjects.map((subject) => structuralSubject(plan, subject)));
+  const plan=input.qualifiedStructural?{...input.plan,as_of:input.qualifiedStructural.asOf}:input.plan;
+  const structural = await Promise.all(plan.subjects.map((subject,index) =>
+    structuralSubject(plan,subject,input.qualifiedStructural?.subjects[index])));
   const includeRiskObject = plan.required_modules.includes("signed_risk_object");
   const includeRiskGate = plan.required_modules.includes("risk_gate");
   const includeHotTopics = plan.required_modules.includes("hot_topics");

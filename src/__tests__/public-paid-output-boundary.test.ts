@@ -230,6 +230,21 @@ describe("source-free paid output boundary", () => {
       {rejectEmbeddedLinks:true})).toThrow("PAID_OUTPUT_UNQUALIFIED_RAW_MATERIAL_FIELD");
   });
 
+  it("accepts only exact false safety assertions emitted by governed module fallbacks",()=>{
+    for(const key of ["raw_source_material_redistributed",
+      "raw_upstream_perception_source_material_redistributed","raw_numeric_source_rows_redistributed"]){
+      const payload={structural:[{limitations:{[key]:false}}]};
+      expect(sanitizePublicPaidOutput(payload,{rejectEmbeddedLinks:true})).toEqual(payload);
+      expect(()=>assertPublicPaidOutputBoundary(payload)).not.toThrow();
+      for(const value of [true,"false",0,null,{text:"source material"}]){
+        const invalid={structural:[{limitations:{[key]:value}}]};
+        expect(()=>sanitizePublicPaidOutput(invalid,{rejectEmbeddedLinks:true}))
+          .toThrow("PAID_OUTPUT_UNQUALIFIED_RAW_MATERIAL_FIELD");
+        expect(()=>assertPublicPaidOutputBoundary(invalid)).toThrow("PAID_OUTPUT_RAW_MATERIAL_FIELD");
+      }
+    }
+  });
+
   it("wires sanitation before durable x402 preparation and on replay", async () => {
     const fs = await import("node:fs/promises");
     const route = await fs.readFile("src/lib/mainnet-intelligence-endpoint.server.ts", "utf8");
