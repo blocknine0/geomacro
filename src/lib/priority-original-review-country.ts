@@ -59,12 +59,14 @@ export function selectPriorityOriginalReviewCountry(
  const ranked=[...countries].sort(([a,ra],[b,rb])=>
     rb.categories.size-ra.categories.size ||
     rb.latest-ra.latest || a.localeCompare(b));
- // One country per existing scheduled intake, no multiplier of provider GETs.
- // Cycle across the most recent 12 exact-country candidates rather than
- // starving smaller countries behind one global news hotspot.
+ // Prefer the richest *distinct category* observations, while cycling
+ // through up to 12 tied countries so one global headline hotspot cannot
+ // occupy every scheduled intake. This remains only an original-page LEAD.
+ const topCategories=ranked[0]?.[1].categories.size??0;
+ const tied=ranked.filter(([,value])=>value.categories.size===topCategories)
+   .slice(0,12);
  const slot=Math.floor((clock-2*3_600_000)/(6*3_600_000));
- const selected=ranked.length?ranked[((slot%Math.min(12,ranked.length))+
-   Math.min(12,ranked.length))%Math.min(12,ranked.length)]:null;
+ const selected=tied.length?tied[((slot%tied.length)+tied.length)%tied.length]:null;
  return Object.freeze({
    country_iso3:selected?.[0]??fallbackIso3,
    selection_mode:selected?"SHARED_D1_RECENT_COUNTRY_LEAD":"CANONICAL_195_ROTATION",
