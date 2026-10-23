@@ -66,7 +66,9 @@ jobs:
           src/__tests__/mainnet-intelligence-api-v1-static.test.ts
 
       - name: Verify database migration safety
-        run: bun run db:safety
+        run: |
+          node --test scripts/db/check-migration-history-quarantine.test.mjs
+          bun run db:safety
 
       - name: Verify hosting/source alignment
         run: bun run hosting:verify
