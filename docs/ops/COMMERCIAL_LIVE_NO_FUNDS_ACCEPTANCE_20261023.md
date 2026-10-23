@@ -28,3 +28,16 @@
 Do not alter the fixed capability price list, issue new derived-data licences merely because raw data is not redistributed, auto-generate independent reviewer approvals, shift paid products to stale unscored news, expose credentials or execute USDC settlement from CI. Existing signed hot, Rights, independent reviewer, ledger and strict x402 fail-closed conditions remain authoritative.
 
 The static `Exact-Head Commercial Launch Readiness` is now explicitly labeled **STATIC_PRELAUNCH_CODE_CHECKS_PASSED_LIVE_UNVERIFIED**, never `READY_FOR_OWNER_ACTIVATION` based only on code.
+
+## Pre-mainnet migration safety: GitHub runner cross-device EXDEV fix
+
+On PR #2722 the existing `Pre-Mainnet x402 Zero-Fund Acceptance` database
+safety step failed because `check-migration-safety-history-aware.mjs` tried
+to `rename` independently verified production-history-only SQL migrations
+from the GitHub workspace into `/tmp`, which is on a different filesystem
+on the current runner image. The code now quarantines under a temporary
+hidden directory **inside the same checkout**, then invokes the unchanged
+`check-migration-safety.mjs`, restores every parked file in `finally`
+and deletes its temporary directory. No SQL migration, Supabase table,
+production data or history allowlist was changed. Added a regression test
+that exercises move/restore and verifies the mandatory full safety checker.
