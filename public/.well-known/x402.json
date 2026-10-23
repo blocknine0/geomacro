@@ -58,8 +58,7 @@
     "openapi": "https://geomacro.live/openapi-x402.json",
     "commerce": "https://geomacro.live/.well-known/geomacro-commerce.json",
     "agent": "https://geomacro.live/.well-known/geomacro-agent.json",
-    "llms": "https://geomacro.live/llms.txt",
-    "buyer_quickstart": "https://geomacro.live/.well-known/geomacro-buyer.json"
+    "llms": "https://geomacro.live/llms.txt"
   },
   "boundaries": {
     "deliverability_before_payment": true,
