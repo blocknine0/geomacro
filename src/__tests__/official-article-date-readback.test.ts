@@ -332,7 +332,7 @@ describe("#2041 first-party Canada/StatCan day-precision original without invent
   });
   it("verifies StatCan daily source-native article date against exact path",()=>{
     const html='<meta name="dcterms.issued" content="2026-10-23">';
-    expect(verifyCanadaOriginalDayEvidence({articleUrl:stats,html,now:at}))
+    expect(verifyCanadaOriginalDayEvidence({articleUrl:stats,html,now:at})
       ?.publication_day).toBe("2026-10-23");
     expect(verifyCanadaOriginalDayEvidence({articleUrl:stats,
       html:html.replace("2026-10-23","2026-10-22"),now:at})).toBeNull();
