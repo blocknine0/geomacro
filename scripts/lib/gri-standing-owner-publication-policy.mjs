@@ -7,10 +7,16 @@ import {verifyGriAutomationConsent} from "./gri-automation-consent.mjs";
 import {spkiDigest} from "./standing-derived-delegation.mjs";
 
 export function verifyStandingGriOwnerPublicationPolicy({env=process.env,now=new Date()}={}) {
- const fail=()=>{throw Error("GRI_STANDING_OWNER_POLICY_NOT_VERIFIED")};
  if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
-    env.GITHUB_REF!=="refs/heads/main"||
-    env.GEOMACRO_GRI_STANDING_OWNER_ADMISSION!=="VERIFIED_INPUTS_ONLY"||
+    env.GITHUB_REF!=="refs/heads/main")
+  throw Error("GRI_STANDING_OWNER_POLICY_PROTECTED_MAIN_REQUIRED");
+ return verifyStandingGriOwnerPublicationConsent({env,now});
+}
+// Pure consent verification is also usable by the explicit owner-private
+// staging operator, which must still qualify actual signed inputs BEFORE B2.
+export function verifyStandingGriOwnerPublicationConsent({env=process.env,now=new Date()}={}) {
+ const fail=()=>{throw Error("GRI_STANDING_OWNER_POLICY_NOT_VERIFIED")};
+ if(env.GEOMACRO_GRI_STANDING_OWNER_ADMISSION!=="VERIFIED_INPUTS_ONLY"||
     env.GEOMACRO_GRI_AUTO_ENROLLED!=="YES_CONSENT_ONLY"||
     env.GEOMACRO_GRI_AUTO_REVOKED==="YES")fail();
  const raw=env.GEOMACRO_GRI_AUTO_POLICY_ENVELOPE_B64??"";

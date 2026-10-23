@@ -5,7 +5,7 @@ import {readFileSync} from "node:fs";
 import {makeGriAutomationPolicy,signGriAutomationConsent,ROLES,ENVELOPE}
  from "../lib/gri-automation-consent.mjs";
 import {spkiDigest} from "../lib/standing-derived-delegation.mjs";
-import {verifyStandingGriOwnerPublicationPolicy}
+import {verifyStandingGriOwnerPublicationPolicy,verifyStandingGriOwnerPublicationConsent}
  from "../lib/gri-standing-owner-publication-policy.mjs";
 import {checkCurrentOwnerSignedReady} from "../ops/require-pallab-owner-signed-gri-ready.mjs";
 import {buildPallabSumanHostedHandoff,humanHandoffMarkdown} from "../ops/report-pallab-suman-hosted-handoff.mjs";
@@ -83,6 +83,18 @@ test("an explicit invalid human batch signature cannot fall back to standing aut
  const {env}=fixture();
  assert.throws(()=>checkCurrentOwnerSignedReady({env:{...env,
   GEOMACRO_OWNER_HUMAN_SIGNED_ENVELOPE_B64:"corrupted"},now,allowEmpty:true}));
+});
+test("explicit private staging can verify genuine public consent without pretending to be protected CI",()=>{
+ const {env}=fixture(),local={...env,GITHUB_ACTIONS:"",GITHUB_REF:"",GITHUB_REPOSITORY:""};
+ assert.equal(verifyStandingGriOwnerPublicationConsent({env:local,now}).two_genuine_policy_signatures_verified,true);
+ assert.throws(()=>verifyStandingGriOwnerPublicationPolicy({env:local,now}));
+ const stage=readFileSync(new URL("../ops/stage-approved-reviewed-gri-private-b2.mjs",import.meta.url),"utf8");
+ assert.ok(stage.includes("--stage-approved-review-with-standing-owner-no-funds"));
+ const client=stage.indexOf("const b2=createB2Client(");
+ for(const guard of ["EXPLICIT_BATCH_SIGNATURE_MUST_USE_HUMAN_MODE",
+  "const stage=prepareImmutableReviewedGriHandoff(","const checked=computeReviewedCurrentGlobalRisk(",
+  "CANONICAL_REVIEWED_NUMERICAL_PREFLIGHT_UNVERIFIED"])
+  assert.ok(stage.indexOf(guard)>0&&stage.indexOf(guard)<client);
 });
 test("hosted queue stops asking owner to sign again but never labels conditional admission as human review",()=>{
  const {env}=fixture();
