@@ -1,3 +1,4 @@
+import {verifyCanadaOriginalDayEvidence} from "./official-original-day-evidence.mjs";
 import {pinnedGovUkContentApiUrl,verifiedGovUkContentFirstPublishedAt}
   from "./govuk-original-content-clock.mjs";
 
@@ -296,6 +297,7 @@ function pageStatus(diagnostics,code) {
 export async function fetchVerifiedPublisherPageDate(url, category, {
   now = new Date(), fetchImpl = fetch, diagnostics = null,
   allowGovUkContentApi = false, articleTitle = null, maxAgeMs = ONE_DAY_MS,
+  allowCanadaDayObservation = false,
 } = {}) {
   const articleUrl = fixedPublisherArticle(url, category);
   if (!articleUrl) {
@@ -401,6 +403,16 @@ export async function fetchVerifiedPublisherPageDate(url, category, {
         }
       }
     }catch{/* 403, 429, redirects, quota exhaustion, parse and transport fail closed */}
+  }
+  // For date-only Canadian first-party original pages, keep a separate
+  // observational day bit in private diagnostics. In particular, this never
+  // overwrites an exact-clock failure, never returns a timestamp to a scored
+  // caller and never upgrades a candidate to source-rights clearance.
+  if(!publishedAt&&allowCanadaDayObservation===true){
+    const day=verifyCanadaOriginalDayEvidence({articleUrl,html,now});
+    if(day && diagnostics && typeof diagnostics==="object" &&
+       !Array.isArray(diagnostics))
+      diagnostics.original_day_precision_verified=true;
   }
   pageStatus(diagnostics,publishedAt
     ? "PRECISE_PUBLICATION_VERIFIED" : "PRECISE_PUBLICATION_UNVERIFIED");
