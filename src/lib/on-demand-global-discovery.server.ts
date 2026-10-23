@@ -814,6 +814,32 @@ async function govukOriginalSearch(
 }
 
 type OriginalFeedResult={probe:SourceProbe;private_candidates:PrivateOriginalCandidate[]};
+/**
+ * A first-party RSS/Atom feed is not guaranteed to be in publication order.
+ * Preserve all bounded eligible original candidates (up to 80 entries)
+ * while selecting the four FRESHEST source-native item clocks per issuer.
+ * Undated official Atom leads remain private rescue candidates, never
+ * receive an invented time or a commercial permission.
+ */
+export function freshestPrivateOriginalFeedCandidates(
+  candidates:readonly PrivateOriginalCandidate[],limit=4,
+):PrivateOriginalCandidate[]{
+ if(!Array.isArray(candidates)||candidates.length>80||
+    !Number.isInteger(limit)||limit<1||limit>4)
+   throw Error("ON_DEMAND_ORIGINAL_CANDIDATE_SELECTION_INVALID");
+ const nativeTime=(c:PrivateOriginalCandidate)=>{
+  if(c.source_native_feed_publication_date_verified!==true ||
+     typeof c.feed_item_published_at!=="string")return Number.NEGATIVE_INFINITY;
+  const t=Date.parse(c.feed_item_published_at);
+  return Number.isFinite(t)?t:Number.NEGATIVE_INFINITY;
+ };
+ // Stable native-date descending order, then original entry order.
+ return candidates.map((candidate,index)=>({candidate,index}))
+  .sort((a,b)=>nativeTime(b.candidate)-nativeTime(a.candidate)||a.index-b.index)
+  .slice(0,limit).map(x=>x.candidate);
+}
+
+
 async function originalOfficialFeed(
   def:OriginalFeed,countryIso3:string,countryNameValue:string,
   fetchImpl:typeof fetch,now:Date,mineral:OnDemandMineral|null,
@@ -909,7 +935,8 @@ async function originalOfficialFeed(
     const article_url=originalArticleUrl(href,def);
     if(!article_url)continue;
     audit.allowed_article_paths++;
-    if(candidates.length>=4)continue; // fixed private evidence budget/issuer
+    // Scan the bounded 80 feed entries before selecting 4 by true native
+    // publication clock. An unordered feed must not hide fresh originals.
     const article_title=title.replace(/\s+/gu," ").trim();
     const article_identity_sha256=digest(def.family+"|"+article_url);
     if(candidates.some(x=>x.article_identity_sha256===article_identity_sha256))
@@ -930,10 +957,11 @@ async function originalOfficialFeed(
       paid_delivery_allowed:false,
     });
   }
-  return {probe:{...probe(def.family,candidates.length,
-    candidates.some(x=>x.source_native_feed_publication_date_verified)),
+  const freshest=freshestPrivateOriginalFeedCandidates(candidates);
+  return {probe:{...probe(def.family,freshest.length,
+    freshest.some(x=>x.source_native_feed_publication_date_verified)),
     feed_audit:audit},
-    private_candidates:candidates};
+    private_candidates:freshest};
 }
 
 /**
