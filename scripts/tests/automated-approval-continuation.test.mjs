@@ -48,3 +48,15 @@ test('signed derived audit must be owner-only before the one-time machine-policy
  assert.ok(before.indexOf('umask 077')<before.indexOf('verify-all-news-signed-publications.mjs >'));
  assert.match(step,/GEOMACRO_GRI_AUTO_DERIVED_APPROVAL_PATH/u);
 });
+
+test('primary and recovery D1 newsroom producers always trigger idempotent all-news signing',()=>{
+ const wake=w.split('  schedule:')[0];
+ for(const name of ['Website Derived News Continuity','Website Derived News Cadence Backstop']){
+  assert.equal(wake.split('"'+name+'"').length-1,1,name);
+ }
+ assert.match(w,/bun scripts\/ops\/publish-automated-intelligence-inputs\.ts/u);
+ assert.match(producer,/bun scripts\/ops\/verify-all-news-signed-publications\.mjs/u);
+ // No new cron, payment provider, Supabase or GRI Facts/Rights signer scope.
+ assert.equal(w.match(/cron:/g)?.length,1);
+ assert.match(w,/cron: '23 \* \* \* \*'/u);
+});
