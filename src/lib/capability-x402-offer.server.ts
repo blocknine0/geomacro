@@ -10,6 +10,7 @@ import {freezeVerifiedCapabilityAnswer} from "./capability-x402-prequote.server"
 import {sanitizeAndRehashPaidPreparedResponse,assertPublicPaidOutputBoundary} from "./public-paid-output-boundary";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY} from "./geomacro-structured-commercial-license";
 import {assertGeomacroIntelligenceResponseContract} from "./geomacro-intelligence-contract";
+import {assertPricedStructuredDelivery} from "./capability-structured-delivery.server";
 
 /** One price classifier, governed assembler and existing durable vault.
  * No client-provided evidence or flags, synthetic signature, new scoring or
@@ -36,6 +37,7 @@ export async function prepareVerifiedCapabilityOffer(input:{
   const prepared=sanitizeAndRehashPaidPreparedResponse(assembled,{rejectEmbeddedLinks:true});
   assertGeomacroIntelligenceResponseContract(prepared);
   assertPublicPaidOutputBoundary(prepared);
+  assertPricedStructuredDelivery(prepared,price.capability,price.variant);
   const response=sanitizeAndRehashPaidPreparedResponse({...prepared,
     availability:publicAgentQueryAvailability(input.availability),
     payment:{required:true,provider:input.rail,
@@ -62,6 +64,13 @@ export function assertFrozenCapabilityResponse(response:Record<string,unknown>) 
   const {availability:_availability,payment:_payment,...safeIntelligence}=response;
   assertGeomacroIntelligenceResponseContract(safeIntelligence);
   assertPublicPaidOutputBoundary(response);
+  const payment=response.payment;
+  if(payment&&typeof payment==="object"&&!Array.isArray(payment)){
+    const {capability,variant}=payment as Record<string,unknown>;
+    if(typeof capability!=="string"||typeof variant!=="string")
+      throw Error("CAPABILITY_STRUCTURED_DELIVERY_PRICE_MISSING");
+    assertPricedStructuredDelivery(response,capability,variant);
+  }
 }
 
 /** An unexpired quote cannot renew a signed object's own earlier expiry.

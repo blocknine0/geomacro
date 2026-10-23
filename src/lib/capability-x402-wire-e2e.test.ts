@@ -35,6 +35,7 @@ const handlers={coinbase:mainnetIntelligenceHandlers.POST,circle:circlePost};
 function availability(plan:any):AgentQueryDeliverability {return {deliverable:true,code:"AVAILABLE",query_plan_hash:plan.query_plan_hash,checked_at:new Date().toISOString(),missing_modules:[],stale_modules:[],ineligible_source_ids:[],source_contracts:[{source_id:"PRIVATE_TEST_ONLY",commercial_usage_status:"DERIVED_ONLY",raw_redistribution_allowed:false,attribution_required:false,licence_name:null}],subjects:[{subject:plan.subjects[0],status:"AVAILABLE",available_modules:plan.required_modules,latest_evidence_at:"2025-12-31T23:59:59.000Z",required_source_ids:["PRIVATE_TEST_ONLY"],governed_fallback_modules:[]}]};}
 function prepared({plan,requestId,clientRequestId,priceUsdc}:any) {
   const core={schema_version:SCHEMA,product:"geomacro_adaptive_risk_intelligence_v1",request_id:requestId,client_request_id:clientRequestId,query_plan_hash:plan.query_plan_hash,subjects:plan.subjects,
+    as_of:"2026-10-18T14:01:00.000Z",
     question_interpretation:{delivery_tier:"structural_baseline"},analysis:{type:"single_subject"},
     // ONLY synthetic governed module fixtures, never real article text or
     // a fabricated production certification. Buyer gate must reject [].
@@ -97,6 +98,17 @@ it("a quote cannot extend a signed object's earlier expiry",()=>{
 });
 
 for(const rail of ["coinbase","circle"] as const)describe(`${rail}: actual handlers + Worker, synthetic source/provider fixtures, no funds`,()=>{
+ it("does not freeze or quote a digest missing its advertised dimension coverage",async()=>{
+  mock.assemble.mockImplementation((input:any)=>{
+    const payload=prepared(input);
+    for(const row of payload.structural)delete row.evidence_summary.available_dimensions;
+    return {...payload,delivered_product_hash:computeGeomacroIntelligenceProductHash(payload)};
+  });
+  expect((await call(rail)).status).toBe(422);
+  expect(requests.some(x=>x.action==="capability-prequote-freeze")).toBe(false);
+  expect(mock.coinbaseVerify).not.toHaveBeenCalled();expect(mock.circleVerify).not.toHaveBeenCalled();
+  expect(mock.coinbaseSettle).not.toHaveBeenCalled();expect(mock.circleSettle).not.toHaveBeenCalled();
+ });
  it("binds 402 to exact delivered bytes and replays after expiry without current source access or a second settlement",async()=>{
   const {quote,payment}=await offer(rail);
   expect(requests.filter(x=>x.action==="capability-prequote-readback")).toHaveLength(2);
