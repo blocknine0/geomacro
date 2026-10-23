@@ -16,12 +16,12 @@ prices of Predge or any other merchant.
 ## Discover without an account or wallet
 
 ```bash
-curl -fsS https://geomacro.live/.well-known/geomacro-buyer.json
+curl -fsS https://geomacro.live/api/v1/commerce/catalog
 curl -fsS https://geomacro.live/.well-known/x402.json
 curl -fsS https://geomacro.live/openapi-x402.json
 ```
 
-Before activation, the public x402 discovery correctly exposes `resources: []`
+Before activation, the existing locked website x402 discovery correctly exposes `resources: []`
 and `productionFundsAuthorized: false`. A future paid route will become
 public only after production acceptance and explicit separate owner approval.
 **Never construct your own 402 challenge from this static catalog.** The
@@ -86,7 +86,7 @@ availability route.
 
 Prices are immutable unless the owner approves a separate later revision.
 The shared `src/lib/capability-pricing-catalog.ts` is the pricing source.
-The public buyer manifest is checked by CI for exact atomic USDC parity.
+The public runtime API buyer catalog derives all variants and atomic prices directly from the canonical pricing source, and CI checks parity.
 
 ## Merchant and buyer safeguards
 
@@ -122,3 +122,7 @@ source attestations, or prove live operational readiness.
 
 See `docs/ops/COMMERCIAL_LIVE_NO_FUNDS_ACCEPTANCE_20261023.md` for the
 required genuine protected publisher, B2/D1 and Lovable deployment sequence.
+
+## Founder-published website lock
+
+For security, approved website pages and public static discovery are pinned to a founder-approved published baseline. The free read-only **runtime GET /api/v1/commerce/catalog** is a backend-only API route, so it can ship and be validated without bypassing that lock. Public storefront layout and `/.well-known/x402.json` publication changes require a dedicated owner-approved website publish/baseline process; they are not claimed complete by this API change.
