@@ -27,6 +27,8 @@ on:
       - "scripts/lib/official-source-quarantine.mjs"
       - "src/__tests__/official-step1-feed-redundancy.test.ts"
       - "src/__tests__/expanded-official-source-observation.test.ts"
+      - "scripts/ops/prepare-d1-readonly-control-plane-config.mjs"
+      - "scripts/tests/prepare-d1-readonly-control-plane-config.test.mjs"
       - ".github/workflows/expanded-official-source-observation.yml"
       - "scripts/ops/audit-90min-three-domain-coverage.mjs"
       - "src/__tests__/audit-90min-three-domain-coverage.test.ts"
@@ -48,6 +50,8 @@ on:
       - "src/__tests__/operator-76-source-attribution-intake.test.ts"
       - "scripts/ops/audit-official-step1-feed-redundancy.mjs"
       - "scripts/lib/official-source-quarantine.mjs"
+      - "scripts/ops/prepare-d1-readonly-control-plane-config.mjs"
+      - "scripts/tests/prepare-d1-readonly-control-plane-config.test.mjs"
       - ".github/workflows/expanded-official-source-observation.yml"
       - "scripts/ops/audit-90min-three-domain-coverage.mjs"
   schedule:
@@ -416,10 +420,18 @@ jobs:
           # Exactly one bounded SELECT; no country IDs, source URL, payload,
           # raw article, hash or signed object is ever retrieved.
           sql="SELECT lower(domain) AS domain, readiness_status, count(*) AS row_count, sum(CASE WHEN certified_source_count > 0 THEN 1 ELSE 0 END) AS certified_source_cells, sum(CASE WHEN last_verified_at IS NOT NULL AND unixepoch(last_verified_at) BETWEEN unixepoch('now','-90 minutes') AND unixepoch('now','+5 minutes') THEN 1 ELSE 0 END) AS recent_verified_cells, max(last_verified_at) AS last_verified_at FROM country_domain_state GROUP BY lower(domain), readiness_status ORDER BY domain, readiness_status LIMIT 90;"
-          raw="$(mktemp)"; errors="$(mktemp)"
-          trap 'rm -f "$raw" "$errors"' EXIT
-          if ! npx -y wrangler@4.136.3 d1 execute geomacro-control-plane \
-            --remote --json --command "$sql" >"$raw" 2>"$errors"; then
+          raw="$(mktemp)"; errors="$(mktemp)"; db_list="$(mktemp)"
+          readonly_config="workers/control-plane/wrangler.readonly.runtime.jsonc"
+          trap 'rm -f "$raw" "$errors" "$db_list" "$readonly_config"' EXIT
+          # Root has no Wrangler config. Read the preexisting Cloudflare D1
+          # UUID by name, never create a database or expose UUID in logs.
+          if ! npx -y wrangler@4.136.3 d1 list --json >"$db_list" 2>"$errors"; then
+            echo "::error::D1_EXISTING_DATABASE_LOOKUP_FAILED"
+            exit 3
+          fi
+          node scripts/ops/prepare-d1-readonly-control-plane-config.mjs < "$db_list" || exit 3
+          if ! npx -y wrangler@4.136.3 d1 execute DB \
+            --remote --json --config "$readonly_config" --command "$sql" >"$raw" 2>"$errors"; then
             echo "::error::D1_AGGREGATED_READ_QUERY_FAILED"
             exit 3
           fi
