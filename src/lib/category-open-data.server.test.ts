@@ -218,11 +218,14 @@ describe("no-card original government structured data adapters",()=>{
       hit.push(url.hostname);
       expect(init?.redirect).toBe("manual");
       expect(init?.cache).toBe("no-store");
-      if(url.hostname==="pubs.usgs.gov")
+      if(url.hostname==="pubs.usgs.gov"){
+        expect(url.searchParams.get("indexId")).toBe("mcs2026");
+        expect(url.searchParams.has("reportNumber")).toBe(false);
         return Response.json({records:[{
           indexId:"mcs2026",publicationYear:"2026",
           title:"Mineral commodity summaries 2026",
         }]},{headers:{"content-type":"application/json"}});
+      }
       throw Error("PROVIDER_UNAVAILABLE");
     }) as typeof fetch;
     const result=await readCategoryOpenData("critical-minerals",{now,fetcher:source,
