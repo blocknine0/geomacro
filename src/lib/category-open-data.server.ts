@@ -1,4 +1,5 @@
 import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
+import {visiblePublisherText} from "./stateless-publisher-text";
 /**
  * No-key OPEN DATA measurement layer for the 3 existing category endpoints.
  *
@@ -32,7 +33,7 @@ type Provider = {
   maxBytes: number;
   timeoutMs: number;
   method: "GET" | "POST";
-  format?: "xml" | "json";
+  format?: "xml" | "json" | "html";
   body?: string;
 };
 type Extracted = { signals: OpenDataSignal[]; credits: string[] };
@@ -80,6 +81,12 @@ const UPSTREAMS: readonly Provider[] = Object.freeze([
   { id: "usgs_mcs_pubs", category: "critical-minerals",
     url: "https://pubs.usgs.gov/pubs-services/publication/?reportNumber=mcs2026&page_size=2",
     maxBytes: 110_000, timeoutMs: 6_000, method: "GET" },
+  // First-party report landing page remains a separate transport when both
+  // ScienceBase and Publications Warehouse JSON are unavailable. Edition
+  // identity must match the visible citation, never an access-denied page.
+  { id: "usgs_mcs_publication", category: "critical-minerals",
+    url: "https://www.usgs.gov/publications/mineral-commodity-summaries-2026",
+    maxBytes: 384*1024, timeoutMs: 6_000, method: "GET", format: "html" },
   { id: "usaspending", category: "critical-minerals",
     url: "https://api.usaspending.gov/api/v2/search/spending_by_award/",
     maxBytes: 180_000, timeoutMs: 6_000, method: "POST",
@@ -231,6 +238,21 @@ function fromUsgsMcsPubs(payload:unknown):Extracted|null {
     "Geomacro verifies the USGS Mineral Commodity Summaries 2026 edition in the official Publications Warehouse catalog.",
     "The publication is historical mineral-sector reference context, not a new production observation, market price change or independently scored supply disruption."
   )]:[],credits:[]};
+}
+function fromUsgsMcsPublication(payload:unknown):Extracted|null {
+  if(typeof payload!=="string"||payload.length>384*1024)return null;
+  const text=visiblePublisherText(payload);
+  const heading=/<h1\b[^>]*>([\s\S]*?)<\/h1>/iu.exec(payload);
+  if(!heading||!/^Mineral commodity summaries 2026$/iu.test(
+      visiblePublisherText(heading[1]))||
+     !/\bPublication Year\s+2026\b/u.test(text)||
+     !/\bDOI\s+10\.3133\/mcs2026\b/u.test(text)||
+     !/\bIndex ID\s+mcs2026\b/u.test(text)||
+     !/\bRecord Source\s+USGS Publications Warehouse\b/u.test(text))return null;
+  // Reuse the existing verified edition output and rights scope. No HTML,
+  // publisher URL, current-event claim, new score or paid grant is emitted.
+  return fromUsgsMcsPubs({records:[{indexId:"mcs2026",publicationYear:"2026",
+    title:"Mineral commodity summaries 2026"}]});
 }
 function fromNhc(payload:unknown,now:number):Extracted|null{
   const data=payload as Record<string,unknown>;
@@ -388,6 +410,7 @@ export function extractOpenData(specId: string, body:unknown, now=Date.now()): E
     case "bgs_world_minerals":return fromBgsMinerals(body);
     case "usgs_mcs":return fromUsgsMcsCatalog(body);
     case "usgs_mcs_pubs":return fromUsgsMcsPubs(body);
+    case "usgs_mcs_publication":return fromUsgsMcsPublication(body);
     case "noaa_nhc":return fromNhc(body,now);
     case "federal_register":return fromFederalRegister(body,now);
     case "bls_cpi":return fromBls(body);
@@ -397,7 +420,7 @@ export function extractOpenData(specId: string, body:unknown, now=Date.now()): E
     default:return null;
   }
 }
-async function boundedJson(r:Response,maxBytes:number,format:"json"|"xml"="json"):Promise<unknown|null>{
+async function boundedJson(r:Response,maxBytes:number,format:"json"|"xml"|"html"="json"):Promise<unknown|null>{
   if(!r.ok||!r.body)return null;
   const len=Number(r.headers.get("content-length")??"0");
   if(Number.isFinite(len)&&len>maxBytes)return null;
@@ -415,7 +438,7 @@ async function boundedJson(r:Response,maxBytes:number,format:"json"|"xml"="json"
     const out=new Uint8Array(size);let i=0;
     for(const c of chunks){out.set(c,i);i+=c.byteLength;}
     const raw=new TextDecoder("utf-8",{fatal:true}).decode(out);
-    return format==="xml" ? raw : JSON.parse(raw);
+    return format!=="json" ? raw : JSON.parse(raw);
   }catch{return null;}
   finally{await reader.cancel().catch(()=>undefined);}
 }
@@ -425,18 +448,20 @@ async function fetchOne(spec:Provider,now:number,fetcher:typeof fetch):
     const response=await fetchWithoutRedirectUsing(fetcher,spec.url,{
       method:spec.method,redirect:"error",cache:"no-store",
       headers:{
-        Accept:"application/json",
+        Accept:spec.format==="html"?"text/html":"application/json",
         ...(spec.method==="POST"?{"Content-Type":"application/json"}:{}),
       },
       ...(spec.body?{body:spec.body}:{}),
       signal:AbortSignal.timeout(spec.timeoutMs),
     });
     const contentType=response.headers.get("content-type")??"";
-    if(spec.format==="xml"
+    if(spec.format==="html"
+      ? !/^text\/html(?:;|$)/iu.test(contentType)
+      : spec.format==="xml"
       ? !/^(?:application|text)\/(?:xml|[a-z0-9.+-]+\+xml)(?:;|$)/iu.test(contentType)
       : !/^application\/(?:json|geo\+json)(?:;|$)/iu.test(contentType))
       return {readable:false,data:null};
-    const body=await boundedJson(response,spec.maxBytes,spec.format==="xml"?"xml":"json");
+    const body=await boundedJson(response,spec.maxBytes,spec.format??"json");
     const parsed=body===null?null:spec.id==="ecb_fx"
       ? fromEcbXml(body as string,now) : extractOpenData(spec.id,body,now);
     return {readable:parsed!==null,data:parsed};
