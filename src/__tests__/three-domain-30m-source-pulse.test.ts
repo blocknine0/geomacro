@@ -34,7 +34,8 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
       const registry=THIRTY_MIN_PUBLISHER_PAIRS[domain];
       expect(pairs[domain]).toHaveLength(2);
       expect(pairs[domain][1].id).toBe(next[domain][0].id);
-      expect([2,3,4]).toContain(registry.length);
+      expect(registry.length).toBeGreaterThanOrEqual(2);
+      expect(registry.length).toBeLessThanOrEqual(6);
       const covered=new Set<string>();
       for(let slot=0;slot<registry.length;slot++){
         const current=select30MinPublishers(
@@ -52,6 +53,7 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
       "uk_dbt_critical_minerals_atom_pending_review",
       "australia_industry_minister_original_rss_review",
       "uk_desnz_original_energy_minerals_atom_review",
+      "bc_minerals_original_rss_review",
     ]);
     // USGS is retained independently for other reviewed source lanes.
     expect(EXPANDED_OFFICIAL_SOURCES.map(s=>s.id)).toContain(
