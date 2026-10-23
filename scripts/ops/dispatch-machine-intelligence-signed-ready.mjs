@@ -25,7 +25,7 @@ export async function requestMachineIntelligenceSignedReady({
     reason:ready.reason,scheduled:false,...zero};
   if(env.GITHUB_REPOSITORY!==REPO ||
      env.GITHUB_REF!=="refs/heads/main" ||
-     !(["schedule","workflow_dispatch"].includes(env.GITHUB_EVENT_NAME)||
+     !(["schedule","workflow_dispatch","push"].includes(env.GITHUB_EVENT_NAME)||
        (env.GITHUB_EVENT_NAME==="workflow_run"&&
         env.MACHINE_SOURCE_WORKFLOW_VERIFIED==="1"))||
      !/^[a-f0-9]{40}$/u.test(env.GITHUB_SHA??"") ||
