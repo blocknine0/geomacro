@@ -157,3 +157,44 @@ flag. Protected GRI and machine publishers continue automatically once their
 real scoped approval inputs are available. Numerical GRI is still blocked until
 that actual review package exists; this continuation does not remove that
 requirement or report 3/3 current scored products.
+
+
+## Permanent owner/reviewer approval inbox (23 October 2026)
+
+The existing `.github/workflows/gri-signed-ready-cadence-backstop.yml`
+now emits a sanitized **Pallab/Suman human-action checklist** in its GitHub
+Actions job summary on every eligible existing 15-minute hosted wakeup. It does
+not add another schedule, pay, read B2, write D1 or require a running laptop.
+
+The new `scripts/ops/report-pallab-suman-hosted-handoff.mjs` maps **only**
+already checked, time-bounded GRI/machine-SHA pointer hints and the result
+of the actual protected owner signature admission gate to these roles:
+
+- **Originals, Facts and Rights:** a genuine qualifying original-page/
+  article-specific rights record and separately approved Facts/Rights signed
+  machine batch must be supplied by the actual authorized custodians.
+- **Suman Dey:** after independently verifying the real current GRI v1.2
+  inputs, he must sign the reviewed numerical GRI and each genuinely
+  qualified country/category certificate in his own OS account.
+- **Pallab Das:** after checking Suman's exact signed inputs, sign the
+  existing SHA-bound owner approval using the owner private key. An old
+  signature or a derived-only consent does not substitute.
+- **GitHub cloud publishers:** after immutable B2 staging and valid pinned
+  approval cues, existing protected pipelines perform actual signature,
+  rights, country, B2/D1 and current public readback verification. Missing
+  signatures or commercial rights remain blocked.
+- **Payment:** x402 settlement stays off pending independent real-money
+  owner ACK and live delivery acceptance.
+
+The summary is intentionally a *work queue*, not proof that a human has
+performed any action or that production HTTP 503 has been fixed. It never
+prints key material, original page content, approval hashes, source paths,
+rights grants or private reviewed JSON. A successful scheduled workflow
+with a skipped publisher still means no current signed product. The
+`Gri Automated Policy Consent` continues to govern **derived-only audit**,
+not human-reviewed commercial numerical GRI.
+
+Human actions are **on demand**, not 24/7 laptop work; each genuinely reviewed
+signed batch can be handed off once and resumed by the existing cloud cadence
+with immutable B2 paths and actual protected validation. No artificial
+source freshness, scope enlargement or synthetic score is authorized.
