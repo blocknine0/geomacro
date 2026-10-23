@@ -9,10 +9,12 @@ import { observeNoKeyLineup } from "../lib/free-no-key-source-probe.mjs";
 import { sourceLineupSummary } from "../lib/operator-commercial-free-source-lineup.mjs";
 import {collectProductionFreeSourceUpdates} from '../lib/free-source-production-updates.mjs';
 import {assessFreeSourceOperationalVerdict} from '../lib/free-source-operational-verdict.mjs';
+import {safeFreeSourceProductionFailure} from '../lib/free-source-production-failure.mjs';
 import {createD1ControlPlaneStateClient} from '../lib/d1-control-plane-state.mjs';
 import {mkdirSync,writeFileSync,appendFileSync} from 'node:fs';
 
 if(process.argv.includes('--production-updates')){
+ let phase="protected_context";
  try{
    if(process.argv.length!==3||process.env.GITHUB_REPOSITORY!=='blocknine0/geomacro'||
       process.env.GITHUB_REF!=='refs/heads/main'||!/^\d{1,20}$/u.test(process.env.GITHUB_RUN_ID??''))
@@ -21,12 +23,15 @@ if(process.argv.includes('--production-updates')){
      'SUPABASE_SERVICE_ROLE_KEY','APP_SUPABASE_SERVICE_ROLE_KEY','B2_KEY_ID',
      'B2_APPLICATION_KEY','COINBASE_API_KEY','RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64'])
      if(process.env[key])throw Error('SOURCE_READER_FORBIDDEN_CREDENTIAL');
+   phase="d1_load_and_source_collection";
    const client=createD1ControlPlaneStateClient({pipeline:'free_source_production_updates'});
    const receipt=await collectProductionFreeSourceUpdates({stateClient:client,onObservation:row=>console.log(JSON.stringify({schema:"geomacro.free-source-reader-outcome.v1",...row}))});
    // A real D1 readback mismatch throws before this point. Cached 403/429
    // provider diagnoses must remain red in metadata but must not make a
    // verified metadata-publication workflow masquerade as a failed writer.
+   phase="d1_operational_verdict";
    const verdict=assessFreeSourceOperationalVerdict(receipt);
+   phase="safe_receipt_write";
    mkdirSync('artifacts/free-source-updates',{recursive:true,mode:0o700});
    writeFileSync('artifacts/free-source-updates/receipt.json',JSON.stringify(
      {...receipt,operational_verdict:verdict},null,2)+'\n',{mode:0o600});
@@ -45,7 +50,19 @@ if(process.argv.includes('--production-updates')){
        '- Current attempts unavailable: '+verdict.attempts_unavailable+'\n'+
        '- Retained provider failures: '+verdict.retained_degraded_source_count+'\n'+
        '- 195-country current signed coverage: NOT VERIFIED\n');
- }catch{console.error('PRODUCTION_FREE_SOURCE_UPDATES_FAILED_CLOSED');process.exitCode=2;}
+ }catch(error){
+   const receipt=safeFreeSourceProductionFailure(error,{phase});
+   // Always retain an actionable, source-free artifact even when the D1
+   // checkpoint is unavailable; never emit exception text or a secret.
+   try{
+     mkdirSync('artifacts/free-source-updates',{recursive:true,mode:0o700});
+     writeFileSync('artifacts/free-source-updates/receipt.json',
+       JSON.stringify(receipt,null,2)+'\n',{mode:0o600});
+   }catch{/* Never mask original protected failure. */}
+   console.error(JSON.stringify(receipt));
+   console.error('PRODUCTION_FREE_SOURCE_UPDATES_FAILED_CLOSED');
+   process.exitCode=2;
+ }
 }else{
 
 const DAY_PART_MS = 12 * 60 * 60 * 1000;
