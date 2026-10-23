@@ -64,6 +64,17 @@ describe("bounded genuine original review scheduler",()=>{
  });
 });
 
+describe("immutable hourly 195-fairness when D1 has an unverified headline",()=>{
+ it("honors every-fourth-hour canonical ISO3 fairness even with recent D1 leads",()=>{
+   const code=readFileSync("scripts/ops/prepare-first-original-signing-input.ts","utf8");
+   expect(code).toContain("finalizeOriginalReviewCountry({");
+   expect(code).toContain("opportunity,priority:decision");
+   expect(code).toContain("country_iso3=routed.country_iso3;");
+   expect(code).toContain("journalPriorityMode=routed.mode;");
+   expect(code).toContain("chooseOriginalReviewCountry({");
+ });
+});
+
 describe("three-domain first-party network capacity",()=>{
  it("admits HTML plus precise issuer API per category in both stages, with a strict 24 GET total",async()=>{
   let actual=0;
