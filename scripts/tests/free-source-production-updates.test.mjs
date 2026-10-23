@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {PRODUCTION_FREE_UPDATE_SOURCES,PRODUCTION_FREE_SOURCE_D1_PIPELINE,collectProductionFreeSourceUpdates,summarizeFreeSourceUpdates} from '../lib/free-source-production-updates.mjs';
+import {PRODUCTION_FREE_UPDATE_SOURCES,PRODUCTION_FREE_SOURCE_D1_PIPELINE,collectProductionFreeSourceUpdates,summarizeFreeSourceUpdates,probeProductionFreeUpdateSource,FEDERAL_RESERVE_MONETARY_OFFICIAL_FALLBACK_URL} from '../lib/free-source-production-updates.mjs';
 const at=new Date('2026-10-16T07:10:00.000Z');
 const rss=(id='one',date='Fri, 16 Oct 2026 07:00:00 GMT')=>'<rss><channel><item><guid>'+id+'</guid><title>Private source publication</title><pubDate>'+date+'</pubDate></item></channel></rss>';
 const byUrl=new Map(PRODUCTION_FREE_UPDATE_SOURCES.map(s=>[s.url,s]));
@@ -278,4 +278,81 @@ test('non-destructive v2 D1 checkpoint leaves the known bad legacy namespace unt
  assert.match(d1,/WHERE pipeline = \?/);
  assert.match(d1,/ON CONFLICT\(pipeline,scope\)/);
  assert.doesNotMatch(runner,/(?:DELETE\s+FROM\s+pipeline_checkpoint|DROP\s+TABLE|UPDATE\s+pipeline_checkpoint)/i);
+});
+
+
+test('real Fed press-all HTTP 404 recovers only from its fixed same-publisher monetary RSS, not a second issuer',async()=>{
+ const spec=PRODUCTION_FREE_UPDATE_SOURCES.find(s=>s.id==='federal_reserve');
+ assert.equal(spec.reader_revision,2);
+ const calls=[];
+ const result=await probeProductionFreeUpdateSource(spec,async(url,options)=>{
+  calls.push(url);
+  assert.equal(options.redirect,'error');
+  assert.equal(options.method,'GET');
+  if(url===spec.url)return new Response('unavailable',{status:404});
+  assert.equal(url,FEDERAL_RESERVE_MONETARY_OFFICIAL_FALLBACK_URL);
+  return new Response(rss('monetary-native', 'Fri, 16 Oct 2026 07:00:00 GMT'),
+   {status:200,headers:{'Content-Type':'application/rss+xml'}});
+ },at);
+ assert.deepEqual(calls,[spec.url,FEDERAL_RESERVE_MONETARY_OFFICIAL_FALLBACK_URL]);
+ assert.equal(result.result.state,'TRANSPORT_READABLE');
+ assert.equal(result.official_fallback_used,true);
+ assert.equal(result.observed.kind,'PUBLISHER_FEED_CHANGE');
+ assert.equal(result.observed.native_publications_within_30m,1);
+ assert.equal(result.observed.independently_verified_event,false);
+ assert.equal(result.observed.topic_relevance_classified,false);
+});
+test('Federal Reserve denial, rate limit, bad content and normal 200 never trigger unauthorized fallback',async()=>{
+ const spec=PRODUCTION_FREE_UPDATE_SOURCES.find(s=>s.id==='federal_reserve');
+ for(const status of [401,403,429,200]){
+  const calls=[];
+  const x=await probeProductionFreeUpdateSource(spec,async(url)=>{
+   calls.push(url);assert.equal(url,spec.url);
+   return status===200?new Response('not a feed',{status}):
+     new Response('denied',{status});
+  },at);
+  assert.deepEqual(calls,[spec.url]);
+  assert.equal(x.official_fallback_used,false);
+  assert.notEqual(x.result.state,'TRANSPORT_READABLE');
+ }
+});
+test('Federal Reserve alternate still fails closed on 403 and cannot manufacture macro events',async()=>{
+ const spec=PRODUCTION_FREE_UPDATE_SOURCES.find(s=>s.id==='federal_reserve');
+ const calls=[];
+ const x=await probeProductionFreeUpdateSource(spec,async(url)=>{
+  calls.push(url);
+  return new Response('not available',{status:url===spec.url?404:403});
+ },at);
+ assert.deepEqual(calls,[spec.url,FEDERAL_RESERVE_MONETARY_OFFICIAL_FALLBACK_URL]);
+ assert.equal(x.official_fallback_used,false);
+ assert.equal(x.observed,null);
+ assert.equal(x.result.state,'HTTP_UNAVAILABLE');
+});
+test('official macro Fed reader revision recovers the existing 404 on next scheduled run without bypassing other sources',async()=>{
+ const state=memoryState();
+ await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network(),now:at});
+ const p=state.rows.get('macro').payload;
+ p.snapshot.sources.federal_reserve.reader_revision=1;
+ p.snapshot.sources.federal_reserve.state='HTTP_UNAVAILABLE';
+ p.snapshot.sources.federal_reserve.http_status=404;
+ p.snapshot.sources.federal_reserve.last_success_at=null;
+ p.snapshot_sha256=createHash('sha256').update(JSON.stringify(p.snapshot)).digest('hex');
+ const spec=PRODUCTION_FREE_UPDATE_SOURCES.find(x=>x.id==='federal_reserve');
+ const calls=[];
+ const now=new Date(at.getTime()+60_000);
+ const outcome=await collectProductionFreeSourceUpdates({
+  stateClient:state,now,fetchImpl:async(url,opts)=>{
+    calls.push(url);
+    if(url===spec.url)return new Response('no original',{status:404});
+    assert.equal(url,FEDERAL_RESERVE_MONETARY_OFFICIAL_FALLBACK_URL);
+    return new Response(rss('fed-verified-pubdate','Fri, 16 Oct 2026 07:00:00 GMT'));
+  },
+ });
+ assert.deepEqual(calls,[spec.url,FEDERAL_RESERVE_MONETARY_OFFICIAL_FALLBACK_URL]);
+ assert.equal(outcome.attempted,1);
+ assert.equal(outcome.per_category.macro.readable>0,true);
+ assert.equal(outcome.per_category.macro.newly_detected_update_fingerprints,0);
+ assert.equal(outcome.current_verified_intelligence,false);
+ assert.equal(outcome.commercial_eligible,false);
+ assert.equal(state.rows.get('macro').payload.snapshot.sources.federal_reserve.reader_revision,2);
 });
