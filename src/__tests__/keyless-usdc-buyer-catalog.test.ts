@@ -19,7 +19,7 @@ describe("keyless merchant x402 buyer catalog is exact-price and no-funds",()=>{
    const entry=actual.find(y=>y.capability===x.capability&&y.variant===x.variant);
    expect(entry?.amount_usdc).toBe(x.amount_usdc);
    expect(entry?.amount_atomic).toBe(x.amount_atomic);
-   expect(entry?.availability).toBe("CHECK_LIVE_PROOF_BEFORE_PAYMENT");
+   expect(catalog.capabilities.find(group=>group.capability===x.capability)?.availability).toBe("CHECK_LIVE_PROOF_BEFORE_PAYMENT");
   }
  });
  it("does not promote static prices into production checkout or revenue claims",()=>{
