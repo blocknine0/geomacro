@@ -18,17 +18,17 @@ function fixture(){
  return {
    schema:"geomacro.expanded-official-source-observation.v1",
    observed_at:now,active_source_transport_healthy:true,
-   active_source_count:15,quarantined_source_count:3,
+   active_source_count:18,quarantined_source_count:3,
    commercial_eligible:false,source_rights_verified:false,
    verified_country_count:0,sources,
    original_publisher_native_24h_topic_counts:{geopolitics:0,macro:0,rare_earth:0},
  };
 }
 describe("#1827 canonical scheduler uses working first-party mesh",()=>{
- it("15 real transports; three known blocked routes remain quarantined and every category original floor observed",()=>{
+ it("18 real transports; three known blocked routes remain quarantined and every category original floor observed",()=>{
    const a=classifyScheduledOriginalMesh(fixture());
    expect(a.status).toBe("ACTIVE_OFFICIAL_ISSUERS_HEALTHY");
-   expect(a.categories.map((x:any)=>x.active_original_issuer_count)).toEqual([3,4,4]);
+   expect(a.categories.map((x:any)=>x.active_original_issuer_count)).toEqual([4,5,5]);
    expect(a.categories.every((x:any)=>x.independent_original_transport_floor_met)).toBe(true);
    expect(a.quarantined_not_polled).toBe(3);
    expect(a.original_events_qualified_for_scoring).toBe(0);
