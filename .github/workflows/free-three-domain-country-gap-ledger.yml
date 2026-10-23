@@ -12,6 +12,8 @@ on:
       - "scripts/lib/country-195-geography-crosswalk.mjs"
       - "src/lib/canonical-country-registry-195.ts"
       - "scripts/tests/free-three-domain-country-gap-audit.test.mjs"
+      - "scripts/ops/prepare-d1-readonly-control-plane-config.mjs"
+      - "scripts/tests/prepare-d1-readonly-control-plane-config.test.mjs"
       - ".github/workflows/free-three-domain-country-gap-ledger.yml"
       - "src/lib/global-entity-classification.ts"
   pull_request:
@@ -20,6 +22,8 @@ on:
       - "scripts/lib/country-195-geography-crosswalk.mjs"
       - "src/lib/canonical-country-registry-195.ts"
       - "scripts/tests/free-three-domain-country-gap-audit.test.mjs"
+      - "scripts/ops/prepare-d1-readonly-control-plane-config.mjs"
+      - "scripts/tests/prepare-d1-readonly-control-plane-config.test.mjs"
       - ".github/workflows/free-three-domain-country-gap-ledger.yml"
       - "src/lib/global-entity-classification.ts"
 
@@ -48,6 +52,7 @@ jobs:
           set -euo pipefail
           node --check scripts/ops/audit-free-three-domain-country-gaps.mjs
           node --test scripts/tests/free-three-domain-country-gap-audit.test.mjs
+          node --test scripts/tests/prepare-d1-readonly-control-plane-config.test.mjs
 
   production-readonly-gap-census:
     needs: offline-contract
@@ -78,10 +83,18 @@ jobs:
             || { echo "::error::D1_READONLY_SOURCE_GAP_AUTH_MISSING"; exit 3; }
           # 250 canonical geographic entities x 3 domains = 750.
           sql="SELECT country_code, lower(domain) AS domain, readiness_status, certified_source_count, review_source_count, unavailable_source_count, last_verified_at FROM country_domain_state ORDER BY country_code,domain LIMIT 801;"
-          raw="$(mktemp)"; errs="$(mktemp)"
-          trap 'rm -f "$raw" "$errs"' EXIT
-          if ! npx -y wrangler@4.136.3 d1 execute geomacro-control-plane \
-              --remote --json --command "$sql" >"$raw" 2>"$errs"; then
+          raw="$(mktemp)"; errs="$(mktemp)"; db_list="$(mktemp)"
+          readonly_config="workers/control-plane/wrangler.readonly.runtime.jsonc"
+          trap 'rm -f "$raw" "$errs" "$db_list" "$readonly_config"' EXIT
+          # One existing database lookup and one bounded SELECT; no create,
+          # schema migration, D1 write or country/source payload disclosure.
+          if ! npx -y wrangler@4.136.3 d1 list --json >"$db_list" 2>"$errs"; then
+            echo "::error::D1_EXISTING_DATABASE_LOOKUP_FAILED"
+            exit 3
+          fi
+          node scripts/ops/prepare-d1-readonly-control-plane-config.mjs < "$db_list" || exit 3
+          if ! npx -y wrangler@4.136.3 d1 execute DB \
+              --remote --json --config "$readonly_config" --command "$sql" >"$raw" 2>"$errs"; then
             echo "::error::D1_READONLY_SOURCE_GAP_QUERY_FAILED"
             exit 3
           fi

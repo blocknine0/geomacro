@@ -79,7 +79,10 @@ describe("#1827 90m source cadence and no-raw D1 195x3 metadata",()=>{
    expect(yaml).toContain('cron: "47 1,4,7,10,13,16,19,22 * * *"');
    expect(yaml).toContain("github.event_name != 'pull_request'");
    expect(yaml).toContain("GROUP BY lower(domain), readiness_status");
-   expect(yaml).toContain("--remote --json --command");
+   expect(yaml).toContain('--remote --json --config "$readonly_config" --command');
+   expect(yaml).toContain("d1 list --json");
+   expect(yaml).toContain("prepare-d1-readonly-control-plane-config.mjs");
+   expect(yaml).toContain("d1 execute DB");
    expect(yaml).not.toContain("SELECT *");
    expect(yaml).not.toContain("DELETE FROM");
    expect(yaml).not.toContain("UPDATE country_domain_state");
