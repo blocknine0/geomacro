@@ -37,7 +37,7 @@ export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
  {id:'eu_council_press_original',category:'geopolitics',
    url:'https://www.consilium.europa.eu/en/rss/pressreleases.ashx',
    format:'rss',host:'www.consilium.europa.eu',
-   path:/^\/en\/press\/press-releases\/20\\d{2}\/(?:0[1-9]|1[0-2])\/(?:0[1-9]|[12]\\d|3[01])\/[a-z0-9]+(?:-[a-z0-9]+){2,100}\/$/u,
+   path:/^\/en\/press\/press-releases\/20\d{2}\/(?:0[1-9]|1[0-2])\/(?:0[1-9]|[12]\d|3[01])\/[a-z0-9]+(?:-[a-z0-9]+){2,100}\/$/u,
    topic:geo,credit:'© European Union, 2026. Source attribution required.',
    family:'eu_council_original_publisher'},
  // USGS publicly advertises its actual mineral program RSS endpoint;
