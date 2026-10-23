@@ -1219,6 +1219,8 @@ async function discoverOnDemandImpl(
         "PRT","SVK","SVN","ESP",
       ]);
       const preferredNational=(category:OnDemandCategory):string|null=>
+        category==="rare_earth" && country==="USA"
+          ?"usgs_minerals_original_publisher":
         category==="rare_earth" && country==="CAN"
           ?"canada_nrcan_original_publisher":
         category==="rare_earth" && country==="AUS"
@@ -1251,10 +1253,16 @@ async function discoverOnDemandImpl(
       // Each secondary must have a different registered publisher family
       // from this category's selected primary. No extra provider requests:
       // replace lower-priority index-only slots when the cap is full.
-      const secondary=categories.map((category,index)=>
-        tasks.find(t=>originalTask(t,category) &&
-          t.name!==originals[index]?.name),
-      ).filter((t):t is (typeof tasks)[number]=>Boolean(t));
+      // Prioritize a different *real issuer* within the same bounded
+      // original GET budget, never imply independent same-event proof.
+      const secondary=categories.map((category,index)=>{
+        const preferredSecondary=category==="geopolitics"
+          ?"eu_council_original_publisher":null;
+        return (preferredSecondary?tasks.find(t=>originalTask(t,category) &&
+          t.name===preferredSecondary && t.name!==originals[index]?.name):undefined) ??
+          tasks.find(t=>originalTask(t,category) &&
+            t.name!==originals[index]?.name);
+      }).filter((t):t is (typeof tasks)[number]=>Boolean(t));
       const indexes=categories.map(category=>tasks.find(t=>
         t.category===category && t.name==="gdelt_doc_discovery")).filter(
           (t):t is (typeof tasks)[number]=>Boolean(t));
