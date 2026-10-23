@@ -1725,3 +1725,46 @@ export async function discoverDirectPublisherForPrivateQualification(
   return discoverOnDemandImpl({...input,topics},{...options,
     disableDiscoveryIndex:true,directPublisherOnly:true});
 }
+
+
+/** Private bridge to the EXISTING website deriver. No extra source reads.
+ * Registry path, identity, native clock and actual page verification remain mandatory.
+ */
+export function websiteCandidateFromCountryOriginal(
+ page:PrivatePageDatedOriginal,country:string,now=new Date(),
+):import("./stateless-intelligence-model").StatelessSourceCandidate|null {
+ if(!page||!country195ByIso3(country)||!Number.isFinite(now.getTime()))return null;
+ const def=[...ORIGINAL_FALLBACK_FEEDS,...INTERNATIONAL_ORIGINAL_FEEDS,...GOVUK_SEARCH_FALLBACKS]
+  .find(d=>d.family===page.publisher_family&&d.domain===page.domain);
+ const at=Date.parse(page.page_original_published_at);
+ if(!def||page.country_iso3!==country||page.publisher_article_page_date_verified!==true||
+    page.first_party_article_url_verified!==true||originalArticleUrl(page.article_url,def)!==page.article_url||
+    page.article_identity_sha256!==digest(def.family+"|"+page.article_url)||
+    !Number.isFinite(at)||at>now.getTime()||now.getTime()-at>ONE_DAY_MS||
+    !/(?:Z|[+-]\d\d:\d\d)$/u.test(page.page_original_published_at))return null;
+ if(page.source_native_feed_publication_date_verified===true){
+  const feed=Date.parse(page.feed_item_published_at??"");
+  if(!Number.isFinite(feed)||feed>now.getTime()||now.getTime()-feed>ONE_DAY_MS||Math.abs(feed-at)>600000)return null;
+ }
+ const ogl="Contains public sector information licensed under the Open Government Licence v3.0.";
+ const fixed:Record<string,{id:string;credit:string|null}>={
+  uk_dbt_original_publisher:{id:"uk_dbt",credit:ogl},
+  uk_dbt_search_original_page:{id:"uk_dbt",credit:ogl},
+  uk_fcdo_original_publisher:{id:"uk_fcdo",credit:ogl},
+  uk_fcdo_search_original_page:{id:"uk_fcdo",credit:ogl},
+  uk_hmt_original_publisher:{id:"uk_hmt",credit:ogl},
+  uk_hmt_search_original_page:{id:"uk_hmt",credit:ogl},
+  uk_ofsi_original_publisher:{id:"uk_ofsi_sanctions",credit:ogl},
+  uk_desnz_original_publisher:{id:"uk_energy",credit:ogl},
+  us_federal_reserve_original_publisher:{id:"fed_press",credit:"Federal Reserve Board"},
+  ecb_original_publisher:{id:"ecb_press",credit:"European Central Bank"},
+  canada_nrcan_original_publisher:{id:"nrcan_releases",credit:"Natural Resources Canada"},
+  australian_industry_original_publisher:{id:"au_industry_minister",credit:null},
+  un_news_original_publisher:{id:"un_news",credit:null},
+ };
+ const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((d:{family:string;category:string})=>d.family===page.publisher_family&&d.category===page.domain);
+ const source=fixed[page.publisher_family]??(global?{id:global.websiteId??global.id,credit:global.credit}:null);
+ if(!source)return null;
+ return {title:page.article_title,articleUrl:page.article_url,publishedAt:new Date(at).toISOString(),
+  sourceId:source.id,category:page.domain,credit:source.credit};
+}

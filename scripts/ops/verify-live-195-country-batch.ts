@@ -5,6 +5,7 @@
  */
 import {mkdirSync,writeFileSync} from "node:fs";
 import {dirname,relative,isAbsolute,resolve} from "node:path";
+import {deriveCountryWebsiteNews} from "../../src/lib/continent-derived-news.server";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195";
 import {COVERAGE_DOMAINS_195,buildCanonical195x3CoverageMatrix,
   type CoverageObservation195} from "../../src/lib/canonical-195-country-coverage-matrix";
@@ -31,6 +32,7 @@ if(region){
    throw Error("COUNTRY_195_REGION_SOURCE_SCOPE_INVALID");
 }else if(expectedIso3!=="")throw Error("COUNTRY_195_REGION_SOURCE_SCOPE_INVALID");
 
+const websiteNews:ReturnType<typeof deriveCountryWebsiteNews>=[];
 const observations:CoverageObservation195[]=[];
 const review=new Map<string,CountryBatchCellEvidence>();
 const macroReferenceYears=new Map<string,number>();
@@ -64,6 +66,8 @@ for(const country of COUNTRIES_195.slice(from,from+count)){
   totalPageRequests+=pages.attempted;
   if(totalPageRequests>4*count)
    throw Error("COUNTRY_195_ARTICLE_BUDGET_EXCEEDED");
+  if(process.env.GEOMACRO_CONTINENT_NEWS_FILE)websiteNews.push(...deriveCountryWebsiteNews(
+   country.iso3,fetched.private_original_review_candidates,pages.verified_candidates,new Date()));
   for(const category of COVERAGE_DOMAINS_195){
    const evidence=summarizeCountryBatchCell(
      country.iso3,category,fetched.discovery.source_probes,
@@ -182,4 +186,12 @@ if(process.env.GEOMACRO_COUNTRY_CHECKPOINT_FILE){
 mkdirSync(dirname(checkpointFile),{recursive:true,mode:0o700});
 writeFileSync(checkpointFile,
   JSON.stringify(report,null,2)+"\n",{mode:0o600});
+if(process.env.GEOMACRO_CONTINENT_NEWS_FILE){
+ const newsFile=process.env.GEOMACRO_CONTINENT_NEWS_FILE;
+ const temp=process.env.RUNNER_TEMP;
+ const rel=temp?relative(resolve(temp),resolve(newsFile)):"..";
+ if(!isAbsolute(newsFile)||rel===""||rel.startsWith("..")||isAbsolute(rel))
+  throw Error("COUNTRY_195_NEWS_TEMP_SCOPE_INVALID");
+ writeFileSync(newsFile,JSON.stringify(websiteNews),{mode:0o600,flag:"wx"});
+}
 console.log(JSON.stringify(report));

@@ -23,6 +23,8 @@ jobs:
   live-continent-country-source:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/continent-country-original-probe-reusable.yml
+    secrets:
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
     with:
       continent: 'south_america'
       country_iso3: ${{ inputs.country_iso3 || '' }}

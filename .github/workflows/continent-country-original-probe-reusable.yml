@@ -1,9 +1,13 @@
 name: Reusable Continent Country Original Evidence Probe (No Funds)
 
 # Called ONLY by one of the six geographically isolated cron workflows.
-# A source probe does NOT certify fresh news or signed commercial data.
+# Verified originals continue into unscored website findings in the same run.
+# Commercial rights, risk scores and independent signatures remain separate.
 on:
   workflow_call:
+    secrets:
+      GEOMACRO_COMMERCE_LEDGER_TOKEN:
+        required: false # May also be supplied by the existing production environment.
     inputs:
       continent:
         description: "One of the fixed 6 continent groups"
@@ -40,7 +44,8 @@ jobs:
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
        github.event_name == 'push')
     runs-on: ubuntu-24.04
-    timeout-minutes: 70
+    timeout-minutes: 95
+    environment: production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -55,17 +60,28 @@ jobs:
           node --check scripts/lib/continent-country-full-sweep.mjs
           node --check scripts/ops/run-full-continent-country-sweep.mjs
           node --test scripts/tests/continent-country-full-sweep.test.mjs scripts/tests/continent-country-195-rotation.test.mjs scripts/tests/continent-country-resume.test.mjs
+      - name: Verify continent-derived publication and native-clock/privacy gates
+        run: bunx vitest run src/lib/continent-derived-news.server.test.ts src/__tests__/continent-news-publication.test.ts
       - name: Check EVERY country in this continent across exactly three categories
         env:
+          GEOMACRO_CONTINENT_NEWS_PUBLICATION: "1"
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_CONTINENT: ${{ inputs.continent }}
           GEOMACRO_REQUESTED_COUNTRY: ${{ inputs.country_iso3 }}
           GEOMACRO_CONTINENT_CANARY_ONLY: ${{ inputs.canary_only }}
         run: bun scripts/ops/run-full-continent-country-sweep.mjs
+      - name: Refresh existing near-real-time three-category original-news lane in the SAME run
+        if: ${{ !cancelled() }}
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: bun scripts/ops/publish-original-news-five-minute-fastlane.ts
       - name: Persist exact bounded private source-only country artifact
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: live-country-195-resume-${{ github.run_id }}-${{ inputs.continent }}-${{ github.run_attempt }}
-          path: artifacts/country-195/continent-sweep-checkpoint.v1.json
+          path: |
+            artifacts/country-195/continent-sweep-checkpoint.v1.json
+            artifacts/country-195/continent-news-publication.v1.json
           retention-days: 14
           if-no-files-found: error

@@ -14,6 +14,10 @@ on:
       - '.github/workflows/continent-country-first-run-bootstrap.yml'
       - 'scripts/lib/continent-country-195-rotation.mjs'
       - 'scripts/lib/continent-country-full-sweep.mjs'
+      - 'scripts/lib/continent-news-publication.mjs'
+      - 'src/lib/continent-derived-news.server.ts'
+      - 'src/lib/continent-derived-news.server.test.ts'
+      - 'src/__tests__/continent-news-publication.test.ts'
       - 'scripts/ops/run-full-continent-country-sweep.mjs'
       - 'scripts/tests/continent-country-full-sweep.test.mjs'
       - 'scripts/ops/verify-live-195-country-batch.ts'
@@ -45,6 +49,8 @@ jobs:
       matrix:
         continent: [africa, asia, europe, north_america, south_america, oceania]
     uses: ./.github/workflows/continent-country-original-probe-reusable.yml
+    secrets:
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
     with:
       continent: ${{ matrix.continent }}
       country_iso3: ''
