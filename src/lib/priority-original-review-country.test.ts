@@ -3,7 +3,7 @@ import {selectPriorityOriginalReviewCountry} from "./priority-original-review-co
 import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
 const now=new Date("2026-10-23T10:00:00Z");
 const signal=(id:string,geography:string|null,category:"macro"|"geopolitics"|"rare_earth",
- published_at="2026-10-23T08:00:00Z",other:Partial<StatelessIntelligenceSignal>={})=>({
+ published_at="2026-10-23T09:15:00Z",other:Partial<StatelessIntelligenceSignal>={})=>({
  id,geography,category,published_at,date_precision:"exact",
  status:"official_release_observed_unscored",sources_credited:[],
  same_event_corrob_verified:false,severity:null,...other,
@@ -30,6 +30,9 @@ describe("shared D1 observation to PRIVATE original-signing intake routing",()=>
      {...s,sources_credited:[null] as unknown as string[]},
      {...s,date_precision:"day",published_at:"2026-10-23"},
      {...s,published_at:"2026-10-22T10:00:00Z"},
+     // Previously admitted as a 22-hour journal lead, but cannot satisfy
+     // a 90-minute genuine GRI original review SLA.
+     {...s,published_at:"2026-10-23T08:00:00Z"},
      {...s,published_at:"2026-10-23T10:01:00Z"},
      {...s,published_at:"invalid"},
      {...s,status:"official_feed_candidate_unscored"},
@@ -62,6 +65,35 @@ describe("shared D1 observation to PRIVATE original-signing intake routing",()=>
    const receipt=JSON.stringify(a);
    expect(receipt).not.toMatch(/http|source_url|article_title|original_article|private_key/iu);
  });
+});
+
+it("never retries an older 22-hour D1 journal source as a fresh GRI priority",()=>{
+ const stale=signal("geo-12345678","Sudan","geopolitics",
+   "2026-10-23T08:25:00Z");
+ const selected=selectPriorityOriginalReviewCountry([stale],"CAN",now);
+ expect(selected.country_iso3).toBe("CAN");
+ expect(selected.selection_mode).toBe("CANONICAL_195_ROTATION");
+ expect(selected.eligible_country_count).toBe(0);
+ expect(selected.journal_is_original_evidence).toBe(false);
+ expect(selected.paid_output_authorized).toBe(false);
+});
+it("rotates distinct recent tied original-country leads HOURLY without inventing scores",()=>{
+ const rows=[
+  signal("a-12345678","Canada","macro","2026-10-23T09:35:00Z"),
+  signal("b-12345678","India","macro","2026-10-23T09:35:00Z"),
+  signal("c-12345678","Malawi","macro","2026-10-23T09:35:00Z"),
+ ];
+ const a=selectPriorityOriginalReviewCountry(rows,"GBR",now);
+ const b=selectPriorityOriginalReviewCountry(rows,"GBR",new Date("2026-10-23T11:00:00Z"));
+ // After two hours, the former 09:35 source is expired: fallback,
+ // never fabricated as a current release or licence.
+ expect(a.selection_mode).toBe("SHARED_D1_RECENT_COUNTRY_LEAD");
+ expect(b.selection_mode).toBe("CANONICAL_195_ROTATION");
+ expect(b.country_iso3).toBe("GBR");
+ const halfHour=selectPriorityOriginalReviewCountry(rows,"GBR",new Date("2026-10-23T10:30:00Z"));
+ expect(halfHour.selection_mode).toBe("SHARED_D1_RECENT_COUNTRY_LEAD");
+ expect([a.country_iso3,halfHour.country_iso3].every(x=>["CAN","IND","MWI"].includes(x))).toBe(true);
+ expect(a.country_iso3).not.toBe(halfHour.country_iso3);
 });
 
 it("keeps attributed original observations eligible for PRIVATE review routing without granting rights",()=>{
