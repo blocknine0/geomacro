@@ -52,6 +52,18 @@ test("Page and bytes are separate proof gates, not source licence",()=>{
  assert.ok(!publicBytes.includes("secret.example"));
  assert.ok(!publicBytes.includes("Secret title"));
 });
+test("Mixed source-denial and available-feed mismatch remains a distinct actionable blocker",()=>{
+ const x=summarizePrivateOriginalIntakeFunnel(input({country:"MWI",
+  probes:[{category:"macro",retrieval_state:"NO_MATCHING_RECORDS",observed_record_count:0,
+    feed_audit:{inspected:90,native_dated:50,country_mentioned:0}},
+    {category:"rare_earth",retrieval_state:"RATE_LIMITED"},
+    {category:"geopolitics",retrieval_state:"TRANSPORT_UNAVAILABLE"},
+    {category:"geopolitics",retrieval_state:"COOLDOWN_ACTIVE"}]}));
+ assert.equal(x.next_required_gate,"COUNTRY_TOPIC_AND_PROVIDER_TRANSPORT_DEGRADED");
+ assert.equal(x.degraded_source_probe_count,3);
+ assert.equal(x.country_topic_match_unconfirmed,true);
+ assert.equal(x.paid_delivery_eligible,false);
+});
 test("Counter semantics and impossible stage promotions fail closed",()=>{
  assert.throws(()=>summarizePrivateOriginalIntakeFunnel(input({
   pages:[{domain:"macro"}],attempts:0})),/STAGE_MISMATCH/);
