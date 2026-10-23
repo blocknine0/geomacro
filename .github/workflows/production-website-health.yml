@@ -634,8 +634,8 @@ jobs:
           /research|Research
           /docs|Documentation
           /about|Understand the world. Inspect the context.
-          /roadmap|What works today, and what comes next.
-          /contact|Bring the workflow.
+          /roadmap|Use it today. See what’s next.
+          /contact|Let’s talk about your workflow.
           EOF
           )"
 
