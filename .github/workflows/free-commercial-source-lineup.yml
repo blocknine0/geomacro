@@ -20,6 +20,8 @@ on:
       - "scripts/tests/free-source-operational-verdict.test.mjs"
       - "scripts/tests/free-source-production-updates.test.mjs"
       - "scripts/tests/operator-commercial-free-source-lineup.test.mjs"
+      - "scripts/lib/free-source-production-failure.mjs"
+      - "scripts/tests/free-source-production-failure.test.mjs"
       - "scripts/ops/probe-commercial-free-source-lineup.mjs"
       - ".github/workflows/free-commercial-source-lineup.yml"
   push:
@@ -39,6 +41,8 @@ on:
       - "scripts/tests/free-source-operational-verdict.test.mjs"
       - "scripts/tests/free-source-production-updates.test.mjs"
       - "scripts/tests/operator-commercial-free-source-lineup.test.mjs"
+      - "scripts/lib/free-source-production-failure.mjs"
+      - "scripts/tests/free-source-production-failure.test.mjs"
       - "scripts/ops/probe-commercial-free-source-lineup.mjs"
       - ".github/workflows/free-commercial-source-lineup.yml"
   schedule:
@@ -64,7 +68,7 @@ jobs:
         with:
           node-version: "22"
       - name: Exact dataset rights plus 3-category source transport contracts
-        run: node --test scripts/tests/operator-commercial-free-source-lineup.test.mjs scripts/tests/free-source-production-updates.test.mjs scripts/tests/global-official-release-feeds.test.mjs scripts/tests/free-source-operational-verdict.test.mjs scripts/tests/marad-official-corridor-context.test.mjs scripts/tests/zoho-maritime-subscription-mail.test.mjs
+        run: node --test scripts/tests/operator-commercial-free-source-lineup.test.mjs scripts/tests/free-source-production-updates.test.mjs scripts/tests/global-official-release-feeds.test.mjs scripts/tests/free-source-operational-verdict.test.mjs scripts/tests/free-source-production-failure.test.mjs scripts/tests/marad-official-corridor-context.test.mjs scripts/tests/zoho-maritime-subscription-mail.test.mjs
 
   read-only-production-mesh:
     needs: source-contract
