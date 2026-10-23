@@ -67,6 +67,19 @@ describe("independent production website failure diagnostics", () => {
     expect(workflow).not.toContain("'Know what changed'");
   });
 
+  it("pins Roadmap and Contact route smoke to the real visible headings", () => {
+    const roadmap = read("src/components/sections/roadmap-section.tsx");
+    const contact = read("src/routes/contact.tsx");
+    const expectedRoadmap = "Use it today. See what’s next.";
+    const expectedContact = "Let’s talk about your workflow.";
+    expect(roadmap).toContain('title="' + expectedRoadmap + '"');
+    expect(contact).toContain('title={"' + expectedContact + '"}');
+    expect(workflow).toContain("/roadmap|" + expectedRoadmap);
+    expect(workflow).toContain("/contact|" + expectedContact);
+    expect(workflow).not.toContain("/roadmap|What works today, and what comes next.");
+    expect(workflow).not.toContain("/contact|Bring the workflow.");
+  });
+
   it("keeps free canary strict on actual public responses and paid-health independence", () => {
     expect(workflow).toContain("if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'");
     expect(workflow).toContain("read('/api/v1/finds','json')");
