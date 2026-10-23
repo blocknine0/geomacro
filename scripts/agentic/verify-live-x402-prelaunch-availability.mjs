@@ -210,10 +210,9 @@ async function main() {
         ? Math.min(body.availability.missing_modules.length, 1000) : null,
       stale_module_count: Array.isArray(body.availability?.stale_modules)
         ? Math.min(body.availability.stale_modules.length, 1000) : null,
-      ineligible_source_count: Array.isArray(body.availability?.ineligible_source_ids)
-        ? Math.min(body.availability.ineligible_source_ids.length, 1000) : null,
-      rights_contract_count: Array.isArray(body.availability?.source_contracts)
-        ? Math.min(body.availability.source_contracts.length, 1000) : null,
+      ineligible_source_count: Number.isSafeInteger(body.availability?.ineligible_source_count) &&
+        body.availability.ineligible_source_count >= 0
+        ? Math.min(body.availability.ineligible_source_count, 1000) : null,
       subject_count: Array.isArray(body.availability?.subjects)
         ? Math.min(body.availability.subjects.length, 1000) : null,
       execution_authorized: body.execution_authorized === false ? false : null,
