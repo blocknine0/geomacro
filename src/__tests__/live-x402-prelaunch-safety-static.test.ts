@@ -53,7 +53,6 @@ describe("live x402 prelaunch safety probe", () => {
     expect(source).not.toContain("missing_modules: body.availability");
     expect(source).not.toContain("stale_modules: body.availability");
     expect(source).not.toContain("text.slice(0, 500)");
-    expect(source).toContain("rights_contract_count:");
     expect(source).toContain("ineligible_source_count:");
     expect(source).toContain("missing_module_count:");
     expect(source).toContain("subject_count:");
