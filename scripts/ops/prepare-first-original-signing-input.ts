@@ -58,13 +58,14 @@ export function requireProtectedOriginalArchiveMain(env:NodeJS.ProcessEnv) {
  return true;
 }
 
-// Existing 02,08,14,20 UTC cron: four genuinely independent country
-// candidates/day, with a 195-slot deterministic cycle instead of rechecking
-// only USA/GBR/CAN forever. One review lead is NOT a verified country event.
+// Hourly source-native intake is required to have a realistic chance
+// of meeting the existing <=90m GRI review window; every hour rotates
+// to another canonical country unless a real shared-journal country is
+// independently selected. A scan is NOT proof of current 195x3 events.
 export function countryForThisRun(now=new Date()){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
    throw Error("PRIVATE_ORIGINAL_ROTATION_CLOCK_INVALID");
- const slot=Math.floor((now.getTime()-2*3_600_000)/(6*3_600_000));
+ const slot=Math.floor(now.getTime()/3_600_000);
  const index=((slot%COUNTRIES_195.length)+COUNTRIES_195.length)%COUNTRIES_195.length;
  return COUNTRIES_195[index].iso3;
 }
