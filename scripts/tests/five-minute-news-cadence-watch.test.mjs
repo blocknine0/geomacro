@@ -68,7 +68,7 @@ test("uses pre-existing backstop wakeups and ephemeral GitHub Actions dispatch; 
  const writer=readFileSync(".github/workflows/five-minute-original-news-fastlane.yml","utf8");
  const cli=readFileSync("scripts/ops/recover-stalled-five-minute-news.mjs","utf8");
  assert.equal(FASTLANE_WORKFLOW,"five-minute-original-news-fastlane.yml");
- assert.match(writer,/cron: "4-59\/5 \* \* \* \*"/);
+ assert.match(writer,/cron: "2-57\/5 \* \* \* \*"/);
  assert.match(writer,/cancel-in-progress: false/);
  assert.match(wf,/cron: "22,52 \* \* \* \*"/);
  assert.match(wf,/fastlane-actual-publisher-cadence-watch:/);
