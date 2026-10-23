@@ -214,7 +214,8 @@ async function boundedFetch(
       !["api.worldbank.org","api.gdeltproject.org","api.reliefweb.int",
         "www.gov.uk","news.un.org","www.federalreserve.gov","www.ecb.europa.eu",
         "www.minister.industry.gov.au","api.io.canada.ca",
-        "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.bankofcanada.ca","news.gov.bc.ca"].includes(target.hostname)) {
+        "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.bankofcanada.ca","news.gov.bc.ca",
+        "www.consilium.europa.eu","www.usgs.gov"].includes(target.hostname)) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
   const maxBytes = accept === "text/html" ? MAX_FIRST_PARTY_HTML_BYTES : MAX_BODY_BYTES;
@@ -629,6 +630,9 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
   {
     domain:"macro",family:"ecb_original_publisher",
     url:"https://www.ecb.europa.eu/rss/press.html",
+    // ECB itself publishes a separate official statistical press feed.
+    // Backup only after transient transport/5xx, NOT 401/403/429 bypass.
+    alternateUrl:"https://www.ecb.europa.eu/rss/statpress.html",
     media:"rss",originalHost:"www.ecb.europa.eu",
     originalPath:/^\/press\/(?:pr|key|inter|accounts)\/date\/\d{4}\//u,
     topic:/\b(?:monetary|inflation|interest rates?|foreign exchange|economic|currency)\b/iu,
@@ -1215,6 +1219,8 @@ async function discoverOnDemandImpl(
         "PRT","SVK","SVN","ESP",
       ]);
       const preferredNational=(category:OnDemandCategory):string|null=>
+        category==="rare_earth" && country==="USA"
+          ?"usgs_minerals_original_publisher":
         category==="rare_earth" && country==="CAN"
           ?"canada_nrcan_original_publisher":
         category==="rare_earth" && country==="AUS"
@@ -1247,10 +1253,16 @@ async function discoverOnDemandImpl(
       // Each secondary must have a different registered publisher family
       // from this category's selected primary. No extra provider requests:
       // replace lower-priority index-only slots when the cap is full.
-      const secondary=categories.map((category,index)=>
-        tasks.find(t=>originalTask(t,category) &&
-          t.name!==originals[index]?.name),
-      ).filter((t):t is (typeof tasks)[number]=>Boolean(t));
+      // Prioritize a different *real issuer* within the same bounded
+      // original GET budget, never imply independent same-event proof.
+      const secondary=categories.map((category,index)=>{
+        const preferredSecondary=category==="geopolitics"
+          ?"eu_council_original_publisher":null;
+        return (preferredSecondary?tasks.find(t=>originalTask(t,category) &&
+          t.name===preferredSecondary && t.name!==originals[index]?.name):undefined) ??
+          tasks.find(t=>originalTask(t,category) &&
+            t.name!==originals[index]?.name);
+      }).filter((t):t is (typeof tasks)[number]=>Boolean(t));
       const indexes=categories.map(category=>tasks.find(t=>
         t.category===category && t.name==="gdelt_doc_discovery")).filter(
           (t):t is (typeof tasks)[number]=>Boolean(t));
