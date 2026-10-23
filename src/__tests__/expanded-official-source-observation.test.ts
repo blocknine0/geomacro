@@ -24,7 +24,7 @@ const atomStatcan="<feed xmlns=\"http://www.w3.org/2005/Atom\"><updated>2026-10-
 describe("#1827 expanded official three-domain private observation lane",()=>{
   it("has fourteen fixed publisher observations and exactly three domains",()=>{
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>s.domain))
-      .toEqual(["geopolitics","macro","macro","rare_earth","rare_earth","rare_earth","geopolitics","macro","rare_earth","geopolitics","macro","rare_earth","rare_earth","rare_earth","macro","geopolitics","macro","rare_earth"]);
+      .toEqual(["geopolitics","macro","macro","rare_earth","rare_earth","rare_earth","geopolitics","macro","rare_earth","geopolitics","macro","rare_earth","rare_earth","rare_earth","macro","geopolitics","macro","rare_earth","geopolitics","macro","rare_earth"]);
     for(const s of EXPANDED_OFFICIAL_SOURCES){
       expect(new URL(s.url).protocol).toBe("https:");
       expect(s.rights).toBe("UNVERIFIED");
@@ -41,7 +41,7 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
     expect(new URL(EXPANDED_OFFICIAL_SOURCES[6].alternate_url!).hostname)
       .toBe(new URL(EXPANDED_OFFICIAL_SOURCES[6].url).hostname);
     expect(EXPANDED_OFFICIAL_SOURCES.map((s:any)=>new URL(s.url).host))
-      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","www150.statcan.gc.ca","api.io.canada.ca","www.gov.uk","www.federalreserve.gov","www.usgs.gov","www.minister.industry.gov.au","www.gov.uk","www.ecb.europa.eu","www.gov.uk","www.gov.uk","www.gov.uk"]);
+      .toEqual(["finance.ec.europa.eu","www.ecb.europa.eu","ec.europa.eu","eiti.org","european-union.europa.eu","natural-resources.canada.ca","news.un.org","www150.statcan.gc.ca","api.io.canada.ca","www.gov.uk","www.federalreserve.gov","www.usgs.gov","www.minister.industry.gov.au","www.gov.uk","www.ecb.europa.eu","www.gov.uk","www.gov.uk","www.gov.uk","www.gov.uk","www.gov.uk","news.gov.bc.ca"]);
   });
   it("uses only exact same-issuer Fed monetary RSS after actual press_all 404, not after access denial",async()=>{
     const fed=EXPANDED_OFFICIAL_SOURCES.find((s:any)=>
@@ -107,10 +107,10 @@ describe("#1827 expanded official three-domain private observation lane",()=>{
       return response(xml,"application/rss+xml");
     });
     const res=await probeExpandedOfficialMesh({fetchImpl,now});
-    expect(fetchImpl).toHaveBeenCalledTimes(15);
+    expect(fetchImpl).toHaveBeenCalledTimes(18);
     expect(seen).toEqual(EXPANDED_OFFICIAL_SOURCES.filter((s:any)=>!["eiti_implementing_country_official_api_review","nrcan_simply_science_official_rss_review","usgs_minerals_original_news_rss_review"].includes(s.id)).map((s:any)=>s.url));
     expect(res.status).toBe("ACTIVE_SOURCE_TRANSPORT_OBSERVED_WITH_QUARANTINE");
-    expect(res.active_source_count).toBe(15);
+    expect(res.active_source_count).toBe(18);
     expect(res.quarantined_source_count).toBe(3);
     expect(res.all_registered_sources_transport_healthy).toBe(false);
     for(const x of res.sources){
