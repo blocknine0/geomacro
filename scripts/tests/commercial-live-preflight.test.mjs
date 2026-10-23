@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {assessLiveNoFundsReadiness} from '../lib/commercial-live-preflight.mjs';
 const sha='a'.repeat(40);
 const good={canonicalSha:sha,
@@ -44,4 +45,30 @@ test('unknown or malformed evidence and x402 implicit execution never succeed',(
   const r=assessLiveNoFundsReadiness({...good,...patch});
   assert.equal(r.status,'BLOCKED_NO_REAL_FUNDS');
  }
+});
+test('a fabricated HTTP 200 with three hot flags cannot override deep-health ok:false',()=>{
+ const r=assessLiveNoFundsReadiness({...good,
+  health:{...good.health,body:{...good.health.body,ok:false}}
+ });
+ assert.equal(r.gates.deep_health_current_3_of_3,false);
+ assert.equal(r.status,'BLOCKED_NO_REAL_FUNDS');
+ assert.ok(r.blockers.includes('DEEP_HEALTH_REPORTED_NOT_OK'));
+ assert.ok(r.blockers.includes('CURRENT_SIGNED_3_OF_3_NOT_VERIFIED'));
+ assert.equal(r.performed_payment,false);
+});
+test('a fabricated HTTP 200 cannot mark B2-backed signed data ready',()=>{
+ const r=assessLiveNoFundsReadiness({...good,
+  health:{...good.health,body:{...good.health.body,
+   public_production:{...good.health.body.public_production,b2_runtime_configured:false}}}
+ });
+ assert.equal(r.gates.deep_health_current_3_of_3,false);
+ assert.equal(r.status,'BLOCKED_NO_REAL_FUNDS');
+ assert.ok(r.blockers.includes('B2_BACKED_SIGNED_EDGE_NOT_VERIFIED'));
+ assert.ok(r.blockers.includes('CURRENT_SIGNED_3_OF_3_NOT_VERIFIED'));
+ assert.equal(r.real_funds_authorized,false);
+});
+test('exact-head no-funds summary must use separate shell lines',()=>{
+ const source=readFileSync(new URL('../../.github/workflows/exact-head-commercial-launch-readiness.yml',import.meta.url),'utf8');
+ assert.doesNotMatch(source,/\\n[ \\t]+echo[ \\t]+/);
+ assert.match(source,/echo "- Run Live Commercial Go-No-Go No Funds/);
 });
