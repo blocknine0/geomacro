@@ -81,7 +81,38 @@ export async function verifySharedNewsLive(fetcher=fetch){
   retention_hours:72,original_release_delay_minutes:0,
   commercial_rights_verified:false,b2_requests:0,d1_writes:0,payments:0};
 }
+// Bounded, public-source-free diagnostics. Do not echo provider responses,
+// article IDs/URLs, D1 records, request headers, addresses or error.stack.
+// A failed online check must NEVER be converted into a success exit status.
+const SAFE_SHARED_NEWS_FAILURES=new Set([
+ "D1_SHARED_NEWS_HTTP_UNAVAILABLE",
+ "D1_SHARED_NEWS_OVERSIZE",
+ "D1_SHARED_NEWS_CONTRACT_INVALID",
+ "D1_SHARED_NEWS_PAGE_INVALID",
+ "D1_SHARED_NEWS_DUPLICATE",
+ "D1_SHARED_NEWS_CURSOR_INVALID",
+ "D1_SHARED_NEWS_DIFFERENT_ID_COUNT",
+ "D1_SHARED_NEWS_SOURCE_PARITY_MISMATCH",
+ "D1_SHARED_NEWS_DOMAIN_COUNT_MISMATCH",
+ "D1_SHARED_NEWS_DIAGNOSIS_PARITY_MISMATCH",
+]);
+export function safeSharedNewsParityFailure(error){
+ const reason=error instanceof Error&&SAFE_SHARED_NEWS_FAILURES.has(error.message)
+  ?error.message:"D1_SHARED_NEWS_UNCLASSIFIED_OR_TRANSPORT_FAILURE";
+ return Object.freeze({
+  schema:"geomacro.shared-d1-predge-safe-failure.v1",
+  verified:false,reason,partner_delivery_verified:false,
+  original_source_rights_verified:false,paid_product_ready:false,
+  private_article_or_record_id_exposed:false,
+  raw_upstream_data_exposed:false,network_retry_or_write_performed:false,
+  payments:0,
+ });
+}
 if(process.argv[1]?.endsWith("verify-shared-derived-news-live.mjs")){
  try{console.log(JSON.stringify(await verifySharedNewsLive()))}
- catch{console.error("::error::SHARED_NEWS_PREDGE_LIVE_PARITY_FAILED");process.exitCode=2}
+ catch(error){
+  console.error("::error::SHARED_NEWS_PREDGE_LIVE_PARITY_FAILED");
+  console.error(JSON.stringify(safeSharedNewsParityFailure(error)));
+  process.exitCode=2;
+ }
 }
