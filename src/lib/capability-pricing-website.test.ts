@@ -4,6 +4,7 @@ import {
   GEOMACRO_CAPABILITY_PRICES,
   GEOMACRO_CAPABILITY_PRICING_VERSION,
   capabilityPricingCatalog,
+  publicCapabilityPricingCatalog,
   resolveGeomacroCapabilityPrice,
 } from "./capability-pricing-catalog";
 
@@ -15,7 +16,7 @@ describe("canonical capability pricing parity on the public website",()=>{
     const pricing=read("src/routes/pricing.tsx");
     const dataApi=read("src/routes/data-api.tsx");
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICES");
-    expect(schedule).toContain("GEOMACRO_PRICING_GROUPS");
+    expect(schedule).toContain("GEOMACRO_PUBLIC_PRICING_GROUPS");
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
     expect(pricing).toContain("<CapabilityPriceSchedule />");
     expect(dataApi).toContain("<CapabilityPriceSchedule compact />");
@@ -29,9 +30,11 @@ describe("canonical capability pricing parity on the public website",()=>{
   it("exposes exactly eight founder-approved capabilities and 14 variants",()=>{
     expect(GEOMACRO_CAPABILITY_PRICING_VERSION).toBe("geomacro.capability-usdc.v1");
     expect(Object.keys(GEOMACRO_CAPABILITY_PRICES)).toHaveLength(8);
-    const catalog=capabilityPricingCatalog();
-    expect(catalog).toHaveLength(8);
-    expect(catalog.flatMap(row=>row.variants)).toHaveLength(14);
+    const catalog=publicCapabilityPricingCatalog();
+    expect(catalog).toHaveLength(7);
+    expect(catalog.flatMap(row=>row.variants)).toHaveLength(12);
+    expect(catalog.every(row=>row.capability!=="gri_read")).toBe(true);
+    expect(capabilityPricingCatalog()).toHaveLength(8);
     for(const row of catalog){
       for(const item of row.variants){
         expect(resolveGeomacroCapabilityPrice(row.capability,item.variant).amount_atomic)
