@@ -190,6 +190,10 @@ export async function main(){
    });
  }
  const safe={...receipt,
+  // The pre-review receipt's initial zero counts only source verification.
+  // Once a protected private B2 PUT+GET occurs, do not print a false
+  // top-level claim that NO B2 request happened.
+  B2_requests:privateArchive.private_review_hand_off_available?undefined:0,
   private_original_archive_handoff:privateArchive,
   discovery_funnel:summarizePrivateOriginalIntakeFunnel({discovery,pages,receipt}),
   country_selection_mode:journalPriorityMode,
