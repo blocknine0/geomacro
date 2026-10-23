@@ -259,4 +259,10 @@ jobs:
           if-no-files-found: error
       - name: Delete temporary receipt bytes
         if: always()
-        run: rm -f -- "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH" "$GEOMACRO_DELEGATED_RECEIPT_OUTPUT_PATH" "${RUNNER_TEMP}/gri-auto-policy-derived.json "${RUNNER_TEMP}/complete-intelligence-gri-review.json"
+        run: |
+          set -euo pipefail
+          rm -f -- \
+            "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH" \
+            "$GEOMACRO_DELEGATED_RECEIPT_OUTPUT_PATH" \
+            "${RUNNER_TEMP}/gri-auto-policy-derived.json" \
+            "${RUNNER_TEMP}/complete-intelligence-gri-review.json"
