@@ -83,7 +83,7 @@ it("rotates distinct recent tied original-country leads HOURLY without inventing
   signal("b-12345678","India","macro","2026-10-23T09:35:00Z"),
   signal("c-12345678","Malawi","macro","2026-10-23T09:35:00Z"),
  ];
- const a=selectPriorityOriginalReviewCountry(rows,"GBR",now);
+ const a=selectPriorityOriginalReviewCountry(rows,"GBR",new Date("2026-10-23T09:55:00Z"));
  const b=selectPriorityOriginalReviewCountry(rows,"GBR",new Date("2026-10-23T11:00:00Z"));
  // After two hours, the former 09:35 source is expired: fallback,
  // never fabricated as a current release or licence.
