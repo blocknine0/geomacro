@@ -199,8 +199,9 @@ describe("#1827 bounded native 30-minute original-publisher intake",()=>{
   });
 
   it("never reports zero-news complete coverage when the second publisher is unavailable",async()=>{
+    const selectedGeoPublisher=select30MinPublishers(NOW).geopolitics[0].id;
     const probe=vi.fn(async(source:{id:string,domain:string})=>{
-      if(source.id==="un_news_security_original_rss_review"){
+      if(source.id===selectedGeoPublisher){
         return {source_id:source.id,domain:source.domain,format_valid:false,primary_http_status:503};
       }
       return verifiedDateResponse(source,0);
