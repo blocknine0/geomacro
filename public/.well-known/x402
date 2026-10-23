@@ -1,7 +1,7 @@
 {
   "x402Version": 2,
-  "name": "GeoMacro Global Risk Intelligence",
-  "description": "Machine-readable geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI agents.",
+  "name": "Geomacro",
+  "description": "Geomacro provides derived, machine-readable Geopolitics, Macro/FX and Critical Minerals intelligence for humans, applications and AI agents. Verified source rights and current signed deliverability are required for any paid result.",
   "status": "prelaunch",
   "productionFundsAuthorized": false,
   "categories": [
@@ -20,7 +20,7 @@
   ],
   "plannedResources": [
     {
-      "resource": "https://geomacro.live/api/x402/intelligence",
+      "resource": "https://geomacro.live/api/v1/intelligence/query",
       "method": "POST",
       "product": "geomacro_adaptive_risk_intelligence_v1",
       "provider": "coinbase_x402",
@@ -58,7 +58,10 @@
     "openapi": "https://geomacro.live/openapi-x402.json",
     "commerce": "https://geomacro.live/.well-known/geomacro-commerce.json",
     "agent": "https://geomacro.live/.well-known/geomacro-agent.json",
-    "llms": "https://geomacro.live/llms.txt"
+    "llms": "https://geomacro.live/llms.txt",
+    "official_openapi": "https://geomacro.live/api/v1/agent?view=openapi",
+    "pricing": "https://geomacro.live/api/v1/pricing",
+    "native_usdc_networks": "https://geomacro.live/api/v1/payments/networks"
   },
   "boundaries": {
     "deliverability_before_payment": true,
@@ -72,5 +75,17 @@
     "mode": "static_prelaunch",
     "reason": "The current public host serves static well-known resources reliably while runtime server-route support is deployment-dependent.",
     "production_launch_rule": "This fallback must not advertise paid production resources until live provider configuration, paid E2E acceptance and explicit owner authorization are verified."
-  }
+  },
+  "officialApis": {
+    "canonical": "https://geomacro.live/api/v1/intelligence/query",
+    "geopolitics": "https://geomacro.live/api/v1/intelligence/geopolitics",
+    "macro_fx": "https://geomacro.live/api/v1/intelligence/macro-fx",
+    "critical_minerals": "https://geomacro.live/api/v1/intelligence/critical-minerals",
+    "agent": "https://geomacro.live/api/v1/agent",
+    "pricing": "https://geomacro.live/api/v1/pricing",
+    "no_funds_availability": "https://geomacro.live/api/v1/intelligence/availability"
+  },
+  "three_category_aliases_share_canonical_engine": true,
+  "aliases_are_not_independently_payable_resources": true,
+  "routability_is_not_current_signed_data_coverage": true
 }
