@@ -803,6 +803,18 @@ export const FIVE_MINUTE_NEWS_FALLBACK=Object.freeze([
   {category:"rare_earth",id:"uk_dbt"},
 ] as const);
 export const FASTLANE_MAX_FALLBACK_READS_PER_RUN=3 as const;
+// Reuse existing original publishers, one alternative per quiet domain.
+export const FIVE_MINUTE_NEWS_FALLBACK_ROTATION=Object.freeze({
+ geopolitics:["canada_foreign_statements","ungeneva_press_global"],
+ macro:["bis_press","govuk_global_economy","boj_press_global"],
+ rare_earth:["uk_dbt","govuk_global_minerals","iea_minerals_global"],
+} as const);
+export function selectFiveMinuteFallback(category:keyof typeof FIVE_MINUTE_NEWS_FALLBACK_ROTATION,now:number){
+ if(!Number.isFinite(now)||!Object.hasOwn(FIVE_MINUTE_NEWS_FALLBACK_ROTATION,category))
+   throw Error("ORIGINAL_FASTLANE_FALLBACK_CLOCK_OR_CATEGORY_INVALID");
+ const ids=FIVE_MINUTE_NEWS_FALLBACK_ROTATION[category],slot=Math.floor(now/(5*60_000));
+ return {category,id:ids[((slot%ids.length)+ids.length)%ids.length]};
+}
 export const FASTLANE_RECENT_RELEASE_MS=60*60_000;
 export function recentFastlaneReleaseCount(candidates:readonly StatelessSourceCandidate[],now:number,maxSignals=20){
  return deriveStatelessSignals([...candidates],now,{maxSignals}).filter(s=>
@@ -854,9 +866,8 @@ export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20,
  const fallbackCategories=decideFiveMinuteFallbackCategories(
    primaryHealth);
  const fallbackSelected=fallbackCategories.map(category=>{
-   const entry=FIVE_MINUTE_NEWS_FALLBACK.find(x=>x.category===category);
-   if(!entry)throw Error("ORIGINAL_FASTLANE_FALLBACK_CATEGORY_UNREGISTERED");
-   const matches=SOURCES.filter(s=>s.id===entry.id&&s.category===entry.category);
+   const entry=selectFiveMinuteFallback(category,now);
+   const matches=officialSources.filter(s=>s.id===entry.id&&s.category===entry.category);
    if(matches.length!==1)throw Error("ORIGINAL_FASTLANE_FALLBACK_PUBLISHER_INVALID");
    return {category,source:matches[0]};
  });

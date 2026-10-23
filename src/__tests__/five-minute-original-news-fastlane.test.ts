@@ -4,7 +4,8 @@ import {deriveStatelessSignals} from "../lib/stateless-intelligence-model";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS} from "../../scripts/lib/global-official-release-feeds.mjs";
 import {FIVE_MINUTE_NEWS_FASTLANE,FIVE_MINUTE_NEWS_FALLBACK,
  FASTLANE_MAX_FALLBACK_READS_PER_RUN,FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN,decideFiveMinuteFallbackCategories,
- recentFastlaneReleaseCount,readFiveMinuteNewsFastlane} from "../lib/stateless-public-intelligence.server";
+ recentFastlaneReleaseCount,selectFiveMinuteFallback,FIVE_MINUTE_NEWS_FALLBACK_ROTATION,
+ readFiveMinuteNewsFastlane} from "../lib/stateless-public-intelligence.server";
 
 const read=(p:string)=>readFileSync(p,"utf8");
 const CATS=["geopolitics","macro","rare_earth"];
@@ -77,7 +78,7 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    const impl=read("src/lib/stateless-public-intelligence.server.ts");
    expect(impl).toContain("const fallbackCategories=decideFiveMinuteFallbackCategories(");
    expect(impl).toContain("fallbackSelected.length>FASTLANE_MAX_FALLBACK_READS_PER_RUN");
-   expect(impl).toContain("SOURCES.filter(s=>s.id===entry.id&&s.category===entry.category)");
+   expect(impl).toContain("officialSources.filter(s=>s.id===entry.id&&s.category===entry.category)");
    expect(impl).toContain("const fallbackBatches=await Promise.all(");
    expect(impl).toContain("p.category===category?[fallbackBatches[i]]:[]");
  });
@@ -193,5 +194,28 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(reports.every(r=>r.status==="no_eligible_original_releases"&&r.signals.length===0)).toBe(true);
    expect(reports.every(r=>r.healthy_feed_count===r.primary_healthy_feed_count)).toBe(true);
    expect(reports.every(r=>r.fallback_reason==="NO_RECENT_QUALIFYING_PRIMARY_RELEASE")).toBe(true);
+ });
+ it("rotates existing alternatives under the same one-fallback-per-category budget",()=>{
+   const now=Date.parse("2026-10-23T12:00:00Z");
+   for(const category of ["geopolitics","macro","rare_earth"] as const){
+     const ids=FIVE_MINUTE_NEWS_FALLBACK_ROTATION[category];
+     expect(new Set(Array.from({length:ids.length},(_,i)=>selectFiveMinuteFallback(category,now+i*5*60_000).id)))
+       .toEqual(new Set(ids));
+     expect(selectFiveMinuteFallback(category,now+60_000)).toEqual(selectFiveMinuteFallback(category,now));
+     expect(ids.every(id=>!FIVE_MINUTE_NEWS_FASTLANE.some(p=>p.category===category&&p.id===id))).toBe(true);
+   }
+   expect(()=>selectFiveMinuteFallback("macro",NaN)).toThrow();
+ });
+ it.each([1,2])("resolves every rotated publisher through existing approved registry at slot %s",async slot=>{
+   const now=Date.parse("2026-10-23T12:00:00Z")+slot*5*60_000,reads:string[]=[];
+   const reports=await readFiveMinuteNewsFastlane(now,20,undefined,{readPinnedSource:async source=>{
+     reads.push(source.id);return {healthy:true,candidates:[]};
+   }});
+   expect(reads).toHaveLength(13);
+   expect(new Set(reads).size).toBe(13);
+   for(const category of ["geopolitics","macro","rare_earth"] as const)
+     expect(reads).toContain(selectFiveMinuteFallback(category,now).id);
+   expect(reports).toHaveLength(3);
+   expect(reports.every(r=>r.signals.length===0&&r.fallback_reason==="NO_RECENT_QUALIFYING_PRIMARY_RELEASE")).toBe(true);
  });
 });
