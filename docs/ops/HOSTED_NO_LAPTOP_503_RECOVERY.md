@@ -59,7 +59,9 @@ synchronizes source SHA but does not reissue genuine independent proofs.
 ## What the owner needs to do once (NOT 24/7)
 1. In GitHub **Settings > Environments > production > Environment secrets**
    and repository Actions secrets, review the **names** (not values) of
-   B2_KEY_ID, B2_APPLICATION_KEY, CLOUDFLARE_ACCOUNT_ID,
+   B2_KEY_ID, B2_APPLICATION_KEY, and the separate historical GRI
+   B2_ARCHIVE_READ_KEY_ID, B2_ARCHIVE_READ_APPLICATION_KEY,
+   CLOUDFLARE_ACCOUNT_ID,
    CLOUDFLARE_API_TOKEN, GEOMACRO_COMMERCE_LEDGER_TOKEN,
    GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM and SHA256,
    GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM and SHA256,
@@ -233,3 +235,7 @@ signing it does not imply original HTML-byte verification, legal rights,
 independent Facts and Rights authority, country/category certificate,
 numerical GRI v1.2, Risk Indices publication, a signed GRO or x402
 commercial delivery. Those are separate genuine-input requirements.
+
+### Historical B2 credentials are distinct from general B2 storage secrets
+
+The protected `gri-pinned-version-recovery.yml` consumes `B2_ARCHIVE_READ_KEY_ID` and `B2_ARCHIVE_READ_APPLICATION_KEY`, not general `B2_KEY_ID` / `B2_APPLICATION_KEY`. The hosted authority-readiness workflow must inspect the presence of both exact pairs and report `historical_immutable_b2_version_read_credentials=MISSING_OR_INVALID` if either scoped read secret is missing. Presence is never an actual historical B2 GET, permission/scope confirmation, immutable-version checksum proof, or current GRI publication. Reuse correctly scoped existing production secrets. Do not put general write keys into read-only roles merely to make a check green. Historical recovery still requires the shared quota, pinned original version, cryptographic compressed-byte readback and D1 verification. No secret values enter readiness logs.
