@@ -18,9 +18,40 @@ const SOURCES=Object.freeze([
 export const INDEPENDENT_MARITIME_CONTEXT_SOURCES=SOURCES;
 
 function visible(markup){
- return markup.replace(/<(?:script|style|noscript|template)\b[^>]*>[\s\S]*?<\/\s*(?:script|style|noscript|template)\s*>/giu," ")
-   .replace(/<!--[^]*?-->/gu," ").replace(/<[^>]{0,2000}>/gu," ")
-   .replace(/&(?:nbsp|amp|quot|apos|#39);/giu," ").replace(/\s+/gu," ").trim();
+ // HTML is untrusted, including script end tags with whitespace, malformed
+ // attributes, comments, and quoted '>' characters. Avoid regex-based
+ // HTML stripping; scan tags while suppressing script/style/template contents.
+ let output="",position=0,skipped=null;
+ while(position<markup.length){
+   if(markup[position]!=="<"){
+     if(!skipped)output+=markup[position];
+     position++;continue;
+   }
+   if(markup.startsWith("<!--",position)){
+     const end=markup.indexOf("-->",position+4);
+     if(end<0)break;
+     position=end+3;continue;
+   }
+   let end=position+1,quote=null;
+   while(end<markup.length&&end-position<4096){
+     const c=markup[end];
+     if(quote){if(c===quote)quote=null;}
+     else if(c==='"'||c==="'")quote=c;
+     else if(c===">")break;
+     end++;
+   }
+   if(end>=markup.length||end-position>=4096)break;
+   const raw=markup.slice(position+1,end).trimStart();
+   const closing=raw.startsWith("/");
+   const tag=(closing?raw.slice(1):raw).match(/^[A-Za-z][A-Za-z0-9-]*/u)?.[0]?.toLowerCase()??"";
+   if(["script","style","noscript","template"].includes(tag)){
+     if(closing&&skipped===tag)skipped=null;
+     if(!closing&&!skipped)skipped=tag;
+   }
+   output+=" ";
+   position=end+1;
+ }
+ return output.replace(/\s+/gu," ").trim();
 }
 function dateDay(raw){
  if(!/^\d{2}\/\d{2}\/20\d{2}$/u.test(raw))return null;
