@@ -31,3 +31,13 @@ eligible counts, deduplicated publication/readback counts, and the exact origina
 window. An unavailable category cannot suppress healthy categories or be labeled
 as a successful backfill. All-world exhaustive coverage is not claimed: readers
 are bounded, sources may be unavailable, and GitHub cron is best effort.
+
+Runtime reconciliation: the existing Macro finding `macro-cee8fd47` was exposed
+with native clocks 05:00:00 and 05:00:02 on 23 October via different reader paths.
+The immutable-clock guard correctly refused replacement. Backfill now checks
+retained journal clocks first: if the same finding is already available INSIDE
+the requested 24-hour/15-minute window, preserve that stored clock and exclude
+the incoming variant from writes, reporting `existing_clock_variants_retained`.
+A retained timestamp outside the requested window remains an error; no stale
+record is reclassified as current. The core publisher still rejects attempted
+clock rewrites. This reconciles availability, not source-clock agreement.

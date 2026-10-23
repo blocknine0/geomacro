@@ -12,7 +12,7 @@ try{
  const now=Date.now(),shared=createRunScopedAustralianResourcesFetch();
  const publisher=await createContinentNewsPublisher({root:process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN,
   readJournal:fetchAllDerivedNews,now:()=>now});
- const receipt=await backfillLast24HourNews({now,publisher,
+ const receipt=await backfillLast24HourNews({now,publisher,retainedClocks:publisher.retainedClocks(),
   readCategory:category=>readStatelessWebsiteIntelligence(category,now,undefined,undefined,200,shared)});
  mkdirSync('artifacts/country-195',{recursive:true,mode:0o700});
  writeFileSync('artifacts/country-195/last-24-hour-news-backfill.v1.json',JSON.stringify(receipt,null,2)+'\n',{mode:0o600});

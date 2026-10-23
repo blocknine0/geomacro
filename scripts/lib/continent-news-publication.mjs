@@ -49,6 +49,7 @@ export async function createContinentNewsPublisher({root,readJournal,fetchImpl=f
  let chain=Promise.resolve();
  function enqueue(task){const next=chain.then(task);chain=next.catch(()=>{});return next;}
  return {
+  retainedClocks:()=>[...known.values()].map(s=>({id:s.id,category:s.category,published_at:s.published_at,date_precision:s.date_precision})),
   accept:signals=>enqueue(async()=>{
    if(!Array.isArray(signals)||signals.length>20)throw Error('CONTINENT_NEWS_COUNTRY_BATCH_INVALID');
    for(const signal of signals){
