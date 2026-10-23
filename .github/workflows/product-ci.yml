@@ -40,6 +40,9 @@ jobs:
 
       # This is intentionally frozen. package.json dependency/override changes
       # must be accompanied by a regenerated bun.lock in the same PR.
+      - name: Verify committed integrity-pinned public npm tarball registry before network
+        run: node --test scripts/tests/bun-locked-registry-integrity.test.mjs
+
       - name: Verify committed lockfile and install dependencies
         # GitHub runners can inherit Lovable's npm mirror, which returned
         # provider HTTP 429 in production CI on 2026-10-23. Force the public
