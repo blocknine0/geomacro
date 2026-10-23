@@ -42,13 +42,18 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("owner-approved-no-added-news-publication-delay-20261023");
+    expect(config.lock_revision).toBe("owner-approved-retire-public-gri-and-store-20261024");
     const launch = config.three_chain_launch_presentation_approval;
     const toggle = config.approved_three_category_toggle_presentation;
     const redesign = config.approved_store_reader_redesign;
     const home = config.approved_home_clarity_gri_reader;
     const immediate=config.approved_no_added_news_publication_delay;
-    expect(immediate.approved_ui_commit).toBe(config.baseline_sha);
+    const retired = config.approved_gri_store_retirement;
+    expect(retired.approved_ui_commit).toBe(config.baseline_sha);
+    expect(retired.previous_baseline_sha).toBe(immediate.approved_ui_commit);
+    expect(retired.locked_gri_presentation_files_unmodified).toBe(true);
+    expect(retired.public_gri_checkout_disabled).toBe(true);
+    expect(retired.funds_authorized).toBe(false);
     expect(immediate.previous_baseline_sha).toBe(home.approved_ui_commit);
     expect(immediate.global_risk_final_lock_unmodified).toBe(true);
     expect(immediate.canonical_pricing_unmodified).toBe(true);
