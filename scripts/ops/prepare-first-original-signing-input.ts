@@ -46,6 +46,18 @@ async function resolveOriginalReviewD1Id(env:NodeJS.ProcessEnv,fetchImpl=fetch){
  return id;
 }
 
+export function requireProtectedOriginalArchiveMain(env:NodeJS.ProcessEnv) {
+ if(env.GITHUB_ACTIONS!=="true"||
+    env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
+    env.GITHUB_REF!=="refs/heads/main"||
+    !/^\d{1,20}$/.test(env.GITHUB_RUN_ID??"")||
+    env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
+    env.B2_ACCOUNT_QUOTA_WORKFLOW_ID!=="original_review_leads"||
+    env.B2_REQUEST_BUDGET!=="6")
+   throw Error("PRIVATE_ORIGINAL_ARCHIVE_PROTECTED_MAIN_ONLY");
+ return true;
+}
+
 // Existing 02,08,14,20 UTC cron: four genuinely independent country
 // candidates/day, with a 195-slot deterministic cycle instead of rechecking
 // only USA/GBR/CAN forever. One review lead is NOT a verified country event.
@@ -167,14 +179,7 @@ export async function main(){
   rights_or_gri_signed:false,b2_requests:0,d1_writes:0,payments:0
  };
  if(process.env.GEOMACRO_ORIGINAL_PRIVATE_ARCHIVE_ENABLED==="1"){
-   if(process.env.GITHUB_ACTIONS!=="true"||
-      process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
-      process.env.GITHUB_REF!=="refs/heads/main"||
-      !/^\\d{1,20}$/.test(process.env.GITHUB_RUN_ID??"")||
-      process.env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
-      process.env.B2_ACCOUNT_QUOTA_WORKFLOW_ID!=="original_review_leads"||
-      process.env.B2_REQUEST_BUDGET!=="6")
-     throw Error("PRIVATE_ORIGINAL_ARCHIVE_PROTECTED_MAIN_ONLY");
+   requireProtectedOriginalArchiveMain(process.env);
    if(leads.length>0){
      process.env.D1_DATABASE_ID=await resolveOriginalReviewD1Id(process.env);
    }
