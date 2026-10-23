@@ -265,7 +265,7 @@ const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
 // conservative: an unknown news URL requires a separately reviewed adapter.
 const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   un_news_security_original_rss_review:/^\/en\/story\/\d{4}\/\d{1,2}\//u,
-  uk_cabinet_security_original_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\/[a-z0-9-]+$/u,220}$/u,
+  uk_cabinet_security_original_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\/[a-z0-9-]+$/u,
   statcan_prices_original_atom_review:/^\/n1\/(?:en\/)?daily-quotidien\/\d{6}\//u,
   uk_dbt_macro_trade_original_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\/[a-z0-9-]+$/u,
   nrcan_government_news_original_atom_review:/^\/en\/natural-resources-canada\/news\//u,
