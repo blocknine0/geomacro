@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
  GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl
 } from "./global-official-release-feeds.mjs";
+import {registeredOriginalPublisherOrganization} from "./independent-same-event-qualification.mjs";
 
 // All fixtures are published URL path shapes, not assertions of a fresh event.
 // Exact live source + native clock and rights are separately verified.
@@ -48,4 +49,9 @@ test("new feeds cannot imply free commercial rights or fabricated publisher cloc
   assert.equal(Object.hasOwn(x,"native_publication_clock_verified"),false);
   assert.equal(Object.hasOwn(x,"current_three_domain_gri_qualified"),false);
  }
+});
+test("new registered EU publisher is a distinct real institution, not itself a rights or facts grant",()=>{
+ assert.equal(registeredOriginalPublisherOrganization("www.consilium.europa.eu"),"eu_council");
+ assert.equal(registeredOriginalPublisherOrganization("www.usgs.gov"),"usgs");
+ assert.equal(registeredOriginalPublisherOrganization("www.consilium.europa.eu.attacker.invalid"),null);
 });
