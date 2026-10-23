@@ -9,7 +9,7 @@ describe("public intelligence machine surfaces", () => {
   it("keeps capability discovery free and payment-bound", () => {
     expect(capabilities).toContain('"/api/v1/intelligence/query"');
     expect(capabilities).toContain('pricing_contract_version');
-    expect(capabilities).toContain('capabilityPricingCatalog()');
+    expect(capabilities).toContain('publicCapabilityPricingCatalog()');
     expect(capabilities).toContain('raw_source_identity_exposed: false');
   });
 
