@@ -427,7 +427,7 @@ export async function checkAgentQueryDeliverability(
 
 export function publicAgentQueryAvailability(
   result: AgentQueryDeliverability,
-): Omit<AgentQueryDeliverability, "source_contracts" | "subjects"> & {
+): Omit<AgentQueryDeliverability, "source_contracts" | "subjects" | "ineligible_source_ids"> & {
   subjects: Array<{
     subject: AgentQueryPlan["subjects"][number];
     status: StructuralContext["status"];
