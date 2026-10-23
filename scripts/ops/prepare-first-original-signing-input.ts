@@ -14,6 +14,7 @@ import {discoverDirectPublisherForPrivateQualification,
  verifyOnDemandOriginalArticlePages} from "../../src/lib/on-demand-global-discovery.server";
 import {verifyGeomacroUnclaimedOriginalPage} from "../lib/geomacro-original-page-readback.mjs";
 import {preparePrivateOriginalSigningReview} from "../lib/private-original-signing-review-intake.mjs";
+import {summarizePrivateOriginalIntakeFunnel} from "../lib/private-original-intake-funnel.mjs";
 
 // Existing 02,08,14,20 UTC cron: four genuinely independent country
 // candidates/day, with a 195-slot deterministic cycle instead of rechecking
@@ -104,7 +105,9 @@ export async function main(){
   persist=persistLocalPrivateOriginals({leads,
    dir:process.env.GEOMACRO_PRIVATE_REVIEW_DIR,now});
  }
- const safe={...receipt,local_custodian_save_enabled:persist.local_file_created,
+ const safe={...receipt,
+  discovery_funnel:summarizePrivateOriginalIntakeFunnel({discovery,pages,receipt}),
+  local_custodian_save_enabled:persist.local_file_created,
   private_leads_persisted_to_custodian:persist.private_leads_persisted,
   signed_input_created:false};
  mkdirSync("artifacts/original-evidence",{recursive:true});
