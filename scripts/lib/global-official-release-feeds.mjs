@@ -29,6 +29,25 @@ export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
  {id:'un_news_minerals',category:'rare_earth',url:'https://news.un.org/feed/subscribe/en/news/all/rss.xml',format:'rss',host:'news.un.org',path:/^\/en\/story\/20\d{2}\/\d{1,2}\/[a-z0-9-]+$/u,topic:MINERAL_RELEASE_TOPIC,credit:'UN News',family:'un_minerals_original_publisher'},
  {id:'boc_press_global',category:'macro',url:'https://www.bankofcanada.ca/content_type/press-releases/feed/',format:'rss',host:'www.bankofcanada.ca',path:/^\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\/$/u,topic:macro,credit:'Bank of Canada',family:'boc_original_publisher',rdf:true},
  {id:'bc_minerals_global',category:'rare_earth',url:'https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed',format:'rss',host:'news.gov.bc.ca',path:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,topic:MINERAL_RELEASE_TOPIC,credit:'Province of British Columbia',family:'bc_minerals_original_publisher'},
+ // Exact RSS endpoints are linked directly by their official publishing bodies.
+ // Feed transport/relevance is only a DISCOVERY lead. Publisher page+native
+ // publication date, article bytes, same-event independence and licensed
+ // commercial rights are independently checked by downstream publishers.
+ // EU Council reuse terms require acknowledgement: no silent rights grant.
+ {id:'eu_council_press_original',category:'geopolitics',
+   url:'https://www.consilium.europa.eu/en/rss/pressreleases.ashx',
+   format:'rss',host:'www.consilium.europa.eu',
+   path:/^\/en\/press\/press-releases\/20\\d{2}\/(?:0[1-9]|1[0-2])\/(?:0[1-9]|[12]\\d|3[01])\/[a-z0-9]+(?:-[a-z0-9]+){2,100}\/$/u,
+   topic:geo,credit:'© European Union, 2026. Source attribution required.',
+   family:'eu_council_original_publisher'},
+ // USGS publicly advertises its actual mineral program RSS endpoint;
+ // the site distinguishes USGS-owned public domain from 3rd-party content.
+ {id:'usgs_minerals_news_original',category:'rare_earth',
+   url:'https://www.usgs.gov/news/minerals/feed',
+   format:'rss',host:'www.usgs.gov',
+   path:/^\/news\/(?:national-news-release|state-news-release|featured-story|science-snippet)\/[a-z0-9]+(?:-[a-z0-9]+){2,100}$/u,
+   topic:MINERAL_RELEASE_TOPIC,credit:'U.S. Geological Survey. Credit required where applicable; no third-party rights granted.',
+   family:'usgs_minerals_original_publisher'},
  {id:'iea_minerals_global',category:'rare_earth',url:'https://www.iea.org/news?topic%5B0%5D=critical-minerals',format:'html',host:'www.iea.org',path:/^\/news\/[a-z0-9]+(?:-[a-z0-9]+){1,35}$/u,topic:MINERAL_RELEASE_TOPIC,credit:'International Energy Agency',family:'iea_minerals_original_publisher'},
 ].map(s=>{
  const u=new URL(s.url);if(u.protocol!=='https:'||u.hostname!==s.host||u.username||u.password||u.port||u.hash)throw Error('GLOBAL_RELEASE_REGISTRY_INVALID');
