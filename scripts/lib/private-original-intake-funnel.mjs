@@ -59,15 +59,21 @@ export function summarizePrivateOriginalIntakeFunnel({discovery,pages,receipt}={
      pagesVerified>pages.attempted)
     throw Error("ORIGINAL_INTAKE_FUNNEL_STAGE_MISMATCH");
 
+  const degradedProbeCount=probeCounts.RATE_LIMITED+
+    probeCounts.ACCESS_RESTRICTED+probeCounts.TRANSPORT_UNAVAILABLE+
+    probeCounts.COOLDOWN_ACTIVE+probeCounts.PROVIDER_INVALID;
+  const inspectedPublisherRecords=probeCounts.RECORDS_OBSERVED>0 ||
+    feedStages.inspected>0;
   const nextGate=receipt.distinct_source_verified_pre_review_leads>0
     ?"PRIVATE_FACTS_AND_RIGHTS_REVIEW_PENDING":
     candidates===0
-      ? probeCounts.RECORDS_OBSERVED>0 || feedStages.inspected>0
-        ?"COUNTRY_TOPIC_OR_ORIGINAL_PUBLISHER_MATCH_NOT_CONFIRMED"
-        : probeCounts.RATE_LIMITED+probeCounts.ACCESS_RESTRICTED+
-          probeCounts.TRANSPORT_UNAVAILABLE+probeCounts.COOLDOWN_ACTIVE>0
-          ?"SOURCE_TRANSPORT_ACCESS_OR_QUOTA_DEGRADED"
-          :"NO_CURRENT_FIRST_PARTY_CANDIDATE_DISCOVERED"
+      ? inspectedPublisherRecords && degradedProbeCount>0
+        ?"COUNTRY_TOPIC_AND_PROVIDER_TRANSPORT_DEGRADED"
+        : inspectedPublisherRecords
+          ?"COUNTRY_TOPIC_OR_ORIGINAL_PUBLISHER_MATCH_NOT_CONFIRMED"
+          : degradedProbeCount>0
+            ?"SOURCE_TRANSPORT_ACCESS_OR_QUOTA_DEGRADED"
+            :"NO_CURRENT_FIRST_PARTY_CANDIDATE_DISCOVERED"
       : pages.attempted===0
         ?"DISCOVERED_CANDIDATES_NOT_SUBMITTED_TO_PAGE_READBACK"
         : pagesVerified===0
@@ -81,6 +87,8 @@ export function summarizePrivateOriginalIntakeFunnel({discovery,pages,receipt}={
     country_iso3:receipt.country_iso3,
     original_source_network_attempts:discovery.discovery.network_attempts,
     source_probe_retrieval_states:probeCounts,
+    degraded_source_probe_count:degradedProbeCount,
+    country_topic_match_unconfirmed:candidates===0&&inspectedPublisherRecords,
     source_probe_record_observations_by_category:observedByDomain,
     feed_stage_counter_sums_not_unique_events:feedStages,
     original_candidates_by_category:candidateCounts,
