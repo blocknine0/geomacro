@@ -12,6 +12,42 @@ pin MUST remain unchanged. Do not generate a new Facts identity to match
 a wrong public key, do not paste or upload its private key, and do not
 change any Predge credential or shared D1 record.
 
+## Safe diagnosis before attempting another secret update
+
+An Ed25519 **DER/SPKI public key encoded as Base64** can start with `MCow...`.
+That is **not** an approved SHA256 fingerprint. The SHA256 pin argument must be
+exactly **64 lowercase hexadecimal characters** from the **previous independent
+Facts approval record**. Do not compute a new fingerprint from an arbitrary
+file and pretend it was previously approved. In particular, Pallab's
+`owner-public.pem` is the human owner key, **not the Facts authority key**.
+Never use that file as a replacement Facts public PEM.
+
+On the owner-controlled laptop after confirming the actual approved Facts PEM
+path and the originally approved fingerprint in private records:
+
+```bash
+cd ~/geomacro-delegation-main
+git fetch origin main
+git switch --detach origin/main
+# Set the two existing Facts values privately, NOT the owner PEM or DER key.
+# GEOMACRO_APPROVED_FACTS_PUBLIC_PEM_PATH=/home/daspa/geomacro-private/.../facts-public.pem
+# GEOMACRO_APPROVED_FACTS_PUBLIC_SHA256=<previously approved 64 lowercase hex>
+node scripts/ops/repair-approved-facts-public-pem.mjs --inspect-preapproved-public-pem-no-funds
+```
+
+The diagnostic prints only one of:
+- `APPROVED_FACTS_PIN_MUST_BE_64_LOWERCASE_HEX_SHA256` (wrong input format);
+- `PUBLIC_PEM_OR_APPROVED_FACTS_IDENTITY_MISMATCH` (wrong/malformed file or
+  not the previously approved pinned identity);
+- `EXISTING_APPROVED_FACTS_PUBLIC_IDENTITY_MATCHED_NO_CHANGE`.
+
+**It does not upload any public/private key, modify any GitHub secret, change the
+pin, sign a Facts or Rights statement, dispatch a workflow, or authorize funds.**
+Only when the exact original approved key genuinely matches should the owner
+run the separate interactive `--install-preapproved-public-pem-no-funds`
+command below. Successful identity repair still cannot create a signed current
+Intelligence/GRO/GRI product.
+
 ## Owner laptop: use the original approved existing Facts PUBLIC PEM
 
 Find the already-approved Facts public PEM in

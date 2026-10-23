@@ -31,13 +31,36 @@ export function prepareFactsPublicPemRepair({pem,approvedPin}={}){
   payment_authorized:false
  });
 }
+/** Read-only diagnostic for operator mistakes. Never returns a key, hash, path
+ * or any material capable of authorizing a Facts signature/key rotation. */
+export function inspectFactsPublicPemRepair({pem,approvedPin}={}){
+ const noSideEffects={
+  public_or_private_key_bytes_returned:false,
+  approved_sha256_pin_changed:false,
+  cloud_secrets_written:false,readiness_jobs_dispatched:false,
+  signing_authority_verified:false,real_funds_authorized:false,
+ };
+ if(!PIN.test(approvedPin??""))
+  return Object.freeze({...noSideEffects,
+   status:'APPROVED_FACTS_PIN_MUST_BE_64_LOWERCASE_HEX_SHA256'});
+ try{
+  prepareFactsPublicPemRepair({pem,approvedPin});
+  return Object.freeze({...noSideEffects,
+   status:'EXISTING_APPROVED_FACTS_PUBLIC_IDENTITY_MATCHED_NO_CHANGE'});
+ }catch{
+  return Object.freeze({...noSideEffects,
+   status:'PUBLIC_PEM_OR_APPROVED_FACTS_IDENTITY_MISMATCH'});
+ }
+}
 function gh(args,input){
  const x=spawnSync('gh',args,{input,encoding:'utf8',timeout:30000,maxBuffer:32768});
  if(x.status!==0||x.error)fail();
  return (x.stdout||'').trim();
 }
 async function main(env=process.env){
- if(process.argv.length!==3||process.argv[2]!=='--install-preapproved-public-pem-no-funds'||
+ const inspect=process.argv[2]==='--inspect-preapproved-public-pem-no-funds';
+ if(process.argv.length!==3||
+   (!inspect&&process.argv[2]!=='--install-preapproved-public-pem-no-funds')||
    env.CI==='true'||env.GITHUB_ACTIONS==='true'||!process.stdin.isTTY||
    !process.stdout.isTTY||process.getuid?.()===0)fail();
  const source=env.GEOMACRO_APPROVED_FACTS_PUBLIC_PEM_PATH;
@@ -50,9 +73,18 @@ async function main(env=process.env){
  if(lstatSync(path).isSymbolicLink()||!lstatSync(path).isFile()||
    lstatSync(path).size<64||lstatSync(path).size>8192)fail();
  if(realpathSync(path)!==path)fail();
+ const pem=readFileSync(path,'utf8');
+ if(inspect){
+  const diagnostic=inspectFactsPublicPemRepair({
+   pem,approvedPin:env.GEOMACRO_APPROVED_FACTS_PUBLIC_SHA256
+  });
+  console.log(JSON.stringify(diagnostic));
+  if(diagnostic.status!=='EXISTING_APPROVED_FACTS_PUBLIC_IDENTITY_MATCHED_NO_CHANGE')
+   process.exitCode=2;
+  return;
+ }
  const prepared=prepareFactsPublicPemRepair({
-  pem:readFileSync(path,'utf8'),
-  approvedPin:env.GEOMACRO_APPROVED_FACTS_PUBLIC_SHA256
+  pem,approvedPin:env.GEOMACRO_APPROVED_FACTS_PUBLIC_SHA256
  });
  gh(['auth','status','-h','github.com']);
  const rl=createInterface({input:process.stdin,output:process.stdout});
