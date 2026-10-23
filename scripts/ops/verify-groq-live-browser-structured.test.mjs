@@ -27,7 +27,10 @@ test("actual browser response direct strict output remains honest without exposi
  assert.equal(result.real_payments,0);
  assert.equal(result.b2_requests,0);
  assert.equal(JSON.stringify(result).includes(key),false);
- assert.equal(JSON.stringify(result).includes("example.gov"),false);
+ // Enforce the exact private source token is absent. Never treat a
+ // permissive URL substring check as publisher-domain sanitization.
+ assert.doesNotMatch(JSON.stringify(result),/"source_domain"\\s*:\\s*"example\\.gov"/u);
+ assert.doesNotMatch(JSON.stringify(result),/example[.]gov/u);
 });
 test("real browser citation prose converts via a separate NO-TOOLS strict schema call",async()=>{
  let calls=0;
