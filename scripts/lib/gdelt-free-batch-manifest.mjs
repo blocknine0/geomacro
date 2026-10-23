@@ -14,7 +14,7 @@ function date14(value){
  const iso=value.slice(0,4)+"-"+value.slice(4,6)+"-"+value.slice(6,8)+
    "T"+value.slice(8,10)+":"+value.slice(10,12)+":"+value.slice(12,14)+"Z";
  const ms=Date.parse(iso);
- if(!Number.isFinite(ms)||new Date(ms).toISOString()!==iso)return null;
+ if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,19)+"Z"!==iso)return null;
  if(Number(value.slice(10,12))%15!==0||value.slice(12,14)!=="00")return null;
  return iso;
 }
