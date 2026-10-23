@@ -40,7 +40,15 @@ test("free Telegram-independent exact first-party batch index, licensed dataset 
  assert.equal(result.native_publications_within_30m,0);
  assert.equal(result.independently_verified_event,false);
  assert.equal(result.topic_relevance_classified,false);
- assert.ok(!JSON.stringify(result).includes("data.gdeltproject.org"));
+ // Check the complete serialized receipt shape instead of URL-substring filtering.
+ assert.deepEqual(Object.keys(result).sort(),[
+   "kind","sampled_records","fingerprints","latest_native_publication_at",
+   "native_publications_within_30m","native_publications_within_6h",
+   "corridor_advisory_candidate_count","candidate_corridor_ids",
+   "corridor_current_disruption_verified","independently_verified_event",
+   "topic_relevance_classified",
+ ].sort());
+ assert.ok(result.fingerprints.every(x=>/^[a-f0-9]{64}$/u.test(x)));
  assert.ok(!JSON.stringify(result).includes("a".repeat(32)));
 });
 test("stale and ahead-of-clock manifests never prove fresh original publisher events",()=>{
