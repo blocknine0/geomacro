@@ -29,6 +29,13 @@ export function assessLiveNoFundsReadiness({canonicalSha,build,health,discovery,
  require(deployed,'WEBSITE_PUBLISH_SHA_NOT_CURRENT');
  require(hStatus===200,'DEEP_HEALTH_NOT_HTTP_200');
  require(h?.production_data_runtime_configured===true,'PRODUCTION_DATA_RUNTIME_NOT_READY');
+ // A successful HTTP status and three hot booleans are insufficient: require
+ // the SAME complete B2-backed deep-health predicate used by the gate itself.
+ // Do not report a ready verdict when the origin explicitly says ok:false or
+ // when the independent B2-backed edge has not been authenticated.
+ require(h?.ok===true,'DEEP_HEALTH_REPORTED_NOT_OK');
+ require(pub?.b2_runtime_configured===true,'B2_BACKED_SIGNED_EDGE_NOT_VERIFIED');
+ require(data,'CURRENT_SIGNED_3_OF_3_NOT_VERIFIED');
  for(const k of HOT)require(hot?.[k]?.ok===true&&current?.[k]===true,'CURRENT_SIGNED_'+k.toUpperCase()+'_NOT_VERIFIED');
  require(prelaunch,'X402_ZERO_PAYABLE_PRELAUNCH_DISCOVERY_NOT_VERIFIED');
  require(noFunds,'X402_NO_FUNDS_AVAILABILITY_CONTRACT_NOT_VERIFIED');
