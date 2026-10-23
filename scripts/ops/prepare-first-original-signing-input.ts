@@ -10,7 +10,7 @@ import {createHash} from "node:crypto";
 import {existsSync,lstatSync,mkdirSync,realpathSync,writeFileSync} from "node:fs";
 import {isAbsolute,relative,resolve,sep} from "node:path";
 import {COUNTRIES_195,country195ByIso3} from "../../src/lib/canonical-country-registry-195";
-import {discoverOnDemandForPrivateQualification,
+import {discoverDirectPublisherForPrivateQualification,
  verifyOnDemandOriginalArticlePages} from "../../src/lib/on-demand-global-discovery.server";
 import {verifyGeomacroUnclaimedOriginalPage} from "../lib/geomacro-original-page-readback.mjs";
 import {preparePrivateOriginalSigningReview} from "../lib/private-original-signing-review-intake.mjs";
@@ -68,6 +68,27 @@ export function countryForThisRun(now=new Date()){
  const index=((slot%COUNTRIES_195.length)+COUNTRIES_195.length)%COUNTRIES_195.length;
  return COUNTRIES_195[index].iso3;
 }
+// Three categories require three independent rereads. A native GOV.UK clock
+// can need HTML + its pinned Content API in EACH verification phase. Reserve
+// both GETs/category instead of failing the third domain before any review.
+export const ORIGINAL_REVIEW_GET_BUDGET=Object.freeze({discovery:12,page:6,bytes:6});
+export function privateOriginalBudgetedFetch(fetchImpl:typeof fetch=fetch){
+ const counts={discovery:0,page:0,bytes:0};
+ return {
+  counts:()=>({...counts}),
+  forPhase:(phase:keyof typeof counts)=>async(input:RequestInfo|URL,init?:RequestInit)=>{
+   if(!Object.hasOwn(counts,phase)||counts[phase]>=ORIGINAL_REVIEW_GET_BUDGET[phase])
+    throw Error("PRIVATE_ORIGINAL_SOURCE_REQUEST_BUDGET_EXCEEDED");
+   const u=new URL(String(input));
+   if(u.protocol!=="https:"||u.username||u.password||u.port||
+      (init?.method??"GET")!=="GET"||
+      !["error","manual"].includes(init?.redirect??""))
+    throw Error("PRIVATE_ORIGINAL_SOURCE_REQUEST_INVALID");
+   counts[phase]++;
+   return fetchImpl(input,init);
+  },
+ };
+}
 export function safePrivateReviewDir(target,repoRoot=process.cwd(),gha=false){
  if(gha||!isAbsolute(target??"")||!existsSync(target))
    throw Error("PRIVATE_ORIGINAL_LOCAL_CUSTODY_NOT_AVAILABLE");
@@ -124,45 +145,28 @@ export async function main(){
  }
  if(!country195ByIso3(country_iso3))
   throw Error("PRIVATE_ORIGINAL_COUNTRY_NOT_IN_CANONICAL_195");
- let discoveryCalls=0,pageCalls=0,byteCalls=0;
- const boundedFetch=(phase)=>async(input,init)=>{
-  // Consume the SAME quota for exact publisher HTML and its first-party
-  // Content API precision proof. An over-budget call is refused BEFORE
-  // incrementing real-network-request counters.
-  const used=phase==="discovery"?discoveryCalls:
-    phase==="page"?pageCalls:byteCalls;
-  const cap=phase==="discovery"?12:phase==="page"?4:2;
-  if(used>=cap)throw Error("PRIVATE_ORIGINAL_SOURCE_REQUEST_BUDGET_EXCEEDED");
-  if(phase==="discovery")discoveryCalls++;
-  else if(phase==="page")pageCalls++;
-  else byteCalls++;
-  const u=new URL(String(input));
-  if(u.protocol!=="https:"||u.username||u.password||u.port||
-     (init?.method??"GET")!=="GET"||
-     !["error","manual"].includes(init?.redirect))
-   throw Error("PRIVATE_ORIGINAL_SOURCE_REQUEST_INVALID");
-  return fetch(input,init);
- };
- // Reuse the canonical worldwide index-plus-original search. GDELT is an
- // untrusted first-party-URL discovery hint only. Downstream verifier still
- // requires approved issuer host/path, native article page date and exact
- // original HTML; no seendate is accepted as publisher publication time.
- // The EXACT SAME existing 12 GET provider cap is preserved.
- const discovery=await discoverOnDemandForPrivateQualification({
+ const network=privateOriginalBudgetedFetch();
+ const boundedFetch=network.forPhase;
+ // Reuse the canonical direct-publisher entrypoint with explicit category
+ // topics. Omitted topics previously skipped current-event issuer-search
+ // rescue and consumed original-evidence slots on indexes/annual context.
+ // The existing 12 GET discovery cap and issuer/date/rights checks remain.
+ const discovery=await discoverDirectPublisherForPrivateQualification({
   country_iso3,categories:["geopolitics","macro","rare_earth"],
   max_age_seconds:ORIGINAL_VERIFICATION_WINDOW_SECONDS,
  },{now,fetchImpl:boundedFetch("discovery")});
  const pages=await verifyOnDemandOriginalArticlePages(
   discovery.private_original_review_candidates,
-  {now,maxAgeSeconds:ORIGINAL_VERIFICATION_WINDOW_SECONDS,
+  {now,maxAgeSeconds:ORIGINAL_VERIFICATION_WINDOW_SECONDS,maxProbes:3,
    fetchImpl:boundedFetch("page"),diagnostics:true});
  const {receipt,leads}=await preparePrivateOriginalSigningReview({
-  country_iso3,discovery,pages,now,
+  country_iso3,discovery,pages,now,maxRereads:3,
   readback:({original,now})=>verifyGeomacroUnclaimedOriginalPage({
    original,now,fetchImpl:boundedFetch("bytes"),
   }),
  });
- if(discoveryCalls>12||pageCalls>4||byteCalls>2||
+ const {discovery:discoveryCalls,page:pageCalls,bytes:byteCalls}=network.counts();
+ if(discoveryCalls>12||pageCalls>6||byteCalls>6||
     receipt.discovery_attempts!==discoveryCalls||
     receipt.original_page_attempts!==pages.attempted||
     pageCalls<pages.attempted||

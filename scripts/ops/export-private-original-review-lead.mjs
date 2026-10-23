@@ -67,7 +67,7 @@ export async function exportPrivateOriginalLeadArchive({
  try{doc=JSON.parse(gunzipSync(bytes,{maxOutputLength:60_000}).toString("utf8"))}
  catch{fail("PRIVATE_REVIEW_ARCHIVE_GZIP_INVALID");}
  if(doc?.schema!=="geomacro.private-original-review-lead-archive.v1"||
-    !Array.isArray(doc.leads)||doc.leads.length<1||doc.leads.length>2||
+    !Array.isArray(doc.leads)||doc.leads.length<1||doc.leads.length>3||
     doc.rights_verified!==false||doc.facts_and_rights_signed!==false||
     doc.reviewer_signed!==false||doc.GRI_scored!==false||
     doc.country_certificates_issued!==false||

@@ -31,15 +31,20 @@ export async function preparePrivateOriginalSigningReview({
     !Number.isSafeInteger(discovery.discovery?.network_attempts)||
     discovery.discovery.network_attempts>12||
     discovery.discovery.network_attempts<0||
-    !Number.isSafeInteger(maxRereads)||maxRereads<1||maxRereads>2||
+    !Number.isSafeInteger(maxRereads)||maxRereads<1||maxRereads>3||
     typeof readback!=="function")fail("INPUT_INVALID");
  const leads=[],attempts=[];
  const ids=new Set(),urls=new Set();
  const clock=now.getTime();
  // Page-date proof is not article-byte proof. Require the page to match one
  // source-native discovery identity (not a search index or country guess).
- const ordered=[...pages.verified_candidates].sort((a,b)=>
+ const newest=[...pages.verified_candidates].sort((a,b)=>
    Date.parse(b.page_original_published_at)-Date.parse(a.page_original_published_at));
+ // A busy domain cannot consume all rereads before another domain's genuine
+ // original is examined. Keep one newest candidate/category ahead of extras.
+ const firstByCategory=[...CATEGORIES].map(category=>
+   newest.find(candidate=>candidate.domain===category)).filter(Boolean);
+ const ordered=[...firstByCategory,...newest.filter(x=>!firstByCategory.includes(x))];
  for(const candidate of ordered){
   if(attempts.length>=maxRereads)break;
   const source=discovery.private_original_review_candidates.find(x=>

@@ -23,11 +23,11 @@ describe("shared D1 observation to PRIVATE original-signing intake routing",()=>
    expect(x.source_rights_or_signature_verified).toBe(false);
    expect(x.paid_output_authorized).toBe(false);
  });
- it("rejects ambiguous or non-country, source-credited, day-only, stale, future, invalid clocks, and unclassified leads",()=>{
+ it("rejects ambiguous or non-country, malformed credits, day-only, stale, future, invalid clocks, and unclassified leads",()=>{
    const s=signal("macro-12345678","Malawi","macro");
    const inputs=[
      {...s,geography:"Africa"}, {...s,geography:"https://bad.example"},
-     {...s,sources_credited:["Needs visible attribution"]},
+     {...s,sources_credited:[null] as unknown as string[]},
      {...s,date_precision:"day",published_at:"2026-10-23"},
      {...s,published_at:"2026-10-22T10:00:00Z"},
      {...s,published_at:"2026-10-23T10:01:00Z"},
@@ -62,4 +62,15 @@ describe("shared D1 observation to PRIVATE original-signing intake routing",()=>
    const receipt=JSON.stringify(a);
    expect(receipt).not.toMatch(/http|source_url|article_title|original_article|private_key/iu);
  });
+});
+
+it("keeps attributed original observations eligible for PRIVATE review routing without granting rights",()=>{
+ const rows=[signal("geopolitics-12345678","Sudan","geopolitics",undefined,
+  {sources_credited:["Attribution remains required"]})];
+ const chosen=selectPriorityOriginalReviewCountry(rows,"MYS",now);
+ expect(chosen.country_iso3).toBe("SDN");
+ expect(chosen.source_rights_or_signature_verified).toBe(false);
+ expect(chosen.paid_output_authorized).toBe(false);
+ expect(rows[0].sources_credited).toEqual(["Attribution remains required"]);
+ expect(JSON.stringify(chosen)).not.toContain("Attribution remains required");
 });

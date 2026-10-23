@@ -18,8 +18,11 @@ releases, verified HTML bytes, native timestamps and separate review.
 A manual dispatch can specify any canonical 195-country ISO3.
 
 Exactly one existing canonical three-category discovery run is shared across
-the categories: max **12** direct-publisher discovery GETs, **4** native page
-date checks and **2** independent exact HTML byte readbacks per execution.
+the categories: max **12** direct-publisher discovery GETs, **3** original page candidates
+(up to **6** GETs including pinned first-party precision APIs), and **3**
+independent exact HTML byte readbacks (up to **6** GETs), per execution.
+The total cap is **24** source GETs. B2 remains under the existing six-request
+shared governor; there is no new cron or API subscription.
 Neither a third-party aggregator, article URL hash, website first-seen clock,
 feed `updated`, nor B2/D1 restore time can become an article byte proof.
 
@@ -80,8 +83,9 @@ contract may proceed to production after its own proof/rights checks.
 One original cannot silently satisfy the existing two-independent-original
 GRI v1.2, Risk Indices or strict machine-commercial scoring contracts.
 
-No Supabase, paid data APIs, B2 write, D1 write, wallet interaction,
-payment, new signing service or key upload is done by this intake.
+No Supabase, paid data API, wallet interaction, payment, new signing service
+or key upload is done. Only genuine verified pending leads can use the
+existing protected, quota-governed private B2/D1 handoff.
 
 ## Verification
 
@@ -239,3 +243,21 @@ per-batch human review (or an explicitly *different* audited automated
 numerical profile), and protected publication/readback. The already enrolled
 Pallab+Suman one-time automated policy only authorizes **derived-news
 policy audits**, not false new human reviewer signatures.
+
+## Three-category recovery capacity
+
+Current review discovery now uses the existing direct-publisher entrypoint,
+which supplies category topic scopes and reserves original issuer search
+slots. Annual macro references and third-party index discovery cannot consume
+this current-original budget. A required source attribution can prioritize a
+PRIVATE original review; the credit is preserved and never becomes a rights
+waiver or a public no-attribution product.
+
+The three page candidates and three exact rereads select one per available
+category before newer duplicates from one category. Each phase budgets the
+HTML and optional pinned original-clock API separately. Previously two
+rereads and a two-lead private archive could never retain all three categories
+in one run; a single precise GOV.UK proof could consume the entire byte-stage
+budget. The same archive now accepts at most three pending leads. No reviewer,
+Facts/Rights, independent corroboration, signed score or hot-publication gate
+is waived. Empty or unsupported country/category results remain unavailable.

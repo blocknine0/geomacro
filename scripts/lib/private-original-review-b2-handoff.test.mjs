@@ -119,3 +119,14 @@ test("a failed/corrupt or unrecoverable B2 put/readback never claims success",as
    bytes:plan.compressed.length};}})
  }),/PRIVATE_ORIGINAL_B2_HANDOFF_VERIFIED_PRIVATE_B2_READBACK_REQUIRED/);
 });
+
+test("the same immutable archive accepts one pending lead in each category, but never four",()=>{
+ const records=["geopolitics","macro","rare_earth"].map((category,i)=>({...lead,category,
+  original_article_identity_sha256:String(i+1).repeat(64)}));
+ const plan=buildPrivateOriginalReviewArchive(records,{now,countryIso3:"IND"});
+ const doc=JSON.parse(gunzipSync(plan.compressed));
+ assert.equal(plan.leadCount,3);assert.deepEqual(plan.categories,{geopolitics:1,macro:1,rare_earth:1});
+ assert.equal(doc.rights_verified,false);assert.equal(doc.commercial_eligible,false);
+ assert.equal(verifyPrivateOriginalReviewArchive(plan.compressed,plan),true);
+ assert.throws(()=>buildPrivateOriginalReviewArchive([...records,{...lead,original_article_identity_sha256:"4".repeat(64)}],{now,countryIso3:"IND"}),/SCOPE_INVALID/);
+});

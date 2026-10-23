@@ -142,3 +142,28 @@ test("rejects spoofed publisher organization, old 22h clock and misdated HTML be
  assert.equal(mismatched.accepted,false);
  assert.equal(mismatched.status,"ORIGINAL_CLOCK_CONFLICT");
 });
+
+test("three rereads cover all categories before a newer same-category extra, with all approvals still pending",async()=>{
+ const make=(domain,family,url,date=AT)=>({...item,domain,publisher_family:family,
+  article_url:url,article_title:"Synthetic three-domain source fixture only",
+  article_identity_sha256:sha(family+"|"+url),feed_item_published_at:date});
+ const records=[make("macro",item.publisher_family,URL),
+  make("macro",item.publisher_family,URL.replace("a.htm","b.htm"),"2026-10-21T12:20:00.000Z"),
+  make("geopolitics","uk_fcdo_original_publisher","https://www.gov.uk/government/news/synthetic-foreign-policy"),
+  make("rare_earth","uk_dbt_original_publisher","https://www.gov.uk/government/news/synthetic-critical-minerals")];
+ const seen=[];
+ const result=await preparePrivateOriginalSigningReview({country_iso3:"USA",now:NOW,maxRereads:3,
+  discovery:{discovery:{country_iso3:"USA",network_attempts:12},private_original_review_candidates:records},
+  pages:{attempted:4,verified_candidates:records.map(r=>({...r,publisher_article_page_date_verified:true,page_original_published_at:r.feed_item_published_at}))},
+  readback:async({original})=>{seen.push(original.category);return {
+   schema:"geomacro.private-unclaimed-original-pre-review.v1",accepted:true,
+   status:"ORIGINAL_BYTES_AND_CLOCK_VERIFIED_REVIEW_PENDING",
+   original_article_sha256:sha("synthetic fixture bytes"),original_native_published_at:original.original_published_at,
+   source_article_rights_verified:false,facts_signature_verified:false,rights_signature_verified:false,signed_gro_created:false,payment_authorized:false};}});
+ assert.deepEqual(seen,["geopolitics","macro","rare_earth"]);
+ assert.deepEqual(result.receipt.verified_original_counts_by_category,{geopolitics:1,macro:1,rare_earth:1});
+ assert.equal(result.receipt.signed_machine_input_created,false);
+ assert.equal(result.receipt.article_specific_commercial_rights_verified,false);
+ assert.equal(result.leads.every(x=>x.facts_signature===null&&x.rights_signature===null&&x.commercial_eligible===false),true);
+ await assert.rejects(preparePrivateOriginalSigningReview({country_iso3:"USA",discovery,pages,now:NOW,maxRereads:4}),/INPUT_INVALID/);
+});

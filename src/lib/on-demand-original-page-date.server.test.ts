@@ -180,3 +180,12 @@ describe("private on-demand publisher page date checks",()=>{
     expect(result).toEqual({attempted:1,verified:0,verified_candidates:[]});
   });
 });
+
+it("a private three-domain intake limits probes to one original per category while public default remains four",async()=>{
+ const originals=await candidates();let reads=0;
+ const result=await verifyOnDemandOriginalArticlePages(originals,{now,maxProbes:3,
+  fetchImpl:async()=>{reads++;return new Response('<html><head><meta property="article:published_time" content="'+published+'"/></head></html>',{headers:{'content-type':'text/html'}});}});
+ expect(result.attempted).toBe(3);expect(reads).toBe(3);
+ expect(new Set(result.verified_candidates.map(x=>x.domain))).toEqual(new Set(["geopolitics","macro","rare_earth"]));
+ for(const maxProbes of [0,5,NaN])await expect(verifyOnDemandOriginalArticlePages([],{now,maxProbes})).rejects.toThrow(/CLOCK_INVALID/);
+});
