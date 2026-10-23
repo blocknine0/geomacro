@@ -45,6 +45,23 @@ describe("live x402 prelaunch safety probe", () => {
     expect(source).toContain("representative_availability_enforced");
     expect(source).toContain("#1414 representative commercial x402 scopes are not all currently AVAILABLE");
   });
+  it("never logs upstream contracts, source IDs, raw bodies or unconstrained fields in public Actions", () => {
+    const source = readFileSync("scripts/agentic/verify-live-x402-prelaunch-availability.mjs", "utf8");
+    expect(source).not.toContain("source_contracts: body.availability");
+    expect(source).not.toContain("ineligible_source_ids: body.availability");
+    expect(source).not.toContain("subjects: body.availability");
+    expect(source).not.toContain("missing_modules: body.availability");
+    expect(source).not.toContain("stale_modules: body.availability");
+    expect(source).not.toContain("text.slice(0, 500)");
+    expect(source).toContain("rights_contract_count:");
+    expect(source).toContain("ineligible_source_count:");
+    expect(source).toContain("missing_module_count:");
+    expect(source).toContain("subject_count:");
+    expect(source).toContain("X402_AVAILABILITY_NON_JSON_HTTP_");
+    expect(source).toContain("body.payment_required_now === false");
+    expect(source).toContain("body.execution_authorized === false");
+  });
+
   it("requires a no-funds 195+ global country paid-path census from the canonical 250 entity universe", () => {
     const census = readFileSync(
       "scripts/agentic/verify-live-x402-country-availability-census.mjs",
