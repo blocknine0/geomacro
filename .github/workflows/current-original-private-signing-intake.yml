@@ -12,9 +12,11 @@ on:
         type: string
         default: ""
   schedule:
-    # Four bounded attempts/day so six-hour current originals are less likely
-    # to disappear before the first private review. GitHub cron best-effort.
-    - cron: "17 2,8,14,20 * * *"
+    # One bounded direct-issuer scan/hour to catch genuine <=90min originals
+    # before the independently reviewed current GRI clock expires.
+    # Best-effort GitHub schedule, not a provider real-time SLA.
+    # Per-run hard cap remains 12 discovery + 6 page + 6 byte GETs.
+    - cron: "17 * * * *"
   push:
     branches: [main]
     paths:
