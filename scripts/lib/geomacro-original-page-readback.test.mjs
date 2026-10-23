@@ -139,7 +139,8 @@ test("UK original review lead rescues genuine precise GOV.UK Content API clock a
  assert.equal(result.signed_gro_created,false);
  assert.equal(result.payment_authorized,false);
  assert.equal(calls.length,2);
- assert.equal(/https?:\/\//u.test(JSON.stringify(result)),false);
+ assert.equal(Object.hasOwn(result,"original_article_url"),false);
+ assert.equal(Object.hasOwn(result,"publisher_article_url"),false);
  const denied=await verifyGeomacroUnclaimedOriginalPage({
   original,now:actualNow,fetchImpl:async input=>{
    if(String(input)===url)return new Response(html,{headers:{"content-type":"text/html"}});
