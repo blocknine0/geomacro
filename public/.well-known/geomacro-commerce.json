@@ -24,8 +24,7 @@
     "llms": "https://geomacro.live/llms.txt",
     "openapi": "https://geomacro.live/openapi-x402.json",
     "full_openapi": "https://geomacro.live/docs/openapi/geomacro-v1.yaml",
-    "availability": "https://geomacro.live/api/x402/risk/availability",
-    "buyer_quickstart": "https://geomacro.live/.well-known/geomacro-buyer.json"
+    "availability": "https://geomacro.live/api/x402/risk/availability"
   },
   "commercial_contract": {
     "launch_state": "prelaunch",
