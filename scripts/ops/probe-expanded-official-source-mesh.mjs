@@ -67,6 +67,36 @@ export const EXPANDED_OFFICIAL_SOURCES=Object.freeze([
     media:"rss",rights:"UNVERIFIED",poll:"six_hourly",
     event_intelligence:false,country_coverage_verified:false,
   }),
+  // Verified first-party public publisher feeds, private review only.
+  // Feed authorship proves NO legal permission or independent same-event
+  // corroboration. Pages still need exact native clock/body readback.
+  Object.freeze({
+    id:"un_geneva_press_original_rss_review",
+    domain:"geopolitics",kind:"original_publisher_un_geneva_press_release",
+    url:"https://www.ungeneva.org/news-media/press-releases-list/rss.xml",
+    media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.ungeneva.org"]),
+    topic:/\\b(?:security council|peace|armed conflict|human rights|disarmament|ceasefire|diplomacy|military|humanitarian|sanctions?)\\b/iu,
+  }),
+  Object.freeze({
+    id:"boc_press_original_rss_review",
+    domain:"macro",kind:"original_publisher_bank_of_canada_press",
+    url:"https://www.bankofcanada.ca/content_type/press-releases/feed/",
+    media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["www.bankofcanada.ca"]),
+    topic:/\\b(?:interest rates?|monetary policy|inflation|central bank|financial|economy|economic|currency|exchange rates?|banking|policy rate|liquidity)\\b/iu,
+  }),
+  Object.freeze({
+    id:"bc_minerals_original_rss_review",
+    domain:"rare_earth",kind:"original_publisher_british_columbia_minerals",
+    url:"https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed",
+    media:"rss",rights:"UNVERIFIED",poll:"ninety_minutes",
+    event_intelligence:false,country_coverage_verified:false,
+    original_hosts:Object.freeze(["news.gov.bc.ca"]),
+    topic:/\\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mining|minerals?|processing|supply chain)\\b/iu,
+  }),
   // Additional independent original publisher lanes. Existing EITI and
   // Simply Science failures remain observable; never silently replace them.
   Object.freeze({
@@ -214,8 +244,11 @@ const SOURCE_DOMAINS=["geopolitics","macro","rare_earth"];
 // institution; a second feed from one institution is NOT two corroborators.
 const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
   un_news_security_original_rss_review:"un_news",
+  un_geneva_press_original_rss_review:"un_geneva",
   statcan_prices_original_atom_review:"statistics_canada",
+  boc_press_original_rss_review:"bank_of_canada",
   nrcan_government_news_original_atom_review:"natural_resources_canada",
+  bc_minerals_original_rss_review:"bc_ministry_mining",
   uk_fcdo_original_foreign_policy_atom_review:"uk_fcdo",
   fed_monetary_original_press_rss_review:"federal_reserve",
   ecb_press_original_rss_review:"ecb",
@@ -232,8 +265,11 @@ const ORIGINAL_ORGANIZATION_BY_SOURCE=Object.freeze({
 // conservative: an unknown news URL requires a separately reviewed adapter.
 const ORIGINAL_ARTICLE_PATHS=Object.freeze({
   un_news_security_original_rss_review:/^\/en\/story\/\d{4}\/\d{1,2}\//u,
+  un_geneva_press_original_rss_review:/^\/en\/news-media\/press-release\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]{8,220}$/u,
   statcan_prices_original_atom_review:/^\/n1\/(?:en\/)?daily-quotidien\/\d{6}\//u,
+  boc_press_original_rss_review:/^\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\/$/u,
   nrcan_government_news_original_atom_review:/^\/en\/natural-resources-canada\/news\//u,
+  bc_minerals_original_rss_review:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,
   uk_fcdo_original_foreign_policy_atom_review:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
   fed_monetary_original_press_rss_review:/^\/newsevents\/pressreleases\/[A-Za-z0-9][^/?#]*/u,
   // Only actual ECB first-party original release pages, never RSS indexes.
