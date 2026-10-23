@@ -61,8 +61,13 @@ jobs:
           node --check scripts/ops/run-full-continent-country-sweep.mjs
           node --test scripts/tests/continent-country-full-sweep.test.mjs scripts/tests/continent-country-195-rotation.test.mjs scripts/tests/continent-country-resume.test.mjs
       - name: Verify continent-derived publication and native-clock/privacy gates
-        run: bunx vitest run src/lib/continent-derived-news.server.test.ts src/__tests__/continent-news-publication.test.ts
+        run: bunx vitest run src/lib/continent-derived-news.server.test.ts src/__tests__/continent-news-publication.test.ts src/lib/last-24-hour-news-backfill.server.test.ts src/lib/intelligence-desk-view.test.ts
+      - name: Backfill original-dated news from the LAST 24 HOURS across all three categories
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: bun scripts/ops/publish-last-24-hour-website-news.ts
       - name: Check EVERY country in this continent across exactly three categories
+        if: ${{ !cancelled() }}
         env:
           GEOMACRO_CONTINENT_NEWS_PUBLICATION: "1"
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
@@ -83,5 +88,6 @@ jobs:
           path: |
             artifacts/country-195/continent-sweep-checkpoint.v1.json
             artifacts/country-195/continent-news-publication.v1.json
+            artifacts/country-195/last-24-hour-news-backfill.v1.json
           retention-days: 14
           if-no-files-found: error
