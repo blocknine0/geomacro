@@ -1,58 +1,50 @@
 import {describe,it,expect} from "vitest";
 import {readFileSync} from "node:fs";
-import {GEOMACRO_CAPABILITY_PRICES,GEOMACRO_CAPABILITY_PRICING_VERSION,resolveGeomacroCapabilityPrice} from "../lib/capability-pricing-catalog";
+import {GEOMACRO_CAPABILITY_PRICES,GEOMACRO_CAPABILITY_PRICING_VERSION,
+ resolveGeomacroCapabilityPrice} from "../lib/capability-pricing-catalog";
+import {geomacroKeylessX402BuyerCatalog} from "../lib/keyless-x402-buyer-catalog";
 const read=(file:string)=>JSON.parse(readFileSync(file,"utf8"));
-describe("keyless USDC buyer discovery is founder-priced and not prematurely payable",()=>{
- const manifest=read("public/.well-known/geomacro-buyer.json");
- const discovery=read("public/.well-known/x402.json");
- const alias=read("public/.well-known/x402");
- const commerce=read("public/.well-known/geomacro-commerce.json");
- it("publishes every and only canonical price/variant with exact atomic USDC, including gated pilot",()=>{
+describe("keyless merchant x402 buyer catalog is exact-price and no-funds",()=>{
+ const catalog=geomacroKeylessX402BuyerCatalog();
+ const manifest=read("public/.well-known/x402.json");
+ it("exposes every exact immutable catalog price through the same canonical resolver",()=>{
   const expected=Object.entries(GEOMACRO_CAPABILITY_PRICES)
-   .flatMap(([capability,variants])=>Object.keys(variants).map(variant=>
-    resolveGeomacroCapabilityPrice(capability,variant)));
-  expect(manifest.canonical_pricing_version).toBe(GEOMACRO_CAPABILITY_PRICING_VERSION);
-  expect(manifest.pricing).toHaveLength(expected.length);
-  expect(new Set(manifest.pricing.map((x:{capability:string;variant:string})=>x.capability+":"+x.variant)).size).toBe(expected.length);
-  for(const item of expected){
-   const entry=manifest.pricing.find((x:{capability:string;variant:string})=>
-    x.capability===item.capability&&x.variant===item.variant);
-   expect(entry).toBeDefined();
-   expect(entry.amount_usdc).toBe(item.amount_usdc);
-   expect(entry.amount_atomic).toBe(item.amount_atomic);
-   expect(entry.availability).toBe("CHECK_LIVE_PROOF_BEFORE_PAYMENT");
-   expect(entry.pilot).toBe(["signed_risk_object","risk_gate_bundle"].includes(item.capability));
+    .flatMap(([capability,variants])=>Object.keys(variants).map(variant=>
+     resolveGeomacroCapabilityPrice(capability,variant)));
+  const actual=catalog.capabilities.flatMap(row=>row.variants);
+  expect(catalog.pricing_version).toBe(GEOMACRO_CAPABILITY_PRICING_VERSION);
+  expect(actual).toHaveLength(expected.length);
+  expect(new Set(actual.map(x=>x.capability+":"+x.variant)).size).toBe(expected.length);
+  for(const x of expected){
+   const entry=actual.find(y=>y.capability===x.capability&&y.variant===x.variant);
+   expect(entry?.amount_usdc).toBe(x.amount_usdc);
+   expect(entry?.amount_atomic).toBe(x.amount_atomic);
+   expect(entry?.availability).toBe("CHECK_LIVE_PROOF_BEFORE_PAYMENT");
   }
  });
- it("publishes no payable production x402 route, network receiver or fake signed commercial proof",()=>{
-  expect(manifest.release_status).toBe("controlled_prelaunch");
-  expect(manifest.payable_now).toBe(false);
-  expect(manifest.endpoints.paid_candidate.enabled).toBe(false);
-  expect(manifest.x402.transaction_executed_by_catalog).toBe(false);
-  expect(manifest.x402.live_challenge_overrides_static_catalog).toBe(true);
-  expect(manifest.guardrails.never_charge_errors).toBe(true);
-  expect(manifest.guardrails.prevent_duplicate_settlement).toBe(true);
-  expect(manifest.guardrails.company_revenue_verified).toBe(false);
-  expect(discovery.status).toBe("prelaunch");
-  expect(discovery.productionFundsAuthorized).toBe(false);
-  expect(discovery.resources).toEqual([]);
-  expect(alias).toEqual(discovery);
-  expect(commerce.service.execution_authorized).toBe(false);
-  expect(manifest.endpoints.free_preflight.method).toBe("POST");
-  expect(manifest.endpoints.paid_candidate.method).toBe("POST");
-  expect(JSON.stringify(manifest)).not.toMatch(/BEGIN PRIVATE KEY|PAYMENT-SIGNATURE:|0x[a-f0-9]{40}/);
+ it("does not promote static prices into production checkout or revenue claims",()=>{
+  expect(catalog.schema_version).toBe("geomacro.keyless-x402-buyer-catalog.v1");
+  expect(catalog.advertised_payable_now).toBe(false);
+  expect(catalog.x402.static_catalog_never_authorizes_settlement).toBe(true);
+  expect(catalog.x402.managed_api_keys).toBe("COMING_SOON");
+  expect(catalog.guardrails.no_charge_on_unavailable_or_stale).toBe(true);
+  expect(catalog.guardrails.current_production_eligible_claimed).toBe(false);
+  expect(catalog.guardrails.revenues_verified_by_catalog).toBe(false);
+  expect(catalog.routes.no_charge_availability.method).toBe("POST");
+  expect(catalog.routes.paid_candidate.method).toBe("POST");
+  expect(manifest.status).toBe("prelaunch");
+  expect(manifest.productionFundsAuthorized).toBe(false);
+  expect(manifest.resources).toEqual([]);
  });
- it("is discoverable to buyers and small user-facing store while API keys remain coming soon",()=>{
-  const url="https://geomacro.live/.well-known/geomacro-buyer.json";
-  expect(discovery.discovery.buyer_quickstart).toBe(url);
-  expect(alias.discovery.buyer_quickstart).toBe(url);
-  expect(commerce.discovery.buyer_quickstart).toBe(url);
-  const component=readFileSync("src/components/keyless-buyer-quickstart.tsx","utf8");
-  expect(component).toContain("Controlled prelaunch");
-  expect(component).toContain("/.well-known/geomacro-buyer.json");
-  expect(component).not.toContain("Live now");
-  for(const page of ["src/routes/pricing.tsx","src/routes/data-api.tsx"])
-   expect(readFileSync(page,"utf8")).toContain("<KeylessBuyerQuickstart />");
+ it("protects published website lock and creates backend-only public endpoint",()=>{
+  const route=readFileSync("src/routes/api.v1.commerce.catalog.ts","utf8");
+  expect(route).toContain('createFileRoute("/api/v1/commerce/catalog")');
+  expect(route).toContain("geomacroKeylessX402BuyerCatalog()");
+  expect(route).not.toContain("PAYMENT-SIGNATURE");
+  const price=readFileSync("src/routes/pricing.tsx","utf8");
+  const dataApi=readFileSync("src/routes/data-api.tsx","utf8");
+  expect(price).not.toContain("KeylessBuyerQuickstart");
+  expect(dataApi).not.toContain("KeylessBuyerQuickstart");
   expect(readFileSync("src/components/api-keys-notice.tsx","utf8")).toContain("Coming soon");
  });
 });
