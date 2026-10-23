@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {chooseOriginalReviewCountry,ORIGINAL_REVIEW_PUBLISHER_HUBS}
+import {chooseOriginalReviewCountry,finalizeOriginalReviewCountry,ORIGINAL_REVIEW_PUBLISHER_HUBS}
  from "./original-review-opportunity-router.mjs";
 
 const REGISTRY=new Set([...ORIGINAL_REVIEW_PUBLISHER_HUBS,"VAT","PSE","MWI"]);
@@ -45,4 +45,47 @@ test("fail-closed if hub drift, missing canonical country registry, clock or ori
   now:new Date(),fairnessCountryForRun:()=> "VAT",
   existsInRegistry:code=>code!=="CAN"
  }),/ORIGINAL_REVIEW_OPPORTUNITY_ROUTER_INVALID/);
+});
+
+test("canonical 195 fairness survives even rich recent unscored journal priorities",()=>{
+ const d1={country_iso3:"CAN",selection_mode:"SHARED_D1_RECENT_COUNTRY_LEAD",
+   eligible_country_count:9,selected_country_observed_categories:3};
+ let fair=0,hubs=0;
+ const saw=new Set();
+ for(let hour=0;hour<120;hour++){
+  const op=select(hour);
+  const out=finalizeOriginalReviewCountry({opportunity:op,priority:d1,
+    existsInRegistry:code=>REGISTRY.has(code)});
+  assert.equal(out.actual_native_source_qualified,false);
+  assert.equal(out.review_approved,false);
+  assert.equal(out.journal_eligible_countries,9);
+  if(hour%4===0){
+    fair++;saw.add(out.country_iso3);
+    assert.equal(out.country_iso3,op.country_iso3);
+    assert.equal(out.fairness_slot_preserved,true);
+    assert.equal(out.mode,"CANONICAL_195_FAIRNESS_ORIGINAL_REVIEW");
+  }else{
+    hubs++;
+    assert.equal(out.country_iso3,"CAN");
+    assert.equal(out.fairness_slot_preserved,false);
+    assert.equal(out.mode,"SHARED_D1_RECENT_COUNTRY_LEAD");
+  }
+ }
+ assert.equal(fair,30);assert.equal(hubs,90);
+ assert.deepEqual([...saw].sort(),["MWI","PSE","VAT"]);
+});
+test("manual owner dispatch wins; invalid priority falls back to issuer hub",()=>{
+ const op=select(1);
+ const malformed={country_iso3:"EXTERNAL",selection_mode:"SHARED_D1_RECENT_COUNTRY_LEAD",
+   eligible_country_count:1};
+ const kept=finalizeOriginalReviewCountry({opportunity:op,priority:malformed,
+   existsInRegistry:code=>REGISTRY.has(code)});
+ assert.equal(kept.country_iso3,op.country_iso3);
+ assert.equal(kept.actual_native_source_qualified,false);
+ const manual=finalizeOriginalReviewCountry({opportunity:op,priority:malformed,
+   manualCountry:"PSE",existsInRegistry:code=>REGISTRY.has(code)});
+ assert.equal(manual.country_iso3,"PSE");
+ assert.equal(manual.mode,"MANUAL_COUNTRY_ORIGINAL_REVIEW");
+ assert.throws(()=>finalizeOriginalReviewCountry({opportunity:op,
+   manualCountry:"ZZZ",existsInRegistry:code=>REGISTRY.has(code)}));
 });
