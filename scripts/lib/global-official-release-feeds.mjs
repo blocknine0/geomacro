@@ -46,7 +46,7 @@ export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
  // stateless website and free-source source-inventory, not a novel source.
  // Each RSS pubDate is only a hint pending official original-page byte/time
  // verification; third-party reuse rights remain unapproved.
- {id:'us_doe_minerals_global',category:'rare_earth',
+ {id:'us_doe_minerals_global',websiteId:'us_doe_news_minerals',category:'rare_earth',
    url:'https://www.energy.gov/rss/energygov/2193718',
    format:'rss',host:'www.energy.gov',
    path:/^\/(?:articles|cmei\/articles|em\/articles)\/[a-z0-9]+(?:-[a-z0-9]+){2,120}$/u,
