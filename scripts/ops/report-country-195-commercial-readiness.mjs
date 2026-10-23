@@ -29,7 +29,7 @@ export function computeCountry195UnverifiedCommercialCensus({
  };
 }
 if(process.argv[1]&&fileURLToPath(import.meta.url)===
-    new URL("file://"+resolve(process.argv[1])).href){
+    resolve(process.argv[1])){
  try{
   if(process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
      process.env.GITHUB_REF!=="refs/heads/main"||

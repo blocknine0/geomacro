@@ -25,6 +25,7 @@ on:
       - "scripts/lib/country-195-commercial-original-review-join.mjs"
       - "scripts/ops/report-country-195-commercial-readiness.mjs"
       - "scripts/tests/country-195-commercial-original-review-join.test.mjs"
+      - "scripts/tests/report-country-195-commercial-readiness-cli.test.mjs"
       - "scripts/ops/aggregate-country-195-proofs.mjs"
       - "scripts/tests/country-195-proof-rollup.test.mjs"
       - "scripts/tests/reconcile-country-195-publication.test.mjs"
@@ -48,6 +49,7 @@ on:
       - "scripts/lib/country-195-commercial-original-review-join.mjs"
       - "scripts/ops/report-country-195-commercial-readiness.mjs"
       - "scripts/tests/country-195-commercial-original-review-join.test.mjs"
+      - "scripts/tests/report-country-195-commercial-readiness-cli.test.mjs"
       - "scripts/ops/aggregate-country-195-proofs.mjs"
       - "scripts/tests/country-195-proof-rollup.test.mjs"
       - "scripts/tests/reconcile-country-195-publication.test.mjs"
@@ -82,6 +84,7 @@ jobs:
           node --test scripts/tests/continent-country-195-rotation.test.mjs scripts/tests/continent-country-resume.test.mjs scripts/tests/continent-country-full-sweep.test.mjs
           node --test scripts/tests/country-195-proof-rollup.test.mjs
           node --test scripts/tests/country-195-commercial-original-review-join.test.mjs
+          node --test scripts/tests/report-country-195-commercial-readiness-cli.test.mjs
           node --check scripts/lib/reconcile-country-195-publication.mjs
           node --check scripts/ops/audit-country-195-source-website.mjs
           node --test scripts/tests/reconcile-country-195-publication.test.mjs
@@ -106,7 +109,12 @@ jobs:
       - name: Aggregate only real last-90d schedule-success checkpoint artifacts
         run: node scripts/ops/aggregate-country-195-proofs.mjs
       - name: Reconcile all 585 real source probes against independent signed event proof boundary (no funds)
-        run: node scripts/ops/report-country-195-commercial-readiness.mjs
+        run: |
+          set -euo pipefail
+          node scripts/ops/report-country-195-commercial-readiness.mjs
+          # Required REAL artifact, not merely a successful empty process.
+          test -s artifacts/country-195/commercial-original-review-gaps.v1.json
+          node -e 'const x=require("./artifacts/country-195/commercial-original-review-gaps.v1.json");if(x.exact_cells_evaluated!==585||x.exact_canonical_country_count!==195||x.paid_delivery_enabled!==false||x.x402_charge_authorized!==false)process.exit(3)'
       - name: Reconcile actual 585 customer-visible country cells with retained country-original proofs
         shell: bash
         run: |
