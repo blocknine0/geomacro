@@ -128,4 +128,37 @@ describe("production x402 readiness", () => {
     expect(env).toContain("CIRCLE_X402_MAINNET_ACK=\n");
     expect(env).toContain("CIRCLE_X402_PRODUCTION_NETWORKS=eip155:8453");
   });
+
+  it("names all three category APIs under Geomacro without unlocking static website or money", async () => {
+    const origin = "https://geomacro.live";
+    const api = await buildX402DiscoveryDocument(origin);
+    const canonical = `${origin}/api/v1/intelligence/query`;
+    expect(api.name).toBe("Geomacro");
+    expect(api.categories).toEqual(["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"]);
+    expect(api.officialApis).toEqual({
+      canonical,
+      geopolitics: `${origin}/api/v1/intelligence/geopolitics`,
+      macro_fx: `${origin}/api/v1/intelligence/macro-fx`,
+      critical_minerals: `${origin}/api/v1/intelligence/critical-minerals`,
+      agent: `${origin}/api/v1/agent`,
+      pricing: `${origin}/api/v1/pricing`,
+      no_funds_availability: `${origin}/api/v1/intelligence/availability`,
+    });
+    expect(api.three_category_aliases_share_canonical_engine).toBe(true);
+    expect(api.aliases_are_not_independently_payable_resources).toBe(true);
+    expect(api.routability_is_not_current_signed_data_coverage).toBe(true);
+    expect(api.discovery.official_openapi).toBe(`${origin}/api/v1/agent?view=openapi`);
+    expect(api.productionFundsAuthorized).toBe(false);
+    expect(api.resources).toEqual([]);
+
+    // Owner-locked static assets remain unchanged; they are NOT authority to
+    // enable mainnet settlement or to override the dynamic Geomacro registry.
+    const fallback = JSON.parse(read("public/.well-known/x402"));
+    const fallbackJson = JSON.parse(read("public/.well-known/x402.json"));
+    expect(fallbackJson).toEqual(fallback);
+    expect(fallback.status).toBe("prelaunch");
+    expect(fallback.resources).toEqual([]);
+    expect(fallback.productionFundsAuthorized).toBe(false);
+    expect(fallback.plannedResources.every((r: any) => r.production_enabled === false)).toBe(true);
+  });
 });

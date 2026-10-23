@@ -41,10 +41,11 @@ export async function buildX402DiscoveryDocument(originInput: string) {
           provider: "coinbase_x402",
           product: CANONICAL_PRODUCT,
           description:
-            "Adaptive source-governed geopolitical and macro risk intelligence with signed Risk Object and non-executing Risk Gate context where currently deliverable.",
+            "Adaptive source-governed geopolitical, macro/FX and critical-minerals risk intelligence with signed Risk Object and non-executing Risk Gate context where currently deliverable.",
           tags: [
             "geopolitical-risk",
             "macro-risk",
+            "critical-minerals",
             "country-risk",
             "corridor-risk",
             "risk-gate",
@@ -72,7 +73,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
           provider: "circle_gateway_x402",
           product: CANONICAL_PRODUCT,
           description:
-            "Adaptive source-governed geopolitical and macro risk intelligence paid through Circle Gateway on the approved Base-mainnet USDC rail.",
+            "Adaptive source-governed geopolitical, macro/FX and critical-minerals risk intelligence paid through Circle Gateway on the approved Base-mainnet USDC rail.",
           tags: [
             "geopolitical-risk",
             "macro-risk",
@@ -105,7 +106,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
           provider: "nevermined",
           product: CANONICAL_PRODUCT,
           description:
-            "Adaptive source-governed geopolitical and macro risk intelligence paid through an approved Nevermined live plan.",
+            "Adaptive source-governed geopolitical, macro/FX and critical-minerals risk intelligence paid through an approved Nevermined live plan.",
           tags: [
             "geopolitical-risk",
             "macro-risk",
@@ -128,9 +129,22 @@ export async function buildX402DiscoveryDocument(originInput: string) {
 
   return {
     x402Version: 2,
-    name: "Geomacro Risk Intelligence",
+    name: "Geomacro",
     description:
-      "Machine-readable geopolitical and macro risk intelligence for software and AI-agent pre-flight decisions.",
+      "Derived Geopolitics, Macro/FX and Critical Minerals intelligence for software and AI agents.",
+    categories: ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
+    officialApis: {
+      canonical: `${origin}/api/v1/intelligence/query`,
+      geopolitics: `${origin}/api/v1/intelligence/geopolitics`,
+      macro_fx: `${origin}/api/v1/intelligence/macro-fx`,
+      critical_minerals: `${origin}/api/v1/intelligence/critical-minerals`,
+      agent: `${origin}/api/v1/agent`,
+      pricing: `${origin}/api/v1/pricing`,
+      no_funds_availability: `${origin}/api/v1/intelligence/availability`,
+    },
+    three_category_aliases_share_canonical_engine: true,
+    aliases_are_not_independently_payable_resources: true,
+    routability_is_not_current_signed_data_coverage: true,
     status: resources.length > 0 ? "production" : "prelaunch",
     productionFundsAuthorized: resources.length > 0,
     resources,
@@ -185,6 +199,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
     ],
     discovery: {
       openapi: `${origin}/openapi-x402.json`,
+      official_openapi: `${origin}/api/v1/agent?view=openapi`,
       commerce: `${origin}/.well-known/geomacro-commerce.json`,
       agent: `${origin}/.well-known/geomacro-agent.json`,
       llms: `${origin}/llms.txt`,
