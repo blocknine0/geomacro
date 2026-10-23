@@ -13,6 +13,8 @@ on:
       - "scripts/lib/pallab-suman-reviewed-handoff.mjs"
       - "scripts/ops/sign-pallab-owner-gri-candidate.mjs"
       - "scripts/ops/sign-suman-independent-reviewed-gri.mjs"
+      - "scripts/ops/inspect-suman-signing-preflight.mjs"
+      - "scripts/tests/inspect-suman-signing-preflight.test.mjs"
       - "scripts/ops/verify-pallab-owner-gri-candidate.mjs"
       - "scripts/ops/verify-pallab-suman-independent-handoff.mjs"
       - "scripts/ops/verify-pallab-suman-authority-readiness.mjs"
@@ -67,6 +69,8 @@ jobs:
           node --check scripts/lib/pallab-suman-reviewed-handoff.mjs
           node --check scripts/ops/sign-pallab-owner-gri-candidate.mjs
           node --check scripts/ops/sign-suman-independent-reviewed-gri.mjs
+          node --check scripts/ops/inspect-suman-signing-preflight.mjs
+          node --test scripts/tests/inspect-suman-signing-preflight.test.mjs
           node --check scripts/ops/verify-pallab-suman-independent-handoff.mjs
           node --check scripts/ops/verify-pallab-suman-authority-readiness.mjs
           node --check scripts/ops/repair-approved-facts-public-pem.mjs
