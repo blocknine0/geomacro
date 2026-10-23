@@ -17,6 +17,9 @@ on:
     workflows:
       - "Auto Ingest News"
       - "Five-Minute Original News Fastlane"
+      # Direct wakeup after authenticated native-date private original intake.
+      # The already signed reviewer+owner exact SHA gate still runs FIRST.
+      - "Current Original Private Signing Review Intake (No Funds)"
       - "Africa Country Source Sweep (Every 2 Hours)"
       - "Asia Country Source Sweep (Every 2 Hours)"
       - "Europe Country Source Sweep (Every 2 Hours)"

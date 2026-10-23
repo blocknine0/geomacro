@@ -14,6 +14,10 @@ export const GRI_NEWS_WORKFLOWS=Object.freeze([
  // Facts/Rights, numerical GRI eligibility or a commercial licence.
  'Website Derived News Continuity',
  'Website Derived News Cadence Backstop',
+ // Genuine publisher HTML/native-clock private intake can wake the already
+ // one-time-consented machine derived audit. It NEVER creates a numerical
+ // human GRI signature, new rights or a payable offer.
+ 'Current Original Private Signing Review Intake (No Funds)',
  ...['Africa','Asia','Europe','North America','South America','Oceania']
   .map(c=>`${c} Country Source Sweep (Every 2 Hours)`),
 ]);
