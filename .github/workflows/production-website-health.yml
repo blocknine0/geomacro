@@ -633,7 +633,7 @@ jobs:
           /ecosystem|Ecosystem
           /research|Research
           /docs|Documentation
-          /about|About & trust
+          /about|Understand the world. Inspect the context.
           /roadmap|What works today, and what comes next.
           /contact|Bring the workflow.
           EOF
@@ -831,9 +831,17 @@ jobs:
             read(d1+'/v1/public/website-derived-news','json'),
             read('/api/v1/finds','json'),
           ]);
-          if(!home.includes('Geomacro Finds')||
-             !home.includes('Know what changed')||
-             !ask.includes('Ask Geomacro'))throw Error('PUBLIC_FREE_HTML_MISSING');
+          // Match the locked, currently rendered Geomacro homepage and Ask
+          // content. An obsolete marketing headline must not make a working
+          // free Finds route look offline. Keep every HTTP/API truth gate.
+          for(const [label,html,marker] of [
+            ['home-finds',home,'Geomacro Finds'],
+            ['home-heading',home,'Understand global risk.'],
+            ['home-message',home,'Know what matters.'],
+            ['ask-heading',ask,'Ask Geomacro'],
+          ]){
+            if(!html.includes(marker))throw Error('PUBLIC_FREE_HTML_MISSING:'+label);
+          }
           if(journal?.ok!==true||
              journal?.schema!=='geomacro.website-derived-news-feed.v1'||
              journal?.original_release_delay_minutes!==15||
