@@ -37,6 +37,7 @@ on:
       # on success, using exactly the existing protected issuer and hourly cron.
       - "Website Derived News Continuity"
       - "Website Derived News Cadence Backstop"
+      - "Current Original Private Signing Review Intake (No Funds)"
       - "Africa Country Source Sweep (Every 2 Hours)"
       - "Asia Country Source Sweep (Every 2 Hours)"
       - "Europe Country Source Sweep (Every 2 Hours)"
