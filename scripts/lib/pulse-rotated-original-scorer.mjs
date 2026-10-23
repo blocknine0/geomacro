@@ -19,9 +19,9 @@ const LIMIT_PER_DOMAIN=2;
 const MIME=/^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
 const EXTRA=Object.freeze({
   geopolitics:new Set(["uk_mod_original_defence_atom_review",
-    "un_geneva_press_original_rss_review"]),
+    "uk_cabinet_security_original_atom_review"]),
   macro:new Set(["uk_hmt_original_treasury_atom_review",
-    "boc_press_original_rss_review"]),
+    "uk_dbt_macro_trade_original_atom_review"]),
   rare_earth:new Set([
     "australia_industry_minister_original_rss_review",
     "uk_desnz_original_energy_minerals_atom_review",
@@ -30,8 +30,6 @@ const EXTRA=Object.freeze({
 });
 const GOVERNMENT_ORIGINAL=/^\/government\/(?:news|speeches|statements|world-location-news|publications)\/[a-z0-9][a-z0-9/-]{4,230}$/iu;
 const AU_ORIGINAL=/^\/(?:t-ayres|king)\/media\/[a-z0-9][a-z0-9-]{9,190}$/iu;
-const UN_GENEVA_ORIGINAL=/^\/en\/news-media\/press-release\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]{8,220}$/u;
-const BOC_ORIGINAL=/^\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\/$/u;
 const BC_MINERALS_ORIGINAL=/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u;
 function unescape(value){
   return String(value??"").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/giu,"$1")
@@ -70,10 +68,9 @@ function originalLink(value,source){
       u.search||!source.original_hosts.includes(u.hostname))return null;
     const allowed=source.id==="australia_industry_minister_original_rss_review"
       ?AU_ORIGINAL.test(u.pathname):
-      source.id==="un_geneva_press_original_rss_review"
-        ?UN_GENEVA_ORIGINAL.test(u.pathname):
-      source.id==="boc_press_original_rss_review"
-        ?BOC_ORIGINAL.test(u.pathname):
+      source.id==="uk_cabinet_security_original_atom_review" ||
+      source.id==="uk_dbt_macro_trade_original_atom_review"
+        ?GOVERNMENT_ORIGINAL.test(u.pathname):
       source.id==="bc_minerals_original_rss_review"
         ?BC_MINERALS_ORIGINAL.test(u.pathname):
         GOVERNMENT_ORIGINAL.test(u.pathname);
@@ -158,7 +155,9 @@ export async function recoverPulseRotatedOriginalPageDates(
   if(!source || source.media!=="atom" ||
      !["uk_mod_original_defence_atom_review",
        "uk_hmt_original_treasury_atom_review",
-       "uk_desnz_original_energy_minerals_atom_review"].includes(source.id) ||
+       "uk_desnz_original_energy_minerals_atom_review",
+       "uk_cabinet_security_original_atom_review",
+       "uk_dbt_macro_trade_original_atom_review"].includes(source.id) ||
      !(refs instanceof Set) || !(expectedClocks instanceof Map) ||
      !(now instanceof Date) || !Number.isFinite(now.getTime()) ||
      !pageBudget || !Number.isInteger(pageBudget.used) ||
