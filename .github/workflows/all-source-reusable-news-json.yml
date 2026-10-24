@@ -87,3 +87,10 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/publish-all-source-reusable-news-json.ts
+      - name: Upload verified bounded all-source factual JSON
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-all-source-reusable-json
+          path: artifacts/reusable-source-news/news.json
+          if-no-files-found: error
+          retention-days: 3
