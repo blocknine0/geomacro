@@ -1,4 +1,4 @@
-import {fetchGdacsNativeCountry} from "./gdacs-native-country.mjs";
+import {probeGdacsPublic} from "./public-sources.mjs";
 /*
  * Source-native reference observations for the public-transport production lane.
  * Research/context only. No scoring, original-news qualification, D1/B2 writes,
@@ -198,23 +198,26 @@ async function readBounded(url,fetchImpl){
 }
 export async function readPublicReference(id,{fetchImpl=fetch,now=new Date()}={}){
   if(id==="gdacs"){
-    const proof=await fetchGdacsNativeCountry({fetchImpl,now});
-    if(proof?.schema!=="geomacro.gdacs-native-event-attribution.v1"||
-       !Number.isSafeInteger(proof.event_count)||proof.event_count<0||
-       proof.all_affected_countries_verified!==false||
-       proof.native_release_clock_verified!==false||
-       proof.commercial_paid_eligible!==false||
-       proof.raw_upstream_payload_stored!==false||
-       proof.verified_current_geopolitical_events!==0)
+    // Reuse the successfully hosted public health native/RSS fallback:
+    // first-party 7-day 3-event read; one same-issuer RSS only on a
+    // transient timeout, server 5xx or native over-size. No fresh claims.
+    const proof=await probeGdacsPublic({fetchImpl,now});
+    if(proof?.source_id!=="gdacs_global_disasters"||
+       !Number.isSafeInteger(proof.observations)||proof.observations<0||
+       proof.discovery_only!==true||
+       proof.original_publication_verified!==false||
+       proof.commercial_rights_verified!==false||
+       proof.verified_geopolitical_events!==0||
+       typeof proof.same_publisher_rss_fallback!=="boolean")
       throw Error("REFERENCE_GDACS_NATIVE_CONTRACT_INVALID");
     // Hazards are discovery only, no inferred affected country, native
     // article publication clock or rights entitlement.
     return entry("gdacs",{country_iso3:null,reference_period:null,
       unit:"disaster event",value:null,
-      source_record_count:proof.event_count,
+      source_record_count:proof.observations,
       kind:"HAZARD_DISCOVERY_NOT_COUNTRY_VERIFIED",
       extra:{affected_country_verified:false,
-        same_publisher_rss_fallback:proof.same_publisher_24h_rss_used===true}});
+        same_publisher_rss_fallback:proof.same_publisher_rss_fallback}});
   }
   const url=ROOTS[id];
   if(!url)throw Error("REFERENCE_SOURCE_NOT_APPROVED");
