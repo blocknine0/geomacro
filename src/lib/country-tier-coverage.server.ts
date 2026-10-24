@@ -9,7 +9,7 @@
 import {COUNTRIES_195,country195ByIso3} from "./canonical-country-registry-195";
 import {buildAgentQueryPlan} from "./agent-query-plan";
 import {checkAgentQueryDeliverability,type AgentQueryDeliverability} from "./agent-query-deliverability.server";
-import {qualifiedStructuralBaselinePreflight} from "./earn-first-structural-offers.server";
+import {qualifiedStructuralBaselinePreflight} from "./structural-baseline-eligibility";
 import {fetchAllDerivedNews} from "./public-derived-news-client";
 import {buildDerivedNewsStructural} from "./derived-news-structural-bridge";
 import {observedDerivedNewsForCountry} from "./derived-news-country-coverage-195";
@@ -80,7 +80,8 @@ export function classifyCountryModulePreflight(
    return {...emptyModule(module,"ELIGIBLE",null),
      rights_state:"VERIFIED",as_of:result.subjects[0].latest_evidence_at};
  }
- const rightsBlocked=result.code==="COMMERCIAL_SOURCE_NOT_ELIGIBLE"||
+ const rightsBlocked=result.source_contracts.length===0||
+   result.code==="COMMERCIAL_SOURCE_NOT_ELIGIBLE"||
    result.ineligible_source_ids.length>0||
    result.source_contracts.some(x=>
      !["COMMERCIAL_OK","DERIVED_ONLY"].includes(x.commercial_usage_status??"")||
@@ -94,7 +95,7 @@ export function classifyCountryModulePreflight(
    return {...emptyModule(module,"NOT_ELIGIBLE","COMMERCIAL_RIGHTS_NOT_VERIFIED"),
      rights_state:"NOT_VERIFIED",as_of:at};
  if(result.code==="NOT_AVAILABLE")
-   return emptyModule(module,"NOT_CONFIGURED","NO_AVAILABLE_STRUCTURAL_SOURCE");
+   return emptyModule(module,"RUNTIME_UNAVAILABLE","GOVERNED_SOURCE_NOT_AVAILABLE");
  return {...emptyModule(module,"NOT_ELIGIBLE","NO_ADAPTER_OR_NO_VERIFIED_SOURCE"),
    as_of:at,rights_state:rightsState};
 }
