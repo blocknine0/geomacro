@@ -1,6 +1,6 @@
 import {readFileSync} from "node:fs";
 import {describe,it,expect} from "vitest";
-import {deriveStatelessSignals,reconcilePrivateDerivedSourceRefs}
+import {deriveStatelessSignals,reconcilePrivateDerivedSourceRefs,selectBoundedRetainedOriginalTargets}
   from "../lib/stateless-intelligence-model";
 
 const NOW=Date.parse("2026-10-14T12:00:00Z");
@@ -18,6 +18,40 @@ describe("ephemeral first-party original-reference crosswalk for D1-derived lead
   const refs=reconcilePrivateDerivedSourceRefs([...earlier,original],[signal],NOW);
   expect(refs.get(signal.id)?.articleUrl).toBe(original.articleUrl);
   expect(reconcilePrivateDerivedSourceRefs(Array.from({length:10001},()=>original),[signal],NOW).size).toBe(0);
+ });
+ it("relinks an actual retained D1 card omitted by a shortened live source ranking",()=>{
+  const [retained]=deriveStatelessSignals([original],NOW);
+  const current=[] as typeof retained[];
+  // Previously only current report.signals were passed, making this exact
+  // original impossible to recover even while a first-party feed carried it.
+  expect(reconcilePrivateDerivedSourceRefs([original],current,NOW).size).toBe(0);
+  const targets=selectBoundedRetainedOriginalTargets(current,[retained]);
+  const recovered=reconcilePrivateDerivedSourceRefs([original],targets,NOW);
+  expect(recovered.size).toBe(1);
+  expect(recovered.get(retained.id)?.articleUrl).toBe(original.articleUrl);
+  expect(JSON.stringify(targets)).not.toContain(original.articleUrl);
+ });
+ it("retained signed D1 content overrides changed publisher display fields without forged clock",()=>{
+  const [signed]=deriveStatelessSignals([original],NOW);
+  const altered={...signed,title:"Unverified latest editor rewrite"};
+  const targets=selectBoundedRetainedOriginalTargets([altered],[signed]);
+  expect(targets).toHaveLength(1);
+  expect(targets[0]).toEqual(signed);
+  expect(reconcilePrivateDerivedSourceRefs([original],targets,NOW).size).toBe(1);
+  const forged={...signed,published_at:"2026-10-14T11:00:00.000Z"};
+  expect(reconcilePrivateDerivedSourceRefs([original],
+    selectBoundedRetainedOriginalTargets([],[forged]),NOW).size).toBe(0);
+ });
+ it("caps stale retained journal references at 250 without displacing new source leads",()=>{
+  const [fresh]=deriveStatelessSignals([original],NOW);
+  const retained=Array.from({length:600},(_,i)=>({
+    ...fresh,id:"macro-"+i.toString(16).padStart(8,"0")
+  }));
+  const selected=selectBoundedRetainedOriginalTargets([fresh],retained);
+  expect(selected).toHaveLength(250);
+  expect(selected[0].id).toBe(fresh.id);
+  expect(reconcilePrivateDerivedSourceRefs([original],selected,NOW).size).toBe(1);
+  expect(()=>selectBoundedRetainedOriginalTargets(Array(251).fill(fresh),[])).toThrow();
  });
  it("reconstructs precise source identity only when the exact preexisting derived bytes agree",()=>{
   const [signal]=deriveStatelessSignals([original],NOW);
