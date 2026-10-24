@@ -18,7 +18,7 @@ const groups=[];
 while(items.length||checks.length)groups.push({
   schema:collected.schema,items:items.splice(0,20),checks:checks.splice(0,16),
 });
-let checked=0,accepted=0;
+let checked=0,accepted=0,capacityExcluded=0;
 for(const group of groups){
   const reply=await fetch(endpoint+"/v1/reusable-source-news",{
     method:"PUT",redirect:"error",cache:"no-store",
@@ -28,10 +28,12 @@ for(const group of groups){
   if(reply.status!==200)throw Error("REUSABLE_SOURCE_NEWS_D1_WRITE_HTTP_"+reply.status);
   const body=await reply.json();
   if(body.ok!==true||body.d1_readback_verified!==true||
-     body.accepted!==group.items.length||body.checked_sources!==group.checks.length||
+     body.accepted+body.capacity_excluded!==group.items.length||
+     body.checked_sources!==group.checks.length||
      body.raw_upstream_stored!==false||body.paid_product_authorized!==false)
     throw Error("REUSABLE_SOURCE_NEWS_D1_ACK_INVALID");
-  accepted+=body.accepted;checked+=body.checked_sources;
+  accepted+=body.accepted;capacityExcluded+=body.capacity_excluded;
+  checked+=body.checked_sources;
 }
 const status=await fetch(endpoint+"/v1/public/reusable-source-news",{
   method:"GET",redirect:"error",cache:"no-store",headers:{Accept:"application/json"},
@@ -80,6 +82,7 @@ console.log(JSON.stringify({
   source_endpoints_selected:info.selected_source_endpoints,
   source_checks_persisted:checked,
   factual_json_rows_accepted:accepted,
+  factual_json_rows_excluded_by_capacity:capacityExcluded,
   source_states:info.source_states,
   d1_private_write_readback:true,public_api_readback:true,
   public_items_page_count:publicBody.items.length,
