@@ -54,6 +54,9 @@ export function inspectGdacsCountryNative(payload){
        coords[0]>=-180&&coords[0]<=180&&coords[1]>=-90&&coords[1]<=90)
       geoRows++;
   }
+  // Non-empty provider data that contains zero valid first-party event IDs
+  // is an upstream shape failure, NOT a healthy empty hazard response.
+  if(features.length>0&&seen.size===0)throw Error("GDACS_EVENT_IDS_UNVERIFIED");
   return {
     schema:"geomacro.gdacs-native-event-attribution.v1",
     event_count:seen.size,native_country_identifiers:nativeCountryRows,
