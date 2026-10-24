@@ -99,7 +99,7 @@ export function canadaOriginalPublicationDay(
 export function canadaOriginalPrecisePublicationTime(
   html:string,verifiedDay:string,now=Date.now(),
 ):string|null {
-  if(typeof html!=="string"||!/^20\\d{2}-\\d{2}-\\d{2}$/u.test(verifiedDay)||
+  if(typeof html!=="string"||!/^20\d{2}-\d{2}-\d{2}$/u.test(verifiedDay)||
      !Number.isFinite(now))return null;
   const precise=verifiedPublisherPageDate(html,new Date(now),null,{
     maxAgeMs:22*60*60_000,
