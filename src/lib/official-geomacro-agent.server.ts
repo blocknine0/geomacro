@@ -1,4 +1,8 @@
 import {ZodError} from "zod";
+import {GEOMACRO_PUBLIC_API_ENDPOINTS} from "./public-api-endpoints";
+import {publicQueryOpenApiSchema,baselineOpenApiSchema,queryOpenApiBody,
+ publicReadOperation,categoryReadOperation,GEOMACRO_SUPPORT_OPENAPI_PATHS,
+ GEOMACRO_API_EXAMPLES} from "./public-api-openapi.server";
 import {
  CANONICAL_MAINNET_INTELLIGENCE_PATH,
  mainnetIntelligenceHandlers,
@@ -62,6 +66,7 @@ export function officialGeomacroAgentDiscovery(){
   countries_routable:195,domains:["geopolitics","macro","rare_earth"],
   protocols:["HTTPS JSON","MCP","A2A","x402-v2"],
   endpoints,
+  public_endpoint_catalog:GEOMACRO_PUBLIC_API_ENDPOINTS,
   official_api_display_names:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,
   official_api_catalog:GEOMACRO_OFFICIAL_API_CATALOG,
   category_agents:GEOMACRO_CATEGORY_AGENT_PROFILES.map(profile=>({
@@ -124,6 +129,9 @@ export function officialGeomacroAgentOpenApi(){
    "200":{description:"Only when underlying independently verified contract permits it; 200 is not implied by discovery."},
    "400":{description:"Invalid or unsupported query"},
    "402":{description:"Only after canonical deliverability and payment preflight, not a blanket price offer"},
+   "409":{description:"Request conflict or recovery required; do not authorize a second payment"},
+   "413":{description:"Request exceeds this endpoint's byte limit"},
+   "415":{description:"application/json required"},
    "422":{description:"Not eligible or insufficient original evidence/rights"},
    "429":{description:"Rate limited; honor Retry-After if present and back off without auto-paying"},
    "503":{description:"Unavailable or unverified data runtime; no paid delivery"},
@@ -135,6 +143,7 @@ export function officialGeomacroAgentOpenApi(){
    description:"One canonical intelligence engine; free-derived Finds and machine discovery are not commercially signed GROs. All payable operations remain fail-closed and priced by the approved canonical capability catalog."},
   servers:[{url:"https://geomacro.live"}],
   paths:{
+   ...GEOMACRO_SUPPORT_OPENAPI_PATHS,
    [OFFICIAL_AGENT_PATH]:{
     get:{summary:"Official Geomacro agent tool and capability discovery",
      operationId:"discoverOfficialGeomacroAgent",
@@ -160,23 +169,35 @@ export function officialGeomacroAgentOpenApi(){
       ])),
      }}}},
    },
-   [endpoints.canonical_intelligence]:{post:{
+   [endpoints.canonical_intelligence]:{
+    get:publicReadOperation("discoverCanonicalIntelligence","Canonical resource discovery; explicit views describe separate research and source status"),
+    post:{
     ...op("Query canonical Geomacro paid intelligence","post"),
     summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.intelligence,
+    requestBody:queryOpenApiBody(publicQueryOpenApiSchema(),GEOMACRO_API_EXAMPLES.query),
    }},
-   [endpoints.geopolitics]:{post:{
+   [endpoints.geopolitics]:{get:categoryReadOperation("Geopolitics"),post:{
     ...op("Query geopolitics scoped intelligence","post"),
     summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.geopolitics,
+    requestBody:queryOpenApiBody(publicQueryOpenApiSchema(["conflict_geopolitics"]),GEOMACRO_API_EXAMPLES.geopolitics),
    }},
-   [endpoints.macro_fx]:{post:{
+   [endpoints.macro_fx]:{get:categoryReadOperation("MacroFx"),post:{
     ...op("Query macro FX scoped intelligence","post"),
     summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.macro_fx,
+    requestBody:queryOpenApiBody(publicQueryOpenApiSchema(["macro_risk","fx_external_risk"]),GEOMACRO_API_EXAMPLES.macro_fx),
    }},
-   [endpoints.critical_minerals]:{post:{
+   [endpoints.critical_minerals]:{get:categoryReadOperation("CriticalMinerals"),post:{
     ...op("Query critical minerals scoped intelligence","post"),
     summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.critical_minerals,
+    requestBody:queryOpenApiBody(publicQueryOpenApiSchema(["critical_minerals"]),GEOMACRO_API_EXAMPLES.critical_minerals),
    }},
-   [endpoints.availability]:{post:op("Check no funds Geomacro query availability","post")},
+   [endpoints.availability]:{
+    get:publicReadOperation("discoverStructuralBaselineAvailability","Discover one-country, one-topic structural baseline preflight"),
+    post:{...op("Check no funds Geomacro query availability","post"),
+     summary:"Check historical structural baseline availability only; not current signed risk",
+     description:"Rejects payment and authorization headers. Positive preflight does not charge or prove live payment readiness.",
+     requestBody:queryOpenApiBody(baselineOpenApiSchema(),GEOMACRO_API_EXAMPLES.availability),
+    }},
    ["/api/intelligence/capabilities"]:{get:{
     summary:"Discover exact approved per-variant structured fields via view=outputs or terms via view=license; never a payable offer",
     operationId:"discoverGeomacroPaidStructuredOutputFields",
@@ -201,7 +222,7 @@ export function officialGeomacroAgentOpenApi(){
       required:["capability","variant","network"],
       properties:{capability:{type:"string"},variant:{type:"string"},
         network:{type:"string",enum:["base","arc","polygon"]}},
-    }}}},
+    },example:GEOMACRO_API_EXAMPLES.price_preflight}}},
     responses:{"200":{description:"Non-payable catalog estimate only"},
       "400":{description:"Invalid rail or pricing tier, no charge"}},
    }},
@@ -216,6 +237,7 @@ export function officialGeomacroAgentOpenApi(){
   "x-geomacro":{
    official_api_display_names:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,
    official_api_catalog:GEOMACRO_OFFICIAL_API_CATALOG,
+   public_endpoint_catalog:GEOMACRO_PUBLIC_API_ENDPOINTS,
    branding_does_not_change_http_method:true,
    pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
    pricing:publicCapabilityPricingCatalog(),

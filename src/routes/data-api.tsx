@@ -4,6 +4,7 @@ import { AgentCommerceStatus } from "@/components/agent-commerce-status";
 import { CategoryApiLaunchPanel } from "@/components/category-api-launch-panel";
 import { ApiKeysNotice } from "@/components/api-keys-notice";
 import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
+import { ApiEndpointDirectory } from "@/components/api-endpoint-directory";
 const TITLE = "API & Agents | Geomacro";
 const DESCRIPTION =
   "Structured geopolitical, Macro/FX and critical-minerals intelligence for applications and AI agents. API keys coming soon.";
@@ -78,7 +79,8 @@ function DataApiPage() {
       </div>
       <details className="mt-8"><summary className="cursor-pointer text-sm font-medium">Delivery status & product boundaries</summary><div className="mt-4"><AgentCommerceStatus /></div><div className="mt-4 space-y-3 text-xs leading-6 text-muted-foreground"><p>Paid API requests become available only when the live payment and delivery service confirms activation.</p><p>Free Explorer is website/dashboard access, not a free API.</p><p>Payment never bypasses evidence, freshness, source-rights or product controls.</p><p>Get concise, structured Geomacro intelligence built for decisions, while underlying evidence remains protected.</p><p>Corridor model: ENDPOINT_COMPOSED_V0_1. route_modeling_status = NOT_MODELED. Risk Gate: execution_authorized=false.</p></div></details>
     <details className="mt-8"><summary className="cursor-pointer text-sm font-medium">Try the request console</summary><CategoryApiLaunchPanel /></details>
-    <details className="mt-8">
+      <ApiEndpointDirectory />
+      <details className="mt-8">
         <summary className="cursor-pointer text-sm font-medium">
           Browse exact product prices
         </summary>
