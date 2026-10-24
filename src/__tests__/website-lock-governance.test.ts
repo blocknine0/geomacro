@@ -50,7 +50,13 @@ describe("website lock governance", () => {
     const immediate=config.approved_no_added_news_publication_delay;
     const retired = config.approved_gri_store_retirement;
     const api = config.approved_launch_api_endpoint_directory;
-    expect(api.approved_ui_commit).toBe(config.baseline_sha);
+    const actorApproval=config.approved_ask_3domain_actor_fix_20261024;
+    expect(actorApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(actorApproval.previous_baseline_sha).toBe(api.approved_ui_commit);
+    expect(actorApproval.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(actorApproval.lovable_publish_required).toBe(true);
+    expect(actorApproval.funds_authorized).toBe(false);
+    expect(actorApproval.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(api.previous_baseline_sha).toBe(retired.approved_ui_commit);
     expect(api.scope).toEqual([
       "src/routes/data-api.tsx", "src/routes/docs.tsx",
