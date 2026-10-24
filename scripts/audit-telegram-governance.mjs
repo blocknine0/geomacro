@@ -2,6 +2,7 @@
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createGriDbClient } from "./lib/gri-db-client.mjs";
+import {auditOwnerTelegramExportFilesFromDisk} from "./lib/telegram-export-network-audit.mjs";
 
 const OUT = process.env.TELEGRAM_GOVERNANCE_ARTIFACT || "artifacts/telegram-governance.json";
 
@@ -32,6 +33,7 @@ async function main() {
     active_candidates: asCount(data?.active_candidates),
   };
 
+  const ownerExportAudit = auditOwnerTelegramExportFilesFromDisk();
   const failures = [];
   if (proof.unsafe_enabled_channels !== 0) failures.push("UNSAFE_TELEGRAM_CHANNEL_ENABLED");
   if (proof.legacy_mtproto_enabled !== 0) failures.push("LEGACY_PUBLIC_MTPROTO_ENABLED");
@@ -44,6 +46,7 @@ async function main() {
     source: "public.live_telegram_governance_status",
     pass: failures.length === 0,
     failures,
+    owner_export_file_only_audit:ownerExportAudit,
     ...proof,
   };
 
