@@ -268,3 +268,28 @@ test("WDI invalid JSON and invalid source identity never trigger duplicate GETs"
  }}),/ALT_WDI_ISSUER_SCOPE_INVALID/);
  assert.equal(calls,1);
 });
+
+test("free WDI retries a publisher timeout once but keeps BLS source unrelated",async()=>{
+ let calls=0;
+ const r=await fetchWdiIndiaGrowth({now:fixtureNow,fetchImpl:async(url,opts)=>{
+  calls++;
+  assert.equal(opts.redirect,"error");
+  assert.equal(opts.headers.accept,"application/json");
+  if(calls===1)throw new DOMException("timeout private details","TimeoutError");
+  return Response.json(wdiFixture);
+ }});
+ assert.equal(calls,2);
+ assert.deepEqual(r.reference_periods,["2024","2025"]);
+ assert.equal(r.original_published_at,null);
+ assert.equal(r.paid_eligible,false);
+ let denied=0;
+ await assert.rejects(()=>fetchWdiIndiaGrowth({now:fixtureNow,fetchImpl:async()=>{
+  denied++;throw new DOMException("timeout private details","TimeoutError");
+ }}),/ALT_TRANSPORT_TIMEOUT/);
+ assert.equal(denied,2);
+ let unreachable=0;
+ await assert.rejects(()=>fetchWdiIndiaGrowth({now:fixtureNow,fetchImpl:async()=>{
+  unreachable++;throw Error("PRIVATE_UPSTREAM_NETWORK_DIAGNOSTIC");
+ }}),/ALT_TRANSPORT_DENIED/);
+ assert.equal(unreachable,1);
+});
