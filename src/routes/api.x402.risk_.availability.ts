@@ -6,6 +6,7 @@ import { checkAgentQueryExternalModule } from "../lib/agent-query-external-modul
 import { getCoinbaseX402Config } from "../lib/coinbase-x402.server";
 import {resolveEligibleCoinbaseCapabilityConfig} from "../lib/verified-capability-coinbase-binding.server";
 import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
+import { exactGeomacroUsdcRail } from "../lib/usdc-native-rail-identities";
 
 const MAX_BODY_BYTES = 16 * 1024;
 
@@ -94,6 +95,13 @@ export const Route = createFileRoute("/api/x402/risk/availability")({
               error: { code: "COINBASE_X402_NOT_CONFIGURED" },
               execution_authorized: false,
             }, 503);
+          }
+          if (plan.product && (config.environment !== "production" || config.commercialEnvironment !== "mainnet" ||
+              exactGeomacroUsdcRail(config.network, config.asset)?.id !== "base" || !config.apiKeyId || !config.apiKeySecret)) {
+            return json({ ok: false, chargeable: false, payment_required_now: false,
+              payment_rail_ready: false, data_deliverable_without_payment: availability.deliverable,
+              availability: dataStatus, error: { code: "STORE_MAINNET_CONFIGURATION_REQUIRED" },
+              execution_authorized: false }, 503);
           }
           let pricedConfig = null;
           if (availability.deliverable) {

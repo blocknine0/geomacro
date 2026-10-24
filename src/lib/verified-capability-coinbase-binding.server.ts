@@ -4,6 +4,7 @@ import type { CoinbaseX402Config } from "./coinbase-x402.server";
 import { readQualifiedStructuralEvidence } from "./agent-query-qualified-evidence.server";
 import { isStructuralStoreProduct } from "./store-product-selection";
 import { assertStoreStructuralEvidence, storeSignedObjectLifecycle } from "./store-product-evidence.server";
+import {exactGeomacroUsdcRail} from "./usdc-native-rail-identities";
 import {
   resolveVerifiedPublishedPlanPrice,
   type VerifiedCapabilityPriceProof,
@@ -92,6 +93,9 @@ export function resolveEligibleCoinbaseCapabilityConfig(
   plan: AgentQueryPlan, availability: AgentQueryDeliverability,
   config: CoinbaseX402Config, now = new Date(),
 ): CoinbaseX402Config {
+  if (plan.product && (config.environment !== "production" || config.commercialEnvironment !== "mainnet" ||
+      exactGeomacroUsdcRail(config.network, config.asset)?.id !== "base"))
+    throw Error("STORE_MAINNET_CONFIGURATION_REQUIRED");
   const price = resolveEligiblePublishedCapabilityPrice(plan, availability, now);
   return { ...config, priceUsdc: price.amount_usdc, amountAtomic: price.amount_atomic };
 }

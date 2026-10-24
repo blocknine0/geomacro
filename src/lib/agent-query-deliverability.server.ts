@@ -2,6 +2,7 @@ import type { AgentQueryPlan } from "./agent-query-plan";
 import { isStructuralStoreProduct } from "./store-product-selection";
 import { assertStoreStructuralEvidence } from "./store-product-evidence.server";
 import { loadCommercialRiskObjectForAgentQuery } from "./agent-query-external-modules.server";
+import { loadAgentQueryStructuralContext } from "./store-structural-release-context.server";
 import { sourceNativeObservationTime } from "./source-native-observation-time";
 import {retainQualifiedStructuralEvidence,type QualifiedSubjectEvidence} from "./agent-query-qualified-evidence.server";
 import {
@@ -9,7 +10,6 @@ import {
   type CommercialSourceEligibility,
 } from "./commercial-source-eligibility.server";
 import {
-  loadStructuralContext,
   type StructuralContext,
   type StructuralObservation,
 } from "./structural-context.server";
@@ -190,11 +190,7 @@ export async function checkAgentQueryDeliverability(
   const qualifiedSubjects:QualifiedSubjectEvidence[]=[];
 
   for (const subject of plan.subjects) {
-    const context = await loadStructuralContext(subject, {
-      allowQualifiedRelease: plan.delivery_tier === "structural_baseline" && plan.topics.length === 1 &&
-        ["critical_minerals", "fx_external_risk"].includes(plan.topics[0]),
-      qualifiedReleaseTopic: plan.topics[0],
-    });
+    const context = await loadAgentQueryStructuralContext(plan, subject);
     const available = structuralModulesFor(context);
     const qualifiedSubject:QualifiedSubjectEvidence={context,worldBank:{}};
     qualifiedSubjects.push(qualifiedSubject);

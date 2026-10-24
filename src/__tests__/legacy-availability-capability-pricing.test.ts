@@ -16,11 +16,27 @@ const plan=buildAgentQueryPlan(body);
 const good=()=>({deliverable:true,code:'AVAILABLE',query_plan_hash:plan.query_plan_hash,
  missing_modules:[],stale_modules:[],ineligible_source_ids:[],source_contracts:[{commercial_usage_status:'DERIVED_ONLY',attribution_required:false}],
  subjects:[{subject:plan.subjects[0],available_modules:plan.required_modules,latest_evidence_at:'2026-10-01T00:00:00Z'}]});
-async function call(configure=true){if(configure)mocks.config.mockReturnValue({priceUsdc:'0.05',amountAtomic:'50000',asset:'0x'+'1'.repeat(40),network:'eip155:8453'});
+async function call(configure=true,raw:unknown=body){if(configure)mocks.config.mockReturnValue({priceUsdc:'0.05',amountAtomic:'50000',asset:'0x'+'1'.repeat(40),network:'eip155:8453'});
  return (Route as any).options.server.handlers.POST({request:new Request('https://geomacro.live/api/x402/risk/availability',{
-  method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})});}
+  method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(raw)})});}
 afterEach(()=>vi.clearAllMocks());
 describe('legacy no-charge availability respects the canonical capability catalogue',()=>{
+ it.each([
+  {environment:'testnet',commercialEnvironment:'testnet',network:'eip155:84532',asset:'0x'+'1'.repeat(40)},
+  {environment:'production',commercialEnvironment:'mainnet',network:'eip155:8453',asset:'0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',apiKeyId:null,apiKeySecret:null},
+ ])('keeps proven Store data visible but refuses an incomplete mainnet rail: %o',async config=>{
+  const raw={...body,product:{capability:'structural_country_digest',variant:'standard'}};
+  const selected=buildAgentQueryPlan(raw);
+  mocks.check.mockResolvedValue({...good(),query_plan_hash:selected.query_plan_hash});
+  mocks.config.mockReturnValue(config);
+  const response=await call(false,raw);const result=await response.json();
+  expect(response.status).toBe(503);
+  expect(result.error.code).toBe('STORE_MAINNET_CONFIGURATION_REQUIRED');
+  expect(result.data_deliverable_without_payment).toBe(true);
+  expect(result.availability.deliverable).toBe(true);
+  expect(result.chargeable).toBe(false);expect(result.payment_rail_ready).toBe(false);
+  expect(result.payment_required_now).toBe(false);expect(result.exact_price).toBeUndefined();
+ });
  it('uses verified structural digest price rather than the configured old flat price',async()=>{
   mocks.check.mockResolvedValue(good());const r=await call();const d=await r.json();
   expect(r.status).toBe(200);expect(d.exact_price.amount_usdc).toBe('0.02');expect(d.exact_price.amount_atomic).toBe('20000');
