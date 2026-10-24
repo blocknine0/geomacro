@@ -31,6 +31,10 @@ const FAILURE_CLASSES=Object.freeze([
  "TRANSPORT_OR_HTTP","RESPONSE_BODY","NATIVE_CLOCK",
  "HASH_MISMATCH","UNKNOWN_OR_UNTRUSTED_PROOF",
 ]);
+const CLOCK_DETAILS=Object.freeze([
+ "ORIGINAL_METADATA_NOT_PROVEN","FEED_PAGE_CLOCK_CONFLICT",
+ "UNCLASSIFIED_NATIVE_CLOCK",
+]);
 const invalid=()=>{throw Error("LOW_REVIEW_SAFE_RECEIPT_INVALID")};
 const count=(value,max=600)=>Number.isSafeInteger(value)&&value>=0&&value<=max;
 const exactly=(obj,keys)=>obj&&typeof obj==="object"&&!Array.isArray(obj)&&
@@ -90,15 +94,24 @@ export function aggregateLowSourceReview(result){
  const evidenceStatuses=Object.fromEntries(
   Object.values(ORIGINAL_STATES).map(v=>[v,0]));
  const failureClasses=Object.fromEntries(FAILURE_CLASSES.map(c=>[c,0]));
+ const clockDetails=Object.fromEntries(CLOCK_DETAILS.map(c=>[c,0]));
  for(const r of audit.rows){
    evidenceStatuses[ORIGINAL_STATES[r.original_page_evidence_status]]++;
    if(r.original_page_evidence_status==="ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED"){
     if(!FAILURE_CLASSES.includes(r.original_readback_failure_class))invalid();
     failureClasses[r.original_readback_failure_class]++;
-   }else if(Object.hasOwn(r,"original_readback_failure_class"))invalid();
+    if(r.original_readback_failure_class==="NATIVE_CLOCK"){
+     const detail=r.original_readback_clock_detail??"UNCLASSIFIED_NATIVE_CLOCK";
+     if(!CLOCK_DETAILS.includes(detail))invalid();
+     clockDetails[detail]++;
+    }else if(Object.hasOwn(r,"original_readback_clock_detail"))invalid();
+   }else if(Object.hasOwn(r,"original_readback_failure_class")||
+            Object.hasOwn(r,"original_readback_clock_detail"))invalid();
  }
  if(Object.values(failureClasses).reduce((a,b)=>a+b,0)!==
-     evidenceStatuses.original_bytes_or_clock_rejected)invalid();
+     evidenceStatuses.original_bytes_or_clock_rejected||
+    Object.values(clockDetails).reduce((a,b)=>a+b,0)!==
+     failureClasses.NATIVE_CLOCK)invalid();
  if(evidenceStatuses.verified!==audit.verified_original_page_bytes_and_native_time||
    Object.values(evidenceStatuses).reduce((a,n)=>a+n,0)!==
      audit.ingested_news_examined)
@@ -121,6 +134,7 @@ export function aggregateLowSourceReview(result){
   original_readback_deferral_classes:evidenceStatuses,
   // Safe remediation clues: no publisher, URL, payload, private ID or exception.
   original_readback_failure_classes:failureClasses,
+  original_readback_clock_detail_classes:clockDetails,
   requires_real_independent_facts_review:true,
   requires_real_article_scoped_rights_review:true,
   legally_licensed_commercial_events_verified:false,
