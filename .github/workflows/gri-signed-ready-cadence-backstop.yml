@@ -107,7 +107,11 @@ jobs:
         github.event.workflow_run.head_branch == 'main' &&
         (github.event.workflow_run.event == 'schedule' ||
          github.event.workflow_run.event == 'workflow_dispatch' ||
-         github.event.workflow_run.event == 'push')))
+         github.event.workflow_run.event == 'push' ||
+         (github.event.workflow_run.event == 'workflow_run' &&
+          (github.event.workflow_run.name == 'Five-Minute Original News Fastlane' ||
+           github.event.workflow_run.name == 'Website Derived News Continuity' ||
+           github.event.workflow_run.name == 'Website Derived News Cadence Backstop')))))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: production

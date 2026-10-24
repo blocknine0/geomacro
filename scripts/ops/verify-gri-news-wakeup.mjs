@@ -34,13 +34,32 @@ export function verifyGriNewsWakeup({env,event={},checkoutSha,isAncestor=false}=
      run.head_repository?.full_name!==REPO||run.head_branch!=='main'||
      !(['schedule','workflow_dispatch','push'].includes(run.event) ||
        (run.event==='workflow_run' &&
-        ['Website Derived News Continuity',
+        ['Five-Minute Original News Fastlane',
+         'Website Derived News Continuity',
          'Website Derived News Cadence Backstop'].includes(run.name)))||
      !SHA.test(run.head_sha??'')||isAncestor!==true)
    throw Error('GRI_NEWS_WAKEUP_TRUSTED_ANCESTOR_REQUIRED');
  }
  return Object.freeze({schema:'geomacro.gri-news-wakeup.v1',
   allowed:true,news_workflow_ancestry_verified:kind==='workflow_run',
+  signed_gri_input_verified:false,published:false,b2_requests:0,d1_writes:0,payments:0});
+}
+// A deployment completion can resume the original-news producer, but cannot
+// directly admit a GRI publisher. Execute checked-out canonical main only;
+// never execute the completed run's artifacts or its source checkout.
+export function verifyOriginalNewsDeployWakeup(args={}){
+ const {env,event={},checkoutSha,isAncestor=false}=args;
+ if(env?.GITHUB_EVENT_NAME!=='workflow_run')return verifyGriNewsWakeup(args);
+ const run=event.workflow_run;
+ if(env.GITHUB_REPOSITORY!==REPO||env.GITHUB_REF!=='refs/heads/main'||
+    !SHA.test(checkoutSha??'')||checkoutSha!==env.GITHUB_SHA||
+    run?.name!=='Deploy D1 Control Plane'||run.status!=='completed'||
+    run.conclusion!=='success'||run.head_repository?.full_name!==REPO||
+    run.head_branch!=='main'||!['push','workflow_dispatch'].includes(run.event)||
+    !SHA.test(run.head_sha??'')||isAncestor!==true)
+  throw Error('ORIGINAL_NEWS_DEPLOY_WAKEUP_TRUSTED_ANCESTOR_REQUIRED');
+ return Object.freeze({schema:'geomacro.original-news-deploy-wakeup.v1',
+  allowed:true,deployment_ancestry_verified:true,
   signed_gri_input_verified:false,published:false,b2_requests:0,d1_writes:0,payments:0});
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
@@ -55,8 +74,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
    try{execFileSync('git',['merge-base','--is-ancestor',event.workflow_run.head_sha,checkoutSha],
     {timeout:15000,stdio:'ignore'});isAncestor=true;}catch{}
   }
-  const result=verifyGriNewsWakeup({env,event,checkoutSha,isAncestor});
-  if(env.GITHUB_ENV)appendFileSync(env.GITHUB_ENV,
+  const deployMode=process.argv.length===3&&process.argv[2]==='--original-news-deploy';
+  if(process.argv.length!==2&&!deployMode)throw Error('WAKEUP_MODE_INVALID');
+  const result=(deployMode?verifyOriginalNewsDeployWakeup:verifyGriNewsWakeup)({env,event,checkoutSha,isAncestor});
+  if(env.GITHUB_ENV&&!deployMode)appendFileSync(env.GITHUB_ENV,
    `GRI_SOURCE_WORKFLOW_VERIFIED=${result.news_workflow_ancestry_verified?'1':'0'}\n`+
    `MACHINE_SOURCE_WORKFLOW_VERIFIED=${result.news_workflow_ancestry_verified?'1':'0'}\n`);
   console.log(JSON.stringify(result));
