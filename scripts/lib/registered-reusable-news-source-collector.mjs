@@ -118,7 +118,7 @@ async function fetchFeed(spec,fetchImpl){
       headers:{accept:"application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9"},
       signal:AbortSignal.timeout(7000)});
     if([401,403,429].includes(r.status))return {state:"DENIED",body:null};
-    if(r.status!==200||r.url!==spec.url)return {state:"UNAVAILABLE",body:null};
+    if(r.status!==200||(r.url&&r.url!==spec.url))return {state:"UNAVAILABLE",body:null};
     if(Number(r.headers.get("content-length")||0)>MAX_FEED_BYTES||!r.body)
       return {state:"MALFORMED",body:null};
     const reader=r.body.getReader();let size=0,chunks=[];
