@@ -29,6 +29,20 @@ const STATUSES=Object.freeze({
  QUOTA:"ORIGINAL_PAGE_READBACK_DEFERRED_QUOTA",
  REJECTED:"ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED",
 });
+// Deliberately coarse, fixed classes: no source URL, hostname, byte hash,
+ // private exception text or issuer identity enters operator receipts.
+const REJECTION_CLASS=Object.freeze({
+ TRANSPORT_OR_REDIRECT_DENIED:"TRANSPORT_OR_HTTP",
+ ORIGINAL_HTTP_NOT_OK:"TRANSPORT_OR_HTTP",
+ ORIGINAL_MIME_UNVERIFIED:"RESPONSE_BODY",
+ ORIGINAL_BYTES_OVERSIZE:"RESPONSE_BODY",
+ ORIGINAL_BODY_MISSING:"RESPONSE_BODY",
+ ORIGINAL_BODY_READ_ERROR:"RESPONSE_BODY",
+ ORIGINAL_ENCODING_INVALID:"RESPONSE_BODY",
+ ORIGINAL_NATIVE_CLOCK_NOT_PROVEN:"NATIVE_CLOCK",
+ ORIGINAL_CLOCK_CONFLICT:"NATIVE_CLOCK",
+ ORIGINAL_HTML_HASH_CHANGED:"HASH_MISMATCH",
+});
 const CURRENT_MS=ORIGINAL_VERIFICATION_WINDOW_MS;
 const MAX_SIGNALS=600;
 const SAFE_ID=/^(?:geopolitics|macro|rare_earth)-[a-f0-9]{8}$/u;
@@ -144,6 +158,11 @@ export async function auditEveryDerivedNewsOriginal({
         proof.signed_gro_created===false&&proof.payment_authorized===false;
       row.original_page_evidence_status=verified?STATUSES.VERIFIED:
         supplementaryDeferred?STATUSES.QUOTA:STATUSES.REJECTED;
+      if(!verified&&!supplementaryDeferred){
+       const code=typeof proof?.status==="string"?proof.status:"";
+       row.original_readback_failure_class=
+        REJECTION_CLASS[code]??"UNKNOWN_OR_UNTRUSTED_PROOF";
+      }
       row.exact_original_page_html_readback=verified;
       proofCache.set(key,{status:row.original_page_evidence_status,verified});
     }

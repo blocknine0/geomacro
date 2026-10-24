@@ -162,3 +162,28 @@ test("duplicate IDs and invalid category cannot silently mask a news record",asy
   signals:[{...row,category:"rare_earth"}],originalRefs:new Map(),now,
  }),/ALL_NEWS_EVIDENCE_INPUT_INVALID/);
 });
+
+
+test("native clock failure is quarantined with a redacted remediation class",async()=>{
+ const row=signal("ddeeaaaa");
+ const report=await auditEveryDerivedNewsOriginal({
+  signals:[row],originalRefs:new Map([[row.id,ref()]]),now,
+  verify:async()=>({schema:"geomacro.private-unclaimed-original-pre-review.v1",
+   accepted:false,status:"ORIGINAL_NATIVE_CLOCK_NOT_PROVEN"}),
+ });
+ assert.equal(report.verified_original_page_bytes_and_native_time,0);
+ assert.equal(report.rows[0].original_page_evidence_status,
+  "ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED");
+ assert.equal(report.rows[0].original_readback_failure_class,"NATIVE_CLOCK");
+ assert.equal(report.signed_commercial_intelligence_created,false);
+ assert.equal(JSON.stringify(report).includes(url),false);
+});
+test("untrusted readback exceptions never escape into reviewer output",async()=>{
+ const row=signal("eeeedddd");
+ const report=await auditEveryDerivedNewsOriginal({
+  signals:[row],originalRefs:new Map([[row.id,ref()]]),now,
+  verify:async()=>{throw Error("PRIVATE_UPSTREAM_URL_OR_KEY_DO_NOT_LOG");},
+ });
+ assert.equal(report.rows[0].original_readback_failure_class,"UNKNOWN_OR_UNTRUSTED_PROOF");
+ assert.equal(JSON.stringify(report).includes("PRIVATE_UPSTREAM_URL_OR_KEY"),false);
+});
