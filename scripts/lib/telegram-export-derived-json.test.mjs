@@ -103,3 +103,20 @@ test("D1 owner export writer refuses raw/foreign data and cannot assert a verifi
  const hidden=await privateOwnerTelegramExportJson(fake,new URLSearchParams("offset=1"),NOW);
  assert.equal(hidden.status,400);
 });
+
+
+test("exact canonical country name yields ISO3, multi-country mention remains null",()=>{
+ const named=[{iso3:"IND",name:"India",aliases:[]},
+  {iso3:"CAN",name:"Canada",aliases:[]}];
+ const scope={now:NOW,countryCodes:new Set(["IND","CAN"]),countryRegistry:named};
+ const one=projectTelegramExport(Buffer.from(JSON.stringify({
+  messages:[{type:"message",date_unixtime:"1792875600",
+   text:"India central bank interest rate changed by 4 percent"}],
+ })),scope);
+ assert.equal(one.items[0].country_iso3,"IND");
+ const two=projectTelegramExport(Buffer.from(JSON.stringify({
+  messages:[{type:"message",date_unixtime:"1792875600",
+   text:"India and Canada central bank interest rates changed by 4 percent"}],
+ })),scope);
+ assert.equal(two.items[0].country_iso3,null);
+});
