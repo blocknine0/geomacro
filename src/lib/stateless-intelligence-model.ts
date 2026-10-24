@@ -599,6 +599,40 @@ export function deriveStatelessSignals(
 // never be returned via the website feed or persisted to public D1.
 // Matching a derived display ID to a first-party feed reference does NOT
 // verify an independent fact, commercial rights, signing or payment eligibility.
+/**
+ * Restore ONLY genuine first-party references for already retained D1
+ * derived cards, in addition to this run's bounded source observations.
+ * The publisher list may contain an authentic original that no longer fits
+ * the current top-20/200 story display limit; omitting retained IDs from
+ * reconciliation previously made that original permanently unmatchable.
+ *
+ * Actual retained journal bytes win on duplicate IDs. Never infer an URL
+ * from the public card or change its signed clock. A matched first-party
+ * reference is still NOT an original-page byte proof, rights or signature.
+ */
+export function selectBoundedRetainedOriginalTargets(
+  current:readonly StatelessIntelligenceSignal[],
+  retained:readonly StatelessIntelligenceSignal[],
+  limit=250,
+):StatelessIntelligenceSignal[] {
+  if(!Array.isArray(current)||!Array.isArray(retained)||
+     current.length>250||retained.length>600||
+     !Number.isSafeInteger(limit)||limit<1||limit>250)
+    throw Error("PRIVATE_ORIGINAL_REFERENCE_TARGET_BUDGET_INVALID");
+  const targets=new Map<string,StatelessIntelligenceSignal>();
+  for(const row of current){
+    if(!targets.has(row.id)&&targets.size>=limit)
+      throw Error("PRIVATE_ORIGINAL_REFERENCE_TARGET_BUDGET_INVALID");
+    targets.set(row.id,row);
+  }
+  for(const row of retained){
+    // Overwrite in-place when D1 has the exact signed/public record; no
+    // guess at an earlier editorial version or a different native time.
+    if(targets.has(row.id)||targets.size<limit)targets.set(row.id,row);
+  }
+  return [...targets.values()];
+}
+
 export function reconcilePrivateDerivedSourceRefs(
   candidates:readonly StatelessSourceCandidate[],
   published:readonly StatelessIntelligenceSignal[],
