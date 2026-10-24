@@ -12,6 +12,8 @@ import type { StructuralContext, StructuralObservation } from "./structural-cont
 
 const mocks = vi.hoisted(() => ({ context: vi.fn(), object: vi.fn(), verify: vi.fn(), freeze: vi.fn() }));
 vi.mock("./structural-context.server", async original => ({ ...await original<typeof import("./structural-context.server")>(), loadStructuralContext: (...args: unknown[]) => mocks.context(...args) }));
+vi.mock("./qualified-mcs-country-digest.server", async original => ({ ...await original<typeof import("./qualified-mcs-country-digest.server")>(), loadQualifiedMcsCountryContext: async () => null }));
+vi.mock("./qualified-treasury-fx.server", async original => ({ ...await original<typeof import("./qualified-treasury-fx.server")>(), loadQualifiedTreasuryFxCountryContext: async () => null }));
 vi.mock("./agent-query-external-modules.server", async original => ({ ...await original<typeof import("./agent-query-external-modules.server")>(), loadCommercialRiskObjectForAgentQuery: (...args: unknown[]) => mocks.object(...args) }));
 vi.mock("./commercial-risk-object-policy", async original => ({ ...await original<typeof import("./commercial-risk-object-policy")>(), verifyCommercialRiskObjectArtifact: (...args: unknown[]) => mocks.verify(...args) }));
 vi.mock("./capability-x402-prequote.server", () => ({ freezeVerifiedCapabilityAnswer: (...args: unknown[]) => mocks.freeze(...args) }));

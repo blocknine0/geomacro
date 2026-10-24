@@ -3,6 +3,7 @@ import type { AgentQueryPlan } from "./agent-query-plan";
 import type {QualifiedSubjectEvidence} from "./agent-query-qualified-evidence.server";
 import { isStructuralStoreProduct } from "./store-product-selection";
 import { storeProductRows } from "./store-product-evidence.server";
+import { loadAgentQueryStructuralContext } from "./store-structural-release-context.server";
 import { demoPolicyFromPreset } from "./agentic-demo-contract";
 import { loadCommercialRiskObjectForAgentQuery } from "./agent-query-external-modules.server";
 import { loadAgentHotTopics } from "./agent-query-hot-topics.server";
@@ -15,7 +16,7 @@ import {
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { readProductionGlobalRisk } from "./production-global-risk.server";
-import { loadStructuralContext, type StructuralObservation } from "./structural-context.server";
+import type { StructuralObservation } from "./structural-context.server";
 import { sourceNativeObservationTime } from "./source-native-observation-time";
 import { buildDecisionIntelligence } from "./decision-intelligence-output";
 import {
@@ -94,11 +95,7 @@ export function latestModuleTimestamp(
 }
 
 async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["subjects"][number],qualified?:QualifiedSubjectEvidence) {
-  const context = qualified?.context ?? await loadStructuralContext(subject, {
-    allowQualifiedRelease: plan.delivery_tier === "structural_baseline" && plan.topics.length === 1 &&
-      ["critical_minerals", "fx_external_risk"].includes(plan.topics[0]),
-    qualifiedReleaseTopic: plan.topics[0],
-  });
+  const context = qualified?.context ?? await loadAgentQueryStructuralContext(plan, subject);
   const structuralModules = plan.required_modules.filter((module) => !EXTERNAL_MODULES.has(module));
   const intelligence: Record<string, unknown> = {};
   const limit = plan.product?.capability.endsWith("_digest") ? 3 : perModuleLimit(plan.detail);

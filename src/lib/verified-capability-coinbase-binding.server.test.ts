@@ -32,6 +32,13 @@ const availability = (plan: ReturnType<typeof baselinePlan>): AgentQueryDelivera
 });
 
 describe("verified canonical x402 capability-price binding — no funds",()=>{
+  it("never prices an explicit Store request for testnet or an incorrectly labelled mainnet asset",()=>{
+    const plan=buildAgentQueryPlan({subjects:country,topics:["critical_minerals"],
+      delivery_tier:"structural_baseline",fulfillment_mode:"published_only",detail:"compact",
+      product:{capability:"structural_country_digest",variant:"standard"}});
+    for(const config of [noFundsConfig,{...noFundsConfig,environment:"production" as const,commercialEnvironment:"mainnet" as const,network:"eip155:8453"}])
+      expect(()=>resolveEligibleCoinbaseCapabilityConfig(plan,availability(plan),config)).toThrow("STORE_MAINNET_CONFIGURATION_REQUIRED");
+  });
   it("quotes the approved 0.02 USDC structural country digest, not the old flat 0.05",()=>{
     const plan=baselinePlan();
     const priced=resolveEligibleCoinbaseCapabilityConfig(plan,availability(plan),noFundsConfig,
