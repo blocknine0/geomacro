@@ -84,3 +84,12 @@ Sources:
 - https://gdeltproject.org/about.html
 - https://gdeltproject.org/data.html
 - https://data.gdeltproject.org/gdeltv2/lastupdate.txt
+
+## Separate owner export decision (25 Oct 2026)
+
+The above no-public-channel-harvesting and 152-candidate-not-licensed
+statements are unchanged. A manual owner-provided Telegram Desktop JSON
+export is processed solely from a protected private B2 source; there is
+no Telegram API/MTProto/t.me fetch. This creates unverified derived-only
+research JSON, not a verified licence or a signed/paid product.
+See `docs/adr/ADR-TELEGRAM-DERIVED-COMMERCIAL-USE.md`.
