@@ -1,4 +1,3 @@
-import {createHash} from "node:crypto";
 export const OWNER_EXPORT_DERIVED_SCHEMA="geomacro.telegram-export-derived.v1";
 const LIMIT=72*60*60*1000;
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
@@ -58,8 +57,10 @@ export async function writeOwnerTelegramExportJson(env,body,now=Date.now()){
  const at=new Date(now).toISOString(),expires=new Date(now+LIMIT).toISOString();
  for(const item of body.items){
    const projection=valid(item,now);
-   const id=createHash("sha256").update(body.object_sha256+"|"+item.internal_message_fingerprint+"|"+
-      item.internal_chat_fingerprint).digest("hex");
+   const digest=await crypto.subtle.digest("SHA-256",
+     new TextEncoder().encode(body.object_sha256+"|"+
+       item.internal_message_fingerprint+"|"+item.internal_chat_fingerprint));
+   const id=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,"0")).join("");
    if(ids.has(id)||textHashes.has(item.internal_message_fingerprint))reject();
    ids.add(id);textHashes.add(item.internal_message_fingerprint);
    prepared.push({id,item,projection});
