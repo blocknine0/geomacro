@@ -91,3 +91,18 @@ test("never labels original HTML readback as signed commercial product",()=>{
  assert.equal(r.charged_or_payable,false);
  assert.equal(r.real_payments,0);
 });
+
+
+test("redacted original rejection classes distinguish upstream clock from transport without private data",()=>{
+ const p=proof();
+ p.audit.rows[1].original_page_evidence_status="ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED";
+ p.audit.rows[1].original_readback_failure_class="NATIVE_CLOCK";
+ const r=aggregateLowSourceReview(p),safe=JSON.stringify(r);
+ assert.equal(r.original_readback_failure_classes.NATIVE_CLOCK,1);
+ assert.equal(r.original_readback_deferral_classes.original_bytes_or_clock_rejected,1);
+ for(const secret of ["secret.example","SECRET UPSTREAM","PRIVATE_PUBLISHER","89abcdef"]){
+  assert.equal(safe.includes(secret),false);
+ }
+ p.audit.rows[1].original_readback_failure_class="ARBITRARY_PRIVATE_SOURCE_URL";
+ assert.throws(()=>aggregateLowSourceReview(p),/LOW_REVIEW_SAFE_RECEIPT_INVALID/);
+});
