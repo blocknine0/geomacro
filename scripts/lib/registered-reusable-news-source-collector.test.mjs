@@ -73,3 +73,37 @@ test("date-only, Atom updated-only and unsupported source formats cannot become 
  assert.ok(out.checks.some(c=>c.state==="UNSUPPORTED_FORMAT"));
  assert.ok(out.checks.some(c=>c.state==="EMPTY_OR_OUTSIDE_WINDOW"));
 });
+
+test("native GOV.UK official Search API JSON news with exact 25h source clock",async()=>{
+ const now=new Date("2026-10-25T00:00:00.000Z");
+ const spec={id:"govuk_global_economy",url:"https://www.gov.uk/api/search.json?q=economy",
+  categories:["macro"],supported:true,type:"json"};
+ const payload={results:[
+  {title:"United Kingdom government announces monetary policy inflation changes",
+   public_timestamp:"2026-10-24T23:50:00Z",link:"/government/news/example"},
+  {title:"United Kingdom government publishes annual unemployment statistics",
+   public_timestamp:"2026-10-22T22:00:00Z",link:"/government/news/expired"},
+ ]};
+ const collected=await collectRegisteredReusableNews({now,registry:[spec],normalize,
+   resolveCountry:title=>title.includes("United Kingdom")?"GBR":null,
+   fetchImpl:async()=>response(JSON.stringify(payload))});
+ assert.equal(collected.items.length,1);
+ assert.equal(collected.items[0].country_iso3,undefined);
+ assert.equal(collected.summary.excluded_by_collector_capacity,0);
+ assert.equal(collected.summary.source_rights_commercial_authorized,false);
+ assert(!JSON.stringify(collected).includes("/government/news/example"));
+});
+test("source-native 25h clock rejects 25h+1 sec and admits 25h-1 sec",async()=>{
+ const now=new Date("2026-10-25T00:00:00.000Z");
+ const old=new Date(now.getTime()-25*3600000-1000).toUTCString();
+ const fresh=new Date(now.getTime()-25*3600000+1000).toUTCString();
+ const rss="<rss><channel>"+
+  "<item><title>Central bank interest rate policy announces update</title><pubDate>"+old+"</pubDate></item>"+
+  "<item><title>Central bank inflation policy announces change</title><pubDate>"+fresh+"</pubDate></item>"+
+  "</channel></rss>";
+ const doc=await collectRegisteredReusableNews({now,registry:[{
+  id:"source1",url:"https://example.org/news/rss.xml",
+  categories:["macro"],supported:true,type:"rss"}],
+  normalize,fetchImpl:async()=>response(rss)});
+ assert.equal(doc.items.length,1);
+});
