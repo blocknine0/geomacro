@@ -7,7 +7,7 @@
  * 2 bounded, credential-free GETs, attempted only for failed primaries.
  */
 export const MACRO_OFFICIAL_REFERENCE_ALTERNATES=Object.freeze({
- wdi_ind_growth:"https://api.worldbank.org/v2/country/IND/indicator/NY.GDP.MKTP.KD.ZG",
+ wdi_ind_growth:"https://api.worldbank.org/v2/country/ind/indicator/NY.GDP.MKTP.KD.ZG",
  bls_usa_unemployment:"https://api.bls.gov/publicAPI/v1/timeseries/data/LNS14000000",
 });
 const MAX_BYTES=256*1024;
@@ -38,6 +38,9 @@ async function officialJson(url,fetchImpl){
   const status=response?.status;
   try{await response?.body?.cancel();}catch{}
   if([401,403,429].includes(status))throw Error("ALT_DENIED_OR_QUOTA");
+  // Network retries below apply ONLY to ordinary, bounded issuer 5xx
+  // overloads. Expose no response bytes, headers or upstream URLs.
+  if([500,502,503,504].includes(status))throw Error("ALT_HTTP_"+status);
   throw Error("ALT_HTTP_UNAVAILABLE");
  }
  if(response.redirected===true||(response.url&&response.url!==url))
@@ -134,8 +137,18 @@ export function extractBlsUsUnemployment(data,now=new Date()){
   commercial_rights_attested:false,paid_eligible:false};
 }
 export async function fetchWdiIndiaGrowth({fetchImpl=fetch,now=new Date()}={}){
- return extractWdiIndiaGrowth(await officialJson(
-  wdiIndiaGrowthUrl(now),fetchImpl),now);
+ const url=wdiIndiaGrowthUrl(now);
+ // The official API can return a transient 500/502/503/504 during free
+ // requests. Allow one retry against the EXACT SAME fixed publisher URL.
+ // Never retry a 403/429, bad schema, missing data or invalid publisher.
+ for(let i=0;i<2;i++){
+  try{return extractWdiIndiaGrowth(await officialJson(url,fetchImpl),now);}
+  catch(error){
+   if(i===1||!/^ALT_HTTP_(?:500|502|503|504)$/u.test(String(error?.message??"")))
+    throw error;
+  }
+ }
+ throw Error("ALT_WDI_UNVERIFIED");
 }
 export async function fetchBlsUsUnemployment({fetchImpl=fetch,now=new Date()}={}){
  return extractBlsUsUnemployment(await officialJson(

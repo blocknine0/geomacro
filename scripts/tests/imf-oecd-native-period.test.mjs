@@ -232,3 +232,39 @@ test("missing newer World Bank calendar year is not fabricated or treated as a t
  fixture[1][0].value=null;
  assert.throws(()=>extractWdiIndiaGrowth(fixture,fixtureNow),/ALT_WDI_OBSERVATION_MISSING/);
 });
+
+test("official WDI URL uses publisher's documented lowercase ISO3 path",()=>{
+ const u=new URL(wdiIndiaGrowthUrl(fixtureNow));
+ assert.equal(u.pathname,"/v2/country/ind/indicator/NY.GDP.MKTP.KD.ZG");
+ assert.equal(u.searchParams.get("source"),"2");
+});
+test("WDI retries bounded issuer 502 once and never retries denied 403 or 429",async()=>{
+ let tries=0;
+ const result=await fetchWdiIndiaGrowth({now:fixtureNow,fetchImpl:async()=>{
+  tries++;
+  return tries===1?new Response("transient",{status:502}):Response.json(wdiFixture);
+ }});
+ assert.equal(tries,2);
+ assert.deepEqual(result.reference_periods,["2024","2025"]);
+ for(const status of [403,429]){
+  let calls=0;
+  await assert.rejects(()=>fetchWdiIndiaGrowth({now:fixtureNow,fetchImpl:async()=>{
+   calls++;return new Response("denied",{status});
+  }}),/ALT_DENIED_OR_QUOTA/);
+  assert.equal(calls,1);
+ }
+ let hard=0;
+ await assert.rejects(()=>fetchWdiIndiaGrowth({now:fixtureNow,fetchImpl:async()=>{
+  hard++;return new Response("unavailable",{status:503});
+ }}),/ALT_HTTP_503/);
+ assert.equal(hard,2);
+});
+test("WDI invalid JSON and invalid source identity never trigger duplicate GETs",async()=>{
+ let calls=0;
+ await assert.rejects(()=>fetchWdiIndiaGrowth({now:fixtureNow,fetchImpl:async()=>{
+  calls++;return Response.json([{page:1,pages:1,total:1},[
+   {countryiso3code:"USA",indicator:{id:"NY.GDP.MKTP.KD.ZG"},date:"2025",value:7}
+  ]]);
+ }}),/ALT_WDI_ISSUER_SCOPE_INVALID/);
+ assert.equal(calls,1);
+});
