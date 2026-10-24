@@ -51,7 +51,8 @@ export function parseOwnerExportList(xmlText,prefix=PREFIX){
   const value=xml(key);
   // Avoid attacker-controlled paths or raw user identifiers in object names:
   // owner exports use opaque hex digest filenames (no chat names).
-  if(!new RegExp("^"+prefix.replaceAll("/","\\/")+"[a-f0-9]{64}\\.json$","u").test(value))continue;
+  if(value!==prefix+"result.json"&&
+     !new RegExp("^"+prefix.replaceAll("/","\\/")+"[a-f0-9]{64}\\.json$","u").test(value))continue;
   if(size>=2&&size<=TELEGRAM_EXPORT_LIMITS.max_export_bytes)
    items.push({key:value,size});
   if(items.length>100)fail();
@@ -111,17 +112,21 @@ async function main(){
  // Two raw-file GETs maximum; no account quota bypass.
  for(const entry of candidates){
   if(checked>=2)break;
-  const keySha=entry.key.slice(PREFIX.length,-5);
-  const state=await fetch(ROOT+"/v1/internal/telegram-export-derived-json?object_sha256="+keySha,{
-    method:"GET",redirect:"error",cache:"no-store",
-    headers:{authorization:"Bearer "+token},signal:AbortSignal.timeout(12000)});
-  if(state.status!==200)fail();
-  const seen=await state.json();
-  if(seen.ok!==true||seen.paid_delivery_enabled!==false)fail();
-  if(seen.object_processed===true){already++;continue}
-  if(seen.object_processed!==false)fail();
+  const basename=entry.key.slice(PREFIX.length);
+  const keySha=/^[a-f0-9]{64}\.json$/u.test(basename)?basename.slice(0,64):null;
+  if(keySha){
+    const state=await fetch(ROOT+"/v1/internal/telegram-export-derived-json?object_sha256="+keySha,{
+      method:"GET",redirect:"error",cache:"no-store",
+      headers:{authorization:"Bearer "+token},signal:AbortSignal.timeout(12000)});
+    if(state.status!==200)fail();
+    const seen=await state.json();
+    if(seen.ok!==true||seen.paid_delivery_enabled!==false)fail();
+    if(seen.object_processed===true){already++;continue}
+    if(seen.object_processed!==false)fail();
+  }
   const bytes=await reader.get(entry.key);
-  if(!bytes||bytes.byteLength!==entry.size||sh(bytes)!==keySha)fail();
+  if(!bytes||bytes.byteLength!==entry.size||
+      keySha!==null&&sh(bytes)!==keySha)fail();
   const doc=projectTelegramExport(bytes,{countryCodes,countryRegistry:COUNTRIES_195});
   const objectSha=sh(bytes);
   bytes.fill(0);
