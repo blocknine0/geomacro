@@ -58,7 +58,7 @@ export const Route = createFileRoute("/api/x402/risk/availability")({
           // protect the free source and D1/B2 budgets.
           if (!allowPublicDemoRequest(request, {
             namespace: "coinbase-store-no-funds-readiness",
-            windowMs: 60_000, maxPerClient: 3, maxGlobal: 24,
+            windowMs: 60_000, maxPerClient: 12, maxGlobal: 24,
           })) {
             return json({ ok: false, chargeable: false, payment_required_now: false,
               error: { code: "AVAILABILITY_RATE_LIMITED" },
