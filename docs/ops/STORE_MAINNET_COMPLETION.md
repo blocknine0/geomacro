@@ -24,6 +24,35 @@ substitute minerals for macro/FX, create a route model, create a current news
 event from an annual series, or sign an object. Missing dimensions still block
 the exact selected product. Available archive observations are reused.
 
+## Source-by-source Store data-preflight selection
+
+The commercial Store may ingest mixed independently governed archive, official
+country release and fallback observations. A dataset being ingested or an
+endpoint returning HTTP 200 is **not** a commercial eligibility grant.
+
+For the exact requested country, corridor endpoints and module dimensions,
+the Store now selects only observations with a genuine source-native clock,
+bounded freshness, exact source hash and an affirmative per-source commercial
+rights decision. A rights-ineligible row cannot contaminate or block a
+separately eligible row from another source. If a previously fresh archive row
+fails rights validation, the existing official USGS Minerals and Treasury FX
+release readers may be attempted with their own pinned rights, scope and byte
+proof. The later admission check still revalidates every source and every
+endpoint/module; the selected evidence is pinned into quote/delivery.
+
+Provider errors, no original publication, missing licence, old numerical
+reference periods, country mismatch and missing signed GRO/certificates remain
+explicit `NOT_AVAILABLE`, `COMMERCIAL_SOURCE_NOT_ELIGIBLE`, or another
+fail-closed preflight result. This does **not** authorize unknown new feeds
+or guarantee 12/12, worldwide 195x3 live coverage, production Base mainnet
+readiness or paid settlement. Unverified sources are excluded rather than
+silently promoted. Adding a truly new source requires a separate permitted
+adapter, publisher/terms verification, source identity, rights audit and
+live original readback.
+
+Tests:
+`bunx --no-install vitest run src/lib/store-structural-release-context.server.test.ts src/lib/store-product-creation.server.test.ts`.
+
 ## Lovable production server settings
 
 Configure these in the server secret manager, then publish the latest synced
