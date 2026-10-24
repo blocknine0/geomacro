@@ -10,7 +10,7 @@ import {createHmac} from "node:crypto";
 import {writeFileSync} from 'node:fs';
 import {FIVE_MINUTE_NEWS_FASTLANE,readFiveMinuteNewsFastlane} from "../../src/lib/stateless-public-intelligence.server";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
-import {reconcilePrivateDerivedSourceRefs,type StatelessSourceCandidate,type StatelessIntelligenceSignal} from "../../src/lib/stateless-intelligence-model";
+import {reconcilePrivateDerivedSourceRefs,selectBoundedRetainedOriginalTargets,type StatelessSourceCandidate,type StatelessIntelligenceSignal} from "../../src/lib/stateless-intelligence-model";
 
 const ROOT=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(ROOT.length<32)throw Error("FIVE_MIN_NEWS_PROTECTED_D1_AUTH_REQUIRED");
@@ -137,7 +137,12 @@ if(process.env.GEOMACRO_LOW_SOURCE_REVIEW==='1'){
  try{
   const path=process.env.GEOMACRO_LOW_REVIEW_REFS_FILE??'',temp=process.env.RUNNER_TEMP??'';
   if(!temp||!path.startsWith(temp+'/')||path.includes('/../'))throw Error('PRIVATE_HANDOFF_PATH_INVALID');
-  const refs=reconcilePrivateDerivedSourceRefs(privateOriginals,reports.flatMap(r=>r.signals),runAt);
+  // Recover retained exact D1 stories omitted by this poll's top-20
+  // display budget. Reuse already fetched official candidates and the
+  // initial authenticated journal baseline: NO extra publisher request.
+  const targets=selectBoundedRetainedOriginalTargets(
+    reports.flatMap(r=>r.signals),baseline);
+  const refs=reconcilePrivateDerivedSourceRefs(privateOriginals,targets,runAt);
   writeFileSync(path,JSON.stringify({refs:[...refs]}),{mode:0o600,flag:'wx'});
  }catch{failure=true;console.error('::error::FASTLANE_PRIVATE_HANDOFF_UNAVAILABLE');}
 }
