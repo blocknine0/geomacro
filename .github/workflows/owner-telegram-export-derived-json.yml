@@ -10,6 +10,7 @@ on:
       - "scripts/lib/telegram-export-derived-json.test.mjs"
       - "scripts/lib/telegram-export-network-audit.mjs"
       - "scripts/ops/telegram-export-ingest.mjs"
+      - "scripts/ops/telegram-export-ingest.test.mjs"
       - "workers/control-plane/src/telegram-export-derived-json.mjs"
       - "workers/control-plane/migrations/0028_telegram_export_derived_json.sql"
       - "docs/adr/ADR-TELEGRAM-DERIVED-COMMERCIAL-USE.md"
@@ -37,6 +38,7 @@ jobs:
           node --check scripts/ops/telegram-export-ingest.mjs
           node --check workers/control-plane/src/telegram-export-derived-json.mjs
           node --test scripts/lib/telegram-export-derived-json.test.mjs
+          node --test scripts/ops/telegram-export-ingest.test.mjs
           grep -q 'OWNER_DECLARED_TELEGRAM_DERIVED_ONLY' docs/adr/ADR-TELEGRAM-DERIVED-COMMERCIAL-USE.md
           grep -q 'telegram_export_derived_items' workers/control-plane/migrations/0028_telegram_export_derived_json.sql
   private-ingest:
