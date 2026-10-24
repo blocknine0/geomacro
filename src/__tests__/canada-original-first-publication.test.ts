@@ -1,5 +1,5 @@
 import { describe,it,expect } from "vitest";
-import { canadaOriginalPublicationDay } from "@/lib/stateless-canada-original.server";
+import { canadaOriginalPublicationDay, canadaOriginalMineralsTopic } from "@/lib/stateless-canada-original.server";
 import { deriveStatelessSignals, parseFirstPartyFeed, type StatelessSourceSpec }
   from "@/lib/stateless-intelligence-model";
 import { verifyDerivedStory } from "../../workers/control-plane/src/website-derived-intelligence.mjs";
@@ -87,4 +87,43 @@ describe("Canada official original publication day; never updated/crawl timestam
     expect(findings[0].category).toBe("geopolitics");
     expect(verifyDerivedStory(findings[0],NOW)).toBe(true);
   });
+});
+
+describe("NRCan same-original article body topical evidence",()=>{
+ const url=news;
+ const title="Canada and Türkiye joint statement on energy cooperation";
+ const body=(text:string,date="2026-10-12")=>html(date,title).replace('</body>',
+   '<main><div id="news-release-container"><p>'+text+'</p><div class="news-tags"></div></div></main></body>');
+ it("recovers a minerals topic when the original headline has no minerals word",()=>{
+  const doc=body('The Ministers agreed to strengthen minerals supply chains through bilateral trade and investment.');
+  expect(canadaOriginalMineralsTopic(doc,url,title,NOW)).toBe('critical-minerals policy');
+  const xml='<feed><entry><title>'+title+'</title><updated>2026-10-13T19:59:00Z</updated><link href="'+url+'"/></entry></feed>';
+  const parsed=parseFirstPartyFeed(xml,source,NOW);
+  expect(parsed.dated).toEqual([]);expect(parsed.undatedGov).toHaveLength(1);
+  const result=deriveStatelessSignals([{title,articleUrl:url,publishedAt:'2026-10-12',datePrecision:'day',
+   category:'rare_earth',sourceId:'nrcan_releases',credit:'Natural Resources Canada',
+   originalBodyTopic:canadaOriginalMineralsTopic(doc,url,title,NOW)!}],NOW);
+  expect(result).toHaveLength(1);
+  expect(result[0].topic).toBe('critical-minerals policy');
+  expect(result[0].status).toBe('official_release_observed_unscored');
+  expect(result[0].published_at).toBe('2026-10-12');
+  expect(result[0].severity).toBeNull();expect(verifyDerivedStory(result[0],NOW)).toBe(true);
+  expect(JSON.stringify(result)).not.toContain('The Ministers agreed');
+  expect(JSON.stringify(result)).not.toContain(url);
+ });
+ it("never accepts navigation, related links, forestry-only body, missing date or mismatched headline",()=>{
+  for(const doc of [body('A forestry and wildfire cooperation update.'),
+   body('A forestry update.')+'<footer><p>critical minerals</p></footer>',
+   body('A forestry update.').replace('<p>A forestry', '<script><p>critical minerals</p></script ><p>A forestry'),
+   body('A forestry update.').replace('<p>A forestry', '<nav><p>critical minerals</p></nav ><p>A forestry'),
+   body('A forestry update.').replace('<p>A forestry', '<aside><p>critical minerals</p></aside><p>A forestry'),
+   body('A forestry update.').replace('<main>','<nav><p>critical minerals</p></nav><main>'),
+   body('A forestry update.').replace('news-tags','news-tags"><p>critical minerals</p><div class="'),
+   body('Critical minerals supply cooperation.').replace('dcterms.issued','dcterms.modified'),
+   body('Critical minerals supply cooperation.').replace('<h1>'+title,'<h1>Unrelated notice'),
+  ])expect(canadaOriginalMineralsTopic(doc,url,title,NOW)).toBeNull();
+ });
+ it("refuses malformed original metadata rather than truncating a valid date prefix",()=>{
+  expect(canadaOriginalPublicationDay(html('2026-10-12malformed',title),url,title,NOW)).toBeNull();
+ });
 });

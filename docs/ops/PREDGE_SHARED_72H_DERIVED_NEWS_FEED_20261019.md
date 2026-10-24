@@ -1,3 +1,32 @@
+## 2026-10-24 delivery correction (supersedes source-neutral parity below)
+
+The authenticated Predge research route now projects the same bounded D1
+journal with **visible required attribution**. The public source-neutral route
+continues to exclude credited rows. Private and public item arrays can therefore
+differ; acceptance reconstructs each projection independently from the immediate
+D1 journal. IDs, native dates, derived prose, 72-hour retention, authentication,
+500/UTC-day limit and pilot expiry are preserved.
+
+Known collector credit labels travel in `sources_credited`, with
+`attribution_required: true` and `attribution_notices`. Consumers must preserve
+these notices. Unknown labels remain withheld. Statistics Canada notices identify
+The Daily and the original reference date; OGL notices include the licence URL.
+This factual research projection does not certify source rights, authorize raw
+article reproduction, resale, paid use, trading, or signed Risk Gate delivery.
+
+For NRCan only, a headline without a mineral keyword may lead to a bounded
+original-page check. The original page must pass the existing path, headline,
+calendar and publication-date checks. Topic recovery inspects paragraphs inside
+the original news-release container, excluding navigation, related links and
+footer. Only a finite topic survives; raw body text is discarded. Date-only
+releases retain day precision and the conservative next-day release bound.
+
+Production completion requires authenticated live acceptance plus nonzero
+qualified Macro and Critical Minerals counts. Partner client acknowledgement is
+separate from Geomacro endpoint acceptance and must not be inferred.
+
+---
+
 # One hourly source ingest → three domain Intelligence cards → Predge evaluation feed
 
 ## Actual topology (no duplicate ingest, no new D1/B2 storage)

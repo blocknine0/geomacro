@@ -1,3 +1,4 @@
+import {visiblePublisherText} from "./stateless-publisher-text";
 /**
  * Original first-publication day from exact Canada.ca government NEWS article.
  * Never infer from feed updated, dateModified, crawl time, URL year/month.
@@ -36,7 +37,11 @@ export function canadaOriginalPublicationDay(
     const name=(attr(tag,"name")??attr(tag,"property")??attr(tag,"itemprop")??"").toLowerCase();
     if(!["dcterms.issued","article:published_time","datepublished"].includes(name))continue;
     const value=attr(tag,"content");
-    if(value)originalDates.push(value.slice(0,10));
+    if(value){
+      if(!/^20\d{2}-\d{2}-\d{2}(?:$|T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$)/u.test(value))return null;
+      if(value.length>10&&!Number.isFinite(Date.parse(value)))return null;
+      originalDates.push(value.slice(0,10));
+    }
   }
   // Some official pages publish a schema.org NewsArticle original issuance
   // clock instead of dcterms.issued. Use only the explicit datePublished,
@@ -81,4 +86,52 @@ export function canadaOriginalPublicationDay(
   if(ms<now-30*86_400_000)return null;
   note?.("within_30d");
   return day;
+}
+
+/** Private, finite topic from the SAME original article, never navigation,
+ * footer, related links or feed summary. Original date/title checks remain
+ * mandatory. No raw paragraph survives this function; no event outcome,
+ * economic impact or commercial entitlement is established. */
+export function canadaOriginalMineralsTopic(
+  html:string,articleUrl:string,originalTitle:string,now=Date.now(),
+):"critical-minerals policy"|"mineral exploration and production"|null {
+  if(!articleUrl.startsWith("https://www.canada.ca/en/natural-resources-canada/news/")||
+     !canadaOriginalPublicationDay(html,articleUrl,originalTitle,now))return null;
+  const main=/<main\b[^>]*>([\s\S]*?)<\/main>/iu.exec(html)?.[1]??"";
+  const start=/<div\b[^>]*\bid=["']news-release-container["'][^>]*>/iu.exec(main);
+  if(!start)return null;
+  const body=main.slice(start.index+start[0].length).split(/<div\b[^>]*\bclass=["']news-tags\b/iu)[0];
+  // Tokenize rather than removing HTML blocks with regex. In particular,
+  // HTML permits closing tags such as </script >; hidden paragraphs must
+  // never become minerals evidence. Nothing here is an HTML sanitizer.
+  const hidden:string[]=[];
+  let paragraph:string[]|null=null;
+  for(const token of body.match(/<[^>]*>|[^<]+/gu)??[]){
+    if(!token.startsWith("<")){
+      if(!hidden.length&&paragraph)paragraph.push(token);
+      continue;
+    }
+    const tag=/^<\s*(\/)?\s*([a-z][a-z0-9:-]*)\b[^>]*>$/iu.exec(token);
+    if(!tag)continue;
+    const name=tag[2].toLowerCase();
+    if(hidden.length){
+      if(tag[1]&&name===hidden[hidden.length-1])hidden.pop();
+      else if(!tag[1]&&name===hidden[hidden.length-1])hidden.push(name);
+      continue;
+    }
+    if(!tag[1]&&["script","style","template","nav","aside","footer"].includes(name)){
+      hidden.push(name);continue;
+    }
+    if(name!=="p")continue;
+    if(!tag[1]){paragraph=[];continue;}
+    if(!paragraph)continue;
+    const text=visiblePublisherText(paragraph.join(" "));
+    paragraph=null;
+    if(text.length>6000)continue;
+    if(/\b(?:critical minerals?|critical raw materials?|minerals? supply chains?|battery minerals?)\b/iu.test(text))
+      return "critical-minerals policy";
+    if(/\b(?:mining value chain|mineral exploration|mineral production)\b/iu.test(text))
+      return "mineral exploration and production";
+  }
+  return null;
 }

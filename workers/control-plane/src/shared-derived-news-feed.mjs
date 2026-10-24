@@ -20,7 +20,7 @@ const contractPage=(value,offset)=>value?.ok===true &&
   typeof value.has_more==="boolean" && Array.isArray(value.signals) &&
   value.signals.length<=250;
 
-export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(),now=Date.now()){
+export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(),now=Date.now(),projection="source_neutral"){
   if(!env?.DB||!Number.isFinite(now))
     return reply({ok:false,error:"SHARED_NEWS_D1_UNAVAILABLE",chargeable:false},503);
   if([...query.keys()].some(k=>k!=="domain") ||
@@ -50,7 +50,7 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
         throw Error("SHARED_NEWS_INVALID_CURSOR");
     }
     if(!complete)throw Error("SHARED_NEWS_INCOMPLETE");
-    const all=buildDerivedNewsStructural(signals,now);
+    const all=buildDerivedNewsStructural(signals,now,projection);
     const producerChecks=await getNewsProducerChecks(env,now);
     const qualified=Object.fromEntries(CATEGORIES.map(c=>[
       c,all.filter(row=>row.category===c && row.qualifying_topic_release_verified).length
@@ -87,9 +87,11 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
         observed_derived_records_72h:matching.length,
         journal_derived_records_72h:observed[c],
         journal_credit_required_records_72h:creditHeld[c],
-        withheld_from_source_neutral_view_72h:held,
+        withheld_from_source_neutral_view_72h:projection==="source_neutral"?held:creditHeld[c],
+        withheld_from_selected_projection_72h:held,
+        attributed_research_records_72h:matching.filter(r=>r.attribution_required).length,
         no_qualified_release_explanation:matching.length>0?
-          "PUBLIC_ELIGIBLE_RELEASE_PRESENT":held>0?
+          (projection==="attributed_research"?"ATTRIBUTED_RESEARCH_RELEASE_PRESENT":"PUBLIC_ELIGIBLE_RELEASE_PRESENT"):held>0?
           "JOURNAL_RELEASE_REQUIRES_VISIBLE_SOURCE_CREDIT":
           status.current_source_check_verified&&status.original_candidates_examined>0?
           "OFFICIAL_CANDIDATES_OBSERVED_BUT_NONE_PASSED_RELEASE_RULES":
@@ -108,6 +110,9 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
     return reply({
       ok:true,schema:"geomacro.derived-news-structural-feed.v1",
       item_schema:NEWS_STRUCTURAL_SCHEMA,
+      projection,
+      attribution_must_be_preserved:projection==="attributed_research",
+      attribution_is_not_a_grant_of_source_rights:true,
       journal_origin:"SAME_D1_ROWS_AS_GEOMACRO_INTELLIGENCE",
       consumer_scope:"public_research_and_partner_pilot_evaluation_only",
       partner_resale_or_commercial_redistribution_authorized:false,

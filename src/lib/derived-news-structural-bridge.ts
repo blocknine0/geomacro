@@ -14,8 +14,38 @@ const EVENT_FAMILIES:Record<StatelessCategory,string>={
   macro:"macro_fx_development",
   rare_earth:"critical_minerals_development",
 };
+// Known first-party labels emitted by the bounded official collectors. This
+// preserves attribution for private factual research; it is NOT a source
+// licence, commercial rights certification or permission to reproduce articles.
+const RESEARCH_SOURCE_CREDITS=new Set<string>([
+  "Contains public sector information licensed under the Open Government Licence v3.0.",
+  "Statistics Canada",
+  "Natural Resources Canada",
+  "Global Affairs Canada",
+  "Eurostat",
+  "U.S. Energy Information Administration",
+  "Bank for International Settlements",
+  "Federal Reserve Board",
+  "European Central Bank",
+  "European Commission",
+  "Bank of Japan",
+  "Bank of Canada",
+  "New Zealand Government (Beehive)",
+  "WTO news",
+  "United Nations Office at Geneva",
+  "United Nations",
+  "UN News",
+  "Province of British Columbia",
+  "U.S. Department of Energy",
+  "U.S. Department of Energy; first-party U.S. government original; external materials still require individual rights review.",
+  "International Energy Agency",
+  "© European Union, 2026. Source attribution required."
+]);
 export type DerivedNewsStructural={
   schema:typeof NEWS_STRUCTURAL_SCHEMA;
+  sources_credited?:readonly string[];
+  attribution_required?:true;
+  attribution_notices?:readonly string[];
   id:string;category:StatelessCategory;
   event_family:string;development_type:string;topic:string;
   original_published_at:string;date_precision:"day"|"exact";
@@ -33,8 +63,10 @@ export type DerivedNewsStructural={
 };
 export function buildDerivedNewsStructural(
   signals:readonly StatelessIntelligenceSignal[],now=Date.now(),
+  projection:"source_neutral"|"attributed_research"="source_neutral",
 ):DerivedNewsStructural[]{
-  if(!Number.isFinite(now)||!Array.isArray(signals)||signals.length>600)
+  if(!Number.isFinite(now)||!Array.isArray(signals)||signals.length>600||
+     !["source_neutral","attributed_research"].includes(projection))
     throw Error("DERIVED_NEWS_STRUCTURAL_INPUT_INVALID");
   const seen=new Map<string,string>();
   const rows:DerivedNewsStructural[]=[];
@@ -43,9 +75,11 @@ export function buildDerivedNewsStructural(
        !verifyDerivedStory(signal,now))continue;
     const at=Date.parse(signal.published_at);
     if(!Number.isFinite(at)||at>now||at<now-HOURS_72)continue;
-    // Source credit in a hidden-source commercial/free API cannot fulfill an
-    // attribution obligation. Keep that event in the private intake only.
-    if(signal.sources_credited.length!==0)continue;
+    // The source-neutral view cannot fulfill required attribution. Only the
+    // authenticated research projection carries known source notices visibly.
+    if(signal.sources_credited.length!==0 &&
+       (projection!=="attributed_research" ||
+        !signal.sources_credited.every(c=>RESEARCH_SOURCE_CREDITS.has(c))))continue;
     const canonical=JSON.stringify(signal);
     const previous=seen.get(signal.id);
     if(previous!==undefined){
@@ -56,6 +90,14 @@ export function buildDerivedNewsStructural(
     const candidateOnly=signal.status==="official_feed_candidate_unscored";
     rows.push(Object.freeze({
       schema:NEWS_STRUCTURAL_SCHEMA,id:signal.id,category:signal.category,
+      ...(signal.sources_credited.length?{
+        sources_credited:Object.freeze([...signal.sources_credited]),attribution_required:true as const,
+        attribution_notices:Object.freeze(signal.sources_credited.map(c=>c==="Statistics Canada"?
+          "Adapted from Statistics Canada, The Daily, "+signal.published_at.slice(0,10)+
+          ". This does not constitute an endorsement by Statistics Canada of this product.":
+          c==="Contains public sector information licensed under the Open Government Licence v3.0."?
+          c+" https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/":c)),
+      }:{}),
       event_family:EVENT_FAMILIES[signal.category],
       development_type:signal.development_type,topic:signal.topic,
       original_published_at:signal.published_at,date_precision:signal.date_precision,

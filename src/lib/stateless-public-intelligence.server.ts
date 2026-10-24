@@ -7,7 +7,7 @@ import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,ieaMineralsIndexC
  * Uses a bounded first-party release metadata read, not a paid x402 scorer.
  */
 import {
-  deriveStatelessSignals, originalPublicationMs, parseFirstPartyFeed, STATELESS_WEBSITE_DELAY_MS, STATELESS_LOOKBACK_MS,
+  deriveStatelessSignals, topicForOriginal, originalPublicationMs, parseFirstPartyFeed, STATELESS_WEBSITE_DELAY_MS, STATELESS_LOOKBACK_MS,
   type StatelessCategory, type StatelessSourceCandidate,
   type StatelessSourceSpec, type StatelessIntelligenceSignal,
 } from "./stateless-intelligence-model";
@@ -15,7 +15,7 @@ import { euCommissionTopOriginalCandidates } from "./stateless-eu-original-index
 import { australianNewsIndexCandidates, australianArticleMatchesOriginal } from "./stateless-australian-geoscience-original.server";
 import { australianResourcesIndexCandidates, verifyAustralianResourcesOriginalArticle } from "./stateless-au-resources-original.server";
 import { readPibMinesOriginalCandidates } from "./stateless-pib-mines-original.server";
-import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
+import { canadaOriginalPublicationDay, canadaOriginalMineralsTopic } from "./stateless-canada-original.server";
 import { verifiedStatcanOriginalReleaseDay } from "./stateless-statcan-original.server";
 
 const OGL_CREDIT = "Contains public sector information licensed under the Open Government Licence v3.0.";
@@ -298,8 +298,13 @@ async function readCanadaNewsOriginalDay(candidate: {
     const day=canadaOriginalPublicationDay(html,candidate.articleUrl,candidate.title,now, note);
     if(!day)return null;
     note?.("original_ok");
+    const originalBodyTopic=source.id==="nrcan_releases"?
+      canadaOriginalMineralsTopic(html,candidate.articleUrl,candidate.title,now)??undefined:undefined;
+    if(source.id==="nrcan_releases" && !originalBodyTopic &&
+       !topicForOriginal(candidate.title,source.category,source.id,true))return null;
     return {sourceId:source.id,category:source.category,title:candidate.title,
       articleUrl:candidate.articleUrl,publishedAt:day,datePrecision:"day",
+      ...(originalBodyTopic?{originalBodyTopic}:{}),
       credit:source.credit};
   }catch{return null}
 }

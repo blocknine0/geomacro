@@ -39,6 +39,7 @@ on:
       - "src/lib/automated-intelligence-input.ts"
       - "src/lib/stateless-intelligence-model.ts"
       - "src/lib/stateless-public-intelligence.server.ts"
+      - "src/lib/stateless-canada-original.server.ts"
       - "src/lib/stateless-pib-mines-original.server.ts"
       - "workers/control-plane/src/website-derived-intelligence.mjs"
       - "src/lib/automated-finds*"

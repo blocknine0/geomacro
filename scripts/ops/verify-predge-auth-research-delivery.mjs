@@ -3,6 +3,7 @@
 // after wrangler secret put, which creates its own edge deployment revision.
 // Retry only bounded propagation races; never claim a grant without live proof.
 // No tokens, response bodies, original data, market context or URLs in logs.
+import {readPredgeJournal,predgeJournalParity} from './predge-research-journal-parity.mjs';
 import {createHmac} from "node:crypto";
 const origin=String(process.env.CONTROL_PLANE_URL??"").replace(/\/$/u,"");
 const token=process.env.PREDGE_RESEARCH_NEWS_TOKEN;
@@ -56,11 +57,9 @@ async function verifyOnce(configured,oldBearer){
     a?.daily_utc_request_hard_cap!==500||
     a?.distributed_rate_governor!=="ATOMIC_CLOUDFLARE_D1_FAIL_CLOSED"||
     a?.chargeable!==false)return {ok:false,reason:"AUTH_CONTRACT_MISMATCH"};
- if(!Array.isArray(a?.items)||!Array.isArray(p?.items)||
-    JSON.stringify(a.items)!==JSON.stringify(p.items))
+ const journal=await readPredgeJournal(get);
+ if(!predgeJournalParity(a,p,journal))
   return {ok:false,reason:"ITEM_PARITY_MISMATCH"};
- if(JSON.stringify(a.counts)!==JSON.stringify(p.counts))
-  return {ok:false,reason:"COUNT_PARITY_MISMATCH"};
  return {ok:true,disabled:false,items:a.items.length,counts:a.counts};
 }
 try{
@@ -90,7 +89,8 @@ try{
   console.log(JSON.stringify({schema:"geomacro.predge-auth-live-acceptance.v1",
    authenticated_research_delivery_verified:true,
    anonymous_denied:true,old_emailed_bearer_denied:true,
-   exact_same_public_eligible_items_verified:true,
+   same_d1_journal_projection_verified:true,
+   required_source_attribution_preserved:true,
    items:verdict.items,counts:verdict.counts,
    individual_item_approval_needed:false,
    commercial_resale_authorized:false,source_licensing_waived:false,
