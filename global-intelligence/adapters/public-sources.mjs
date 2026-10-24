@@ -1,4 +1,6 @@
 import { getJson } from "./http.mjs";
+import {fetchGdacsNativeCountry,inspectGdacsCountryNative} from "./gdacs-native-country.mjs";
+import {gdacsOfficialEqRssCountryFallback} from "./gdacs-official-eq-rss.mjs";
 
 async function fetchText(url, headers={}) {
   // Daily free-source monitoring must never download unlimited csv/xml pages
@@ -35,6 +37,47 @@ async function fetchText(url, headers={}) {
 }
 async function fetchJson(url, headers={}) { return getJson(url,{headers}); }
 
+
+/**
+ * Public read-only GDACS health: use its already registered 7-day, three-event
+ * native GeoJSON page instead of the older 12-month 15-second heavy query.
+ * Reuse the same issuer's existing RSS transport on a narrowly identified
+ * transient timeout or server 5xx. A same-publisher RSS is NOT independent
+ * corroboration, legal clearance, a news publisher clock or country impact.
+ */
+export async function probeGdacsPublic({fetchImpl=fetch,now=new Date()}={}){
+ if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
+  throw Error("GDACS_CLOCK_INVALID");
+ let proof;
+ try{
+  proof=await fetchGdacsNativeCountry({fetchImpl,now});
+ }catch(error){
+  const code=String(error?.message??"");
+  const transient=error?.name==="TimeoutError"||error?.name==="AbortError"||
+   /^GDACS_HTTP_(?:500|502|503|504)$/u.test(code);
+  if(!transient)throw Error(
+   /^GDACS_[A-Z0-9_]+$/u.test(code)?code:"GDACS_PRIMARY_UNVERIFIED");
+  // At most one additional bounded GET, on the same already approved
+  // GDACS publisher family. No retry of denied 401/403/429 or schema errors.
+  const rss=await gdacsOfficialEqRssCountryFallback({fetchImpl,now});
+  proof={...inspectGdacsCountryNative(rss),same_publisher_24h_rss_used:true};
+ }
+ if(proof?.schema!=="geomacro.gdacs-native-event-attribution.v1"||
+  !Number.isSafeInteger(proof.event_count)||proof.event_count<0||
+  !Number.isSafeInteger(proof.native_country_identifiers)||
+  proof.native_country_identifiers<0||
+  proof.all_affected_countries_verified!==false||
+  proof.native_release_clock_verified!==false||
+  proof.commercial_paid_eligible!==false||
+  proof.verified_current_geopolitical_events!==0||
+  proof.raw_upstream_payload_stored!==false)
+  throw Error("GDACS_HEALTH_CONTRACT_INVALID");
+ return {source_id:"gdacs_global_disasters",observations:proof.event_count,
+  same_publisher_rss_fallback:proof.same_publisher_24h_rss_used===true,
+  discovery_only:true,original_publication_verified:false,
+  verified_geopolitical_events:0,commercial_rights_verified:false};
+}
+
 export const publicSources={
   ecb:async()=>{const body=await fetchText("https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?startPeriod=2025-01-01&endPeriod=2025-01-03&format=csvdata");if(!body.includes("TIME_PERIOD"))throw new Error("ECB response missing TIME_PERIOD");return{source_id:"ecb",observations:Math.max(0,body.trim().split("\n").length-1)};},
   imf:async()=>{
@@ -67,7 +110,7 @@ export const publicSources={
   },
   bis:async()=>{const body=await fetchText("https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0/M.US?format=csvfile");if(!body.includes("TIME_PERIOD")||!body.includes("OBS_VALUE"))throw new Error("BIS policy-rate CSV missing observations");return{source_id:"bis_statistics",observations:Math.max(0,body.trim().split("\n").length-1)};},
   eurostat:async()=>{const data=await fetchJson("https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/namq_10_gdp?geo=DE&na_item=B1GQ&unit=CP_MEUR&sinceTimePeriod=2020");if(!data?.id?.length||data.value==null)throw new Error("Eurostat response missing observations");return{source_id:"eurostat",observations:Array.isArray(data.value)?data.value.length:Object.keys(data.value).length};},
-  gdacs:async()=>{const data=await fetchJson("https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?eventlist=EQ&fromdate=2026-01-01&todate=2026-12-31");const collection=data?.features??data?.events??data;if(!collection||(Array.isArray(collection)&&!collection.length))throw new Error("GDACS returned no event collection");return{source_id:"gdacs_global_disasters",observations:Array.isArray(collection)?collection.length:1};},
+  gdacs:async()=>probeGdacsPublic(),
   comtrade:async()=>{const data=await fetchJson("https://comtradeapi.un.org/public/v1/preview/C/A/HS?flowCode=X&reporterCode=156&period=2023&cmdCode=3304&partnerCode=0&maxRecords=5");const rows=data?.data;if(!Array.isArray(rows)||!rows.length)throw new Error("UN Comtrade returned no rows");return{source_id:"un_comtrade",observations:rows.length};},
   faostat:async()=>{const body=await fetchText("https://nsi-release-ro-statsuite.fao.org/rest/data/FAO,DF_SDG_ALL_INDICATORS,1.0/A.SN_ITK_DEFC..........?startPeriod=2023&dimensionAtObservation=AllDimensions");if(body.length<20)throw new Error("FAOSTAT response too short");return{source_id:"faostat_global",observations:1};},
   ilostat:async()=>{const body=await fetchText("https://rplumber.ilo.org/data/indicator/?id=EMP_TEMP_SEX_AGE_NB_A&ref_area=USA&timefrom=2024&timeto=2024");if(body.length<20)throw new Error("ILOSTAT response too short");return{source_id:"ilostat_global",observations:1};},
