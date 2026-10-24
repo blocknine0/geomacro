@@ -77,13 +77,6 @@ export function exactTelegramExportCountry(text,countryCodes,registry=[]){
  }
  return labels.size===1?[...labels][0]:null;
 }
-function classify(s){");
-     const re=new RegExp("(?<![\\p{L}\\p{N}])"+escaped+"(?![\\p{L}\\p{N}])","iu");
-     if(re.test(text)){labels.add(row.iso3);break}
-   }
- }
- return labels.size===1?[...labels][0]:null;
-}
 function classify(s){
  const mineral=hasExplicitCriticalMineralsDomainAnchor(s);
  const political=POLITICS.test(s);
