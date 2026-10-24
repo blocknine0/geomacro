@@ -828,17 +828,11 @@ export const FIVE_MINUTE_NEWS_FALLBACK=Object.freeze([
 export const FASTLANE_MAX_FALLBACK_READS_PER_RUN=3 as const;
 // Reuse existing original publishers, one alternative per quiet domain.
 export const FIVE_MINUTE_NEWS_FALLBACK_ROTATION=Object.freeze({
- // One source per quiet category per 5-minute tick. Expand geographic and
- // issuer diversity within the existing three-read ceiling. The EU Council,
- // UN News and NZ Beehive readers already have separate bounded issuer paths,
- // native-clock parsing and source acknowledgement rules; this is *not* a
- // general-purpose crawler, rights grant or same-event corroboration.
- geopolitics:["canada_foreign_statements","ungeneva_press_global",
-   "eu_council_press_original","nz_beehive_geopolitics"],
- macro:["bis_press","govuk_global_economy","boj_press_global",
-   "un_news_economy","nz_beehive_macro"],
- rare_earth:["uk_dbt","govuk_global_minerals","iea_minerals_global",
-   "un_news_minerals","nz_beehive_minerals"],
+ // Existing official first-party alternatives, each distinct from EVERY
+ // primary in its own category. Do not double-poll newly promoted primaries.
+ geopolitics:["canada_foreign_statements","ungeneva_press_global"],
+ macro:["bis_press","boj_press_global","un_news_economy"],
+ rare_earth:["uk_dbt","iea_minerals_global","un_news_minerals"],
 } as const);
 export function selectFiveMinuteFallback(category:keyof typeof FIVE_MINUTE_NEWS_FALLBACK_ROTATION,now:number){
  if(!Number.isFinite(now)||!Object.hasOwn(FIVE_MINUTE_NEWS_FALLBACK_ROTATION,category))
