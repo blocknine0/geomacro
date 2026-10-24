@@ -79,3 +79,14 @@ test("no first-party EQ releases keeps zero, never invents fresh politics",async
  assert.equal(r.verified_geopolitical_events,0);
  assert.equal(r.commercial_rights_verified,false);
 });
+
+test("failed GDACS second-hop RSS never launches a third request from the public reader",async()=>{
+ const now=new Date("2026-10-24T09:00:00Z");
+ let calls=0;
+ await assert.rejects(probeGdacsPublic({now,fetchImpl:async()=>{
+  calls++;
+  if(calls===1)throw new DOMException("timeout first","TimeoutError");
+  return new Response("<html>not-an-rss</html>");
+ }}),/GDACS_RSS_SHAPE_INVALID/);
+ assert.equal(calls,2);
+});
