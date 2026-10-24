@@ -94,8 +94,8 @@ export function assessOwnerTelegramExportIntelligenceQuery(input:{
   source_rights_verified:false,independent_original_verified:false,
  };
 }
-export function safeOwnerTelegramExportCustomerClaim(candidate:TelegramExportCandidate){
- if(!validRow(candidate,Date.now()))throw Error("TELEGRAM_EXPORT_PAID_BOUNDARY_INVALID");
+export function safeOwnerTelegramExportCustomerClaim(candidate:TelegramExportCandidate,now=Date.now()){
+ if(!validRow(candidate,now))throw Error("TELEGRAM_EXPORT_PAID_BOUNDARY_INVALID");
  // Keep ONLY allowlisted, authored fields; no channel handle/post ID/raw
  // content, URLs, internal hashes, sender, media or underlying private record.
  return {
