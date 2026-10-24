@@ -136,6 +136,8 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(pub).toContain("report.healthy_feed_count<1");
    expect(pub).toContain("report.feed_count>expectedOrigins+1");
    expect(pub).toContain("conditional_fallback_attempted:report.feed_count>expectedOrigins");
+   expect(pub).toContain("primary_publisher_status:report.primary_publisher_status??[]");
+   expect(pub).toContain("fallback_publisher_status:report.fallback_publisher_status??[]");
    expect(pub).toContain("fallback_for_primary_outage_or_no_recent_release:true");
    expect(pub).toContain("const baseline=await fetchAllDerivedNews(fetch,runAt)");
    expect(pub).toContain("!existingIds.has(s.id)");
@@ -195,6 +197,9 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(macro.primary_healthy_feed_count).toBe(6);
    expect(macro.healthy_feed_count).toBe(7);
    expect(macro.fallback_reason).toBe("NO_RECENT_QUALIFYING_PRIMARY_RELEASE");
+   expect(macro.primary_publisher_status).toHaveLength(6);
+   expect(macro.primary_publisher_status?.every(x=>x.reachable&&x.recent_release_count===0)).toBe(true);
+   expect(macro.fallback_publisher_status).toEqual([{id:"bis_press",reachable:true,native_candidate_count:1}]);
    expect(macro.signals[0].published_at).toBe(new Date(now-20*60_000).toISOString());
    expect(JSON.stringify(reports)).not.toContain("https://");
  });
@@ -213,6 +218,11 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(reports.every(r=>r.status==="no_eligible_original_releases"&&r.signals.length===0)).toBe(true);
    expect(reports.every(r=>r.healthy_feed_count===r.primary_healthy_feed_count)).toBe(true);
    expect(reports.every(r=>r.fallback_reason==="NO_RECENT_QUALIFYING_PRIMARY_RELEASE")).toBe(true);
+   expect(reports.every(r=>r.primary_publisher_status?.length===
+     FIVE_MINUTE_NEWS_FASTLANE.filter(p=>p.category===r.category).length)).toBe(true);
+   expect(reports.every(r=>r.fallback_publisher_status?.length===1 &&
+     r.fallback_publisher_status[0].reachable===false)).toBe(true);
+   expect(JSON.stringify(reports)).not.toContain("https://");
  });
  it("rotates remaining distinct official origins across quiet categories with one alternative each",async()=>{
    const additions={

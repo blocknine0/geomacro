@@ -703,6 +703,9 @@ export type StatelessIntelligenceResult = {
   healthy_feed_count: number;
   primary_healthy_feed_count?:number;
   recent_primary_release_count?:number;
+  // Safe issuer-ID-only diagnostic; no article URL/title/bytes or secrets.
+  primary_publisher_status?:Array<{id:string;reachable:boolean;native_candidate_count:number;recent_release_count:number}>;
+  fallback_publisher_status?:Array<{id:string;reachable:boolean;native_candidate_count:number}>;
   fallback_reason?:"PRIMARY_TRANSPORT_UNAVAILABLE"|"NO_RECENT_QUALIFYING_PRIMARY_RELEASE"|null;
   current_24h_count: number;
   last_7d_count: number;
@@ -888,6 +891,14 @@ export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20,
  // healthy primary down, widening clocks, or adding an unbounded search.
  const primaryHealth=selected.map((p,i)=>({category:p.category,healthy:batches[i].healthy,
    recent_releases:recentFastlaneReleaseCount(batches[i].candidates,now,maxSignals)}));
+ // The existing aggregate 4/5,5/6,4/5 production receipt cannot identify
+ // which issuer needs a free substitute. Emit PUBLIC allowlist IDs and counts
+ // only; never return private original article URLs or issuer headline text.
+ const primaryPublisherStatus=selected.map((p,i)=>({
+   category:p.category,id:p.source.id,reachable:batches[i].healthy,
+   native_candidate_count:batches[i].candidates.length,
+   recent_release_count:primaryHealth[i].recent_releases,
+ }));
  const fallbackCategories=decideFiveMinuteFallbackCategories(
    primaryHealth);
  const fallbackSelected=fallbackCategories.map(category=>{
@@ -924,6 +935,12 @@ export async function readFiveMinuteNewsFastlane(now=Date.now(),maxSignals=20,
      primary_healthy_feed_count:primaryHealth.filter(p=>p.category===category&&p.healthy).length,
      recent_primary_release_count:primaryHealth.filter(p=>p.category===category)
        .reduce((n,p)=>n+p.recent_releases,0),
+     primary_publisher_status:primaryPublisherStatus.filter(p=>p.category===category)
+       .map(({id,reachable,native_candidate_count,recent_release_count})=>
+         ({id,reachable,native_candidate_count,recent_release_count})),
+     fallback_publisher_status:fallbackSelected.flatMap((p,i)=>p.category===category?
+       [{id:p.source.id,reachable:fallbackBatches[i].healthy,
+         native_candidate_count:fallbackBatches[i].candidates.length}]:[]),
      fallback_reason:fallbackCategories.includes(category)?
        primaryHealth.some(p=>p.category===category&&p.healthy)?
          "NO_RECENT_QUALIFYING_PRIMARY_RELEASE":"PRIMARY_TRANSPORT_UNAVAILABLE":null,
