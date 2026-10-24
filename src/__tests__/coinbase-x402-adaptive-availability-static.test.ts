@@ -22,6 +22,19 @@ describe("Coinbase x402 adaptive availability boundary", () => {
     expect(sanitize).not.toContain("source_contracts: result.source_contracts");
   });
 
+  it("checks real qualified data before the locked payment rail and keeps failed config non-chargeable", () => {
+    const qualified = availabilityRoute.indexOf("const availability = await checkAgentQueryDeliverability");
+    const rail = availabilityRoute.indexOf("config = getCoinbaseX402Config()");
+    expect(qualified).toBeGreaterThan(0);
+    expect(rail).toBeGreaterThan(qualified);
+    expect(availabilityRoute).toContain("allowPublicDemoRequest(request");
+    expect(availabilityRoute).toContain('namespace: "coinbase-store-no-funds-readiness"');
+    expect(availabilityRoute).toContain("data_deliverable_without_payment: availability.deliverable");
+    expect(availabilityRoute).toContain("availability: dataStatus");
+    expect(availabilityRoute).toContain("payment_rail_ready: false");
+    expect(availabilityRoute).not.toContain("message: error instanceof Error ? error.message");
+  });
+
   it("never verifies or settles a payment on the availability endpoint", () => {
     expect(availabilityRoute).not.toContain("verifyCoinbaseX402");
     expect(availabilityRoute).not.toContain("settleCoinbaseX402");

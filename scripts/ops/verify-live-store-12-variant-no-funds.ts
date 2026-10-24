@@ -24,6 +24,7 @@ type Result = {
   stale_module_count: number;
   ineligible_source_count: number;
   price_match: boolean;
+  genuine_data_deliverable_without_payment: boolean | null;
 };
 function count(values: unknown) { return Array.isArray(values) ? values.length : 0; }
 function safeCode(raw: unknown) {
@@ -52,6 +53,7 @@ async function inspect(key: string, template: Record<string, unknown>): Promise<
     readiness: "UNAVAILABLE_OR_RUNTIME_LOCKED", reason_code: "UNREACHABLE",
     missing_module_count: 0, stale_module_count: 0,
     ineligible_source_count: 0, price_match: false,
+    genuine_data_deliverable_without_payment: null,
   };
   try {
     const response = await fetch(ENDPOINT, {
@@ -88,6 +90,8 @@ async function inspect(key: string, template: Record<string, unknown>): Promise<
       availability.code === "AVAILABLE" && safeBoundaries && priceMatch;
     return {
       ...base, price_match: priceMatch,
+      genuine_data_deliverable_without_payment: typeof data.data_deliverable_without_payment === "boolean" ?
+        data.data_deliverable_without_payment : (typeof availability.deliverable === "boolean" ? availability.deliverable : null),
       missing_module_count: count(availability.missing_modules),
       stale_module_count: count(availability.stale_modules),
       ineligible_source_count: Number.isSafeInteger(availability.ineligible_source_count) ?

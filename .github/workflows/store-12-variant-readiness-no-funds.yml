@@ -2,6 +2,12 @@ name: Store 12-Variant Live Readiness (No Funds)
 
 on:
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "src/routes/api.x402.risk_.availability.ts"
+      - "scripts/ops/verify-live-store-12-variant-no-funds.ts"
+      - ".github/workflows/store-12-variant-readiness-no-funds.yml"
 
 permissions:
   contents: read

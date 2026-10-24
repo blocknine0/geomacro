@@ -7,6 +7,7 @@ vi.mock('../lib/agent-query-deliverability.server',async(importOriginal)=>{
 });
 vi.mock('../lib/agent-query-external-modules.server',()=>({checkAgentQueryExternalModule:vi.fn()}));
 vi.mock('../lib/coinbase-x402.server',()=>({getCoinbaseX402Config:mocks.config}));
+vi.mock('../lib/public-demo-rate-limit.server',()=>({allowPublicDemoRequest:()=>true}));
 import {Route} from '../routes/api.x402.risk_.availability';
 import {buildAgentQueryPlan} from '../lib/agent-query-plan';
 const body={subjects:[{type:'country',country_iso3:'USA'}],topics:['critical_minerals'],
@@ -15,7 +16,7 @@ const plan=buildAgentQueryPlan(body);
 const good=()=>({deliverable:true,code:'AVAILABLE',query_plan_hash:plan.query_plan_hash,
  missing_modules:[],stale_modules:[],ineligible_source_ids:[],source_contracts:[{commercial_usage_status:'DERIVED_ONLY',attribution_required:false}],
  subjects:[{subject:plan.subjects[0],available_modules:plan.required_modules,latest_evidence_at:'2026-10-01T00:00:00Z'}]});
-async function call(){mocks.config.mockReturnValue({priceUsdc:'0.05',amountAtomic:'50000',asset:'0x'+'1'.repeat(40),network:'eip155:8453'});
+async function call(configure=true){if(configure)mocks.config.mockReturnValue({priceUsdc:'0.05',amountAtomic:'50000',asset:'0x'+'1'.repeat(40),network:'eip155:8453'});
  return (Route as any).options.server.handlers.POST({request:new Request('https://geomacro.live/api/x402/risk/availability',{
   method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})});}
 afterEach(()=>vi.clearAllMocks());
@@ -27,6 +28,22 @@ describe('legacy no-charge availability respects the canonical capability catalo
   expect(d.availability.source_contracts).toBeUndefined();
   expect(d.availability.ineligible_source_ids).toBeUndefined();
   expect(d.availability.ineligible_source_count).toBe(0);
+ });
+ it('reports genuine data status without selling or leaking details when mainnet Coinbase is locked',async()=>{
+  mocks.check.mockResolvedValue(good());
+  mocks.config.mockReturnValue(null);
+  const response=await call(false);
+  const result=await response.json();
+  expect(response.status).toBe(503);
+  expect(mocks.check).toHaveBeenCalledTimes(1);
+  expect(result.data_deliverable_without_payment).toBe(true);
+  expect(result.payment_rail_ready).toBe(false);
+  expect(result.chargeable).toBe(false);
+  expect(result.payment_required_now).toBe(false);
+  expect(result.execution_authorized).toBe(false);
+  expect(result.availability.deliverable).toBe(true);
+  expect(result.availability.source_contracts).toBeUndefined();
+  expect(result.error.code).toBe('COINBASE_X402_NOT_CONFIGURED');
  });
  it('does not advertise a price for unavailable or unbound evidence',async()=>{
   mocks.check.mockResolvedValue({...good(),deliverable:false,code:'INSUFFICIENT_COVERAGE'});
