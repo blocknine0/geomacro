@@ -7,12 +7,16 @@ on:
     branches: [main]
     paths:
       - "global-intelligence/adapters/public-reference-extraction.mjs"
+      - "global-intelligence/adapters/gdacs-native-country.mjs"
+      - "global-intelligence/adapters/gdacs-official-eq-rss.mjs"
       - "scripts/tests/public-reference-extraction.test.mjs"
       - "scripts/ops/record-public-reference-snapshot.mjs"
       - ".github/workflows/public-reference-extraction.yml"
   pull_request:
     paths:
       - "global-intelligence/adapters/public-reference-extraction.mjs"
+      - "global-intelligence/adapters/gdacs-native-country.mjs"
+      - "global-intelligence/adapters/gdacs-official-eq-rss.mjs"
       - "scripts/tests/public-reference-extraction.test.mjs"
       - "scripts/ops/record-public-reference-snapshot.mjs"
       - ".github/workflows/public-reference-extraction.yml"
@@ -38,7 +42,7 @@ jobs:
           set -euo pipefail
           node --check global-intelligence/adapters/public-reference-extraction.mjs
           node --check scripts/ops/record-public-reference-snapshot.mjs
-          node --test scripts/tests/public-reference-extraction.test.mjs
+          node --test scripts/tests/public-reference-extraction.test.mjs scripts/tests/gdacs-native-country.test.mjs scripts/tests/gdacs-official-eq-rss.test.mjs
 
   reference-public-probe:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
