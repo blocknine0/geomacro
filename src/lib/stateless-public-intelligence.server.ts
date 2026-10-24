@@ -785,26 +785,35 @@ export async function readStatelessWebsiteIntelligence(
 // delay, and Geomacro-authored text all come from the EXISTING canonical
 // first-party reader; do not construct a new license-agnostic news crawler.
 export const FIVE_MINUTE_NEWS_FASTLANE = Object.freeze([
-  // Genuine distinct originating publisher families where possible.
-  // Every source already has an approved origin host, original-page binding,
-  // its own date handling and a pinned category-specific topic gate.
+  // Distinct official issuer channels, strictly limited to source-native
+  // publication dates and source-owned original article URLs. A transport
+  // success cannot unlock payment/signatures/GRI or imply 195x3 coverage.
   {category:"geopolitics",id:"un_news"},
   {category:"geopolitics",id:"uk_fcdo"},
-  // UN Press directly publishes Security Council and diplomatic statements;
-  // this complements UN News but is the same UN organization, not independent
-  // same-event corroboration.
   {category:"geopolitics",id:"un_press_global"},
+  // EU Council: issuer-original EU Council policy and foreign affairs releases.
+  // Individual third-party copyright exceptions remain excluded from reuse.
+  {category:"geopolitics",id:"eu_council_press_original"},
+  // New Zealand Government Ministers: Crown-authored Beehive source, not a
+  // mirror of a newspaper and never a duplicate independent corroborator.
+  {category:"geopolitics",id:"nz_beehive_geopolitics"},
+
   {category:"macro",id:"fed_press"},
   {category:"macro",id:"wto_trade_original_rss"},
   {category:"macro",id:"ecb_press"},
-  // Existing vetted Bank of Canada RSS1.0/RDF original-date parser.
   {category:"macro",id:"boc_press_global"},
+  {category:"macro",id:"nz_beehive_macro"},
+  // GOV.UK Search API is discovery only; every UK release must separately
+  // resolve its originating page and Content API first_published_at.
+  {category:"macro",id:"govuk_global_economy"},
+
   {category:"rare_earth",id:"nrcan_releases"},
   {category:"rare_earth",id:"us_doe_news_minerals"},
-  // British Columbia's provincial Mining and Critical Minerals release feed.
   {category:"rare_earth",id:"bc_minerals_global"},
+  {category:"rare_earth",id:"nz_beehive_minerals"},
+  {category:"rare_earth",id:"govuk_global_minerals"},
 ] as const);
-export const FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN=10 as const;
+export const FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN=16 as const;
 /**
  * Conditional first-party alternatives, only if EVERY primary issuer within
  * that category failed transport or has no qualifying recent release.
