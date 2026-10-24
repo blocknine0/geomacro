@@ -56,7 +56,8 @@ environment:
   `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` and
   `GEOMACRO_COMMERCE_LEDGER_TOKEN`.
 
-Each B2 private object must be named
+Each B2 private object can be the Telegram Desktop `result.json`
+file at `telegram/owner-exports/result.json` **or** named
 `telegram/owner-exports/<sha256-of-raw-json>.json`.
 No chat handles, original titles or usernames in object names.
 The job checks the filename hash against the actual object bytes.
