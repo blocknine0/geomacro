@@ -69,7 +69,7 @@ test("upstream bogus native shape never causes RSS fallback or qualified event",
  let count=0;
  await assert.rejects(probeGdacsPublic({now,fetchImpl:async()=>{
   count++;return Response.json({events:[{properties:{eventid:"BAD"}}]});
- }}),/GDACS_FEATURE_COLLECTION_INVALID|GDACS_HEALTH_CONTRACT_INVALID/);
+ }}),/GDACS_FEATURE_COLLECTION_INVALID|GDACS_EVENT_IDS_UNVERIFIED|GDACS_HEALTH_CONTRACT_INVALID/);
  assert.equal(count,1);
 });
 test("no first-party EQ releases keeps zero, never invents fresh politics",async()=>{
