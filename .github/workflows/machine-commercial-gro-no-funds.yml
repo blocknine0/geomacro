@@ -9,6 +9,9 @@ on:
       - "src/lib/geomacro-machine-commercial-qualification.server.test.ts"
       - "src/lib/geomacro-machine-research-gro.server.ts"
       - "scripts/ops/accept-private-geomacro-machine-commercial-gro.ts"
+      - "scripts/lib/automatic-private-commercial-news-batch.mjs"
+      - "scripts/lib/automatic-private-commercial-news-batch.test.mjs"
+      - "scripts/ops/process-automatic-private-commercial-news.ts"
       - "src/lib/geomacro-machine-commercial-operator.server.test.ts"
       - "src/lib/single-original-private-authority.server.ts"
       - "src/lib/single-original-private-authority.server.test.ts"
@@ -30,6 +33,9 @@ on:
       - "src/lib/geomacro-machine-commercial-qualification.server.test.ts"
       - ".github/workflows/machine-commercial-gro-no-funds.yml"
       - "scripts/ops/accept-private-geomacro-machine-commercial-gro.ts"
+      - "scripts/lib/automatic-private-commercial-news-batch.mjs"
+      - "scripts/lib/automatic-private-commercial-news-batch.test.mjs"
+      - "scripts/ops/process-automatic-private-commercial-news.ts"
       - "src/lib/geomacro-machine-commercial-operator.server.test.ts"
       - "src/lib/single-original-private-authority.server.ts"
       - "src/lib/single-original-private-authority.server.test.ts"
@@ -59,6 +65,14 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Dual-attestation, canonical GRO and negative source/rights tests
         run: bunx vitest run src/lib/geomacro-machine-commercial-qualification.server.test.ts src/lib/geomacro-machine-research-gro.server.test.ts src/lib/geomacro-machine-source-rights.server.test.ts src/lib/on-demand-qualified-country-risk.server.test.ts src/lib/geomacro-machine-commercial-operator.server.test.ts src/__tests__/signed-publication-recovery-preflight.test.ts src/lib/single-original-private-authority.server.test.ts src/lib/geomacro-owned-derived-output-license.server.test.ts
+      - name: Verify private automatic commercial intake refuses unsigned, duplicated or fake rights cases
+        run: |
+          node --check scripts/lib/automatic-private-commercial-news-batch.mjs
+          node --test scripts/lib/automatic-private-commercial-news-batch.test.mjs
+      - name: Compile unattended proof-gated commercial intake without secrets
+        run: |
+          bun build scripts/ops/process-automatic-private-commercial-news.ts --target=bun --outfile=/tmp/geomacro-automatic-private-commercial-news.js
+          test -s /tmp/geomacro-automatic-private-commercial-news.js
       - name: Compile private machine acceptance, without running or supplying secrets
         run: |
           bun build scripts/ops/accept-private-geomacro-machine-commercial-gro.ts --target=bun --outfile=/tmp/geomacro-machine-commercial-operator.js
