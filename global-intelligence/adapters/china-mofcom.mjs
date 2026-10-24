@@ -53,15 +53,18 @@ export function parseMofcomExportControlHtml(html, { observedAt = new Date().toI
 
     const id = match[1].match(/(?:id|article|content|info)[=_/-]([A-Za-z0-9_-]+)/i)?.[1]
       ?? Buffer.from(url).toString("base64url").slice(0, 24);
-    const issuedAt = dateFromText(context);
+    // A listing item's adjacent text (or page navigation/footer) may
+    // contain a calendar day, but it is NOT the article's first-published
+    // clock. Preserve it only as an unverified private contextual hint.
+    const listingDayHint = dateFromText(context);
     records.push(normalizeMofcomExportControl({
       id,
       title,
-      issuedAt,
+      issuedAt:null,
       url,
       commodity: /rare earth|稀土/i.test(title + " " + context) ? "Rare earths" : /tungsten|钨/i.test(title + " " + context) ? "Tungsten" : /lithium|锂/i.test(title + " " + context) ? "Lithium" : null,
       retrievedAt: observedAt,
-      raw: { title, url, issuedAt, context }
+      raw: { title, url, listingDayHint, context }
     }));
   }
 
@@ -80,7 +83,10 @@ export function normalizeMofcomExportControl({ id, title, issuedAt = null, url =
     category:"CRITICAL_MINERALS",
     country_iso3:"CHN",
     observed_at:retrievedAt,
-    published_at:issuedAt ? new Date(issuedAt).toISOString() : retrievedAt,
+    // Retrieval time must NEVER become the issuer's publication time.
+    // Explicitly supplied reviewed dates are distinct from HTML-index
+    // observations, which are now always null above.
+    published_at:issuedAt ? new Date(issuedAt).toISOString() : null,
     title:"China trade control: " + title,
     summary:"China Ministry of Commerce trade/export-control notice.",
     source_url:url,
