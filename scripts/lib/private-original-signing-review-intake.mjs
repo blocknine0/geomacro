@@ -2,6 +2,7 @@ import {ORIGINAL_VERIFICATION_WINDOW_MS} from "../../src/lib/original-verificati
 import {createHash} from "node:crypto";
 import {registeredOriginalPublisherOrganization} from "./independent-same-event-qualification.mjs";
 import {verifyGeomacroUnclaimedOriginalPage} from "./geomacro-original-page-readback.mjs";
+import {pinnedRbiPressReleaseLink} from "./rbi-official-macro-release.mjs";
 
 /**
  * Machine-signing preparation, NOT a machine signing authority. Genuine
@@ -71,7 +72,10 @@ export async function preparePrivateOriginalSigningReview({
   const publisher=registeredOriginalPublisherOrganization(uri.hostname);
   // URL pin and content hash are independently enforced AGAIN by readback.
   if(uri.protocol!=="https:"||uri.username||uri.password||uri.port||
-     uri.search||uri.hash||!publisher)continue;
+     (uri.search && !(candidate.domain==="macro" &&
+       publisher==="rbi" &&
+       pinnedRbiPressReleaseLink(candidate.article_url)===candidate.article_url))||
+     uri.hash||!publisher)continue;
   const at=Date.parse(candidate.page_original_published_at);
   if(!Number.isFinite(at)||at>clock||clock-at>MAX_AGE_MS||
      (source.source_native_feed_publication_date_verified===true&&
