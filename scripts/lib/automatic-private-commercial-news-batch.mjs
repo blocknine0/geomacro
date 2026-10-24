@@ -93,14 +93,15 @@ export async function processAutomaticPrivateCommercialNewsBatch({
    if(identities.has(unique)){
     summary.repeated_event_requests_rejected++;continue;
    }
-   identities.add(unique);
-   // Canonical, existing verifier remains sole signing decision authority.
-   // Its exception is swallowed here; an invalid candidate is NOT qualified.
+   // A malformed earlier candidate must not reserve an event forever and
+   // starve a later independently valid dual-attested request in this batch.
+   // Only successful canonical results reserve a unique event identity.
    const result=await qualify(record.input,record.out);
    if(result?.status!=="MACHINE_COMMERCIAL_SIGNED_PRIVATE_NO_FUNDS"||
       result.country_iso3!==country||result.category!==category||
       !/^[0-9a-f]{64}$/u.test(result.record_sha256??""))
      fail();
+   identities.add(unique);
    summary.newly_prepared_canonical_signed_gros++;
   }catch{
    summary.invalid_or_unverified_private_requests++;
