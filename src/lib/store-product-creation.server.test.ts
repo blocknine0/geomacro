@@ -60,7 +60,7 @@ function object(subject: any, asOf: string): any {
     integrity: { input_hash: "a".repeat(64), data_hash: "b".repeat(64), calculation_hash: "c".repeat(64), payload_hash: "d".repeat(64), signature_scheme: "Ed25519", signing_key_id: "synthetic-unit-key-not-production" } };
 }
 const rights = async (ids: string[]) => ({ eligible: true, ineligible_source_ids: [], results: ids.map(source_id => ({
-  source_id, commercial_usage_status: "DERIVED_ONLY", attribution_required: false, raw_redistribution_allowed: false, licence_name: "synthetic-test-only",
+  source_id, eligible: true, commercial_usage_status: "DERIVED_ONLY", attribution_required: false, raw_redistribution_allowed: false, licence_name: "synthetic-test-only",
 })) as any });
 function request(id: keyof typeof GEOMACRO_STORE_REQUEST_EXAMPLES): any {
   const value: any = structuredClone(GEOMACRO_STORE_REQUEST_EXAMPLES[id]);
