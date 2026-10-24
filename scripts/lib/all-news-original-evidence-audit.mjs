@@ -43,6 +43,12 @@ const REJECTION_CLASS=Object.freeze({
  ORIGINAL_CLOCK_CONFLICT:"NATIVE_CLOCK",
  ORIGINAL_HTML_HASH_CHANGED:"HASH_MISMATCH",
 });
+// Two safe, distinct first-party clock failures. No issuer identity,
+// article content, title, feed timestamp or source URL is serialized.
+const CLOCK_DETAIL=Object.freeze({
+ ORIGINAL_NATIVE_CLOCK_NOT_PROVEN:"ORIGINAL_METADATA_NOT_PROVEN",
+ ORIGINAL_CLOCK_CONFLICT:"FEED_PAGE_CLOCK_CONFLICT",
+});
 const CURRENT_MS=ORIGINAL_VERIFICATION_WINDOW_MS;
 const MAX_SIGNALS=600;
 const SAFE_ID=/^(?:geopolitics|macro|rare_earth)-[a-f0-9]{8}$/u;
@@ -119,6 +125,14 @@ export async function auditEveryDerivedNewsOriginal({
     if(cached){
       row.original_page_evidence_status=cached.status;
       row.exact_original_page_html_readback=cached.verified;
+      // A rejected proof may be shared by more than one distinct derived ID.
+      // Preserve its *bounded, redacted* rejection category in every row;
+      // otherwise the separate protected reviewer rejects the entire audit.
+      if(cached.status===STATUSES.REJECTED){
+       row.original_readback_failure_class=cached.failureClass;
+       if(cached.clockDetail)
+        row.original_readback_clock_detail=cached.clockDetail;
+      }
     }else if(rereadByCategory.get(signal.category)>=maxPerCategory||
        !bundle.admit(url.hostname)){
       row.original_page_evidence_status=STATUSES.QUOTA;
@@ -162,9 +176,13 @@ export async function auditEveryDerivedNewsOriginal({
        const code=typeof proof?.status==="string"?proof.status:"";
        row.original_readback_failure_class=
         REJECTION_CLASS[code]??"UNKNOWN_OR_UNTRUSTED_PROOF";
+       if(CLOCK_DETAIL[code])
+        row.original_readback_clock_detail=CLOCK_DETAIL[code];
       }
       row.exact_original_page_html_readback=verified;
-      proofCache.set(key,{status:row.original_page_evidence_status,verified});
+      proofCache.set(key,{status:row.original_page_evidence_status,verified,
+       failureClass:row.original_readback_failure_class??null,
+       clockDetail:row.original_readback_clock_detail??null});
     }
    }
   }
