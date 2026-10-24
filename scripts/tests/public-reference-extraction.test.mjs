@@ -176,3 +176,44 @@ test("malformed GDACS events are not reclassified as an empty healthy research s
  }),/GDACS_EVENT_IDS_UNVERIFIED/);
  assert.equal(calls,1);
 });
+
+const gdacsSameIssuerRss='<rss version="2.0" xmlns:gdacs="http://www.gdacs.org"><channel>'+
+ '<item><gdacs:eventtype>EQ</gdacs:eventtype><gdacs:eventid>123456</gdacs:eventid>'+
+ '<gdacs:country>India</gdacs:country><gdacs:iso3>IND</gdacs:iso3>'+
+ '<gdacs:fromdate>Sat, 24 Oct 2026 08:00:00 GMT</gdacs:fromdate>'+
+ '<geo:lat>19</geo:lat><geo:long>70</geo:long></item></channel></rss>';
+test("the research GDACS reference shares the public reader's one-time timeout recovery",async()=>{
+ const now=new Date("2026-10-24T09:00:00Z");
+ let calls=0;
+ const row=await readPublicReference("gdacs",{now,fetchImpl:async()=>{
+  calls++;
+  if(calls===1)throw new DOMException("PRIVATE_PROVIDER_ERROR_DO_NOT_LOG","TimeoutError");
+  return new Response(gdacsSameIssuerRss);
+ }});
+ assert.equal(calls,2);
+ assert.equal(row.source_record_count,1);
+ assert.equal(row.extra.same_publisher_rss_fallback,true);
+ assert.equal(row.country_iso3,null);
+ assert.equal(row.native_original_publication_proven,false);
+ assert.equal(row.commercial_rights_certified,false);
+ assert.doesNotMatch(JSON.stringify(row),/PRIVATE_PROVIDER_ERROR|123456|India|IND/);
+});
+test("research GDACS server 503 gets a single official RSS retry but denial never gets fallback",async()=>{
+ const now=new Date("2026-10-24T09:00:00Z");
+ let urls=[];
+ const row=await readPublicReference("gdacs",{now,fetchImpl:async u=>{
+  urls.push(u);
+  return urls.length===1?new Response("retry",{status:503}):
+   new Response(gdacsSameIssuerRss);
+ }});
+ assert.equal(row.source_record_count,1);
+ assert.equal(urls.length,2);
+ assert.equal(urls[1],"https://data.gdacs.org/xml/rss_eq_24h.xml");
+ for(const status of [403,429]){
+  urls=[];
+  await assert.rejects(readPublicReference("gdacs",{now,fetchImpl:async u=>{
+   urls.push(u);return new Response("denied",{status});
+  }}),new RegExp("GDACS_HTTP_"+status));
+  assert.equal(urls.length,1);
+ }
+});
