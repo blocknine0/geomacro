@@ -30,7 +30,13 @@ for(const group of groups){
     headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
     body:JSON.stringify(group),signal:AbortSignal.timeout(15000),
   });
-  if(reply.status!==200)throw Error("REUSABLE_SOURCE_NEWS_D1_WRITE_HTTP_"+reply.status);
+  if(reply.status!==200){
+    const data=await reply.json().catch(()=>null);
+    const diagnostic=typeof data?.error==="string"&&
+      /^REUSABLE_SOURCE_NEWS_[A-Z_]{3,72}$/u.test(data.error)?
+        data.error:"REUSABLE_SOURCE_NEWS_NO_SAFE_DIAGNOSTIC";
+    throw Error("REUSABLE_SOURCE_NEWS_D1_WRITE_HTTP_"+reply.status+"_"+diagnostic);
+  }
   const body=await reply.json();
   if(body.ok!==true||body.d1_readback_verified!==true||
      body.accepted+body.capacity_excluded!==group.items.length||
