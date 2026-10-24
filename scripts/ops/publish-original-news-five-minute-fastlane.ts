@@ -75,6 +75,9 @@ for(const category of categories){
    fallback_reason:report.fallback_reason??null,
    primary_publishers_reachable:report.primary_healthy_feed_count??0,
    recent_qualifying_primary_releases:report.recent_primary_release_count??0,
+   // Allowlisted source IDs expose the exact broken origin, never source URLs.
+   primary_publisher_status:report.primary_publisher_status??[],
+   fallback_publisher_status:report.fallback_publisher_status??[],
    fallback_source_reachable:report.feed_count>expectedOrigins&&
      report.healthy_feed_count>(report.primary_healthy_feed_count??0),
    no_extra_reads_when_recent_primary_release_available:report.feed_count===expectedOrigins,
