@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, Clock3, Radio } from "lucide-react";
 import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
 import { findCardFromObservedRelease,type FindCardV1 } from "@/lib/find-card-v1";
-import { selectHomepageFreeFind,homeFindsPulse,parseHomepageFindsFeed,mergeHomepageFindCards } from "@/lib/homepage-free-finds";
+import { selectHomepageFreeFind,homeFindsPulse,parseHomepageFindsFeed,mergeHomepageFindCards,publicHomeFindCopy } from "@/lib/homepage-free-finds";
 
 const DOMAINS: Record<string, string> = {
   geopolitics: "Geopolitical",
@@ -63,6 +63,7 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
   const winner=selectHomepageFreeFind(cards);
   const pulse=homeFindsPulse(cards);
   const card=winner?.card;
+  const display=card?publicHomeFindCopy(card):null;
 
   return (
     <div className="relative mx-auto w-full min-w-0 max-w-xl lg:mx-0 lg:max-w-none">
@@ -79,9 +80,9 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
         {card&&winner?(
           <div className="mt-5">
             <h2 className="max-w-[34rem] text-[clamp(1.25rem,2vw,1.7rem)] font-semibold leading-snug tracking-[-0.025em]">
-              {card.headline}
+              {display?.headline}
             </h2>
-            <p className="mt-3 max-w-[34rem] text-sm leading-6 text-muted-foreground">{card.what_changed}</p>
+            <p className="mt-3 max-w-[34rem] text-sm leading-6 text-muted-foreground">{display?.what_changed}</p>
             {card.detail_state==="LIMITED" ? <p className="mt-2 text-xs font-medium text-muted-foreground">Release observed · specific details pending</p> : null}
             <p className="mt-3 max-w-[34rem] text-sm leading-6 text-muted-foreground">
               <span className="font-semibold text-foreground">Why it matters: </span>{card.why_it_matters}
