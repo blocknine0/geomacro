@@ -5,6 +5,7 @@ import { checkAgentQueryDeliverability, publicAgentQueryAvailability } from "../
 import { checkAgentQueryExternalModule } from "../lib/agent-query-external-modules.server";
 import { getCoinbaseX402Config } from "../lib/coinbase-x402.server";
 import {resolveEligibleCoinbaseCapabilityConfig} from "../lib/verified-capability-coinbase-binding.server";
+import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 
 const MAX_BODY_BYTES = 16 * 1024;
 
@@ -51,35 +52,49 @@ export const Route = createFileRoute("/api/x402/risk/availability")({
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       POST: async ({ request }) => {
         try {
+          // No funds, and no secrets: identify the *actual data* blocker even
+          // while the Coinbase/mainnet commercial ACK deliberately stays OFF.
+          // Query-specific public availability remains rate-limited to
+          // protect the free source and D1/B2 budgets.
+          if (!allowPublicDemoRequest(request, {
+            namespace: "coinbase-store-no-funds-readiness",
+            windowMs: 60_000, maxPerClient: 3, maxGlobal: 24,
+          })) {
+            return json({ ok: false, chargeable: false, payment_required_now: false,
+              error: { code: "AVAILABILITY_RATE_LIMITED" },
+              execution_authorized: false }, 429);
+          }
+          const plan = buildAgentQueryPlan(await body(request));
+          const availability = await checkAgentQueryDeliverability(plan, {
+            externalModuleChecker: checkAgentQueryExternalModule,
+          });
+          const dataStatus = publicAgentQueryAvailability(availability);
           let config;
           try {
             config = getCoinbaseX402Config();
-          } catch (error) {
+          } catch {
+            // Never expose launch-ACK values, receiver IDs or secret config
+            // details publicly. Missing rail does not excuse skipped source
+            // qualification or promote a request to payable.
             return json({
-              ok: false,
-              chargeable: false,
-              payment_required_now: false,
-              error: {
-                code: "COINBASE_X402_CONFIGURATION_INVALID",
-                message: error instanceof Error ? error.message : "Coinbase x402 configuration is invalid.",
-              },
+              ok: false, chargeable: false, payment_required_now: false,
+              payment_rail_ready: false,
+              data_deliverable_without_payment: availability.deliverable,
+              availability: dataStatus,
+              error: { code: "COINBASE_X402_CONFIGURATION_INVALID" },
               execution_authorized: false,
             }, 503);
           }
           if (!config) {
             return json({
-              ok: false,
-              chargeable: false,
-              payment_required_now: false,
-              error: { code: "COINBASE_X402_NOT_CONFIGURED", message: "Coinbase x402 is not enabled in this runtime." },
+              ok: false, chargeable: false, payment_required_now: false,
+              payment_rail_ready: false,
+              data_deliverable_without_payment: availability.deliverable,
+              availability: dataStatus,
+              error: { code: "COINBASE_X402_NOT_CONFIGURED" },
               execution_authorized: false,
             }, 503);
           }
-
-          const plan = buildAgentQueryPlan(await body(request));
-          const availability = await checkAgentQueryDeliverability(plan, {
-            externalModuleChecker: checkAgentQueryExternalModule,
-          });
           let pricedConfig = null;
           if (availability.deliverable) {
             try {
