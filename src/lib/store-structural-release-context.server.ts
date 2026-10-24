@@ -4,6 +4,7 @@ import { loadQualifiedMcsCountryContext } from "./qualified-mcs-country-digest.s
 import { loadQualifiedTreasuryFxCountryContext } from "./qualified-treasury-fx.server";
 import { isStructuralStoreProduct } from "./store-product-selection";
 import { storeProductRows } from "./store-product-evidence.server";
+import { assertCommercialSourcesEligible } from "./commercial-source-eligibility.server";
 
 const key = (subject: StructuralSubject) => subject.type === "country"
   ? `country:${subject.country_iso3}`
@@ -14,7 +15,20 @@ const key = (subject: StructuralSubject) => subject.type === "country"
  * requested dimension. Missing data stays missing. This never issues a GRO,
  * grants source rights, queries Supabase directly or changes a source clock.
  */
-export async function loadAgentQueryStructuralContext(plan: AgentQueryPlan, subject: StructuralSubject): Promise<StructuralContext> {
+type RightsCheck = (sourceIds: string[]) => Promise<{
+  ineligible_source_ids: string[];
+  results?: Array<{ source_id: string; eligible: boolean }>;
+}>;
+
+/** The same rights checker used by admission may be injected by unit tests.
+ * Original archive candidates are not delivered merely because they happen
+ * to share a requested module with an independently licensed observation.
+ */
+export async function loadAgentQueryStructuralContext(
+  plan: AgentQueryPlan,
+  subject: StructuralSubject,
+  options: { sourceEligibilityChecker?: RightsCheck } = {},
+): Promise<StructuralContext> {
   if (!isStructuralStoreProduct(plan.product)) {
     return loadStructuralContext(subject, {
       allowQualifiedRelease: plan.delivery_tier === "structural_baseline" && plan.topics.length === 1 &&
@@ -33,8 +47,38 @@ export async function loadAgentQueryStructuralContext(plan: AgentQueryPlan, subj
   try { original = await loadStructuralContext(subject); } catch { /* qualified releases have independent source/rights checks */ }
   if (original && key(original.subject) !== key(subject))
     throw Error("STORE_STRUCTURAL_CONTEXT_SUBJECT_MISMATCH");
+  // A partial B2/curated response may mix valid and non-commercial source
+  // rows. Check the ACTUAL fresh, scoped buyer rows per source before
+  // suppressing the verified official-release fallbacks. Importantly, do not
+  // preserve ineligible records in the later frozen customer answer.
   const availableRows = (context: StructuralContext, module: string) => context.status === "AVAILABLE"
     ? storeProductRows(plan, context, module, asOf) : [];
+  if (original) {
+    const candidates = new Set(plan.required_modules.flatMap(module => availableRows(original!, module)));
+    const sourceIds = [...new Set([...candidates].map(row => row.source_id).filter(Boolean))].sort();
+    const allowed = new Set<string>();
+    if (sourceIds.length) {
+      try {
+        const rights = await (options.sourceEligibilityChecker ?? assertCommercialSourcesEligible)(sourceIds);
+        const denied = new Set(rights.ineligible_source_ids);
+        for (const result of rights.results ?? []) {
+          if (result.eligible === true && sourceIds.includes(result.source_id) && !denied.has(result.source_id))
+            allowed.add(result.source_id);
+        }
+      } catch {
+        // A registry outage never grants rights to archive rows. Still try a
+        // separately verified first-party release, if available, no funds.
+      }
+    }
+    original = {
+      ...original,
+      observations: original.observations.filter(row => candidates.has(row) && allowed.has(row.source_id)),
+      metadata: {
+        ...original.metadata,
+        coverage: original.metadata.coverage.filter(row => allowed.has(row.source_id)),
+      },
+    };
+  }
   if (original && plan.required_modules.every(module => countries.every(country =>
     availableRows(original!, module).some(row => row.country_iso3 === country)))) return original;
 
