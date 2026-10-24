@@ -1,0 +1,75 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {registeredReusableNewsSources,selectRegisteredNewsSources,
+ collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
+
+const when=new Date("2026-10-25T00:00:00.000Z");
+const feed="<rss version=\"2.0\"><channel>"+
+ "<item><title><![CDATA[Federal Reserve announces new inflation and interest rate policy]]></title>"+
+ "<pubDate>Sat, 24 Oct 2026 23:50:00 GMT</pubDate>"+
+ "<link>https://federalreserve.gov/leak-should-not-appear</link></item>"+
+ "<item><title>Rare earth and lithium trade production rises 25 percent</title>"+
+ "<pubDate>Sat, 24 Oct 2026 23:55:00 GMT</pubDate></item>"+
+ "</channel></rss>";
+function response(text){return new Response(text,{status:200,
+ headers:{"Content-Type":"application/rss+xml"}})}
+const normalize=x=>({
+ schema:"geomacro.reusable-news-json.v1",id:"news-0000000000000000",category:x.category,
+ source:{publisher_name:null,original_url:null,original_published_at:x.published_at},
+ usage_rights:{commercial_reuse_authorized:false},
+ delivery:{raw_article_included:false}
+});
+test("registry is bounded, HTTPS pinned, includes operator news and all three categories",()=>{
+ const registry=registeredReusableNewsSources();
+ assert.ok(registry.length>20);
+ assert.equal(new Set(registry.map(x=>x.url)).size,registry.length);
+ assert.ok(registry.some(x=>x.id==="news_aljazeera"));
+ assert.ok(registry.some(x=>x.id==="news_dw"));
+ for(const domain of ["geopolitics","macro","rare_earth"]){
+   assert.ok(registry.some(x=>x.categories.includes(domain)));
+ }
+ assert.ok(registry.every(x=>x.url.startsWith("https://")));
+ const selected=selectRegisteredNewsSources(when,registry,4);
+ assert.ok(selected.length<=12);
+ assert.ok(selected.every(x=>registry.some(s=>s.id===x.id)));
+});
+test("native RSS item dates produce fixed-schema noncommercial-safe factual JSON",async()=>{
+ const registry=[
+  {id:"source1",url:"https://example.org/feed.xml",categories:["macro","rare_earth"],supported:true,type:"rss"},
+ ];
+ let calls=0;
+ const out=await collectRegisteredReusableNews({now:when,registry,perCategory:4,normalize,
+   fetchImpl:async()=>{calls++;return response(feed);}});
+ assert.equal(calls,1);
+ assert.equal(out.items.length,2);
+ assert.equal(out.checks.length,2);
+ assert.ok(out.items.every(x=>x.schema==="geomacro.reusable-news-json.v1"));
+ assert.ok(out.items.every(x=>x.delivery.raw_article_included===false));
+ assert.ok(!JSON.stringify(out).includes("federalreserve.gov/leak"));
+ assert.ok(!JSON.stringify(out).includes("Rare earth and lithium trade production rises"));
+ assert.ok(out.items.every(x=>/^news-[0-9a-f]{64}$/u.test(x.id)));
+ assert.equal(out.summary.source_rights_commercial_authorized,false);
+});
+test("denied sources return state without creating news or fabricated rights",async()=>{
+ const registry=[{id:"source1",url:"https://example.org/feed.xml",categories:["geopolitics"],supported:true,type:"rss"}];
+ const out=await collectRegisteredReusableNews({now:when,registry,normalize,
+   fetchImpl:async()=>new Response("denied",{status:403})});
+ assert.equal(out.items.length,0);assert.equal(out.checks[0].state,"DENIED");
+ assert.equal(out.summary.paid_publication_authorized,false);
+});
+test("date-only, Atom updated-only and unsupported source formats cannot become current news",async()=>{
+ const registry=[
+  {id:"source1",url:"https://example.org/feed.xml",categories:["macro"],supported:true,type:"rss"},
+  {id:"source2",url:"https://example.org/atom.xml",categories:["macro"],supported:true,type:"atom"},
+  {id:"source3",url:"https://example.org/json",categories:["geopolitics"],supported:false,type:"json"}
+ ];
+ const mock=async url=>response(String(url).endsWith("atom.xml")?
+   "<feed><entry><title>Inflation and rate changes in national monetary policy</title>"+
+   "<updated>2026-10-24T23:30:00Z</updated></entry></feed>":
+   "<rss><channel><item><title>Federal Reserve inflation and interest rate update</title>"+
+   "<pubDate>2026-10-24</pubDate></item></channel></rss>");
+ const out=await collectRegisteredReusableNews({now:when,registry,normalize,fetchImpl:mock});
+ assert.equal(out.items.length,0);
+ assert.ok(out.checks.some(c=>c.state==="UNSUPPORTED_FORMAT"));
+ assert.ok(out.checks.some(c=>c.state==="EMPTY_OR_OUTSIDE_WINDOW"));
+});
