@@ -1,5 +1,5 @@
 import { describe,it,expect } from "vitest";
-import { canadaOriginalPublicationDay, canadaOriginalMineralsTopic } from "@/lib/stateless-canada-original.server";
+import { canadaOriginalPublicationDay, canadaOriginalMineralsTopic, canadaOriginalPrecisePublicationTime } from "@/lib/stateless-canada-original.server";
 import { deriveStatelessSignals, parseFirstPartyFeed, type StatelessSourceSpec }
   from "@/lib/stateless-intelligence-model";
 import { verifyDerivedStory } from "../../workers/control-plane/src/website-derived-intelligence.mjs";
@@ -87,6 +87,37 @@ describe("Canada official original publication day; never updated/crawl timestam
     expect(findings[0].category).toBe("geopolitics");
     expect(verifyDerivedStory(findings[0],NOW)).toBe(true);
   });
+});
+
+describe("strict Canadian first-party exact native-time rescue",()=>{
+ const now=Date.parse("2026-10-13T20:00:00Z");
+ const title="Canada critical minerals funding announcement";
+ const document=(value:string,key="article:published_time")=>
+   '<html><head><meta property="'+key+'" content="'+value+'"/></head>'+
+   '<body><h1>'+title+'</h1></body></html>';
+ it("accepts same-title, same-day, recent article:published_time without another source GET",()=>{
+   const source=document("2026-10-13T12:30:00Z");
+   const validDay=canadaOriginalPublicationDay(source,news,title,now);
+   expect(validDay).toBe("2026-10-13");
+   expect(canadaOriginalPrecisePublicationTime(source,validDay!,now))
+     .toBe("2026-10-13T12:30:00.000Z");
+ });
+ it("refuses day-only or modified, future, stale, conflicting and wrong-day clocks",()=>{
+   const onlyDay='<html><head><meta name="dcterms.issued" content="2026-10-13"/></head>'+
+     '<body><h1>'+title+'</h1></body></html>';
+   expect(canadaOriginalPrecisePublicationTime(onlyDay,"2026-10-13",now)).toBeNull();
+   for(const doc of [
+     document("2026-10-13T12:30:00Z","article:modified_time"),
+     document("2026-10-14T01:30:00Z"),
+     document("2026-10-12T08:30:00Z"),
+     document("2026-10-13T12:30:00Z")+
+       '<meta property="article:published_time" content="2026-10-13T14:30:00Z"/>',
+   ])expect(canadaOriginalPrecisePublicationTime(doc,"2026-10-13",now)).toBeNull();
+   expect(canadaOriginalPrecisePublicationTime(document("2026-10-13T12:30:00Z"),
+     "2026-10-12",now)).toBeNull();
+   expect(canadaOriginalPrecisePublicationTime(document("2026-10-13T12:30:00Z"),
+     "2026-10-13",NaN)).toBeNull();
+ });
 });
 
 describe("NRCan same-original article body topical evidence",()=>{
