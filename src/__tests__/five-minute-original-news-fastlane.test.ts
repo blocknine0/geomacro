@@ -224,7 +224,7 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(run.every(row=>row.signals.length===0 && row.fallback_reason==="NO_RECENT_QUALIFYING_PRIMARY_RELEASE")).toBe(true);
    // Changes to this existing reader also need to wake the cloud producer.
    expect(read(".github/workflows/five-minute-original-news-fastlane.yml")
-     .match(/src\\/lib\\/stateless-public-intelligence\\.server\\.ts/g)?.length).toBe(2);
+     .split("src/lib/stateless-public-intelligence.server.ts").length-1).toBe(2);
    expect(read(".github/workflows/website-derived-news-continuity.yml"))
      .toContain('src/lib/stateless-public-intelligence.server.ts');
  });
