@@ -116,7 +116,7 @@ const summary = {
   checked_variant_count: results.length,
   eligible_variant_count: eligible,
   blocked_variant_count: results.length - eligible,
-  all_variants_data_prefight_eligible: eligible === 12,
+  all_variants_data_preflight_eligible: eligible === 12,
   payment_requested: false,
   payment_sent: false,
   settlement_attempted: false,
