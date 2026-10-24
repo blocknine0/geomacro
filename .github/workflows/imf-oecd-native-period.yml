@@ -4,6 +4,7 @@ on:
     paths:
       - "global-intelligence/adapters/imf-sdmx.mjs"
       - "global-intelligence/adapters/imf-oecd-exact-reference.mjs"
+      - "global-intelligence/adapters/imf-oecd-free-reference-alternates.mjs"
       - "scripts/tests/imf-oecd-native-period.test.mjs"
       - "scripts/ops/verify-imf-oecd-native-period.mjs"
       - ".github/workflows/imf-oecd-native-period.yml"
@@ -38,6 +39,7 @@ jobs:
           set -euo pipefail
           node --check global-intelligence/adapters/imf-sdmx.mjs
           node --check global-intelligence/adapters/imf-oecd-exact-reference.mjs
+          node --check global-intelligence/adapters/imf-oecd-free-reference-alternates.mjs
           node --test scripts/tests/imf-oecd-native-period.test.mjs
   real-source-read:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
