@@ -80,14 +80,18 @@ export function extractWdiIndiaGrowth(data,now=new Date()){
      !allowed.includes(row?.date))
    throw Error("ALT_WDI_ISSUER_SCOPE_INVALID");
   if(seen.has(row.date))throw Error("ALT_WDI_DUPLICATE");
+  // WDI legitimately returns an empty row for an unpublished most-recent
+  // calendar year. Skip only its null observation; never synthesize a value.
+  if(row.value===null){seen.set(row.date,null);continue;}
   if(typeof row.value!=="number"||!Number.isFinite(row.value))
    throw Error("ALT_WDI_OBSERVATION_INVALID");
   seen.set(row.date,row.value);
  }
- if(!seen.size)throw Error("ALT_WDI_OBSERVATION_MISSING");
+ const valid=[...seen.entries()].filter(([,v])=>v!==null);
+ if(!valid.length)throw Error("ALT_WDI_OBSERVATION_MISSING");
  return {source_id:"world_bank_wdi",country_iso3:"IND",
   indicator:"NY.GDP.MKTP.KD.ZG",
-  reference_periods:[...seen.keys()].sort(),
+  reference_periods:valid.map(([period])=>period).sort(),
   frequency:"annual",series_kind:"REAL_GDP_GROWTH",
   source_methodology_equivalent_to_imf:false,
   original_published_at:null,native_release_time_verified:false,
