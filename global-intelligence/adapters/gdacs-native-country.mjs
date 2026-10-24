@@ -109,7 +109,7 @@ export async function fetchGdacsNativeCountry({fetchImpl=fetch,now=new Date()}={
    catch{throw Error("GDACS_JSON_SHAPE_INVALID");}
  }catch(error){
    if(error?.message!=="GDACS_BODY_LIMIT")throw error;
-   // One documented first-party alternate only for a 512KiB body cap.
+   // Same-issuer 24-hour RSS also handles this 512 KiB body cap.
    // 401/403/429, invalid JSON, redirect and unknown shape NEVER use fallback.
    try{await r.body?.cancel();}catch{}
    return readRss();
