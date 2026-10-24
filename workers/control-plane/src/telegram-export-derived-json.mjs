@@ -107,6 +107,17 @@ export async function writeOwnerTelegramExportJson(env,body,now=Date.now()){
  }catch{return respond({ok:false,error:"TELEGRAM_EXPORT_D1_WRITE_UNAVAILABLE"},503)}
 }
 export async function privateOwnerTelegramExportJson(env,q=new URLSearchParams(),now=Date.now()){
+ if(q.getAll("object_sha256").length===1&&[...q.keys()].length===1){
+   const value=q.get("object_sha256");
+   if(!SHA.test(value))return respond({ok:false,error:"TELEGRAM_EXPORT_OBJECT_CHECK_INVALID"},400);
+   try{
+     const seen=await env.DB.prepare(
+       "SELECT accepted_items FROM telegram_export_processed_objects WHERE object_sha256=? AND expires_at>?")
+       .bind(value,new Date(now).toISOString()).first();
+     return respond({ok:true,object_processed:!!seen,accepted_items:seen?.accepted_items??0,
+       paid_delivery_enabled:false});
+   }catch{return respond({ok:false,error:"TELEGRAM_EXPORT_OBJECT_CHECK_D1_UNAVAILABLE"},503)}
+ }
  const fields=[...q.keys()];
  if(fields.some(x=>!["category","country","offset"].includes(x))||
    ["category","country","offset"].some(x=>q.getAll(x).length>1)||
