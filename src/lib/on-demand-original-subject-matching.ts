@@ -61,6 +61,13 @@ export function originalPublisherMatchesCountry(
   if (originalHeadlineMentionsCountry(title,countryIso3,verifiedOfficialName) ||
       originalHeadlineMentionsCountry(summary.slice(0,300),countryIso3,verifiedOfficialName))
     return true;
+  // RBI is India's named national monetary authority. A relevant official
+  // press *title or excerpt* must still explicitly identify RBI or India;
+  // issuer alone never authorizes country scope, rights, or an event claim.
+  if(countryIso3==="IND" &&
+     publisherFamily==="rbi_india_original_macro_publisher" &&
+     /\b(?:RBI|Reserve Bank of India)\b/iu.test(title+" "+summary.slice(0,300)))
+    return true;
   return countryIso3==="USA" && verifiedOfficialName==="United States" &&
     publisherFamily==="us_federal_reserve_original_publisher" &&
     /^Minutes of the Board['\u2019]s discount rate meetings on\s+\S/iu.test(title);

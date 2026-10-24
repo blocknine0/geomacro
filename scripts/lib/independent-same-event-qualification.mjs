@@ -32,6 +32,8 @@ const PUBLISHER_REGISTRY=Object.freeze({
   "www.ecb.europa.eu":"ecb",
   "www.usgs.gov":"usgs",
   "www.energy.gov":"us_doe",
+  // Issuer identity only. RBI has NO automatic article commercial rights.
+  "www.rbi.org.in":"rbi",
   // EU Council genuine institutional identity only. Individual reuse
   // conditions (including credit), Facts/Rights and event corroboration
   // remain fully independent cryptographic prerequisites.
