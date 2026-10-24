@@ -28,6 +28,8 @@ export type StatelessSourceCandidate = {
   articleUrl: string;
   publishedAt: string;
   datePrecision?: "day";
+  // Private finite topic recovered from the same date/title-verified NRCan article body.
+  originalBodyTopic?: "critical-minerals policy" | "mineral exploration and production";
   sourceId: string;
   category: StatelessCategory;
   credit: string | null;
@@ -283,7 +285,7 @@ const UNCLASSIFIED_FEED_TOPIC:Record<StatelessCategory,{name:string;implication:
   rare_earth:{name:"minerals publisher candidate",
     implication:"A dated official-source item was observed in a minerals publisher feed, but its minerals relevance, production and supply impact remain unverified."},
 };
-function topicForOriginal(
+export function topicForOriginal(
   title: string, category: StatelessCategory, sourceId: string, dayVerified: boolean,
 ) {
   return selectOfficialTopic(title, category) ??
@@ -329,7 +331,9 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
       ? visiblePublisherText(rawTitle)
       : rawTitle;
     if (title.length < 12 || title.length > 300 || /[<>]/u.test(title) ||
-        !topicForOriginal(title, source.category, source.id, source.statcanOriginalPage === true)) continue;
+        (!topicForOriginal(title, source.category, source.id, source.statcanOriginalPage === true) &&
+         !(source.id==="nrcan_releases" && source.canadaOriginalPage===true &&
+           source.category==="rare_earth"))) continue;
     metrics.relevant++;
     const articleUrl = acceptedOriginalArticleLink(entryLink(item, source), source);
     if (!articleUrl || seen.has(articleUrl)) continue;
@@ -529,7 +533,10 @@ export function deriveStatelessSignals(
     try { url = new URL(item.articleUrl); } catch { continue; }
     if (url.protocol !== "https:" || url.username || url.password || url.port ||
         url.hash || !url.hostname) continue;
-    const topic = topicForOriginal(item.title, item.category, item.sourceId, dayOnly);
+    const topic = topicForOriginal(item.title, item.category, item.sourceId, dayOnly) ??
+      (dayOnly && item.sourceId==="nrcan_releases" && item.category==="rare_earth" &&
+       ["critical-minerals policy","mineral exploration and production"].includes(item.originalBodyTopic??"")?
+        TOPICS.rare_earth.find(t=>t.name===item.originalBodyTopic)??null:null);
     const candidateOnly=topic===null;
     const selected=topic??UNCLASSIFIED_FEED_TOPIC[item.category];
     // The same official article can occur in several publisher subject feeds.

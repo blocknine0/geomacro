@@ -3,6 +3,7 @@ import {CENTRAL_SECURITY_POLICIES} from "../../workers/control-plane/src/central
 import {readFileSync} from "node:fs";
 import {predgeResearchDerivedNewsFeed,PREDGE_RESEARCH_PILOT_END_UTC}
  from "../../workers/control-plane/src/predge-research-derived-news.mjs";
+import {publicSharedDerivedNewsFeed} from "../../workers/control-plane/src/shared-derived-news-feed.mjs";
 const NOW=Date.parse("2026-10-19T15:00:00Z");
 const TOKEN="a".repeat(64);
 const make=(query="")=>new Request("https://geomacro.example/v1/partner/predge/derived-structural-72h"+query,
@@ -101,7 +102,25 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   expect(r.status).toBe(200);
   const data=await r.json();expect(data.items).toHaveLength(1);
   expect(data.items[0].id).toBe(signal(0).id);
-  expect(data.source_credits_needing_attribution_still_withheld).toBe(true);
+  expect(data.unrecognized_source_credits_still_withheld).toBe(true);
+ });
+ it("delivers known first-party attribution intact without widening the public projection or source rights",async()=>{
+  const rows=[{...signal(1),sources_credited:["Statistics Canada"]},
+   {...signal(2),sources_credited:["Natural Resources Canada"]}];
+  const r=await predgeResearchDerivedNewsFeed(make(),env(rows),NOW);
+  const data=await r.json();
+  expect(r.status).toBe(200);expect(data.items).toHaveLength(2);
+  expect(data.counts).toEqual({geopolitics:0,macro:1,rare_earth:1});
+  expect(data.projection).toBe("attributed_research");
+  expect(data.attribution_must_be_preserved).toBe(true);
+  expect(data.items.find((i:any)=>i.category==="macro").attribution_notices[0])
+   .toContain("Adapted from Statistics Canada, The Daily, 2026-10-19");
+  expect(data.items.find((i:any)=>i.category==="rare_earth").sources_credited)
+   .toEqual(["Natural Resources Canada"]);
+  expect(data.source_licensing_waived).toBe(false);
+  expect(data.partner_resale_or_commercial_redistribution_authorized).toBe(false);
+  const publicFeed=await publicSharedDerivedNewsFeed(env(rows),new URLSearchParams(),NOW);
+  expect((await publicFeed.json()).items).toEqual([]);
  });
  it("rejects query-token or item ID bypass while keeping category support",async()=>{
   for(const suffix of ["?token=aaa","?approved_item_ids=all","?domain=macro&wallet=usd"]){

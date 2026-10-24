@@ -4,16 +4,22 @@ on:
     # Four protected research reads/day, not every minute.
     - cron: "17 0,6,12,18 * * *"
   workflow_dispatch: {}
+  workflow_run:
+    workflows: ["Website Derived News Continuity"]
+    types: [completed]
+    branches: [main]
   # One read-only acceptance immediately after first reviewed main merge.
   push:
     branches: [main]
     paths:
       - ".github/workflows/predge-research-continuity.yml"
       - "scripts/ops/verify-predge-pilot-continuity.mjs"
+      - "scripts/ops/predge-research-journal-parity.mjs"
   pull_request:
     paths:
       - ".github/workflows/predge-research-continuity.yml"
       - "scripts/ops/verify-predge-pilot-continuity.mjs"
+      - "scripts/ops/predge-research-journal-parity.mjs"
       - "scripts/ops/verify-predge-pilot-continuity.test.mjs"
 permissions:
   contents: read
@@ -39,7 +45,8 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' ||
+       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: production

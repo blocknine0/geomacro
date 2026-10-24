@@ -10,6 +10,8 @@ on:
       - "src/lib/release-news-observation.ts"
       - "src/lib/private-source-handoff.ts"
       - "src/lib/stateless-intelligence-model.ts"
+      - "src/lib/derived-news-structural-bridge.ts"
+      - "scripts/ops/predge-research-journal-parity.mjs"
       - "lib/intelligence-publication-authority.mjs"
       - "workers/control-plane/**"
       - "scripts/ops/verify-all-news-signed-publications.mjs"

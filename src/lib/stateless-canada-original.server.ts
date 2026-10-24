@@ -36,7 +36,11 @@ export function canadaOriginalPublicationDay(
     const name=(attr(tag,"name")??attr(tag,"property")??attr(tag,"itemprop")??"").toLowerCase();
     if(!["dcterms.issued","article:published_time","datepublished"].includes(name))continue;
     const value=attr(tag,"content");
-    if(value)originalDates.push(value.slice(0,10));
+    if(value){
+      if(!/^20\d{2}-\d{2}-\d{2}(?:$|T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$)/u.test(value))return null;
+      if(value.length>10&&!Number.isFinite(Date.parse(value)))return null;
+      originalDates.push(value.slice(0,10));
+    }
   }
   // Some official pages publish a schema.org NewsArticle original issuance
   // clock instead of dcterms.issued. Use only the explicit datePublished,
@@ -81,4 +85,28 @@ export function canadaOriginalPublicationDay(
   if(ms<now-30*86_400_000)return null;
   note?.("within_30d");
   return day;
+}
+
+/** Private, finite topic from the SAME original article, never navigation,
+ * footer, related links or feed summary. Original date/title checks remain
+ * mandatory. No raw paragraph survives this function; no event outcome,
+ * economic impact or commercial entitlement is established. */
+export function canadaOriginalMineralsTopic(
+  html:string,articleUrl:string,originalTitle:string,now=Date.now(),
+):"critical-minerals policy"|"mineral exploration and production"|null {
+  if(!articleUrl.startsWith("https://www.canada.ca/en/natural-resources-canada/news/")||
+     !canadaOriginalPublicationDay(html,articleUrl,originalTitle,now))return null;
+  const main=/<main\b[^>]*>([\s\S]*?)<\/main>/iu.exec(html)?.[1]??"";
+  const start=/<div\b[^>]*\bid=["']news-release-container["'][^>]*>/iu.exec(main);
+  if(!start)return null;
+  const body=main.slice(start.index+start[0].length).split(/<div\b[^>]*\bclass=["']news-tags\b/iu)[0]
+    .replace(/<(?:script|style|nav|aside)\b[^>]*>[\s\S]*?<\/(?:script|style|nav|aside)>/giu,"");
+  for(const p of body.matchAll(/<p\b[^>]*>([\s\S]{1,6000}?)<\/p>/giu)){
+    const text=p[1].replace(/<[^>]+>/gu," ").replace(/&nbsp;|&#160;/giu," ");
+    if(/\b(?:critical minerals?|critical raw materials?|minerals? supply chains?|battery minerals?)\b/iu.test(text))
+      return "critical-minerals policy";
+    if(/\b(?:mining value chain|mineral exploration|mineral production)\b/iu.test(text))
+      return "mineral exploration and production";
+  }
+  return null;
 }

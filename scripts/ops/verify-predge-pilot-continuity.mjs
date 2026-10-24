@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Read-only, no-funds Predge pilot continuity. One research GET per run.
 // Never log secrets, upstream original records, or private URLs.
+import {readPredgeJournal,predgeJournalParity} from './predge-research-journal-parity.mjs';
 const ORIGIN="https://geomacro-control-plane.daspallab202391.workers.dev";
 const PILOT_END="2027-01-17T00:00:00.000Z";
 const PREFIX="PREDGE_CONTINUITY_NOT_VERIFIED";
-export function assessPredgeContinuity(research,publicFeed,gate,now=Date.now()){
+export function assessPredgeContinuity(research,publicFeed,gate,now=Date.now(),journal=null){
  if(research?.ok!==true||publicFeed?.ok!==true||
  research.partner_delivery_schema!=="geomacro.predge.research-news-delivery.v1"||
  research.authentication!=="DEDICATED_BEARER_ONLY"||
@@ -16,8 +17,10 @@ export function assessPredgeContinuity(research,publicFeed,gate,now=Date.now()){
  research.maximum_pilot_scope_expires_at!==PILOT_END||
  !Array.isArray(research.items)||!Array.isArray(publicFeed.items)||
  research.items.length>600||publicFeed.items.length>600||
- JSON.stringify(research.items)!==JSON.stringify(publicFeed.items)||
- JSON.stringify(research.counts)!==JSON.stringify(publicFeed.counts))
+ (journal!==null?!predgeJournalParity(research,publicFeed,journal):
+   research.projection==="attributed_research"||
+   JSON.stringify(research.items)!==JSON.stringify(publicFeed.items)||
+   JSON.stringify(research.counts)!==JSON.stringify(publicFeed.counts)))
  throw Error(PREFIX+"_RESEARCH_CONTRACT_OR_PARITY");
  if(gate?.authority!=="cloudflare-d1"||
     gate.scope!=="predge-risk-gate-country-v1"||
@@ -35,6 +38,9 @@ export function assessPredgeContinuity(research,publicFeed,gate,now=Date.now()){
    schema:"geomacro.predge-continuity-receipt.v1",
    authenticated_research_verified:true,shared_d1_items_verified:true,
    category_counts:{geopolitics:counts.geopolitics,macro:counts.macro,rare_earth:counts.rare_earth},
+   attributed_research:research.projection==="attributed_research",
+   category_delivery_ready:Object.fromEntries(Object.keys(counts).map(c=>[c,
+     research.items.some(i=>i.category===c&&i.qualifying_topic_release_verified===true)])),
    daily_request_hard_cap:500,
    pilot_end:PILOT_END,days_until_pilot_end:days,
    renewal_action_required:days<=30,
@@ -49,7 +55,7 @@ async function read(path,token){
   signal:AbortSignal.timeout(15000)});
  if(![200,503].includes(response.status))throw Error(PREFIX+"_HTTP_"+response.status);
  const raw=await response.text();
- if(raw.length>250000)throw Error(PREFIX+"_OVERSIZED");
+ if(raw.length>1200000)throw Error(PREFIX+"_OVERSIZED");
  let body;try{body=JSON.parse(raw)}catch{throw Error(PREFIX+"_INVALID_JSON")}
  return {status:response.status,body};
 }
@@ -63,7 +69,8 @@ export async function runContinuityCheck(token,now=Date.now()){
  if(research.status!==200||publicFeed.status!==200||
    (gate.status===503&&gate.body?.status!=="not_ready"))
  throw Error(PREFIX+"_RESEARCH_UNAVAILABLE");
- return assessPredgeContinuity(research.body,publicFeed.body,gate.body,now);
+ const journal=await readPredgeJournal(p=>read("/v1/"+p));
+ return assessPredgeContinuity(research.body,publicFeed.body,gate.body,now,journal);
 }
 if(process.argv[1]?.endsWith("verify-predge-pilot-continuity.mjs")){
  runContinuityCheck(process.env.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE)

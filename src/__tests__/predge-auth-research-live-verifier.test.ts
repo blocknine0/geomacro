@@ -29,7 +29,7 @@ describe("Predge post-secret-rotation live verification guard",()=>{
  });
  it("requires parity against the actual public D1 projection rather than static fixtures",()=>{
   expect(code).toContain('get("public/derived-structural-72h")');
-  expect(code).toContain("JSON.stringify(a.items)!==JSON.stringify(p.items)");
-  expect(code).toContain("JSON.stringify(a.counts)!==JSON.stringify(p.counts)");
+  expect(code).toContain("predgeJournalParity(a,p,journal)");
+  expect(code).toContain("readPredgeJournal(get)");
  });
 });

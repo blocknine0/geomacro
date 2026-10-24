@@ -1,6 +1,6 @@
 /**
  * Predge's private, free, non-commercial 90-day research feed. This is the
- * exact same source-neutral 72h D1 projection delivered to Geomacro
+ * attribution-preserving 72h D1 projection delivered to Geomacro
  * Intelligence: zero per-item approvals, zero second store or ingestion.
  *
  * A domain-separated, one-purpose Bearer token can be derived only in the
@@ -77,7 +77,7 @@ export async function predgeResearchDerivedNewsFeed(
     chargeable:false,partner_redistribution_authorized:false,
   },{status:429,headers:{...HEADERS,
     "Retry-After":String(Math.max(1,budget.retry_after_seconds))}});
-  const upstream=await publicSharedDerivedNewsFeed(env,query,now);
+  const upstream=await publicSharedDerivedNewsFeed(env,query,now,"attributed_research");
   const status=upstream.status;
   let body;
   try{body=await upstream.json()}catch{return fail("PREDGE_RESEARCH_D1_UNAVAILABLE",503)}
@@ -101,7 +101,7 @@ export async function predgeResearchDerivedNewsFeed(
     partner_delivery_schema:"geomacro.predge.research-news-delivery.v1",
     partner:"predge",partner_delivery_scope:"PRIVATE_NONCOMMERCIAL_RESEARCH_PILOT",
     authentication:"DEDICATED_BEARER_ONLY",
-    data_reuse:"EXACT_SAME_PUBLIC_ELIGIBLE_D1_JOURNAL_ITEMS",
+    data_reuse:"SAME_D1_JOURNAL_WITH_VISIBLE_REQUIRED_ATTRIBUTION",
     per_item_approval_ids_required:false,
     per_item_partner_scope_receipts_required:false,
     per_item_rights_review_receipts_required_for_research:false,
@@ -109,7 +109,8 @@ export async function predgeResearchDerivedNewsFeed(
     risk_gate_decision_included:false,gro_signed:false,
     execution_authorized:false,partner_resale_or_commercial_redistribution_authorized:false,
     maximum_pilot_scope_expires_at:PREDGE_RESEARCH_PILOT_END_UTC,
-    source_credits_needing_attribution_still_withheld:true,
+    source_credits_needing_attribution_still_withheld:false,
+    unrecognized_source_credits_still_withheld:true,
     daily_utc_request_hard_cap:PREDGE_DAY_CAP,
     suggested_daily_requests:100,
     distributed_rate_governor:"ATOMIC_CLOUDFLARE_D1_FAIL_CLOSED",
