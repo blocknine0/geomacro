@@ -1,0 +1,60 @@
+name: Reusable News JSON Export
+
+# Project existing public D1 derived journal, not raw upstream news.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "9,24,39,54 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reusable-news-json-export
+  cancel-in-progress: false
+
+jobs:
+  export-public-reusable-json:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Retrieve and validate factual JSON projection
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from "node:fs";
+          const endpoint="https://geomacro.live/api/v1/intelligence/query?view=reusable-news-json";
+          const response=await fetch(endpoint,{redirect:"error",signal:AbortSignal.timeout(20000),
+            headers:{Accept:"application/json"}});
+          if(!response.ok)throw Error("REUSABLE_NEWS_LIVE_ENDPOINT_UNAVAILABLE");
+          const raw=await response.text();
+          if(raw.length>2_500_000)throw Error("REUSABLE_NEWS_PAYLOAD_TOO_LARGE");
+          const doc=JSON.parse(raw);
+          if(doc.ok!==true||doc.schema!=="geomacro.reusable-news-json-live-feed.v1"||
+             !Array.isArray(doc.items)||doc.items.length>600||
+             doc.raw_article_delivered!==false||
+             doc.commercial_product_ready!==false)
+            throw Error("REUSABLE_NEWS_SCHEMA_MISMATCH");
+          for(const item of doc.items){
+            if(item.schema!=="geomacro.reusable-news-json.v1"||
+               !["geopolitics","macro","rare_earth"].includes(item.category)||
+               item.delivery?.raw_article_included!==false||
+               item.delivery?.downstream_paid_product_authorized!==false||
+               item.usage_rights?.commercial_reuse_authorized!==false||
+               item.verification?.original_page_verified!==false||
+               item.source?.original_url!==null)
+              throw Error("REUSABLE_NEWS_ITEM_CONTRACT_MISMATCH");
+          }
+          writeFileSync("artifacts/geomacro-reusable-news.json",JSON.stringify(doc,null,2)+"\n",{mode:0o600});
+          console.log("REUSABLE_NEWS_JSON_EXPORTED items="+doc.items.length+
+            " commercial_products_authorized=0 raw_upstream=0");
+          NODE
+      - name: Upload factual JSON for GitHub automation consumers
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-reusable-news-json
+          path: artifacts/geomacro-reusable-news.json
+          if-no-files-found: error
+          retention-days: 3
