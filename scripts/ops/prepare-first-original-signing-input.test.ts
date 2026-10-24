@@ -107,3 +107,23 @@ describe("three-domain first-party network capacity",()=>{
   expect(code).toContain('receipt.article_specific_commercial_rights_verified!==false');
  });
 });
+
+describe("first-party publisher-clock changes wake private original verification",()=>{
+ it("refreshes genuine main-only source intake when already verified Canadian native clocks change",()=>{
+  const workflow=readFileSync(".github/workflows/current-original-private-signing-intake.yml","utf8");
+  const [beforePr,afterPr]=workflow.split("  pull_request:");
+  expect(afterPr).toBeDefined();
+  for(const part of [beforePr,afterPr]){
+   for(const changed of [
+    "src/lib/stateless-canada-original.server.ts",
+    "src/lib/stateless-public-intelligence.server.ts",
+    "src/lib/stateless-publisher-text.ts",
+    "scripts/lib/official-original-article-date.mjs",
+   ])expect(part).toContain('      - "'+changed+'"');
+  }
+  expect(workflow).toContain("if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'");
+  expect(workflow).toContain('B2_REQUEST_BUDGET: "6"');
+  expect(workflow).toContain("bun scripts/ops/prepare-first-original-signing-input.ts");
+  expect(workflow).not.toContain("RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64");
+ });
+});
