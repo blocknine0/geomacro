@@ -1,5 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
+import {wdiIndiaGrowthUrl,extractWdiIndiaGrowth,extractBlsUsUnemployment,fetchWdiIndiaGrowth,fetchBlsUsUnemployment} from "../../global-intelligence/adapters/imf-oecd-free-reference-alternates.mjs";
 import {fetchImfDataMapper} from "../../global-intelligence/adapters/imf-sdmx.mjs";
 import {extractOecdUsMonthlyUnemployment,fetchOecdExactReference,verifyImfOecdReference} from "../../global-intelligence/adapters/imf-oecd-exact-reference.mjs";
 test("IMF exact country-year has no invented publication clock and no fresh news claim",async()=>{
@@ -118,4 +119,103 @@ test("OECD official query is bounded to USA and uses standard CSV negotiation",a
  assert.equal(u.searchParams.get("startPeriod"),"2025-06");
  assert.equal(u.searchParams.get("endPeriod"),"2025-06");
  assert.equal(u.searchParams.get("format"),"csvfile");
+});
+
+const fixtureNow=new Date("2026-10-24T12:00:00Z");
+const wdiFixture=[
+ {page:1,pages:1,total:2},
+ [{countryiso3code:"IND",indicator:{id:"NY.GDP.MKTP.KD.ZG"},date:"2024",value:6.2},
+  {countryiso3code:"IND",indicator:{id:"NY.GDP.MKTP.KD.ZG"},date:"2025",value:7.1}]
+];
+const blsFixture={status:"REQUEST_SUCCEEDED",Results:{series:[{
+ seriesID:"LNS14000000",data:[
+  {year:"2026",period:"M09",periodName:"September",value:"4.2"},
+  {year:"2025",period:"M06",periodName:"June",value:"4.1"},
+ ]}]}};
+test("WDI fallback is pinned IND real GDP growth annual and explicit separate methodology",async()=>{
+ assert.equal(new URL(wdiIndiaGrowthUrl(fixtureNow)).searchParams.get("date"),"2024:2025");
+ let opts,u;
+ const x=await fetchWdiIndiaGrowth({now:fixtureNow,fetchImpl:async(url,o)=>{
+  u=url;opts=o;return Response.json(wdiFixture);
+ }});
+ assert.equal(x.country_iso3,"IND");
+ assert.deepEqual(x.reference_periods,["2024","2025"]);
+ assert.equal(x.commercial_rights_attested,false);
+ assert.equal(x.native_release_time_verified,false);
+ assert.equal(x.source_methodology_equivalent_to_imf,false);
+ assert.equal(opts.redirect,"error");
+ assert.equal(new URL(u).hostname,"api.worldbank.org");
+ assert.throws(()=>extractWdiIndiaGrowth([wdiFixture[0],[
+  {...wdiFixture[1][0],countryiso3code:"USA"}]],fixtureNow),/ALT_WDI_/);
+ assert.throws(()=>extractWdiIndiaGrowth([wdiFixture[0],[
+  wdiFixture[1][0],wdiFixture[1][0]]],fixtureNow),/ALT_WDI_DUPLICATE/);
+ const later=wdiIndiaGrowthUrl(new Date("2029-05-01T00:00:00Z"));
+ assert.equal(new URL(later).searchParams.get("date"),"2027:2028");
+});
+test("BLS first-party public v1 unemployment preserves own 16+ CPS population and month",async()=>{
+ let addr,opts;
+ const x=await fetchBlsUsUnemployment({now:fixtureNow,fetchImpl:async(u,o)=>{
+  addr=u;opts=o;return Response.json(blsFixture);
+ }});
+ assert.equal(addr,"https://api.bls.gov/publicAPI/v1/timeseries/data/LNS14000000");
+ assert.equal(opts.redirect,"error");
+ assert.equal(x.reference_period,"2026-09");
+ assert.equal(x.country_iso3,"USA");
+ assert.equal(x.age_population,"16_PLUS");
+ assert.equal(x.harmonization_equivalent_to_oecd,false);
+ assert.equal(x.paid_eligible,false);
+ assert.throws(()=>extractBlsUsUnemployment({...blsFixture,
+  Results:{series:[{seriesID:"LAUCN040010000000005",data:blsFixture.Results.series[0].data}]}},
+  fixtureNow),/ALT_BLS_SHAPE_INVALID/);
+ const duplicate={...blsFixture,Results:{series:[{...blsFixture.Results.series[0],
+  data:[...blsFixture.Results.series[0].data,blsFixture.Results.series[0].data[0]]}]}};
+ assert.throws(()=>extractBlsUsUnemployment(duplicate,fixtureNow),/ALT_BLS_DUPLICATE_PERIOD/);
+});
+test("official fallback transport refuses 403, private payload and oversized bytes",async()=>{
+ await assert.rejects(()=>fetchWdiIndiaGrowth({fetchImpl:async()=>
+  new Response("denied",{status:403})}),/ALT_DENIED_OR_QUOTA/);
+ await assert.rejects(()=>fetchBlsUsUnemployment({fetchImpl:async()=>
+  new Response("{}",{headers:{"content-type":"text/plain"}})}),/ALT_MIME_INVALID/);
+ await assert.rejects(()=>fetchBlsUsUnemployment({fetchImpl:async()=>
+  new Response("{}",{headers:{"content-type":"application/json","content-length":"270000"}})}),/ALT_BODY_LIMIT/);
+});
+test("IMF 403 and OECD 500 route to different real official macro references, never paid",async()=>{
+ let wdiReads=0,blsReads=0;
+ const report=await verifyImfOecdReference({
+  imf:async()=>{throw Error("HTTP 403 for bounded credentialed request");},
+  oecd:async()=>{throw Error("OECD_HTTP_500");},
+  alternates:{
+   wdi:async()=>{wdiReads++;return extractWdiIndiaGrowth(wdiFixture,fixtureNow);},
+   bls:async()=>{blsReads++;return extractBlsUsUnemployment(blsFixture,fixtureNow);}
+  },
+ });
+ assert.equal(report.verified,0);
+ assert.equal(report.alternates_verified,2);
+ assert.equal(report.reference_portfolio_available,true);
+ assert.equal(report.primary_imf_oecd_exact_sources_both_verified,false);
+ assert.deepEqual([wdiReads,blsReads],[1,1]);
+ assert.equal(report.paid_eligible,false);
+ assert.equal(report.signed_current_publications,0);
+ assert.equal(report.payments,0);
+ assert.equal(report.official_alternates.every(x=>x.state===
+  "INDEPENDENT_REFERENCE_AVAILABLE"&&x.paid_eligible===false),true);
+ assert.doesNotMatch(JSON.stringify(report),/7\\.1|4\\.2|private\/url/);
+});
+test("blocked alternate cannot turn denied IMF into a false source pass",async()=>{
+ const report=await verifyImfOecdReference({
+  imf:async()=>{throw Error("HTTP 403 for bounded credentialed request");},
+  oecd:async()=>({source_id:"oecd_sdmx",country_iso3:"USA",
+   reference_period:"2025-06",native_release_at_verified:false,
+   commercial_rights_verified:false}),
+  alternates:{
+   wdi:async()=>{throw Error("secret host private leak");},
+   bls:async()=>{throw Error("UNNECESSARY_BLS_GET");}
+  },
+ });
+ assert.equal(report.verified,1);
+ assert.equal(report.alternates_verified,0);
+ assert.equal(report.reference_portfolio_available,false);
+ assert.equal(report.official_alternates.length,1);
+ assert.equal(report.official_alternates[0].reason,"ALT_TRANSPORT_OR_SCHEMA_UNKNOWN");
+ assert.doesNotMatch(JSON.stringify(report),/secret host|UNNECESSARY_BLS_GET/);
 });
