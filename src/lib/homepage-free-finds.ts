@@ -76,3 +76,31 @@ export function parseHomepageFindsFeed(input:unknown,now=Date.now()):FindCardV1[
     throw Error("HOME_FINDS_FEED_INVALID");
   return eligibleHomeFindCards(obj.cards,now);
 }
+
+
+/**
+ * Presentation-only guard for older D1 Find Card v1 payloads created before
+ * the actor-first copy policy. The first-party observed release and its clock
+ * are unchanged; a publisher is NOT automatically the event actor.
+ * Do not turn an unattributed release into a named organization or outcome.
+ */
+const LEGACY_UNKNOWN_ACTOR=/\b(?:an official publisher|official publisher issues|official publisher released)\b/iu;
+const ACTORLESS_TOPIC:Record<FindCardV1["domain"],string>={
+  geopolitics:"geopolitical development",
+  macro:"macroeconomic release",
+  rare_earth:"critical-minerals release",
+};
+export function publicHomeFindCopy(card:FindCardV1):{headline:string;what_changed:string}{
+  const genericHeadline=LEGACY_UNKNOWN_ACTOR.test(card.headline);
+  const genericChange=LEGACY_UNKNOWN_ACTOR.test(card.what_changed);
+  if(!genericHeadline&&!genericChange)return {
+    headline:card.headline,what_changed:card.what_changed,
+  };
+  const topic=ACTORLESS_TOPIC[card.domain];
+  return {
+    headline:genericHeadline?"Actor not verified: "+topic:card.headline,
+    what_changed:genericChange
+      ?"An original-dated "+topic+" was observed. The available evidence does not establish who performed a specific action or its real-world outcome."
+      :card.what_changed,
+  };
+}
