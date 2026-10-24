@@ -75,3 +75,14 @@ only governed VERIFIED derived evidence may reach production intelligence
 ```
 
 A high prior reliability score never bypasses independent corroboration.
+
+## Owner-supplied Desktop JSON export track (25 Oct 2026)
+
+This document's public-channel/Bot ingestion and paid-intelligence prohibition
+remains binding for channel leads. A separate owner-supplied **file-only**
+Telegram Desktop export path now admits *private, unverified structured
+research* under the scoped owner rights state
+`OWNER_DECLARED_TELEGRAM_DERIVED_ONLY`, **not** `VERIFIED`.
+It neither authorizes automated Telegram collection nor independently clears
+platform/copyright rights. The paid feature switch is OFF by default and the
+signed/score/GRI gates remain unchanged. See the owner ADR.
