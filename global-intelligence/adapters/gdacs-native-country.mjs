@@ -71,9 +71,28 @@ export function inspectGdacsCountryNative(payload){
 }
 export async function fetchGdacsNativeCountry({fetchImpl=fetch,now=new Date()}={}){
  const url=gdacsCountryEventListUrl(now);
- const r=await fetchImpl(url,{method:"GET",redirect:"error",
+ // One fixed first-party RSS fallback shared by every GDACS reader.
+ // This MUST live below the public/reference/country consumers, otherwise
+ // one consumer can issue a third request on a failed RSS second hop.
+ const readRss=async()=>{
+  const rss=await gdacsOfficialEqRssCountryFallback({fetchImpl,now});
+  return {...inspectGdacsCountryNative(rss),same_publisher_24h_rss_used:true};
+ };
+ let r;
+ try{
+  r=await fetchImpl(url,{method:"GET",redirect:"error",
    signal:AbortSignal.timeout(12000),headers:{accept:"application/json"}});
- if(!r.ok){await r.body?.cancel().catch(()=>{});throw Error("GDACS_HTTP_"+r.status);}
+ }catch(error){
+  if(error?.name==="TimeoutError"||error?.name==="AbortError")
+   return readRss();
+  // Never reinterpret a denied/unknown network error as a permitted fallback.
+  throw Error("GDACS_PRIMARY_TRANSPORT_UNVERIFIED");
+ }
+ if(!r.ok){
+  try{await r.body?.cancel();}catch{}
+  if([500,502,503,504].includes(r.status))return readRss();
+  throw Error("GDACS_HTTP_"+r.status);
+ }
  let primary;
  try{
    if(!r.body||Number(r.headers.get("content-length")??0)>MAX_BYTES)
@@ -90,12 +109,10 @@ export async function fetchGdacsNativeCountry({fetchImpl=fetch,now=new Date()}={
    catch{throw Error("GDACS_JSON_SHAPE_INVALID");}
  }catch(error){
    if(error?.message!=="GDACS_BODY_LIMIT")throw error;
-   // One documented first-party alternate only for a 512KiB body cap.
+   // Same-issuer 24-hour RSS also handles this 512 KiB body cap.
    // 401/403/429, invalid JSON, redirect and unknown shape NEVER use fallback.
-   await r.body?.cancel().catch(()=>{});
-   const rss=await gdacsOfficialEqRssCountryFallback({fetchImpl,now});
-   return {...inspectGdacsCountryNative(rss),
-     same_publisher_24h_rss_used:true};
+   try{await r.body?.cancel();}catch{}
+   return readRss();
  }
  return {...inspectGdacsCountryNative(primary),
    same_publisher_24h_rss_used:false};

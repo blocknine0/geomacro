@@ -80,3 +80,54 @@ test("network fetch uses the same rolling native-date query; invalid clock makes
   }),/GDACS_CLOCK_INVALID/);
   assert.equal(count,1);
 });
+
+test("native GDACS official country reader recovers from timeout via one first-party RSS",async()=>{
+ const now=new Date("2026-10-24T09:00:00Z");
+ const rss='<rss version="2.0" xmlns:gdacs="http://www.gdacs.org"><channel>'+
+  '<item><gdacs:eventtype>EQ</gdacs:eventtype><gdacs:eventid>123456</gdacs:eventid>'+
+  '<gdacs:iso3>IND</gdacs:iso3><gdacs:country>India</gdacs:country>'+
+  '<gdacs:fromdate>Sat, 24 Oct 2026 08:00:00 GMT</gdacs:fromdate>'+
+  '<geo:lat>19.5</geo:lat><geo:long>70.2</geo:long></item></channel></rss>';
+ const calls=[];
+ const actual=await fetchGdacsNativeCountry({now,fetchImpl:async(url,opt)=>{
+  calls.push({url,opt});
+  if(calls.length===1)throw new DOMException("private_url_secret","TimeoutError");
+  return new Response(rss);
+ }});
+ assert.equal(calls.length,2);
+ assert.equal(calls[1].url,"https://data.gdacs.org/xml/rss_eq_24h.xml");
+ assert.equal(calls[1].opt.redirect,"error");
+ assert.equal(actual.same_publisher_24h_rss_used,true);
+ assert.equal(actual.native_country_identifiers,1);
+ assert.equal(actual.native_release_clock_verified,false);
+ assert.equal(actual.verified_current_geopolitical_events,0);
+ assert.equal(actual.commercial_paid_eligible,false);
+ assert.doesNotMatch(JSON.stringify(actual),/private_url_secret|123456|India|IND/);
+});
+test("native GDACS first hop 503 uses same-publisher RSS; denied quota and unknown transport do not",async()=>{
+ const now=new Date("2026-10-24T09:00:00Z");
+ const rss='<rss version="2.0" xmlns:gdacs="http://www.gdacs.org"><channel>'+
+  '<item><gdacs:eventtype>EQ</gdacs:eventtype><gdacs:eventid>123456</gdacs:eventid>'+
+  '<gdacs:iso3>IND</gdacs:iso3><gdacs:country>India</gdacs:country>'+
+  '<gdacs:fromdate>Sat, 24 Oct 2026 08:00:00 GMT</gdacs:fromdate>'+
+  '</item></channel></rss>';
+ let calls=0;
+ const a=await fetchGdacsNativeCountry({now,fetchImpl:async()=>{
+  calls++;
+  return calls===1?new Response("unavailable",{status:503}):new Response(rss);
+ }});
+ assert.equal(calls,2);
+ assert.equal(a.same_publisher_24h_rss_used,true);
+ for(const status of [401,403,429]){
+  calls=0;
+  await assert.rejects(fetchGdacsNativeCountry({now,fetchImpl:async()=>{
+   calls++;return new Response("refused",{status});
+  }}),new RegExp("GDACS_HTTP_"+status));
+  assert.equal(calls,1);
+ }
+ calls=0;
+ await assert.rejects(fetchGdacsNativeCountry({now,fetchImpl:async()=>{
+  calls++;throw Error("PRIVATE_UNTRUSTED_NETWORK_EXCEPTION");
+ }}),/GDACS_PRIMARY_TRANSPORT_UNVERIFIED/);
+ assert.equal(calls,1);
+});
