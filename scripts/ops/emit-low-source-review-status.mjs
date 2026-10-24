@@ -27,6 +27,10 @@ const ORIGINAL_STATES=Object.freeze({
  "ORIGINAL_PAGE_READBACK_DEFERRED_QUOTA":"quota_deferred",
  "ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED":"original_bytes_or_clock_rejected",
 });
+const FAILURE_CLASSES=Object.freeze([
+ "TRANSPORT_OR_HTTP","RESPONSE_BODY","NATIVE_CLOCK",
+ "HASH_MISMATCH","UNKNOWN_OR_UNTRUSTED_PROOF",
+]);
 const invalid=()=>{throw Error("LOW_REVIEW_SAFE_RECEIPT_INVALID")};
 const count=(value,max=600)=>Number.isSafeInteger(value)&&value>=0&&value<=max;
 const exactly=(obj,keys)=>obj&&typeof obj==="object"&&!Array.isArray(obj)&&
@@ -85,9 +89,16 @@ export function aggregateLowSourceReview(result){
   invalid();
  const evidenceStatuses=Object.fromEntries(
   Object.values(ORIGINAL_STATES).map(v=>[v,0]));
+ const failureClasses=Object.fromEntries(FAILURE_CLASSES.map(c=>[c,0]));
  for(const r of audit.rows){
    evidenceStatuses[ORIGINAL_STATES[r.original_page_evidence_status]]++;
+   if(r.original_page_evidence_status==="ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED"){
+    if(!FAILURE_CLASSES.includes(r.original_readback_failure_class))invalid();
+    failureClasses[r.original_readback_failure_class]++;
+   }else if(Object.hasOwn(r,"original_readback_failure_class"))invalid();
  }
+ if(Object.values(failureClasses).reduce((a,b)=>a+b,0)!==
+     evidenceStatuses.original_bytes_or_clock_rejected)invalid();
  if(evidenceStatuses.verified!==audit.verified_original_page_bytes_and_native_time||
    Object.values(evidenceStatuses).reduce((a,n)=>a+n,0)!==
      audit.ingested_news_examined)
@@ -108,6 +119,8 @@ export function aggregateLowSourceReview(result){
    DOMAINS.map(d=>[d,audit.categories[d].original_bytes_verified])),
   rights_followup_classes:rightCounts,
   original_readback_deferral_classes:evidenceStatuses,
+  // Safe remediation clues: no publisher, URL, payload, private ID or exception.
+  original_readback_failure_classes:failureClasses,
   requires_real_independent_facts_review:true,
   requires_real_article_scoped_rights_review:true,
   legally_licensed_commercial_events_verified:false,
