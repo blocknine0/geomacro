@@ -30,9 +30,7 @@ describe("shared D1 observation to PRIVATE original-signing intake routing",()=>
      {...s,sources_credited:[null] as unknown as string[]},
      {...s,date_precision:"day",published_at:"2026-10-23"},
      {...s,published_at:"2026-10-22T10:00:00Z"},
-     // Previously admitted as a 22-hour journal lead, but cannot satisfy
-     // a 90-minute genuine GRI original review SLA.
-     {...s,published_at:"2026-10-23T08:00:00Z"},
+     {...s,published_at:"2026-10-22T11:59:59Z"},
      {...s,published_at:"2026-10-23T10:01:00Z"},
      {...s,published_at:"invalid"},
      {...s,status:"official_feed_candidate_unscored"},
@@ -67,15 +65,27 @@ describe("shared D1 observation to PRIVATE original-signing intake routing",()=>
  });
 });
 
-it("never retries an older 22-hour D1 journal source as a fresh GRI priority",()=>{
- const stale=signal("geo-12345678","Sudan","geopolitics",
+it("recovers 22h first-party lead as review-only, never as current scored GRI",()=>{
+ const lead=signal("geo-12345678","Sudan","geopolitics",
    "2026-10-23T08:25:00Z");
- const selected=selectPriorityOriginalReviewCountry([stale],"CAN",now);
- expect(selected.country_iso3).toBe("CAN");
- expect(selected.selection_mode).toBe("CANONICAL_195_ROTATION");
- expect(selected.eligible_country_count).toBe(0);
+ const selected=selectPriorityOriginalReviewCountry([lead],"CAN",now);
+ expect(selected.country_iso3).toBe("SDN");
+ expect(selected.selection_mode).toBe("SHARED_D1_22H_REVIEW_LEAD");
+ expect(selected.eligible_country_count).toBe(1);
  expect(selected.journal_is_original_evidence).toBe(false);
+ expect(selected.source_rights_or_signature_verified).toBe(false);
  expect(selected.paid_output_authorized).toBe(false);
+});
+it("always prefers a genuine under-90-minute country over richer 22h candidates",()=>{
+ const candidates=[
+   signal("oldmacro-12345678","India","macro","2026-10-23T05:00:00Z"),
+   signal("oldmin-12345678","India","rare_earth","2026-10-23T05:01:00Z"),
+   signal("newgeo-12345678","Canada","geopolitics","2026-10-23T09:55:00Z"),
+ ];
+ const chosen=selectPriorityOriginalReviewCountry(candidates,"USA",now);
+ expect(chosen.country_iso3).toBe("CAN");
+ expect(chosen.selection_mode).toBe("SHARED_D1_RECENT_COUNTRY_LEAD");
+ expect(chosen.eligible_country_count).toBe(1);
 });
 it("rotates distinct recent tied original-country leads HOURLY without inventing scores",()=>{
  const rows=[
@@ -85,11 +95,11 @@ it("rotates distinct recent tied original-country leads HOURLY without inventing
  ];
  const a=selectPriorityOriginalReviewCountry(rows,"GBR",new Date("2026-10-23T09:55:00Z"));
  const b=selectPriorityOriginalReviewCountry(rows,"GBR",new Date("2026-10-23T11:10:00Z"));
- // After 95 minutes, the former 09:35 source is expired: fallback,
- // never fabricated as a current release or licence.
+ // After 95 minutes the former 09:35 source is review-only, never
+ // fabricated as a <90m scored GRI publication or licence.
  expect(a.selection_mode).toBe("SHARED_D1_RECENT_COUNTRY_LEAD");
- expect(b.selection_mode).toBe("CANONICAL_195_ROTATION");
- expect(b.country_iso3).toBe("GBR");
+ expect(b.selection_mode).toBe("SHARED_D1_22H_REVIEW_LEAD");
+ expect(["CAN","IND","MWI"]).toContain(b.country_iso3);
  const halfHour=selectPriorityOriginalReviewCountry(rows,"GBR",new Date("2026-10-23T10:30:00Z"));
  expect(halfHour.selection_mode).toBe("SHARED_D1_RECENT_COUNTRY_LEAD");
  expect([a.country_iso3,halfHour.country_iso3].every(x=>["CAN","IND","MWI"].includes(x))).toBe(true);
