@@ -42,7 +42,7 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("owner-approved-store-product-creation-20261024");
+    expect(config.lock_revision).toBe("owner-approved-reusable-news-json-mvp-20261025");
     const launch = config.three_chain_launch_presentation_approval;
     const toggle = config.approved_three_category_toggle_presentation;
     const redesign = config.approved_store_reader_redesign;
@@ -53,7 +53,18 @@ describe("website lock governance", () => {
     const actorApproval=config.approved_ask_3domain_actor_fix_20261024;
     const homeFindApproval=config.approved_ask_index_home_find_copy_followup_20261024;
     const store = config.approved_store_product_creation;
-    expect(store.approved_ui_commit).toBe(config.baseline_sha);
+    const newsJsonApproval = config.approved_reusable_news_json_mvp_20261025;
+    expect(newsJsonApproval.previous_baseline_sha).toBe(store.approved_ui_commit);
+    expect(newsJsonApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(newsJsonApproval.scope).toEqual([
+      "src/components/news-json-workbench.tsx",
+      "src/routes/data-api.tsx",
+    ]);
+    expect(newsJsonApproval.global_risk_final_lock_unmodified).toBe(true);
+    expect(newsJsonApproval.existing_paid_pricing_unmodified).toBe(true);
+    expect(newsJsonApproval.third_party_source_licence_automatically_created).toBe(false);
+    expect(newsJsonApproval.funds_authorized).toBe(false);
+    expect(newsJsonApproval.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(store.previous_baseline_sha).toBe(homeFindApproval.approved_ui_commit);
     expect(store.scope).toEqual(["src/components/api-endpoint-directory.tsx", "public/llms.txt", "public/openapi-x402.json"]);
     expect(store.canonical_pricing_unmodified).toBe(true);
