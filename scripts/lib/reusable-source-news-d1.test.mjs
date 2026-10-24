@@ -32,7 +32,7 @@ function fakeD1(){
    prepare(sql){
      let args=[];
      const statement={
-       bind(...input){args=input;return statement},
+       bind(...input){args=input;statement.args=input;return statement},
        async first(){if(sql.includes("FROM reusable_news_items WHERE item_id")){
          const found=news.get(args[0]);return found?{projection_json:found.projection_json}:null;
        }return null},
