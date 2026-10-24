@@ -11,6 +11,8 @@ import {parseCochilcoAnuarioHtml} from '../../global-intelligence/adapters/cochi
 import {parseOpcwNewsHtml} from '../../global-intelligence/adapters/opcw-news.mjs';
 import {parseIcjCasesHtml} from '../../global-intelligence/adapters/icj-cases.mjs';
 import {parseIccNewsHtml} from '../../global-intelligence/adapters/icc-news.mjs';
+import {ICC_OFFICIAL_NEWS_RSS,parseIccOfficialNewsRss}
+ from '../lib/icc-official-news-rss.mjs';
 import {MOFCOM_MINISTRY_ANNOUNCEMENTS_2026,
  parseMofcomMinistryMineralAnnouncementIndex}
  from '../lib/mofcom-ministry-2026-announcements.mjs';
@@ -63,6 +65,7 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
      status:'UNAVAILABLE',reason:null,parsed_candidate_count:null,
      current_original_publication_verified:false,commercial_eligible:false};
    let mayUseRelatedMinistryIndex=false;
+   let mayUseCourtRss=false;
    try{
      totalHttpRequests++;
      const response=await fetchImpl(source.url,{method:'GET',redirect:'error',
@@ -94,7 +97,13 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
            if(xml&&/<!DOCTYPE|<!ENTITY/iu.test(text))throw Error('FORMAT_NOT_VERIFIED');
            let parsed;
            try{parsed=PARSERS[source.id](text,{retrievedAt:now.toISOString(),observedAt:now.toISOString()});}
-           catch{throw Error('PARSER_NOT_VERIFIED');}
+           catch{
+             // A changed news landing-page DOM may hide the ICC news anchors;
+             // the SAME court explicitly publishes a separate RSS feed.
+             // Do not let format, denial or unrelated parser failures retry.
+             mayUseCourtRss=source.id==='icc_news';
+             throw Error('PARSER_NOT_VERIFIED');
+           }
            const count=Array.isArray(parsed)?parsed.length:Number(parsed?.value_numeric);
            if(!Number.isSafeInteger(count)||count<1)throw Error('PARSER_NOT_VERIFIED');
            row.status='PRIVATE_CANDIDATES_PARSED';row.parsed_candidate_count=count;
@@ -108,6 +117,38 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
      // first-party MOFCOM surface, never denied/quota or malformed content.
      mayUseRelatedMinistryIndex=error?.name==='AbortError' ||
        error?.name==='TimeoutError' || error?.name==='TypeError';
+   }
+   if(source.id==='icc_news'&&row.status==='UNAVAILABLE'&&
+      row.reason==='PARSER_NOT_VERIFIED'&&mayUseCourtRss){
+     totalHttpRequests++;
+     row.official_rss_alternate_attempted=true;
+     row.primary_news_html_parser_still_unverified=true;
+     try{
+       const alt=await fetchImpl(ICC_OFFICIAL_NEWS_RSS,{
+         method:'GET',redirect:'error',signal:AbortSignal.timeout(12000),
+         headers:{'user-agent':'Geomacro-Private-P0-Discovery/1.0',
+          accept:'application/rss+xml,application/xml,text/xml'}
+       });
+       if(!alt.ok||alt.redirected===true||
+          (alt.url&&alt.url!==ICC_OFFICIAL_NEWS_RSS)){
+         try{await alt.body?.cancel();}catch{}
+         throw Error('ICC_OFFICIAL_RSS_ENDPOINT_UNVERIFIED');
+       }
+       if(!/xml|rss/iu.test(alt.headers.get('content-type')??''))
+         throw Error('ICC_OFFICIAL_RSS_MIME_INVALID');
+       const bytes=await boundedBody(alt,P0_MAX_BYTES);
+       const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+       const receipt=parseIccOfficialNewsRss(text);
+       row.status='ICC_OFFICIAL_RSS_REFERENCE_ONLY';
+       row.reason=null;
+       row.official_first_party_rss_leads=receipt.first_party_original_link_leads;
+       row.original_article_html_readback_verified=false;
+       row.current_original_publication_verified=false;
+       row.commercial_eligible=false;
+     }catch{
+       row.official_rss_alternate_unavailable=true;
+       // Preserve the primary failure; no leaked publisher bytes/errors.
+     }
    }
    if(source.id==='china_mofcom_trade_controls'&&
       row.status==='UNAVAILABLE'&&mayUseRelatedMinistryIndex){
