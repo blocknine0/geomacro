@@ -1,4 +1,5 @@
 import {visiblePublisherText} from "./stateless-publisher-text";
+import {verifiedPublisherPageDate} from "../../scripts/lib/official-original-article-date.mjs";
 /**
  * Original first-publication day from exact Canada.ca government NEWS article.
  * Never infer from feed updated, dateModified, crawl time, URL year/month.
@@ -86,6 +87,26 @@ export function canadaOriginalPublicationDay(
   if(ms<now-30*86_400_000)return null;
   note?.("within_30d");
   return day;
+}
+
+/** Optional SAME-PAGE precision upgrade. This is only possible after
+ * canadaOriginalPublicationDay has validated publisher URL, heading, and
+ * issuer-native first issue day. Strict original datePublished metadata
+ * must establish an exact hour WITHIN the approved 22h verification window.
+ * Day-only dates, dateModified, conflicting clocks and future UTC remain day.
+ * This carries no source rights, review signature or score.
+ */
+export function canadaOriginalPrecisePublicationTime(
+  html:string,verifiedDay:string,now=Date.now(),
+):string|null {
+  if(typeof html!=="string"||!/^20\\d{2}-\\d{2}-\\d{2}$/u.test(verifiedDay)||
+     !Number.isFinite(now))return null;
+  const precise=verifiedPublisherPageDate(html,new Date(now),null,{
+    maxAgeMs:22*60*60_000,
+  });
+  // Both issuer-native day and independently read precise first-publication
+  // metadata must agree. Do not substitute noon or local-crawl time.
+  return precise&&precise.slice(0,10)===verifiedDay?precise:null;
 }
 
 /** Private, finite topic from the SAME original article, never navigation,
