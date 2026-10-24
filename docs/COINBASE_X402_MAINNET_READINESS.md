@@ -1,6 +1,6 @@
 # Coinbase x402 Base mainnet — capability-priced readiness
 
-**Status: controlled prelaunch; real funds are disabled pending independent production acceptance and owner authorization.**
+**Status: PREPARED, REAL-FUNDS GATE LOCKED.** Controlled prelaunch; real funds remain disabled pending independent production acceptance and owner authorization.
 Canonical quote pricing is `src/lib/capability-pricing-catalog.ts`; this document is not a payment quote. The former universal `0.05 USDC / 20,000 calls` text is obsolete and **must not** be used for new orders. Prior settled ledger records retain their historical amounts.
 
 ## Seven active public Store products, 12 variants
