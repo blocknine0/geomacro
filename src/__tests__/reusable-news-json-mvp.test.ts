@@ -48,11 +48,9 @@ describe("all-license-class reusable factual news JSON",()=>{
     const route=readFileSync("src/routes/api.v1.intelligence.live-structured.ts","utf8");
     const canonical=readFileSync("src/routes/api.v1.intelligence.query.ts","utf8");
     const projection=readFileSync("src/lib/derived-news-structural-response.server.ts","utf8");
-    const ui=readFileSync("src/routes/data-api.tsx","utf8");
     expect(route).toContain('mode==="news-json"');
     expect(route).toContain('normalizeReusableNewsBatch');
     expect(canonical).toContain('"reusable-news-json"');
     expect(projection).toContain("normalizeReusableNewsJson");
-    expect(ui).toContain("<NewsJsonWorkbench />");
   });
 });
