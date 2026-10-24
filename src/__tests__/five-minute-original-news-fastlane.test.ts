@@ -19,17 +19,20 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
      "rare_earth","rare_earth","rare_earth","rare_earth","rare_earth"]);
    expect(new Set(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).size).toBe(16);
    expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).toEqual([
-     "un_news","uk_fcdo","un_press_global","eu_council_press_original","nz_beehive_geopolitics",
+     "un_news","uk_fcdo","un_press_global","eu_council_press_original","canada_foreign_statements",
      "fed_press","wto_trade_original_rss","ecb_press","boc_press_global",
-     "nz_beehive_macro","govuk_global_economy",
+     "bis_press","govuk_global_economy",
      "nrcan_releases","us_doe_news_minerals","bc_minerals_global",
-     "nz_beehive_minerals","govuk_global_minerals"]);
+     "uk_dbt","govuk_global_minerals"]);
    const collector=read("src/lib/stateless-public-intelligence.server.ts");
    expect(collector).toContain("officialSources.filter(s=>s.id===id && s.category===category)");
    expect(collector).toContain("FIVE_MINUTE_NEWS_FASTLANE.length>FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN");
    // Each selected entry must resolve to an exact existing issuer reader.
    // No syndicated/third-party news or paid feed endpoint is introduced.
-   expect(FIVE_MINUTE_NEWS_FASTLANE.filter(x=>x.id.startsWith("nz_beehive_"))).toHaveLength(3);
+   expect(FIVE_MINUTE_NEWS_FASTLANE.filter(x=>x.id.startsWith("nz_beehive_"))).toHaveLength(0);
+   expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="canada_foreign_statements")).toBe(true);
+   expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="bis_press")).toBe(true);
+   expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="uk_dbt")).toBe(true);
    expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="eu_council_press_original")).toBe(true);
    expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="govuk_global_minerals")).toBe(true);
    expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="govuk_global_economy")).toBe(true);
@@ -58,9 +61,9 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
  });
  it("runs zero extra official requests for healthy primaries and one separately pinned origin for complete outage",()=>{
    expect(FIVE_MINUTE_NEWS_FALLBACK).toEqual([
-     {category:"geopolitics",id:"canada_foreign_statements"},
-     {category:"macro",id:"bis_press"},
-     {category:"rare_earth",id:"uk_dbt"},
+     {category:"geopolitics",id:"ungeneva_press_global"},
+     {category:"macro",id:"boj_press_global"},
+     {category:"rare_earth",id:"iea_minerals_global"},
    ]);
    expect(FASTLANE_MAX_FALLBACK_READS_PER_RUN).toBe(3);
    expect(new Set(FIVE_MINUTE_NEWS_FALLBACK.map(x=>x.id)).size).toBe(3);
@@ -75,7 +78,7 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
    primary[1].healthy=false;
    expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
-   primary[2].healthy=false; // UN Press is third, but EU + NZ still work.
+   primary[2].healthy=false; // UN Press is third, but EU Council + Canada still work.
    expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
    primary[3].healthy=false;
    primary[4].healthy=false;
@@ -179,14 +182,14 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
  it("recovers a quiet category through the real bounded collector without a polling cascade",async()=>{
    const initial=Date.parse("2026-10-23T12:00:00Z");
    const now=Array.from({length:10},(_,i)=>initial+i*300_000).find(at=>
-     selectFiveMinuteFallback("macro",at).id==="bis_press")!;
+     selectFiveMinuteFallback("macro",at).id==="boj_press_global")!;
    expect(now).toBeDefined();
    const reads:string[]=[];
    const reports=await readFiveMinuteNewsFastlane(now,20,undefined,{readPinnedSource:async source=>{
      reads.push(source.id);
-     return {healthy:true,candidates:source.id==="bis_press"?[{
-       title:"Bank for International Settlements announces monetary policy interest rates",
-       articleUrl:"https://www.bis.org/press/p261023.htm",publishedAt:new Date(now-20*60_000).toISOString(),
+     return {healthy:true,candidates:source.id==="boj_press_global"?[{
+       title:"Bank of Japan announces monetary policy interest rates",
+       articleUrl:"https://www.boj.or.jp/en/mopo/outlook/2026/out261023.htm",publishedAt:new Date(now-20*60_000).toISOString(),
        sourceId:source.id,category:"macro",credit:source.credit,
      }]:[]};
    }});
@@ -199,7 +202,7 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(macro.fallback_reason).toBe("NO_RECENT_QUALIFYING_PRIMARY_RELEASE");
    expect(macro.primary_publisher_status).toHaveLength(6);
    expect(macro.primary_publisher_status?.every(x=>x.reachable&&x.recent_release_count===0)).toBe(true);
-   expect(macro.fallback_publisher_status).toEqual([{id:"bis_press",reachable:true,native_candidate_count:1}]);
+   expect(macro.fallback_publisher_status).toEqual([{id:"boj_press_global",reachable:true,native_candidate_count:1}]);
    expect(macro.signals[0].published_at).toBe(new Date(now-20*60_000).toISOString());
    expect(JSON.stringify(reports)).not.toContain("https://");
  });
@@ -226,7 +229,7 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
  });
  it("rotates remaining distinct official origins across quiet categories with one alternative each",async()=>{
    const additions={
-     geopolitics:["canada_foreign_statements","ungeneva_press_global"],
+     geopolitics:["ungeneva_press_global","uk_ofsi_sanctions"],
      macro:["un_news_economy","boj_press_global"],
      rare_earth:["un_news_minerals","iea_minerals_global"],
    } as const;
