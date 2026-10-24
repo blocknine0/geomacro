@@ -38,6 +38,8 @@ on:
       - "scripts/lib/derived-original-reference-pins.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
       - "scripts/lib/all-news-original-evidence-audit.mjs"
+      - "scripts/lib/automatic-news-qualification-coverage.mjs"
+      - "scripts/lib/automatic-news-qualification-coverage.test.mjs"
       - "scripts/lib/bundled-original-source-quota.mjs"
       - "scripts/ops/emit-low-source-review-status.mjs"
       - "scripts/tests/emit-low-source-review-status.test.mjs"
@@ -75,6 +77,8 @@ on:
       - "scripts/lib/derived-original-reference-pins.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
       - "scripts/lib/all-news-original-evidence-audit.mjs"
+      - "scripts/lib/automatic-news-qualification-coverage.mjs"
+      - "scripts/lib/automatic-news-qualification-coverage.test.mjs"
       - "scripts/lib/bundled-original-source-quota.mjs"
       - "scripts/ops/emit-low-source-review-status.mjs"
       - "scripts/tests/emit-low-source-review-status.test.mjs"
@@ -186,6 +190,7 @@ jobs:
           bun test scripts/tests/private-source-handoff-sqlite.test.ts
           node --test scripts/ops/verify-original-to-website-visible-20m.test.mjs
           node --test scripts/tests/emit-low-source-review-status.test.mjs
+          node --test scripts/lib/automatic-news-qualification-coverage.test.mjs
           bun test scripts/tests/public-signed-news.test.mjs
           node --test scripts/tests/actor-action-news.test.mjs
           node --test scripts/tests/gri-news-wakeup.test.mjs
