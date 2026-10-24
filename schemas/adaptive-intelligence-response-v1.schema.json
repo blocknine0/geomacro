@@ -343,6 +343,9 @@
               }
             }
           ]
+        },
+        "delivery_tier": {
+          "const": "structural_baseline"
         }
       }
     },
@@ -413,6 +416,10 @@
                   "null"
                 ],
                 "format": "date-time"
+              },
+              "governed_module_count": {
+                "type": "integer",
+                "minimum": 0
               }
             },
             "additionalProperties": false
@@ -528,6 +535,30 @@
             "null"
           ],
           "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]{1,6})?$"
+        },
+        "delivery_tier": {
+          "const": "structural_baseline"
+        },
+        "source_clock": {
+          "const": "SOURCE_NATIVE_STRUCTURAL_PUBLICATION"
+        },
+        "signed_current_risk_object_included": {
+          "const": false
+        },
+        "independently_scored_current_risk_included": {
+          "const": false
+        },
+        "customer_facing_output": {
+          "const": "decision_intelligence_v1"
+        },
+        "change_intelligence_contract": {
+          "const": "geomacro.change-intelligence.v1"
+        },
+        "governed_module_fallbacks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -538,7 +569,6 @@
         "execution_authorized",
         "missing_is_never_zero_risk",
         "only_prechecked_required_modules_delivered",
-        "current_event_raw_source_material_redistributed",
         "corridor_route_modeling_may_be_unavailable"
       ],
       "properties": {
@@ -556,6 +586,9 @@
         },
         "corridor_route_modeling_may_be_unavailable": {
           "type": "boolean"
+        },
+        "wgi_upstream_perception_source_material_redistributed": {
+          "const": false
         }
       }
     },
@@ -573,7 +606,11 @@
           "const": true
         },
         "provider": {
-          "const": "coinbase_cdp_x402"
+          "enum": [
+            "coinbase_cdp_x402",
+            "coinbase_x402",
+            "circle_gateway_x402"
+          ]
         },
         "asset": {
           "const": "USDC"
@@ -629,6 +666,60 @@
         }
       },
       "additionalProperties": true
+    },
+    "change_intelligence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "execution_authorized",
+          "raw_data_delivered"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "geomacro.change-intelligence.v1"
+          },
+          "execution_authorized": {
+            "const": false
+          },
+          "raw_data_delivered": {
+            "const": false
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "decision_intelligence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "execution_authorized",
+          "raw_data_delivered"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "geomacro.decision-intelligence.v1"
+          },
+          "execution_authorized": {
+            "const": false
+          },
+          "raw_data_delivered": {
+            "const": false
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "availability": {
+      "type": "object",
+      "description": "Source-private admission summary; never a payment receipt."
+    },
+    "data_attribution": {
+      "type": "object",
+      "description": "Only separately approved fixed derived-data attribution; does not grant source rights."
     }
   },
   "$defs": {

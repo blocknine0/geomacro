@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { buildAgentQueryPlan } from "./agent-query-plan";
 import { GEOMACRO_STORE_REQUEST_EXAMPLES } from "./store-product-examples";
 import { resolveGeomacroCapabilityPrice } from "./capability-pricing-catalog";
@@ -25,6 +26,7 @@ vi.mock("./risk-gate-service.server", () => ({ evaluateCountryRiskGate: async ()
 vi.mock("./corridor-risk-gate-service.server", () => ({ evaluateCorridorRiskGate: async () => ({ context: { execution_authorized: false }, response: { execution_authorized: false, decision: "CAUTION" } }) }));
 
 const NOW = new Date("2026-10-24T13:00:00.000Z"), NATIVE = "2026-10-23T00:00:00.000Z";
+const publishedResponse = JSON.parse(readFileSync("schemas/adaptive-intelligence-response-v1.schema.json", "utf8"));
 const selectedModules = ["macro_monetary", "external_fx", "sovereign_fiscal", "critical_minerals"];
 function observation(country: string, module: string, index: number): StructuralObservation {
   return { observation_id: `${country}-${module}-${index}`, source_id: "private_test_fixture_only", source_record_id: null,
@@ -95,6 +97,19 @@ describe("all active Store creation contracts on the canonical mainnet engine (o
     expect(intelligence.question_interpretation.product).toEqual(raw.product);
     expect(JSON.stringify(intelligence)).not.toMatch(/private\.invalid|private_test_fixture_only|source_id|source_url/);
     expect(intelligence.execution_authorized).toBe(false);
+    // Published closed envelopes must describe actual customer fields, not
+    // reject valid Store output as an undocumented additional property.
+    for (const [value, schema] of [
+      [intelligence, publishedResponse],
+      [intelligence.question_interpretation, publishedResponse.properties.question_interpretation],
+      [intelligence.methodology, publishedResponse.properties.methodology],
+      [intelligence.limitations, publishedResponse.properties.limitations],
+      ...intelligence.structural.map((row: any) => [row.evidence_summary, publishedResponse.properties.structural.items.properties.evidence_summary]),
+    ]) {
+      for (const field of Object.keys(value)) expect(schema.properties).toHaveProperty(field);
+      for (const field of schema.required ?? []) expect(value).toHaveProperty(field);
+    }
+    expect(publishedResponse.properties.payment.properties.provider.enum).toContain(intelligence.payment.provider);
   });
   it("rejects origin-only corridor data even when the overall module timestamp is fresh", async () => {
     mocks.context.mockImplementation((subject: any) => ({ ...context(subject), observations: context(subject).observations.filter(row => row.country_iso3 === "USA") }));
