@@ -7,6 +7,7 @@ import {
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import { getCoinbaseX402Config } from "./coinbase-x402.server";
 import { STORE_STRUCTURAL_PRODUCTS } from "./store-product-selection";
+import {qualifiedStructuralBaselinePreflight} from "./structural-baseline-eligibility";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const PURCHASE_PATH = "/api/v1/intelligence/query";
@@ -124,23 +125,7 @@ export async function preflightStructuralBaseline(
   // Positive availability must include actual source-native observation time
   // AND a rights-certified derived-commercial source contract. No flags from a
   // mismatched or empty checker response can become a buyer purchase offer.
-  const observed = availability.subjects[0]?.latest_evidence_at;
-  const observedAt = typeof observed === "string" ? Date.parse(observed) : Number.NaN;
-  const rightsReady = availability.source_contracts.length > 0 &&
-    availability.source_contracts.every(contract =>
-      ["COMMERCIAL_OK", "DERIVED_ONLY"].includes(contract.commercial_usage_status ?? "") &&
-      contract.attribution_required === false);
-  const eligible = availability.deliverable === true &&
-    availability.code === "AVAILABLE" &&
-    availability.query_plan_hash === plan.query_plan_hash &&
-    availability.subjects.length === 1 &&
-    Number.isFinite(observedAt) && observedAt <= Date.now() &&
-    rightsReady &&
-    availability.ineligible_source_ids.length === 0 &&
-    availability.missing_modules.length === 0 &&
-    availability.stale_modules.length === 0 &&
-    plan.required_modules.every(module =>
-      availability.subjects[0].available_modules.includes(module));
+  const eligible = qualifiedStructuralBaselinePreflight(plan, availability);
   if (!eligible) return response({
     ok: false, chargeable: false, payment_required_now: false,
     execution_authorized: false, query_plan_hash: plan.query_plan_hash,
