@@ -64,9 +64,9 @@ function eventFingerprint(s:string){
   }
   return (a>>>0).toString(16).padStart(8,"0")+(b>>>0).toString(16).padStart(8,"0");
 }
-const METRIC_PATTERN=/(?:[$€£]\s?)?\b\d{1,9}(?:,\d{3})*(?:\.\d{1,4})?\s?(?:%|percent|percentage points?|basis points?|bps|billion|million|trillion|tonnes?|tons?|barrels?|USD|EUR|GBP)\b|[$€£]\s?\d{1,9}(?:,\d{3})*(?:\.\d{1,4})?/giu;
+const METRIC_PATTERN=/(?:[$€£]\s?)?\b\d{1,9}(?:,\d{3})*(?:\.\d{1,4})?\s?(?:%|percent|percentage points?|basis points?|bps|billion|million|trillion|tonnes?|tons?|barrels?|USD|EUR|GBP)(?=$|[\s,.;:!?])|[$€£]\s?\d{1,9}(?:,\d{3})*(?:\.\d{1,4})?/giu;
 function extractMetrics(source:string){
-  const found:{value:string;unit:string}[]=[];
+  const found:{value:string;unit:string;scale:string|null}[]=[];
   const seen=new Set<string>();
   for(const match of source.matchAll(METRIC_PATTERN)){
     const span=match[0].replace(/\s+/gu," ").trim();
@@ -74,8 +74,9 @@ function extractMetrics(source:string){
       span.startsWith("£")?"GBP":((span.match(/(?:%|percent|percentage points?|basis points?|bps|billion|million|trillion|tonnes?|tons?|barrels?|USD|EUR|GBP)$/iu)||[])[0]||"").toLowerCase();
     const value=(span.replace(/[$€£,%]/gu,"").replace(/(?:percent|percentage points?|basis points?|bps|billion|million|trillion|tonnes?|tons?|barrels?|USD|EUR|GBP)$/iu,"").replace(/,/gu,"").trim());
     if(!/^\d{1,9}(?:\.\d{1,4})?$/u.test(value))continue;
-    const key=value+"|"+unit;
-    if(!seen.has(key)){found.push({value,unit});seen.add(key)}
+    const scale=(span.match(/\b(billion|million|trillion)\b/iu)||[])[0]?.toLowerCase()??null;
+    const key=value+"|"+unit+"|"+scale;
+    if(!seen.has(key)){found.push({value,unit,scale});seen.add(key)}
     if(found.length===15)break;
   }
   return found;
@@ -111,7 +112,7 @@ export function normalizeReusableNewsJson(input:unknown){
   const metrics=extractMetrics(prose);
   const hasData=eventTypes.length>0||actions.length>0||metrics.length>0;
   const id=eventFingerprint([category,sourceName??"",d.published_at??"",
-    d.country_iso3??"",prose].join("|"));
+    d.country_iso3??"",d.source_url??"",license,prose].join("|"));
   return {
     schema:REUSABLE_NEWS_JSON_SCHEMA,
     id:"news-"+id,
