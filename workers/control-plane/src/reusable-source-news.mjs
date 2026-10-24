@@ -128,8 +128,11 @@ export async function publishReusableSourceNews(env,body,now=Date.now()){
       accepted:rows.length,checked_sources:body.checks.length,
       d1_readback_verified:true,raw_upstream_stored:false,
       paid_product_authorized:false});
-  }catch{
-    return msg({ok:false,error:"REUSABLE_SOURCE_NEWS_D1_UNAVAILABLE",paid_product_authorized:false},503);
+  }catch(e){
+    // A stable diagnostic code, never the private D1/SQL/source exception.
+    const code=e instanceof Error&&e.message==="REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH"
+      ?"REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH":"REUSABLE_SOURCE_NEWS_D1_UNAVAILABLE";
+    return msg({ok:false,error:code,paid_product_authorized:false},503);
   }
 }
 export async function publicReusableSourceNews(env,searchParams=new URLSearchParams(),now=Date.now()){
