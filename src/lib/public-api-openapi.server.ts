@@ -97,7 +97,7 @@ export const GEOMACRO_SUPPORT_OPENAPI_PATHS = {
         "415": { description: "JSON content type required" }, "422": { description: "Unsupported request or unavailable observation" } },
     },
   },
-  "/api/public/global-risk": { get: publicReadOperation("getPublicGlobalRisk", "Public GRI history with product clocks and verification status") },
+  "/api/public/global-risk": { get: { ...publicReadOperation("getPublicGlobalRisk", "Legacy GRI compatibility read; retired from the public website and Store"), deprecated: true } },
   "/api/public/risk-indices": { get: publicReadOperation("getPublicRiskIndices", "Public category indices with their own publication delay") },
   "/api/risk-object-keys": { get: publicReadOperation("getRiskObjectVerificationKeys", "Public signing-key lifecycle metadata") },
   "/api/health": { get: { ...publicReadOperation("getDeploymentHealth", "Runtime and product dependency health"),

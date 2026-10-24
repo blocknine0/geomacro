@@ -339,7 +339,7 @@
     "/api/public/global-risk": {
       "get": {
         "operationId": "getPublicGlobalRisk",
-        "summary": "Public GRI history with product clocks and verification status",
+        "summary": "Legacy GRI compatibility read; retired from the public website and Store",
         "security": [],
         "responses": {
           "200": {
@@ -354,7 +354,8 @@
           "503": {
             "description": "Required runtime or product unavailable"
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/api/public/risk-indices": {
@@ -2984,16 +2985,6 @@
         "path": "/api/v1/intelligence/live-structured",
         "purpose": "Official observations and open-data measurements by category, country or supported numeric question.",
         "access": "No funds; reference periods may precede retrieval."
-      },
-      {
-        "id": "global_risk",
-        "name": "Public GRI history",
-        "methods": [
-          "GET"
-        ],
-        "path": "/api/public/global-risk",
-        "purpose": "Public risk product with its own dates and availability.",
-        "access": "Website research; not a paid signed delivery."
       },
       {
         "id": "risk_indices",

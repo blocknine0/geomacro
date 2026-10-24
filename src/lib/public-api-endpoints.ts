@@ -24,8 +24,6 @@ export const GEOMACRO_PUBLIC_API_ENDPOINTS = [
     path: "/api/v1/finds", purpose: "Derived cards; domain=geopolitics, macro or rare_earth.", access: "No funds; unscored research, not a signed risk product." },
   { id: "live_structured", name: "Live structured research", methods: ["GET", "POST"],
     path: "/api/v1/intelligence/live-structured", purpose: "Official observations and open-data measurements by category, country or supported numeric question.", access: "No funds; reference periods may precede retrieval." },
-  { id: "global_risk", name: "Public GRI history", methods: ["GET"],
-    path: "/api/public/global-risk", purpose: "Public risk product with its own dates and availability.", access: "Website research; not a paid signed delivery." },
   { id: "risk_indices", name: "Public Risk Indices", methods: ["GET"],
     path: "/api/public/risk-indices", purpose: "Public category indices with publication delay and verification status.", access: "Website research; current values may be unavailable." },
   { id: "keys", name: "Risk Object verification keys", methods: ["GET"],

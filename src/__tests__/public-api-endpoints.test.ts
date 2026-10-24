@@ -13,6 +13,8 @@ describe("public endpoint integration contract", () => {
   it("keeps website, agent discovery and both OpenAPI surfaces on existing routes and methods", () => {
     expect(officialGeomacroAgentDiscovery().public_endpoint_catalog).toEqual(endpoints);
     expect(new Set(endpoints.map(endpoint => endpoint.path)).size).toBe(endpoints.length);
+    expect(endpoints.some(endpoint => String(endpoint.path) === "/api/public/global-risk")).toBe(false);
+    expect(paths["/api/public/global-risk"].get.deprecated).toBe(true);
     for (const endpoint of endpoints) {
       for (const method of endpoint.methods) {
         expect(paths[endpoint.path], endpoint.path).toHaveProperty(method.toLowerCase());
