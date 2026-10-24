@@ -11,9 +11,11 @@ on:
       - ".github/workflows/global-p0-source-probe.yml"
       - "config/global-p0-source-expansion.json"
       - "scripts/ops/observe-p0-private-source-runtime.mjs"
+      - "global-intelligence/adapters/china-mofcom.mjs"
       - "scripts/tests/existing-source-runtime-activation.test.mjs"
       - "scripts/lib/mofcom-ministry-2026-announcements.mjs"
       - "scripts/tests/mofcom-ministry-2026-announcements.test.mjs"
+      - "scripts/tests/mofcom-clock-no-crawl-imputation.test.mjs"
   pull_request:
     branches: [main]
     paths:
@@ -26,8 +28,10 @@ on:
       - "scripts/test-p0-live-schema-certification.mjs"
       - "scripts/test-p0-registry-alignment.mjs"
       - "scripts/ops/observe-p0-private-source-runtime.mjs"
+      - "global-intelligence/adapters/china-mofcom.mjs"
       - "scripts/lib/mofcom-ministry-2026-announcements.mjs"
       - "scripts/tests/mofcom-ministry-2026-announcements.test.mjs"
+      - "scripts/tests/mofcom-clock-no-crawl-imputation.test.mjs"
       - "scripts/test-global-p0-source-endpoints.mjs"
       - "global-intelligence/sources/source-registry.v1.json"
       - "global-intelligence/sources/free-source-catalog.v1.json"
@@ -63,6 +67,9 @@ jobs:
         run: |
           mkdir -p artifacts
           node scripts/test-global-p0-source-endpoints.mjs > artifacts/global-p0-source-probe.json
+
+      - name: Test MOFCOM original clock is never borrowed from crawl time
+        run: node --test scripts/tests/mofcom-clock-no-crawl-imputation.test.mjs
 
       - name: Test free official Chinese ministry reference fails closed
         run: node --test scripts/tests/mofcom-ministry-2026-announcements.test.mjs
@@ -104,6 +111,8 @@ jobs:
           node-version: "22"
       - name: Test bounded existing-source activation
         run: node --test scripts/tests/existing-source-runtime-activation.test.mjs
+      - name: Verify MOFCOM crawl clock cannot masquerade as original release
+        run: node --test scripts/tests/mofcom-clock-no-crawl-imputation.test.mjs
       - name: Verify Ministry same-publisher alternate never grants commercial rights
         run: node --test scripts/tests/mofcom-ministry-2026-announcements.test.mjs
       - name: Read all ten existing P0 sources with canonical private parsers
