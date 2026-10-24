@@ -1,4 +1,5 @@
 import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
+import {pinnedRbiPressReleaseLink} from "../../scripts/lib/rbi-official-macro-release.mjs";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,verifiedGlobalRdfFeed,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { createHash } from "node:crypto";
 import {indexedHeadlineMatchesOriginalPage,indexedPublisherHasOriginalMetaOutsideScripts} from "./on-demand-index-original-title.server";
@@ -215,7 +216,7 @@ async function boundedFetch(
         "www.gov.uk","news.un.org","www.federalreserve.gov","www.ecb.europa.eu",
         "www.minister.industry.gov.au","api.io.canada.ca",
         "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.bankofcanada.ca","news.gov.bc.ca",
-        "www.consilium.europa.eu","www.usgs.gov","www.energy.gov"].includes(target.hostname)) {
+        "www.consilium.europa.eu","www.usgs.gov","www.energy.gov","www.rbi.org.in"].includes(target.hostname)) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
   const maxBytes = accept === "text/html" ? MAX_FIRST_PARTY_HTML_BYTES : MAX_BODY_BYTES;
@@ -583,6 +584,17 @@ const INTERNATIONAL_ORIGINAL_FEEDS:readonly OriginalFeed[]=GLOBAL_OFFICIAL_RELEA
   }));
 const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
   {
+    // Existing protected-main first-party RBI press RSS was independently
+    // live checked, but item pubDates were missing. Feed entries are ONLY
+    // index leads for exact native clock + HTML byte readback, NOT current
+    // statistical values, source rights or paid intelligence.
+    domain:"macro",family:"rbi_india_original_macro_publisher",
+    url:"https://www.rbi.org.in/pressreleases_rss.xml",
+    media:"rss",originalHost:"www.rbi.org.in",
+    originalPath:/^\/Scripts\/BS_PressReleaseDisplay\.aspx$/u,
+    topic:/\b(?:monetary|repo rate|reverse repo|liquidity|inflation|foreign exchange|currency|financial stability|bank rate|payment systems?|policy rates?|credit growth|exchange reserves?)\b/iu,
+  },
+  {
     domain:"rare_earth",family:"uk_dbt_original_publisher",
     url:"https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
     media:"atom",originalHost:"www.gov.uk",
@@ -666,6 +678,8 @@ const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
   },
 ];
 function originalArticleUrl(value:string, def:OriginalFeed):string|null {
+  if(def.family==="rbi_india_original_macro_publisher")
+    return pinnedRbiPressReleaseLink(value);
   const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((s:{family:string})=>s.family===def.family);
   if(global)return globalOriginalArticleUrl(value,global);
   try {
@@ -916,6 +930,7 @@ async function originalOfficialFeed(
     const matchedScope=def.topic.test(contextualText) &&
       matchesRequestedTopic(contextualText,def.domain,topics) && mineralMatches;
     if(matchedCountry && matchedScope)audit.scope_matched++;
+    const undatedRbiOriginalIndex=def.family==="rbi_india_original_macro_publisher" && !date.trim();
     const undatedFirstPartyAtom=atom && !date.trim() &&
       ["uk_fcdo_original_publisher","uk_dbt_original_publisher",
        "uk_ofsi_original_publisher","uk_desnz_original_publisher","uk_hmt_original_publisher",
@@ -923,7 +938,7 @@ async function originalOfficialFeed(
     // Missing Atom <published> may enter PRIVATE article-page verification,
     // not score/payment. Never accept <updated>, bad/missing RSS clocks, or
     // a stale/future <published> as original source time.
-    if (!matchedCountry || !matchedScope || (!hasNativeDate && !undatedFirstPartyAtom)) continue;
+    if (!matchedCountry || !matchedScope || (!hasNativeDate && !undatedFirstPartyAtom && !undatedRbiOriginalIndex)) continue;
     audit.eligible_pub_date++;
     let href="";
     if(atom){
@@ -950,6 +965,7 @@ async function originalOfficialFeed(
       item_scoped_summary_private:summary,
       feed_item_published_at:hasNativeDate?new Date(Date.parse(date)).toISOString():null,
       ...(undatedFirstPartyAtom?{undated_atom_original_page_pending:true as const}:{}),
+      ...(undatedRbiOriginalIndex?{index_original_page_pending:true as const}:{}),
       article_identity_sha256,
       first_party_article_url_verified:true,
       source_native_feed_publication_date_verified:hasNativeDate,
@@ -1084,7 +1100,7 @@ async function discoverOnDemandImpl(
     // Defense in depth: this wrapper must never become a variable-origin
     // proxy even if future callers bypass boundedFetch's own allowlist.
     const permittedHosts=["api.worldbank.org","api.gdeltproject.org",
-      "api.reliefweb.int","www.gov.uk","news.un.org",
+      "api.reliefweb.int","www.gov.uk","news.un.org","www.rbi.org.in",
       "www.federalreserve.gov","www.ecb.europa.eu",
       "www.minister.industry.gov.au","api.io.canada.ca",
       "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.bankofcanada.ca","news.gov.bc.ca"];
@@ -1161,6 +1177,7 @@ async function discoverOnDemandImpl(
     // scope only. Do not consume a scarce original-provider slot or alter
     // unrelated global/China queries simply because a new issuer was added.
     if(source.family==="canada_nrcan_original_publisher" && country!=="CAN") continue;
+    if(source.family==="rbi_india_original_macro_publisher" && country!=="IND") continue;
     if(!topics.length && ["uk_ofsi_original_publisher","ecb_original_publisher",
       "uk_desnz_original_publisher","uk_hmt_original_publisher"].includes(source.family)) continue;
     if (categories.includes(source.domain) &&
@@ -1231,6 +1248,8 @@ async function discoverOnDemandImpl(
           ?"uk_fcdo_original_publisher":
         category==="macro" && country==="CAN"
           ?"boc_original_publisher":
+        category==="macro" && country==="IND"
+          ?"rbi_india_original_macro_publisher":
         category==="macro" && country==="GBR"
           ?"uk_hmt_original_publisher":
         category==="macro" && euroAreaIso3.has(country)
