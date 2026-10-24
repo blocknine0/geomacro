@@ -187,3 +187,39 @@ test("untrusted readback exceptions never escape into reviewer output",async()=>
  assert.equal(report.rows[0].original_readback_failure_class,"UNKNOWN_OR_UNTRUSTED_PROOF");
  assert.equal(JSON.stringify(report).includes("PRIVATE_UPSTREAM_URL_OR_KEY"),false);
 });
+
+
+test("shared native-clock rejections retain safe remediation detail on every derived ID",async()=>{
+ const rows=["b1b1b1b1","c2c2c2c2"].map(x=>signal(x));
+ let physical=0;
+ const report=await auditEveryDerivedNewsOriginal({
+  signals:rows,originalRefs:new Map(rows.map(r=>[r.id,ref()])),
+  now,verify:async()=>{physical++;return {
+    schema:"geomacro.private-unclaimed-original-pre-review.v1",
+    accepted:false,status:"ORIGINAL_CLOCK_CONFLICT",
+  };},
+ });
+ assert.equal(physical,1);
+ assert.equal(report.exact_page_byte_rereads_attempted,1);
+ assert.equal(report.verified_original_page_bytes_and_native_time,0);
+ assert.equal(report.rows.length,2);
+ for(const row of report.rows){
+  assert.equal(row.original_page_evidence_status,"ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED");
+  assert.equal(row.original_readback_failure_class,"NATIVE_CLOCK");
+  assert.equal(row.original_readback_clock_detail,"FEED_PAGE_CLOCK_CONFLICT");
+  assert.equal(row.exact_original_page_html_readback,false);
+ }
+ assert.equal(report.rights_remediation_actions.ORIGINAL_PAGE_READBACK_REQUIRED,2);
+ assert.equal(report.x402_charges,0);
+ assert.equal(JSON.stringify(report).includes(url),false);
+});
+test("metadata absent is distinct from publisher feed/page conflict and remains ineligible",async()=>{
+ const row=signal("d3d3d3d3");
+ const report=await auditEveryDerivedNewsOriginal({
+  signals:[row],originalRefs:new Map([[row.id,ref()]]),now,
+  verify:async()=>({schema:"geomacro.private-unclaimed-original-pre-review.v1",
+    accepted:false,status:"ORIGINAL_NATIVE_CLOCK_NOT_PROVEN"}),
+ });
+ assert.equal(report.rows[0].original_readback_clock_detail,"ORIGINAL_METADATA_NOT_PROVEN");
+ assert.equal(report.verified_original_page_bytes_and_native_time,0);
+});

@@ -106,3 +106,23 @@ test("redacted original rejection classes distinguish upstream clock from transp
  p.audit.rows[1].original_readback_failure_class="ARBITRARY_PRIVATE_SOURCE_URL";
  assert.throws(()=>aggregateLowSourceReview(p),/LOW_REVIEW_SAFE_RECEIPT_INVALID/);
 });
+
+
+test("aggregate safely differentiates first-party metadata absence versus feed/page clock conflicts",()=>{
+ const p=proof();
+ p.audit.rows[1].original_page_evidence_status="ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED";
+ p.audit.rows[1].original_readback_failure_class="NATIVE_CLOCK";
+ p.audit.rows[1].original_readback_clock_detail="FEED_PAGE_CLOCK_CONFLICT";
+ let r=aggregateLowSourceReview(p);
+ assert.equal(r.original_readback_clock_detail_classes.FEED_PAGE_CLOCK_CONFLICT,1);
+ assert.equal(r.original_readback_clock_detail_classes.ORIGINAL_METADATA_NOT_PROVEN,0);
+ assert.equal(r.original_readback_failure_classes.NATIVE_CLOCK,1);
+ p.audit.rows[1].original_readback_clock_detail="ORIGINAL_METADATA_NOT_PROVEN";
+ r=aggregateLowSourceReview(p);
+ assert.equal(r.original_readback_clock_detail_classes.ORIGINAL_METADATA_NOT_PROVEN,1);
+ p.audit.rows[1].original_readback_clock_detail="https://private.invalid/key";
+ assert.throws(()=>aggregateLowSourceReview(p),/LOW_REVIEW_SAFE_RECEIPT_INVALID/);
+ p.audit.rows[1].original_page_evidence_status="PRIVATE_ORIGINAL_REFERENCE_NOT_AVAILABLE";
+ p.audit.rows[1].original_readback_clock_detail="FEED_PAGE_CLOCK_CONFLICT";
+ assert.throws(()=>aggregateLowSourceReview(p),/LOW_REVIEW_SAFE_RECEIPT_INVALID/);
+});
