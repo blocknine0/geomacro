@@ -1,6 +1,7 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {allowPublicDemoRequest} from "../lib/public-demo-rate-limit.server";
 import {liveStructuredData} from "../lib/live-structured-on-demand.server";
+import {normalizeReusableNewsJson,normalizeReusableNewsBatch,REUSABLE_NEWS_JSON_SCHEMA} from "../lib/reusable-news-json";
 
 function json(data:unknown,status=200){
  return Response.json(data,{status,headers:{
@@ -15,6 +16,10 @@ export const Route=createFileRoute("/api/v1/intelligence/live-structured")({
   GET:async()=>json({
     schema:"geomacro.live-structured-discovery.v1",
     method:"POST",path:"/api/v1/intelligence/live-structured",
+    news_json_mode:{mode:"news-json",news:{category:"macro-fx",text:"The Federal Reserve announced a 25 basis points policy rate reduction.",source_name:"Federal Reserve",license:"unknown"}},
+    news_json_schema:REUSABLE_NEWS_JSON_SCHEMA,
+    news_json_raw_article_returned:false,
+    news_json_commercial_license_self_certified:false,
     examples:[
       {category:"geopolitics"},
       {category:"macro-fx"},
@@ -45,15 +50,34 @@ export const Route=createFileRoute("/api/v1/intelligence/live-structured")({
      return json({ok:false,chargeable:false,error:"RATE_LIMITED"},429);
    if(!(request.headers.get("content-type")??"").toLowerCase().includes("application/json"))
      return json({ok:false,chargeable:false,error:"JSON_REQUIRED"},415);
-   if(Number(request.headers.get("content-length")??0)>2048)
+   const maxBody=16*1024;
+   if(Number(request.headers.get("content-length")??0)>maxBody)
      return json({ok:false,chargeable:false,error:"BODY_TOO_LARGE"},413);
    let payload:unknown;
+   let content="";
    try{
-    const content=await request.text();
-    if(new TextEncoder().encode(content).length>2048)
+    content=await request.text();
+    if(new TextEncoder().encode(content).length>maxBody)
       return json({ok:false,chargeable:false,error:"BODY_TOO_LARGE"},413);
     payload=JSON.parse(content);
    }catch{return json({ok:false,chargeable:false,error:"INVALID_JSON"},400);}
+   if(payload&&typeof payload==="object"&&!Array.isArray(payload)&&
+      (payload as Record<string,unknown>).mode==="news-json"){
+     try{
+       const req=payload as Record<string,unknown>;
+       if(Object.keys(req).some(k=>!["mode","news","items"].includes(k))||
+          (req.news===undefined)===(req.items===undefined))
+         throw Error("NEWS_JSON_INPUT_INVALID");
+       const output=req.news!==undefined?
+         {ok:true,...normalizeReusableNewsJson(req.news)}:
+         normalizeReusableNewsBatch(req.items);
+       return json(output);
+     }catch{
+       return json({ok:false,chargeable:false,error:"NEWS_JSON_INPUT_INVALID"},400);
+     }
+   }
+   if(new TextEncoder().encode(content).length>2048)
+     return json({ok:false,chargeable:false,error:"BODY_TOO_LARGE"},413);
    const outcome=await liveStructuredData(payload);
    return json(outcome.body,outcome.statusCode);
   },
