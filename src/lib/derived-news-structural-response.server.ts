@@ -3,6 +3,7 @@ import {country195ByIso3} from "./canonical-country-registry-195";
 import {observed195x3Coverage,observedDerivedNewsForCountry} from "./derived-news-country-coverage-195";
 import {buildDerivedNewsStructural,NEWS_STRUCTURAL_SCHEMA} from "./derived-news-structural-bridge";
 import {normalizeReusableNewsJson,REUSABLE_NEWS_JSON_SCHEMA} from "./reusable-news-json";
+import {fetchAllReusableSourceNews} from "./live-reusable-source-news-client";
 
 const CATEGORIES=["geopolitics","macro","rare_earth"] as const;
 type Domain = typeof CATEGORIES[number];
@@ -63,7 +64,18 @@ export async function derivedNewsStructuralResponse(
     return Response.json({ok:false,error:"DERIVED_STRUCTURAL_QUERY_INVALID",chargeable:false},
       {status:400,headers:HEADERS});
   try{
-    const signals=await fetchAllDerivedNews(fetchImpl,now);
+    // Independently degrade either of the two existing D1 news lanes.
+    let sourceResult:Awaited<ReturnType<typeof fetchAllReusableSourceNews>>|null=null;
+    if(reusableView){
+      try{sourceResult=await fetchAllReusableSourceNews(fetchImpl,now)}
+      catch{/* a functioning editorial journal can still serve */}
+    }
+    let signals:Awaited<ReturnType<typeof fetchAllDerivedNews>>;
+    try{signals=await fetchAllDerivedNews(fetchImpl,now)}
+    catch(e){
+      if(!reusableView||sourceResult===null)throw e;
+      signals=[];
+    }
     const all=buildDerivedNewsStructural(signals,now);
     if(coverageView)return Response.json(
       observed195x3Coverage(all,now,{
@@ -88,12 +100,24 @@ export async function derivedNewsStructuralResponse(
           source_material_class:"EXISTING_GEOMACRO_DERIVED_JOURNAL",
           upstream_source_rights_unverified:true};
       });
+      const fromRegistered=sourceResult?.items.filter(item=>
+        (domain===null||item.category===domain)&&country===null)??[];
+      const combined=[...items,...fromRegistered];
+      const mixedCounts=Object.fromEntries(CATEGORIES.map(c=>[
+        c,combined.filter(item=>item.category===c).length,
+      ]));
       return Response.json({
         ok:true,schema:"geomacro.reusable-news-json-live-feed.v1",
         item_schema:REUSABLE_NEWS_JSON_SCHEMA,
-        source_scope:"EXISTING_BOUNDED_72H_DERIVED_D1_JOURNAL",
+        source_scope:"EXISTING_DERIVED_D1_PLUS_ROTATED_REGISTERED_SOURCE_NEWS",
+        registered_source_reader_state:sourceResult===null?
+          "UNAVAILABLE_OR_NOT_DEPLOYED":"AVAILABLE",
+        registered_source_checks_24h:sourceResult?.checked_source_states??{},
+        registered_source_items:fromRegistered.length,
+        editorial_derived_items:items.length,
+        unobserved_sources_not_reported_as_no_news:true,
         country_filter:country,domain_filter:domain,
-        counts,count:items.length,items,
+        counts:mixedCounts,count:combined.length,items:combined,
         exhaustive_worldwide_coverage:false,
         upstream_permissions_automatically_granted:false,
         commercial_product_ready:false,raw_article_delivered:false,
