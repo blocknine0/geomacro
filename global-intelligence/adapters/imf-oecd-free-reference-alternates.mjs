@@ -27,13 +27,18 @@ export function wdiIndiaGrowthUrl(now=new Date()){
  u.searchParams.set("per_page","10");
  return u.href;
 }
-async function officialJson(url,fetchImpl){
+async function officialJson(url,fetchImpl,timeoutMs=12000){
  let response;
  try{response=await fetchImpl(url,{
-  method:"GET",redirect:"error",signal:AbortSignal.timeout(12000),
+  method:"GET",redirect:"error",signal:AbortSignal.timeout(timeoutMs),
   headers:{accept:"application/json",
     "user-agent":"Geomacro-Noncommercial-Official-Reference/1.0"},
- });}catch{throw Error("ALT_TRANSPORT_DENIED");}
+ });}catch(error){
+  // Do not include errors or request URLs in protected-main receipts.
+  if(error?.name==="TimeoutError"||error?.name==="AbortError")
+   throw Error("ALT_TRANSPORT_TIMEOUT");
+  throw Error("ALT_TRANSPORT_DENIED");
+ }
  if(!response||response.ok!==true||response.status!==200){
   const status=response?.status;
   try{await response?.body?.cancel();}catch{}
@@ -138,13 +143,13 @@ export function extractBlsUsUnemployment(data,now=new Date()){
 }
 export async function fetchWdiIndiaGrowth({fetchImpl=fetch,now=new Date()}={}){
  const url=wdiIndiaGrowthUrl(now);
- // The official API can return a transient 500/502/503/504 during free
- // requests. Allow one retry against the EXACT SAME fixed publisher URL.
- // Never retry a 403/429, bad schema, missing data or invalid publisher.
+ // The public WDI bulk reader already uses 25s. Use that same limit
+ // for only the WDI lane (BLS stays 12s) and one bounded exact-URL retry
+ // on publisher 5xx or a transport timeout, not on 403/429/invalid data.
  for(let i=0;i<2;i++){
-  try{return extractWdiIndiaGrowth(await officialJson(url,fetchImpl),now);}
+  try{return extractWdiIndiaGrowth(await officialJson(url,fetchImpl,25000),now);}
   catch(error){
-   if(i===1||!/^ALT_HTTP_(?:500|502|503|504)$/u.test(String(error?.message??"")))
+   if(i===1||!/^ALT_(?:HTTP_(?:500|502|503|504)|TRANSPORT_TIMEOUT)$/u.test(String(error?.message??"")))
     throw error;
   }
  }
