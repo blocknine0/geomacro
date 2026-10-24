@@ -15,6 +15,8 @@ on:
       - "scripts/tests/existing-source-runtime-activation.test.mjs"
       - "scripts/lib/mofcom-ministry-2026-announcements.mjs"
       - "scripts/tests/mofcom-ministry-2026-announcements.test.mjs"
+      - "scripts/lib/icc-official-news-rss.mjs"
+      - "scripts/tests/icc-official-news-rss.test.mjs"
       - "scripts/tests/mofcom-clock-no-crawl-imputation.test.mjs"
   pull_request:
     branches: [main]
@@ -31,6 +33,8 @@ on:
       - "global-intelligence/adapters/china-mofcom.mjs"
       - "scripts/lib/mofcom-ministry-2026-announcements.mjs"
       - "scripts/tests/mofcom-ministry-2026-announcements.test.mjs"
+      - "scripts/lib/icc-official-news-rss.mjs"
+      - "scripts/tests/icc-official-news-rss.test.mjs"
       - "scripts/tests/mofcom-clock-no-crawl-imputation.test.mjs"
       - "scripts/test-global-p0-source-endpoints.mjs"
       - "global-intelligence/sources/source-registry.v1.json"
@@ -74,6 +78,9 @@ jobs:
       - name: Test free official Chinese ministry reference fails closed
         run: node --test scripts/tests/mofcom-ministry-2026-announcements.test.mjs
 
+      - name: Verify same-court official ICC news RSS recovery and security policy
+        run: node --test scripts/tests/icc-official-news-rss.test.mjs
+
       - name: Test P0 registry alignment
         run: node scripts/test-p0-registry-alignment.mjs
 
@@ -115,6 +122,8 @@ jobs:
         run: node --test scripts/tests/mofcom-clock-no-crawl-imputation.test.mjs
       - name: Verify Ministry same-publisher alternate never grants commercial rights
         run: node --test scripts/tests/mofcom-ministry-2026-announcements.test.mjs
+      - name: Verify ICC first-party RSS fallback never grants source rights or signs
+        run: node --test scripts/tests/icc-official-news-rss.test.mjs
       - name: Read all ten existing P0 sources with canonical private parsers
         run: node scripts/ops/observe-p0-private-source-runtime.mjs
       - name: Preserve source-free aggregate findings, including upstream failures
