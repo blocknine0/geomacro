@@ -29,6 +29,23 @@ const CURRENT_PROVIDER_IDENTITY = /\b(?:world[\s_-]+bank|gdelt|usgs|u\.?s\.?[\s_
 // such as "answer", "analysis" and "limitations". Paid intelligence is
 // structured DERIVED output, never a third-party publisher link catalogue.
 const EMBEDDED_SOURCE_LOCATOR = /(?:https?:\/\/|www\.)[^\s<>"'\x60]+/iu;
+const TELEGRAM_OWNER_FORBIDDEN_FIELD=/^(?:sender|sender_name|from|telegram_username|channel_handle|channel_name|chat_id|message_id|post_id|post_link|telegram_url|telegram_link|media_reference|media_url|attachment|text_entities|forwarded_from|edited|internal_chat_fingerprint|internal_message_fingerprint)$/iu;
+/** Strictly for Telegram Desktop owner-file derived rows; does NOT certify
+ * Telegram copyright, content permissions, or x402 payable status. */
+function assertOwnerTelegramExportCustomerMetadata(value:Record<string,unknown>) {
+ if(value.provenance!=="TELEGRAM_PUBLIC_EXPORT")return;
+ if(value.verification_status!=="UNVERIFIED_CLAIM"||
+    value.scored!==false||value.execution_authorized!==false)
+   throw Error("PAID_TELEGRAM_OWNER_VERIFICATION_INVARIANT_INVALID");
+ if(typeof value.derived_summary!=="string"||value.derived_summary.length>280||
+    !/^(?:Geopolitical claim|Macro\/FX claim|Critical-minerals claim) [a-z /-]{8,100}; unverified export-derived research only(?:\.|\. Explicit numeric units present: [a-z%, ]{1,60}\.)$/u.test(value.derived_summary))
+   throw Error("PAID_TELEGRAM_OWNER_DERIVED_SUMMARY_NOT_CURATED");
+ for(const [key,child] of Object.entries(value)){
+   if(TELEGRAM_OWNER_FORBIDDEN_FIELD.test(key)||
+      typeof child==="string"&&/@[a-z0-9_]{5,32}\b/iu.test(child))
+     throw Error("PAID_TELEGRAM_OWNER_ORIGINAL_METADATA_FORBIDDEN");
+ }
+}
 export type PaidOutputSanitizeOptions = { rejectEmbeddedLinks?: boolean };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -70,6 +87,7 @@ function sanitize(
     return typeof value === "string" ? sanitizeString(path.at(-1) ?? "", value, options) : value;
   }
 
+  if(options.rejectEmbeddedLinks)assertOwnerTelegramExportCustomerMetadata(value);
   const output: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
     // Retain explicit false-only safety assertions even though their key
@@ -94,7 +112,8 @@ function sanitize(
       // and recompute the structured product hash on replay preparation.
       continue;
     }
-    if (INTERNAL_KEY.test(key) && !allowedProviderKey(path, key)) continue;
+    if (INTERNAL_KEY.test(key) && !allowedProviderKey(path, key) &&
+        !(key==="provenance"&&child==="TELEGRAM_PUBLIC_EXPORT")) continue;
     output[key] = sanitize(child, [...path, key], options);
   }
   return output;
@@ -153,6 +172,7 @@ export function assertPublicPaidOutputBoundary(payload: unknown): void {
       }
       return;
     }
+    assertOwnerTelegramExportCustomerMetadata(value);
     for (const [key, child] of Object.entries(value)) {
       if (SAFE_FALSE_FLAGS.has(key.toLowerCase()) && child === false) continue;
       if (path.length === 0 && key === "data_attribution") {
@@ -164,7 +184,8 @@ export function assertPublicPaidOutputBoundary(payload: unknown): void {
       if(forbiddenRawField(key,child)) {
         throw new Error(`PAID_OUTPUT_RAW_MATERIAL_FIELD:${[...path,key].join(".")}`);
       }
-      if (INTERNAL_KEY.test(key) && !allowedProviderKey(path, key)) {
+      if (INTERNAL_KEY.test(key) && !allowedProviderKey(path, key) &&
+          !(key==="provenance"&&child==="TELEGRAM_PUBLIC_EXPORT")) {
         throw new Error(`PAID_OUTPUT_INTERNAL_SOURCE_FIELD:${[...path, key].join(".")}`);
       }
       walk(child, [...path, key]);
