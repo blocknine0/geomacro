@@ -2,7 +2,7 @@ import {createHmac} from 'node:crypto';
 import {lstatSync,readFileSync} from 'node:fs';
 import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client.ts';
 import {automatedInputId} from '../../src/lib/automated-intelligence-input.ts';
-import {canonicalizePrivateOriginalSourceClock} from '../../src/lib/private-source-handoff.ts';
+import {canonicalizePrivateOriginalSourceClock,privateOriginalBodyTopicShapeValid} from '../../src/lib/private-source-handoff.ts';
 import {deriveStatelessSignals,type StatelessSourceCandidate} from '../../src/lib/stateless-intelligence-model.ts';
 const endpoint='https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/source-handoffs';
 export function readPrivateSourceRefs(env=process.env){
@@ -46,7 +46,8 @@ export async function persistPrivateSourceHandoffs({refs,env=process.env,fetchIm
   // NOT verified, approved, B2-staged, or promoted to commercial input.
   const ref=canonicalizePrivateOriginalSourceClock(original,signal);
   if(!ref||typeof ref!=='object'||Array.isArray(ref)||
-     Object.keys(ref).some(k=>!['title','articleUrl','publishedAt','datePrecision','sourceId','category','credit'].includes(k))||
+     Object.keys(ref).some(k=>!['title','articleUrl','publishedAt','datePrecision','sourceId','category','credit','originalBodyTopic'].includes(k))||
+     !privateOriginalBodyTopicShapeValid(ref)||
      typeof ref.title!=='string'||ref.title.length<1||ref.title.length>2000||
      typeof ref.articleUrl!=='string'||ref.articleUrl.length>2048||
      typeof ref.sourceId!=='string'||!/^[a-zA-Z0-9_.:-]{1,128}$/u.test(ref.sourceId)||

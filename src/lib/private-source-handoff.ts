@@ -1,6 +1,19 @@
 import {automatedInputId,verifyAutomatedInput,type AutomatedInputEnvelope} from './automated-intelligence-input.ts';
 import type {StatelessSourceCandidate} from './stateless-intelligence-model.ts';
 
+// Finite topic only, never retained article text or an independent rights/fact
+// attestation. It must remain bound to the NRCan original-day collector.
+export function privateOriginalBodyTopicShapeValid(ref:StatelessSourceCandidate):boolean{
+ if(!ref||typeof ref!=="object"||Array.isArray(ref))return false;
+ if(!Object.prototype.hasOwnProperty.call(ref,"originalBodyTopic"))return true;
+ return ref.sourceId==="nrcan_releases"&&ref.category==="rare_earth"&&
+  ref.datePrecision==="day"&&typeof ref.publishedAt==="string"&&
+  /^20\d{2}-\d{2}-\d{2}$/u.test(ref.publishedAt)&&
+  typeof ref.articleUrl==="string"&&
+  /^https:\/\/www\.canada\.ca\/en\/natural-resources-canada\/news\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]+\.html$/u.test(ref.articleUrl)&&
+  ["critical-minerals policy","mineral exploration and production"].includes(ref.originalBodyTopic??"");
+}
+
 // A native RSS pubDate can be RFC 2822 while the signed derived journal
 // stores the exact same instant in UTC ISO form. Normalize representation
 // ONLY when both parsed clocks agree exactly; never supply an inferred hour
@@ -25,7 +38,8 @@ export async function verifyPrivateSourceHandoff(item:PrivateSourceHandoff,input
  await verifyAutomatedInput(input,keys,now);
  const r=item.ref;
  if(!r||typeof r!=='object'||Array.isArray(r)||
-  Object.keys(r).some(k=>!['title','articleUrl','publishedAt','datePrecision','sourceId','category','credit'].includes(k))||
+  Object.keys(r).some(k=>!['title','articleUrl','publishedAt','datePrecision','sourceId','category','credit','originalBodyTopic'].includes(k))||
+  !privateOriginalBodyTopicShapeValid(r)||
   typeof r.title!=='string'||r.title.length<1||r.title.length>2000||
   typeof r.articleUrl!=='string'||r.articleUrl.length>2048||
   typeof r.sourceId!=='string'||!/^[a-zA-Z0-9_.:-]{1,128}$/.test(r.sourceId)||
