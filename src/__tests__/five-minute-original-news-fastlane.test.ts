@@ -162,7 +162,11 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(recentFastlaneReleaseCount([{...source,datePrecision:"day" as const,publishedAt:"2026-10-23T00:00:00Z"}],now)).toBe(0);
  });
  it("recovers a quiet category through the real bounded collector without a polling cascade",async()=>{
-   const now=Date.parse("2026-10-23T12:00:00Z"),reads:string[]=[];
+   const initial=Date.parse("2026-10-23T12:00:00Z");
+   const now=Array.from({length:10},(_,i)=>initial+i*300_000).find(at=>
+     selectFiveMinuteFallback("macro",at).id==="bis_press")!;
+   expect(now).toBeDefined();
+   const reads:string[]=[];
    const reports=await readFiveMinuteNewsFastlane(now,20,undefined,{readPinnedSource:async source=>{
      reads.push(source.id);
      return {healthy:true,candidates:source.id==="bis_press"?[{
@@ -183,8 +187,10 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
  });
  it("retains truthful healthy-but-quiet status when the bounded alternative also fails",async()=>{
    const reads:string[]=[];
-   const fallbackIds=new Set(FIVE_MINUTE_NEWS_FALLBACK.map(x=>x.id));
-   const reports=await readFiveMinuteNewsFastlane(Date.parse("2026-10-23T12:00:00Z"),20,undefined,
+   const now=Date.parse("2026-10-23T12:00:00Z");
+   const fallbackIds=new Set((CATS as Array<keyof typeof FIVE_MINUTE_NEWS_FALLBACK_ROTATION>)
+     .map(category=>selectFiveMinuteFallback(category,now).id));
+   const reports=await readFiveMinuteNewsFastlane(now,20,undefined,
      {readPinnedSource:async source=>{
        reads.push(source.id);
        if(fallbackIds.has(source.id as any))throw Error("SYNTHETIC_PROVIDER_UNAVAILABLE");
@@ -194,6 +200,39 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(reports.every(r=>r.status==="no_eligible_original_releases"&&r.signals.length===0)).toBe(true);
    expect(reports.every(r=>r.healthy_feed_count===r.primary_healthy_feed_count)).toBe(true);
    expect(reports.every(r=>r.fallback_reason==="NO_RECENT_QUALIFYING_PRIMARY_RELEASE")).toBe(true);
+ });
+ it("rotates new first-party global and Beehive origins across quiet categories with no additional reads",async()=>{
+   const additions={
+     geopolitics:["eu_council_press_original","nz_beehive_geopolitics"],
+     macro:["un_news_economy","nz_beehive_macro"],
+     rare_earth:["un_news_minerals","nz_beehive_minerals"],
+   } as const;
+   const source=read("src/lib/stateless-public-intelligence.server.ts");
+   expect(source).toContain("const batches=await Promise.all(selected.map");
+   expect(source).toContain("fallbackSelected.length>FASTLANE_MAX_FALLBACK_READS_PER_RUN");
+   for(const category of CATS as Array<keyof typeof additions>){
+     const ids=FIVE_MINUTE_NEWS_FALLBACK_ROTATION[category];
+     for(const id of additions[category]){
+       expect(ids).toContain(id);
+       expect(!FIVE_MINUTE_NEWS_FASTLANE.some(p=>p.id===id)).toBe(true);
+     }
+     const start=Math.floor(Date.parse("2026-10-24T12:00:00Z")/300000)*300000;
+     const selected=Array.from({length:ids.length},(_,i)=>selectFiveMinuteFallback(category,start+i*300000).id);
+     expect(new Set(selected)).toEqual(new Set(ids));
+   }
+   const now=Date.parse("2026-10-24T12:00:00Z"),readIds:string[]=[];
+   const run=await readFiveMinuteNewsFastlane(now,20,undefined,{readPinnedSource:async source=>{
+     readIds.push(source.id);return {healthy:true,candidates:[]};
+   }});
+   expect(readIds).toHaveLength(13);
+   expect(new Set(readIds).size).toBe(13);
+   expect(run).toHaveLength(3);
+   expect(run.every(row=>row.signals.length===0 && row.fallback_reason==="NO_RECENT_QUALIFYING_PRIMARY_RELEASE")).toBe(true);
+   // Changes to this existing reader also need to wake the cloud producer.
+   expect(read(".github/workflows/five-minute-original-news-fastlane.yml")
+     .split("src/lib/stateless-public-intelligence.server.ts").length-1).toBeGreaterThanOrEqual(2);
+   expect(read(".github/workflows/website-derived-news-continuity.yml"))
+     .toContain('src/lib/stateless-public-intelligence.server.ts');
  });
  it("rotates existing alternatives under the same one-fallback-per-category budget",()=>{
    const now=Date.parse("2026-10-23T12:00:00Z");
