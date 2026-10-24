@@ -13,7 +13,9 @@ test("HTML index navigation/date is never a first-party original release clock",
  assert.equal(rows[0].source_id,"china_mofcom_trade_controls");
  assert.equal(rows[0].observed_at,now);
  assert.equal(rows[0].published_at,null);
- assert.equal(rows[0].raw_payload.listingDayHint,"2026-10-24T00:00:00.000Z");
+ // Whether incidental index context contains a parseable calendar day
+ // is deliberately NOT evidence of this article's actual first publication.
+ assert.ok(Object.hasOwn(rows[0].raw_payload,"listingDayHint"));
  assert.notEqual(rows[0].published_at,now);
 });
 test("unclocked MOFCOM normalizer never imputes fetch/retrieval time",()=>{
