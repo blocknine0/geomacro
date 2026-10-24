@@ -8,6 +8,8 @@ import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client';
 import {automatedInputId} from '../../src/lib/automated-intelligence-input';
 import {loadRiskObjectVerificationKeysFromEnv} from '../../src/lib/risk-object-signing.server';
 import {readPrivateSourceHandoffs} from './read-private-source-handoffs';
+// @ts-expect-error Bounded JavaScript coverage monitor has no declaration file.
+import {automaticNewsQualificationCoverage} from '../lib/automatic-news-qualification-coverage.mjs';
 import {assertLowReviewTrust,lowSourceReviewBytes,verifyLowSourceReview,type LowReviewTrust,
  type LowSourceReview,type SignedLowSourceReview} from '../../src/lib/low-authority-source-review';
 
@@ -34,6 +36,8 @@ export async function reviewDerivedInputs({signals,originalRefs,previousReviews=
   if(!prior||!originalRefs.has(prior.id)&&originalRefs.has(signal.id))dedup.set(id,signal);
  }
  signals=[...dedup.values()];
+ const retainedSignals=signals;
+ const reusedVerifiedIds=new Set<string>(),cooldownIds=new Set<string>(),reviewedIds=new Set<string>();
  const pending=[],trustedPrevious=new Map<string,SignedLowSourceReview>(),priorityById=new Map();
  let reusedVerified=0,cooldown=0;
  for(const signal of signals){
@@ -46,9 +50,9 @@ export async function reviewDerivedInputs({signals,originalRefs,previousReviews=
   }catch{/* Untrusted or expired prior state cannot suppress checking. */}
   if(valid)trustedPrevious.set(id,prior);
   if(valid&&prior.review.verdict==='SOURCE_EVIDENCE_VERIFIED'&&
-   now.getTime()-Date.parse(signal.published_at)<=ORIGINAL_VERIFICATION_WINDOW_MS){reusedVerified++;continue;}
+   now.getTime()-Date.parse(signal.published_at)<=ORIGINAL_VERIFICATION_WINDOW_MS){reusedVerified++;reusedVerifiedIds.add(signal.id);continue;}
   if(valid&&prior.review.verdict==='SOURCE_EVIDENCE_REJECTED'&&
-   now.getTime()-Date.parse(prior.review.reviewed_at)<30*60_000){cooldown++;continue;}
+   now.getTime()-Date.parse(prior.review.reviewed_at)<30*60_000){cooldown++;cooldownIds.add(signal.id);continue;}
   pending.push(signal);
   // Signed first-queued time survives quota deferrals. Newly arriving
   // headlines cannot indefinitely overtake an older unattempted original.
@@ -67,6 +71,7 @@ export async function reviewDerivedInputs({signals,originalRefs,previousReviews=
  const byId=new Map(signals.map((s:any)=>[s.id,s]));
  const unique=new Map<string,SignedLowSourceReview>();
  for(const row of audit.rows){
+  reviewedIds.add(row.id);
   const signal:any=byId.get(row.id),ref=originalRefs.get(row.id);
   const verified=row.original_page_evidence_status==='ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME_VERIFIED';
   const rejected=row.original_page_evidence_status==='ORIGINAL_BYTES_OR_NATIVE_CLOCK_UNVERIFIED';
@@ -91,9 +96,16 @@ export async function reviewDerivedInputs({signals,originalRefs,previousReviews=
   await verifyLowSourceReview(envelope,trust,now.getTime());unique.set(id,envelope);
  }
  const items=[...unique.values()];
+ const coverage=automaticNewsQualificationCoverage({
+  retainedSignals,auditedRows:audit.rows,reusedVerifiedIds,cooldownIds,reviewedIds,
+ });
+ if(items.length!==reviewedIds.size||
+    coverage.reviewed_or_pending_this_run!==audit.ingested_news_examined)
+  throw Error('AUTOMATIC_NEWS_QUALIFICATION_COVERAGE_INCOMPLETE');
  for(let i=0;i<items.length;i+=40)await persist(items.slice(i,i+40));
  return {audit,reviewed_items:unique.size,reused_current_verified_items:reusedVerified,
-  source_retry_cooldown_items:cooldown,source_verified_items:items.filter(e=>e.review.verdict==='SOURCE_EVIDENCE_VERIFIED').length};
+  source_retry_cooldown_items:cooldown,source_verified_items:items.filter(e=>e.review.verdict==='SOURCE_EVIDENCE_VERIFIED').length,
+  coverage};
 }
 if(import.meta.main){
  try{

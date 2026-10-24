@@ -7,6 +7,11 @@ on:
       - "scripts/tests/original-verification-22h.test.mjs"
       - ".github/workflows/all-news-original-evidence-audit.yml"
       - "scripts/lib/all-news-original-evidence-audit.mjs"
+      - "scripts/lib/automatic-news-qualification-coverage.mjs"
+      - "scripts/lib/automatic-news-qualification-coverage.test.mjs"
+      - "scripts/ops/review-derived-inputs-low-authority.ts"
+      - "scripts/ops/emit-low-source-review-status.mjs"
+      - "scripts/tests/emit-low-source-review-status.test.mjs"
       - "scripts/lib/bundled-original-source-quota.mjs"
       - "scripts/lib/bundled-original-source-quota.test.mjs"
       - "scripts/lib/all-news-original-evidence-audit.test.mjs"
@@ -20,6 +25,11 @@ on:
       - "scripts/tests/original-verification-22h.test.mjs"
       - ".github/workflows/all-news-original-evidence-audit.yml"
       - "scripts/lib/all-news-original-evidence-audit.mjs"
+      - "scripts/lib/automatic-news-qualification-coverage.mjs"
+      - "scripts/lib/automatic-news-qualification-coverage.test.mjs"
+      - "scripts/ops/review-derived-inputs-low-authority.ts"
+      - "scripts/ops/emit-low-source-review-status.mjs"
+      - "scripts/tests/emit-low-source-review-status.test.mjs"
       - "scripts/lib/all-news-original-evidence-audit.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
       - "scripts/ops/publish-website-derived-news.ts"
@@ -48,6 +58,8 @@ jobs:
           node --check scripts/lib/all-news-original-evidence-audit.mjs
           node --test scripts/lib/bundled-original-source-quota.test.mjs
           node --check scripts/lib/geomacro-original-page-readback.mjs
+          node --test scripts/lib/automatic-news-qualification-coverage.test.mjs
+          node --test scripts/tests/emit-low-source-review-status.test.mjs
           node --test scripts/lib/all-news-original-evidence-audit.test.mjs
           node --test scripts/tests/original-verification-22h.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs

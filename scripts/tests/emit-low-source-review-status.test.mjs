@@ -35,6 +35,25 @@ function proof(){
   },
   reviewed_items:3,reused_current_verified_items:0,
   source_retry_cooldown_items:0,source_verified_items:1,
+  coverage:{
+   schema:"geomacro.automatic-news-qualification-coverage.v1",
+   all_retained_unique_inputs_accounted_for:true,
+   retained_unique_derived_inputs:3,reviewed_or_pending_this_run:3,
+   previously_verified_source_proofs_reused:0,rejected_source_retry_cooldowns:0,
+   source_pages_verified_new:1,source_pages_verified_total:1,
+   awaiting_evidence_or_unverified:2,
+   categories:{
+    geopolitics:{retained:1,newly_source_verified:1,previously_source_verified:0,
+     rejected_cooldown:0,pending_or_unverified:0},
+    macro:{retained:1,newly_source_verified:0,previously_source_verified:0,
+     rejected_cooldown:0,pending_or_unverified:1},
+    rare_earth:{retained:1,newly_source_verified:0,previously_source_verified:0,
+     rejected_cooldown:0,pending_or_unverified:1},
+   },
+   original_bytes_and_native_clock_required:true,independent_facts_review_verified:false,
+   article_scoped_commercial_rights_verified:false,
+   signed_commercial_products_approved:false,automatic_paid_delivery_authorized:false,
+  },
   private_signer_key:"SECRET_SIGNER",
  };
 }
@@ -125,4 +144,21 @@ test("aggregate safely differentiates first-party metadata absence versus feed/p
  p.audit.rows[1].original_page_evidence_status="PRIVATE_ORIGINAL_REFERENCE_NOT_AVAILABLE";
  p.audit.rows[1].original_readback_clock_detail="FEED_PAGE_CLOCK_CONFLICT";
  assert.throws(()=>aggregateLowSourceReview(p),/LOW_REVIEW_SAFE_RECEIPT_INVALID/);
+});
+
+test("retained-news coverage cannot fake complete automatic qualification",()=>{
+ const expected=aggregateLowSourceReview(proof());
+ assert.equal(expected.all_retained_news_automatically_accounted_for,true);
+ assert.equal(expected.unique_retained_news,3);
+ assert.equal(expected.verified_original_pages_total,1);
+ assert.equal(expected.awaiting_original_evidence_or_unverified,2);
+ for(const patch of [
+  p=>{delete p.coverage;},
+  p=>{p.coverage.retained_unique_derived_inputs=2;},
+  p=>{p.coverage.all_retained_unique_inputs_accounted_for=false;},
+  p=>{p.coverage.categories.macro.newly_source_verified=1;},
+  p=>{p.coverage.signed_commercial_products_approved=true;},
+  p=>{p.coverage.automatic_paid_delivery_authorized=true;},
+ ]){const sample=proof();patch(sample);
+  assert.throws(()=>aggregateLowSourceReview(sample),/LOW_REVIEW_SAFE_RECEIPT_INVALID/);}
 });

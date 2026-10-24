@@ -50,6 +50,8 @@ on:
       - "scripts/lib/derived-original-reference-pins.test.mjs"
       - "scripts/lib/geomacro-original-page-readback.mjs"
       - "scripts/lib/all-news-original-evidence-audit.mjs"
+      - "scripts/lib/automatic-news-qualification-coverage.mjs"
+      - "scripts/lib/automatic-news-qualification-coverage.test.mjs"
       - "scripts/lib/bundled-original-source-quota.mjs"
       - "scripts/ops/emit-low-source-review-status.mjs"
       - "scripts/tests/emit-low-source-review-status.test.mjs"
@@ -130,7 +132,8 @@ jobs:
       - name: Test individual news original-byte evidence vs unverified and commercial boundaries
         run: |
           node --test scripts/lib/bundled-original-source-quota.test.mjs
-          node --test scripts/lib/all-news-original-evidence-audit.test.mjs scripts/lib/derived-original-reference-pins.test.mjs
+          node --test scripts/lib/all-news-original-evidence-audit.test.mjs
+          node --test scripts/lib/automatic-news-qualification-coverage.test.mjs scripts/lib/derived-original-reference-pins.test.mjs
           node --test scripts/lib/facts-only-derived-news-regression.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
       - name: Require existing control-plane authorization
