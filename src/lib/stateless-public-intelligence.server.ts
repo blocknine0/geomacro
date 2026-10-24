@@ -837,7 +837,7 @@ export const FIVE_MINUTE_NEWS_FALLBACK_ROTATION=Object.freeze({
  // primary in its own category. Do not double-poll newly promoted primaries.
  geopolitics:["ungeneva_press_global","uk_ofsi_sanctions"],
  macro:["boj_press_global","un_news_economy"],
- rare_earth:["iea_minerals_global","un_news_minerals","usgs_minerals"],
+ rare_earth:["iea_minerals_global","un_news_minerals","au_geoscience"],
 } as const);
 export function selectFiveMinuteFallback(category:keyof typeof FIVE_MINUTE_NEWS_FALLBACK_ROTATION,now:number){
  if(!Number.isFinite(now)||!Object.hasOwn(FIVE_MINUTE_NEWS_FALLBACK_ROTATION,category))
