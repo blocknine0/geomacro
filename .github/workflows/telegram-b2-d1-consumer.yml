@@ -11,8 +11,11 @@ on:
       - ".github/workflows/telegram-b2-d1-consumer.yml"
       - "scripts/ops/drain-telegram-b2-leads.mjs"
       - "scripts/ops/intake-telegram-b2-d1-leads.mjs"
+      - "scripts/ops/publish-telegram-private-research-json.mjs"
+      - "scripts/ops/publish-telegram-private-research-json.test.mjs"
       - "scripts/ops/check-telegram-b2-d1-admission.mjs"
       - "workers/control-plane/migrations/0018_telegram_private_unverified_b2_intake.sql"
+      - "workers/control-plane/migrations/0027_telegram_authorized_research_json.sql"
       - "scripts/verify-telegram-lead-envelope.mjs"
       - "scripts/ops/b2-s3-client.mjs"
       - "config/telegram-private-signal-bridge.json"
@@ -64,6 +67,8 @@ jobs:
           grep -q 'TELEGRAM_D1_INTAKE_DURABLE_READBACK_MISMATCH' scripts/ops/intake-telegram-b2-d1-leads.mjs
           grep -q 'telegramD1AckSql' scripts/ops/intake-telegram-b2-d1-leads.mjs
           node --check scripts/ops/intake-telegram-b2-d1-leads.mjs
+          node --check scripts/ops/publish-telegram-private-research-json.mjs
+          node --test scripts/ops/publish-telegram-private-research-json.test.mjs
           node --check scripts/ops/check-telegram-b2-d1-admission.mjs
           grep -q '6da33ed2a966d58122039ba38d83e801476a6318bc89634d0b3d951e8ad017c9' config/telegram-private-signal-bridge.json
           grep -q 'geomacro.telegram-lead-envelope.v2' scripts/verify-telegram-lead-envelope.mjs
@@ -215,6 +220,12 @@ jobs:
           SUMMARY=artifacts/telegram-lead-intake/verified/summary.json
           test -s "$SUMMARY"
           node scripts/ops/intake-telegram-b2-d1-leads.mjs --summary "$SUMMARY"
+      - name: Export only D1 ACKed Bot-approved leads to protected reusable research JSON
+        if: steps.admission.outputs.can_consume == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/publish-telegram-private-research-json.mjs --summary artifacts/telegram-lead-intake/verified/summary.json
       - name: Assert no Telegram pre-promotion occurred and prune old consumed pointers
         if: steps.admission.outputs.can_consume == 'true'
         shell: bash

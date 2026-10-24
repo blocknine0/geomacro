@@ -1,4 +1,5 @@
 import {publicSignedNews} from './public-signed-news.mjs';
+import {readPrivateTelegramResearchJson} from './telegram-research-json.mjs';
 import {publicReusableSourceNews,publishReusableSourceNews} from './reusable-source-news.mjs';
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
 import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
@@ -1339,6 +1340,8 @@ export default {
     try {
       if(request.method==="PUT"&&url.pathname==="/v1/reusable-source-news"&&!url.search)
         return publishReusableSourceNews(env,await readJson(request,96*1024));
+      if(request.method==="GET"&&url.pathname==="/v1/internal/telegram-research-json")
+        return readPrivateTelegramResearchJson(env,url.searchParams);
       if(url.pathname==='/v1/intelligence-inputs/automated'){
         if(request.method==='GET')return getAutomatedInputs(env,url.searchParams);
         if(request.method==='PUT'&&!url.search)return putAutomatedInputs(env,await readJson(request,300_000));
