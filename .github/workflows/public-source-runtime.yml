@@ -10,6 +10,9 @@ on:
       - "scripts/tests/existing-source-runtime-activation.test.mjs"
       - "global-intelligence/scripts/probe-public-sources.mjs"
       - "global-intelligence/adapters/public-sources.mjs"
+      - "global-intelligence/adapters/gdacs-native-country.mjs"
+      - "global-intelligence/adapters/gdacs-official-eq-rss.mjs"
+      - "scripts/tests/public-gdacs-health-fallback.test.mjs"
       - "global-intelligence/adapters/un-comtrade.mjs"
       - "global-intelligence/adapters/bgs-world-minerals.mjs"
       - "scripts/tests/un-comtrade-production-gates.test.mjs"
@@ -22,6 +25,9 @@ on:
       - "scripts/tests/existing-source-runtime-activation.test.mjs"
       - "global-intelligence/scripts/probe-public-sources.mjs"
       - "global-intelligence/adapters/public-sources.mjs"
+      - "global-intelligence/adapters/gdacs-native-country.mjs"
+      - "global-intelligence/adapters/gdacs-official-eq-rss.mjs"
+      - "scripts/tests/public-gdacs-health-fallback.test.mjs"
 
 permissions:
   contents: read
@@ -44,7 +50,7 @@ jobs:
       - name: Verify bounded public-source code and no storage writers
         run: |
           set -euo pipefail
-          node --test scripts/tests/existing-source-runtime-activation.test.mjs
+          node --test scripts/tests/existing-source-runtime-activation.test.mjs scripts/tests/public-gdacs-health-fallback.test.mjs scripts/tests/gdacs-native-country.test.mjs scripts/tests/gdacs-official-eq-rss.test.mjs
           node --test scripts/tests/un-comtrade-production-gates.test.mjs scripts/tests/bgs-source-integrity.test.mjs
           node --check global-intelligence/adapters/un-comtrade.mjs
           node --check global-intelligence/adapters/bgs-world-minerals.mjs
