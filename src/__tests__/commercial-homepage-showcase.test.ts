@@ -10,8 +10,9 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(card).toContain("findCardFromObservedRelease(s,now)");
     expect(card).toContain("winner.originalAt");
     expect(card).toContain("dateTime={winner.originalAt}");
-    expect(card).toContain("card.headline");
-    expect(card).toContain("card.what_changed");
+    expect(card).toContain("display?.headline");
+    expect(card).toContain("publicHomeFindCopy(card)");
+    expect(card).toContain("display?.what_changed");
     expect(card).toContain("card.why_it_matters");
     expect(card).not.toContain("categoryLeads(intelligence.data.all)");
     expect(card).not.toContain("categoryHighlights");
