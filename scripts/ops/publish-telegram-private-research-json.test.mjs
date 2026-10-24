@@ -67,3 +67,14 @@ test("reader rejects arbitrary SQL scope and country injection",async()=>{
   assert.equal(res.status,400);
  }
 });
+
+test("private authorized Telegram research enforces source-native 25-hour cutoff",()=>{
+ const old=new Date(NOW.getTime()-25*3600000-1000).toISOString();
+ const valid=new Date(NOW.getTime()-25*3600000+1000).toISOString();
+ assert.throws(()=>verifyAuthorizedTelegramResearchLead({
+   ...row,published_at:old},{...payload,published_at:old},NOW),
+   /TELEGRAM_RESEARCH_STALE_OR_FUTURE/);
+ const accepted=verifyAuthorizedTelegramResearchLead({
+   ...row,published_at:valid},{...payload,published_at:valid},NOW);
+ assert.equal(accepted.published_at,valid);
+});
