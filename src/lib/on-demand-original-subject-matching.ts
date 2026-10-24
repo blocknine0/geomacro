@@ -68,6 +68,19 @@ export function originalPublisherMatchesCountry(
      publisherFamily==="rbi_india_original_macro_publisher" &&
      /\b(?:RBI|Reserve Bank of India)\b/iu.test(title+" "+summary.slice(0,300)))
     return true;
+  // Institution-native *domestic* monetary publications may omit the country
+  // in the title. Preserve strict issuer, ISO3 and canonical-name binding;
+  // generic issuer content and any other jurisdiction remain out of scope.
+  // This is only discovery relevance. The exact HTTPS issuer article, native
+  // original publication clock, rights and signatures must still be proved.
+  if(countryIso3==="CAN" && verifiedOfficialName==="Canada" &&
+     publisherFamily==="boc_original_publisher" &&
+     /^(?:Monetary Policy Report|Policy Rate Announcement)(?:\s*[:\-–]\s*.+)?$/iu.test(title))
+    return true;
+  if(countryIso3==="JPN" && verifiedOfficialName==="Japan" &&
+     publisherFamily==="boj_original_publisher" &&
+     /^(?:Statement on Monetary Policy|Monetary Policy Decision|Outlook for Economic Activity and Prices)(?:\s*[:\-–]\s*.+)?$/iu.test(title))
+    return true;
   return countryIso3==="USA" && verifiedOfficialName==="United States" &&
     publisherFamily==="us_federal_reserve_original_publisher" &&
     /^Minutes of the Board['\u2019]s discount rate meetings on\s+\S/iu.test(title);

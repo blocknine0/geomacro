@@ -45,6 +45,32 @@ describe("fixed country qualification for original publisher evidence",()=>{
     expect(originalPublisherMatchesCountry(original,"","USA","",
       "us_federal_reserve_original_publisher")).toBe(false);
   });
+  it("admits exact central-bank domestic policy titles for Canada and Japan without inventing country mentions",()=>{
+    for(const [title,iso,country,family] of [
+      ["Monetary Policy Report","CAN","Canada","boc_original_publisher"],
+      ["Policy Rate Announcement: October 2026","CAN","Canada","boc_original_publisher"],
+      ["Statement on Monetary Policy","JPN","Japan","boj_original_publisher"],
+      ["Outlook for Economic Activity and Prices","JPN","Japan","boj_original_publisher"],
+    ] as const){
+      expect(originalHeadlineMentionsCountry(title,iso,country)).toBe(false);
+      expect(originalPublisherMatchesCountry(title,"",iso,country,family)).toBe(true);
+      expect(originalPublisherMatchesCountry(title,"","USA","United States",family)).toBe(false);
+      expect(originalPublisherMatchesCountry(title,"",iso,country,"uk_hmt_original_publisher")).toBe(false);
+      expect(originalPublisherMatchesCountry(title,"",iso,"",family)).toBe(false);
+    }
+    for(const [title,iso,name,family] of [
+      ["World Economic Outlook","CAN","Canada","boc_original_publisher"],
+      ["Foreign policy update","JPN","Japan","boj_original_publisher"],
+      ["Outlook for Economic Activity and Prices","CAN","Canada","boj_original_publisher"],
+      ["Monetary Policy Report","JPN","Japan","boc_original_publisher"],
+      ["Monetary Policy Report 2026","CAN","Canada","boc_original_publisher"],
+      ["Monetary Policy Report","CHN","China","boc_original_publisher"],
+    ] as const)expect(originalPublisherMatchesCountry(title,"",iso,name,family)).toBe(false);
+    // Direct country mentions still remain eligible independent of issuer
+    // semantics, but must pass original first-party page and native clock.
+    expect(originalPublisherMatchesCountry("Canadian inflation update","",
+      "CAN","Canada","un_economy_original_publisher")).toBe(true);
+  });
   it("fails closed when no real country name has been established",()=>{
     expect(originalHeadlineMentionsCountry("Chinese lithium","CHN","")).toBe(false);
     expect(originalHeadlineMentionsCountry("Chinese lithium","CHN","https://example")).toBe(false);
