@@ -41,5 +41,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Verify all three Ask domains against production
+      # Pull requests are not deployed: a live production probe would be
+      # measuring an older SHA and falsely failing an otherwise fixed PR.
+      # Product CI verifies candidate Ask source/contracts on the PR.
+      - name: Clarify candidate is not a production deployment
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "PR code is not published: genuine Ask production acceptance remains UNVERIFIED."
+          echo "Product CI and Ask SSE contracts validate this candidate; live response checks run only after main publish."
+      - name: Verify all three Ask domains against actual production
+        if: github.event_name != 'pull_request'
         run: node scripts/ops/verify-public-ask-production.mjs

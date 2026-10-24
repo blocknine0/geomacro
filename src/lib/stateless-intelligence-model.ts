@@ -562,7 +562,10 @@ export function deriveStatelessSignals(
       why_it_matters:selected.implication,
       what_changed:news ? news.change + (geography ? " Country or region mentioned: " + geography + "." : "") :
         candidateOnly?"A dated first-party source item was observed; category relevance, event details and material changes have not yet been established.":
-        developmentSummary(focus,kind,geography),
+        (legacy?developmentSummary(focus,kind,geography):
+          "The dated original release concerns "+focus+
+          (geography?" in "+geography:"")+
+          ". The published headline does not establish a named actor performing a verifiable action; no outcome is inferred."),
       geography,
       development_type: kind,
       topic: selected.name,

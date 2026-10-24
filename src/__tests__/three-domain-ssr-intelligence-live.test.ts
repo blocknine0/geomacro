@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import {describe,expect,it} from "vitest";
 import {StatelessLiveDesk} from "@/components/intelligence/stateless-live-desk";
 import type {StatelessCategory,StatelessIntelligenceSignal} from "@/lib/stateless-intelligence-model";
+import {intelligenceActorHeadline} from "@/lib/public-intelligence-actor-copy";
 import type {StatelessIntelligenceResult} from "@/lib/stateless-public-intelligence.server";
 
 const now="2026-10-13T10:00:00.000Z";
@@ -15,7 +16,9 @@ const headline:Record<StatelessCategory,string>={
 const signal=(category:StatelessCategory):StatelessIntelligenceSignal=>({
   id:category+"-test9876",category,title:headline[category],
   why_it_matters:"Official first-party publication may affect monitored exposures but cannot imply an outcome or a scored risk.",
-  topic:"official release",what_changed:"An official publisher issued a dated release concerning the stated monitoring topic.",
+  topic:category==="geopolitics"?"geopolitical policy":
+    category==="macro"?"macroeconomic statistics":"critical-minerals supply",
+  what_changed:"An official publisher issued a dated release concerning the stated monitoring topic.",
   geography:null,development_type:"official update",published_at:"2026-10-12T09:00:00.000Z",
   date_precision:"exact",observed_release_count:1,sources_credited:[],
   status:"official_release_observed_unscored",same_event_corrob_verified:false,severity:null,
@@ -39,9 +42,9 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
         initial:geo,initialFeeds:{geopolitics:geo,macro,rare_earth:minerals},
         initialJournal:[],initialView:category,
       }));
-      expect(html).toContain(headline[category].replace(/^Geomacro finds /u,""));
+      expect(html).toContain(intelligenceActorHeadline(signal(category)));
       for(const other of ["geopolitics","macro","rare_earth"] as const)
-        if(other!==category)expect(html).not.toContain(headline[other].replace(/^Geomacro finds /u,""));
+        if(other!==category)expect(html).not.toContain(intelligenceActorHeadline(signal(other)));
       const categories = html.slice(html.indexOf('aria-label="Intelligence category"'), html.indexOf("</section>"));
       expect((categories.match(/aria-pressed=/gu)??[]).length).toBe(3);
       expect((categories.match(/aria-pressed="true"/gu)??[]).length).toBe(1);
@@ -57,13 +60,13 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
     const html=renderToStaticMarkup(createElement(StatelessLiveDesk,{
       initial:geo,initialFeeds:{geopolitics:geo},initialJournal:[],initialView:"all",
     }));
-    expect(html).toContain(headline.geopolitics.replace(/^Geomacro finds /u,""));
-    expect(html).not.toContain(headline.macro.replace(/^Geomacro finds /u,""));
+    expect(html).toContain(intelligenceActorHeadline(signal("geopolitics")));
+    expect(html).not.toContain(intelligenceActorHeadline(signal("macro")));
     const missing=renderToStaticMarkup(createElement(StatelessLiveDesk,{
       initial:geo,initialFeeds:{geopolitics:geo},initialJournal:[],initialView:"macro",
     }));
-    expect(missing).not.toContain(headline.geopolitics.replace(/^Geomacro finds /u,""));
-    expect(missing).not.toContain(headline.macro.replace(/^Geomacro finds /u,""));
+    expect(missing).not.toContain(intelligenceActorHeadline(signal("geopolitics")));
+    expect(missing).not.toContain(intelligenceActorHeadline(signal("macro")));
     expect(missing).toContain("Loading Macro / FX");
   });
   it("shows the supplied country and actual derived change without em dashes",()=>{
@@ -75,7 +78,7 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
       initial:geo,initialFeeds:{geopolitics:geo},initialJournal:[],
     }));
     expect(html).toContain("Country or region: Sudan");
-    expect(html).toContain("Call for a ceasefire; Sudan");
+    expect(html).toContain("Actor not verified: geopolitical policy");
     expect(html).toContain("A ceasefire was requested; implementation is unconfirmed.");
     expect(html).not.toContain("\u2014");
     expect(html).not.toContain("Official publisher issues");

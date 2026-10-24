@@ -39,7 +39,7 @@ describe("#1414 Ask Geomacro production acceptance", () => {
       expect(orchestrator).toContain(label);
     }
     expect(orchestrator).toContain("canonicalScoredIndexQuestion(question)");
-    expect(orchestrator).toContain("unavailableScoredIndex(requestedIndex)");
+    expect(orchestrator).toContain("unavailableScoredIndex(scopedIndex)");
     expect(orchestrator).toContain("CURRENT_SIGNED_RISK_INDEX_UNAVAILABLE");
     expect(orchestrator).toContain("insufficient_evidence:true");
     expect(orchestrator).toContain("low_confidence:true,gri:null");

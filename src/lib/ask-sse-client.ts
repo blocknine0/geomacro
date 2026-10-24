@@ -21,14 +21,32 @@ export function decodeAskEvent(frame:string){
 export async function streamPublicAsk(
   question:string,history:readonly Turn[],onStage?:(stage:AskStreamStage)=>void,
 ):Promise<StreamedAsk>{
- const response=await fetch("/api/ask/v2/turn",{
-  method:"POST",
-  headers:{Accept:"text/event-stream","Content-Type":"application/json"},
-  credentials:"same-origin",cache:"no-store",
-  body:JSON.stringify({question,history:history.slice(-8)}),
- });
- if(response.status===404||response.status===405)throw new LegacyAskTransportOnlyError();
- if(!response.ok||!response.body)throw Error("Ask Geomacro stream unavailable ("+response.status+").");
+ let response:Response;
+ try {
+   response=await fetch("/api/ask/v2/turn",{
+     method:"POST",
+     headers:{Accept:"text/event-stream","Content-Type":"application/json"},
+     credentials:"same-origin",cache:"no-store",
+     // A nonresponsive newer stream must not consume the entire browser
+     // request timeout; the original same-origin GET remains a backstop.
+     signal:AbortSignal.timeout(17_000),
+     body:JSON.stringify({question,history:history.slice(-8)}),
+   });
+ }catch(error){
+   if(error instanceof TypeError||
+      (error instanceof Error&&["TimeoutError","AbortError"].includes(error.name)))
+     throw new LegacyAskTransportOnlyError();
+   throw error;
+ }
+ // Preview/edge SPA hosts sometimes serve HTML 200 for missing API routes.
+ // Only transport/missing-route failures may fall back; NEVER 401/403/429 or
+ // a real SSE event:error, which may be a security or rate-limit verdict.
+ if([404,405,501,502,503,504].includes(response.status))
+   throw new LegacyAskTransportOnlyError();
+ if(!response.ok)throw Error("Ask Geomacro stream unavailable ("+response.status+").");
+ if(!response.headers.get("content-type")?.toLowerCase().startsWith("text/event-stream"))
+   throw new LegacyAskTransportOnlyError();
+ if(!response.body)throw new LegacyAskTransportOnlyError();
  const reader=response.body.getReader();
  const decoder=new TextDecoder("utf-8",{fatal:true});
  let buffer="",total=0;
@@ -63,7 +81,14 @@ export async function streamPublicAsk(
     boundary=buffer.indexOf("\n\n");
    }
   }
+ }catch(error){
+   // Network/body disconnect only; never retry a correctly framed SSE
+   // verification rejection, which must remain a visible error.
+   if(error instanceof TypeError||
+      (error instanceof Error&&["TimeoutError","AbortError"].includes(error.name)))
+     throw new LegacyAskTransportOnlyError();
+   throw error;
  }finally{reader.releaseLock();}
- if(!completed)throw Error("ASK_STREAM_INCOMPLETE");
+ if(!completed)throw new LegacyAskTransportOnlyError();
  return completed;
 }

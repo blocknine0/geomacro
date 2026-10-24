@@ -4,6 +4,7 @@ import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
 import { findCardFromObservedRelease } from "@/lib/find-card-v1";
+import {intelligenceActorHeadline,intelligenceActorChange,intelligenceActorIsKnown} from "@/lib/public-intelligence-actor-copy";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
 import type { StatelessCategory, StatelessIntelligenceSignal } from "@/lib/stateless-intelligence-model";
@@ -61,8 +62,9 @@ function Story({ signal, checkedAt, saved, onSave }: {signal: StatelessIntellige
       </div>
       <button type="button" onClick={onSave} aria-pressed={saved} aria-label={saved ? "Remove saved finding" : "Save finding"} className="mt-3 inline-flex min-h-9 items-center gap-2 text-xs text-primary"><Bookmark className="h-3.5 w-3.5" fill={saved ? "currentColor" : "none"} aria-hidden />{saved ? "Saved" : "Save finding"}</button>
       <p className="mt-3 text-xs font-medium text-muted-foreground">Country or region: {displayProse(signal.geography ?? "Not specified in the release")}</p>
-      <h3 className="mt-3 text-lg font-semibold leading-snug tracking-tight">{displayProse(signal.title.replace(/^Geomacro finds\s+/iu, ""))}</h3>
-      <p className="mt-3 text-sm leading-6">{displayProse(signal.what_changed)}</p>
+      <h3 className="mt-3 text-lg font-semibold leading-snug tracking-tight">{displayProse(intelligenceActorHeadline(signal))}</h3>
+      <p className="mt-3 text-sm leading-6">{displayProse(intelligenceActorChange(signal))}</p>
+      {!intelligenceActorIsKnown(signal) ? <p className="mt-2 text-xs text-muted-foreground">Responsible actor has not been independently established in this original release. No action has been invented.</p> : null}
       {card?.detail_state === "LIMITED" ? <p className="mt-2 text-xs text-muted-foreground">Specific details not captured</p> : null}
       <details className="mt-4 border-t border-border/60 pt-3">
         <summary className="cursor-pointer py-1 text-xs font-semibold text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">Why it matters &amp; what to watch</summary>
