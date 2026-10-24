@@ -7,7 +7,7 @@
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-10T17:25:00Z",
   "published_source_sha": "7215b0d05b05ccc4de1e5f69a333ae615abc38e3",
-  "lock_revision": "owner-approved-store-product-creation-20261024",
+  "lock_revision": "owner-approved-reusable-news-json-mvp-20261025",
   "pending_publish_acceptance": true,
   "website_privacy_baseline_status": "FOUNDER_APPROVED_WEBSITE_AUDIT_PENDING_EXACT_SHA_DEPLOYMENT",
   "approved_ask_index_home_find_copy_followup_20261024": {
