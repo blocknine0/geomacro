@@ -8,6 +8,8 @@ import {pinnedGovUkContentApiUrl,verifiedGovUkContentFirstPublishedAt} from "./g
 import {registeredOriginalPublisherOrganization} from
   "./independent-same-event-qualification.mjs";
 import {pinnedDerivedOriginalReference} from "./derived-original-reference-pins.mjs";
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl}
+  from "./global-official-release-feeds.mjs";
 
 // #2044: private, read-only source-authenticity continuation. This does NOT
 // derive claims, source rights, GRO status or independent reviewer approval.
@@ -32,6 +34,21 @@ function pinnedOriginalPage(url,category){
   // Fed, ECB, USGS, Canada and StatCan allowlisted original article routes.
   const existing=approvedFirstPartyOriginalArticleUrl(url,category);
   if(existing && existing===url)return parsed;
+  // A few *already registered* first-party institutional feeds carry an
+  // issuer-native ARTICLE permalink that the older GOV/Fed/ECB page reader
+  // did not recognize. Only the three reviewed organizations below, bound
+  // to the existing host + exact canonical path + category, can be read.
+  // Registry/URL identity permits a private HTML GET, NEVER article rights,
+  // independent corroboration, valid native time, signing or publication.
+  const globalPublisherOrg=registeredOriginalPublisherOrganization(parsed.hostname);
+  if([
+    "un_geneva","eu_council","us_doe",
+  ].includes(globalPublisherOrg)){
+    const original=GLOBAL_OFFICIAL_RELEASE_FEEDS.find(spec=>
+      spec.category===category&&spec.host===parsed.hostname&&
+      globalOriginalArticleUrl(url,spec)===url);
+    if(original)return parsed;
+  }
   // UN News is a registered original issuer but is not in the GOV/central
   // bank article-date route verifier. Admit only its original story route.
   if(category==="geopolitics" && parsed.hostname==="news.un.org" &&

@@ -152,3 +152,101 @@ test("UK original review lead rescues genuine precise GOV.UK Content API clock a
  assert.equal(denied.accepted,false);
  assert.equal(denied.status,"ORIGINAL_NATIVE_CLOCK_NOT_PROVEN");
 });
+
+
+const officialNow=new Date("2026-10-24T11:00:00Z");
+const exactTime="2026-10-24T10:22:00.000Z";
+const officialReleaseBody=(at=exactTime)=>'<html><head>'+
+  '<meta property="article:published_time" content="'+at+'">'+
+  '</head><body><h1>Official statement on developments</h1></body></html>';
+const institutional=[
+ {category:"geopolitics",org:"un_geneva",
+  url:"https://www.ungeneva.org/en/news-media/press-release/2026/10/security-council-meeting-summary"},
+ {category:"geopolitics",org:"eu_council",
+  url:"https://www.consilium.europa.eu/en/press/press-releases/2026/10/24/council-adopts-new-sanctions/"},
+ {category:"rare_earth",org:"us_doe",
+  url:"https://www.energy.gov/articles/critical-minerals-supply-chain-announcement"},
+];
+test("already registered institutional original HTML routes reach exact private byte/clock readback",async()=>{
+ for(const issuer of institutional){
+  let count=0,endpoint;
+  const r=await verifyGeomacroUnclaimedOriginalPage({now:officialNow,
+   original:{category:issuer.category,
+    originating_reporting_organization_id:issuer.org,
+    original_article_url:issuer.url,original_published_at:exactTime},
+   fetchImpl:async(url,init)=>{
+    endpoint=String(url);count++;
+    assert.equal(init.method,"GET");
+    assert.equal(init.redirect,"error");
+    return new Response(officialReleaseBody(),
+     {headers:{"content-type":"text/html"}});
+   }});
+  assert.equal(endpoint,issuer.url);
+  assert.equal(count,1);
+  assert.equal(r.accepted,true);
+  assert.equal(r.original_native_published_at,exactTime);
+  assert.equal(r.original_article_sha256,sha(officialReleaseBody()));
+  assert.equal(r.source_article_rights_verified,false);
+  assert.equal(r.facts_signature_verified,false);
+  assert.equal(r.rights_signature_verified,false);
+  assert.equal(r.payment_authorized,false);
+  assert.doesNotMatch(JSON.stringify(r),/ungeneva\.org|energy\.gov|consilium\.europa\.eu/);
+ }
+});
+test("distinct UN Geneva and EU Council original pages are still not commercial same-event review",async()=>{
+ let requests=0;
+ const proof=await verifyGeomacroOriginalPages({
+  now:officialNow,
+  originals:institutional.slice(0,2).map(issuer=>({
+   category:"geopolitics",same_event_claim_sha256:claim,
+   originating_reporting_organization_id:issuer.org,
+   original_article_url:issuer.url,original_published_at:exactTime,
+   reporting_position:"confirms",
+  })),
+  fetchImpl:async()=>{requests++;return new Response(officialReleaseBody(),
+    {headers:{"content-type":"text/html"}});}
+ });
+ assert.equal(requests,2);
+ assert.equal(proof.original_pages_authenticity_and_clock_verified,true);
+ assert.equal(proof.licensed_commercial_use_verified,false);
+ assert.equal(proof.source_content_match_claim_semantically_verified,false);
+ assert.equal(proof.external_independent_reviewer_attested,false);
+ assert.equal(proof.signed_gro_verified,false);
+ assert.equal(proof.payment_authorized,false);
+});
+test("new exact institutional pins never admit feed index, other host, old story or misleading updated clock",async()=>{
+ const bad=[
+  {...institutional[0],url:"https://www.ungeneva.org/news-media/press-releases-list/rss.xml"},
+  {...institutional[0],url:"https://www.ungeneva.org/en/news-media/press-release/2026/10/security-council-meeting-summary?tracking=1"},
+  {...institutional[1],url:"https://www.consilium.europa.eu/en/rss/pressreleases.ashx"},
+  {...institutional[1],url:"https://www.consilium.europa.eu/en/press/press-releases/2026/10/24/council-adopts-new-sanctions"},
+  {...institutional[2],url:"https://www.energy.gov/rss/energygov/2193718"},
+  {...institutional[2],url:"https://www.energy.gov.invalid/articles/critical-minerals-supply-chain-announcement"},
+  {...institutional[0],org:"eu_council"},
+  {...institutional[2],category:"macro"},
+ ];
+ for(const issuer of bad){
+  let requests=0;
+  await assert.rejects(verifyGeomacroUnclaimedOriginalPage({
+   now:officialNow,
+   original:{category:issuer.category,original_article_url:issuer.url,
+    originating_reporting_organization_id:issuer.org,original_published_at:exactTime},
+   fetchImpl:async()=>{requests++;return new Response(officialReleaseBody(),
+      {headers:{"content-type":"text/html"}});}
+  }),/GEOMACRO_PRIVATE_PAGE_READBACK_INPUT_INVALID/);
+  assert.equal(requests,0);
+ }
+ let requested=0;
+ const missingNative=await verifyGeomacroUnclaimedOriginalPage({
+  now:officialNow,
+  original:{category:"geopolitics",original_article_url:institutional[0].url,
+   originating_reporting_organization_id:"un_geneva",original_published_at:exactTime},
+  fetchImpl:async()=>{requested++;return new Response('<html><h1>News statement</h1>'+
+   '<meta property="article:modified_time" content="'+exactTime+'"></html>',
+   {headers:{"content-type":"text/html"}});}
+ });
+ assert.equal(requested,1);
+ assert.equal(missingNative.accepted,false);
+ assert.equal(missingNative.status,"ORIGINAL_NATIVE_CLOCK_NOT_PROVEN");
+ assert.equal(missingNative.source_article_rights_verified,false);
+});
