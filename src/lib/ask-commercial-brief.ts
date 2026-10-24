@@ -71,6 +71,13 @@ function firstUseful(...values: string[]): string {
 export function directAnswerForQuestion(answer: AskAnswer, question = ""): string {
   const q = question.toLowerCase();
 
+  // Exact independent Risk Index questions are category-specific, including
+  // an honest no-current-signed-reading answer. A generic "what changed"
+  // sentence may never displace the category name from the chat response.
+  if (/^what is the latest (?:geopolitical|macroeconomic|critical minerals) risk index\??$/iu.test(question.trim())) {
+    return concise(firstUseful(answer.summary, answer.what_changed), 2, 420);
+  }
+
   if (answer.insufficient_evidence) {
     return concise(firstUseful(answer.what_changed, answer.summary), 2, 420);
   }
