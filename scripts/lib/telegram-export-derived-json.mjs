@@ -54,6 +54,25 @@ function explicitNumbers(s){
  }
  return output;
 }
+/** Resolve only unique exact canonical ISO3 or official country name/alias.
+ * Publisher country is NEVER inferred from sender, chat name or IP.
+ */
+export function exactTelegramExportCountry(text,countryCodes,registry=[]){
+ const labels=new Set();
+ for(const code of new Set(text.match(/\b[A-Z]{3}\b/gu)??[]))
+   if(countryCodes.has(code))labels.add(code);
+ for(const row of registry){
+   if(!countryCodes.has(row.iso3))continue;
+   const names=[row.name,...(row.aliases??[])];
+   for(const name of names){
+     if(typeof name!=="string"||name.length<4)continue;
+     const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,"\\function classify(s){");
+     const re=new RegExp("(?<![\\p{L}\\p{N}])"+escaped+"(?![\\p{L}\\p{N}])","iu");
+     if(re.test(text)){labels.add(row.iso3);break}
+   }
+ }
+ return labels.size===1?[...labels][0]:null;
+}
 function classify(s){
  const mineral=hasExplicitCriticalMineralsDomainAnchor(s);
  const political=POLITICS.test(s);
@@ -124,8 +143,7 @@ export function projectTelegramExport(buffer,options={}){
     const time=sourceTime(row);
     if(time.at!==null&&(Date.parse(time.at)>now||now-Date.parse(time.at)>72*3600000))continue;
     // Only ISO3 explicitly included in message, with no alias/fuzzy guess.
-    const names=[...new Set(raw.match(/\b[A-Z]{3}\b/gu)??[])].filter(x=>allowedCountryCodes.has(x));
-    const country=names.length===1?names[0]:null;
+    const country=exactTelegramExportCountry(raw,allowedCountryCodes,options.countryRegistry??[]);
     const nums=explicitNumbers(raw);
     const summary=authoredSummary(c.category,c.topic_code,nums);
     if(summary.length>TELEGRAM_EXPORT_LIMITS.max_summary_chars||
