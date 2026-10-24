@@ -1177,7 +1177,11 @@ async function discoverOnDemandImpl(
     // scope only. Do not consume a scarce original-provider slot or alter
     // unrelated global/China queries simply because a new issuer was added.
     if(source.family==="canada_nrcan_original_publisher" && country!=="CAN") continue;
-    if(source.family==="rbi_india_original_macro_publisher" && country!=="IND") continue;
+    // Preserve legacy no-topic quota/source contracts; the RBI lane is
+    // reserved for explicit India original-event review or on-demand
+    // query topics, not annual structural reference retrieval.
+    if(source.family==="rbi_india_original_macro_publisher" &&
+       (country!=="IND" || !topics.length)) continue;
     if(!topics.length && ["uk_ofsi_original_publisher","ecb_original_publisher",
       "uk_desnz_original_publisher","uk_hmt_original_publisher"].includes(source.family)) continue;
     if (categories.includes(source.domain) &&
