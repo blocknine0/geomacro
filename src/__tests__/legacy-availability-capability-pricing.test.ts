@@ -7,6 +7,7 @@ vi.mock('../lib/agent-query-deliverability.server',async(importOriginal)=>{
 });
 vi.mock('../lib/agent-query-external-modules.server',()=>({checkAgentQueryExternalModule:vi.fn()}));
 vi.mock('../lib/coinbase-x402.server',()=>({getCoinbaseX402Config:mocks.config}));
+vi.mock('../lib/public-demo-rate-limit.server',()=>({allowPublicDemoRequest:()=>true}));
 import {Route} from '../routes/api.x402.risk_.availability';
 import {buildAgentQueryPlan} from '../lib/agent-query-plan';
 const body={subjects:[{type:'country',country_iso3:'USA'}],topics:['critical_minerals'],
