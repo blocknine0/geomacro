@@ -117,15 +117,23 @@ export async function publishReusableSourceNews(env,body,now=Date.now()){
         "INSERT INTO reusable_source_checks(source_ref,category,state,checked_at) VALUES(?,?,?,?) ON CONFLICT(source_ref) DO UPDATE SET category=excluded.category,state=excluded.state,checked_at=excluded.checked_at")
         .bind(check.source_ref,check.category,check.state,check.checked_at));
     }
+    // Bound the public D1 lane to the 600 most recent observations.
+    prepared.push(env.DB.prepare(
+      "DELETE FROM reusable_news_items WHERE item_id NOT IN (SELECT item_id FROM reusable_news_items ORDER BY published_at DESC,item_id DESC LIMIT 600)"
+    ));
     await env.DB.batch(prepared);
+    let retained=0,capacityExcluded=0;
     // Check admitted IDs by D1 independent readback, even for old duplicates.
     for(const row of rows){
       const found=await env.DB.prepare(
         "SELECT projection_json FROM reusable_news_items WHERE item_id = ?").bind(row.id).first();
-      if(!found||found.projection_json!==row.json)throw Error("REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH");
+      if(!found){capacityExcluded++;continue}
+      if(found.projection_json!==row.json)throw Error("REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH");
+      retained++;
     }
     return msg({ok:true,schema:"geomacro.reusable-source-news-write-receipt.v1",
-      accepted:rows.length,checked_sources:body.checks.length,
+      accepted:retained,capacity_excluded:capacityExcluded,
+      checked_sources:body.checks.length,
       d1_readback_verified:true,raw_upstream_stored:false,
       paid_product_authorized:false});
   }catch(e){
