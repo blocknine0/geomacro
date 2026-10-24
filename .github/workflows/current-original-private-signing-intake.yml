@@ -46,6 +46,13 @@ on:
       - "scripts/lib/global-official-release-feeds.mjs"
       - "scripts/lib/global-official-release-fallbacks.test.mjs"
       - "src/lib/on-demand-original-feed-freshness.test.ts"
+      # First-party original publisher native-clock changes must re-run the
+      # *protected main* original review, not just frontend news rendering.
+      # PRs still execute offline tests only; no extra cron or source quota.
+      - "src/lib/stateless-canada-original.server.ts"
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - "src/lib/stateless-publisher-text.ts"
+      - "scripts/lib/official-original-article-date.mjs"
   pull_request:
     paths:
       - "src/lib/original-verification-policy.ts"
@@ -74,6 +81,13 @@ on:
       - "scripts/lib/global-official-release-feeds.mjs"
       - "scripts/lib/global-official-release-fallbacks.test.mjs"
       - "src/lib/on-demand-original-feed-freshness.test.ts"
+      # First-party original publisher native-clock changes must re-run the
+      # *protected main* original review, not just frontend news rendering.
+      # PRs still execute offline tests only; no extra cron or source quota.
+      - "src/lib/stateless-canada-original.server.ts"
+      - "src/lib/stateless-public-intelligence.server.ts"
+      - "src/lib/stateless-publisher-text.ts"
+      - "scripts/lib/official-original-article-date.mjs"
 
 permissions:
   contents: read
