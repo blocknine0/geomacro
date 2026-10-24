@@ -92,4 +92,25 @@ describe("Ask Geomacro commercial brief", () => {
       "Sanctions escalation and cross-border military activity are the strongest matched geopolitical drivers.",
     );
   });
+  it.each([
+    ["What is the latest geopolitical risk index?", "Geopolitical Risk Index"],
+    ["What is the latest macroeconomic risk index?", "Macroeconomic Risk Index"],
+    ["What is the latest critical minerals risk index?", "Critical Minerals Risk Index"],
+  ])("retains exact category label on unavailable index answers: %s", (question,label)=>{
+    const input=answer({
+      summary:label+" has no verified current signed reading available.",
+      what_changed:"No current signed index value passed existing retrieval and freshness checks.",
+      why_it_matters:"A news item is not a current signed Risk Index.",
+      evidence:[],insufficient_evidence:true,low_confidence:true,gri:null,mean_relevance:null,
+    });
+    const result=toCommercialAskBrief(input,question);
+    expect(result.summary).toContain(label);
+    expect(result.summary).toContain("no verified current signed reading");
+    expect(result.insufficient_evidence).toBe(true);
+    expect(result.low_confidence).toBe(true);
+    expect(result.gri).toBeNull();
+    // General news questions retain the usual concise change-first experience.
+    expect(toCommercialAskBrief(input,"What changed today?").summary).toContain("No current signed index value");
+  });
+
 });
