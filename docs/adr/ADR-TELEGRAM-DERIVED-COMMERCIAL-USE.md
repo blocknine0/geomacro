@@ -54,7 +54,7 @@ Before any production processing, configure
 production variable, a private B2 key capable of reading exactly this
 prefix, and verify/set a B2 lifecycle that expires raw exports within 72h.
 Set `GEOMACRO_TELEGRAM_EXPORT_LIFECYCLE_CONFIRMED=YES` **only after**
-actual configuration. Files must have opaque SHA-256-style filenames,
+actual configuration. Files should be `result.json` or an opaque SHA-256-style filename,
 never chat names, handles or messages. Never upload exports to GitHub.
 
 The export files may be the owner's copy but their authors' rights and
