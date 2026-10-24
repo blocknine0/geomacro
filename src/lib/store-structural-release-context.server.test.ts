@@ -32,6 +32,14 @@ function release(country: string, dimension = "critical_minerals"): StructuralCo
     provenance: { date_precision: "YEAR", reference_period_end_is_not_publication_time: true }, normalized_hash: "a".repeat(64),
   }] };
 }
+// Synthetic rights rows model explicit source-by-source authorization; they
+// do not prove any production provider, historical B2 payload or licence.
+const fixtureRights = async (ids: string[]) => ({
+  eligible: true, ineligible_source_ids: [],
+  results: ids.map(source_id => ({ source_id, eligible: true })),
+});
+const storeRead = (plan: ReturnType<typeof buildAgentQueryPlan>) =>
+  loadAgentQueryStructuralContext(plan, plan.subjects[0], { sourceEligibilityChecker: fixtureRights });
 function proof(plan: ReturnType<typeof buildAgentQueryPlan>, context: StructuralContext) {
   return () => assertStoreStructuralEvidence(plan, { asOf: NOW.toISOString(), subjects: [{ context, worldBank: {} }] });
 }
@@ -46,7 +54,7 @@ afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe("qualified releases reuse the exact Store country/dimension scope (offline synthetic fixtures)", () => {
   it("reads both corridor endpoints separately and preserves directional non-route metadata", async () => {
     const plan = buildAgentQueryPlan(GEOMACRO_STORE_REQUEST_EXAMPLES.corridor_digest);
-    const result = await loadAgentQueryStructuralContext(plan, plan.subjects[0]);
+    const result = await storeRead(plan);
     expect(mock.mcs.mock.calls.map(row => row[0])).toEqual(["USA", "CAN"]);
     expect(new Set(result.observations.map(row => row.country_iso3))).toEqual(new Set(["USA", "CAN"]));
     expect(result.metadata).toMatchObject({ composition_method: "ENDPOINT_COMPOSED_V0_1", route_modeling_status: "NOT_MODELED", direct_evidence_status: "NO_DIRECT_BILATERAL_EVIDENCE" });
@@ -55,30 +63,30 @@ describe("qualified releases reuse the exact Store country/dimension scope (offl
   it("does not fabricate a destination when that country has no qualified rows", async () => {
     mock.mcs.mockImplementation(country => country === "USA" ? release(country) : null);
     const plan = buildAgentQueryPlan(GEOMACRO_STORE_REQUEST_EXAMPLES.corridor_digest);
-    const result = await loadAgentQueryStructuralContext(plan, plan.subjects[0]);
+    const result = await storeRead(plan);
     expect(result.observations.every(row => row.country_iso3 === "USA")).toBe(true);
     expect(proof(plan, result)).toThrow("ENDPOINT_MODULE_UNVERIFIED");
   });
   it("combines exact requested dimensions in a full country profile without substituting macro data", async () => {
     const plan = buildAgentQueryPlan({ ...GEOMACRO_STORE_REQUEST_EXAMPLES.country_profile, subjects: [{ type: "country", country_iso3: "IND" }], topics: ["critical_minerals", "fx_external_risk"] });
-    const result = await loadAgentQueryStructuralContext(plan, plan.subjects[0]);
+    const result = await storeRead(plan);
     expect(new Set(result.observations.map(row => row.dimension))).toEqual(new Set(["critical_minerals", "external_fx"]));
     expect(proof(plan, result)).not.toThrow();
     const unchangedScope = buildAgentQueryPlan(GEOMACRO_STORE_REQUEST_EXAMPLES.country_profile);
-    const incomplete = await loadAgentQueryStructuralContext(unchangedScope, unchangedScope.subjects[0]);
+    const incomplete = await storeRead(unchangedScope);
     expect(incomplete.observations.some(row => row.dimension === "macro_monetary")).toBe(false);
     expect(proof(unchangedScope, incomplete)).toThrow("ENDPOINT_MODULE_UNVERIFIED");
   });
   it("keeps a complete verified archive and avoids unnecessary publisher requests", async () => {
     const plan = buildAgentQueryPlan(GEOMACRO_STORE_REQUEST_EXAMPLES.country_digest);
     const original = release("USA"); mock.primary.mockResolvedValue(original);
-    expect(await loadAgentQueryStructuralContext(plan, plan.subjects[0])).toBe(original);
+    expect(await storeRead(plan)).toEqual(original);
     expect(mock.mcs).not.toHaveBeenCalled(); expect(mock.fx).not.toHaveBeenCalled();
   });
   it("retains a genuine origin and reads only the missing endpoint", async () => {
     const plan = buildAgentQueryPlan(GEOMACRO_STORE_REQUEST_EXAMPLES.corridor_digest);
     mock.primary.mockResolvedValue({ ...release("USA"), subject: plan.subjects[0] });
-    const result = await loadAgentQueryStructuralContext(plan, plan.subjects[0]);
+    const result = await storeRead(plan);
     expect(mock.mcs.mock.calls.map(row => row[0])).toEqual(["CAN"]);
     expect(proof(plan, result)).not.toThrow();
   });
@@ -92,16 +100,63 @@ describe("qualified releases reuse the exact Store country/dimension scope (offl
       return c;
     });
     const plan = buildAgentQueryPlan(GEOMACRO_STORE_REQUEST_EXAMPLES.corridor_digest);
-    expect(proof(plan, await loadAgentQueryStructuralContext(plan, plan.subjects[0]))).toThrow("ENDPOINT_MODULE_UNVERIFIED");
+    expect(proof(plan, await storeRead(plan))).toThrow("ENDPOINT_MODULE_UNVERIFIED");
   });
   it("rejects a foreign primary subject and does not relabel it", async () => {
     const plan = buildAgentQueryPlan(GEOMACRO_STORE_REQUEST_EXAMPLES.country_digest);
     mock.primary.mockResolvedValue(release("CAN"));
-    await expect(loadAgentQueryStructuralContext(plan, plan.subjects[0])).rejects.toThrow("SUBJECT_MISMATCH");
+    await expect(storeRead(plan)).rejects.toThrow("SUBJECT_MISMATCH");
+  });
+  it("excludes rights-ineligible competing source rows without blocking the independently allowed record", async () => {
+    const plan = buildAgentQueryPlan(GEOMACRO_STORE_REQUEST_EXAMPLES.country_digest);
+    const original = release("USA");
+    const lawful = { ...original.observations[0], source_id: "lawful_offline_fixture", normalized_hash: "b".repeat(64) };
+    const denied = { ...original.observations[0], source_id: "denied_offline_fixture", normalized_hash: "c".repeat(64) };
+    mock.primary.mockResolvedValue({ ...original, observations: [lawful, denied] });
+    const result = await loadAgentQueryStructuralContext(plan, plan.subjects[0], {
+      sourceEligibilityChecker: async () => ({
+        ineligible_source_ids: ["denied_offline_fixture"],
+        results: [
+          { source_id: "lawful_offline_fixture", eligible: true },
+          { source_id: "denied_offline_fixture", eligible: false },
+        ],
+      }),
+    });
+    expect(result.observations.map(row => row.source_id)).toEqual(["lawful_offline_fixture"]);
+    expect(mock.mcs).not.toHaveBeenCalled();
+    expect(proof(plan, result)).not.toThrow();
+  });
+  it("tries a separately qualified original when a fresh archived source has no rights", async () => {
+    const plan = buildAgentQueryPlan(GEOMACRO_STORE_REQUEST_EXAMPLES.country_digest);
+    const original = release("USA");
+    mock.primary.mockResolvedValue({ ...original, observations: original.observations.map(
+      row => ({ ...row, source_id: "unlicensed_archive_fixture" }),
+    ) });
+    const result = await loadAgentQueryStructuralContext(plan, plan.subjects[0], {
+      sourceEligibilityChecker: async () => ({
+        ineligible_source_ids: ["unlicensed_archive_fixture"],
+        results: [{ source_id: "unlicensed_archive_fixture", eligible: false }],
+      }),
+    });
+    expect(mock.mcs).toHaveBeenCalledTimes(1);
+    expect(result.observations).toHaveLength(1);
+    expect(result.observations[0].source_id).toBe("private_fixture_critical_minerals");
+    expect(proof(plan, result)).not.toThrow();
+  });
+  it("never lets a rights-registry error admit an archive row without separate source proof", async () => {
+    const plan = buildAgentQueryPlan(GEOMACRO_STORE_REQUEST_EXAMPLES.country_digest);
+    const original = release("USA");
+    mock.primary.mockResolvedValue(original);
+    mock.mcs.mockResolvedValue(null);
+    const result = await loadAgentQueryStructuralContext(plan, plan.subjects[0], {
+      sourceEligibilityChecker: async () => { throw Error("OFFLINE_RIGHTS_REGISTRY_UNAVAILABLE"); },
+    });
+    expect(result.observations).toEqual([]);
+    expect(proof(plan, result)).toThrow("ENDPOINT_MODULE_UNVERIFIED");
   });
   it("preserves legacy reader options and keeps signed queries outside structural release opt-in", async () => {
     const plan = buildAgentQueryPlan(GEOMACRO_STORE_REQUEST_EXAMPLES.signed_existing);
-    await loadAgentQueryStructuralContext(plan, plan.subjects[0]);
+    await storeRead(plan);
     expect(mock.primary).toHaveBeenCalledWith(plan.subjects[0], { allowQualifiedRelease: false, qualifiedReleaseTopic: "risk_object" });
     expect(mock.mcs).not.toHaveBeenCalled(); expect(mock.fx).not.toHaveBeenCalled();
   });
@@ -109,7 +164,7 @@ describe("qualified releases reuse the exact Store country/dimension scope (offl
     const example = structuredClone(GEOMACRO_STORE_REQUEST_EXAMPLES[id]);
     const raw = id === "corridor_digest" ? example : { ...example, topics: ["critical_minerals", "fx_external_risk"] };
     const plan = buildAgentQueryPlan(raw);
-    const availability = await checkAgentQueryDeliverability(plan, { now: NOW, sourceEligibilityChecker: async ids => ({ eligible: true, ineligible_source_ids: [], results: ids.map(source_id => ({ source_id, commercial_usage_status: "DERIVED_ONLY", attribution_required: false, raw_redistribution_allowed: false, licence_name: "synthetic-test-only" })) as any }) });
+    const availability = await checkAgentQueryDeliverability(plan, { now: NOW, sourceEligibilityChecker: async ids => ({ eligible: true, ineligible_source_ids: [], results: ids.map(source_id => ({ source_id, eligible: true, commercial_usage_status: "DERIVED_ONLY", attribution_required: false, raw_redistribution_allowed: false, licence_name: "synthetic-test-only" })) as any }) });
     expect(availability.deliverable).toBe(true);
     const result = await prepareVerifiedCapabilityOffer({ plan, availability, clientRequestId: null, requestFingerprint: "f".repeat(64), rail: "coinbase_x402", network: "eip155:8453", asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", recipient: "0x" + "1".repeat(40) });
     expect(result.quote.amount_atomic).toBe(resolveGeomacroCapabilityPrice(raw.product.capability, raw.product.variant).amount_atomic);
