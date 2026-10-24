@@ -122,7 +122,7 @@ async function main(){
   if(seen.object_processed!==false)fail();
   const bytes=await reader.get(entry.key);
   if(!bytes||bytes.byteLength!==entry.size||sh(bytes)!==keySha)fail();
-  const doc=projectTelegramExport(bytes,{countryCodes});
+  const doc=projectTelegramExport(bytes,{countryCodes,countryRegistry:COUNTRIES_195});
   const objectSha=sh(bytes);
   bytes.fill(0);
   const batch={schema:"geomacro.telegram-export-derived-batch.v1",
