@@ -50,6 +50,9 @@ async function verifyOnce(configured,oldBearer){
  if(pub.status!==200)return {ok:false,reason:"PUBLIC_FEED_HTTP_"+safeHttp(pub.status)};
  const a=auth.body,p=pub.body;
  if(a?.ok!==true||
+    a?.projection!=="attributed_research"||
+    a?.attribution_must_be_preserved!==true||
+    a?.retention_hours!==72||a?.original_release_delay_minutes!==0||
     a?.partner_delivery_schema!=="geomacro.predge.research-news-delivery.v1"||
     a?.per_item_approval_ids_required!==false||
     a?.partner_resale_or_commercial_redistribution_authorized!==false||
