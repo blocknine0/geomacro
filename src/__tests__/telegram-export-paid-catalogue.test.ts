@@ -66,7 +66,7 @@ describe("Telegram owner-export T3 no-funds catalogue mapping",()=>{
   }
  });
  it("buyer projection contains only strictly curated labels and no author, links or handles",()=>{
-  const out=safeOwnerTelegramExportCustomerClaim(row);
+  const out=safeOwnerTelegramExportCustomerClaim(row,now);
   expect(out.limitation).toBe(TELEGRAM_EXPORT_UNVERIFIED_LIMITATION);
   expect(out).toMatchObject({provenance:"TELEGRAM_PUBLIC_EXPORT",
    verification_status:"UNVERIFIED_CLAIM",scored:false});
