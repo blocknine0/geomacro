@@ -41,7 +41,7 @@ test("native RSS item dates produce fixed-schema noncommercial-safe factual JSON
  const out=await collectRegisteredReusableNews({now:when,registry,perCategory:4,normalize,
    fetchImpl:async()=>{calls++;return response(feed);}});
  assert.equal(calls,1);
- assert.equal(out.items.length,2);
+ assert.equal(out.items.length,3);
  assert.equal(out.checks.length,2);
  assert.ok(out.items.every(x=>x.schema==="geomacro.reusable-news-json.v1"));
  assert.ok(out.items.every(x=>x.delivery.raw_article_included===false));
