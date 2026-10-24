@@ -77,6 +77,44 @@ export function aggregateLowSourceReview(result){
    result.reviewed_items>audit.ingested_news_examined||
    result.source_verified_items>audit.verified_original_page_bytes_and_native_time)
   invalid();
+ const coverage=result.coverage;
+ if(!coverage||coverage.schema!=="geomacro.automatic-news-qualification-coverage.v1"||
+    coverage.all_retained_unique_inputs_accounted_for!==true||
+    !count(coverage.retained_unique_derived_inputs)||
+    !count(coverage.reviewed_or_pending_this_run)||
+    !count(coverage.previously_verified_source_proofs_reused)||
+    !count(coverage.rejected_source_retry_cooldowns)||
+    !count(coverage.source_pages_verified_new)||
+    !count(coverage.source_pages_verified_total)||
+    !count(coverage.awaiting_evidence_or_unverified)||
+    coverage.retained_unique_derived_inputs!==audit.ingested_news_examined+
+      result.reused_current_verified_items+result.source_retry_cooldown_items||
+    coverage.reviewed_or_pending_this_run!==audit.ingested_news_examined||
+    coverage.previously_verified_source_proofs_reused!==result.reused_current_verified_items||
+    coverage.rejected_source_retry_cooldowns!==result.source_retry_cooldown_items||
+    coverage.source_pages_verified_new!==result.source_verified_items||
+    coverage.source_pages_verified_total!==coverage.source_pages_verified_new+
+      coverage.previously_verified_source_proofs_reused||
+    coverage.awaiting_evidence_or_unverified!==
+      coverage.retained_unique_derived_inputs-coverage.source_pages_verified_total||
+    coverage.original_bytes_and_native_clock_required!==true||
+    coverage.independent_facts_review_verified!==false||
+    coverage.article_scoped_commercial_rights_verified!==false||
+    coverage.signed_commercial_products_approved!==false||
+    coverage.automatic_paid_delivery_authorized!==false||
+    !coverage.categories||typeof coverage.categories!=="object"||
+    Object.keys(coverage.categories).sort().join(",")!==DOMAINS.slice().sort().join(",")||
+    !DOMAINS.every(d=>{
+      const r=coverage.categories[d];
+      return r&&["retained","newly_source_verified","previously_source_verified",
+        "rejected_cooldown","pending_or_unverified"].every(k=>count(r[k]))&&
+        r.retained===r.newly_source_verified+r.previously_source_verified+r.pending_or_unverified&&
+        r.pending_or_unverified>=r.rejected_cooldown&&
+        r.newly_source_verified===audit.categories[d].original_bytes_verified;
+    })||
+    DOMAINS.reduce((n,d)=>n+coverage.categories[d].retained,0)!==
+      coverage.retained_unique_derived_inputs)
+   invalid();
  const states=audit.rights_remediation_actions;
  if(!states||typeof states!=="object"||Array.isArray(states)||
   Object.keys(states).some(s=>!STATUSES.includes(s)||!count(states[s]))||
@@ -122,6 +160,11 @@ export function aggregateLowSourceReview(result){
  return Object.freeze({
   schema:"geomacro.low-source-review-safe-operator-status.v1",
   original_verification_window_hours:ORIGINAL_VERIFICATION_WINDOW_HOURS,
+  all_retained_news_automatically_accounted_for:true,
+  unique_retained_news:coverage.retained_unique_derived_inputs,
+  verified_original_pages_total:coverage.source_pages_verified_total,
+  awaiting_original_evidence_or_unverified:coverage.awaiting_evidence_or_unverified,
+  qualification_coverage_by_domain:coverage.categories,
   original_candidates_examined:audit.ingested_news_examined,
   exact_original_page_readbacks_attempted:audit.exact_page_byte_rereads_attempted,
   new_original_pages_and_native_time_verified:result.source_verified_items,
