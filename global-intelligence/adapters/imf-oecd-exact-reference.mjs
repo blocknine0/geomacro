@@ -1,5 +1,6 @@
 import {fetchImfDataMapper} from "./imf-sdmx.mjs";
 import {parseCsvRecords} from "./public-reference-extraction.mjs";
+import {fetchWdiIndiaGrowth,fetchBlsUsUnemployment} from "./imf-oecd-free-reference-alternates.mjs";
 
 // Pinned official OECD Data Explorer monthly unemployment dataset, bounded
 // to one historical month; exact United States row will be selected only if
@@ -57,7 +58,7 @@ export async function fetchOecdExactReference({fetchImpl=fetch}={}){
  const body=await boundedBody(OECD_ENDPOINT,fetchImpl);
  return extractOecdUsMonthlyUnemployment(body);
 }
-export async function verifyImfOecdReference({imf=fetchImfDataMapper,oecd=fetchOecdExactReference}={}){
+export async function verifyImfOecdReference({imf=fetchImfDataMapper,oecd=fetchOecdExactReference,alternates=null}={}){
  const receipt={schema:"geomacro.imf-oecd-native-statistics.v1",
    checked_at:new Date().toISOString(),readers:[],supabase_requests:0,
    b2_requests:0,d1_writes:0,payments:0,paid_eligible:false,
@@ -96,5 +97,52 @@ export async function verifyImfOecdReference({imf=fetchImfDataMapper,oecd=fetchO
  }
  receipt.attempted=2;
  receipt.verified=receipt.readers.filter(r=>r.state==="EXACT_STATISTICAL_REFERENCE_VERIFIED").length;
+ // No automatic fallback for injected primary readers in offline tests.
+ // Production explicitly opts in to two independent credential-free issuers.
+ receipt.official_alternates=[];
+ if(alternates!==null){
+   const lanes=[
+     {primary:"imf",source:"world_bank_wdi",read:alternates.wdi,
+      validate:r=>r?.source_id==="world_bank_wdi"&&
+       r.country_iso3==="IND"&&r.indicator==="NY.GDP.MKTP.KD.ZG"&&
+       r.frequency==="annual"&&r.source_methodology_equivalent_to_imf===false&&
+       Array.isArray(r.reference_periods)&&r.reference_periods.length>=1&&
+       r.reference_periods.every(x=>["2024","2025"].includes(x))},
+     {primary:"oecd",source:"us_bls_cps",read:alternates.bls,
+      validate:r=>r?.source_id==="us_bls_cps"&&
+       r.country_iso3==="USA"&&r.indicator==="LNS14000000"&&
+       r.reference_period==="2025-06"&&r.frequency==="monthly"&&
+       r.harmonization_equivalent_to_oecd===false},
+   ];
+   for(const lane of lanes){
+     if(receipt.readers.find(x=>x.id===lane.primary)?.state===
+         "EXACT_STATISTICAL_REFERENCE_VERIFIED")continue;
+     try{
+       if(typeof lane.read!=="function")throw Error("ALT_READER_UNCONFIGURED");
+       const data=await lane.read();
+       if(!lane.validate(data)||data.native_release_time_verified!==false||
+          data.commercial_rights_attested!==false||data.paid_eligible!==false||
+          data.original_published_at!==null)
+          throw Error("ALT_CONTRACT_INVALID");
+       receipt.official_alternates.push({replaces_unavailable_source:lane.primary,
+         alternate_source:lane.source,state:"INDEPENDENT_REFERENCE_AVAILABLE",
+         reference_period:lane.primary==="imf"?
+           data.reference_periods.join(","):data.reference_period,
+         comparable_topic_not_identical_methodology:true,
+         original_native_release_verified:false,commercial_rights_attested:false,
+         paid_eligible:false});
+     }catch(error){
+       const reason=String(error?.message??"");
+       receipt.official_alternates.push({
+        replaces_unavailable_source:lane.primary,alternate_source:lane.source,
+        state:"ALTERNATE_UNAVAILABLE",reason:/^ALT_[A-Z0-9_]+$/u.test(reason)?
+          reason:"ALT_TRANSPORT_OR_SCHEMA_UNKNOWN",paid_eligible:false});
+     }
+   }
+ }
+ receipt.alternates_verified=receipt.official_alternates.filter(
+  x=>x.state==="INDEPENDENT_REFERENCE_AVAILABLE").length;
+ receipt.reference_portfolio_available=receipt.verified+receipt.alternates_verified===2;
+ receipt.primary_imf_oecd_exact_sources_both_verified=receipt.verified===2;
  return receipt;
 }
