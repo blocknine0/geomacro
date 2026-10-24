@@ -1,5 +1,6 @@
 import {describe,expect,it} from "vitest";
 import {readFileSync} from "node:fs";
+import {buildDerivedNewsStructural} from "../lib/derived-news-structural-bridge";
 import {acceptedOriginalArticleLink,parseFirstPartyFeed,
   deriveStatelessSignals,type StatelessSourceSpec} from "../lib/stateless-intelligence-model";
 
@@ -109,8 +110,11 @@ describe("new official NZ/WTO sources, original clock and mandatory credit",()=>
   const signals=deriveStatelessSignals(n.dated,NOW);
   // Attribution-required rows are explicitly withheld from the existing
   // no-attribution derived-structured commercial research projection.
-  const bridge=readFileSync("src/lib/derived-news-structural-bridge.ts","utf8");
-  expect(bridge).toContain("if(signal.sources_credited.length!==0)continue");
+  expect(buildDerivedNewsStructural(signals,NOW)).toEqual([]);
+  const research=buildDerivedNewsStructural(signals,NOW,"attributed_research");
+  expect(research).toHaveLength(1);
+  expect(research[0].sources_credited).toEqual(["New Zealand Government (Beehive)"]);
+  expect(research[0].commercial_derived_rights_verified).toBe(false);
   const json=JSON.stringify(signals);
   expect(json).not.toContain("https://");
   expect(json).not.toContain("Government approves lithium processing");

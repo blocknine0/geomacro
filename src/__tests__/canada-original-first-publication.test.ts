@@ -114,6 +114,9 @@ describe("NRCan same-original article body topical evidence",()=>{
  it("never accepts navigation, related links, forestry-only body, missing date or mismatched headline",()=>{
   for(const doc of [body('A forestry and wildfire cooperation update.'),
    body('A forestry update.')+'<footer><p>critical minerals</p></footer>',
+   body('A forestry update.').replace('<p>A forestry', '<script><p>critical minerals</p></script ><p>A forestry'),
+   body('A forestry update.').replace('<p>A forestry', '<nav><p>critical minerals</p></nav ><p>A forestry'),
+   body('A forestry update.').replace('<p>A forestry', '<aside><p>critical minerals</p></aside><p>A forestry'),
    body('A forestry update.').replace('<main>','<nav><p>critical minerals</p></nav><main>'),
    body('A forestry update.').replace('news-tags','news-tags"><p>critical minerals</p><div class="'),
    body('Critical minerals supply cooperation.').replace('dcterms.issued','dcterms.modified'),

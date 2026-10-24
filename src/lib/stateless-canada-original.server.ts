@@ -1,3 +1,4 @@
+import {visiblePublisherText} from "./stateless-publisher-text";
 /**
  * Original first-publication day from exact Canada.ca government NEWS article.
  * Never infer from feed updated, dateModified, crawl time, URL year/month.
@@ -99,10 +100,34 @@ export function canadaOriginalMineralsTopic(
   const main=/<main\b[^>]*>([\s\S]*?)<\/main>/iu.exec(html)?.[1]??"";
   const start=/<div\b[^>]*\bid=["']news-release-container["'][^>]*>/iu.exec(main);
   if(!start)return null;
-  const body=main.slice(start.index+start[0].length).split(/<div\b[^>]*\bclass=["']news-tags\b/iu)[0]
-    .replace(/<(?:script|style|nav|aside)\b[^>]*>[\s\S]*?<\/(?:script|style|nav|aside)>/giu,"");
-  for(const p of body.matchAll(/<p\b[^>]*>([\s\S]{1,6000}?)<\/p>/giu)){
-    const text=p[1].replace(/<[^>]+>/gu," ").replace(/&nbsp;|&#160;/giu," ");
+  const body=main.slice(start.index+start[0].length).split(/<div\b[^>]*\bclass=["']news-tags\b/iu)[0];
+  // Tokenize rather than removing HTML blocks with regex. In particular,
+  // HTML permits closing tags such as </script >; hidden paragraphs must
+  // never become minerals evidence. Nothing here is an HTML sanitizer.
+  const hidden:string[]=[];
+  let paragraph:string[]|null=null;
+  for(const token of body.match(/<[^>]*>|[^<]+/gu)??[]){
+    if(!token.startsWith("<")){
+      if(!hidden.length&&paragraph)paragraph.push(token);
+      continue;
+    }
+    const tag=/^<\s*(\/)?\s*([a-z][a-z0-9:-]*)\b[^>]*>$/iu.exec(token);
+    if(!tag)continue;
+    const name=tag[2].toLowerCase();
+    if(hidden.length){
+      if(tag[1]&&name===hidden[hidden.length-1])hidden.pop();
+      else if(!tag[1]&&name===hidden[hidden.length-1])hidden.push(name);
+      continue;
+    }
+    if(!tag[1]&&["script","style","template","nav","aside","footer"].includes(name)){
+      hidden.push(name);continue;
+    }
+    if(name!=="p")continue;
+    if(!tag[1]){paragraph=[];continue;}
+    if(!paragraph)continue;
+    const text=visiblePublisherText(paragraph.join(" "));
+    paragraph=null;
+    if(text.length>6000)continue;
     if(/\b(?:critical minerals?|critical raw materials?|minerals? supply chains?|battery minerals?)\b/iu.test(text))
       return "critical-minerals policy";
     if(/\b(?:mining value chain|mineral exploration|mineral production)\b/iu.test(text))
