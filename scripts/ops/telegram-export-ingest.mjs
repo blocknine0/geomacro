@@ -109,9 +109,19 @@ async function main(){
  const countryCodes=new Set(COUNTRIES_195.map(x=>x.iso3));
  let checked=0,accepted=0,already=0;
  // Two raw-file GETs maximum; no account quota bypass.
- for(const entry of candidates.slice(0,2)){
+ for(const entry of candidates){
+  if(checked>=2)break;
+  const keySha=entry.key.slice(PREFIX.length,-5);
+  const state=await fetch(ROOT+"/v1/internal/telegram-export-derived-json?object_sha256="+keySha,{
+    method:"GET",redirect:"error",cache:"no-store",
+    headers:{authorization:"Bearer "+token},signal:AbortSignal.timeout(12000)});
+  if(state.status!==200)fail();
+  const seen=await state.json();
+  if(seen.ok!==true||seen.paid_delivery_enabled!==false)fail();
+  if(seen.object_processed===true){already++;continue}
+  if(seen.object_processed!==false)fail();
   const bytes=await reader.get(entry.key);
-  if(!bytes||bytes.byteLength!==entry.size)fail();
+  if(!bytes||bytes.byteLength!==entry.size||sh(bytes)!==keySha)fail();
   const doc=projectTelegramExport(bytes,{countryCodes});
   const objectSha=sh(bytes);
   bytes.fill(0);
