@@ -1,4 +1,7 @@
 import type { AgentQueryPlan } from "./agent-query-plan";
+import { isStructuralStoreProduct } from "./store-product-selection";
+import { assertStoreStructuralEvidence } from "./store-product-evidence.server";
+import { loadCommercialRiskObjectForAgentQuery } from "./agent-query-external-modules.server";
 import { sourceNativeObservationTime } from "./source-native-observation-time";
 import {retainQualifiedStructuralEvidence,type QualifiedSubjectEvidence} from "./agent-query-qualified-evidence.server";
 import {
@@ -391,6 +394,13 @@ export async function checkAgentQueryDeliverability(
         ? await options.externalModuleChecker({ module, subject, plan })
         : false;
       if (!ok) missing.add(module);
+      if (ok && module === "signed_risk_object" && plan.product) {
+        try {
+          const object = await loadCommercialRiskObjectForAgentQuery(subject, asOf);
+          if (!object) missing.add(module);
+          else qualifiedSubject.riskObject = object;
+        } catch { missing.add(module); }
+      }
     }
 
     subjects.push({
@@ -403,6 +413,10 @@ export async function checkAgentQueryDeliverability(
     });
   }
 
+  if (isStructuralStoreProduct(plan.product)) {
+    try { assertStoreStructuralEvidence(plan, { asOf, subjects: qualifiedSubjects }); }
+    catch { missing.add("store_product_evidence"); }
+  }
   const missingModules = [...missing].sort();
   const staleModules = [...stale].sort();
   const ineligibleSourceIds = [...ineligibleSources].sort();

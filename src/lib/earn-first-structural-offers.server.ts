@@ -6,6 +6,7 @@ import {
 } from "./agent-query-deliverability.server";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import { getCoinbaseX402Config } from "./coinbase-x402.server";
+import { STORE_STRUCTURAL_PRODUCTS } from "./store-product-selection";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const PURCHASE_PATH = "/api/v1/intelligence/query";
@@ -53,7 +54,8 @@ export const earnFirstStructuralOfferHandlers = {
     purchase_endpoint: PURCHASE_PATH,
     availability_endpoint: "/api/v1/intelligence/availability",
     offers: templates,
-    instructions: "POST the canonical query body with delivery_tier structural_baseline and exactly one eligible topic/country. Only a positive availability result permits requesting an x402 quote via the unchanged canonical purchase endpoint; a quote is not proof of payment.",
+    supported_store_products: STORE_STRUCTURAL_PRODUCTS,
+    instructions: "POST delivery_tier structural_baseline. Legacy requests require one country/topic. Explicit product selection supports country/corridor digests or full profiles with at least two qualified dimensions. Preflight checks data only; request an exact quote on the canonical purchase endpoint. It is not a payment receipt.",
   }),
   POST: async ({request}: {request: Request}) =>
     preflightStructuralBaseline(request),

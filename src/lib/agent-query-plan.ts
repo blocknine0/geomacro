@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { storeProductSelectionSchema, assertStoreProductScope, isStructuralStoreProduct,
+  type StoreProductSelection } from "./store-product-selection";
 
 export const AGENT_QUERY_SCHEMA_VERSION = "geomacro.agent-query.v1" as const;
 
@@ -49,6 +51,7 @@ const changeSpec = z.object({
 }).strict();
 
 export const agentAdaptiveQuerySchema = z.object({
+  product: storeProductSelectionSchema.optional(),
   schema_version: z.literal(AGENT_QUERY_SCHEMA_VERSION).default(AGENT_QUERY_SCHEMA_VERSION),
   question: z.string().trim().min(3).max(2_000).optional(),
   subjects: z.array(z.union([country, corridor])).min(1).max(25),
@@ -93,6 +96,14 @@ const LIVE_OR_SIGNED_QUESTION = /\b(?:current|latest|real[- ]?time|today|tonight
  */
 export function assertStructuralBaselinePilot(input: AgentAdaptiveQuery) {
   if (input.delivery_tier !== "structural_baseline") return;
+  if (isStructuralStoreProduct(input.product)) {
+    assertStoreProductScope(input);
+    if (input.question && (LIVE_OR_SIGNED_QUESTION.test(input.question) ||
+        inferAgentQueryTopics(input.question).some(topic => !input.topics.includes(topic)) ||
+        inferAgentQueryIntent(input.question) !== null))
+      throw Error("STORE_STRUCTURAL_QUESTION_SCOPE_UNSUPPORTED");
+    return;
+  }
   if (input.fulfillment_mode !== "published_only" ||
       input.subjects.length !== 1 || input.subjects[0]?.type !== "country" ||
       input.topics.length !== 1 || !BASELINE_TOPICS.has(input.topics[0]) ||
@@ -314,6 +325,7 @@ function stableHash(value: unknown) {
 }
 
 export type AgentQueryPlan = {
+  product?: StoreProductSelection;
   schema_version: typeof AGENT_QUERY_SCHEMA_VERSION;
   question_key: string | null;
   intent: AgentQueryIntent;
@@ -341,6 +353,8 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   const inferredTopics = explicitTopics ? [] : inferAgentQueryTopics(parsed.question);
   let topics = [...new Set([...parsed.topics, ...inferredTopics])].sort() as AgentQueryTopic[];
   const intent = resolveIntent(parsed, subjects, topics);
+  if (parsed.product?.capability === "intelligence_query" && !topics.includes("risk_object"))
+    topics = [...topics, "risk_object"].sort() as AgentQueryTopic[];
 
   // Ranking and previous-published change analysis are grounded in signed Risk
   // Objects, never guessed from heterogeneous structural observations.
@@ -370,9 +384,17 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   validateIntent(parsed, intent, subjects, topics);
 
   const requiredModules = parsed.delivery_tier === "structural_baseline"
-    ? [BASELINE_MODULE_BY_TOPIC[topics[0]]].filter((m):m is string=>typeof m==="string")
+    ? [...new Set(topics.map(topic => BASELINE_MODULE_BY_TOPIC[topic]).filter((m):m is string=>typeof m==="string"))].sort()
     : [...new Set(topics.flatMap((topic) => TOPIC_MODULES[topic]))].sort();
+  // The Store query contract includes a real live-pipeline check timestamp.
+  // Qualify that module rather than inventing a timestamp from assembly time;
+  // it is a prerequisite, not an extra buyer topic for price classification.
+  if (parsed.product?.capability === "intelligence_query" && !requiredModules.includes("hot_topics")) {
+    requiredModules.push("hot_topics");
+    requiredModules.sort();
+  }
   if(requiredModules.length===0)throw Error("STRUCTURAL_BASELINE_MODULE_NOT_AVAILABLE");
+  assertStoreProductScope({...parsed, subjects, topics, intent});
   if (parsed.as_of && requiredModules.some((module) => !HISTORICAL_COMPATIBLE_MODULES.has(module))) {
     throw new Error("HISTORICAL_AS_OF_UNSUPPORTED_FOR_REQUESTED_MODULES");
   }
@@ -385,6 +407,7 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
       }),
   );
   const normalized = {
+    ...(parsed.product ? { product: parsed.product } : {}),
     schema_version: AGENT_QUERY_SCHEMA_VERSION,
     question_key: normalizeQuestion(parsed.question),
     intent,

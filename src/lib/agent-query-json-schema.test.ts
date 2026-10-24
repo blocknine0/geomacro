@@ -7,6 +7,7 @@ import {
   AGENT_QUERY_TOPICS,
   buildAgentQueryPlan,
 } from "./agent-query-plan";
+import {GEOMACRO_STORE_REQUEST_EXAMPLES} from "./store-product-examples";
 
 function readSchema(name: string) {
   return JSON.parse(readFileSync(join(process.cwd(), "schemas", name), "utf8")) as Record<string, any>;
@@ -16,6 +17,17 @@ const request = readSchema("agent-query-v1.schema.json");
 const response = readSchema("adaptive-intelligence-response-v1.schema.json");
 
 describe("published adaptive agent JSON Schemas", () => {
+  it("documents every Store example field and all twelve exact variants", () => {
+    expect(request.properties.product.oneOf).toHaveLength(12);
+    for (const example of Object.values(GEOMACRO_STORE_REQUEST_EXAMPLES)) {
+      for (const field of Object.keys(example)) expect(request.properties).toHaveProperty(field);
+      const variant = request.properties.product.oneOf.find((row: any) =>
+        row.properties.capability.const === example.product.capability && row.properties.variant.const === example.product.variant);
+      expect(variant).toBeDefined();
+      for (const required of variant.required) expect(example.product).toHaveProperty(required);
+      expect(buildAgentQueryPlan(example).product).toEqual(example.product);
+    }
+  });
   it("publishes Draft 2020-12 schemas with stable public identifiers", () => {
     for (const schema of [request, response]) {
       expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");

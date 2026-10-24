@@ -1,5 +1,17 @@
 import { AGENT_QUERY_TOPICS, AGENT_QUERY_INTENTS } from "./agent-query-plan";
 import { GEOMACRO_API_EXAMPLES } from "./public-api-endpoints";
+import { publicCapabilityPricingCatalog } from "./capability-pricing-catalog";
+
+export function storeProductOpenApiSchema() {
+  return { oneOf: publicCapabilityPricingCatalog().flatMap(row => row.variants.map(price => {
+    const newlyIssued = price.capability === "signed_risk_object" && price.variant === "newly_qualified_signed";
+    return { type: "object", additionalProperties: false,
+      required: newlyIssued ? ["capability", "variant", "issued_after"] : ["capability", "variant"],
+      properties: { capability: { const: price.capability }, variant: { const: price.variant },
+        ...(newlyIssued ? { issued_after: { type: "string", format: "date-time", description: "Current UTC cutoff, no older than five minutes when requesting a new quote. Requires an actually signature-verified publication after this cutoff; never generates a signature." } } : {}) },
+    };
+  })) };
+}
 
 const iso3 = { type: "string", pattern: "^[A-Z]{3}$", example: "IND" };
 const country = { type: "object", required: ["type", "country_iso3"], properties: {
@@ -15,6 +27,7 @@ export function publicQueryOpenApiSchema(topics?: readonly string[]) {
     description: topics ? "Country-only category query; topics are bound by the server. Question must remain within the category."
       : "Provide topics, intent or a classifiable question. Subject routing does not establish current verified coverage.",
     properties: {
+      product: storeProductOpenApiSchema(),
       schema_version: { const: "geomacro.agent-query.v1" },
       subjects: { type: "array", minItems: 1, maxItems: topics ? 1 : 25,
         items: topics ? country : { oneOf: [country, corridor] } },
@@ -47,15 +60,18 @@ export function publicQueryOpenApiSchema(topics?: readonly string[]) {
 export function baselineOpenApiSchema() {
   const base = publicQueryOpenApiSchema();
   const { ranking: _ranking, change: _change, as_of: _asOf, risk_gate_context: _riskGate, ...properties } = base.properties;
-  return { ...base, description: "Historical structural baseline only. One country and one eligible topic; not a current risk score or live-news availability check.",
+  return { ...base, description: "Historical structural baseline only. Legacy requests use one country/topic; explicit product supports a country/corridor digest or a full profile with two or more verified dimensions. Not current signed risk.",
     required: ["subjects", "topics", "delivery_tier"], properties: {
       ...properties,
-      subjects: { type: "array", minItems: 1, maxItems: 1, items: country },
-      topics: { type: "array", minItems: 1, maxItems: 1, items: { enum: ["sovereign_risk", "macro_risk", "fx_external_risk", "critical_minerals", "conflict_geopolitics"] } },
+      subjects: { type: "array", minItems: 1, maxItems: 1, items: { oneOf: [country, corridor] } },
+      topics: { type: "array", minItems: 1, maxItems: 5, uniqueItems: true, items: { enum: ["sovereign_risk", "macro_risk", "fx_external_risk", "critical_minerals", "conflict_geopolitics"] } },
       fulfillment_mode: { const: "published_only", default: "published_only" },
       delivery_tier: { const: "structural_baseline" },
-      intent: { const: "single_subject" },
+      intent: { enum: ["single_subject", "corridor"] },
     },
+    allOf: [{ if: { not: { required: ["product"] } }, then: {
+      properties: { subjects: { items: country }, topics: { maxItems: 1 }, intent: { const: "single_subject" } },
+    } }],
   };
 }
 

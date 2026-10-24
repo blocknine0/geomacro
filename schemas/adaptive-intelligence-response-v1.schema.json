@@ -141,6 +141,208 @@
               "additionalProperties": false
             }
           ]
+        },
+        "product": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "capability",
+                "variant"
+              ],
+              "properties": {
+                "capability": {
+                  "const": "structural_country_digest"
+                },
+                "variant": {
+                  "const": "standard"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "capability",
+                "variant"
+              ],
+              "properties": {
+                "capability": {
+                  "const": "structural_corridor_digest"
+                },
+                "variant": {
+                  "const": "standard"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "capability",
+                "variant"
+              ],
+              "properties": {
+                "capability": {
+                  "const": "structural_country_profile"
+                },
+                "variant": {
+                  "const": "standard"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "capability",
+                "variant"
+              ],
+              "properties": {
+                "capability": {
+                  "const": "structural_corridor_profile"
+                },
+                "variant": {
+                  "const": "standard"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "capability",
+                "variant"
+              ],
+              "properties": {
+                "capability": {
+                  "const": "intelligence_query"
+                },
+                "variant": {
+                  "const": "focused"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "capability",
+                "variant"
+              ],
+              "properties": {
+                "capability": {
+                  "const": "intelligence_query"
+                },
+                "variant": {
+                  "const": "standard"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "capability",
+                "variant"
+              ],
+              "properties": {
+                "capability": {
+                  "const": "intelligence_query"
+                },
+                "variant": {
+                  "const": "complex_multi_source"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "capability",
+                "variant"
+              ],
+              "properties": {
+                "capability": {
+                  "const": "signed_risk_object"
+                },
+                "variant": {
+                  "const": "existing_valid_signed"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "capability",
+                "variant",
+                "issued_after"
+              ],
+              "properties": {
+                "capability": {
+                  "const": "signed_risk_object"
+                },
+                "variant": {
+                  "const": "newly_qualified_signed"
+                },
+                "issued_after": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Current UTC cutoff, no older than five minutes when requesting a new quote. Requires an actually signature-verified publication after this cutoff; never generates a signature."
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "capability",
+                "variant"
+              ],
+              "properties": {
+                "capability": {
+                  "const": "risk_gate_bundle"
+                },
+                "variant": {
+                  "const": "existing_proof_preflight"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "capability",
+                "variant"
+              ],
+              "properties": {
+                "capability": {
+                  "const": "risk_gate_bundle"
+                },
+                "variant": {
+                  "const": "standard"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "capability",
+                "variant"
+              ],
+              "properties": {
+                "capability": {
+                  "const": "risk_gate_bundle"
+                },
+                "variant": {
+                  "const": "complex_multi_source"
+                }
+              }
+            }
+          ]
         }
       }
     },
@@ -315,7 +517,10 @@
           "const": "geomacro.intelligence-contract.v1"
         },
         "pricing_phase": {
-          "enum": ["EARLY_ADOPTION_10K", "CAPABILITY_USDC_V1"]
+          "enum": [
+            "EARLY_ADOPTION_10K",
+            "CAPABILITY_USDC_V1"
+          ]
         },
         "price_usdc": {
           "type": [

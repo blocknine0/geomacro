@@ -232,6 +232,7 @@ describe("source-free paid output boundary", () => {
 
   it("accepts only exact false safety assertions emitted by governed module fallbacks",()=>{
     for(const key of ["raw_source_material_redistributed",
+      "article_text_redistributed",
       "raw_upstream_perception_source_material_redistributed","raw_numeric_source_rows_redistributed"]){
       const payload={structural:[{limitations:{[key]:false}}]};
       expect(sanitizePublicPaidOutput(payload,{rejectEmbeddedLinks:true})).toEqual(payload);

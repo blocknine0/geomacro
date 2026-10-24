@@ -8,6 +8,9 @@ import {prepareVerifiedCapabilityOffer,assertFrozenCapabilityCurrentForSettlemen
 import {buildAgentQueryPlan} from "./agent-query-plan";
 import {mainnetIntelligenceHandlers} from "./mainnet-intelligence-endpoint.server";
 import {Route} from "../routes/api.x402.circle_.intelligence";
+import {retainQualifiedStructuralEvidence} from "./agent-query-qualified-evidence.server";
+import {GEOMACRO_STORE_REQUEST_EXAMPLES} from "./store-product-examples";
+import {resolveGeomacroCapabilityPrice} from "./capability-pricing-catalog";
 
 const mock=vi.hoisted(()=>({assemble:vi.fn(),availability:vi.fn(),coinbaseVerify:vi.fn(),coinbaseSettle:vi.fn(),circleVerify:vi.fn(),circleSettle:vi.fn()}));
 const PAYEE="0x"+"1".repeat(40),ASSET="0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",TX="0x"+"a".repeat(64);
@@ -32,19 +35,26 @@ vi.mock("@tanstack/react-router",()=>({createFileRoute:()=> (options:unknown)=>o
 const query={fulfillment_mode:"published_only",delivery_tier:"structural_baseline",subjects:[{type:"country",country_iso3:"USA"}],topics:["critical_minerals"],detail:"compact"};
 const circlePost=(Route as unknown as {server:{handlers:{POST:typeof mainnetIntelligenceHandlers.POST}}}).server.handlers.POST;
 const handlers={coinbase:mainnetIntelligenceHandlers.POST,circle:circlePost};
-function availability(plan:any):AgentQueryDeliverability {return {deliverable:true,code:"AVAILABLE",query_plan_hash:plan.query_plan_hash,checked_at:new Date().toISOString(),missing_modules:[],stale_modules:[],ineligible_source_ids:[],source_contracts:[{source_id:"PRIVATE_TEST_ONLY",commercial_usage_status:"DERIVED_ONLY",raw_redistribution_allowed:false,attribution_required:false,licence_name:null}],subjects:[{subject:plan.subjects[0],status:"AVAILABLE",available_modules:plan.required_modules,latest_evidence_at:"2025-12-31T23:59:59.000Z",required_source_ids:["PRIVATE_TEST_ONLY"],governed_fallback_modules:[]}]};}
+function availability(plan:any):AgentQueryDeliverability {
+  const value:AgentQueryDeliverability={deliverable:true,code:"AVAILABLE",query_plan_hash:plan.query_plan_hash,checked_at:new Date().toISOString(),missing_modules:[],stale_modules:[],ineligible_source_ids:[],source_contracts:[{source_id:"PRIVATE_TEST_ONLY",commercial_usage_status:"DERIVED_ONLY",raw_redistribution_allowed:false,attribution_required:false,licence_name:null}],subjects:[{subject:plan.subjects[0],status:"AVAILABLE",available_modules:plan.required_modules,latest_evidence_at:"2025-12-31T23:59:59.000Z",required_source_ids:["PRIVATE_TEST_ONLY"],governed_fallback_modules:[]}]};
+  if(plan.product)retainQualifiedStructuralEvidence(value,plan,plan.subjects.map((subject:any)=>({worldBank:{},context:{status:"AVAILABLE",subject,
+    observations:plan.required_modules.flatMap((dimension:string)=>(subject.type==="country"?[subject.country_iso3]:[subject.origin_country_iso3,subject.destination_country_iso3]).map((country_iso3:string)=>({
+      country_iso3,dimension,value_numeric:1,observed_at:"2026-10-17T12:00:00Z",normalized_hash:"a".repeat(64),provenance:{},
+    }))),metadata:{composition_method:"ENDPOINT_COMPOSED_V0_1",route_modeling_status:"NOT_MODELED"}}})),new Date().toISOString());
+  return value;
+}
 function prepared({plan,requestId,clientRequestId,priceUsdc}:any) {
   const core={schema_version:SCHEMA,product:"geomacro_adaptive_risk_intelligence_v1",request_id:requestId,client_request_id:clientRequestId,query_plan_hash:plan.query_plan_hash,subjects:plan.subjects,
     as_of:"2026-10-18T14:01:00.000Z",
-    question_interpretation:{delivery_tier:"structural_baseline"},analysis:{type:"single_subject"},
+    question_interpretation:{delivery_tier:"structural_baseline",...(plan.product?{product:plan.product}:{})},analysis:{type:"single_subject"},
     // ONLY synthetic governed module fixtures, never real article text or
     // a fabricated production certification. Buyer gate must reject [].
     structural:plan.subjects.map((subject:any)=>({
-      subject, intelligence:Object.fromEntries(plan.required_modules.map((module:string)=>[
-        module,{observations:[{value_numeric:1,observed_at:"2025-12-31T23:59:59.000Z"}],coverage:[]}
+      subject, serving:{composition_method:"ENDPOINT_COMPOSED_V0_1",route_modeling_status:"NOT_MODELED"},intelligence:Object.fromEntries(plan.required_modules.map((module:string)=>[
+        module,{observations:(subject.type==="country"?[subject.country_iso3]:[subject.origin_country_iso3,subject.destination_country_iso3]).map((country_iso3:string)=>({country_iso3,value_numeric:1,observed_at:"2025-12-31T23:59:59.000Z"})),coverage:[]}
       ])), evidence_summary:{observation_count:1,available_dimensions:plan.required_modules,
         latest_observed_at:"2025-12-31T23:59:59.000Z"}
-    })),hot_topics:[],risk_gate:[],signed_risk_objects:[],gri_context:null,current_state:[],
+    })),hot_topics:[],risk_gate:[],signed_risk_objects:[],gri_context:null,current_state:plan.product?plan.subjects.map((subject:any)=>({subject,structural:{observation_count:plan.required_modules.length,latest_observed_at:"2025-12-31T23:59:59.000Z"}})):[],
     change_intelligence:[{schema_version:"geomacro.change-intelligence.v1",delivery_boundary:"STRUCTURED_DERIVED_CHANGE_INTELLIGENCE_ONLY",raw_data_delivered:false,execution_authorized:false,refresh_hint:{strategy:"SOURCE_NATIVE_CADENCE_OR_STATE_CHANGE",recommended_not_before_seconds:900},state_version:"gstate_test"}],
     decision_intelligence:[{schema_version:"geomacro.decision-intelligence.v1",delivery_boundary:"DERIVED_DECISION_INTELLIGENCE_ONLY",raw_data_delivered:false,execution_authorized:false,cause:"Geomacro detects this because comparable annual estimates differ.",geomacro_detected:[],watch_next:[],decision:{execution_authorized:false}}],
     answer:{summary:"Synthetic test-only annual structured output; never production evidence."},methodology:{response_schema_version:SCHEMA,customer_facing_output:"decision_intelligence_v1",price_usdc:priceUsdc,signed_current_risk_object_included:false},limitations:{execution_authorized:false},execution_authorized:false};
@@ -62,12 +72,13 @@ function ledger(name:string) {
 function call(rail:keyof typeof handlers,payment?:any,body:any=query) {
   return handlers[rail]({request:new Request("https://geomacro.live/api/v1/intelligence/query",{method:"POST",headers:{"content-type":"application/json",...(payment?{"payment-signature":Buffer.from(JSON.stringify(payment)).toString("base64")}: {})},body:JSON.stringify(body)})});
 }
-async function offer(rail:keyof typeof handlers) {
-  const res=await call(rail);expect(res.status).toBe(402);
+async function offer(rail:keyof typeof handlers,body:any=query) {
+  const res=await call(rail,undefined,body);expect(res.status).toBe(402);
   const doc=JSON.parse(Buffer.from(res.headers.get("PAYMENT-REQUIRED")!,"base64").toString());
-  expect(doc.accepts[0].amount).toBe("20000");
+  const amount=body.product?resolveGeomacroCapabilityPrice(body.product.capability,body.product.variant).amount_atomic:"20000";
+  expect(doc.accepts[0].amount).toBe(amount);
   const quote=doc.extensions.geomacro.info.capability_quote;
-  return {quote,payment:{x402Version:2,accepted:doc.accepts[0],extensions:doc.extensions,payload:{signature:"0x"+"11".repeat(65),authorization:{from:"0x"+"2".repeat(40),to:PAYEE,value:"20000",validAfter:"0",validBefore:"9999999999",nonce:"0x"+"00".repeat(32)}}}};
+  return {quote,payment:{x402Version:2,accepted:doc.accepts[0],extensions:doc.extensions,payload:{signature:"0x"+"11".repeat(65),authorization:{from:"0x"+"2".repeat(40),to:PAYEE,value:amount,validAfter:"0",validBefore:"9999999999",nonce:"0x"+"00".repeat(32)}}}};
 }
 beforeEach(()=>{
   vi.useFakeTimers();vi.setSystemTime(new Date("2026-10-18T14:01:00Z"));vi.clearAllMocks();stores.clear();ledgers.clear();requests.length=0;
@@ -98,6 +109,17 @@ it("a quote cannot extend a signed object's earlier expiry",()=>{
 });
 
 for(const rail of ["coinbase","circle"] as const)describe(`${rail}: actual handlers + Worker, synthetic source/provider fixtures, no funds`,()=>{
+ it.each(["country_digest","corridor_digest","country_profile","corridor_profile"] as const)("delivers and replays exact %s Store bytes with one settlement",async id=>{
+   const body=GEOMACRO_STORE_REQUEST_EXAMPLES[id],{quote,payment}=await offer(rail,body);
+   expect(quote.capability).toBe(body.product.capability);
+   expect(quote.variant).toBe(body.product.variant);
+   const bytes=requests.find(x=>x.action==="capability-prequote-freeze")!.body.customerBytes;
+   expect(commerceSha256(bytes)).toBe(quote.prepared_answer_sha256);
+   const delivered=await call(rail,payment,body);expect(delivered.status).toBe(200);expect(await delivered.text()).toBe(bytes);
+   mock.availability.mockRejectedValue(Error("SOURCE_NOW_UNAVAILABLE"));
+   const replay=await call(rail,payment,body);expect(replay.status).toBe(200);expect(await replay.text()).toBe(bytes);
+   expect(rail==="coinbase"?mock.coinbaseSettle:mock.circleSettle).toHaveBeenCalledTimes(1);
+ });
  it("does not freeze or quote a digest missing its advertised dimension coverage",async()=>{
   mock.assemble.mockImplementation((input:any)=>{
     const payload=prepared(input);

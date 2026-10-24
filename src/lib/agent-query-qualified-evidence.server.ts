@@ -4,12 +4,14 @@ import type {StructuralContext} from "./structural-context.server";
 import type {loadAgentPoliticalGovernanceModule} from "./agent-query-political-governance.server";
 import type {loadAgentWorldBankModule,AgentWorldBankModuleName} from "./agent-query-world-bank-modules.server";
 import type {loadAgentCriticalMineralsModule} from "./agent-query-critical-minerals.server";
+import type {GeomacroRiskObject} from "./risk-object-contract";
 
 export type QualifiedSubjectEvidence={
   context:StructuralContext;
   governance?:Awaited<ReturnType<typeof loadAgentPoliticalGovernanceModule>>;
   worldBank:Partial<Record<AgentWorldBankModuleName,Awaited<ReturnType<typeof loadAgentWorldBankModule>>>>;
   minerals?:Awaited<ReturnType<typeof loadAgentCriticalMineralsModule>>;
+  riskObject?:GeomacroRiskObject;
 };
 type Evidence={plan:string;capturedAt:number;asOf:string;subjects:QualifiedSubjectEvidence[]};
 // Request-local identity only: never serialized, shared across buyers, written

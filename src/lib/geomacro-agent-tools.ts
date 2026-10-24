@@ -1,16 +1,20 @@
 import { z } from "zod";
 import {
   AGENT_QUERY_SCHEMA_VERSION,
+  agentAdaptiveQuerySchema, buildAgentQueryPlan,
   type AgentAdaptiveQuery,
   type AgentQueryTopic,
   inferAgentQueryTopics,
 } from "./agent-query-plan";
+import { publicQueryOpenApiSchema } from "./public-api-openapi.server";
+import { GEOMACRO_STORE_REQUEST_EXAMPLES } from "./store-product-examples";
 
 export const GEOMACRO_MCP_PROTOCOL_VERSION = "2026-07-28" as const;
 export const GEOMACRO_MCP_SERVER_VERSION = "geomacro-mcp-v1" as const;
 export const GEOMACRO_MCP_PATH = "/api/mcp" as const;
 
 export const GEOMACRO_AGENT_TOOL_NAMES = [
+  "store_product_query",
   "geopolitics_query",
   "macro_fx_query",
   "critical_minerals_query",
@@ -184,6 +188,12 @@ export function geomacroAgentToolToCanonicalQuery(
   toolName: Exclude<GeomacroAgentToolName, "verify_risk_object">,
   rawArguments: unknown,
 ): AgentAdaptiveQuery {
+  if (toolName === "store_product_query") {
+    const input = agentAdaptiveQuerySchema.parse(rawArguments);
+    if (!input.product) throw Error("STORE_PRODUCT_SELECTION_REQUIRED");
+    buildAgentQueryPlan(input);
+    return input;
+  }
   const category = GEOMACRO_CATEGORY_AGENT_PROFILES.find(profile => profile.tool === toolName);
   if (category) {
     const input = categoryQuestionToolSchema.parse(rawArguments);
@@ -365,6 +375,14 @@ const intelligenceOutputSchema = {
 };
 
 export const GEOMACRO_AGENT_TOOLS = [
+  {
+    name: "store_product_query",
+    description: "Request an exact active Geomacro Store product and price variant through the canonical evidence-qualified x402 engine. Never supplies rights, signatures or payment authorization.",
+    paid: true,
+    inputSchema: { ...publicQueryOpenApiSchema(), required: ["subjects", "product"] },
+    outputSchema: intelligenceOutputSchema,
+    example: GEOMACRO_STORE_REQUEST_EXAMPLES.country_digest,
+  },
   ...GEOMACRO_CATEGORY_AGENT_PROFILES.map(profile => ({
     name: profile.tool,
     description: `${profile.name}: answer a country-specific question through the shared Geomacro engine. Live retrieval is no-charge until the exact answer is commercially verified; published_only uses existing governed x402 delivery.`,

@@ -1,6 +1,9 @@
 import type { AgentQueryPlan } from "./agent-query-plan";
 import type { AgentQueryDeliverability } from "./agent-query-deliverability.server";
 import type { CoinbaseX402Config } from "./coinbase-x402.server";
+import { readQualifiedStructuralEvidence } from "./agent-query-qualified-evidence.server";
+import { isStructuralStoreProduct } from "./store-product-selection";
+import { assertStoreStructuralEvidence, storeSignedObjectLifecycle } from "./store-product-evidence.server";
 import {
   resolveVerifiedPublishedPlanPrice,
   type VerifiedCapabilityPriceProof,
@@ -41,7 +44,7 @@ export function resolveEligiblePublishedCapabilityPrice(
     throw Error("CAPABILITY_PRICE_SIGNED_RISK_PROOF_REQUIRED");
   }
   if (structural && (
-    signed || plan.subjects.length !== 1 || plan.subjects[0]?.type !== "country" ||
+    signed || plan.subjects.length !== 1 || (!isStructuralStoreProduct(plan.product) && plan.subjects[0]?.type !== "country") ||
     plan.required_modules.some(name =>
       ["risk_gate", "gri_context", "hot_topics"].includes(name))
   )) throw Error("CAPABILITY_PRICE_STRUCTURAL_SCOPE_UNSUPPORTED");
@@ -61,6 +64,13 @@ export function resolveEligiblePublishedCapabilityPrice(
         !subject.available_modules.includes(module));
   })) throw Error("CAPABILITY_PRICE_STRUCTURAL_NATIVE_EVIDENCE_MISSING");
 
+  const needsPrivateEvidence = isStructuralStoreProduct(plan.product) ||
+    plan.product?.capability === "signed_risk_object" && plan.product.variant === "newly_qualified_signed";
+  const qualified = needsPrivateEvidence ? readQualifiedStructuralEvidence(availability, plan) : null;
+  if (isStructuralStoreProduct(plan.product)) {
+    if (!qualified) throw Error("CAPABILITY_PRICE_STORE_QUALIFIED_EVIDENCE_REQUIRED");
+    assertStoreStructuralEvidence(plan, qualified);
+  }
   const proof: VerifiedCapabilityPriceProof = {
     evidence_verified: true,
     rights_verified: true,
@@ -68,7 +78,8 @@ export function resolveEligiblePublishedCapabilityPrice(
     // there is NO implied or synthetic GRO for structural baseline.
     signing_verified: signed,
     deliverable: true,
-    signed_object_lifecycle: signed ? "existing" : "none",
+    signed_object_lifecycle: signed ? storeSignedObjectLifecycle(plan, qualified, now) : "none",
+    ...(isStructuralStoreProduct(plan.product) ? { store_structural_scope_verified: true } : {}),
     // External module checker verifies genuine change attribution before
     // returning AVAILABLE for a change_since signed risk object.
     change_attribution_verified: signed && plan.intent === "change_since",

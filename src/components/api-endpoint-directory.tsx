@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { GEOMACRO_API_EXAMPLES, GEOMACRO_PUBLIC_API_ENDPOINTS } from "@/lib/public-api-endpoints";
+import { GEOMACRO_STORE_REQUEST_EXAMPLES } from "@/lib/store-product-examples";
 
 const examples = [
   { id: "query", label: "Unified query", path: "/api/v1/intelligence/query" },
@@ -9,6 +10,9 @@ const examples = [
   { id: "availability", label: "Baseline availability", path: "/api/v1/intelligence/availability" },
   { id: "price_preflight", label: "Price preview", path: "/api/v1/payments/preflight" },
   { id: "agent", label: "AI agent", path: "/api/v1/agent" },
+  ...(Object.keys(GEOMACRO_STORE_REQUEST_EXAMPLES) as Array<keyof typeof GEOMACRO_STORE_REQUEST_EXAMPLES>).map(id => ({
+    id, label: `Store: ${id.replaceAll("_", " ")}`, path: "/api/v1/intelligence/query",
+  })),
 ] as const;
 
 export function ApiEndpointDirectory() {
@@ -37,6 +41,7 @@ export function ApiEndpointDirectory() {
       <summary className="cursor-pointer font-medium">Request examples & response handling</summary>
       <label className="mt-5 block text-sm">Example request<select value={selected.id} onChange={event => setSelected(examples.find(example => example.id === event.target.value)!)} className="mt-2 block w-full rounded border border-border bg-background p-3 sm:max-w-sm">{examples.map(example => <option key={example.id} value={example.id}>{example.label}</option>)}</select></label>
       <pre className="mt-4 overflow-x-auto rounded-lg bg-muted/40 p-4 text-xs leading-6"><code>{curl}</code></pre>
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">Store requests select an exact product and variant. Full profiles require at least two qualified dimensions; corridors require both endpoint countries. For a newly qualified signed object, replace the example issued_after with current UTC before requesting a quote. It requires a real verified publication after that cutoff, within five minutes; the request itself does not issue a signature.</p>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">These examples send no payment proof. Category APIs accept countries and bind topics automatically. Use the unified query for corridors or multiple categories. Category requests default to live_on_demand; these examples explicitly use published_only. Routing does not establish fresh coverage.</p>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">Category GET research views: <code>?view=finds</code>, <code>?view=latest</code>, <code>?view=open-data</code> or <code>?view=combined</code>. Release and dataset reference dates remain separate.</p>
       <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
