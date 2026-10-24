@@ -1,6 +1,5 @@
 import { getJson } from "./http.mjs";
-import {fetchGdacsNativeCountry,inspectGdacsCountryNative} from "./gdacs-native-country.mjs";
-import {gdacsOfficialEqRssCountryFallback} from "./gdacs-official-eq-rss.mjs";
+import {fetchGdacsNativeCountry} from "./gdacs-native-country.mjs";
 
 async function fetchText(url, headers={}) {
   // Daily free-source monitoring must never download unlimited csv/xml pages
@@ -48,20 +47,9 @@ async function fetchJson(url, headers={}) { return getJson(url,{headers}); }
 export async function probeGdacsPublic({fetchImpl=fetch,now=new Date()}={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
   throw Error("GDACS_CLOCK_INVALID");
- let proof;
- try{
-  proof=await fetchGdacsNativeCountry({fetchImpl,now});
- }catch(error){
-  const code=String(error?.message??"");
-  const transient=error?.name==="TimeoutError"||error?.name==="AbortError"||
-   /^GDACS_HTTP_(?:500|502|503|504)$/u.test(code);
-  if(!transient)throw Error(
-   /^GDACS_[A-Z0-9_]+$/u.test(code)?code:"GDACS_PRIMARY_UNVERIFIED");
-  // At most one additional bounded GET, on the same already approved
-  // GDACS publisher family. No retry of denied 401/403/429 or schema errors.
-  const rss=await gdacsOfficialEqRssCountryFallback({fetchImpl,now});
-  proof={...inspectGdacsCountryNative(rss),same_publisher_24h_rss_used:true};
- }
+ const proof=await fetchGdacsNativeCountry({fetchImpl,now});
+ // The central native reader performs at most one same-issuer RSS recovery.
+ // This public wrapper NEVER starts a third request if the RSS hop fails.
  if(proof?.schema!=="geomacro.gdacs-native-event-attribution.v1"||
   !Number.isSafeInteger(proof.event_count)||proof.event_count<0||
   !Number.isSafeInteger(proof.native_country_identifiers)||
