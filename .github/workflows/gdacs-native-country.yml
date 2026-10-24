@@ -7,6 +7,9 @@ on:
       - "global-intelligence/adapters/gdacs-official-eq-rss.mjs"
       - "scripts/tests/gdacs-official-eq-rss.test.mjs"
       - "scripts/ops/verify-gdacs-native-country.mjs"
+      - "scripts/lib/rbi-official-macro-release.mjs"
+      - "scripts/lib/rbi-official-macro-release.test.mjs"
+      - "scripts/ops/observe-rbi-official-macro-reference.mjs"
       - "scripts/lib/imf-portwatch-daily-corridors.mjs"
       - "scripts/tests/imf-portwatch-daily-corridors.test.mjs"
       - "scripts/ops/observe-imf-portwatch-corridors.mjs"
@@ -45,6 +48,9 @@ on:
       - "global-intelligence/adapters/gdacs-official-eq-rss.mjs"
       - "scripts/tests/gdacs-official-eq-rss.test.mjs"
       - "scripts/ops/verify-gdacs-native-country.mjs"
+      - "scripts/lib/rbi-official-macro-release.mjs"
+      - "scripts/lib/rbi-official-macro-release.test.mjs"
+      - "scripts/ops/observe-rbi-official-macro-reference.mjs"
       - "scripts/lib/imf-portwatch-daily-corridors.mjs"
       - "scripts/tests/imf-portwatch-daily-corridors.test.mjs"
       - "scripts/ops/observe-imf-portwatch-corridors.mjs"
@@ -101,6 +107,9 @@ jobs:
           node --test scripts/tests/gdacs-native-country.test.mjs
           node --check global-intelligence/adapters/gdacs-official-eq-rss.mjs
           node --test scripts/tests/gdacs-official-eq-rss.test.mjs
+          node --check scripts/lib/rbi-official-macro-release.mjs
+          node --check scripts/ops/observe-rbi-official-macro-reference.mjs
+          node --test scripts/lib/rbi-official-macro-release.test.mjs
           node --check scripts/lib/imf-portwatch-daily-corridors.mjs
           node --check scripts/ops/observe-imf-portwatch-corridors.mjs
           node --test scripts/tests/imf-portwatch-daily-corridors.test.mjs
@@ -158,6 +167,31 @@ jobs:
           name: gdacs-native-country-${{ github.run_id }}
           path: artifacts/gdacs-native-country/receipt.json
           retention-days: 7
+          if-no-files-found: warn
+
+  rbi-india-official-macro-reference:
+    # Existing GDACS/PortWatch daily cron, ONE issuer RSS read and at most
+    # ONE exact same-publisher DNS/www fallback on transient transport/5xx.
+    # First-party feed transport is NOT commercial source rights/signing.
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22
+      - name: Verify RBI issuer press RSS original link metadata (research only)
+        run: node scripts/ops/observe-rbi-official-macro-reference.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: rbi-india-macro-reference-${{ github.run_id }}
+          path: artifacts/rbi-official-macro-reference/receipt.json
+          retention-days: 3
           if-no-files-found: warn
 
   portwatch-daily:
