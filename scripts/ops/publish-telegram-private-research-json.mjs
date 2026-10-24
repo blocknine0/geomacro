@@ -12,7 +12,7 @@ import {pathToFileURL} from "node:url";
 const ID=/^tg_[a-f0-9]{32}_[a-f0-9]{16}$/u;
 const SHA=/^[a-f0-9]{64}$/u;
 const CATEGORIES={GEOPOLITICS:"geopolitics",MACRO:"macro",CRITICAL_MINERALS:"rare_earth"};
-const WINDOW=72*3600000;
+const WINDOW=25*3600000;
 const CONFIG="workers/control-plane/wrangler.runtime.jsonc";
 function assert(ok,reason){if(!ok)throw Error(reason)}
 const sql=x=>"'"+x.replaceAll("'","''")+"'";
@@ -117,7 +117,7 @@ export async function publishTelegramPrivateResearch(summaryPath,now=new Date())
      Number(readback[0].commercial_eligible)===0,"TELEGRAM_RESEARCH_D1_READBACK_FAILED");
    accepted++;
  }
- executeD1("DELETE FROM telegram_research_json WHERE published_at < datetime('now','-72 hours');");
+ executeD1("DELETE FROM telegram_research_json WHERE published_at < datetime('now','-25 hours');");
  executeD1("DELETE FROM telegram_research_json WHERE delivery_id NOT IN "+
    "(SELECT delivery_id FROM telegram_research_json ORDER BY published_at DESC,delivery_id DESC LIMIT 300);");
  return {schema:"geomacro.telegram-research-json-production-ack.v1",
