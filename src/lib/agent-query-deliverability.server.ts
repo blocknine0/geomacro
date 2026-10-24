@@ -190,7 +190,11 @@ export async function checkAgentQueryDeliverability(
   const qualifiedSubjects:QualifiedSubjectEvidence[]=[];
 
   for (const subject of plan.subjects) {
-    const context = await loadAgentQueryStructuralContext(plan, subject);
+    // Route the SAME admission rights checker into Store source composition.
+    // A single unlicensed archive row must not suppress a properly qualified
+    // same-module official release or leak into a prepared customer payload.
+    const context = await loadAgentQueryStructuralContext(plan, subject,
+      isStructuralStoreProduct(plan.product) ? { sourceEligibilityChecker: sourceChecker } : {});
     const available = structuralModulesFor(context);
     const qualifiedSubject:QualifiedSubjectEvidence={context,worldBank:{}};
     qualifiedSubjects.push(qualifiedSubject);
