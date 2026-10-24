@@ -8,6 +8,7 @@ import {pinnedGovUkContentApiUrl,verifiedGovUkContentFirstPublishedAt} from "./g
 import {registeredOriginalPublisherOrganization} from
   "./independent-same-event-qualification.mjs";
 import {pinnedDerivedOriginalReference} from "./derived-original-reference-pins.mjs";
+import {pinnedRbiPressReleaseLink} from "./rbi-official-macro-release.mjs";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl}
   from "./global-official-release-feeds.mjs";
 
@@ -27,6 +28,10 @@ const sha=bytes=>createHash("sha256").update(bytes).digest("hex");
 function pinnedOriginalPage(url,category){
   let parsed;
   try{parsed=new URL(url)}catch{return null}
+  // RBI original press pages use a required fixed numeric prid query.
+  // All other publishers retain the original zero-query policy.
+  if(category==="macro" && pinnedRbiPressReleaseLink(url)===url &&
+     parsed.protocol==="https:" && parsed.href.length<=350)return parsed;
   if(parsed.protocol!=="https:"||parsed.username||parsed.password||
     parsed.port||parsed.search||parsed.hash||parsed.href.length>350)
     return null;
