@@ -13,10 +13,10 @@ import { buildMaterialGriNewsReviewQueue } from "../lib/material-gri-news-review
 import { readStatelessWebsiteIntelligence } from "../../src/lib/stateless-public-intelligence.server";
 import {createRunScopedAustralianResourcesFetch} from "../../src/lib/stateless-run-shared-official-fetch";
 import {
-  conservativeDayReleaseMs,reconcilePrivateDerivedSourceRefs,
+  conservativeDayReleaseMs,reconcilePrivateDerivedSourceRefs,selectBoundedRetainedOriginalTargets,
   type StatelessSourceCandidate,
 } from "../../src/lib/stateless-intelligence-model";
-import {checkedDerivedNews} from "../../src/lib/public-derived-news-client";
+import {checkedDerivedNews,fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
 import {auditEveryDerivedNewsOriginal} from "../lib/all-news-original-evidence-audit.mjs";
 import type {StatelessIntelligenceResult} from "../../src/lib/stateless-public-intelligence.server";
 
@@ -171,10 +171,20 @@ try {
 try {
   const now=new Date();
   const signals=reports.flatMap(r=>r.signals);
+  // Read the bounded, already authenticated derived-only D1 journal so
+  // retained articles omitted by the latest per-category source shortlist
+  // still have an opportunity for exact private original-reference recovery.
+  // D1 failure never grants a missing reference or suppresses the present
+  // original-source audit. This is one bounded D1 read, not a publisher GET.
+  let retained:typeof signals=[];
+  try{retained=await fetchAllDerivedNews(fetch,now.getTime());}
+  catch{console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_UNAVAILABLE");}
   const reconciled=new Map<string,StatelessSourceCandidate>();
   for(const category of categories){
     const sourceRefs=privateOriginals.filter(x=>x.category===category);
-    const cards=signals.filter(x=>x.category===category);
+    const cards=selectBoundedRetainedOriginalTargets(
+      signals.filter(x=>x.category===category),
+      retained.filter(x=>x.category===category));
     for(const [id,ref] of reconcilePrivateDerivedSourceRefs(
       sourceRefs,cards,now.getTime()))reconciled.set(id,ref);
   }
