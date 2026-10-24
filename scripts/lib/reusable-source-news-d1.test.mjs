@@ -72,7 +72,7 @@ test("trusted writer persists only factual fields and readback verifies D1",asyn
  const result=await publishReusableSourceNews(env,{
    schema:"geomacro.reusable-source-news-batch.v1",items:[candidate],checks:[check],
  },now);
- assert.equal(result.status,200);
+ assert.equal(result.status,200,JSON.stringify(await result.clone().json()));
  const ack=await result.json();
  assert.equal(ack.d1_readback_verified,true);
  assert.equal(ack.raw_upstream_stored,false);
@@ -90,7 +90,7 @@ test("only a recognized rights class is observed, never commercial permission",a
    const ack=await publishReusableSourceNews(env,{
      schema:"geomacro.reusable-source-news-batch.v1",items:[obj],checks:[],
    },now);
-   assert.equal(ack.status,200);
+   assert.equal(ack.status,200,JSON.stringify(await ack.clone().json()));
  }
 });
 test("untrusted paid flags, copied article, source URL and invalid proofs are rejected",async()=>{
