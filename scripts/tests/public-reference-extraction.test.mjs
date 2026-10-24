@@ -87,9 +87,9 @@ test("explicitly fail closed on unknown ID, response shape, redirects and oversi
   await assert.rejects(()=>readPublicReference("imf",{fetchImpl:async()=>{throw Error("network accessed")}}),
     /REFERENCE_SOURCE_NOT_APPROVED/);
   await assert.rejects(()=>readPublicReference("gdacs",{fetchImpl:async()=>new Response(JSON.stringify({features:[]}),{
-    headers:{"content-length":"1048577"}})}),/REFERENCE_RESPONSE_TOO_LARGE/);
+    headers:{"content-length":"1048577"}})}),/GDACS_RSS_BODY_LIMIT/);
   await assert.rejects(()=>readPublicReference("gdacs",{fetchImpl:async()=>new Response("",{status:429})}),
-    /REFERENCE_HTTP_429/);
+    /GDACS_HTTP_429/);
 });
 test("production receipt is sanitized, classified, isolated, and never grants paid rights",async()=>{
   const result=await publicReferenceReceipt({now:()=>new Date("2026-10-16T10:00:00Z"),
@@ -122,4 +122,57 @@ test("Eurostat network requests pin quarterly unadjusted one-country GDP scope",
   assert.equal(endpoint.searchParams.get("freq"),"Q");
   assert.equal(row.reference_period,"2026-Q2");
   assert.equal(row.country_iso3,"DEU");
+});
+
+
+test("research-only GDACS read uses existing 7-day first-party native source, not stale year-long URL",async()=>{
+ const now=new Date("2026-10-24T09:00:00Z"), urls=[];
+ const row=await readPublicReference("gdacs",{now,fetchImpl:async(u,opts)=>{
+  urls.push(new URL(u));
+  assert.equal(opts.redirect,"error");
+  return Response.json({features:[{type:"Feature",
+    geometry:{type:"Point",coordinates:[70,19]},
+    properties:{eventid:123456,iso3:"IND",country:"India",
+      fromdate:"2026-10-24T08:00:00Z"}}]});
+ }});
+ assert.equal(urls.length,1);
+ assert.equal(urls[0].hostname,"www.gdacs.org");
+ assert.equal(urls[0].searchParams.get("fromdate"),"2026-10-17");
+ assert.equal(urls[0].searchParams.get("todate"),"2026-10-24");
+ assert.equal(urls[0].searchParams.get("pagesize"),"3");
+ assert.equal(urls[0].searchParams.get("pagenumber"),"1");
+ assert.equal(row.kind,"HAZARD_DISCOVERY_NOT_COUNTRY_VERIFIED");
+ assert.equal(row.country_iso3,null);
+ assert.equal(row.source_record_count,1);
+ assert.equal(row.native_original_publication_proven,false);
+ assert.equal(row.commercial_rights_certified,false);
+ assert.equal(row.eligible_for_signed_current_news,false);
+ assert.doesNotMatch(JSON.stringify(row),/123456|India|IND/);
+});
+test("GDACS large GeoJSON uses one same-issuer RSS, retaining no verified news or country impact",async()=>{
+ const urls=[],now=new Date("2026-10-24T09:00:00Z");
+ const rss='<rss version="2.0" xmlns:gdacs="http://www.gdacs.org"><channel>'+
+  '<item><gdacs:eventtype>EQ</gdacs:eventtype><gdacs:eventid>123456</gdacs:eventid>'+
+  '<gdacs:country>India</gdacs:country><gdacs:iso3>IND</gdacs:iso3>'+
+  '<gdacs:fromdate>Sat, 24 Oct 2026 08:00:00 GMT</gdacs:fromdate>'+
+  '<geo:lat>19</geo:lat><geo:long>70</geo:long></item></channel></rss>';
+ const row=await readPublicReference("gdacs",{now,fetchImpl:async(u,opts)=>{
+  urls.push(u);
+  return urls.length===1?new Response("oversize",{headers:{"content-length":"800000"}}):
+    new Response(rss);
+ }});
+ assert.equal(urls.length,2);
+ assert.equal(urls[1],"https://data.gdacs.org/xml/rss_eq_24h.xml");
+ assert.equal(row.extra.same_publisher_rss_fallback,true);
+ assert.equal(row.country_iso3,null);
+ assert.equal(row.source_record_count,1);
+ assert.equal(row.original_publication_at,null);
+ assert.equal(row.eligible_for_signed_current_news,false);
+});
+test("malformed GDACS events are not reclassified as an empty healthy research source",async()=>{
+ let calls=0;
+ await assert.rejects(readPublicReference("gdacs",{
+  fetchImpl:async()=>{calls++;return Response.json({features:[{properties:{eventid:"unsafe"}}]})}
+ }),/GDACS_EVENT_IDS_UNVERIFIED/);
+ assert.equal(calls,1);
 });
