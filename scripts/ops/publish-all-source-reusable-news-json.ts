@@ -2,6 +2,7 @@
 // Production collector: registered sources -> one factual JSON -> protected
 // Cloudflare D1 -> D1 readback. No raw source, premium, Supabase or x402.
 import {createHmac} from "node:crypto";
+import {mkdirSync,writeFileSync} from "node:fs";
 import {collectRegisteredReusableNews} from "../lib/registered-reusable-news-source-collector.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 
@@ -43,6 +44,36 @@ if(publicBody.schema!=="geomacro.reusable-source-news-feed.v1"||
    publicBody.public_raw_article_delivery!==false||
    !Array.isArray(publicBody.items))
   throw Error("REUSABLE_SOURCE_NEWS_PUBLIC_READ_CONTRACT_INVALID");
+// A real downloadable JSON artifact is produced by the SAME authenticated
+// D1-readback production run, even if Lovable has not published new code.
+const complete=[...publicBody.items];
+const ids=new Set(complete.map((x:any)=>x.id));
+let cursor=publicBody.has_more?publicBody.next_offset:null;
+while(cursor!==null){
+  if(![200,400].includes(cursor))throw Error("REUSABLE_SOURCE_NEWS_PAGING_UNBOUNDED");
+  const page=await fetch(endpoint+"/v1/public/reusable-source-news?offset="+cursor,{
+    method:"GET",redirect:"error",cache:"no-store",
+    headers:{Accept:"application/json"},signal:AbortSignal.timeout(12000),
+  });
+  if(!page.ok)throw Error("REUSABLE_SOURCE_NEWS_PAGE_READ_UNAVAILABLE");
+  const doc=await page.json();
+  if(doc.ok!==true||doc.schema!==publicBody.schema||
+     doc.offset!==cursor||!Array.isArray(doc.items)||doc.items.length>200||
+     doc.commercial_product_ready!==false||doc.public_raw_article_delivery!==false)
+    throw Error("REUSABLE_SOURCE_NEWS_PAGE_CONTRACT_INVALID");
+  for(const row of doc.items){
+    if(ids.has(row.id))throw Error("REUSABLE_SOURCE_NEWS_PAGE_ID_REPEATED");
+    ids.add(row.id);complete.push(row);
+  }
+  cursor=doc.has_more?doc.next_offset:null;
+}
+const archive={...publicBody,offset:0,has_more:false,next_offset:null,
+  page_size:complete.length,items:complete,
+  artifact_scope:"BOUNDED_REGISTERED_SOURCE_FACTUAL_JSON_72H",
+  snapshot_generated_at:new Date().toISOString()};
+mkdirSync("artifacts/reusable-source-news",{recursive:true});
+writeFileSync("artifacts/reusable-source-news/news.json",
+  JSON.stringify(archive,null,2)+"\n",{mode:0o600});
 console.log(JSON.stringify({
   schema:"geomacro.source-news-json-production-run.v1",
   source_registry_endpoints:info.registered_source_endpoints,
