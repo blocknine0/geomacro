@@ -182,7 +182,8 @@ export async function collectRegisteredReusableNews({
       checks.push({source_ref:hex([s.id,s.url,category].join("\n")),
         category,state:state==="OBSERVED"&&!domainCandidates[category]?
           "EMPTY_OR_OUTSIDE_WINDOW":state,checked_at:now.toISOString()});
-    if(items.length>=40)break;
+    // Even if the bounded 40-record item quota is reached, check every
+    // selected source and report its status. Never silently drop issuers.
   }
   return {
     schema:"geomacro.reusable-source-news-batch.v1",items,
