@@ -219,3 +219,16 @@ test("blocked alternate cannot turn denied IMF into a false source pass",async()
  assert.equal(report.official_alternates[0].reason,"ALT_TRANSPORT_OR_SCHEMA_UNKNOWN");
  assert.doesNotMatch(JSON.stringify(report),/secret host|UNNECESSARY_BLS_GET/);
 });
+
+test("missing newer World Bank calendar year is not fabricated or treated as a total outage",()=>{
+ const fixture=[{page:1,pages:1,total:2},[
+  {countryiso3code:"IND",indicator:{id:"NY.GDP.MKTP.KD.ZG"},date:"2024",value:6.3},
+  {countryiso3code:"IND",indicator:{id:"NY.GDP.MKTP.KD.ZG"},date:"2025",value:null},
+ ]];
+ const r=extractWdiIndiaGrowth(fixture,fixtureNow);
+ assert.deepEqual(r.reference_periods,["2024"]);
+ assert.equal(r.native_release_time_verified,false);
+ assert.equal(r.paid_eligible,false);
+ fixture[1][0].value=null;
+ assert.throws(()=>extractWdiIndiaGrowth(fixture,fixtureNow),/ALT_WDI_OBSERVATION_MISSING/);
+});
