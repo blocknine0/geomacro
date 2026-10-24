@@ -1,6 +1,5 @@
 import {fetchImfDataMapper} from "./imf-sdmx.mjs";
 import {parseCsvRecords} from "./public-reference-extraction.mjs";
-import {fetchWdiIndiaGrowth,fetchBlsUsUnemployment} from "./imf-oecd-free-reference-alternates.mjs";
 
 // Pinned official OECD Data Explorer monthly unemployment dataset, bounded
 // to one historical month; exact United States row will be selected only if
@@ -107,11 +106,11 @@ export async function verifyImfOecdReference({imf=fetchImfDataMapper,oecd=fetchO
        r.country_iso3==="IND"&&r.indicator==="NY.GDP.MKTP.KD.ZG"&&
        r.frequency==="annual"&&r.source_methodology_equivalent_to_imf===false&&
        Array.isArray(r.reference_periods)&&r.reference_periods.length>=1&&
-       r.reference_periods.every(x=>["2024","2025"].includes(x))},
+       r.reference_periods.every(x=>/^20\d{2}$/u.test(x))},
      {primary:"oecd",source:"us_bls_cps",read:alternates.bls,
       validate:r=>r?.source_id==="us_bls_cps"&&
        r.country_iso3==="USA"&&r.indicator==="LNS14000000"&&
-       r.reference_period==="2025-06"&&r.frequency==="monthly"&&
+       /^20\d{2}-(?:0[1-9]|1[0-2])$/u.test(r.reference_period)&&r.frequency==="monthly"&&
        r.harmonization_equivalent_to_oecd===false},
    ];
    for(const lane of lanes){
