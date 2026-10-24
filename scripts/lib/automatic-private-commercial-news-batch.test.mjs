@@ -115,3 +115,22 @@ test("batch overflow and suspicious candidate filenames fail closed",async t=>{
  assert.throws(()=>discoverPrivateCommercialNewsRequests(root),
   /AUTOMATIC_PRIVATE_COMMERCIAL_NEWS_BATCH_REJECTED/);
 });
+
+test("a rejected earlier submission cannot starve a later valid signed proof for the same event",async t=>{
+ const {root,put,input}=fixture(t);
+ put("aa-invalid",input("macro-222"));
+ put("bb-valid",input("macro-222"));
+ let calls=0;
+ const r=await processAutomaticPrivateCommercialNewsBatch({
+  root,inspect,qualify:async()=>{
+   calls++;
+   if(calls===1)throw Error("EARLIER_PROOF_NOT_REAL");
+   return qualify();
+  },
+ });
+ assert.equal(calls,2);
+ assert.equal(r.invalid_or_unverified_private_requests,1);
+ assert.equal(r.newly_prepared_canonical_signed_gros,1);
+ assert.equal(r.repeated_event_requests_rejected,0);
+ assert.equal(r.all_submitted_requests_accounted_for,true);
+});
