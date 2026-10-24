@@ -8,6 +8,8 @@ import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import { getCoinbaseX402Config } from "./coinbase-x402.server";
 import { STORE_STRUCTURAL_PRODUCTS } from "./store-product-selection";
 import {qualifiedStructuralBaselinePreflight} from "./structural-baseline-eligibility";
+import {buildCountryTierIndex,evaluateCountryTier} from "./country-tier-coverage.server";
+import {country195ByIso3} from "./canonical-country-registry-195";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const PURCHASE_PATH = "/api/v1/intelligence/query";
@@ -39,7 +41,10 @@ function notChargeable(code: string, status = 422) {
 
 export const earnFirstStructuralOfferHandlers = {
   OPTIONS: async () => new Response(null, { status: 204, headers: cors }),
-  GET: async () => response({
+  GET: async ({request}: {request?:Request} = {}) => {
+    if(request && new URL(request.url).searchParams.get("view")==="country-tiers")
+      return response(buildCountryTierIndex());
+    return response({
     schema_version: "geomacro.earn-first-offers.v1",
     chargeable: false,
     payment_required_now: false,
@@ -57,9 +62,12 @@ export const earnFirstStructuralOfferHandlers = {
     offers: templates,
     supported_store_products: STORE_STRUCTURAL_PRODUCTS,
     instructions: "POST delivery_tier structural_baseline. Legacy requests require one country/topic. Explicit product selection supports country/corridor digests or full profiles with at least two qualified dimensions. Preflight checks data only; request an exact quote on the canonical purchase endpoint. It is not a payment receipt.",
-  }),
+    country_tiers_index: "/api/v1/intelligence/availability?view=country-tiers",
+  });
+  },
   POST: async ({request}: {request: Request}) =>
-    preflightStructuralBaseline(request),
+    new URL(request.url).searchParams.get("view")==="country-tiers"
+      ? preflightCountryTier(request) : preflightStructuralBaseline(request),
 };
 
 /**
@@ -155,4 +163,49 @@ export async function preflightStructuralBaseline(
     price_authoritative_only_in_canonical_x402_quote: true,
     availability: publicAgentQueryAvailability(availability),
   });
+}
+
+
+/**
+ * One-country tier evaluation, reusing four exact structural-country-digest
+ * paid-path module preflights but never quoting or charging. No extrapolation
+ * from routing, country-name aliases, publisher home country or news cadence.
+ */
+export async function preflightCountryTier(request:Request,opts:{
+  rateLimit?:(r:Request)=>boolean;
+  check?:Parameters<typeof evaluateCountryTier>[1]["check"];
+  live?:Parameters<typeof evaluateCountryTier>[1]["live"];
+  now?:Date;
+}={}):Promise<Response>{
+  if(request.headers.has("payment-signature")||request.headers.has("authorization"))
+    return notChargeable("COUNTRY_TIERS_PAYMENT_NOT_ACCEPTED",400);
+  const q=new URL(request.url).searchParams;
+  if(q.size!==1||q.get("view")!=="country-tiers")
+    return notChargeable("COUNTRY_TIERS_QUERY_INVALID",400);
+  if(!/^application\/json(?:\s*;|\s*$)/i.test(request.headers.get("content-type")??""))
+    return notChargeable("COUNTRY_TIERS_JSON_REQUIRED",415);
+  const accepted=opts.rateLimit?.(request)??allowPublicDemoRequest(request,{
+    namespace:"geomacro-earn-first-country-tier-preflight",
+    windowMs:60_000,maxPerClient:2,maxGlobal:12,
+  });
+  if(!accepted)return notChargeable("COUNTRY_TIERS_RATE_LIMITED",429);
+  const declared=Number(request.headers.get("content-length")??0);
+  if(!Number.isFinite(declared)||declared>512||declared<0)
+    return notChargeable("COUNTRY_TIERS_BODY_TOO_LARGE",413);
+  let country:string;
+  try{
+    const raw=await request.text();
+    if(new TextEncoder().encode(raw).byteLength>512)throw Error("INVALID_BODY");
+    const payload=JSON.parse(raw) as Record<string,unknown>;
+    if(!payload||typeof payload!=="object"||Array.isArray(payload)||
+      Object.keys(payload).length!==1||typeof payload.country_iso3!=="string"||
+      !country195ByIso3(payload.country_iso3))throw Error("INVALID_COUNTRY");
+    country=payload.country_iso3;
+  }catch{return notChargeable("COUNTRY_TIERS_COUNTRY_INVALID",400)}
+  try{
+    const result=await evaluateCountryTier(country,{check:opts.check,live:opts.live,now:opts.now});
+    return response({ok:true,...result});
+  }catch{
+    return notChargeable("COUNTRY_TIERS_RUNTIME_UNAVAILABLE",503);
+  }
 }
