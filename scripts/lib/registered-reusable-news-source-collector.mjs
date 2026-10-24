@@ -11,7 +11,9 @@ import {PUBLIC_FEED_ROTATION} from "../ops/observe-operator-free-feed-rotation.m
 
 const CATEGORY=["geopolitics","macro","rare_earth"];
 const MAX_FEED_BYTES=192*1024;
-const LOOKBACK=72*3600000;
+export const REUSABLE_NEWS_WINDOW_HOURS=25;
+const LOOKBACK=REUSABLE_NEWS_WINDOW_HOURS*3600000;
+const MAX_ITEMS_PER_RUN=480;
 const TOPICS={
   geopolitics:/\b(?:war|conflict|sanctions?|ceasefire|treaty|military|security|diploma|peace|geopolitics?|refugees?|elections?|embargo)\b/iu,
   macro:/\b(?:inflation|monetary|central bank|interest rate|fx|foreign exchange|GDP|currency|tariffs?|economic|fiscal|unemployment|trade)\b/iu,
@@ -47,7 +49,9 @@ function normalizeCatalogueSource(r){
   const categories=r.categories??(r.category?[r.category]:r.domain?[r.domain]:[]);
   if(!Array.isArray(categories)||!categories.every(x=>CATEGORY.includes(x)))return null;
   const type=r.format??r.media;
-  const supported=["rss","atom","xml","rdf"].includes(type);
+  const supported=["rss","atom","xml","rdf"].includes(type)||
+    (type==="json"&&url.hostname==="www.gov.uk"&&
+      url.pathname==="/api/search.json"&&r.id.startsWith("govuk_"));
   return {id:r.id,url:r.url,categories,type,supported};
 }
 export function registeredReusableNewsSources(){
@@ -71,7 +75,7 @@ export function registeredReusableNewsSources(){
   }
   return Object.freeze([...map.values()].sort((a,b)=>a.id.localeCompare(b.id)));
 }
-export function selectRegisteredNewsSources(now=new Date(),registry=registeredReusableNewsSources(),perCategory=4){
+export function selectRegisteredNewsSources(now=new Date(),registry=registeredReusableNewsSources(),perCategory=8){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
      !Array.isArray(registry)||registry.length>200||
      !Number.isSafeInteger(perCategory)||perCategory<1||perCategory>8)
@@ -95,6 +99,18 @@ export function selectRegisteredNewsSources(now=new Date(),registry=registeredRe
 }
 function feedBlocks(source,body){
   if(body.length>MAX_FEED_BYTES||/<!DOCTYPE|<!ENTITY/iu.test(body))return null;
+  if(source.type==="json"){
+    if(!source.url.startsWith("https://www.gov.uk/api/search.json?"))return null;
+    try{
+      const data=JSON.parse(body);
+      if(!Array.isArray(data.results)||data.results.length>100)return null;
+      return data.results.slice(0,70).flatMap(x=>{
+        const title=typeof x?.title==="string"?cleanText(x.title):"";
+        const native=typeof x?.public_timestamp==="string"?x.public_timestamp:null;
+        return title.length>=25&&title.length<=250&&native?[{title,native}]:[];
+      });
+    }catch{return null}
+  }
   const root=body.trimStart().slice(0,350);
   if(!/^<\?xml\b|^<(?:rss|feed|rdf:RDF)\b/iu.test(root))return null;
   const pattern=/<(?:[a-z][a-z0-9._-]*:)?(item|entry)\b[^>]*>[\s\S]*?<\/(?:[a-z][a-z0-9._-]*:)?\1>/giu;
@@ -108,7 +124,7 @@ function feedBlocks(source,body){
     // Feed updated/issue day and collection clock are never publication time.
     const native=xmlTag(entry,"pubDate")??xmlTag(entry,"published");
     result.push({title,native});
-    if(result.length>=30)break;
+    if(result.length>=100)break;
   }
   return result;
 }
@@ -137,12 +153,14 @@ async function fetchFeed(spec,fetchImpl){
 }
 export async function collectRegisteredReusableNews({
   now=new Date(),fetchImpl=fetch,registry=registeredReusableNewsSources(),
-  perCategory=4,normalize
+  perCategory=8,normalize,resolveCountry=()=>null
 }={}){
-  if(typeof normalize!=="function"||!(now instanceof Date)||!Number.isFinite(now.getTime()))
+  if(typeof normalize!=="function"||typeof resolveCountry!=="function"||
+     !(now instanceof Date)||!Number.isFinite(now.getTime()))
     throw Error("REUSABLE_NEWS_COLLECTOR_INPUT_INVALID");
   const active=selectRegisteredNewsSources(now,registry,perCategory);
   const checks=[],items=[],seen=new Set();
+  let capacitySkipped=0;
   for(const s of active){
     let state="UNSUPPORTED_FORMAT",blocks=null;
     if(s.supported){
@@ -164,18 +182,24 @@ export async function collectRegisteredReusableNews({
         if(!TOPICS[category].test(item.title))continue;
         // Source text remains ephemeral. Only finite machine fact tags are
         // produced; third-party noncommercial titles never enter D1.
+        const country=resolveCountry(item.title);
+        if(country!==null&&(!/^[A-Z]{3}$/u.test(country)))
+          throw Error("REUSABLE_NEWS_COUNTRY_RESOLVER_INVALID");
         const normalized=normalize({category,text:item.title,
-          published_at:at,license:"unknown"});
+          published_at:at,license:"unknown",
+          ...(country?{country_iso3:country}:{})});
         if(normalized.schema!=="geomacro.reusable-news-json.v1"||
            normalized.delivery.raw_article_included!==false||
            normalized.usage_rights.commercial_reuse_authorized!==false)
           throw Error("REUSABLE_NEWS_NORMALIZER_UNSAFE");
         const id=hex([s.id,category,at,item.title].join("\n"));
         const safe={...normalized,id:"news-"+id};
-        if(!seen.has(id)){seen.add(id);items.push(safe);candidates++;domainCandidates[category]++}
-        if(items.length>=40)break;
+        if(!seen.has(id)){
+          seen.add(id);
+          if(items.length<MAX_ITEMS_PER_RUN){items.push(safe);candidates++;domainCandidates[category]++}
+          else capacitySkipped++;
+        }
       }
-      if(items.length>=40)break;
     }
     if(state==="OBSERVED"&&candidates===0)state="EMPTY_OR_OUTSIDE_WINDOW";
     for(const category of activeCategories)
@@ -192,6 +216,8 @@ export async function collectRegisteredReusableNews({
       selected_source_endpoints:active.length,
       completed_source_endpoints:new Set(checks.map(c=>c.source_ref)).size,
       observed_news_items:items.length,
+      excluded_by_collector_capacity:capacitySkipped,
+      all_matching_items_captured_within_scanned_feeds:capacitySkipped===0,
       source_states:checks.reduce((a,c)=>(a[c.state]=(a[c.state]??0)+1,a),{}),
       original_issuer_page_verified:false,
       source_rights_commercial_authorized:false,paid_publication_authorized:false,

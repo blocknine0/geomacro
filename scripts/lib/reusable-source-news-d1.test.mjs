@@ -43,7 +43,11 @@ function fakeD1(){
            return {results:[...states].map(([state,total])=>({state,total}))};
          }
          if(sql.includes("SELECT projection_json")){
-           const arr=[...news.values()].sort((a,b)=>b.published_at.localeCompare(a.published_at));
+           let arr=[...news.values()].sort((a,b)=>b.published_at.localeCompare(a.published_at));
+           if(sql.includes("published_at >= ?"))arr=arr.filter(x=>x.published_at>=args[0]);
+           if(sql.includes("category = ?"))arr=arr.filter(x=>x.category===args[1]);
+           if(sql.includes("json_extract"))arr=arr.filter(x=>
+             JSON.parse(x.projection_json).country_iso3===args.at(-2));
            const off=Number(args.at(-1));
            return {results:arr.slice(off,off+201).map(x=>({projection_json:x.projection_json}))};
          }
@@ -57,6 +61,8 @@ function fakeD1(){
        if(q.sql.startsWith("INSERT OR IGNORE INTO reusable_news_items")){
          const [id,category,published_at,projection_json,first_seen_at]=q.args;
          if(!news.has(id))news.set(id,{category,published_at,projection_json,first_seen_at});
+       }else if(q.sql.startsWith("DELETE FROM reusable_news_items WHERE published_at <")){
+         for(const [id,row] of news)if(row.published_at<q.args[0])news.delete(id);
        }else if(q.sql.startsWith("INSERT INTO reusable_source_checks")){
          const [ref,category,state,checked_at]=q.args;
          status.set(ref,{category,state,checked_at});
@@ -114,5 +120,43 @@ test("public API only accepts explicitly allowed category and page",async()=>{
  for(const qs of ["domain=bitcoin","offset=100","view=raw","domain=macro&domain=rare_earth"]){
    const answer=await publicReusableSourceNews(env,new URLSearchParams(qs),now);
    assert.equal(answer.status,400);
+ }
+});
+
+test("rolling 25h D1 feed rejects older native publication, not mere retrieval timestamp",async()=>{
+ const oldTime=new Date(now-25*3600000-1000).toISOString();
+ const env=fakeD1();
+ await assert.rejects(()=>publishReusableSourceNews(env,{
+  schema:"geomacro.reusable-source-news-batch.v1",
+  items:[fixture({source:{publisher_name:null,original_url:null,original_published_at:oldTime}})],
+  checks:[],
+ },now),/REUSABLE_SOURCE_NEWS_INVALID/);
+ const valid=fixture({country_iso3:"IND"});
+ const receipt=await publishReusableSourceNews(env,{
+  schema:"geomacro.reusable-source-news-batch.v1",items:[valid],checks:[],
+ },now);
+ assert.equal(receipt.status,200);
+ const result=await publicReusableSourceNews(env,
+  new URLSearchParams("domain=macro&country=IND"),now);
+ const body=await result.json();
+ assert.equal(body.window_hours,25);
+ assert.equal(body.country_filter,"IND");
+ assert.equal(body.max_retained_news_items,4000);
+ assert.equal(body.items.length,1);
+ assert.equal(body.items[0].country_iso3,"IND");
+ const absent=await publicReusableSourceNews(env,
+  new URLSearchParams("country=USA"),now);
+ assert.equal((await absent.json()).items.length,0);
+});
+test("bounded 25h country paging rejects arbitrary offsets",async()=>{
+ const env=fakeD1();
+ for(const query of ["offset=100","offset=4000","offset=-200",
+  "country=india","country=ZZZZ","country=IND&country=USA"]){
+   const res=await publicReusableSourceNews(env,new URLSearchParams(query),now);
+   assert.equal(res.status,400,query);
+ }
+ for(const q of ["offset=200","offset=3800"]){
+   const res=await publicReusableSourceNews(env,new URLSearchParams(q),now);
+   assert.equal(res.status,200,q);
  }
 });

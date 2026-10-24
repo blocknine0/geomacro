@@ -67,7 +67,7 @@ export async function derivedNewsStructuralResponse(
     // Independently degrade either of the two existing D1 news lanes.
     let sourceResult:Awaited<ReturnType<typeof fetchAllReusableSourceNews>>|null=null;
     if(reusableView){
-      try{sourceResult=await fetchAllReusableSourceNews(fetchImpl,now)}
+      try{sourceResult=await fetchAllReusableSourceNews(fetchImpl,now,{country,domain})}
       catch{/* a functioning editorial journal can still serve */}
     }
     let signals:Awaited<ReturnType<typeof fetchAllDerivedNews>>;
@@ -87,7 +87,11 @@ export async function derivedNewsStructuralResponse(
     const rows=domain===null?scoped:scoped.filter(r=>r.category===domain);
     const counts=Object.fromEntries(CATEGORIES.map(c=>[c,scoped.filter(r=>r.category===c).length]));
     if(reusableView){
-      const items=rows.map(r=>{
+      const newsWindowStart=now-25*3600000;
+      const items=rows.filter(r=>r.date_precision==="exact"&&
+        Number.isFinite(Date.parse(r.original_published_at))&&
+        Date.parse(r.original_published_at)>=newsWindowStart&&
+        Date.parse(r.original_published_at)<=now).map(r=>{
         const normalized=normalizeReusableNewsJson({
           category:r.category,
           text:r.observed_change+" "+r.potential_relevance,
@@ -101,7 +105,8 @@ export async function derivedNewsStructuralResponse(
           upstream_source_rights_unverified:true};
       });
       const fromRegistered=sourceResult?.items.filter(item=>
-        (domain===null||item.category===domain)&&country===null)??[];
+        (domain===null||item.category===domain)&&
+        (country===null||item.country_iso3===country))??[];
       const combined=[...items,...fromRegistered];
       const mixedCounts=Object.fromEntries(CATEGORIES.map(c=>[
         c,combined.filter(item=>item.category===c).length,
@@ -114,6 +119,8 @@ export async function derivedNewsStructuralResponse(
           "UNAVAILABLE_OR_NOT_DEPLOYED":"AVAILABLE",
         registered_source_checks_24h:sourceResult?.checked_source_states??{},
         registered_source_items:fromRegistered.length,
+        retention_hours:25,
+        source_reader_preview_has_more:sourceResult?.has_more??false,
         editorial_derived_items:items.length,
         unobserved_sources_not_reported_as_no_news:true,
         country_filter:country,domain_filter:domain,

@@ -12,6 +12,8 @@ on:
     paths:
       - ".github/workflows/all-source-reusable-news-json.yml"
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
+      - "scripts/lib/country-news-mentions-195.mjs"
+      - "scripts/lib/country-news-mentions-195.test.mjs"
       - "scripts/lib/registered-reusable-news-source-collector.test.mjs"
       - "scripts/ops/publish-all-source-reusable-news-json.ts"
       - "workers/control-plane/src/reusable-source-news.mjs"
@@ -41,8 +43,10 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/lib/registered-reusable-news-source-collector.mjs
+          node --check scripts/lib/country-news-mentions-195.mjs
           node --check workers/control-plane/src/reusable-source-news.mjs
           node --test scripts/lib/registered-reusable-news-source-collector.test.mjs
+          node --test scripts/lib/country-news-mentions-195.test.mjs
           node --test scripts/lib/reusable-source-news-d1.test.mjs
 
   collect-and-publish:
@@ -62,7 +66,7 @@ jobs:
         )
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 9
+    timeout-minutes: 20
     environment: production
     env:
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}

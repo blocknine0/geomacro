@@ -5,7 +5,8 @@
  */
 export const PRIVATE_TELEGRAM_JSON_SCHEMA="geomacro.telegram-research-json.v1";
 const CATEGORIES=["geopolitics","macro","rare_earth"];
-const HOUR72=72*3600*1000;
+export const TELEGRAM_AUTHORIZED_RESEARCH_RETENTION_HOURS=25;
+const HOUR25=TELEGRAM_AUTHORIZED_RESEARCH_RETENTION_HOURS*3600*1000;
 const headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff",
  "Referrer-Policy":"no-referrer"};
 function json(payload,status=200){return Response.json(payload,{status,headers})}
@@ -17,7 +18,7 @@ export async function readPrivateTelegramResearchJson(env,query=new URLSearchPar
    (country!==null&&!/^[A-Z]{3}$/u.test(country))||
    !["0","100","200"].includes(offset))
   return json({ok:false,error:"TELEGRAM_RESEARCH_QUERY_INVALID"},400);
- const cutoff=new Date(now-HOUR72).toISOString();
+ const cutoff=new Date(now-HOUR25).toISOString();
  try{
    let where=" WHERE published_at >= ?",args=[cutoff];
    if(category){where+=" AND category = ?";args.push(category)}
@@ -46,7 +47,7 @@ export async function readPrivateTelegramResearchJson(env,query=new URLSearchPar
    }));
    return json({ok:true,schema:PRIVATE_TELEGRAM_JSON_SCHEMA,
      delivery_scope:"PROTECTED_INTERNAL_RESEARCH_ONLY",
-     retained_hours:72,
+     retained_hours:TELEGRAM_AUTHORIZED_RESEARCH_RETENTION_HOURS,
      telegram_source_registry_scope:"AUTHORIZED_DIRECT_SUBMISSIONS_ONLY",
      is_global_195_live_verified:false,public_news_reuse_authorized:false,
      commercial_rights_granted:false,

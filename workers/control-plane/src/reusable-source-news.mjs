@@ -10,7 +10,9 @@ const RIGHTS=new Set(["commercial","noncommercial","public_domain","unknown"]);
 const STATES=new Set(["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW","UNAVAILABLE","UNSUPPORTED_FORMAT","DENIED","MALFORMED","NOT_DUE"]);
 const HEX=/^[0-9a-f]{64}$/u;
 const UTC=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u;
-const MS72=72*3600000;
+export const REUSABLE_NEWS_RETENTION_HOURS=25;
+const MS25=REUSABLE_NEWS_RETENTION_HOURS*3600000;
+export const REUSABLE_NEWS_MAX_STORED_ITEMS=4000;
 const msg=(payload,status=200)=>Response.json(payload,{status,headers:{
   "Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
   "Referrer-Policy":"no-referrer","Access-Control-Allow-Origin":"*",
@@ -29,14 +31,16 @@ function validItem(item,now){
   if(!keysExact(item,["schema","id","id_is_cryptographic_proof","category","country_iso3","source","facts","usage_rights","verification","delivery"])||
      item.schema!=="geomacro.reusable-news-json.v1"||
      typeof item.id!=="string"||!/^news-[0-9a-f]{64}$/u.test(item.id)||
-     !CATEGORIES.has(item.category)||item.country_iso3!==null||
+     !CATEGORIES.has(item.category)||
+     !(item.country_iso3===null||typeof item.country_iso3==="string"&&
+       /^[A-Z]{3}$/u.test(item.country_iso3))||
      item.id_is_cryptographic_proof!==false)unsafe();
   const source=item.source;
   if(!keysExact(source,["publisher_name","original_url","original_published_at"])||
      source.publisher_name!==null||source.original_url!==null||
      !validDate(source.original_published_at))unsafe();
   const age=now-Date.parse(source.original_published_at);
-  if(age<0||age>MS72)unsafe();
+  if(age<0||age>MS25)unsafe();
   const facts=item.facts;
   if(!keysExact(facts,["event_types","action_terms","named_organizations","numeric_mentions","fact_extraction_status"])||
      !Array.isArray(facts.event_types)||facts.event_types.length>12||
@@ -102,8 +106,8 @@ export async function publishReusableSourceNews(env,body,now=Date.now()){
     // Each batch is validated before any writes. Use one transaction via
     // D1 batch to avoid partially promoted groups on an adapter error.
     const prepared=[
-      env.DB.prepare("DELETE FROM reusable_news_items WHERE first_seen_at < ?")
-        .bind(new Date(now-MS72).toISOString()),
+      env.DB.prepare("DELETE FROM reusable_news_items WHERE published_at < ?")
+        .bind(new Date(now-MS25).toISOString()),
       env.DB.prepare("DELETE FROM reusable_source_checks WHERE checked_at < ?")
         .bind(new Date(now-24*3600000).toISOString()),
     ];
@@ -117,9 +121,9 @@ export async function publishReusableSourceNews(env,body,now=Date.now()){
         "INSERT INTO reusable_source_checks(source_ref,category,state,checked_at) VALUES(?,?,?,?) ON CONFLICT(source_ref) DO UPDATE SET category=excluded.category,state=excluded.state,checked_at=excluded.checked_at")
         .bind(check.source_ref,check.category,check.state,check.checked_at));
     }
-    // Bound the public D1 lane to the 600 most recent observations.
+    // Bound the rolling 25h D1 lane; limit is explicit, never claim all news.
     prepared.push(env.DB.prepare(
-      "DELETE FROM reusable_news_items WHERE item_id NOT IN (SELECT item_id FROM reusable_news_items ORDER BY published_at DESC,item_id DESC LIMIT 600)"
+      "DELETE FROM reusable_news_items WHERE item_id NOT IN (SELECT item_id FROM reusable_news_items ORDER BY published_at DESC,item_id DESC LIMIT "+REUSABLE_NEWS_MAX_STORED_ITEMS+")"
     ));
     await env.DB.batch(prepared);
     let retained=0,capacityExcluded=0;
@@ -134,6 +138,7 @@ export async function publishReusableSourceNews(env,body,now=Date.now()){
     return msg({ok:true,schema:"geomacro.reusable-source-news-write-receipt.v1",
       accepted:retained,capacity_excluded:capacityExcluded,
       checked_sources:body.checks.length,
+      retention_hours:REUSABLE_NEWS_RETENTION_HOURS,
       d1_readback_verified:true,raw_upstream_stored:false,
       paid_product_authorized:false});
   }catch(e){
@@ -145,19 +150,25 @@ export async function publishReusableSourceNews(env,body,now=Date.now()){
 }
 export async function publicReusableSourceNews(env,searchParams=new URLSearchParams(),now=Date.now()){
   const keys=[...searchParams.keys()];
-  if(keys.some(k=>k!=="domain"&&k!=="offset")||
+  const offsetRaw=searchParams.get("offset")??"0";
+  const offsetN=Number(offsetRaw);
+  if(keys.some(k=>!["domain","offset","country"].includes(k))||
      searchParams.getAll("domain").length>1||
+     searchParams.getAll("country").length>1||
      searchParams.getAll("offset").length>1||
      (searchParams.has("domain")&&!CATEGORIES.has(searchParams.get("domain")))||
-     (searchParams.has("offset")&&!["0","200","400"].includes(searchParams.get("offset"))))
+     (searchParams.has("country")&&!/^[A-Z]{3}$/u.test(searchParams.get("country")??""))||
+     !/^\d+$/u.test(offsetRaw)||!Number.isSafeInteger(offsetN)||
+     offsetN%200!==0||offsetN<0||offsetN>=REUSABLE_NEWS_MAX_STORED_ITEMS)
     return msg({ok:false,error:"REUSABLE_SOURCE_NEWS_QUERY_INVALID"},400);
-  const domain=searchParams.get("domain"),offset=Number(searchParams.get("offset")??0);
+  const domain=searchParams.get("domain"),country=searchParams.get("country"),offset=offsetN;
   try{
-    const q=domain?
-      env.DB.prepare("SELECT projection_json FROM reusable_news_items WHERE published_at >= ? AND category = ? ORDER BY published_at DESC,item_id DESC LIMIT 201 OFFSET ?")
-        .bind(new Date(now-MS72).toISOString(),domain,offset):
-      env.DB.prepare("SELECT projection_json FROM reusable_news_items WHERE published_at >= ? ORDER BY published_at DESC,item_id DESC LIMIT 201 OFFSET ?")
-        .bind(new Date(now-MS72).toISOString(),offset);
+    const where=["published_at >= ?"],params=[new Date(now-MS25).toISOString()];
+    if(domain){where.push("category = ?");params.push(domain)}
+    if(country){where.push("json_extract(projection_json, '$.country_iso3') = ?");params.push(country)}
+    const q=env.DB.prepare("SELECT projection_json FROM reusable_news_items WHERE "+where.join(" AND ")+
+      " ORDER BY published_at DESC,item_id DESC LIMIT 201 OFFSET ?")
+      .bind(...params,offset);
     const raw=(await q.all()).results??[];
     const items=raw.slice(0,200).map(x=>{
       const item=JSON.parse(x.projection_json);
@@ -177,9 +188,12 @@ export async function publicReusableSourceNews(env,searchParams=new URLSearchPar
       all_registered_sources_news_capable:false,
       article_licenses_automatically_granted:false,
       commercial_product_ready:false,
-      window_hours:72,checked_source_window_hours:24,
+      window_hours:REUSABLE_NEWS_RETENTION_HOURS,
+      max_retained_news_items:REUSABLE_NEWS_MAX_STORED_ITEMS,
+      country_filter:country,domain_filter:domain,
+      checked_source_window_hours:24,
       offset,page_size:200,has_more:raw.length>200,
-      next_offset:raw.length>200&&offset<400?offset+200:null,
+      next_offset:raw.length>200&&offset+200<REUSABLE_NEWS_MAX_STORED_ITEMS?offset+200:null,
       checked_source_states:Object.fromEntries(checks.map(x=>[x.state,x.total])),
       items});
   }catch{

@@ -1,24 +1,34 @@
 /** Strict public Cloudflare D1 reader for registered source-news factual JSON.
- * Separate from verified/GRO/paid source products. Max three 200-row pages.
+ * Separate from verified/GRO/paid source products. 25h D1 retention; bounded
+ * three-page website preview, with honest has_more rather than 503 when full.
  */
 import {REUSABLE_NEWS_JSON_SCHEMA} from "./reusable-news-json";
+import {country195ByIso3} from "./canonical-country-registry-195";
 const ENDPOINT=
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/reusable-source-news";
 export type SourceNewsJsonItem={
   schema:typeof REUSABLE_NEWS_JSON_SCHEMA;
   id:string;category:"geopolitics"|"macro"|"rare_earth";
-  country_iso3:null;
+  country_iso3:string|null;
   source:{publisher_name:null;original_url:null;original_published_at:string};
   usage_rights:{commercial_reuse_authorized:false;article_specific_permission_verified:false};
   delivery:{raw_article_included:false;downstream_paid_product_authorized:false};
   verification:{original_page_verified:false};
 };
-export async function fetchAllReusableSourceNews(fetchImpl:typeof fetch=fetch,now=Date.now()){
+export async function fetchAllReusableSourceNews(fetchImpl:typeof fetch=fetch,now=Date.now(),scope:{country?:string|null;domain?:string|null}={}){
+  const country=scope.country??null,domain=scope.domain??null;
+  if((country!==null&&!country195ByIso3(country))||
+     (domain!==null&&!["geopolitics","macro","rare_earth"].includes(domain)))
+    throw Error("SOURCE_NEWS_JSON_COUNTRY_FILTER_INVALID");
   const items:SourceNewsJsonItem[]=[];
   const seen=new Set<string>();
   let states:Record<string,number>={};
   for(const offset of [0,200,400]){
-    const url=ENDPOINT+(offset?"?offset="+offset:"");
+    const query=new URLSearchParams();
+    if(country)query.set("country",country);
+    if(domain)query.set("domain",domain);
+    if(offset)query.set("offset",String(offset));
+    const url=ENDPOINT+(query.size?"?"+query.toString():"");
     const res=await fetchImpl(url,{redirect:"error",cache:"no-store",
       headers:{Accept:"application/json"},signal:AbortSignal.timeout(7000)});
     if(!res.ok||Number(res.headers.get("content-length")??0)>540_000)
@@ -28,6 +38,8 @@ export async function fetchAllReusableSourceNews(fetchImpl:typeof fetch=fetch,no
     const doc=JSON.parse(raw) as Record<string,unknown>;
     if(doc.ok!==true||doc.schema!=="geomacro.reusable-source-news-feed.v1"||
        doc.item_schema!==REUSABLE_NEWS_JSON_SCHEMA||
+       doc.window_hours!==25||
+       doc.max_retained_news_items!==4000||
        doc.commercial_product_ready!==false||
        doc.public_raw_article_delivery!==false||
        doc.article_licenses_automatically_granted!==false||
@@ -49,9 +61,9 @@ export async function fetchAllReusableSourceNews(fetchImpl:typeof fetch=fetch,no
       if(row?.schema!==REUSABLE_NEWS_JSON_SCHEMA||
          !/^news-[0-9a-f]{64}$/u.test(row.id)||
          !["geopolitics","macro","rare_earth"].includes(row.category)||
-         row.country_iso3!==null||
+         !(row.country_iso3===null||country195ByIso3(row.country_iso3))||
          row.source?.publisher_name!==null||row.source?.original_url!==null||
-         !Number.isFinite(at)||at>now||at<now-72*3600000||
+         !Number.isFinite(at)||at>now||at<now-25*3600000||
          row.usage_rights?.commercial_reuse_authorized!==false||
          row.usage_rights?.article_specific_permission_verified!==false||
          row.delivery?.raw_article_included!==false||
@@ -63,10 +75,11 @@ export async function fetchAllReusableSourceNews(fetchImpl:typeof fetch=fetch,no
     }
     if(!doc.has_more){
       if(doc.next_offset!==null)throw Error("SOURCE_NEWS_JSON_PAGINATION_INVALID");
-      return {items,checked_source_states:states};
+      return {items,checked_source_states:states,has_more:false};
     }
-    if(doc.next_offset!==offset+200||offset>=400)
+    if(doc.next_offset!==offset+200)
       throw Error("SOURCE_NEWS_JSON_PAGINATION_INVALID");
+    if(offset===400)return {items,checked_source_states:states,has_more:true};
   }
   throw Error("SOURCE_NEWS_JSON_PAGINATION_INCOMPLETE");
 }

@@ -239,6 +239,13 @@ jobs:
           }
           NODE
           npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "DELETE FROM telegram_signal_lead_queue WHERE state='CONSUMED' AND consumed_at < datetime('now','-7 days');" >/tmp/telegram-prune.json
+      - name: Expire private authorized Telegram research JSON after 25h
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config "$D1_CONFIG" --command "DELETE FROM telegram_research_json WHERE published_at < datetime('now','-25 hours');" >/dev/null
+          echo "telegram_private_json_retention_hours=25" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload bounded Telegram bridge evidence
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
