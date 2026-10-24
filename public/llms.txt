@@ -48,9 +48,32 @@ Risk Gate is a controlled Private Pilot capability for country and directional-c
 
 Free Explorer is the public website/dashboard experience, not a free structured API.
 
-Commercial machine access is entitlement-controlled. The paid structured endpoint is:
+Commercial machine access is entitlement-controlled. The canonical x402 intelligence endpoint is:
 
-- `POST https://geomacro.live/api/commercial/structural`
+- `POST https://geomacro.live/api/v1/intelligence/query`
+
+Country category aliases use the same engine:
+
+- `POST https://geomacro.live/api/v1/intelligence/geopolitics`
+- `POST https://geomacro.live/api/v1/intelligence/macro-fx`
+- `POST https://geomacro.live/api/v1/intelligence/critical-minerals`
+
+Category aliases bind topics and accept country subjects. Use the canonical query for corridors and multiple categories. `GET` on the category paths provides discovery or explicit research views (`view=finds`, `latest`, `open-data`, `combined`). Research observations are not signed risk intelligence.
+
+- Endpoint directory and valid JSON/cURL examples: https://geomacro.live/data-api#endpoints
+- Official agent discovery: https://geomacro.live/api/v1/agent
+- Live OpenAPI 3.1: https://geomacro.live/api/v1/agent?view=openapi
+- Exact approved USDC prices: https://geomacro.live/api/v1/pricing
+- Network discovery: https://geomacro.live/api/v1/payments/networks
+- Non-payable price preview: `POST https://geomacro.live/api/v1/payments/preflight`
+- Structural baseline availability only: `GET/POST https://geomacro.live/api/v1/intelligence/availability`
+- Public unscored Finds: https://geomacro.live/api/v1/finds
+- No-funds structured research: `GET/POST https://geomacro.live/api/v1/intelligence/live-structured`
+- MCP JSON-RPC tools: `POST https://geomacro.live/api/mcp`
+
+Baseline availability requires one country, one eligible topic and explicit `delivery_tier=structural_baseline`. It is not a current signed risk check. Price discovery, network discovery and a positive baseline preflight do not authorize payment. Only an exact eligible request can return a live 402 offer. Never authorize a second payment to recover an uncertain delivery.
+
+Existing entitlement-controlled partner integrations retain their own access rules.
 
 Machine discovery:
 

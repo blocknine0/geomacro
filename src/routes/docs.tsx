@@ -118,6 +118,7 @@ function DocsIndexPage() {
             >
               Visit Store
             </Link>
+            <a href="/data-api#endpoints" className="rounded-lg border border-border/70 px-4 py-2 font-medium text-foreground hover:border-primary/50">API endpoints & request examples</a>
           </div>
 
           <div className="mt-8 rounded-lg border border-border bg-card/30 p-4">

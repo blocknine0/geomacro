@@ -42,14 +42,26 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("owner-approved-retire-public-gri-and-store-20261024");
+    expect(config.lock_revision).toBe("owner-approved-launch-api-endpoint-directory-20261024");
     const launch = config.three_chain_launch_presentation_approval;
     const toggle = config.approved_three_category_toggle_presentation;
     const redesign = config.approved_store_reader_redesign;
     const home = config.approved_home_clarity_gri_reader;
     const immediate=config.approved_no_added_news_publication_delay;
     const retired = config.approved_gri_store_retirement;
-    expect(retired.approved_ui_commit).toBe(config.baseline_sha);
+    const api = config.approved_launch_api_endpoint_directory;
+    expect(api.approved_ui_commit).toBe(config.baseline_sha);
+    expect(api.previous_baseline_sha).toBe(retired.approved_ui_commit);
+    expect(api.scope).toEqual([
+      "src/routes/data-api.tsx", "src/routes/docs.tsx",
+      "src/components/api-endpoint-directory.tsx", "public/llms.txt",
+      "public/openapi-x402.json",
+    ]);
+    expect(api.global_risk_final_lock_unmodified).toBe(true);
+    expect(api.canonical_pricing_unmodified).toBe(true);
+    expect(api.payment_or_evidence_gates_changed).toBe(false);
+    expect(api.funds_authorized).toBe(false);
+    expect(api.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(retired.previous_baseline_sha).toBe(immediate.approved_ui_commit);
     expect(retired.locked_gri_presentation_files_unmodified).toBe(true);
     expect(retired.public_gri_checkout_disabled).toBe(true);
