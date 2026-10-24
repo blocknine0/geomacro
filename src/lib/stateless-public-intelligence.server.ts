@@ -15,7 +15,7 @@ import { euCommissionTopOriginalCandidates } from "./stateless-eu-original-index
 import { australianNewsIndexCandidates, australianArticleMatchesOriginal } from "./stateless-australian-geoscience-original.server";
 import { australianResourcesIndexCandidates, verifyAustralianResourcesOriginalArticle } from "./stateless-au-resources-original.server";
 import { readPibMinesOriginalCandidates } from "./stateless-pib-mines-original.server";
-import { canadaOriginalPublicationDay, canadaOriginalMineralsTopic } from "./stateless-canada-original.server";
+import { canadaOriginalPublicationDay, canadaOriginalMineralsTopic, canadaOriginalPrecisePublicationTime } from "./stateless-canada-original.server";
 import { verifiedStatcanOriginalReleaseDay } from "./stateless-statcan-original.server";
 
 const OGL_CREDIT = "Contains public sector information licensed under the Open Government Licence v3.0.";
@@ -302,9 +302,16 @@ async function readCanadaNewsOriginalDay(candidate: {
       canadaOriginalMineralsTopic(html,candidate.articleUrl,candidate.title,now)??undefined:undefined;
     if(source.id==="nrcan_releases" && !originalBodyTopic &&
        !topicForOriginal(candidate.title,source.category,source.id,true))return null;
+    // Preserve the original-day body topic unless the title itself proves
+    // a valid exact-time category: the private NRCan body-topic contract
+    // deliberately admits only day-precision source references.
+    const titleClassified=topicForOriginal(candidate.title,source.category,source.id,false);
+    const precise=titleClassified
+      ?canadaOriginalPrecisePublicationTime(html,day,now):null;
     return {sourceId:source.id,category:source.category,title:candidate.title,
-      articleUrl:candidate.articleUrl,publishedAt:day,datePrecision:"day",
-      ...(originalBodyTopic?{originalBodyTopic}:{}),
+      articleUrl:candidate.articleUrl,publishedAt:precise??day,
+      ...(precise?{}:{datePrecision:"day" as const}),
+      ...(!precise&&originalBodyTopic?{originalBodyTopic}:{}),
       credit:source.credit};
   }catch{return null}
 }
