@@ -1252,6 +1252,8 @@ async function discoverOnDemandImpl(
           ?"uk_fcdo_original_publisher":
         category==="macro" && country==="CAN"
           ?"boc_original_publisher":
+        category==="macro" && country==="JPN"
+          ?"boj_original_publisher":
         category==="macro" && country==="IND"
           ?"rbi_india_original_macro_publisher":
         category==="macro" && country==="GBR"
