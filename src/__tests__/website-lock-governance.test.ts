@@ -42,7 +42,7 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("owner-approved-store-product-creation-20261024");
+    expect(config.lock_revision).toBe("owner-approved-launch-api-endpoint-directory-20261024");
     const launch = config.three_chain_launch_presentation_approval;
     const toggle = config.approved_three_category_toggle_presentation;
     const redesign = config.approved_store_reader_redesign;
@@ -51,17 +51,14 @@ describe("website lock governance", () => {
     const retired = config.approved_gri_store_retirement;
     const api = config.approved_launch_api_endpoint_directory;
     const actorApproval=config.approved_ask_3domain_actor_fix_20261024;
-    const store = config.approved_store_product_creation;
-    expect(store.approved_ui_commit).toBe(config.baseline_sha);
-    expect(store.previous_baseline_sha).toBe(actorApproval.approved_ui_commit);
-    expect(store.scope).toEqual(["src/components/api-endpoint-directory.tsx", "public/llms.txt", "public/openapi-x402.json"]);
-    expect(store.canonical_pricing_unmodified).toBe(true);
-    expect(store.global_risk_final_lock_unmodified).toBe(true);
-    expect(store.production_runtime_or_secrets_changed).toBe(false);
-    expect(store.synthetic_fixtures_are_not_production_evidence).toBe(true);
-    expect(store.funds_authorized).toBe(false);
-    expect(store.lovable_publish_required).toBe(true);
-    expect(store.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    const homeFindApproval=config.approved_ask_index_home_find_copy_followup_20261024;
+    expect(homeFindApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(homeFindApproval.previous_baseline_sha).toBe(actorApproval.approved_ui_commit);
+    expect(homeFindApproval.scope).toEqual(["src/components/home/live-intelligence-showcase.tsx"]);
+    expect(homeFindApproval.global_risk_final_lock_unmodified).toBe(true);
+    expect(homeFindApproval.payment_authorized).toBe(false);
+    expect(homeFindApproval.published_source_sha_unchanged).toBe(true);
+    expect(homeFindApproval.lovable_publish_required).toBe(true);
     expect(actorApproval.previous_baseline_sha).toBe(api.approved_ui_commit);
     expect(actorApproval.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
     expect(actorApproval.lovable_publish_required).toBe(true);

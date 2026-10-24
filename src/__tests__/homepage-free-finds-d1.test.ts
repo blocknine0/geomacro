@@ -4,7 +4,7 @@ import {findCardFromObservedRelease,type FindCardV1} from "../lib/find-card-v1";
 import {
   selectHomepageFreeFind,eligibleHomeFindCards,
   parseHomepageFindsFeed,homeFindsPulse,
-  mergeHomepageFindCards,
+  mergeHomepageFindCards,publicHomeFindCopy,
 } from "../lib/homepage-free-finds";
 import type {StatelessIntelligenceSignal} from "../lib/stateless-intelligence-model";
 
@@ -95,4 +95,23 @@ describe("unscored three-domain homepage from existing public D1 journal",()=>{
     expect(home).not.toContain(forbidden);
   }
  });
+
+ it.each(["geopolitics","macro","rare_earth"] as const)(
+  "removes legacy 'Official publisher' heading for %s without inventing an actor", domain=>{
+   const baseline=card(domain,"2026-10-17T15:00:00Z");
+   const old={...baseline,
+     headline:"Official publisher issues "+domain+" release",
+     what_changed:"An official publisher released a dated source item about "+domain+"."};
+   const clean=publicHomeFindCopy(old);
+   expect(clean.headline).toMatch(/^Actor not verified:/u);
+   expect(clean.what_changed).toContain("does not establish who");
+   expect(JSON.stringify(clean)).not.toMatch(/official publisher|https?:\/\/|source_url/iu);
+   expect(old.headline).toContain("Official publisher");
+   expect(old.published_at).toBe(baseline.published_at);
+   const named={...baseline,headline:"Federal Reserve announced monetary policy decisions",
+     what_changed:"Federal Reserve announced the monetary policy decisions."};
+   expect(publicHomeFindCopy(named)).toEqual({
+     headline:named.headline,what_changed:named.what_changed});
+  });
+
 });
