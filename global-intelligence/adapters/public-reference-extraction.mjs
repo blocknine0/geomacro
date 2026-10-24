@@ -1,3 +1,4 @@
+import {fetchGdacsNativeCountry} from "./gdacs-native-country.mjs";
 /*
  * Source-native reference observations for the public-transport production lane.
  * Research/context only. No scoring, original-news qualification, D1/B2 writes,
@@ -9,7 +10,9 @@ const ROOTS=Object.freeze({
   eurostat:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/namq_10_gdp?geo=DE&na_item=B1GQ&unit=CP_MEUR&s_adj=NSA&freq=Q&sinceTimePeriod=2025",
   bls:"https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",
   sec_edgar:"https://data.sec.gov/submissions/CIK0000320193.json",
-  gdacs:"https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?eventlist=EQ&fromdate=2026-01-01&todate=2026-12-31",
+  // Native GDACS 7-day query is dynamically constructed by
+  // gdacsCountryEventListUrl(); avoid the old annual static mega-query.
+  gdacs:null,
   swpc:"https://services.swpc.noaa.gov/products/summary/solar-wind-speed.json",
 });
 export const REFERENCE_READER_IDS=Object.freeze(Object.keys(ROOTS));
@@ -193,7 +196,26 @@ async function readBounded(url,fetchImpl){
   const output=new Uint8Array(size);let n=0;for(const p of parts){output.set(p,n);n+=p.byteLength;}
   return new TextDecoder("utf-8",{fatal:true}).decode(output);
 }
-export async function readPublicReference(id,{fetchImpl=fetch}={}){
+export async function readPublicReference(id,{fetchImpl=fetch,now=new Date()}={}){
+  if(id==="gdacs"){
+    const proof=await fetchGdacsNativeCountry({fetchImpl,now});
+    if(proof?.schema!=="geomacro.gdacs-native-event-attribution.v1"||
+       !Number.isSafeInteger(proof.event_count)||proof.event_count<0||
+       proof.all_affected_countries_verified!==false||
+       proof.native_release_clock_verified!==false||
+       proof.commercial_paid_eligible!==false||
+       proof.raw_upstream_payload_stored!==false||
+       proof.verified_current_geopolitical_events!==0)
+      throw Error("REFERENCE_GDACS_NATIVE_CONTRACT_INVALID");
+    // Hazards are discovery only, no inferred affected country, native
+    // article publication clock or rights entitlement.
+    return entry("gdacs",{country_iso3:null,reference_period:null,
+      unit:"disaster event",value:null,
+      source_record_count:proof.event_count,
+      kind:"HAZARD_DISCOVERY_NOT_COUNTRY_VERIFIED",
+      extra:{affected_country_verified:false,
+        same_publisher_rss_fallback:proof.same_publisher_24h_rss_used===true}});
+  }
   const url=ROOTS[id];
   if(!url)throw Error("REFERENCE_SOURCE_NOT_APPROVED");
   const body=await readBounded(url,fetchImpl);
