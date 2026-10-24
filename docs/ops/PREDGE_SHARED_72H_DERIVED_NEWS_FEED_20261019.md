@@ -1,3 +1,35 @@
+## Continuous delivery lock — 2026-10-24
+
+`config/predge-research-continuity-lock.v1.json` pins three categories,
+visible research attribution, original clocks, zero added exact-release delay,
+72-hour retention, the dedicated bearer, the existing 500/UTC-day cap and
+2027-01-17 pilot expiry. Every PR runs an offline guard against the actual
+private Worker projection and the checked-in source schedules.
+
+The existing five-minute best-effort intake, hourly :07 collection and
+:22/:52 bounded backstop remain active. Predge's independent authenticated
+watchdog now runs hourly at :17 and after every completed primary ingestion,
+including failed runs. It checks actual category producer checkpoints: an
+HTTP 200 with a stalled or unavailable collector cannot pass. The maximum
+collector-check age is 90 minutes; a genuinely quiet source is separately
+reported as having no qualifying current release, without fabricating news.
+
+The watchdog reuses the existing cadence decision and backstop. It dispatches
+recovery only when actual successful publisher/readback clocks are missing
+or stale (70 minutes); healthy publishers cause no duplicate source scan.
+A dispatch acknowledgement is not a publication receipt. The subsequent
+source run and independent authenticated readback provide the evidence.
+
+Normal monitoring uses about 48 authenticated reads/day; the shared atomic
+500/day ceiling still protects partner and monitor calls. No laptop daemon,
+new API subscription, partner driver changes or additional secret is needed.
+GitHub scheduling remains best effort, original publisher release frequency
+is outside Geomacro's control, and client acknowledgement remains separate.
+Pilot renewal warning starts 30 days before the existing end date; the lock
+does not silently extend the pilot or authorize commercial redistribution.
+
+---
+
 ## 2026-10-24 delivery correction (supersedes source-neutral parity below)
 
 The authenticated Predge research route now projects the same bounded D1

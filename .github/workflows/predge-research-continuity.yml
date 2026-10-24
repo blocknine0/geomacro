@@ -1,8 +1,8 @@
 name: Predge Research Continuity and Pilot Renewal (No Funds)
 on:
   schedule:
-    # Four protected research reads/day, not every minute.
-    - cron: "17 0,6,12,18 * * *"
+    # Hourly independent watchdog; normal post-ingest reads add about 24/day.
+    - cron: "17 * * * *"
   workflow_dispatch: {}
   workflow_run:
     workflows: ["Website Derived News Continuity"]
@@ -15,12 +15,10 @@ on:
       - ".github/workflows/predge-research-continuity.yml"
       - "scripts/ops/verify-predge-pilot-continuity.mjs"
       - "scripts/ops/predge-research-journal-parity.mjs"
-  pull_request:
-    paths:
-      - ".github/workflows/predge-research-continuity.yml"
-      - "scripts/ops/verify-predge-pilot-continuity.mjs"
-      - "scripts/ops/predge-research-journal-parity.mjs"
-      - "scripts/ops/verify-predge-pilot-continuity.test.mjs"
+      - "config/predge-research-continuity-lock.v1.json"
+      - "scripts/ops/verify-predge-continuity-lock*"
+  # Offline lock runs for every PR so source/worker changes cannot bypass it.
+  pull_request: {}
 permissions:
   contents: read
 concurrency:
@@ -38,19 +36,64 @@ jobs:
         with: {node-version: "22"}
       - name: Offline no-funds contract tests
         run: |
+          node scripts/ops/verify-predge-continuity-lock.mjs
+          node --test scripts/ops/verify-predge-continuity-lock.test.mjs
           node --check scripts/ops/verify-predge-pilot-continuity.mjs
           node --test scripts/ops/verify-predge-pilot-continuity.test.mjs
-  protected-live-check:
+  recover-missed-publication:
     needs: contract
     if: >-
+      github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "22"}
+      - name: Check actual successful D1 publisher and readback before recovery
+        id: decide
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/ops/check-website-derived-news-cadence.mjs
+      - name: Recover only through the existing bounded D1 backstop
+        if: steps.decide.outputs.should_run == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node --input-type=module <<'JS'
+          const r=await fetch('https://api.github.com/repos/blocknine0/geomacro/actions/workflows/website-derived-news-cadence-backstop.yml/dispatches',{
+            method:'POST',redirect:'error',signal:AbortSignal.timeout(12000),
+            headers:{Authorization:'Bearer '+process.env.GITHUB_TOKEN,Accept:'application/vnd.github+json',
+              'Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'},
+            body:JSON.stringify({ref:'main'})});
+          if(r.status!==204)throw Error('PREDGE_EXISTING_BACKSTOP_DISPATCH_NOT_ACCEPTED');
+          console.log(JSON.stringify({schema:'geomacro.predge-continuity-recovery.v1',
+            existing_backstop_dispatched:true,publication_completed:false,payments:0}));
+          JS
+  protected-live-check:
+    needs: [contract, recover-missed-publication]
+    if: >-
+      always() && needs.contract.result == 'success' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' ||
-       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'))
+       (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: production
     env:
+      NEWS_TRIGGER_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
       PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

@@ -1,0 +1,20 @@
+{
+  "schema": "geomacro.predge-research-continuity-lock.v1",
+  "categories": ["geopolitics", "macro", "rare_earth"],
+  "projection": "attributed_research",
+  "retention_hours": 72,
+  "original_release_delay_minutes": 0,
+  "daily_utc_request_hard_cap": 500,
+  "maximum_source_check_age_minutes": 90,
+  "pilot_end": "2027-01-17T00:00:00.000Z",
+  "source_attribution_required": true,
+  "raw_upstream_delivered": false,
+  "commercial_resale_authorized": false,
+  "execution_authorized": false,
+  "schedules": {
+    "five-minute-original-news-fastlane.yml": ["2-57/5 * * * *"],
+    "website-derived-news-continuity.yml": ["7 * * * *"],
+    "website-derived-news-cadence-backstop.yml": ["22,52 * * * *"],
+    "predge-research-continuity.yml": ["17 * * * *"]
+  }
+}

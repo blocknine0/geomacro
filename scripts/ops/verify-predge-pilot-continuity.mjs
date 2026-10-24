@@ -4,11 +4,17 @@
 import {readPredgeJournal,predgeJournalParity} from './predge-research-journal-parity.mjs';
 const ORIGIN="https://geomacro-control-plane.daspallab202391.workers.dev";
 const PILOT_END="2027-01-17T00:00:00.000Z";
+const MAX_SOURCE_CHECK_AGE_MS=90*60_000;
 const PREFIX="PREDGE_CONTINUITY_NOT_VERIFIED";
 export function assessPredgeContinuity(research,publicFeed,gate,now=Date.now(),journal=null){
  if(research?.ok!==true||publicFeed?.ok!==true||
  research.partner_delivery_schema!=="geomacro.predge.research-news-delivery.v1"||
  research.authentication!=="DEDICATED_BEARER_ONLY"||
+ research.projection!=="attributed_research"||
+ research.attribution_must_be_preserved!==true||
+ research.attribution_is_not_a_grant_of_source_rights!==true||
+ research.retention_hours!==72||research.original_release_delay_minutes!==0||
+ research.raw_upstream_delivered!==false||
  research.execution_authorized!==false||
  research.partner_resale_or_commercial_redistribution_authorized!==false||
  research.chargeable!==false||
@@ -17,10 +23,7 @@ export function assessPredgeContinuity(research,publicFeed,gate,now=Date.now(),j
  research.maximum_pilot_scope_expires_at!==PILOT_END||
  !Array.isArray(research.items)||!Array.isArray(publicFeed.items)||
  research.items.length>600||publicFeed.items.length>600||
- (journal!==null?!predgeJournalParity(research,publicFeed,journal):
-   research.projection==="attributed_research"||
-   JSON.stringify(research.items)!==JSON.stringify(publicFeed.items)||
-   JSON.stringify(research.counts)!==JSON.stringify(publicFeed.counts)))
+ !predgeJournalParity(research,publicFeed,journal))
  throw Error(PREFIX+"_RESEARCH_CONTRACT_OR_PARITY");
  if(gate?.authority!=="cloudflare-d1"||
     gate.scope!=="predge-risk-gate-country-v1"||
@@ -33,6 +36,19 @@ export function assessPredgeContinuity(research,publicFeed,gate,now=Date.now(),j
  if(!counts||Object.keys(counts).sort().join(",")!=="geopolitics,macro,rare_earth"||
    Object.values(counts).some(n=>!Number.isSafeInteger(n)||n<0))
  throw Error(PREFIX+"_COUNTS");
+ const sourceChecks=Object.fromEntries(Object.keys(counts).map(c=>{
+  const check=research.availability_by_category?.[c]?.latest_source_check;
+  const at=Date.parse(check?.last_success_at??"");
+  if(check?.current_source_check_verified!==true||!Number.isFinite(at)||at>now||
+     !Number.isSafeInteger(check.sources_reachable)||check.sources_reachable<1||
+     check.raw_upstream_stored!==false||
+     check.commercial_rights_verified!==false||check.paid_delivery_authorized!==false)
+   throw Error(PREFIX+"_SOURCE_CHECK_UNVERIFIED");
+  if(now-at>MAX_SOURCE_CHECK_AGE_MS)throw Error(PREFIX+"_SOURCE_CHECK_STALE");
+  return [c,{collector_fresh:true,minutes_since_success:Math.floor((now-at)/60000),
+    release_state:research.items.some(i=>i.category===c&&i.qualifying_topic_release_verified===true)?
+      "QUALIFIED_RELEASES_AVAILABLE":"NO_QUALIFYING_RELEASE_IN_72H"}];
+ }));
  const days=Math.ceil((Date.parse(PILOT_END)-now)/86400000);
  return Object.freeze({
    schema:"geomacro.predge-continuity-receipt.v1",
@@ -41,6 +57,9 @@ export function assessPredgeContinuity(research,publicFeed,gate,now=Date.now(),j
    attributed_research:research.projection==="attributed_research",
    category_delivery_ready:Object.fromEntries(Object.keys(counts).map(c=>[c,
      research.items.some(i=>i.category===c&&i.qualifying_topic_release_verified===true)])),
+   source_checks:sourceChecks,
+   maximum_source_check_age_minutes:90,
+   no_new_release_is_not_a_collector_outage:true,
    daily_request_hard_cap:500,
    pilot_end:PILOT_END,days_until_pilot_end:days,
    renewal_action_required:days<=30,
@@ -59,7 +78,7 @@ async function read(path,token){
  let body;try{body=JSON.parse(raw)}catch{throw Error(PREFIX+"_INVALID_JSON")}
  return {status:response.status,body};
 }
-export async function runContinuityCheck(token,now=Date.now()){
+export async function runContinuityCheck(token,now){
  if(!/^[a-f0-9]{64}$/.test(token??""))throw Error(PREFIX+"_OWNER_TOKEN_ABSENT");
  const [research,publicFeed,gate]=await Promise.all([
   read("/v1/partner/predge/derived-structural-72h",token),
@@ -70,11 +89,17 @@ export async function runContinuityCheck(token,now=Date.now()){
    (gate.status===503&&gate.body?.status!=="not_ready"))
  throw Error(PREFIX+"_RESEARCH_UNAVAILABLE");
  const journal=await readPredgeJournal(p=>read("/v1/"+p));
- return assessPredgeContinuity(research.body,publicFeed.body,gate.body,now,journal);
+ return assessPredgeContinuity(research.body,publicFeed.body,gate.body,now??Date.now(),journal);
 }
 if(process.argv[1]?.endsWith("verify-predge-pilot-continuity.mjs")){
  runContinuityCheck(process.env.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE)
- .then(v=>{console.log(JSON.stringify(v));if(v.renewal_action_required)
+ .then(v=>{console.log(JSON.stringify(v));
+  if(["failure","timed_out","cancelled"].includes(process.env.NEWS_TRIGGER_CONCLUSION))
+   console.log("::warning::PREDGE_UPSTREAM_WORKFLOW_INCOMPLETE_READBACK_CHECKED_INDEPENDENTLY");
+  for(const [category,state] of Object.entries(v.source_checks))
+   if(state.release_state==="NO_QUALIFYING_RELEASE_IN_72H")
+    console.log("::warning::PREDGE_NO_QUALIFYING_RELEASE_"+category.toUpperCase());
+  if(v.renewal_action_required)
   console.log("::warning::PREDGE_PILOT_RENEWAL_REQUIRED_WITHIN_30_DAYS");})
  .catch(e=>{const s=String(e?.message??"");
  console.error("::error::"+(s.startsWith(PREFIX)?s:PREFIX+"_REQUEST_UNAVAILABLE"));
