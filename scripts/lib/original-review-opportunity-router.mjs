@@ -108,7 +108,8 @@ export function finalizeOriginalReviewCountry({
        priority.eligible_country_count:0,
      actual_native_source_qualified:false,review_approved:false,
    });
- const journalUsable=priority?.selection_mode==="SHARED_D1_RECENT_COUNTRY_LEAD" &&
+ const journalUsable=(priority?.selection_mode==="SHARED_D1_RECENT_COUNTRY_LEAD" ||
+    priority?.selection_mode==="SHARED_D1_22H_REVIEW_LEAD") &&
     ISO.test(priority.country_iso3??"")&&
     existsInRegistry(priority.country_iso3)&&
     Number.isSafeInteger(priority.eligible_country_count)&&

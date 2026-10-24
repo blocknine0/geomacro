@@ -1,5 +1,6 @@
 import {countryFromDerivedGeography} from "./derived-news-country-coverage-195";
 import {country195ByIso3} from "./canonical-country-registry-195";
+import {ORIGINAL_VERIFICATION_WINDOW_MS} from "./original-verification-policy";
 import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
 
 /**
@@ -11,17 +12,17 @@ import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
  * signing-intake slot prioritizes countries with already-seen exact native
  * release clocks. Missing/D1-degraded journal => bounded original rotation.
  */
-// First-party source lead priority is intended to reach GRI <=90m current
-// proof admission. The separate public 22h news/reference window is NOT
-// shortened and cannot turn a historical release into current GRI.
-// An older D1 observation must not pin hourly private source probes to one
-// expired country until its 22h journal retention naturally lapses.
-export const JOURNAL_ORIGINAL_REVIEW_WINDOW_MS = 90*60_000;
+// Recent (<90m) source-native leads always outrank older review candidates.
+// The owner-approved 22h verification window is a SECONDARY opportunity for
+// original-page and exact-byte review ONLY. It cannot extend the independent
+// scored GRI freshness window, grant rights, certify 195x3 or enable payment.
+export const JOURNAL_CURRENT_GRI_PRIORITY_WINDOW_MS = 90*60_000;
+export const JOURNAL_ORIGINAL_REVIEW_WINDOW_MS = ORIGINAL_VERIFICATION_WINDOW_MS;
 const MIN_DELAY_MS=0;
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 type Summary=Readonly<{
  country_iso3:string;
- selection_mode:"SHARED_D1_RECENT_COUNTRY_LEAD"|"CANONICAL_195_ROTATION";
+ selection_mode:"SHARED_D1_RECENT_COUNTRY_LEAD"|"SHARED_D1_22H_REVIEW_LEAD"|"CANONICAL_195_ROTATION";
  eligible_country_count:number;
  selected_country_observed_categories:number;
  journal_is_original_evidence:false;
@@ -39,7 +40,8 @@ export function selectPriorityOriginalReviewCountry(
     records.length>600)
    throw Error("PRIORITY_ORIGINAL_REVIEW_INPUT_INVALID");
  const clock=now.getTime();
- const countries=new Map<string,{categories:Set<string>;latest:number}>();
+ const recentCountries=new Map<string,{categories:Set<string>;latest:number}>();
+ const reviewCountries=new Map<string,{categories:Set<string>;latest:number}>();
  const seen=new Set<string>();
  for(const record of records){
    if(!record||typeof record.id!=="string"||seen.has(record.id)||
@@ -59,12 +61,20 @@ export function selectPriorityOriginalReviewCountry(
       published<clock-JOURNAL_ORIGINAL_REVIEW_WINDOW_MS)continue;
    const country=countryFromDerivedGeography(record.geography);
    if(!country||!country195ByIso3(country))continue;
-   const previous=countries.get(country)??{categories:new Set<string>(),latest:0};
-   previous.categories.add(record.category);
-   previous.latest=Math.max(previous.latest,published);
-   countries.set(country,previous);
+   const review=reviewCountries.get(country)??{categories:new Set<string>(),latest:0};
+   review.categories.add(record.category);
+   review.latest=Math.max(review.latest,published);
+   reviewCountries.set(country,review);
+   if(published>=clock-JOURNAL_CURRENT_GRI_PRIORITY_WINDOW_MS){
+     const fresh=recentCountries.get(country)??{categories:new Set<string>(),latest:0};
+     fresh.categories.add(record.category);
+     fresh.latest=Math.max(fresh.latest,published);
+     recentCountries.set(country,fresh);
+   }
  }
- const ranked=[...countries].sort(([a,ra],[b,rb])=>
+ const newestSourceLeads=recentCountries.size>0;
+ const prioritizedCountries=newestSourceLeads?recentCountries:reviewCountries;
+ const ranked=[...prioritizedCountries].sort(([a,ra],[b,rb])=>
     rb.categories.size-ra.categories.size ||
     rb.latest-ra.latest || a.localeCompare(b));
  // Prefer the richest *distinct category* observations, while cycling
@@ -80,7 +90,7 @@ export function selectPriorityOriginalReviewCountry(
  const selected=tied.length?tied[((slot%tied.length)+tied.length)%tied.length]:null;
  return Object.freeze({
    country_iso3:selected?.[0]??fallbackIso3,
-   selection_mode:selected?"SHARED_D1_RECENT_COUNTRY_LEAD":"CANONICAL_195_ROTATION",
+   selection_mode:selected?(newestSourceLeads?"SHARED_D1_RECENT_COUNTRY_LEAD":"SHARED_D1_22H_REVIEW_LEAD"):"CANONICAL_195_ROTATION",
    eligible_country_count:ranked.length,
    selected_country_observed_categories:selected?.[1].categories.size??0,
    journal_is_original_evidence:false,

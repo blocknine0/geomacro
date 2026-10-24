@@ -127,6 +127,8 @@ export async function main(){
  // A manual owner selection always wins, with no extra D1 GET.
  // The scheduled private review may prioritize the SAME source-neutral 72h
  // D1 journal that Intelligence, Ask and the free/API research consume.
+ // First prefer <90m issuer observations; if none, only the genuine 22h
+ // pre-review window is recovered, without extending scored GRI freshness.
  // This chooses WHAT country to verify, NEVER signs/verifies the D1 lead.
  const manuallyRequested=process.env.GEOMACRO_REVIEW_COUNTRY_ISO3||"";
  // The 195 fairness slot remains mandatory, while known direct-issuer
