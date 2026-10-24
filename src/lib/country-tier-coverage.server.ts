@@ -80,6 +80,8 @@ export function classifyCountryModulePreflight(
    return {...emptyModule(module,"ELIGIBLE",null),
      rights_state:"VERIFIED",as_of:result.subjects[0].latest_evidence_at};
  }
+ if(result.code==="NOT_AVAILABLE")
+   return emptyModule(module,"RUNTIME_UNAVAILABLE","GOVERNED_SOURCE_NOT_AVAILABLE");
  const rightsBlocked=result.source_contracts.length===0||
    result.code==="COMMERCIAL_SOURCE_NOT_ELIGIBLE"||
    result.ineligible_source_ids.length>0||
@@ -94,8 +96,6 @@ export function classifyCountryModulePreflight(
  if(rightsBlocked)
    return {...emptyModule(module,"NOT_ELIGIBLE","COMMERCIAL_RIGHTS_NOT_VERIFIED"),
      rights_state:"NOT_VERIFIED",as_of:at};
- if(result.code==="NOT_AVAILABLE")
-   return emptyModule(module,"RUNTIME_UNAVAILABLE","GOVERNED_SOURCE_NOT_AVAILABLE");
  return {...emptyModule(module,"NOT_ELIGIBLE","NO_ADAPTER_OR_NO_VERIFIED_SOURCE"),
    as_of:at,rights_state:rightsState};
 }
