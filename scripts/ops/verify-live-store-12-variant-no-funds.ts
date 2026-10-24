@@ -24,6 +24,10 @@ type Result = {
   stale_module_count: number;
   ineligible_source_count: number;
   price_match: boolean;
+  price_usdc_match: boolean;
+  price_atomic_match: boolean;
+  base_mainnet_network_match: boolean;
+  canonical_base_usdc_match: boolean;
   genuine_data_deliverable_without_payment: boolean | null;
 };
 function count(values: unknown) { return Array.isArray(values) ? values.length : 0; }
@@ -53,6 +57,8 @@ async function inspect(key: string, template: Record<string, unknown>): Promise<
     readiness: "UNAVAILABLE_OR_RUNTIME_LOCKED", reason_code: "UNREACHABLE",
     missing_module_count: 0, stale_module_count: 0,
     ineligible_source_count: 0, price_match: false,
+    price_usdc_match: false, price_atomic_match: false,
+    base_mainnet_network_match: false, canonical_base_usdc_match: false,
     genuine_data_deliverable_without_payment: null,
   };
   try {
@@ -80,16 +86,21 @@ async function inspect(key: string, template: Record<string, unknown>): Promise<
     const exact = data.exact_price ?? {};
     const safeBoundaries =
       data.payment_required_now === false && data.execution_authorized === false;
-    const priceMatch = exact.amount_usdc === price.amount_usdc &&
-      exact.amount_atomic === price.amount_atomic &&
-      exact.network === "eip155:8453" &&
-      String(exact.asset_contract ?? "").toLowerCase() ===
-        "0x833589fcD6eDb6E08f4c7C32D4f71b54bdA02913".toLowerCase();
+    const priceUsdcMatch = exact.amount_usdc === price.amount_usdc;
+    const priceAtomicMatch = exact.amount_atomic === price.amount_atomic;
+    const baseMainnetNetworkMatch = exact.network === "eip155:8453";
+    const canonicalBaseUsdcMatch = String(exact.asset_contract ?? "").toLowerCase() ===
+      "0x833589fcD6eDb6E08f4c7C32D4f71b54bdA02913".toLowerCase();
+    const priceMatch = priceUsdcMatch && priceAtomicMatch &&
+      baseMainnetNetworkMatch && canonicalBaseUsdcMatch;
     const success = response.status === 200 && data.ok === true &&
       data.chargeable === true && availability.deliverable === true &&
       availability.code === "AVAILABLE" && safeBoundaries && priceMatch;
     return {
       ...base, price_match: priceMatch,
+      price_usdc_match: priceUsdcMatch, price_atomic_match: priceAtomicMatch,
+      base_mainnet_network_match: baseMainnetNetworkMatch,
+      canonical_base_usdc_match: canonicalBaseUsdcMatch,
       genuine_data_deliverable_without_payment: typeof data.data_deliverable_without_payment === "boolean" ?
         data.data_deliverable_without_payment : (typeof availability.deliverable === "boolean" ? availability.deliverable : null),
       missing_module_count: count(availability.missing_modules),
@@ -113,14 +124,17 @@ for (const [key, value] of entries) {
   results.push(await inspect(key, value as unknown as Record<string, unknown>));
 }
 const eligible = results.filter(row => row.readiness === "ELIGIBLE_NO_FUNDS_PREFLIGHT_ONLY").length;
+const dataEligible = results.filter(row => row.genuine_data_deliverable_without_payment === true).length;
 const summary = {
   schema_version: "geomacro.store-twelve-variant-no-funds-census.v1",
   checked_at: new Date().toISOString(),
   canonical_host: HOST,
   checked_variant_count: results.length,
   eligible_variant_count: eligible,
+  data_preflight_eligible_variant_count: dataEligible,
   blocked_variant_count: results.length - eligible,
-  all_variants_data_preflight_eligible: eligible === 12,
+  all_variants_data_preflight_eligible: dataEligible === 12,
+  all_variants_mainnet_quote_preflight_eligible: eligible === 12,
   payment_requested: false,
   payment_sent: false,
   settlement_attempted: false,
