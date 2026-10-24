@@ -113,7 +113,8 @@ export async function publishReusableSourceNews(env,body,now=Date.now()){
     ];
     for(const row of rows){
       prepared.push(env.DB.prepare(
-        "INSERT OR IGNORE INTO reusable_news_items(item_id,category,published_at,projection_json,first_seen_at) VALUES(?,?,?,?,?)")
+        "INSERT INTO reusable_news_items(item_id,category,published_at,projection_json,first_seen_at) VALUES(?,?,?,?,?) "+
+        "ON CONFLICT(item_id) DO UPDATE SET category=excluded.category,published_at=excluded.published_at,projection_json=excluded.projection_json")
         .bind(row.id,row.category,row.at,row.json,checkedAt));
     }
     for(const check of body.checks){
