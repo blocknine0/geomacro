@@ -10,20 +10,30 @@ import {FIVE_MINUTE_NEWS_FASTLANE,FIVE_MINUTE_NEWS_FALLBACK,
 const read=(p:string)=>readFileSync(p,"utf8");
 const CATS=["geopolitics","macro","rare_earth"];
 describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
- it("pins ten bounded official original feeds across three domains with global source reuse",async()=>{
-   expect(FIVE_MINUTE_NEWS_FASTLANE).toHaveLength(10);
-   expect(FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN).toBe(10);
+ it("pins sixteen bounded official original release feeds across three domains",async()=>{
+   expect(FIVE_MINUTE_NEWS_FASTLANE).toHaveLength(16);
+   expect(FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN).toBe(16);
    expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.category)).toEqual([
-     "geopolitics","geopolitics","geopolitics",
-     "macro","macro","macro","macro",
-     "rare_earth","rare_earth","rare_earth"]);
-   expect(new Set(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).size).toBe(10);
+     "geopolitics","geopolitics","geopolitics","geopolitics","geopolitics",
+     "macro","macro","macro","macro","macro","macro",
+     "rare_earth","rare_earth","rare_earth","rare_earth","rare_earth"]);
+   expect(new Set(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).size).toBe(16);
    expect(FIVE_MINUTE_NEWS_FASTLANE.map(x=>x.id)).toEqual([
-     "un_news","uk_fcdo","un_press_global","fed_press","wto_trade_original_rss",
-     "ecb_press","boc_press_global","nrcan_releases","us_doe_news_minerals",
-     "bc_minerals_global"]);
+     "un_news","uk_fcdo","un_press_global","eu_council_press_original","nz_beehive_geopolitics",
+     "fed_press","wto_trade_original_rss","ecb_press","boc_press_global",
+     "nz_beehive_macro","govuk_global_economy",
+     "nrcan_releases","us_doe_news_minerals","bc_minerals_global",
+     "nz_beehive_minerals","govuk_global_minerals"]);
    const collector=read("src/lib/stateless-public-intelligence.server.ts");
    expect(collector).toContain("officialSources.filter(s=>s.id===id && s.category===category)");
+   expect(collector).toContain("FIVE_MINUTE_NEWS_FASTLANE.length>FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN");
+   // Each selected entry must resolve to an exact existing issuer reader.
+   // No syndicated/third-party news or paid feed endpoint is introduced.
+   expect(FIVE_MINUTE_NEWS_FASTLANE.filter(x=>x.id.startsWith("nz_beehive_"))).toHaveLength(3);
+   expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="eu_council_press_original")).toBe(true);
+   expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="govuk_global_minerals")).toBe(true);
+   expect(FIVE_MINUTE_NEWS_FASTLANE.some(x=>x.id==="govuk_global_economy")).toBe(true);
+   expect(collector).toContain("readGovContentOriginalDate");
    expect(collector).toContain("FIVE_MINUTE_NEWS_FASTLANE.length>FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN");
    for(const id of ["un_press_global","boc_press_global","bc_minerals_global"]){
      const entry=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((x:{id:string})=>x.id===id);
@@ -65,11 +75,14 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
    primary[1].healthy=false;
    expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
-   primary[2].healthy=false; // UN Press is the third geopolitical primary.
+   primary[2].healthy=false; // UN Press is third, but EU + NZ still work.
+   expect(decideFiveMinuteFallbackCategories(primary)).toEqual([]);
+   primary[3].healthy=false;
+   primary[4].healthy=false;
    expect(decideFiveMinuteFallbackCategories(primary)).toEqual(["geopolitics"]);
-   // Four macro and three mineral primaries must each ALL fail before the
+   // Six macro and five mineral primaries must each ALL fail before the
    // single additional category fallback is permitted.
-   for(let i=3;i<10;i++)primary[i].healthy=false;
+   for(let i=5;i<16;i++)primary[i].healthy=false;
    expect(decideFiveMinuteFallbackCategories(primary)).toEqual(CATS);
    expect(()=>decideFiveMinuteFallbackCategories([{category:"unapproved",healthy:true}]))
      .toThrow("ORIGINAL_FASTLANE_PRIMARY_HEALTH_INVALID");
@@ -175,12 +188,12 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
        sourceId:source.id,category:"macro",credit:source.credit,
      }]:[]};
    }});
-   expect(reads).toHaveLength(13);
-   expect(new Set(reads).size).toBe(13);
+   expect(reads).toHaveLength(19);
+   expect(new Set(reads).size).toBe(19);
    const macro=reports.find(r=>r.category==="macro")!;
    expect(macro.signals).toHaveLength(1);
-   expect(macro.primary_healthy_feed_count).toBe(4);
-   expect(macro.healthy_feed_count).toBe(5);
+   expect(macro.primary_healthy_feed_count).toBe(6);
+   expect(macro.healthy_feed_count).toBe(7);
    expect(macro.fallback_reason).toBe("NO_RECENT_QUALIFYING_PRIMARY_RELEASE");
    expect(macro.signals[0].published_at).toBe(new Date(now-20*60_000).toISOString());
    expect(JSON.stringify(reports)).not.toContain("https://");
@@ -196,16 +209,16 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
        if(fallbackIds.has(source.id as any))throw Error("SYNTHETIC_PROVIDER_UNAVAILABLE");
        return {healthy:true,candidates:[]};
      }});
-   expect(reads).toHaveLength(13);
+   expect(reads).toHaveLength(19);
    expect(reports.every(r=>r.status==="no_eligible_original_releases"&&r.signals.length===0)).toBe(true);
    expect(reports.every(r=>r.healthy_feed_count===r.primary_healthy_feed_count)).toBe(true);
    expect(reports.every(r=>r.fallback_reason==="NO_RECENT_QUALIFYING_PRIMARY_RELEASE")).toBe(true);
  });
- it("rotates new first-party global and Beehive origins across quiet categories with no additional reads",async()=>{
+ it("rotates remaining distinct official origins across quiet categories with one alternative each",async()=>{
    const additions={
-     geopolitics:["eu_council_press_original","nz_beehive_geopolitics"],
-     macro:["un_news_economy","nz_beehive_macro"],
-     rare_earth:["un_news_minerals","nz_beehive_minerals"],
+     geopolitics:["canada_foreign_statements","ungeneva_press_global"],
+     macro:["un_news_economy","boj_press_global"],
+     rare_earth:["un_news_minerals","iea_minerals_global"],
    } as const;
    const source=read("src/lib/stateless-public-intelligence.server.ts");
    expect(source).toContain("const batches=await Promise.all(selected.map");
@@ -224,8 +237,8 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    const run=await readFiveMinuteNewsFastlane(now,20,undefined,{readPinnedSource:async source=>{
      readIds.push(source.id);return {healthy:true,candidates:[]};
    }});
-   expect(readIds).toHaveLength(13);
-   expect(new Set(readIds).size).toBe(13);
+   expect(readIds).toHaveLength(19);
+   expect(new Set(readIds).size).toBe(19);
    expect(run).toHaveLength(3);
    expect(run.every(row=>row.signals.length===0 && row.fallback_reason==="NO_RECENT_QUALIFYING_PRIMARY_RELEASE")).toBe(true);
    // Changes to this existing reader also need to wake the cloud producer.
@@ -250,8 +263,8 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    const reports=await readFiveMinuteNewsFastlane(now,20,undefined,{readPinnedSource:async source=>{
      reads.push(source.id);return {healthy:true,candidates:[]};
    }});
-   expect(reads).toHaveLength(13);
-   expect(new Set(reads).size).toBe(13);
+   expect(reads).toHaveLength(19);
+   expect(new Set(reads).size).toBe(19);
    for(const category of ["geopolitics","macro","rare_earth"] as const)
      expect(reads).toContain(selectFiveMinuteFallback(category,now).id);
    expect(reports).toHaveLength(3);
