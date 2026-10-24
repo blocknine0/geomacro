@@ -72,6 +72,9 @@ export function assertFrozenCapabilityResponse(response:Record<string,unknown>) 
     const {capability,variant}=payment as Record<string,unknown>;
     if(typeof capability!=="string"||typeof variant!=="string")
       throw Error("CAPABILITY_STRUCTURED_DELIVERY_PRICE_MISSING");
+    const selected=(response.question_interpretation as {product?:{capability?:string;variant?:string}}|undefined)?.product;
+    if(selected && (selected.capability!==capability||selected.variant!==variant))
+      throw Error("CAPABILITY_FROZEN_STORE_PRODUCT_MISMATCH");
     assertPricedStructuredDelivery(response,capability,variant);
   }
 }

@@ -71,7 +71,11 @@ Category aliases bind topics and accept country subjects. Use the canonical quer
 - No-funds structured research: `GET/POST https://geomacro.live/api/v1/intelligence/live-structured`
 - MCP JSON-RPC tools: `POST https://geomacro.live/api/mcp`
 
-Baseline availability requires one country, one eligible topic and explicit `delivery_tier=structural_baseline`. It is not a current signed risk check. Price discovery, network discovery and a positive baseline preflight do not authorize payment. Only an exact eligible request can return a live 402 offer. Never authorize a second payment to recover an uncertain delivery.
+Legacy baseline availability requires one country, one eligible topic and explicit `delivery_tier=structural_baseline`. Explicit Store selection adds `product: {capability, variant}` to the same canonical query: four structural products, three intelligence-query variants, two signed-object variants and three Risk Gate bundle variants. All twelve request examples are included in official agent discovery and the API endpoint directory; MCP `store_product_query` maps to this same engine.
+
+Structural digests require exactly one approved dimension. Profiles require at least two approved dimensions and `detail=full`; directional corridors require actual qualified observations from both endpoints in every requested dimension. Corridor output is endpoint-composed, not a physical route model. Store intelligence queries require verified signed state and a real healthy live-pipeline check, without fabricating current events. `newly_qualified_signed` additionally requires a current UTC `product.issued_after` cutoff no older than five minutes and an actual signature-verified publication after it; preflight does not issue or sign an object.
+
+Structural baseline is not a current signed risk check. Price discovery, network discovery and a positive baseline preflight do not authorize payment. Only an exact eligible request can return a live 402 offer. Never authorize a second payment to recover an uncertain delivery. Examples demonstrate contracts, not production availability or permission to charge.
 
 Existing entitlement-controlled partner integrations retain their own access rules.
 

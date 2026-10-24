@@ -1,5 +1,6 @@
 import type {AgentQueryPlan} from "./agent-query-plan";
 import type {AgentQueryDeliverability} from "./agent-query-deliverability.server";
+import {isStructuralStoreProduct} from "./store-product-selection";
 
 /**
  * Final BUYER-CONTENT gate. The availability preflight proves eligibility,
@@ -42,6 +43,9 @@ export function assertPreparedCapabilityBuyerValue(
  if(!availability?.deliverable||availability.code!=="AVAILABLE"||
     availability.query_plan_hash!==plan.query_plan_hash)
    fail("AVAILABILITY_NOT_VERIFIED");
+ if(plan.product && (!record(payload.question_interpretation) ||
+    JSON.stringify(payload.question_interpretation.product)!==JSON.stringify(plan.product)))
+   fail("STORE_PRODUCT_SELECTION_MISMATCH");
  const subjectKeys=plan.subjects.map(key);
  if(subjectKeys.length<1||subjectKeys.some(k=>k===null)||
     new Set(subjectKeys).size!==subjectKeys.length ||
@@ -70,6 +74,13 @@ export function assertPreparedCapabilityBuyerValue(
           typeof v.value_numeric==="number"&&Number.isFinite(v.value_numeric))) &&
        validTimestamp(row.evidence_summary.latest_observed_at,now);
      if(!governed&&!originals)fail("REQUIRED_MODULE_EMPTY_OR_UNDATED");
+     if(isStructuralStoreProduct(plan.product) && plan.subjects[i].type==="corridor") {
+       const subject=plan.subjects[i];
+       if(subject.type!=="corridor" || !Array.isArray(delivered.observations) ||
+          ![subject.origin_country_iso3,subject.destination_country_iso3].every(country=>
+            (delivered.observations as unknown[]).some(value=>record(value)&&value.country_iso3===country)))
+         fail("STORE_CORRIDOR_ENDPOINT_MISSING");
+     }
    }
  }
  if(plan.required_modules.includes("signed_risk_object")){

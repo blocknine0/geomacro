@@ -5,7 +5,9 @@
   "description": "Deterministic request contract for question-adaptive Geomacro risk intelligence. Natural-language questions may select only governed topics and intents; unsupported or ambiguous requests fail closed.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["subjects"],
+  "required": [
+    "subjects"
+  ],
   "properties": {
     "schema_version": {
       "type": "string",
@@ -21,39 +23,65 @@
       "type": "array",
       "minItems": 1,
       "maxItems": 25,
-      "items": { "$ref": "#/$defs/subject" }
+      "items": {
+        "$ref": "#/$defs/subject"
+      }
     },
     "topics": {
       "type": "array",
       "maxItems": 16,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/topic" },
+      "items": {
+        "$ref": "#/$defs/topic"
+      },
       "default": []
     },
-    "intent": { "$ref": "#/$defs/intent" },
+    "intent": {
+      "$ref": "#/$defs/intent"
+    },
     "ranking": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["metric"],
+      "required": [
+        "metric"
+      ],
       "properties": {
-        "metric": { "type": "string", "const": "risk_object_score" },
+        "metric": {
+          "type": "string",
+          "const": "risk_object_score"
+        },
         "order": {
           "type": "string",
-          "enum": ["high_to_low", "low_to_high"],
+          "enum": [
+            "high_to_low",
+            "low_to_high"
+          ],
           "default": "high_to_low"
         },
-        "limit": { "type": "integer", "minimum": 1, "maximum": 25 }
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 25
+        }
       }
     },
     "change": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["baseline"],
+      "required": [
+        "baseline"
+      ],
       "properties": {
-        "baseline": { "type": "string", "const": "previous_published" }
+        "baseline": {
+          "type": "string",
+          "const": "previous_published"
+        }
       }
     },
-    "as_of": { "type": "string", "format": "date-time" },
+    "as_of": {
+      "type": "string",
+      "format": "date-time"
+    },
     "max_age_seconds": {
       "type": "integer",
       "minimum": 1,
@@ -62,27 +90,45 @@
     },
     "evidence": {
       "type": "string",
-      "enum": ["required", "summary"],
+      "enum": [
+        "required",
+        "summary"
+      ],
       "default": "required"
     },
     "detail": {
       "type": "string",
-      "enum": ["compact", "standard", "full"],
+      "enum": [
+        "compact",
+        "standard",
+        "full"
+      ],
       "default": "standard"
     },
     "risk_gate_context": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["action_type"],
+      "required": [
+        "action_type"
+      ],
       "properties": {
         "policy_preset": {
           "type": "string",
-          "enum": ["balanced", "cautious", "strict"],
+          "enum": [
+            "balanced",
+            "cautious",
+            "strict"
+          ],
           "default": "balanced"
         },
         "action_type": {
           "type": "string",
-          "enum": ["treasury_payment", "vendor_payment", "agent_payment", "exposure_review"]
+          "enum": [
+            "treasury_payment",
+            "vendor_payment",
+            "agent_payment",
+            "exposure_review"
+          ]
         },
         "amount_usdc": {
           "type": "number",
@@ -95,77 +141,405 @@
       "type": "string",
       "minLength": 4,
       "maxLength": 128
+    },
+    "product": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "variant"
+          ],
+          "properties": {
+            "capability": {
+              "const": "structural_country_digest"
+            },
+            "variant": {
+              "const": "standard"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "variant"
+          ],
+          "properties": {
+            "capability": {
+              "const": "structural_corridor_digest"
+            },
+            "variant": {
+              "const": "standard"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "variant"
+          ],
+          "properties": {
+            "capability": {
+              "const": "structural_country_profile"
+            },
+            "variant": {
+              "const": "standard"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "variant"
+          ],
+          "properties": {
+            "capability": {
+              "const": "structural_corridor_profile"
+            },
+            "variant": {
+              "const": "standard"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "variant"
+          ],
+          "properties": {
+            "capability": {
+              "const": "intelligence_query"
+            },
+            "variant": {
+              "const": "focused"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "variant"
+          ],
+          "properties": {
+            "capability": {
+              "const": "intelligence_query"
+            },
+            "variant": {
+              "const": "standard"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "variant"
+          ],
+          "properties": {
+            "capability": {
+              "const": "intelligence_query"
+            },
+            "variant": {
+              "const": "complex_multi_source"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "variant"
+          ],
+          "properties": {
+            "capability": {
+              "const": "signed_risk_object"
+            },
+            "variant": {
+              "const": "existing_valid_signed"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "variant",
+            "issued_after"
+          ],
+          "properties": {
+            "capability": {
+              "const": "signed_risk_object"
+            },
+            "variant": {
+              "const": "newly_qualified_signed"
+            },
+            "issued_after": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Current UTC cutoff, no older than five minutes when requesting a new quote. Requires an actually signature-verified publication after this cutoff; never generates a signature."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "variant"
+          ],
+          "properties": {
+            "capability": {
+              "const": "risk_gate_bundle"
+            },
+            "variant": {
+              "const": "existing_proof_preflight"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "variant"
+          ],
+          "properties": {
+            "capability": {
+              "const": "risk_gate_bundle"
+            },
+            "variant": {
+              "const": "standard"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "capability",
+            "variant"
+          ],
+          "properties": {
+            "capability": {
+              "const": "risk_gate_bundle"
+            },
+            "variant": {
+              "const": "complex_multi_source"
+            }
+          }
+        }
+      ]
+    },
+    "delivery_tier": {
+      "enum": [
+        "signed_risk_intelligence",
+        "structural_baseline"
+      ],
+      "default": "signed_risk_intelligence"
+    },
+    "fulfillment_mode": {
+      "enum": [
+        "published_only",
+        "live_on_demand"
+      ],
+      "default": "published_only"
     }
   },
   "anyOf": [
-    { "required": ["question"] },
-    { "required": ["intent"] },
     {
-      "required": ["topics"],
-      "properties": { "topics": { "minItems": 1 } }
+      "required": [
+        "question"
+      ]
+    },
+    {
+      "required": [
+        "intent"
+      ]
+    },
+    {
+      "required": [
+        "topics"
+      ],
+      "properties": {
+        "topics": {
+          "minItems": 1
+        }
+      }
     }
   ],
   "allOf": [
     {
       "if": {
-        "required": ["intent"],
-        "properties": { "intent": { "const": "ranking_filter" } }
+        "required": [
+          "intent"
+        ],
+        "properties": {
+          "intent": {
+            "const": "ranking_filter"
+          }
+        }
       },
       "then": {
-        "required": ["ranking"],
-        "properties": { "subjects": { "minItems": 2 } }
-      }
-    },
-    {
-      "if": { "required": ["ranking"] },
-      "then": {
-        "required": ["intent"],
-        "properties": { "intent": { "const": "ranking_filter" } }
-      }
-    },
-    {
-      "if": {
-        "required": ["intent"],
-        "properties": { "intent": { "const": "change_since" } }
-      },
-      "then": {
-        "required": ["change"],
-        "properties": { "subjects": { "minItems": 1, "maxItems": 1 } }
-      }
-    },
-    {
-      "if": { "required": ["change"] },
-      "then": {
-        "required": ["intent"],
-        "properties": { "intent": { "const": "change_since" } }
+        "required": [
+          "ranking"
+        ],
+        "properties": {
+          "subjects": {
+            "minItems": 2
+          }
+        }
       }
     },
     {
       "if": {
-        "required": ["intent"],
-        "properties": { "intent": { "const": "comparison" } }
+        "required": [
+          "ranking"
+        ]
       },
-      "then": { "properties": { "subjects": { "minItems": 2 } } }
-    },
-    {
-      "if": {
-        "required": ["intent"],
-        "properties": { "intent": { "enum": ["single_subject", "corridor", "risk_gate"] } }
-      },
-      "then": { "properties": { "subjects": { "minItems": 1, "maxItems": 1 } } }
-    },
-    {
-      "if": {
-        "required": ["topics"],
-        "properties": { "topics": { "contains": { "const": "risk_gate" } } }
-      },
-      "then": { "required": ["risk_gate_context"] }
-    },
-    {
-      "if": { "required": ["risk_gate_context"] },
       "then": {
-        "required": ["topics"],
-        "properties": { "topics": { "contains": { "const": "risk_gate" } } }
+        "required": [
+          "intent"
+        ],
+        "properties": {
+          "intent": {
+            "const": "ranking_filter"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "intent"
+        ],
+        "properties": {
+          "intent": {
+            "const": "change_since"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "change"
+        ],
+        "properties": {
+          "subjects": {
+            "minItems": 1,
+            "maxItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "change"
+        ]
+      },
+      "then": {
+        "required": [
+          "intent"
+        ],
+        "properties": {
+          "intent": {
+            "const": "change_since"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "intent"
+        ],
+        "properties": {
+          "intent": {
+            "const": "comparison"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "subjects": {
+            "minItems": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "intent"
+        ],
+        "properties": {
+          "intent": {
+            "enum": [
+              "single_subject",
+              "corridor",
+              "risk_gate"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "subjects": {
+            "minItems": 1,
+            "maxItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "topics"
+        ],
+        "properties": {
+          "topics": {
+            "contains": {
+              "const": "risk_gate"
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "risk_gate_context"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "risk_gate_context"
+        ]
+      },
+      "then": {
+        "required": [
+          "topics"
+        ],
+        "properties": {
+          "topics": {
+            "contains": {
+              "const": "risk_gate"
+            }
+          }
+        }
       }
     }
   ],
@@ -212,20 +586,37 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "country_iso3"],
+          "required": [
+            "type",
+            "country_iso3"
+          ],
           "properties": {
-            "type": { "const": "country" },
-            "country_iso3": { "$ref": "#/$defs/iso3" }
+            "type": {
+              "const": "country"
+            },
+            "country_iso3": {
+              "$ref": "#/$defs/iso3"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "origin_country_iso3", "destination_country_iso3"],
+          "required": [
+            "type",
+            "origin_country_iso3",
+            "destination_country_iso3"
+          ],
           "properties": {
-            "type": { "const": "corridor" },
-            "origin_country_iso3": { "$ref": "#/$defs/iso3" },
-            "destination_country_iso3": { "$ref": "#/$defs/iso3" }
+            "type": {
+              "const": "corridor"
+            },
+            "origin_country_iso3": {
+              "$ref": "#/$defs/iso3"
+            },
+            "destination_country_iso3": {
+              "$ref": "#/$defs/iso3"
+            }
           }
         }
       ]

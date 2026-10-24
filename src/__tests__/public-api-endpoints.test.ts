@@ -52,7 +52,8 @@ describe("public endpoint integration contract", () => {
     expect(baseline.schema.required).toContain("delivery_tier");
     expect(baseline.schema.properties.delivery_tier.const).toBe("structural_baseline");
     expect(baseline.schema.properties.subjects.maxItems).toBe(1);
-    expect(baseline.schema.properties.topics.maxItems).toBe(1);
+    expect(baseline.schema.properties.topics.maxItems).toBe(5);
+    expect(baseline.schema.allOf[0].then.properties.topics.maxItems).toBe(1);
     expect(paths["/api/v1/intelligence/geopolitics"].post.requestBody.content["application/json"].schema.properties.fulfillment_mode.default).toBe("live_on_demand");
     expect(openapi["x-geomacro"].payment_authorized_by_discovery).toBe(false);
   });

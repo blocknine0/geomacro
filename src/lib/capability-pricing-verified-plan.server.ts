@@ -1,5 +1,6 @@
 import type { AgentQueryPlan } from "./agent-query-plan";
 import { resolveGeomacroCapabilityPrice, type CapabilityPrice } from "./capability-pricing-catalog";
+import { isStructuralStoreProduct } from "./store-product-selection";
 
 /** Server-only evidence, never read from a customer body or model output.
  * Classification is NOT payment authorization or a replacement for final
@@ -12,13 +13,14 @@ export type VerifiedCapabilityPriceProof = Readonly<{
   deliverable: true;
   signed_object_lifecycle: "existing" | "new" | "none";
   change_attribution_verified: boolean;
+  store_structural_scope_verified?: boolean;
 }>;
 
 /** Deterministic map from the canonical plan to an approved quote class.
  * Call ONLY after proof qualification; a classifier cannot promote evidence.
  * Unsupported or unprovable products remain no-charge.
  */
-export function resolveVerifiedPublishedPlanPrice(
+function classifyVerifiedPublishedPlanPrice(
   plan: AgentQueryPlan,
   proof: VerifiedCapabilityPriceProof,
 ): CapabilityPrice {
@@ -44,6 +46,11 @@ export function resolveVerifiedPublishedPlanPrice(
         plan.required_modules.some(module =>
           ["signed_risk_object", "risk_gate", "gri_context", "hot_topics"].includes(module))) {
       throw new Error("CAPABILITY_PRICE_STRUCTURAL_ONLY_NO_SIGNED_CLAIMS");
+    }
+    if (isStructuralStoreProduct(plan.product)) {
+      if (proof.store_structural_scope_verified !== true)
+        throw Error("CAPABILITY_PRICE_STORE_STRUCTURAL_PROOF_REQUIRED");
+      return resolveGeomacroCapabilityPrice(plan.product!.capability, plan.product!.variant);
     }
     if (plan.subjects.length !== 1 || plan.subjects[0]?.type !== "country" ||
         plan.topics.length !== 1 || plan.intent !== "single_subject") {
@@ -89,11 +96,22 @@ export function resolveVerifiedPublishedPlanPrice(
   if (plan.intent === "risk_gate") {
     throw new Error("CAPABILITY_PRICE_RISK_GATE_TOPIC_MISSING");
   }
+  const semanticTopics = plan.product?.capability === "intelligence_query"
+    ? [...topics].filter(topic => topic !== "risk_object") : [...topics];
   const focused = plan.subjects.length === 1 &&
-    topics.size === 1 && plan.detail === "compact" &&
+    semanticTopics.length === 1 && plan.detail === "compact" &&
     (plan.intent === "single_subject" || plan.intent === "corridor");
-  const standard = plan.subjects.length === 1 && topics.size <= 3 &&
+  const standard = plan.subjects.length === 1 && semanticTopics.length <= 3 &&
     plan.detail !== "full" && plan.intent !== "ranking_filter";
   return resolveGeomacroCapabilityPrice("intelligence_query",
     focused ? "focused" : standard ? "standard" : "complex_multi_source");
+}
+
+/** The buyer selects a Store contract, never supplies its eligibility or price.
+ * Refuse a mismatched variant rather than silently sell a different product. */
+export function resolveVerifiedPublishedPlanPrice(plan: AgentQueryPlan, proof: VerifiedCapabilityPriceProof): CapabilityPrice {
+  const price = classifyVerifiedPublishedPlanPrice(plan, proof);
+  if (plan.product && (price.capability !== plan.product.capability || price.variant !== plan.product.variant))
+    throw Error("CAPABILITY_REQUESTED_STORE_PRODUCT_MISMATCH");
+  return price;
 }

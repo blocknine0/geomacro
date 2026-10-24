@@ -1,4 +1,5 @@
 import { GEOMACRO_OFFICIAL_API_CATALOG } from "./geomacro-official-api-branding";
+import { GEOMACRO_STORE_REQUEST_EXAMPLES } from "./store-product-examples";
 
 /** Shared developer/agent catalog. A listed route does not establish readiness. */
 export const GEOMACRO_PUBLIC_API_ENDPOINTS = [
@@ -11,7 +12,7 @@ export const GEOMACRO_PUBLIC_API_ENDPOINTS = [
   })),
   { id: "availability", name: "Structural availability", methods: ["GET", "POST"],
     path: "/api/v1/intelligence/availability",
-    purpose: "One country and one topic with delivery_tier=structural_baseline.", access: "No funds; baseline only, not current signed risk." },
+    purpose: "Structural baseline preflight. Legacy: one country/topic; explicit Store product: country/corridor digest or full multidimension profile.", access: "No funds; not current signed risk." },
   { id: "pricing", name: "Approved USDC prices", methods: ["GET"],
     path: "/api/v1/pricing", purpose: "Exact capability prices and output contracts.", access: "Public catalog; not a payment offer." },
   { id: "networks", name: "USDC networks", methods: ["GET"],
@@ -37,6 +38,7 @@ export const GEOMACRO_PUBLIC_API_ENDPOINTS = [
 ] as const;
 
 export const GEOMACRO_API_EXAMPLES = {
+  ...GEOMACRO_STORE_REQUEST_EXAMPLES,
   query: { subjects: [{ type: "country", country_iso3: "IND" }], topics: ["macro_risk", "fx_external_risk"], question: "What are the macro and FX risks for India?", fulfillment_mode: "published_only", detail: "standard" },
   geopolitics: { subjects: [{ type: "country", country_iso3: "IND" }], question: "What are the geopolitical risks for India?", fulfillment_mode: "published_only", detail: "standard" },
   macro_fx: { subjects: [{ type: "country", country_iso3: "IND" }], question: "What are the macro and FX risks for India?", fulfillment_mode: "published_only", detail: "standard" },

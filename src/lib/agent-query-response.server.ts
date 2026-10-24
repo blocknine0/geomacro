@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { AgentQueryPlan } from "./agent-query-plan";
 import type {QualifiedSubjectEvidence} from "./agent-query-qualified-evidence.server";
+import { isStructuralStoreProduct } from "./store-product-selection";
+import { storeProductRows } from "./store-product-evidence.server";
 import { demoPolicyFromPreset } from "./agentic-demo-contract";
 import { loadCommercialRiskObjectForAgentQuery } from "./agent-query-external-modules.server";
 import { loadAgentHotTopics } from "./agent-query-hot-topics.server";
@@ -99,24 +101,33 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
   });
   const structuralModules = plan.required_modules.filter((module) => !EXTERNAL_MODULES.has(module));
   const intelligence: Record<string, unknown> = {};
-  const limit = perModuleLimit(plan.detail);
+  const limit = plan.product?.capability.endsWith("_digest") ? 3 : perModuleLimit(plan.detail);
   const asOf = plan.as_of ?? new Date().toISOString();
   const asOfMs = Date.parse(asOf);
   const governedFallbackHashes: string[] = [];
   const governedFallbackDimensions = new Set<string>();
   const governedFallbackTimes: string[] = [];
+  const deliveredNativeTimes: string[] = [];
 
   for (const module of structuralModules) {
     // Exact country/observation identity is part of the buyer's paid plan.
     // A foreign profile row or modern coverage timestamp cannot grant local
     // freshness, even if the archive itself is well formed.
-    const nativeRows = context.observations.filter((row) =>
+    const nativeRows = isStructuralStoreProduct(plan.product)
+      ? storeProductRows(plan, context, module, asOf)
+      : context.observations.filter((row) =>
       moduleMatches(module, row.dimension) &&
       (subject.type !== "country" || row.country_iso3 === subject.country_iso3),
     );
     const observations = nativeRows
       .slice(0, limit)
       .map((row) => publicStructuralObservation(row, asOf));
+    if (isStructuralStoreProduct(plan.product)) {
+      for (const row of nativeRows.slice(0, limit)) {
+        const stamp = sourceNativeObservationTime(row, asOfMs);
+        if (stamp !== null) deliveredNativeTimes.push(new Date(stamp).toISOString());
+      }
+    }
     const coverage = context.metadata.coverage
       .filter((row) => moduleMatches(module, row.dimension) &&
         (subject.type !== "country" || row.country_iso3 === subject.country_iso3))
@@ -230,7 +241,12 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
     intelligence[module] = { observations, coverage };
   }
 
-  const allObservations = context.observations
+  const allObservations = isStructuralStoreProduct(plan.product)
+    ? Object.values(intelligence).flatMap(value => {
+        const row = value as { observations?: ReturnType<typeof publicStructuralObservation>[] };
+        return row.observations ?? [];
+      })
+    : context.observations
     .slice(0, Math.max(limit, 12))
     .map((row) => publicStructuralObservation(row, asOf));
   const stateVersionInputHash = hash({
@@ -251,9 +267,9 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
       .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
   });
   const latestObservedAt = [
-    ...allObservations
+    ...(isStructuralStoreProduct(plan.product) ? deliveredNativeTimes : allObservations
       .map((row) => row.observed_at ?? row.published_at ?? row.retrieved_at)
-      .filter((value): value is string => Boolean(value)),
+      .filter((value): value is string => Boolean(value))),
     ...governedFallbackTimes,
   ].sort().at(-1) ?? null;
   const availableDimensions = [
@@ -843,8 +859,9 @@ export async function assembleAgentQueryResponse(input: {
   const includeHotTopics = plan.required_modules.includes("hot_topics");
 
   const riskObjects: LoadedRiskObject[] = includeRiskObject
-    ? await Promise.all(plan.subjects.map(async (subject) => {
-        const object = await loadCommercialRiskObjectForAgentQuery(subject, plan.as_of ?? new Date().toISOString());
+    ? await Promise.all(plan.subjects.map(async (subject, index) => {
+        const object = input.qualifiedStructural?.subjects[index]?.riskObject ??
+          await loadCommercialRiskObjectForAgentQuery(subject, plan.as_of ?? new Date().toISOString());
         if (!object) throw new Error("SIGNED_RISK_OBJECT_NOT_DELIVERABLE");
         return { subject, object };
       }))
@@ -938,6 +955,7 @@ export async function assembleAgentQueryResponse(input: {
     client_request_id: input.clientRequestId ?? null,
     query_plan_hash: plan.query_plan_hash,
     question_interpretation: {
+      ...(plan.product ? { product: plan.product } : {}),
       normalized_question: plan.question_key,
       ...(plan.delivery_tier === "structural_baseline"
         ? { delivery_tier: "structural_baseline" as const } : {}),

@@ -1,5 +1,6 @@
 import {ZodError} from "zod";
 import {GEOMACRO_PUBLIC_API_ENDPOINTS} from "./public-api-endpoints";
+import {GEOMACRO_STORE_REQUEST_EXAMPLES} from "./store-product-examples";
 import {publicQueryOpenApiSchema,baselineOpenApiSchema,queryOpenApiBody,
  publicReadOperation,categoryReadOperation,GEOMACRO_SUPPORT_OPENAPI_PATHS,
  GEOMACRO_API_EXAMPLES} from "./public-api-openapi.server";
@@ -67,6 +68,8 @@ export function officialGeomacroAgentDiscovery(){
   protocols:["HTTPS JSON","MCP","A2A","x402-v2"],
   endpoints,
   public_endpoint_catalog:GEOMACRO_PUBLIC_API_ENDPOINTS,
+  store_product_requests:GEOMACRO_STORE_REQUEST_EXAMPLES,
+  store_request_boundary:"Product selection requests a contract; actual evidence, original clocks, source rights and prepared immutable bytes are required before any quote.",
   official_api_display_names:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,
   official_api_catalog:GEOMACRO_OFFICIAL_API_CATALOG,
   category_agents:GEOMACRO_CATEGORY_AGENT_PROFILES.map(profile=>({
@@ -175,6 +178,7 @@ export function officialGeomacroAgentOpenApi(){
     ...op("Query canonical Geomacro paid intelligence","post"),
     summary:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES.intelligence,
     requestBody:queryOpenApiBody(publicQueryOpenApiSchema(),GEOMACRO_API_EXAMPLES.query),
+    description:"Use optional product={capability,variant} for an exact Store contract. Structural products require delivery_tier=structural_baseline; full profiles require two or more dimensions. A newly qualified signed object requires a recent issued_after cutoff and an actual verified publisher output. No signer or raw source is created by this request.",
    }},
    [endpoints.geopolitics]:{get:categoryReadOperation("Geopolitics"),post:{
     ...op("Query geopolitics scoped intelligence","post"),

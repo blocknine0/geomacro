@@ -17,6 +17,7 @@ const SAFE_FALSE_FLAGS=new Set([
   "raw_data_delivered","raw_upstream_disclosed","raw_source_material_delivered",
   "raw_source_content_logged","raw_content_delivered","raw_source_delivered",
   "raw_source_material_redistributed","raw_upstream_perception_source_material_redistributed",
+  "article_text_redistributed",
   "raw_numeric_source_rows_redistributed",
 ]);
 function forbiddenRawField(key:string,child:unknown){
