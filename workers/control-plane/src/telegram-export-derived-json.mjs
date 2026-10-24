@@ -69,11 +69,20 @@ export async function writeOwnerTelegramExportJson(env,body,now=Date.now()){
        .bind(body.object_sha256).first();
    if(prior)return respond({ok:true,already_processed:true,accepted:prior.accepted_items,
      commercial_rights_verified:false,paid_delivery_enabled:false});
+   // Detect old message text fingerprints across prior exports before INSERT.
+   // Duplicate suppression must not be reported as newly admitted news.
+   const fresh=[];
+   for(const row of prepared){
+     const duplicate=await env.DB.prepare(
+       "SELECT item_id FROM telegram_export_derived_items WHERE private_text_sha256=?")
+        .bind(row.item.internal_message_fingerprint).first();
+     if(!duplicate)fresh.push(row);
+   }
    // One D1 transaction, dedupe via unique private text hash and input source.
    const batch=[env.DB.prepare(
      "INSERT INTO telegram_export_processed_objects(object_sha256,processed_at,expires_at,accepted_items) VALUES(?,?,?,?)")
-       .bind(body.object_sha256,at,expires,prepared.length)];
-   for(const r of prepared)batch.push(env.DB.prepare(
+       .bind(body.object_sha256,at,expires,fresh.length)];
+   for(const r of fresh)batch.push(env.DB.prepare(
      "INSERT OR IGNORE INTO telegram_export_derived_items(item_id,source_object_sha256,private_chat_sha256,private_text_sha256,category,country_iso3,source_native_published_at,observed_at,expires_at,projection_json) VALUES(?,?,?,?,?,?,?,?,?,?)")
       .bind(r.id,body.object_sha256,r.item.internal_chat_fingerprint,
         r.item.internal_message_fingerprint,r.item.category,r.item.country_iso3,
@@ -85,11 +94,12 @@ export async function writeOwnerTelegramExportJson(env,body,now=Date.now()){
    await env.DB.batch(batch);
    // Exact D1 readback but no post identity/data in response.
    let admitted=0;
-   for(const r of prepared){
+   for(const r of fresh){
      const found=await env.DB.prepare("SELECT projection_json FROM telegram_export_derived_items WHERE item_id=?")
         .bind(r.id).first();
      if(found&&found.projection_json===r.projection)admitted++;
    }
+   if(admitted!==fresh.length)throw Error("TELEGRAM_EXPORT_D1_READBACK_FAILED");
    return respond({ok:true,already_processed:false,accepted:admitted,
      checked:prepared.length,d1_readback_verified:true,
      raw_telegram_content_stored:false,commercial_rights_verified:false,
