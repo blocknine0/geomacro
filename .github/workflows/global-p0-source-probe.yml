@@ -12,6 +12,8 @@ on:
       - "config/global-p0-source-expansion.json"
       - "scripts/ops/observe-p0-private-source-runtime.mjs"
       - "scripts/tests/existing-source-runtime-activation.test.mjs"
+      - "scripts/lib/mofcom-ministry-2026-announcements.mjs"
+      - "scripts/tests/mofcom-ministry-2026-announcements.test.mjs"
   pull_request:
     branches: [main]
     paths:
@@ -23,6 +25,9 @@ on:
       - "scripts/test-p0-adapter-certification.mjs"
       - "scripts/test-p0-live-schema-certification.mjs"
       - "scripts/test-p0-registry-alignment.mjs"
+      - "scripts/ops/observe-p0-private-source-runtime.mjs"
+      - "scripts/lib/mofcom-ministry-2026-announcements.mjs"
+      - "scripts/tests/mofcom-ministry-2026-announcements.test.mjs"
       - "scripts/test-global-p0-source-endpoints.mjs"
       - "global-intelligence/sources/source-registry.v1.json"
       - "global-intelligence/sources/free-source-catalog.v1.json"
@@ -58,6 +63,9 @@ jobs:
         run: |
           mkdir -p artifacts
           node scripts/test-global-p0-source-endpoints.mjs > artifacts/global-p0-source-probe.json
+
+      - name: Test free official Chinese ministry reference fails closed
+        run: node --test scripts/tests/mofcom-ministry-2026-announcements.test.mjs
 
       - name: Test P0 registry alignment
         run: node scripts/test-p0-registry-alignment.mjs
@@ -96,6 +104,8 @@ jobs:
           node-version: "22"
       - name: Test bounded existing-source activation
         run: node --test scripts/tests/existing-source-runtime-activation.test.mjs
+      - name: Verify Ministry same-publisher alternate never grants commercial rights
+        run: node --test scripts/tests/mofcom-ministry-2026-announcements.test.mjs
       - name: Read all ten existing P0 sources with canonical private parsers
         run: node scripts/ops/observe-p0-private-source-runtime.mjs
       - name: Preserve source-free aggregate findings, including upstream failures

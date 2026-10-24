@@ -11,6 +11,9 @@ import {parseCochilcoAnuarioHtml} from '../../global-intelligence/adapters/cochi
 import {parseOpcwNewsHtml} from '../../global-intelligence/adapters/opcw-news.mjs';
 import {parseIcjCasesHtml} from '../../global-intelligence/adapters/icj-cases.mjs';
 import {parseIccNewsHtml} from '../../global-intelligence/adapters/icc-news.mjs';
+import {MOFCOM_MINISTRY_ANNOUNCEMENTS_2026,
+ parseMofcomMinistryMineralAnnouncementIndex}
+ from '../lib/mofcom-ministry-2026-announcements.mjs';
 
 const PARSERS=Object.freeze({uk_sanctions_list:parseUkSanctionsXml,
  eu_sanctions_consolidated:parseEuSanctionsXml,
@@ -54,14 +57,21 @@ async function boundedBody(response,maxBytes=P0_MAX_BYTES){
 export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new Date()}={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))throw Error('P0_PRIVATE_CLOCK_INVALID');
  const results=[];
+ let totalHttpRequests=0;
  for(const source of existingPrivateP0Sources()){
    const row={source_id:source.id,category:source.category,request_attempted:true,
      status:'UNAVAILABLE',reason:null,parsed_candidate_count:null,
      current_original_publication_verified:false,commercial_eligible:false};
+   let mayUseRelatedMinistryIndex=false;
    try{
+     totalHttpRequests++;
      const response=await fetchImpl(source.url,{method:'GET',redirect:'error',
        signal:AbortSignal.timeout(15000),headers:{'user-agent':'Geomacro-Private-P0-Discovery/1.0'}});
-     if(!response.ok){row.reason='HTTP_'+response.status;await response.body?.cancel();}
+     if(!response.ok){
+       row.reason='HTTP_'+response.status;
+       mayUseRelatedMinistryIndex=[500,502,503,504].includes(response.status);
+       try{await response.body?.cancel();}catch{}
+     }
      else{
        const isUkDataset=source.id==='uk_sanctions_list'&&
          source.url==='https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.xml';
@@ -94,13 +104,51 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
    }catch(error){
      const allowed=['BODY_SIZE_LIMIT','BODY_EMPTY','FORMAT_NOT_VERIFIED','PARSER_NOT_VERIFIED'];
      row.reason=allowed.includes(error?.message)?error.message:'NETWORK_OR_REDIRECT_UNAVAILABLE';
+     // Only a transport-level failure may trigger a second, *different*
+     // first-party MOFCOM surface, never denied/quota or malformed content.
+     mayUseRelatedMinistryIndex=error?.name==='AbortError' ||
+       error?.name==='TimeoutError' || error?.name==='TypeError';
+   }
+   if(source.id==='china_mofcom_trade_controls'&&
+      row.status==='UNAVAILABLE'&&mayUseRelatedMinistryIndex){
+     totalHttpRequests++;
+     row.related_ministry_index_attempted=true;
+     row.primary_endpoint_still_unavailable=true;
+     try{
+       const alternate=await fetchImpl(MOFCOM_MINISTRY_ANNOUNCEMENTS_2026,{
+         method:'GET',redirect:'error',signal:AbortSignal.timeout(12000),
+         headers:{'user-agent':'Geomacro-Private-P0-Discovery/1.0'}
+       });
+       if(!alternate.ok||alternate.redirected===true ||
+          (alternate.url&&alternate.url!==MOFCOM_MINISTRY_ANNOUNCEMENTS_2026)){
+         try{await alternate.body?.cancel();}catch{}
+         throw Error('MOFCOM_MINISTRY_ALTERNATE_NOT_VERIFIED');
+       }
+       if(!/html/iu.test(alternate.headers.get('content-type')??''))
+         throw Error('MOFCOM_MINISTRY_ALTERNATE_MIME_INVALID');
+       const bytes=await boundedBody(alternate,P0_MAX_BYTES);
+       const doc=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+       const receipt=parseMofcomMinistryMineralAnnouncementIndex(doc);
+       row.status='RELATED_MINISTRY_INDEX_REFERENCE_ONLY';
+       row.reason=null;
+       row.related_ministry_original_index_leads=
+         receipt.mineral_export_control_original_article_lead_count;
+       row.related_ministry_original_article_page_verified=false;
+       row.related_ministry_index_does_not_restore_primary=true;
+       row.current_original_publication_verified=false;
+       row.commercial_eligible=false;
+     }catch{
+       row.related_ministry_reference_unavailable=true;
+       // Keep original failure, do not leak private exception/HTML.
+     }
    }
    results.push(row);
  }
  const unavailable=results.filter(r=>r.status==='UNAVAILABLE').length;
  return {schema:'geomacro.existing-p0-private-source-runtime.v1',observed_at:now.toISOString(),
    status:unavailable?'PRIVATE_DISCOVERY_PARTIALLY_DEGRADED':'PRIVATE_DISCOVERY_OBSERVED',
-   source_count:results.length,http_requests:results.length,unavailable,
+   source_count:results.length,http_requests:totalHttpRequests,unavailable,
+   related_index_reference_is_not_primary_source_restoration:true,
    parsed_sources:results.filter(r=>r.status==='PRIVATE_CANDIDATES_PARSED').length,
    per_domain:Object.fromEntries(DOMAINS.map(d=>[d,{
      attempted:results.filter(r=>r.category===d).length,
