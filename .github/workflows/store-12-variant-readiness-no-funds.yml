@@ -1,0 +1,68 @@
+name: Store 12-Variant Live Readiness (No Funds)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-store-12-variant-no-funds
+  cancel-in-progress: true
+
+jobs:
+  read-only-census:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout current protected main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Setup pinned Bun runtime
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: No secrets, no provider access, no funds, no deployments
+        run: |
+          set -euo pipefail
+          test -z "${PAYMENT_SIGNATURE:-}"
+          test -z "${CDP_API_KEY_SECRET:-}"
+          test -z "${B2_APPLICATION_KEY:-}"
+          test -z "${SUPABASE_SERVICE_ROLE_KEY:-}"
+          grep -q 'https://geomacro.live' scripts/ops/verify-live-store-12-variant-no-funds.ts
+          grep -q '/api/x402/risk/availability' scripts/ops/verify-live-store-12-variant-no-funds.ts
+
+      - name: Audit all twelve distinct Store variants through public no-charge availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/store-readiness
+          bun scripts/ops/verify-live-store-12-variant-no-funds.ts |
+            tee artifacts/store-readiness/store-12-variant-no-funds.json
+
+      - name: Retain truthful results even when readiness is blocked
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: store-12-variant-no-funds-${{ github.run_id }}
+          path: artifacts/store-readiness/store-12-variant-no-funds.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Record strict boundary
+        if: always()
+        run: |
+          {
+            echo "## Store 12-Variant No-Funds Readiness"
+            echo "- Public availability only; no checkout or Coinbase verify/settle."
+            echo "- 12 individual Store query examples with exact approved USDC price comparison."
+            echo "- No fake signatures, no B2/D1 write, no Supabase, no secrets."
+            echo "- Red means a real live product data or payment-config blocker; it never authorizes product downgrade."
+            echo "- Even all 12 green does **not** prove immutable customer byte readback, actual payable 402, USDC settlement, reconciliation or real revenue."
+            echo "- Live provider authorization and a reconciled buyer canary require separate founder approval."
+          } >> "$GITHUB_STEP_SUMMARY"
