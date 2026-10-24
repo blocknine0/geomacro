@@ -61,7 +61,7 @@ test("bounded category classifier never invents ambiguous geography or confidenc
  text:"IND military conflict and inflation report mixed with lithium mining"}]});
  assert.equal(x.items.length,0);
  const y=run({messages:[{type:"message",date_unixtime:"1792875600",
- text:"IND USA central bank interest rate changed 4 percent"}]});
+ text:"IND USA central bank interest rate changed 4 percent"}]},new Set(["IND","USA"]));
  assert.equal(y.items[0].country_iso3,null);
  assert.equal(y.items[0].confidence,0.65);
 });
@@ -98,7 +98,7 @@ test("D1 owner export writer refuses raw/foreign data and cannot assert a verifi
  assert.equal(res.status,503);
  const bad={...good,items:[{...x.items[0],
   derived_summary:"@"+"person here is raw copied source material"}]};
- assert.throws(()=>writeOwnerTelegramExportJson(fake,bad,NOW),
+ await assert.rejects(()=>writeOwnerTelegramExportJson(fake,bad,NOW),
   /TELEGRAM_EXPORT_DERIVED_BATCH_INVALID/);
  const hidden=await privateOwnerTelegramExportJson(fake,new URLSearchParams("offset=1"),NOW);
  assert.equal(hidden.status,400);
