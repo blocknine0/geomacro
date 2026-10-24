@@ -58,9 +58,10 @@ function fakeD1(){
    },
    async batch(statements){
      for(const q of statements){
-       if(q.sql.startsWith("INSERT OR IGNORE INTO reusable_news_items")){
+       if(q.sql.startsWith("INSERT INTO reusable_news_items")){
          const [id,category,published_at,projection_json,first_seen_at]=q.args;
-         if(!news.has(id))news.set(id,{category,published_at,projection_json,first_seen_at});
+         const prior=news.get(id);
+         news.set(id,{category,published_at,projection_json,first_seen_at:prior?.first_seen_at??first_seen_at});
        }else if(q.sql.startsWith("DELETE FROM reusable_news_items WHERE published_at <")){
          for(const [id,row] of news)if(row.published_at<q.args[0])news.delete(id);
        }else if(q.sql.startsWith("INSERT INTO reusable_source_checks")){
@@ -159,4 +160,20 @@ test("bounded 25h country paging rejects arbitrary offsets",async()=>{
    const res=await publicReusableSourceNews(env,new URLSearchParams(q),now);
    assert.equal(res.status,200,q);
  }
+});
+
+test("same published news ID is safely reprojected from legacy null country into ISO3 country without duplicates",async()=>{
+ const env=fakeD1(),legacy=fixture(),upgraded=fixture({country_iso3:"IND"});
+ for(const item of [legacy,upgraded]){
+  const response=await publishReusableSourceNews(env,{
+   schema:"geomacro.reusable-source-news-batch.v1",items:[item],checks:[],
+  },now);
+  assert.equal(response.status,200,JSON.stringify(await response.clone().json()));
+  assert.equal((await response.json()).d1_readback_verified,true);
+ }
+ const scoped=await publicReusableSourceNews(env,new URLSearchParams("country=IND"),now);
+ const body=await scoped.json();
+ assert.equal(body.items.length,1);
+ assert.deepEqual(body.items[0],upgraded);
+ assert.equal(body.window_hours,25);
 });
