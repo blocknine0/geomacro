@@ -154,6 +154,23 @@ function unavailableScoredIndex(label: string): HybridAskAnswer {
 }
 
 export async function answerAskQuestion(question: string): Promise<HybridAskAnswer> {
+  // Explicit named index questions are never answered by keyword-matched
+  // news or B2 articles. First try the existing signed/verified Risk Indices
+  // reader; if unavailable or label-mismatched, give a useful, truthful
+  // category-specific unavailable answer, not a blank chat or wrong category.
+  const scopedIndex=canonicalScoredIndexQuestion(question);
+  if(scopedIndex){
+    try{
+      const matched=await answerHybridQuestion(question);
+      const text=[matched.summary,matched.what_changed,matched.geomacro_view].join(" ");
+      if(matched.insufficient_evidence===false &&
+         matched.low_confidence===false &&
+         text.includes(scopedIndex) &&
+         /verified Risk Indices package/iu.test(matched.summary))
+        return matched;
+    }catch{/* Missing B2/edge cannot become an invented current score. */}
+    return unavailableScoredIndex(scopedIndex);
+  }
   // For explicit precise official measurements, either answer with a verified
   // source period or fail closed: an indexed headline is never a numeric value.
   if (planAskOfficialNumeric(question)) {
@@ -205,8 +222,6 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
   if (!primary.insufficient_evidence) return primary;
   // An unverified general web search cannot manufacture a requested exact
   // numerical risk index. Give a category-specific unavailable answer instead.
-  const requestedIndex=canonicalScoredIndexQuestion(question);
-  if (requestedIndex) return unavailableScoredIndex(requestedIndex);
   try {
     const realtime = await realtimeSearchAnswer(question, primary);
     return realtime ?? primary;
