@@ -285,3 +285,14 @@ Re-open a source review whenever any of these change:
 This register is not a claim that every source used anywhere inside Geomacro has completed final commercial-rights diligence. Sources that remain `UNVERIFIED`, `REVIEW_REQUIRED`, restricted, experimental, research-only, or technically unvalidated must stay outside paid delivery until their specific review gate is closed.
 
 This register is an engineering commercialization control and evidence record, not a substitute for formal legal review where a source or customer contract requires one.
+
+## Owner-declared Telegram Desktop export scope, not licensed-source approval (25 Oct 2026)
+
+The new symbolic rights state `OWNER_DECLARED_TELEGRAM_DERIVED_ONLY`
+applies only to owner-supplied private public-chat Telegram Desktop JSON
+export files. It is **not** source rights `VERIFIED`, a publisher
+licence, platform permission or commercial proof. It allows preparation of
+short original derived **unverified** research only, with no raw article,
+sender, channel, message ID, media or post link in output.
+The existing source-rights evidence registry and paid product sign-off
+requirements remain unchanged. Paid flag defaults OFF.
