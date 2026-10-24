@@ -797,15 +797,17 @@ export const FIVE_MINUTE_NEWS_FASTLANE = Object.freeze([
   // EU Council: issuer-original EU Council policy and foreign affairs releases.
   // Individual third-party copyright exceptions remain excluded from reuse.
   {category:"geopolitics",id:"eu_council_press_original"},
-  // New Zealand Government Ministers: Crown-authored Beehive source, not a
-  // mirror of a newspaper and never a duplicate independent corroborator.
-  {category:"geopolitics",id:"nz_beehive_geopolitics"},
+  // Main production proved NZ Beehive returned HTML on ALL six official
+  // feed paths. Promote three previously reachable independent government/
+  // multilateral source adapters instead, preserving strict native clocks.
+  // The blocked Beehive remains in the source registry for reassessment.
+  {category:"geopolitics",id:"canada_foreign_statements"},
 
   {category:"macro",id:"fed_press"},
   {category:"macro",id:"wto_trade_original_rss"},
   {category:"macro",id:"ecb_press"},
   {category:"macro",id:"boc_press_global"},
-  {category:"macro",id:"nz_beehive_macro"},
+  {category:"macro",id:"bis_press"},
   // GOV.UK Search API is discovery only; every UK release must separately
   // resolve its originating page and Content API first_published_at.
   {category:"macro",id:"govuk_global_economy"},
@@ -813,7 +815,7 @@ export const FIVE_MINUTE_NEWS_FASTLANE = Object.freeze([
   {category:"rare_earth",id:"nrcan_releases"},
   {category:"rare_earth",id:"us_doe_news_minerals"},
   {category:"rare_earth",id:"bc_minerals_global"},
-  {category:"rare_earth",id:"nz_beehive_minerals"},
+  {category:"rare_earth",id:"uk_dbt"},
   {category:"rare_earth",id:"govuk_global_minerals"},
 ] as const);
 export const FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN=16 as const;
@@ -824,18 +826,18 @@ export const FASTLANE_MAX_PRIMARY_FEEDS_PER_RUN=16 as const;
  * Different origin families reduce the correlated-outage risk.
  */
 export const FIVE_MINUTE_NEWS_FALLBACK=Object.freeze([
-  {category:"geopolitics",id:"canada_foreign_statements"},
-  {category:"macro",id:"bis_press"},
-  {category:"rare_earth",id:"uk_dbt"},
+  {category:"geopolitics",id:"ungeneva_press_global"},
+  {category:"macro",id:"boj_press_global"},
+  {category:"rare_earth",id:"iea_minerals_global"},
 ] as const);
 export const FASTLANE_MAX_FALLBACK_READS_PER_RUN=3 as const;
 // Reuse existing original publishers, one alternative per quiet domain.
 export const FIVE_MINUTE_NEWS_FALLBACK_ROTATION=Object.freeze({
  // Existing official first-party alternatives, each distinct from EVERY
  // primary in its own category. Do not double-poll newly promoted primaries.
- geopolitics:["canada_foreign_statements","ungeneva_press_global"],
- macro:["bis_press","boj_press_global","un_news_economy"],
- rare_earth:["uk_dbt","iea_minerals_global","un_news_minerals"],
+ geopolitics:["ungeneva_press_global","uk_ofsi_sanctions"],
+ macro:["boj_press_global","un_news_economy"],
+ rare_earth:["iea_minerals_global","un_news_minerals","au_geoscience"],
 } as const);
 export function selectFiveMinuteFallback(category:keyof typeof FIVE_MINUTE_NEWS_FALLBACK_ROTATION,now:number){
  if(!Number.isFinite(now)||!Object.hasOwn(FIVE_MINUTE_NEWS_FALLBACK_ROTATION,category))
