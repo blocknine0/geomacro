@@ -5,7 +5,6 @@ import { CategoryApiLaunchPanel } from "@/components/category-api-launch-panel";
 import { ApiKeysNotice } from "@/components/api-keys-notice";
 import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
 import { ApiEndpointDirectory } from "@/components/api-endpoint-directory";
-import { NewsJsonWorkbench } from "@/components/news-json-workbench";
 const TITLE = "API & Agents | Geomacro";
 const DESCRIPTION =
   "Structured geopolitical, Macro/FX and critical-minerals intelligence for applications and AI agents. API keys coming soon.";
@@ -39,7 +38,6 @@ function DataApiPage() {
           Structured answers across Geopolitics, Macro / FX and Critical Minerals.
         </p>
       </header>
-      <div className="mt-9"><NewsJsonWorkbench /></div>
       <div className="mt-8">
         <ApiKeysNotice />
       </div>
