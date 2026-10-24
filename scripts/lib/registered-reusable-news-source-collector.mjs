@@ -156,6 +156,7 @@ export async function collectRegisteredReusableNews({
     }
     const activeCategories=s.categories;
     let candidates=0;
+    const domainCandidates=Object.fromEntries(activeCategories.map(c=>[c,0]));
     for(const item of blocks??[]){
       const at=originalClock(item.native,now.getTime());
       if(!at)continue;
@@ -171,7 +172,7 @@ export async function collectRegisteredReusableNews({
           throw Error("REUSABLE_NEWS_NORMALIZER_UNSAFE");
         const id=hex([s.id,category,at,item.title].join("\n"));
         const safe={...normalized,id:"news-"+id};
-        if(!seen.has(id)){seen.add(id);items.push(safe);candidates++}
+        if(!seen.has(id)){seen.add(id);items.push(safe);candidates++;domainCandidates[category]++}
         if(items.length>=40)break;
       }
       if(items.length>=40)break;
@@ -179,7 +180,8 @@ export async function collectRegisteredReusableNews({
     if(state==="OBSERVED"&&candidates===0)state="EMPTY_OR_OUTSIDE_WINDOW";
     for(const category of activeCategories)
       checks.push({source_ref:hex([s.id,s.url,category].join("\n")),
-        category,state,checked_at:now.toISOString()});
+        category,state:state==="OBSERVED"&&!domainCandidates[category]?
+          "EMPTY_OR_OUTSIDE_WINDOW":state,checked_at:now.toISOString()});
     if(items.length>=40)break;
   }
   return {
