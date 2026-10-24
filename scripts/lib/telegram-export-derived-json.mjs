@@ -58,6 +58,9 @@ function explicitNumbers(s){
  * Publisher country is NEVER inferred from sender, chat name or IP.
  */
 export function exactTelegramExportCountry(text,countryCodes,registry=[]){
+ const normalize=x=>String(x).normalize("NFKC").toLocaleLowerCase("en")
+   .replace(/[^\p{L}\p{N}]+/gu," ").replace(/\s+/gu," ").trim();
+ const normalized=" "+normalize(text)+" ";
  const labels=new Set();
  for(const code of new Set(text.match(/\b[A-Z]{3}\b/gu)??[]))
    if(countryCodes.has(code))labels.add(code);
@@ -66,7 +69,15 @@ export function exactTelegramExportCountry(text,countryCodes,registry=[]){
    const names=[row.name,...(row.aliases??[])];
    for(const name of names){
      if(typeof name!=="string"||name.length<4)continue;
-     const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,"\\function classify(s){");
+     const needle=normalize(name);
+     if(needle&&normalized.includes(" "+needle+" ")){
+       labels.add(row.iso3);break;
+     }
+   }
+ }
+ return labels.size===1?[...labels][0]:null;
+}
+function classify(s){");
      const re=new RegExp("(?<![\\p{L}\\p{N}])"+escaped+"(?![\\p{L}\\p{N}])","iu");
      if(re.test(text)){labels.add(row.iso3);break}
    }
