@@ -33,8 +33,8 @@ test("a real native RSS item becomes private unverified factual JSON; API 200 is
  const result=await collectPrivateUnverifiedOsint({now,registry,normalize,resolveCountry:()=>null,
   fetchImpl:async(url,init)=>{
    calls.push({url,init});
-   if(url.includes("denied"))return new Response("",{status:403});
-   return new Response(url.includes("press")?rss:"<html>API docs only</html>",{status:200});
+   if(new URL(url).hostname==="denied.example.gov")return new Response("",{status:403});
+   return new Response(new URL(url).hostname==="press.example.gov"?rss:"<html>API docs only</html>",{status:200});
   }});
  assert.equal(calls.length,3);
  assert.ok(calls.every(c=>c.init.method==="GET"&&c.init.redirect==="manual"&&
@@ -48,9 +48,9 @@ test("a real native RSS item becomes private unverified factual JSON; API 200 is
  assert.equal(result.summary.source_verified_active,false);
  assert.equal(result.summary.public_published,false);
  assert.equal(result.items[0].country_iso3,null);
- assert.ok(!JSON.stringify(result).includes("secret.example.gov"));
+ assert.equal(result.items[0].source.original_url,null);
  assert.ok(!JSON.stringify(result).includes("India central bank announces"));
- assert.ok(!JSON.stringify(result).includes("api.example.gov"));
+ assert.ok(result.checks.every(c=>!Object.hasOwn(c,"url")&&!Object.hasOwn(c,"body")));
 });
 test("disallowed or invented unverified registry rows fail closed",()=>{
  const row={id:"example",category:"macro",access:"rss",endpoint:"https://public.example.org/feed",
