@@ -10,7 +10,7 @@
 export const DERIVED_NEWS_TOPIC_POLICY_REVISION = 2;
 
 const DOMAIN_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
-const PROSE_URL_OR_DOMAIN_PATH = /(?:https?:\/\/|www\.|[a-z0-9_-]{4,}\.(?:com|org|gov|net)\/)/iu;
+const PROSE_URL_OR_DOMAIN_PATH = /(?:https?:\/\/|www\.|(?:[a-z0-9-]+\.)+[a-z]{2,63}\/)/iu;
 const AGGREGATOR_SUFFIX = " (aggregator; original publisher not verified)";
 
 export function isSafeMonitoredFeedCredit(value) {
