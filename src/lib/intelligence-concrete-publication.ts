@@ -10,7 +10,7 @@ import {intelligenceActorHeadline,intelligenceActorIsKnown,intelligenceActorChan
  * free card. Missing credit is not itself a grant of commercial re-use.
  */
 const GENERIC=/\b(?:publisher candidate|source.feed observation|unverified|not specified|not established|unclassified|an official publisher|feed contains a dated item|original release concerns|publication concerns|monitoring topic)\b/iu;
-const TOPIC_SENSITIVE=/\b(?:alleged|allegation|reported|announced|urged|warned|proposed|planned|rejected|approved|agreed|cut|raised|increased)\b/iu;
+const TOPIC_SENSITIVE=/\b(?:alleged|allegation|reported|announced|urged|warned|proposed|planned|rejected|approved|agreed|cut|raised|increased|signed|supported|supports|launched|issued|imposed|introduced|lowered|reduced|published|opened|unveiled|denied)\b/iu;
 export function isConcretePublicIntelligence(s:StatelessIntelligenceSignal):boolean{
  if(!s||s.status!=="official_release_observed_unscored"||
     !["geopolitics","macro","rare_earth"].includes(s.category)||
