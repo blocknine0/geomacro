@@ -20,11 +20,11 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).not.toContain("fetchDirectDerivedNews()");
     expect(desk).toContain("JOURNAL_REFRESH_MS = 2 * 60_000");
     expect(desk).not.toContain('aria-label="Filter Intelligence by country"');
-    expect(desk).toContain("No findings match this category, search and publication window.");
+    expect(desk).toContain("No eligible concrete news matches this category, search and publication window.");
     expect(desk).toContain("fallback findings may be incomplete");
     expect(desk).toContain("initialJournal = []");
     expect(desk).toContain("Previously received in-tab findings may be out of date");
-    expect(desk).toContain("https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-html");
+    expect(desk).not.toContain("website-derived-news-html");
     // Underlying requests can settle after the UI timed out; no mutation
     // to upstream source clocks, credits, public scores, or private storage.
     expect(desk).not.toContain("localStorage");
