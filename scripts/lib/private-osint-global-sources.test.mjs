@@ -104,3 +104,36 @@ test("uploaded India PIB official RSS feeds join only the private OSINT discover
  assert.equal(r.summary.confidential_private_osint_only,true);
  assert.equal(r.summary.independent_verification_required_for_ingestion,false);
 });
+
+test("new macro/FX and critical-metals feeds are private only and deduplicated",async()=>{
+ const config=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-macro-minerals-additions.v1.json",import.meta.url)));
+ const sources=privateOsintGlobalSources();
+ assert.equal(config.sources.length,7);
+ assert.equal(config.scope,"PROTECTED_INTERNAL_OSINT_ONLY");
+ assert.ok(config.sources.every(s=>!s.commercial_eligible&&!s.provider_rights_verified&&
+  !s.access_verified_in_production&&!s.publicly_deliverable));
+ for(const s of config.sources){
+  const matching=sources.filter(x=>x.url===s.url);
+  assert.equal(matching.length,1,s.id);
+  assert.deepEqual(matching[0].categories,s.categories);
+  assert.equal(matching[0].transport_verified_at_registration,false);
+ }
+ assert.ok(sources.length<=512);
+ const selected=sources.filter(x=>
+  ["private_repo8_can_boc_release","private_repo8_uk_lme_metals"].includes(x.id));
+ const feed=title=>'<rss><channel><item><title>'+title+
+  '</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
+ const testBatch=await collectPrivateOsint15m({now,normalize,resolveCountry:()=>null,
+  registry:selected,fetchImpl:async url=>new Response(feed(url.includes("bankofcanada")?
+   "Bank of Canada announces new monetary policy exchange rate decision":
+   "London Metal Exchange reports copper and nickel minerals supply change"))});
+ assert.equal(testBatch.items.length,2);
+ assert.equal(testBatch.summary.selected_items_by_category.macro,1);
+ assert.equal(testBatch.summary.selected_items_by_category.rare_earth,1);
+ assert.ok(testBatch.items.every(x=>x.usage_rights.commercial_reuse_authorized===false));
+ const denied=await collectPrivateOsint15m({now,normalize,resolveCountry:()=>null,
+  registry:selected,fetchImpl:async()=>new Response("",{status:403})});
+ assert.equal(denied.items.length,0);
+ assert.equal(denied.summary.working_source_endpoints,0);
+});
