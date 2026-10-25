@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  checkedDerivedNews, fetchDirectDerivedNews, GEOMACRO_DERIVED_JOURNAL_URL,
+  checkedDerivedNews, fetchDirectDerivedNews, fetchAllDerivedNews, GEOMACRO_DERIVED_JOURNAL_URL,
 } from "@/lib/public-derived-news-client";
 
 const NOW=Date.parse("2026-10-12T20:00:00.000Z");
@@ -116,6 +116,27 @@ describe("browser public journal fallback",()=>{
     await expect(fetchDirectDerivedNews(forbidden as typeof fetch,NOW))
       .rejects.toThrow("DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
     expect(forbiddenCalls).toBe(1);
+  });
+
+  it("bypasses edge cache for exact publisher readback and rejects a stale fallback",async()=>{
+    const now=Date.now();
+    const row={...signal,published_at:new Date(now-1000).toISOString()};
+    const freshPage={...doc([row]),checked_at:new Date(now).toISOString(),
+      page_offset:0,page_size:250,has_more:false,next_offset:null};
+    const fresh=vi.fn(async(_url:RequestInfo|URL,init?:RequestInit)=>{
+      expect(new Headers(init?.headers).get("cache-control")).toBe("no-cache");
+      return new Response(JSON.stringify(freshPage),{status:200,
+        headers:{"content-type":"application/json"}});
+    });
+    expect(await fetchAllDerivedNews(fresh as typeof fetch,now)).toEqual([row]);
+    expect(fresh).toHaveBeenCalledOnce();
+
+    const stalePage={...freshPage,checked_at:new Date(Date.now()-60_000).toISOString()};
+    const stale=vi.fn(async()=>new Response(JSON.stringify(stalePage),{status:200,
+      headers:{"content-type":"application/json"}}));
+    await expect(fetchAllDerivedNews(stale as typeof fetch,Date.now()))
+      .rejects.toThrow("DERIVED_NEWS_PAGE_STALE_READBACK");
+    expect(stale).toHaveBeenCalledOnce();
   });
 
   it("rejects source metadata and unknown fields even without a source URL",()=>{

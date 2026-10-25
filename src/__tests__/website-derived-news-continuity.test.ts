@@ -112,12 +112,23 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const {data,env}=db();
     const response=await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[osint]},NOW);
     expect(response.status).toBe(200);
-    const doc=await (await readDerivedStories(env,NOW)).json();
+    const feedResponse=await readDerivedStories(env,NOW);
+    expect(feedResponse.headers.get("Cache-Control"))
+      .toBe("public, max-age=60, stale-while-revalidate=300, stale-if-error=900");
+    const doc=await feedResponse.json();
     expect(doc.signals).toHaveLength(1);
     expect(doc.signals[0].sources_credited).toEqual(["Monitored feed: www.bankofcanada.ca"]);
     expect(data.size).toBe(1);
     const route=readFileSync("workers/control-plane/src/index.mjs","utf8");
     expect(route).toContain("derived_news_topic_policy_revision: DERIVED_NEWS_TOPIC_POLICY_REVISION");
+  });
+
+  it("indexes the independent first-seen clock used by bounded retention cleanup",()=>{
+    const migration=readFileSync(
+      "workers/control-plane/migrations/0030_website_derived_first_seen_index.sql","utf8");
+    expect(migration).toContain(
+      "CREATE INDEX IF NOT EXISTS idx_website_derived_intelligence_first_seen");
+    expect(migration).toContain("ON website_derived_intelligence (first_seen_at DESC)");
   });
 
   it("keeps a single empty batch as the only retention sweep and updates changed prose",async()=>{

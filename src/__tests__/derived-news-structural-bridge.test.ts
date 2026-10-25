@@ -23,7 +23,7 @@ const story=(index:number):StatelessIntelligenceSignal=>{
     status:"official_release_observed_unscored",same_event_corrob_verified:false,severity:null};
 };
 const feed=(signals:unknown[],offset=0,has_more=false)=>({
-  ok:true,schema:"geomacro.website-derived-news-feed.v1",
+  ok:true,schema:"geomacro.website-derived-news-feed.v1",checked_at:new Date(NOW).toISOString(),
   original_release_delay_minutes:0,retention_days:3,retention_hours:72,
   delivery_scope:"free_website_only",page_offset:offset,page_size:250,
   has_more,next_offset:has_more?offset+250:null,signals,
