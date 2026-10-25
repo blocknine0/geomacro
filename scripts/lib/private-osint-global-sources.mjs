@@ -74,6 +74,49 @@ export function privateOsintGlobalSources(){
     throw Error("PRIVATE_OSINT_OFFICIAL_FEED_ALREADY_REGISTERED");
   map.set(candidate.url,candidate);
  }
+ // Pinned release feeds discovered in the requested macro/minerals repositories.
+ // They remain private candidates until each scheduled fetch proves native RSS
+ // dates; OSINT evidence never inherits commercial publication rights.
+ const macroMinerals=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-macro-minerals-additions.v1.json",import.meta.url),"utf8"));
+ const pinnedMacroMinerals=new Map([
+  ["private_repo8_us_bea_release","https://www.bea.gov/rss/news_releases.xml"],
+  ["private_repo8_us_bls_release","https://www.bls.gov/feed/news_release/rss.xml"],
+  ["private_repo8_can_boc_release","https://www.bankofcanada.ca/feeds/media-releases/"],
+  ["private_repo8_world_bank_release","https://www.worldbank.org/en/news/rss"],
+  ["private_repo8_imf_release","https://www.imf.org/en/news/rss"],
+  ["private_repo8_us_eia_energy","https://www.eia.gov/rss/todayinenergy.xml"],
+  ["private_repo8_uk_lme_metals","https://www.lme.com/News/rss"],
+ ]);
+ if(macroMinerals?.schema!=="geomacro.private-osint-macro-minerals-additions.v1"||
+    macroMinerals.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
+    !Array.isArray(macroMinerals.sources)||
+    macroMinerals.sources.length!==pinnedMacroMinerals.size)
+   throw Error("PRIVATE_MACRO_MINERALS_SOURCE_MANIFEST_INVALID");
+ const seenMacroMineralsIds=new Set();
+ for(const s of macroMinerals.sources){
+   const expectedUrl=pinnedMacroMinerals.get(s.id);
+   const u=new URL(s.url);
+   const expectedCategory=s.id==="private_repo8_uk_lme_metals"?"rare_earth":"macro";
+   const expectedContinent=s.id==="private_repo8_uk_lme_metals"?"europe":
+     ["private_repo8_world_bank_release","private_repo8_imf_release"].includes(s.id)?"global":"north_america";
+   const expectedCountry=s.id==="private_repo8_uk_lme_metals"?"GBR":
+     s.id==="private_repo8_can_boc_release"?"CAN":
+     expectedContinent==="global"?null:"USA";
+   if(!expectedUrl||expectedUrl!==s.url||seenMacroMineralsIds.has(s.id)||
+      u.protocol!=="https:"||u.username||u.password||u.port||u.hash||
+      s.type!=="rss"||s.continent!==expectedContinent||
+      s.publisher_country_iso3!==expectedCountry||
+      !Array.isArray(s.categories)||s.categories.length!==1||
+      s.categories[0]!==expectedCategory||
+      s.activation_state!=="RUNTIME_PROBE_REQUIRED"||
+      s.provider_rights_verified!==false||s.commercial_eligible!==false||
+      s.access_verified_in_production!==false||s.publicly_deliverable!==false||
+      map.has(s.url)||existing.has(s.url))
+     throw Error("PRIVATE_MACRO_MINERALS_SOURCE_SCOPE_UNSAFE_OR_DUPLICATE");
+   seenMacroMineralsIds.add(s.id);
+   map.set(s.url,{...s,supported:true,transport_verified_at_registration:false});
+ }
  // Interleave continents so an individual slow regional desk cannot put
  // another continent at the back of a large sequential registry group.
  const buckets=["global",...Object.keys(CONTINENT_COUNTRIES_195)].map(c=>[...map.values()].filter(s=>s.continent===c));
