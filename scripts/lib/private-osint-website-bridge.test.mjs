@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
 import {officialWebsiteCandidateFromOsint,unverifiedWebsiteSignalFromOsint,publishPrivateOsintWebsiteSignals}
- from "./private-osint-website-bridge.mjs";
+ ,privateWebsiteRetentionPriority,privateWebsiteRetentionNewestFirst from "./private-osint-website-bridge.mjs";
 
 const now=Date.parse("2026-10-25T12:00:00.000Z");
 const rows=[
@@ -267,4 +267,49 @@ test("genuine original releases in hours 25-72 reach website without entering pr
  assert.equal(admitted.category,"geopolitics");
  assert.equal(officialWebsiteCandidateFromOsint({...original[0],
   published_at:"2026-10-22T11:00:00.000Z"},now),null);
+});
+
+test("concrete OSINT displaces generic feed candidates without growing the 600-row D1 cap",async()=>{
+ const at=Date.parse("2026-10-25T12:00:00.000Z");
+ const candidates=Array.from({length:600},(_,n)=>({
+  id:"geopolitics-"+n.toString(16).padStart(8,"0"),
+  category:"geopolitics",status:"official_feed_candidate_unscored",
+  published_at:new Date(at-n*60000).toISOString(),
+ }));
+ const signal={id:"rare_earth-abc12345",category:"rare_earth",
+   published_at:new Date(at-36*3600000).toISOString(),
+   status:"osint_feed_observed_unverified",development_type:"unverified OSINT feed observation",
+   topic:"critical-mineral inputs",
+   what_changed:"A monitored source feed reports: Mining Ministry announced new mineral refinery plans. This report has not been independently verified.",
+   same_event_corrob_verified:false,severity:null,sources_credited:["Monitored feed: mining.example"]};
+ assert.equal(privateWebsiteRetentionPriority(signal),1);
+ assert.equal(privateWebsiteRetentionPriority(candidates[0]),0);
+ assert.equal(privateWebsiteRetentionNewestFirst(signal,candidates[0]),-1);
+ let records=candidates,posted=0;
+ const result=await publishPrivateOsintWebsiteSignals({
+  signals:[signal],now:at,controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  controlToken:"a".repeat(64),readAll:async()=>records,
+  fetchImpl:async(_url,options)=>{
+    posted++;
+    records=[...records,...JSON.parse(options.body).signals]
+      .sort(privateWebsiteRetentionNewestFirst).slice(0,600);
+    return new Response(JSON.stringify({ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",
+      accepted:1,persistent_derived_only:true,chargeable:false}),{status:200});
+  },
+ });
+ assert.equal(posted,1);
+ assert.equal(result.new_derived_stories,1);
+ assert.equal(result.deferred_unpublished,0);
+ assert.equal(records.length,600);
+ assert.ok(records.some(x=>x.id===signal.id));
+ assert.ok(!records.some(x=>x.id===candidates[candidates.length-1].id));
+});
+
+test("generic OSINT record cannot gain priority over a concrete event",()=>{
+ const actor={status:"osint_feed_observed_unverified",topic:"critical-mineral inputs",
+   what_changed:"A monitored source feed reports: The ministry announced a minerals plan."};
+ assert.equal(privateWebsiteRetentionPriority({...actor,topic:"minerals publisher candidate"}),0);
+ assert.equal(privateWebsiteRetentionPriority({...actor,what_changed:"Dated item about minerals"}),0);
+ assert.equal(privateWebsiteRetentionPriority(actor),1);
+ assert.equal(privateWebsiteRetentionPriority({status:"official_feed_candidate_unscored"}),0);
 });
