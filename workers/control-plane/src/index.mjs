@@ -1,4 +1,5 @@
 import {publicSignedNews} from './public-signed-news.mjs';
+import {handlePrivateOsint15m} from './private-osint-15m.mjs';
 import {readPrivateTelegramResearchJson} from './telegram-research-json.mjs';
 import {publicReusableSourceNews,publishReusableSourceNews} from './reusable-source-news.mjs';
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
@@ -1332,6 +1333,7 @@ export default {
 
     // Dedicated capability token: this reviewer cannot use the admin writer,
     // partner delivery or paid/hot publication routes with this credential.
+    if(url.pathname==='/v1/internal/private-osint-15m')return handlePrivateOsint15m(request,env);
     if(url.pathname==='/v1/internal/low-source-reviews')return handleLowSourceReviews(request,env);
     if(url.pathname==='/v1/internal/source-handoffs')return handlePrivateSourceHandoffs(request,env);
     const auth = authorized(request, env);
