@@ -158,6 +158,11 @@ describe("source-grounded on-demand research answer", () => {
       country_iso3: "USA", categories: ["macro"], topics: ["macro_risk"],
       query_plan_hash: "not-a-hash", pageProof: {attempted: 1, verified: 1, verified_candidates: [page()]}, now: NOW,
     }, deps)).toBeNull();
+    expect(buildSourceGroundedResearchAnswer({
+      country_iso3: "USA", categories: ["macro"], topics: ["macro_risk"],
+      question: "What is Brazil's latest inflation rate?",
+      query_plan_hash: PLAN_HASH, pageProof: {attempted: 1, verified: 1, verified_candidates: [page()]}, now: NOW,
+    }, deps)).toBeNull();
   });
 
   it("recognizes only a response explicitly marked non-chargeable and unsigned", () => {
