@@ -1,0 +1,44 @@
+{
+  "schema": "geomacro.private-osint-official-feed-additions.v1",
+  "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
+  "basis": "User-supplied geomacro_national_primary_sources.csv: ind_pib; official PIB RSS index pages",
+  "note": "Exact official feed candidates, NOT transport-approved, independently verified or commercially rights-cleared. Private 5-minute tick alone probes and marks working only after HTTP 200 plus a parsed native-dated RSS item.",
+  "sources": [
+    {
+      "id": "private_official_ind_pib_press_reg3",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3",
+      "discovery_url": "https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=3",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_official_ind_pib_press_reg1",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1",
+      "discovery_url": "https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=1",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    }
+  ]
+}
