@@ -309,6 +309,7 @@ export function officialGeomacroAgentHandlers(
    // Exact canonical request resource and canonical body; x402 402 challenge,
    // payment replay, evidence/rights, B2/D1, rate and pricing gates are
    // entirely owned by mainnetIntelligenceHandlers.POST.
+   // With no eligible fallback, this helper preserves the original canonicalPost({request:canonical}) path.
    const canonicalResponse=await callCanonicalWithSourceResearchFallback({
     request,toolName:mapped.tool,query:mapped.query,canonicalPost,
    });
