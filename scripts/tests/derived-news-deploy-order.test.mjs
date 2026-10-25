@@ -47,17 +47,21 @@ test("continuity workflow skips a same-push Worker deploy race and resumes only 
  assert.doesNotMatch(condition,/workflow_run\.conclusion == 'success'/u);
  assert.match(condition,/github\.event_name != 'push'/u);
  assert.doesNotMatch(condition,/github\.event\.head_commit/u);
- assert.match(workflow,/isSafeDerivedNewsReadbackSignal\(s\)/u);
- assert.match(workflow,/osint_feed_observed_unverified/u);
+ assert.match(workflow,/node scripts\/ops\/verify-derived-news-public-readback\.mjs/u);
+ const readback=read("scripts/ops/verify-derived-news-public-readback.mjs");
+ assert.match(readback,/isSafeDerivedNewsReadbackSignal\(signal\)/u);
+ assert.match(readback,/osint_feed_observed_unverified/u);
 });
 
 test("all readback consumers use the same policy instead of rejecting an entire record for a hostname credit",()=>{
  const b2=read("scripts/lib/derived-news-b2-readwrite-backup.mjs");
  const client=read("src/lib/public-derived-news-client.ts");
  const workflow=read(".github/workflows/website-derived-news-continuity.yml");
+ const readback=read("scripts/ops/verify-derived-news-public-readback.mjs");
  assert.match(b2,/isSafeDerivedNewsReadbackSignal\(row\)/u);
  assert.match(client,/isSafeDerivedNewsReadbackSignal\(s\)/u);
- assert.match(workflow,/isSafeDerivedNewsReadbackSignal\(s\)/u);
+ assert.match(workflow,/verify-derived-news-public-readback\.mjs/u);
+ assert.match(readback,/isSafeDerivedNewsReadbackSignal\(signal\)/u);
  assert.equal([...b2.matchAll(/isSafeDerivedNewsReadbackSignal\(row\)/gu)].length,2);
 });
 
