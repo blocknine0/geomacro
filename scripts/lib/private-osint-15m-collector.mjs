@@ -17,12 +17,13 @@ export const PRIVATE_OSINT_MAX_RESULTS_PER_TICK=768;
 const DOMAINS=["geopolitics","macro","rare_earth"];
 export async function collectPrivateOsint15m({
   now=new Date(),fetchImpl=fetch,registry=privateOsintGlobalSources(),
-  normalize,resolveCountry,concurrency=8,
+  normalize,resolveCountry,concurrency=8,onOriginalCandidate=null,
 }={}){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
      !Array.isArray(registry)||registry.length<1||
      registry.length>PRIVATE_OSINT_MAX_SOURCES||
      typeof normalize!=="function"||typeof resolveCountry!=="function"||
+     !(onOriginalCandidate===null||typeof onOriginalCandidate==="function")||
      !Number.isSafeInteger(concurrency)||concurrency<1||concurrency>8)
     throw Error("PRIVATE_OSINT_COLLECTOR_CONFIG_INVALID");
   const seenUrls=new Set();
@@ -51,7 +52,7 @@ export async function collectPrivateOsint15m({
           now,fetchImpl:privateFetch,registry:[source],perCategory:8,normalize,resolveCountry,
           networkConcurrency:1,topicPatterns:PRIVATE_OSINT_TOPICS,
           allowRdfNativeDates:true,maxFeedBytes:1024*1024,
-          deduplicateIndexItems:true,
+          deduplicateIndexItems:true,onOriginalCandidate,
         }).then(r=>{responses[index]=r}).finally(()=>{
           hosts.set(host,hosts.get(host)-1);running.delete(task);
         });
