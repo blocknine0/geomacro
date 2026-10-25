@@ -111,14 +111,25 @@ test("rejects invalid schema, stale/future originals, URL leakage and duplicate 
   }
 });
 
-test("malformed JSON is retried only within the fixed attempt budget",async()=>{
+test("malformed JSON is retried within the fixed attempt budget, then a valid response is accepted",async()=>{
   let calls=0;
-  await assert.rejects(()=>verifyDerivedNewsPublicReadback({
+  const receipt=await verifyDerivedNewsPublicReadback({
     now,maxAttempts:2,baseDelayMs:1,sleepImpl:async()=>{},
     fetchImpl:async()=>{
       calls++;
       return calls===1?new Response("{",{status:200}):ok(body([]));
     },
+  });
+  assert.equal(calls,2);
+  assert.equal(receipt.verified,true);
+  assert.equal(receipt.read_attempts,2);
+});
+
+test("repeated malformed JSON fails with a stable sanitized code after bounded retries",async()=>{
+  let calls=0;
+  await assert.rejects(()=>verifyDerivedNewsPublicReadback({
+    now,maxAttempts:2,baseDelayMs:1,sleepImpl:async()=>{},
+    fetchImpl:async()=>{calls++;return new Response("{",{status:200});},
   }),/DERIVED_NEWS_PUBLIC_READBACK_JSON_INVALID/u);
   assert.equal(calls,2);
 });
