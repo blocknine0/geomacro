@@ -181,3 +181,24 @@ test("same published news ID is safely reprojected from legacy null country into
  assert.deepEqual(body.items[0],upgraded);
  assert.equal(body.window_hours,25);
 });
+
+test("durable first-seen measures late publication once, never counts duplicate upserts as fresh",async()=>{
+ const env=fakeD1(),old=new Date(now-40*60_000).toISOString();
+ const item=fixture({source:{publisher_name:null,original_url:null,original_published_at:old}});
+ const first=await publishReusableSourceNews(env,{
+  schema:"geomacro.reusable-source-news-batch.v1",items:[item],checks:[],
+ },now);
+ assert.equal(first.status,200);
+ const firstAck=await first.json();
+ assert.equal(firstAck.first_observed_later_than_15m_count,1);
+ assert.equal(firstAck.first_observed_within_15m_count,0);
+ const repeat=await publishReusableSourceNews(env,{
+  schema:"geomacro.reusable-source-news-batch.v1",items:[item],checks:[],
+ },now+1000);
+ assert.equal(repeat.status,200);
+ const ack=await repeat.json();
+ assert.equal(ack.first_observed_later_than_15m_count,0);
+ assert.equal(ack.first_observed_within_15m_count,0);
+ assert.equal(ack.previously_observed_count,1);
+ assert.equal(ack.first_observation_is_not_independent_verification,true);
+});
