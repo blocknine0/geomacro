@@ -55,7 +55,8 @@ jobs:
              !src.includes("LEGACY_SUPABASE_DB_URL")||
              !src.includes("unreferenced_raw_originals")||
              !src.includes("unreferenced_fragment_originals")||
-             !src.includes("default_transaction_read_only=on"))
+             !src.includes("default_transaction_read_only=on")||
+             !src.includes("!u.search"))
             throw Error("OLD_PRIMARY_RETIREMENT_SAFETY_POLICY_BYPASSED");
           NODE
   read-only-source-census:
