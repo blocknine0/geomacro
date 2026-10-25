@@ -47,6 +47,10 @@ const TITLE_ENTITIES=Object.freeze({
   copy:"(c)",reg:"(r)",trade:"(tm)",euro:"EUR",pound:"GBP",yen:"JPY",
   deg:" degrees ",plusmn:"+/-",times:"x",divide:"/",sect:"section ",
 });
+const SAFE_TITLE_TAGS=new Set([
+  "a","abbr","b","blockquote","br","cite","code","dd","del","div","dl","dt",
+  "em","i","li","ol","p","q","s","small","span","strong","sub","sup","u","ul",
+]);
 function decodeTitleEntities(value) {
   return value.replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z][a-z0-9]{1,20});/giu,
     (whole,entity) => {
@@ -61,27 +65,59 @@ function decodeTitleEntities(value) {
       return Object.hasOwn(TITLE_ENTITIES,key)?TITLE_ENTITIES[key]:whole;
     });
 }
+function stripSafeTitleMarkup(value) {
+  // This is a text-only metadata parser, never a renderer. Allow a small list
+  // of harmless formatting/container elements, discard all their attributes,
+  // and reject unknown elements instead of trying to repair arbitrary markup.
+  const tags=[...value.matchAll(/<\/?([A-Za-z][A-Za-z0-9:-]*)\b[^<>]*>/gu)];
+  for(const [,qualifiedName] of tags){
+    const localName=qualifiedName.toLowerCase().split(":").at(-1);
+    if(!SAFE_TITLE_TAGS.has(localName))return null;
+  }
+  const stripped=value.replace(
+    /<\/?(?:[A-Za-z][A-Za-z0-9:-]*)\b[^<>]*>/gu,
+    (tag)=>{
+      const name=/^<\/?([A-Za-z][A-Za-z0-9:-]*)/u.exec(tag)?.[1]?.toLowerCase().split(":").at(-1);
+      return name&&SAFE_TITLE_TAGS.has(name)?" ":"";
+    },
+  );
+  // A partial/malformed or unsupported tag is not safe to guess around.
+  if(/[<>]/u.test(stripped))return null;
+  return stripped;
+}
 function privateParsedTitle(item) {
   const match=item.match(/<(?:atom:)?title\b([^>]*)>([\s\S]*?)<\/(?:atom:)?title>/iu);
   const raw=match?.[2];
   if(!match||!raw||raw.length>900)return null;
-  const type=match[1].match(/\btype\s*=\s*["']([^"']+)["']/iu)?.[1]?.toLowerCase()??"text";
-  // Atom text is XML-decoded once. Atom HTML is decoded once as XML and once
-  // as HTML, then reduced to harmless visible text. Never render or retain
-  // markup, attributes, scriptable content, or the title itself in D1/logs.
-  if(type!=="text"&&type!=="html")return null;
+  const type=match[1].match(/\btype\s*=\s*["']([^"']+)["']/iu)?.[1]?.trim().toLowerCase()??"text";
+  let mode;
+  if(type==="text"||type==="text/plain")mode="text";
+  else if(type==="html"||type==="text/html")mode="html";
+  else if(type==="xhtml"||type==="application/xhtml+xml")mode="xhtml";
+  else return null;
+
   let value=raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/giu,"$1");
-  value=decodeTitleEntities(value);
-  if(type==="html"){
+  if(mode==="text"){
     value=decodeTitleEntities(value);
-    value=value.replace(/<\/?(?:b|strong|i|em|u|span|small|sup|sub|br|p|div|ul|ol|li)\s*\/?>/giu," ");
+  }else if(mode==="html"){
+    // Atom type=html is XML-escaped HTML (sometimes CDATA-wrapped). Decode
+    // the XML layer, strip allowed markup+attributes, then decode text nodes.
+    value=decodeTitleEntities(value);
+    value=stripSafeTitleMarkup(value);
+    if(value===null)return null;
+    value=decodeTitleEntities(value);
+  }else{
+    // Atom type=xhtml carries real XHTML child elements, often a div with an
+    // xmlns attribute. Strip allowlisted elements first, then decode XML text.
+    value=stripSafeTitleMarkup(value);
+    if(value===null)return null;
+    value=decodeTitleEntities(value);
   }
   value=value.replace(/\s+/gu," ").trim();
-  // Remaining angle brackets mean unsupported/malformed markup. Reject it
-  // rather than attempt to recover visible text from an arbitrary structure.
   if(value.length<8||value.length>300||/[<>]|\p{Cc}/u.test(value))return null;
   return {hash:digest(value.toLowerCase().normalize("NFKC")),ephemeral:value};
 }
+
 export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={}) {
   if(!firstPartySource(source)||!(now instanceof Date)||
      !Number.isFinite(now.getTime())||
