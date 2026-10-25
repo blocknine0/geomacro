@@ -12,8 +12,6 @@ import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
 const domains={geopolitics:"geopolitics",macro:"macro",rare_earth:"rare_earth"};
 const accepted=new Set(["rss","api","bulk"]);
 const ref=(s,c)=>createHash("sha256").update([s.id,s.url,c].join("\n")).digest("hex");
-const QUOTA=96*1024;
-const sha=x=>createHash("sha256").update(x).digest("hex");
 const sourceFile=new URL("../../config/operator-country-source-crosswalk.v1.json",import.meta.url);
 
 export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourceFile,"utf8"))){
@@ -121,7 +119,7 @@ export async function collectPrivateUnverifiedOsint({
    original_page_independently_verified:false,
    source_verified_active:false,
    public_published:false,raw_source_stored:false,
-   15_minute_global_completeness_guaranteed:false,
+   global_15_minute_completeness_guaranteed:false,
   },
  };
 }
