@@ -43,6 +43,39 @@ describe("geopolitics 24-hour original-source recovery", () => {
       expect(selectOfficialTopic(title,"geopolitics")).toBeNull();
   });
 
+  it("recognizes broader global Macro/FX and strategic-mineral supply-chain headlines", () => {
+    for (const title of [
+      "Central bank reports a rise in FX reserves",
+      "Foreign-exchange intervention and sovereign bond yields",
+      "Balance of payments and capital flows weaken",
+      "Industrial production falls as new tariffs take effect",
+      "Rare earth export controls affect magnet production",
+      "Dysprosium and neodymium refining capacity expands",
+      "Antimony and tungsten supply-chain investment",
+      "Critical raw materials processing and battery materials",
+      "Lanthanide separation capacity and permanent magnets",
+    ]) {
+      const macro = selectOfficialTopic(title, "macro");
+      const minerals = selectOfficialTopic(title, "rare_earth");
+      expect(macro !== null || minerals !== null, title);
+    }
+    for (const title of [
+      "Rare earth export controls affect magnet production",
+      "Dysprosium and neodymium refining capacity expands",
+      "Antimony and tungsten supply-chain investment",
+      "Critical raw materials processing and battery materials",
+      "Lanthanide separation capacity and permanent magnets",
+    ]) expect(selectOfficialTopic(title, "rare_earth"), title).not.toBeNull();
+    for (const title of [
+      "Central bank reports a rise in FX reserves",
+      "Foreign-exchange intervention and sovereign bond yields",
+      "Balance of payments and capital flows weaken",
+      "Industrial production falls as new tariffs take effect",
+    ]) expect(selectOfficialTopic(title, "macro"), title).not.toBeNull();
+    expect(selectOfficialTopic("Local football club opens new stadium", "rare_earth")).toBeNull();
+    expect(selectOfficialTopic("Local football club opens new stadium", "macro")).toBeNull();
+  });
+
   it("requires correct same-article first-party UN GUID, not a redirect or spoof", () => {
     const source = makeUn("un_news_africa");
     expect(acceptedOriginalArticleLink(canonical, source)).toBe(canonical);
