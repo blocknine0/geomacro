@@ -42,10 +42,17 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-private-osint-source-attributed-intelligence-cards-20261025");
+    expect(config.lock_revision).toBe("founder-approved-unverified-source-credited-osint-news-cards-20261025");
+    const privateOsint = config.approved_unverified_private_osint_web_cards_20261025;
+    expect(privateOsint.previous_baseline_sha).toBe("440d7fa5999cf8f15b40f3793585937f17e3f1f3");
+    expect(privateOsint.approved_ui_commit).toBe(config.baseline_sha);
+    expect(privateOsint.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(privateOsint.raw_articles_not_redistributed).toBe(true);
+    expect(privateOsint.global_risk_final_lock_unmodified).toBe(true);
+    expect(privateOsint.pending_exact_sha_live_deployment_acceptance).toBe(true);
     const osintCards = config.approved_private_osint_intelligence_cards_20261025;
     expect(osintCards.previous_baseline_sha).toBe("4b51cbc84d7d94b810924efd07bf687f34e515dc");
-    expect(osintCards.approved_ui_commit).toBe(config.baseline_sha);
+    expect(osintCards.approved_ui_commit).toBe(privateOsint.previous_baseline_sha);
     expect(osintCards.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
     expect(osintCards.private_osint_source_rights_not_granted).toBe(true);
     expect(osintCards.global_risk_final_lock_unmodified).toBe(true);

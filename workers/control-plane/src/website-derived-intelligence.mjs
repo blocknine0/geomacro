@@ -64,13 +64,22 @@ export function verifyDerivedStory(s, now=Date.now()) {
       !(s.geography===null || typeof s.geography==="string"&&s.geography.length<=70) ||
       s.observed_release_count!==1 ||
       !((s.status==="official_release_observed_unscored" &&
-          !s.topic.endsWith(" publisher candidate")) ||
+          !s.topic.endsWith(" publisher candidate") &&
+          s.development_type!=="unverified OSINT feed observation" &&
+          Array.isArray(s.sources_credited) &&
+          !s.sources_credited.some(x=>typeof x==="string"&&x.startsWith("Monitored feed: "))) ||
         (s.status==="official_feed_candidate_unscored" &&
           ((s.category==="geopolitics"&&s.topic==="geopolitical publisher candidate")||
            (s.category==="macro"&&s.topic==="macro publisher candidate")||
            (s.category==="rare_earth"&&s.topic==="minerals publisher candidate")) &&
           s.development_type==="unclassified publisher update" &&
-          s.geography===null)) ||
+          s.geography===null) ||
+        (s.status==="osint_feed_observed_unverified" &&
+          s.development_type==="unverified OSINT feed observation" &&
+          s.date_precision==="exact" && s.geography===null &&
+          Array.isArray(s.sources_credited)&&s.sources_credited.length===1&&
+          typeof s.sources_credited[0]==="string"&&
+          s.sources_credited[0].startsWith("Monitored feed: "))) ||
       s.same_event_corrob_verified!==false ||
       s.severity!==null ||
       !Array.isArray(s.sources_credited) || s.sources_credited.length>2 ||
@@ -188,7 +197,7 @@ export async function renderDerivedStoriesHtml(env,now=Date.now()){
   const labels={geopolitics:"Geopolitics",macro:"Macro / FX",rare_earth:"Critical Minerals"};
   const records=body.signals.filter(s=>verifyDerivedStory(s,now)).slice(0,150);
   const stories=records.map(s=>'<article><div class="label">'+
-    (s.status==="official_feed_candidate_unscored"?"SOURCE CANDIDATE · TOPIC UNVERIFIED":"GEOMACRO FINDS")+' · '+
+    (s.status==="osint_feed_observed_unverified"?"UNVERIFIED OSINT FEED":s.status==="official_feed_candidate_unscored"?"SOURCE CANDIDATE · TOPIC UNVERIFIED":"GEOMACRO FINDS")+' · '+
     escapeHtml(labels[s.category])+' · <time>'+escapeHtml(s.published_at)+
     '</time></div><p class=label>Country or region: '+escapeHtml(s.geography??'Not specified in the release')+'</p><h2>'+escapeHtml(s.title.replace(/^Geomacro finds\s+/iu,''))+
     '</h2><section><div><strong>What changed</strong><p>'+escapeHtml(s.what_changed)+

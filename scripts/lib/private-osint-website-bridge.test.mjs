@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
-import {officialWebsiteCandidateFromOsint,publishPrivateOsintWebsiteSignals}
+import {officialWebsiteCandidateFromOsint,unverifiedWebsiteSignalFromOsint,publishPrivateOsintWebsiteSignals}
  from "./private-osint-website-bridge.mjs";
 
 const now=Date.parse("2026-10-25T12:00:00.000Z");
@@ -95,4 +95,43 @@ test("collector captures the original RSS permalink ephemerally while keeping pr
  assert.equal(observed[0].article_url,"https://press.un.org/en/2026/sc12345.doc.htm");
  assert.equal(res.items[0].source.original_url,null);
  assert.equal(officialWebsiteCandidateFromOsint(observed[0],now)?.credit,"United Nations");
+});
+
+test("unverified native-dated source-feed observations become source-identified private-safe cards across all categories",()=>{
+ const categories=["geopolitics","macro","rare_earth"];
+ for(const category of categories){
+  const row={
+   news_id:"news-"+"c".repeat(64),category,
+   source_url:"https://news.google.com/rss/search?q=energy",
+   title:category==="geopolitics"?"UN leaders discuss sanctions and security measures today":
+    category==="macro"?"Central bank reports inflation and monetary policy data":
+    "Regional mining group discusses lithium and copper mineral production",
+   published_at:"2026-10-25T11:40:00.000Z",article_url:null,
+  };
+  const signal=unverifiedWebsiteSignalFromOsint(row,now);
+  assert.ok(signal,category);
+  assert.equal(signal.status,"osint_feed_observed_unverified");
+  assert.equal(signal.category,category);
+  assert.equal(signal.severity,null);
+  assert.equal(signal.same_event_corrob_verified,false);
+  assert.equal(signal.date_precision,"exact");
+  assert.match(signal.sources_credited[0],/Monitored feed: news.google.com \(aggregator; original publisher not verified\)/u);
+  assert.ok(!JSON.stringify(signal).includes(row.title));
+  assert.ok(!JSON.stringify(signal).includes(row.source_url));
+  assert.equal(signal.geography,null);
+  assert.equal(signal.development_type,"unverified OSINT feed observation");
+  assert.equal(unverifiedWebsiteSignalFromOsint({...row,published_at:"2026-10-26T11:40:00.000Z"},now),null);
+  assert.equal(unverifiedWebsiteSignalFromOsint({...row,news_id:"news-unsafe"},now),null);
+ }
+});
+
+test("unverified source observations do not claim actor from source host",()=>{
+ const row={news_id:"news-"+"a".repeat(64),source_url:"https://example.gov/rss",category:"macro",
+  title:"A monthly central bank update reports financial conditions across regions",
+  published_at:"2026-10-25T11:40:00.000Z"};
+ const derived=unverifiedWebsiteSignalFromOsint(row,now,()=>null);
+ assert.ok(derived);
+ assert.match(derived.sources_credited[0],/Monitored feed: example.gov/u);
+ assert.match(derived.what_changed,/have not been independently verified/u);
+ assert.doesNotMatch(derived.title,/example.gov/u);
 });

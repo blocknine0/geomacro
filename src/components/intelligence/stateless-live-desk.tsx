@@ -71,6 +71,7 @@ function Story({ signal, checkedAt, saved, onSave }: {signal: StatelessIntellige
   const isActorKnown = intelligenceActorIsKnown(signal);
   const heading = isActorKnown ? intelligenceActorHeadline(signal) : signal.title.replace(/^Geomacro finds\s+/iu, "");
   const initialCandidate = signal.status === "official_feed_candidate_unscored";
+  const osintUnverified = signal.status === "osint_feed_observed_unverified";
   return (
     <article data-testid={card ? "geomacro-find-card-v1" : "geomacro-release-finding"}
       data-geomacro-story-id={signal.id}
@@ -78,7 +79,7 @@ function Story({ signal, checkedAt, saved, onSave }: {signal: StatelessIntellige
       <div className={look.bar + " h-1 w-full"} aria-hidden />
       <div className="p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/80">GEOMACRO <span className="text-muted-foreground">/ INTELLIGENCE</span></span>
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/80">GEOMACRO <span className="text-muted-foreground">{osintUnverified ? "/ OSINT DISCOVERY" : "/ INTELLIGENCE"}</span></span>
           <button type="button" onClick={onSave} aria-pressed={saved} aria-label={saved ? "Remove saved finding" : "Save finding"}
             className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
             <Bookmark className="h-3.5 w-3.5" fill={saved ? "currentColor" : "none"} aria-hidden />{saved ? "Saved" : "Save"}
@@ -90,7 +91,7 @@ function Story({ signal, checkedAt, saved, onSave }: {signal: StatelessIntellige
               signal.category === "macro" ? <TrendingUp className="h-3.5 w-3.5" aria-hidden /> : <Gem className="h-3.5 w-3.5" aria-hidden />}
             {labelFor(signal.category)}
           </span>
-          <span className="rounded-full border border-border/70 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">{initialCandidate ? "Relevance under review" : "Publisher release observed"}</span>
+          <span className="rounded-full border border-border/70 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">{osintUnverified ? "Unverified OSINT feed" : initialCandidate ? "Relevance under review" : "Publisher release observed"}</span>
         </div>
         <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{look.reading}</p>
         <h3 className="mt-2 text-xl font-semibold leading-snug tracking-tight text-foreground">{displayProse(heading)}</h3>
@@ -109,7 +110,7 @@ function Story({ signal, checkedAt, saved, onSave }: {signal: StatelessIntellige
             {card?.detail_state === "LIMITED" ? <p>Specific details not captured in this source observation.</p> : null}
             {card?.detail_state === "FULL" && card.facts.length > 0 ? <dl className="grid gap-2 sm:grid-cols-2">{card.facts.map((fact,index)=><div key={index}><dt className="text-xs">{fact.label}</dt><dd className="font-medium text-foreground">{fact.value}{fact.unit ? " " + fact.unit : ""}</dd></div>)}</dl> : null}
             {!isActorKnown ? <p>Source identity does not establish who performed the reported action.</p> : null}
-            <p>Publisher feed observation only. Original-page corroboration, independent event verification and Geomacro risk scoring are not claimed.</p>
+            <p>{osintUnverified ? "Source is a monitored feed, not necessarily the original publisher. No independent event verification, commercial reuse rights or risk score is claimed." : "Publisher feed observation only. Original-page corroboration, independent event verification and Geomacro risk scoring are not claimed."}</p>
             {signal.sources_credited.map(credit => <p key={credit}>Source attribution: {displayProse(credit)}{credit.includes("Open Government Licence") ? <> · <a href={OGL_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Licence</a></> : null}</p>)}
           </div>
         </details>

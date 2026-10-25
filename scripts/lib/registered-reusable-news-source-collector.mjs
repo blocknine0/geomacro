@@ -231,9 +231,9 @@ export async function collectRegisteredReusableNews({
              items.push(safe);candidates++;domainCandidates[category]++;
              // In-memory only. The website bridge separately validates pinned
              // original publisher links; no original content enters private D1.
-             if(onOriginalCandidate&&item.articleUrl)onOriginalCandidate({
-               source_url:s.url,category,title:item.title,
-               article_url:item.articleUrl,published_at:at,
+             if(onOriginalCandidate)onOriginalCandidate({
+               news_id:safe.id,source_url:s.url,category,title:item.title,
+               article_url:item.articleUrl??null,published_at:at,
              });
            }
           else capacitySkipped++;

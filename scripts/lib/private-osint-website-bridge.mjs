@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 /**
  * Narrow website editorial bridge for pinned FIRST-PARTY OSINT observations.
  * Original titles and permalinks exist only in the collector's process memory.
@@ -36,10 +37,78 @@ export function officialWebsiteCandidateFromOsint(row,now=Date.now()){
    sourceId:spec.id,category:row.category,credit:issuerCredit};
 }
 
+/**
+ * Safe, free website discovery projection of a private OSINT source observation.
+ * A pinned FEED hostname is the only source credit here. This is not an
+ * original-issuer identity, verified event, attribution licence or risk score.
+ * Never copy the original title, URL or original publisher bytes to public D1.
+ */
+export function unverifiedWebsiteSignalFromOsint(row,now=Date.now(),summarize=null){
+ if(!row||!Number.isFinite(now)||!CATEGORIES.has(row.category)||
+    !/^news-[0-9a-f]{64}$/u.test(row.news_id??"")||
+    typeof row.title!=="string"||row.title.length<25||row.title.length>250||
+    /[<>]|https?:\/\//iu.test(row.title)||
+    typeof row.source_url!=="string"||
+    !(summarize===null||typeof summarize==="function")||
+    typeof row.published_at!=="string"||
+    !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u.test(row.published_at))return null;
+ let url;
+ try{url=new URL(row.source_url)}catch{return null}
+ if(url.protocol!=="https:"||url.username||url.password||url.port||url.hash||
+    url.hostname.length>120||!/^[a-z0-9.-]+\.[a-z]{2,}$/u.test(url.hostname))return null;
+ const stamp=Date.parse(row.published_at);
+ if(!Number.isFinite(stamp)||stamp>now||now-stamp>AGE||
+    new Date(stamp).toISOString()!==row.published_at)return null;
+ const hints={
+   geopolitics:[
+    [/sanction|embargo|asset freeze/iu,"sanctions and trade restrictions"],
+    [/conflict|war\b|military|missile|attack|ceasefire|security|violence/iu,"geopolitical security"],
+   ],
+   macro:[
+    [/interest rate|central bank|monetary policy|policy rate|fomc/iu,"monetary policy"],
+    [/inflation|consumer prices|price index|cpi/iu,"inflation and prices"],
+    [/currency|exchange rate|foreign exchange|fx\b/iu,"FX and external balances"],
+   ],
+   rare_earth:[
+    [/rare[- ]earth|lithium|cobalt|nickel|graphite|copper|gallium|germanium/iu,"critical-mineral inputs"],
+    [/critical mineral|mining|mineral supply|refinery/iu,"rare-earth supply"],
+   ],
+ };
+ const fallbacks={
+   geopolitics:"geopolitical publisher candidate",
+   macro:"macro publisher candidate",
+   rare_earth:"minerals publisher candidate",
+ };
+ const topic=hints[row.category].find(([p])=>p.test(row.title))?.[1]??fallbacks[row.category];
+ const implications={
+   geopolitics:"A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+   macro:"A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+   rare_earth:"A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+ };
+ const credited="Monitored feed: "+url.hostname+(url.hostname==="news.google.com"?" (aggregator; original publisher not verified)":"");
+ const summary=summarize? summarize(row.title):null;
+ const known=summary&&typeof summary.headline==="string"&&summary.headline.length>=12&&
+   summary.headline.length<=145&&typeof summary.change==="string"&&summary.change.length>=30&&
+   summary.change.length<=450&&!/[<>]|https?:\/\//iu.test(summary.headline+summary.change)?summary:null;
+ const title="Geomacro finds "+(known?summary.headline:topic+" source-feed observation");
+ const changed=known?"A monitored source feed reports: "+known.change+" This report has not been independently verified.":
+   "A monitored source feed contains a dated item about "+topic+
+   ". The event actor, precise action and impact have not been independently verified.";
+ const id=row.category+"-"+createHash("sha256").update(row.news_id).digest("hex").slice(0,8);
+ return {
+   id,category:row.category,title,what_changed:changed,
+   why_it_matters:implications[row.category],topic,
+   geography:null,development_type:"unverified OSINT feed observation",
+   published_at:row.published_at,date_precision:"exact",
+   observed_release_count:1,sources_credited:[credited],
+   status:"osint_feed_observed_unverified",same_event_corrob_verified:false,severity:null,
+ };
+}
+
 export async function publishPrivateOsintWebsiteSignals({
  signals,controlPlaneRoot,controlToken,readAll,fetchImpl=fetch,now=Date.now()
 }={}){
- if(!Array.isArray(signals)||signals.length>200||
+ if(!Array.isArray(signals)||signals.length>768||
     typeof readAll!=="function"||typeof fetchImpl!=="function"||
     typeof controlPlaneRoot!=="string"||
     !/^https:\/\/geomacro-control-plane\.[a-z0-9-]+\.workers\.dev$/u.test(controlPlaneRoot)||
@@ -48,7 +117,7 @@ export async function publishPrivateOsintWebsiteSignals({
  // Source-publisher observations are not certified event facts or scored,
  // and may never be promoted to paid intelligence by this bridge.
  if(signals.some(s=>!CATEGORIES.has(s?.category)||
-    !["official_release_observed_unscored","official_feed_candidate_unscored"].includes(s.status)||
+    !["official_release_observed_unscored","official_feed_candidate_unscored","osint_feed_observed_unverified"].includes(s.status)||
     s.same_event_corrob_verified!==false||s.severity!==null||
     !Array.isArray(s.sources_credited)||s.sources_credited.length!==1||
     typeof s.sources_credited[0]!=="string"||!s.sources_credited[0].trim()||
@@ -60,10 +129,11 @@ export async function publishPrivateOsintWebsiteSignals({
  if(!Array.isArray(existing))throw Error("PRIVATE_OSINT_WEBSITE_BASELINE_INVALID");
  const ids=new Set(existing.map(s=>s.id));
  const unique=new Set();
- const pending=signals.filter(s=>{
+ const eligible=signals.filter(s=>{
    if(ids.has(s.id)||unique.has(s.id))return false;
    unique.add(s.id);return true;
  });
+ const pending=eligible.slice(0,150);
  for(let i=0;i<pending.length;i+=50){
    const batch=pending.slice(i,i+50);
    const res=await fetchImpl(controlPlaneRoot+JOURNAL,{
@@ -88,5 +158,6 @@ export async function publishPrivateOsintWebsiteSignals({
      throw Error("PRIVATE_OSINT_WEBSITE_EXACT_READBACK_FAILED");
  }
  return {candidates:signals.length,new_derived_stories:pending.length,
+   deferred_unpublished:eligible.length-pending.length,
    journal_readback_verified:true,private_raw_published:false};
 }

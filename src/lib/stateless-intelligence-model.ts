@@ -48,7 +48,7 @@ export type StatelessIntelligenceSignal = {
   date_precision: "exact" | "day";
   observed_release_count: 1;
   sources_credited: string[];
-  status: "official_release_observed_unscored" | "official_feed_candidate_unscored";
+  status: "official_release_observed_unscored" | "official_feed_candidate_unscored" | "osint_feed_observed_unverified";
   same_event_corrob_verified: false;
   severity: null;
 };
