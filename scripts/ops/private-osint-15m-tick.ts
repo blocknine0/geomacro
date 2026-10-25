@@ -77,6 +77,28 @@ const website=await publishPrivateOsintWebsiteSignals({
  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
  controlToken:control,readAll:fetchAllDerivedNews,now:Date.now(),
 });
+// Counts-only acceptance of the SAME live public journal consumed by the
+// website. A full private collection can be green while every old D1 card
+// remains ineligible for the requested concrete-only UI; do not claim zero
+// means no observed news. Never log a title, URL, issuer or event text.
+let websiteDisplayReceipt={status:"PUBLIC_D1_READ_UNAVAILABLE",total:0,
+ categories:{geopolitics:0,macro:0,rare_earth:0},eligible:0,
+ eligible_by_category:{geopolitics:0,macro:0,rare_earth:0}};
+try{
+ const retained=await fetchAllDerivedNews(fetch,Date.now());
+ const accepted=retained.filter(isConcretePublicIntelligence);
+ const summarize=(rows)=>Object.fromEntries(
+  ["geopolitics","macro","rare_earth"].map(c=>[c,rows.filter(x=>x.category===c).length]));
+ websiteDisplayReceipt={
+  status:"PUBLIC_D1_READ_VERIFIED",total:retained.length,
+  categories:summarize(retained),eligible:accepted.length,
+  eligible_by_category:summarize(accepted),
+  unverified_candidates_hidden:retained.filter(x=>
+   x.status!=="official_release_observed_unscored").length,
+  rights_or_actor_rejected:retained.filter(x=>
+   x.status==="official_release_observed_unscored"&&!isConcretePublicIntelligence(x)).length,
+ };
+}catch{/* Report unknown, not fabricated zero availability. */}
 const index=await privateGdeltGlobalDiscovery({
  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195)
 });
@@ -91,6 +113,7 @@ console.log(JSON.stringify({
  ...persisted,
  gdelt_global_index:index,
   website_editorial_bridge:website,
+  website_display_readback:websiteDisplayReceipt,
   website_release_eligibility:{
     private_first_party_original_links:originalCandidates.length,
     official_topic_selected:firstPartySignals.length,
