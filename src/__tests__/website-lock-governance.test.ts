@@ -50,10 +50,18 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-intelligence-eligibility-and-visible-credits-20261025");
+    expect(config.lock_revision).toBe("founder-approved-three-category-api-pricing-20261025");
+    const categoryPricing=config.approved_three_category_api_pricing_20261025;
+    expect(categoryPricing.previous_baseline_sha).toBe("8c9ecc7df74ac45d69dc56bbd2f6e568fd590ce6");
+    expect(categoryPricing.approved_ui_commit).toBe(config.baseline_sha);
+    expect(categoryPricing.scope).toEqual(["src/components/category-api-pricing.tsx","src/components/api-keys-notice.tsx","src/components/category-api-pricing.test.tsx","src/routes/pricing.tsx","src/routes/data-api.tsx"]);
+    expect(categoryPricing.canonical_intelligence_query_prices_unchanged).toBe(true);
+    expect(categoryPricing.three_category_aliases_share_canonical_engine).toBe(true);
+    expect(categoryPricing.no_separate_category_charge).toBe(true);
+    expect(categoryPricing.predge_free_pilot_unchanged).toBe(true);
+    expect(categoryPricing.payment_authorized).toBe(false);
     const credits=config.approved_intelligence_eligibility_and_credit_20261025;
     expect(credits.previous_baseline_sha).toBe("b4e2bb95d3c45363f88e08076db9cbfded582b08");
-    expect(credits.approved_ui_commit).toBe(config.baseline_sha);
     expect(credits.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
     expect(credits.mandatory_attribution_visible_on_concrete_cards).toBe(true);
     expect(credits.source_neutral_homepage_remains_attribution_safe).toBe(true);
