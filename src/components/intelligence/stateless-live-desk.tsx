@@ -94,6 +94,8 @@ function Story({ signal, checkedAt, saved, onSave }: {signal: StatelessIntellige
         </div>
         <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{look.reading}</p>
         <h3 className="mt-2 text-xl font-semibold leading-snug tracking-tight text-foreground">{displayProse(heading)}</h3>
+        {!isActorKnown ? <p className="mt-2 text-xs text-muted-foreground">{displayProse(intelligenceActorHeadline(signal))}</p> : null}
+        <p className="mt-2 text-xs text-muted-foreground">Country or region: {displayProse(signal.geography ?? "Not specified in the release")}</p>
         <p className="mt-4 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">What changed</p>
         <p className="mt-1 text-sm leading-relaxed text-foreground/80">{displayProse(intelligenceActorChange(signal))}</p>
         <div className="mt-5 rounded-xl border border-border/60 bg-muted/35 p-4">
