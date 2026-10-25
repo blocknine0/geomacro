@@ -54,8 +54,11 @@ test("only new derived source-credited unscored stories are written and read bac
  assert.equal(published.journal_readback_verified,true);assert.equal(calls,1);
  const second=await publishPrivateOsintWebsiteSignals(config);
  assert.equal(second.new_derived_stories,0);assert.equal(calls,1);
+ const sourcePrivate={...signal,id:"geopolitics-87654321",sources_credited:[]};
+ const federal=await publishPrivateOsintWebsiteSignals({...config,signals:[sourcePrivate]});
+ assert.equal(federal.new_derived_stories,1);
  await assert.rejects(publishPrivateOsintWebsiteSignals({...config,
-   signals:[{...signal,sources_credited:[]}] }),/BRIDGE_SIGNAL_UNSAFE/u);
+   signals:[{...signal,status:"osint_feed_observed_unverified",sources_credited:[]}] }),/BRIDGE_SIGNAL_UNSAFE/u);
  await assert.rejects(publishPrivateOsintWebsiteSignals({...config,
    signals:[{...signal,severity:42}] }),/BRIDGE_SIGNAL_UNSAFE/u);
 });
@@ -134,4 +137,27 @@ test("unverified source observations do not claim actor from source host",()=>{
  assert.match(derived.sources_credited[0],/Monitored feed: example.gov/u);
  assert.match(derived.what_changed,/have not been independently verified/u);
  assert.doesNotMatch(derived.title,/example.gov/u);
+});
+
+test("source-private U.S. federal original feed candidates are admitted only at pinned permalink path",()=>{
+ const federal=[
+  {source_url:"https://www.whitehouse.gov/presidential-actions/feed/",
+   article_url:"https://www.whitehouse.gov/presidential-actions/2026/10/adjusting-imports-of-wind-turbines-and-their-parts-and-components-into-the-united-states/",
+   category:"geopolitics",title:"White House announces adjustments to U.S. import duties"},
+  {source_url:"https://www.whitehouse.gov/briefings-statements/feed/",
+   article_url:"https://www.whitehouse.gov/briefings-statements/2026/10/president-announces-a-new-national-security-plan/",
+   category:"geopolitics",title:"U.S. President announces a new national security plan"},
+ ];
+ for(const row of federal){
+   const result=officialWebsiteCandidateFromOsint({...row,published_at:"2026-10-25T11:40:00.000Z"},now);
+   assert.ok(result,row.source_url);
+   assert.equal(result.credit,null);
+ }
+ assert.equal(officialWebsiteCandidateFromOsint({...federal[0],
+  article_url:"https://news.google.com/any",published_at:"2026-10-25T11:40:00.000Z"},now),null);
+ assert.equal(officialWebsiteCandidateFromOsint({...federal[0],
+  article_url:"https://www.whitehouse.gov/presidential-actions/2026/10/short/",
+  published_at:"2026-10-25T11:40:00.000Z"},now),null);
+ assert.equal(officialWebsiteCandidateFromOsint({...federal[0],
+  category:"rare_earth",published_at:"2026-10-25T11:40:00.000Z"},now),null);
 });
