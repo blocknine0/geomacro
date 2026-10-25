@@ -68,6 +68,9 @@ describe("Answer Question source research fallback", () => {
     expect(canonicalPost).toHaveBeenCalledTimes(2);
     const firstRequest = captured[0];
     const secondRequest = captured[1];
+    expect(firstRequest).toBeDefined();
+    expect(secondRequest).toBeDefined();
+    if (!firstRequest || !secondRequest) throw new Error("Expected both canonical requests");
     expect((await firstRequest.clone().json()).fulfillment_mode).toBe("published_only");
     expect((await secondRequest.clone().json()).fulfillment_mode).toBe("live_on_demand");
     expect(secondRequest.headers.has("payment-signature")).toBe(false);
