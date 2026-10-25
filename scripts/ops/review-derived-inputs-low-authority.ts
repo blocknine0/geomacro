@@ -107,6 +107,11 @@ export async function reviewDerivedInputs({signals,originalRefs,previousReviews=
   source_retry_cooldown_items:cooldown,source_verified_items:items.filter(e=>e.review.verdict==='SOURCE_EVIDENCE_VERIFIED').length,
   coverage};
 }
+export function safeLowAuthorityReviewFailure(error:unknown){
+ const message=error instanceof Error?error.message:'';
+ return /^[A-Z0-9_]{1,100}$/u.test(message)
+  ?message:'LOW_AUTHORITY_REVIEW_UNCLASSIFIED_FAILURE';
+}
 if(import.meta.main){
  try{
   const now=new Date(),{trust}=lowReviewerMaterial();await assertLowReviewTrust(trust);
@@ -124,5 +129,9 @@ if(import.meta.main){
    }});
   // IPC only. The parent must not upload this internal source-review result.
   process.stdout.write(JSON.stringify(result));
- }catch{process.stderr.write('LOW_AUTHORITY_SOURCE_REVIEW_UNVERIFIED\n');process.exitCode=2;}
+ }catch(error){
+  const reason=safeLowAuthorityReviewFailure(error);
+  process.stderr.write('LOW_AUTHORITY_SOURCE_REVIEW_UNVERIFIED:'+reason+'\n');
+  process.exitCode=2;
+ }
 }
