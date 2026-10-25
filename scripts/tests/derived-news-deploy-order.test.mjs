@@ -31,8 +31,8 @@ test("continuity workflow skips a same-push Worker deploy race and resumes only 
  assert.match(condition,/github\.event\.workflow_run\.head_repository\.full_name == 'blocknine0\/geomacro'/u);
  assert.match(condition,/github\.event\.workflow_run\.head_branch == 'main'/u);
  assert.doesNotMatch(condition,/workflow_run\.conclusion == 'success'/u);
- assert.match(condition,/contains\(github\.event\.head_commit\.modified, 'workers\/control-plane\/src\/website-derived-intelligence\.mjs'\)/u);
- assert.match(condition,/contains\(github\.event\.head_commit\.modified, 'workers\/control-plane\/src\/index\.mjs'\)/u);
+ assert.match(condition,/github\.event_name != 'push'/u);
+ assert.doesNotMatch(condition,/github\.event\.head_commit/u);
  assert.match(workflow,/isSafeDerivedNewsReadbackSignal\(s\)/u);
  assert.match(workflow,/osint_feed_observed_unverified/u);
 });
