@@ -36,5 +36,5 @@ console.log(JSON.stringify({
  private_news_json_persisted:proof.news_rows_verified_in_d1,
  source_states:batch.summary.source_states,
  durable_private_readback:true,commercially_verified:false,public_published:false,
- 15_minute_global_guarantee:false,raw_urls_logged:false,
+ global_15_minute_guarantee:false,raw_urls_logged:false,
 }));
