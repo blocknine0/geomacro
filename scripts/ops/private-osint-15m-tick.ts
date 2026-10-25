@@ -48,7 +48,13 @@ const result=await collectPrivateOsint15m({
   if(isKnownOfficialWebsiteFeed(raw.source_url,raw.category)||
      typeof raw.article_url!=="string"||
      !PRIVATE_OSINT_TOPICS[raw.category]?.test(raw.title))return;
-  const event=actorActionNewsObservation(raw.title);
+  // News aggregators append the republishing outlet after " - ". Remove
+  // only that terminal annotation, never expose the outlet or the original
+  // external headline in the public Geomacro report.
+  const originalTitle=raw.source_url.startsWith("https://news.google.com/")
+    ?raw.title.replace(/\\s+-\\s+[\\p{L}\\p{N}][\\p{L}\\p{N} .,'&()]{1,65}$/u,"")
+    :raw.title;
+  const event=actorActionNewsObservation(originalTitle);
   if(!event)return;
   const lane=observedByCategory.get(raw.category);
   // Collapse one original item repeated in multiple search/feed queries.
@@ -63,7 +69,7 @@ const result=await collectPrivateOsint15m({
    if(oldestDate!==null&&raw.published_at<=oldestDate)return;
    lane.delete(oldestKey);
   }
-  lane.set(identity,{...row,event});
+  lane.set(identity,{...row,title:originalTitle,event});
  },
 });
 const scanned=result.summary.source_checks;
