@@ -173,6 +173,32 @@ export function matchesRequestedTopic(title:string,category:OnDemandCategory,top
   return scoped.length===0 || scoped.some(topic=>TOPIC_TITLE_PATTERNS[topic]?.test(title));
 }
 
+const GDELT_TOPIC_QUERY_TERMS:Readonly<Record<string,readonly string[]>>={
+  sanctions_restrictions:["sanctions","embargo","export controls","trade restrictions"],
+  conflict_geopolitics:["ceasefire","conflict","war","military","airstrike","peace","security council","border clashes","missiles"],
+  political_governance:["elections","government","parliament","governance","diplomacy","foreign ministry"],
+  macro_risk:["inflation","GDP","monetary","central bank","growth","interest rates","economy","financial","PMI","manufacturing","tariffs","trade flows","industrial production","commodity prices","energy prices","employment","unemployment","wages","exports","imports"],
+  sovereign_risk:["fiscal","sovereign debt","budget deficit","bond yields","treasury yields","government borrowing","credit ratings","public debt"],
+  fx_external_risk:["foreign exchange","exchange rates","currency","FX reserves","balance of payments","current account","capital flows"],
+  critical_minerals:["critical minerals","critical raw materials","strategic minerals","rare earth","lithium","cobalt","nickel","graphite","copper","gallium","germanium","antimony","tungsten","manganese","vanadium","scandium","tantalum","niobium","neodymium","dysprosium","refining","mineral processing","permanent magnets","battery materials"],
+};
+
+/**
+ * Scope a GDELT lead query to ALL reviewed fixed topics supplied for the
+ * requested category. Do not let the first topic (e.g. sanctions) or a single
+ * FX topic silently hide other country-specific macro/critical-mineral leads.
+ * GDELT remains a discovery index; its links still need a pinned original
+ * issuer, exact native publication clock and first-party article readback.
+ */
+export function buildCountryScopedGdeltTerms(
+  category:OnDemandCategory,topics:readonly string[],
+):string {
+  const scoped=topics.filter(topic=>CATEGORY_TOPICS[category].includes(topic));
+  const terms=[...new Set(scoped.flatMap(topic=>GDELT_TOPIC_QUERY_TERMS[topic]??[]))];
+  return terms.length>0?"("+terms.join(" OR ")+")":SEARCH_TERMS[category];
+}
+
+
 /** Fixed, bounded rolling-window parser for free question-time discovery only. */
 export function inferOnDemandFreshnessSeconds(question:string|null|undefined):number|null {
   if(!question)return null;
@@ -326,13 +352,7 @@ async function gdelt(
 ): Promise<OriginalFeedResult> {
   // GDELT is a discovery INDEX. Its "seendate" is NEVER original publication
   // and third-party discovery NEVER proves independent event corroboration.
-  const scopedTerms=category==="geopolitics" && topics.includes("sanctions_restrictions")
-    ? "(sanctions OR embargo OR export controls)"
-    : category==="geopolitics" && topics.includes("conflict_geopolitics")
-      ? "(ceasefire OR conflict OR war)"
-      : category==="macro" && topics.includes("fx_external_risk")
-        ? "(foreign exchange OR exchange rate OR currency)"
-        : SEARCH_TERMS[category];
+  const scopedTerms=buildCountryScopedGdeltTerms(category,topics);
   const q = '"' + countryNameValue.replace(/"/g,"") + '" AND ' +
     (category === "rare_earth" && mineral ? '"' + mineral + '"' : scopedTerms);
   const params = new URLSearchParams({
