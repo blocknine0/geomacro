@@ -91,6 +91,16 @@ console.log(JSON.stringify({
  ...persisted,
  gdelt_global_index:index,
   website_editorial_bridge:website,
+  website_release_eligibility:{
+    private_first_party_original_links:originalCandidates.length,
+    official_topic_selected:firstPartySignals.length,
+    concrete_event_eligible:websiteSignals.length,
+    concrete_by_category:Object.fromEntries(
+      ["geopolitics","macro","rare_earth"].map(key=>
+        [key,websiteSignals.filter(row=>row.category===key).length])),
+    candidate_generic_hidden:result.items.length-websiteSignals.length,
+    required_attribution_not_removed:true,
+  },
   website_unverified_feed_candidates:0,
  private_osint_d1_persisted:true,
  private_durable_first_seen_clock_verified:true,
