@@ -461,7 +461,7 @@ export const mainnetIntelligenceHandlers = {
             sourceGroundedResearchAnswer=buildSourceGroundedResearchAnswer({
               country_iso3:subject.country_iso3,categories,topics:plan.topics,
               max_age_seconds:requestedNewsAgeSeconds,
-              query_plan_hash:plan.query_plan_hash,pageProof,
+              query_plan_hash:plan.query_plan_hash,pageProof,question:plan.question_key,
               now:new Date(privateResult.discovery.checked_at),
             });
             // No page HTML, original URL, title or publisher identity is
