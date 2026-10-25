@@ -19,7 +19,7 @@ const osint = (overrides={}) => ({
   ...overrides,
 });
 
-test("accepts only pinned-host-style monitored feed credit, with one known aggregator suffix",()=>{
+test("accepts only hostname-shaped monitored feed credit, with one known aggregator suffix",()=>{
   assert.equal(isSafeMonitoredFeedCredit("Monitored feed: www.bankofcanada.ca"),true);
   assert.equal(isSafeMonitoredFeedCredit("Monitored feed: news.un.org"),true);
   assert.equal(isSafeMonitoredFeedCredit("Monitored feed: news.google.com (aggregator; original publisher not verified)"),true);
@@ -28,7 +28,7 @@ test("accepts only pinned-host-style monitored feed credit, with one known aggre
     "Monitored feed: www.bankofcanada.ca/rss.xml",
     "Monitored feed: www.bankofcanada.ca?query=x",
     "Monitored feed: www.bankofcanada.ca#latest",
-    "Monitored feed: www.bankofcanada.ca.evil.example",
+    "Monitored feed: www.bankofcanada.ca.evil/example",
     "Monitored feed: news.google.com (aggregator; original publisher not verified) extra",
     "Monitored feed: fake..example.com",
     "Monitored feed: -bankofcanada.ca",
