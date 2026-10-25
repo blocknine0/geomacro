@@ -18,8 +18,8 @@ const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
 ];
 const displayProse = (text: string) => text.replace(/\s*\u2014\s*/gu, "; ");
 const REFRESH_MS = 2 * 60_000;
-// Three complete pages per six minutes use the same bounded mean request rate
-// as the previous single page every two minutes, without silently dropping 350 rows.
+// Refresh the public source-credited 72h journal every two minutes while the
+// Intelligence desk is visible; pagination still reads every retained page.
 const JOURNAL_REFRESH_MS = 2 * 60_000;
 const OGL_URL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
 type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
