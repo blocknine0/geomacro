@@ -70,6 +70,7 @@ jobs:
       B2_REQUEST_BUDGET: "8"
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       SUPABASE_DB_URL: ""
       SUPABASE_URL: ""
       APP_SUPABASE_URL: ""
@@ -105,6 +106,8 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::OWNER_SECRET_MISSING:CLOUDFLARE_ACCOUNT_ID"; exit 2; }
           test -n "$B2_KEY_ID" || { echo "::error::OWNER_SECRET_MISSING:B2_KEY_ID"; exit 2; }
           test -n "$B2_APPLICATION_KEY" || { echo "::error::OWNER_SECRET_MISSING:B2_APPLICATION_KEY"; exit 2; }
+          test -n "$GEOMACRO_COMMERCE_LEDGER_TOKEN" || { echo "::error::OWNER_SECRET_MISSING:GEOMACRO_COMMERCE_LEDGER_TOKEN"; exit 2; }
+          test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || { echo "::error::OWNER_SECRET_INVALID:GEOMACRO_COMMERCE_LEDGER_TOKEN"; exit 2; }
           if ! npx --yes wrangler@4.136.3 d1 list --json > /tmp/geomacro-d1-list.json 2>/tmp/geomacro-wrangler-stderr.log; then
             echo "::error::CLOUDFLARE_D1_LIST_FAILED_CHECK_TOKEN_SCOPE_AND_ACCOUNT"
             exit 2
@@ -136,6 +139,7 @@ jobs:
              r.b2?.second_independent_get_verified!==true ||
              r.b2?.sha256_match!==true ||
              r.d1?.quota_status_read_before_and_after!==true ||
+             r.d1?.authenticated_control_plane_d1_read_before_and_after!==true ||
              r.d1?.per_run_write_receipts_read_back!==true ||
              r.d1?.global_counters_advanced!==true ||
              r.supabase_requests!==0 ||
@@ -151,6 +155,7 @@ jobs:
             payload_sha256_match:r.b2.sha256_match,
             payload_bytes:r.b2.bytes,
             d1_quota_write_readback_verified:r.d1.per_run_write_receipts_read_back,
+            authenticated_control_plane_d1_readback_verified:r.d1.authenticated_control_plane_d1_read_before_and_after,
             d1_get_receipts:r.d1.get_request_receipts,
             d1_put_receipts:r.d1.put_request_receipts,
             supabase_requests:r.supabase_requests,
