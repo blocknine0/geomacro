@@ -150,8 +150,10 @@ if(process.env.GEOMACRO_LOW_SOURCE_REVIEW==='1'){
   // Recover retained exact D1 stories omitted by this poll's top-20
   // display budget. Reuse already fetched official candidates and the
   // initial authenticated journal baseline: NO extra publisher request.
+  // Reconcile against the complete bounded baseline rather than the
+  // default 250-target subset; exact source-ID/clock/payload matches still gate.
   const targets=selectBoundedRetainedOriginalTargets(
-    reports.flatMap(r=>r.signals),baseline);
+    reports.flatMap(r=>r.signals),baseline,600);
   const refs=reconcilePrivateDerivedSourceRefs(privateOriginals,targets,runAt);
   writeFileSync(path,JSON.stringify({refs:[...refs]}),{mode:0o600,flag:'wx'});
  }catch{failure=true;console.error('::error::FASTLANE_PRIVATE_HANDOFF_UNAVAILABLE');}
