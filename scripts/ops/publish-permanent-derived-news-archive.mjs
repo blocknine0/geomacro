@@ -8,7 +8,7 @@
  * pre-archive rows; subsequent runs never read it for the public website feed.
  */
 import {
-  copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync,
+  cpSync, existsSync, mkdirSync, readFileSync, writeFileSync,
 } from "node:fs";
 import {dirname, join, resolve} from "node:path";
 import {isSafeDerivedNewsReadbackSignal} from "../lib/derived-news-readback-policy.mjs";
@@ -286,12 +286,30 @@ export async function publishPermanentDerivedNewsArchive({
       {encoding:"utf8",mode:0o644});
   }
 
-  const deployNeeded=Boolean((totalSignals>0||index.seed_complete)&&
-    (added>0||seedCompleteThisRun||indexChanged||!existsSync(join(resolve(assetsDir),"index.json"))));
-  mkdirSync(resolve(assetsDir),{recursive:true});
-  if(deployNeeded){
-    cpSync(dataDir,resolve(assetsDir),{recursive:true,force:true});
+  let publishedIndexMatches=false;
+  if(totalSignals>0||index.seed_complete){
+    try{
+      const publicResponse=await fetchImpl("https://geomacro-public-finds-archive.daspallab202391.workers.dev/index.json",{
+        method:"GET",redirect:"error",cache:"no-store",headers:{Accept:"application/json"},
+        signal:AbortSignal.timeout(5_000),
+      });
+      if(publicResponse.ok){
+        const publicText=await publicResponse.text();
+        if(Buffer.byteLength(publicText)<=256_000){
+          const publicIndex=parseObject(publicText,"PERMANENT_ARCHIVE_PUBLIC_INDEX_INVALID");
+          publishedIndexMatches=publicIndex.schema===index.schema&&
+            publicIndex.updated_at===index.updated_at&&
+            publicIndex.total_signals===totalSignals&&
+            publicIndex.seed_complete===Boolean(index.seed_complete)&&
+            JSON.stringify(publicIndex.months)===JSON.stringify(months);
+        }
+      }
+    }catch{/* First deployment or a temporarily unavailable asset; deploy on the next archive run. */}
   }
+  const deployNeeded=Boolean((totalSignals>0||index.seed_complete)&&!publishedIndexMatches&&
+    (added>0||seedCompleteThisRun||indexChanged||!publishedIndexMatches));
+  mkdirSync(resolve(assetsDir),{recursive:true});
+  if(deployNeeded)cpSync(dataDir,resolve(assetsDir),{recursive:true,force:true});
   const result={
     schema:"geomacro.permanent-derived-news-archive-publish.v1",
     deploy_needed:deployNeeded,
