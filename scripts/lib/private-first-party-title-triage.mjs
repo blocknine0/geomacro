@@ -21,6 +21,10 @@ const TOPICS=Object.freeze({
   rare_earth:Object.freeze([
     ["CRITICAL_MINERAL",/\b(?:critical minerals?|rare earths?|lithium|cobalt|nickel|graphite|gallium|germanium|neodymium|dysprosium)\b/iu],
     ["MATERIAL_SUPPLY",/\b(?:mineral (?:supply|production|processing)|rare earth processing|copper mining|uranium mine|battery minerals?)\b/iu],
+    // The undated first-party feed review lane must recognize the policy and
+    // industrial vocabulary used by mining/mineral ministries, not just named
+    // elements. This remains an ephemeral query hint; it is not a news verdict.
+    ["STRATEGIC_RAW_MATERIALS",/\b(?:critical raw materials|strategic raw materials|raw materials (?:act|strategy|policy|supply)|mineral (?:strategy|policy|reserves?|projects?|exploration|extraction|processing|refining|permits?|licen[cs]es?)|rare earth (?:magnet|separation|refining|processing)|battery (?:materials?|metals?|supply chain)|mineral supply chain|mineral value chain|ore processing|smelting|refining capacity|mining permit|exploration licen[cs]e|geological survey|mineral deposit)\b/iu],
   ]),
 });
 const MAX_TITLE=300;
