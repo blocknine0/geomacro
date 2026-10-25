@@ -7,9 +7,22 @@ import {createHash} from "node:crypto";
  */
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl} from "./global-official-release-feeds.mjs";
 
-const OFFICIAL=new Map(GLOBAL_OFFICIAL_RELEASE_FEEDS.filter(s=>
- ["rss","atom","rdf","xml"].includes(s.format) && typeof s.credit==="string" &&
- s.credit.length>0).map(s=>[s.url,s]));
+// Fixed first-party U.S. federal RSS paths already accepted by the private
+// production source inventory. Government-authored facts (not third-party
+// media or full articles) may be converted to our own source-private cards.
+const FEDERAL_FEEDS=[
+ {id:"white_house_presidential_actions",url:"https://www.whitehouse.gov/presidential-actions/feed/",
+  category:"geopolitics",format:"rss",host:"www.whitehouse.gov",
+  path:/^\\/presidential-actions\\/20\\d{2}\\/(?:0[1-9]|1[0-2])\\/[a-z0-9-]{8,380}\\/$/u,
+  credit:null},
+ {id:"white_house_statements",url:"https://www.whitehouse.gov/briefings-statements/feed/",
+  category:"geopolitics",format:"rss",host:"www.whitehouse.gov",
+  path:/^\\/briefings-statements\\/20\\d{2}\\/(?:0[1-9]|1[0-2])\\/[a-z0-9-]{8,380}\\/$/u,
+  credit:null},
+];
+const OFFICIAL=new Map([...GLOBAL_OFFICIAL_RELEASE_FEEDS,...FEDERAL_FEEDS]
+ .filter(s=>["rss","atom","rdf","xml"].includes(s.format))
+ .map(s=>[s.category+"|"+s.url,s]));
 const AGE=25*3600000;
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const JOURNAL="/v1/website-derived-news";
@@ -21,7 +34,7 @@ export function officialWebsiteCandidateFromOsint(row,now=Date.now()){
     typeof row.published_at!=="string"||
     !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u.test(row.published_at))
    return null;
- const spec=OFFICIAL.get(row.source_url);
+ const spec=OFFICIAL.get(row.category+"|"+row.source_url);
  if(!spec||spec.category!==row.category)return null;
  const time=Date.parse(row.published_at);
  if(!Number.isFinite(time)||time>now||now-time>AGE||
@@ -30,7 +43,7 @@ export function officialWebsiteCandidateFromOsint(row,now=Date.now()){
  if(!articleUrl)return null;
  // The official feed identifies the issuer; it does NOT establish an event
  // actor, independent original-page byte proof, or commercial data rights.
- const issuerCredit=spec.id.startsWith("govuk_")?
+ const issuerCredit=spec.credit===null?null:spec.id.startsWith("govuk_")?
    "UK Government. "+spec.credit:spec.id==="eu_council_press_original"?
    "Council of the European Union. "+spec.credit:spec.credit;
  return {title:row.title,articleUrl,publishedAt:row.published_at,
@@ -119,8 +132,10 @@ export async function publishPrivateOsintWebsiteSignals({
  if(signals.some(s=>!CATEGORIES.has(s?.category)||
     !["official_release_observed_unscored","official_feed_candidate_unscored","osint_feed_observed_unverified"].includes(s.status)||
     s.same_event_corrob_verified!==false||s.severity!==null||
-    !Array.isArray(s.sources_credited)||s.sources_credited.length!==1||
-    typeof s.sources_credited[0]!=="string"||!s.sources_credited[0].trim()||
+    !Array.isArray(s.sources_credited)||s.sources_credited.length>1||
+    (s.sources_credited.length===0&&s.status!=="official_release_observed_unscored")||
+    (s.sources_credited.length===1&&
+      (typeof s.sources_credited[0]!=="string"||!s.sources_credited[0].trim()))||
     JSON.stringify(s).includes("https://")))
    throw Error("PRIVATE_OSINT_WEBSITE_BRIDGE_SIGNAL_UNSAFE");
  if(signals.length===0)return {candidates:0,new_derived_stories:0,
