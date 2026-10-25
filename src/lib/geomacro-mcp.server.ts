@@ -432,7 +432,7 @@ async function callPaidTool(
     // non-chargeable result. It is not a signed or commercially admitted product.
     const researchOnly = isSourceGroundedResearchAnswer(payload);
     const resultPayload = researchOnly
-      ? {...(payload as Record<string, unknown>), ok: true, delivery_status: "RESEARCH_ONLY"}
+      ? {...(payload as Record<string, unknown>), error: undefined, ok: true, delivery_status: "RESEARCH_ONLY", research_only_reason: "Independent same-event corroboration, commercial rights and signing remain unverified."}
       : payload;
     return responseWithCanonicalHeaders(
       toolResult(id, resultPayload, !researchOnly),
