@@ -15,6 +15,7 @@ function simulate(){
    return Response.json({schema:"geomacro.private-osint-15m-write-receipt.v1",
     ok:true,persisted:b.items.length,capacity_excluded:0,checks_saved:b.checks.length,
     d1_exact_readback_verified:true,
+    existence_and_readback_bundled:true,d1_queries_this_write:3,
     native_feed_to_first_durable_write_within_15m:b.items.length,
     native_feed_to_first_durable_write_over_15m:0,
     independent_verification_required_for_ingestion:false,
@@ -40,6 +41,8 @@ test("all batches are protected; independent private reader verifies durable rec
  assert.equal(result.source_checks_persisted,1);
  assert.equal(result.d1_write_exact_readback_verified,true);
  assert.equal(result.private_three_category_bundle_readback_verified,true);
+ assert.equal(result.private_d1_writer_reads_bundled_verified,true);
+ assert.equal(result.d1_queries_for_write_batches,3);
  assert.ok(calls[1].url.endsWith('?view=bundle'));
  assert.equal(result.original_page_independently_verified,false);
  assert.equal(result.independent_verification_required_for_ingestion,false);
