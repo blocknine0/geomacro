@@ -18,10 +18,13 @@ on:
       - "scripts/lib/private-osint-15m-collector.mjs"
       - "scripts/lib/private-osint-15m-collector.test.mjs"
       - "scripts/lib/private-osint-15m-durable-publisher.mjs"
+      - "scripts/lib/private-osint-website-bridge.mjs"
+      - "scripts/lib/private-osint-website-bridge.test.mjs"
       - "workers/control-plane/src/private-osint-15m.mjs"
       - "workers/control-plane/migrations/0028_private_osint_15m_durable.sql"
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
+      - "src/components/intelligence/stateless-live-desk.tsx"
       - "scripts/lib/country-news-mentions-195.mjs"
       - "scripts/lib/private-osint-global-sources.mjs"
       - "scripts/lib/private-osint-global-sources.test.mjs"
@@ -78,6 +81,8 @@ jobs:
           set -euo pipefail
           node --check scripts/lib/private-osint-15m-collector.mjs
           node --check scripts/lib/private-osint-15m-durable-publisher.mjs
+          node --check scripts/lib/private-osint-website-bridge.mjs
+          node --test scripts/lib/private-osint-website-bridge.test.mjs
           node --check workers/control-plane/src/private-osint-15m.mjs
           node --test scripts/lib/private-osint-15m-collector.test.mjs
           node --test scripts/lib/private-osint-15m-durable-publisher.test.mjs
@@ -108,7 +113,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
-      - name: Read live sources and verify protected durable D1 write/readback (no public post)
+      - name: Read sources, verify private D1, publish safe sourced news to website journal
         env:
           GEOMACRO_OSINT_RESEARCH_PRIVATE_ONLY: "1"
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
