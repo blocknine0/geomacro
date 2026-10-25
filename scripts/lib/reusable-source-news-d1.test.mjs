@@ -34,7 +34,7 @@ function fakeD1(){
      const statement={
        bind(...input){args=input;statement.args=input;return statement},
        async first(){if(sql.includes("FROM reusable_news_items WHERE item_id")){
-         const found=news.get(args[0]);return found?{projection_json:found.projection_json}:null;
+         const found=news.get(args[0]);return found?{projection_json:found.projection_json,first_seen_at:found.first_seen_at}:null;
        }return null},
        async all(){
          if(sql.includes("FROM reusable_source_checks")){
@@ -83,6 +83,10 @@ test("trusted writer persists only factual fields and readback verifies D1",asyn
  const ack=await result.json();
  assert.equal(ack.d1_readback_verified,true);
  assert.equal(ack.raw_upstream_stored,false);
+ assert.equal(ack.first_observed_within_15m_count,1);
+ assert.equal(ack.first_observed_later_than_15m_count,0);
+ assert.equal(ack.previously_observed_count,0);
+ assert.equal(ack.first_observation_is_not_independent_verification,true);
  const get=await publicReusableSourceNews(env,new URLSearchParams(),now);
  const doc=await get.json();
  assert.equal(doc.items.length,1);
