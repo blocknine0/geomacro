@@ -108,7 +108,11 @@ jobs:
           node --check scripts/ops/verify-production-observed-195x3.mjs
           node --test scripts/tests/verify-production-observed-195x3.test.mjs
           node --check scripts/lib/derived-news-b2-readwrite-backup.mjs
+          node --check scripts/lib/derived-news-readback-policy.mjs
           node --check scripts/ops/archive-live-derived-news-to-b2.mjs
+          node --test scripts/tests/derived-news-readback-policy.test.mjs
+          node --test scripts/tests/derived-news-worker-policy.test.mjs
+          node --test scripts/tests/derived-news-deploy-order.test.mjs
           node --test scripts/tests/derived-news-b2-readwrite-backup.test.mjs
 
   refresh-derived-news:
