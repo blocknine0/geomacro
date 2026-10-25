@@ -108,5 +108,6 @@ test('explicit Macro, FX and resource-release verbs remain event-specific and un
   'GDP rises 3.1% on strong consumer spending',
   'Bank of Canada releases <script>bad</script>',
   'Federal Reserve may maintain interest rates',
+  'Delamerian project reveals new mineral and groundwater insights beneath south-eastern Australia',
  ])assert.equal(render(title),null,title);
 });
