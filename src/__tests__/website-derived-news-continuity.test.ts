@@ -152,7 +152,8 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(text).not.toContain("<script");
     expect(text).not.toContain("risk score");
     const locked=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
-    expect(locked).toContain("website-derived-news-html");
+    expect(locked).not.toContain("website-derived-news-html");
+    expect(locked).toContain("isConcretePublicIntelligence");
     expect(locked).toContain("allSignals.length === 0");
   });
   it("backfills across rolling 72 hours by verified original Content API first_published_at, never search update clock",()=>{
@@ -184,7 +185,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(route).toContain('initialJournal={loader.journal}');
     expect(desk).toContain("useState<StatelessIntelligenceSignal[]>(() => initialJournal)");
     expect(desk).toContain("allSignals.length === 0");
-    expect(desk).toContain("Reading the 72-hour stored derived-news journal below");
+    expect(desk).toContain("Checking for concrete news developments");
   });
   it("allows conservative day-only release only after its complete embargo",()=>{
     const day={...sample("rare_earth","2026-10-09"),date_precision:"day",
@@ -272,7 +273,8 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(ui).toContain("getWebsiteDerivedNews()");
     expect(ui).toContain('const merged = new Map<string, StatelessIntelligenceSignal>()');
     // Presentation copy is locked to the approved published website baseline until separately published.
-    expect(ui).toContain("Dates describe the original publication, not the last refresh");
+    expect(ui).toContain("isConcretePublicIntelligence");
+    expect(ui).not.toContain("SOURCE / PUBLISHER");
     for(const forbidden of ["https://supabase", "createPayment", "signed_risk_object",
       "publishB2VerifiedHotSnapshot", "fetch(", "localStorage"]) {
       expect(worker).not.toContain(forbidden);

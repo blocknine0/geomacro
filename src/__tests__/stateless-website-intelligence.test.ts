@@ -259,7 +259,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(desk).toContain('setFeeds(previous => ({ ...previous, ...nextFeeds }))');
     expect(desk).toContain('Previously received in-tab findings may be out of date');
     expect(desk).toContain('New in the last 24 hours');
-    expect(desk).toContain('Earlier original releases · Dated');
+    expect(desk).toContain('Earlier news · Dated');
 
     expect(desk).toContain("No added publication delay");
     expect(desk).not.toContain("RiskBadge");
@@ -277,7 +277,10 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(source).not.toContain("public_updated_at");
     expect(source).toContain("persistent_storage: false");
     expect(source).toContain("now - STATELESS_WEBSITE_DELAY_MS");
-    expect(desk).toContain("Required credits are retained");
-    expect(desk).toContain("raw articles and source feeds are not delivered");
+    expect(desk).not.toContain("Required credits are retained");
+    expect(desk).toContain("isConcretePublicIntelligence");
+    expect(desk).not.toContain("SOURCE / PUBLISHER");
+    expect(desk).not.toContain("raw articles and source feeds are not delivered");
+    expect(desk).not.toContain("website-derived-news-html");
   });
 });

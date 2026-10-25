@@ -88,8 +88,10 @@ describe("unscored three-domain homepage from existing public D1 journal",()=>{
   expect(route).toContain("initialFindCards");
   expect(home).toContain('fetch("/api/v1/finds"');
   expect(home).toContain("fetchDirectDerivedNews()");
-  expect(home).toContain("selectHomepageFreeFind(cards)");
-  expect(home).toContain("independent same-event review not established");
+  expect(home).toContain("selectHomepageFreeFind(visibleCards)");
+  expect(home).not.toContain("independent same-event review not established");
+  expect(home).toContain("isConcreteHomeFind");
+  expect(home).toContain("Three domain Intelligence showcase");
   for(const forbidden of ["useIntelligence(", "RiskBadge", "settleCoinbaseX402(",
    "SUPABASE_SERVICE_ROLE_KEY","B2_APPLICATION_KEY"]){
     expect(home).not.toContain(forbidden);

@@ -3,8 +3,8 @@ import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, G
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
-import { findCardFromObservedRelease } from "@/lib/find-card-v1";
-import {intelligenceActorHeadline,intelligenceActorChange,intelligenceActorIsKnown} from "@/lib/public-intelligence-actor-copy";
+import {isConcretePublicIntelligence,concreteGeomacroAnalysis} from "@/lib/intelligence-concrete-publication";
+import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
 import type { StatelessCategory, StatelessIntelligenceSignal } from "@/lib/stateless-intelligence-model";
@@ -21,7 +21,6 @@ const REFRESH_MS = 2 * 60_000;
 // Refresh the public source-credited 72h journal every two minutes while the
 // Intelligence desk is visible; pagination still reads every retained page.
 const JOURNAL_REFRESH_MS = 2 * 60_000;
-const OGL_URL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
 type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
 // Stable default avoids restarting fetch effects when legacy callers omit this prop.
 const EMPTY_FEEDS: FeedState = Object.freeze({});
@@ -48,83 +47,44 @@ function formatInstant(value: string): string {
     : "Original publication time unavailable";
 }
 
-/** An issuer credit identifies the publishing source, not the event actor. */
-function sourceLabel(signal: StatelessIntelligenceSignal): string {
-  const credit = signal.sources_credited[0]?.trim();
-  if (!credit) return "Source not independently identified";
-  if (credit.includes("Open Government Licence")) return "UK Government";
-  if (credit.includes("© European Union")) return "Council of the European Union";
-  if (credit.includes("; first-party")) return credit.split(";")[0];
-  return credit;
-}
 const CATEGORY_STYLE = {
   geopolitics: { bar: "bg-rose-500", icon: "text-rose-500", marker: "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300", reading: "GEOPOLITICAL SIGNAL" },
   macro: { bar: "bg-sky-500", icon: "text-sky-500", marker: "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300", reading: "MACRO / FX SIGNAL" },
   rare_earth: { bar: "bg-amber-500", icon: "text-amber-500", marker: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300", reading: "CRITICAL MINERALS SIGNAL" },
 } as const;
 
-function Story({ signal, checkedAt, saved, onSave }: {signal: StatelessIntelligenceSignal;checkedAt: number;saved:boolean;onSave:()=>void}) {
-  const isCurrent = Date.parse(signal.published_at) >= checkedAt - 86_400_000;
-  const card = findCardFromObservedRelease(signal, checkedAt);
+function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;saved:boolean;onSave:()=>void}) {
   const look = CATEGORY_STYLE[signal.category];
-  const publisher = sourceLabel(signal);
-  const isActorKnown = intelligenceActorIsKnown(signal);
-  const heading = isActorKnown ? intelligenceActorHeadline(signal) : signal.title.replace(/^Geomacro finds\s+/iu, "");
-  const initialCandidate = signal.status === "official_feed_candidate_unscored";
-  const osintUnverified = signal.status === "osint_feed_observed_unverified";
   return (
-    <article data-testid={card ? "geomacro-find-card-v1" : "geomacro-release-finding"}
+    <article data-testid="geomacro-concrete-intelligence-card"
       data-geomacro-story-id={signal.id}
       className="min-w-0 overflow-hidden rounded-2xl border border-border/75 bg-card shadow-sm transition-colors hover:border-border">
       <div className={look.bar + " h-1 w-full"} aria-hidden />
       <div className="p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/80">GEOMACRO <span className="text-muted-foreground">{osintUnverified ? "/ OSINT DISCOVERY" : "/ INTELLIGENCE"}</span></span>
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/80">GEOMACRO <span className="text-muted-foreground">/ INTELLIGENCE</span></span>
           <button type="button" onClick={onSave} aria-pressed={saved} aria-label={saved ? "Remove saved finding" : "Save finding"}
             className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
             <Bookmark className="h-3.5 w-3.5" fill={saved ? "currentColor" : "none"} aria-hidden />{saved ? "Saved" : "Save"}
           </button>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex items-center gap-2">
           <span className={"inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider " + look.marker}>
             {signal.category === "geopolitics" ? <Globe2 className="h-3.5 w-3.5" aria-hidden /> :
               signal.category === "macro" ? <TrendingUp className="h-3.5 w-3.5" aria-hidden /> : <Gem className="h-3.5 w-3.5" aria-hidden />}
             {labelFor(signal.category)}
           </span>
-          <span className="rounded-full border border-border/70 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">{osintUnverified ? "Unverified OSINT feed" : initialCandidate ? "Relevance under review" : "Publisher release observed"}</span>
         </div>
         <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{look.reading}</p>
-        <h3 className="mt-2 text-xl font-semibold leading-snug tracking-tight text-foreground">{displayProse(heading)}</h3>
-        {!isActorKnown ? <p className="mt-2 text-xs text-muted-foreground">{displayProse(intelligenceActorHeadline(signal))}</p> : null}
-        <p className="mt-2 text-xs text-muted-foreground">Country or region: {displayProse(signal.geography ?? "Not specified in the release")}</p>
+        <h3 className="mt-2 text-xl font-semibold leading-snug tracking-tight text-foreground">{displayProse(intelligenceActorHeadline(signal))}</h3>
+        {signal.geography ? <p className="mt-2 text-xs text-muted-foreground">{displayProse(signal.geography)}</p> : null}
         <p className="mt-4 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">What changed</p>
-        <p className="mt-1 text-sm leading-relaxed text-foreground/80">{displayProse(intelligenceActorChange(signal))}</p>
+        <p className="mt-1 text-sm leading-relaxed text-foreground/85">{displayProse(intelligenceActorChange(signal))}</p>
         <div className="mt-5 rounded-xl border border-border/60 bg-muted/35 p-4">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">Geomacro analysis / Why it matters</p>
-          <p className="mt-2 text-sm leading-6 text-foreground/85">{displayProse(signal.why_it_matters)}</p>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">GEOMACRO ANALYSIS / Why it matters</p>
+          <p className="mt-2 text-sm leading-6 text-foreground/85">{displayProse(concreteGeomacroAnalysis(signal))}</p>
         </div>
-        <details className="mt-4 border-b border-border/60 pb-4">
-          <summary className="cursor-pointer py-1 text-xs font-semibold text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">Evidence limits &amp; what to watch</summary>
-          <div className="mt-3 space-y-3 text-sm leading-6 text-muted-foreground">
-            {card ? <p><span className="font-medium text-foreground">Watch next:</span> {displayProse(card.watch_next.text)}</p> : null}
-            {card?.detail_state === "LIMITED" ? <p>Specific details not captured in this source observation.</p> : null}
-            {card?.detail_state === "FULL" && card.facts.length > 0 ? <dl className="grid gap-2 sm:grid-cols-2">{card.facts.map((fact,index)=><div key={index}><dt className="text-xs">{fact.label}</dt><dd className="font-medium text-foreground">{fact.value}{fact.unit ? " " + fact.unit : ""}</dd></div>)}</dl> : null}
-            {!isActorKnown ? <p>Source identity does not establish who performed the reported action.</p> : null}
-            <p>{osintUnverified ? "Source is a monitored feed, not necessarily the original publisher. No independent event verification, commercial reuse rights or risk score is claimed." : "Publisher feed observation only. Original-page corroboration, independent event verification and Geomacro risk scoring are not claimed."}</p>
-            {signal.sources_credited.map(credit => <p key={credit}>Source attribution: {displayProse(credit)}{credit.includes("Open Government Licence") ? <> · <a href={OGL_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Licence</a></> : null}</p>)}
-          </div>
-        </details>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">SOURCE / PUBLISHER</p>
-            <p className="mt-1 max-w-[270px] break-words text-sm font-semibold text-foreground">{displayProse(publisher)}</p>
-          </div>
-          <div className="text-left sm:text-right">
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">ORIGINAL PUBLISHED</p>
-            <time className="mt-1 block text-xs text-muted-foreground" dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
-            {!isCurrent ? <p className="mt-1 text-[10px] text-muted-foreground">Earlier release</p> : null}
-          </div>
-        </div>
+        <time className="mt-4 block text-[11px] text-muted-foreground" dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
       </div>
     </article>
   );
@@ -320,7 +280,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
     for (const signal of feeds[domain.key]?.signals ?? []) merged.set(signal.id, signal);
   }
   const checkedAt = Date.now();
-  const allSignals = filterIntelligenceDesk([...merged.values()], {category:"all",query:"",period:"all"}, checkedAt);
+  const allSignals = filterIntelligenceDesk([...merged.values()].filter(isConcretePublicIntelligence), {category:"all",query:"",period:"all"}, checkedAt);
   const categorySignals = allSignals.filter(signal => signal.category === view);
   const signals = filterIntelligenceDesk(allSignals, {category:view,query,period}, checkedAt).filter(signal => !savedOnly || savedIds.includes(signal.id));
   const newSinceVisit = lastVisit === null ? null : categorySignals.filter(signal => Date.parse(signal.published_at) > lastVisit).length;
@@ -400,7 +360,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
             </h2>
             <p role="status" className="mt-2 text-xs text-muted-foreground">
               {allSignals.length === 0
-                ? "Reading the 72-hour stored derived-news journal below"
+                ? "Checking for concrete news developments"
                 : recentCount + " in the last 24 hours · " +
                   (categorySignals.length - recentCount) + " earlier (original-dated)"}
               {latestCheck ? " · Latest source check " + formatInstant(new Date(latestCheck).toISOString()) : ""}
@@ -426,28 +386,6 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           </p>
         ) : null}
 
-        {allSignals.length === 0 ? (
-          <section aria-label="Direct verified Intelligence archive" className="mt-6">
-            <p className="mb-3 text-xs text-muted-foreground">
-              Reading the continuity feed while the main timeline reconnects.
-            </p>
-            <iframe
-              title="Geomacro Finds · latest original-dated Intelligence"
-              src="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-html"
-              loading="eager"
-              referrerPolicy="no-referrer"
-              className="w-full rounded-xl border border-border"
-              style={{ height: "850px" }}
-            />
-            <p className="mt-2 text-xs text-muted-foreground">
-              <a className="underline underline-offset-2"
-                href="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-html"
-                rel="noopener noreferrer" target="_blank">
-                Open the continuity feed
-              </a>
-            </p>
-          </section>
-        ) : null}
         {journalUnavailable ? (
           <p role="status" className="mt-4 text-xs text-muted-foreground">
             The complete journal is temporarily unreachable; fallback findings may be incomplete. Original-source checks remain active;
@@ -457,20 +395,20 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         {signals.length > 0 ? (
           <div className="mt-6 space-y-8" aria-live="polite" aria-atomic="false">
             {recent.length > 0 ? (
-              <section><h3 className="mb-3 text-sm font-semibold">New in the last 24 hours</h3><div className="grid items-start gap-4 lg:grid-cols-2">{recent.map(signal => <Story key={signal.id} signal={signal} checkedAt={checkedAt} saved={savedIds.includes(signal.id)} onSave={() => toggleSaved(signal.id)} />)}</div></section>
+              <section><h3 className="mb-3 text-sm font-semibold">New in the last 24 hours</h3><div className="grid items-start gap-4 lg:grid-cols-2">{recent.map(signal => <Story key={signal.id} signal={signal} saved={savedIds.includes(signal.id)} onSave={() => toggleSaved(signal.id)} />)}</div></section>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No verified original release from this view in the last 24 hours.
+                No eligible concrete news in this view during the last 24 hours.
               </p>
             )}
             {earlier.length > 0 ? (
-              <section><h3 className="mb-3 text-sm font-semibold">Earlier original releases · Dated</h3><div className="grid items-start gap-4 lg:grid-cols-2">{earlier.map(signal => <Story key={signal.id} signal={signal} checkedAt={checkedAt} saved={savedIds.includes(signal.id)} onSave={() => toggleSaved(signal.id)} />)}</div></section>
+              <section><h3 className="mb-3 text-sm font-semibold">Earlier news · Dated</h3><div className="grid items-start gap-4 lg:grid-cols-2">{earlier.map(signal => <Story key={signal.id} signal={signal} saved={savedIds.includes(signal.id)} onSave={() => toggleSaved(signal.id)} />)}</div></section>
             ) : null}
           </div>
         ) : missing.length === 0 ? (
           <p role="status" className="mt-6 rounded-xl border border-dashed border-border px-5 py-6 text-sm text-muted-foreground">
-            No findings match this category, search and publication window.
-            Source availability does not prove the absence of real-world events.
+            No eligible concrete news matches this category, search and publication window.
+            News that cannot establish an actor and action is not displayed.
           </p>
         ) : null}
 
@@ -478,16 +416,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           <p role="status" className="text-xs text-muted-foreground">Showing {shown.length} of {signals.length} matching findings</p>
           {shown.length < signals.length ? <button type="button" onClick={()=>setVisibleCount(count=>count+INTELLIGENCE_PAGE_SIZE)} className="min-h-11 rounded-xl border border-border px-5 text-sm font-medium hover:bg-muted">Show more findings</button> : null}
         </div> : null}
-        <details className="mt-8 border-t border-border pt-4"><summary className="cursor-pointer text-xs text-muted-foreground">About these findings</summary>
-        <p className="mt-8 text-xs leading-6 text-muted-foreground">
-          Dates describe the original publication, not the last refresh. Earlier findings remain
-          clearly dated. A publisher release alone does not establish a verified real-world outcome.
-          The stored 72-hour derived-news journal also powers a
-          <a className="mx-1 underline underline-offset-2" href="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/derived-structural-72h" target="_blank" rel="noopener noreferrer">structured research feed</a>
-          for machine evaluation, including the Predge pilot. It is unscored and not licensed for partner resale.
-          Required credits are retained on the website; raw articles and source feeds are not delivered.
-        </p>
-        </details>
+
       </section>
     </main>
   );

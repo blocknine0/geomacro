@@ -155,11 +155,11 @@ describe("free public v1 Finds GET from existing D1 journal",()=>{
   // Existing website legacy SSR fixtures may be older; check the view's
   // source-credit-preserving condition without making any paid GRO claim.
   const code=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
-  expect(code).toContain("findCardFromObservedRelease(signal, checkedAt)");
-  expect(code).toContain('data-testid={card ? "geomacro-find-card-v1"');
-  expect(code).toContain('card?.detail_state === "LIMITED"');
-  expect(code).toContain("Specific details not captured");
-  expect(code).toContain("signal.sources_credited");
+  expect(code).toContain("isConcretePublicIntelligence");
+  expect(code).toContain('data-testid="geomacro-concrete-intelligence-card"');
+  expect(code).not.toContain('card?.detail_state === "LIMITED"');
+  expect(code).not.toContain("Specific details not captured");
+  expect(code).not.toContain("signal.sources_credited");
   expect(findCardFromObservedRelease(signal,NOW)?.detail_state).toBe("LIMITED");
  });
 });

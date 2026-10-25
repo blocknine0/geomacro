@@ -84,12 +84,12 @@ describe("#1827 website Intelligence freshness visibility without invented three
   });
   it("homepage uses three honest free original-release states without inventing scores", () => {
     const source = readFileSync("src/components/home/live-intelligence-showcase.tsx","utf8");
-    expect(source).toContain("selectHomepageFreeFind(cards)");
-    expect(source).toContain("homeFindsPulse(cards)");
-    expect(source).toContain("Available findings · three domains");
-    expect(source).toContain("Earlier release · unscored");
-    expect(source).toContain("Recent release · unscored");
-    expect(source).toContain("No eligible release");
+    expect(source).toContain("selectHomepageFreeFind(visibleCards)");
+    expect(source).toContain("homeFindsPulse(visibleCards)");
+    expect(source).toContain("GEOMACRO / THREE INTELLIGENCE DOMAINS");
+    expect(source).toContain("No eligible concrete news");
+    expect(source).toContain("domainCards.map(domain=>");
+    expect(source).toContain("isConcreteHomeFind");
     expect(source).not.toContain("RiskBadge");
   });
 });
