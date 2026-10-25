@@ -3,7 +3,7 @@ import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, G
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
-import {isConcretePublicIntelligence,concreteGeomacroAnalysis} from "@/lib/intelligence-concrete-publication";
+import {isConcretePublicIntelligence,concreteGeomacroAnalysis,concreteIntelligenceHeadline} from "@/lib/intelligence-concrete-publication";
 import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
@@ -76,7 +76,7 @@ function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;s
           </span>
         </div>
         <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{look.reading}</p>
-        <h3 className="mt-2 text-xl font-semibold leading-snug tracking-tight text-foreground">{displayProse(intelligenceActorHeadline(signal))}</h3>
+        <h3 className="mt-2 text-xl font-semibold leading-snug tracking-tight text-foreground">{displayProse(concreteIntelligenceHeadline(signal) ?? "")}</h3>
         {signal.geography ? <p className="mt-2 text-xs text-muted-foreground">{displayProse(signal.geography)}</p> : null}
         <p className="mt-4 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">What changed</p>
         <p className="mt-1 text-sm leading-relaxed text-foreground/85">{displayProse(intelligenceActorChange(signal))}</p>
