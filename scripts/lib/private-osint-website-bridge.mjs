@@ -131,10 +131,11 @@ export function unverifiedWebsiteSignalFromOsint(row,now=Date.now(),summarize=nu
 }
 
 export async function publishPrivateOsintWebsiteSignals({
- signals,controlPlaneRoot,controlToken,readAll,fetchImpl=fetch,now=Date.now()
+ signals,controlPlaneRoot,controlToken,readAll,dedupeAgainstExisting=null,fetchImpl=fetch,now=Date.now()
 }={}){
  if(!Array.isArray(signals)||signals.length>768||
     typeof readAll!=="function"||typeof fetchImpl!=="function"||
+    !(dedupeAgainstExisting===null||typeof dedupeAgainstExisting==="function")||
     typeof controlPlaneRoot!=="string"||
     !/^https:\/\/geomacro-control-plane\.[a-z0-9-]+\.workers\.dev$/u.test(controlPlaneRoot)||
     !/^[a-f0-9]{64}$/u.test(controlToken??"")||!Number.isFinite(now))
@@ -155,8 +156,14 @@ export async function publishPrivateOsintWebsiteSignals({
  const existing=await readAll(fetchImpl,now);
  if(!Array.isArray(existing))throw Error("PRIVATE_OSINT_WEBSITE_BASELINE_INVALID");
  const ids=new Set(existing.map(s=>s.id));
+ // Dedup the incoming run AGAINST the entire currently retained D1 journal.
+ // A new OSINT feed ID cannot resurrect an event already in another feed.
+ const accepted=dedupeAgainstExisting?
+   dedupeAgainstExisting([...existing,...signals]):signals;
+ const incoming=new Set(signals.map(s=>s.id));
  const unique=new Set();
- const eligible=signals.filter(s=>{
+ const eligible=accepted.filter(s=>{
+   if(!incoming.has(s.id))return false;
    if(ids.has(s.id)||unique.has(s.id))return false;
    unique.add(s.id);return true;
  });
