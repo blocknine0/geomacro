@@ -65,6 +65,46 @@ describe("#2041 last-resort bounded opaque first-party feed identity",()=>{
     expect(next.new_feed_entries_since_previous_observation).toBe(0);
     expect(next.existing_feed_entries_repeated).toBe(60);
   });
+  it("normalizes real Atom XHTML div/span markup with attributes only to a private topic hint",()=>{
+    const data="<feed><entry>"+
+      "<title type='xhtml'><div xmlns='http://www.w3.org/1999/xhtml'>"+
+      "<span class='subject'><strong data-label='headline'>Canadian consumer price report</strong></span>: inflation &amp; price indexes"+
+      "</div></title>"+
+      "<updated>2026-10-25T18:00:00Z</updated>"+
+      "<link rel='alternate' href='"+feedPath+"'/>"+
+      "</entry></feed>";
+    const rows=observeUndatedFirstPartyAtomFeed(data,src,{now});
+    expect(rows).toHaveLength(1);
+    expect(rows[0].headline_fingerprint_verified).toBe(true);
+    expect(rows[0].private_relevance_triage).toMatchObject({
+      status:"RELATED_UNVERIFIED",reason_code:"TOPIC_HINT_ONLY",
+      topic_codes:["INFLATION"],publication_clock_verified:false,
+      article_country_verified:false,independent_event_verified:false,
+      commercial_rights_verified:false,score_verified:false,
+      customer_delivery_eligible:false,
+    });
+    expect(rows[0].publication_clock_status).toBe("UNKNOWN");
+    expect(rows[0].eligible_for_scoring).toBe(false);
+    expect(rows[0].eligible_for_publication).toBe(false);
+    expect(JSON.stringify(rows)).not.toContain("Canadian consumer price report");
+    expect(JSON.stringify(rows)).not.toContain("data-label");
+    expect(JSON.stringify(rows)).not.toContain("www150.statcan.gc.ca");
+  });
+  it("strips attributes from XML-escaped HTML before making an in-memory hint",()=>{
+    const data="<feed><entry>"+
+      "<title type='html'>&lt;span class='title'&gt;&lt;strong data-topic='x'&gt;Canadian consumer price report&lt;/strong&gt;: inflation &amp;amp; prices&lt;/span&gt;</title>"+
+      "<updated>2026-10-25T18:00:00Z</updated>"+
+      "<link rel='alternate' href='"+feedPath+"'/>"+
+      "</entry></feed>";
+    const rows=observeUndatedFirstPartyAtomFeed(data,src,{now});
+    expect(rows).toHaveLength(1);
+    expect(rows[0].headline_fingerprint_verified).toBe(true);
+    expect(rows[0].private_relevance_triage.status).toBe("RELATED_UNVERIFIED");
+    expect(rows[0].eligible_for_scoring).toBe(false);
+    expect(rows[0].eligible_for_publication).toBe(false);
+    expect(JSON.stringify(rows)).not.toContain("Canadian consumer price report");
+    expect(JSON.stringify(rows)).not.toContain("data-topic");
+  });
   it("requires source-linked HTTPS identity; never interprets offsite content as original",()=>{
     const offsite='<feed><entry><title>Official statistics public report</title>'+
       '<link rel="alternate" href="https://not-statcan.example/n1/rss/dai-quo/18-eng.atom"/>'+
