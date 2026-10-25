@@ -14,6 +14,11 @@ const MAX_FEED_BYTES=192*1024;
 export const REUSABLE_NEWS_WINDOW_HOURS=25;
 const LOOKBACK=REUSABLE_NEWS_WINDOW_HOURS*3600000;
 const MAX_ITEMS_PER_RUN=480;
+// Source polling is not original-page or independently corroborated verification.
+// Rechecking each category's <=24 endpoints once every three intended 5m slots
+// is a NOMINAL source-discovery target; GitHub cron may be late or dropped.
+export const REGISTERED_NEWS_POLL_SLOT_MINUTES=5;
+const SOURCE_FETCH_CONCURRENCY=6;
 const TOPICS={
   geopolitics:/\b(?:war|conflict|sanctions?|ceasefire|treaty|military|security|diploma|peace|geopolitics?|refugees?|elections?|embargo)\b/iu,
   macro:/\b(?:inflation|monetary|central bank|interest rate|fx|foreign exchange|GDP|currency|tariffs?|economic|fiscal|unemployment|trade)\b/iu,
@@ -80,9 +85,10 @@ export function selectRegisteredNewsSources(now=new Date(),registry=registeredRe
      !Array.isArray(registry)||registry.length>200||
      !Number.isSafeInteger(perCategory)||perCategory<1||perCategory>8)
     throw Error("REUSABLE_NEWS_ROTATION_INVALID");
-  // Fixed 15-minute cursor, rotating each category's entire source inventory.
+  // Five-minute cursor; every category with <=24 endpoints is selected across
+  // three consecutive intended slots. Actual scheduler delivery is not guaranteed.
   // Selected per-category registration is deterministic across re-runs.
-  const slot=Math.floor(now.getTime()/(15*60_000));
+  const slot=Math.floor(now.getTime()/(REGISTERED_NEWS_POLL_SLOT_MINUTES*60_000));
   const selected=new Map();
   for(const category of CATEGORY){
     const matches=registry.filter(s=>s.categories.includes(category));
@@ -153,24 +159,32 @@ async function fetchFeed(spec,fetchImpl){
 }
 export async function collectRegisteredReusableNews({
   now=new Date(),fetchImpl=fetch,registry=registeredReusableNewsSources(),
-  perCategory=8,normalize,resolveCountry=()=>null
+  perCategory=8,normalize,resolveCountry=()=>null,networkConcurrency=6
 }={}){
   if(typeof normalize!=="function"||typeof resolveCountry!=="function"||
-     !(now instanceof Date)||!Number.isFinite(now.getTime()))
+     !(now instanceof Date)||!Number.isFinite(now.getTime())||
+     !Number.isSafeInteger(networkConcurrency)||networkConcurrency<1||networkConcurrency>6)
     throw Error("REUSABLE_NEWS_COLLECTOR_INPUT_INVALID");
   const active=selectRegisteredNewsSources(now,registry,perCategory);
   const checks=[],items=[],seen=new Set();
   let capacitySkipped=0;
-  for(const s of active){
-    let state="UNSUPPORTED_FORMAT",blocks=null;
-    if(s.supported){
-      const res=await fetchFeed(s,fetchImpl);
-      state=res.state;
-      if(res.body!==null){
-        blocks=feedBlocks(s,res.body);
-        if(!blocks)state="MALFORMED";
-        else if(!blocks.length)state="EMPTY_OR_OUTSIDE_WINDOW";
-      }
+  // A sequential 7s timeout for 24 pinned endpoints could exceed the target
+  // window by itself. Bounded parallelism preserves source ordering, limits
+  // simultaneous requests, and never forwards raw feed bodies to D1.
+  const fetched=[];
+  for(let i=0;i<active.length;i+=networkConcurrency){
+    const chunk=active.slice(i,i+networkConcurrency);
+    fetched.push(...await Promise.all(chunk.map(s=>s.supported
+      ?fetchFeed(s,fetchImpl)
+      :Promise.resolve({state:"UNSUPPORTED_FORMAT",body:null}))));
+  }
+  for(let i=0;i<active.length;i++){
+    const s=active[i],res=fetched[i];
+    let state=res.state,blocks=null;
+    if(res.body!==null){
+      blocks=feedBlocks(s,res.body);
+      if(!blocks)state="MALFORMED";
+      else if(!blocks.length)state="EMPTY_OR_OUTSIDE_WINDOW";
     }
     const activeCategories=s.categories;
     let candidates=0;
@@ -213,6 +227,10 @@ export async function collectRegisteredReusableNews({
     schema:"geomacro.reusable-source-news-batch.v1",items,
     checks,
     summary:{registered_source_endpoints:registry.length,
+      nominal_poll_slot_minutes:REGISTERED_NEWS_POLL_SLOT_MINUTES,
+      nominal_max_category_revisit_minutes:Math.max(...CATEGORY.map(category=>
+        Math.ceil(registry.filter(s=>s.categories.includes(category)).length/perCategory)*REGISTERED_NEWS_POLL_SLOT_MINUTES)),
+      schedule_and_first_report_latency_verified:false,
       selected_source_endpoints:active.length,
       completed_source_endpoints:new Set(checks.map(c=>c.source_ref)).size,
       observed_news_items:items.length,
