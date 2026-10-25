@@ -16,9 +16,9 @@ function topic(s:StatelessIntelligenceSignal){
  const x=clean(s.topic,76);
  return x&&/^[\p{L}\p{N}][\p{L}\p{N} .,/'()-]{0,75}$/u.test(x)?x:"the observed release";
 }
-const ACTION=/(?:announced|approved|authorized|authorised|urged|warned|called for|appealed for|introduced|launched|cut|raised|lowered|increased|reduced|reported|imposed|proposed|signed|rejected|denied|supported|supports|opened|published|issued|unveiled)/iu;
+const ACTION=/(?:announced|approved|authorized|authorised|urged|warned|called for|appealed for|introduced|launched|cut|raised|lowered|increased|reduced|reported|imposed|proposed|signed|rejected|denied|supported|supports|opened|published|issued|unveiled|released|releases|maintained|maintains|kept|holds|held|left|leaves|forecast|forecasts|projected|projects|revised|revises|estimated|estimates|recorded|records|sets)/iu;
 const QUALIFIED=/^((?:UN(?:ited Nations)?(?: Secretary-General| agencies| experts)?|WHO|UNICEF|UNHCR|WFP|IMF|World Bank|Federal Reserve|European Central Bank|Bank of England|European Commission|European Union|Security Council|[A-Z][\p{L}.'-]*(?:\s+(?:of|the|and|for|[A-Z][\p{L}.'-]*)){0,5}))\s+/u;
-const NON_ACTORS=new Set(["Official","New","Trade","Interest","Mineral","Policy","Risk","Source","Publication","An"]);
+const NON_ACTORS=new Set(["Official","New","Trade","Interest","Mineral","Policy","Risk","Source","Publication","An","GDP","Inflation","Prices","Consumer","Economic","Employment"]);
 export function intelligenceActorHeadline(s:StatelessIntelligenceSignal){
  const title=clean(s.title.replace(/^Geomacro finds\s+/iu,""),160);
  const change=clean(s.what_changed,650);
