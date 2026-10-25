@@ -51,7 +51,8 @@ const result=await collectPrivateOsint15m({
   const event=actorActionNewsObservation(raw.title);
   if(!event)return;
   const lane=observedByCategory.get(raw.category);
-  const identity=raw.source_url+"|"+raw.article_url+"|"+raw.published_at;
+  // Collapse one original item repeated in multiple search/feed queries.
+  const identity=raw.category+"|"+raw.article_url;
   if(lane.has(identity))return;
   const row={...raw,news_id:"news-"+createHash("sha256").update(identity).digest("hex")};
   if(lane.size>=300){
@@ -108,9 +109,11 @@ const publishingLanes=["geopolitics","macro","rare_earth"].map(cat=>
  eligible.filter(row=>row.category===cat));
 const websiteSignals=[];
 const publishedIds=new Set();
+const publicationNow=Date.now();
 for(let n=0;websiteSignals.length<200&&publishingLanes.some(l=>n<l.length);n++)
  for(const lane of publishingLanes)if(lane[n]&&websiteSignals.length<200&&
-   !publishedIds.has(lane[n].id)){
+   !publishedIds.has(lane[n].id)&&
+   Date.parse(lane[n].published_at)>=publicationNow-72*3600000+120000){
   publishedIds.add(lane[n].id);websiteSignals.push(lane[n]);
  }
 const website=await publishPrivateOsintWebsiteSignals({
@@ -140,7 +143,7 @@ console.log(JSON.stringify({
     concrete_by_category:Object.fromEntries(
       ["geopolitics","macro","rare_earth"].map(key=>
         [key,websiteSignals.filter(row=>row.category===key).length])),
-    candidate_generic_hidden:result.items.length-websiteSignals.length,
+    candidate_generic_hidden:observed.length-osintSignals.length,
     required_attribution_not_removed:true,
   },
   website_unverified_feed_candidates:observed.length-osintSignals.length,
