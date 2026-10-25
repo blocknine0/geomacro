@@ -167,12 +167,26 @@ export async function publishPrivateOsintWebsiteSignals({
    if(ids.has(s.id)||unique.has(s.id))return false;
    unique.add(s.id);return true;
  });
+// Keep this deterministic priority identical to Worker D1's SQL CASE.
+export function privateWebsiteRetentionPriority(row){
+ if(row?.status==="official_release_observed_unscored")return 2;
+ if(row?.status==="osint_feed_observed_unverified"&&
+   typeof row.what_changed==="string"&&
+   row.what_changed.startsWith("A monitored source feed reports:")&&
+   !["geopolitical publisher candidate","macro publisher candidate",
+     "minerals publisher candidate"].includes(row.topic))return 1;
+ return 0;
+}
+export function privateWebsiteRetentionNewestFirst(a,b){
+ return privateWebsiteRetentionPriority(b)-privateWebsiteRetentionPriority(a)||
+   b.published_at.localeCompare(a.published_at)||
+   b.id.localeCompare(a.id);
+}
  // The existing public 72-hour D1 newsroom has a HARD 600-row newest-first
  // cap. Never write an older item that D1 will immediately prune and then
  // mistake its honest eviction for a failed database write. Comparisons use
  // original publication clock plus the same ID order as the D1 SQL query.
- const recentFirst=(a,b)=>b.published_at.localeCompare(a.published_at)||
-   b.id.localeCompare(a.id);
+ const recentFirst=privateWebsiteRetentionNewestFirst;
  const hasClock=row=>typeof row?.published_at==="string"&&
    Number.isFinite(Date.parse(row.published_at));
  const canPredict=existing.length>=600&&
