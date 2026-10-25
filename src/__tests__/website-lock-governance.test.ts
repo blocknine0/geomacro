@@ -42,7 +42,14 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("owner-approved-reusable-news-json-mvp-20261025");
+    expect(config.lock_revision).toBe("founder-approved-private-osint-source-attributed-intelligence-cards-20261025");
+    const osintCards = config.approved_private_osint_intelligence_cards_20261025;
+    expect(osintCards.previous_baseline_sha).toBe("4b51cbc84d7d94b810924efd07bf687f34e515dc");
+    expect(osintCards.approved_ui_commit).toBe(config.baseline_sha);
+    expect(osintCards.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(osintCards.private_osint_source_rights_not_granted).toBe(true);
+    expect(osintCards.global_risk_final_lock_unmodified).toBe(true);
+    expect(osintCards.pending_exact_sha_live_deployment_acceptance).toBe(true);
     const launch = config.three_chain_launch_presentation_approval;
     const toggle = config.approved_three_category_toggle_presentation;
     const redesign = config.approved_store_reader_redesign;
@@ -55,7 +62,7 @@ describe("website lock governance", () => {
     const store = config.approved_store_product_creation;
     const newsJsonApproval = config.approved_reusable_news_json_mvp_20261025;
     expect(newsJsonApproval.previous_baseline_sha).toBe(store.approved_ui_commit);
-    expect(newsJsonApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(newsJsonApproval.approved_ui_commit).toBe(osintCards.previous_baseline_sha);
     expect(newsJsonApproval.scope).toEqual([
       "src/components/news-json-workbench.tsx",
       "src/routes/data-api.tsx",
@@ -166,7 +173,7 @@ describe("website lock governance", () => {
     expect(desk).not.toContain('aria-label="Filter Intelligence by country"');
     expect(desk).not.toContain("COUNTRIES_195");
     expect(desk).toContain("fetchAllDerivedNews()");
-    expect(desk).toContain("JOURNAL_REFRESH_MS = 6 * 60_000");
+    expect(desk).toContain("JOURNAL_REFRESH_MS = 2 * 60_000");
     expect(desk).toContain("No findings match this category, search and publication window.");
     expect(desk).toContain('<option value="all">All available releases</option>');
     expect(desk).toContain("Reading the 72-hour stored derived-news journal below");
