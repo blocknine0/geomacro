@@ -8,6 +8,7 @@ import {
 } from "./agent-query-plan";
 import { publicQueryOpenApiSchema } from "./public-api-openapi.server";
 import { GEOMACRO_STORE_REQUEST_EXAMPLES } from "./store-product-examples";
+import { normalizeAnswerQuestionRequest } from "./geomacro-answer-request.server";
 
 export const GEOMACRO_MCP_PROTOCOL_VERSION = "2026-07-28" as const;
 export const GEOMACRO_MCP_SERVER_VERSION = "geomacro-mcp-v1" as const;
@@ -15,6 +16,7 @@ export const GEOMACRO_MCP_PATH = "/api/mcp" as const;
 
 export const GEOMACRO_AGENT_TOOL_NAMES = [
   "store_product_query",
+  "answer_question",
   "geopolitics_query",
   "macro_fx_query",
   "critical_minerals_query",
@@ -41,6 +43,12 @@ const domains = z.array(z.enum(GEOMACRO_AGENT_DOMAINS)).min(1).max(3).default([.
 const detail = z.enum(["compact", "standard", "full"]).default("standard");
 const clientRequestId = z.string().trim().min(4).max(128).optional();
 const maxAgeSeconds = z.number().int().positive().max(94_608_000).optional();
+
+export const answerQuestionToolSchema = z.object({
+  question: z.string().trim().min(3).max(1_000),
+  max_age_seconds: maxAgeSeconds,
+  client_request_id: clientRequestId,
+}).strict();
 
 export const categoryQuestionToolSchema = z.object({
   country_iso3: iso3,
@@ -188,6 +196,14 @@ export function geomacroAgentToolToCanonicalQuery(
   toolName: Exclude<GeomacroAgentToolName, "verify_risk_object">,
   rawArguments: unknown,
 ): AgentAdaptiveQuery {
+  if (toolName === "answer_question") {
+    const input = answerQuestionToolSchema.parse(rawArguments);
+    const normalized = normalizeAnswerQuestionRequest(input);
+    if (!normalized.ok) throw Error(normalized.code);
+    const query = agentAdaptiveQuerySchema.parse(normalized.value);
+    buildAgentQueryPlan(query);
+    return query;
+  }
   if (toolName === "store_product_query") {
     const input = agentAdaptiveQuerySchema.parse(rawArguments);
     if (!input.product) throw Error("STORE_PRODUCT_SELECTION_REQUIRED");
@@ -382,6 +398,18 @@ export const GEOMACRO_AGENT_TOOLS = [
     inputSchema: { ...publicQueryOpenApiSchema(), required: ["subjects", "product"] },
     outputSchema: intelligenceOutputSchema,
     example: GEOMACRO_STORE_REQUEST_EXAMPLES.country_digest,
+  },
+  {
+    name: "answer_question",
+    description: "Turn a natural-language question mentioning one or more unambiguous countries into an exact priced Intelligence Query. Uses the canonical source, freshness, commercial-rights, signed-proof and x402 settlement gates; never accepts a client price and never charges when unavailable.",
+    paid: true,
+    inputSchema: objectSchema({
+      question: { type: "string", minLength: 3, maxLength: 1_000 },
+      max_age_seconds: commonProperties.max_age_seconds,
+      client_request_id: commonProperties.client_request_id,
+    }, ["question"]),
+    outputSchema: intelligenceOutputSchema,
+    example: { question: "What is the inflation risk in Brazil?" },
   },
   ...GEOMACRO_CATEGORY_AGENT_PROFILES.map(profile => ({
     name: profile.tool,
