@@ -1,11 +1,12 @@
 /** Protected private-only durable handoff. No GitHub artifact, public API or raw publisher payloads. */
 export const PRIVATE_OSINT_DURABLE_SCHEMA="geomacro.private-osint-15m-durable.v1";
 export async function persistPrivateOsintBatch({
- result,controlPlaneRoot,fetchImpl=fetch,now=Date.now()
+ result,controlPlaneRoot,privateToken,fetchImpl=fetch,now=Date.now()
 }={}){
  if(!result||result.schema!=="geomacro.private-osint-15m-batch.v1"||
     !Array.isArray(result.items)||!Array.isArray(result.checks)||
     typeof controlPlaneRoot!=="string"||!/^https:\/\/geomacro-control-plane\.[a-z0-9-]+\.workers\.dev$/u.test(controlPlaneRoot)||
+    !/^([a-f0-9]{64})$/u.test(privateToken??"")||
     typeof fetchImpl!=="function"||!Number.isFinite(now))
   throw Error("PRIVATE_OSINT_PUBLISHER_CONFIG_INVALID");
  const items=result.items.filter(x=>{
@@ -23,7 +24,7 @@ export async function persistPrivateOsintBatch({
  for(const group of groups){
   const response=await fetchImpl(controlPlaneRoot+"/v1/internal/private-osint-15m",{
    method:"PUT",redirect:"error",cache:"no-store",
-   headers:{"Accept":"application/json","Content-Type":"application/json"},
+   headers:{"Accept":"application/json","Content-Type":"application/json","Authorization":"Bearer "+privateToken},
    body:JSON.stringify(group),signal:AbortSignal.timeout(16000),
   });
   if(response.status!==200)throw Error("PRIVATE_OSINT_PROTECTED_D1_WRITE_HTTP_"+response.status);
@@ -43,7 +44,7 @@ export async function persistPrivateOsintBatch({
  }
  // Authenticated private readback at end; zero public exposure.
  const status=await fetchImpl(controlPlaneRoot+"/v1/internal/private-osint-15m?offset=0",{
-  method:"GET",redirect:"error",cache:"no-store",headers:{Accept:"application/json"},
+  method:"GET",redirect:"error",cache:"no-store",headers:{Accept:"application/json","Authorization":"Bearer "+privateToken},
   signal:AbortSignal.timeout(12000),
  });
  if(status.status!==200)throw Error("PRIVATE_OSINT_PRIVATE_READER_HTTP_"+status.status);
