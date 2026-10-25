@@ -6,6 +6,7 @@ import {archiveDerivedJournalToB2,readExactCurrentDerivedJournal,
  from "../lib/derived-news-b2-readwrite-backup.mjs";
 import {runGovernedDerivedNewsBackup,summarizeSafeBackupReceipt}
  from "../ops/archive-live-derived-news-to-b2.mjs";
+import {isSafeDerivedNewsReadbackSignal} from "../lib/derived-news-readback-policy.mjs";
 const now=new Date("2026-10-22T12:07:00Z");
 const sample=(category,id)=>{
  const topics={geopolitics:"security and diplomacy",macro:"monetary policy",
@@ -57,6 +58,50 @@ test("actual three-domain D1 stories are B2 PUT+GET restored exact, no paid sign
  assert.equal(result.paid_eligible,false);
  assert.equal(result.payments,0);
 });
+test("safe domain-only OSINT attribution passes the same Worker, D1 readback and B2 backup contract",async()=>{
+ const osint={...sample("macro","4567abcd"),
+   title:"Geomacro finds official economic statistics source-feed observation",
+   what_changed:"A monitored source feed contains a dated item about official economic statistics. The event actor, precise action and impact have not been independently verified.",
+   why_it_matters:"This observation can guide follow-up checks, but it does not establish a macroeconomic value, market move or verified consequence.",
+   topic:"official economic statistics",geography:null,
+   development_type:"unverified OSINT feed observation",
+   sources_credited:["Monitored feed: www.bankofcanada.ca"],
+   status:"osint_feed_observed_unverified"};
+ assert.equal(isSafeDerivedNewsReadbackSignal(osint),true);
+ const fromD1=await readExactCurrentDerivedJournal({fetchImpl:fetchDoc(page([...rows,osint])),now});
+ assert.equal(fromD1.length,4);
+ assert.deepEqual(buildDerivedJournalB2Plan(fromD1,now).category_counts,
+   {geopolitics:1,macro:2,rare_earth:1});
+ const archive=b2();
+ const receipt=await archiveDerivedJournalToB2({fetchImpl:fetchDoc(page([...rows,osint])),b2:archive,now});
+ assert.equal(receipt.status,"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED");
+ assert.equal(receipt.archived_rows,4);
+ assert.deepEqual(receipt.category_counts,{geopolitics:1,macro:2,rare_earth:1});
+ assert.equal(receipt.source_d1_readback_verified,true);
+ assert.equal(receipt.rights_verified,false);
+ assert.equal(receipt.paid_eligible,false);
+ assert.equal(receipt.payments,0);
+});
+
+test("URL/path/HTML in OSINT attribution still fails closed at the archive boundary",async()=>{
+ for(const credit of [
+  "Monitored feed: https://www.bankofcanada.ca",
+  "Monitored feed: www.bankofcanada.ca/rss.xml",
+  "Monitored feed: news.un.org (aggregator; original publisher not verified)",
+ ]) {
+  const osint={...sample("macro","4567abcd"),
+    title:"Geomacro finds official economic statistics source-feed observation",
+    what_changed:"A monitored source feed contains a dated item about official economic statistics. The event actor, precise action and impact have not been independently verified.",
+    why_it_matters:"This observation can guide follow-up checks, but it does not establish a macroeconomic value, market move or verified consequence.",
+    topic:"official economic statistics",geography:null,
+    development_type:"unverified OSINT feed observation",
+    sources_credited:[credit],status:"osint_feed_observed_unverified"};
+  await assert.rejects(()=>archiveDerivedJournalToB2({
+    fetchImpl:fetchDoc(page([...rows,osint])),b2:b2(),now
+  }),/DERIVED_NEWS_B2_/u);
+ }
+});
+
 test("archive only at four UTC time windows, without extra original provider reads",async()=>{
  const archive=b2();
  const receipt=await archiveDerivedJournalToB2({
