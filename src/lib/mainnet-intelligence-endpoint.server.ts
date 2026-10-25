@@ -8,7 +8,6 @@ import {
 } from "./on-demand-evidence-qualification.server";
 import { ZodError } from "zod";
 import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } from "./agent-query-plan";
-import { normalizeAnswerQuestionRequest } from "./geomacro-answer-request.server";
 import {bindPrivateFedMinutesToExactCustomerQuery}
   from "./on-demand-private-query-bound-draft.server";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY,
@@ -306,13 +305,7 @@ export const mainnetIntelligenceHandlers = {
         let parsed: ReturnType<typeof agentAdaptiveQuerySchema.parse>;
         let plan: ReturnType<typeof buildAgentQueryPlan>;
         try {
-          const normalized = normalizeAnswerQuestionRequest(raw);
-          if (!normalized.ok) {
-            return json({ ok: false, chargeable: false,
-              error: { code: normalized.code, ...(normalized.detail ? { detail: normalized.detail } : {}) },
-              execution_authorized: false }, 400);
-          }
-          parsed = agentAdaptiveQuerySchema.parse(normalized.value);
+          parsed = agentAdaptiveQuerySchema.parse(raw);
           plan = buildAgentQueryPlan(parsed);
         } catch (error) {
           if (error instanceof ZodError) {
