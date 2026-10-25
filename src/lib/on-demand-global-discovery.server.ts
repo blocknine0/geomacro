@@ -155,13 +155,13 @@ export function inferOnDemandMineral(question: string | null | undefined): OnDem
 // Fixed topic vocabulary. Never send a customer's freeform question upstream.
 // A generic official headline is not evidence for an exact sanctioned topic.
 const TOPIC_TITLE_PATTERNS:Readonly<Record<string,RegExp>>={
-  sanctions_restrictions:/\b(?:sanctions?|embargo|export controls?|restrictions?)\b/iu,
-  conflict_geopolitics:/\b(?:conflict|ceasefire|war|military|airstrike|peace|security council)\b/iu,
-  political_governance:/\b(?:government|governance|election|parliament|diplomatic)\b/iu,
-  macro_risk:/\b(?:inflation|gdp|monetary|central bank|growth|interest rates?|discount rates?|economy|economic|financial|chancellor|treasury)\b/iu,
-  sovereign_risk:/\b(?:fiscal|sovereign|budget|bond|debt)\b/iu,
-  fx_external_risk:/\b(?:foreign exchange|exchange rate|currency|reserves|fx)\b/iu,
-  critical_minerals:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mining)\b/iu,
+  sanctions_restrictions:/\b(?:sanctions?|embargo(?:es)?|export controls?|trade restrictions?|investment restrictions?|asset freezes?|restrictive measures?)\b/iu,
+  conflict_geopolitics:/\b(?:conflicts?|ceasefires?|wars?|militar(?:y|ies)|defen[cs]e|airstrikes?|missiles?|peace(?: talks?)?|security council|terror(?:ism|ist)|border clashes?|armed groups?|hostilities|troops?|treaties|diplomac(?:y|ies)|foreign ministr(?:y|ies))\b/iu,
+  political_governance:/\b(?:governments?|governance|elections?|parliaments?|diplomatic|cabinet|political parties|constitutional|referendums?|presidential|legislative|regulator(?:y|s)|public administration)\b/iu,
+  macro_risk:/\b(?:inflation|deflation|consumer prices?|producer prices?|cpi|pce|gdp|gross domestic product|monetary|central banks?|growth|interest rates?|discount rates?|econom(?:y|ic|ics)|financial|chancellor|treasury|tariffs?|trade flows?|trade balances?|trade deficits?|trade surpluses?|current accounts?|balance of payments|liquidity|banking|bond yields?|treasury yields?|purchasing managers? index|pmi|manufacturing|industrial production|commodity prices?|energy prices?|unemployment|wages?|payrolls?|employment|fiscal|debt|capital flows?|foreign exchange|exchange rates?|currencies|fx reserves?|foreign reserves|economic outlook|business confidence|retail sales|consumer spending|exports?|imports?)\b/iu,
+  sovereign_risk:/\b(?:fiscal|sovereign|budgets?|government borrowing|public finances?|bond(?:s)?|debt(?: servicing| issuance| restructuring)?|deficits?|credit ratings?|treasury yields?|sovereign yields?|refinancing|default risk|public borrowing|government bonds?)\b/iu,
+  fx_external_risk:/\b(?:foreign[- ]exchange|exchange rates?|currencies|currency|fx|fx reserves?|foreign reserves|reserve assets|balance of payments|current account|capital flows?|currency volatility|exchange markets?|foreign assets|cross[- ]border payments?)\b/iu,
+  critical_minerals:/\b(?:critical minerals?|critical raw materials?|strategic minerals?|rare[- ]earth(?:s?| elements?)?|lanthanides?|lithium|cobalt|nickel|graphite|copper|gallium|germanium|antimony|tungsten|manganese|vanadium|scandium|tantalum|niobium|dysprosium|neodymium|terbium|praseodymium|samarium|yttrium|mineral supply|minerals? processing|mining|mine closures?|ore processing|smelting|refining|refineries|mineral exports?|permanent magnets?|magnet production|battery materials|supply chains?|export controls?)\b/iu,
 };
 const CATEGORY_TOPICS:Readonly<Record<OnDemandCategory,readonly string[]>>={
   geopolitics:["sanctions_restrictions","conflict_geopolitics","political_governance"],
