@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { deriveStatelessSignals } from "@/lib/stateless-intelligence-model";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   verifyDerivedStory, publishDerivedStories, readDerivedStories, renderDerivedStoriesHtml,
   DERIVED_NEWS_TOPIC_POLICY_REVISION,
 } from "../../workers/control-plane/src/website-derived-intelligence.mjs";
+import {classifyDerivedNewsD1Failure} from "../../scripts/lib/derived-news-d1-failure.mjs";
 
 const NOW=Date.parse("2026-10-12T20:00:00.000Z");
 const sample=(category="macro",published="2026-10-12T19:00:00.000Z")=>({
@@ -27,8 +28,13 @@ const sample=(category="macro",published="2026-10-12T19:00:00.000Z")=>({
 });
 function db() {
   const data=new Map();
+  const counters={upsertUpdateAttempts:0,storyJsonUpdates:0,retentionSweepQueries:0};
   const statement=sql=>({
-    async run(){ /* Direct zero-bind retention query; no rows past cap in fixture. */ },
+    async run(){
+      if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE id IN"))
+        counters.retentionSweepQueries++;
+      /* Direct zero-bind retention query; no rows past cap in fixture. */
+    },
     bind(...args) {
       return {
         async run() {
@@ -36,11 +42,19 @@ function db() {
             const [id,category,published_at,date_precision,story_json,first_seen_at]=args;
             const previous=data.get(id);
             if(!previous)data.set(id,{id,category,published_at,date_precision,story_json,first_seen_at});
-            else if(previous.category===category && previous.published_at===published_at && previous.date_precision===date_precision)
+            else if(previous.category===category && previous.published_at===published_at &&
+              previous.date_precision===date_precision &&
+              (!sql.includes("website_derived_intelligence.story_json <> excluded.story_json") ||
+                previous.story_json!==story_json)) {
+              counters.upsertUpdateAttempts++;
+              if(previous.story_json!==story_json)counters.storyJsonUpdates++;
               previous.story_json=story_json;
+            }
           } else if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE published_at")) {
+            counters.retentionSweepQueries++;
             for(const [id,row] of data) if(row.published_at < args[0] || row.first_seen_at < args[1]) data.delete(id);
           } else if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE id IN")) {
+            counters.retentionSweepQueries++;
             const sorted=[...data.values()].sort((a,b)=>
               b.published_at.localeCompare(a.published_at)||b.id.localeCompare(a.id));
             for(const row of sorted.slice(600))data.delete(row.id);
@@ -53,7 +67,7 @@ function db() {
       };
     },
   });
-  return {data,env:{DB:{prepare:statement,async batch(items){for(const item of items)await item.run()}}}};
+  return {data,counters,env:{DB:{prepare:statement,async batch(items){for(const item of items)await item.run()}}}};
 }
 describe("website-only Supabase-free derived news continuity",()=>{
   it("keeps real first-party UK trade source classification in sync with D1 publication allowlist",()=>{
@@ -106,6 +120,56 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(route).toContain("derived_news_topic_policy_revision: DERIVED_NEWS_TOPIC_POLICY_REVISION");
   });
 
+  it("keeps a single empty batch as the only retention sweep and updates changed prose",async()=>{
+    const {data,counters,env}=db();
+    const first=sample();
+    expect((await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[first]},NOW)).status).toBe(200);
+    expect(counters.retentionSweepQueries).toBe(0);
+    const revised={...first,what_changed:"An official publisher issued an updated monetary-policy statement about liquidity conditions."};
+    expect((await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[revised]},NOW)).status).toBe(200);
+    expect(counters.upsertUpdateAttempts).toBe(1);
+    expect(counters.storyJsonUpdates).toBe(1);
+    expect(counters.retentionSweepQueries).toBe(0);
+    expect((await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[]},NOW)).status).toBe(200);
+    expect(counters.retentionSweepQueries).toBe(2);
+  });
+
+  it("classifies the known D1 failure classes without exposing exception text",()=>{
+    expect(classifyDerivedNewsD1Failure(new Error("Your account has exceeded D1's free tier daily row read limit. SQL details"))).toBe("D1_DAILY_ROW_READ_LIMIT");
+    expect(classifyDerivedNewsD1Failure({message:"generic",cause:{message:"Your account has exceeded D1's free tier daily row write limit."}})).toBe("D1_DAILY_ROW_WRITE_LIMIT");
+    expect(classifyDerivedNewsD1Failure(new Error("D1 DB is overloaded. Too many requests queued."))).toBe("D1_OVERLOADED");
+    expect(classifyDerivedNewsD1Failure(new Error("Network connection lost."))).toBe("D1_TRANSIENT");
+    expect(classifyDerivedNewsD1Failure(new Error("no such table: secret_table"))).toBe("D1_SCHEMA_OR_SQL");
+    expect(classifyDerivedNewsD1Failure(new Error("some unrecognized query text"))).toBe("D1_UNCLASSIFIED");
+  });
+
+  it("returns an allowlisted D1 failure class and never logs raw database exceptions",async()=>{
+    const writeError=new Error("Your account has exceeded D1's free tier daily row write limit. raw query secret");
+    const writeEnv={DB:{
+      prepare(){return {bind(){return {run:async()=>{throw writeError},all:async()=>{throw writeError}}}}},
+      batch:async()=>{throw writeError},
+    }};
+    const log=vi.spyOn(console,"error").mockImplementation(()=>{});
+    try{
+      const written=await publishDerivedStories(writeEnv,{
+        schema:"geomacro.website-derived-news-batch.v1",signals:[sample()],
+      },NOW);
+      const writeReceipt=await written.json();
+      expect(written.status).toBe(503);
+      expect(writeReceipt.diagnostic_code).toBe("D1_DAILY_ROW_WRITE_LIMIT");
+      expect(log.mock.calls.flat().join(" ")).not.toContain("raw query secret");
+      const readError=new Error("Your account has exceeded D1's free tier daily row read limit. private SQL");
+      const readEnv={DB:{prepare:()=>({bind:()=>({
+        all:async()=>{throw readError;},
+      })})}};
+      const read=await readDerivedStories(readEnv,NOW);
+      const readReceipt=await read.json();
+      expect(read.status).toBe(503);
+      expect(readReceipt.diagnostic_code).toBe("D1_DAILY_ROW_READ_LIMIT");
+      expect(log.mock.calls.flat().join(" ")).not.toContain("private SQL");
+    }finally{log.mockRestore();}
+  });
+
   it("admits old-but-original 30d publications and rejects future/historical",()=>{
     expect(verifyDerivedStory(sample(),NOW)).toBe(true);
     expect(verifyDerivedStory(sample("macro","2026-10-12T19:45:01.000Z"),NOW)).toBe(true);
@@ -120,12 +184,17 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(verifyDerivedStory({...sample(),what_changed:"Official release https://publisher.example.com"},NOW)).toBe(false);
   });
   it("deduplicates on stable derived-only ID across scheduled runs and reads back",async()=>{
-    const {data,env}=db(); const body={schema:"geomacro.website-derived-news-batch.v1",signals:[
+    const {data,counters,env}=db(); const body={schema:"geomacro.website-derived-news-batch.v1",signals:[
       sample(),sample("geopolitics","2026-10-12T18:10:00.000Z"),
     ]};
     expect((await publishDerivedStories(env,body,NOW)).status).toBe(200);
     expect((await publishDerivedStories(env,body,NOW)).status).toBe(200);
     expect(data.size).toBe(2);
+    // An identical retained card must not consume another D1 row write, and
+    // normal non-empty batches no longer run the two full-journal sweep queries.
+    expect(counters.upsertUpdateAttempts).toBe(0);
+    expect(counters.storyJsonUpdates).toBe(0);
+    expect(counters.retentionSweepQueries).toBe(0);
     const resp=await readDerivedStories(env,NOW);
     const result=await resp.json();
     expect(resp.status).toBe(200);

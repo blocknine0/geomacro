@@ -5,6 +5,7 @@
  * Exact public original-time delay is rechecked on write AND on every read.
  */
 import {isSafeDerivedNewsReadbackSignal, DERIVED_NEWS_TOPIC_POLICY_REVISION} from "../../../scripts/lib/derived-news-readback-policy.mjs";
+import {classifyDerivedNewsD1Failure} from "../../../scripts/lib/derived-news-d1-failure.mjs";
 export {DERIVED_NEWS_TOPIC_POLICY_REVISION};
 // The founder-approved auto-ingest journal is strictly a rolling 72h window.
 // Old signed Finds/B2 archival products are independent (not reclassified here).
@@ -112,31 +113,40 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
        VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET story_json=excluded.story_json
        WHERE website_derived_intelligence.category=excluded.category
         AND website_derived_intelligence.published_at=excluded.published_at
-        AND website_derived_intelligence.date_precision=excluded.date_precision`
+        AND website_derived_intelligence.date_precision=excluded.date_precision
+        AND website_derived_intelligence.story_json <> excluded.story_json`
     ).bind(s.id,s.category,s.published_at,s.date_precision,JSON.stringify(s),new Date(now).toISOString()));
     // D1 batch is atomic. An empty batch is still a retention sweep.
     if(statements.length)await env.DB.batch(statements);
-    // Evict both expired original-publication records and records held longer
-    // than 72h from FIRST ingestion. YYYY-MM-DD is used for SQL day precision;
-    // verifyDerivedStory applies the precise 72h original-date cutoff.
-    await env.DB.prepare("DELETE FROM website_derived_intelligence WHERE published_at < ? OR first_seen_at < ?")
-      .bind(new Date(now-AUTO_INGEST_RETENTION_MS).toISOString().slice(0,10),
-        new Date(now-AUTO_INGEST_RETENTION_MS).toISOString()).run();
-    // Retain substantive unscored reports before generic feed candidates
-    // inside the existing 600-row/72-hour free-site budget. No rights upgrade.
-    await env.DB.prepare(
-      "DELETE FROM website_derived_intelligence WHERE id IN (SELECT id FROM website_derived_intelligence ORDER BY " +
-      "CASE " +
-      "WHEN json_extract(story_json, '$.status') = 'official_release_observed_unscored' THEN 2 " +
-      "WHEN json_extract(story_json, '$.status') = 'osint_feed_observed_unverified' " +
-      "AND json_extract(story_json, '$.what_changed') LIKE 'A monitored source feed reports:%' " +
-      "AND json_extract(story_json, '$.topic') NOT IN ('geopolitical publisher candidate','macro publisher candidate','minerals publisher candidate') THEN 1 " +
-      "ELSE 0 END DESC, published_at DESC, id DESC LIMIT -1 OFFSET 600)"
-    ).run();
+    // Avoid two full-journal retention/sort queries for every non-empty
+    // publisher chunk. The existing authenticated empty batch is the bounded
+    // once-per-run sweep; public reads still enforce the same 72h window.
+    if(body.signals.length===0){
+      // Evict expired original-publication records and records held over 72h
+      // from FIRST ingestion. Day-only timing remains separately validated.
+      await env.DB.prepare("DELETE FROM website_derived_intelligence WHERE published_at < ? OR first_seen_at < ?")
+        .bind(new Date(now-AUTO_INGEST_RETENTION_MS).toISOString().slice(0,10),
+          new Date(now-AUTO_INGEST_RETENTION_MS).toISOString()).run();
+      // Keep substantive unscored reports ahead of generic source candidates
+      // inside the same existing 600-row cap.
+      await env.DB.prepare(
+        "DELETE FROM website_derived_intelligence WHERE id IN (SELECT id FROM website_derived_intelligence ORDER BY " +
+        "CASE " +
+        "WHEN json_extract(story_json, '$.status') = 'official_release_observed_unscored' THEN 2 " +
+        "WHEN json_extract(story_json, '$.status') = 'osint_feed_observed_unverified' " +
+        "AND json_extract(story_json, '$.what_changed') LIKE 'A monitored source feed reports:%' " +
+        "AND json_extract(story_json, '$.topic') NOT IN ('geopolitical publisher candidate','macro publisher candidate','minerals publisher candidate') THEN 1 " +
+        "ELSE 0 END DESC, published_at DESC, id DESC LIMIT -1 OFFSET 600)"
+      ).run();
+    }
     return json({ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",
       accepted:body.signals.length,persistent_derived_only:true,chargeable:false});
-  } catch {
-    return json({ok:false,error:"DERIVED_NEWS_D1_WRITE_UNAVAILABLE"},503);
+  } catch(error) {
+    const failure_class=classifyDerivedNewsD1Failure(error);
+    console.error(JSON.stringify({schema:"geomacro.derived-news-d1-failure.v1",
+      operation:"news_write",failure_class}));
+    return json({ok:false,error:"DERIVED_NEWS_D1_WRITE_UNAVAILABLE",
+      diagnostic_code:failure_class},503);
   }
 }
 export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelayMinutes=0) {
@@ -180,9 +190,12 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
       next_offset:results.length>250&&offset<500?offset+250:null,
       ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
       first_ingest:firstIngest,signals},200);
-  } catch {
+  } catch(error) {
+    const failure_class=classifyDerivedNewsD1Failure(error);
+    console.error(JSON.stringify({schema:"geomacro.derived-news-d1-failure.v1",
+      operation:"news_read",failure_class}));
     return json({ok:false,error:"DERIVED_NEWS_FEED_UNAVAILABLE",
-      chargeable:false,signals:[]},503);
+      diagnostic_code:failure_class,chargeable:false,signals:[]},503);
   }
 }
 

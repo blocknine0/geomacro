@@ -1,5 +1,6 @@
 import {fetchWithoutRedirectUsing} from "./fetch-without-redirect.ts";
 import {isSafeDerivedNewsReadbackSignal} from "../../scripts/lib/derived-news-readback-policy.mjs";
+import {safeDerivedNewsD1FailureClass} from "../../scripts/lib/derived-news-d1-failure.mjs";
 /**
  * Direct, public, derived-only newsroom GET for browser clients.
  * This intentionally bypasses the React Start server-function transport when
@@ -10,14 +11,30 @@ import type { StatelessIntelligenceSignal } from "./stateless-intelligence-model
 
 const TRANSIENT_PUBLIC_READ_STATUSES=new Set([408,425,429,500,502,503,504]);
 const PUBLIC_READ_MAX_ATTEMPTS=3;
+const NON_RETRYABLE_D1_FAILURES=new Set([
+  "D1_DAILY_ROW_READ_LIMIT","D1_DAILY_ROW_WRITE_LIMIT","D1_STORAGE_LIMIT","D1_SCHEMA_OR_SQL",
+]);
 async function waitForPublicReadRetry(attempt:number){
   await new Promise(resolve=>setTimeout(resolve,100*attempt));
 }
-/** Bounded retry for idempotent public GETs only. Redirects and hard 4xx
- * responses are never retried; every attempt gets a fresh timeout signal. */
+async function publicD1FailureClass(response:Response):Promise<string|null>{
+  try{
+    const clone=response.clone();
+    const declared=Number(clone.headers.get("content-length")??0);
+    if(Number.isFinite(declared)&&declared>4096)return null;
+    const text=await clone.text();
+    if(text.length>4096)return null;
+    const doc=JSON.parse(text) as {diagnostic_code?:unknown};
+    if(typeof doc?.diagnostic_code!=="string")return null;
+    return safeDerivedNewsD1FailureClass(doc.diagnostic_code);
+  }catch{return null;}
+}
+/** Bounded retry for idempotent public GETs only. Deterministic D1 failure
+ * classes stop immediately; transient/overloaded failures retain bounded retry. */
 async function fetchPublicReadWithRetry(
   fetchImpl:typeof fetch,input:RequestInfo|URL,init:RequestInit,timeoutMs:number,
 ):Promise<Response>{
+  let lastD1FailureClass:string|null=null;
   for(let attempt=1;attempt<=PUBLIC_READ_MAX_ATTEMPTS;attempt++){
     let response:Response;
     try{
@@ -27,17 +44,30 @@ async function fetchPublicReadWithRetry(
     }catch(error){
       if(error instanceof TypeError&&error.message==="UPSTREAM_REDIRECT_REJECTED")throw error;
       if(attempt===PUBLIC_READ_MAX_ATTEMPTS)
-        throw Error("DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
+        throw Error(lastD1FailureClass
+          ? "DERIVED_NEWS_PUBLIC_FETCH_"+lastD1FailureClass
+          : "DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
       await waitForPublicReadRetry(attempt);
       continue;
     }
     if(!TRANSIENT_PUBLIC_READ_STATUSES.has(response.status))return response;
+    if(response.status===503){
+      lastD1FailureClass=await publicD1FailureClass(response)??lastD1FailureClass;
+      if(lastD1FailureClass&&NON_RETRYABLE_D1_FAILURES.has(lastD1FailureClass)){
+        try{await response.body?.cancel();}catch{/* discard only the deterministic failure */}
+        throw Error("DERIVED_NEWS_PUBLIC_FETCH_"+lastD1FailureClass);
+      }
+    }
     try{await response.body?.cancel();}catch{/* discard only the transient response */}
     if(attempt===PUBLIC_READ_MAX_ATTEMPTS)
-      throw Error("DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
+      throw Error(lastD1FailureClass
+        ? "DERIVED_NEWS_PUBLIC_FETCH_"+lastD1FailureClass
+        : "DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
     await waitForPublicReadRetry(attempt);
   }
-  throw Error("DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
+  throw Error(lastD1FailureClass
+    ? "DERIVED_NEWS_PUBLIC_FETCH_"+lastD1FailureClass
+    : "DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
 }
 
 export const GEOMACRO_DERIVED_JOURNAL_URL =

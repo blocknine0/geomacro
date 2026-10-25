@@ -95,6 +95,16 @@ describe("browser public journal fallback",()=>{
     expect(rows).toEqual([signal]);
     expect(calls).toBe(3);
   });
+  it("does not retry a known D1 daily quota rejection until the UTC reset",async()=>{
+    const f=vi.fn(async()=>new Response(JSON.stringify({
+      ok:false,error:"DERIVED_NEWS_FEED_UNAVAILABLE",
+      diagnostic_code:"D1_DAILY_ROW_READ_LIMIT",signals:[],
+    }),{status:503,headers:{"content-type":"application/json"}}));
+    await expect(fetchDirectDerivedNews(f as typeof fetch,NOW))
+      .rejects.toThrow("DERIVED_NEWS_PUBLIC_FETCH_D1_DAILY_ROW_READ_LIMIT");
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+
   it("bounds persistent public GET failures and never retries hard 4xx",async()=>{
     let calls=0;
     const unavailable=vi.fn(async()=>{calls++;return new Response("temporary",{status:503});});
