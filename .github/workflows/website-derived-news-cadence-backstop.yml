@@ -18,6 +18,8 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/website-derived-news-cadence-backstop.yml"
+      - "scripts/lib/derived-news-readback-policy.mjs"
+      - "scripts/tests/derived-news-readback-policy.test.mjs"
       - "scripts/ops/check-website-derived-news-cadence.mjs"
       - "scripts/lib/five-minute-news-cadence-watch.mjs"
       - "scripts/ops/recover-stalled-five-minute-news.mjs"
@@ -36,6 +38,8 @@ on:
   pull_request:
     paths:
       - ".github/workflows/website-derived-news-cadence-backstop.yml"
+      - "scripts/lib/derived-news-readback-policy.mjs"
+      - "scripts/tests/derived-news-readback-policy.test.mjs"
       - "scripts/ops/check-website-derived-news-cadence.mjs"
       - "scripts/lib/five-minute-news-cadence-watch.mjs"
       - "scripts/ops/recover-stalled-five-minute-news.mjs"
@@ -233,16 +237,17 @@ jobs:
             echo "::error::DERIVED_NEWS_BACKSTOP_D1_READBACK_UNAVAILABLE"
             exit 3
           }
-          node - "$body" <<'NODE'
-          const fs=require("node:fs");
-          const body=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
+          node --input-type=module - "$body" <<'NODE'
+          import {readFileSync} from "node:fs";
+          import {isSafeDerivedNewsReadbackSignal} from "./scripts/lib/derived-news-readback-policy.mjs";
+          const body=JSON.parse(readFileSync(process.argv[2],"utf8"));
           if(body.ok!==true || body.schema!=="geomacro.website-derived-news-feed.v1" ||
              (body.original_release_delay_minutes!==0&&body.original_release_delay_minutes!==15) ||
              body.delivery_scope!=="free_website_only" ||
              !Array.isArray(body.signals) || body.signals.length>250 ||
              body.signals.some(s=>s.severity!==null ||
                s.same_event_corrob_verified!==false ||
-               /https?:\/\/|www\./iu.test(JSON.stringify(s))))
+               !isSafeDerivedNewsReadbackSignal(s)))
             throw Error("DERIVED_NEWS_BACKSTOP_PUBLIC_CONTRACT_INVALID");
           const now=Date.now();
           const counts=Object.fromEntries(["geopolitics","macro","rare_earth"].map(c=>[
