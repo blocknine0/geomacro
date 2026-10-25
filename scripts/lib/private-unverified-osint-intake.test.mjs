@@ -59,7 +59,7 @@ test("disallowed or invented unverified registry rows fail closed",()=>{
  const mkdoc=r=>({schema:"geomacro.operator-country-source-crosswalk.v1",
   national_primary:[r],global_country_dim:[]});
  assert.equal(privateUnverifiedOsintRegistry(mkdoc(row)).length,1);
- assert.equal(privateUnverifiedOsintRegistry(mkdoc({...row,source_activation_state:"HOLD_TERMS_OR_PAYMENT_REVIEW"})).length,0);
+ assert.throws(()=>privateUnverifiedOsintRegistry(mkdoc({...row,source_activation_state:"HOLD_TERMS_OR_PAYMENT_REVIEW"})),/UNVERIFIED_OSINT_CANDIDATES_MISSING/);
  assert.throws(()=>privateUnverifiedOsintRegistry(mkdoc({...row,endpoint:"http://127.0.0.1/"})),/UNVERIFIED_OSINT_SOURCE_SCOPE_UNSAFE/);
  assert.throws(()=>privateUnverifiedOsintRegistry(mkdoc({...row,provider_rights_verified:true})),/UNVERIFIED_OSINT_SOURCE_SCOPE_UNSAFE/);
  assert.throws(()=>privateUnverifiedOsintRegistry(mkdoc({...row,endpoint:"https://example.org/feed?token=secret"})),/UNVERIFIED_OSINT_SOURCE_SCOPE_UNSAFE/);
