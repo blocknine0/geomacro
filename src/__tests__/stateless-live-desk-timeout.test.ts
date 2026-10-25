@@ -18,7 +18,7 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).toContain("setJournalUnavailable(true)");
     expect(desk).toContain("fetchAllDerivedNews()");
     expect(desk).not.toContain("fetchDirectDerivedNews()");
-    expect(desk).toContain("JOURNAL_REFRESH_MS = 6 * 60_000");
+    expect(desk).toContain("JOURNAL_REFRESH_MS = 2 * 60_000");
     expect(desk).not.toContain('aria-label="Filter Intelligence by country"');
     expect(desk).toContain("No findings match this category, search and publication window.");
     expect(desk).toContain("fallback findings may be incomplete");
