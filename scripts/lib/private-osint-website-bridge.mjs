@@ -20,7 +20,8 @@ const FEDERAL_FEEDS=[
   path:/^\/briefings-statements\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]{8,380}\/$/u,
   credit:null},
 ];
-const OFFICIAL=new Map([...GLOBAL_OFFICIAL_RELEASE_FEEDS,...FEDERAL_FEEDS]
+const OFFICIAL=new Map([...GLOBAL_OFFICIAL_RELEASE_FEEDS,...FEDERAL_FEEDS.flatMap(s=>
+ ["geopolitics","macro","rare_earth"].map(category=>({...s,category})))]
  .filter(s=>["rss","atom","rdf","xml"].includes(s.format))
  .map(s=>[s.category+"|"+s.url,s]));
 const AGE=25*3600000;
