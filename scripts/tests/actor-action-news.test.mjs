@@ -85,3 +85,29 @@ test('UN trailing-actor headings preserve the specific request and committee act
   assert.notEqual(result.headline,title);
  }
 });
+
+test('explicit Macro, FX and resource-release verbs remain event-specific and unscored',()=>{
+ for(const [headline,past] of [
+  ['Bank of Canada releases monthly inflation report','released monthly inflation report'],
+  ['Federal Reserve maintains its policy rate','maintained its policy rate'],
+  ['Bank of Japan holds benchmark interest rate steady','held benchmark interest rate steady'],
+  ['European Central Bank forecasts economic growth for 2027','forecast economic growth for 2027'],
+  ['Statistics Canada revises quarterly GDP estimates','revised quarterly GDP estimates'],
+  ['U.S. Energy Information Administration publishes natural gas trade statistics','published natural gas trade statistics'],
+  ['Australian Government estimates resources export earnings','estimated resources export earnings'],
+  ['Mining Ministry records copper output in September','recorded copper output in September'],
+ ]){
+  const row=render(headline);
+  assert.ok(row,headline);
+  assert.ok(row.headline.includes(past),headline);
+  assert.ok(row.change.includes(past),headline);
+  assert.ok(!row.change.includes('An official publisher'),headline);
+ }
+ for(const title of [
+  'Canada may revise quarterly GDP estimates',
+  'GDP rises 3.1% on strong consumer spending',
+  'Bank of Canada releases <script>bad</script>',
+  'Federal Reserve may maintain interest rates',
+  'Delamerian project reveals new mineral and groundwater insights beneath south-eastern Australia',
+ ])assert.equal(render(title),null,title);
+});
