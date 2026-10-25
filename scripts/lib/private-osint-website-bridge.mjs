@@ -110,7 +110,7 @@ export function unverifiedWebsiteSignalFromOsint(row,now=Date.now(),summarize=nu
  const credited="Monitored feed: "+url.hostname+(url.hostname==="news.google.com"?" (aggregator; original publisher not verified)":"");
  const summary=summarize? summarize(row.title):null;
  const known=summary&&typeof summary.headline==="string"&&summary.headline.length>=12&&
-   summary.headline.length<=145&&typeof summary.change==="string"&&summary.change.length>=30&&
+   summary.headline.length<=200&&typeof summary.change==="string"&&summary.change.length>=30&&
    summary.change.length<=450&&!/[<>]|https?:\/\//iu.test(summary.headline+summary.change)?summary:null;
  const topic=known&&observedTopic===fallbacks[row.category]?
    ({geopolitics:"geopolitical security",macro:"official economic statistics",
