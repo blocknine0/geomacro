@@ -16,6 +16,8 @@ on:
       - ".github/workflows/public-hot-serving-diagnostic.yml"
       - "scripts/ops/diagnose-public-hot-serving.mjs"
       - "scripts/ops/classify-d1-hot-metadata.mjs"
+      - "scripts/ops/classify-cloudflare-d1-readonly-error.mjs"
+      - "scripts/tests/classify-cloudflare-d1-readonly-error.test.mjs"
       - "src/__tests__/diagnose-public-hot-serving.test.ts"
       - "src/__tests__/classify-d1-hot-metadata.test.ts"
       - "scripts/ops/reconcile-public-hot-recovery.mjs"
@@ -76,8 +78,9 @@ jobs:
         run: |
           node --check scripts/ops/diagnose-public-hot-serving.mjs
           node --check scripts/ops/classify-d1-hot-metadata.mjs
+          node --check scripts/ops/classify-cloudflare-d1-readonly-error.mjs
           node --check scripts/ops/reconcile-public-hot-recovery.mjs
-          node --test scripts/ops/reconcile-public-hot-recovery.test.mjs
+          node --test scripts/ops/reconcile-public-hot-recovery.test.mjs scripts/tests/classify-cloudflare-d1-readonly-error.test.mjs
 
       - name: Diagnose public site and all 3 D1 hot-snapshot products
         id: diagnose
@@ -106,6 +109,9 @@ jobs:
           trap 'rm -f "$raw" "$err"' EXIT
           if ! npx -y "wrangler@4.136.3" d1 execute geomacro-control-plane \
             --remote --json --command "$sql" >"$raw" 2>"$err"; then
+            # Classify only a short allowlist of safe failure classes. Never
+            # print Wrangler stderr, account metadata, tokens, or raw response.
+            node scripts/ops/classify-cloudflare-d1-readonly-error.mjs < "$err"
             echo "::error::D1_READONLY_METADATA_SELECT_FAILED"
             exit 2
           fi
