@@ -8,59 +8,6 @@
   "rights_rule": "No raw publisher story storage, public redistribution, signed promotion, partner delivery or x402 sale from this source-registration alone.",
   "sources": [
     {
-      "id": "private_expansion_eurostat_statistics",
-      "url": "https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/en/statistics-update.rss",
-      "continent": "europe",
-      "publisher_country_iso3": "LUX",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "related_corridor_ids": [],
-      "provenance_note": "EU statistical dataset release/update feed; not equivalent to a news article",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_expansion_can_nrcan_news",
-      "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
-      "continent": "north_america",
-      "publisher_country_iso3": "CAN",
-      "categories": [
-        "rare_earth"
-      ],
-      "type": "atom",
-      "related_corridor_ids": [
-        "re_australia_malaysia_lynas"
-      ],
-      "provenance_note": "Natural Resources Canada official news feed",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_expansion_can_nrcan_science",
-      "url": "https://natural-resources.canada.ca/simply-science/rss.xml",
-      "continent": "north_america",
-      "publisher_country_iso3": "CAN",
-      "categories": [
-        "rare_earth"
-      ],
-      "type": "rss",
-      "related_corridor_ids": [],
-      "provenance_note": "Natural Resources Canada Simply Science official RSS",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
       "id": "private_expansion_wto_trade_news",
       "url": "https://www.wto.org/library/rss/latest_news_e.xml",
       "continent": "global",
