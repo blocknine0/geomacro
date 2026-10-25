@@ -81,7 +81,7 @@ function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;s
         <p className="mt-4 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">What changed</p>
         <p className="mt-1 text-sm leading-relaxed text-foreground/85">{displayProse(intelligenceActorChange(signal))}</p>
         <div className="mt-5 rounded-xl border border-border/60 bg-muted/35 p-4">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">GEOMACRO ANALYSIS</p>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">GEOMACRO ANALYSIS / Why it matters</p>
           <p className="mt-2 text-sm leading-6 text-foreground/85">{displayProse(concreteGeomacroAnalysis(signal))}</p>
         </div>
         <time className="mt-4 block text-[11px] text-muted-foreground" dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
