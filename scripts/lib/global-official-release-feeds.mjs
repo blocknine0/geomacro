@@ -3,6 +3,7 @@
 import {verifiedPublisherPageDate} from './official-original-article-date.mjs';
 import {officialItemNativePublicationMs} from './official-native-item-publication-date.mjs';
 export const GLOBAL_MACRO_RELEASE_TOPIC=/\b(?:inflation|monetary|interest rates?|central banks?|economic|economy|growth|debt|fiscal|banking|financial|foreign exchange|foreign-exchange|currency|currencies|fx reserves?|exchange rates?|trade|trade flows?|trade balance|current account|balance of payments|gdp|gross domestic product|liquidity|sovereign debt|bond yields?|treasury yields?|capital flows?|industrial production|manufacturing output|purchasing managers? index|\bPMI\b|tariffs?|export controls?|commodity prices?|energy prices?|tankan)\b/iu;
+const macro=GLOBAL_MACRO_RELEASE_TOPIC;
 export const MINERAL_RELEASE_TOPIC=/\b(?:critical minerals?|critical raw materials?|rare[- ]earth(?:s?| elements?)?|lanthanides?|lithium|cobalt|nickel|graphite|copper|gallium|germanium|tungsten|antimony|manganese|vanadium|scandium|tantalum|niobium|dysprosium|neodymium|terbium|praseodymium|samarium|yttrium|mineral supply|mining|mineral processing|ore processing|rare earth processing|refining capacity|permanent magnets?|magnet production|battery materials|export controls?)\b/iu;
 const geo=/\b(?:security council|peace|conflict|war|sanctions?|military|ceasefire|diploma|humanitarian|violence|disarmament)\w*/iu;
 export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
