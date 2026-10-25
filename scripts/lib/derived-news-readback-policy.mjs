@@ -6,6 +6,8 @@
  * permission to redistribute the source. URLs, paths and upstream content
  * remain forbidden in public prose and in all other provenance records.
  */
+export const DERIVED_NEWS_TOPIC_POLICY_REVISION = 2;
+
 const DOMAIN_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
 const PROSE_URL_OR_DOMAIN_PATH = /(?:https?:\/\/|www\.|[a-z0-9_-]{4,}\.(?:com|org|gov|net)\/)/iu;
 const AGGREGATOR_SUFFIX = " (aggregator; original publisher not verified)";
@@ -47,4 +49,52 @@ export function isSafeDerivedNewsReadbackSignal(signal) {
   // provenance label. Official credits are source names/licence text, not URLs.
   return signal.sources_credited.every(value =>
     !value.startsWith("Monitored feed: ") && !PROSE_URL_OR_DOMAIN_PATH.test(value));
+}
+
+/**
+ * Wait for the deployed D1 Worker to attest the exact derived-news policy
+ * revision before any collector source read or journal write. This protects
+ * against the repository push/deployment race. The revision is changed only
+ * when the Worker validator/topic allowlist changes incompatibly.
+ */
+export async function requireDerivedNewsWorkerPolicy({
+  fetchImpl = fetch, url, expectedRevision = DERIVED_NEWS_TOPIC_POLICY_REVISION,
+} = {}) {
+  if (typeof url !== "string" || !url.startsWith("https://") ||
+      !Number.isInteger(expectedRevision) || expectedRevision < 1)
+    throw Error("DERIVED_NEWS_WORKER_POLICY_CONFIGURATION_INVALID");
+  let response;
+  try {
+    response = await fetchImpl(url, {
+      method: "GET", redirect: "error", cache: "no-store",
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    throw Error("DERIVED_NEWS_WORKER_POLICY_HEALTH_UNAVAILABLE");
+  }
+  if (!response || response.status !== 200 || response.redirected ||
+      Number(response.headers?.get("content-length") ?? 0) > 16_384)
+    throw Error("DERIVED_NEWS_WORKER_POLICY_HEALTH_UNAVAILABLE");
+  let text;
+  try { text = await response.text(); }
+  catch { throw Error("DERIVED_NEWS_WORKER_POLICY_HEALTH_UNAVAILABLE"); }
+  if (text.length > 16_384) throw Error("DERIVED_NEWS_WORKER_POLICY_RESPONSE_OVERSIZE");
+  let doc;
+  try { doc = JSON.parse(text); }
+  catch { throw Error("DERIVED_NEWS_WORKER_POLICY_RESPONSE_INVALID"); }
+  if (doc?.ok !== true || doc.store !== "d1" ||
+      !Number.isSafeInteger(doc.schema_version) || doc.schema_version < 3 ||
+      doc.derived_news_topic_policy_revision !== expectedRevision ||
+      !/^[a-f0-9]{40}$/u.test(String(doc.deployed_source_sha ?? "")))
+    throw Error("DERIVED_NEWS_WORKER_TOPIC_POLICY_NOT_CURRENT");
+  return Object.freeze({
+    schema: "geomacro.derived-news-worker-policy-preflight.v1",
+    worker_policy_revision: doc.derived_news_topic_policy_revision,
+    d1_schema_version: doc.schema_version,
+    deployed_source_sha_present: true,
+    raw_health_body_logged: false,
+    source_reads_started: false,
+    payments: 0,
+  });
 }
