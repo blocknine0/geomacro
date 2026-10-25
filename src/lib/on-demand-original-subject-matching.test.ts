@@ -26,6 +26,19 @@ describe("fixed country qualification for original publisher evidence",()=>{
   )=>{
     expect(originalHeadlineMentionsCountry(title,iso,name)).toBe(expected);
   });
+  it("recognizes reviewed demonyms without fuzzy or cross-country substring matches",()=>{
+    for(const [title,iso,name] of [
+      ["Peruvian lithium export measures","PER","Peru"],
+      ["Nigerian central bank adjusts monetary policy","NGA","Nigeria"],
+      ["South African manganese refining investment","ZAF","South Africa"],
+      ["Malaysian rare-earth processing outlook","MYS","Malaysia"],
+      ["Dutch sovereign bond yields rise","NLD","Netherlands"],
+      ["Vietnamese graphite supply expansion","VNM","Vietnam"],
+    ] as const)expect(originalHeadlineMentionsCountry(title,iso,name)).toBe(true);
+    expect(originalHeadlineMentionsCountry("Peruvian lithium export measures","CHL","Chile")).toBe(false);
+    expect(originalHeadlineMentionsCountry("Nigerian monetary policy","NER","Niger")).toBe(false);
+    expect(originalHeadlineMentionsCountry("Dutch sovereign bond yields rise","DEU","Germany")).toBe(false);
+  });
   it("recognizes original Fed discount-rate policy as macro, not FX or mineral evidence",()=>{
     const genuineTitle="Minutes of the Board's discount rate meetings on August 17, September 9, and September 16, 2026";
     expect(matchesRequestedTopic(genuineTitle,"macro",["macro_risk"])).toBe(true);
