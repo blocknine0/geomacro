@@ -155,9 +155,9 @@ describe("website-only Supabase-free derived news continuity",()=>{
       expect(writeReceipt.diagnostic_code).toBe("D1_DAILY_ROW_WRITE_LIMIT");
       expect(log.mock.calls.flat().join(" ")).not.toContain("raw query secret");
       const readError=new Error("Your account has exceeded D1's free tier daily row read limit. private SQL");
-      const readEnv={DB:{prepare(){return {bind(){return {
+      const readEnv={DB:{prepare:()=>({bind:()=>({
         all:async()=>{throw readError;},
-      };}};}}}};
+      })})}};
       const read=await readDerivedStories(readEnv,NOW);
       const readReceipt=await read.json();
       expect(read.status).toBe(503);
