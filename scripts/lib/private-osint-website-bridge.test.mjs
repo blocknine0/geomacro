@@ -158,6 +158,12 @@ test("source-private U.S. federal original feed candidates are admitted only at 
  assert.equal(officialWebsiteCandidateFromOsint({...federal[0],
   article_url:"https://www.whitehouse.gov/presidential-actions/2026/10/short/",
   published_at:"2026-10-25T11:40:00.000Z"},now),null);
- assert.equal(officialWebsiteCandidateFromOsint({...federal[0],
-  category:"rare_earth",published_at:"2026-10-25T11:40:00.000Z"},now),null);
+ // Category routing is shared for the same original U.S. government feed;
+ // later genuine-topic and actor/action filters determine publishability.
+ for(const category of ["geopolitics","macro","rare_earth"]){
+  const candidate=officialWebsiteCandidateFromOsint({...federal[0],
+   category,published_at:"2026-10-25T11:40:00.000Z"},now);
+  assert.equal(candidate?.category,category);
+  assert.equal(candidate?.credit,null);
+ }
 });
