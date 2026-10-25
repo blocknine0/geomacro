@@ -137,7 +137,7 @@ export async function publishReusableSourceNews(env,body,now=Date.now()){
       // first_seen_at is immutable across upserts. Count a new observation
       // once only; rereading a 24h-old news item is not a new 15m breach.
       const firstSeen=Date.parse(found.first_seen_at??"");
-      if(!Number.isFinite(firstSeen)||firstSeen>Date.now()+10*60_000)
+      if(!Number.isFinite(firstSeen)||firstSeen>now+10*60_000)
         throw Error("REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH");
       if(found.first_seen_at===checkedAt){
         if(firstSeen-Date.parse(row.at)<=15*60_000)firstSeenWithin15m++;
