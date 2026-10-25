@@ -1,4 +1,5 @@
 import type {StatelessIntelligenceSignal,StatelessCategory} from "./stateless-intelligence-model";
+import type {FindCardV1} from "./find-card-v1";
 import {intelligenceActorHeadline,intelligenceActorIsKnown,intelligenceActorChange} from "./public-intelligence-actor-copy";
 
 /**
@@ -48,4 +49,15 @@ const FOCUS:Record<StatelessCategory,ReadonlyArray<[RegExp,string]>>={
 export function concreteGeomacroAnalysis(s:StatelessIntelligenceSignal):string{
  const text=s.topic+" "+s.title+" "+s.what_changed;
  return FOCUS[s.category].find(([rule])=>rule.test(text))?.[1]??s.why_it_matters;
+}
+
+/** Source-neutral homepage Finds must have an explicit, concrete action. */
+export function isConcreteHomeFind(card:FindCardV1):boolean{
+ if(!card||!["geopolitics","macro","rare_earth"].includes(card.domain))return false;
+ const headline=card.headline,change=card.what_changed;
+ return typeof headline==="string"&&typeof change==="string"&&
+   headline.length>=22&&change.length>=30&&
+   !GENERIC.test(headline+" "+change)&&
+   !/Actor not verified|no outcome is inferred|not establish who|publisher|original.dated publication/iu.test(headline+" "+change)&&
+   TOPIC_SENSITIVE.test(headline+" "+change);
 }
