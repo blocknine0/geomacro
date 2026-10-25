@@ -24,7 +24,7 @@ const OFFICIAL=new Map([...GLOBAL_OFFICIAL_RELEASE_FEEDS,...FEDERAL_FEEDS.flatMa
  ["geopolitics","macro","rare_earth"].map(category=>({...s,category})))]
  .filter(s=>["rss","atom","rdf","xml"].includes(s.format))
  .map(s=>[s.category+"|"+s.url,s]));
-const AGE=25*3600000;
+const AGE=72*3600000;
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const JOURNAL="/v1/website-derived-news";
 
