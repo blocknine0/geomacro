@@ -49,6 +49,8 @@ describe("Geomacro Answer Question tool",()=>{
       .toMatchObject({ok:false,code:"AMBIGUOUS_SUBJECT"});
     expect(normalizeAnswerQuestionRequest({question:"Inflation risk in Turkey"}))
       .toMatchObject({ok:false,code:"AMBIGUOUS_SUBJECT"});
+    expect(normalizeAnswerQuestionRequest({question:"Inflation risk in Congo"}))
+      .toMatchObject({ok:false,code:"AMBIGUOUS_SUBJECT"});
   });
 
   it("fails closed for missing subject/topic, advanced products, extra fields and invalid limits",()=>{
