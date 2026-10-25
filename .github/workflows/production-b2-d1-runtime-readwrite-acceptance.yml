@@ -1,0 +1,165 @@
+name: Production B2-D1 Runtime Read Write Readback Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type VERIFY_EXISTING_B2_D1_ONLY_NO_FUNDS to run the bounded production probe"
+        required: true
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/production-b2-d1-runtime-readwrite-acceptance.yml"
+      - "scripts/ops/verify-production-b2-d1-runtime-acceptance.mjs"
+      - "scripts/tests/verify-production-b2-d1-runtime-acceptance.test.mjs"
+      - "docs/ops/PRODUCTION_B2_D1_RUNTIME_ACCEPTANCE.md"
+  pull_request:
+    paths:
+      - ".github/workflows/production-b2-d1-runtime-readwrite-acceptance.yml"
+      - "scripts/ops/verify-production-b2-d1-runtime-acceptance.mjs"
+      - "scripts/tests/verify-production-b2-d1-runtime-acceptance.test.mjs"
+      - "docs/ops/PRODUCTION_B2_D1_RUNTIME_ACCEPTANCE.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-production-b2-d1-runtime-acceptance
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Run no-network runtime acceptance contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/verify-production-b2-d1-runtime-acceptance.mjs
+          bun test scripts/tests/verify-production-b2-d1-runtime-acceptance.test.mjs
+
+  production-runtime-read-write-readback:
+    needs: offline-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'push' ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          inputs.confirmation == 'VERIFY_EXISTING_B2_D1_ONLY_NO_FUNDS'
+        )
+      )
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    env:
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_REQUEST_BUDGET: "8"
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      SUPABASE_DB_URL: ""
+      SUPABASE_URL: ""
+      APP_SUPABASE_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      APP_SUPABASE_SERVICE_ROLE_KEY: ""
+      COINBASE_API_KEY: ""
+      COINBASE_COMMERCE_API_KEY: ""
+      COINBASE_X402_MAINNET_ACK: ""
+      GEOMACRO_COMMERCIAL_LAUNCH_ACK: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked dependencies
+        shell: bash
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Confirm no Supabase/payment runtime and resolve existing production D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = "$(git rev-parse HEAD)"
+          for key in SUPABASE_DB_URL SUPABASE_URL APP_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_SERVICE_ROLE_KEY COINBASE_API_KEY COINBASE_COMMERCE_API_KEY COINBASE_X402_MAINNET_ACK GEOMACRO_COMMERCIAL_LAUNCH_ACK; do
+            test -z "$(printenv "$key" || true)" || {
+              echo "::error::SUPABASE_OR_PAYMENT_BOUNDARY_VIOLATED"
+              exit 2
+            }
+          done
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::OWNER_SECRET_MISSING:CLOUDFLARE_API_TOKEN"; exit 2; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::OWNER_SECRET_MISSING:CLOUDFLARE_ACCOUNT_ID"; exit 2; }
+          test -n "$B2_KEY_ID" || { echo "::error::OWNER_SECRET_MISSING:B2_KEY_ID"; exit 2; }
+          test -n "$B2_APPLICATION_KEY" || { echo "::error::OWNER_SECRET_MISSING:B2_APPLICATION_KEY"; exit 2; }
+          test -n "$GEOMACRO_COMMERCE_LEDGER_TOKEN" || { echo "::error::OWNER_SECRET_MISSING:GEOMACRO_COMMERCE_LEDGER_TOKEN"; exit 2; }
+          test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || { echo "::error::OWNER_SECRET_INVALID:GEOMACRO_COMMERCE_LEDGER_TOKEN"; exit 2; }
+          if ! npx --yes wrangler@4.136.3 d1 list --json > /tmp/geomacro-d1-list.json 2>/tmp/geomacro-wrangler-stderr.log; then
+            echo "::error::CLOUDFLARE_D1_LIST_FAILED_CHECK_TOKEN_SCOPE_AND_ACCOUNT"
+            exit 2
+          fi
+          node --input-type=module <<'NODE'
+          import {readFileSync,appendFileSync} from "node:fs";
+          const items=JSON.parse(readFileSync("/tmp/geomacro-d1-list.json","utf8"));
+          const match=items.find(x=>x.name==="geomacro-control-plane");
+          const id=String(match?.uuid??match?.id??"");
+          if(!/^[0-9a-f-]{36}$/i.test(id)) {
+            process.stderr.write("CONTROL_PLANE_D1_NOT_FOUND_OR_ID_INVALID\n");
+            process.exit(2);
+          }
+          appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+id+"\n");
+          NODE
+          echo "B2_ACCOUNT_QUOTA_WORKFLOW_ID=runtime_probe_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+      - name: Execute real B2 write and independent byte readbacks plus D1 ledger readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          bun scripts/ops/verify-production-b2-d1-runtime-acceptance.mjs --no-funds-runtime-test > /tmp/geomacro-runtime-acceptance.json 2>/tmp/geomacro-runtime-acceptance.stderr
+          node --input-type=module <<'NODE'
+          import {readFileSync} from "node:fs";
+          const r=JSON.parse(readFileSync("/tmp/geomacro-runtime-acceptance.json","utf8"));
+          if(r.status!=="PASS" ||
+             r.b2?.put_verified!==true ||
+             r.b2?.full_body_readback_verified!==true ||
+             r.b2?.second_independent_get_verified!==true ||
+             r.b2?.sha256_match!==true ||
+             r.d1?.quota_status_read_before_and_after!==true ||
+             r.d1?.authenticated_control_plane_d1_read_before_and_after!==true ||
+             r.d1?.per_run_write_receipts_read_back!==true ||
+             r.d1?.global_counters_advanced!==true ||
+             r.supabase_requests!==0 ||
+             r.payment_attempts!==0) {
+            process.stderr.write("PRODUCTION_B2_D1_RUNTIME_ACCEPTANCE_RECEIPT_INVALID\n");
+            process.exit(3);
+          }
+          process.stdout.write(JSON.stringify({
+            schema:r.schema,status:r.status,
+            b2_put_verified:r.b2.put_verified,
+            full_body_readback_verified:r.b2.full_body_readback_verified,
+            second_independent_get_verified:r.b2.second_independent_get_verified,
+            payload_sha256_match:r.b2.sha256_match,
+            payload_bytes:r.b2.bytes,
+            d1_quota_write_readback_verified:r.d1.per_run_write_receipts_read_back,
+            authenticated_control_plane_d1_readback_verified:r.d1.authenticated_control_plane_d1_read_before_and_after,
+            d1_get_receipts:r.d1.get_request_receipts,
+            d1_put_receipts:r.d1.put_request_receipts,
+            supabase_requests:r.supabase_requests,
+            payment_attempts:r.payment_attempts,
+            current_signed_hot_products_verified:r.current_signed_hot_products_verified
+          })+"\n");
+          NODE
