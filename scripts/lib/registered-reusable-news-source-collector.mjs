@@ -159,10 +159,11 @@ async function fetchFeed(spec,fetchImpl){
 }
 export async function collectRegisteredReusableNews({
   now=new Date(),fetchImpl=fetch,registry=registeredReusableNewsSources(),
-  perCategory=8,normalize,resolveCountry=()=>null
+  perCategory=8,normalize,resolveCountry=()=>null,networkConcurrency=6
 }={}){
   if(typeof normalize!=="function"||typeof resolveCountry!=="function"||
-     !(now instanceof Date)||!Number.isFinite(now.getTime()))
+     !(now instanceof Date)||!Number.isFinite(now.getTime())||
+     !Number.isSafeInteger(networkConcurrency)||networkConcurrency<1||networkConcurrency>6)
     throw Error("REUSABLE_NEWS_COLLECTOR_INPUT_INVALID");
   const active=selectRegisteredNewsSources(now,registry,perCategory);
   const checks=[],items=[],seen=new Set();
@@ -171,8 +172,8 @@ export async function collectRegisteredReusableNews({
   // window by itself. Bounded parallelism preserves source ordering, limits
   // simultaneous requests, and never forwards raw feed bodies to D1.
   const fetched=[];
-  for(let i=0;i<active.length;i+=SOURCE_FETCH_CONCURRENCY){
-    const chunk=active.slice(i,i+SOURCE_FETCH_CONCURRENCY);
+  for(let i=0;i<active.length;i+=networkConcurrency){
+    const chunk=active.slice(i,i+networkConcurrency);
     fetched.push(...await Promise.all(chunk.map(s=>s.supported
       ?fetchFeed(s,fetchImpl)
       :Promise.resolve({state:"UNSUPPORTED_FORMAT",body:null}))));
