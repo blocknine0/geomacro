@@ -666,7 +666,18 @@ jobs:
           source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
           pathlib.Path(sys.argv[2]).write_text(html.unescape(source), encoding="utf-8")
           PY
-            if ! grep -Fq "$marker" "$decoded"; then
+            if [[ "$path" == "/global-risk" ]]; then
+              # The frozen route has two valid states: this recovery heading
+              # while the signed package is unavailable, OR its main heading
+              # after verified data loads. Do not make an error-state-only
+              # marker the sole test for a healthy page; the independent B2,
+              # deep-health and API checks remain strict launch blockers.
+              if ! grep -Fq "Geomacro Global Risk" "$decoded" &&
+                 ! grep -Fq "Three risks. Three separate indices." "$decoded"; then
+                echo "::error title=Production route content missing::$path did not render either approved Global Risk route state."
+                exit 1
+              fi
+            elif ! grep -Fq "$marker" "$decoded"; then
               echo "::error title=Production route content missing::$path returned HTTP 200 but did not render expected marker: $marker"
               exit 1
             fi
