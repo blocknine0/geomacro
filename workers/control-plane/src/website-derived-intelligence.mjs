@@ -64,7 +64,9 @@ export function verifyDerivedStory(s, now=Date.now()) {
       !(s.geography===null || typeof s.geography==="string"&&s.geography.length<=70) ||
       s.observed_release_count!==1 ||
       !((s.status==="official_release_observed_unscored" &&
-          !s.topic.endsWith(" publisher candidate")) ||
+          !s.topic.endsWith(" publisher candidate") &&
+          s.development_type!=="unverified OSINT feed observation" &&
+          !s.sources_credited.some(x=>typeof x==="string"&&x.startsWith("Monitored feed: "))) ||
         (s.status==="official_feed_candidate_unscored" &&
           ((s.category==="geopolitics"&&s.topic==="geopolitical publisher candidate")||
            (s.category==="macro"&&s.topic==="macro publisher candidate")||
