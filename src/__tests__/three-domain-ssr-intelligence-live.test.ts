@@ -9,16 +9,16 @@ import type {StatelessIntelligenceResult} from "@/lib/stateless-public-intellige
 
 const now="2026-10-13T10:00:00.000Z";
 const headline:Record<StatelessCategory,string>={
-  geopolitics:"Geomacro finds security on UN Security Council activity",
-  macro:"Geomacro finds official economic statistics on consumer prices",
-  rare_earth:"Geomacro finds critical-minerals policy on rare-earth materials",
+  geopolitics:"Geomacro finds United Nations announced new sanctions on cross-border trade",
+  macro:"Geomacro finds Federal Reserve announced new monetary policy measures",
+  rare_earth:"Geomacro finds European Union announced new critical mineral export controls",
 };
 const signal=(category:StatelessCategory):StatelessIntelligenceSignal=>({
   id:category+"-test9876",category,title:headline[category],
   why_it_matters:"Official first-party publication may affect monitored exposures but cannot imply an outcome or a scored risk.",
-  topic:category==="geopolitics"?"geopolitical policy":
-    category==="macro"?"macroeconomic statistics":"critical-minerals supply",
-  what_changed:"An official publisher issued a dated release concerning the stated monitoring topic.",
+  topic:category==="geopolitics"?"sanctions and trade restrictions":
+    category==="macro"?"monetary policy":"critical-mineral inputs",
+  what_changed:headline[category].replace(/^Geomacro finds /u,"")+". The action was announced in the dated original release.",
   geography:null,development_type:"official update",published_at:"2026-10-12T09:00:00.000Z",
   date_precision:"exact",observed_release_count:1,sources_credited:[],
   status:"official_release_observed_unscored",same_event_corrob_verified:false,severity:null,
@@ -51,7 +51,7 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
       expect(html).not.toContain("All findings</button>");
       expect(html).not.toContain('aria-label="Filter Intelligence by country"');
       expect(html).not.toContain("Loading ");
-      expect(html).toContain("Earlier original releases");
+      expect(html).toContain("Earlier news · Dated");
       expect(html).not.toContain("current signed risk");
     }
   });
@@ -72,14 +72,14 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
   it("shows the supplied country and actual derived change without em dashes",()=>{
     const geo=state("geopolitics");
     geo.signals[0]={...geo.signals[0],geography:"Sudan",
-      title:"Geomacro finds Call for a ceasefire — Sudan",
-      what_changed:"A ceasefire was requested — implementation is unconfirmed."};
+      title:"Geomacro finds United Nations announced new ceasefire talks concerning Sudan",
+      what_changed:"United Nations announced new ceasefire talks concerning Sudan — implementation remains unconfirmed."};
     const html=renderToStaticMarkup(createElement(StatelessLiveDesk,{
       initial:geo,initialFeeds:{geopolitics:geo},initialJournal:[],
     }));
-    expect(html).toContain("Country or region: Sudan");
-    expect(html).toContain("Actor not verified: geopolitical policy");
-    expect(html).toContain("A ceasefire was requested; implementation is unconfirmed.");
+    expect(html).toContain("Sudan");
+    expect(html).not.toContain("Actor not verified:");
+    expect(html).toContain("United Nations announced new ceasefire talks concerning Sudan; implementation remains unconfirmed.");
     expect(html).not.toContain("\u2014");
     expect(html).not.toContain("Official publisher issues");
   });
