@@ -280,6 +280,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(desk).not.toContain("Required credits are retained");
     expect(desk).toContain("isConcretePublicIntelligence");
     expect(desk).not.toContain("SOURCE / PUBLISHER");
-    expect(desk).toContain("raw articles and source feeds are not delivered");
+    expect(desk).not.toContain("raw articles and source feeds are not delivered");
+    expect(desk).not.toContain("website-derived-news-html");
   });
 });
