@@ -117,6 +117,44 @@ export function privateOsintGlobalSources(){
    seenMacroMineralsIds.add(s.id);
    map.set(s.url,{...s,supported:true,transport_verified_at_registration:false});
  }
+
+ // Dedicated Macro/FX, Critical Minerals and transport-corridor additions.
+ // The list contains candidates only: real HTTP/native-clock checks on each
+ // tick decide if anything is observed. No rights or 15m guarantees inherited.
+ const canonicalCorridors=JSON.parse(readFileSync(new URL(
+  "../../config/operator-corridor-source-crosswalk.v1.json",import.meta.url),"utf8"));
+ const corridorIds=new Set(canonicalCorridors.corridors.map(c=>c.id));
+ const regional=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
+ if(regional?.schema!=="geomacro.private-osint-regional-corridor-additions.v1"||
+    regional.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
+    !Array.isArray(regional.sources)||regional.sources.length>32)
+   throw Error("PRIVATE_OSINT_REGIONAL_EXPANSION_INVALID");
+ const additionIds=new Set();
+ for(const source of regional.sources){
+  let u;try{u=new URL(source.url)}catch{throw Error("PRIVATE_OSINT_REGIONAL_URL_INVALID")}
+  if(!/^private_expansion_[a-z0-9_]+$/u.test(source.id)||
+     additionIds.has(source.id)||u.protocol!=="https:"||
+     !u.hostname.includes(".")||u.username||u.password||u.port||u.hash||
+     !["global",...Object.keys(CONTINENT_COUNTRIES_195)].includes(source.continent)||
+     (source.publisher_country_iso3!==null&&
+      !Object.values(CONTINENT_COUNTRIES_195).flat().includes(source.publisher_country_iso3))||
+     !["rss","atom","rdf"].includes(source.type)||
+     !Array.isArray(source.categories)||source.categories.length!==1||
+     !["macro","rare_earth"].includes(source.categories[0])||
+     !Array.isArray(source.related_corridor_ids)||
+     source.related_corridor_ids.some(id=>!corridorIds.has(id))||
+     new Set(source.related_corridor_ids).size!==source.related_corridor_ids.length||
+     source.activation_state!=="RUNTIME_PROBE_REQUIRED"||
+     source.provider_rights_verified!==false||
+     source.commercial_eligible!==false||
+     source.access_verified_in_production!==false||
+     source.publicly_deliverable!==false||
+     map.has(source.url)||existing.has(source.url))
+    throw Error("PRIVATE_OSINT_REGIONAL_SOURCE_UNSAFE_OR_DUPLICATE");
+  additionIds.add(source.id);
+  map.set(source.url,{...source,supported:true,transport_verified_at_registration:false});
+ }
  // Interleave continents so an individual slow regional desk cannot put
  // another continent at the back of a large sequential registry group.
  const buckets=["global",...Object.keys(CONTINENT_COUNTRIES_195)].map(c=>[...map.values()].filter(s=>s.continent===c));
@@ -142,3 +180,49 @@ export function privateOsintContinentCoverage(sources,checks,items){
 }
 import {createHash} from "node:crypto";
 const sourceRef=(s,c)=>createHash("sha256").update([s.id,s.url,c].join("\n")).digest("hex");
+
+/** Registration coverage only; official HTML/API discovery references are NOT auto-scraped. */
+export function privateOsintCorridorReferenceCoverage(){
+ const canonical=JSON.parse(readFileSync(new URL(
+  "../../config/operator-corridor-source-crosswalk.v1.json",import.meta.url),"utf8"));
+ const overlay=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-corridor-reference-overlay.v1.json",import.meta.url),"utf8"));
+ if(canonical.schema!=="geomacro.operator-corridor-source-crosswalk.v1"||
+    overlay.schema!=="geomacro.private-osint-corridor-reference-overlay.v1"||
+    overlay.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
+    overlay.no_automatic_scraping!==true||
+    !Array.isArray(overlay.sources)||overlay.sources.length>64)
+   throw Error("PRIVATE_OSINT_CORRIDOR_OVERLAY_INVALID");
+ const known=new Set(canonical.corridors.map(x=>x.id));
+ const monitored=new Set(),identities=new Set(),urls=new Set();
+ const byCategory={macro:0,rare_earth:0};
+ for(const source of overlay.sources){
+  let url;try{url=new URL(source.url)}catch{throw Error("PRIVATE_OSINT_CORRIDOR_REFERENCE_URL_INVALID")}
+  if(!/^corridor_reference_[a-z0-9_]+$/u.test(source.id)||
+     identities.has(source.id)||urls.has(source.url)||
+     url.protocol!=="https:"||!url.hostname.includes(".")||
+     url.username||url.password||url.port||url.hash||
+     !["global",...Object.keys(CONTINENT_COUNTRIES_195)].includes(source.continent)||
+     !["macro","rare_earth"].includes(source.category)||
+     !Array.isArray(source.related_corridor_ids)||
+     source.related_corridor_ids.some(id=>!known.has(id))||
+     new Set(source.related_corridor_ids).size!==source.related_corridor_ids.length||
+     source.transport_tested!==false||source.source_rights_verified!==false||
+     source.commercial_eligible!==false||source.auto_ingest_enabled!==false)
+   throw Error("PRIVATE_OSINT_CORRIDOR_REFERENCE_UNSAFE");
+  identities.add(source.id);urls.add(source.url);
+  byCategory[source.category]++;
+  for(const id of source.related_corridor_ids)monitored.add(id);
+ }
+ return Object.freeze({
+  total_canonical_corridors:known.size,
+  referenced_corridors:monitored.size,
+  unreferenced_corridors:known.size-monitored.size,
+  newly_registered_reference_surfaces:overlay.sources.length,
+  reference_surfaces_by_category:byCategory,
+  automatic_scraping_enabled:false,
+  transport_tested:false,
+  commercial_delivery_enabled:false,
+  route_geometry_certified:false,
+ });
+}
