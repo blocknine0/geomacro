@@ -13,7 +13,7 @@ test("Worker, publisher and health endpoint share one explicit topic-policy revi
  assert.match(worker,/isSafeDerivedNewsReadbackSignal\(s\)/u);
  assert.match(index,/derived_news_topic_policy_revision:\s*DERIVED_NEWS_TOPIC_POLICY_REVISION/u);
  const deploy=read(".github/workflows/deploy-control-plane-d1.yml");
- assert.match(deploy,/scripts\\/lib\\/derived-news-readback-policy\\.mjs/u);
+ assert.ok(deploy.includes('"scripts/lib/derived-news-readback-policy.mjs"'));
  assert.match(publisher,/requireDerivedNewsWorkerPolicy/u);
  const preflight=publisher.indexOf("const workerPolicy=await requireDerivedNewsWorkerPolicy");
  const read=publisher.indexOf("readStatelessWebsiteIntelligence(category");
@@ -44,5 +44,5 @@ test("all readback consumers use the same policy instead of rejecting an entire 
  assert.match(b2,/isSafeDerivedNewsReadbackSignal\(row\)/u);
  assert.match(client,/isSafeDerivedNewsReadbackSignal\(s\)/u);
  assert.match(workflow,/isSafeDerivedNewsReadbackSignal\(s\)/u);
- assert.equal(b2.includes(String.raw`/https?:\\/\\/|www\\./iu.test(JSON.stringify(row))`),false);
+ assert.equal(b2.includes("/https?:\\/\\/|www\\./iu.test(JSON.stringify(row))"),false);
 });
