@@ -42,10 +42,16 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-restore-concrete-three-category-news-20261025");
+    expect(config.lock_revision).toBe("founder-approved-intelligence-per-category-event-dedup-20261025");
+    const dedup=config.approved_intelligence_per_category_event_dedup_20261025;
+    expect(dedup.previous_baseline_sha).toBe("9098323e67dd5a7f9f5b1fcf735562aea9fe8f66");
+    expect(dedup.approved_ui_commit).toBe(config.baseline_sha);
+    expect(dedup.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(dedup.global_risk_final_lock_unmodified).toBe(true);
+    expect(dedup.predge_and_store_prices_unmodified).toBe(true);
     const restored=config.approved_restore_concrete_intelligence_20261025;
     expect(restored.previous_baseline_sha).toBe("ae47180dc6347023be7e6fb28439c7d3d5e14bf8");
-    expect(restored.approved_ui_commit).toBe(config.baseline_sha);
+    expect(restored.approved_ui_commit).toBe(dedup.previous_baseline_sha);
     expect(restored.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
     expect(restored.required_visible_credit_licences_preserved).toBe(true);
     expect(restored.global_risk_final_lock_unmodified).toBe(true);
