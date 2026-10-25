@@ -1,0 +1,106 @@
+name: Recover D1 daily-row quota deployment after reset
+
+on:
+  schedule:
+    # Cloudflare D1 daily row counters reset at 00:00 UTC; wait ten minutes.
+    - cron: "10 0 * * *"
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: geomacro-d1-quota-deploy-recovery
+  cancel-in-progress: false
+
+jobs:
+  retry-quota-blocked-deployment:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Detect only a confirmed D1 daily row-read quota deployment failure
+        id: diagnose
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}"
+          runs_file="$RUNNER_TEMP/deploy-runs.json"
+
+          if ! curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$api/actions/runs?branch=main&per_page=100" -o "$runs_file"; then
+            echo "::warning::D1_QUOTA_RECOVERY_RUN_LOOKUP_UNAVAILABLE"
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          run_id="$(jq -r '[.workflow_runs[] | select(.name == "Deploy D1 Control Plane" and .head_branch == "main")] | sort_by(.created_at) | last | .id // empty' "$runs_file")"
+          conclusion="$(jq -r --argjson id "${run_id:-0}" '[.workflow_runs[] | select(.id == $id)][0].conclusion // empty' "$runs_file")"
+          if [[ -z "$run_id" || "$conclusion" != "failure" ]]; then
+            echo "No failed latest canonical D1 deployment requires quota recovery."
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          jobs_file="$RUNNER_TEMP/deploy-jobs.json"
+          if ! curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$api/actions/runs/$run_id/jobs?per_page=100" -o "$jobs_file"; then
+            echo "::warning::D1_QUOTA_RECOVERY_JOB_LOOKUP_UNAVAILABLE"
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          job_id="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].id // empty' "$jobs_file")"
+          migration_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Apply committed D1 migrations remotely") | .conclusion' "$jobs_file" 2>/dev/null || true)"
+          if [[ -z "$job_id" || "$migration_conclusion" != "failure" ]]; then
+            echo "Latest deployment did not fail at the D1 migration step; no automatic retry."
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          log_zip="$RUNNER_TEMP/deploy-job-logs.zip"
+          if ! curl --fail --location --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$api/actions/jobs/$job_id/logs" -o "$log_zip"; then
+            echo "::warning::D1_QUOTA_RECOVERY_LOG_LOOKUP_UNAVAILABLE"
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          log_text="$RUNNER_TEMP/deploy-job-logs.txt"
+          if ! unzip -p "$log_zip" > "$log_text" 2>/dev/null; then
+            echo "::warning::D1_QUOTA_RECOVERY_LOG_ARCHIVE_UNREADABLE"
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if grep -Fq "Your account has exceeded D1's free tier daily row read limit" "$log_text" &&
+             grep -Fq "code: 7500" "$log_text"; then
+            echo "Confirmed D1 daily row-read quota exhaustion on the latest canonical deploy; eligible for one post-reset retry."
+            echo "retry=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Latest D1 deploy failure is not the specific daily row-read quota class; no automatic retry."
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dispatch canonical Worker deployment after quota reset
+        if: steps.diagnose.outputs.retry == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --request POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -H "Content-Type: application/json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/deploy-control-plane-d1.yml/dispatches" \
+            --data '{"ref":"main"}'
+          echo "Dispatched the existing protected deployment workflow; its own migration, secret, Worker and D1 acceptance gates remain mandatory."
