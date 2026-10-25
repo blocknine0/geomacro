@@ -17,6 +17,7 @@ import {actorActionNewsObservation} from "../../src/lib/release-news-observation
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client.ts";
 import {isConcretePublicIntelligence} from "../../src/lib/intelligence-concrete-publication.ts";
+import {dedupeIntelligenceStories} from "../../src/lib/intelligence-news-dedupe.ts";
 
 const root=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(root.length<32)throw Error("PRIVATE_OSINT_PRODUCTION_CREDENTIAL_REQUIRED");
@@ -103,8 +104,9 @@ const osintSignals=observed.map(row=>
  .filter(Boolean).filter(isConcretePublicIntelligence);
 // Fair latest-first scheduling; small categories cannot be buried by a large
 // geopolitics batch, and the public journal retains up to 72h.
-const eligible=[...firstPartySignals.filter(isConcretePublicIntelligence),...osintSignals]
- .sort((a,b)=>b.published_at.localeCompare(a.published_at));
+const eligible=dedupeIntelligenceStories([
+ ...firstPartySignals.filter(isConcretePublicIntelligence),...osintSignals,
+]);
 const publishingLanes=["geopolitics","macro","rare_earth"].map(cat=>
  eligible.filter(row=>row.category===cat));
 const websiteSignals=[];
@@ -119,7 +121,8 @@ for(let n=0;websiteSignals.length<200&&publishingLanes.some(l=>n<l.length);n++)
 const website=await publishPrivateOsintWebsiteSignals({
  signals:websiteSignals,
  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
- controlToken:control,readAll:fetchAllDerivedNews,now:Date.now(),
+ controlToken:control,readAll:fetchAllDerivedNews,
+ dedupeAgainstExisting:dedupeIntelligenceStories,now:Date.now(),
 });
 // Counts-only acceptance of the SAME live public journal consumed by the
 // website. A full private collection can be green while every old D1 card
