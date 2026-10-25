@@ -72,11 +72,17 @@ async function fetchPublicReadWithRetry(
 
 export const GEOMACRO_DERIVED_JOURNAL_URL =
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
+export const GEOMACRO_PERMANENT_ARCHIVE_BASE_URL =
+  "https://geomacro-public-finds-archive.daspallab202391.workers.dev";
+const GEOMACRO_PERMANENT_LATEST_URL=GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/latest.json";
+const PERMANENT_ARCHIVE_INDEX_SCHEMA="geomacro.permanent-derived-news-archive-index.v1";
+const PERMANENT_ARCHIVE_MONTH_SCHEMA="geomacro.permanent-derived-news-archive-month.v1";
+const PERMANENT_ARCHIVE_CATEGORIES=["geopolitics","macro","rare_earth"] as const;
 
 const SIGNAL_FIELDS = new Set(["id","category","title","what_changed","why_it_matters",
   "topic","geography","development_type","published_at","date_precision",
   "observed_release_count","sources_credited","status","same_event_corrob_verified","severity"]);
-function safeSignal(value: unknown, now: number): value is StatelessIntelligenceSignal {
+function safeSignal(value: unknown, now: number, allowHistorical = false): value is StatelessIntelligenceSignal {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const s = value as Record<string, unknown>;
   if (!isSafeDerivedNewsReadbackSignal(s) ||
@@ -115,7 +121,7 @@ function safeSignal(value: unknown, now: number): value is StatelessIntelligence
       s.sources_credited.some(c => typeof c !== "string" || c.length > 230)) return false;
   const original = typeof s.published_at === "string" ? s.published_at : "";
   const ms = Date.parse(original);
-  if (!Number.isFinite(ms) || ms > now || ms < now - 72 * 3_600_000) return false;
+  if (!Number.isFinite(ms) || ms > now || (!allowHistorical && ms < now - 72 * 3_600_000)) return false;
   // Date.parse can normalize impossible days (e.g. 2026-02-30); require the
   // exact originating Gregorian date, never a JavaScript-normalized alias.
   if (s.date_precision === "day" && new Date(ms).toISOString().slice(0, 10) !== original)
@@ -167,7 +173,7 @@ export async function fetchDirectDerivedNews(
   fetchImpl: typeof fetch = fetch,
   now = Date.now(),
 ): Promise<StatelessIntelligenceSignal[]> {
-  const response = await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_DERIVED_JOURNAL_URL,{
+  const response = await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_PERMANENT_LATEST_URL,{
     method:"GET",redirect:"error",cache:"no-store",
     headers:{Accept:"application/json"},
   },8_000);
@@ -177,6 +183,70 @@ export async function fetchDirectDerivedNews(
   const text = await response.text();
   if (text.length > 512_000) throw Error("DERIVED_NEWS_PUBLIC_TOO_LARGE");
   return checkedDerivedNews(JSON.parse(text), now);
+}
+
+/**
+ * Read the append-only public archive served by Cloudflare Static Assets.
+ * These reads never query D1. Every month/category is an independent immutable
+ * shard so one file can stay well below the static-asset size limit.
+ */
+export async function fetchPermanentDerivedNews(
+  fetchImpl:typeof fetch=fetch,now=Date.now(),
+):Promise<StatelessIntelligenceSignal[]>{
+  if(!Number.isFinite(now))throw Error("DERIVED_NEWS_ARCHIVE_CLOCK_INVALID");
+  const indexResponse=await fetchImpl(GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/index.json",{
+    method:"GET",redirect:"error",cache:"no-store",
+    headers:{Accept:"application/json"},signal:AbortSignal.timeout(8_000),
+  });
+  if(!indexResponse.ok||Number(indexResponse.headers.get("content-length")??0)>256_000)
+    throw Error("DERIVED_NEWS_ARCHIVE_INDEX_UNAVAILABLE");
+  const indexText=await indexResponse.text();
+  if(indexText.length>256_000)throw Error("DERIVED_NEWS_ARCHIVE_INDEX_TOO_LARGE");
+  const index=JSON.parse(indexText) as Record<string,unknown>;
+  if(index.schema!==PERMANENT_ARCHIVE_INDEX_SCHEMA||
+     !Array.isArray(index.months)||index.months.length>600||
+     index.months.some(month=>typeof month!=="string"||!/^\\d{4}-(?:0[1-9]|1[0-2])$/u.test(month))||
+     !Array.isArray(index.categories)||
+     PERMANENT_ARCHIVE_CATEGORIES.some(category=>!index.categories?.includes(category)))
+    throw Error("DERIVED_NEWS_ARCHIVE_INDEX_INVALID");
+  const months=[...new Set(index.months as string[])];
+  const tasks=months.flatMap(month=>PERMANENT_ARCHIVE_CATEGORIES.map(category=>({month,category})));
+  const collected:StatelessIntelligenceSignal[]=[];
+  const seen=new Set<string>();
+  const batchSize=9;
+  for(let start=0;start<tasks.length;start+=batchSize){
+    const batch=tasks.slice(start,start+batchSize);
+    const documents=await Promise.all(batch.map(async task=>{
+      const url=GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/archive/"+
+        task.month+"/"+task.category+".json";
+      const response=await fetchImpl(url,{
+        method:"GET",redirect:"error",cache:"no-store",
+        headers:{Accept:"application/json"},signal:AbortSignal.timeout(12_000),
+      });
+      if(!response.ok||Number(response.headers.get("content-length")??0)>20*1024*1024)
+        throw Error("DERIVED_NEWS_ARCHIVE_MONTH_UNAVAILABLE");
+      const body=await response.text();
+      if(body.length>20*1024*1024)throw Error("DERIVED_NEWS_ARCHIVE_MONTH_TOO_LARGE");
+      const doc=JSON.parse(body) as Record<string,unknown>;
+      if(doc.schema!==PERMANENT_ARCHIVE_MONTH_SCHEMA||doc.month!==task.month||
+         doc.category!==task.category||!Array.isArray(doc.signals)||doc.signals.length>100_000)
+        throw Error("DERIVED_NEWS_ARCHIVE_MONTH_INVALID");
+      return {task,signals:doc.signals};
+    }));
+    for(const document of documents){
+      for(const value of document.signals){
+        if(!safeSignal(value,now,true))continue;
+        const signal=value as StatelessIntelligenceSignal;
+        const originalMonth=signal.date_precision==="day"
+          ?signal.published_at.slice(0,7):signal.published_at.slice(0,7);
+        if(signal.category!==document.task.category||originalMonth!==document.task.month)
+          throw Error("DERIVED_NEWS_ARCHIVE_SHARD_MISMATCH");
+        if(seen.has(signal.id))throw Error("DERIVED_NEWS_ARCHIVE_DUPLICATE_ID");
+        seen.add(signal.id);collected.push(signal);
+      }
+    }
+  }
+  return collected.sort((a,b)=>b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
 }
 
 /**
