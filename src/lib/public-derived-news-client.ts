@@ -34,7 +34,13 @@ function safeSignal(value: unknown, now: number): value is StatelessIntelligence
            (s.category==="macro"&&s.topic==="macro publisher candidate")||
            (s.category==="rare_earth"&&s.topic==="minerals publisher candidate")) &&
           s.development_type==="unclassified publisher update" &&
-          s.geography===null)) ||
+          s.geography===null) ||
+        (s.status==="osint_feed_observed_unverified" &&
+          s.development_type==="unverified OSINT feed observation" &&
+          s.date_precision==="exact" && s.geography===null &&
+          Array.isArray(s.sources_credited)&&s.sources_credited.length===1&&
+          typeof s.sources_credited[0]==="string"&&
+          s.sources_credited[0].startsWith("Monitored feed: "))) ||
       s.same_event_corrob_verified !== false || s.severity !== null ||
       s.observed_release_count !== 1 ||
       !Array.isArray(s.sources_credited) ||
