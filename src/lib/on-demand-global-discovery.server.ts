@@ -560,21 +560,21 @@ const GOVUK_SEARCH_FALLBACKS:readonly OriginalFeed[]=[
     url:"https://www.gov.uk/api/search.json",
     media:"search",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-    topic:/\b(?:sanctions?|embargo|export controls?|conflict|war|military|security|peace)\b/iu,
+    topic:/\b(?:sanctions?|embargo(?:es)?|export controls?|trade restrictions?|conflict|ceasefire|war|military|defen[cs]e|security|peace|treaties|diplomac(?:y|ies)|foreign ministr(?:y|ies)|border clashes?|missiles?)\b/iu,
   },
   {
     domain:"macro",family:"uk_hmt_search_original_page",
     url:"https://www.gov.uk/api/search.json",
     media:"search",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-    topic:/\b(?:econom(?:y|ic|ics)?|financial|chancellor|treasury|inflation|monetary|foreign exchange|exchange rates?|currency|reserves?)\b/iu,
+    topic:/\b(?:econom(?:y|ic|ics)?|financial|chancellor|treasury|inflation|deflation|monetary|central banks?|interest rates?|foreign[- ]exchange|exchange rates?|currencies|fx reserves?|fiscal|sovereign|budgets?|debt|bond yields?|trade flows?|tariffs?|manufacturing|industrial production|pmi|commodity prices?|energy prices?|capital flows?|current account|balance of payments|exports?|imports?)\b/iu,
   },
   {
     domain:"rare_earth",family:"uk_dbt_search_original_page",
     url:"https://www.gov.uk/api/search.json",
     media:"search",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
+    topic:/\b(?:critical minerals?|critical raw materials?|strategic minerals?|rare[- ]earth(?:s?| elements?)?|lanthanides?|lithium|cobalt|nickel|graphite|copper|gallium|germanium|antimony|tungsten|manganese|vanadium|scandium|tantalum|niobium|dysprosium|neodymium|terbium|praseodymium|samarium|yttrium|mineral supply|minerals? processing|mining|ore processing|smelting|refining|refineries|permanent magnets?|magnet production|battery materials)\b/iu,
   },
 ];
 const INTERNATIONAL_ORIGINAL_FEEDS:readonly OriginalFeed[]=GLOBAL_OFFICIAL_RELEASE_FEEDS.filter((s:{format:string})=>s.format!=='json').map(
