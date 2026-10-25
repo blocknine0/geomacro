@@ -18,12 +18,35 @@ describe("#2041 last-resort bounded opaque first-party feed identity",()=>{
     expect(rows).toHaveLength(60);
     expect(new Set(rows.map(x=>x.original_link_sha256)).size).toBe(60);
     expect(rows.every(x=>x.feed_entry_identity_kind==="OPAQUE_FIRST_PARTY_FEED_ENTRY")).toBe(true);
-    expect(rows.every(x=>x.headline_fingerprint_verified===false)).toBe(true);
+    expect(rows.every(x=>x.headline_fingerprint_verified===true)).toBe(true);
+    expect(rows.every(x=>x.private_relevance_triage.status==="UNCLASSIFIED")).toBe(true);
     expect(rows.every(x=>x.eligible_for_scoring===false&&x.eligible_for_publication===false)).toBe(true);
     expect(rows.every(x=>x.publication_clock_status==="UNKNOWN")).toBe(true);
     expect(JSON.stringify(rows)).not.toContain("Statistics Canada Daily news");
     expect(JSON.stringify(rows)).not.toContain("www150.statcan");
     expect(JSON.stringify(rows)).not.toContain("<strong>");
+  });
+  it("decodes escaped Atom HTML into private topical hints without retaining title or URL",()=>{
+    const data="<feed><entry>"+
+      "<title type='html'>&lt;strong&gt;Canadian consumer price release&lt;/strong&gt;: inflation &amp; raw material prices</title>"+
+      "<updated>2026-10-25T18:00:00Z</updated>"+
+      "<link rel='alternate' href='"+feedPath+"'/>"+
+      "</entry></feed>";
+    const rows=observeUndatedFirstPartyAtomFeed(data,src,{now});
+    expect(rows).toHaveLength(1);
+    expect(rows[0].headline_fingerprint_verified).toBe(true);
+    expect(rows[0].private_relevance_triage).toMatchObject({
+      status:"RELATED_UNVERIFIED",reason_code:"TOPIC_HINT_ONLY",
+      topic_codes:["INFLATION"],publication_clock_verified:false,
+      article_country_verified:false,independent_event_verified:false,
+      commercial_rights_verified:false,score_verified:false,
+      customer_delivery_eligible:false,
+    });
+    expect(rows[0].eligible_for_scoring).toBe(false);
+    expect(rows[0].eligible_for_publication).toBe(false);
+    expect(JSON.stringify(rows)).not.toContain("Canadian consumer price release");
+    expect(JSON.stringify(rows)).not.toContain("www150.statcan.gc.ca");
+    expect(JSON.stringify(rows)).not.toContain("raw material prices");
   });
   it("excludes Atom <updated> from identity and dedups identical entry across two observed polling clocks",()=>{
     const a=observeUndatedFirstPartyAtomFeed(xml(60,"2026-10-11T19:14:00Z"),src,{now});
