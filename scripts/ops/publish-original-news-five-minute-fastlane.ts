@@ -11,12 +11,19 @@ import {writeFileSync} from 'node:fs';
 import {FIVE_MINUTE_NEWS_FASTLANE,readFiveMinuteNewsFastlane} from "../../src/lib/stateless-public-intelligence.server";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
 import {reconcilePrivateDerivedSourceRefs,selectBoundedRetainedOriginalTargets,type StatelessSourceCandidate,type StatelessIntelligenceSignal} from "../../src/lib/stateless-intelligence-model";
+import {DERIVED_NEWS_TOPIC_POLICY_REVISION,requireDerivedNewsWorkerPolicy} from "../lib/derived-news-readback-policy.mjs";
 
 const ROOT=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(ROOT.length<32)throw Error("FIVE_MIN_NEWS_PROTECTED_D1_AUTH_REQUIRED");
 const token=createHmac("sha256",ROOT).update("geomacro-control-plane-v1").digest("hex");
-const endpoint="https://geomacro-control-plane.daspallab202391.workers.dev/v1/website-derived-news";
+const controlPlaneOrigin="https://geomacro-control-plane.daspallab202391.workers.dev";
+const endpoint=controlPlaneOrigin+"/v1/website-derived-news";
 const categories=["geopolitics","macro","rare_earth"] as const;
+const workerPolicy=await requireDerivedNewsWorkerPolicy({
+ fetchImpl:globalThis.fetch,url:controlPlaneOrigin+"/health",
+ expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION,
+});
+console.log(JSON.stringify(workerPolicy));
 const runAt=Date.now();
 // Full verified D1 baseline BEFORE origin polling. Repeated releases are never
 // counted as fresh 20-minute deliveries or written again on every tick.
