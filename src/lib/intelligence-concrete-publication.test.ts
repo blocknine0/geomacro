@@ -34,6 +34,22 @@ describe("actual-event Intelligence publication",()=>{
   expect(isConcretePublicIntelligence({...s,title:"Geomacro finds geopolitical publisher candidate source-feed observation"})).toBe(false);
   expect(isConcretePublicIntelligence({...s,what_changed:"A monitored feed contains a dated item on a geopolitical publisher candidate."})).toBe(false);
  });
+ it("admits three-domain concrete OSINT reports while rejecting anonymous publisher candidates",()=>{
+  for(const category of ["geopolitics","macro","rare_earth"] as const){
+    const basis=sample(category);
+    const report={...basis,status:"osint_feed_observed_unverified" as const,
+      development_type:"unverified OSINT feed observation",date_precision:"exact" as const,
+      sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"],
+      what_changed:"A monitored source feed reports: "+basis.what_changed+
+        " This report has not been independently verified."};
+    expect(isConcretePublicIntelligence(report),category).toBe(true);
+    expect(concreteIntelligenceHeadline(report)).toBe(basis.title.replace(/^Geomacro finds /u,""));
+    expect(isConcretePublicIntelligence({...report,
+      title:"Geomacro finds macro publisher candidate source-feed observation"})).toBe(false);
+    expect(isConcretePublicIntelligence({...report,
+      sources_credited:["Monitored feed: news.un.org"]})).toBe(false);
+  }
+ });
  it("shows first-party governmental original facts without blanketing every publisher by credit",()=>{
   const macro=sample("macro");
   expect(isConcretePublicIntelligence({...macro,sources_credited:["Federal Reserve Board"]})).toBe(true);
