@@ -27,7 +27,7 @@ const keysExact=(obj,allowed)=>{
   if(!obj||typeof obj!=="object"||Array.isArray(obj))return false;
   return Object.keys(obj).every(x=>allowed.includes(x));
 };
-function validItem(item,now){
+export function validateReusableSourceNewsItem(item,now){
   if(!keysExact(item,["schema","id","id_is_cryptographic_proof","category","country_iso3","source","facts","usage_rights","verification","delivery"])||
      item.schema!=="geomacro.reusable-news-json.v1"||
      typeof item.id!=="string"||!/^news-[0-9a-f]{64}$/u.test(item.id)||
@@ -93,7 +93,7 @@ export async function publishReusableSourceNews(env,body,now=Date.now()){
      body.items.length+body.checks.length===0)unsafe();
   const unique=new Set(),checks=new Set(),checkedAt=new Date(now).toISOString();
   const rows=body.items.map(item=>{
-    const value=validItem(item,now),id=item.id.slice(5);
+    const value=validateReusableSourceNewsItem(item,now),id=item.id.slice(5);
     if(unique.has(id))unsafe();unique.add(id);
     return {id,category:item.category,at:item.source.original_published_at,json:value};
   });
@@ -173,7 +173,7 @@ export async function publicReusableSourceNews(env,searchParams=new URLSearchPar
     const raw=(await q.all()).results??[];
     const items=raw.slice(0,200).map(x=>{
       const item=JSON.parse(x.projection_json);
-      validItem(item,now);
+      validateReusableSourceNewsItem(item,now);
       return item;
     });
     const checkQ=domain?
