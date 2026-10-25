@@ -39,6 +39,23 @@ describe("fixed country qualification for original publisher evidence",()=>{
     expect(originalHeadlineMentionsCountry("Nigerian monetary policy","NER","Niger")).toBe(false);
     expect(originalHeadlineMentionsCountry("Dutch sovereign bond yields rise","DEU","Germany")).toBe(false);
   });
+  it.each([
+    ["Government announces new tariffs amid trade flows and manufacturing PMI","macro",["macro_risk"],true],
+    ["Central bank reports a change in foreign-exchange reserves","macro",["fx_external_risk"],true],
+    ["Treasury yields rise as sovereign debt issuance expands","macro",["sovereign_risk"],true],
+    ["Strategic gallium and germanium refining capacity expands","rare_earth",["critical_minerals"],true],
+    ["Critical raw materials policy focuses on tungsten and antimony","rare_earth",["critical_minerals"],true],
+    ["Rare-earth permanent magnet supply chain faces export controls","rare_earth",["critical_minerals"],true],
+    ["Government announces tariffs and manufacturing PMI","rare_earth",["critical_minerals"],false],
+    ["Rare-earth refinery update","macro",["macro_risk"],false],
+    ["Foreign-exchange reserves rise after central bank review","macro",["fx_external_risk"],true],
+    ["Mineral supply chain risk for neodymium and dysprosium","rare_earth",["critical_minerals"],true],
+    ["Peace talks pause after a military ceasefire announcement","geopolitics",["conflict_geopolitics"],true],
+  ] as const)("matches broader live-release topics only in the requested category: %s",(
+    title,category,topics,expected,
+  )=>{
+    expect(matchesRequestedTopic(title,category,topics)).toBe(expected);
+  });
   it("recognizes original Fed discount-rate policy as macro, not FX or mineral evidence",()=>{
     const genuineTitle="Minutes of the Board's discount rate meetings on August 17, September 9, and September 16, 2026";
     expect(matchesRequestedTopic(genuineTitle,"macro",["macro_risk"])).toBe(true);
