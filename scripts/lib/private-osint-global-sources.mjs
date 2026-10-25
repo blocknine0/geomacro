@@ -8,8 +8,8 @@ export const PRIVATE_OSINT_CATEGORIES=Object.freeze(["geopolitics","macro","rare
 // They do not translate, corroborate, score, or grant publication authority.
 export const PRIVATE_OSINT_TOPICS=Object.freeze({
  geopolitics:/(?:\b(?:wars?|conflicts?|sanctions?|ceasefire|treaty|military|security|diploma\w*|peace|refugees?|elections?|embargo|attacks?|missiles?|border|coup|guerra|conflit\w*|conflito|sanciones|sanções|cessez.le.feu|seguridad|sécurité|elecciones|eleições|militar\w*|diplomaci\w*|frontera|fronteira|paix|krieg|sicherheit|konflikt|angriff)\b|战争|冲突|制裁|停火|軍事|選挙|전쟁|분쟁|제재|حرب|عسكري|عقوبات|انتخابات|войн|конфликт|санкци|যুদ্ধ|নিরাপত্তা|নির্বাচন|संघर्ष|चुनाव|युद्ध|מלחמה|צבאי|סנקציות|הפסקת אש|בחירות|גושפנקה|جنگ|تحریم|воєн|війна|wojna|háború)/iu,
- macro:/(?:\b(?:inflation|monetary|central bank|interest rates?|fx|foreign exchange|gdp|currency|tariffs?|economic|economy|fiscal|unemployment|trade|inflación|inflação|inflazione|inflasi|banque centrale|banco central|banca centrale|taux|taxa de juros|tasas? de interés|econom[ií]a|économi\w*|econ[oô]mi\w*|comercio|comércio|desemprego|chômage|pib|devises|währung|zentralbank|zinsen|wirtschaft)\b|经济|通胀|央行|利率|汇率|経済|金融|금리|경제|تضخم|اقتصاد|فائدة|инфляц|эконом|ставк|অর্থনীতি|মূল্যস্ফীতি|সুদের|मुद्रास्फीति|अर्थव्यवस्था|ब्याज|אינפלציה|ריבית|בנק מרכזי|כלכל|שער חליפין|تورم|اقتصادی|بهره|інфляц|inflacja|inflace|infláció|bank centralny)/iu,
- rare_earth:/(?:\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|mining|cobalt|lithium|nickel|graphite|copper|gallium|germanium|neodymium|dysprosium|terbium|tungsten|mineral supply|refinery|minerais? cr[ií]ticos?|minerales? cr[ií]ticos?|terras? raras?|tierras? raras?|terres? rares?|min[eé]raux critiques?|min[eé]raux strat[eé]giques?|minería|mineração|minier\w*|litio|l[ií]tio|cobalto|cobre|cuivre|gali[ou]m|germ[aâ]nio|seltene erden|bergbau|kupfer)\b|关键矿产|稀土|锂|钴|稀土類|希土類|鉱山|희토류|리튬|معادن|редкозем|литий|кобальт|খনিজ|लिथियम|खनिज|מינרלים|ליתיום|קובלט|נחושת|יסודות נדירים|معادن کمیاب|مواد معدنی|літій|рідкозем|górnictwo|bányászat)/iu,
+ macro:/(?:\b(?:inflation|monetary|central bank|interest rates?|fx|foreign exchange|gdp|currency|tariffs?|economic|economy|fiscal|unemployment|trade|shipping|freight|port congestion|canal transit|cargo|container terminal|cross-border transport|rail corridor|logistics|pipeline flows?|customs clearance|border crossings?|inflación|inflação|inflazione|inflasi|banque centrale|banco central|banca centrale|taux|taxa de juros|tasas? de interés|econom[ií]a|économi\w*|econ[oô]mi\w*|comercio|comércio|desemprego|chômage|pib|devises|währung|zentralbank|zinsen|wirtschaft)\b|经济|通胀|央行|利率|汇率|経済|金融|금리|경제|تضخم|اقتصاد|فائدة|инфляц|эконом|ставк|অর্থনীতি|মূল্যস্ফীতি|সুদের|मुद्रास्फीति|अर्थव्यवस्था|ब्याज|אינפלציה|ריבית|בנק מרכזי|כלכל|שער חליפין|تورم|اقتصادی|بهره|інфляц|inflacja|inflace|infláció|bank centralny)/iu,
+ rare_earth:/(?:\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|mining|mine closures?|mining royalties|mineral exports?|ore processing|smelting|refining|battery minerals?|spodumene|bauxite|manganese|vanadium|antimony|indium|scandium|tantalum|niobium|platinum group metals?|cobalt|lithium|nickel|graphite|copper|gallium|germanium|neodymium|dysprosium|terbium|tungsten|mineral supply|refinery|minerais? cr[ií]ticos?|minerales? cr[ií]ticos?|terras? raras?|tierras? raras?|terres? rares?|min[eé]raux critiques?|min[eé]raux strat[eé]giques?|minería|mineração|minier\w*|litio|l[ií]tio|cobalto|cobre|cuivre|gali[ou]m|germ[aâ]nio|seltene erden|bergbau|kupfer)\b|关键矿产|稀土|锂|钴|稀土類|希土類|鉱山|희토류|리튬|معادن|редкозем|литий|кобальт|খনিজ|लिथियम|खनिज|מינרלים|ליתיום|קובלט|נחושת|יסודות נדירים|معادن کمیاب|مواد معدنی|літій|рідкозем|górnictwo|bányászat)/iu,
 });
 
 export function privateOsintGlobalSources(){
@@ -117,6 +117,44 @@ export function privateOsintGlobalSources(){
    seenMacroMineralsIds.add(s.id);
    map.set(s.url,{...s,supported:true,transport_verified_at_registration:false});
  }
+
+ // Dedicated Macro/FX, Critical Minerals and transport-corridor additions.
+ // The list contains candidates only: real HTTP/native-clock checks on each
+ // tick decide if anything is observed. No rights or 15m guarantees inherited.
+ const canonicalCorridors=JSON.parse(readFileSync(new URL(
+  "../../config/operator-corridor-source-crosswalk.v1.json",import.meta.url),"utf8"));
+ const corridorIds=new Set(canonicalCorridors.corridors.map(c=>c.id));
+ const regional=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
+ if(regional?.schema!=="geomacro.private-osint-regional-corridor-additions.v1"||
+    regional.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
+    !Array.isArray(regional.sources)||regional.sources.length>32)
+   throw Error("PRIVATE_OSINT_REGIONAL_EXPANSION_INVALID");
+ const additionIds=new Set();
+ for(const source of regional.sources){
+  let u;try{u=new URL(source.url)}catch{throw Error("PRIVATE_OSINT_REGIONAL_URL_INVALID")}
+  if(!/^private_expansion_[a-z0-9_]+$/u.test(source.id)||
+     additionIds.has(source.id)||u.protocol!=="https:"||
+     !u.hostname.includes(".")||u.username||u.password||u.port||u.hash||
+     !["global",...Object.keys(CONTINENT_COUNTRIES_195)].includes(source.continent)||
+     (source.publisher_country_iso3!==null&&
+      !Object.values(CONTINENT_COUNTRIES_195).flat().includes(source.publisher_country_iso3))||
+     !["rss","atom","rdf"].includes(source.type)||
+     !Array.isArray(source.categories)||source.categories.length!==1||
+     !["macro","rare_earth"].includes(source.categories[0])||
+     !Array.isArray(source.related_corridor_ids)||
+     source.related_corridor_ids.some(id=>!corridorIds.has(id))||
+     new Set(source.related_corridor_ids).size!==source.related_corridor_ids.length||
+     source.activation_state!=="RUNTIME_PROBE_REQUIRED"||
+     source.provider_rights_verified!==false||
+     source.commercial_eligible!==false||
+     source.access_verified_in_production!==false||
+     source.publicly_deliverable!==false||
+     map.has(source.url)||existing.has(source.url))
+    throw Error("PRIVATE_OSINT_REGIONAL_SOURCE_UNSAFE_OR_DUPLICATE");
+  additionIds.add(source.id);
+  map.set(source.url,{...source,supported:true,transport_verified_at_registration:false});
+ }
  // Interleave continents so an individual slow regional desk cannot put
  // another continent at the back of a large sequential registry group.
  const buckets=["global",...Object.keys(CONTINENT_COUNTRIES_195)].map(c=>[...map.values()].filter(s=>s.continent===c));
@@ -142,3 +180,49 @@ export function privateOsintContinentCoverage(sources,checks,items){
 }
 import {createHash} from "node:crypto";
 const sourceRef=(s,c)=>createHash("sha256").update([s.id,s.url,c].join("\n")).digest("hex");
+
+/** Registration coverage only; official HTML/API discovery references are NOT auto-scraped. */
+export function privateOsintCorridorReferenceCoverage(){
+ const canonical=JSON.parse(readFileSync(new URL(
+  "../../config/operator-corridor-source-crosswalk.v1.json",import.meta.url),"utf8"));
+ const overlay=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-corridor-reference-overlay.v1.json",import.meta.url),"utf8"));
+ if(canonical.schema!=="geomacro.operator-corridor-source-crosswalk.v1"||
+    overlay.schema!=="geomacro.private-osint-corridor-reference-overlay.v1"||
+    overlay.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
+    overlay.no_automatic_scraping!==true||
+    !Array.isArray(overlay.sources)||overlay.sources.length>64)
+   throw Error("PRIVATE_OSINT_CORRIDOR_OVERLAY_INVALID");
+ const known=new Set(canonical.corridors.map(x=>x.id));
+ const monitored=new Set(),identities=new Set(),urls=new Set();
+ const byCategory={macro:0,rare_earth:0};
+ for(const source of overlay.sources){
+  let url;try{url=new URL(source.url)}catch{throw Error("PRIVATE_OSINT_CORRIDOR_REFERENCE_URL_INVALID")}
+  if(!/^corridor_reference_[a-z0-9_]+$/u.test(source.id)||
+     identities.has(source.id)||urls.has(source.url)||
+     url.protocol!=="https:"||!url.hostname.includes(".")||
+     url.username||url.password||url.port||url.hash||
+     !["global",...Object.keys(CONTINENT_COUNTRIES_195)].includes(source.continent)||
+     !["macro","rare_earth"].includes(source.category)||
+     !Array.isArray(source.related_corridor_ids)||
+     source.related_corridor_ids.some(id=>!known.has(id))||
+     new Set(source.related_corridor_ids).size!==source.related_corridor_ids.length||
+     source.transport_tested!==false||source.source_rights_verified!==false||
+     source.commercial_eligible!==false||source.auto_ingest_enabled!==false)
+   throw Error("PRIVATE_OSINT_CORRIDOR_REFERENCE_UNSAFE");
+  identities.add(source.id);urls.add(source.url);
+  byCategory[source.category]++;
+  for(const id of source.related_corridor_ids)monitored.add(id);
+ }
+ return Object.freeze({
+  total_canonical_corridors:known.size,
+  referenced_corridors:monitored.size,
+  unreferenced_corridors:known.size-monitored.size,
+  newly_registered_reference_surfaces:overlay.sources.length,
+  reference_surfaces_by_category:byCategory,
+  automatic_scraping_enabled:false,
+  transport_tested:false,
+  commercial_delivery_enabled:false,
+  route_geometry_certified:false,
+ });
+}

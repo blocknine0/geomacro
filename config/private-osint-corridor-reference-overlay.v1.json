@@ -1,0 +1,322 @@
+{
+  "schema": "geomacro.private-osint-corridor-reference-overlay.v1",
+  "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
+  "as_of": "2026-10-25",
+  "purpose": "Read-only official and regional corridor discovery overlay, keyed to existing canonical 58 routes. It does not imply route geography verification or real-time transport.",
+  "no_automatic_scraping": true,
+  "source_status": "REFERENCE_ONLY_UNTESTED",
+  "scored_corridor_count": 0,
+  "sources": [
+    {
+      "id": "corridor_reference_international_trade_stats",
+      "url": "https://www.wto.org/english/res_e/statis_e/statis_e.htm",
+      "continent": "global",
+      "category": "macro",
+      "related_corridor_ids": [
+        "middle_corridor_titr",
+        "china_europe_railway",
+        "us_mexico_border_trade"
+      ],
+      "note": "WTO merchandise/trade-statistics context",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_latin_america_macro_eclac",
+      "url": "https://statistics.cepal.org/portal/cepalstat/index.html?lang=en",
+      "continent": "south_america",
+      "category": "macro",
+      "related_corridor_ids": [
+        "us_mexico_border_trade"
+      ],
+      "note": "ECLAC Latin America and Caribbean regional statistics",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_west_africa_bceao",
+      "url": "https://www.bceao.int/en",
+      "continent": "africa",
+      "category": "macro",
+      "related_corridor_ids": [],
+      "note": "West African Monetary Union central bank",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_asia_adb_carec",
+      "url": "https://www.carecprogram.org/",
+      "continent": "asia",
+      "category": "macro",
+      "related_corridor_ids": [
+        "middle_corridor_titr",
+        "china_europe_railway"
+      ],
+      "note": "CAREC cross-border transport programme",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_pacific_spc",
+      "url": "https://www.spc.int/",
+      "continent": "oceania",
+      "category": "macro",
+      "related_corridor_ids": [],
+      "note": "Pacific Community regional data and programmes",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_south_america_cochilco",
+      "url": "https://www.cochilco.cl/",
+      "continent": "south_america",
+      "category": "rare_earth",
+      "related_corridor_ids": [],
+      "note": "Chile Copper Commission geological / mineral export context",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_brazil_minerals_anm",
+      "url": "https://www.gov.br/anm/pt-br",
+      "continent": "south_america",
+      "category": "rare_earth",
+      "related_corridor_ids": [
+        "re_vietnam_brazil_india_greenland_emerging"
+      ],
+      "note": "Brazil National Mining Agency",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_us_minerals_usgs",
+      "url": "https://www.usgs.gov/centers/national-minerals-information-center",
+      "continent": "north_america",
+      "category": "rare_earth",
+      "related_corridor_ids": [
+        "re_us_mountain_pass_chain"
+      ],
+      "note": "USGS National Minerals Information Center",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_aus_geoscience_minerals",
+      "url": "https://www.ga.gov.au/scientific-topics/minerals",
+      "continent": "oceania",
+      "category": "rare_earth",
+      "related_corridor_ids": [
+        "re_australia_malaysia_lynas"
+      ],
+      "note": "Geoscience Australia mineral resources",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_iea_critical_minerals",
+      "url": "https://www.iea.org/data-and-statistics/data-tools/critical-minerals-data-explorer",
+      "continent": "global",
+      "category": "rare_earth",
+      "related_corridor_ids": [
+        "critical_minerals_drc_indonesia"
+      ],
+      "note": "IEA critical-mineral projections (periodic, not real-time)",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_indonesia_esdm",
+      "url": "https://www.esdm.go.id/en/",
+      "continent": "asia",
+      "category": "rare_earth",
+      "related_corridor_ids": [
+        "critical_minerals_drc_indonesia"
+      ],
+      "note": "Indonesia Ministry of Energy and Mineral Resources",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_uk_bgs_mineralsuk",
+      "url": "https://www.bgs.ac.uk/mineralsuk/",
+      "continent": "europe",
+      "category": "rare_earth",
+      "related_corridor_ids": [
+        "re_vietnam_brazil_india_greenland_emerging"
+      ],
+      "note": "UK British Geological Survey minerals intelligence",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_singapore_mpa",
+      "url": "https://www.mpa.gov.sg/",
+      "continent": "asia",
+      "category": "macro",
+      "related_corridor_ids": [
+        "singapore_strait",
+        "strait_of_malacca"
+      ],
+      "note": "Singapore Maritime and Port Authority notices",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_suez_authority_news",
+      "url": "https://www.suezcanal.gov.eg/English/MediaCenter/News/Pages/default.aspx",
+      "continent": "africa",
+      "category": "macro",
+      "related_corridor_ids": [
+        "suez_canal",
+        "bab_el_mandeb"
+      ],
+      "note": "Suez Canal Authority press updates",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_panama_canal_official",
+      "url": "https://pancanal.com/en/",
+      "continent": "north_america",
+      "category": "macro",
+      "related_corridor_ids": [
+        "panama_canal"
+      ],
+      "note": "Panama Canal Authority navigation and transit communications",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_rotterdam_port_authority",
+      "url": "https://www.portofrotterdam.com/en/news-and-press-releases",
+      "continent": "europe",
+      "category": "macro",
+      "related_corridor_ids": [
+        "english_channel"
+      ],
+      "note": "Rotterdam port activity and official announcements",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_uk_maritime_coastguard",
+      "url": "https://www.gov.uk/government/organisations/maritime-and-coastguard-agency",
+      "continent": "europe",
+      "category": "macro",
+      "related_corridor_ids": [
+        "english_channel"
+      ],
+      "note": "UK maritime operational and safety notices",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_us_border_transport_bts",
+      "url": "https://www.bts.gov/",
+      "continent": "north_america",
+      "category": "macro",
+      "related_corridor_ids": [
+        "us_mexico_border_trade",
+        "us_canada_trade"
+      ],
+      "note": "U.S. Bureau of Transportation Statistics border-crossing freight",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_canada_border_cbsa",
+      "url": "https://www.cbsa-asfc.gc.ca/",
+      "continent": "north_america",
+      "category": "macro",
+      "related_corridor_ids": [
+        "us_canada_trade"
+      ],
+      "note": "Canada Border Services Agency border-operation notices",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_caspian_cpc",
+      "url": "https://www.cpc.ru/",
+      "continent": "asia",
+      "category": "macro",
+      "related_corridor_ids": [
+        "cpc_pipeline"
+      ],
+      "note": "Caspian Pipeline Consortium operator",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_eiti_critical_minerals",
+      "url": "https://eiti.org/",
+      "continent": "global",
+      "category": "rare_earth",
+      "related_corridor_ids": [
+        "critical_minerals_drc_indonesia",
+        "lobito_corridor"
+      ],
+      "note": "EITI mining disclosures; publication cadence varies",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    },
+    {
+      "id": "corridor_reference_european_maritime_safety_agency",
+      "url": "https://www.emsa.europa.eu/",
+      "continent": "europe",
+      "category": "macro",
+      "related_corridor_ids": [
+        "danish_straits_baltic",
+        "english_channel",
+        "strait_of_gibraltar"
+      ],
+      "note": "European Maritime Safety Agency official maritime safety reference; no separate automated scraping",
+      "transport_tested": false,
+      "source_rights_verified": false,
+      "commercial_eligible": false,
+      "auto_ingest_enabled": false
+    }
+  ]
+}
