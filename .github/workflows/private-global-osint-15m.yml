@@ -27,6 +27,10 @@ on:
       - "scripts/lib/private-osint-global-sources.test.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
+      - "config/private-osint-eight-repository-intake.v1.json"
+      - "workers/control-plane/src/private-osint-bundle.mjs"
+      - "workers/control-plane/migrations/0029_private_osint_bundle_index.sql"
+      - "scripts/lib/private-osint-bundle.test.mjs"
       - "src/lib/reusable-news-json.ts"
   push:
     branches: [main]
@@ -67,6 +71,7 @@ jobs:
           node --test scripts/lib/private-osint-15m-durable-publisher.test.mjs
           node --test scripts/lib/private-osint-15m-d1.test.mjs
           node --test scripts/lib/private-osint-global-sources.test.mjs
+          node --test scripts/lib/private-osint-bundle.test.mjs
           node --test scripts/lib/registered-reusable-news-source-collector.test.mjs scripts/lib/registered-news-15m-cadence.test.mjs
   collect-private:
     needs: verify

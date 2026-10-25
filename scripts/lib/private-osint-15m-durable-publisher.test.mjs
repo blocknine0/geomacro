@@ -20,10 +20,11 @@ function simulate(){
     independent_verification_required_for_ingestion:false,
     original_page_verified:false,paid_product_authorized:false,raw_upstream_stored:false});
   }
-  return Response.json({ok:true,schema:PRIVATE_OSINT_DURABLE_SCHEMA,retention_hours:25,
+  return Response.json({ok:true,schema:"geomacro.private-osint-news-bundle.v1",retention_hours:25,
    scope:"PROTECTED_INTERNAL_OSINT_RESEARCH_ONLY",original_page_verified:false,
    independent_verification_required_for_ingestion:false,
-   commercial_use_authorized:false,items:[]});
+   commercial_use_authorized:false,category_count:3,single_d1_batch_read:true,
+   categories:Object.fromEntries(["geopolitics","macro","rare_earth"].map(c=>[c,{items:[]}]))});
  };
  return {calls,f};
 }
@@ -38,9 +39,26 @@ test("all batches are protected; independent private reader verifies durable rec
  assert.equal(result.news_rows_verified_in_d1,1);
  assert.equal(result.source_checks_persisted,1);
  assert.equal(result.d1_write_exact_readback_verified,true);
+ assert.equal(result.private_three_category_bundle_readback_verified,true);
+ assert.ok(calls[1].url.endsWith('?view=bundle'));
  assert.equal(result.original_page_independently_verified,false);
  assert.equal(result.independent_verification_required_for_ingestion,false);
  assert.equal(result.publicly_delivered,false);
+});
+test("one older-reader 400 can fall back during deployment, but a malformed 200 bundle cannot",async()=>{
+ const {f}=simulate();let reads=0;
+ const legacy=async(url,opts)=>{
+  if(opts.method==='PUT')return f(url,opts);
+  reads++;
+  if(url.endsWith('view=bundle'))return Response.json({error:'PRIVATE_OSINT_QUERY_INVALID'},{status:400});
+  return Response.json({ok:true,schema:PRIVATE_OSINT_DURABLE_SCHEMA,retention_hours:25,
+   scope:'PROTECTED_INTERNAL_OSINT_RESEARCH_ONLY',independent_verification_required_for_ingestion:false,
+   original_page_verified:false,commercial_use_authorized:false,items:[]});
+ };
+ const receipt=await persistPrivateOsintBatch({result:input,privateToken:token,controlPlaneRoot:host,fetchImpl:legacy,now});
+ assert.equal(reads,2);assert.equal(receipt.private_three_category_bundle_readback_verified,false);
+ await assert.rejects(persistPrivateOsintBatch({result:input,privateToken:token,controlPlaneRoot:host,now,
+  fetchImpl:async(url,opts)=>opts.method==='PUT'?f(url,opts):Response.json({ok:true})}),/PRIVATE_OSINT_PRIVATE_READER_SCHEMA_INVALID/);
 });
 test("a successful 200 HTTP with falsified 402/commercial or no readback is never accepted",async()=>{
  const bad=async(_,opts)=>Response.json(opts.method==="PUT"?

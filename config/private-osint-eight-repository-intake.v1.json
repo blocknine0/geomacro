@@ -1,0 +1,3357 @@
+{
+  "schema": "geomacro.private-osint-repository-source-intake.v1",
+  "scope": "PRIVATE_OSINT_ONLY",
+  "checked_at": "2026-10-25T09:11:04.683115Z",
+  "repository_count": 8,
+  "distinct_candidate_endpoints": 419,
+  "outcomes": {
+    "SOURCE_ACCESS_HOLD": 44,
+    "HTTPS_REQUIRED": 2,
+    "HTTP_UNAVAILABLE": 36,
+    "BODY_LIMIT": 2,
+    "ALREADY_REGISTERED": 57,
+    "ADDED_LIVE_VERIFIED": 217,
+    "NETWORK_UNAVAILABLE": 17,
+    "NOT_A_SAFE_FEED": 5,
+    "EMPTY_FEED": 7,
+    "DENIED": 15,
+    "STALE_OR_FUTURE_FEED": 3,
+    "MALFORMED_OR_HTML": 2,
+    "NOT_A_NEWS_FEED": 3,
+    "NO_NATIVE_PUBLICATION_CLOCK": 9
+  },
+  "new_endpoint_count": 217,
+  "total_private_endpoint_count": 369,
+  "repositories": [
+    {
+      "repository": "NoblerWorks-HQ/IRONSIGHT",
+      "tree_sha": "54e32a85955073aca0834c01554b7909adb3804a",
+      "files": [
+        {
+          "path": "src/app/api/conflicts/route.ts",
+          "blob_sha": "e0f4f417b20eea5872e90fdc8d2003d51dc67437"
+        },
+        {
+          "path": "README.md",
+          "blob_sha": "910a13ad6aa960ac624985e63cd47624b62685d9"
+        },
+        {
+          "path": "src/lib/conflicts/iran-israel.ts",
+          "blob_sha": "4b1dbd530c1dee38fa0f2abbaa525201f654bb31"
+        },
+        {
+          "path": "src/app/api/news/route.ts",
+          "blob_sha": "9599eebc66f9d2cca3034e0fa240c5dd28f511f0"
+        },
+        {
+          "path": "src/lib/conflicts/russia-ukraine.ts",
+          "blob_sha": "818ee9cf3cc5cdc7bf77706cc6b214c583a1dab7"
+        },
+        {
+          "path": "src/app/api/regional-alerts/route.ts",
+          "blob_sha": "6f6f148ecc4db0647ba3dfc9dcd06f88df117668"
+        },
+        {
+          "path": "site/data-sources/index.html",
+          "blob_sha": "7f8daa3eda2c6200e45bdd7662e76399936da0e2"
+        }
+      ],
+      "candidate_endpoints": 41,
+      "outcomes": {
+        "HTTPS_REQUIRED": 1,
+        "ALREADY_REGISTERED": 4,
+        "ADDED_LIVE_VERIFIED": 21,
+        "SOURCE_ACCESS_HOLD": 4,
+        "HTTP_UNAVAILABLE": 6,
+        "NOT_A_NEWS_FEED": 2,
+        "NETWORK_UNAVAILABLE": 1,
+        "DENIED": 2
+      }
+    },
+    {
+      "repository": "krypt1kdr3amer/OSINT-WatchDog",
+      "tree_sha": "5fcaab4bef99c429adbd558722b5c570135ef064",
+      "files": [
+        {
+          "path": "README.md",
+          "blob_sha": "4e621d79fa23944d3d29789962dd4c55d32fd417"
+        }
+      ],
+      "candidate_endpoints": 0,
+      "outcomes": {},
+      "note": "README only; no implemented source endpoint configuration exists in the inspected tree."
+    },
+    {
+      "repository": "mridun-gupta/sitrep",
+      "tree_sha": "9274f88521bce7c307ba565424d47637d9cc4ee9",
+      "files": [
+        {
+          "path": "docs/technical/data-sources.md",
+          "blob_sha": "6e4aef043db9556e318b9229a5acaf5e443a0496"
+        },
+        {
+          "path": "src/lib/sources/registry.ts",
+          "blob_sha": "74ddc4e3092557b97357a68bccbeb7941c1b3aad"
+        },
+        {
+          "path": "src/lib/sources/rss.ts",
+          "blob_sha": "a25de289d04b1bc196927dd755c852720ab79409"
+        },
+        {
+          "path": "src/lib/sources/reliefweb.ts",
+          "blob_sha": "72d6a035217ff25aea03d01b7480a86315ea06c4"
+        },
+        {
+          "path": "README.md",
+          "blob_sha": "6b45758cc49cef7eff20305d3a88c8f53c8cf2b7"
+        },
+        {
+          "path": "src/lib/sources/who.ts",
+          "blob_sha": "79a92db7b48b4c4d4401bbd6fdaebb89a49fd118"
+        },
+        {
+          "path": "src/lib/sources/gdelt.ts",
+          "blob_sha": "1b25cd02157fe1e425787f9f8d6a071964c89565"
+        }
+      ],
+      "candidate_endpoints": 11,
+      "outcomes": {
+        "NOT_A_SAFE_FEED": 1,
+        "SOURCE_ACCESS_HOLD": 1,
+        "ADDED_LIVE_VERIFIED": 3,
+        "MALFORMED_OR_HTML": 1,
+        "HTTP_UNAVAILABLE": 1,
+        "ALREADY_REGISTERED": 3,
+        "DENIED": 1
+      }
+    },
+    {
+      "repository": "amprsnd1/openclaw-news-intel",
+      "tree_sha": "1675936bef48d0cf44b7e2ac96d1d191de17782c",
+      "files": [
+        {
+          "path": "news_pipeline/ingest/gdelt.py",
+          "blob_sha": "f8837fe2ed24e8d0a19fc204e28e1dbd6cfb6a32"
+        },
+        {
+          "path": "config/sources.yaml",
+          "blob_sha": "55d375cf86218df54362db7bfdcb4437675e452c"
+        },
+        {
+          "path": "news_pipeline/ingest/rss.py",
+          "blob_sha": "6f72a97fee443f617c9422278e6bbe8fd9db532a"
+        },
+        {
+          "path": "README.md",
+          "blob_sha": "e2b2b4dc3a695ab6af031f5832e48d193b66613b"
+        }
+      ],
+      "candidate_endpoints": 31,
+      "outcomes": {
+        "ALREADY_REGISTERED": 7,
+        "NETWORK_UNAVAILABLE": 11,
+        "ADDED_LIVE_VERIFIED": 5,
+        "SOURCE_ACCESS_HOLD": 2,
+        "HTTP_UNAVAILABLE": 4,
+        "NO_NATIVE_PUBLICATION_CLOCK": 2
+      }
+    },
+    {
+      "repository": "tonyolives/argus",
+      "tree_sha": "d95d2657bf2605edb1a26a414eef817dff8e59de",
+      "files": [
+        {
+          "path": "docs/Argus_Architecture_v1_0.md",
+          "blob_sha": "efcc2380727e9649481245f449345c92869c6218"
+        },
+        {
+          "path": "README.md",
+          "blob_sha": "2461c0fed0b4aa09e156b6f4bd45450dae67ee0d"
+        },
+        {
+          "path": "src/main/resources/application.yml",
+          "blob_sha": "bf3a6e69cd99253d37d40e7bba93e2ae58632be4"
+        }
+      ],
+      "candidate_endpoints": 0,
+      "outcomes": {},
+      "note": "Only existing GDELT news integration documented; no additional concrete RSS news feed endpoints in the implemented tree. Flight telemetry is outside the three-category news intake."
+    },
+    {
+      "repository": "DesusLove/IronSight",
+      "tree_sha": "78d31a1d17c275700ba1d063e235690f1d706b10",
+      "files": [
+        {
+          "path": "src/app/api/news/route.ts",
+          "blob_sha": "1506b8ebfa5a21d6e3136603f8b7c43fab319661"
+        },
+        {
+          "path": "README.md",
+          "blob_sha": "595ec4701ae7816a44f3848169edee6860ecdd5c"
+        },
+        {
+          "path": "src/lib/conflicts/iran-israel.ts",
+          "blob_sha": "4b1dbd530c1dee38fa0f2abbaa525201f654bb31"
+        },
+        {
+          "path": "src/lib/conflicts/russia-ukraine.ts",
+          "blob_sha": "818ee9cf3cc5cdc7bf77706cc6b214c583a1dab7"
+        }
+      ],
+      "candidate_endpoints": 41,
+      "outcomes": {
+        "HTTPS_REQUIRED": 1,
+        "ALREADY_REGISTERED": 4,
+        "ADDED_LIVE_VERIFIED": 21,
+        "SOURCE_ACCESS_HOLD": 4,
+        "HTTP_UNAVAILABLE": 6,
+        "NOT_A_NEWS_FEED": 2,
+        "NETWORK_UNAVAILABLE": 1,
+        "DENIED": 2
+      }
+    },
+    {
+      "repository": "nk10nikhil/global-watch",
+      "tree_sha": "618099f896b58b4d83492bf06081533af64afdd7",
+      "files": [
+        {
+          "path": "server/globalwatch/news/v1/_feeds.ts",
+          "blob_sha": "0c5203abd96032934c49e959cb79264387c86761"
+        },
+        {
+          "path": "src/config/feeds.ts",
+          "blob_sha": "5c872b7a2ee4b77231c3463bd0ecd1cbe79380de"
+        },
+        {
+          "path": "scripts/rss-feeds-report.csv",
+          "blob_sha": "196405d8d8ac05ab83899335ae548df784656d01"
+        },
+        {
+          "path": "docs/data-sources.mdx",
+          "blob_sha": "685247c08280b19bf3287e1ecb11c077d92bf549"
+        }
+      ],
+      "candidate_endpoints": 342,
+      "outcomes": {
+        "SOURCE_ACCESS_HOLD": 36,
+        "HTTPS_REQUIRED": 1,
+        "HTTP_UNAVAILABLE": 25,
+        "BODY_LIMIT": 1,
+        "ALREADY_REGISTERED": 50,
+        "ADDED_LIVE_VERIFIED": 185,
+        "EMPTY_FEED": 7,
+        "DENIED": 13,
+        "NETWORK_UNAVAILABLE": 9,
+        "STALE_OR_FUTURE_FEED": 3,
+        "MALFORMED_OR_HTML": 2,
+        "NOT_A_NEWS_FEED": 1,
+        "NOT_A_SAFE_FEED": 4,
+        "NO_NATIVE_PUBLICATION_CLOCK": 5
+      }
+    },
+    {
+      "repository": "Kalyx1111/China-Dashboard",
+      "tree_sha": "a0343fae1283143faf2b6a6d86759463da86d90f",
+      "files": [
+        {
+          "path": "README.md",
+          "blob_sha": "bee8a155ebe8cdcca6d5683a32ee93d6e973b3aa"
+        },
+        {
+          "path": "china-dashboard/app/reference_content.py",
+          "blob_sha": "ccb7a322ff2a53a2cf3dfe912c8640d97ed2ac54"
+        },
+        {
+          "path": "china-dashboard/data/proj-constants.json",
+          "blob_sha": "9a59a54ddadfd060e650b5d930b7500aed8f106d"
+        },
+        {
+          "path": "china-dashboard/app/scheduler.py",
+          "blob_sha": "3881e5c6698585b020ca0537009d63da080b23d4"
+        },
+        {
+          "path": "china-dashboard/app/connectors/rss.py",
+          "blob_sha": "3265f48a84afdec5e2b3a9ef59c59d90a99f1744"
+        },
+        {
+          "path": "china-dashboard/data/seed.json",
+          "blob_sha": "ce21f2f31d29c75e146f61927218ee8cbca552f5"
+        }
+      ],
+      "candidate_endpoints": 17,
+      "outcomes": {
+        "HTTP_UNAVAILABLE": 1,
+        "ADDED_LIVE_VERIFIED": 6,
+        "SOURCE_ACCESS_HOLD": 6,
+        "ALREADY_REGISTERED": 1,
+        "BODY_LIMIT": 1,
+        "NO_NATIVE_PUBLICATION_CLOCK": 2
+      }
+    }
+  ],
+  "endpoints": [
+    {
+      "url": "http://feeds.bbci.co.uk/persian/tv-and-radio-37434376/rss.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "http://rss.cnn.com/rss/cnn_world.rss",
+      "state": "HTTPS_REQUIRED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "http://rss.cnn.com/rss/edition_meast.rss",
+      "state": "HTTPS_REQUIRED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://animalpolitico.com/feed/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://api.axios.com/feed/",
+      "state": "BODY_LIMIT",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://asharq.com/snapchat/rss.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://asharqbusiness.com/rss.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://balkaninsight.com/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://blog.usni.org/feed",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://breakingdefense.com/feed",
+      "canonical_url": "https://breakingdefense.com/feed/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://breakingdefense.com/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT",
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://commission.europa.eu/node/2/rss_en",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://dailytrust.com/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://de.euronews.com/rss?format=xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://e00-elmundo.uecdn.es/elmundo/rss/portada.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://ec.europa.eu/commission/presscorner/api/rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/RSS",
+      "state": "NOT_A_SAFE_FEED",
+      "repositories": [
+        "mridun-gupta/sitrep"
+      ]
+    },
+    {
+      "url": "https://eng.lsm.lv/rss/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://english.nv.ua/rss/all.xml",
+      "canonical_url": "https://english.nv.ua/rss/all_english.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://es.euronews.com/rss?format=xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.abcnews.com/abcnews/topstories",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.bbci.co.uk/news/world/africa/rss.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.bbci.co.uk/news/world/asia/rss.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "Kalyx1111/China-Dashboard",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.bbci.co.uk/news/world/europe/rss.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://feeds.bbci.co.uk/news/world/latin_america/rss.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel",
+        "mridun-gupta/sitrep",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.bbci.co.uk/persian/rss.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.bbci.co.uk/russian/rss.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.bbci.co.uk/turkce/rss.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.capi24.com/v1/Search/articles/news24/Africa/rss",
+      "state": "EMPTY_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.content.dowjones.io/public/rss/RSSUSnews",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.content.dowjones.io/public/rss/RSSWorldNews",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.feedburner.com/TheHackersNews",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.feedburner.com/ndtvnews-top-stories",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.folha.uol.com.br/emcimadahora/rss091.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.marketwatch.com/marketwatch/topstories/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://feeds.nbcnews.com/nbcnews/public/news",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.news24.com/articles/news24/TopStories/rss",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.nos.nl/nosnieuwsalgemeen",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.npr.org/1001/rss.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://feeds.npr.org/1004/rss.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "mridun-gupta/sitrep"
+      ]
+    },
+    {
+      "url": "https://feeds.reuters.com/Reuters/worldNews",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://finance.yahoo.com/news/rssindex",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://finance.yahoo.com/rss/topstories",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://foreignpolicy.com/feed/",
+      "state": "DENIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://fr.africanews.com/feed/rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://fr.euronews.com/rss?format=xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://fredblog.stlouisfed.org/feed/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://indianexpress.com/section/india/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://insightcrime.org/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://islandtimes.org/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://it.euronews.com/rss?format=xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://jamestown.org/feed/",
+      "state": "DENIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://japantoday.com/feed/atom",
+      "state": "DENIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://krebsonsecurity.com/feed/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://kyivindependent.com/feed/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://meduza.io/rss/all",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://meduza.io/rss/en/all",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://mexiconewsdaily.com/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://moxie.foxnews.com/google-publisher/us.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://moxie.foxnews.com/google-publisher/world.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://news.err.ee/rss",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=\"Vision+2030\"+(project+OR+investment+OR+announced)+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=%22AI+Now+Institute%22&hl=en&gl=US&ceid=US:en",
+      "canonical_url": "https://news.google.com/rss/search?q=%22AI+Now+Institute%22&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=%22Strait+of+Hormuz%22+OR+%22Red+Sea%22+military&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=%22Tech+Policy+Press%22&hl=en&gl=US&ceid=US:en",
+      "canonical_url": "https://news.google.com/rss/search?q=%22Tech+Policy+Press%22&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(",
+      "canonical_url": "https://news.google.com/rss/search?q=(&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"Asia+Pacific\"+tech+policy+OR+\"Lowy+Institute\"+technology)+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"Bank+of+England\"+OR+BoE)+monetary+policy+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"Bank+of+Japan\"+OR+BoJ)+monetary+policy+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"China+tech+strategy\"+OR+\"Chinese+AI\"+OR+\"China+semiconductor\")+analysis+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"EU+tech+policy\"+OR+\"European+digital\"+OR+Bruegel+tech)+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"European+Central+Bank\"+OR+ECB+OR+Lagarde)+monetary+policy+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"Goldman+Sachs\"+OR+\"JPMorgan\"+OR+\"Morgan+Stanley\")+forecast+OR+outlook+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"People%27s+Bank+of+China\"+OR+PBoC+OR+PBOC)+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"Saudi+Arabia\"+OR+\"UAE\"+OR+\"Abu+Dhabi\")+investment+infrastructure+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"US+Treasury\"+OR+\"Treasury+auction\"+OR+\"10-year+yield\"+OR+\"2-year+yield\")+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"bond+market\"+OR+\"treasury+yields\"+OR+\"bond+yields\"+OR+\"fixed+income\")+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"central+bank\"+OR+\"interest+rate\"+OR+\"rate+decision\"+OR+\"monetary+policy\")+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"commodity+trading\"+OR+\"futures+market\"+OR+CME+OR+NYMEX+OR+COMEX)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"corporate+bond\"+OR+\"high+yield\"+OR+\"investment+grade\"+OR+\"credit+spread\")+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"dollar+index\"+OR+DXY+OR+\"US+dollar\"+OR+\"euro+dollar\")+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"forex\"+OR+\"currency\"+OR+\"FX+market\")+trading+when:1d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"hedge+fund\"+OR+\"Bridgewater\"+OR+\"Citadel\"+OR+\"Renaissance\")+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"housing+market\"+OR+\"home+prices\"+OR+\"mortgage+rates\"+OR+REIT)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"market+outlook\"+OR+\"stock+market+forecast\"+OR+\"bull+market\"+OR+\"bear+market\")+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"nuclear+energy\"+OR+\"nuclear+power\"+OR+uranium+OR+IAEA)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"private+equity\"+OR+Blackstone+OR+KKR+OR+Apollo+OR+Carlyle)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"rate+hike\"+OR+\"rate+cut\"+OR+\"interest+rate+decision\")+central+bank+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(\"sovereign+wealth+fund\"+OR+\"pension+fund\"+OR+\"institutional+investor\")+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Africa+OR+Nigeria+OR+Kenya+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(Africa+OR+Nigeria+OR+Kenya+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Africa+OR+Nigeria+OR+Kenya+OR+\"South+Africa\"+OR+Ethiopia)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Albemarle+OR+SQM+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(Albemarle+OR+SQM+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Brazil+OR+Mexico+OR+Argentina+OR+Venezuela+OR+Colombia",
+      "canonical_url": "https://news.google.com/rss/search?q=(Brazil+OR+Mexico+OR+Argentina+OR+Venezuela+OR+Colombia&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Brazil+OR+Mexico+OR+Argentina+OR+Venezuela+OR+Colombia)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(COMEX+OR+NYMEX+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(COMEX+OR+NYMEX+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(CPI+OR+inflation+OR+GDP+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(CPI+OR+inflation+OR+GDP+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(CPI+OR+inflation+OR+GDP+OR+\"jobs+report\"+OR+\"nonfarm+payrolls\"+OR+PMI)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(China+",
+      "canonical_url": "https://news.google.com/rss/search?q=(China+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(China+OR+Japan+OR+Korea+OR+India+OR+ASEAN",
+      "canonical_url": "https://news.google.com/rss/search?q=(China+OR+Japan+OR+Korea+OR+India+OR+ASEAN&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(China+OR+Japan+OR+Korea+OR+India+OR+ASEAN)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(China+imports+copper+OR+iron+ore+OR+lithium+OR+cobalt+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(China+imports+copper+OR+iron+ore+OR+lithium+OR+cobalt+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(China+tech+regulation+OR+China+AI+policy+OR+MIIT+technology",
+      "canonical_url": "https://news.google.com/rss/search?q=(China+tech+regulation+OR+China+AI+policy+OR+MIIT+technology&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Freeport+McMoRan+OR+Southern+Copper+OR+Teck+OR+Antofagasta",
+      "canonical_url": "https://news.google.com/rss/search?q=(Freeport+McMoRan+OR+Southern+Copper+OR+Teck+OR+Antofagasta&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Glencore+OR+Vale",
+      "canonical_url": "https://news.google.com/rss/search?q=(Glencore+OR+Vale&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(India+tech+policy+OR+ORF+technology+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(India+tech+policy+OR+ORF+technology+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(India+tech+policy+OR+ORF+technology+OR+\"Observer+Research+Foundation\"+tech)+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(India+tech+regulation+OR+India+data+protection+OR+India+AI+policy",
+      "canonical_url": "https://news.google.com/rss/search?q=(India+tech+regulation+OR+India+data+protection+OR+India+AI+policy&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Indonesia+nickel+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(Indonesia+nickel+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(LME+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(LME+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Mexico+cartel+OR+Mexico+violence+OR+Mexico+troops+OR+narco+Mexico",
+      "canonical_url": "https://news.google.com/rss/search?q=(Mexico+cartel+OR+Mexico+violence+OR+Mexico+troops+OR+narco+Mexico&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Mexico+cartel+OR+Mexico+violence+OR+Mexico+troops+OR+narco+Mexico)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Newmont+OR+Barrick+OR+AngloGold+OR+Agnico",
+      "canonical_url": "https://news.google.com/rss/search?q=(Newmont+OR+Barrick+OR+AngloGold+OR+Agnico&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(OPEC+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(OPEC+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(PIF+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(PIF+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(PIF+OR+\"DP+World\"+OR+Mubadala+OR+ADNOC+OR+Masdar+OR+\"ACWA+Power\")+infrastructure+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Sahel+OR+Mali+OR+Niger+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(Sahel+OR+Mali+OR+Niger+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(Sahel+OR+Mali+OR+Niger+OR+\"Burkina+Faso\"+OR+Wagner)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(UK+AI+safety+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(UK+AI+safety+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(VIX+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(VIX+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(VIX+OR+\"market+volatility\"+OR+\"risk+off\"+OR+\"market+correction\")+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(aluminum+price+OR+aluminium+OR+zinc+price+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(aluminum+price+OR+aluminium+OR+zinc+price+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(cobalt+price+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(cobalt+price+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(copper+price+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(copper+price+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(energy+commodities+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(energy+commodities+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(gold+price+OR+silver+price+OR+copper+OR+platinum+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(gold+price+OR+silver+price+OR+copper+OR+platinum+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(gold+price+OR+silver+price+OR+copper+OR+platinum+OR+\"precious+metals\")+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(lithium+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(lithium+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(lithium+OR+\"rare+earth\"+OR+cobalt+OR+mining)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(lithium+price+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(lithium+price+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(nickel+price+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(nickel+price+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(oil+price+OR+OPEC+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(oil+price+OR+OPEC+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(oil+price+OR+OPEC+OR+\"natural+gas\"+OR+\"crude+oil\"+OR+WTI+OR+Brent)+when:1d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(oil+price+OR+OPEC+OR+\"natural+gas\"+OR+pipeline+OR+LNG)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(tariff+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(tariff+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(tariff+OR+\"trade+war\"+OR+\"trade+deficit\"+OR+sanctions)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(uranium+price+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=(uranium+price+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(wheat+OR+corn+OR+soybeans+OR+coffee+OR+sugar",
+      "canonical_url": "https://news.google.com/rss/search?q=(wheat+OR+corn+OR+soybeans+OR+coffee+OR+sugar&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=(wheat+OR+corn+OR+soybeans+OR+coffee+OR+sugar)+price+OR+commodity+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=AI+regulation+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=AI+regulation+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=BHP+(mining+OR+production+OR+results+OR+copper+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=BHP+(mining+OR+production+OR+results+OR+copper+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=DigiChina+Stanford+China+technology&hl=en&gl=US&ceid=US:en",
+      "canonical_url": "https://news.google.com/rss/search?q=DigiChina+Stanford+China+technology&hl=en-US&gl=US&ceid=US:en",
+      "state": "STALE_OR_FUTURE_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=India+diplomacy+foreign+policy+news&hl=en&gl=US&ceid=US:en",
+      "canonical_url": "https://news.google.com/rss/search?q=India+diplomacy+foreign+policy+news&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=Iran+Israel+war+military&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=Iran+missile+strike+drone&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=Russia+Ukraine+war+military&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=Thai+PBS+World+news&hl=en&gl=US&ceid=US:en",
+      "canonical_url": "https://news.google.com/rss/search?q=Thai+PBS+World+news&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=Ukraine+front+line+OR+offensive+Russia&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=Ukraine+missile+OR+drone+strike&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=commodities+trading+metals+energy+gold+silver+when%3A1d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Aapnews.com&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Aasia.nikkei.com+when%3A3d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Aasianews.it+when%3A3d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Abloomberg.com+commodities+OR+metals+OR+mining+when%3A1d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Acnn.com+world+news+when%3A1d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Adefense.gov+OR+Pentagon&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Aeia.gov+energy+oil+gas+when%3A14d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Aiea.org+%28minerals+OR+critical+OR+battery%29+when%3A14d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Ajustice.gov&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Akitco.com+gold+OR+silver+OR+commodity+OR+metals+when%3A1d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Amarketwatch.com+markets+when%3A1d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Amining-journal.com+when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Aminingweekly.com+when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Anorthernminer.com+when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Areuters.com+%28oil+OR+gas+OR+energy%29+when%3A1d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Areuters.com+US&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Areuters.com+business+markets&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Areuters.com+commodities+OR+metals+OR+mining+when%3A1d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Areuters.com+energy+when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Areuters.com+world&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Ascmp.com+when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Aspglobal.com+commodities+metals+when%3A3d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Athenationalnews.com+%28Abu+Dhabi+OR+UAE+OR+Saudi%29+when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Atreasury.gov&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site%3Awhitehouse.gov&hl=en-US&gl=US&ceid=US%3Aen",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:ainowinstitute.org+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:apnews.com+Mexico+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:arabianbusiness.com+(Saudi+Arabia+OR+UAE+OR+GCC",
+      "canonical_url": "https://news.google.com/rss/search?q=site:arabianbusiness.com+(Saudi+Arabia+OR+UAE+OR+GCC&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:arabianbusiness.com+(Saudi+Arabia+OR+UAE+OR+GCC)+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:arabnews.com+(Saudi+Arabia+OR+investment+OR+infrastructure",
+      "canonical_url": "https://news.google.com/rss/search?q=site:arabnews.com+(Saudi+Arabia+OR+investment+OR+infrastructure&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:arabnews.com+(Saudi+Arabia+OR+investment+OR+infrastructure)+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:arabnews.com+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:bangkokpost.com+when:1d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:bloomberg.com+markets+when:1d&hl=en-US&gl=US&ceid=US:en",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:brookings.edu+technology+OR+AI+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:brookings.edu+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:carnegieendowment.org+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:cdc.gov+OR+CDC+health&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:chathamhouse.org+technology+OR+AI+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:csis.org+technology+OR+AI+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:csis.org+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:dhs.gov+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=site:dhs.gov+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:dhs.gov+OR+\"Homeland+Security\"&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:digichina.stanford.edu+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "EMPTY_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:dw.com/es&hl=es-419&gl=MX&ceid=MX:es-419",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:ec.europa.eu+digital+OR+technology+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:eff.org+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=site:eff.org+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:english.alarabiya.net+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:euractiv.com+digital+OR+tech+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "EMPTY_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:farsnews.ir+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:fema.gov+OR+FEMA+emergency&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:haaretz.com+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:hai.stanford.edu+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:iea.org+(minerals+OR+critical+OR+battery",
+      "canonical_url": "https://news.google.com/rss/search?q=site:iea.org+(minerals+OR+critical+OR+battery&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:investing.com+markets+when:1d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:iranintl.com+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:iseas.edu.sg+technology+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:justice.gov+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=site:justice.gov+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:justice.gov+OR+\"Justice+Department\"+DOJ&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:kathimerini.gr+when:2d&hl=el&gl=GR&ceid=GR:el",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:kyivindependent.com+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:marketwatch.com+technology+markets+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:miit.gov.cn+when:7d&hl=zh-CN&gl=CN&ceid=CN:zh-Hans",
+      "state": "STALE_OR_FUTURE_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:mofcom.gov.cn+when:7d&hl=zh-CN&gl=CN&ceid=CN:zh-Hans",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:oecd.org+digital+OR+AI+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:oglobo.globo.com+when:1d&hl=pt-BR&gl=BR&ceid=BR:pt-419",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:politico.com+when:1d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:protothema.gr+when:2d&hl=el&gl=GR&ceid=GR:el",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:rand.org+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:reuters.com+(Brazil+OR+Mexico+OR+Argentina",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:reuters.com+(Brazil+OR+Mexico+OR+Argentina)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:reuters.com+(China+OR+Japan+OR+Taiwan+OR+Korea",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:reuters.com+(China+OR+Japan+OR+Taiwan+OR+Korea)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:reuters.com+(oil+OR+gas+OR+energy",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:reuters.com+(oil+OR+gas+OR+energy+OR+OPEC",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:reuters.com+(oil+OR+gas+OR+energy+OR+OPEC)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:reuters.com+markets+stocks+when:1d&hl=en-US&gl=US&ceid=US:en",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:rieti.go.jp+technology+when:30d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:rudaw.net+when:7d&hl=en&gl=US&ceid=US:en",
+      "canonical_url": "https://news.google.com/rss/search?q=site:rudaw.net+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:rusi.org+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:seekingalpha.com+(gold+OR+silver+OR+copper+OR+mining",
+      "canonical_url": "https://news.google.com/rss/search?q=site:seekingalpha.com+(gold+OR+silver+OR+copper+OR+mining&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:state.gov+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=site:state.gov+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:state.gov+OR+\"State+Department\"&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:tass.com+OR+TASS+Russia+when:1d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:techpolicypress.org+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "state": "EMPTY_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:telegraaf.nl+when:1d&hl=nl&gl=NL&ceid=NL:nl",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:thaipbsworld.com+when:2d&hl=th&gl=TH&ceid=TH:th",
+      "state": "EMPTY_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:thenationalnews.com+(Abu+Dhabi+OR+UAE+OR+Saudi",
+      "canonical_url": "https://news.google.com/rss/search?q=site:thenationalnews.com+(Abu+Dhabi+OR+UAE+OR+Saudi&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:thenationalnews.com+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:treasury.gov+OR+",
+      "canonical_url": "https://news.google.com/rss/search?q=site:treasury.gov+OR+&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:treasury.gov+OR+\"Treasury+Department\"&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:tuoitrenews.vn+when:2d&hl=vi&gl=VN&ceid=VN:vi",
+      "state": "EMPTY_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:unhcr.org+OR+UNHCR+refugees+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=site:xinhuanet.com+OR+Xinhua+when:1d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.google.com/rss/search?q=tech+antitrust+OR+FTC+Google+OR+FTC+Apple+OR+FTC+Amazon+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.ltn.com.tw/rss/all.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+      "state": "MALFORMED_OR_HTML",
+      "repositories": [
+        "mridun-gupta/sitrep",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://news.usni.org/feed",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://newsfeed.zeit.de/index",
+      "state": "NOT_A_NEWS_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://notesfrompoland.com/feed/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://novayagazeta.eu/feed/rss",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://oglobo.globo.com/rss/top_noticias/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://oilprice.com/rss/main",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://pt.euronews.com/rss?format=xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://rcs.mako.co.il/rss/news-military.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://reliefweb.int/updates/rss.xml",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "mridun-gupta/sitrep"
+      ]
+    },
+    {
+      "url": "https://responsiblestatecraft.org/feed/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://rss.dw.com/rdf/rss-en-world",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "mridun-gupta/sitrep"
+      ]
+    },
+    {
+      "url": "https://rss.dw.com/xml/rss-de-all",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://rss.dw.com/xml/rss-en-all",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://rss.dw.com/xml/rss-es-all",
+      "state": "MALFORMED_OR_HTML",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://rss.dw.com/xml/rss-tur-all",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml",
+      "state": "NOT_A_NEWS_FEED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://rss.nytimes.com/services/xml/rss/nyt/MiddleEast.xml",
+      "state": "NOT_A_NEWS_FEED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://rss.politico.com/politics-news.xml",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://rss.politico.com/technology.xml",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://rss.walla.co.il/feed/22",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://ru.euronews.com/rss?format=xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://seekingalpha.com/market_currents.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://spacenews.com/feed/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://tass.com/rss/v2.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://thediplomat.com/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://thehill.com/news/feed",
+      "state": "DENIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://therecord.media/feed",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://tuoitrenews.vn/rss",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://tvn24.pl/najwazniejsze.xml",
+      "state": "EMPTY_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://tvn24.pl/swiat.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://vnexpress.net/rss",
+      "state": "NOT_A_SAFE_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://vnexpress.net/rss/tin-moi-nhat.rss",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://warontherocks.com/feed",
+      "canonical_url": "https://warontherocks.com/feed/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://warontherocks.com/feed/",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT",
+        "amprsnd1/openclaw-news-intel",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.abc.net.au/news/feed/2942460/rss.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.aei.org/feed/",
+      "state": "DENIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.africanews.com/feed/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.africanews.com/feed/rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.airandspaceforces.com/feed/",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.alarabiya.net/tools/mrss/?cat=main",
+      "state": "DENIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "Kalyx1111/China-Dashboard",
+        "NoblerWorks-HQ/IRONSIGHT",
+        "mridun-gupta/sitrep",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.aljazeera.net/aljazeerarss/a7c186be-1adb-4b11-a982-4783e765316e/4e17ecdc-8fb9-40de-a5d6-d00f72384a51",
+      "canonical_url": "https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779/73d0e1b4-532f-45ef-b135-bfdff8b8cab9",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.ansa.it/sito/ansait_rss.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.ansa.it/sito/notizie/topnews/topnews_rss.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.army-technology.com/feed/",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.asahi.com/rss/asahi/newsheadlines.rdf",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.atlanticcouncil.org/feed/",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.australianmining.com.au/feed/",
+      "state": "DENIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.bangkokpost.com/rss",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.bankofengland.co.uk/rss/news",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.bbc.com/afrique/index.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.bbc.com/mundo/index.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.bild.de/feed/alles.xml",
+      "state": "NO_NATIVE_PUBLICATION_CLOCK",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.brasilparalelo.com.br/noticias/rss.xml",
+      "canonical_url": "https://www.brasilparalelo.com.br/noticias/feed.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.cbsnews.com/latest/rss/main",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.centcom.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=808&max=20",
+      "state": "DENIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.channelstv.com/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.chosun.com/arc/outboundfeeds/rss/?outputType=xml",
+      "state": "NOT_A_SAFE_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.cisa.gov/cybersecurity-advisories/all.xml",
+      "state": "DENIED",
+      "repositories": [
+        "mridun-gupta/sitrep",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.clarin.com/rss/lo-ultimo/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+      "state": "DENIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.cnbc.com/id/19854910/device/rss/rss.html",
+      "state": "DENIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.corriere.it/rss/homepage.xml",
+      "state": "STALE_OR_FUTURE_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.crisisgroup.org/rss",
+      "state": "NO_NATIVE_PUBLICATION_CLOCK",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.csis.org/feed",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.csis.org/rss.xml",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.darkreading.com/rss.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.defense.gov/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=945&max=10",
+      "state": "DENIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.defensenews.com/arc/outboundfeeds/rss/",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.defenseone.com/rss/all/",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.dn.se/rss/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.dn.se/rss/senaste-nytt/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.dropsitenews.com/feed",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.ecb.europa.eu/rss/press.html",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.eia.gov/rss/press_room.xml",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.eltiempo.com/rss/mundo_latinoamerica.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.eluniversal.com.mx/rss.xml",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.eluniverso.com/arc/outboundfeeds/rss/category/noticias/?outputType=xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.euronews.com/rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.euronews.com/rss?format=xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.federalreserve.gov/feeds/press_all.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.foreignaffairs.com/rss.xml",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.fpri.org/feed/",
+      "state": "DENIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.france24.com/ar/rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.france24.com/en/americas/rss",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.france24.com/en/rss",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel",
+        "mridun-gupta/sitrep",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.france24.com/es/rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.france24.com/fr/rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.ft.com/rss/home",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.gov.uk/search/news-and-communications.atom?organisations[]=ministry-of-defence",
+      "state": "NO_NATIVE_PUBLICATION_CLOCK",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.haaretz.com/srv/middle-east-news-rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.hurriyet.com.tr/rss/anasayfa",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.iaea.org/feeds/topnews",
+      "state": "NO_NATIVE_PUBLICATION_CLOCK",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.iefimerida.gr/rss.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.in.gr/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.indianewsnetwork.com/rss.en.diplomacy.xml",
+      "state": "NO_NATIVE_PUBLICATION_CLOCK",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.infobae.com/feeds/rss/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.investing.com/rss/news.rss",
+      "state": "NO_NATIVE_PUBLICATION_CLOCK",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.jeuneafrique.com/feed/",
+      "state": "NO_NATIVE_PUBLICATION_CLOCK",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.jpost.com/rss/rssfeedsfrontpage.aspx",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.kyivpost.com/feed",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.lasillavacia.com/rss",
+      "canonical_url": "https://www.lasillavacia.com/feed/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.lemonde.fr/en/rss/une.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.lemonde.fr/rss/une.xml",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.longwarjournal.org/feed",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.lorientlejour.com/rss",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.milenio.com/rss",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.militarytimes.com/arc/outboundfeeds/rss/?outputType=xml",
+      "canonical_url": "https://www.militarytimes.com/feed/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.mining-journal.com/feed/",
+      "canonical_url": "https://www.mining-journal.com/",
+      "state": "NOT_A_SAFE_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.mining-technology.com/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.mining.com/feed/",
+      "state": "DENIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.miningweekly.com/rss/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.naftemporiki.gr/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.navalnews.com/feed/",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.northernminer.com/feed/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.nrc.nl/rss/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.omanobserver.om/rssFeed/1",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.pbs.org/newshour/feeds/rss/headlines",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.politico.eu/feed/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.polsatnews.pl/rss/wszystkie.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.pravda.com.ua/eng/rss/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.premiumtimesng.com/feed",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.presstv.ir/rss.xml",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.presstv.ir/rss/rss-101.xml",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.presstv.ir/rss/rss-102.xml",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.primicias.ec/feed/",
+      "canonical_url": "https://www.primicias.ec/",
+      "state": "NOT_A_SAFE_FEED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.proceso.com.mx/feed/",
+      "state": "DENIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.repubblica.it/rss/homepage/rss2.0.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.rigzone.com/news/rss/rigzone_latest.aspx",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.rp.pl/rss_main",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.rt.com/rss/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.rt.com/rss/news/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.rt.com/rss/russia/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.schneier.com/feed/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.scmp.com/rss/2/feed",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://www.scmp.com/rss/318198/feed",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://www.scmp.com/rss/4/feed",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://www.scmp.com/rss/5/feed",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://www.scmp.com/rss/91/feed",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://www.scmp.com/rss/91/feed/",
+      "state": "SOURCE_ACCESS_HOLD",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.sec.gov/news/pressreleases.rss",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.space.com/feeds.xml",
+      "state": "BODY_LIMIT",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://www.spiegel.de/international/index.rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.spiegel.de/schlagzeilen/tops/index.rss",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.svd.se/feed/articles.rss",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.svt.se/nyheter/rss.xml",
+      "canonical_url": "https://www.svt.se/rss.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.tagesschau.de/xml/rss2/",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.taipeitimes.com/xml/index.rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://www.telegraaf.nl/rss",
+      "canonical_url": "https://www.telegraaf.nl/rss/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.theguardian.com/australia-news/rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.theguardian.com/world/americas/rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.theguardian.com/world/middleeast/rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.theguardian.com/world/rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel",
+        "mridun-gupta/sitrep",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.thehindu.com/feeder/default.rss",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.thehindu.com/news/national/feeder/default.rss",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.themoscowtimes.com/rss/news",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.thenationalnews.com/arc/outboundfeeds/rss/?outputType=xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.thisdaylive.com/feed",
+      "canonical_url": "https://www.thisdaylive.com/feed/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.timesofisrael.com/feed/",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.twz.com/feed",
+      "state": "NETWORK_UNAVAILABLE",
+      "repositories": [
+        "amprsnd1/openclaw-news-intel"
+      ]
+    },
+    {
+      "url": "https://www.ukrinform.net/rss/block-lastnews",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.vanguardngr.com/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.who.int/rss-feeds/news-english.xml",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "mridun-gupta/sitrep",
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://www.xinhuanet.com/english/rss/chinarss.xml",
+      "state": "NO_NATIVE_PUBLICATION_CLOCK",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://www.xinhuanet.com/english/rss/worldrss.xml",
+      "state": "NO_NATIVE_PUBLICATION_CLOCK",
+      "repositories": [
+        "Kalyx1111/China-Dashboard"
+      ]
+    },
+    {
+      "url": "https://www.ynetnews.com/Integration/StoryRss2.xml",
+      "state": "ADDED_LIVE_VERIFIED",
+      "repositories": [
+        "DesusLove/IronSight",
+        "NoblerWorks-HQ/IRONSIGHT"
+      ]
+    },
+    {
+      "url": "https://www.yonhapnewstv.co.kr/browse/feed/",
+      "state": "ALREADY_REGISTERED",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    },
+    {
+      "url": "https://xml2.corriereobjects.it/rss/incipit.xml",
+      "state": "HTTP_UNAVAILABLE",
+      "repositories": [
+        "nk10nikhil/global-watch"
+      ]
+    }
+  ],
+  "policy": "Only live-verified bounded no-key news feeds admitted. Existing access holds retained. No source code, articles, titles, Telegram posts, flight tracks or unrelated data imported. Indexed news timestamps are not original-publisher proofs."
+}

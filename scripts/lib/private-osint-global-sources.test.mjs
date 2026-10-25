@@ -24,6 +24,19 @@ test("accepted global source inventory has distinct pinned feeds in six continen
  assert.equal(manifest.accepted_endpoint_count,manifest.sources.length);
  assert.ok(manifest.sources.every(s=>s.acceptance.http_status===200&&s.acceptance.feed_parsed&&s.acceptance.bounded_feed_bytes<=1024*1024));
 });
+test("eight-repository intake admits every accepted unique endpoint and retains source provenance",()=>{
+ const audit=JSON.parse(readFileSync(new URL('../../config/private-osint-eight-repository-intake.v1.json',import.meta.url)));
+ const manifest=JSON.parse(readFileSync(new URL('../../config/private-osint-working-sources.v1.json',import.meta.url)));
+ const urls=new Set(manifest.sources.map(s=>s.url));
+ assert.equal(audit.repository_count,8);assert.equal(audit.repositories.length,8);
+ assert.equal(audit.total_private_endpoint_count,manifest.sources.length);
+ assert.equal(audit.new_endpoint_count,audit.endpoints.filter(e=>e.state==='ADDED_LIVE_VERIFIED').length);
+ assert.ok(manifest.sources.length<=512);
+ for(const row of audit.endpoints.filter(e=>['ADDED_LIVE_VERIFIED','ALREADY_REGISTERED'].includes(e.state)))
+  assert.ok(urls.has(row.canonical_url??row.url));
+ assert.ok(manifest.sources.filter(s=>s.id.startsWith('private_repo_')).every(s=>s.discovery_references.length>0));
+ assert.equal(audit.repositories.find(r=>r.repository==='krypt1kdr3amer/OSINT-WatchDog').candidate_endpoints,0);
+});
 test("live denial/HTML sources emit no items and never enter working endpoint counts",async()=>{
  const registry=[
  {id:"ok",url:"https://ok.example.org/rss",type:"rss",supported:true,continent:"africa",categories:["macro"]},
@@ -45,12 +58,16 @@ test("native-language topics and country names route without assigning the publi
   ['中国宣布关键矿产和稀土出口新政策','CHN'],
   ['ভারত নতুন খনিজ নীতি ঘোষণা করেছে','IND'],
   ['Россия объявляет новые экономические меры','RUS'],
+  ['ישראל מכריזה על מדיניות ריבית וכלכלה חדשה','ISR'],
+  ['Україна оголошує нові економічні заходи','UKR'],
  ])assert.equal(privateOsintCountryMention(title,COUNTRIES_195),iso,title);
  assert.equal(privateOsintCountryMention('France and China announce new trade measures',COUNTRIES_195),null);
  assert.equal(privateOsintCountryMention('Central bank announces a monetary policy decision',COUNTRIES_195),null);
  assert.ok(PRIVATE_OSINT_TOPICS.macro.test('Brasil anuncia queda da inflação'));
  assert.ok(PRIVATE_OSINT_TOPICS.rare_earth.test('Novas regras para mineração de lítio e terras raras'));
  assert.ok(PRIVATE_OSINT_TOPICS.geopolitics.test('La France annonce un cessez-le-feu et des sanctions'));
+ assert.ok(PRIVATE_OSINT_TOPICS.geopolitics.test('ישראל מכריזה על הפסקת אש'));
+ assert.ok(PRIVATE_OSINT_TOPICS.macro.test('ישראל מכריזה על מדיניות ריבית חדשה'));
 });
 test("RSS1 publisher dc:date works only in private mode; Atom updated stays ineligible",async()=>{
  const registry=[{id:'rba',url:'https://rba.example.org/feed',categories:['macro'],type:'rdf',supported:true}];

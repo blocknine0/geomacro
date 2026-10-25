@@ -6,6 +6,7 @@
  * No unauthenticated/public routes, raw articles, Telegram content or B2 spend.
  */
 import {validateReusableSourceNewsItem} from "./reusable-source-news.mjs";
+import {privateOsintBundleRead} from "./private-osint-bundle.mjs";
 
 const categories=new Set(["geopolitics","macro","rare_earth"]);
 const states=new Set(["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW","UNAVAILABLE","UNSUPPORTED_FORMAT","DENIED","MALFORMED","NOT_DUE"]);
@@ -63,24 +64,44 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
  }
  const when=new Date(now).toISOString();
  try{
+   // Duplicate source polls need a primary-key read, not a complete 4,000-row
+   // retention scan on every tiny write batch. Actual new ids still enforce
+   // the hard ring limit in the same transaction as their insert.
+   let hasNewRows=false;
+   for(const r of rows){
+     r.preexisting=Boolean(await env.DB.prepare("SELECT item_id FROM private_osint_news_25h WHERE item_id=?").bind(r.id).first());
+     if(!r.preexisting)hasNewRows=true;
+   }
    const statements=[
      env.DB.prepare("DELETE FROM private_osint_news_25h WHERE native_feed_published_at < ?")
        .bind(new Date(now-maxAgeMs).toISOString()),
      env.DB.prepare("DELETE FROM private_osint_source_checks_24h WHERE checked_at < ?")
        .bind(new Date(now-24*3600000).toISOString()),
    ];
-   for(const r of rows)statements.push(env.DB.prepare(
+   for(const r of rows){
+    // UPDATE cannot resurrect an old id evicted by a concurrent new batch.
+    // Only insert paths need and receive the atomic hard-cap pruning below.
+    if(r.preexisting)statements.push(env.DB.prepare(
+     "UPDATE private_osint_news_25h SET category=?,country_iso3=?,native_feed_published_at=?,projection_json=?,last_seen_at=? "+
+     "WHERE item_id=? AND (projection_json<>? OR last_seen_at<=?)")
+     .bind(r.category,r.country,r.native,r.projection,when,r.id,r.projection,new Date(now-6*3600000).toISOString()));
+    else statements.push(env.DB.prepare(
      "INSERT INTO private_osint_news_25h(item_id,category,country_iso3,native_feed_published_at,projection_json,first_seen_at,last_seen_at) "+
      "VALUES(?,?,?,?,?,?,?) ON CONFLICT(item_id) DO UPDATE SET "+
      "category=excluded.category,country_iso3=excluded.country_iso3,"+
      "native_feed_published_at=excluded.native_feed_published_at,"+
-     "projection_json=excluded.projection_json,last_seen_at=excluded.last_seen_at")
-     .bind(r.id,r.category,r.country,r.native,r.projection,when,when));
+     "projection_json=excluded.projection_json,last_seen_at=excluded.last_seen_at "+
+     "WHERE private_osint_news_25h.projection_json<>excluded.projection_json "+
+     "OR private_osint_news_25h.last_seen_at<=?")
+     .bind(r.id,r.category,r.country,r.native,r.projection,when,when,new Date(now-6*3600000).toISOString()));
+   }
    for(const c of body.checks)statements.push(env.DB.prepare(
      "INSERT INTO private_osint_source_checks_24h(source_ref,category,state,checked_at) VALUES(?,?,?,?) "+
-     "ON CONFLICT(source_ref,category) DO UPDATE SET state=excluded.state,checked_at=excluded.checked_at")
-     .bind(c.source_ref,c.category,c.state,c.checked_at));
-   statements.push(env.DB.prepare(
+     "ON CONFLICT(source_ref,category) DO UPDATE SET state=excluded.state,checked_at=excluded.checked_at "+
+     "WHERE private_osint_source_checks_24h.state<>excluded.state "+
+     "OR private_osint_source_checks_24h.checked_at<=?")
+     .bind(c.source_ref,c.category,c.state,c.checked_at,new Date(now-3600000).toISOString()));
+   if(hasNewRows)statements.push(env.DB.prepare(
      "DELETE FROM private_osint_news_25h WHERE item_id NOT IN "+
      "(SELECT item_id FROM private_osint_news_25h ORDER BY native_feed_published_at DESC,item_id DESC LIMIT "+maxRows+")"));
    const batch=await env.DB.batch(statements);
@@ -104,6 +125,7 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
      native_feed_to_first_durable_write_within_15m:within15,
      native_feed_to_first_durable_write_over_15m:after15,
      d1_exact_readback_verified:true,
+     duplicate_news_last_seen_refresh_hours:6,unchanged_check_refresh_minutes:60,
      independent_verification_required_for_ingestion:false,
      original_page_verified:false,source_rights_verified:false,
      breaking_news_global_15m_guaranteed:false,
@@ -160,7 +182,8 @@ export async function handlePrivateOsint15m(request,env){
  if(!auth.ok)return respond({ok:false,error:auth.error},auth.status);
  const url=new URL(request.url);
  if(!env?.DB)return respond({ok:false,error:"PRIVATE_OSINT_D1_UNAVAILABLE"},503);
- if(request.method==="GET")return privateOsint15mRead(env,url.searchParams);
+ if(request.method==="GET")return url.searchParams.get("view")==="bundle"?
+  privateOsintBundleRead(env,url.searchParams):privateOsint15mRead(env,url.searchParams);
  if(request.method!=="PUT"||url.search)return respond({ok:false,error:"PRIVATE_OSINT_METHOD_NOT_ALLOWED"},405);
  try{
    const declared=Number(request.headers.get("content-length")??"0");

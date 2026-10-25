@@ -44,19 +44,25 @@ export async function persistPrivateOsintBatch({
   over15+=receipt.native_feed_to_first_durable_write_over_15m;
  }
  // Authenticated private readback at end; zero public exposure.
- const status=await fetchImpl(controlPlaneRoot+"/v1/internal/private-osint-15m?offset=0",{
+ const read=async view=>fetchImpl(controlPlaneRoot+"/v1/internal/private-osint-15m?"+view,{
   method:"GET",redirect:"error",cache:"no-store",headers:{Accept:"application/json","Authorization":"Bearer "+privateToken},
   signal:AbortSignal.timeout(12000),
  });
+ let status=await read("view=bundle"),bundle=true;
+ // One bounded rolling-deployment fallback, only for the older private
+ // reader's unknown-query 400. Auth, storage and malformed bundles fail closed.
+ if(status.status===400){bundle=false;status=await read("offset=0")}
  if(status.status!==200)throw Error("PRIVATE_OSINT_PRIVATE_READER_HTTP_"+status.status);
  const privateFeed=await status.json();
- if(privateFeed.ok!==true||privateFeed.schema!==PRIVATE_OSINT_DURABLE_SCHEMA||
+ if(privateFeed.ok!==true||privateFeed.schema!==(bundle?"geomacro.private-osint-news-bundle.v1":PRIVATE_OSINT_DURABLE_SCHEMA)||
     privateFeed.retention_hours!==25||
     privateFeed.scope!=="PROTECTED_INTERNAL_OSINT_RESEARCH_ONLY"||
     privateFeed.independent_verification_required_for_ingestion!==false||
     privateFeed.original_page_verified!==false||
     privateFeed.commercial_use_authorized!==false||
-    !Array.isArray(privateFeed.items))
+    (bundle?privateFeed.category_count!==3||privateFeed.single_d1_batch_read!==true||
+      ["geopolitics","macro","rare_earth"].some(c=>!Array.isArray(privateFeed.categories?.[c]?.items)):
+      !Array.isArray(privateFeed.items)))
    throw Error("PRIVATE_OSINT_PRIVATE_READER_SCHEMA_INVALID");
  return Object.freeze({schema:"geomacro.private-osint-15m-durable-production-receipt.v1",
    source_checks_persisted:checked,news_rows_verified_in_d1:saved,
@@ -66,6 +72,7 @@ export async function persistPrivateOsintBatch({
    d1_write_exact_readback_verified:true,
    independent_verification_required_for_ingestion:false,
    separate_private_d1_readback_verified:true,
+   private_three_category_bundle_readback_verified:bundle,
    original_page_independently_verified:false,
    global_195x3_live_15m_sla_guaranteed:false,
    publicly_delivered:false,raw_upstream_stored:false,

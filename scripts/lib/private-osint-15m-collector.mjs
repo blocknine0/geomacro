@@ -12,7 +12,7 @@ import {collectRegisteredReusableNews} from "./registered-reusable-news-source-c
 import {privateOsintGlobalSources,PRIVATE_OSINT_TOPICS,privateOsintContinentCoverage} from "./private-osint-global-sources.mjs";
 export const PRIVATE_OSINT_TARGET_MINUTES=15;
 export const PRIVATE_OSINT_POLL_MINUTES=5;
-export const PRIVATE_OSINT_MAX_SOURCES=256;
+export const PRIVATE_OSINT_MAX_SOURCES=512;
 export const PRIVATE_OSINT_MAX_RESULTS_PER_TICK=320;
 const DOMAINS=["geopolitics","macro","rare_earth"];
 export async function collectPrivateOsint15m({
@@ -33,25 +33,33 @@ export async function collectPrivateOsint15m({
       throw Error("PRIVATE_OSINT_SOURCE_NOT_REGISTERED");
     seenUrls.add(source.url);
   }
-  // Groups of 6 guarantee selectRegisteredNewsSources(... perCategory=8)
-  // checks ALL sources in each group regardless of 15-minute rotation.
-  const groups=[];
-  for(let i=0;i<registry.length;i+=6)groups.push(registry.slice(i,i+6));
-  const responses=Array(groups.length);let cursor=0;
-  const worker=async()=>{
-    while(cursor<groups.length){
-      const index=cursor++;
-      responses[index]=await collectRegisteredReusableNews({
-        now,fetchImpl,registry:groups[index],perCategory:8,normalize,resolveCountry,
-        // Outer worker count is the global network cap for PRIVATE OSINT;
-        // avoid multiplying by reusable public-reader inner parallelism.
-        networkConcurrency:1,
-        topicPatterns:PRIVATE_OSINT_TOPICS,allowRdfNativeDates:true,
-        maxFeedBytes:1024*1024,
-      });
+  // Check every accepted endpoint, with eight global and two per-host slots.
+  // A large news-index catalogue must not block unrelated original publishers.
+  const responses=Array(registry.length),running=new Set(),hosts=new Map();
+  const pending=registry.map((source,index)=>({source,index,host:new URL(source.url).hostname}));
+  const privateFetch=(url,options)=>fetchImpl(url,new URL(url).hostname==="news.google.com"?
+    {...options,signal:AbortSignal.any([options.signal,AbortSignal.timeout(3500)])}:options);
+  try{
+    while(pending.length||running.size){
+      while(running.size<concurrency){
+        const next=pending.findIndex(p=>(hosts.get(p.host)??0)<2);
+        if(next<0)break;
+        const {source,index,host}=pending.splice(next,1)[0];
+        hosts.set(host,(hosts.get(host)??0)+1);
+        let task;
+        task=collectRegisteredReusableNews({
+          now,fetchImpl:privateFetch,registry:[source],perCategory:8,normalize,resolveCountry,
+          networkConcurrency:1,topicPatterns:PRIVATE_OSINT_TOPICS,
+          allowRdfNativeDates:true,maxFeedBytes:1024*1024,
+          deduplicateIndexItems:true,
+        }).then(r=>{responses[index]=r}).finally(()=>{
+          hosts.set(host,hosts.get(host)-1);running.delete(task);
+        });
+        running.add(task);
+      }
+      if(running.size)await Promise.race(running);
     }
-  };
-  await Promise.all(Array.from({length:Math.min(concurrency,groups.length)},worker));
+  }catch(error){await Promise.allSettled(running);throw error}
   const dedup=new Map(),checks=new Map(),count={};
   let collectorExcluded=0;
   for(const r of responses){
@@ -80,6 +88,7 @@ export async function collectPrivateOsint15m({
       configured_country_routes:195,configured_categories:3,configured_country_category_routes:585,
       registered_source_endpoints:registry.length,source_endpoints_attempted:registry.length,
       source_checks:checks.size,source_states:count,
+      index_items_deduplicated_across_queries:true,
       working_source_endpoints:registry.filter(s=>s.categories.some(category=>
         [...checks.values()].some(c=>c.source_ref===sourceRef(s,category)&&
           ["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW"].includes(c.state)))).length,
