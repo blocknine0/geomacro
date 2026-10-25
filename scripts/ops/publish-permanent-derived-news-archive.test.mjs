@@ -62,13 +62,14 @@ describe("permanent derived-only website archive",()=>{
   const p=temp();
   writeCandidates(p.candidatePath,[signal("1234abcd")]);
   await publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:NOW});
-  writeCandidates(p.candidatePath,[signal("5678abcd")]);
   const later=NOW+40*24*60*60_000;
+  const next={...signal("5678abcd"),published_at:new Date(later-60*60_000).toISOString()};
+  writeCandidates(p.candidatePath,[next]);
   const result=await publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:later});
   assert.equal(result.new_signals_added,1);
   assert.equal(result.total_signals,2);
   const index=JSON.parse(readFileSync(join(p.archiveDir,"data/index.json"),"utf8"));
-  assert.deepEqual(index.months,["2026-11","2026-10"]);
+  assert.deepEqual(index.months,["2026-12","2026-10"]);
   assert.equal(index.total_signals,2);
  });
  it("does not overwrite a previously published ID with changed prose",async()=>{
