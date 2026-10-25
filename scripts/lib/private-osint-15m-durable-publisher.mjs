@@ -64,7 +64,7 @@ export async function persistPrivateOsintBatch({
    d1_write_exact_readback_verified:true,
    separate_private_d1_readback_verified:true,
    original_page_independently_verified:false,
-   195x3_live_15m_sla_guaranteed:false,
+   global_195x3_live_15m_sla_guaranteed:false,
    publicly_delivered:false,raw_upstream_stored:false,
    signed_or_paid:false});
 }
