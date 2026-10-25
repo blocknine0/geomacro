@@ -13,11 +13,11 @@ const LOOKBACK_MS = 30 * 86400_000;
 const DELAY_MS = 0;
 const CATEGORIES = new Set(["geopolitics", "macro", "rare_earth"]);
 const TOPICS = new Set(["sanctions and trade restrictions","security and diplomacy",
-  "geopolitical security","foreign policy","banking and capital regulation",
+  "geopolitical security","foreign policy","global FX, trade and industrial conditions","banking and capital regulation",
   "monetary policy","inflation and prices",
   "FX and external balances","financial conditions","trade and economic relations",
   "official economic statistics","energy supply and cost outlook",
-  "resources and energy export outlook","international trade measures and disputes","rare-earth supply",
+  "resources and energy export outlook","international trade measures and disputes","strategic mineral and rare-earth inputs","critical-mineral processing and supply chains","rare-earth supply",
   "critical-mineral inputs","critical-minerals policy",
   "mineral exploration and production",
   "geopolitical publisher candidate","macro publisher candidate",
