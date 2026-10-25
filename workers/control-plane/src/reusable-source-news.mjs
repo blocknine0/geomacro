@@ -127,18 +127,31 @@ export async function publishReusableSourceNews(env,body,now=Date.now()){
       "DELETE FROM reusable_news_items WHERE item_id NOT IN (SELECT item_id FROM reusable_news_items ORDER BY published_at DESC,item_id DESC LIMIT "+REUSABLE_NEWS_MAX_STORED_ITEMS+")"
     ));
     await env.DB.batch(prepared);
-    let retained=0,capacityExcluded=0;
+    let retained=0,capacityExcluded=0,firstSeenWithin15m=0,firstSeenLate15m=0,previouslySeen=0;
     // Check admitted IDs by D1 independent readback, even for old duplicates.
     for(const row of rows){
       const found=await env.DB.prepare(
-        "SELECT projection_json FROM reusable_news_items WHERE item_id = ?").bind(row.id).first();
+        "SELECT projection_json,first_seen_at FROM reusable_news_items WHERE item_id = ?").bind(row.id).first();
       if(!found){capacityExcluded++;continue}
       if(found.projection_json!==row.json)throw Error("REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH");
+      // first_seen_at is immutable across upserts. Count a new observation
+      // once only; rereading a 24h-old news item is not a new 15m breach.
+      const firstSeen=Date.parse(found.first_seen_at??"");
+      if(!Number.isFinite(firstSeen)||firstSeen>Date.now()+10*60_000)
+        throw Error("REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH");
+      if(found.first_seen_at===checkedAt){
+        if(firstSeen-Date.parse(row.at)<=15*60_000)firstSeenWithin15m++;
+        else firstSeenLate15m++;
+      }else previouslySeen++;
       retained++;
     }
     return msg({ok:true,schema:"geomacro.reusable-source-news-write-receipt.v1",
       accepted:retained,capacity_excluded:capacityExcluded,
       checked_sources:body.checks.length,
+      first_observed_within_15m_count:firstSeenWithin15m,
+      first_observed_later_than_15m_count:firstSeenLate15m,
+      previously_observed_count:previouslySeen,
+      first_observation_is_not_independent_verification:true,
       retention_hours:REUSABLE_NEWS_RETENTION_HOURS,
       d1_readback_verified:true,raw_upstream_stored:false,
       paid_product_authorized:false});
