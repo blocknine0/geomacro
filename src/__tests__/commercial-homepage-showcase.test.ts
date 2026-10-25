@@ -6,7 +6,7 @@ const home = readFileSync("src/components/home/commercial-home.tsx", "utf8");
 
 describe("Geomacro Finds commercial homepage presentation", () => {
   it("shows exactly one public original-dated free Find with a truthful evidence clock",()=>{
-    expect(card).toContain("selectHomepageFreeFind(cards)");
+    expect(card).toContain("selectHomepageFreeFind(visibleCards)");
     expect(card).toContain("findCardFromObservedRelease(s,now)");
     expect(card).toContain("winner.originalAt");
     expect(card).toContain("dateTime={winner.originalAt}");
@@ -17,16 +17,18 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(card).not.toContain("categoryLeads(intelligence.data.all)");
     expect(card).not.toContain("categoryHighlights");
     expect(card).not.toContain("<AccessOptions />");
-    expect(card).toContain("Release observed · specific details pending");
+    expect(card).not.toContain("Release observed · specific details pending");
+    expect(card).toContain("domainCards.map(domain=>");
+    expect(card).toContain("isConcreteHomeFind");
   });
 
   it("does not promote a free D1 release to paid GRO/score or fresh commercial review",()=>{
-    expect(card).toContain("homeFindsPulse(cards)");
+    expect(card).toContain("homeFindsPulse(visibleCards)");
     expect(card).toContain('fetch("/api/v1/finds"');
     expect(card).toContain("Original release within 24h");
     expect(card).toContain("Earlier original release · not current");
-    expect(card).toContain("independent same-event review not established");
-    expect(card).toContain("Recent release · unscored");
+    expect(card).not.toContain("independent same-event review not established");
+    expect(card).toContain("No eligible concrete news");
     expect(card).not.toContain("useIntelligence(");
     expect(card).not.toContain("RiskBadge");
     expect(card).not.toContain("event.severity");
