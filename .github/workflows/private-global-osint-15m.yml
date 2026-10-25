@@ -29,6 +29,10 @@ on:
       - "config/private-osint-working-sources.v1.json"
       - "config/private-osint-official-feed-additions.v1.json"
       - "config/private-osint-eight-repository-intake.v1.json"
+      - "config/operator-country-source-crosswalk.v1.json"
+      - "scripts/lib/private-unverified-osint-intake.mjs"
+      - "scripts/lib/private-unverified-osint-intake.test.mjs"
+      - "scripts/ops/private-unverified-osint-tick.ts"
       - "workers/control-plane/src/private-osint-bundle.mjs"
       - "workers/control-plane/migrations/0029_private_osint_bundle_index.sql"
       - "scripts/lib/private-osint-bundle.test.mjs"
@@ -44,6 +48,10 @@ on:
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
       - "config/private-osint-official-feed-additions.v1.json"
+      - "config/operator-country-source-crosswalk.v1.json"
+      - "scripts/lib/private-unverified-osint-intake.mjs"
+      - "scripts/lib/private-unverified-osint-intake.test.mjs"
+      - "scripts/ops/private-unverified-osint-tick.ts"
 
 permissions:
   contents: read
@@ -73,6 +81,8 @@ jobs:
           node --test scripts/lib/private-osint-15m-durable-publisher.test.mjs
           node --test scripts/lib/private-osint-15m-d1.test.mjs
           node --test scripts/lib/private-osint-global-sources.test.mjs
+          node --check scripts/lib/private-unverified-osint-intake.mjs
+          node --test scripts/lib/private-unverified-osint-intake.test.mjs
           node --test scripts/lib/private-osint-bundle.test.mjs
           node --test scripts/lib/registered-reusable-news-source-collector.test.mjs scripts/lib/registered-news-15m-cadence.test.mjs
   collect-private:
@@ -103,3 +113,32 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/private-osint-15m-tick.ts
+
+  collect-unverified-private:
+    needs: verify
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Poll only explicitly unverified public candidates and persist private D1
+        env:
+          GEOMACRO_OSINT_RESEARCH_PRIVATE_ONLY: "1"
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          bun scripts/ops/private-unverified-osint-tick.ts
