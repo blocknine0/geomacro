@@ -160,7 +160,21 @@ export async function publishPrivateOsintWebsiteSignals({
    if(ids.has(s.id)||unique.has(s.id))return false;
    unique.add(s.id);return true;
  });
- const pending=eligible.slice(0,150);
+ // The existing public 72-hour D1 newsroom has a HARD 600-row newest-first
+ // cap. Never write an older item that D1 will immediately prune and then
+ // mistake its honest eviction for a failed database write. Comparisons use
+ // original publication clock plus the same ID order as the D1 SQL query.
+ const recentFirst=(a,b)=>b.published_at.localeCompare(a.published_at)||
+   b.id.localeCompare(a.id);
+ const hasClock=row=>typeof row?.published_at==="string"&&
+   Number.isFinite(Date.parse(row.published_at));
+ const canPredict=existing.length>=600&&
+   [...existing,...eligible].every(hasClock);
+ const survivors=canPredict?new Set([...existing,...eligible]
+   .sort(recentFirst).slice(0,600).map(row=>row.id)):null;
+ const eligibleWithinCap=survivors?
+   eligible.filter(s=>survivors.has(s.id)):eligible;
+ const pending=eligibleWithinCap.slice(0,150);
  for(let i=0;i<pending.length;i+=50){
    const batch=pending.slice(i,i+50);
    const res=await fetchImpl(controlPlaneRoot+JOURNAL,{
@@ -177,14 +191,26 @@ export async function publishPrivateOsintWebsiteSignals({
       receipt.persistent_derived_only!==true||receipt.chargeable!==false)
      throw Error("PRIVATE_OSINT_WEBSITE_WRITE_REJECTED");
  }
+ let visible=0,naturallyEvicted=0;
  if(pending.length){
    const after=await readAll(fetchImpl,Date.now());
    if(!Array.isArray(after))throw Error("PRIVATE_OSINT_WEBSITE_READBACK_MISSING");
    const confirmed=new Set(after.map(s=>s.id));
-   if(pending.some(s=>!confirmed.has(s.id)))
-     throw Error("PRIVATE_OSINT_WEBSITE_EXACT_READBACK_FAILED");
+   visible=pending.filter(s=>confirmed.has(s.id)).length;
+   const absent=pending.filter(s=>!confirmed.has(s.id));
+   // A separate concurrent real publisher may have inserted newer stories.
+   // Accept a missing story only when it is outside a FULL 600-row D1 window,
+   // never simply because a write receipt was green.
+   const floor=after.length>=600&&after.every(hasClock)?
+     [...after].sort(recentFirst)[599]:null;
+   naturallyEvicted=floor?absent.filter(s=>hasClock(s)&&
+     recentFirst(s,floor)>0).length:0;
+   if(naturallyEvicted!==absent.length)
+     throw Error("PRIVATE_OSINT_WEBSITE_EXACT_READBACK_FAILED_"+visible+
+       "_OF_"+pending.length+"_VISIBLE_"+after.length);
  }
- return {candidates:signals.length,new_derived_stories:pending.length,
-   deferred_unpublished:eligible.length-pending.length,
+ return {candidates:signals.length,new_derived_stories:visible,
+   deferred_unpublished:eligible.length-visible,
+   d1_quota_evictions:naturallyEvicted,
    journal_readback_verified:true,private_raw_published:false};
 }
