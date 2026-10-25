@@ -6,16 +6,16 @@ import {intelligenceActorHeadline,intelligenceActorChange} from "./public-intell
  * Strict public presentation gate shared by the Intelligence desk and homepage.
  * Keep all evidence (including rejected/unverified intake) in the existing
  * protected ingest path. Showing no card is preferable to an invented event.
- * Sources with mandatory public credits are not eligible for an attribution-
- * free card. Missing credit is not itself a grant of commercial re-use.
+ * Mandatory issuer credits are displayed with official-release cards rather
+ * than dropping genuine evidence. Missing credit grants no commercial rights.
  */
 const GENERIC=/\b(?:publisher candidate|source.feed observation|unverified|not specified|not established|unclassified|an official publisher|feed contains a dated item|original release concerns|publication concerns|monitoring topic)\b/iu;
-// A display credit is not proof that an attribution licence is waived. Keep
-// sources whose licence explicitly requires public credit OUT of a source-hidden
-// card, even though their releases remain in the private/source-linked journal.
+// Credits preserved from the D1 derived-news schema. The desk renders the
+// mandatory credits on each card. The source-neutral homepage Find adapter
+// separately refuses ANY credited card, so it cannot silently strip attribution.
 const REQUIRED_VISIBLE_CREDIT=/Open Government Licence|\bWTO news\b|Statistics Canada|UN News|United Nations|United Nations Office at Geneva|\bBeehive\b|Natural Resources Canada|Eurostat|European Commission|Council of the European Union|European Parliament|\bCC BY\b|Creative Commons Attribution/iu;
-const ACTOR_ACTION=/\b(?:announced|approved|authorized|authorised|urged|warned|called for|appealed for|introduced|launched|cut|raised|lowered|increased|reduced|reported|imposed|proposed|signed|rejected|denied|supported|supports|opened|published|issued|unveiled|condemned|agreed|confirmed|announces|approves|urges|warns|reports|says|said|told|issued|launches|supports|calls for|condemns|concludes|released|was approved|warn|urge|announce|approve|report|support|condemn|sign|raise|lower|reduce|increase|appeal|call for|launch|impose|propose)\b/iu;
-const NOT_ACTOR=/^(?:new|official|publisher|geopolitical|macro|macroeconomic|critical|minerals?|source|trade|policy|interest|market|risk|release|announcement|warning|call|update|reports?|feeds?|unverified)\b/iu;
+const ACTOR_ACTION=/\b(?:announced|approved|authorized|authorised|urged|warned|called for|appealed for|introduced|launched|cut|raised|lowered|increased|reduced|reported|imposed|proposed|signed|rejected|denied|supported|supports|opened|published|issued|unveiled|condemned|agreed|confirmed|released|releases|maintained|maintains|kept|holds|held|left|leaves|forecast|forecasts|projected|projects|revised|revises|estimated|estimates|recorded|records|sets|announces|approves|urges|warns|reports|says|said|told|issued|launches|supports|calls for|condemns|concludes|released|was approved|warn|urge|announce|approve|report|support|condemn|sign|raise|lower|reduce|increase|appeal|call for|launch|impose|propose)\b/iu;
+const NOT_ACTOR=/^(?:new|official|publisher|geopolitical|macro|macroeconomic|critical|minerals?|source|trade|policy|interest|market|risk|release|announcement|warning|call|update|reports?|feeds?|unverified|inflation|gdp|prices?|employment|unemployment|interest rates?|consumer|economic data|finance)\b/iu;
 
 /** Stable derived publisher-release headline only; never substitute a feed
  * hostname for the grammatical actor or imply verification of an outcome. */
@@ -43,31 +43,53 @@ export function concreteIntelligenceHeadline(s:StatelessIntelligenceSignal):stri
    return null;
  return title;
 }
+/** Exact credit already retained by the derived D1 journal, never fetched
+ * from the upstream body. These are *display acknowledgements*, not a licence
+ * grant, independently verified issuer, source permalink or payment proof. */
+export function intelligenceRequiredSourceCredits(s:StatelessIntelligenceSignal):string[]{
+ if(s?.status!=="official_release_observed_unscored"||
+    !Array.isArray(s.sources_credited))return [];
+ return s.sources_credited.filter(credit=>typeof credit==="string"&&
+   credit.length<=230&&REQUIRED_VISIBLE_CREDIT.test(credit));
+}
 const TOPIC_SENSITIVE=/\b(?:alleged|allegation|reported|announced|urged|warned|proposed|planned|rejected|approved|agreed|cut|raised|increased|signed|supported|supports|launched|issued|imposed|introduced|lowered|reduced|published|opened|unveiled|denied|confirmed|condemned|authorized|authorised|agreed)\b/iu;
-export function isConcretePublicIntelligence(s:StatelessIntelligenceSignal):boolean{
+export type IntelligenceDisplayRejection =
+ "INVALID_STATE_OR_CREDIT"|"UNVERIFIED_ORIGINAL_SOURCE"|"UNKNOWN_ACTOR_OR_ACTION"|
+ "GENERIC_OR_UNSAFE_COPY"|"INVALID_PUBLICATION_DATE"|null;
+
+/** Mutually exclusive, stable reason for every public D1 story; no original
+ * titles or URLs are returned to the caller or written to diagnostics. */
+export function intelligenceDisplayRejection(s:StatelessIntelligenceSignal):IntelligenceDisplayRejection{
  if(!s||!["official_release_observed_unscored","osint_feed_observed_unverified"].includes(s.status)||
     !["geopolitics","macro","rare_earth"].includes(s.category)||
     !Array.isArray(s.sources_credited)||s.sources_credited.length>2||
-    s.sources_credited.some(credit=>typeof credit!=="string"||REQUIRED_VISIBLE_CREDIT.test(credit))||
-    s.severity!==null||s.same_event_corrob_verified!==false)return false;
- // Source-reported OSINT can be shown as a REPORT, never as independently
- // corroborated. Exclude feeds requiring display attribution when the owner
- // has requested source-hidden cards; do not reprint their raw headlines.
+    s.sources_credited.some(credit=>typeof credit!=="string"||
+      credit.length>230||/[<>]|https?:\/\//iu.test(credit))||
+    s.severity!==null||s.same_event_corrob_verified!==false)
+   return "INVALID_STATE_OR_CREDIT";
+ // Feed hostname is not the actual government/IGO original publisher credit.
+ // Do not downgrade a first-party feed to a fake source-reported no-credit card.
  if(s.status==="osint_feed_observed_unverified"&&
    (s.development_type!=="unverified OSINT feed observation"||
     s.sources_credited.length!==1||
     !s.sources_credited[0].startsWith("Monitored feed: ")||
     /(?:news\.un\.org|press\.un\.org|gov\.uk|wto\.org|statcan\.gc\.ca|beehive\.govt\.nz|europa\.eu)/iu.test(s.sources_credited[0])))
-   return false;
+   return "UNVERIFIED_ORIGINAL_SOURCE";
  const headline=concreteIntelligenceHeadline(s),change=intelligenceActorChange(s);
- if(!headline)return false;
+ if(!headline)return "UNKNOWN_ACTOR_OR_ACTION";
  if(headline.length<18||headline.length>220||change.length<30||change.length>650||
     GENERIC.test(headline)||GENERIC.test(change)||GENERIC.test(s.topic)||
     /https?:\/\/|www\.|[<>]/iu.test(headline+change)||
-    !ACTOR_ACTION.test(headline+" "+change))return false;
+    !ACTOR_ACTION.test(headline+" "+change))
+   return "GENERIC_OR_UNSAFE_COPY";
  const ms=Date.parse(s.published_at);
- return Number.isFinite(ms)&&s.title.startsWith("Geomacro finds ")&&
-   typeof s.why_it_matters==="string"&&s.why_it_matters.length>=30;
+ if(!Number.isFinite(ms)||!s.title.startsWith("Geomacro finds ")||
+   typeof s.why_it_matters!=="string"||s.why_it_matters.length<30)
+   return "INVALID_PUBLICATION_DATE";
+ return null;
+}
+export function isConcretePublicIntelligence(s:StatelessIntelligenceSignal):boolean{
+ return intelligenceDisplayRejection(s)===null;
 }
 
 /** Topic-specific, cautiously worded implications. Never invent market moves
