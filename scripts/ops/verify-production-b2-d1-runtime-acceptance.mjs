@@ -1,14 +1,15 @@
 #!/usr/bin/env bun
-import {createHash,randomUUID} from "node:crypto";
+import {createHash,createHmac,randomUUID} from "node:crypto";
 import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 
 const B2_ENDPOINT="https://s3.us-east-005.backblazeb2.com";
+const CONTROL_PLANE_URL="https://geomacro-control-plane.daspallab202391.workers.dev";
 const BUCKET="geomacro-private-archive";
 const PREFIX="geomacro-evidence/v1/private/runtime-config-acceptance/";
 const REQUIRED=[
   "B2_KEY_ID","B2_APPLICATION_KEY","CLOUDFLARE_ACCOUNT_ID",
-  "CLOUDFLARE_API_TOKEN","D1_DATABASE_ID",
+  "CLOUDFLARE_API_TOKEN","D1_DATABASE_ID","GEOMACRO_COMMERCE_LEDGER_TOKEN",
 ];
 const FORBIDDEN=[
   "SUPABASE_DB_URL","SUPABASE_URL","APP_SUPABASE_URL",
@@ -46,6 +47,9 @@ function requiredConfig(env){
   if(env.GITHUB_ACTIONS!=="true")fail("PRODUCTION_GITHUB_ACTIONS_CONTEXT_REQUIRED");
   if(env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
      env.GITHUB_REF!=="refs/heads/main")fail("CANONICAL_MAIN_ONLY");
+  if(String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim().length<32 &&
+     !missing.includes("GEOMACRO_COMMERCE_LEDGER_TOKEN"))
+    missing.push("GEOMACRO_COMMERCE_LEDGER_TOKEN");
   if(env.B2_ACCOUNT_QUOTA_REQUIRED!=="1")missing.push("B2_ACCOUNT_QUOTA_REQUIRED");
   if(env.B2_REQUEST_BUDGET!=="8")missing.push("B2_REQUEST_BUDGET");
   const expectedWorkflow=`runtime_probe_${runId}_${attempt}`;
@@ -83,6 +87,31 @@ async function d1Query({env,fetchImpl,sql,params}){
   return payload.result[0].results;
 }
 
+async function readControlPlaneQuotaStatus({env,fetchImpl,expectedDay}){
+  const root=String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
+  const token=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
+  let response,payload;
+  try{
+    response=await fetchImpl(`${CONTROL_PLANE_URL}/v1/b2-quota/status`,{
+      method:"GET",
+      headers:{authorization:`Bearer ${token}`,accept:"application/json",
+        "cache-control":"no-cache"},
+      signal:AbortSignal.timeout(15000),
+    });
+    payload=await response.json();
+  }catch{
+    fail("CONTROL_PLANE_D1_STATUS_READ_FAILED");
+  }
+  if(!response?.ok||payload?.ok!==true){
+    if(response?.status===401)fail("CONTROL_PLANE_TOKEN_MISMATCH");
+    if(payload?.error==="CONTROL_PLANE_AUTH_UNCONFIGURED")
+      fail("CONTROL_PLANE_AUTH_UNCONFIGURED");
+    if(payload?.error==="D1_BINDING_MISSING")fail("CONTROL_PLANE_D1_BINDING_MISSING");
+    fail("CONTROL_PLANE_D1_STATUS_READ_FAILED");
+  }
+  return safeStatus(payload,expectedDay);
+}
+
 export async function runProductionB2D1RuntimeAcceptance({
   env=process.env,
   fetchImpl=fetch,
@@ -96,6 +125,7 @@ export async function runProductionB2D1RuntimeAcceptance({
     fail("RUNTIME_CLOCK_INVALID");
   const day=startedAt.toISOString().slice(0,10);
   const governor=createGovernorImpl({env,fetchImpl,now:()=>new Date(startedAt)});
+  const workerBefore=await readControlPlaneQuotaStatus({env,fetchImpl,expectedDay:day});
   const before=safeStatus(await governor.status(),day);
   // Reserve a bounded maximum of eight attempts (including native-read fallback)
   // before attempting any storage call. This is admission only, not a reservation.
@@ -134,10 +164,15 @@ export async function runProductionB2D1RuntimeAcceptance({
     fail("B2_SECOND_INDEPENDENT_READBACK_MISMATCH");
 
   const after=safeStatus(await governor.status(),day);
+  const workerAfter=await readControlPlaneQuotaStatus({env,fetchImpl,expectedDay:day});
   if(after.used.total<before.used.total+3||
     after.used.GET<before.used.GET+2||
     after.used.PUT<before.used.PUT+1)
     fail("D1_ACCOUNT_QUOTA_COUNTER_READBACK_DID_NOT_ADVANCE");
+  if(workerAfter.used.total<workerBefore.used.total+3||
+    workerAfter.used.GET<workerBefore.used.GET+2||
+    workerAfter.used.PUT<workerBefore.used.PUT+1)
+    fail("CONTROL_PLANE_D1_COUNTER_READBACK_DID_NOT_ADVANCE");
 
   const rows=await d1Query({
     env,fetchImpl,
@@ -165,6 +200,7 @@ export async function runProductionB2D1RuntimeAcceptance({
     },
     d1:{
       quota_status_read_before_and_after:true,
+      authenticated_control_plane_d1_read_before_and_after:true,
       per_run_write_receipts_read_back:true,
       get_request_receipts:counts.GET,
       put_request_receipts:counts.PUT,
@@ -175,7 +211,7 @@ export async function runProductionB2D1RuntimeAcceptance({
     payment_attempts:0,
     customer_or_source_data_written:false,
     current_signed_hot_products_verified:false,
-    note:"Runtime credentials are accepted only for this bounded B2/D1 probe. Signed product freshness, source rights, signatures and public deep health are separate gates.",
+    note:"Runtime credentials and the authenticated Control Plane D1 binding are accepted only for this bounded B2/D1 probe. Signed product freshness, source rights, signatures and public deep health are separate gates.",
   });
 }
 
