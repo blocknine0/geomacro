@@ -317,7 +317,7 @@ export function officialGeomacroAgentHandlers(
     try{
      const payload:unknown=await canonicalResponse.clone().json();
      if(isSourceGroundedResearchAnswer(payload)){
-      return json({...payload as Record<string,unknown>,error:undefined,ok:true,delivery_status:"RESEARCH_ONLY",research_only_reason:"Independent same-event corroboration, commercial rights and signing remain unverified."},200);
+      return json({...(payload as Record<string,unknown>),error:undefined,ok:true,delivery_status:"RESEARCH_ONLY",research_only_reason:"Independent same-event corroboration, commercial rights and signing remain unverified."},200);
      }
     }catch{/* Preserve the canonical pending response if it is not JSON. */}
    }
