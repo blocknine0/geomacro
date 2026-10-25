@@ -116,7 +116,12 @@ describe('automatic approval of all retained derived inputs',()=>{
   expect(db.rows.size).toBe(600);fetchImpl.mockClear();
   const again=await publishAutomatedIntelligenceInputs(options);
   expect(again.new_signed_inputs).toBe(0);expect(again.already_signed).toBe(600);
-  expect(fetchImpl.mock.calls.every(([,opt])=>opt.method==='GET')).toBe(true);
+  const calls=fetchImpl.mock.calls.map(([,opt])=>opt.method);
+  expect(calls.filter(method=>method==='PUT')).toHaveLength(1);
+  expect(calls.filter(method=>method==='GET').length).toBeGreaterThanOrEqual(2);
+  const reconcile=JSON.parse(fetchImpl.mock.calls.find(([,opt])=>opt.method==='PUT')![1].body);
+  expect(reconcile.items).toEqual([]);
+  expect(reconcile.retained_ids).toHaveLength(600);
  });
  it('does not expose the internal signed-input route to unauthenticated callers',async()=>{
   for(const method of ['GET','PUT']){
