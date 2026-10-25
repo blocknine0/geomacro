@@ -196,13 +196,22 @@ export async function fetchAllDerivedNews(
       (offset===0?"":"?offset="+offset);
     const response=await fetchPublicReadWithRetry(fetchImpl,url,{
       method:"GET",redirect:"error",cache:"no-store",
-      headers:{Accept:"application/json"},
+      // Publisher/audit readbacks must observe this run's write, not the
+      // edge-cached public snapshot. Cloudflare revalidates no-cache requests.
+      headers:{Accept:"application/json","Cache-Control":"no-cache"},
     },8_000);
     if(!response.ok || Number(response.headers.get("content-length")??0)>512_000)
       throw Error("DERIVED_NEWS_PAGE_UNAVAILABLE");
     const body=await response.text();
     if(body.length>512_000)throw Error("DERIVED_NEWS_PAGE_TOO_LARGE");
     const doc=JSON.parse(body) as Record<string,unknown>;
+    // Stale-if-error is intentionally useful for public UI reads, but never
+    // for write acceptance or source audit. A cached fallback has an old
+    // checked_at and therefore cannot certify this exact readback.
+    const checkedAt=Date.parse(String(doc.checked_at??""));
+    const readAt=Date.now();
+    if(!Number.isFinite(checkedAt)||checkedAt>readAt+5_000||readAt-checkedAt>30_000)
+      throw Error("DERIVED_NEWS_PAGE_STALE_READBACK");
     if(doc.page_offset!==offset||doc.page_size!==250||
        typeof doc.has_more!=="boolean")
       throw Error("DERIVED_NEWS_PAGE_CONTRACT_INVALID");
