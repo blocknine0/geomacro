@@ -37,12 +37,13 @@ const xmlTag=(body,tag)=>{
     "(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[a-z][a-z0-9._-]*:)?"+tag+">","iu"));
   return m?cleanText(m[1]):null;
 };
-function originalClock(value,now){
-  if(!value||value.length>85||
+function originalClock(value,now,maxAgeMs=LOOKBACK){
+  if(!Number.isFinite(maxAgeMs)||maxAgeMs<1||maxAgeMs>72*3600000||
+     !value||value.length>85||
      /^\d{4}-\d{2}-\d{2}$/u.test(value)||
      !(/[+-]\d{2}:?\d{2}|(?:GMT|UTC|Z)\b/iu).test(value))return null;
   const ms=Date.parse(value);
-  if(!Number.isFinite(ms)||ms>now||now-ms>LOOKBACK)return null;
+  if(!Number.isFinite(ms)||ms>now||now-ms>maxAgeMs)return null;
   return new Date(ms).toISOString();
 }
 function normalizeCatalogueSource(r){
@@ -203,6 +204,15 @@ export async function collectRegisteredReusableNews({
     let candidates=0;
     const domainCandidates=Object.fromEntries(activeCategories.map(c=>[c,0]));
     for(const item of blocks??[]){
+      // The WEBSITE retains 72h of derived news, unlike private discovery's
+      // strict 25h intake window. Surface exact native-dated original metadata
+      // only to the in-memory, pinned-first-party website callback BEFORE
+      // private topic/capacity rules; it never enters the private D1 journal.
+      const websiteClock=onOriginalCandidate&&item.articleUrl
+        ?originalClock(item.native,now.getTime(),72*3600000):null;
+      if(websiteClock)for(const category of activeCategories)
+        onOriginalCandidate({news_id:null,source_url:s.url,category,
+          title:item.title,article_url:item.articleUrl,published_at:websiteClock});
       const at=originalClock(item.native,now.getTime());
       if(!at)continue;
       for(const category of activeCategories){
@@ -229,12 +239,6 @@ export async function collectRegisteredReusableNews({
           seen.add(id);
           if(items.length<MAX_ITEMS_PER_RUN){
              items.push(safe);candidates++;domainCandidates[category]++;
-             // In-memory only. The website bridge separately validates pinned
-             // original publisher links; no original content enters private D1.
-             if(onOriginalCandidate)onOriginalCandidate({
-               news_id:safe.id,source_url:s.url,category,title:item.title,
-               article_url:item.articleUrl??null,published_at:at,
-             });
            }
           else capacitySkipped++;
         }
