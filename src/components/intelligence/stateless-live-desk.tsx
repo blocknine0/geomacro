@@ -74,6 +74,11 @@ function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;s
               signal.category === "macro" ? <TrendingUp className="h-3.5 w-3.5" aria-hidden /> : <Gem className="h-3.5 w-3.5" aria-hidden />}
             {labelFor(signal.category)}
           </span>
+          {signal.status==="osint_feed_observed_unverified" ? (
+            <span className="rounded-full border border-border/70 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              OSINT Report
+            </span>
+          ) : null}
         </div>
         <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{look.reading}</p>
         <h3 className="mt-2 text-xl font-semibold leading-snug tracking-tight text-foreground">{displayProse(concreteIntelligenceHeadline(signal) ?? "")}</h3>
@@ -84,6 +89,9 @@ function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;s
           <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">GEOMACRO ANALYSIS / Why it matters</p>
           <p className="mt-2 text-sm leading-6 text-foreground/85">{displayProse(concreteGeomacroAnalysis(signal))}</p>
         </div>
+        {signal.status==="osint_feed_observed_unverified" ? (
+          <p className="mt-4 text-[11px] text-muted-foreground">Source-reported observation · not independently corroborated</p>
+        ) : null}
         <time className="mt-4 block text-[11px] text-muted-foreground" dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
       </div>
     </article>
