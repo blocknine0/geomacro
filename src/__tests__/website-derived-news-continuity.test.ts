@@ -154,9 +154,11 @@ describe("website-only Supabase-free derived news continuity",()=>{
       expect(written.status).toBe(503);
       expect(writeReceipt.diagnostic_code).toBe("D1_DAILY_ROW_WRITE_LIMIT");
       expect(log.mock.calls.flat().join(" ")).not.toContain("raw query secret");
-      const read=await readDerivedStories({DB:{prepare(){return {bind(){return {
-        all:async()=>{throw new Error("Your account has exceeded D1's free tier daily row read limit. private SQL")}},
-      }}}}}},NOW);
+      const readError=new Error("Your account has exceeded D1's free tier daily row read limit. private SQL");
+      const readEnv={DB:{prepare(){return {bind(){return {
+        all:async()=>{throw readError;},
+      };}};}}}};
+      const read=await readDerivedStories(readEnv,NOW);
       const readReceipt=await read.json();
       expect(read.status).toBe(503);
       expect(readReceipt.diagnostic_code).toBe("D1_DAILY_ROW_READ_LIMIT");
