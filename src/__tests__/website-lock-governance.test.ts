@@ -42,10 +42,19 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-intelligence-per-category-event-dedup-20261025");
+    expect(config.lock_revision).toBe("founder-approved-intelligence-eligibility-and-visible-credits-20261025");
+    const credits=config.approved_intelligence_eligibility_and_credit_20261025;
+    expect(credits.previous_baseline_sha).toBe("b4e2bb95d3c45363f88e08076db9cbfded582b08");
+    expect(credits.approved_ui_commit).toBe(config.baseline_sha);
+    expect(credits.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(credits.mandatory_attribution_visible_on_concrete_cards).toBe(true);
+    expect(credits.source_neutral_homepage_remains_attribution_safe).toBe(true);
+    expect(credits.global_risk_final_lock_unmodified).toBe(true);
+    expect(credits.predge_and_store_prices_unmodified).toBe(true);
+    expect(credits.signed_paid_evidence_gates_unmodified).toBe(true);
     const dedup=config.approved_intelligence_per_category_event_dedup_20261025;
     expect(dedup.previous_baseline_sha).toBe("9098323e67dd5a7f9f5b1fcf735562aea9fe8f66");
-    expect(dedup.approved_ui_commit).toBe(config.baseline_sha);
+    expect(dedup.approved_ui_commit).toBe(credits.previous_baseline_sha);
     expect(dedup.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
     expect(dedup.global_risk_final_lock_unmodified).toBe(true);
     expect(dedup.predge_and_store_prices_unmodified).toBe(true);
