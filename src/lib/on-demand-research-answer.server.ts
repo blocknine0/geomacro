@@ -118,7 +118,7 @@ export function buildSourceGroundedResearchAnswer(input: Readonly<{
     const keys = [
       page.article_identity_sha256,
       page.article_url.toLowerCase().replace(/\/+$/u, ""),
-      \`${titleKey}|${page.page_original_published_at.slice(0, 10)}\`,
+      `${titleKey}|${page.page_original_published_at.slice(0, 10)}`,
     ];
     if (keys.some(key => seen.has(key))) continue;
     const candidate = candidateFromPage(page, input.country_iso3, now);
@@ -153,7 +153,7 @@ export function buildSourceGroundedResearchAnswer(input: Readonly<{
     status: "UNVERIFIED_RESEARCH_ONLY",
     query_plan_hash: input.query_plan_hash,
     answer: {
-      summary: \`Geomacro found ${selected.length} original-dated research observation${selected.length === 1 ? "" : "s"} relevant to ${country.name} in ${categoryText}. This is not a verified risk assessment.\`,
+      summary: `Geomacro found ${selected.length} original-dated research observation${selected.length === 1 ? "" : "s"} relevant to ${country.name} in ${categoryText}. This is not a verified risk assessment.`,
       what_changed: selected.map(signal => signal.what_changed).join(" "),
       why_it_matters: selected.map(signal => signal.why_it_matters).join(" "),
       geomacro_view: "The original publication dates and first-party pages were checked. The underlying claims have not passed independent same-event review, item-specific commercial-rights review or signing.",
