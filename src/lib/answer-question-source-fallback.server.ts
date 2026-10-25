@@ -1,5 +1,6 @@
 import type { AgentAdaptiveQuery } from "./agent-query-plan";
 import { CANONICAL_MAINNET_INTELLIGENCE_PATH } from "./mainnet-intelligence-endpoint.server";
+import { supportsSourceGroundedResearchQuestion } from "./on-demand-research-answer.server";
 
 type CanonicalPost = (input: {request: Request}) => Promise<Response>;
 const RETRYABLE_NO_CHARGE_CODES = new Set([
@@ -78,6 +79,7 @@ export async function callCanonicalWithSourceResearchFallback(input: Readonly<{
     input.request.headers.has("payment-signature") ||
     paidResponse.status !== 422 && paidResponse.status !== 503 ||
     input.query.fulfillment_mode !== "published_only" ||
+    !supportsSourceGroundedResearchQuestion(input.query.question) ||
     input.query.product?.capability !== "intelligence_query" ||
     input.query.subjects.length !== 1 ||
     input.query.subjects[0]?.type !== "country" ||
