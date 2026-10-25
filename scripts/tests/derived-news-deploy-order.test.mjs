@@ -44,5 +44,5 @@ test("all readback consumers use the same policy instead of rejecting an entire 
  assert.match(b2,/isSafeDerivedNewsReadbackSignal\(row\)/u);
  assert.match(client,/isSafeDerivedNewsReadbackSignal\(s\)/u);
  assert.match(workflow,/isSafeDerivedNewsReadbackSignal\(s\)/u);
- assert.equal(b2.includes("/https?:\\/\\/|www\\./iu.test(JSON.stringify(row))"),false);
+ assert.equal([...b2.matchAll(/isSafeDerivedNewsReadbackSignal\(row\)/gu)].length,2);
 });
