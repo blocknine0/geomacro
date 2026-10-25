@@ -33,9 +33,9 @@ test("live job can run only by exact manual approval on canonical main", () => {
 });
 
 test("workflow may update only CONTROL_PLANE_TOKEN and cannot deploy or alter Predge", () => {
-  assert.match(workflow, /secret put CONTROL_PLANE_TOKEN --name geomacro-control-plane/u);
-  assert.doesNotMatch(workflow, /wrangler(?:@[^\\s]+)?\s+deploy\b/u);
-  assert.doesNotMatch(workflow, /secret put\s+PREDGE_[A-Z0-9_]+/u);
+  const secretPuts = [...workflow.matchAll(/secret put\s+([A-Z0-9_]+)/gu)].map((match) => match[1]);
+  assert.deepEqual(secretPuts, ["CONTROL_PLANE_TOKEN"]);
+  assert.doesNotMatch(workflow, /wrangler[^\n]*\bdeploy\b/u);
   assert.doesNotMatch(workflow, /secrets\.PREDGE_[A-Z0-9_]+/u);
   assert.doesNotMatch(workflow, /d1\s+(?:create|execute|migrations\s+apply)\b/iu);
   assert.doesNotMatch(workflow, /(?:COINBASE_API_KEY|COINBASE_X402_MAINNET_ACK|GEOMACRO_COMMERCIAL_LAUNCH_ACK):\s*\$\{\{\s*secrets\./u);
