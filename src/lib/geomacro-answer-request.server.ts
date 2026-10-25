@@ -1,3 +1,4 @@
+import { ZodError } from "zod";
 import {
   COUNTRIES_195,
   country195ByIso3,
@@ -74,6 +75,16 @@ export function normalizeAnswerQuestionRequest(raw: unknown): AnswerQuestionNorm
   const extra = Object.keys(input).filter((key) => !allowed.has(key));
   if (extra.length) return { ok: false, code: "QUESTION_ONLY_FIELDS_UNSUPPORTED", detail: { fields: extra.sort() } };
   const question = input.question;
+  if (input.max_age_seconds !== undefined &&
+      (typeof input.max_age_seconds !== "number" || !Number.isSafeInteger(input.max_age_seconds) ||
+       input.max_age_seconds <= 0 || input.max_age_seconds > 94_608_000)) {
+    return { ok: false, code: "MAX_AGE_INVALID" };
+  }
+  if (input.client_request_id !== undefined &&
+      (typeof input.client_request_id !== "string" || input.client_request_id.trim().length < 4 ||
+       input.client_request_id.length > 128)) {
+    return { ok: false, code: "CLIENT_REQUEST_ID_INVALID" };
+  }
   if (!question.trim() || question.length > MAX_QUESTION_CHARS) {
     return { ok: false, code: "QUESTION_INVALID_OR_TOO_LONG" };
   }
@@ -105,8 +116,8 @@ export function normalizeAnswerQuestionRequest(raw: unknown): AnswerQuestionNorm
     detail: variant === "focused" ? "compact" : variant === "standard" ? "standard" : "full",
     fulfillment_mode: "published_only",
     delivery_tier: "signed_risk_intelligence",
-    ...(typeof input.max_age_seconds === "number" ? { max_age_seconds: input.max_age_seconds } : {}),
-    ...(typeof input.client_request_id === "string" ? { client_request_id: input.client_request_id } : {}),
+    ...(input.max_age_seconds !== undefined ? { max_age_seconds: input.max_age_seconds } : {}),
+    ...(input.client_request_id !== undefined ? { client_request_id: input.client_request_id } : {}),
   };
   try {
     const parsed = agentAdaptiveQuerySchema.parse(query);
@@ -117,7 +128,7 @@ export function normalizeAnswerQuestionRequest(raw: unknown): AnswerQuestionNorm
   } catch (error) {
     return {
       ok: false,
-      code: error instanceof Error ? error.message : "QUESTION_PLAN_INVALID",
+      code: error instanceof ZodError ? "QUESTION_PLAN_INVALID" : error instanceof Error ? error.message : "QUESTION_PLAN_INVALID",
     };
   }
 }
