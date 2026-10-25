@@ -41,7 +41,7 @@ test("all 18 registered endpoint URLs are polled on ONE tick, no 15m registry ro
  assert.ok(high<=3,"Bounded group concurrency");
  assert.ok(doc.items.every(x=>x.category&&x.country_iso3==="IND"));
  assert.ok(!JSON.stringify(doc).includes("India central bank announces"));
- assert.ok(!JSON.stringify(doc).includes("publisher-1.example.org"));
+ assert.ok(!/https?:\/\//u.test(JSON.stringify(doc)));
  assert.equal(doc.summary.all_world_breaking_claimed,false);
  assert.equal(doc.summary.publicly_served,false);
  assert.equal(doc.summary.rights_verified,false);
@@ -54,8 +54,8 @@ test("DENIED and unsupported channels do not create unverifiable publications",a
  ];
  const doc=await collectPrivateOsint15m({now,registry,normalize,
   resolveCountry:()=>null,
-  fetchImpl:async url=>new Response(url.includes("one.example.org")?"denied":rss,
-    {status:url.includes("one.example.org")?403:200})});
+  fetchImpl:async url=>new Response(new URL(url).hostname==="one.example.org"?"denied":rss,
+    {status:new URL(url).hostname==="one.example.org"?403:200})});
  assert.equal(doc.summary.source_endpoints_attempted,3);
  assert.equal(doc.checks.length,3);
  assert.equal(doc.summary.source_states.DENIED,1);
