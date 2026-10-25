@@ -67,6 +67,7 @@ test("does not publish news older than an already full 600-row D1 newsroom",asyn
  const nowMs=Date.parse("2026-10-25T12:00:00.000Z");
  const retained=Array.from({length:600},(_,i)=>({
   id:"geopolitics-"+String(i).padStart(8,"0"),
+   status:"official_release_observed_unscored",
   published_at:new Date(nowMs-i*60000).toISOString(),
  }));
  const candidate={id:"macro-12345678",category:"macro",
@@ -94,6 +95,7 @@ test("concurrent writer newest-600 eviction counts as nonvisible, not false D1 f
  let calls=0;
  const retained=Array.from({length:600},(_,i)=>({
   id:"geopolitics-"+String(i).padStart(8,"0"),
+   status:"official_release_observed_unscored",
   published_at:new Date(nowMs-i*60000).toISOString(),
  }));
  const result=await publishPrivateOsintWebsiteSignals({
