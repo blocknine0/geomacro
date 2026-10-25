@@ -8,6 +8,9 @@ test("Worker, publisher and health endpoint share one explicit topic-policy revi
  const worker=read("workers/control-plane/src/website-derived-intelligence.mjs");
  const index=read("workers/control-plane/src/index.mjs");
  const publisher=read("scripts/ops/publish-website-derived-news.ts");
+ const fastlane=read("scripts/ops/publish-original-news-five-minute-fastlane.ts");
+ const privateOsint=read("scripts/ops/private-osint-15m-tick.ts");
+ const bridge=read("scripts/lib/private-osint-website-bridge.mjs");
  assert.match(policy,/DERIVED_NEWS_TOPIC_POLICY_REVISION\s*=\s*2/u);
  assert.match(worker,/export\s*\{\s*DERIVED_NEWS_TOPIC_POLICY_REVISION\s*\}/u);
  assert.match(worker,/isSafeDerivedNewsReadbackSignal\(s\)/u);
@@ -19,6 +22,17 @@ test("Worker, publisher and health endpoint share one explicit topic-policy revi
  const sourceReadCall=publisher.indexOf("readStatelessWebsiteIntelligence(category");
  assert.ok(preflight>=0&&sourceReadCall>preflight,"health policy preflight must execute before source reads");
  assert.match(publisher,/expectedRevision:\s*DERIVED_NEWS_TOPIC_POLICY_REVISION/u);
+ const hourlyPreflight=publisher.indexOf("const workerPolicy=await requireDerivedNewsWorkerPolicy");
+ const hourlyRead=publisher.indexOf("readStatelessWebsiteIntelligence(category");
+ assert.ok(hourlyPreflight>=0&&hourlyRead>hourlyPreflight);
+ const fastPreflight=fastlane.indexOf("const workerPolicy=await requireDerivedNewsWorkerPolicy");
+ const fastBaseline=fastlane.indexOf("fetchAllDerivedNews(fetch,runAt)");
+ const fastSourceRead=fastlane.indexOf("readFiveMinuteNewsFastlane(runAt,20");
+ assert.ok(fastPreflight>=0&&fastBaseline>fastPreflight&&fastSourceRead>fastPreflight);
+ const privatePreflight=privateOsint.indexOf("const workerPolicy=await requireDerivedNewsWorkerPolicy");
+ const privateRead=privateOsint.indexOf("collectPrivateOsint15m({");
+ assert.ok(privatePreflight>=0&&privateRead>privatePreflight);
+ assert.match(bridge,/isSafeDerivedNewsReadbackSignal\(s\)/u);
 });
 
 test("continuity workflow skips a same-push Worker deploy race and resumes only from trusted main deploy completion",()=>{
