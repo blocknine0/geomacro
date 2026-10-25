@@ -29,8 +29,15 @@ const SIGNAL_KEYS = new Set(["id","category","title","why_it_matters","topic",
   "what_changed","geography","development_type","published_at","date_precision",
   "observed_release_count","sources_credited","status",
   "same_event_corrob_verified","severity"]);
-const json = (data, status=200) => Response.json(data, {status, headers:{
-  "Cache-Control":"no-store", "X-Content-Type-Options":"nosniff",
+const PUBLIC_DERIVED_NEWS_CACHE_CONTROL =
+  "public, max-age=60, stale-while-revalidate=300, stale-if-error=900";
+const json = (data, status=200, cacheable=false) => Response.json(data, {status, headers:{
+  // Only successful public GET snapshots opt into edge caching. Write receipts,
+  // D1 failures and invalid requests stay no-store. Consumers revalidate the
+  // feed clock; internal full-journal readbacks explicitly force revalidation.
+  "Cache-Control":cacheable && status===200
+    ?PUBLIC_DERIVED_NEWS_CACHE_CONTROL:"no-store",
+  "X-Content-Type-Options":"nosniff",
   "Referrer-Policy":"no-referrer", "Access-Control-Allow-Origin":"*",
 }});
 function originalTime(s, now) {
@@ -189,7 +196,7 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
       page_offset:offset,page_size:250,has_more:results.length>250,
       next_offset:results.length>250&&offset<500?offset+250:null,
       ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
-      first_ingest:firstIngest,signals},200);
+      first_ingest:firstIngest,signals},200,true);
   } catch(error) {
     const failure_class=classifyDerivedNewsD1Failure(error);
     console.error(JSON.stringify({schema:"geomacro.derived-news-d1-failure.v1",
