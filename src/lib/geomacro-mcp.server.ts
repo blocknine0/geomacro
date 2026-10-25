@@ -2,10 +2,7 @@ import { ZodError } from "zod";
 import {
   encodeX402Header,
 } from "./coinbase-x402.server";
-import {
-  CANONICAL_MAINNET_INTELLIGENCE_PATH,
-  mainnetIntelligenceHandlers,
-} from "./mainnet-intelligence-endpoint.server";
+import { mainnetIntelligenceHandlers } from "./mainnet-intelligence-endpoint.server";
 import {
   GEOMACRO_AGENT_TOOLS,
   GEOMACRO_MCP_PATH,
