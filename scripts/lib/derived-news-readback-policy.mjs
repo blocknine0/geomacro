@@ -32,9 +32,13 @@ export function isSafeMonitoredFeedCredit(value) {
 
 export function isSafeDerivedNewsReadbackSignal(signal) {
   if (!signal || typeof signal !== "object" || Array.isArray(signal)) return false;
-  for (const field of ["title", "what_changed", "why_it_matters"]) {
-    if (typeof signal[field] !== "string" || PROSE_URL_OR_DOMAIN_PATH.test(signal[field])) return false;
+  for (const field of ["title", "what_changed", "why_it_matters", "topic", "development_type"]) {
+    if (typeof signal[field] !== "string" || /[<>]/u.test(signal[field]) ||
+        PROSE_URL_OR_DOMAIN_PATH.test(signal[field])) return false;
   }
+  if (signal.geography !== null &&
+      (typeof signal.geography !== "string" || /[<>]/u.test(signal.geography) ||
+       PROSE_URL_OR_DOMAIN_PATH.test(signal.geography))) return false;
   if (!Array.isArray(signal.sources_credited) || signal.sources_credited.length > 2 ||
       signal.sources_credited.some(value =>
         typeof value !== "string" || value.length > 230 || /[<>]/u.test(value))) return false;
