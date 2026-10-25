@@ -22,6 +22,7 @@ function simulate(){
   }
   return Response.json({ok:true,schema:PRIVATE_OSINT_DURABLE_SCHEMA,retention_hours:25,
    scope:"PROTECTED_INTERNAL_OSINT_RESEARCH_ONLY",original_page_verified:false,
+   independent_verification_required_for_ingestion:false,
    commercial_use_authorized:false,items:[]});
  };
  return {calls,f};
@@ -38,6 +39,7 @@ test("all batches are protected; independent private reader verifies durable rec
  assert.equal(result.source_checks_persisted,1);
  assert.equal(result.d1_write_exact_readback_verified,true);
  assert.equal(result.original_page_independently_verified,false);
+ assert.equal(result.independent_verification_required_for_ingestion,false);
  assert.equal(result.publicly_delivered,false);
 });
 test("a successful 200 HTTP with falsified 402/commercial or no readback is never accepted",async()=>{
