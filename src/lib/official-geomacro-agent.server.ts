@@ -315,7 +315,9 @@ export function officialGeomacroAgentHandlers(
    if(canonicalResponse.status===422){
     try{
      const payload:unknown=await canonicalResponse.clone().json();
-     if(isSourceGroundedResearchAnswer(payload))return json(payload,200);
+     if(isSourceGroundedResearchAnswer(payload)){
+      return json({...payload as Record<string,unknown>,ok:true,delivery_status:"RESEARCH_ONLY"},200);
+     }
     }catch{/* Preserve the canonical pending response if it is not JSON. */}
    }
    return canonicalResponse;
