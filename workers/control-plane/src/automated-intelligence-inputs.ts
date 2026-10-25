@@ -30,7 +30,14 @@ export async function putAutomatedInputs(env:Env,body:{schema:string;items:Autom
    accepted_ids:[...unique.keys()],unique_inputs:unique.size,
    inserted_or_resigned:result.slice(0,unique.size).reduce((n:number,r:any)=>n+Number(r.meta?.changes??0),0),
    manual_approval_required:false,independent_reviewed:false,commercial_rights_attested:false});
- }catch{return json({ok:false,error:'AUTOMATED_INPUT_NOT_ACCEPTED'},400);}
+ }catch(error){
+  // Authenticated admin endpoint only. Publish a narrow allowlisted reason code
+  // without returning exception text, payloads, signatures, keys or stored bytes.
+  const message=error instanceof Error?error.message:'';
+  const reason_code=/^(?:SHAPE|WRITE|AUTOMATED_INPUT_[A-Z0-9_]{1,72})$/u.test(message)
+   ?message:'UNCLASSIFIED_VALIDATION_OR_STORE_FAILURE';
+  return json({ok:false,error:'AUTOMATED_INPUT_NOT_ACCEPTED',reason_code},400);
+ }
 }
 export async function getAutomatedInputs(env:Env,params:URLSearchParams,now=Date.now()){
  const view=params.get('view'),offset=Number(params.get('offset')??0);

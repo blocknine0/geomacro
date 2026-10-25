@@ -15,9 +15,18 @@ export async function publishAutomatedIntelligenceInputs({fetchImpl=fetch,env=pr
   const r=await fetchImpl(url,{method:body?'PUT':'GET',redirect:'error',cache:'no-store',
    headers:{authorization,Accept:'application/json',...(body?{'Content-Type':'application/json'}:{})},
    ...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});
-  if(!r.ok||r.redirected)throw Error('AUTOMATED_INPUT_CONTROL_PLANE_UNAVAILABLE');
   const raw=await r.text();if(raw.length>300000)throw Error('AUTOMATED_INPUT_RESPONSE_OVERSIZE');
-  const doc=JSON.parse(raw);if(doc.ok!==true)throw Error('AUTOMATED_INPUT_READBACK_INVALID');return doc;
+  let doc:any;
+  try{doc=JSON.parse(raw)}catch{
+   if(!r.ok||r.redirected)throw Error('AUTOMATED_INPUT_CONTROL_PLANE_HTTP_'+r.status);
+   throw Error('AUTOMATED_INPUT_READBACK_INVALID');
+  }
+  if(!r.ok||r.redirected){
+   const reason=typeof doc?.reason_code==='string'&&/^[A-Z0-9_]{1,96}$/u.test(doc.reason_code)
+    ?doc.reason_code:'REMOTE_REJECTED';
+   throw Error('AUTOMATED_INPUT_REMOTE_HTTP_'+r.status+'_'+reason);
+  }
+  if(doc.ok!==true)throw Error('AUTOMATED_INPUT_READBACK_INVALID');return doc;
  };
  const retained=await readJournal(fetchImpl,now.getTime());
  const index=await call(ENDPOINT+'?view=ids');
@@ -58,7 +67,12 @@ export async function publishAutomatedIntelligenceInputs({fetchImpl=fetch,env=pr
   independent_reviewed:false,commercial_rights_attested:false,
   b2_requests:0,supabase_requests:0,payments:0};
 }
+export function safeAutomatedInputPublicationFailure(error:unknown){
+ const message=error instanceof Error?error.message:'';
+ return /^AUTOMATED_INPUT_[A-Z0-9_]{1,160}$/u.test(message)
+  ?message:'AUTOMATED_INPUT_UNCLASSIFIED_SIGNER_OR_TRANSPORT_FAILURE';
+}
 if(import.meta.main){
  try{console.log(JSON.stringify(await publishAutomatedIntelligenceInputs()));}
- catch{console.error('::error::AUTOMATED_INTELLIGENCE_INPUT_PUBLICATION_UNVERIFIED');process.exitCode=2;}
+ catch(error){console.error('::error::'+safeAutomatedInputPublicationFailure(error));process.exitCode=2;}
 }
