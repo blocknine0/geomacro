@@ -13,11 +13,11 @@ import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl} from "./global-o
 const FEDERAL_FEEDS=[
  {id:"white_house_presidential_actions",url:"https://www.whitehouse.gov/presidential-actions/feed/",
   category:"geopolitics",format:"rss",host:"www.whitehouse.gov",
-  path:/^\\/presidential-actions\\/20\\d{2}\\/(?:0[1-9]|1[0-2])\\/[a-z0-9-]{8,380}\\/$/u,
+  path:/^\/presidential-actions\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]{8,380}\/$/u,
   credit:null},
  {id:"white_house_statements",url:"https://www.whitehouse.gov/briefings-statements/feed/",
   category:"geopolitics",format:"rss",host:"www.whitehouse.gov",
-  path:/^\\/briefings-statements\\/20\\d{2}\\/(?:0[1-9]|1[0-2])\\/[a-z0-9-]{8,380}\\/$/u,
+  path:/^\/briefings-statements\/20\d{2}\/(?:0[1-9]|1[0-2])\/[a-z0-9-]{8,380}\/$/u,
   credit:null},
 ];
 const OFFICIAL=new Map([...GLOBAL_OFFICIAL_RELEASE_FEEDS,...FEDERAL_FEEDS]
