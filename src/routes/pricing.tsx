@@ -2,10 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
 import { ApiKeysNotice } from "@/components/api-keys-notice";
+import { CategoryApiPricing } from "@/components/category-api-pricing";
 
 const TITLE = "Store & Pricing | Geomacro";
 const DESCRIPTION =
-  "Explore Geomacro risk intelligence free, access qualified intelligence per successful API call, or enquire about monthly and annual plans.";
+  "See canonical per-call USDC prices for Geopolitics, Macro/FX and Critical Minerals APIs, plus approved structural intelligence products.";
 const URL = "https://geomacro.live/pricing";
 
 export const Route = createFileRoute("/pricing")({
@@ -36,6 +37,9 @@ function PricingPage() {
         </p>
       </header>
       <ApiKeysNotice />
+      <div className="mt-10">
+        <CategoryApiPricing />
+      </div>
       <div className="mt-10">
         <CapabilityPriceSchedule />
       </div>
