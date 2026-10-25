@@ -42,10 +42,16 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-concrete-three-domain-intelligence-source-private-20261025");
+    expect(config.lock_revision).toBe("founder-approved-restore-concrete-three-category-news-20261025");
+    const restored=config.approved_restore_concrete_intelligence_20261025;
+    expect(restored.previous_baseline_sha).toBe("ae47180dc6347023be7e6fb28439c7d3d5e14bf8");
+    expect(restored.approved_ui_commit).toBe(config.baseline_sha);
+    expect(restored.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(restored.required_visible_credit_licences_preserved).toBe(true);
+    expect(restored.global_risk_final_lock_unmodified).toBe(true);
     const concrete=config.approved_concrete_news_source_private_20261025;
     expect(concrete.previous_baseline_sha).toBe("a0aec989701e6333770f3088fb3b2c704279192b");
-    expect(concrete.approved_ui_commit).toBe(config.baseline_sha);
+    expect(concrete.approved_ui_commit).toBe(restored.previous_baseline_sha);
     expect(concrete.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx","src/components/home/live-intelligence-showcase.tsx"]);
     expect(concrete.global_risk_final_lock_unmodified).toBe(true);
     expect(concrete.existing_prices_and_predge_unmodified).toBe(true);
