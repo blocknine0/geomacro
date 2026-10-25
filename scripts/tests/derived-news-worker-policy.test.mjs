@@ -57,6 +57,12 @@ test("network, HTTP, redirect and malformed/oversized health responses are not t
   /DERIVED_NEWS_WORKER_POLICY_RESPONSE_INVALID/u);
  await assert.rejects(()=>requireDerivedNewsWorkerPolicy({url,fetchImpl:async()=>new Response("x".repeat(20000),{status:200})}),
   /DERIVED_NEWS_WORKER_POLICY_RESPONSE_OVERSIZE/u);
- await assert.rejects(()=>requireDerivedNewsWorkerPolicy({url:"http://example.com/health"}),
+ for(const unsafe of [
+  "http://example.com/health",
+  "https://example.com/health",
+  "https://geomacro-control-plane.daspallab202391.workers.dev/not-health",
+  "https://user@geomacro-control-plane.daspallab202391.workers.dev/health",
+  "https://geomacro-control-plane.daspallab202391.workers.dev/health?redirect=1",
+ ]) await assert.rejects(()=>requireDerivedNewsWorkerPolicy({url:unsafe}),
   /DERIVED_NEWS_WORKER_POLICY_CONFIGURATION_INVALID/u);
 });
