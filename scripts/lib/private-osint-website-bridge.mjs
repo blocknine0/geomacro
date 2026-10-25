@@ -18,7 +18,7 @@ export function officialWebsiteCandidateFromOsint(row,now=Date.now()){
     typeof row.title!=="string"||row.title.length<25||row.title.length>250||
     /[<>]/u.test(row.title)||!CATEGORIES.has(row.category)||
     typeof row.published_at!=="string"||
-    !/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,3})?Z$/u.test(row.published_at))
+    !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u.test(row.published_at))
    return null;
  const spec=OFFICIAL.get(row.source_url);
  if(!spec||spec.category!==row.category)return null;
@@ -42,7 +42,7 @@ export async function publishPrivateOsintWebsiteSignals({
  if(!Array.isArray(signals)||signals.length>200||
     typeof readAll!=="function"||typeof fetchImpl!=="function"||
     typeof controlPlaneRoot!=="string"||
-    !/^https:\/\/geomacro-control-plane\\.[a-z0-9-]+\\.workers\\.dev$/u.test(controlPlaneRoot)||
+    !/^https:\/\/geomacro-control-plane\.[a-z0-9-]+\.workers\.dev$/u.test(controlPlaneRoot)||
     !/^[a-f0-9]{64}$/u.test(controlToken??"")||!Number.isFinite(now))
    throw Error("PRIVATE_OSINT_WEBSITE_BRIDGE_CONFIG_INVALID");
  // Source-publisher observations are not certified event facts or scored,
