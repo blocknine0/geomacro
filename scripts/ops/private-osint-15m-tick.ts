@@ -16,7 +16,7 @@ import {PRIVATE_OSINT_TOPICS} from "../lib/private-osint-global-sources.mjs";
 import {actorActionNewsObservation} from "../../src/lib/release-news-observation.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client.ts";
-import {isConcretePublicIntelligence} from "../../src/lib/intelligence-concrete-publication.ts";
+import {isConcretePublicIntelligence,intelligenceDisplayRejection,intelligenceRequiredSourceCredits} from "../../src/lib/intelligence-concrete-publication.ts";
 import {dedupeIntelligenceStories} from "../../src/lib/intelligence-news-dedupe.ts";
 
 const root=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
@@ -137,13 +137,28 @@ try{
  const accepted=dedupeIntelligenceStories(eligibleRows);
  const summarize=(rows)=>Object.fromEntries(
   ["geopolitics","macro","rare_earth"].map(c=>[c,rows.filter(x=>x.category===c).length]));
+ // Stable reason totals; no raw source titles, URLs or headline fragments.
+ const rejectionByCategory=Object.fromEntries(
+  ["geopolitics","macro","rare_earth"].map(category=>{
+   const counts={};
+   for(const row of retained.filter(s=>s.category===category)){
+    const reason=intelligenceDisplayRejection(row)??"ELIGIBLE_BEFORE_DEDUPE";
+    counts[reason]=(counts[reason]??0)+1;
+   }
+   return [category,counts];
+  }));
+ const visibleCredits=summarize(accepted.filter(row=>
+  intelligenceRequiredSourceCredits(row).length>0));
  websiteDisplayReceipt={
   status:"PUBLIC_D1_READ_VERIFIED",total:retained.length,
   categories:summarize(retained),eligible:accepted.length,
   duplicate_category_events_hidden:eligibleRows.length-accepted.length,
   eligible_by_category:summarize(accepted),
+  reasons_by_category:rejectionByCategory,
+  source_credited_eligible_by_category:visibleCredits,
   unverified_candidates_hidden:retained.filter(x=>
-   x.status!=="official_release_observed_unscored").length,
+   x.status==="osint_feed_observed_unverified"&&
+   intelligenceDisplayRejection(x)!==null).length,
   rights_or_actor_rejected:retained.filter(x=>
    x.status==="official_release_observed_unscored"&&!isConcretePublicIntelligence(x)).length,
  };
