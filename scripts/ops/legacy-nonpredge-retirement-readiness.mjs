@@ -14,7 +14,7 @@ const sourceIsPinned=(input)=>{
   const u=new URL(input);
   const username=decodeURIComponent(u.username);
   return ["postgres:","postgresql:"].includes(u.protocol)&&
-    u.pathname==="/postgres"&&Boolean(u.password)&&!u.hash&&
+    u.pathname==="/postgres"&&Boolean(u.password)&&!u.search&&!u.hash&&
     (u.hostname==="db."+REF+".supabase.co"&&username==="postgres"||
       u.hostname.endsWith(".pooler.supabase.com")&&username==="postgres."+REF);
  }catch{return false}
