@@ -4,7 +4,7 @@ import {ORIGINAL_VERIFICATION_WINDOW_HOURS} from '../../../src/lib/original-veri
 // narrow authority. Neither is silently upgraded to the legacy GRO/GRI proof.
 import {readDerivedStories} from './website-derived-intelligence.mjs';
 import {checkedDerivedNews} from '../../../src/lib/public-derived-news-client.ts';
-import {automatedInputContent,automatedInputId,verifyAutomatedInput} from '../../../src/lib/automated-intelligence-input.ts';
+import {automatedInputContent,automatedInputId,inputHash,verifyAutomatedInput} from '../../../src/lib/automated-intelligence-input.ts';
 import {verifyLowSourceReview} from '../../../src/lib/low-authority-source-review.ts';
 const SIZE=40;
 const reply=(body,status=200)=>Response.json(body,{status,headers:{
@@ -47,6 +47,10 @@ export async function publicSignedNews(env,query=new URLSearchParams(),now=Date.
   }
   // Deduplicate exact canonical bytes without 600 WebCrypto operations on
   // every proof page. Only the selected 40 items need canonical hash IDs.
+  // One content fingerprint binds every page to the same journal version.
+  // This prevents newly ingested/revised D1 rows between 40-item requests
+  // from being mistaken for missing or invalid signatures.
+  const journalFingerprint=await inputHash(JSON.stringify([...unique.keys()]));
   const selected=await Promise.all([...unique.values()].slice(offset,offset+SIZE)
    .map(async signal=>[await automatedInputId(signal),signal]));
   const keys=JSON.parse(env.AUTOMATED_FINDS_VERIFY_KEYS_JSON??'{}');
@@ -109,6 +113,7 @@ export async function publicSignedNews(env,query=new URLSearchParams(),now=Date.
   return reply({ok:true,schema:'geomacro.public-signed-derived-news.v1',
    profile:'GEOMACRO_AUTOMATED_DERIVED_INPUT_V1',journal_origin:'SAME_D1_ROWS_AS_GEOMACRO_INTELLIGENCE',
    checked_at:new Date(now).toISOString(),journal_rows:journal.length,unique_items:unique.size,
+   journal_fingerprint:journalFingerprint,
    duplicate_aliases_excluded:journal.length-unique.size,page_offset:offset,page_size:SIZE,
    next_offset:offset+SIZE<unique.size?offset+SIZE:null,page_counts:counts(items),items,
    retention_hours:72,original_release_delay_minutes:0,original_verification_window_hours:ORIGINAL_VERIFICATION_WINDOW_HOURS,
