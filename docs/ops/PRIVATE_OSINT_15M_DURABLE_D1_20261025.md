@@ -39,16 +39,18 @@ A final separate authorized GET tests the private reader. The encrypted
 HTTPS request secret remains in production GitHub secrets only. No
 full/replay publisher feeds or source data artifacts are uploaded to GitHub.
 
-## What constitutes verification
-- Source-native feed publication timestamp observed: *provisional*.
-- Durable authenticated D1 insert and exact readback: *verified only for
-  persistence/identity/clock retention*.
-- Publication-to-FIRST D1 insert within 15 minutes: measured and reported
-  per observed native feed time, not an inferred scheduler guarantee.
-- Independent original ARTICLE page/body native clock, same-event
-  corroboration, content rights, scoring, human review and signed GRO:
-  **NOT VERIFIED by this lane**. These need their separately governed
-  publisher evidence/readback authority before being marked so.
+## What counts for the 15-minute ingestion objective
+- Scope is **private source-native breaking-news discovery and D1 ingestion**;
+  independent event verification in that 15-minute window is **not required**.
+- A source-native feed publication timestamp is a *provisional claim*, not
+  verification of an original article or the event.
+- Authenticated D1 insertion and exact readback prove only private
+  persistence, identity and immutable first-seen time.
+- The native feed publication timestamp to FIRST D1 insert <=15 minutes
+  is a measured on-time ingestion; later records count as late.
+- Independent corroboration, original-page audit, rights review and
+  signed/paid products are separate downstream work and are not
+  a blocker for internal OSINT research ingestion.
 
 GDELT global 15-minute index remains private discovery hints, never
 treated as first-party source publication. No blanket Telegram scraping.
@@ -67,8 +69,9 @@ treated as first-party source publication. No blanket Telegram scraping.
 4. Report real count `native_feed_to_first_durable_write_within_15m`
    alongside late/excluded counts and total source states. No fresh news in
    a publisher or an unavailable source is not a clock success.
-5. Source page-verified 15m global breaking news can be called ready only
-   with real independently checked original article publication/retrieval
-   clocks and 195x3 cell evidence. This source-discovery lane does not
-   fabricate these outcomes. Owner's existing paid/signed products and
-   Predge 72-hour partner contracts are unmodified.
+5. Judge this private OSINT lane only by actual source checks, native
+   timestamps, D1 first-seen receipts and the within/over-15-minute
+   counts. The independent verification SLA is omitted; full 195-country
+   discovery coverage is still not claimed from routing alone. Owner's
+   existing paid/signed products and Predge 72-hour partner contracts
+   are unmodified.
