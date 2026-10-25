@@ -21,6 +21,14 @@ describe("website lock governance", () => {
     expect(verifier).not.toContain("lockInfrastructure.has(path)");
   });
 
+  it("treats only the generated OpenAPI document as an API contract, not unlocked website presentation", () => {
+    const verifier = read("scripts/ops/verify-website-lock.mjs");
+    expect(verifier).toContain('if (path === "public/openapi-x402.json") return false;');
+    expect(verifier).toContain('"public/"');
+    const endpointContract = read("src/__tests__/public-api-endpoints.test.ts");
+    expect(endpointContract).toContain('staticPaths[endpoint.path][method.toLowerCase()]');
+  });
+
   it("keeps the finalized Global Risk presentation pinned to its immutable approved baseline", () => {
     const workflow = read(".github/workflows/website-lock.yml");
     const verifier = read("scripts/ops/verify-website-lock.mjs");

@@ -24,7 +24,10 @@ Already implemented:
 - GET \`/api/v1/agent?view=openapi\`: machine-readable OpenAPI 3.1 for the
   official agent, canonical category query APIs, buyer preflight and Finds;
   this is **not** a fabricated live availability probe.
-- POST \`/api/v1/agent\`: bounded JSON body:
+- New `answer_question` tool in `/api/mcp` and `/api/v1/agent`: accepts a natural-language question with one or more unambiguous country names. The adapter converts it into the canonical structured query before calling the existing paid handler; the canonical `POST /api/v1/intelligence/query` request contract stays unchanged. Ambiguous country names (for example Georgia/Turkey) fail closed; corridors and signed Risk Gate/Risk Object/GRI requests still require explicit structured requests.
+  - Exact locked Intelligence Query variants only: `focused` **0.05 USDC**, `standard` **0.10 USDC**, `complex_multi_source` **0.15 USDC**. One country + one topic maps to focused; one country + 2–3 topics maps to standard; multi-country or wider queries map to complex. These are server-selected catalog values, never client-supplied amounts.
+  - The Answer Tool does not create a second evidence, price, payment, or settlement engine. Every answer is normalized to the canonical query and passes the existing original-date/freshness, commercial-rights, signed-proof, no-charge 422, x402 binding, replay protection, immutable response and settlement checks. Missing deliverable evidence means no charge.
+- POST `/api/v1/agent`: bounded JSON body:
   \`{"tool":"country_risk","arguments":{"country_iso3":"IND","domains":["macro"]}}\`.
   Other existing governed tools: corridor_risk, change_since_last_verified,
   why_changed, three_domain_state, risk_gate_decision_context.
