@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {privateOsintGlobalSources,privateOsintContinentCoverage,PRIVATE_OSINT_TOPICS} from "./private-osint-global-sources.mjs";
+import {privateOsintGlobalSources,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,PRIVATE_OSINT_TOPICS} from "./private-osint-global-sources.mjs";
 import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
 import {privateOsintCountryMention} from "./private-osint-country-mentions.mjs";
@@ -136,4 +136,58 @@ test("new macro/FX and critical-metals feeds are private only and deduplicated",
   registry:selected,fetchImpl:async()=>new Response("",{status:403})});
  assert.equal(denied.items.length,0);
  assert.equal(denied.summary.working_source_endpoints,0);
+});
+
+test("new regional macro/minerals and maritime corridor candidates are deduplicated, bounded, private",async()=>{
+ const additions=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
+ assert.equal(additions.sources.length,17);
+ const complete=privateOsintGlobalSources();
+ assert.ok(complete.length<=512);
+ assert.equal(new Set(complete.map(s=>s.url)).size,complete.length);
+ for(const item of additions.sources){
+  const found=complete.filter(s=>s.url===item.url);
+  assert.equal(found.length,1,item.id);
+  assert.equal(found[0].id,item.id);
+  assert.equal(found[0].transport_verified_at_registration,false);
+  assert.equal(found[0].commercial_eligible,false);
+  assert.equal(found[0].publicly_deliverable,false);
+ }
+ const selected=complete.filter(s=>[
+  "private_expansion_eurostat_statistics",
+  "private_expansion_can_nrcan_news",
+ ].includes(s.id));
+ const rss='<rss><channel><item><title>Eurostat publishes inflation economic statistics update</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
+ const atom='<feed><entry><title>Natural Resources Canada announces lithium and rare-earth mineral supply changes</title><published>2026-10-25T11:55:00Z</published></entry></feed>';
+ const mock=await collectPrivateOsint15m({now,registry:selected,normalize,resolveCountry:()=>null,
+  fetchImpl:async url=>new Response(url.includes("canada.ca")?atom:rss)});
+ assert.equal(mock.summary.selected_items_by_category.macro,1);
+ assert.equal(mock.summary.selected_items_by_category.rare_earth,1);
+ assert.equal(mock.summary.corridor_discovery_reference_coverage.commercial_delivery_enabled,false);
+ const blocked=await collectPrivateOsint15m({now,registry:selected,normalize,resolveCountry:()=>null,
+  fetchImpl:async()=>new Response("",{status:403})});
+ assert.equal(blocked.items.length,0);
+ assert.equal(blocked.summary.working_source_endpoints,0);
+});
+
+test("official corridor reference overlay only covers existing named routes, never asserts live transport",()=>{
+ const overlay=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-corridor-reference-overlay.v1.json",import.meta.url),"utf8"));
+ const canonical=JSON.parse(readFileSync(new URL(
+  "../../config/operator-corridor-source-crosswalk.v1.json",import.meta.url),"utf8"));
+ const known=new Set(canonical.corridors.map(x=>x.id));
+ assert.equal(overlay.sources.length,22);
+ for(const source of overlay.sources){
+  assert.ok(source.related_corridor_ids.every(id=>known.has(id)));
+  assert.equal(source.transport_tested,false);
+  assert.equal(source.auto_ingest_enabled,false);
+  assert.equal(source.commercial_eligible,false);
+ }
+ const c=privateOsintCorridorReferenceCoverage();
+ assert.equal(c.total_canonical_corridors,58);
+ assert.equal(c.newly_registered_reference_surfaces,22);
+ assert.ok(c.referenced_corridors>10);
+ assert.equal(c.automatic_scraping_enabled,false);
+ assert.equal(c.route_geometry_certified,false);
+ assert.equal(c.commercial_delivery_enabled,false);
 });
