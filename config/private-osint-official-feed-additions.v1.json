@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.private-osint-official-feed-additions.v1",
   "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
-  "basis": "User-supplied geomacro_national_primary_sources.csv: ind_pib; official PIB RSS index pages",
+  "basis": "User-supplied geomacro_national_primary_sources.csv: ind_pib; official PIB RSS index pages; supplementary official PIB ViewRss index RSS links for region IDs 5, 6, 17, 20, 22",
   "note": "Exact official feed candidates, NOT transport-approved, independently verified or commercially rights-cleared. Private 5-minute tick alone probes and marks working only after HTTP 200 plus a parsed native-dated RSS item.",
   "sources": [
     {
@@ -26,6 +26,96 @@
       "id": "private_official_ind_pib_press_reg1",
       "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1",
       "discovery_url": "https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=1",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_official_ind_pib_press_reg5",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=5",
+      "discovery_url": "https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=5",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_official_ind_pib_press_reg6",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=6",
+      "discovery_url": "https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=6",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_official_ind_pib_press_reg17",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=17",
+      "discovery_url": "https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=17",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_official_ind_pib_press_reg20",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=20",
+      "discovery_url": "https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=20",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_official_ind_pib_press_reg22",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=22",
+      "discovery_url": "https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=22",
       "continent": "asia",
       "publisher_country_iso3": "IND",
       "categories": [
