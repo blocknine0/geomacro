@@ -105,7 +105,8 @@ test("hourly Cloudflare collection and +15m recovery retain single-writer and th
   assert.ok(backstop.includes("group: geomacro-website-derived-news-continuity"));
   assert.match(collector,/const categories=\["geopolitics","macro","rare_earth"\] as const/);
   assert.ok(collector.includes("DERIVED_NEWS_SUPABASE_BLOCKED"));
-  assert.ok(collector.includes("geomacro-control-plane.daspallab202391.workers.dev/v1/website-derived-news"));
+  assert.ok(collector.includes('const CONTROL_PLANE_ORIGIN="https://geomacro-control-plane.daspallab202391.workers.dev"'));
+  assert.ok(collector.includes('const ENDPOINT=CONTROL_PLANE_ORIGIN+"/v1/website-derived-news"'));
   assert.ok(collector.includes('GEOMACRO_AUTOMATED_FINDS_PUBLICATION==="1"'));
   assert.ok(primary.includes('GEOMACRO_AUTOMATED_FINDS_PUBLICATION: "1"'));
   assert.ok(legacy.includes("if: " + "$" + "{{ false }}"));
