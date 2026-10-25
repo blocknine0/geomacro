@@ -15,6 +15,7 @@ import {createRunScopedAustralianResourcesFetch} from "../../src/lib/stateless-r
 import {
   conservativeDayReleaseMs,reconcilePrivateDerivedSourceRefs,selectBoundedRetainedOriginalTargets,
   type StatelessSourceCandidate,
+  type StatelessIntelligenceSignal,
 } from "../../src/lib/stateless-intelligence-model";
 import {checkedDerivedNews,fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
 import {auditEveryDerivedNewsOriginal} from "../lib/all-news-original-evidence-audit.mjs";
@@ -43,6 +44,9 @@ globalThis.fetch=(async(input:RequestInfo|URL,init?:RequestInit)=>{
 let success=true;
 const privateOriginals:StatelessSourceCandidate[]=[];
 const reports:StatelessIntelligenceResult[]=[];
+// Safe derived-only candidates are exported for the independent permanent website archive.
+// This happens before D1 publication, so a D1 quota outage does not discard the daily findings.
+const archiveCandidateSignals:StatelessIntelligenceSignal[]=[];
 const sourceHealthReceipts:Array<{category:string}>=[];
 const sharedOfficialDocuments=createRunScopedAustralianResourcesFetch();
 // Fail closed before any original-source reads or D1 writes if the live Worker
@@ -85,6 +89,8 @@ for (const category of categories) {
     // plane's strict 64KiB authenticated request limit. No upstream bytes.
     // EMPTY batches remain required for truthful retention sweeps.
     const {signals,chunks}=prepareDerivedNewsBatches(eligible);
+    // Preserve the validated current batch for the static archive before attempting any D1 write.
+    archiveCandidateSignals.push(...signals);
     let acknowledged=0;
     for(const chunk of chunks){
       // Empty batches perform the retention sweep only once after all three
@@ -155,6 +161,30 @@ for (const category of categories) {
     console.error("::error::WEBSITE_DERIVED_NEWS_INGEST_"+category.toUpperCase()+"_UNAVAILABLE_"+code);
   }
 }
+// Export only validated, source-neutral Geomacro-derived cards for the permanent static archive.
+// This receipt deliberately excludes URLs, feed XML, source IDs, source headlines and private references.
+try {
+  mkdirSync("artifacts/derived-news",{recursive:true});
+  const uniqueArchiveCandidates=new Map<string,StatelessIntelligenceSignal>();
+  for(const signal of archiveCandidateSignals) uniqueArchiveCandidates.set(signal.id,signal);
+  const archiveCandidates={
+    schema:"geomacro.permanent-derived-news-candidates.v1",
+    checked_at:new Date().toISOString(),
+    source_sha:String(process.env.GITHUB_SHA??""),
+    signals:[...uniqueArchiveCandidates.values()].sort((a,b)=>
+      b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id)),
+    raw_upstream_stored:false,source_urls_logged:false,payments:0,
+  };
+  writeFileSync("artifacts/derived-news/permanent-archive-candidates.json",
+    JSON.stringify(archiveCandidates,null,2)+"\\n",{encoding:"utf8",mode:0o600});
+  console.log(JSON.stringify({schema:"geomacro.permanent-derived-news-candidates-receipt.v1",
+    candidates:archiveCandidates.signals.length,source_sha_present:archiveCandidates.source_sha.length===40,
+    independent_of_d1_write:true,raw_upstream_stored:false,payments:0}));
+}catch {
+  success=false;
+  console.error("::error::PERMANENT_DERIVED_NEWS_CANDIDATE_EXPORT_FAILED");
+}
+
 // Physical TTL/600-row cleanup is an explicit, authenticated empty batch.
  // Run it once per successful three-category collection, not once per category
  // plus every non-empty news write; failed D1 publication must not amplify load.
