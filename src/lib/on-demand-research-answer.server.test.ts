@@ -110,7 +110,7 @@ describe("source-grounded on-demand research answer", () => {
 
   it("deduplicates the same original item before deriving answer signals", () => {
     const candidateFromPage = vi.fn(() => candidate);
-    const deriveSignals = vi.fn(() => [signal]);
+    const deriveSignals = vi.fn((_candidates: readonly StatelessSourceCandidate[], _now?: number, _options?: {websiteDelay?: boolean; maxSignals?: number; editorialVersion?: "legacy_v1" | "actor_action_v2"}) => [signal]);
     const first = page();
     const duplicate = page({article_identity_sha256: "c".repeat(64)});
     const answer = buildSourceGroundedResearchAnswer({
