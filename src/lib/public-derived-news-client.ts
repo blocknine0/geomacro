@@ -1,4 +1,5 @@
 import {fetchWithoutRedirectUsing} from "./fetch-without-redirect.ts";
+import {isSafeDerivedNewsReadbackSignal} from "../../scripts/lib/derived-news-readback-policy.mjs";
 /**
  * Direct, public, derived-only newsroom GET for browser clients.
  * This intentionally bypasses the React Start server-function transport when
@@ -16,7 +17,8 @@ const SIGNAL_FIELDS = new Set(["id","category","title","what_changed","why_it_ma
 function safeSignal(value: unknown, now: number): value is StatelessIntelligenceSignal {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const s = value as Record<string, unknown>;
-  if (Object.keys(s).length!==SIGNAL_FIELDS.size ||
+  if (!isSafeDerivedNewsReadbackSignal(s) ||
+      Object.keys(s).length!==SIGNAL_FIELDS.size ||
       Object.keys(s).some(key=>!SIGNAL_FIELDS.has(key)) ||
       !["geopolitics", "macro", "rare_earth"].includes(String(s.category)) ||
       typeof s.id !== "string" ||
