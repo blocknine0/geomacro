@@ -119,8 +119,16 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
     await env.DB.prepare("DELETE FROM website_derived_intelligence WHERE published_at < ? OR first_seen_at < ?")
       .bind(new Date(now-AUTO_INGEST_RETENTION_MS).toISOString().slice(0,10),
         new Date(now-AUTO_INGEST_RETENTION_MS).toISOString()).run();
+    // Retain substantive unscored reports before generic feed candidates
+    // inside the existing 600-row/72-hour free-site budget. No rights upgrade.
     await env.DB.prepare(
-      "DELETE FROM website_derived_intelligence WHERE id IN (SELECT id FROM website_derived_intelligence ORDER BY published_at DESC, id DESC LIMIT -1 OFFSET 600)"
+      "DELETE FROM website_derived_intelligence WHERE id IN (SELECT id FROM website_derived_intelligence ORDER BY " +
+      "CASE " +
+      "WHEN json_extract(story_json, '$.status') = 'official_release_observed_unscored' THEN 2 " +
+      "WHEN json_extract(story_json, '$.status') = 'osint_feed_observed_unverified' " +
+      "AND json_extract(story_json, '$.what_changed') LIKE 'A monitored source feed reports:%' " +
+      "AND json_extract(story_json, '$.topic') NOT IN ('geopolitical publisher candidate','macro publisher candidate','minerals publisher candidate') THEN 1 " +
+      "ELSE 0 END DESC, published_at DESC, id DESC LIMIT -1 OFFSET 600)"
     ).run();
     return json({ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",
       accepted:body.signals.length,persistent_derived_only:true,chargeable:false});
