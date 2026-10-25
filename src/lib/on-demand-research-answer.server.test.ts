@@ -64,7 +64,7 @@ const signal: StatelessIntelligenceSignal = {
 describe("source-grounded on-demand research answer", () => {
   it("builds a concise derived-only answer from country/topic-matched original-page proof", () => {
     const candidateFromPage = vi.fn(() => candidate);
-    const deriveSignals = vi.fn(() => [signal]);
+    const deriveSignals = vi.fn((_candidates: readonly StatelessSourceCandidate[], _now?: number, _options?: {websiteDelay?: boolean; maxSignals?: number; editorialVersion?: "legacy_v1" | "actor_action_v2"}) => [signal]);
     const answer = buildSourceGroundedResearchAnswer({
       country_iso3: "USA",
       categories: ["macro"],
@@ -145,8 +145,14 @@ describe("source-grounded on-demand research answer", () => {
       query_plan_hash: PLAN_HASH, pageProof: {attempted: 1, verified: 1, verified_candidates: [page({country_iso3: "BRA"})]}, now: NOW,
     }, deps)).toBeNull();
     expect(buildSourceGroundedResearchAnswer({
-      country_iso3: "USA", categories: ["macro"], topics: ["critical_minerals"],
+      country_iso3: "USA", categories: ["macro"], topics: ["fx_external_risk"],
       query_plan_hash: PLAN_HASH, pageProof: {attempted: 1, verified: 1, verified_candidates: [page()]}, now: NOW,
+    }, deps)).toBeNull();
+    expect(buildSourceGroundedResearchAnswer({
+      country_iso3: "USA", categories: ["macro"], topics: ["macro_risk"],
+      max_age_seconds: 3_600, query_plan_hash: PLAN_HASH,
+      pageProof: {attempted: 1, verified: 1, verified_candidates: [page({page_original_published_at: "2026-10-23T10:00:00.000Z"})]},
+      now: NOW,
     }, deps)).toBeNull();
     expect(buildSourceGroundedResearchAnswer({
       country_iso3: "USA", categories: ["macro"], topics: ["macro_risk"],
