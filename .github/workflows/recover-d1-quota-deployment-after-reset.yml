@@ -27,18 +27,34 @@ jobs:
         run: |
           set -euo pipefail
           api="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}"
+          workflow_file="$RUNNER_TEMP/deploy-workflow.json"
           runs_file="$RUNNER_TEMP/deploy-runs.json"
 
           if ! curl --fail --silent --show-error \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "$api/actions/runs?branch=main&per_page=100" -o "$runs_file"; then
+            "$api/actions/workflows/deploy-control-plane-d1.yml" -o "$workflow_file"; then
+            echo "::warning::D1_QUOTA_RECOVERY_WORKFLOW_LOOKUP_UNAVAILABLE"
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          workflow_id="$(jq -r '.id // empty' "$workflow_file")"
+          if [[ -z "$workflow_id" ]]; then
+            echo "::warning::D1_QUOTA_RECOVERY_WORKFLOW_ID_UNAVAILABLE"
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$api/actions/workflows/$workflow_id/runs?branch=main&per_page=50" -o "$runs_file"; then
             echo "::warning::D1_QUOTA_RECOVERY_RUN_LOOKUP_UNAVAILABLE"
             echo "retry=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          run_id="$(jq -r '[.workflow_runs[] | select(.name == "Deploy D1 Control Plane" and .head_branch == "main")] | sort_by(.created_at) | last | .id // empty' "$runs_file")"
+          run_id="$(jq -r '[.workflow_runs[] | select(.head_branch == "main")] | sort_by(.created_at) | last | .id // empty' "$runs_file")"
           conclusion="$(jq -r --argjson id "${run_id:-0}" '[.workflow_runs[] | select(.id == $id)][0].conclusion // empty' "$runs_file")"
           if [[ -z "$run_id" || "$conclusion" != "failure" ]]; then
             echo "No failed latest canonical D1 deployment requires quota recovery."
