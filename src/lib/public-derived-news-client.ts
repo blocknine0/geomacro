@@ -28,7 +28,9 @@ function safeSignal(value: unknown, now: number): value is StatelessIntelligence
       typeof s.what_changed !== "string" || s.what_changed.length < 30 || s.what_changed.length>650 ||
       typeof s.why_it_matters !== "string" || s.why_it_matters.length < 30 || s.why_it_matters.length>700 ||
       !((s.status==="official_release_observed_unscored" &&
-          !String(s.topic).endsWith(" publisher candidate")) ||
+          !String(s.topic).endsWith(" publisher candidate") &&
+          s.development_type!=="unverified OSINT feed observation" &&
+          !s.sources_credited.some(x=>typeof x==="string"&&x.startsWith("Monitored feed: "))) ||
         (s.status==="official_feed_candidate_unscored" &&
           ((s.category==="geopolitics"&&s.topic==="geopolitical publisher candidate")||
            (s.category==="macro"&&s.topic==="macro publisher candidate")||
