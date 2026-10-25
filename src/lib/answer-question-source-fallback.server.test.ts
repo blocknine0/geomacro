@@ -102,6 +102,18 @@ describe("Answer Question source research fallback", () => {
     expect(paymentPost).toHaveBeenCalledTimes(1);
   });
 
+  it("does not answer numeric requests from news-only evidence", async () => {
+    const numericQuery = geomacroAgentToolToCanonicalQuery("answer_question", {
+      question: "What is Brazil's latest inflation rate?",
+    });
+    const canonicalPost = vi.fn().mockResolvedValue(unavailable());
+    await callCanonicalWithSourceResearchFallback({
+      request: request(), toolName: "answer_question",
+      query: numericQuery, canonicalPost,
+    });
+    expect(canonicalPost).toHaveBeenCalledTimes(1);
+  });
+
   it("does not run live research for multi-country or non-Answer Question tools", async () => {
     const oneCountry = geomacroAgentToolToCanonicalQuery("answer_question", {
       question: "Latest inflation risk in Brazil",
