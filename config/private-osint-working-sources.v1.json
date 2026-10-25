@@ -1,0 +1,2709 @@
+{
+  "schema": "geomacro.private-osint-working-sources.v1",
+  "scope": "PRIVATE_OSINT_ONLY",
+  "checked_at": "2026-10-25T08:39:16.694100Z",
+  "source_discovery_reference": "https://github.com/koala73/worldmonitor/blob/main/src/config/feeds.ts",
+  "verification": "Direct pinned HTTPS GET, no redirect, bounded parsed RSS/Atom, native dated entries; rechecked on each private tick. Not event corroboration or country coverage.",
+  "attempted_candidate_endpoints": 270,
+  "accepted_endpoint_count": 152,
+  "sources": [
+    {
+      "id": "private_rba",
+      "url": "https://www.rba.gov.au/rss/rss-cb-media-releases.xml",
+      "continent": "oceania",
+      "publisher_country_iso3": "AUS",
+      "categories": [
+        "macro"
+      ],
+      "type": "rdf",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 2107
+      }
+    },
+    {
+      "id": "private_sarb",
+      "url": "https://www.resbank.co.za/bin/sarb/solr/publications/rss",
+      "continent": "africa",
+      "publisher_country_iso3": "ZAF",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 19689
+      }
+    },
+    {
+      "id": "private_sa_news",
+      "url": "https://www.sanews.gov.za/rss.xml",
+      "continent": "africa",
+      "publisher_country_iso3": "ZAF",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 55734
+      }
+    },
+    {
+      "id": "private_sa_stats",
+      "url": "https://www.statssa.gov.za/?feed=rss2",
+      "continent": "africa",
+      "publisher_country_iso3": "ZAF",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 63902
+      }
+    },
+    {
+      "id": "private_kenya_bank",
+      "url": "https://www.centralbank.go.ke/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "KEN",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 21600
+      }
+    },
+    {
+      "id": "private_brazil_economy",
+      "url": "https://agenciabrasil.ebc.com.br/rss/economia/feed.xml",
+      "continent": "south_america",
+      "publisher_country_iso3": "BRA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 87965
+      }
+    },
+    {
+      "id": "private_brazil_world",
+      "url": "https://agenciabrasil.ebc.com.br/rss/internacional/feed.xml",
+      "continent": "south_america",
+      "publisher_country_iso3": "BRA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 64704
+      }
+    },
+    {
+      "id": "private_brazil_all",
+      "url": "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml",
+      "continent": "south_america",
+      "publisher_country_iso3": "BRA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 77294
+      }
+    },
+    {
+      "id": "private_fed_monetary",
+      "url": "https://www.federalreserve.gov/feeds/press_monetary.xml",
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 9687
+      }
+    },
+    {
+      "id": "private_us_bls",
+      "url": "https://www.bls.gov/feed/bls_latest.rss",
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 5330
+      }
+    },
+    {
+      "id": "private_boe",
+      "url": "https://www.bankofengland.co.uk/rss/news",
+      "continent": "europe",
+      "publisher_country_iso3": "GBR",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 26175
+      }
+    },
+    {
+      "id": "private_ecb_all",
+      "url": "https://www.ecb.europa.eu/rss/press.html",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 5694
+      }
+    },
+    {
+      "id": "private_un_africa",
+      "url": "https://news.un.org/feed/subscribe/en/news/region/africa/feed/rss.xml",
+      "continent": "africa",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 33844
+      }
+    },
+    {
+      "id": "private_un_europe",
+      "url": "https://news.un.org/feed/subscribe/en/news/region/europe/feed/rss.xml",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 33844
+      }
+    },
+    {
+      "id": "private_un_americas",
+      "url": "https://news.un.org/feed/subscribe/en/news/region/americas/feed/rss.xml",
+      "continent": "south_america",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 34148
+      }
+    },
+    {
+      "id": "private_un_middle_east",
+      "url": "https://news.un.org/feed/subscribe/en/news/region/middle-east/feed/rss.xml",
+      "continent": "asia",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 34853
+      }
+    },
+    {
+      "id": "private_mesh_npr_news",
+      "url": "https://feeds.npr.org/1001/rss.xml",
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 14212
+      }
+    },
+    {
+      "id": "private_mesh_pbs_newshour",
+      "url": "https://www.pbs.org/newshour/feeds/rss/headlines",
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 34757
+      }
+    },
+    {
+      "id": "private_mesh_cbs_news",
+      "url": "https://www.cbsnews.com/latest/rss/main",
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 25875
+      }
+    },
+    {
+      "id": "private_mesh_nbc_news",
+      "url": "https://feeds.nbcnews.com/nbcnews/public/news",
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 50745
+      }
+    },
+    {
+      "id": "private_mesh_fox_news",
+      "url": "https://moxie.foxnews.com/google-publisher/us.xml",
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 221497
+      }
+    },
+    {
+      "id": "private_mesh_global_news",
+      "url": "https://globalnews.ca/feed/",
+      "continent": "north_america",
+      "publisher_country_iso3": "CAN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 20779
+      }
+    },
+    {
+      "id": "private_mesh_the_narwhal",
+      "url": "https://thenarwhal.ca/feed/",
+      "continent": "north_america",
+      "publisher_country_iso3": "CAN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 195972
+      }
+    },
+    {
+      "id": "private_mesh_the_tyee",
+      "url": "https://thetyee.ca/rss2.xml",
+      "continent": "north_america",
+      "publisher_country_iso3": "CAN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 33820
+      }
+    },
+    {
+      "id": "private_mesh_le_devoir",
+      "url": "https://www.ledevoir.com/rss/manchettes.xml",
+      "continent": "north_america",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 23532
+      }
+    },
+    {
+      "id": "private_mesh_winnipeg_free_press",
+      "url": "https://www.winnipegfreepress.com/feed",
+      "continent": "north_america",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 7828
+      }
+    },
+    {
+      "id": "private_mesh_el_pa_s",
+      "url": "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 603275
+      }
+    },
+    {
+      "id": "private_mesh_el_mundo",
+      "url": "https://e00-elmundo.uecdn.es/elmundo/rss/portada.xml",
+      "continent": "europe",
+      "publisher_country_iso3": "ESP",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 42426
+      }
+    },
+    {
+      "id": "private_mesh_der_spiegel",
+      "url": "https://www.spiegel.de/schlagzeilen/tops/index.rss",
+      "continent": "europe",
+      "publisher_country_iso3": "DEU",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 25293
+      }
+    },
+    {
+      "id": "private_mesh_welt",
+      "url": "https://www.welt.de/feeds/latest.rss",
+      "continent": "europe",
+      "publisher_country_iso3": "DEU",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 54676
+      }
+    },
+    {
+      "id": "private_mesh_ansa",
+      "url": "https://www.ansa.it/sito/notizie/topnews/topnews_rss.xml",
+      "continent": "europe",
+      "publisher_country_iso3": "ITA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 6686
+      }
+    },
+    {
+      "id": "private_mesh_repubblica",
+      "url": "https://www.repubblica.it/rss/homepage/rss2.0.xml",
+      "continent": "europe",
+      "publisher_country_iso3": "ITA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 26776
+      }
+    },
+    {
+      "id": "private_mesh_nos_nieuws",
+      "url": "https://feeds.nos.nl/nosnieuwsalgemeen",
+      "continent": "europe",
+      "publisher_country_iso3": "NLD",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 81200
+      }
+    },
+    {
+      "id": "private_mesh_nrc",
+      "url": "https://www.nrc.nl/rss/",
+      "continent": "europe",
+      "publisher_country_iso3": "NLD",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 176017
+      }
+    },
+    {
+      "id": "private_mesh_dagens_nyheter",
+      "url": "https://www.dn.se/rss/",
+      "continent": "europe",
+      "publisher_country_iso3": "SWE",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 122951
+      }
+    },
+    {
+      "id": "private_mesh_svenska_dagbladet",
+      "url": "https://www.svd.se/feed/articles.rss",
+      "continent": "europe",
+      "publisher_country_iso3": "SWE",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 26525
+      }
+    },
+    {
+      "id": "private_mesh_yle_news",
+      "url": "https://yle.fi/rss/news",
+      "continent": "europe",
+      "publisher_country_iso3": "FIN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 10246
+      }
+    },
+    {
+      "id": "private_mesh_aftenposten",
+      "url": "https://www.aftenposten.no/rss",
+      "continent": "europe",
+      "publisher_country_iso3": "NOR",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 29493
+      }
+    },
+    {
+      "id": "private_mesh_dw_turkish",
+      "url": "https://rss.dw.com/xml/rss-tur-all",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 9994
+      }
+    },
+    {
+      "id": "private_mesh_hurriyet",
+      "url": "https://www.hurriyet.com.tr/rss/anasayfa",
+      "continent": "europe",
+      "publisher_country_iso3": "TUR",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 127977
+      }
+    },
+    {
+      "id": "private_mesh_daily_sabah",
+      "url": "https://www.dailysabah.com/rss/home-page",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 320914
+      }
+    },
+    {
+      "id": "private_mesh_polsat_news",
+      "url": "https://www.polsatnews.pl/rss/wszystkie.xml",
+      "continent": "europe",
+      "publisher_country_iso3": "POL",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 53564
+      }
+    },
+    {
+      "id": "private_mesh_oko_press",
+      "url": "https://oko.press/feed",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 229624
+      }
+    },
+    {
+      "id": "private_mesh_telex",
+      "url": "https://telex.hu/rss",
+      "continent": "europe",
+      "publisher_country_iso3": "HUN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 41039
+      }
+    },
+    {
+      "id": "private_mesh_index_hu",
+      "url": "https://index.hu/24ora/rss",
+      "continent": "europe",
+      "publisher_country_iso3": "HUN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 60047
+      }
+    },
+    {
+      "id": "private_mesh_hvg",
+      "url": "https://hvg.hu/rss",
+      "continent": "europe",
+      "publisher_country_iso3": "HUN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 79831
+      }
+    },
+    {
+      "id": "private_mesh_444_hu",
+      "url": "https://444.hu/feed",
+      "continent": "europe",
+      "publisher_country_iso3": "HUN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 155202
+      }
+    },
+    {
+      "id": "private_mesh_24_hu",
+      "url": "https://24.hu/feed/",
+      "continent": "europe",
+      "publisher_country_iso3": "HUN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 64222
+      }
+    },
+    {
+      "id": "private_mesh_seznam_zpr_vy",
+      "url": "https://www.seznamzpravy.cz/rss",
+      "continent": "europe",
+      "publisher_country_iso3": "CZE",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 46227
+      }
+    },
+    {
+      "id": "private_mesh_n1_croatia",
+      "url": "https://n1info.hr/feed/",
+      "continent": "europe",
+      "publisher_country_iso3": "HRV",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 72515
+      }
+    },
+    {
+      "id": "private_mesh_jutarnji_list",
+      "url": "https://www.jutarnji.hr/feed",
+      "continent": "europe",
+      "publisher_country_iso3": "HRV",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 74507
+      }
+    },
+    {
+      "id": "private_mesh_balkan_insight",
+      "url": "https://balkaninsight.com/feed/",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 155831
+      }
+    },
+    {
+      "id": "private_mesh_digi24",
+      "url": "https://www.digi24.ro/rss",
+      "continent": "europe",
+      "publisher_country_iso3": "ROU",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 333018
+      }
+    },
+    {
+      "id": "private_mesh_dnevnik",
+      "url": "https://www.dnevnik.bg/rss/",
+      "continent": "europe",
+      "publisher_country_iso3": "BGR",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 35693
+      }
+    },
+    {
+      "id": "private_mesh_naftemporiki",
+      "url": "https://www.naftemporiki.gr/feed/",
+      "continent": "europe",
+      "publisher_country_iso3": "GRC",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 54223
+      }
+    },
+    {
+      "id": "private_mesh_in_gr",
+      "url": "https://www.in.gr/feed/",
+      "continent": "europe",
+      "publisher_country_iso3": "GRC",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 116769
+      }
+    },
+    {
+      "id": "private_mesh_iefimerida",
+      "url": "https://www.iefimerida.gr/rss.xml",
+      "continent": "europe",
+      "publisher_country_iso3": "GRC",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 1009949
+      }
+    },
+    {
+      "id": "private_mesh_ta_nea",
+      "url": "https://www.tanea.gr/feed/",
+      "continent": "europe",
+      "publisher_country_iso3": "GRC",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 524467
+      }
+    },
+    {
+      "id": "private_mesh_err_news",
+      "url": "https://news.err.ee/rss",
+      "continent": "europe",
+      "publisher_country_iso3": "EST",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 35787
+      }
+    },
+    {
+      "id": "private_mesh_lrt_english",
+      "url": "https://www.lrt.lt/en/news-in-english?rss",
+      "continent": "europe",
+      "publisher_country_iso3": "LTU",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 95857
+      }
+    },
+    {
+      "id": "private_mesh_lsm_english",
+      "url": "https://eng.lsm.lv/rss/",
+      "continent": "europe",
+      "publisher_country_iso3": "LVA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 38089
+      }
+    },
+    {
+      "id": "private_mesh_novaya_gazeta_europe",
+      "url": "https://novayagazeta.eu/feed/rss",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 898418
+      }
+    },
+    {
+      "id": "private_mesh_rt",
+      "url": "https://rt-english.com/rss/",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 721941
+      }
+    },
+    {
+      "id": "private_mesh_rt_russia",
+      "url": "https://rt-english.com/rss/russia/",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 713672
+      }
+    },
+    {
+      "id": "private_mesh_moscow_times",
+      "url": "https://www.themoscowtimes.com/rss/news",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 31569
+      }
+    },
+    {
+      "id": "private_mesh_oc_media",
+      "url": "https://oc-media.org/feed/",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 156747
+      }
+    },
+    {
+      "id": "private_mesh_jamnews",
+      "url": "https://jam-news.net/feed/",
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 128860
+      }
+    },
+    {
+      "id": "private_mesh_newsmaker",
+      "url": "https://newsmaker.md/feed",
+      "continent": "europe",
+      "publisher_country_iso3": "MDA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 25839
+      }
+    },
+    {
+      "id": "private_mesh_ziarul_de_gard",
+      "url": "https://www.zdg.md/feed/",
+      "continent": "europe",
+      "publisher_country_iso3": "MDA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 12894
+      }
+    },
+    {
+      "id": "private_mesh_irna",
+      "url": "https://en.irna.ir/rss",
+      "continent": "asia",
+      "publisher_country_iso3": "IRN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 26939
+      }
+    },
+    {
+      "id": "private_mesh_mehr_news",
+      "url": "https://en.mehrnews.com/rss",
+      "continent": "asia",
+      "publisher_country_iso3": "IRN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 24556
+      }
+    },
+    {
+      "id": "private_mesh_ynetnews",
+      "url": "https://www.ynetnews.com/Integration/StoryRss3089.xml",
+      "continent": "asia",
+      "publisher_country_iso3": "ISR",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 5249
+      }
+    },
+    {
+      "id": "private_mesh_oman_observer",
+      "url": "https://www.omanobserver.om/rssFeed/1",
+      "continent": "asia",
+      "publisher_country_iso3": "OMN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 59005
+      }
+    },
+    {
+      "id": "private_mesh_asharq_business",
+      "url": "https://asharqbusiness.com/rss.xml",
+      "continent": "asia",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 313232
+      }
+    },
+    {
+      "id": "private_mesh_asharq_news",
+      "url": "https://asharq.com/snapchat/rss.xml",
+      "continent": "asia",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 330303
+      }
+    },
+    {
+      "id": "private_mesh_syria_direct",
+      "url": "https://syriadirect.org/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": "SYR",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 150990
+      }
+    },
+    {
+      "id": "private_mesh_972_magazine",
+      "url": "https://www.972mag.com/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 16028
+      }
+    },
+    {
+      "id": "private_mesh_naharnet_lebanon",
+      "url": "https://www.naharnet.com/tags/lebanon/en/feed.atom",
+      "continent": "asia",
+      "publisher_country_iso3": "LBN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "atom",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 11929
+      }
+    },
+    {
+      "id": "private_mesh_egypt_independent",
+      "url": "https://www.egyptindependent.com/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": "EGY",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 233450
+      }
+    },
+    {
+      "id": "private_mesh_fox_business",
+      "url": "https://moxie.foxbusiness.com/google-publisher/latest.xml",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 183284
+      }
+    },
+    {
+      "id": "private_mesh_globenewswire",
+      "url": "https://www.globenewswire.com/RssFeed/subjectcode/22/feedTitle/GlobeNewswire",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 30344
+      }
+    },
+    {
+      "id": "private_mesh_chainwire",
+      "url": "https://chainwire.org/feed/",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 44878
+      }
+    },
+    {
+      "id": "private_mesh_white_house",
+      "url": "https://www.whitehouse.gov/briefings-statements/feed/",
+      "continent": "global",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 394611
+      }
+    },
+    {
+      "id": "private_mesh_white_house_actions",
+      "url": "https://www.whitehouse.gov/presidential-actions/feed/",
+      "continent": "global",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 574660
+      }
+    },
+    {
+      "id": "private_mesh_federal_reserve",
+      "url": "https://www.federalreserve.gov/feeds/press_all.xml",
+      "continent": "global",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "macro",
+        "geopolitics",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 14813
+      }
+    },
+    {
+      "id": "private_mesh_sec",
+      "url": "https://www.sec.gov/news/pressreleases.rss",
+      "continent": "global",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 18571
+      }
+    },
+    {
+      "id": "private_mesh_who",
+      "url": "https://www.who.int/rss-feeds/news-english.xml",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 902039
+      }
+    },
+    {
+      "id": "private_mesh_france_24_africa",
+      "url": "https://www.france24.com/en/africa/rss",
+      "continent": "africa",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 33608
+      }
+    },
+    {
+      "id": "private_mesh_premium_times",
+      "url": "https://www.premiumtimesng.com/feed",
+      "continent": "africa",
+      "publisher_country_iso3": "NGA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 45681
+      }
+    },
+    {
+      "id": "private_mesh_vanguard_nigeria",
+      "url": "https://www.vanguardngr.com/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "NGA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 264533
+      }
+    },
+    {
+      "id": "private_mesh_channels_tv",
+      "url": "https://www.channelstv.com/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "NGA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 68542
+      }
+    },
+    {
+      "id": "private_mesh_daily_trust",
+      "url": "https://dailytrust.com/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "NGA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 74573
+      }
+    },
+    {
+      "id": "private_mesh_radio_tamazuj",
+      "url": "https://www.radiotamazuj.org/en/feed",
+      "continent": "africa",
+      "publisher_country_iso3": "SSD",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 73239
+      }
+    },
+    {
+      "id": "private_mesh_the_reporter_ethiopia",
+      "url": "https://www.thereporterethiopia.com/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "ETH",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 59221
+      }
+    },
+    {
+      "id": "private_mesh_ethiopia_insight",
+      "url": "https://www.ethiopia-insight.com/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "ETH",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 323612
+      }
+    },
+    {
+      "id": "private_mesh_dabanga_sudan",
+      "url": "https://www.dabangasudan.org/en/feed",
+      "continent": "africa",
+      "publisher_country_iso3": "SDN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 120097
+      }
+    },
+    {
+      "id": "private_mesh_actualite_cd",
+      "url": "https://actualite.cd/feed",
+      "continent": "africa",
+      "publisher_country_iso3": "COD",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 26433
+      }
+    },
+    {
+      "id": "private_mesh_radio_okapi",
+      "url": "https://www.radiookapi.net/rss.xml",
+      "continent": "africa",
+      "publisher_country_iso3": "COD",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 33067
+      }
+    },
+    {
+      "id": "private_mesh_myjoyonline",
+      "url": "https://www.myjoyonline.com/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "GHA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 444583
+      }
+    },
+    {
+      "id": "private_mesh_le_quotidien",
+      "url": "https://lequotidien.sn/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "SEN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 41295
+      }
+    },
+    {
+      "id": "private_mesh_rfi_afrique",
+      "url": "https://www.rfi.fr/en/africa/rss",
+      "continent": "africa",
+      "publisher_country_iso3": "FRA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 36782
+      }
+    },
+    {
+      "id": "private_mesh_lefaso_net",
+      "url": "https://lefaso.net/spip.php?page=backend",
+      "continent": "africa",
+      "publisher_country_iso3": "BFA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 833742
+      }
+    },
+    {
+      "id": "private_mesh_a_r_info",
+      "url": "https://airinfoagadez.com/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "NER",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 45105
+      }
+    },
+    {
+      "id": "private_mesh_daily_nation",
+      "url": "https://nation.africa/kenya/rss.xml",
+      "continent": "africa",
+      "publisher_country_iso3": "KEN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 18553
+      }
+    },
+    {
+      "id": "private_mesh_tchadinfos",
+      "url": "https://tchadinfos.com/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "TCD",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 18159
+      }
+    },
+    {
+      "id": "private_mesh_alwihda_info",
+      "url": "https://www.alwihdainfo.com/rss/",
+      "continent": "africa",
+      "publisher_country_iso3": "TCD",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 61292
+      }
+    },
+    {
+      "id": "private_mesh_clar_n",
+      "url": "https://www.clarin.com/rss/lo-ultimo/",
+      "continent": "south_america",
+      "publisher_country_iso3": "ARG",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 11037
+      }
+    },
+    {
+      "id": "private_mesh_el_tiempo",
+      "url": "https://www.eltiempo.com/rss/mundo_latinoamerica.xml",
+      "continent": "south_america",
+      "publisher_country_iso3": "COL",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 13875
+      }
+    },
+    {
+      "id": "private_mesh_infobae_americas",
+      "url": "https://www.infobae.com/arc/outboundfeeds/rss/",
+      "continent": "south_america",
+      "publisher_country_iso3": "ARG",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 742232
+      }
+    },
+    {
+      "id": "private_mesh_el_universo",
+      "url": "https://www.eluniverso.com/arc/outboundfeeds/rss/category/noticias/?outputType=xml",
+      "continent": "south_america",
+      "publisher_country_iso3": "ECU",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 40600
+      }
+    },
+    {
+      "id": "private_mesh_mexico_news_daily",
+      "url": "https://mexiconewsdaily.com/feed/",
+      "continent": "north_america",
+      "publisher_country_iso3": "MEX",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 34751
+      }
+    },
+    {
+      "id": "private_mesh_insight_crime",
+      "url": "https://insightcrime.org/feed/",
+      "continent": "south_america",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 173767
+      }
+    },
+    {
+      "id": "private_mesh_france_24_latam",
+      "url": "https://www.france24.com/en/americas/rss",
+      "continent": "south_america",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 37745
+      }
+    },
+    {
+      "id": "private_mesh_caracas_chronicles",
+      "url": "https://www.caracaschronicles.com/feed/",
+      "continent": "south_america",
+      "publisher_country_iso3": "VEN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 4501
+      }
+    },
+    {
+      "id": "private_mesh_havana_times",
+      "url": "https://havanatimes.org/feed/",
+      "continent": "north_america",
+      "publisher_country_iso3": "CUB",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 9579
+      }
+    },
+    {
+      "id": "private_mesh_14ymedio",
+      "url": "https://www.14ymedio.com/rss/",
+      "continent": "north_america",
+      "publisher_country_iso3": "CUB",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 149790
+      }
+    },
+    {
+      "id": "private_mesh_the_diplomat",
+      "url": "https://thediplomat.com/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 75251
+      }
+    },
+    {
+      "id": "private_mesh_asahi_shimbun",
+      "url": "https://www.asahi.com/rss/asahi/newsheadlines.rdf",
+      "continent": "asia",
+      "publisher_country_iso3": "JPN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rdf",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 21205
+      }
+    },
+    {
+      "id": "private_mesh_the_hindu",
+      "url": "https://www.thehindu.com/news/national/feeder/default.rss",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 50412
+      }
+    },
+    {
+      "id": "private_mesh_indian_express",
+      "url": "https://indianexpress.com/section/india/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 223467
+      }
+    },
+    {
+      "id": "private_mesh_aaj_tak",
+      "url": "https://www.aajtak.in/rssfeeds/?id=home",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 193796
+      }
+    },
+    {
+      "id": "private_mesh_amar_ujala",
+      "url": "https://www.amarujala.com/rss/national.xml",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 59487
+      }
+    },
+    {
+      "id": "private_mesh_cna",
+      "url": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml",
+      "continent": "asia",
+      "publisher_country_iso3": "SGP",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 18385
+      }
+    },
+    {
+      "id": "private_mesh_vnexpress",
+      "url": "https://vnexpress.net/rss/tin-moi-nhat.rss",
+      "continent": "asia",
+      "publisher_country_iso3": "VNM",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 51387
+      }
+    },
+    {
+      "id": "private_mesh_yonhap_news",
+      "url": "https://www.yonhapnewstv.co.kr/browse/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": "KOR",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 33187
+      }
+    },
+    {
+      "id": "private_mesh_abc_news_australia",
+      "url": "https://www.abc.net.au/news/feed/2942460/rss.xml",
+      "continent": "oceania",
+      "publisher_country_iso3": "AUS",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 85647
+      }
+    },
+    {
+      "id": "private_mesh_france_24_asia_pacific",
+      "url": "https://www.france24.com/en/asia-pacific/rss",
+      "continent": "oceania",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 36590
+      }
+    },
+    {
+      "id": "private_mesh_island_times_palau",
+      "url": "https://islandtimes.org/feed/",
+      "continent": "oceania",
+      "publisher_country_iso3": "PLW",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 254413
+      }
+    },
+    {
+      "id": "private_mesh_the_astana_times",
+      "url": "https://astanatimes.com/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": "KAZ",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 102547
+      }
+    },
+    {
+      "id": "private_mesh_the_times_of_central_asia",
+      "url": "https://timesca.com/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": "KGZ",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 89898
+      }
+    },
+    {
+      "id": "private_mesh_dawn",
+      "url": "https://www.dawn.com/feeds/home/",
+      "continent": "asia",
+      "publisher_country_iso3": "PAK",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 322816
+      }
+    },
+    {
+      "id": "private_mesh_rappler",
+      "url": "https://www.rappler.com/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": "PHL",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 87559
+      }
+    },
+    {
+      "id": "private_mesh_amu_tv",
+      "url": "https://amu.tv/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": "AFG",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 32600
+      }
+    },
+    {
+      "id": "private_mesh_times_of_india",
+      "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 28452
+      }
+    },
+    {
+      "id": "private_nz_rnz_pacific",
+      "url": "https://www.rnz.co.nz/rss/pacific.xml",
+      "continent": "oceania",
+      "publisher_country_iso3": "NZL",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 9160
+      }
+    },
+    {
+      "id": "private_mining_technology",
+      "url": "https://www.mining-technology.com/feed/",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 20783
+      }
+    },
+    {
+      "id": "private_bc_minerals_global",
+      "url": "https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed",
+      "continent": "global",
+      "publisher_country_iso3": "CAN",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 6683
+      }
+    },
+    {
+      "id": "private_bis_press_global",
+      "url": "https://www.bis.org/doclist/all_pressrels.rss",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "macro"
+      ],
+      "type": "rdf",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 14881
+      }
+    },
+    {
+      "id": "private_boc_press_global",
+      "url": "https://www.bankofcanada.ca/content_type/press-releases/feed/",
+      "continent": "global",
+      "publisher_country_iso3": "CAN",
+      "categories": [
+        "macro"
+      ],
+      "type": "rdf",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 12048
+      }
+    },
+    {
+      "id": "private_boj_press_global",
+      "url": "https://www.boj.or.jp/en/rss/whatsnew.xml",
+      "continent": "global",
+      "publisher_country_iso3": "JPN",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 16929
+      }
+    },
+    {
+      "id": "private_ecb_statistical_press_official_rss_review",
+      "url": "https://www.ecb.europa.eu/rss/statpress.html",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 5514
+      }
+    },
+    {
+      "id": "private_eu_official_featured_news_minerals_private_rss_review",
+      "url": "https://european-union.europa.eu/node/309/rss_en",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 43608
+      }
+    },
+    {
+      "id": "private_eu_sanctions_guidance_official_rss_review",
+      "url": "https://finance.ec.europa.eu/node/1296/rss_en",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 25323
+      }
+    },
+    {
+      "id": "private_news_aljazeera",
+      "url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 17219
+      }
+    },
+    {
+      "id": "private_news_dw",
+      "url": "https://rss.dw.com/rdf/rss-en-all",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rdf",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 120787
+      }
+    },
+    {
+      "id": "private_news_france24",
+      "url": "https://www.france24.com/en/rss",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 28758
+      }
+    },
+    {
+      "id": "private_news_kyivindependent",
+      "url": "https://kyivindependent.com/news-archive/rss/",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 17299
+      }
+    },
+    {
+      "id": "private_news_toi",
+      "url": "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 26388
+      }
+    },
+    {
+      "id": "private_state_globaltimes",
+      "url": "https://www.globaltimes.cn/rss/outbrain.xml",
+      "continent": "global",
+      "publisher_country_iso3": "CHN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 14764
+      }
+    },
+    {
+      "id": "private_state_tass",
+      "url": "https://tass.com/rss/v2.xml",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 19332
+      }
+    },
+    {
+      "id": "private_un_news_security_original_rss_review",
+      "url": "https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 34581
+      }
+    },
+    {
+      "id": "private_us_doe_minerals_global",
+      "url": "https://www.energy.gov/rss/energygov/2193718",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "acceptance": {
+        "http_status": 200,
+        "feed_parsed": true,
+        "native_publication_clock_present": true,
+        "bounded_feed_bytes": 8223
+      }
+    }
+  ]
+}

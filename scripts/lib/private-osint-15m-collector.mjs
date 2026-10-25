@@ -8,15 +8,16 @@
  * source-clock window, with NO original texts, titles, links or scraped
  * article bodies persisted. Never promote OSINT to verified/paid news.
  */
-import {registeredReusableNewsSources,collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
+import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
+import {privateOsintGlobalSources,PRIVATE_OSINT_TOPICS,privateOsintContinentCoverage} from "./private-osint-global-sources.mjs";
 export const PRIVATE_OSINT_TARGET_MINUTES=15;
 export const PRIVATE_OSINT_POLL_MINUTES=5;
-export const PRIVATE_OSINT_MAX_SOURCES=120;
+export const PRIVATE_OSINT_MAX_SOURCES=256;
 export const PRIVATE_OSINT_MAX_RESULTS_PER_TICK=320;
 const DOMAINS=["geopolitics","macro","rare_earth"];
 export async function collectPrivateOsint15m({
-  now=new Date(),fetchImpl=fetch,registry=registeredReusableNewsSources(),
-  normalize,resolveCountry,concurrency=4,
+  now=new Date(),fetchImpl=fetch,registry=privateOsintGlobalSources(),
+  normalize,resolveCountry,concurrency=8,
 }={}){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
      !Array.isArray(registry)||registry.length<1||
@@ -45,6 +46,8 @@ export async function collectPrivateOsint15m({
         // Outer worker count is the global network cap for PRIVATE OSINT;
         // avoid multiplying by reusable public-reader inner parallelism.
         networkConcurrency:1,
+        topicPatterns:PRIVATE_OSINT_TOPICS,allowRdfNativeDates:true,
+        maxFeedBytes:1024*1024,
       });
     }
   };
@@ -64,16 +67,27 @@ export async function collectPrivateOsint15m({
   }
   const all=[...dedup.values()].sort((a,b)=>b.source.original_published_at.localeCompare(a.source.original_published_at)||a.id.localeCompare(b.id));
   const recent=all.filter(x=>Date.parse(x.source.original_published_at)>=now.getTime()-PRIVATE_OSINT_TARGET_MINUTES*60_000);
+  // A burst of geopolitical headlines must not evict the mineral and macro
+  // lanes from this shared bounded private intake. Newest first in each lane.
+  const lanes=DOMAINS.map(c=>all.filter(x=>x.category===c)),selected=[];
+  for(let n=0;selected.length<PRIVATE_OSINT_MAX_RESULTS_PER_TICK&&lanes.some(l=>n<l.length);n++)
+    for(const lane of lanes)if(lane[n]&&selected.length<PRIVATE_OSINT_MAX_RESULTS_PER_TICK)selected.push(lane[n]);
   return {
     schema:"geomacro.private-osint-15m-batch.v1",
-    items:all.slice(0,PRIVATE_OSINT_MAX_RESULTS_PER_TICK),
+    items:selected.sort((a,b)=>b.source.original_published_at.localeCompare(a.source.original_published_at)||a.id.localeCompare(b.id)),
     checks:[...checks.values()],
     summary:{
       configured_country_routes:195,configured_categories:3,configured_country_category_routes:585,
       registered_source_endpoints:registry.length,source_endpoints_attempted:registry.length,
       source_checks:checks.size,source_states:count,
+      working_source_endpoints:registry.filter(s=>s.categories.some(category=>
+        [...checks.values()].some(c=>c.source_ref===sourceRef(s,category)&&
+          ["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW"].includes(c.state)))).length,
+      continent_coverage:privateOsintContinentCoverage(registry,[...checks.values()],all),
       discovered_within_15m_native_clock:recent.length,
       factual_items_25h:all.length,excluded_by_capacity:Math.max(0,all.length-PRIVATE_OSINT_MAX_RESULTS_PER_TICK)+collectorExcluded,
+      selected_items_by_category:Object.fromEntries(DOMAINS.map(c=>[c,selected.filter(x=>x.category===c).length])),
+      excluded_items_by_category:Object.fromEntries(DOMAINS.map(c=>[c,all.filter(x=>x.category===c).length-selected.filter(x=>x.category===c).length])),
       first_discovery_latency_measured_at_d1:false,
       independent_verification_required_for_ingestion:false,
       each_country_has_a_registered_feed:false,
@@ -86,3 +100,5 @@ export async function collectPrivateOsint15m({
     },
   };
 }
+import {createHash} from "node:crypto";
+const sourceRef=(s,c)=>createHash("sha256").update([s.id,s.url,c].join("\n")).digest("hex");

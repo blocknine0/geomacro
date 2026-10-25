@@ -103,8 +103,8 @@ export function selectRegisteredNewsSources(now=new Date(),registry=registeredRe
   }
   return [...selected.values()];
 }
-function feedBlocks(source,body){
-  if(body.length>MAX_FEED_BYTES||/<!DOCTYPE|<!ENTITY/iu.test(body))return null;
+function feedBlocks(source,body,allowRdfNativeDates=false,maxFeedBytes=MAX_FEED_BYTES){
+  if(body.length>maxFeedBytes||/<!DOCTYPE|<!ENTITY/iu.test(body))return null;
   if(source.type==="json"){
     if(!source.url.startsWith("https://www.gov.uk/api/search.json?"))return null;
     try{
@@ -128,26 +128,29 @@ function feedBlocks(source,body){
        /<|>|\u0000/gu.test(title))continue;
     // Native item publication only: RSS pubDate or Atom published.
     // Feed updated/issue day and collection clock are never publication time.
-    const native=xmlTag(entry,"pubDate")??xmlTag(entry,"published");
+    const native=xmlTag(entry,"pubDate")??xmlTag(entry,"published")??
+      (allowRdfNativeDates&&/<rdf:RDF\b/iu.test(body)&&
+       /xmlns:dc=["']http:\/\/purl\.org\/dc\/elements\/1\.1\/["']/iu.test(body)
+        ?entry.match(/<dc:date\b[^>]*>([^<]+)<\/dc:date>/iu)?.[1]?.trim():null);
     result.push({title,native});
     if(result.length>=100)break;
   }
   return result;
 }
-async function fetchFeed(spec,fetchImpl){
+async function fetchFeed(spec,fetchImpl,maxFeedBytes=MAX_FEED_BYTES){
   try{
     const r=await fetchImpl(spec.url,{method:"GET",redirect:"manual",
       headers:{accept:"application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9"},
       signal:AbortSignal.timeout(7000)});
     if([401,403,429].includes(r.status))return {state:"DENIED",body:null};
     if(r.status!==200||(r.url&&r.url!==spec.url))return {state:"UNAVAILABLE",body:null};
-    if(Number(r.headers.get("content-length")||0)>MAX_FEED_BYTES||!r.body)
+    if(Number(r.headers.get("content-length")||0)>maxFeedBytes||!r.body)
       return {state:"MALFORMED",body:null};
     const reader=r.body.getReader();let size=0,chunks=[];
     try{
       for(;;){const data=await reader.read();if(data.done)break;
         size+=data.value.byteLength;
-        if(size>MAX_FEED_BYTES)return {state:"MALFORMED",body:null};
+        if(size>maxFeedBytes)return {state:"MALFORMED",body:null};
         chunks.push(data.value);
       }
     }finally{try{await reader.cancel()}catch{}reader.releaseLock()}
@@ -159,11 +162,16 @@ async function fetchFeed(spec,fetchImpl){
 }
 export async function collectRegisteredReusableNews({
   now=new Date(),fetchImpl=fetch,registry=registeredReusableNewsSources(),
-  perCategory=8,normalize,resolveCountry=()=>null,networkConcurrency=6
+  perCategory=8,normalize,resolveCountry=()=>null,networkConcurrency=6,
+  topicPatterns=TOPICS,allowRdfNativeDates=false,
+  maxFeedBytes=MAX_FEED_BYTES,
 }={}){
   if(typeof normalize!=="function"||typeof resolveCountry!=="function"||
      !(now instanceof Date)||!Number.isFinite(now.getTime())||
-     !Number.isSafeInteger(networkConcurrency)||networkConcurrency<1||networkConcurrency>6)
+     !Number.isSafeInteger(networkConcurrency)||networkConcurrency<1||networkConcurrency>6||
+     typeof allowRdfNativeDates!=="boolean"||
+     !Number.isSafeInteger(maxFeedBytes)||maxFeedBytes<1||maxFeedBytes>1024*1024||
+     CATEGORY.some(c=>!(topicPatterns?.[c] instanceof RegExp)||/[gy]/u.test(topicPatterns[c].flags)))
     throw Error("REUSABLE_NEWS_COLLECTOR_INPUT_INVALID");
   const active=selectRegisteredNewsSources(now,registry,perCategory);
   const checks=[],items=[],seen=new Set();
@@ -175,14 +183,14 @@ export async function collectRegisteredReusableNews({
   for(let i=0;i<active.length;i+=networkConcurrency){
     const chunk=active.slice(i,i+networkConcurrency);
     fetched.push(...await Promise.all(chunk.map(s=>s.supported
-      ?fetchFeed(s,fetchImpl)
+      ?fetchFeed(s,fetchImpl,maxFeedBytes)
       :Promise.resolve({state:"UNSUPPORTED_FORMAT",body:null}))));
   }
   for(let i=0;i<active.length;i++){
     const s=active[i],res=fetched[i];
     let state=res.state,blocks=null;
     if(res.body!==null){
-      blocks=feedBlocks(s,res.body);
+      blocks=feedBlocks(s,res.body,allowRdfNativeDates,maxFeedBytes);
       if(!blocks)state="MALFORMED";
       else if(!blocks.length)state="EMPTY_OR_OUTSIDE_WINDOW";
     }
@@ -193,7 +201,7 @@ export async function collectRegisteredReusableNews({
       const at=originalClock(item.native,now.getTime());
       if(!at)continue;
       for(const category of activeCategories){
-        if(!TOPICS[category].test(item.title))continue;
+        if(!topicPatterns[category].test(item.title))continue;
         // Source text remains ephemeral. Only finite machine fact tags are
         // produced; third-party noncommercial titles never enter D1.
         const country=resolveCountry(item.title);
