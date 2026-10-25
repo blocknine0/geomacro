@@ -3,7 +3,8 @@
  *
  * An "osint_feed_observed_unverified" card may carry one monitored-feed
  * hostname as provenance. That domain-only label is NOT an article URL or
- * permission to redistribute the source. URLs, paths and upstream content
+ * permission to redistribute the source. The upstream reader separately pins
+ * source URLs; this boundary validates only the public provenance shape. URLs, paths and upstream content
  * remain forbidden in public prose and in all other provenance records.
  */
 export const DERIVED_NEWS_TOPIC_POLICY_REVISION = 2;
