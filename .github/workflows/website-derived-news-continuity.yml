@@ -116,23 +116,17 @@ jobs:
           node --test scripts/tests/derived-news-b2-readwrite-backup.test.mjs
 
   refresh-derived-news:
-    # A Worker code push must deploy before the producer runs. The live policy
-    # revision handshake is the final fail-closed guard against rollout races.
-    # Permit a trusted completed deploy even if a later signature audit fails:
-    # the producer itself requires the deployed policy revision before reads.
+    # Never race a producer against any repository push. Source-only changes
+    # are handled by the existing schedule/manual trigger; Worker changes resume
+    # from the trusted main deployment completion. The live policy handshake is
+    # the final fail-closed guard, even when downstream signature audit fails.
     if: >-
       github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' &&
+      github.event_name != 'push' &&
       (github.event_name != 'workflow_run' ||
        (github.event.workflow_run.path == '.github/workflows/deploy-control-plane-d1.yml' &&
         github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
-        github.event.workflow_run.head_branch == 'main')) &&
-      (github.event_name != 'push' ||
-       !(contains(github.event.head_commit.modified, 'workers/control-plane/src/website-derived-intelligence.mjs') ||
-         contains(github.event.head_commit.added, 'workers/control-plane/src/website-derived-intelligence.mjs') ||
-         contains(github.event.head_commit.removed, 'workers/control-plane/src/website-derived-intelligence.mjs') ||
-         contains(github.event.head_commit.modified, 'workers/control-plane/src/index.mjs') ||
-         contains(github.event.head_commit.added, 'workers/control-plane/src/index.mjs') ||
-         contains(github.event.head_commit.removed, 'workers/control-plane/src/index.mjs')))
+        github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
     timeout-minutes: 12
     environment: production
