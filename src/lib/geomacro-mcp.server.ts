@@ -22,6 +22,8 @@ import {
 import {
   ensureRiskObjectRuntimePublicKey,
 } from "./risk-object-runtime-public-key.server";
+import { callCanonicalWithSourceResearchFallback } from "./answer-question-source-fallback.server";
+import { isSourceGroundedResearchAnswer } from "./on-demand-research-answer.server";
 import {
   verifyPublicRiskObjectArtifact,
 } from "./risk-object-verification.server";
@@ -409,20 +411,11 @@ async function callPaidTool(
     );
   }
 
-  const headers = new Headers(request.headers);
-  headers.set("content-type", "application/json");
-  headers.delete("content-length");
-  const canonicalRequest = new Request(
-    new URL(CANONICAL_MAINNET_INTELLIGENCE_PATH, request.url),
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify(canonicalQuery),
-    },
-  );
-
-  const canonicalResponse = await mainnetIntelligenceHandlers.POST({
-    request: canonicalRequest,
+  const canonicalResponse = await callCanonicalWithSourceResearchFallback({
+    request,
+    toolName,
+    query: canonicalQuery,
+    canonicalPost: mainnetIntelligenceHandlers.POST,
   });
 
   if (canonicalResponse.status === 402) {
@@ -437,8 +430,10 @@ async function callPaidTool(
   }
 
   if (!canonicalResponse.ok) {
+    // A verified-original-page research answer is a successful, explicitly
+    // non-chargeable result. It is not a signed or commercially admitted product.
     return responseWithCanonicalHeaders(
-      toolResult(id, payload, true),
+      toolResult(id, payload, !isSourceGroundedResearchAnswer(payload)),
       canonicalResponse,
     );
   }
