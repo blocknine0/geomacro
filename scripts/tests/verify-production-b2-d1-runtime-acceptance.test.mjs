@@ -103,9 +103,8 @@ test("Supabase and money-enabled environments are rejected before any runtime ca
   }
 });
 
-test("no D1 receipt means no PASS, even if the B2 body appears readable",async()=>{
-  let statusCalls=0;
-  const bytes=Buffer.from('{"synthetic":true}\n');
+test("no D1 receipt means no PASS, even if the B2 body is byte-perfect",async()=>{
+  let statusCalls=0,stored=null;
   await assert.rejects(
     ()=>runProductionB2D1RuntimeAcceptance({
       env:baseEnv,now:()=>new Date("2026-10-25T18:00:00.000Z"),
@@ -113,18 +112,17 @@ test("no D1 receipt means no PASS, even if the B2 body appears readable",async()
       createB2ClientImpl:()=>({
         async putWithMetadataVerification(key,body){
           assert.ok(key.startsWith("geomacro-evidence/v1/private/runtime-config-acceptance/"));
-          // Match the real script's expected hash/length against its own payload.
+          stored=Buffer.from(body);
           return {sha256:sha(body),bytes:body.length,
             verification_mode:"signed-put-full-readback-sha256",
             full_body_readback_verified:true};
         },
-        async get(){return bytes;},
+        async get(){return Buffer.from(stored);},
       }),
       fetchImpl:async()=>({ok:true,json:async()=>({success:true,result:[{success:true,results:[
         {operation:"GET",requests:0},{operation:"PUT",requests:0},
       ]}]})}),
     }),
-    (error)=>error.message==="B2_SECOND_INDEPENDENT_READBACK_MISMATCH"||
-      error.message==="D1_PER_RUN_WRITE_READBACK_RECEIPT_MISSING",
+    (error)=>error.message==="D1_PER_RUN_WRITE_READBACK_RECEIPT_MISSING",
   );
 });
