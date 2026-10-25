@@ -1,0 +1,73 @@
+name: Private Global OSINT 15-Minute Discovery
+
+# PRIVATE collection research only: reads pinned first-party/registered RSS,
+# Atom and official GOV.UK JSON, and emits counts with zero original text,
+# links, Telegram messages, B2 writes, Supabase or public product effects.
+# GitHub schedules and publisher clocks are best-effort, not a 15m guarantee.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "1-56/5 * * * *"
+  pull_request:
+    paths:
+      - ".github/workflows/private-global-osint-15m.yml"
+      - "scripts/lib/private-osint-15m-collector.mjs"
+      - "scripts/lib/private-osint-15m-collector.test.mjs"
+      - "scripts/ops/private-osint-15m-tick.ts"
+      - "scripts/lib/registered-reusable-news-source-collector.mjs"
+      - "scripts/lib/country-news-mentions-195.mjs"
+      - "src/lib/reusable-news-json.ts"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/private-global-osint-15m.yml"
+      - "scripts/lib/private-osint-15m-collector.mjs"
+      - "scripts/lib/private-osint-15m-collector.test.mjs"
+      - "scripts/ops/private-osint-15m-tick.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-private-global-osint-15m
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Offline source and privacy tests
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/private-osint-15m-collector.mjs
+          node --test scripts/lib/private-osint-15m-collector.test.mjs
+  collect-private:
+    needs: verify
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Read live native-source entries privately (no news artifact or public post)
+        env:
+          GEOMACRO_OSINT_RESEARCH_PRIVATE_ONLY: "1"
+        run: |
+          set -euo pipefail
+          bun scripts/ops/private-osint-15m-tick.ts
