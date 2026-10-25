@@ -13,11 +13,16 @@ const read=(path:string)=>readFileSync(path,"utf8");
 describe("canonical capability pricing parity on the public website",()=>{
   it("displays the one approved catalog on both commercial pages",()=>{
     const schedule=read("src/components/capability-price-schedule.tsx");
+    const categoryApiPricing=read("src/components/category-api-pricing.tsx");
     const pricing=read("src/routes/pricing.tsx");
     const dataApi=read("src/routes/data-api.tsx");
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICES");
     expect(schedule).toContain("GEOMACRO_PUBLIC_PRICING_GROUPS");
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
+    expect(categoryApiPricing).toContain("GEOMACRO_CAPABILITY_PRICES.intelligence_query");
+    expect(categoryApiPricing).toContain("GEOMACRO_OFFICIAL_API_CATALOG");
+    expect(pricing).toContain("<CategoryApiPricing />");
+    expect(dataApi).toContain("<CategoryApiPricing />");
     expect(pricing).toContain("<CapabilityPriceSchedule />");
     expect(dataApi).toContain("<CapabilityPriceSchedule compact />");
     for(const source of [pricing,dataApi]){
