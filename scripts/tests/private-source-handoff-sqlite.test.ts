@@ -38,6 +38,7 @@ afterEach(()=>{for(const db of databases.splice(0))db.close();for(const dir of d
 function store(){
  const db=new Database(':memory:');databases.push(db);
  db.exec(readFileSync(new URL('../../workers/control-plane/migrations/0001_core.sql',import.meta.url),'utf8'));
+ db.exec(readFileSync(new URL('../../workers/control-plane/migrations/0017_website_derived_news_only.sql',import.meta.url),'utf8'));
  const env={CONTROL_PLANE_TOKEN:root,AUTOMATED_FINDS_VERIFY_KEYS_JSON:JSON.stringify(keys),
   GEOMACRO_LOW_REVIEW_PUBLIC_SPKI_B64:trust.public_spki_b64,GEOMACRO_LOW_REVIEW_PUBLIC_SHA256:trust.public_sha256,
   DB:{prepare:(sql:string)=>({bind:(...args:any[])=>({sql,args,
@@ -60,6 +61,12 @@ async function fixture(index=0,padding='',credit='Federal Reserve Board'){
  return {signal,ref,envelope,item:{input_id:await automatedInputId(signal),ref}};
 }
 async function seed(env:any,fixtures:Awaited<ReturnType<typeof fixture>>[]){
+ // Input signatures must bind to a currently retained journal row.
+ await env.DB.batch(fixtures.map(f=>env.DB.prepare(
+  "INSERT OR REPLACE INTO website_derived_intelligence(id,category,published_at,date_precision,story_json,first_seen_at) VALUES(?,?,?,?,?,?)"
+ ).bind(f.signal.id,f.signal.category,f.signal.published_at,f.signal.date_precision,
+  JSON.stringify(f.signal),now.toISOString())));
+
  for(let i=0;i<fixtures.length;i+=40){
   const response=await putAutomatedInputs(env,{schema:'geomacro.automated-intelligence-input-batch.v1',
    items:fixtures.slice(i,i+40).map(f=>f.envelope)},nowMs);
