@@ -33,12 +33,22 @@ function store(){
    results:[...rows].sort(([a],[b])=>a.localeCompare(b)).filter(([,r])=>JSON.parse(r.value_json).payload.expires_at>args[1])
     .slice(args[3],args[3]+args[2]).map(([key,r])=>({key,...r,signing_key_id:JSON.parse(r.value_json).integrity.signing_key_id}))})})}),
   batch:async(stmts:any[])=>stmts.map(s=>{
+   if(s.sql.startsWith('DELETE FROM control_state WHERE key GLOB ?')&&s.sql.includes('json_each(?)')){
+    const [glob,prefix,jsonIds]=s.args,keep=new Set(JSON.parse(jsonIds).map((id:string)=>prefix+id));
+    let changes=0;for(const key of [...rows.keys()])if(key.startsWith(prefix)&&!keep.has(key)){rows.delete(key);changes++;}
+    return {success:true,meta:{changes}};
+   }
    if(s.sql.startsWith('INSERT')){const [key,value_json,updated_at]=s.args;
     const old=rows.get(key);let changes=0;
     if(!old||JSON.parse(old.value_json).integrity.signing_key_id!==JSON.parse(value_json).integrity.signing_key_id&&updated_at>old.updated_at){
      rows.set(key,{value_json,updated_at});changes=1;
     }return {success:true,meta:{changes}};
-   }return {success:true,meta:{changes:0}};
+   }
+   if(s.sql.startsWith("DELETE FROM control_state WHERE key GLOB ? AND json_extract(value_json,'$.payload.expires_at')<=")){
+    return {success:true,meta:{changes:0}};
+   }
+   if(s.sql.includes('LIMIT -1 OFFSET 600'))return {success:true,meta:{changes:0}};
+   return {success:true,meta:{changes:0}};
   }),
  }};
  return {env,rows};
@@ -69,16 +79,29 @@ describe('automatic approval of all retained derived inputs',()=>{
   expect(await automatedInputId(signal('geopolitics'))).not.toBe(await automatedInputId(s));
  });
  it('atomically accepts one stored item on repeated signed delivery and verifies the readback',async()=>{
-  const db=store(),e=await sign(payload());const body={schema:'geomacro.automated-intelligence-input-batch.v1',items:[e,e]};
+  const db=store(),e=await sign(payload()),id=await automatedInputId(e.payload.signal);
+  const body={schema:'geomacro.automated-intelligence-input-batch.v1',retained_ids:[id],items:[e,e]};
   const first=await (await putAutomatedInputs(db.env,body,NOW)).json();
   const again=await (await putAutomatedInputs(db.env,body,NOW)).json();
   expect(first.inserted_or_resigned).toBe(1);expect(again.inserted_or_resigned).toBe(0);expect(db.rows.size).toBe(1);
   const read=await (await getAutomatedInputs(db.env,new URLSearchParams(),NOW)).json();
   expect(read.items).toEqual([e]);
   const bad=structuredClone(e);bad.payload.signal.title+=' modified';
-  const rejected=await putAutomatedInputs(db.env,{...body,items:[e,bad]},NOW);
+  const rejected=await putAutomatedInputs(db.env,{...body,retained_ids:[id,await automatedInputId(bad.payload.signal)],items:[e,bad]},NOW);
   expect(rejected.status).toBe(400);
   expect((await rejected.json()).reason_code).toBe('AUTOMATED_INPUT_SIGNATURE_INVALID');
+  expect(db.rows.size).toBe(1);
+ });
+ it('reconciles stale/orphan input revisions to the current journal before readback',async()=>{
+  const db=store();
+  const stale=await sign(payload(signal('macro',901))),staleId=await automatedInputId(stale.payload.signal);
+  await putAutomatedInputs(db.env,{schema:'geomacro.automated-intelligence-input-batch.v1',retained_ids:[staleId],items:[stale]},NOW);
+  const current=await sign(payload(signal('rare_earth',902))),currentId=await automatedInputId(current.payload.signal);
+  const result=await putAutomatedInputs(db.env,{schema:'geomacro.automated-intelligence-input-batch.v1',
+   retained_ids:[currentId],items:[current]},NOW);
+  expect(result.status).toBe(200);
+  const ids=await (await getAutomatedInputs(db.env,new URLSearchParams('view=ids'),NOW)).json();
+  expect(ids.ids).toEqual([currentId]);
   expect(db.rows.size).toBe(1);
  });
  it('handles over 50 per category, all 600 journal items and reruns without another write',async()=>{
@@ -93,7 +116,12 @@ describe('automatic approval of all retained derived inputs',()=>{
   expect(db.rows.size).toBe(600);fetchImpl.mockClear();
   const again=await publishAutomatedIntelligenceInputs(options);
   expect(again.new_signed_inputs).toBe(0);expect(again.already_signed).toBe(600);
-  expect(fetchImpl.mock.calls.every(([,opt])=>opt.method==='GET')).toBe(true);
+  const calls=fetchImpl.mock.calls.map(([,opt])=>opt.method);
+  expect(calls.filter(method=>method==='PUT')).toHaveLength(1);
+  expect(calls.filter(method=>method==='GET').length).toBeGreaterThanOrEqual(2);
+  const reconcile=JSON.parse(fetchImpl.mock.calls.find(([,opt])=>opt.method==='PUT')![1].body);
+  expect(reconcile.items).toEqual([]);
+  expect(reconcile.retained_ids).toHaveLength(600);
  });
  it('does not expose the internal signed-input route to unauthenticated callers',async()=>{
   for(const method of ['GET','PUT']){

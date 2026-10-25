@@ -60,9 +60,10 @@ async function fixture(index=0,padding='',credit='Federal Reserve Board'){
  return {signal,ref,envelope,item:{input_id:await automatedInputId(signal),ref}};
 }
 async function seed(env:any,fixtures:Awaited<ReturnType<typeof fixture>>[]){
+ const retained_ids=fixtures.map(f=>f.item.input_id);
  for(let i=0;i<fixtures.length;i+=40){
   const response=await putAutomatedInputs(env,{schema:'geomacro.automated-intelligence-input-batch.v1',
-   items:fixtures.slice(i,i+40).map(f=>f.envelope)},nowMs);
+   retained_ids,items:fixtures.slice(i,i+40).map(f=>f.envelope)},nowMs);
   expect(response.status).toBe(200);
  }
 }

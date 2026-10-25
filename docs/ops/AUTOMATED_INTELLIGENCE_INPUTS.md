@@ -28,8 +28,12 @@ keys, malformed payloads, altered signatures and expired originals are rejected.
 Inputs use the existing D1 `control_state` table, in a dedicated key prefix.
 There is no new database or schema migration. Writes are atomic batches of up
 to 40 and 250 KB; native-date expiry and the existing 600-record retained
-capacity bound storage. A final authenticated readback checks every expected
-unique ID in the accepted-input inventory after PUT signature verification.
+capacity bound storage. Every PUT includes only the SHA-256 IDs from the
+current complete journal read, so stale revisions from an older journal window
+are pruned before the new batch is inserted. This keeps current retained rows
+from being crowded out by orphaned historical input revisions. A no-op run
+also performs this reconciliation. A final authenticated readback checks every
+expected unique ID in the accepted-input inventory after PUT signature verification.
 The inventory is not an independent full-envelope proof. Paginated input reads
 verify actual signatures, at most 40 per request. No silent 50-item truncation.
 Capacity is the retained journal, not unlimited world news or guaranteed full
