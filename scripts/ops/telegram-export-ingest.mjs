@@ -18,8 +18,13 @@ const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev";
 const sh=s=>createHash("sha256").update(s).digest("hex");
 const H=(key,s)=>createHmac("sha256",key).update(s).digest();
 function fail(){throw Error("TELEGRAM_EXPORT_PRODUCTION_FAIL_CLOSED")}
-function xml(v){return v.replace(/&amp;/gu,"&").replace(/&lt;/gu,"<")
- .replace(/&gt;/gu,">").replace(/&quot;/gu,'"').replace(/&apos;/gu,"'")}
+function xml(v){
+ // Decode XML entities in one pass. Decoding &amp; first would allow a
+ // doubly encoded value such as &amp;lt; to become < after a second replace.
+ const entities={"amp":"&","lt":"<","gt":">","quot":'"',"apos":"'"};
+ return v.replace(/&(?:amp|lt|gt|quot|apos);/gu,entity=>
+   entities[entity.slice(1,-1)]??entity);
+}
 function signRequest(method,query,now,key,secret){
  const timestamp=now.toISOString().replace(/[:-]|\.\d{3}/gu,""),day=timestamp.slice(0,8);
  const region="us-east-005",scope=day+"/"+region+"/s3/aws4_request";
