@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createHash} from "node:crypto";
+import {createHash,createHmac} from "node:crypto";
 import {runProductionB2D1RuntimeAcceptance} from "../ops/verify-production-b2-d1-runtime-acceptance.mjs";
 
 const sha=(bytes)=>createHash("sha256").update(bytes).digest("hex");
@@ -10,6 +10,7 @@ const testSecrets={
   CLOUDFLARE_ACCOUNT_ID:"synthetic-cloudflare-account",
   CLOUDFLARE_API_TOKEN:"synthetic-cloudflare-api-token",
   D1_DATABASE_ID:"synthetic-d1-id",
+  GEOMACRO_COMMERCE_LEDGER_TOKEN:"synthetic-commerce-ledger-root-token",
 };
 const baseEnv={
   ...testSecrets,
@@ -33,7 +34,7 @@ const before=status({total:10,GET:5,PUT:3,HEAD:1,NATIVE_AUTH:1});
 const after=status({total:13,GET:7,PUT:4,HEAD:1,NATIVE_AUTH:1});
 
 test("successful acceptance requires real-operation receipts plus byte-perfect repeated readback",async()=>{
-  let statusCalls=0,stored=null,optionsSeen=null,querySeen=null;
+  let statusCalls=0,workerStatusCalls=0,stored=null,optionsSeen=null,querySeen=null,workerAuthorization=null;
   const fakeB2={
     async putWithMetadataVerification(key,bytes){
       assert.match(key,/^geomacro-evidence\/v1\/private\/runtime-config-acceptance\//);
@@ -53,6 +54,11 @@ test("successful acceptance requires real-operation receipts plus byte-perfect r
     createGovernorImpl:()=>({async status(){statusCalls++;return statusCalls===1?before:after;}}),
     createB2ClientImpl:(options)=>{optionsSeen=options;return fakeB2;},
     fetchImpl:async(url,init)=>{
+      if(String(url).endsWith("/v1/b2-quota/status")){
+        workerStatusCalls++;
+        workerAuthorization=init.headers.authorization;
+        return {ok:true,status:200,json:async()=>workerStatusCalls===1?before:after};
+      }
       querySeen={url:String(url),body:JSON.parse(init.body),authorization:init.headers.authorization};
       return {ok:true,json:async()=>({success:true,result:[{success:true,results:[
         {operation:"GET",requests:2},{operation:"PUT",requests:1},
@@ -63,6 +69,7 @@ test("successful acceptance requires real-operation receipts plus byte-perfect r
   assert.equal(result.b2.put_verified,true);
   assert.equal(result.b2.full_body_readback_verified,true);
   assert.equal(result.b2.second_independent_get_verified,true);
+  assert.equal(result.d1.authenticated_control_plane_d1_read_before_and_after,true);
   assert.equal(result.d1.per_run_write_receipts_read_back,true);
   assert.equal(result.d1.get_request_receipts,2);
   assert.equal(result.d1.put_request_receipts,1);
@@ -73,6 +80,8 @@ test("successful acceptance requires real-operation receipts plus byte-perfect r
   assert.equal(querySeen.body.params[1],baseEnv.B2_ACCOUNT_QUOTA_WORKFLOW_ID);
   assert.match(querySeen.body.sql,/b2_request_quota_workflow_receipt/);
   assert.equal(querySeen.authorization,`Bearer ${testSecrets.CLOUDFLARE_API_TOKEN}`);
+  assert.equal(workerAuthorization,`Bearer ${createHmac("sha256",testSecrets.GEOMACRO_COMMERCE_LEDGER_TOKEN).update("geomacro-control-plane-v1").digest("hex")}`);
+  assert.equal(workerStatusCalls,2);
   const printed=JSON.stringify(result);
   for(const secret of Object.values(testSecrets))assert.equal(printed.includes(secret),false);
   assert.equal(printed.includes("geomacro-evidence/v1/private/runtime-config-acceptance/"),false);
@@ -104,7 +113,7 @@ test("Supabase and money-enabled environments are rejected before any runtime ca
 });
 
 test("no D1 receipt means no PASS, even if the B2 body is byte-perfect",async()=>{
-  let statusCalls=0,stored=null;
+  let statusCalls=0,workerStatusCalls=0,stored=null;
   await assert.rejects(
     ()=>runProductionB2D1RuntimeAcceptance({
       env:baseEnv,now:()=>new Date("2026-10-25T18:00:00.000Z"),
@@ -119,9 +128,15 @@ test("no D1 receipt means no PASS, even if the B2 body is byte-perfect",async()=
         },
         async get(){return Buffer.from(stored);},
       }),
-      fetchImpl:async()=>({ok:true,json:async()=>({success:true,result:[{success:true,results:[
-        {operation:"GET",requests:0},{operation:"PUT",requests:0},
-      ]}]})}),
+      fetchImpl:async(url,init)=>{
+        if(String(url).endsWith("/v1/b2-quota/status")){
+          workerStatusCalls++;
+          return {ok:true,status:200,json:async()=>workerStatusCalls===1?before:after};
+        }
+        return {ok:true,json:async()=>({success:true,result:[{success:true,results:[
+          {operation:"GET",requests:0},{operation:"PUT",requests:0},
+        ]}]})};
+      },
     }),
     (error)=>error.message==="D1_PER_RUN_WRITE_READBACK_RECEIPT_MISSING",
   );
