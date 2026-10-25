@@ -13,20 +13,20 @@ const GENERIC=/\b(?:publisher candidate|source.feed observation|unverified|not s
 // A display credit is not proof that an attribution licence is waived. Keep
 // sources whose licence explicitly requires public credit OUT of a source-hidden
 // card, even though their releases remain in the private/source-linked journal.
-const REQUIRED_VISIBLE_CREDIT=/Open Government Licence|\\bWTO news\\b|Statistics Canada|\\bBeehive\\b|Natural Resources Canada|Eurostat|European Commission|Council of the European Union|European Parliament|\\bCC BY\\b|Creative Commons Attribution/iu;
-const ACTOR_ACTION=/\\b(?:announced|approved|authorized|authorised|urged|warned|called for|appealed for|introduced|launched|cut|raised|lowered|increased|reduced|reported|imposed|proposed|signed|rejected|denied|supported|supports|opened|published|issued|unveiled|condemned|agreed|confirmed)\\b/iu;
-const NOT_ACTOR=/^(?:new|official|publisher|geopolitical|macro|macroeconomic|critical|minerals?|source|trade|policy|interest|market|risk|release|announcement|warning|call|update|reports?|feeds?|unverified)\\b/iu;
+const REQUIRED_VISIBLE_CREDIT=/Open Government Licence|\bWTO news\b|Statistics Canada|\bBeehive\b|Natural Resources Canada|Eurostat|European Commission|Council of the European Union|European Parliament|\bCC BY\b|Creative Commons Attribution/iu;
+const ACTOR_ACTION=/\b(?:announced|approved|authorized|authorised|urged|warned|called for|appealed for|introduced|launched|cut|raised|lowered|increased|reduced|reported|imposed|proposed|signed|rejected|denied|supported|supports|opened|published|issued|unveiled|condemned|agreed|confirmed)\b/iu;
+const NOT_ACTOR=/^(?:new|official|publisher|geopolitical|macro|macroeconomic|critical|minerals?|source|trade|policy|interest|market|risk|release|announcement|warning|call|update|reports?|feeds?|unverified)\b/iu;
 
 /** Stable derived publisher-release headline only; never substitute a feed
  * hostname for the grammatical actor or imply verification of an outcome. */
 export function concreteIntelligenceHeadline(s:StatelessIntelligenceSignal):string|null{
  const actorFirst=intelligenceActorHeadline(s);
  if(!actorFirst.startsWith("Actor not verified:"))return actorFirst;
- const title=s.title.replace(/^Geomacro finds\\s+/iu,"").trim();
+ const title=s.title.replace(/^Geomacro finds\s+/iu,"").trim();
  const changed=s.what_changed.trim();
  if(title.length<24||title.length>200||NOT_ACTOR.test(title)||
-    /\\b(?:publisher candidate|source.feed observation|unverified|not verified|topic unverified)\\b/iu.test(title+changed)||
-    /[<>]|https?:\\/\\//iu.test(title+changed)||
+    /\b(?:publisher candidate|source.feed observation|unverified|not verified|topic unverified)\b/iu.test(title+changed)||
+    /[<>]|https?:\/\//iu.test(title+changed)||
     !ACTOR_ACTION.test(title)||!ACTOR_ACTION.test(changed))return null;
  // Derived titles are authored by a bounded named actor/action extractor,
  // but some genuine actor/action formulations have equivalent (not byte-identical)
@@ -34,12 +34,12 @@ export function concreteIntelligenceHeadline(s:StatelessIntelligenceSignal):stri
  const verb=ACTOR_ACTION.exec(title);
  if(!verb||verb.index<3||verb.index>85)return null;
  const actor=title.slice(0,verb.index).trim();
- if(NOT_ACTOR.test(actor)||actor.split(/\\s+/u).length>9||
-    !/^[\\p{Lu}][\\p{L}\\p{N}'.,\\- ]+$/u.test(actor))return null;
+ if(NOT_ACTOR.test(actor)||actor.split(/\s+/u).length>9||
+    !/^[\p{Lu}][\p{L}\p{N}'.,\- ]+$/u.test(actor))return null;
  // The published change must mention the same actor; no inferred issuer credit.
- const key=actor.replace(/^The\\s+/iu,"").toLocaleLowerCase();
+ const key=actor.replace(/^The\s+/iu,"").toLocaleLowerCase();
  const hay=changed.toLocaleLowerCase();
- if(!hay.includes(key)&&!key.split(/\\s+/u).filter(w=>w.length>=5).some(w=>hay.includes(w)))
+ if(!hay.includes(key)&&!key.split(/\s+/u).filter(w=>w.length>=5).some(w=>hay.includes(w)))
    return null;
  return title;
 }
