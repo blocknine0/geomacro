@@ -54,6 +54,7 @@ export async function putAutomatedInputs(env:Env,body:{schema:string;items:Autom
     "DELETE FROM control_state WHERE key IN ("+chunk.map(()=>"?").join(",")+")"
    ).bind(...chunk));
   }
+  const insertStart=statements.length;
   statements.push(...[...unique].map(([id,e])=>env.DB.prepare(`INSERT INTO control_state(key,value_json,version,updated_at)
    VALUES (?,?,1,?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,
    version=control_state.version+1,updated_at=excluded.updated_at
@@ -72,7 +73,7 @@ export async function putAutomatedInputs(env:Env,body:{schema:string;items:Autom
   if(result.some((r:any)=>r.success===false))throw Error('WRITE');
   return json({ok:true,schema:'geomacro.automated-intelligence-input-ack.v1',
    accepted_ids:[...unique.keys()],unique_inputs:unique.size,
-   inserted_or_resigned:result.slice(0,unique.size).reduce((n:number,r:any)=>n+Number(r.meta?.changes??0),0),
+   inserted_or_resigned:result.slice(insertStart,insertStart+unique.size).reduce((n:number,r:any)=>n+Number(r.meta?.changes??0),0),
    manual_approval_required:false,independent_reviewed:false,commercial_rights_attested:false});
  }catch(error){
   // Authenticated admin endpoint only. Publish a narrow allowlisted reason code
