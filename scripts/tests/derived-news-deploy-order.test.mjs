@@ -60,3 +60,18 @@ test("all readback consumers use the same policy instead of rejecting an entire 
  assert.match(workflow,/isSafeDerivedNewsReadbackSignal\(s\)/u);
  assert.equal([...b2.matchAll(/isSafeDerivedNewsReadbackSignal\(row\)/gu)].length,2);
 });
+
+test("both protected-main writers use the same bounded-retry independent public D1 readback",()=>{
+ const primary=read(".github/workflows/website-derived-news-continuity.yml");
+ const backstop=read(".github/workflows/website-derived-news-cadence-backstop.yml");
+ const verifier=read("scripts/ops/verify-derived-news-public-readback.mjs");
+ assert.match(primary,/node scripts\/ops\/verify-derived-news-public-readback\.mjs/u);
+ assert.match(backstop,/node scripts\/ops\/verify-derived-news-public-readback\.mjs/u);
+ assert.match(verifier,/maxAttempts=4/u);
+ assert.match(verifier,/RETRYABLE_HTTP/u);
+ assert.match(verifier,/DERIVED_NEWS_PUBLIC_READBACK_TRANSPORT_FAILED/u);
+ assert.match(primary,/scripts\/tests\/derived-news-public-readback\.test\.mjs/u);
+ assert.match(backstop,/scripts\/tests\/derived-news-public-readback\.test\.mjs/u);
+ assert.match(verifier,/source_content_logged:false/u);
+ assert.match(verifier,/payments_performed:0/u);
+});
