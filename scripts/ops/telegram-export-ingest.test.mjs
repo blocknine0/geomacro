@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {parseOwnerExportList,assertExportFileIsPrivate}
+import {parseOwnerExportList,assertExportFileIsPrivate,decodeXmlTextOnce}
  from "./telegram-export-ingest.mjs";
 
 test("owner can upload actual Telegram Desktop result.json, or SHA256 named exports",()=>{
@@ -24,4 +24,8 @@ test("refuse any supplied input path resolving inside public repo",()=>{
  const p=process.cwd()+"/private-export.json";
  assert.throws(()=>assertExportFileIsPrivate(p),/TELEGRAM_EXPORT_INPUT_MUST_BE_PRIVATE/);
  assert.throws(()=>assertExportFileIsPrivate("./private-export.json"),/TELEGRAM_EXPORT_INPUT_MUST_BE_PRIVATE/);
+});
+
+test("B2 XML entities are decoded exactly once, never double-unescaped",()=>{
+ assert.equal(decodeXmlTextOnce("&amp;lt; &lt; &amp;amp; &amp;gt;"),"&lt; < &amp; >");
 });
