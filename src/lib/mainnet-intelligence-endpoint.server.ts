@@ -65,6 +65,7 @@ import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
   inferOnDemandFreshnessSeconds, verifyOnDemandOriginalArticlePages, type OnDemandCategory,
 } from "./on-demand-global-discovery.server";
+import { buildSourceGroundedResearchAnswer, type SourceGroundedResearchAnswer } from "./on-demand-research-answer.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const PRODUCT_ID = "geomacro_adaptive_risk_intelligence_v1";
@@ -419,6 +420,7 @@ export const mainnetIntelligenceHandlers = {
           let privatePeerMacroStatus:PrivatePeerMacroResult["status"]="NO_CERTIFIED_MACRO_RIGHTS";
           let privatePeerScoredDimensions=0;
           let privateEvidenceQualification:ReturnType<typeof publicOnDemandQualificationStatus>|null=null;
+          let sourceGroundedResearchAnswer:SourceGroundedResearchAnswer|null=null;
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
@@ -456,6 +458,12 @@ export const mainnetIntelligenceHandlers = {
             const pageProof=await verifyOnDemandOriginalArticlePages(
               privateResult.private_original_review_candidates,
               {maxAgeSeconds:requestedNewsAgeSeconds});
+            sourceGroundedResearchAnswer=buildSourceGroundedResearchAnswer({
+              country_iso3:subject.country_iso3,categories,topics:plan.topics,
+              max_age_seconds:requestedNewsAgeSeconds,
+              query_plan_hash:plan.query_plan_hash,pageProof,question:plan.question_key,
+              now:new Date(privateResult.discovery.checked_at),
+            });
             // No page HTML, original URL, title or publisher identity is
             // serialized. This is only publication-clock consistency, NOT
             // independent facts, commercial source rights or signed risk.
@@ -521,6 +529,7 @@ export const mainnetIntelligenceHandlers = {
           return json({
             ok:false,chargeable:false,payment_required_now:false,
             product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,
+            ...(sourceGroundedResearchAnswer ? {research_answer:sourceGroundedResearchAnswer} : {}),
             on_demand:{
               status:discovery.status,
               searched_in_parallel:discovery.searched_in_parallel,

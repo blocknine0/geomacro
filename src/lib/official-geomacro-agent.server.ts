@@ -11,6 +11,8 @@ import {
 import {GEOMACRO_AGENT_TOOLS,GEOMACRO_CATEGORY_AGENT_PROFILES,geomacroAgentTool,
  geomacroAgentToolToCanonicalQuery} from "./geomacro-agent-tools";
 import {AGENT_QUERY_SCHEMA_VERSION} from "./agent-query-plan";
+import { callCanonicalWithSourceResearchFallback } from "./answer-question-source-fallback.server";
+import { isSourceGroundedResearchAnswer } from "./on-demand-research-answer.server";
 import {GEOMACRO_CAPABILITY_PRICING_VERSION,
  publicCapabilityPricingCatalog} from "./capability-pricing-catalog";
 import {GEOMACRO_PAID_PRICING_PATH} from "./geomacro-paid-pricing-manifest.server";
@@ -307,18 +309,19 @@ export function officialGeomacroAgentHandlers(
    // Exact canonical request resource and canonical body; x402 402 challenge,
    // payment replay, evidence/rights, B2/D1, rate and pricing gates are
    // entirely owned by mainnetIntelligenceHandlers.POST.
-   const headers=new Headers({"content-type":"application/json"});
-   const payment=request.headers.get("payment-signature");
-   if(payment)headers.set("payment-signature",payment);
-   // Preserve only the edge-provided client network identity used by the
-   // original canonical rate limits; never forward arbitrary bearer/cookies.
-   const clientIp=request.headers.get("cf-connecting-ip");
-   if(clientIp)headers.set("cf-connecting-ip",clientIp);
-   const canonical=new Request(
-    new URL(CANONICAL_MAINNET_INTELLIGENCE_PATH,request.url),{
-     method:"POST",headers,body:JSON.stringify(mapped.query),
+   // With no eligible fallback, the canonical adapter preserves `return canonicalPost({request:canonical})`.
+   const canonicalResponse=await callCanonicalWithSourceResearchFallback({
+    request,toolName:mapped.tool,query:mapped.query,canonicalPost,
    });
-   return canonicalPost({request:canonical});
+   if(canonicalResponse.status===422){
+    try{
+     const payload:unknown=await canonicalResponse.clone().json();
+     if(isSourceGroundedResearchAnswer(payload)){
+      return json({...(payload as Record<string,unknown>),error:undefined,ok:true,delivery_status:"RESEARCH_ONLY",research_only_reason:"Independent same-event corroboration, commercial rights and signing remain unverified."},200);
+     }
+    }catch{/* Preserve the canonical pending response if it is not JSON. */}
+   }
+   return canonicalResponse;
   },
  };
 }

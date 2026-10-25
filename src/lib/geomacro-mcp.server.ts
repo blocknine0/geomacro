@@ -2,10 +2,7 @@ import { ZodError } from "zod";
 import {
   encodeX402Header,
 } from "./coinbase-x402.server";
-import {
-  CANONICAL_MAINNET_INTELLIGENCE_PATH,
-  mainnetIntelligenceHandlers,
-} from "./mainnet-intelligence-endpoint.server";
+import { mainnetIntelligenceHandlers } from "./mainnet-intelligence-endpoint.server";
 import {
   GEOMACRO_AGENT_TOOLS,
   GEOMACRO_MCP_PATH,
@@ -22,6 +19,8 @@ import {
 import {
   ensureRiskObjectRuntimePublicKey,
 } from "./risk-object-runtime-public-key.server";
+import { callCanonicalWithSourceResearchFallback } from "./answer-question-source-fallback.server";
+import { isSourceGroundedResearchAnswer } from "./on-demand-research-answer.server";
 import {
   verifyPublicRiskObjectArtifact,
 } from "./risk-object-verification.server";
@@ -409,20 +408,12 @@ async function callPaidTool(
     );
   }
 
-  const headers = new Headers(request.headers);
-  headers.set("content-type", "application/json");
-  headers.delete("content-length");
-  const canonicalRequest = new Request(
-    new URL(CANONICAL_MAINNET_INTELLIGENCE_PATH, request.url),
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify(canonicalQuery),
-    },
-  );
-
-  const canonicalResponse = await mainnetIntelligenceHandlers.POST({
-    request: canonicalRequest,
+  // The shared adapter still posts to CANONICAL_MAINNET_INTELLIGENCE_PATH; it only adds a no-charge research fallback after canonical refusal.
+  const canonicalResponse = await callCanonicalWithSourceResearchFallback({
+    request,
+    toolName,
+    query: canonicalQuery,
+    canonicalPost: mainnetIntelligenceHandlers.POST,
   });
 
   if (canonicalResponse.status === 402) {
@@ -437,8 +428,14 @@ async function callPaidTool(
   }
 
   if (!canonicalResponse.ok) {
+    // A verified-original-page research answer is a successful, explicitly
+    // non-chargeable result. It is not a signed or commercially admitted product.
+    const researchOnly = isSourceGroundedResearchAnswer(payload);
+    const resultPayload = researchOnly
+      ? {...(payload as Record<string, unknown>), error: undefined, ok: true, delivery_status: "RESEARCH_ONLY", research_only_reason: "Independent same-event corroboration, commercial rights and signing remain unverified."}
+      : payload;
     return responseWithCanonicalHeaders(
-      toolResult(id, payload, true),
+      toolResult(id, resultPayload, !researchOnly),
       canonicalResponse,
     );
   }
