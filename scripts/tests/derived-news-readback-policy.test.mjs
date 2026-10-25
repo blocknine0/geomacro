@@ -56,6 +56,9 @@ test("rejects URL/path/HTML leakage in prose or malformed monitored-feed attribu
     osint({date_precision:"day"}),
     osint({geography:"Canada"}),
     osint({title:"Geomacro finds source https://publisher.example/article"}),
+    osint({topic:"https://publisher.example/article"}),
+    osint({development_type:"source example.com/path"}),
+    osint({geography:"https://publisher.example"}),
   ]) assert.equal(isSafeDerivedNewsReadbackSignal(signal),false,JSON.stringify(signal));
 });
 
