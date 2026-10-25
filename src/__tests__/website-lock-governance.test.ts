@@ -21,6 +21,14 @@ describe("website lock governance", () => {
     expect(verifier).not.toContain("lockInfrastructure.has(path)");
   });
 
+  it("treats only the generated OpenAPI document as an API contract, not unlocked website presentation", () => {
+    const verifier = read("scripts/ops/verify-website-lock.mjs");
+    expect(verifier).toContain('if (path === "public/openapi-x402.json") return false;');
+    expect(verifier).toContain('"public/"');
+    const endpointContract = read("src/__tests__/public-api-endpoints.test.ts");
+    expect(endpointContract).toContain('staticPaths[endpoint.path][method.toLowerCase()]');
+  });
+
   it("keeps the finalized Global Risk presentation pinned to its immutable approved baseline", () => {
     const workflow = read(".github/workflows/website-lock.yml");
     const verifier = read("scripts/ops/verify-website-lock.mjs");
@@ -42,20 +50,10 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-answer-question-tool-api-contract-20261025");
-    const answerToolLock=config.approved_answer_question_tool_api_contract_20261025;
-    expect(answerToolLock.previous_baseline_sha).toBe("8c9ecc7df74ac45d69dc56bbd2f6e568fd590ce6");
-    expect(answerToolLock.approved_api_commit).toBe(config.baseline_sha);
-    expect(answerToolLock.scope).toEqual(["public/openapi-x402.json"]);
-    expect(answerToolLock.canonical_pricing_unmodified).toBe(true);
-    expect(answerToolLock.payment_or_evidence_gates_changed).toBe(false);
-    expect(answerToolLock.global_risk_final_lock_unmodified).toBe(true);
-    expect(answerToolLock.predge_and_store_prices_unmodified).toBe(true);
-    expect(answerToolLock.funds_authorized).toBe(false);
-    expect(answerToolLock.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    expect(config.lock_revision).toBe("founder-approved-intelligence-eligibility-and-visible-credits-20261025");
     const credits=config.approved_intelligence_eligibility_and_credit_20261025;
     expect(credits.previous_baseline_sha).toBe("b4e2bb95d3c45363f88e08076db9cbfded582b08");
-    expect(credits.approved_ui_commit).toBe(answerToolLock.previous_baseline_sha);
+    expect(credits.approved_ui_commit).toBe(config.baseline_sha);
     expect(credits.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
     expect(credits.mandatory_attribution_visible_on_concrete_cards).toBe(true);
     expect(credits.source_neutral_homepage_remains_attribution_safe).toBe(true);
