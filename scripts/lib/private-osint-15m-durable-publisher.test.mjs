@@ -17,6 +17,7 @@ function simulate(){
     d1_exact_readback_verified:true,
     native_feed_to_first_durable_write_within_15m:b.items.length,
     native_feed_to_first_durable_write_over_15m:0,
+    independent_verification_required_for_ingestion:false,
     original_page_verified:false,paid_product_authorized:false,raw_upstream_stored:false});
   }
   return Response.json({ok:true,schema:PRIVATE_OSINT_DURABLE_SCHEMA,retention_hours:25,
