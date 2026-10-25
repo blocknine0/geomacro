@@ -45,14 +45,23 @@ export function concreteIntelligenceHeadline(s:StatelessIntelligenceSignal):stri
 }
 const TOPIC_SENSITIVE=/\b(?:alleged|allegation|reported|announced|urged|warned|proposed|planned|rejected|approved|agreed|cut|raised|increased|signed|supported|supports|launched|issued|imposed|introduced|lowered|reduced|published|opened|unveiled|denied|confirmed|condemned|authorized|authorised|agreed)\b/iu;
 export function isConcretePublicIntelligence(s:StatelessIntelligenceSignal):boolean{
- if(!s||s.status!=="official_release_observed_unscored"||
+ if(!s||!["official_release_observed_unscored","osint_feed_observed_unverified"].includes(s.status)||
     !["geopolitics","macro","rare_earth"].includes(s.category)||
     !Array.isArray(s.sources_credited)||s.sources_credited.length>2||
     s.sources_credited.some(credit=>typeof credit!=="string"||REQUIRED_VISIBLE_CREDIT.test(credit))||
     s.severity!==null||s.same_event_corrob_verified!==false)return false;
+ // Source-reported OSINT can be shown as a REPORT, never as independently
+ // corroborated. Exclude feeds requiring display attribution when the owner
+ // has requested source-hidden cards; do not reprint their raw headlines.
+ if(s.status==="osint_feed_observed_unverified"&&
+   (s.development_type!=="unverified OSINT feed observation"||
+    s.sources_credited.length!==1||
+    !s.sources_credited[0].startsWith("Monitored feed: ")||
+    /(?:news\.un\.org|press\.un\.org|gov\.uk|wto\.org|statcan\.gc\.ca|beehive\.govt\.nz|europa\.eu)/iu.test(s.sources_credited[0])))
+   return false;
  const headline=concreteIntelligenceHeadline(s),change=intelligenceActorChange(s);
  if(!headline)return false;
- if(headline.length<22||headline.length>220||change.length<30||change.length>650||
+ if(headline.length<18||headline.length>220||change.length<30||change.length>650||
     GENERIC.test(headline)||GENERIC.test(change)||GENERIC.test(s.topic)||
     /https?:\/\/|www\.|[<>]/iu.test(headline+change)||
     !ACTOR_ACTION.test(headline+" "+change))return false;

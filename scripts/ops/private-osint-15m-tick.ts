@@ -4,14 +4,16 @@
  * source-native RSS/Atom clocks and D1 durable first-seen readback.
  * No customer endpoint, original titles/URLs, paid rights or fake verification.
  */
-import {createHmac} from "node:crypto";
+import {createHmac,createHash} from "node:crypto";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {persistPrivateOsintBatch} from "../lib/private-osint-15m-durable-publisher.mjs";
 import {privateGdeltGlobalDiscovery} from "../lib/private-osint-gdelt-global.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
-import {officialWebsiteCandidateFromOsint,publishPrivateOsintWebsiteSignals} from "../lib/private-osint-website-bridge.mjs";
+import {officialWebsiteCandidateFromOsint,isKnownOfficialWebsiteFeed,unverifiedWebsiteSignalFromOsint,publishPrivateOsintWebsiteSignals} from "../lib/private-osint-website-bridge.mjs";
+import {PRIVATE_OSINT_TOPICS} from "../lib/private-osint-global-sources.mjs";
+import {actorActionNewsObservation} from "../../src/lib/release-news-observation.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client.ts";
 import {isConcretePublicIntelligence} from "../../src/lib/intelligence-concrete-publication.ts";
@@ -26,18 +28,42 @@ const timestamp=new Date();
 // origin/permalink rules. Unverified private-only rows remain in private D1.
 const originalCandidates=[];
 const candidateIds=new Set();
-const directVerifiedNewsIds=new Set();
+// At most 300 most recent concrete reports from each lane; no publisher
+// titles/links ever enter public D1 and no extra fetch or provider charge.
+const observedByCategory=new Map(["geopolitics","macro","rare_earth"].map(c=>[c,new Map()]));
 const result=await collectPrivateOsint15m({
  now:timestamp,normalize:normalizeReusableNewsJson,
  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
  onOriginalCandidate:raw=>{
   const eligible=officialWebsiteCandidateFromOsint(raw,timestamp.getTime());
-  if(!eligible)return;
-  directVerifiedNewsIds.add(raw.news_id);
-  const key=eligible.category+"|"+eligible.articleUrl;
-  if(!candidateIds.has(key)){
-   candidateIds.add(key);originalCandidates.push(eligible);
+  if(eligible){
+   const key=eligible.category+"|"+eligible.articleUrl;
+   if(!candidateIds.has(key)){
+    candidateIds.add(key);originalCandidates.push(eligible);
+   }
+   return;
   }
+  // An invalid first-party pinned permalink NEVER downgrades to a looser
+  // media-source observation. OSINT observations are source reports only.
+  if(isKnownOfficialWebsiteFeed(raw.source_url,raw.category)||
+     typeof raw.article_url!=="string"||
+     !PRIVATE_OSINT_TOPICS[raw.category]?.test(raw.title))return;
+  const event=actorActionNewsObservation(raw.title);
+  if(!event)return;
+  const lane=observedByCategory.get(raw.category);
+  // Collapse one original item repeated in multiple search/feed queries.
+  const identity=raw.category+"|"+raw.article_url;
+  if(lane.has(identity))return;
+  const row={...raw,news_id:"news-"+createHash("sha256").update(identity).digest("hex")};
+  if(lane.size>=300){
+   let oldestKey=null,oldestDate=null;
+   for(const [k,value] of lane)if(oldestDate===null||value.published_at<oldestDate){
+    oldestKey=k;oldestDate=value.published_at;
+   }
+   if(oldestDate!==null&&raw.published_at<=oldestDate)return;
+   lane.delete(oldestKey);
+  }
+  lane.set(identity,{...row,event});
  },
 });
 const scanned=result.summary.source_checks;
@@ -68,10 +94,28 @@ for(let n=0;balanced.length<200&&lanes.some(l=>n<l.length);n++)
  for(const lane of lanes)if(lane[n]&&balanced.length<200)balanced.push(lane[n]);
 const firstPartySignals=deriveStatelessSignals(balanced,Date.now(),
  {websiteDelay:false,maxSignals:200}).filter(s=>s.status==="official_release_observed_unscored");
-// Never export unverified source-feed observations as website Intelligence.
-// Private discovery and its counts remain intact; only concrete originals
-// without mandatory attribution are accepted for public card publication.
-const websiteSignals=firstPartySignals.filter(isConcretePublicIntelligence);
+// Include concrete OSINT source reports without upgrading their verification.
+// No generic publisher-candidate card, no third-party headline copy or links.
+const observed=[...observedByCategory.values()].flatMap(lane=>[...lane.values()])
+ .sort((a,b)=>b.published_at.localeCompare(a.published_at));
+const osintSignals=observed.map(row=>
+ unverifiedWebsiteSignalFromOsint(row,Date.now(),()=>row.event))
+ .filter(Boolean).filter(isConcretePublicIntelligence);
+// Fair latest-first scheduling; small categories cannot be buried by a large
+// geopolitics batch, and the public journal retains up to 72h.
+const eligible=[...firstPartySignals.filter(isConcretePublicIntelligence),...osintSignals]
+ .sort((a,b)=>b.published_at.localeCompare(a.published_at));
+const publishingLanes=["geopolitics","macro","rare_earth"].map(cat=>
+ eligible.filter(row=>row.category===cat));
+const websiteSignals=[];
+const publishedIds=new Set();
+const publicationNow=Date.now();
+for(let n=0;websiteSignals.length<200&&publishingLanes.some(l=>n<l.length);n++)
+ for(const lane of publishingLanes)if(lane[n]&&websiteSignals.length<200&&
+   !publishedIds.has(lane[n].id)&&
+   Date.parse(lane[n].published_at)>=publicationNow-72*3600000+120000){
+  publishedIds.add(lane[n].id);websiteSignals.push(lane[n]);
+ }
 const website=await publishPrivateOsintWebsiteSignals({
  signals:websiteSignals,
  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
@@ -117,14 +161,15 @@ console.log(JSON.stringify({
   website_release_eligibility:{
     private_first_party_original_links:originalCandidates.length,
     official_topic_selected:firstPartySignals.length,
+    concrete_osint_reports:osintSignals.length,
     concrete_event_eligible:websiteSignals.length,
     concrete_by_category:Object.fromEntries(
       ["geopolitics","macro","rare_earth"].map(key=>
         [key,websiteSignals.filter(row=>row.category===key).length])),
-    candidate_generic_hidden:result.items.length-websiteSignals.length,
+    candidate_generic_hidden:observed.length-osintSignals.length,
     required_attribution_not_removed:true,
   },
-  website_unverified_feed_candidates:0,
+  website_unverified_feed_candidates:observed.length-osintSignals.length,
  private_osint_d1_persisted:true,
  private_durable_first_seen_clock_verified:true,
  independent_verification_required_for_ingestion:false,

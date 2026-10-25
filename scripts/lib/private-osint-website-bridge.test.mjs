@@ -128,6 +128,27 @@ test("unverified native-dated source-feed observations become source-identified 
  }
 });
 
+test("specific native-dated source reports use observed facts across three categories",()=>{
+ const examples=[
+  ["geopolitics","United States announced a new security policy","United States announced a new security policy across border agencies."],
+  ["macro","Federal Reserve announced new monetary policy measures","Federal Reserve announced new monetary policy measures affecting lending conditions."],
+  ["rare_earth","Canada announced a new critical minerals project","Canada announced a new critical minerals project to develop mineral processing."],
+ ];
+ for(const [category,headline,change] of examples){
+  const row={news_id:"news-"+"b".repeat(64),category,
+   source_url:"https://news.google.com/rss/search?q=economic",
+   title:"Named actor announces new action (source report)",
+   published_at:"2026-10-25T11:40:00.000Z"};
+  const signal=unverifiedWebsiteSignalFromOsint(row,now,()=>({headline,change}));
+  assert.ok(signal,category);
+  assert.equal(signal.status,"osint_feed_observed_unverified");
+  assert.equal(signal.title,"Geomacro finds "+headline);
+  assert.match(signal.what_changed,/monitored source feed reports/u);
+  assert.ok(!JSON.stringify(signal).includes(row.title));
+  assert.equal(signal.sources_credited.length,1);
+  assert.equal(signal.same_event_corrob_verified,false);
+ }
+});
 test("unverified source observations do not claim actor from source host",()=>{
  const row={news_id:"news-"+"a".repeat(64),source_url:"https://example.gov/rss",category:"macro",
   title:"A monthly central bank update reports financial conditions across regions",
