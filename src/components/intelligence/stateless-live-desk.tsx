@@ -94,9 +94,10 @@ function Story({ signal, checkedAt, saved, onSave }: {signal: StatelessIntellige
         </div>
         <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{look.reading}</p>
         <h3 className="mt-2 text-xl font-semibold leading-snug tracking-tight text-foreground">{displayProse(heading)}</h3>
-        <p className="mt-3 text-sm leading-relaxed text-foreground/80">{displayProse(intelligenceActorChange(signal))}</p>
+        <p className="mt-4 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">What changed</p>
+        <p className="mt-1 text-sm leading-relaxed text-foreground/80">{displayProse(intelligenceActorChange(signal))}</p>
         <div className="mt-5 rounded-xl border border-border/60 bg-muted/35 p-4">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">GEOMACRO / WHY IT MATTERS</p>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">Geomacro analysis / Why it matters</p>
           <p className="mt-2 text-sm leading-6 text-foreground/85">{displayProse(signal.why_it_matters)}</p>
         </div>
         <details className="mt-4 border-b border-border/60 pb-4">
