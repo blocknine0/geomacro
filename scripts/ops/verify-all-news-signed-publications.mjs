@@ -6,6 +6,35 @@ import {pathToFileURL} from 'node:url';
 import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client.ts';
 import {automatedInputContent,automatedInputId,inputHash,verifyAutomatedInput} from '../../src/lib/automated-intelligence-input.ts';
 const URL='https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/intelligence-publications';
+
+const TRANSIENT_READ_STATUSES=new Set([408,425,429,500,502,503,504]);
+const PUBLIC_READ_ATTEMPTS=3;
+const waitBeforeRetry=attempt=>new Promise(resolve=>setTimeout(resolve,100*attempt));
+async function fetchSignedNewsPage(url,fetchImpl){
+ for(let attempt=1;attempt<=PUBLIC_READ_ATTEMPTS;attempt++){
+  let response;
+  try{
+   response=await fetchImpl(url,{method:'GET',redirect:'manual',cache:'no-store',
+    headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
+  }catch(error){
+   // Redirects are policy failures, not transient transport errors.
+   if(error instanceof TypeError&&/redirect/iu.test(error.message))
+    throw Error('SIGNED_NEWS_HTTP_UNAVAILABLE');
+   if(attempt===PUBLIC_READ_ATTEMPTS)throw Error('SIGNED_NEWS_HTTP_UNAVAILABLE');
+   await waitBeforeRetry(attempt);continue;
+  }
+  if(response.redirected===true||(response.status>=300&&response.status<400)){
+   try{await response.body?.cancel();}catch{/* discard redirect response */}
+   throw Error('SIGNED_NEWS_HTTP_UNAVAILABLE');
+  }
+  if(response.status===200)return response;
+  if(!TRANSIENT_READ_STATUSES.has(response.status)||attempt===PUBLIC_READ_ATTEMPTS)
+   throw Error('SIGNED_NEWS_HTTP_UNAVAILABLE');
+  try{await response.body?.cancel();}catch{/* discard transient response */}
+  await waitBeforeRetry(attempt);
+ }
+ throw Error('SIGNED_NEWS_HTTP_UNAVAILABLE');
+}
 export function publicationVerificationKeys(env=process.env){
  const keys=JSON.parse(env.RISK_OBJECT_VERIFY_KEYS_JSON||'{}');
  const id=env.RISK_OBJECT_SIGNING_KEY_ID,pub=env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64;
@@ -35,9 +64,7 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
   const seen=new Set();let signed=0,original=0,current=0,currentEligible=0;
   let journalChanged=false;
   for(let offset=0;offset<600;offset+=40){
-   const response=await fetchImpl(URL+'?offset='+offset,{method:'GET',redirect:'error',cache:'no-store',
-    headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
-   if(response.status!==200||response.redirected)throw Error('SIGNED_NEWS_HTTP_UNAVAILABLE');
+   const response=await fetchSignedNewsPage(URL+'?offset='+offset,fetchImpl);
    const text=await response.text();if(text.length>500000)throw Error('SIGNED_NEWS_RESPONSE_OVERSIZE');
    const page=JSON.parse(text);
    if(page.ok!==true||page.schema!=='geomacro.public-signed-derived-news.v1'||
