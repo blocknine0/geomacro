@@ -13,7 +13,7 @@ import {privateOsintGlobalSources,PRIVATE_OSINT_TOPICS,privateOsintContinentCove
 export const PRIVATE_OSINT_TARGET_MINUTES=15;
 export const PRIVATE_OSINT_POLL_MINUTES=5;
 export const PRIVATE_OSINT_MAX_SOURCES=512;
-export const PRIVATE_OSINT_MAX_RESULTS_PER_TICK=320;
+export const PRIVATE_OSINT_MAX_RESULTS_PER_TICK=768;
 const DOMAINS=["geopolitics","macro","rare_earth"];
 export async function collectPrivateOsint15m({
   now=new Date(),fetchImpl=fetch,registry=privateOsintGlobalSources(),
