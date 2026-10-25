@@ -13,7 +13,7 @@ const GENERIC=/\b(?:publisher candidate|source.feed observation|unverified|not s
 // A display credit is not proof that an attribution licence is waived. Keep
 // sources whose licence explicitly requires public credit OUT of a source-hidden
 // card, even though their releases remain in the private/source-linked journal.
-const REQUIRED_VISIBLE_CREDIT=/Open Government Licence|\bWTO news\b|Statistics Canada|\bBeehive\b|Natural Resources Canada|Eurostat|European Commission|Council of the European Union|European Parliament|\bCC BY\b|Creative Commons Attribution/iu;
+const REQUIRED_VISIBLE_CREDIT=/Open Government Licence|\bWTO news\b|Statistics Canada|UN News|United Nations|United Nations Office at Geneva|\bBeehive\b|Natural Resources Canada|Eurostat|European Commission|Council of the European Union|European Parliament|\bCC BY\b|Creative Commons Attribution/iu;
 const ACTOR_ACTION=/\b(?:announced|approved|authorized|authorised|urged|warned|called for|appealed for|introduced|launched|cut|raised|lowered|increased|reduced|reported|imposed|proposed|signed|rejected|denied|supported|supports|opened|published|issued|unveiled|condemned|agreed|confirmed)\b/iu;
 const NOT_ACTOR=/^(?:new|official|publisher|geopolitical|macro|macroeconomic|critical|minerals?|source|trade|policy|interest|market|risk|release|announcement|warning|call|update|reports?|feeds?|unverified)\b/iu;
 
@@ -43,7 +43,7 @@ export function concreteIntelligenceHeadline(s:StatelessIntelligenceSignal):stri
    return null;
  return title;
 }
-const TOPIC_SENSITIVE=/\b(?:alleged|allegation|reported|announced|urged|warned|proposed|planned|rejected|approved|agreed|cut|raised|increased|signed|supported|supports|launched|issued|imposed|introduced|lowered|reduced|published|opened|unveiled|denied)\b/iu;
+const TOPIC_SENSITIVE=/\b(?:alleged|allegation|reported|announced|urged|warned|proposed|planned|rejected|approved|agreed|cut|raised|increased|signed|supported|supports|launched|issued|imposed|introduced|lowered|reduced|published|opened|unveiled|denied|confirmed|condemned|authorized|authorised|agreed)\b/iu;
 export function isConcretePublicIntelligence(s:StatelessIntelligenceSignal):boolean{
  if(!s||s.status!=="official_release_observed_unscored"||
     !["geopolitics","macro","rare_earth"].includes(s.category)||
