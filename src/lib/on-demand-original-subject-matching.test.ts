@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 import {
   discoverOnDemandGlobal, discoverOnDemandForPrivateQualification,
-  matchesRequestedTopic,
+  matchesRequestedTopic, buildCountryScopedGdeltTerms,
 } from "./on-demand-global-discovery.server";
 
 const now=new Date("2026-10-11T12:00:00Z");
@@ -55,6 +55,27 @@ describe("fixed country qualification for original publisher evidence",()=>{
     title,category,topics,expected,
   )=>{
     expect(matchesRequestedTopic(title,category,topics)).toBe(expected);
+  });
+  it("builds a combined bounded GDELT query for every reviewed category topic",()=>{
+    const geo=buildCountryScopedGdeltTerms("geopolitics",[
+      "sanctions_restrictions","conflict_geopolitics","political_governance",
+    ]);
+    expect(geo).toContain("sanctions");
+    expect(geo).toContain("ceasefire");
+    expect(geo).toContain("parliament");
+    const macro=buildCountryScopedGdeltTerms("macro",[
+      "macro_risk","sovereign_risk","fx_external_risk",
+    ]);
+    expect(macro).toContain("inflation");
+    expect(macro).toContain("manufacturing");
+    expect(macro).toContain("sovereign debt");
+    expect(macro).toContain("foreign exchange");
+    expect(macro).toContain("FX reserves");
+    expect(macro).not.toContain("critical raw materials");
+    const minerals=buildCountryScopedGdeltTerms("rare_earth",["critical_minerals"]);
+    for(const term of ["gallium","germanium","antimony","tungsten","refining","permanent magnets"])
+      expect(minerals).toContain(term);
+    expect(buildCountryScopedGdeltTerms("macro",[])).toBeTruthy();
   });
   it("recognizes original Fed discount-rate policy as macro, not FX or mineral evidence",()=>{
     const genuineTitle="Minutes of the Board's discount rate meetings on August 17, September 9, and September 16, 2026";
