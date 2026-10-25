@@ -35,8 +35,16 @@ export async function publishAutomatedIntelligenceInputs({fetchImpl=fetch,env=pr
   throw Error('AUTOMATED_INPUT_INDEX_INVALID');
  const existing=new Set<string>(index.ids),unique=new Map<string,typeof retained[number]>();
  for(const signal of retained)unique.set(await automatedInputId(signal),signal);
+ if(unique.size>600)throw Error('AUTOMATED_INPUT_RETAINED_JOURNAL_OVERSIZE');
+ const retainedIds=[...unique.keys()];
  let signed=0;
  const pending=[...unique].filter(([id])=>!existing.has(id));
+ // Even a no-op run reconciles orphaned revisions from prior journal windows.
+ if(pending.length===0){
+  const ack=await call(ENDPOINT,{schema:'geomacro.automated-intelligence-input-batch.v1',retained_ids:retainedIds,items:[]});
+  if(ack.schema!=='geomacro.automated-intelligence-input-ack.v1'||!Array.isArray(ack.accepted_ids)||ack.accepted_ids.length!==0)
+   throw Error('AUTOMATED_INPUT_RECONCILIATION_ACK_INVALID');
+ }
  for(let offset=0;offset<pending.length;){
   const group:typeof pending=[],items:AutomatedInputEnvelope[]=[];
   for(const entry of pending.slice(offset,offset+40)){
@@ -47,11 +55,12 @@ export async function publishAutomatedIntelligenceInputs({fetchImpl=fetch,env=pr
     source_run_id:env.GITHUB_RUN_ID!,source_sha:env.GITHUB_SHA!,signal,
     independent_reviewed:false,commercial_rights_attested:false,scored:false});
    await verifyAutomatedInput(envelope,keys,now.getTime());
-   const size=new TextEncoder().encode(JSON.stringify({schema:'geomacro.automated-intelligence-input-batch.v1',items:[...items,envelope]})).byteLength;
+   const size=new TextEncoder().encode(JSON.stringify({schema:'geomacro.automated-intelligence-input-batch.v1',
+    retained_ids:retainedIds,items:[...items,envelope]})).byteLength;
    if(size>250000){if(!items.length)throw Error('AUTOMATED_INPUT_ITEM_TOO_LARGE');break;}
    items.push(envelope);group.push(entry);
   }
-  const ack=await call(ENDPOINT,{schema:'geomacro.automated-intelligence-input-batch.v1',items});
+  const ack=await call(ENDPOINT,{schema:'geomacro.automated-intelligence-input-batch.v1',retained_ids:retainedIds,items});
   const expected=group.map(([id])=>id).sort();
   if(ack.schema!=='geomacro.automated-intelligence-input-ack.v1'||!Array.isArray(ack.accepted_ids)||
    JSON.stringify([...ack.accepted_ids].sort())!==JSON.stringify(expected))throw Error('AUTOMATED_INPUT_ACK_MISMATCH');
