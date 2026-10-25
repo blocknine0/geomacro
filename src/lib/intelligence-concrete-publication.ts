@@ -14,7 +14,7 @@ const GENERIC=/\b(?:publisher candidate|source.feed observation|unverified|not s
 // sources whose licence explicitly requires public credit OUT of a source-hidden
 // card, even though their releases remain in the private/source-linked journal.
 const REQUIRED_VISIBLE_CREDIT=/Open Government Licence|\bWTO news\b|Statistics Canada|UN News|United Nations|United Nations Office at Geneva|\bBeehive\b|Natural Resources Canada|Eurostat|European Commission|Council of the European Union|European Parliament|\bCC BY\b|Creative Commons Attribution/iu;
-const ACTOR_ACTION=/\b(?:announced|approved|authorized|authorised|urged|warned|called for|appealed for|introduced|launched|cut|raised|lowered|increased|reduced|reported|imposed|proposed|signed|rejected|denied|supported|supports|opened|published|issued|unveiled|condemned|agreed|confirmed)\b/iu;
+const ACTOR_ACTION=/\b(?:announced|approved|authorized|authorised|urged|warned|called for|appealed for|introduced|launched|cut|raised|lowered|increased|reduced|reported|imposed|proposed|signed|rejected|denied|supported|supports|opened|published|issued|unveiled|condemned|agreed|confirmed|announces|approves|urges|warns|reports|says|said|told|issued|launches|supports|calls for|condemns|concludes|released|was approved)\b/iu;
 const NOT_ACTOR=/^(?:new|official|publisher|geopolitical|macro|macroeconomic|critical|minerals?|source|trade|policy|interest|market|risk|release|announcement|warning|call|update|reports?|feeds?|unverified)\b/iu;
 
 /** Stable derived publisher-release headline only; never substitute a feed
@@ -55,7 +55,7 @@ export function isConcretePublicIntelligence(s:StatelessIntelligenceSignal):bool
  if(headline.length<22||headline.length>220||change.length<30||change.length>650||
     GENERIC.test(headline)||GENERIC.test(change)||GENERIC.test(s.topic)||
     /https?:\/\/|www\.|[<>]/iu.test(headline+change)||
-    !TOPIC_SENSITIVE.test(headline+" "+change))return false;
+    !ACTOR_ACTION.test(headline+" "+change))return false;
  const ms=Date.parse(s.published_at);
  return Number.isFinite(ms)&&s.title.startsWith("Geomacro finds ")&&
    typeof s.why_it_matters==="string"&&s.why_it_matters.length>=30;
