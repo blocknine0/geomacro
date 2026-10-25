@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
-import {officialWebsiteCandidateFromOsint,unverifiedWebsiteSignalFromOsint,publishPrivateOsintWebsiteSignals}
- ,privateWebsiteRetentionPriority,privateWebsiteRetentionNewestFirst from "./private-osint-website-bridge.mjs";
+import {officialWebsiteCandidateFromOsint,unverifiedWebsiteSignalFromOsint,publishPrivateOsintWebsiteSignals,
+ privateWebsiteRetentionPriority,privateWebsiteRetentionNewestFirst} from "./private-osint-website-bridge.mjs";
 
 const now=Date.parse("2026-10-25T12:00:00.000Z");
 const rows=[
