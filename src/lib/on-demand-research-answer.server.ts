@@ -19,6 +19,13 @@ const CATEGORY_LABEL: Readonly<Record<OnDemandCategory, string>> = {
   rare_earth: "Critical Minerals",
 };
 
+const NON_NEWS_QUESTION = /\b(?:how much|what(?:'s| is| was| were)\s+(?:the\s+)?(?:(?:current|latest)\s+)?(?:inflation rate|gdp(?: growth)?|exchange rate|interest rate|unemployment rate|price|value|amount|percentage|percent|volume|output|production|reserves)|historical|annual data|quarterly data|time series|data series|in\s+(?:19|20)\d{2}|risk score|risk index|gri|forecast|predict(?:ion)?)\b/iu;
+
+/** Do not substitute news observations for a numeric, historical, forecast or scored request. */
+export function supportsSourceGroundedResearchQuestion(question: string | null | undefined): boolean {
+  return !question || !NON_NEWS_QUESTION.test(question);
+}
+
 export type SourceGroundedResearchAnswer = Readonly<{
   schema: "geomacro.source-grounded-research-answer.v1";
   status: "UNVERIFIED_RESEARCH_ONLY";
@@ -63,6 +70,7 @@ export function buildSourceGroundedResearchAnswer(input: Readonly<{
   country_iso3: string;
   categories: readonly OnDemandCategory[];
   topics: readonly string[];
+  question?: string | null;
   max_age_seconds?: number;
   query_plan_hash: string;
   pageProof: PrivatePageDateResult;
@@ -86,6 +94,7 @@ export function buildSourceGroundedResearchAnswer(input: Readonly<{
     input.categories.some(category => !Object.hasOwn(CATEGORY_LABEL, category)) ||
     !Array.isArray(input.topics) ||
     input.topics.length < 1 ||
+    !supportsSourceGroundedResearchQuestion(input.question) ||
     !input.pageProof ||
     !Array.isArray(input.pageProof.verified_candidates)
   ) return null;
