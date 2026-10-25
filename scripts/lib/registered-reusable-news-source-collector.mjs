@@ -113,7 +113,7 @@ function feedBlocks(source,body,allowRdfNativeDates=false,maxFeedBytes=MAX_FEED_
       return data.results.slice(0,70).flatMap(x=>{
         const title=typeof x?.title==="string"?cleanText(x.title):"";
         const native=typeof x?.public_timestamp==="string"?x.public_timestamp:null;
-        return title.length>=25&&title.length<=250&&native?[{title,native}]:[];
+        return title.length>=25&&title.length<=250&&native?[{title,native,articleUrl:null}]:[];
       });
     }catch{return null}
   }
@@ -132,7 +132,9 @@ function feedBlocks(source,body,allowRdfNativeDates=false,maxFeedBytes=MAX_FEED_
       (allowRdfNativeDates&&/<rdf:RDF\b/iu.test(body)&&
        /xmlns:dc=["']http:\/\/purl\.org\/dc\/elements\/1\.1\/["']/iu.test(body)
         ?entry.match(/<dc:date\b[^>]*>([^<]+)<\/dc:date>/iu)?.[1]?.trim():null);
-    result.push({title,native});
+    const rssLink=xmlTag(entry,"link");
+    const atomLink=entry.match(/<link\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*\/?\s*>/iu)?.[1]??null;
+    result.push({title,native,articleUrl:rssLink??atomLink});
     if(result.length>=100)break;
   }
   return result;
@@ -165,13 +167,14 @@ export async function collectRegisteredReusableNews({
   perCategory=8,normalize,resolveCountry=()=>null,networkConcurrency=6,
   topicPatterns=TOPICS,allowRdfNativeDates=false,
   maxFeedBytes=MAX_FEED_BYTES,
-  deduplicateIndexItems=false,
+  deduplicateIndexItems=false,onOriginalCandidate=null,
 }={}){
   if(typeof normalize!=="function"||typeof resolveCountry!=="function"||
      !(now instanceof Date)||!Number.isFinite(now.getTime())||
      !Number.isSafeInteger(networkConcurrency)||networkConcurrency<1||networkConcurrency>6||
      typeof allowRdfNativeDates!=="boolean"||
      typeof deduplicateIndexItems!=="boolean"||
+     !(onOriginalCandidate===null||typeof onOriginalCandidate==="function")||
      !Number.isSafeInteger(maxFeedBytes)||maxFeedBytes<1||maxFeedBytes>1024*1024||
      CATEGORY.some(c=>!(topicPatterns?.[c] instanceof RegExp)||/[gy]/u.test(topicPatterns[c].flags)))
     throw Error("REUSABLE_NEWS_COLLECTOR_INPUT_INVALID");
@@ -224,7 +227,15 @@ export async function collectRegisteredReusableNews({
         const safe={...normalized,id:"news-"+id};
         if(!seen.has(id)){
           seen.add(id);
-          if(items.length<MAX_ITEMS_PER_RUN){items.push(safe);candidates++;domainCandidates[category]++}
+          if(items.length<MAX_ITEMS_PER_RUN){
+             items.push(safe);candidates++;domainCandidates[category]++;
+             // In-memory only. The website bridge separately validates pinned
+             // original publisher links; no original content enters private D1.
+             if(onOriginalCandidate&&item.articleUrl)onOriginalCandidate({
+               source_url:s.url,category,title:item.title,
+               article_url:item.articleUrl,published_at:at,
+             });
+           }
           else capacitySkipped++;
         }
       }
