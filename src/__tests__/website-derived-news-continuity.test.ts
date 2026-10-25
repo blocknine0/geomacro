@@ -123,6 +123,14 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(route).toContain("derived_news_topic_policy_revision: DERIVED_NEWS_TOPIC_POLICY_REVISION");
   });
 
+  it("indexes the independent first-seen clock used by bounded retention cleanup",()=>{
+    const migration=readFileSync(
+      "workers/control-plane/migrations/0030_website_derived_first_seen_index.sql","utf8");
+    expect(migration).toContain(
+      "CREATE INDEX IF NOT EXISTS idx_website_derived_intelligence_first_seen");
+    expect(migration).toContain("ON website_derived_intelligence (first_seen_at DESC)");
+  });
+
   it("keeps a single empty batch as the only retention sweep and updates changed prose",async()=>{
     const {data,counters,env}=db();
     const first=sample();
