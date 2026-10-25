@@ -178,7 +178,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(verifyDerivedStory({...sample(),what_changed:"Official release https://publisher.example.com"},NOW)).toBe(false);
   });
   it("deduplicates on stable derived-only ID across scheduled runs and reads back",async()=>{
-    const {data,env}=db(); const body={schema:"geomacro.website-derived-news-batch.v1",signals:[
+    const {data,counters,env}=db(); const body={schema:"geomacro.website-derived-news-batch.v1",signals:[
       sample(),sample("geopolitics","2026-10-12T18:10:00.000Z"),
     ]};
     expect((await publishDerivedStories(env,body,NOW)).status).toBe(200);
