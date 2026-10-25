@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, Bookmark, Clock3, RefreshCw, Search } from "lucide-react";
+import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, Gem } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
@@ -20,7 +20,7 @@ const displayProse = (text: string) => text.replace(/\s*\u2014\s*/gu, "; ");
 const REFRESH_MS = 2 * 60_000;
 // Three complete pages per six minutes use the same bounded mean request rate
 // as the previous single page every two minutes, without silently dropping 350 rows.
-const JOURNAL_REFRESH_MS = 6 * 60_000;
+const JOURNAL_REFRESH_MS = 2 * 60_000;
 const OGL_URL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
 type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
 // Stable default avoids restarting fetch effects when legacy callers omit this prop.
@@ -48,34 +48,80 @@ function formatInstant(value: string): string {
     : "Original publication time unavailable";
 }
 
-function Story({ signal, checkedAt, saved, onSave }: {signal: StatelessIntelligenceSignal;checkedAt: number;saved: boolean;onSave: () => void}) {
+/** An issuer credit identifies the publishing source, not the event actor. */
+function sourceLabel(signal: StatelessIntelligenceSignal): string {
+  const credit = signal.sources_credited[0]?.trim();
+  if (!credit) return "Source not independently identified";
+  if (credit.includes("Open Government Licence")) return "UK Government";
+  if (credit.includes("© European Union")) return "Council of the European Union";
+  if (credit.includes("; first-party")) return credit.split(";")[0];
+  return credit;
+}
+const CATEGORY_STYLE = {
+  geopolitics: { bar: "bg-rose-500", icon: "text-rose-500", marker: "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300", reading: "GEOPOLITICAL SIGNAL" },
+  macro: { bar: "bg-sky-500", icon: "text-sky-500", marker: "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300", reading: "MACRO / FX SIGNAL" },
+  rare_earth: { bar: "bg-amber-500", icon: "text-amber-500", marker: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300", reading: "CRITICAL MINERALS SIGNAL" },
+} as const;
+
+function Story({ signal, checkedAt, saved, onSave }: {signal: StatelessIntelligenceSignal;checkedAt: number;saved:boolean;onSave:()=>void}) {
   const isCurrent = Date.parse(signal.published_at) >= checkedAt - 86_400_000;
   const card = findCardFromObservedRelease(signal, checkedAt);
+  const look = CATEGORY_STYLE[signal.category];
+  const publisher = sourceLabel(signal);
+  const isActorKnown = intelligenceActorIsKnown(signal);
+  const heading = isActorKnown ? intelligenceActorHeadline(signal) : signal.title.replace(/^Geomacro finds\s+/iu, "");
+  const initialCandidate = signal.status === "official_feed_candidate_unscored";
   return (
     <article data-testid={card ? "geomacro-find-card-v1" : "geomacro-release-finding"}
       data-geomacro-story-id={signal.id}
-      className="min-w-0 rounded-2xl border border-border/75 bg-card/65 p-5 sm:p-6">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-        <span className="font-mono font-semibold uppercase tracking-wider text-primary">{labelFor(signal.category)}</span>
-        <span aria-hidden>·</span><time dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
-        {!isCurrent ? <span className="rounded-full border border-border px-2 py-0.5">Earlier release</span> : null}
-      </div>
-      <button type="button" onClick={onSave} aria-pressed={saved} aria-label={saved ? "Remove saved finding" : "Save finding"} className="mt-3 inline-flex min-h-9 items-center gap-2 text-xs text-primary"><Bookmark className="h-3.5 w-3.5" fill={saved ? "currentColor" : "none"} aria-hidden />{saved ? "Saved" : "Save finding"}</button>
-      <p className="mt-3 text-xs font-medium text-muted-foreground">Country or region: {displayProse(signal.geography ?? "Not specified in the release")}</p>
-      <h3 className="mt-3 text-lg font-semibold leading-snug tracking-tight">{displayProse(intelligenceActorHeadline(signal))}</h3>
-      <p className="mt-3 text-sm leading-6">{displayProse(intelligenceActorChange(signal))}</p>
-      {!intelligenceActorIsKnown(signal) ? <p className="mt-2 text-xs text-muted-foreground">Responsible actor has not been independently established in this original release. No action has been invented.</p> : null}
-      {card?.detail_state === "LIMITED" ? <p className="mt-2 text-xs text-muted-foreground">Specific details not captured</p> : null}
-      <details className="mt-4 border-t border-border/60 pt-3">
-        <summary className="cursor-pointer py-1 text-xs font-semibold text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">Why it matters &amp; what to watch</summary>
-        <div className="mt-3 space-y-4 text-sm leading-6 text-muted-foreground">
-          <div><h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Why it matters</h4><p className="mt-1">{displayProse(signal.why_it_matters)}</p></div>
-          {card ? <div><h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Watch next</h4><p className="mt-1">{displayProse(card.watch_next.text)}</p></div> : null}
-          {card?.detail_state === "FULL" && card.facts.length > 0 ? <dl className="grid gap-2 sm:grid-cols-2">{card.facts.map((fact,index)=><div key={index}><dt className="text-xs">{fact.label}</dt><dd className="font-medium text-foreground">{fact.value}{fact.unit ? " " + fact.unit : ""}</dd></div>)}</dl> : null}
-          <p className="text-xs">Original release observed · No independent corroboration or risk score claimed</p>
+      className="min-w-0 overflow-hidden rounded-2xl border border-border/75 bg-card shadow-sm transition-colors hover:border-border">
+      <div className={look.bar + " h-1 w-full"} aria-hidden />
+      <div className="p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/80">GEOMACRO <span className="text-muted-foreground">/ INTELLIGENCE</span></span>
+          <button type="button" onClick={onSave} aria-pressed={saved} aria-label={saved ? "Remove saved finding" : "Save finding"}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
+            <Bookmark className="h-3.5 w-3.5" fill={saved ? "currentColor" : "none"} aria-hidden />{saved ? "Saved" : "Save"}
+          </button>
         </div>
-      </details>
-      {signal.sources_credited.length > 0 ? <div className="mt-3 border-t border-border/50 pt-3 text-[11px] leading-5 text-muted-foreground">{signal.sources_credited.map(credit=><p key={credit}>Required credit: {displayProse(credit)}{credit.includes("Open Government Licence") ? <> · <a href={OGL_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Licence</a></> : null}</p>)}</div> : null}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className={"inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider " + look.marker}>
+            {signal.category === "geopolitics" ? <Globe2 className="h-3.5 w-3.5" aria-hidden /> :
+              signal.category === "macro" ? <TrendingUp className="h-3.5 w-3.5" aria-hidden /> : <Gem className="h-3.5 w-3.5" aria-hidden />}
+            {labelFor(signal.category)}
+          </span>
+          <span className="rounded-full border border-border/70 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">{initialCandidate ? "Relevance under review" : "Publisher release observed"}</span>
+        </div>
+        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{look.reading}</p>
+        <h3 className="mt-2 text-xl font-semibold leading-snug tracking-tight text-foreground">{displayProse(heading)}</h3>
+        <p className="mt-3 text-sm leading-relaxed text-foreground/80">{displayProse(intelligenceActorChange(signal))}</p>
+        <div className="mt-5 rounded-xl border border-border/60 bg-muted/35 p-4">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">GEOMACRO / WHY IT MATTERS</p>
+          <p className="mt-2 text-sm leading-6 text-foreground/85">{displayProse(signal.why_it_matters)}</p>
+        </div>
+        <details className="mt-4 border-b border-border/60 pb-4">
+          <summary className="cursor-pointer py-1 text-xs font-semibold text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">Evidence limits &amp; what to watch</summary>
+          <div className="mt-3 space-y-3 text-sm leading-6 text-muted-foreground">
+            {card ? <p><span className="font-medium text-foreground">Watch next:</span> {displayProse(card.watch_next.text)}</p> : null}
+            {card?.detail_state === "LIMITED" ? <p>Specific details not captured in this source observation.</p> : null}
+            {card?.detail_state === "FULL" && card.facts.length > 0 ? <dl className="grid gap-2 sm:grid-cols-2">{card.facts.map((fact,index)=><div key={index}><dt className="text-xs">{fact.label}</dt><dd className="font-medium text-foreground">{fact.value}{fact.unit ? " " + fact.unit : ""}</dd></div>)}</dl> : null}
+            {!isActorKnown ? <p>Source identity does not establish who performed the reported action.</p> : null}
+            <p>Publisher feed observation only. Original-page corroboration, independent event verification and Geomacro risk scoring are not claimed.</p>
+            {signal.sources_credited.map(credit => <p key={credit}>Source attribution: {displayProse(credit)}{credit.includes("Open Government Licence") ? <> · <a href={OGL_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Licence</a></> : null}</p>)}
+          </div>
+        </details>
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">SOURCE / PUBLISHER</p>
+            <p className="mt-1 max-w-[270px] break-words text-sm font-semibold text-foreground">{displayProse(publisher)}</p>
+          </div>
+          <div className="text-left sm:text-right">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">ORIGINAL PUBLISHED</p>
+            <time className="mt-1 block text-xs text-muted-foreground" dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
+            {!isCurrent ? <p className="mt-1 text-[10px] text-muted-foreground">Earlier release</p> : null}
+          </div>
+        </div>
+      </div>
     </article>
   );
 }
