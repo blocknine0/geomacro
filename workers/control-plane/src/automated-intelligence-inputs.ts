@@ -3,35 +3,52 @@ const PREFIX='automated_input_v1:';
 type Env={DB:any;AUTOMATED_FINDS_VERIFY_KEYS_JSON?:string};
 const json=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
 const keys=(env:Env)=>JSON.parse(env.AUTOMATED_FINDS_VERIFY_KEYS_JSON||'{}');
-export async function putAutomatedInputs(env:Env,body:{schema:string;items:AutomatedInputEnvelope[]},now=Date.now()){
+export async function putAutomatedInputs(env:Env,body:{schema:string;retained_ids:string[];items:AutomatedInputEnvelope[]},now=Date.now()){
  try{
-  if(!body||Object.keys(body).sort().join(',')!=='items,schema'||
-   body.schema!=='geomacro.automated-intelligence-input-batch.v1'||!Array.isArray(body.items)||
-   body.items.length<1||body.items.length>40)throw Error('SHAPE');
+  if(!body||Object.keys(body).sort().join(',')!=='items,retained_ids,schema'||
+   body.schema!=='geomacro.automated-intelligence-input-batch.v1'||
+   !Array.isArray(body.retained_ids)||body.retained_ids.length>600||
+   body.retained_ids.some((id:unknown)=>typeof id!=='string'||!/^[a-f0-9]{64}$/.test(id))||
+   new Set(body.retained_ids).size!==body.retained_ids.length||
+   !Array.isArray(body.items)||body.items.length>40)throw Error('SHAPE');
+  const retained=new Set<string>(body.retained_ids);
   const registry=keys(env),unique=new Map<string,AutomatedInputEnvelope>();
-  for(const e of body.items){await verifyAutomatedInput(e,registry,now);unique.set(await automatedInputId(e.payload.signal),e);}
-  const statements=[...unique].map(([id,e])=>env.DB.prepare(`INSERT INTO control_state(key,value_json,version,updated_at)
+  for(const e of body.items){
+   await verifyAutomatedInput(e,registry,now);
+   const id=await automatedInputId(e.payload.signal);
+   if(!retained.has(id))throw Error('RETAINED_INPUT_SET_MISMATCH');
+   unique.set(id,e);
+  }
+  // Reconcile first: revisions/orphans from an older bounded journal must not
+  // occupy the same 600 slots needed by currently retained derived inputs.
+  // Only SHA-256 content IDs cross this authenticated boundary; no news text.
+  const statements=[env.DB.prepare(`DELETE FROM control_state WHERE key GLOB ?
+   AND key NOT IN (SELECT ? || value FROM json_each(?))`)
+   .bind(PREFIX+'*',PREFIX,JSON.stringify(body.retained_ids)),
+   ...[...unique].map(([id,e])=>env.DB.prepare(`INSERT INTO control_state(key,value_json,version,updated_at)
    VALUES (?,?,1,?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,
    version=control_state.version+1,updated_at=excluded.updated_at
    WHERE json_extract(control_state.value_json,'$.integrity.signing_key_id')!=
     json_extract(excluded.value_json,'$.integrity.signing_key_id') AND excluded.updated_at>control_state.updated_at`)
-   .bind(PREFIX+id,JSON.stringify(e),e.payload.generated_at));
+   .bind(PREFIX+id,JSON.stringify(e),e.payload.generated_at))];
   statements.push(env.DB.prepare("DELETE FROM control_state WHERE key GLOB ? AND json_extract(value_json,'$.payload.expires_at')<=?")
    .bind(PREFIX+'*',new Date(now).toISOString()));
-  // Same retained capacity as the existing public journal; expire by native
-  // source time, never by signing time. One bounded atomic D1 batch per 40.
+  // Match the source journal's native timestamp and signal-ID ordering so
+  // ties cannot evict a currently retained story's signed content identity.
   statements.push(env.DB.prepare(`DELETE FROM control_state WHERE key IN
    (SELECT key FROM control_state WHERE key GLOB ? ORDER BY
-    json_extract(value_json,'$.payload.signal.published_at') DESC,key LIMIT -1 OFFSET 600)`)
+    json_extract(value_json,'$.payload.signal.published_at') DESC,
+    json_extract(value_json,'$.payload.signal.id') DESC,key DESC LIMIT -1 OFFSET 600)`)
    .bind(PREFIX+'*'));
   const result=await env.DB.batch(statements);
   if(result.some((r:any)=>r.success===false))throw Error('WRITE');
   return json({ok:true,schema:'geomacro.automated-intelligence-input-ack.v1',
    accepted_ids:[...unique.keys()],unique_inputs:unique.size,
-   inserted_or_resigned:result.slice(0,unique.size).reduce((n:number,r:any)=>n+Number(r.meta?.changes??0),0),
+   inserted_or_resigned:result.slice(1,1+unique.size).reduce((n:number,r:any)=>n+Number(r.meta?.changes??0),0),
+   current_retained_ids_reconciled:true,retained_input_count:body.retained_ids.length,
    manual_approval_required:false,independent_reviewed:false,commercial_rights_attested:false});
  }catch(error){
-  // Authenticated admin endpoint only. Publish a narrow allowlisted reason code
+  // Authenticated admin endpoint only. Publish a narrow, allowlisted reason code
   // without returning exception text, payloads, signatures, keys or stored bytes.
   const message=error instanceof Error?error.message:'';
   const reason_code=/^(?:SHAPE|WRITE|AUTOMATED_INPUT_[A-Z0-9_]{1,72})$/u.test(message)
