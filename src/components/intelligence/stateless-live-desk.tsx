@@ -3,7 +3,7 @@ import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, G
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
-import {isConcretePublicIntelligence,concreteGeomacroAnalysis,concreteIntelligenceHeadline} from "@/lib/intelligence-concrete-publication";
+import {isConcretePublicIntelligence,concreteGeomacroAnalysis,concreteIntelligenceHeadline,intelligenceRequiredSourceCredits} from "@/lib/intelligence-concrete-publication";
 import {dedupeIntelligenceStories} from "@/lib/intelligence-news-dedupe";
 import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
@@ -56,6 +56,7 @@ const CATEGORY_STYLE = {
 
 function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;saved:boolean;onSave:()=>void}) {
   const look = CATEGORY_STYLE[signal.category];
+  const mandatoryCredits=intelligenceRequiredSourceCredits(signal);
   return (
     <article data-testid="geomacro-concrete-intelligence-card"
       data-geomacro-story-id={signal.id}
@@ -77,6 +78,11 @@ function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;s
           </span>
         </div>
         <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{look.reading}</p>
+        <p className="mt-2 text-[11px] font-semibold text-muted-foreground">
+          {signal.status === "osint_feed_observed_unverified"
+            ? "Source-reported observation · Not independently verified"
+            : "Official release observed · Unscored"}
+        </p>
         <h3 className="mt-2 text-xl font-semibold leading-snug tracking-tight text-foreground">{displayProse(concreteIntelligenceHeadline(signal) ?? "")}</h3>
         {signal.geography ? <p className="mt-2 text-xs text-muted-foreground">{displayProse(signal.geography)}</p> : null}
         <p className="mt-4 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">What changed</p>
@@ -86,6 +92,11 @@ function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;s
           <p className="mt-2 text-sm leading-6 text-foreground/85">{displayProse(concreteGeomacroAnalysis(signal))}</p>
         </div>
         <time className="mt-4 block text-[11px] text-muted-foreground" dateTime={signal.published_at}>{formatInstant(signal.published_at)}</time>
+        {mandatoryCredits.length > 0 ? (
+          <div className="mt-2 text-[11px] leading-5 text-muted-foreground" aria-label="Required source attribution">
+            {mandatoryCredits.map((credit, index) => <p key={index}>Attribution: {displayProse(credit)}</p>)}
+          </div>
+        ) : null}
       </div>
     </article>
   );
