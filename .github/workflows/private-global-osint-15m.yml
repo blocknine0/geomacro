@@ -27,6 +27,7 @@ on:
       - "scripts/lib/private-osint-global-sources.test.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
+      - "config/private-osint-official-feed-additions.v1.json"
       - "src/lib/reusable-news-json.ts"
   push:
     branches: [main]
@@ -38,6 +39,7 @@ on:
       - "scripts/lib/private-osint-global-sources.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
+      - "config/private-osint-official-feed-additions.v1.json"
 
 permissions:
   contents: read
