@@ -15,9 +15,15 @@ function report(iso,continent){return {
  raw_data_persisted:false,supabase_requests:0,b2_requests:0,real_money_payments:0,
  commercial_rights_verified:0,signed_delivery_verified:0,scheduled_country_iso3:iso,
  continent_source_group:continent,cells:['geopolitics','macro','rare_earth'].map(category=>({
-  iso3:iso,category,ROUTING_VERIFIED:true,LIVE_SOURCE_REACHABLE:false,COUNTRY_RELEVANCE_VERIFIED:false,
+  iso3:iso,category,ROUTING_VERIFIED:true,SOURCE_ADAPTER_REGISTERED:true,
+  LIVE_SOURCE_REACHABLE:false,COUNTRY_RELEVANCE_VERIFIED:false,
   ORIGINAL_EVIDENCE_VERIFIED:false,ORIGINAL_PAGE_VERIFIED:false,
-  INDEPENDENT_FALLBACK_VERIFIED:false,RIGHTS_QUALIFIED:null,SIGNED_DELIVERY_VERIFIED:null}))};}
+  INDEPENDENT_FALLBACK_VERIFIED:false,RIGHTS_QUALIFIED:null,SIGNED_DELIVERY_VERIFIED:null,
+  original_page_publication_utc:null,original_publisher_families_reached:0,
+  original_country_relevant_candidates:0,original_pages_verified:0,
+  independent_verified_publisher_families:0,restricted_publisher_attempts:0,
+  rate_limited_publisher_attempts:0,NO_QUALIFYING_EVIDENCE_FOUND:false,
+  BLOCKED:"PROVIDER_UNAVAILABLE",verdict:"SOURCE_BLOCKED"}))};}
 const plan=continent=>planFullContinentSweep({continent,registryText,eventName:'schedule'});
 async function sweep(continent,runCountry=async iso=>report(iso,continent)){
  return runFullContinentSweep(plan(continent),{registryText,now:()=>now,runCountry});
