@@ -28,9 +28,10 @@ async function fetchSignedNewsPage(url,fetchImpl){
    throw Error('SIGNED_NEWS_HTTP_UNAVAILABLE');
   }
   if(response.status===200)return response;
-  if(!TRANSIENT_READ_STATUSES.has(response.status)||attempt===PUBLIC_READ_ATTEMPTS)
+  if(!TRANSIENT_READ_STATUSES.has(response.status))
    throw Error('SIGNED_NEWS_HTTP_UNAVAILABLE');
   try{await response.body?.cancel();}catch{/* discard transient response */}
+  if(attempt===PUBLIC_READ_ATTEMPTS)throw Error('SIGNED_NEWS_HTTP_UNAVAILABLE');
   await waitBeforeRetry(attempt);
  }
  throw Error('SIGNED_NEWS_HTTP_UNAVAILABLE');
