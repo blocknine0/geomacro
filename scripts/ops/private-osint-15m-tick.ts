@@ -10,7 +10,7 @@ import {persistPrivateOsintBatch} from "../lib/private-osint-15m-durable-publish
 import {privateGdeltGlobalDiscovery} from "../lib/private-osint-gdelt-global.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
-import {countryMentionFromTitle} from "../lib/country-news-mentions-195.mjs";
+import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
 
 const root=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(root.length<32)throw Error("PRIVATE_OSINT_PRODUCTION_CREDENTIAL_REQUIRED");
@@ -20,7 +20,7 @@ const privateToken=createHmac("sha256",control)
 const timestamp=new Date();
 const result=await collectPrivateOsint15m({
  now:timestamp,normalize:normalizeReusableNewsJson,
- resolveCountry:title=>countryMentionFromTitle(title,COUNTRIES_195)
+ resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195)
 });
 const scanned=result.summary.source_checks;
 if(result.summary.configured_country_routes!==195||
@@ -42,7 +42,7 @@ if(persisted.source_checks_persisted!==result.checks.length||
  throw Error("PRIVATE_OSINT_15M_DURABLE_PRODUCTION_ACCEPTANCE_FAILED");
 
 const index=await privateGdeltGlobalDiscovery({
- resolveCountry:title=>countryMentionFromTitle(title,COUNTRIES_195)
+ resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195)
 });
 console.log(JSON.stringify({
  schema:"geomacro.private-osint-15m-production-status.v1",

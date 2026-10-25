@@ -23,6 +23,10 @@ on:
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
       - "scripts/lib/country-news-mentions-195.mjs"
+      - "scripts/lib/private-osint-global-sources.mjs"
+      - "scripts/lib/private-osint-global-sources.test.mjs"
+      - "scripts/lib/private-osint-country-mentions.mjs"
+      - "config/private-osint-working-sources.v1.json"
       - "src/lib/reusable-news-json.ts"
   push:
     branches: [main]
@@ -31,6 +35,9 @@ on:
       - "scripts/lib/private-osint-15m-collector.mjs"
       - "scripts/lib/private-osint-15m-collector.test.mjs"
       - "scripts/ops/private-osint-15m-tick.ts"
+      - "scripts/lib/private-osint-global-sources.mjs"
+      - "scripts/lib/private-osint-country-mentions.mjs"
+      - "config/private-osint-working-sources.v1.json"
 
 permissions:
   contents: read
@@ -59,6 +66,8 @@ jobs:
           node --test scripts/lib/private-osint-15m-collector.test.mjs
           node --test scripts/lib/private-osint-15m-durable-publisher.test.mjs
           node --test scripts/lib/private-osint-15m-d1.test.mjs
+          node --test scripts/lib/private-osint-global-sources.test.mjs
+          node --test scripts/lib/registered-reusable-news-source-collector.test.mjs scripts/lib/registered-news-15m-cadence.test.mjs
   collect-private:
     needs: verify
     if: >-
