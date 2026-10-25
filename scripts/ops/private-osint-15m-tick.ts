@@ -133,12 +133,14 @@ let websiteDisplayReceipt={status:"PUBLIC_D1_READ_UNAVAILABLE",total:0,
  eligible_by_category:{geopolitics:0,macro:0,rare_earth:0}};
 try{
  const retained=await fetchAllDerivedNews(fetch,Date.now());
- const accepted=retained.filter(isConcretePublicIntelligence);
+ const eligibleRows=retained.filter(isConcretePublicIntelligence);
+ const accepted=dedupeIntelligenceStories(eligibleRows);
  const summarize=(rows)=>Object.fromEntries(
   ["geopolitics","macro","rare_earth"].map(c=>[c,rows.filter(x=>x.category===c).length]));
  websiteDisplayReceipt={
   status:"PUBLIC_D1_READ_VERIFIED",total:retained.length,
   categories:summarize(retained),eligible:accepted.length,
+  duplicate_category_events_hidden:eligibleRows.length-accepted.length,
   eligible_by_category:summarize(accepted),
   unverified_candidates_hidden:retained.filter(x=>
    x.status!=="official_release_observed_unscored").length,
