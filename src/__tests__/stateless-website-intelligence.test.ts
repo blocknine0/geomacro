@@ -259,7 +259,7 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(desk).toContain('setFeeds(previous => ({ ...previous, ...nextFeeds }))');
     expect(desk).toContain('Previously received in-tab findings may be out of date');
     expect(desk).toContain('New in the last 24 hours');
-    expect(desk).toContain('Earlier original releases · Dated');
+    expect(desk).toContain('Earlier news · Dated');
 
     expect(desk).toContain("No added publication delay");
     expect(desk).not.toContain("RiskBadge");
