@@ -3,12 +3,13 @@ import { ArrowRight, Braces, Bot, Globe2 } from "lucide-react";
 import { AgentCommerceStatus } from "@/components/agent-commerce-status";
 import { CategoryApiLaunchPanel } from "@/components/category-api-launch-panel";
 import { ApiKeysNotice } from "@/components/api-keys-notice";
+import { CategoryApiPricing } from "@/components/category-api-pricing";
 import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
 import { ApiEndpointDirectory } from "@/components/api-endpoint-directory";
 import { NewsJsonWorkbench } from "@/components/news-json-workbench";
 const TITLE = "API & Agents | Geomacro";
 const DESCRIPTION =
-  "Structured geopolitical, Macro/FX and critical-minerals intelligence for applications and AI agents. API keys coming soon.";
+  "Public per-call USDC pricing for Geopolitics, Macro/FX and Critical Minerals APIs. Paid delivery remains production-gated.";
 const URL = "https://geomacro.live/data-api";
 export const Route = createFileRoute("/data-api")({
   head: () => ({
@@ -42,6 +43,9 @@ function DataApiPage() {
       <div className="mt-9"><NewsJsonWorkbench /></div>
       <div className="mt-8">
         <ApiKeysNotice />
+      </div>
+      <div className="mt-8">
+        <CategoryApiPricing />
       </div>
       <div className="my-10 grid gap-4 md:grid-cols-3">
         {[

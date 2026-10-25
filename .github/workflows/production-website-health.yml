@@ -92,6 +92,10 @@ jobs:
           grep -Fq 'Geomacro Store' src/routes/pricing.tsx
           grep -Fq 'CapabilityPriceSchedule' src/routes/pricing.tsx
           grep -Fq 'ApiKeysNotice' src/routes/pricing.tsx
+          grep -Fq 'CategoryApiPricing' src/routes/pricing.tsx
+          grep -Fq 'CategoryApiPricing' src/routes/data-api.tsx
+          grep -Fq 'GEOMACRO_CAPABILITY_PRICES.intelligence_query' src/components/category-api-pricing.tsx
+          grep -Fq 'There is no category surcharge.' src/components/category-api-pricing.tsx
           grep -Fq 'Self-service access and checkout are not open yet.' src/components/api-keys-notice.tsx
           grep -Fq 'Coming soon' src/components/api-keys-notice.tsx
           grep -Fq 'Each exact request must qualify before payment.' src/components/capability-price-schedule.tsx

@@ -25,6 +25,8 @@ describe("production website health validates real commercial promises", () => {
       expect(job).toContain(phrase);
       expect(pricing).toContain(phrase);
     }
+    expect(job).toContain("CategoryApiPricing");
+    expect(job).toContain("GEOMACRO_CAPABILITY_PRICES.intelligence_query");
     expect(job).toContain("Self-service access and checkout are not open yet.");
     expect(notice).toContain("Self-service access and checkout are not open yet.");
     expect(job).toContain("Each exact request must qualify before payment.");
