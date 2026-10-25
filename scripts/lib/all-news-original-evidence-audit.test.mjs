@@ -81,6 +81,25 @@ test("feed-only news, day-precision dates and old originals are NOT falsely byte
  assert.equal(report.rows.find(x=>x.id===noOriginal.id).original_page_evidence_status,
   "PRIVATE_ORIGINAL_REFERENCE_NOT_AVAILABLE");
 });
+test("unverified OSINT feed observations stay non-authorizing and never trigger original-page proof",async()=>{
+ const row={...signal("40404040"),status:"osint_feed_observed_unverified"};
+ let calls=0;
+ const report=await auditEveryDerivedNewsOriginal({
+  signals:[row],originalRefs:new Map([[row.id,ref()]]),now,
+  verify:async()=>{calls++;throw Error("OSINT_FEED_IS_NOT_AN_ORIGINAL_ARTICLE");},
+ });
+ assert.equal(calls,0);
+ assert.equal(report.ingested_news_examined,1);
+ assert.equal(report.verified_original_page_bytes_and_native_time,0);
+ assert.equal(report.rows[0].original_page_evidence_status,
+  "PRIVATE_ORIGINAL_REFERENCE_NOT_AVAILABLE");
+ assert.equal(report.rows[0].exact_original_page_html_readback,false);
+ assert.equal(report.rows[0].source_rights_next_action,"ORIGINAL_PAGE_READBACK_REQUIRED");
+ assert.equal(report.rows[0].source_rights_verified,false);
+ assert.equal(report.signed_commercial_intelligence_created,false);
+ assert.equal(report.x402_charges,0);
+ assert.equal(JSON.stringify(report).includes(url),false);
+});
 test("wrong official issuing organization, off-publisher host and other GOV departments never impersonate FCDO",async()=>{
  const a=signal("11111111"),b=signal("22222222");
  let calls=0;
