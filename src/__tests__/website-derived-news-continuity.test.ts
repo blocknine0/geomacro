@@ -112,7 +112,10 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const {data,env}=db();
     const response=await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[osint]},NOW);
     expect(response.status).toBe(200);
-    const doc=await (await readDerivedStories(env,NOW)).json();
+    const feedResponse=await readDerivedStories(env,NOW);
+    expect(feedResponse.headers.get("Cache-Control"))
+      .toBe("public, max-age=60, stale-while-revalidate=300, stale-if-error=900");
+    const doc=await feedResponse.json();
     expect(doc.signals).toHaveLength(1);
     expect(doc.signals[0].sources_credited).toEqual(["Monitored feed: www.bankofcanada.ca"]);
     expect(data.size).toBe(1);
