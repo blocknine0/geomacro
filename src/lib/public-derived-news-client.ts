@@ -209,7 +209,7 @@ export async function fetchAllDerivedNews(
     // for write acceptance or source audit. A cached fallback has an old
     // checked_at and therefore cannot certify this exact readback.
     const checkedAt=Date.parse(String(doc.checked_at??""));
-    const readAt=Date.now();
+    const readAt=now;
     if(!Number.isFinite(checkedAt)||checkedAt>readAt+5_000||readAt-checkedAt>30_000)
       throw Error("DERIVED_NEWS_PAGE_STALE_READBACK");
     if(doc.page_offset!==offset||doc.page_size!==250||
