@@ -545,6 +545,7 @@
                     "type": "string",
                     "enum": [
                       "store_product_query",
+                      "answer_question",
                       "geopolitics_query",
                       "macro_fx_query",
                       "critical_minerals_query",
@@ -981,6 +982,41 @@
                             "maxLength": 128
                           }
                         }
+                      }
+                    },
+                    "required": [
+                      "tool",
+                      "arguments"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "tool": {
+                        "const": "answer_question"
+                      },
+                      "arguments": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "question": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 1000
+                          },
+                          "max_age_seconds": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 94608000
+                          },
+                          "client_request_id": {
+                            "type": "string",
+                            "minLength": 4,
+                            "maxLength": 128
+                          }
+                        },
+                        "required": [
+                          "question"
+                        ]
                       }
                     },
                     "required": [
@@ -1877,6 +1913,15 @@
                       },
                       "action_type": "exposure_review",
                       "policy_preset": "balanced"
+                    }
+                  }
+                },
+                "answer_question": {
+                  "summary": "Turn a natural-language question mentioning one or more unambiguous countries into an exact priced Intelligence Query. Uses the canonical source, freshness, commercial-rights, signed-proof and x402 settlement gates; never accepts a client price and never charges when unavailable.",
+                  "value": {
+                    "tool": "answer_question",
+                    "arguments": {
+                      "question": "What is the inflation risk in Brazil?"
                     }
                   }
                 }
