@@ -44,13 +44,19 @@ question instead of replacing it with a generic risk-state prompt.
 
 ## Current delivery boundary
 
-- `live_on_demand` is the default on category APIs and new question tools. It
-  currently performs bounded research and returns a no-charge pending result.
-  It cannot emit a payable offer, even if it finds current news.
-- `published_only` explicitly invokes the existing commercial delivery path.
-  It offers payment only if the exact requested product is available and passes
-  the existing evidence, freshness, rights, pricing and durable preparation checks.
-- Neither mode is a guarantee of fresh coverage in every country. A 195-country
+- Category tools default to `live_on_demand`: bounded source retrieval never emits
+  a payable offer. When an original page and its publication clock are verified,
+  the response may include a derived-only `UNVERIFIED_RESEARCH_ONLY` answer;
+  otherwise it remains a no-charge pending result.
+- `answer_question` is paid-first. It tries the canonical `published_only`
+  delivery path at the existing locked capability price. Only after an explicit
+  no-charge refusal, and only when no payment signature was supplied, does its
+  one-country fallback run bounded live news research. That fallback is always
+  non-chargeable and cannot substitute for a signed commercial deliverable.
+- `published_only` offers payment only if the exact requested product is
+  available and passes the existing evidence, freshness, rights, pricing and
+  durable preparation checks.
+- Neither mode guarantees fresh coverage in every country. A 195-country
   routing registry is not proof of 585 currently deliverable category cells.
 - A payment signature never turns research candidates into commercial evidence.
 
