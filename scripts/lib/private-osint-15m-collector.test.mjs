@@ -152,7 +152,7 @@ test("a breaking-news burst reserves bounded private intake for after-15m items 
  }));
  const result=await collectPrivateOsint15m({now,registry,normalize,resolveCountry:()=>null,
    fetchImpl:async url=>{
-     const n=Number(new URL(url).hostname.match(/late-(\\d+)/u)[1]);
+     const n=Number(new URL(url).hostname.match(/late-([0-9]+)/u)[1]);
      const topic=n<12?"military ceasefire":n===12?"central bank inflation":"critical minerals lithium";
      const stamp=n===11?"Sun, 25 Oct 2026 10:55:00 GMT":"Sun, 25 Oct 2026 11:57:00 GMT";
      return new Response("<rss><channel>"+Array.from({length:90},(_,i)=>
