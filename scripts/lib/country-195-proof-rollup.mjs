@@ -69,8 +69,7 @@ export function rollupCountry195Proofs(reports,knownCodes,{now=new Date()}={}){
       !["PARTIAL_SOURCE_COVERAGE","NO_QUALIFYING_CURRENT_EVIDENCE","SOURCE_BLOCKED","UNTESTED"].includes(c.verdict)||
       !(c.BLOCKED===null||typeof c.BLOCKED==="string"&&/^[A-Z0-9_]{3,100}$/u.test(c.BLOCKED))||
       c.ORIGINAL_PAGE_VERIFIED!==c.ORIGINAL_EVIDENCE_VERIFIED||
-      c.original_pages_verified!==(c.ORIGINAL_EVIDENCE_VERIFIED===true?1:0)&&
-        (c.ORIGINAL_EVIDENCE_VERIFIED===true||c.original_pages_verified===0)||
+      (c.original_pages_verified>0)!==(c.ORIGINAL_EVIDENCE_VERIFIED===true)||
       c.COUNTRY_RELEVANCE_VERIFIED===true&&c.original_country_relevant_candidates<1||
       c.COUNTRY_RELEVANCE_VERIFIED===false&&c.original_country_relevant_candidates!==0||
       c.ORIGINAL_EVIDENCE_VERIFIED===true&&
