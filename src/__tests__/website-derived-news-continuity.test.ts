@@ -30,7 +30,11 @@ function db() {
   const data=new Map();
   const counters={upsertUpdateAttempts:0,storyJsonUpdates:0,retentionSweepQueries:0};
   const statement=sql=>({
-    async run(){ /* Direct zero-bind retention query; no rows past cap in fixture. */ },
+    async run(){
+      if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE id IN"))
+        counters.retentionSweepQueries++;
+      /* Direct zero-bind retention query; no rows past cap in fixture. */
+    },
     bind(...args) {
       return {
         async run() {
