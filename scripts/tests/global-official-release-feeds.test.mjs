@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {GLOBAL_OFFICIAL_RELEASE_FEEDS as feeds,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication,verifiedGlobalRdfFeed} from '../lib/global-official-release-feeds.mjs';
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS as feeds,GLOBAL_MACRO_RELEASE_TOPIC,MINERAL_RELEASE_TOPIC,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication,verifiedGlobalRdfFeed} from '../lib/global-official-release-feeds.mjs';
 import {summarizeFreeSourceUpdates} from '../lib/free-source-production-updates.mjs';
 import {validateFreeLineupProbePayload} from '../lib/free-no-key-source-probe.mjs';
 const now=new Date('2026-10-16T08:00:00Z');
@@ -11,6 +11,16 @@ test('expanded official international connectors cover all three categories with
  assert.deepEqual(new Set(feeds.map(s=>s.category)),new Set(['geopolitics','macro','rare_earth']));
  for(const s of feeds){const u=new URL(s.url);assert.equal(u.hostname,s.host);assert.equal(u.protocol,'https:');assert.ok(!u.username&&!u.password);assert.equal(s.poll_minutes,30);}
 });
+test('macro/FX and critical-minerals title matching covers global supply-chain and policy terms',()=>{
+ for(const title of ['central bank FX reserves','foreign-exchange intervention','sovereign debt and bond yields','balance of payments and capital flows','industrial production and tariffs','rare earth elements export controls','dysprosium and neodymium magnet production','antimony refining capacity','tungsten supply chain','lithium battery materials','critical raw materials processing']){
+  const macro=GLOBAL_MACRO_RELEASE_TOPIC.test(title);
+  const minerals=MINERAL_RELEASE_TOPIC.test(title);
+  assert.ok(macro||minerals, 'expected a macro/FX or minerals match for '+title);
+ }
+ for(const title of ['rare earth elements export controls','dysprosium and neodymium magnet production','antimony refining capacity','tungsten supply chain','lithium battery materials','critical raw materials processing'])assert.equal(MINERAL_RELEASE_TOPIC.test(title),true,title);
+ for(const title of ['central bank FX reserves','foreign-exchange intervention','sovereign debt and bond yields','balance of payments and capital flows','industrial production and tariffs'])assert.equal(GLOBAL_MACRO_RELEASE_TOPIC.test(title),true,title);
+});
+
 test('original URL admission pins issuer paths and upgrades only observed BOJ HTTP permalinks',()=>{
  const s=feeds.find(s=>s.id==='boj_press_global');
  assert.equal(globalOriginalArticleUrl('http://www.boj.or.jp/en/about/press/koen_2026/ko261015a.htm',s),'https://www.boj.or.jp/en/about/press/koen_2026/ko261015a.htm');

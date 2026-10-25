@@ -14,8 +14,8 @@ export type AskOriginalPlan = Readonly<{
 }>;
 const DOMAINS: ReadonlyArray<{domain:OnDemandCategory;pattern:RegExp}> = [
   {domain:"geopolitics",pattern:/\b(sanctions?|embargo|ceasefire|military|conflict|war|diplomac(?:y|tic)|geopolitic(?:s|al)?|election|foreign policy|border)\b/iu},
-  {domain:"macro",pattern:/\b(inflation|cpi|gdp|central bank|monetary|interest rates?|macro(?:economic|economics|\/fx)?|foreign exchange|currency|sovereign debt|fiscal|fx)\b/iu},
-  {domain:"rare_earth",pattern:/\b(critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu},
+  {domain:"macro",pattern:/\b(inflation|cpi|gdp|central banks?|monetary|interest rates?|macro(?:economic|economics|\/fx)?|foreign[- ]exchange|currencies?|exchange rates?|fx reserves?|current account|balance of payments|trade balance|capital flows?|sovereign debt|bond yields?|treasury yields?|fiscal|tariffs?|export controls?|industrial production|manufacturing output|purchasing managers? index|\bPMI\b|commodity prices?|energy prices?|fx)\b/iu},
+  {domain:"rare_earth",pattern:/\b(critical minerals?|critical raw materials?|strategic minerals?|rare[- ]earth(?:s?| elements?)?|lanthanides?|lithium|cobalt|nickel|graphite|copper|gallium|germanium|tungsten|antimony|manganese|vanadium|scandium|tantalum|niobium|dysprosium|neodymium|terbium|praseodymium|samarium|yttrium|mineral supply|mineral processing|refining capacity|permanent magnets?|magnet production|battery materials|mining)\b/iu},
 ];
 const CURRENT = /\b(latest|new|news|today|now|current|recent|recently|updates?|developments?|announc(?:e|ed|ement)|what changed|what happened|this week|last \d+ (?:hours?|days?|weeks?)|past \d+ (?:hours?|days?|weeks?))\b/iu;
 const NUMERIC = /\b(how much|how many|exact|percentage|percent|rate|value|price|figure|number|risk scores?|risk indices?|risk index|gri|predict|forecast)\b|[%$₹€]/iu;

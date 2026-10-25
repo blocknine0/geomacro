@@ -32,6 +32,11 @@ describe("Ask question-driven original publisher retrieval",()=>{
   expect(planAskOriginalQuestion("Latest mining updates in Democratic Republic of the Congo")?.country_iso3).toBe("COD");
   expect(planAskOriginalQuestion("What changed globally today?")).toBeNull();
  });
+ it("routes additional global FX and strategic-material terms to live categories", () => {
+  expect(planAskOriginalQuestion("India latest FX reserves news")?.categories).toEqual(["macro"]);
+  expect(planAskOriginalQuestion("China latest tungsten supply news")?.categories).toEqual(["rare_earth"]);
+  expect(planAskOriginalQuestion("Canada latest permanent magnet production updates")?.categories).toEqual(["rare_earth"]);
+ });
  it("returns only source-private derived first-party release observations",async()=>{
   const output=await answerFromCurrentOriginals("China latest lithium news",{now,discover,verifyPages});
   expect(output?.intelligence_tier).toBe("official_observation_unscored");

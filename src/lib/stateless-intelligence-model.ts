@@ -69,6 +69,9 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration." },
   ],
   macro: [
+    { test: /\b(?:fx reserves?|foreign[- ]exchange|exchange rates?|currencies|current account|trade balance|balance of trade|capital flows?|sovereign debt|bond yields?|treasury yields?|industrial production|manufacturing output|purchasing managers? index|\bPMI\b|tariffs?|commodity prices?|energy prices?)\b/i,
+      name: "global FX, trade and industrial conditions",
+      implication: "Official releases concerning currency reserves, external balances, market rates, trade measures and industrial conditions can inform macro context. Actual figures, implementation and market direction require separate verification." },
     { test: /\b(Basel III|Basel Committee|banking supervisors?|capital adequacy|bank capital requirements?|banking supervision)\b/i,
       name: "banking and capital regulation",
       implication: "Official prudential rulemaking can affect bank funding and cross-border credit conditions; any implemented capital requirements or market effects must be verified separately." },
@@ -86,6 +89,12 @@ const TOPICS: Record<StatelessCategory, readonly { test: RegExp; name: string; i
       implication: "Trade and investment agreements can affect market access, cross-border commercial flows and currency exposure; their actual economic impact requires follow-up evidence." },
   ],
   rare_earth: [
+    { test: /\b(?:lanthanides?|yttrium|cerium|praseodymium|neodymium|samarium|europium|gadolinium|terbium|dysprosium|holmium|erbium|thulium|ytterbium|lutetium|scandium|tungsten|antimony|manganese|vanadium|tantalum|niobium|molybdenum|indium|beryllium|rare[- ]earth elements?)\b/i,
+      name: "strategic mineral and rare-earth inputs",
+      implication: "Strategic-material releases may affect sourcing concentration and industrial dependencies, but resource presence does not prove commercially recoverable reserves or delivered supply." },
+    { test: /\b(?:mineral refining|refining capacity|permanent magnets?|magnet production|battery materials?|mineral supply chains?|ore processing|mineral separation|mining concessions?|mine output|critical mineral projects?)\b/i,
+      name: "critical-mineral processing and supply chains",
+      implication: "Processing, refining and magnet or battery-material updates can inform supply-chain exposure; announced capacity is not proof of production, shipment or a verified disruption." },
     { test: /\b(rare[- ]earths?|neodymium|dysprosium|terbium)\b/i, name: "rare-earth supply",
       implication: "Rare-earth project and policy releases may affect processing concentration and strategic industrial supply dependencies; actual capacity changes are not assumed." },
     { test: /\b(lithium|cobalt|nickel|graphite|gallium|germanium|copper|tungsten|antimony|scandium|cesium|caesium|chromite|fluorspar)\b/i, name: "critical-mineral inputs",
