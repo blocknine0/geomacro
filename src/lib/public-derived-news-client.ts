@@ -31,9 +31,10 @@ async function fetchPublicReadWithRetry(
       await waitForPublicReadRetry(attempt);
       continue;
     }
-    if(!TRANSIENT_PUBLIC_READ_STATUSES.has(response.status)||attempt===PUBLIC_READ_MAX_ATTEMPTS)
-      return response;
+    if(!TRANSIENT_PUBLIC_READ_STATUSES.has(response.status))return response;
     try{await response.body?.cancel();}catch{/* discard only the transient response */}
+    if(attempt===PUBLIC_READ_MAX_ATTEMPTS)
+      throw Error("DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
     await waitForPublicReadRetry(attempt);
   }
   throw Error("DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
