@@ -69,9 +69,16 @@ function safeSignal(value: unknown, now: number): value is StatelessIntelligence
     : s.date_precision === "exact" && /^\d{4}-\d{2}-\d{2}T/u.test(original)
       ? ms
       : Infinity;
-  if (embargoEnd > now ||
-      JSON.stringify(s).length > 5_000 ||
-      /https?:\/\/|www\./iu.test(JSON.stringify(s))) return false;
+  // Source credit for an explicitly UNVERIFIED OSINT record may contain a
+  // pinned feed hostname (including www.), not a hyperlink. Never weaken
+  // the URL/raw-text prohibition in titles, event text, topics or old cards.
+  const raw = JSON.stringify(s);
+  const proseOnly = s.status === "osint_feed_observed_unverified"
+    ? JSON.stringify({...s, sources_credited:[]}) : raw;
+  if (embargoEnd > now || raw.length > 5_000 ||
+      /https?:\/\/|www\./iu.test(proseOnly) ||
+      (s.status==="osint_feed_observed_unverified" &&
+        !/^Monitored feed: [a-z0-9.-]+(?: \(aggregator; original publisher not verified\))?$/u.test(s.sources_credited[0] as string))) return false;
   return true;
 }
 
