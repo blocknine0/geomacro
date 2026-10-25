@@ -7,7 +7,7 @@ describe("Telegram B2/D1 governed consumer", () => {
   it("keeps the generic B2 client strict by default and allows only an explicit Telegram namespace override", () => {
     const client = read("scripts/ops/b2-s3-client.mjs");
     expect(client).toContain('DEFAULT_ALLOWED_PREFIXES = Object.freeze(["geomacro-evidence/v1/"])');
-    expect(client).toContain('EXTRA_ALLOWED_PREFIXES = Object.freeze(new Set(["telegram/leads/"]))');
+    expect(client).toContain('EXTRA_ALLOWED_PREFIXES = Object.freeze(new Set(["telegram/leads/", "telegram/owner-exports/"]))');
     expect(client).toContain("B2_ARCHIVE_PREFIX_CONFIG_INVALID");
     expect(client).toContain("allowedKeyPrefixes = null");
     expect(client).toContain('normalizedKey.includes("..")');
