@@ -61,7 +61,13 @@ export function isSafeDerivedNewsReadbackSignal(signal) {
 export async function requireDerivedNewsWorkerPolicy({
   fetchImpl = fetch, url, expectedRevision = DERIVED_NEWS_TOPIC_POLICY_REVISION,
 } = {}) {
-  if (typeof url !== "string" || !url.startsWith("https://") ||
+  let target;
+  try { target = new URL(url); }
+  catch { throw Error("DERIVED_NEWS_WORKER_POLICY_CONFIGURATION_INVALID"); }
+  if (target.protocol !== "https:" ||
+      target.hostname !== "geomacro-control-plane.daspallab202391.workers.dev" ||
+      target.pathname !== "/health" || target.username || target.password ||
+      target.port || target.search || target.hash ||
       !Number.isInteger(expectedRevision) || expectedRevision < 1)
     throw Error("DERIVED_NEWS_WORKER_POLICY_CONFIGURATION_INVALID");
   let response;
