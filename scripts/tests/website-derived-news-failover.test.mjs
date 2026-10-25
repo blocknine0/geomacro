@@ -284,3 +284,27 @@ test("backstop workflow is parseable by GitHub with a real boolean continue-on-e
   assert.ok(src.includes('cron: "22,52 * * * *"'));
   assert.ok(src.includes("group: geomacro-website-derived-news-continuity"));
 });
+
+
+test("production cadence backstop uses the shared OSINT-safe readback contract", async () => {
+  const {readFileSync}=await import("node:fs");
+  const workflow=readFileSync(new URL("../../.github/workflows/website-derived-news-cadence-backstop.yml",import.meta.url),"utf8");
+  assert.ok(workflow.includes('import {isSafeDerivedNewsReadbackSignal} from "./scripts/lib/derived-news-readback-policy.mjs";'));
+  assert.ok(workflow.includes("!isSafeDerivedNewsReadbackSignal(s)"));
+  assert.ok(!workflow.includes('/https?:\\/\\/|www\\./iu.test(JSON.stringify(s))'));
+  const {isSafeDerivedNewsReadbackSignal}=await import("../lib/derived-news-readback-policy.mjs");
+  const safe={
+    id:"macro-12345678",category:"macro",
+    title:"Geomacro finds official economic statistics source-feed observation",
+    what_changed:"A monitored source feed contains a dated item about official economic statistics. The event actor, precise action and impact have not been independently verified.",
+    why_it_matters:"This observation can guide follow-up checks, but it does not establish a macroeconomic value, market move or verified consequence.",
+    topic:"official economic statistics",geography:null,
+    development_type:"unverified OSINT feed observation",
+    published_at:"2026-10-25T11:25:00.000Z",date_precision:"exact",observed_release_count:1,
+    sources_credited:["Monitored feed: www.bankofcanada.ca"],
+    status:"osint_feed_observed_unverified",same_event_corrob_verified:false,severity:null,
+  };
+  assert.equal(isSafeDerivedNewsReadbackSignal(safe),true);
+  assert.equal(isSafeDerivedNewsReadbackSignal({...safe,what_changed:"Open https://example.com/path"}),false);
+  assert.equal(isSafeDerivedNewsReadbackSignal({...safe,sources_credited:["Monitored feed: bankofcanada.ca/path"]}),false);
+});
