@@ -41,12 +41,45 @@ function candidateUrl(value,source) {
   u.searchParams.sort();
   return u.href;
 }
+const TITLE_ENTITIES=Object.freeze({
+  amp:"&",lt:"<",gt:">",quot:'"',apos:"'",nbsp:" ",ndash:"-",mdash:"-",
+  lsquo:"'",rsquo:"'",ldquo:'"',rdquo:'"',hellip:"...",bull:"*",
+  copy:"(c)",reg:"(r)",trade:"(tm)",euro:"EUR",pound:"GBP",yen:"JPY",
+  deg:" degrees ",plusmn:"+/-",times:"x",divide:"/",sect:"section ",
+});
+function decodeTitleEntities(value) {
+  return value.replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z][a-z0-9]{1,20});/giu,
+    (whole,entity) => {
+      if(entity[0]==="#"){
+        const hex=entity[1]?.toLowerCase()==="x";
+        const code=Number.parseInt(entity.slice(hex?2:1),hex?16:10);
+        if(!Number.isInteger(code)||code<=0||code>0x10ffff||
+           (code>=0xd800&&code<=0xdfff))return " ";
+        return String.fromCodePoint(code);
+      }
+      const key=entity.toLowerCase();
+      return Object.hasOwn(TITLE_ENTITIES,key)?TITLE_ENTITIES[key]:whole;
+    });
+}
 function privateParsedTitle(item) {
-  const raw=item.match(/<(?:atom:)?title(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?title>/iu)?.[1];
-  if(!raw||raw.length>900)return null;
-  const value=raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/giu,"$1")
-    .replace(/\s+/gu," ").trim();
-  if(value.length<8||value.length>300||/<[^>]*>|\p{Cc}/u.test(value))return null;
+  const match=item.match(/<(?:atom:)?title\b([^>]*)>([\s\S]*?)<\/(?:atom:)?title>/iu);
+  const raw=match?.[2];
+  if(!match||!raw||raw.length>900)return null;
+  const type=match[1].match(/\btype\s*=\s*["']([^"']+)["']/iu)?.[1]?.toLowerCase()??"text";
+  // Atom text is XML-decoded once. Atom HTML is decoded once as XML and once
+  // as HTML, then reduced to harmless visible text. Never render or retain
+  // markup, attributes, scriptable content, or the title itself in D1/logs.
+  if(type!=="text"&&type!=="html")return null;
+  let value=raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/giu,"$1");
+  value=decodeTitleEntities(value);
+  if(type==="html"){
+    value=decodeTitleEntities(value);
+    value=value.replace(/<\/?(?:b|strong|i|em|u|span|small|sup|sub|br|p|div|ul|ol|li)\s*\/?>/giu," ");
+  }
+  value=value.replace(/\s+/gu," ").trim();
+  // Remaining angle brackets mean unsupported/malformed markup. Reject it
+  // rather than attempt to recover visible text from an arbitrary structure.
+  if(value.length<8||value.length>300||/[<>]|\p{Cc}/u.test(value))return null;
   return {hash:digest(value.toLowerCase().normalize("NFKC")),ephemeral:value};
 }
 export function observeUndatedFirstPartyAtomFeed(xml,source,{now=new Date()}={}) {
