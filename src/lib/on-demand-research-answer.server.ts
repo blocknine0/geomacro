@@ -19,7 +19,7 @@ const CATEGORY_LABEL: Readonly<Record<OnDemandCategory, string>> = {
   rare_earth: "Critical Minerals",
 };
 
-const NON_NEWS_QUESTION = /\b(?:how much|what(?:'s| is| was| were)\s+(?:the\s+)?(?:(?:current|latest)\s+)?(?:inflation rate|gdp(?: growth)?|exchange rate|interest rate|unemployment rate|price|value|amount|percentage|percent|volume|output|production|reserves)|historical|annual data|quarterly data|time series|data series|in\s+(?:19|20)\d{2}|risk score|risk index|gri|forecast|predict(?:ion)?)\b/iu;
+const NON_NEWS_QUESTION = /\b(?:how much|inflation rate|gdp(?: growth)?|exchange rate|interest rate|unemployment rate|price|value|amount|percentage|percent|volume|output|production|reserves|historical|annual data|quarterly data|time series|data series|in\s+(?:19|20)\d{2}|risk score|risk index|gri|forecast|predict(?:ion)?)\b/iu;
 
 /** Do not substitute news observations for a numeric, historical, forecast or scored request. */
 export function supportsSourceGroundedResearchQuestion(question: string | null | undefined): boolean {
