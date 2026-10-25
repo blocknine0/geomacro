@@ -1,9 +1,10 @@
 import {useEffect,useState} from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Clock3, Radio } from "lucide-react";
+import { ArrowRight, Clock3, Radio, Globe2, TrendingUp, Gem } from "lucide-react";
 import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
 import { findCardFromObservedRelease,type FindCardV1 } from "@/lib/find-card-v1";
-import { selectHomepageFreeFind,homeFindsPulse,parseHomepageFindsFeed,mergeHomepageFindCards,publicHomeFindCopy } from "@/lib/homepage-free-finds";
+import { selectHomepageFreeFind,homeFindsPulse,eligibleHomeFindCards,parseHomepageFindsFeed,mergeHomepageFindCards,publicHomeFindCopy } from "@/lib/homepage-free-finds";
+import {isConcreteHomeFind} from "@/lib/intelligence-concrete-publication";
 
 const DOMAINS: Record<string, string> = {
   geopolitics: "Geopolitical",
@@ -60,8 +61,13 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
     const interval=setInterval(()=>{void refresh();},5*60_000);
     return ()=>{cancelled=true;clearInterval(interval);};
   },[]);
-  const winner=selectHomepageFreeFind(cards);
-  const pulse=homeFindsPulse(cards);
+  const visibleCards=eligibleHomeFindCards(cards).filter(isConcreteHomeFind);
+  const winner=selectHomepageFreeFind(visibleCards);
+  const pulse=homeFindsPulse(visibleCards);
+  const domainCards=pulse.map(domain=>({
+    ...domain,
+    winner:selectHomepageFreeFind(visibleCards.filter(card=>card.domain===domain.key)),
+  }));
   const card=winner?.card;
   const display=card?publicHomeFindCopy(card):null;
 
@@ -83,7 +89,6 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
               {display?.headline}
             </h2>
             <p className="mt-3 max-w-[34rem] text-sm leading-6 text-muted-foreground">{display?.what_changed}</p>
-            {card.detail_state==="LIMITED" ? <p className="mt-2 text-xs font-medium text-muted-foreground">Release observed · specific details pending</p> : null}
             <p className="mt-3 max-w-[34rem] text-sm leading-6 text-muted-foreground">
               <span className="font-semibold text-foreground">Why it matters: </span>{card.why_it_matters}
             </p>
@@ -93,7 +98,7 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
               <span>{winner.isCurrent?"Original release within 24h":"Earlier original release · not current"}</span>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Unscored finding · independent same-event review not established
+              Geomacro / Intelligence
             </p>
             <Link to="/intelligence" className="group mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline hover:underline-offset-4">
               Explore free Intelligence <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
@@ -110,20 +115,31 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
             </Link>
           </div>
         )}
-        <div className="mt-5 border-t border-border/55 pt-4" aria-label="Original release coverage">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            Available findings · three domains
-          </p>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {pulse.map(domain=>(
-              <div key={domain.key} className="min-w-0 rounded-lg border border-border/60 bg-background/30 p-2">
-                <p className="text-[11px] font-semibold leading-4">{DOMAINS[domain.key]}</p>
-                <p className="mt-1 text-[10px] leading-4 text-muted-foreground">
-                  {domain.state==="recent_original"?"Recent release · unscored":
-                    domain.state==="dated_original"?"Earlier release · unscored":"No eligible release"}
-                </p>
-              </div>
-            ))}
+        <div className="mt-5 border-t border-border/55 pt-4" aria-label="Three domain Intelligence showcase">
+          <p className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">GEOMACRO / THREE INTELLIGENCE DOMAINS</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {domainCards.map(domain=>{
+              const story=domain.winner?.card;
+              const copy=story?publicHomeFindCopy(story):null;
+              const look=domain.key==="geopolitics"
+                ? {line:"bg-rose-500",label:"text-rose-500",name:"Geopolitics",Icon:Globe2}
+                : domain.key==="macro"
+                ? {line:"bg-sky-500",label:"text-sky-500",name:"Macro / FX",Icon:TrendingUp}
+                : {line:"bg-amber-500",label:"text-amber-500",name:"Critical Minerals",Icon:Gem};
+              return (
+                <section key={domain.key} className="overflow-hidden rounded-xl border border-border/60 bg-background/30">
+                  <div className={look.line+" h-1"} aria-hidden="true" />
+                  <div className="space-y-2 p-3">
+                    <p className={"flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wide "+look.label}>
+                      <look.Icon className="h-3.5 w-3.5" aria-hidden />{look.name}
+                    </p>
+                    <p className="text-xs font-semibold leading-5 text-foreground">{copy?.headline??"No eligible concrete news"}</p>
+                    {copy?<p className="text-[11px] leading-5 text-muted-foreground">{copy.what_changed}</p>:null}
+                    {story?<time dateTime={story.published_at} className="block text-[10px] text-muted-foreground">{eventDate(story.published_at)} UTC</time>:null}
+                  </div>
+                </section>
+              );
+            })}
           </div>
         </div>
       </div>
