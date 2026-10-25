@@ -23,7 +23,7 @@ const groups=[];
 while(items.length||checks.length)groups.push({
   schema:collected.schema,items:items.splice(0,20),checks:checks.splice(0,16),
 });
-let checked=0,accepted=0,capacityExcluded=0;
+let checked=0,accepted=0,capacityExcluded=0,firstSeenWithin15m=0,firstSeenLate15m=0,reobserved=0;
 for(const group of groups){
   const reply=await fetch(endpoint+"/v1/reusable-source-news",{
     method:"PUT",redirect:"error",cache:"no-store",
@@ -42,10 +42,19 @@ for(const group of groups){
      body.accepted+body.capacity_excluded!==group.items.length||
      body.checked_sources!==group.checks.length||
      body.retention_hours!==25||
+     !Number.isSafeInteger(body.first_observed_within_15m_count)||
+     !Number.isSafeInteger(body.first_observed_later_than_15m_count)||
+     !Number.isSafeInteger(body.previously_observed_count)||
+     body.first_observation_is_not_independent_verification!==true||
+     body.first_observed_within_15m_count+body.first_observed_later_than_15m_count+
+       body.previously_observed_count!==body.accepted||
      body.raw_upstream_stored!==false||body.paid_product_authorized!==false)
     throw Error("REUSABLE_SOURCE_NEWS_D1_ACK_INVALID");
   accepted+=body.accepted;capacityExcluded+=body.capacity_excluded;
   checked+=body.checked_sources;
+  firstSeenWithin15m+=body.first_observed_within_15m_count;
+  firstSeenLate15m+=body.first_observed_later_than_15m_count;
+  reobserved+=body.previously_observed_count;
 }
 const status=await fetch(endpoint+"/v1/public/reusable-source-news",{
   method:"GET",redirect:"error",cache:"no-store",headers:{Accept:"application/json"},
@@ -94,6 +103,13 @@ writeFileSync("artifacts/reusable-source-news/news.json",
 console.log(JSON.stringify({
   schema:"geomacro.source-news-json-production-run.v1",
   source_registry_endpoints:info.registered_source_endpoints,
+  source_poll_slot_minutes:info.nominal_poll_slot_minutes,
+  nominal_category_revisit_minutes:info.nominal_max_category_revisit_minutes,
+  github_schedule_15m_sla_guaranteed:false,
+  initial_source_observation_within_15m:firstSeenWithin15m,
+  initial_source_observation_later_than_15m:firstSeenLate15m,
+  existing_items_reobserved:reobserved,
+  first_seen_latencies_are_independent_original_verification:false,
   source_endpoints_selected:info.selected_source_endpoints,
   source_checks_persisted:checked,
   factual_json_rows_accepted:accepted,
@@ -108,3 +124,9 @@ console.log(JSON.stringify({
   original_page_verified:false,source_rights_commercial_authorized:false,
   paid_product_authorized:false,raw_upstream_stored:false,
 }));
+
+if(firstSeenLate15m>0||info.nominal_max_category_revisit_minutes>15)
+  console.warn("::warning title=15-minute OSINT discovery objective not met::"+
+    "late_first_observations="+firstSeenLate15m+
+    " nominal_revisit_minutes="+info.nominal_max_category_revisit_minutes+
+    " (not independently verified breaking events)");
