@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, Gem } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
-import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchAllDerivedNews, fetchDirectDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
 import {isConcretePublicIntelligence,concreteGeomacroAnalysis,concreteIntelligenceHeadline,intelligenceRequiredSourceCredits} from "@/lib/intelligence-concrete-publication";
 import {dedupeIntelligenceStories} from "@/lib/intelligence-news-dedupe";
 import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
@@ -241,39 +241,62 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
     };
   }, [initial, initialFeeds]);
 
-  // Durable source-neutral 72-hour D1 journal, verified across every bounded page.
+  // Permanent, append-only static archive is the primary history store. It
+  // serves previously published cards even if D1 reaches its daily quota.
+  // The tiny latest snapshot is polled for new items; the whole archive is
+  // fetched only at initial load or an explicit manual refresh.
   useEffect(() => {
     let alive = true;
     let pending = false;
-    const sync = async () => {
+    const mergeSignals = (incoming:StatelessIntelligenceSignal[]) => {
+      setJournal(previous => {
+        const byId=new Map<string,StatelessIntelligenceSignal>();
+        for(const signal of previous)byId.set(signal.id,signal);
+        for(const signal of incoming)if(!byId.has(signal.id))byId.set(signal.id,signal);
+        return [...byId.values()].sort((a,b)=>b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
+      });
+    };
+    const syncArchive = async () => {
       if (pending) return;
       pending = true;
       try {
-      // Browser-direct D1 is crucial when a Lovable server-function roundtrip
-      // fails despite the verified, public, source-private D1 journal.
-      try {
-        const signals = await fetchAllDerivedNews();
-        if (alive) { setJournal(signals); setJournalUnavailable(false); }
+        const signals=await fetchPermanentDerivedNews();
+        if(alive){mergeSignals(signals);setJournalUnavailable(false);}
       } catch {
-        // The legacy server function is only a secondary fallback; preserve
-        // previously rendered SSR or in-tab cards if BOTH paths fail.
+        // One migration-safe fallback while the static archive is first deployed.
+        // Do not poll D1 repeatedly when static assets are healthy.
         try {
-          const result = await withPublicRuntimeTimeout(
-            getWebsiteDerivedNews(),
-            9_000,
-            "Intelligence journal fallback timed out.",
-          );
-          if (alive) { setJournal(result.signals); setJournalUnavailable(true); }
-        } catch { if (alive) setJournalUnavailable(true); }
-      }
-      } finally { pending = false; }
+          const signals=await fetchAllDerivedNews();
+          if(alive){mergeSignals(signals);setJournalUnavailable(true);}
+        } catch {
+          try {
+            const result=await withPublicRuntimeTimeout(
+              getWebsiteDerivedNews(),
+              9_000,
+              "Intelligence archive fallback timed out.",
+            );
+            if(alive){mergeSignals(result.signals);setJournalUnavailable(true);}
+          } catch {if(alive)setJournalUnavailable(true);}
+        }
+      } finally {pending=false;}
     };
-    manualJournalRefresh.current = () => { void sync(); };
-    void sync();
+    const syncLatest = async () => {
+      if (pending) return;
+      pending = true;
+      try {
+        const signals=await fetchDirectDerivedNews();
+        if(alive){mergeSignals(signals);setJournalUnavailable(false);}
+      } catch {
+        // Keep the entire last published archive visible through an outage.
+        if(alive)setJournalUnavailable(true);
+      } finally {pending=false;}
+    };
+    manualJournalRefresh.current = () => { void syncArchive(); };
+    void syncArchive();
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void sync();
+      if (document.visibilityState === "visible") void syncLatest();
     }, JOURNAL_REFRESH_MS);
-    const onReturn = () => { if (document.visibilityState === "visible") void sync(); };
+    const onReturn = () => { if (document.visibilityState === "visible") void syncLatest(); };
     document.addEventListener("visibilitychange", onReturn);
     return () => {
       alive = false;
