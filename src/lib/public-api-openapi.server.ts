@@ -22,22 +22,10 @@ const corridor = { type: "object", required: ["type", "origin_country_iso3", "de
 }, description: "Origin and destination must differ." };
 
 export function publicQueryOpenApiSchema(topics?: readonly string[]) {
-  const questionOnlyDisallowed = [
-    "subjects", "product", "schema_version", "topics", "intent", "ranking",
-    "change", "as_of", "evidence", "detail", "fulfillment_mode",
-    "delivery_tier", "risk_gate_context",
-  ];
   return {
-    type: "object", additionalProperties: false,
-    ...(topics ? { required: ["subjects"] } : {
-      oneOf: [
-        { required: ["subjects"] },
-        { required: ["question"], not: { anyOf: questionOnlyDisallowed.map(key => ({ required: [key] })) } },
-      ],
-    }),
-    description: topics
-      ? "Country-only category query; topics are bound by the server. Question must remain within the category."
-      : "Provide a structured subject request, or a question-only request naming unambiguous country/countries. Question-only is deterministically planned and still requires canonical source, rights, freshness and x402 proof gates.",
+    type: "object", additionalProperties: false, required: ["subjects"],
+    description: topics ? "Country-only category query; topics are bound by the server. Question must remain within the category."
+      : "Provide topics, intent or a classifiable question. Subject routing does not establish current verified coverage.",
     properties: {
       product: storeProductOpenApiSchema(),
       schema_version: { const: "geomacro.agent-query.v1" },
