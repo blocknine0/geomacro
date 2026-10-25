@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash,createHmac} from "node:crypto";
+import {DatabaseSync} from "node:sqlite";
+import {readFileSync} from "node:fs";
 import {handlePrivateOsint15m,privateOsint15mWrite,privateOsint15mRead,PRIVATE_OSINT_D1_SCHEMA} from "../../workers/control-plane/src/private-osint-15m.mjs";
 const now=Date.parse("2026-10-25T12:00:00.000Z");
 const at="2026-10-25T11:52:00.000Z";
@@ -129,4 +131,36 @@ test("malformed and oversized writes fail closed, no query scope escalation",asy
  for(const s of ["country=india","offset=5","category=btc","x=raw"]){
   assert.equal((await privateOsint15mRead(env,new URLSearchParams(s),now)).status,400);
  }
+});
+test("real SQLite coalesces duplicate poll writes while preserving immediate new first-seen and state changes",async()=>{
+ const db=new DatabaseSync(':memory:');
+ db.exec(readFileSync(new URL('../../workers/control-plane/migrations/0028_private_osint_15m_durable.sql',import.meta.url),'utf8'));
+ const env={DB:{prepare(sql){
+  const q={sql,params:[],bind(...params){q.params=params;return q},
+   async first(){return db.prepare(sql).get(...q.params)??null},
+   async all(){return {results:db.prepare(sql).all(...q.params)}}};return q;
+ },async batch(statements){
+  db.exec('BEGIN');try{
+   const result=statements.map(s=>({success:true,meta:{changes:Number(db.prepare(s.sql).run(...s.params).changes)}}));
+   db.exec('COMMIT');return result;
+  }catch(error){db.exec('ROLLBACK');throw error}
+ }}};
+ const count=()=>Number(db.prepare('SELECT total_changes() AS n').get().n);
+ const write=async(time,state='OBSERVED')=>{
+  const response=await privateOsint15mWrite(env,{schema:PRIVATE_OSINT_D1_SCHEMA,items:[item()],
+   checks:[{...check(),checked_at:new Date(time).toISOString(),state}]},time);
+  assert.equal(response.status,200);return response.json();
+ };
+ try{
+  await write(now);assert.equal(count(),2);
+  const duplicate=await write(now+60000);assert.equal(count(),2);
+  assert.equal(duplicate.d1_exact_readback_verified,true);
+  assert.equal(duplicate.duplicate_news_last_seen_refresh_hours,6);
+  await write(now+120000,'DENIED');assert.equal(count(),3);
+  await write(now+62*60000,'DENIED');assert.equal(count(),4);
+  await write(now+6*3600000+60000,'DENIED');assert.equal(count(),6);
+  const row=db.prepare('SELECT first_seen_at,last_seen_at FROM private_osint_news_25h').get();
+  assert.equal(row.first_seen_at,new Date(now).toISOString());
+  assert.equal(row.last_seen_at,new Date(now+6*3600000+60000).toISOString());
+ }finally{db.close()}
 });

@@ -1,6 +1,6 @@
 /** Offline native-language country routing. Source location never assigns event country. */
 import {countryMentionFromTitle} from "./country-news-mentions-195.mjs";
-const languages=["fr","es","pt","de","ar","ru","zh","ja","ko","hi","bn","it","tr","vi","id","pl","nl","sv","no","da","fi","hu","ro","cs","el","bg","hr","fa"];
+const languages=["fr","es","pt","de","ar","ru","zh","ja","ko","hi","bn","it","tr","vi","id","pl","nl","sv","no","da","fi","hu","ro","cs","el","bg","hr","fa","he","uk"];
 const normalize=s=>s.normalize("NFKC").toLocaleLowerCase("en").replace(/[^\p{L}\p{N}]+/gu," ").replace(/\s+/gu," ").trim();
 const cache=new WeakMap();
 export function privateOsintCountryMention(title,countries){

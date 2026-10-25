@@ -95,3 +95,34 @@ test("large geopolitics bursts cannot crowd out fresh macro and mineral items",a
  assert.equal(r.summary.selected_items_by_category.geopolitics,140);
  assert.ok(r.summary.excluded_items_by_category.geopolitics>0);
 });
+test("expanded inventory checks 300 endpoints with two per-host and eight global fetch slots",async()=>{
+ const registry=Array.from({length:300},(_,i)=>({id:'expanded'+i,
+  url:'https://'+(i<12?'news.google.com':'publisher-'+i+'.example.org')+'/rss?feed='+i,
+  type:'rss',supported:true,categories:[['geopolitics','macro','rare_earth'][i%3]]}));
+ const perHost=new Map();let active=0,peak=0,hostPeak=0,requests=0,independentStartedBeforeIndexFinished=false,indexDone=0;
+ const doc=await collectPrivateOsint15m({now,registry,normalize,resolveCountry:()=>null,
+  fetchImpl:async url=>{
+   const host=new URL(url).hostname;requests++;active++;peak=Math.max(peak,active);
+   perHost.set(host,(perHost.get(host)??0)+1);hostPeak=Math.max(hostPeak,perHost.get(host));
+   if(host!=='news.google.com'&&indexDone<12)independentStartedBeforeIndexFinished=true;
+   await new Promise(resolve=>setTimeout(resolve,1));
+   if(host==='news.google.com')indexDone++;
+   perHost.set(host,perHost.get(host)-1);active--;
+   return new Response('<rss><channel></channel></rss>');
+  }});
+ assert.equal(requests,300);assert.equal(doc.checks.length,300);
+ assert.ok(peak<=8&&peak>2);assert.equal(hostPeak,2);
+ assert.equal(independentStartedBeforeIndexFinished,true);
+ assert.equal(doc.summary.working_source_endpoints,300);
+});
+test("overlapping news-index queries ingest one exact article identity without merging distinct publishers",async()=>{
+ const registry=[
+  {id:'index_a',url:'https://news.google.com/rss/search?q=inflation',type:'rss',supported:true,categories:['macro']},
+  {id:'index_b',url:'https://news.google.com/rss/search?q=economy',type:'rss',supported:true,categories:['macro']},
+  {id:'original',url:'https://bank.example.org/rss',type:'rss',supported:true,categories:['macro']},
+ ];
+ const xml='<rss><channel><item><title>India central bank announces inflation monetary policy change</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
+ const r=await collectPrivateOsint15m({now,registry,normalize,resolveCountry:()=>null,fetchImpl:async()=>new Response(xml)});
+ assert.equal(r.checks.length,3);assert.equal(r.items.length,2);
+ assert.equal(r.summary.index_items_deduplicated_across_queries,true);
+});

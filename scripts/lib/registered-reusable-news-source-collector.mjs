@@ -165,11 +165,13 @@ export async function collectRegisteredReusableNews({
   perCategory=8,normalize,resolveCountry=()=>null,networkConcurrency=6,
   topicPatterns=TOPICS,allowRdfNativeDates=false,
   maxFeedBytes=MAX_FEED_BYTES,
+  deduplicateIndexItems=false,
 }={}){
   if(typeof normalize!=="function"||typeof resolveCountry!=="function"||
      !(now instanceof Date)||!Number.isFinite(now.getTime())||
      !Number.isSafeInteger(networkConcurrency)||networkConcurrency<1||networkConcurrency>6||
      typeof allowRdfNativeDates!=="boolean"||
+     typeof deduplicateIndexItems!=="boolean"||
      !Number.isSafeInteger(maxFeedBytes)||maxFeedBytes<1||maxFeedBytes>1024*1024||
      CATEGORY.some(c=>!(topicPatterns?.[c] instanceof RegExp)||/[gy]/u.test(topicPatterns[c].flags)))
     throw Error("REUSABLE_NEWS_COLLECTOR_INPUT_INVALID");
@@ -214,7 +216,11 @@ export async function collectRegisteredReusableNews({
            normalized.delivery.raw_article_included!==false||
            normalized.usage_rights.commercial_reuse_authorized!==false)
           throw Error("REUSABLE_NEWS_NORMALIZER_UNSAFE");
-        const id=hex([s.id,category,at,item.title].join("\n"));
+        // A single indexed article appearing in ten search queries is one
+        // private discovery item, not ten distinct publisher observations.
+        const identity=deduplicateIndexItems&&new URL(s.url).hostname==="news.google.com"?
+          "google-news-rss-index-v1":s.id;
+        const id=hex([identity,category,at,item.title].join("\n"));
         const safe={...normalized,id:"news-"+id};
         if(!seen.has(id)){
           seen.add(id);
