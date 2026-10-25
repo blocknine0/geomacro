@@ -79,7 +79,7 @@ describe("same 72h D1 news journal powers Geomacro website and Predge research",
    const website=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
    expect(index).toContain("/v1/public/derived-structural-72h");
    expect(index).toContain("publicSharedDerivedNewsFeed(env,url.searchParams)");
-   expect(website).toContain("/v1/public/derived-structural-72h");
-   expect(website).toContain("structured research feed");
+   expect(website).toContain("fetchAllDerivedNews()");
+   expect(website).toContain("isConcretePublicIntelligence");
  });
 });
