@@ -61,6 +61,7 @@ describe("website lock governance", () => {
     expect(categoryPricing.predge_free_pilot_unchanged).toBe(true);
     expect(categoryPricing.payment_authorized).toBe(false);
     const credits=config.approved_intelligence_eligibility_and_credit_20261025;
+    expect(credits.approved_ui_commit).toBe(categoryPricing.previous_baseline_sha);
     expect(credits.previous_baseline_sha).toBe("b4e2bb95d3c45363f88e08076db9cbfded582b08");
     expect(credits.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
     expect(credits.mandatory_attribution_visible_on_concrete_cards).toBe(true);
