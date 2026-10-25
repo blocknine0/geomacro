@@ -9,6 +9,8 @@ on:
     paths:
       - '.github/workflows/standing-delegated-derived-attestation.yml'
       - 'scripts/ops/verify-all-news-signed-publications.mjs'
+      - 'src/lib/public-derived-news-client.ts'
+      - 'src/__tests__/public-derived-news-client.test.ts'
       - 'scripts/ops/publish-automated-intelligence-inputs.ts'
       - 'scripts/ops/verify-gri-news-wakeup.mjs'
       - 'scripts/tests/gri-news-wakeup.test.mjs'
