@@ -63,6 +63,56 @@ test("only new derived source-credited unscored stories are written and read bac
    signals:[{...signal,severity:42}] }),/BRIDGE_SIGNAL_UNSAFE/u);
 });
 
+test("does not publish news older than an already full 600-row D1 newsroom",async()=>{
+ const nowMs=Date.parse("2026-10-25T12:00:00.000Z");
+ const retained=Array.from({length:600},(_,i)=>({
+  id:"geopolitics-"+String(i).padStart(8,"0"),
+  published_at:new Date(nowMs-i*60000).toISOString(),
+ }));
+ const candidate={id:"macro-12345678",category:"macro",
+  published_at:new Date(nowMs-36*3600000).toISOString(),
+  status:"official_release_observed_unscored",same_event_corrob_verified:false,
+  severity:null,sources_credited:["Federal Reserve Board"]};
+ const result=await publishPrivateOsintWebsiteSignals({
+   signals:[candidate],
+   controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
+   controlToken:"a".repeat(64),now:nowMs,
+   readAll:async()=>retained,
+   fetchImpl:async()=>{throw Error("AN_EVICTED_STORY_MUST_NOT_BE_POSTED")},
+ });
+ assert.equal(result.candidates,1);
+ assert.equal(result.new_derived_stories,0);
+ assert.equal(result.deferred_unpublished,1);
+ assert.equal(result.journal_readback_verified,true);
+});
+test("concurrent writer newest-600 eviction counts as nonvisible, not false D1 failure",async()=>{
+ const nowMs=Date.parse("2026-10-25T12:00:00.000Z");
+ const candidate={id:"macro-12345678",category:"macro",
+  published_at:new Date(nowMs-36*3600000).toISOString(),
+  status:"official_release_observed_unscored",same_event_corrob_verified:false,
+  severity:null,sources_credited:["Federal Reserve Board"]};
+ let calls=0;
+ const retained=Array.from({length:600},(_,i)=>({
+  id:"geopolitics-"+String(i).padStart(8,"0"),
+  published_at:new Date(nowMs-i*60000).toISOString(),
+ }));
+ const result=await publishPrivateOsintWebsiteSignals({
+  signals:[candidate],
+  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  controlToken:"a".repeat(64),now:nowMs,
+  readAll:async()=>calls?retained:[],
+  fetchImpl:async()=>{
+    calls++;
+    return new Response(JSON.stringify({
+      ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",
+      accepted:1,persistent_derived_only:true,chargeable:false}),{status:200});
+  },
+ });
+ assert.equal(calls,1);
+ assert.equal(result.new_derived_stories,0);
+ assert.equal(result.d1_quota_evictions,1);
+ assert.equal(result.journal_readback_verified,true);
+});
 test("a claimed write without exact public readback fails closed",async()=>{
  const signal={id:"macro-12345678",category:"macro",status:"official_release_observed_unscored",
    same_event_corrob_verified:false,severity:null,sources_credited:["Bank of Canada"]};
