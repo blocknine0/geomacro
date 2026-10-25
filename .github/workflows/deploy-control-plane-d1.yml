@@ -14,6 +14,7 @@ on:
       - "scripts/ops/predge-research-journal-parity.mjs"
       - "lib/intelligence-publication-authority.mjs"
       - "workers/control-plane/**"
+      - "scripts/lib/derived-news-readback-policy.mjs"
       - "scripts/ops/verify-all-news-signed-publications.mjs"
       - "scripts/tests/public-signed-news.test.mjs"
       - "src/lib/automated-intelligence-input.ts"
