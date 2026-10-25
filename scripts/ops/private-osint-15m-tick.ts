@@ -11,7 +11,8 @@ import {privateGdeltGlobalDiscovery} from "../lib/private-osint-gdelt-global.mjs
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
-import {officialWebsiteCandidateFromOsint,publishPrivateOsintWebsiteSignals} from "../lib/private-osint-website-bridge.mjs";
+import {officialWebsiteCandidateFromOsint,unverifiedWebsiteSignalFromOsint,publishPrivateOsintWebsiteSignals} from "../lib/private-osint-website-bridge.mjs";
+import {actorActionNewsObservation} from "../../src/lib/release-news-observation.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client.ts";
 
@@ -25,12 +26,16 @@ const timestamp=new Date();
 // origin/permalink rules. Unverified private-only rows remain in private D1.
 const originalCandidates=[];
 const candidateIds=new Set();
+const directVerifiedNewsIds=new Set();
+const ephemeralOsintNews=[];
 const result=await collectPrivateOsint15m({
  now:timestamp,normalize:normalizeReusableNewsJson,
  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
  onOriginalCandidate:raw=>{
+  ephemeralOsintNews.push(raw);
   const eligible=officialWebsiteCandidateFromOsint(raw,timestamp.getTime());
   if(!eligible)return;
+  directVerifiedNewsIds.add(raw.news_id);
   const key=eligible.category+"|"+eligible.articleUrl;
   if(!candidateIds.has(key)){
    candidateIds.add(key);originalCandidates.push(eligible);
@@ -63,8 +68,22 @@ const lanes=["geopolitics","macro","rare_earth"].map(c=>ordered.filter(x=>x.cate
 const balanced=[];
 for(let n=0;balanced.length<200&&lanes.some(l=>n<l.length);n++)
  for(const lane of lanes)if(lane[n]&&balanced.length<200)balanced.push(lane[n]);
-const websiteSignals=deriveStatelessSignals(balanced,Date.now(),
+const firstPartySignals=deriveStatelessSignals(balanced,Date.now(),
  {websiteDelay:false,maxSignals:200}).filter(s=>s.status==="official_release_observed_unscored");
+// Every native-dated pinned-source item may be shown as an explicitly
+// UNVERIFIED monitored-feed discovery, not a verified original or paid item.
+// Keep the actual publisher uncertain for aggregators and unnamed feeds.
+const osintSignals=ephemeralOsintNews
+ .filter(x=>!directVerifiedNewsIds.has(x.news_id))
+ .map(x=>unverifiedWebsiteSignalFromOsint(x,Date.now(),actorActionNewsObservation))
+ .filter(Boolean);
+const sorted=osintSignals.sort((a,b)=>b.published_at.localeCompare(a.published_at));
+const categories=["geopolitics","macro","rare_earth"];
+const perCategory=categories.map(category=>sorted.filter(s=>s.category===category));
+const balancedOsint=[];
+for(let n=0;balancedOsint.length<650&&perCategory.some(l=>n<l.length);n++)
+ for(const lane of perCategory)if(lane[n]&&balancedOsint.length<650)balancedOsint.push(lane[n]);
+const websiteSignals=[...firstPartySignals,...balancedOsint].slice(0,768);
 const website=await publishPrivateOsintWebsiteSignals({
  signals:websiteSignals,
  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
@@ -84,6 +103,7 @@ console.log(JSON.stringify({
  ...persisted,
  gdelt_global_index:index,
   website_editorial_bridge:website,
+  website_unverified_feed_candidates:osintSignals.length,
  private_osint_d1_persisted:true,
  private_durable_first_seen_clock_verified:true,
  independent_verification_required_for_ingestion:false,
