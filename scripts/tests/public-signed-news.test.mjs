@@ -86,6 +86,31 @@ test('all pages are checked against the independent journal inventory; aliases a
  assert.equal(result.exact_signed_inputs_independently_verified,45);assert.equal(result.journal_items,46);
  assert.equal(f.queries.length,2);assert.equal(f.queries.every(q=>q.length<=80),true);
 });
+test('restarts signed readback when the D1 journal changes between collection and first public page',async()=>{
+ const initial=[signal(1)],current=[signal(1),signal(2)];
+ const oldPage=await fixture(initial),newPage=await fixture(current);
+ let journalReads=0,publicReads=0;
+ const readJournal=async()=>{
+  journalReads++;
+  return journalReads===1?initial:current;
+ };
+ const fetchImpl=async url=>{
+  publicReads++;
+  if(publicReads===1){
+   const response=await oldPage.fetchImpl(url),doc=await response.json();
+   doc.journal_fingerprint='0'.repeat(64);
+   return Response.json(doc);
+  }
+  return newPage.fetchImpl(url);
+ };
+ const result=await verifyAllNewsSignedPublications({keys,now,fetchImpl,readJournal});
+ assert.equal(journalReads,2);
+ assert.equal(result.unique_items,2);
+ assert.equal(result.exact_signed_inputs_independently_verified,2);
+ assert.equal(result.journal_fingerprint_verified,true);
+ assert.equal(result.publication_pages_bound_to_same_journal,true);
+ assert.equal(result.journal_restart_attempts,1);
+});
 test('old news stays dated rather than being made current by a recent signature',async()=>{
  const s=signal(1,120),f=await fixture([s]),d=await (await f.get()).json();
  assert.equal(d.items[0].signature_verified,true);assert.equal(d.items[0].source_current_under_60_minutes,false);
