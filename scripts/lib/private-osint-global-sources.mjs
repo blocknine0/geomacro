@@ -16,6 +16,43 @@ export function privateOsintGlobalSources(){
  const manifest=JSON.parse(readFileSync(new URL("../../config/private-osint-working-sources.v1.json",import.meta.url),"utf8"));
  if(manifest.schema!=="geomacro.private-osint-working-sources.v1"||!Array.isArray(manifest.sources))
   throw Error("PRIVATE_OSINT_GLOBAL_MANIFEST_INVALID");
+ const additions=JSON.parse(readFileSync(new URL("../../config/private-osint-official-feed-additions.v1.json",import.meta.url),"utf8"));
+ if(additions.schema!=="geomacro.private-osint-official-feed-additions.v1"||
+    additions.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
+    !Array.isArray(additions.sources)||additions.sources.length>24)
+   throw Error("PRIVATE_OSINT_OFFICIAL_ADDITIONS_INVALID");
+ const officialFeedCandidates=[];
+ const candidateIds=new Set(),candidateUrls=new Set();
+ for(const s of additions.sources){
+   let url,discovery;
+   try{url=new URL(s.url);discovery=new URL(s.discovery_url);}catch{throw Error("PRIVATE_OSINT_OFFICIAL_FEED_URL_INVALID")}
+   // Exact PIB government RSS source entries from the uploaded national list.
+   // Only PRIVATE, native-clock parsed intake; transport remains independently
+   // observable as DENIED/UNAVAILABLE/MALFORMED until a real feed is read.
+   const expected="https://www.pib.gov.in";
+   if(!/^private_official_ind_pib_press_reg[13]$/u.test(s.id)||
+      url.origin!==expected||url.pathname!=="/RssMain.aspx"||
+      url.searchParams.get("ModId")!=="6"||
+      url.searchParams.get("Lang")!=="1"||
+      !["1","3"].includes(url.searchParams.get("Regid"))||
+      [...url.searchParams.keys()].length!==3||
+      discovery.origin!==expected||discovery.pathname!=="/ViewRss.aspx"||
+      discovery.searchParams.get("lang")!=="1"||
+      discovery.searchParams.get("reg")!==url.searchParams.get("Regid")||
+      [...discovery.searchParams.keys()].length!==2||
+      url.hash||url.username||url.password||discovery.hash||
+      s.continent!=="asia"||s.publisher_country_iso3!=="IND"||
+      s.type!=="rss"||!Array.isArray(s.categories)||
+      s.categories.length!==3||new Set(s.categories).size!==3||
+      s.categories.some(c=>!PRIVATE_OSINT_CATEGORIES.includes(c))||
+      s.activation_state!=="RUNTIME_PROBE_REQUIRED"||
+      s.provider_rights_verified!==false||s.commercial_eligible!==false||
+      s.access_verified_in_production!==false||s.publicly_deliverable!==false||
+      candidateIds.has(s.id)||candidateUrls.has(s.url))
+     throw Error("PRIVATE_OSINT_OFFICIAL_FEED_CANDIDATE_UNSAFE");
+   candidateIds.add(s.id);candidateUrls.add(s.url);
+   officialFeedCandidates.push({...s,supported:true,transport_verified_at_registration:false});
+ }
  const existing=new Map(registeredReusableNewsSources().map(s=>[s.url,s]));
  const map=new Map();
  for(const s of manifest.sources){
@@ -31,6 +68,11 @@ export function privateOsintGlobalSources(){
   map.set(s.url,old?{...old,categories:[...new Set([...old.categories,...s.categories])],
    continent:s.continent,publisher_country_iso3:s.publisher_country_iso3}:
    {...s,supported:true});
+ }
+ for(const candidate of officialFeedCandidates){
+  if(map.has(candidate.url)||existing.has(candidate.url))
+    throw Error("PRIVATE_OSINT_OFFICIAL_FEED_ALREADY_REGISTERED");
+  map.set(candidate.url,candidate);
  }
  // Interleave continents so an individual slow regional desk cannot put
  // another continent at the back of a large sequential registry group.
