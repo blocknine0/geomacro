@@ -1,10 +1,12 @@
 # Geomacro: private OSINT 15-minute breaking-event observation recovery
 
-25 October 2026 · Owner requested permanent worldwide real-time/15m observation
-and independently verified publication in three domains across 195 countries.
-This change **improves a real bounded ingestion mechanism**; it does NOT
-certify that all breaking events are discovered, independently verified or
-delivered in 15 minutes.
+25 October 2026 · Owner's final scope: PRIVATE worldwide OSINT
+breaking-news **discovery and durable ingestion** within a 15-minute target
+across 195 ISO3 country routes and three categories. **Independent
+verification within 15 minutes is explicitly omitted.** The source-native
+feed and authenticated D1 readback are sufficient to admit an UNVERIFIED
+research observation. This remains a best-effort ingestion target, not a
+guarantee that every breaking event is published or reaches registered feeds.
 
 ## Directly verified before change
 
@@ -55,36 +57,36 @@ delivered in 15 minutes.
    This PR does not alter the signed public Intelligence/GRI/Risk
    Indices, Predge pipeline or paid x402 prices.
 
-## Acceptance and rejection
+## Private 15-minute discovery acceptance (no independent verification gate)
 
-A nominal 15-minute source scan does not prove 15-minute breaking
-ingestion. A true per-event private acceptance receipt requires:
+The sole 15-minute objective is: **publisher-native RSS/Atom/approved JSON
+publication clock → first authenticated private D1 ingestion timestamp**.
 
-- a publisher's actual original news event has a native published_at;
-- pinned first-party page exact bytes and native clock independently
-  reread and hashed; stable issuer identity;
-- the same claim independently supported by a distinct genuine original
-  publisher (not syndicated copies/aliases), with counterevidence and
-  retraction checks;
-- article-specific rights, truth-review authority, and exact D1/B2
-  immutable private readback with first observation no later than
-  original published_at + 15 minutes;
-- production issuer readback, any required signatures, continuous
-  monitoring and separately evidenced country/category coverage.
+A private research observation is admitted when:
+- a registered, pinned source responds with a safely parsed relevant item
+  in one of the three categories, within the existing 25-hour source window;
+- the item has a native published_at timestamp, stable duplicate identity
+  and, when unambiguous, a country ISO3 label;
+- sanitized factual tags are durably persisted in the protected private
+  D1 store and the insert is read back with its immutable first_seen_at;
+- the actual publication-to-first-D1-ingestion delay is measured. Label
+  on-time if no more than 15 minutes, otherwise late. Neither label asserts
+  event truth or independently verified publication.
 
-If any part is missing, mark the event `DISCOVERED_UNVERIFIED`,
-`LATE_DISCOVERY`, `PUBLISHER_UNAVAILABLE`,
-`CORROBORATION_PENDING` or `RIGHTS_PENDING` as appropriate; never
-assert independent verified news or bill for it.
+**Removed from this ingestion acceptance:** original article page/body
+re-read, second independent publisher, same-event corroboration, counterevidence,
+separate rights attestations, GRO signatures and GRI/certificates. These
+are **not prerequisites to private discovery or D1 research storage**.
+Their separate existing public/paid/signed eligibility controls remain
+unchanged. All stored news remains UNVERIFIED, private and non-chargeable.
 
-Official GitHub documentation explicitly warns that scheduled workflows
-may be delayed or dropped:
+A source that has not published, responds 403/429, or has no usable
+native item clock cannot yield a falsely on-time news item. Scheduled
+GitHub Actions can be delayed or dropped; observed on-time receipts,
+not the cron expression, measure whether the objective was achieved.
+
+Official GitHub documentation:
 https://docs.github.com/en/actions/how-tos/troubleshoot-workflows
-A hard deadline would require externally bounded redundant clock/queue
-execution, adequate source capacity/permissions, and real incident
-measurement. Even with perfect infrastructure, there cannot be a
-guarantee of discovering every world's unpublished event, obtaining two
-independent original confirmations or establishing rights in 15m.
 
 ## Relevant checks
 
@@ -96,6 +98,8 @@ independent original confirmations or establishing rights in 15m.
 - Retention: factual candidate JSON remains 25h; existing separate signed
   website/pilot journals keep their independent retention rules.
 
-**Explicit launch status**: 15-minute independent verification worldwide
-remains NOT CERTIFIED until it is measured for actual events across sources,
-not inferred from a green GitHub workflow or a 195-country registry.
+**Explicit launch status**: the independent-verification-within-15m
+requirement is **REMOVED**. Private 15-minute discovery/ingestion is evaluated
+only from native source clock to first durable D1 write. This is not a
+guarantee of every breaking event in 195 countries, and does not authorize
+publication or sales.
