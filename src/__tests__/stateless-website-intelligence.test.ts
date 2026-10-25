@@ -241,7 +241,8 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(desk).toContain("initialJournal = []");
     expect(desk).toContain("useState<StatelessIntelligenceSignal[]>(() => initialJournal)");
     expect(desk).toContain('data-testid="geomacro-derived-news-desk"');
-    expect(desk).toContain("const allSignals = filterIntelligenceDesk([...merged.values()]");
+    expect(desk).toContain("const allSignals = filterIntelligenceDesk(dedupeIntelligenceStories([...merged.values()]");
+    expect(desk).toContain("isConcretePublicIntelligence");
 
     expect(desk).toContain("getStatelessIntelligence({ data: { category } })");
     expect(desk).toContain("setInterval(");
