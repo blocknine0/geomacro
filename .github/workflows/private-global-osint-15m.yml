@@ -20,6 +20,8 @@ on:
       - "scripts/lib/private-osint-15m-durable-publisher.mjs"
       - "scripts/lib/private-osint-website-bridge.mjs"
       - "scripts/lib/private-osint-website-bridge.test.mjs"
+      - "scripts/lib/website-derived-retention-priority.test.mjs"
+      - "workers/control-plane/src/website-derived-intelligence.mjs"
       - "scripts/lib/private-osint-website-derived-contract.test.mjs"
       - "workers/control-plane/src/website-derived-intelligence.mjs"
       - "src/lib/public-derived-news-client.ts"
@@ -93,7 +95,7 @@ jobs:
           node --check scripts/lib/private-osint-15m-collector.mjs
           node --check scripts/lib/private-osint-15m-durable-publisher.mjs
           node --check scripts/lib/private-osint-website-bridge.mjs
-          node --test scripts/lib/private-osint-website-bridge.test.mjs
+          node --test scripts/lib/private-osint-website-bridge.test.mjs scripts/lib/website-derived-retention-priority.test.mjs
           node --test scripts/lib/private-osint-website-derived-contract.test.mjs
           node --check workers/control-plane/src/private-osint-15m.mjs
           node --test scripts/lib/private-osint-15m-collector.test.mjs
