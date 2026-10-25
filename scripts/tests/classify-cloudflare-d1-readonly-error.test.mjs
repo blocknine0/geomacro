@@ -1,4 +1,4 @@
-import {describe,expect,it} from "node:test";
+import {describe,it} from "node:test";
 import assert from "node:assert/strict";
 import {classifyCloudflareD1ReadonlyError} from "../ops/classify-cloudflare-d1-readonly-error.mjs";
 
