@@ -1,7 +1,7 @@
 import {describe,it,expect,vi,afterEach} from 'vitest';
 import {generateKeyPairSync,createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
-import {reviewDerivedInputs} from '../../scripts/ops/review-derived-inputs-low-authority';
+import {reviewDerivedInputs,safeLowAuthorityReviewFailure} from '../../scripts/ops/review-derived-inputs-low-authority';
 import {automatedInputId} from '../lib/automated-intelligence-input';
 import {verifyLowSourceReview} from '../lib/low-authority-source-review';
 import {handleLowSourceReviews,lowReviewToken} from '../../workers/control-plane/src/low-source-reviews';
@@ -134,5 +134,17 @@ describe('Geomacro internal LOW automated source review',()=>{
   expect(reviewer).toContain('GEOMACRO_LOW_REVIEW_PRIVATE_PKCS8_B64');
   expect(s).toContain('Remove private review handoff and internal verdicts from the runner');
   expect(s).not.toContain('path: ${{ runner.temp }}');
+ });
+});
+
+
+describe('sanitized low-authority review failure receipt',()=>{
+ it('exposes bounded stable codes but never exception text containing private details',()=>{
+  expect(safeLowAuthorityReviewFailure(new Error('PERSIST'))).toBe('PERSIST');
+  expect(safeLowAuthorityReviewFailure(new Error('LOW_REVIEW_KEY_MISMATCH'))).toBe('LOW_REVIEW_KEY_MISMATCH');
+  expect(safeLowAuthorityReviewFailure(new Error('private original URL https://example.com or secret-key')))
+   .toBe('LOW_AUTHORITY_REVIEW_UNCLASSIFIED_FAILURE');
+  expect(safeLowAuthorityReviewFailure(new Error('D1 write failed: raw exception')))
+   .toBe('LOW_AUTHORITY_REVIEW_UNCLASSIFIED_FAILURE');
  });
 });
