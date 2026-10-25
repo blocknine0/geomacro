@@ -160,7 +160,15 @@ export async function publishPrivateOsintWebsiteSignals({
    if(ids.has(s.id)||unique.has(s.id))return false;
    unique.add(s.id);return true;
  });
- const pending=eligible.slice(0,150);
+ // D1 is physically capped at the 600 most recent (published_at DESC,
+ // id DESC) rows after EACH write batch. A raw 150-row intake against a
+ // 580-row baseline can evict an older new candidate before readback.
+ // Publish only candidates that survive the exact union sort, without
+ // relaxing the website's independently checked source/rights rules.
+ const eligibleIds=new Set([...existing,...eligible]
+   .sort((a,b)=>b.published_at.localeCompare(a.published_at)||
+      b.id.localeCompare(a.id)).slice(0,600).map(s=>s.id));
+ const pending=eligible.filter(s=>eligibleIds.has(s.id)).slice(0,150);
  for(let i=0;i<pending.length;i+=50){
    const batch=pending.slice(i,i+50);
    const res=await fetchImpl(controlPlaneRoot+JOURNAL,{
