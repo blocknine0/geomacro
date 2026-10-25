@@ -9,6 +9,10 @@ on:
       - "scripts/lib/derived-news-b2-readwrite-backup.mjs"
       - "scripts/ops/archive-live-derived-news-to-b2.mjs"
       - "scripts/tests/derived-news-b2-readwrite-backup.test.mjs"
+      - "scripts/lib/derived-news-readback-policy.mjs"
+      - "scripts/tests/derived-news-readback-policy.test.mjs"
+      - "scripts/tests/derived-news-worker-policy.test.mjs"
+      - "scripts/tests/derived-news-deploy-order.test.mjs"
       - "scripts/ops/verify-production-observed-195x3.mjs"
       - "scripts/tests/verify-production-observed-195x3.test.mjs"
       - ".github/workflows/website-derived-news-continuity.yml"
@@ -43,6 +47,11 @@ on:
       - "src/lib/stateless-canada-original.server.ts"
       - "src/lib/stateless-pib-mines-original.server.ts"
       - "workers/control-plane/src/website-derived-intelligence.mjs"
+      - "workers/control-plane/src/index.mjs"
+      - "scripts/lib/derived-news-readback-policy.mjs"
+      - "scripts/tests/derived-news-readback-policy.test.mjs"
+      - "scripts/tests/derived-news-worker-policy.test.mjs"
+      - "scripts/tests/derived-news-deploy-order.test.mjs"
       - "src/lib/automated-finds*"
       - "src/lib/low-authority-source-review.ts"
       - "scripts/ops/review-derived-inputs-low-authority.ts"
@@ -103,9 +112,23 @@ jobs:
           node --test scripts/tests/derived-news-b2-readwrite-backup.test.mjs
 
   refresh-derived-news:
+    # A Worker code push must deploy before the producer runs. The live policy
+    # revision handshake is the final fail-closed guard against rollout races.
+    # Permit a trusted completed deploy even if a later signature audit fails:
+    # the producer itself requires the deployed policy revision before reads.
     if: >-
       github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' &&
-      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.path == '.github/workflows/deploy-control-plane-d1.yml' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+        github.event.workflow_run.head_branch == 'main')) &&
+      (github.event_name != 'push' ||
+       !(contains(github.event.head_commit.modified, 'workers/control-plane/src/website-derived-intelligence.mjs') ||
+         contains(github.event.head_commit.added, 'workers/control-plane/src/website-derived-intelligence.mjs') ||
+         contains(github.event.head_commit.removed, 'workers/control-plane/src/website-derived-intelligence.mjs') ||
+         contains(github.event.head_commit.modified, 'workers/control-plane/src/index.mjs') ||
+         contains(github.event.head_commit.added, 'workers/control-plane/src/index.mjs') ||
+         contains(github.event.head_commit.removed, 'workers/control-plane/src/index.mjs')))
     runs-on: ubuntu-latest
     timeout-minutes: 12
     environment: production
@@ -280,9 +303,10 @@ jobs:
           trap 'rm -f "$body"' EXIT
           code="$(curl -sS --max-time 12 -o "$body" -w '%{http_code}' https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate || true)"
           test "$code" = "200" || { echo "::error::Derived D1 website feed unavailable"; exit 3; }
-          node - "$body" <<'NODE'
-          const fs = require("fs");
-          const doc=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
+          node --input-type=module - "$body" <<'NODE'
+          import {readFileSync} from "node:fs";
+          import {isSafeDerivedNewsReadbackSignal} from "./scripts/lib/derived-news-readback-policy.mjs";
+          const doc=JSON.parse(readFileSync(process.argv[2],"utf8"));
           const now=Date.now(),retentionMs=72*60*60*1000;
           if(doc.ok!==true || doc.schema!=="geomacro.website-derived-news-feed.v1" ||
              (doc.original_release_delay_minutes!==0&&doc.original_release_delay_minutes!==15) ||
@@ -294,14 +318,17 @@ jobs:
                return !Number.isFinite(at) || at>now || now-at>retentionMs ||
                  s.severity!==null||s.same_event_corrob_verified!==false||
                  !((s.status==="official_release_observed_unscored"&&
-                      !s.topic.endsWith(" publisher candidate")) ||
+                       !s.topic.endsWith(" publisher candidate")) ||
                     (s.status==="official_feed_candidate_unscored"&&
                       s.development_type==="unclassified publisher update"&&
                       s.geography===null&&
                       ((s.category==="geopolitics"&&s.topic==="geopolitical publisher candidate")||
                        (s.category==="macro"&&s.topic==="macro publisher candidate")||
-                       (s.category==="rare_earth"&&s.topic==="minerals publisher candidate")))) ||
-                 /https?:\/\/|www\./iu.test(JSON.stringify(s));
+                       (s.category==="rare_earth"&&s.topic==="minerals publisher candidate"))) ||
+                    (s.status==="osint_feed_observed_unverified"&&
+                      s.development_type==="unverified OSINT feed observation"&&
+                      s.date_precision==="exact"&&s.geography===null)) ||
+                  !isSafeDerivedNewsReadbackSignal(s);
              }))
             throw Error("DERIVED_NEWS_72H_ORIGINAL_OR_PRIVACY_READBACK_MISMATCH");
           console.log(JSON.stringify({schema:"geomacro.website-derived-news-readback-receipt.v1",
