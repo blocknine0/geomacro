@@ -1,25 +1,69 @@
 import {automatedInputId,verifyAutomatedInput,type AutomatedInputEnvelope} from '../../../src/lib/automated-intelligence-input.ts';
+import {checkedDerivedNews} from '../../../src/lib/public-derived-news-client.ts';
 const PREFIX='automated_input_v1:';
 type Env={DB:any;AUTOMATED_FINDS_VERIFY_KEYS_JSON?:string};
 const json=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
 const keys=(env:Env)=>JSON.parse(env.AUTOMATED_FINDS_VERIFY_KEYS_JSON||'{}');
+async function currentJournalInputIds(env:Env,now:number):Promise<Set<string>>{
+ const result=await env.DB.prepare(
+  "SELECT id, story_json FROM website_derived_intelligence WHERE published_at>=? AND first_seen_at>=? ORDER BY published_at DESC,id DESC LIMIT 600"
+ ).bind(new Date(now-72*3600_000).toISOString().slice(0,10),
+  new Date(now-72*3600_000).toISOString()).all();
+ if(result.success===false||!Array.isArray(result.results)||result.results.length>600)
+  throw Error('AUTOMATED_INPUT_CURRENT_JOURNAL_UNAVAILABLE');
+ const ids=new Set<string>();
+ for(const row of result.results){
+  let signal:any;
+  try{signal=JSON.parse(row.story_json);}catch{continue;}
+  const checked=checkedDerivedNews({
+   ok:true,schema:'geomacro.website-derived-news-feed.v1',
+   original_release_delay_minutes:0,retention_days:3,retention_hours:72,
+   delivery_scope:'free_website_only',signals:[signal],
+  },now);
+  if(checked.length!==1||checked[0].id!==row.id)continue;
+  ids.add(await automatedInputId(checked[0]));
+ }
+ return ids;
+}
 export async function putAutomatedInputs(env:Env,body:{schema:string;items:AutomatedInputEnvelope[]},now=Date.now()){
  try{
   if(!body||Object.keys(body).sort().join(',')!=='items,schema'||
    body.schema!=='geomacro.automated-intelligence-input-batch.v1'||!Array.isArray(body.items)||
    body.items.length<1||body.items.length>40)throw Error('SHAPE');
   const registry=keys(env),unique=new Map<string,AutomatedInputEnvelope>();
-  for(const e of body.items){await verifyAutomatedInput(e,registry,now);unique.set(await automatedInputId(e.payload.signal),e);}
-  const statements=[...unique].map(([id,e])=>env.DB.prepare(`INSERT INTO control_state(key,value_json,version,updated_at)
+  const currentIds=await currentJournalInputIds(env,now);
+  for(const e of body.items){
+   await verifyAutomatedInput(e,registry,now);
+   const id=await automatedInputId(e.payload.signal);
+   if(!currentIds.has(id))throw Error('AUTOMATED_INPUT_NOT_CURRENT_DERIVED_ROW');
+   unique.set(id,e);
+  }
+  // The journal replaces an item when its content is revised, while signed
+  // input identity is content-hash based. Remove superseded signatures before
+  // inserting current ones, so old revisions cannot crowd out current IDs.
+  const index=await env.DB.prepare("SELECT key FROM control_state WHERE key GLOB ? LIMIT 1000")
+   .bind(PREFIX+'*').all();
+  if(index.success===false||!Array.isArray(index.results)||index.results.length>=1000)
+   throw Error('AUTOMATED_INPUT_STORED_INDEX_UNAVAILABLE');
+  const staleKeys=index.results.map((r:any)=>String(r.key)).filter((key:string)=>
+   key.startsWith(PREFIX)&&!currentIds.has(key.slice(PREFIX.length)));
+  const statements:any[]=[];
+  for(let i=0;i<staleKeys.length;i+=80){
+   const chunk=staleKeys.slice(i,i+80);
+   if(chunk.length)statements.push(env.DB.prepare(
+    "DELETE FROM control_state WHERE key IN ("+chunk.map(()=>"?").join(",")+")"
+   ).bind(...chunk));
+  }
+  statements.push(...[...unique].map(([id,e])=>env.DB.prepare(`INSERT INTO control_state(key,value_json,version,updated_at)
    VALUES (?,?,1,?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,
    version=control_state.version+1,updated_at=excluded.updated_at
    WHERE json_extract(control_state.value_json,'$.integrity.signing_key_id')!=
     json_extract(excluded.value_json,'$.integrity.signing_key_id') AND excluded.updated_at>control_state.updated_at`)
-   .bind(PREFIX+id,JSON.stringify(e),e.payload.generated_at));
+   .bind(PREFIX+id,JSON.stringify(e),e.payload.generated_at)));
   statements.push(env.DB.prepare("DELETE FROM control_state WHERE key GLOB ? AND json_extract(value_json,'$.payload.expires_at')<=?")
    .bind(PREFIX+'*',new Date(now).toISOString()));
-  // Same retained capacity as the existing public journal; expire by native
-  // source time, never by signing time. One bounded atomic D1 batch per 40.
+  // The signed-input store remains a projection of current retained D1 rows,
+  // with the same bounded 600-record cap and no archive of obsolete revisions.
   statements.push(env.DB.prepare(`DELETE FROM control_state WHERE key IN
    (SELECT key FROM control_state WHERE key GLOB ? ORDER BY
     json_extract(value_json,'$.payload.signal.published_at') DESC,key LIMIT -1 OFFSET 600)`)
