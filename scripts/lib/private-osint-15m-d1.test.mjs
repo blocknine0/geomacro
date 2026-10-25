@@ -190,3 +190,36 @@ test("real SQLite coalesces duplicate poll writes while preserving immediate new
   assert.equal(row.last_seen_at,new Date(now+6*3600000+60000).toISOString());
  }finally{db.close()}
 });
+
+test("D1 durably accepts a newly seen news record after 15m and never resets first_seen on repeat",async()=>{
+ const {env,items}=fakeD1();
+ const late=item({id:"news-"+hash("genuine-late-arrival"),
+  source:{publisher_name:null,original_url:null,
+   original_published_at:new Date(now-2*3600000).toISOString()}});
+ const body={schema:PRIVATE_OSINT_D1_SCHEMA,items:[late],checks:[check()]};
+ const initial=await privateOsint15mWrite(env,body,now);
+ assert.equal(initial.status,200);
+ const first=await initial.json();
+ assert.equal(first.persisted,1);
+ assert.equal(first.native_feed_to_first_durable_write_within_15m,0);
+ assert.equal(first.native_feed_to_first_durable_write_over_15m,1);
+ assert.equal(first.newly_persisted_after_15m,1);
+ assert.equal(first.newly_persisted_within_15m,0);
+ assert.equal(first.previously_persisted_reobserved,0);
+ assert.equal(first.late_arrivals_not_rejected_by_15m_cutoff,true);
+ const firstSeen=[...items.values()][0].first_seen_at;
+ const repeated=await privateOsint15mWrite(env,{...body,checks:[
+  {...check(),checked_at:new Date(now+60_000).toISOString()}]},now+60_000);
+ assert.equal(repeated.status,200);
+ const again=await repeated.json();
+ assert.equal(again.persisted,1);
+ assert.equal(again.native_feed_to_first_durable_write_over_15m,1);
+ assert.equal(again.newly_persisted_after_15m,0);
+ assert.equal(again.previously_persisted_reobserved,1);
+ assert.equal([...items.values()][0].first_seen_at,firstSeen);
+ const response=await privateOsint15mRead(env,new URLSearchParams("category=macro"),now+60_000);
+ const readback=await response.json();
+ assert.equal(readback.items.length,1);
+ assert.equal(readback.items[0].private_first_seen_at,firstSeen);
+ assert.equal(readback.items[0].commercially_eligible,false);
+});

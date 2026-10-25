@@ -117,7 +117,7 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
     .bind(...itemIds).all():{results:[]};
    if(!Array.isArray(readback.results))throw Error("D1_READBACK_INVALID");
    const foundById=new Map(readback.results.map(r=>[r.item_id,r]));
-   let retained=0,excluded=0,within15=0,after15=0;
+   let retained=0,excluded=0,within15=0,after15=0,newWithin15=0,newLate=0,reobserved=0;
    for(const r of rows){
      const found=foundById.get(r.id);
      if(!found){excluded++;continue}
@@ -128,11 +128,20 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
      if(!Number.isFinite(first)||first>now+60_000||lag<0)throw Error("PRIVATE_OSINT_D1_FIRST_SEEN_INVALID");
      retained++;
      if(lag<=15*60000)within15++;else after15++;
+     // First-seen stays fixed on retries. Report genuinely NEW late arrivals
+     // separately from reobservations of a previously durably stored item.
+     if(!r.preexisting&&found.first_seen_at===when){
+       if(lag<=15*60000)newWithin15++;else newLate++;
+     }else reobserved++;
    }
    return respond({ok:true,schema:"geomacro.private-osint-15m-write-receipt.v1",
      persisted:retained,capacity_excluded:excluded,checks_saved:body.checks.length,
      native_feed_to_first_durable_write_within_15m:within15,
      native_feed_to_first_durable_write_over_15m:after15,
+     newly_persisted_within_15m:newWithin15,
+     newly_persisted_after_15m:newLate,
+     previously_persisted_reobserved:reobserved,
+     late_arrivals_not_rejected_by_15m_cutoff:true,
      d1_exact_readback_verified:true,
      existence_and_readback_bundled:true,d1_queries_this_write:statements.length+(rows.length?2:0),
      duplicate_news_last_seen_refresh_hours:6,unchanged_check_refresh_minutes:60,

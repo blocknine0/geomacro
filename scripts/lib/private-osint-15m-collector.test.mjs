@@ -126,3 +126,43 @@ test("overlapping news-index queries ingest one exact article identity without m
  assert.equal(r.checks.length,3);assert.equal(r.items.length,2);
  assert.equal(r.summary.index_items_deduplicated_across_queries,true);
 });
+
+test("private discovery admits 16-minute, two-hour and 24-hour late arrivals; 25h remains the boundary",async()=>{
+ const registry=[{id:"late-publisher",url:"https://late.example.org/rss",
+   type:"rss",supported:true,categories:["macro"]}];
+ const timestamps=["Sun, 25 Oct 2026 11:52:00 GMT","Sun, 25 Oct 2026 11:44:00 GMT",
+   "Sun, 25 Oct 2026 10:00:00 GMT","Sat, 24 Oct 2026 12:01:00 GMT",
+   "Sat, 24 Oct 2026 10:59:00 GMT"];
+ const rssBody="<rss><channel>"+timestamps.map((stamp,i)=>
+   "<item><title>Central bank announces inflation policy decision "+i+"</title>"+
+   "<pubDate>"+stamp+"</pubDate></item>").join("")+"</channel></rss>";
+ const result=await collectPrivateOsint15m({now,registry,normalize,resolveCountry:()=>null,
+   fetchImpl:async()=>new Response(rssBody)});
+ assert.equal(result.items.length,4,"after-15m must not be an ingestion cutoff");
+ assert.equal(result.summary.discovered_within_15m_native_clock,1);
+ assert.equal(result.summary.discovered_after_15m_native_clock,3);
+ assert.equal(result.summary.selected_after_15m_native_clock,3);
+ assert.equal(result.summary.late_arrivals_not_rejected_by_15m_cutoff,true);
+ assert.ok(result.items.every(x=>x.verification===undefined||x.verification.original_page_verified!==true));
+});
+test("a breaking-news burst reserves bounded private intake for after-15m items in the SAME category",async()=>{
+ const registry=Array.from({length:14},(_,i)=>({
+   id:"late-burst-"+i,url:"https://late-"+i+".example.org/rss",
+   type:"rss",supported:true,categories:[i<12?"geopolitics":i===12?"macro":"rare_earth"]
+ }));
+ const result=await collectPrivateOsint15m({now,registry,normalize,resolveCountry:()=>null,
+   fetchImpl:async url=>{
+     const n=Number(new URL(url).hostname.match(/late-([0-9]+)/u)[1]);
+     const topic=n<12?"military ceasefire":n===12?"central bank inflation":"critical minerals lithium";
+     const stamp=n===11?"Sun, 25 Oct 2026 10:55:00 GMT":"Sun, 25 Oct 2026 11:57:00 GMT";
+     return new Response("<rss><channel>"+Array.from({length:90},(_,i)=>
+       "<item><title>Government announces "+topic+" policy "+i+"</title>"+
+       "<pubDate>"+stamp+"</pubDate></item>").join("")+"</channel></rss>");
+   }});
+ assert.equal(result.items.length,768);
+ assert.ok(result.summary.excluded_by_capacity>0);
+ assert.equal(result.summary.discovered_after_15m_native_clock,90);
+ assert.ok(result.summary.selected_after_15m_native_clock>0,
+   "late arrivals in a crowded domain cannot be entirely starved");
+ assert.equal(result.summary.late_arrivals_not_rejected_by_15m_cutoff,true);
+});

@@ -76,9 +76,26 @@ export async function collectPrivateOsint15m({
   }
   const all=[...dedup.values()].sort((a,b)=>b.source.original_published_at.localeCompare(a.source.original_published_at)||a.id.localeCompare(b.id));
   const recent=all.filter(x=>Date.parse(x.source.original_published_at)>=now.getTime()-PRIVATE_OSINT_TARGET_MINUTES*60_000);
-  // A burst of geopolitical headlines must not evict the mineral and macro
-  // lanes from this shared bounded private intake. Newest first in each lane.
-  const lanes=DOMAINS.map(c=>all.filter(x=>x.category===c)),selected=[];
+  // A burst of fresh headlines must not starve previously unseen news
+  // arriving >15 minutes after its publisher-native clock. In a bounded
+  // overflow, reserve every fifth per-category selection for eligible late
+  // items; keep newest-first behavior unchanged when no overflow exists.
+  const cutoff=now.getTime()-PRIVATE_OSINT_TARGET_MINUTES*60_000;
+  const lanes=DOMAINS.map(category=>{
+    const domainItems=all.filter(x=>x.category===category);
+    if(all.length<=PRIVATE_OSINT_MAX_RESULTS_PER_TICK)return domainItems;
+    const fresh=domainItems.filter(x=>Date.parse(x.source.original_published_at)>=cutoff);
+    const late=domainItems.filter(x=>Date.parse(x.source.original_published_at)<cutoff);
+    if(!fresh.length||!late.length)return domainItems;
+    const mixed=[];
+    let fi=0,li=0;
+    while(fi<fresh.length||li<late.length){
+      for(let n=0;n<4&&fi<fresh.length;n++)mixed.push(fresh[fi++]);
+      if(li<late.length)mixed.push(late[li++]);
+      if(fi===fresh.length&&li<late.length){mixed.push(...late.slice(li));break}
+    }
+    return mixed;
+  }),selected=[];
   for(let n=0;selected.length<PRIVATE_OSINT_MAX_RESULTS_PER_TICK&&lanes.some(l=>n<l.length);n++)
     for(const lane of lanes)if(lane[n]&&selected.length<PRIVATE_OSINT_MAX_RESULTS_PER_TICK)selected.push(lane[n]);
   return {
@@ -95,6 +112,10 @@ export async function collectPrivateOsint15m({
           ["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW"].includes(c.state)))).length,
       continent_coverage:privateOsintContinentCoverage(registry,[...checks.values()],all),
       discovered_within_15m_native_clock:recent.length,
+      discovered_after_15m_native_clock:all.length-recent.length,
+      selected_after_15m_native_clock:selected.filter(x=>
+        Date.parse(x.source.original_published_at)<cutoff).length,
+      late_arrivals_not_rejected_by_15m_cutoff:true,
       factual_items_25h:all.length,excluded_by_capacity:Math.max(0,all.length-PRIVATE_OSINT_MAX_RESULTS_PER_TICK)+collectorExcluded,
       selected_items_by_category:Object.fromEntries(DOMAINS.map(c=>[c,selected.filter(x=>x.category===c).length])),
       excluded_items_by_category:Object.fromEntries(DOMAINS.map(c=>[c,all.filter(x=>x.category===c).length-selected.filter(x=>x.category===c).length])),

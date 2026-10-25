@@ -18,6 +18,9 @@ function simulate(){
     existence_and_readback_bundled:true,d1_queries_this_write:3,
     native_feed_to_first_durable_write_within_15m:b.items.length,
     native_feed_to_first_durable_write_over_15m:0,
+    newly_persisted_within_15m:b.items.length,
+    newly_persisted_after_15m:0,
+    previously_persisted_reobserved:0,
     independent_verification_required_for_ingestion:false,
     original_page_verified:false,paid_product_authorized:false,raw_upstream_stored:false});
   }
@@ -96,4 +99,33 @@ test("expired source-native clock cannot be resent and no private title is gener
  assert.equal(out.news_rows_verified_in_d1,0);
  assert.equal(out.source_checks_persisted,1);
  assert.equal(JSON.parse(calls[0].body).items.length,0);
+});
+
+test("protected publisher preserves true new-late vs repeated news counts",async()=>{
+ const old={...input,items:[{...input.items[0],source:{
+   original_published_at:new Date(now-35*60000).toISOString()
+ }}]};
+ const {f}=simulate();
+ const lateReader=async(url,opts)=>{
+  if(opts.method==="PUT"){
+   const b=JSON.parse(opts.body);
+   return Response.json({ok:true,schema:"geomacro.private-osint-15m-write-receipt.v1",
+     persisted:b.items.length,capacity_excluded:0,checks_saved:b.checks.length,
+     d1_exact_readback_verified:true,existence_and_readback_bundled:true,
+     d1_queries_this_write:3,
+     native_feed_to_first_durable_write_within_15m:0,
+     native_feed_to_first_durable_write_over_15m:b.items.length,
+     newly_persisted_within_15m:0,newly_persisted_after_15m:b.items.length,
+     previously_persisted_reobserved:0,
+     independent_verification_required_for_ingestion:false,
+     original_page_verified:false,paid_product_authorized:false,raw_upstream_stored:false});
+  }
+  return f(url,opts);
+ };
+ const r=await persistPrivateOsintBatch({
+  result:old,privateToken:token,controlPlaneRoot:host,fetchImpl:lateReader,now});
+ assert.equal(r.news_rows_verified_in_d1,1);
+ assert.equal(r.newly_persisted_after_15m,1);
+ assert.equal(r.newly_persisted_within_15m,0);
+ assert.equal(r.previously_persisted_reobserved,0);
 });

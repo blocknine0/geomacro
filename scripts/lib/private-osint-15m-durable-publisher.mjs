@@ -21,6 +21,7 @@ export async function persistPrivateOsintBatch({
    items:items.splice(0,12),checks:checks.splice(0,20),
  });
  let saved=0,excluded=0,checked=0,in15=0,over15=0,writerBundled=true,writeQueries=0;
+ let newlyOnTime=0,newlyLate=0,previouslySeen=0,firstSeenCountersAvailable=true;
  for(const group of groups){
   const response=await fetchImpl(controlPlaneRoot+"/v1/internal/private-osint-15m",{
    method:"PUT",redirect:"error",cache:"no-store",
@@ -42,6 +43,16 @@ export async function persistPrivateOsintBatch({
   checked+=receipt.checks_saved;
   in15+=receipt.native_feed_to_first_durable_write_within_15m;
   over15+=receipt.native_feed_to_first_durable_write_over_15m;
+  // Existing production Workers may still be serving the previous receipt
+  // during rollout. Missing NEW counters mean unknown, never guessed as 0.
+  const counts=[receipt.newly_persisted_within_15m,
+    receipt.newly_persisted_after_15m,receipt.previously_persisted_reobserved];
+  if(counts.every(x=>Number.isSafeInteger(x)&&x>=0)&&
+     counts[0]+counts[1]+counts[2]===receipt.persisted){
+    newlyOnTime+=counts[0];newlyLate+=counts[1];previouslySeen+=counts[2];
+  }else if(counts.every(x=>x===undefined)){
+    firstSeenCountersAvailable=false;
+  }else throw Error("PRIVATE_OSINT_NEW_LATE_COUNTERS_INVALID");
   writerBundled=writerBundled&&receipt.existence_and_readback_bundled===true;
   if(writeQueries!==null&&Number.isSafeInteger(receipt.d1_queries_this_write)&&receipt.d1_queries_this_write>=0)
     writeQueries+=receipt.d1_queries_this_write;
@@ -73,6 +84,9 @@ export async function persistPrivateOsintBatch({
    excluded_by_d1_capacity:excluded,
    native_feed_to_first_durable_write_within_15m:in15,
    native_feed_to_first_durable_write_over_15m:over15,
+   newly_persisted_within_15m:firstSeenCountersAvailable?newlyOnTime:null,
+   newly_persisted_after_15m:firstSeenCountersAvailable?newlyLate:null,
+   previously_persisted_reobserved:firstSeenCountersAvailable?previouslySeen:null,
    d1_write_exact_readback_verified:true,
    independent_verification_required_for_ingestion:false,
    separate_private_d1_readback_verified:true,
