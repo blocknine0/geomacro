@@ -20,6 +20,8 @@ on:
       - ".github/workflows/website-derived-news-cadence-backstop.yml"
       - "scripts/lib/derived-news-readback-policy.mjs"
       - "scripts/tests/derived-news-readback-policy.test.mjs"
+      - "scripts/ops/verify-derived-news-public-readback.mjs"
+      - "scripts/tests/derived-news-public-readback.test.mjs"
       - "scripts/ops/check-website-derived-news-cadence.mjs"
       - "scripts/lib/five-minute-news-cadence-watch.mjs"
       - "scripts/ops/recover-stalled-five-minute-news.mjs"
@@ -40,6 +42,8 @@ on:
       - ".github/workflows/website-derived-news-cadence-backstop.yml"
       - "scripts/lib/derived-news-readback-policy.mjs"
       - "scripts/tests/derived-news-readback-policy.test.mjs"
+      - "scripts/ops/verify-derived-news-public-readback.mjs"
+      - "scripts/tests/derived-news-public-readback.test.mjs"
       - "scripts/ops/check-website-derived-news-cadence.mjs"
       - "scripts/lib/five-minute-news-cadence-watch.mjs"
       - "scripts/ops/recover-stalled-five-minute-news.mjs"
@@ -82,6 +86,8 @@ jobs:
           node --check scripts/ops/check-website-derived-news-cadence.mjs
           node --check scripts/lib/five-minute-news-cadence-watch.mjs
           node --check scripts/ops/recover-stalled-five-minute-news.mjs
+          node --check scripts/ops/verify-derived-news-public-readback.mjs
+          node --test scripts/tests/derived-news-public-readback.test.mjs
           node --test scripts/tests/five-minute-news-cadence-watch.test.mjs
           node --test scripts/tests/website-derived-news-failover.test.mjs scripts/tests/automated-finds-run-health.test.mjs scripts/tests/derived-news-source-health.test.mjs scripts/tests/material-gri-news-review.test.mjs scripts/tests/material-gri-country-evidence-worklist.test.mjs
 
@@ -226,44 +232,8 @@ jobs:
       - name: Independently prove private-source-free D1 readback after recovery
         if: steps.decide.outputs.should_run == 'true'
         shell: bash
-        run: |
-          set -euo pipefail
-          body="$(mktemp)"
-          trap 'rm -f "$body"' EXIT
-          code="$(curl -sS --max-time 12 --proto '=https' \
-            -o "$body" -w '%{http_code}' \
-            https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate || true)"
-          test "$code" = "200" || {
-            echo "::error::DERIVED_NEWS_BACKSTOP_D1_READBACK_UNAVAILABLE"
-            exit 3
-          }
-          node --input-type=module - "$body" <<'NODE'
-          import {readFileSync} from "node:fs";
-          import {isSafeDerivedNewsReadbackSignal} from "./scripts/lib/derived-news-readback-policy.mjs";
-          const body=JSON.parse(readFileSync(process.argv[2],"utf8"));
-          if(body.ok!==true || body.schema!=="geomacro.website-derived-news-feed.v1" ||
-             (body.original_release_delay_minutes!==0&&body.original_release_delay_minutes!==15) ||
-             body.delivery_scope!=="free_website_only" ||
-             !Array.isArray(body.signals) || body.signals.length>250 ||
-             body.signals.some(s=>s.severity!==null ||
-               s.same_event_corrob_verified!==false ||
-               !isSafeDerivedNewsReadbackSignal(s)))
-            throw Error("DERIVED_NEWS_BACKSTOP_PUBLIC_CONTRACT_INVALID");
-          const now=Date.now();
-          const counts=Object.fromEntries(["geopolitics","macro","rare_earth"].map(c=>[
-            c,{
-              stored_30d:body.signals.filter(s=>s.category===c).length,
-              original_last_24h:body.signals.filter(s=>s.category===c &&
-                Date.parse(s.published_at)>=now-86_400_000).length,
-            },
-          ]));
-          console.log(JSON.stringify({
-            schema:"geomacro.website-derived-news-backstop-readback.v1",
-            verified:true,derived_rows:body.signals.length,domains:counts,
-            original_release_delay_minutes:body.original_release_delay_minutes,source_content_logged:false,
-            supabase_dependency:false,payments_performed:0,
-          }));
-          NODE
+        run: node scripts/ops/verify-derived-news-public-readback.mjs
+
       - name: Print explicit successful no-write decision
         if: steps.decide.outputs.should_run != 'true'
         run: echo "NEWS_BACKSTOP_SKIPPED_PRIMARY_PUBLISHER_CURRENT"

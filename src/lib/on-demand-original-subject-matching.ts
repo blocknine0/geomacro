@@ -15,6 +15,23 @@ const REVIEWED_DEMONYMS: Readonly<Record<string,readonly string[]>> = Object.fre
   RUS:["Russia","Russian"], IRN:["Iran","Iranian"],
   // Fixed UK geography, not a rule that every GOV.UK article is about Britain.
   GBR:["British","UK","Cornwall","England","Scotland","Wales"],
+  // Reviewed national demonyms commonly used in first-party macro and
+  // strategic-material headlines. Word-boundary matching is still required.
+  ARG:["Argentine","Argentinian"], AUT:["Austrian"], BGD:["Bangladeshi"],
+  BOL:["Bolivian"], CIV:["Ivorian"], COL:["Colombian"], CRI:["Costa Rican"],
+  CZE:["Czech"], DNK:["Danish"], DZA:["Algerian"], EGY:["Egyptian"],
+  ETH:["Ethiopian"], FIN:["Finnish"], GHA:["Ghanaian"], GRC:["Greek"],
+  HUN:["Hungarian"], IRL:["Irish"], ISR:["Israeli"], ITA:["Italian"],
+  KAZ:["Kazakh"], KEN:["Kenyan"], KHM:["Cambodian"], LKA:["Sri Lankan"],
+  MAR:["Moroccan"], MEX:["Mexican"], MMR:["Burmese","Myanmar"], MNG:["Mongolian"],
+  MOZ:["Mozambican"], MYS:["Malaysian"], NAM:["Namibian"], NGA:["Nigerian"],
+  NLD:["Dutch"], NOR:["Norwegian"], NPL:["Nepali","Nepalese"],
+  NZL:["New Zealander"], PAK:["Pakistani"], PER:["Peruvian"],
+  PHL:["Filipino","Philippine"], POL:["Polish"], PRT:["Portuguese"],
+  RWA:["Rwandan"], SAU:["Saudi","Saudi Arabian"], SEN:["Senegalese"],
+  SGP:["Singaporean"], SWE:["Swedish"], THA:["Thai"], TUR:["Turkish"],
+  TZA:["Tanzanian"], UGA:["Ugandan"], UKR:["Ukrainian"], VNM:["Vietnamese"],
+  ZMB:["Zambian"], ZWE:["Zimbabwean"],
 });
 function normalized(value:string):string {
   return value.normalize("NFKC").trim().replace(/\s+/gu," ");

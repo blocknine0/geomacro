@@ -290,8 +290,10 @@ test("backstop workflow is parseable by GitHub with a real boolean continue-on-e
 test("production cadence backstop uses the shared OSINT-safe readback contract", async () => {
   const {readFileSync}=await import("node:fs");
   const workflow=readFileSync(new URL("../../.github/workflows/website-derived-news-cadence-backstop.yml",import.meta.url),"utf8");
-  assert.ok(workflow.includes('import {isSafeDerivedNewsReadbackSignal} from "./scripts/lib/derived-news-readback-policy.mjs";'));
-  assert.ok(workflow.includes("!isSafeDerivedNewsReadbackSignal(s)"));
+  const verifier=readFileSync(new URL("../ops/verify-derived-news-public-readback.mjs",import.meta.url),"utf8");
+  assert.ok(workflow.includes("node scripts/ops/verify-derived-news-public-readback.mjs"));
+  assert.ok(verifier.includes("isSafeDerivedNewsReadbackSignal(signal)"));
+  assert.ok(verifier.includes("DERIVED_NEWS_PUBLIC_READBACK_CONTRACT_INVALID"));
   assert.ok(!workflow.includes('/https?:\\/\\/|www\\./iu.test(JSON.stringify(s))'));
   const {isSafeDerivedNewsReadbackSignal}=await import("../lib/derived-news-readback-policy.mjs");
   const safe={

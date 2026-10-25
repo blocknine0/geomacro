@@ -11,7 +11,12 @@ function mock(start=0,count=3){
   LIVE_SOURCE_REACHABLE:true,COUNTRY_RELEVANCE_VERIFIED:false,
   ORIGINAL_EVIDENCE_VERIFIED:false,ORIGINAL_PAGE_VERIFIED:false,
   INDEPENDENT_FALLBACK_VERIFIED:false,RIGHTS_QUALIFIED:null,
-  SIGNED_DELIVERY_VERIFIED:null,
+  SIGNED_DELIVERY_VERIFIED:null,original_page_publication_utc:null,
+  original_publisher_families_reached:1,original_country_relevant_candidates:0,
+  original_pages_verified:0,independent_verified_publisher_families:0,
+  restricted_publisher_attempts:0,rate_limited_publisher_attempts:0,
+  NO_QUALIFYING_EVIDENCE_FOUND:true,BLOCKED:"NO_COUNTRY_RELEVANT_ORIGINAL",
+  verdict:"NO_QUALIFYING_CURRENT_EVIDENCE",
  })));
  return {schema:"geomacro.195-country-safe-readonly-batch.v2",
   probe_started_at:"2026-10-23T08:23:00Z",probe_finished_at:"2026-10-23T08:25:00Z",
@@ -32,6 +37,39 @@ test("reads exactly the canonical 193+2 country registry and never infers covera
  assert.equal(out.category_coverage.macro.first_party_original_page_verified,0);
  assert.equal(out.complete_195x3_current_live_original_coverage_verified,false);
 });
+
+test("a current-page claim is rejected unless the exact native publication clock is present",()=>{
+ const report=mock();
+ const cell=report.cells[0];
+ cell.COUNTRY_RELEVANCE_VERIFIED=true;
+ cell.ORIGINAL_EVIDENCE_VERIFIED=true;cell.ORIGINAL_PAGE_VERIFIED=true;
+ cell.original_country_relevant_candidates=1;cell.original_pages_verified=1;
+ cell.NO_QUALIFYING_EVIDENCE_FOUND=false;cell.BLOCKED=null;
+ cell.verdict="PARTIAL_SOURCE_COVERAGE";
+ assert.throws(()=>rollupCountry195Proofs([report],known,{now}),
+  /RECEIPT_UNTRUSTED/);
+});
+
+test("fresh source probe with an older-than-24h native article is not current coverage",()=>{
+ const report=mock();
+ report.probe_started_at="2026-10-23T14:00:00.000Z";
+ report.probe_finished_at="2026-10-23T14:05:00.000Z";
+ report.cells.forEach(cell=>{
+  cell.COUNTRY_RELEVANCE_VERIFIED=true;
+  cell.ORIGINAL_EVIDENCE_VERIFIED=true;cell.ORIGINAL_PAGE_VERIFIED=true;
+  cell.original_page_publication_utc="2026-10-22T15:00:00.000Z";
+  cell.original_country_relevant_candidates=1;cell.original_pages_verified=1;
+  cell.NO_QUALIFYING_EVIDENCE_FOUND=false;cell.BLOCKED=null;
+  cell.verdict="PARTIAL_SOURCE_COVERAGE";
+ });
+ const out=rollupCountry195Proofs([report],known,{now});
+ assert.equal(out.category_coverage.geopolitics.freshly_probed_within_24h,3);
+ assert.equal(out.category_coverage.geopolitics.first_party_original_page_verified,3);
+ assert.equal(out.cells.filter(c=>c.status==="ORIGINAL_PAGE_STALE").length,9);
+ assert.equal(out.current_original_verified_cells,0);
+ assert.equal(out.complete_195x3_current_live_original_coverage_verified,false);
+});
+
 test("rejects duplicated cells, fabricated signing, omitted proof and unauthorized country",()=>{
  const dup=mock();dup.cells[1]={...dup.cells[0]};
  assert.throws(()=>rollupCountry195Proofs([dup],known,{now}),/RECEIPT_UNTRUSTED/);
@@ -50,8 +88,14 @@ test("publishes all 585 actionable cell statuses and never confuses historical t
   const r=mock(i*3,3);
   r.probe_started_at="2026-10-24T11:23:00Z";
   r.probe_finished_at="2026-10-24T11:25:00Z";
-  r.cells.forEach(c=>{c.COUNTRY_RELEVANCE_VERIFIED=true;
-   c.ORIGINAL_EVIDENCE_VERIFIED=true;c.ORIGINAL_PAGE_VERIFIED=true;});
+  r.cells.forEach(c=>{
+   c.COUNTRY_RELEVANCE_VERIFIED=true;
+   c.ORIGINAL_EVIDENCE_VERIFIED=true;c.ORIGINAL_PAGE_VERIFIED=true;
+   c.original_page_publication_utc="2026-10-24T11:24:00.000Z";
+   c.original_country_relevant_candidates=1;c.original_pages_verified=1;
+   c.NO_QUALIFYING_EVIDENCE_FOUND=false;c.BLOCKED=null;
+   c.verdict="PARTIAL_SOURCE_COVERAGE";
+  });
   return r;
  });
  const complete=rollupCountry195Proofs(reports,known,{now});

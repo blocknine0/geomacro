@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { originalHeadlineMentionsCountry, originalPublisherMatchesCountry } from "./on-demand-original-subject-matching";
 import {
   discoverOnDemandGlobal, discoverOnDemandForPrivateQualification,
-  matchesRequestedTopic,
+  matchesRequestedTopic, buildCountryScopedGdeltTerms,
 } from "./on-demand-global-discovery.server";
 
 const now=new Date("2026-10-11T12:00:00Z");
@@ -25,6 +25,57 @@ describe("fixed country qualification for original publisher evidence",()=>{
     title,iso,name,expected,
   )=>{
     expect(originalHeadlineMentionsCountry(title,iso,name)).toBe(expected);
+  });
+  it("recognizes reviewed demonyms without fuzzy or cross-country substring matches",()=>{
+    for(const [title,iso,name] of [
+      ["Peruvian lithium export measures","PER","Peru"],
+      ["Nigerian central bank adjusts monetary policy","NGA","Nigeria"],
+      ["South African manganese refining investment","ZAF","South Africa"],
+      ["Malaysian rare-earth processing outlook","MYS","Malaysia"],
+      ["Dutch sovereign bond yields rise","NLD","Netherlands"],
+      ["Vietnamese graphite supply expansion","VNM","Vietnam"],
+    ] as const)expect(originalHeadlineMentionsCountry(title,iso,name)).toBe(true);
+    expect(originalHeadlineMentionsCountry("Peruvian lithium export measures","CHL","Chile")).toBe(false);
+    expect(originalHeadlineMentionsCountry("Nigerian monetary policy","NER","Niger")).toBe(false);
+    expect(originalHeadlineMentionsCountry("Dutch sovereign bond yields rise","DEU","Germany")).toBe(false);
+  });
+  it.each([
+    ["Government announces new tariffs amid trade flows and manufacturing PMI","macro",["macro_risk"],true],
+    ["Central bank reports a change in foreign-exchange reserves","macro",["fx_external_risk"],true],
+    ["Treasury yields rise as sovereign debt issuance expands","macro",["sovereign_risk"],true],
+    ["Strategic gallium and germanium refining capacity expands","rare_earth",["critical_minerals"],true],
+    ["Critical raw materials policy focuses on tungsten and antimony","rare_earth",["critical_minerals"],true],
+    ["Rare-earth permanent magnet supply chain faces export controls","rare_earth",["critical_minerals"],true],
+    ["Government announces tariffs and manufacturing PMI","rare_earth",["critical_minerals"],false],
+    ["Rare-earth refinery update","macro",["macro_risk"],false],
+    ["Foreign-exchange reserves rise after central bank review","macro",["fx_external_risk"],true],
+    ["Mineral supply chain risk for neodymium and dysprosium","rare_earth",["critical_minerals"],true],
+    ["Peace talks pause after a military ceasefire announcement","geopolitics",["conflict_geopolitics"],true],
+  ] as const)("matches broader live-release topics only in the requested category: %s",(
+    title,category,topics,expected,
+  )=>{
+    expect(matchesRequestedTopic(title,category,topics)).toBe(expected);
+  });
+  it("builds a combined bounded GDELT query for every reviewed category topic",()=>{
+    const geo=buildCountryScopedGdeltTerms("geopolitics",[
+      "sanctions_restrictions","conflict_geopolitics","political_governance",
+    ]);
+    expect(geo).toContain("sanctions");
+    expect(geo).toContain("ceasefire");
+    expect(geo).toContain("parliament");
+    const macro=buildCountryScopedGdeltTerms("macro",[
+      "macro_risk","sovereign_risk","fx_external_risk",
+    ]);
+    expect(macro).toContain("inflation");
+    expect(macro).toContain("manufacturing");
+    expect(macro).toContain("sovereign debt");
+    expect(macro).toContain("foreign exchange");
+    expect(macro).toContain("FX reserves");
+    expect(macro).not.toContain("critical raw materials");
+    const minerals=buildCountryScopedGdeltTerms("rare_earth",["critical_minerals"]);
+    for(const term of ["gallium","germanium","antimony","tungsten","refining","permanent magnets"])
+      expect(minerals).toContain(term);
+    expect(buildCountryScopedGdeltTerms("macro",[])).toBeTruthy();
   });
   it("recognizes original Fed discount-rate policy as macro, not FX or mineral evidence",()=>{
     const genuineTitle="Minutes of the Board's discount rate meetings on August 17, September 9, and September 16, 2026";

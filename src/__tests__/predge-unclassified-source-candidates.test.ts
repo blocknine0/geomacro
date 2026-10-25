@@ -101,8 +101,11 @@ describe("low-friction genuine original-source candidate tier for Predge",()=>{
    const html=readFileSync("workers/control-plane/src/website-derived-intelligence.mjs","utf8");
    expect(html).toContain("SOURCE CANDIDATE · TOPIC UNVERIFIED");
    const wf=readFileSync(".github/workflows/website-derived-news-continuity.yml","utf8");
-   expect(wf).toContain('s.status==="official_feed_candidate_unscored"');
-   expect(wf).toContain('s.status==="official_release_observed_unscored"');
+   expect(wf).toContain("node scripts/ops/verify-derived-news-public-readback.mjs");
+   const readback=readFileSync("scripts/ops/verify-derived-news-public-readback.mjs","utf8");
+   expect(readback).toContain('signal.status==="official_feed_candidate_unscored"');
+   expect(readback).toContain('signal.status==="official_release_observed_unscored"');
+   expect(readback).toContain('osint_feed_observed_unverified');
    const parity=readFileSync("scripts/ops/verify-shared-derived-news-live.mjs","utf8");
    expect(parity).toContain("row.qualifying_topic_release_verified");
    expect(parity).toContain("row.topical_match_verified");

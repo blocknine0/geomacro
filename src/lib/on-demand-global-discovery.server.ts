@@ -155,13 +155,13 @@ export function inferOnDemandMineral(question: string | null | undefined): OnDem
 // Fixed topic vocabulary. Never send a customer's freeform question upstream.
 // A generic official headline is not evidence for an exact sanctioned topic.
 const TOPIC_TITLE_PATTERNS:Readonly<Record<string,RegExp>>={
-  sanctions_restrictions:/\b(?:sanctions?|embargo|export controls?|restrictions?)\b/iu,
-  conflict_geopolitics:/\b(?:conflict|ceasefire|war|military|airstrike|peace|security council)\b/iu,
-  political_governance:/\b(?:government|governance|election|parliament|diplomatic)\b/iu,
-  macro_risk:/\b(?:inflation|gdp|monetary|central bank|growth|interest rates?|discount rates?|economy|economic|financial|chancellor|treasury)\b/iu,
-  sovereign_risk:/\b(?:fiscal|sovereign|budget|bond|debt)\b/iu,
-  fx_external_risk:/\b(?:foreign exchange|exchange rate|currency|reserves|fx)\b/iu,
-  critical_minerals:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mining)\b/iu,
+  sanctions_restrictions:/\b(?:sanctions?|embargo(?:es)?|export controls?|trade restrictions?|investment restrictions?|asset freezes?|restrictive measures?)\b/iu,
+  conflict_geopolitics:/\b(?:conflicts?|ceasefires?|wars?|militar(?:y|ies)|defen[cs]e|airstrikes?|missiles?|peace(?: talks?)?|security council|terror(?:ism|ist)|border clashes?|armed groups?|hostilities|troops?|treaties|diplomac(?:y|ies)|foreign ministr(?:y|ies))\b/iu,
+  political_governance:/\b(?:governments?|governance|elections?|parliaments?|diplomatic|cabinet|political parties|constitutional|referendums?|presidential|legislative|regulator(?:y|s)|public administration)\b/iu,
+  macro_risk:/\b(?:inflation|deflation|consumer prices?|producer prices?|cpi|pce|gdp|gross domestic product|monetary|central banks?|growth|interest rates?|discount rates?|econom(?:y|ic|ics)|financial|chancellor|treasury|tariffs?|trade flows?|trade balances?|trade deficits?|trade surpluses?|current accounts?|balance of payments|liquidity|banking|bond yields?|treasury yields?|purchasing managers? index|pmi|manufacturing|industrial production|commodity prices?|energy prices?|unemployment|wages?|payrolls?|employment|fiscal|debt|capital flows?|foreign exchange|exchange rates?|currencies|fx reserves?|foreign reserves|economic outlook|business confidence|retail sales|consumer spending|exports?|imports?)\b/iu,
+  sovereign_risk:/\b(?:fiscal|sovereign|budgets?|government borrowing|public finances?|bond(?:s)?|debt(?: servicing| issuance| restructuring)?|deficits?|credit ratings?|treasury yields?|sovereign yields?|refinancing|default risk|public borrowing|government bonds?)\b/iu,
+  fx_external_risk:/\b(?:foreign[- ]exchange|exchange rates?|currencies|currency|fx|fx reserves?|foreign reserves|reserve assets|balance of payments|current account|capital flows?|currency volatility|exchange markets?|foreign assets|cross[- ]border payments?)\b/iu,
+  critical_minerals:/\b(?:critical minerals?|critical raw materials?|strategic minerals?|rare[- ]earth(?:s?| elements?)?|lanthanides?|lithium|cobalt|nickel|graphite|copper|gallium|germanium|antimony|tungsten|manganese|vanadium|scandium|tantalum|niobium|dysprosium|neodymium|terbium|praseodymium|samarium|yttrium|mineral supply|minerals? processing|mining|mine closures?|ore processing|smelting|refining|refineries|mineral exports?|permanent magnets?|magnet production|battery materials|supply chains?|export controls?)\b/iu,
 };
 const CATEGORY_TOPICS:Readonly<Record<OnDemandCategory,readonly string[]>>={
   geopolitics:["sanctions_restrictions","conflict_geopolitics","political_governance"],
@@ -172,6 +172,32 @@ export function matchesRequestedTopic(title:string,category:OnDemandCategory,top
   const scoped=topics.filter(topic=>CATEGORY_TOPICS[category].includes(topic));
   return scoped.length===0 || scoped.some(topic=>TOPIC_TITLE_PATTERNS[topic]?.test(title));
 }
+
+const GDELT_TOPIC_QUERY_TERMS:Readonly<Record<string,readonly string[]>>={
+  sanctions_restrictions:["sanctions","embargo","export controls","trade restrictions"],
+  conflict_geopolitics:["ceasefire","conflict","war","military","airstrike","peace","security council","border clashes","missiles"],
+  political_governance:["elections","government","parliament","governance","diplomacy","foreign ministry"],
+  macro_risk:["inflation","GDP","monetary","central bank","growth","interest rates","economy","financial","PMI","manufacturing","tariffs","trade flows","industrial production","commodity prices","energy prices","employment","unemployment","wages","exports","imports"],
+  sovereign_risk:["fiscal","sovereign debt","budget deficit","bond yields","treasury yields","government borrowing","credit ratings","public debt"],
+  fx_external_risk:["foreign exchange","exchange rates","currency","FX reserves","balance of payments","current account","capital flows"],
+  critical_minerals:["critical minerals","critical raw materials","strategic minerals","rare earth","lithium","cobalt","nickel","graphite","copper","gallium","germanium","antimony","tungsten","manganese","vanadium","scandium","tantalum","niobium","neodymium","dysprosium","refining","mineral processing","permanent magnets","battery materials"],
+};
+
+/**
+ * Scope a GDELT lead query to ALL reviewed fixed topics supplied for the
+ * requested category. Do not let the first topic (e.g. sanctions) or a single
+ * FX topic silently hide other country-specific macro/critical-mineral leads.
+ * GDELT remains a discovery index; its links still need a pinned original
+ * issuer, exact native publication clock and first-party article readback.
+ */
+export function buildCountryScopedGdeltTerms(
+  category:OnDemandCategory,topics:readonly string[],
+):string {
+  const scoped=topics.filter(topic=>CATEGORY_TOPICS[category].includes(topic));
+  const terms=[...new Set(scoped.flatMap(topic=>GDELT_TOPIC_QUERY_TERMS[topic]??[]))];
+  return terms.length>0?"("+terms.join(" OR ")+")":SEARCH_TERMS[category];
+}
+
 
 /** Fixed, bounded rolling-window parser for free question-time discovery only. */
 export function inferOnDemandFreshnessSeconds(question:string|null|undefined):number|null {
@@ -326,13 +352,7 @@ async function gdelt(
 ): Promise<OriginalFeedResult> {
   // GDELT is a discovery INDEX. Its "seendate" is NEVER original publication
   // and third-party discovery NEVER proves independent event corroboration.
-  const scopedTerms=category==="geopolitics" && topics.includes("sanctions_restrictions")
-    ? "(sanctions OR embargo OR export controls)"
-    : category==="geopolitics" && topics.includes("conflict_geopolitics")
-      ? "(ceasefire OR conflict OR war)"
-      : category==="macro" && topics.includes("fx_external_risk")
-        ? "(foreign exchange OR exchange rate OR currency)"
-        : SEARCH_TERMS[category];
+  const scopedTerms=buildCountryScopedGdeltTerms(category,topics);
   const q = '"' + countryNameValue.replace(/"/g,"") + '" AND ' +
     (category === "rare_earth" && mineral ? '"' + mineral + '"' : scopedTerms);
   const params = new URLSearchParams({
@@ -560,21 +580,21 @@ const GOVUK_SEARCH_FALLBACKS:readonly OriginalFeed[]=[
     url:"https://www.gov.uk/api/search.json",
     media:"search",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-    topic:/\b(?:sanctions?|embargo|export controls?|conflict|war|military|security|peace)\b/iu,
+    topic:/\b(?:sanctions?|embargo(?:es)?|export controls?|trade restrictions?|conflict|ceasefire|war|military|defen[cs]e|security|peace|treaties|diplomac(?:y|ies)|foreign ministr(?:y|ies)|border clashes?|missiles?)\b/iu,
   },
   {
     domain:"macro",family:"uk_hmt_search_original_page",
     url:"https://www.gov.uk/api/search.json",
     media:"search",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-    topic:/\b(?:econom(?:y|ic|ics)?|financial|chancellor|treasury|inflation|monetary|foreign exchange|exchange rates?|currency|reserves?)\b/iu,
+    topic:/\b(?:econom(?:y|ic|ics)?|financial|chancellor|treasury|inflation|deflation|monetary|central banks?|interest rates?|foreign[- ]exchange|exchange rates?|currencies|fx reserves?|fiscal|sovereign|budgets?|debt|bond yields?|trade flows?|tariffs?|manufacturing|industrial production|pmi|commodity prices?|energy prices?|capital flows?|current account|balance of payments|exports?|imports?)\b/iu,
   },
   {
     domain:"rare_earth",family:"uk_dbt_search_original_page",
     url:"https://www.gov.uk/api/search.json",
     media:"search",originalHost:"www.gov.uk",
     originalPath:/^\/government\/(?:news|speeches|statements|world-location-news|publications)\//u,
-    topic:/\b(?:critical minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|mineral supply|mining)\b/iu,
+    topic:/\b(?:critical minerals?|critical raw materials?|strategic minerals?|rare[- ]earth(?:s?| elements?)?|lanthanides?|lithium|cobalt|nickel|graphite|copper|gallium|germanium|antimony|tungsten|manganese|vanadium|scandium|tantalum|niobium|dysprosium|neodymium|terbium|praseodymium|samarium|yttrium|mineral supply|minerals? processing|mining|ore processing|smelting|refining|refineries|permanent magnets?|magnet production|battery materials)\b/iu,
   },
 ];
 const INTERNATIONAL_ORIGINAL_FEEDS:readonly OriginalFeed[]=GLOBAL_OFFICIAL_RELEASE_FEEDS.filter((s:{format:string})=>s.format!=='json').map(

@@ -13,6 +13,8 @@ on:
       - "scripts/tests/derived-news-readback-policy.test.mjs"
       - "scripts/tests/derived-news-worker-policy.test.mjs"
       - "scripts/tests/derived-news-deploy-order.test.mjs"
+      - "scripts/ops/verify-derived-news-public-readback.mjs"
+      - "scripts/tests/derived-news-public-readback.test.mjs"
       - "scripts/ops/verify-production-observed-195x3.mjs"
       - "scripts/tests/verify-production-observed-195x3.test.mjs"
       - ".github/workflows/website-derived-news-continuity.yml"
@@ -52,6 +54,8 @@ on:
       - "scripts/tests/derived-news-readback-policy.test.mjs"
       - "scripts/tests/derived-news-worker-policy.test.mjs"
       - "scripts/tests/derived-news-deploy-order.test.mjs"
+      - "scripts/ops/verify-derived-news-public-readback.mjs"
+      - "scripts/tests/derived-news-public-readback.test.mjs"
       - "src/lib/automated-finds*"
       - "src/lib/low-authority-source-review.ts"
       - "scripts/ops/review-derived-inputs-low-authority.ts"
@@ -113,6 +117,8 @@ jobs:
           node --test scripts/tests/derived-news-readback-policy.test.mjs
           node --test scripts/tests/derived-news-worker-policy.test.mjs
           node --test scripts/tests/derived-news-deploy-order.test.mjs
+          node --check scripts/ops/verify-derived-news-public-readback.mjs
+          node --test scripts/tests/derived-news-public-readback.test.mjs
           node --test scripts/tests/derived-news-b2-readwrite-backup.test.mjs
 
   refresh-derived-news:
@@ -292,50 +298,10 @@ jobs:
               independent_reviewed:false,chargeable:false,supabase_requests:0,payments:0}));
           }
           TS
-      - name: Independently verify public derived-news journal
+      - name: Independently verify public derived-news journal with bounded transport retries
         if: always()
         shell: bash
-        run: |
-          set -euo pipefail
-          body="$(mktemp)"
-          trap 'rm -f "$body"' EXIT
-          code="$(curl -sS --max-time 12 -o "$body" -w '%{http_code}' https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate || true)"
-          test "$code" = "200" || { echo "::error::Derived D1 website feed unavailable"; exit 3; }
-          node --input-type=module - "$body" <<'NODE'
-          import {readFileSync} from "node:fs";
-          import {pathToFileURL} from "node:url";
-          const {isSafeDerivedNewsReadbackSignal}=await import(pathToFileURL(
-            process.cwd()+"/scripts/lib/derived-news-readback-policy.mjs").href);
-          const doc=JSON.parse(readFileSync(process.argv[2],"utf8"));
-          const now=Date.now(),retentionMs=72*60*60*1000;
-          if(doc.ok!==true || doc.schema!=="geomacro.website-derived-news-feed.v1" ||
-             (doc.original_release_delay_minutes!==0&&doc.original_release_delay_minutes!==15) ||
-             doc.retention_days!==3 || doc.retention_hours!==72 ||
-             doc.delivery_scope!=="free_website_only" ||
-             !Array.isArray(doc.signals) || doc.signals.length>250 ||
-             doc.signals.some(s=>{
-               const at=Date.parse(s.published_at);
-               return !Number.isFinite(at) || at>now || now-at>retentionMs ||
-                 s.severity!==null||s.same_event_corrob_verified!==false||
-                 !((s.status==="official_release_observed_unscored"&&
-                       !s.topic.endsWith(" publisher candidate")) ||
-                    (s.status==="official_feed_candidate_unscored"&&
-                      s.development_type==="unclassified publisher update"&&
-                      s.geography===null&&
-                      ((s.category==="geopolitics"&&s.topic==="geopolitical publisher candidate")||
-                       (s.category==="macro"&&s.topic==="macro publisher candidate")||
-                       (s.category==="rare_earth"&&s.topic==="minerals publisher candidate"))) ||
-                    (s.status==="osint_feed_observed_unverified"&&
-                      s.development_type==="unverified OSINT feed observation"&&
-                      s.date_precision==="exact"&&s.geography===null)) ||
-                  !isSafeDerivedNewsReadbackSignal(s);
-             }))
-            throw Error("DERIVED_NEWS_72H_ORIGINAL_OR_PRIVACY_READBACK_MISMATCH");
-          console.log(JSON.stringify({schema:"geomacro.website-derived-news-readback-receipt.v1",
-            verified:true,derived_rows:doc.signals.length,release_delay_minutes:doc.original_release_delay_minutes,
-            retention_hours_verified:72,original_clock_window_verified:true,
-            raw_upstream_disclosed:false,supabase_dependency:false}));
-          NODE
+        run: node scripts/ops/verify-derived-news-public-readback.mjs
 
       - name: Verify actual 195-by-3 website country/category observed-news readback
         if: always()
