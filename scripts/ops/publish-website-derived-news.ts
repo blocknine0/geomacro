@@ -20,6 +20,7 @@ import {checkedDerivedNews,fetchAllDerivedNews} from "../../src/lib/public-deriv
 import {auditEveryDerivedNewsOriginal} from "../lib/all-news-original-evidence-audit.mjs";
 import type {StatelessIntelligenceResult} from "../../src/lib/stateless-public-intelligence.server";
 import {DERIVED_NEWS_TOPIC_POLICY_REVISION,requireDerivedNewsWorkerPolicy} from "../lib/derived-news-readback-policy.mjs";
+import {safeDerivedNewsD1FailureClass} from "../lib/derived-news-d1-failure.mjs";
 
 const ROOT = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
 if (ROOT.length < 32) throw Error("DERIVED_NEWS_PUBLISH_TOKEN_MISSING");
@@ -86,13 +87,22 @@ for (const category of categories) {
     const {signals,chunks}=prepareDerivedNewsBatches(eligible);
     let acknowledged=0;
     for(const chunk of chunks){
+      // Empty batches perform the retention sweep only once after all three
+      // source lanes complete; they are not needed between category writes.
+      if(chunk.length===0)continue;
       const reply=await fetch(ENDPOINT,{
         method:"PUT",redirect:"error",cache:"no-store",
         headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},
         body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:chunk}),
         signal:AbortSignal.timeout(12_000),
       });
-      if(!reply.ok)throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_REJECTED_"+reply.status);
+      if(!reply.ok){
+        let failureClass="D1_UNCLASSIFIED";
+        try{const failure=await reply.json() as {diagnostic_code?:unknown};
+          failureClass=safeDerivedNewsD1FailureClass(failure?.diagnostic_code);
+        }catch{/* Only an allowlisted class may enter the runner log. */}
+        throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_REJECTED_"+reply.status+"_"+failureClass);
+      }
       const receipt=await reply.json() as {ok?:boolean;accepted?:number};
       if(receipt.ok!==true||receipt.accepted!==chunk.length)
         throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_ACK_INVALID");
@@ -143,6 +153,37 @@ for (const category of categories) {
     const code=error instanceof Error&&/^(?:CLOUDFLARE_DERIVED_NEWS_[A-Z0-9_]+|DERIVED_NEWS_[A-Z0-9_]+|OFFICIAL_FEEDS_UNREACHABLE)$/.test(error.message)
       ?error.message:'UNCLASSIFIED';
     console.error("::error::WEBSITE_DERIVED_NEWS_INGEST_"+category.toUpperCase()+"_UNAVAILABLE_"+code);
+  }
+}
+// Physical TTL/600-row cleanup is an explicit, authenticated empty batch.
+ // Run it once per successful three-category collection, not once per category
+ // plus every non-empty news write; failed D1 publication must not amplify load.
+if(success&&denied===0){
+  try{
+    const sweep=await fetch(ENDPOINT,{
+      method:"PUT",redirect:"error",cache:"no-store",
+      headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},
+      body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:[]}),
+      signal:AbortSignal.timeout(12_000),
+    });
+    if(!sweep.ok){
+      let failureClass="D1_UNCLASSIFIED";
+      try{const failure=await sweep.json() as {diagnostic_code?:unknown};
+        failureClass=safeDerivedNewsD1FailureClass(failure?.diagnostic_code);
+      }catch{/* Never emit the raw error response. */}
+      throw Error("RETENTION_SWEEP_HTTP_"+sweep.status+"_"+failureClass);
+    }
+    const receipt=await sweep.json() as {ok?:boolean;accepted?:number};
+    if(receipt.ok!==true||receipt.accepted!==0)
+      throw Error("RETENTION_SWEEP_ACK_INVALID");
+    console.log(JSON.stringify({schema:"geomacro.website-derived-news-retention-sweep.v1",
+      completed:true,supabase_requests:0,payments:0}));
+  }catch(error){
+    success=false;
+    const message=error instanceof Error?error.message:"";
+    const safe=/^RETENTION_SWEEP_(?:HTTP_\d+_)?[A-Z0-9_]+$/u.test(message)
+      ?message:"RETENTION_SWEEP_UNCLASSIFIED";
+    console.error("::error::"+safe);
   }
 }
 console.log(JSON.stringify({
