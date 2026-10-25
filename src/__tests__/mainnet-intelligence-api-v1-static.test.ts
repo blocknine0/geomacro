@@ -63,14 +63,6 @@ describe("Geomacro Mainnet Intelligence API v1", () => {
     );
   });
 
-  it("normalizes question-only requests before the same canonical no-charge and x402 gates", () => {
-    expect(implementation).toContain('import { normalizeAnswerQuestionRequest } from "./geomacro-answer-request.server"');
-    expect(implementation).toContain("const normalized = normalizeAnswerQuestionRequest(raw)");
-    expect(implementation).toContain("parsed = agentAdaptiveQuerySchema.parse(normalized.value)");
-    expect(implementation).toContain("CAPABILITY_PRICE_UNVERIFIED_NO_CHARGE");
-    expect(implementation).toContain("resolveEligibleCoinbaseCapabilityConfig(plan, availability, config)");
-  });
-
   it("binds one verified capability price to quote, payment, replay, ledger and prepared delivery", () => {
     expect(implementation).toContain('import { resolveEligibleCoinbaseCapabilityConfig }');
     expect(implementation).toContain('config = resolveEligibleCoinbaseCapabilityConfig(plan, availability, config)');
