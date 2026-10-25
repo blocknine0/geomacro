@@ -67,8 +67,7 @@ function duplicate(a:Descriptor,b:Descriptor){
  const containment=common/Math.min(a.tokens.size,b.tokens.size);
  // Reworded same-event headlines must agree on nearly all event-bearing words;
  // a shared actor or a vague topic is not enough to erase a distinct update.
- return common>=4&&(similarity>=0.82||
-   (similarity>=0.72&&containment>=0.9));
+ return common>=4&&similarity>=0.82&&containment>=0.95;
 }
 function priority(d:Descriptor){
  const verifiedOriginal=d.row.status==="official_release_observed_unscored"?2:1;
