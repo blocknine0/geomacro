@@ -619,14 +619,15 @@ export function deriveStatelessSignals(
  * from the public card or change its signed clock. A matched first-party
  * reference is still NOT an original-page byte proof, rights or signature.
  */
+const MAX_PRIVATE_ORIGINAL_REFERENCE_TARGETS=600;
 export function selectBoundedRetainedOriginalTargets(
   current:readonly StatelessIntelligenceSignal[],
   retained:readonly StatelessIntelligenceSignal[],
   limit=250,
 ):StatelessIntelligenceSignal[] {
   if(!Array.isArray(current)||!Array.isArray(retained)||
-     current.length>250||retained.length>600||
-     !Number.isSafeInteger(limit)||limit<1||limit>250)
+     current.length>250||retained.length>MAX_PRIVATE_ORIGINAL_REFERENCE_TARGETS||
+     !Number.isSafeInteger(limit)||limit<1||limit>MAX_PRIVATE_ORIGINAL_REFERENCE_TARGETS)
     throw Error("PRIVATE_ORIGINAL_REFERENCE_TARGET_BUDGET_INVALID");
   const targets=new Map<string,StatelessIntelligenceSignal>();
   for(const row of current){
@@ -650,9 +651,12 @@ export function reconcilePrivateDerivedSourceRefs(
   const expected=new Map(published.map(s=>[s.id,s]));
   const found=new Map<string,StatelessSourceCandidate>();
   const collisions=new Set<string>();
-  // All fixed collectors remain bounded. Do not silently drop a later
-  // publisher's genuine reference merely because earlier feeds had 1000 items.
-  if(!Number.isFinite(now)||published.length>250||candidates.length>10_000)
+  // The retained D1 journal is capped at 600 rows. Reconcile the full
+  // bounded journal; refusing any array over 250 silently discarded every
+  // reference when the caller supplied the whole journal. This remains a
+  // source-reference match only, never original-byte proof or rights approval.
+  if(!Number.isFinite(now)||published.length>MAX_PRIVATE_ORIGINAL_REFERENCE_TARGETS||
+     candidates.length>10_000)
     return new Map();
   for(const c of candidates){
     if(!c || typeof c.articleUrl!=="string"||!c.articleUrl.startsWith("https://"))continue;

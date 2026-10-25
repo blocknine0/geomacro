@@ -192,9 +192,12 @@ try {
   const reconciled=new Map<string,StatelessSourceCandidate>();
   for(const category of categories){
     const sourceRefs=privateOriginals.filter(x=>x.category===category);
+    // Check every retained D1 row within the existing 600-row journal,
+    // not just the first 250. The exact source-ID/clock/payload match remains
+    // mandatory; a reference match never qualifies facts, rights or payment.
     const cards=selectBoundedRetainedOriginalTargets(
       signals.filter(x=>x.category===category),
-      retained.filter(x=>x.category===category));
+      retained.filter(x=>x.category===category),600);
     for(const [id,ref] of reconcilePrivateDerivedSourceRefs(
       sourceRefs,cards,now.getTime()))reconciled.set(id,ref);
   }

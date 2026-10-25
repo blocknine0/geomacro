@@ -42,15 +42,19 @@ describe("ephemeral first-party original-reference crosswalk for D1-derived lead
   expect(reconcilePrivateDerivedSourceRefs([original],
     selectBoundedRetainedOriginalTargets([],[forged]),NOW).size).toBe(0);
  });
- it("caps stale retained journal references at 250 without displacing new source leads",()=>{
+ it("reconciles the complete 600-row retained journal without displacing new leads",()=>{
   const [fresh]=deriveStatelessSignals([original],NOW);
   const retained=Array.from({length:600},(_,i)=>({
     ...fresh,id:"macro-"+i.toString(16).padStart(8,"0")
   }));
-  const selected=selectBoundedRetainedOriginalTargets([fresh],retained);
-  expect(selected).toHaveLength(250);
+  const selected=selectBoundedRetainedOriginalTargets([fresh],retained,600);
+  expect(selected).toHaveLength(600);
   expect(selected[0].id).toBe(fresh.id);
+  // The cap now permits a full retained-journal reconciliation, while the
+  // exact derived ID and payload still have to match the real source candidate.
   expect(reconcilePrivateDerivedSourceRefs([original],selected,NOW).size).toBe(1);
+  expect(reconcilePrivateDerivedSourceRefs([original],Array(601).fill(fresh),NOW).size).toBe(0);
+  expect(()=>selectBoundedRetainedOriginalTargets([fresh],retained,601)).toThrow();
   expect(()=>selectBoundedRetainedOriginalTargets(Array(251).fill(fresh),[])).toThrow();
  });
  it("reconstructs precise source identity only when the exact preexisting derived bytes agree",()=>{
