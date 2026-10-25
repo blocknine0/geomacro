@@ -61,7 +61,7 @@ test("DENIED and unsupported channels do not create unverifiable publications",a
  assert.equal(doc.summary.source_states.DENIED,1);
  assert.equal(doc.summary.source_states.UNSUPPORTED_FORMAT,1);
  assert.equal(doc.items.length,1);
- assert.equal(doc.items[0].country_iso3,undefined);
+ assert.equal(doc.items[0].country_iso3,null);
  assert.equal(doc.summary.source_original_page_independently_verified,false);
 });
 test("actual registry remains fixed, three-domain and does not activate Telegram or claim every country",()=>{
