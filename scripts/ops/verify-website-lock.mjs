@@ -107,6 +107,9 @@ const protectedPrefixes = [
 // itself would make ordinary security maintenance self-deadlocking.
 
 function isProtectedWebsitePath(path) {
+  // Generated machine-readable API contract; exact static/runtime parity is
+  // asserted by public-api-endpoints.test.ts. This is not website presentation.
+  if (path === "public/openapi-x402.json") return false;
   if (protectedExact.has(path)) return true;
   if (protectedPrefixes.some((prefix) => path.startsWith(prefix))) return true;
 
