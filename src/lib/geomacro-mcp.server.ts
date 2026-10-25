@@ -408,6 +408,7 @@ async function callPaidTool(
     );
   }
 
+  // The shared adapter still posts to CANONICAL_MAINNET_INTELLIGENCE_PATH; it only adds a no-charge research fallback after canonical refusal.
   const canonicalResponse = await callCanonicalWithSourceResearchFallback({
     request,
     toolName,
