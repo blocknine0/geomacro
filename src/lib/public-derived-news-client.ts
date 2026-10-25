@@ -8,6 +8,38 @@ import {isSafeDerivedNewsReadbackSignal} from "../../scripts/lib/derived-news-re
  */
 import type { StatelessIntelligenceSignal } from "./stateless-intelligence-model.ts";
 
+const TRANSIENT_PUBLIC_READ_STATUSES=new Set([408,425,429,500,502,503,504]);
+const PUBLIC_READ_MAX_ATTEMPTS=3;
+async function waitForPublicReadRetry(attempt:number){
+  await new Promise(resolve=>setTimeout(resolve,100*attempt));
+}
+/** Bounded retry for idempotent public GETs only. Redirects and hard 4xx
+ * responses are never retried; every attempt gets a fresh timeout signal. */
+async function fetchPublicReadWithRetry(
+  fetchImpl:typeof fetch,input:RequestInfo|URL,init:RequestInit,timeoutMs:number,
+):Promise<Response>{
+  for(let attempt=1;attempt<=PUBLIC_READ_MAX_ATTEMPTS;attempt++){
+    let response:Response;
+    try{
+      response=await fetchWithoutRedirectUsing(fetchImpl,input,{
+        ...init,signal:AbortSignal.timeout(timeoutMs),
+      });
+    }catch(error){
+      if(error instanceof TypeError&&error.message==="UPSTREAM_REDIRECT_REJECTED")throw error;
+      if(attempt===PUBLIC_READ_MAX_ATTEMPTS)
+        throw Error("DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
+      await waitForPublicReadRetry(attempt);
+      continue;
+    }
+    if(!TRANSIENT_PUBLIC_READ_STATUSES.has(response.status))return response;
+    try{await response.body?.cancel();}catch{/* discard only the transient response */}
+    if(attempt===PUBLIC_READ_MAX_ATTEMPTS)
+      throw Error("DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
+    await waitForPublicReadRetry(attempt);
+  }
+  throw Error("DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
+}
+
 export const GEOMACRO_DERIVED_JOURNAL_URL =
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 
@@ -105,13 +137,10 @@ export async function fetchDirectDerivedNews(
   fetchImpl: typeof fetch = fetch,
   now = Date.now(),
 ): Promise<StatelessIntelligenceSignal[]> {
-  const response = await fetchWithoutRedirectUsing(fetchImpl,GEOMACRO_DERIVED_JOURNAL_URL, {
-    method: "GET",
-    redirect: "error",
-    cache: "no-store",
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(8_000),
-  });
+  const response = await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_DERIVED_JOURNAL_URL,{
+    method:"GET",redirect:"error",cache:"no-store",
+    headers:{Accept:"application/json"},
+  },8_000);
   if (!response.ok || Number(response.headers.get("content-length") ?? 0) > 512_000) {
     throw Error("DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
   }
@@ -135,10 +164,10 @@ export async function fetchAllDerivedNews(
   for(const offset of [0,250,500]){
     const url=GEOMACRO_DERIVED_JOURNAL_URL+
       (offset===0?"":"?offset="+offset);
-    const response=await fetchWithoutRedirectUsing(fetchImpl,url,{
+    const response=await fetchPublicReadWithRetry(fetchImpl,url,{
       method:"GET",redirect:"error",cache:"no-store",
-      headers:{Accept:"application/json"},signal:AbortSignal.timeout(8_000),
-    });
+      headers:{Accept:"application/json"},
+    },8_000);
     if(!response.ok || Number(response.headers.get("content-length")??0)>512_000)
       throw Error("DERIVED_NEWS_PAGE_UNAVAILABLE");
     const body=await response.text();

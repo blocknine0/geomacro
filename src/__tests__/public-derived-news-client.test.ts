@@ -78,6 +78,36 @@ describe("browser public journal fallback",()=>{
       expect(f).toHaveBeenCalledTimes(1);
     }
   });
+
+  it("recovers a safe GET after bounded transient 503 and transport failures",async()=>{
+    let calls=0;
+    const f=vi.fn(async(_url:RequestInfo|URL,init?:RequestInit)=>{
+      calls++;
+      expect(init?.method).toBe("GET");
+      expect(init?.redirect).toBe("manual");
+      if(calls===1)return new Response("temporary unavailable",{status:503});
+      if(calls===2)throw new TypeError("transient socket failure");
+      return new Response(JSON.stringify(doc([signal])),{
+        status:200,headers:{"content-type":"application/json"},
+      });
+    });
+    const rows=await fetchDirectDerivedNews(f as typeof fetch,NOW);
+    expect(rows).toEqual([signal]);
+    expect(calls).toBe(3);
+  });
+  it("bounds persistent public GET failures and never retries hard 4xx",async()=>{
+    let calls=0;
+    const unavailable=vi.fn(async()=>{calls++;return new Response("temporary",{status:503});});
+    await expect(fetchDirectDerivedNews(unavailable as typeof fetch,NOW))
+      .rejects.toThrow("DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
+    expect(calls).toBe(3);
+    let forbiddenCalls=0;
+    const forbidden=vi.fn(async()=>{forbiddenCalls++;return new Response("denied",{status:403});});
+    await expect(fetchDirectDerivedNews(forbidden as typeof fetch,NOW))
+      .rejects.toThrow("DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE");
+    expect(forbiddenCalls).toBe(1);
+  });
+
   it("rejects source metadata and unknown fields even without a source URL",()=>{
     for(const extra of [{source_name:"private supplier"},{provider_id:"private"},
       {source_record_id:"private"},{unexpected:"hidden metadata"},{geography:{supplier:"private"}},

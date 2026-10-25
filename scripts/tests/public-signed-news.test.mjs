@@ -60,6 +60,38 @@ test('each current signed item has a real registered signature and narrow origin
  assert.equal(result.all_current_qualified_news_source_verified_signed,true);
  assert.equal(result.legacy_signed_hot_3_of_3_verified,false);
 });
+test('transient public signed-news 503 retries a bounded GET and still verifies the signed journal',async()=>{
+ const f=await fixture();let calls=0;
+ const fetchImpl=async(url,init)=>{
+  calls++;
+  assert.equal(init.method,'GET');
+  assert.equal(init.redirect,'manual');
+  if(calls===1)return new Response('temporary',{status:503});
+  return f.fetchImpl(url);
+ };
+ const result=await verifyAllNewsSignedPublications({
+  keys,now,fetchImpl,readJournal:async()=>[signal()],
+ });
+ assert.equal(calls,2);
+ assert.equal(result.all_retained_unique_news_signature_verified,true);
+ assert.equal(result.current_source_verified_signed_reported,1);
+});
+test('persistent public signed-news errors are bounded and permission/redirect failures are not retried',async()=>{
+ const f=await fixture();let calls=0;
+ await assert.rejects(()=>verifyAllNewsSignedPublications({
+  keys,now,readJournal:async()=>[signal()],
+  fetchImpl:async()=>{calls++;return new Response('temporary',{status:503});},
+ }),/SIGNED_NEWS_HTTP_UNAVAILABLE/);
+ assert.equal(calls,3);
+ for(const status of [302,403]){
+  let deniedCalls=0;
+  await assert.rejects(()=>verifyAllNewsSignedPublications({
+   keys,now,readJournal:async()=>[signal()],
+   fetchImpl:async()=>{deniedCalls++;return new Response('denied',{status});},
+  }),/SIGNED_NEWS_HTTP_UNAVAILABLE/);
+  assert.equal(deniedCalls,1);
+ }
+});
 test('missing, tampered, unknown-key or swapped input is never signed publication',async()=>{
  for(const mutate of [
   (rows,id)=>rows.delete('automated_input_v1:'+id),
