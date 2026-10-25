@@ -78,7 +78,9 @@ The required buyer flow is:
    An ambiguous settlement needs reconciliation; never automatically generate
    a fresh payment authorization for it.
 
-The server freezes the answer before issuing the quote and settles only after
+An Agent/MCP response marked `delivery_status: "RESEARCH_ONLY"` is a successful
+no-charge research result, not a paid or signed product; it has no payment quote.
+The server freezes a payable answer before issuing a quote and settles only after
 its final eligibility checks. Retrieval and settlement latency still exist;
 there is no unconditional instant-response SLA. Direct category and agent
 facades quote the canonical `/api/v1/intelligence/query` payment resource.
