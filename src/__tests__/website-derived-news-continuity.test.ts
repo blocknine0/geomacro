@@ -28,8 +28,7 @@ const sample=(category="macro",published="2026-10-12T19:00:00.000Z")=>({
 });
 function db() {
   const data=new Map();
-  data.storyJsonUpdates=0;
-  data.retentionSweepQueries=0;
+  const counters={storyJsonUpdates:0,retentionSweepQueries:0};
   const statement=sql=>({
     async run(){ /* Direct zero-bind retention query; no rows past cap in fixture. */ },
     bind(...args) {
@@ -43,10 +42,10 @@ function db() {
               previous.date_precision===date_precision && previous.story_json!==story_json &&
               sql.includes("website_derived_intelligence.story_json <> excluded.story_json")) {
               previous.story_json=story_json;
-              data.storyJsonUpdates++;
+              counters.storyJsonUpdates++;
             }
           } else if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE published_at")) {
-            data.retentionSweepQueries++;
+            counters.retentionSweepQueries++;
             for(const [id,row] of data) if(row.published_at < args[0] || row.first_seen_at < args[1]) data.delete(id);
           } else if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE id IN")) {
             data.retentionSweepQueries++;
@@ -62,7 +61,7 @@ function db() {
       };
     },
   });
-  return {data,env:{DB:{prepare:statement,async batch(items){for(const item of items)await item.run()}}}};
+  return {data,counters,env:{DB:{prepare:statement,async batch(items){for(const item of items)await item.run()}}}};
 }
 describe("website-only Supabase-free derived news continuity",()=>{
   it("keeps real first-party UK trade source classification in sync with D1 publication allowlist",()=>{
@@ -116,16 +115,16 @@ describe("website-only Supabase-free derived news continuity",()=>{
   });
 
   it("keeps a single empty batch as the only retention sweep and updates changed prose",async()=>{
-    const {data,env}=db();
+    const {data,counters,env}=db();
     const first=sample();
     expect((await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[first]},NOW)).status).toBe(200);
-    expect(data.retentionSweepQueries).toBe(0);
+    expect(counters.retentionSweepQueries).toBe(0);
     const revised={...first,what_changed:"An official publisher issued an updated monetary-policy statement about liquidity conditions."};
     expect((await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[revised]},NOW)).status).toBe(200);
-    expect(data.storyJsonUpdates).toBe(1);
-    expect(data.retentionSweepQueries).toBe(0);
+    expect(counters.storyJsonUpdates).toBe(1);
+    expect(counters.retentionSweepQueries).toBe(0);
     expect((await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[]},NOW)).status).toBe(200);
-    expect(data.retentionSweepQueries).toBe(2);
+    expect(counters.retentionSweepQueries).toBe(2);
   });
 
   it("classifies the known D1 failure classes without exposing exception text",()=>{
@@ -159,8 +158,8 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(data.size).toBe(2);
     // An identical retained card must not consume another D1 row write, and
     // normal non-empty batches no longer run the two full-journal sweep queries.
-    expect(data.storyJsonUpdates).toBe(0);
-    expect(data.retentionSweepQueries).toBe(0);
+    expect(counters.storyJsonUpdates).toBe(0);
+    expect(counters.retentionSweepQueries).toBe(0);
     const resp=await readDerivedStories(env,NOW);
     const result=await resp.json();
     expect(resp.status).toBe(200);
