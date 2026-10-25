@@ -85,7 +85,7 @@ export async function auditEveryDerivedNewsOriginal({
      signal.id.split("-").slice(0,-1).join("-")!==signal.category||
      seen.has(signal.id) ||
      !["exact","day"].includes(signal.date_precision)||
-     !["official_release_observed_unscored","official_feed_candidate_unscored"].includes(signal.status))
+     !["official_release_observed_unscored","official_feed_candidate_unscored","osint_feed_observed_unverified"].includes(signal.status))
    error();
   seen.add(signal.id);
   const row={id:signal.id,category:signal.category,
@@ -96,7 +96,14 @@ export async function auditEveryDerivedNewsOriginal({
    verified_same_event_corroboration:false,payment_authorized:false};
   const at=Date.parse(signal.published_at);
   const reference=originalRefs.get(signal.id);
-  if(!reference){
+  // OSINT-feed observations are explicitly not original publisher articles.
+  // They remain visible as derived observations, but cannot be promoted into
+  // original-page byte evidence even if an unrelated private reference shares
+  // the journal ID. Avoid failing the entire reviewer batch on this valid,
+  // non-authorizing status.
+  if(signal.status==="osint_feed_observed_unverified"){
+   row.original_page_evidence_status=STATUSES.NO_REFERENCE;
+  }else if(!reference){
    row.original_page_evidence_status=STATUSES.NO_REFERENCE;
   }else if(signal.date_precision!=="exact"||
      !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u.test(signal.published_at)){
