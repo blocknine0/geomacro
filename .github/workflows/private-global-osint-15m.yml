@@ -48,6 +48,10 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/private-global-osint-15m.yml"
+      - "src/lib/public-derived-news-client.ts"
+      - "workers/control-plane/src/website-derived-intelligence.mjs"
+      - "scripts/lib/private-osint-website-bridge.mjs"
+      - "src/lib/stateless-intelligence-model.ts"
       - "scripts/lib/private-osint-15m-collector.mjs"
       - "scripts/lib/private-osint-15m-collector.test.mjs"
       - "scripts/ops/private-osint-15m-tick.ts"
