@@ -4,6 +4,7 @@ import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions
 import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
 import {isConcretePublicIntelligence,concreteGeomacroAnalysis,concreteIntelligenceHeadline} from "@/lib/intelligence-concrete-publication";
+import {dedupeIntelligenceStories} from "@/lib/intelligence-news-dedupe";
 import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 import type { StatelessIntelligenceResult } from "@/lib/stateless-public-intelligence.server";
@@ -280,7 +281,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
     for (const signal of feeds[domain.key]?.signals ?? []) merged.set(signal.id, signal);
   }
   const checkedAt = Date.now();
-  const allSignals = filterIntelligenceDesk([...merged.values()].filter(isConcretePublicIntelligence), {category:"all",query:"",period:"all"}, checkedAt);
+  const allSignals = filterIntelligenceDesk(dedupeIntelligenceStories([...merged.values()].filter(isConcretePublicIntelligence)), {category:"all",query:"",period:"all"}, checkedAt);
   const categorySignals = allSignals.filter(signal => signal.category === view);
   const signals = filterIntelligenceDesk(allSignals, {category:view,query,period}, checkedAt).filter(signal => !savedOnly || savedIds.includes(signal.id));
   const newSinceVisit = lastVisit === null ? null : categorySignals.filter(signal => Date.parse(signal.published_at) > lastVisit).length;
