@@ -303,16 +303,16 @@
       "auto_ingest_enabled": false
     },
     {
-      "id": "corridor_reference_maritime_marad_public_advisories",
-      "url": "https://www.maritime.dot.gov/msci-advisories",
-      "continent": "global",
+      "id": "corridor_reference_european_maritime_safety_agency",
+      "url": "https://www.emsa.europa.eu/",
+      "continent": "europe",
       "category": "macro",
       "related_corridor_ids": [
-        "strait_of_hormuz",
-        "bab_el_mandeb",
-        "black_sea_grain_kerch"
+        "danish_straits_baltic",
+        "english_channel",
+        "strait_of_gibraltar"
       ],
-      "note": "Official U.S. maritime safety advisories; existing collector family, no second poller",
+      "note": "European Maritime Safety Agency official maritime safety reference; no separate automated scraping",
       "transport_tested": false,
       "source_rights_verified": false,
       "commercial_eligible": false,
