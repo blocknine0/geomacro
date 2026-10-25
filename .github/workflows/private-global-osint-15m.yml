@@ -17,9 +17,14 @@ on:
       - ".github/workflows/private-global-osint-15m.yml"
       - "scripts/lib/private-osint-15m-collector.mjs"
       - "scripts/lib/private-osint-15m-collector.test.mjs"
+      - "scripts/lib/derived-news-readback-policy.mjs"
+      - "scripts/tests/derived-news-readback-policy.test.mjs"
+      - "scripts/tests/derived-news-worker-policy.test.mjs"
+      - "scripts/tests/derived-news-deploy-order.test.mjs"
       - "scripts/lib/private-osint-15m-durable-publisher.mjs"
       - "scripts/lib/private-osint-website-bridge.mjs"
       - "scripts/lib/private-osint-website-bridge.test.mjs"
+      - "scripts/lib/private-osint-website-derived-contract.test.mjs"
       - "scripts/lib/website-derived-retention-priority.test.mjs"
       - "workers/control-plane/src/website-derived-intelligence.mjs"
       - "scripts/lib/private-osint-website-derived-contract.test.mjs"
@@ -95,6 +100,10 @@ jobs:
           node --check scripts/lib/private-osint-15m-collector.mjs
           node --check scripts/lib/private-osint-15m-durable-publisher.mjs
           node --check scripts/lib/private-osint-website-bridge.mjs
+          node --check scripts/lib/derived-news-readback-policy.mjs
+          node --test scripts/tests/derived-news-readback-policy.test.mjs
+          node --test scripts/tests/derived-news-worker-policy.test.mjs
+          node --test scripts/tests/derived-news-deploy-order.test.mjs
           node --test scripts/lib/private-osint-website-bridge.test.mjs scripts/lib/website-derived-retention-priority.test.mjs
           node --test scripts/lib/private-osint-website-derived-contract.test.mjs
           node --check workers/control-plane/src/private-osint-15m.mjs

@@ -6,6 +6,7 @@ import {createHash} from "node:crypto";
  * derived signals. Private OSINT rows are never copied to public storage.
  */
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl} from "./global-official-release-feeds.mjs";
+import {isSafeDerivedNewsReadbackSignal} from "./derived-news-readback-policy.mjs";
 
 // Fixed first-party U.S. federal RSS paths already accepted by the private
 // production source inventory. Government-authored facts (not third-party
@@ -165,7 +166,7 @@ export async function publishPrivateOsintWebsiteSignals({
     (s.sources_credited.length===0&&s.status!=="official_release_observed_unscored")||
     (s.sources_credited.length===1&&
       (typeof s.sources_credited[0]!=="string"||!s.sources_credited[0].trim()))||
-    JSON.stringify(s).includes("https://")))
+    !isSafeDerivedNewsReadbackSignal(s)))
    throw Error("PRIVATE_OSINT_WEBSITE_BRIDGE_SIGNAL_UNSAFE");
  if(signals.length===0)return {candidates:0,new_derived_stories:0,
    journal_readback_verified:true,private_raw_published:false};

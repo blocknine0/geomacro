@@ -5,7 +5,7 @@ import {publicReusableSourceNews,publishReusableSourceNews} from './reusable-sou
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
 import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
-import { readDerivedStories, publishDerivedStories, renderDerivedStoriesHtml } from "./website-derived-intelligence.mjs";
+import { readDerivedStories, publishDerivedStories, renderDerivedStoriesHtml, DERIVED_NEWS_TOPIC_POLICY_REVISION } from "./website-derived-intelligence.mjs";
 import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
@@ -1060,6 +1060,7 @@ async function health(env) {
       .first();
     if (!row || Number(row.version) < 1) return json({ ok: false, error: "D1_SCHEMA_NOT_READY" }, 503);
     return json({ ok: true, store: "d1", schema_version: Number(row.version), durable_payload_store: "b2", commerce_ledger: "durable_object",
+      derived_news_topic_policy_revision: DERIVED_NEWS_TOPIC_POLICY_REVISION,
       deployed_source_sha: /^[a-f0-9]{40}$/.test(String(env.GEOMACRO_SOURCE_SHA ?? ""))
         ? env.GEOMACRO_SOURCE_SHA : null });
   } catch {

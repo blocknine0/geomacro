@@ -19,11 +19,13 @@ import {
 import {checkedDerivedNews,fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
 import {auditEveryDerivedNewsOriginal} from "../lib/all-news-original-evidence-audit.mjs";
 import type {StatelessIntelligenceResult} from "../../src/lib/stateless-public-intelligence.server";
+import {DERIVED_NEWS_TOPIC_POLICY_REVISION,requireDerivedNewsWorkerPolicy} from "../lib/derived-news-readback-policy.mjs";
 
 const ROOT = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
 if (ROOT.length < 32) throw Error("DERIVED_NEWS_PUBLISH_TOKEN_MISSING");
 const TOKEN = createHmac("sha256",ROOT).update("geomacro-control-plane-v1").digest("hex");
-const ENDPOINT="https://geomacro-control-plane.daspallab202391.workers.dev/v1/website-derived-news";
+const CONTROL_PLANE_ORIGIN="https://geomacro-control-plane.daspallab202391.workers.dev";
+const ENDPOINT=CONTROL_PLANE_ORIGIN+"/v1/website-derived-news";
 const categories=["geopolitics","macro","rare_earth"] as const;
 const noSupabase=fetch.bind(globalThis);
 let denied=0;
@@ -42,6 +44,14 @@ const privateOriginals:StatelessSourceCandidate[]=[];
 const reports:StatelessIntelligenceResult[]=[];
 const sourceHealthReceipts:Array<{category:string}>=[];
 const sharedOfficialDocuments=createRunScopedAustralianResourcesFetch();
+// Fail closed before any original-source reads or D1 writes if the live Worker
+// has not deployed the exact readback/topic allowlist contract this publisher
+// emits. A repository push can start this workflow before Worker deployment.
+const workerPolicy=await requireDerivedNewsWorkerPolicy({
+  fetchImpl:globalThis.fetch,url:CONTROL_PLANE_ORIGIN+"/health",
+  expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION,
+});
+console.log(JSON.stringify(workerPolicy));
 for (const category of categories) {
   try {
     const lanes:{index:number;transport_ok:boolean;failure_class?:string}[]=[];

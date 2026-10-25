@@ -4,6 +4,8 @@
  * Never persist upstream title, URL, article text, publisher id or raw feed.
  * Exact public original-time delay is rechecked on write AND on every read.
  */
+import {isSafeDerivedNewsReadbackSignal, DERIVED_NEWS_TOPIC_POLICY_REVISION} from "../../../scripts/lib/derived-news-readback-policy.mjs";
+export {DERIVED_NEWS_TOPIC_POLICY_REVISION};
 // The founder-approved auto-ingest journal is strictly a rolling 72h window.
 // Old signed Finds/B2 archival products are independent (not reclassified here).
 export const AUTO_INGEST_RETENTION_MS = 72 * 60 * 60_000;
@@ -52,6 +54,7 @@ function safeProse(s, limit, prefix=null) {
 }
 export function verifyDerivedStory(s, now=Date.now()) {
   if (!s || typeof s!=="object" || Array.isArray(s) ||
+      !isSafeDerivedNewsReadbackSignal(s) ||
       Object.keys(s).some(key=>!SIGNAL_KEYS.has(key)) ||
       !CATEGORIES.has(s.category) ||
       typeof s.id!=="string" ||

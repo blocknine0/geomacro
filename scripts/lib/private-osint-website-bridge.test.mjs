@@ -33,6 +33,11 @@ test("all three category observations require exact official publisher permalink
 
 test("only new derived source-credited unscored stories are written and read back",async()=>{
  const signal={id:"geopolitics-12345678",category:"geopolitics",
+   title:"Geomacro finds United Nations security diplomacy developments",
+   what_changed:"An official publisher issued a dated security and diplomacy update. Effects require separate evidence.",
+   why_it_matters:"This official publication may inform diplomatic exposure, but it does not establish an independently verified event or impact.",
+   topic:"security and diplomacy",geography:null,development_type:"policy update",
+   published_at:"2026-10-25T11:40:00.000Z",date_precision:"exact",observed_release_count:1,
    status:"official_release_observed_unscored",same_event_corrob_verified:false,
    severity:null,sources_credited:["United Nations"]};
  let records=[],calls=0;
@@ -71,9 +76,13 @@ test("does not publish news older than an already full 600-row D1 newsroom",asyn
   published_at:new Date(nowMs-i*60000).toISOString(),
  }));
  const candidate={id:"macro-12345678",category:"macro",
-  published_at:new Date(nowMs-36*3600000).toISOString(),
-  status:"official_release_observed_unscored",same_event_corrob_verified:false,
-  severity:null,sources_credited:["Federal Reserve Board"]};
+   title:"Geomacro finds official monetary policy developments",
+   what_changed:"An official publisher issued a dated monetary policy update. Effects need separately checked evidence.",
+   why_it_matters:"This official publication may inform financing conditions, but it does not prove a rate change or market outcome.",
+   topic:"monetary policy",geography:null,development_type:"policy update",
+   published_at:new Date(nowMs-36*3600000).toISOString(),date_precision:"exact",observed_release_count:1,
+   status:"official_release_observed_unscored",same_event_corrob_verified:false,
+   severity:null,sources_credited:["Federal Reserve Board"]};
  const result=await publishPrivateOsintWebsiteSignals({
    signals:[candidate],
    controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
@@ -89,9 +98,13 @@ test("does not publish news older than an already full 600-row D1 newsroom",asyn
 test("concurrent writer newest-600 eviction counts as nonvisible, not false D1 failure",async()=>{
  const nowMs=Date.parse("2026-10-25T12:00:00.000Z");
  const candidate={id:"macro-12345678",category:"macro",
-  published_at:new Date(nowMs-36*3600000).toISOString(),
-  status:"official_release_observed_unscored",same_event_corrob_verified:false,
-  severity:null,sources_credited:["Federal Reserve Board"]};
+   title:"Geomacro finds official monetary policy developments",
+   what_changed:"An official publisher issued a dated monetary policy update. Effects need separately checked evidence.",
+   why_it_matters:"This official publication may inform financing conditions, but it does not prove a rate change or market outcome.",
+   topic:"monetary policy",geography:null,development_type:"policy update",
+   published_at:new Date(nowMs-36*3600000).toISOString(),date_precision:"exact",observed_release_count:1,
+   status:"official_release_observed_unscored",same_event_corrob_verified:false,
+   severity:null,sources_credited:["Federal Reserve Board"]};
  let calls=0;
  const retained=Array.from({length:600},(_,i)=>({
   id:"geopolitics-"+String(i).padStart(8,"0"),
@@ -116,8 +129,13 @@ test("concurrent writer newest-600 eviction counts as nonvisible, not false D1 f
  assert.equal(result.journal_readback_verified,true);
 });
 test("a claimed write without exact public readback fails closed",async()=>{
- const signal={id:"macro-12345678",category:"macro",status:"official_release_observed_unscored",
-   same_event_corrob_verified:false,severity:null,sources_credited:["Bank of Canada"]};
+ const signal={id:"macro-12345678",category:"macro",
+    title:"Geomacro finds official inflation and monetary policy developments",
+    what_changed:"An official publisher issued a dated monetary policy update. Effects need separately checked evidence.",
+    why_it_matters:"This official publication may inform financing conditions, but it does not prove a rate change or market outcome.",
+    topic:"monetary policy",geography:null,development_type:"policy update",
+    published_at:"2026-10-25T11:40:00.000Z",date_precision:"exact",observed_release_count:1,
+    status:"official_release_observed_unscored",same_event_corrob_verified:false,severity:null,sources_credited:["Bank of Canada"]};
  await assert.rejects(publishPrivateOsintWebsiteSignals({
    signals:[signal],controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
    controlToken:"a".repeat(64),now,readAll:async()=>[],
@@ -279,11 +297,13 @@ test("concrete OSINT displaces generic feed candidates without growing the 600-r
   published_at:new Date(at-n*60000).toISOString(),
  }));
  const signal={id:"rare_earth-abc12345",category:"rare_earth",
-   published_at:new Date(at-36*3600000).toISOString(),
-   status:"osint_feed_observed_unverified",development_type:"unverified OSINT feed observation",
-   topic:"critical-mineral inputs",
-   what_changed:"A monitored source feed reports: Mining Ministry announced new mineral refinery plans. This report has not been independently verified.",
-   same_event_corrob_verified:false,severity:null,sources_credited:["Monitored feed: mining.example"]};
+    title:"Geomacro finds critical-mineral inputs source-feed observation",
+    published_at:new Date(at-36*3600000).toISOString(),date_precision:"exact",
+    status:"osint_feed_observed_unverified",development_type:"unverified OSINT feed observation",
+    topic:"critical-mineral inputs",geography:null,
+    what_changed:"A monitored source feed reports: Mining Ministry announced new mineral refinery plans. This report has not been independently verified.",
+    why_it_matters:"A mineral-related source-feed observation can guide checks of supply and production exposure. No actual supply impact is independently verified.",
+    observed_release_count:1,same_event_corrob_verified:false,severity:null,sources_credited:["Monitored feed: mining.example"]};
  assert.equal(privateWebsiteRetentionPriority(signal),1);
  assert.equal(privateWebsiteRetentionPriority(candidates[0]),0);
  assert.equal(privateWebsiteRetentionNewestFirst(signal,candidates[0]),-1);

@@ -18,12 +18,19 @@ import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client.ts";
 import {isConcretePublicIntelligence,intelligenceDisplayRejection,intelligenceRequiredSourceCredits} from "../../src/lib/intelligence-concrete-publication.ts";
 import {dedupeIntelligenceStories} from "../../src/lib/intelligence-news-dedupe.ts";
+import {DERIVED_NEWS_TOPIC_POLICY_REVISION,requireDerivedNewsWorkerPolicy} from "../lib/derived-news-readback-policy.mjs";
 
 const root=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(root.length<32)throw Error("PRIVATE_OSINT_PRODUCTION_CREDENTIAL_REQUIRED");
 const control=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
 const privateToken=createHmac("sha256",control)
   .update("geomacro-private-osint-15m-v1").digest("hex");
+const controlPlaneRoot="https://geomacro-control-plane.daspallab202391.workers.dev";
+const workerPolicy=await requireDerivedNewsWorkerPolicy({
+ fetchImpl:globalThis.fetch,url:controlPlaneRoot+"/health",
+ expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION,
+});
+console.log(JSON.stringify(workerPolicy));
 const timestamp=new Date();
 // Ephemeral first-party issuer/link metadata, validated against exact pinned
 // origin/permalink rules. Unverified private-only rows remain in private D1.
@@ -79,7 +86,7 @@ if(result.summary.configured_country_routes!==195||
 // source-clock JSON is durably written and independently read back.
 const persisted=await persistPrivateOsintBatch({
  result,privateToken,now:Date.now(),
- controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
+ controlPlaneRoot,
 });
 if(persisted.source_checks_persisted!==result.checks.length||
  !persisted.d1_write_exact_readback_verified||
