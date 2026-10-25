@@ -104,6 +104,7 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
      native_feed_to_first_durable_write_within_15m:within15,
      native_feed_to_first_durable_write_over_15m:after15,
      d1_exact_readback_verified:true,
+     independent_verification_required_for_ingestion:false,
      original_page_verified:false,source_rights_verified:false,
      breaking_news_global_15m_guaranteed:false,
      publicly_served:false,paid_product_authorized:false,raw_upstream_stored:false});
@@ -145,6 +146,7 @@ export async function privateOsint15mRead(env,query=new URLSearchParams(),now=Da
      scope:"PROTECTED_INTERNAL_OSINT_RESEARCH_ONLY",
      first_seen_is_database_server_clock:true,
      publisher_native_feed_timestamp_not_page_proof:true,
+     independent_verification_required_for_ingestion:false,
      original_page_verified:false,commercial_use_authorized:false,
      country_195_router_not_verified_full_coverage:true,
      retention_hours:25,offset,has_more:rows.length>100,

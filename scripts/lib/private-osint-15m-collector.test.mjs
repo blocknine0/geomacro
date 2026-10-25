@@ -45,6 +45,7 @@ test("all 18 registered endpoint URLs are polled on ONE tick, no 15m registry ro
  assert.equal(doc.summary.all_world_breaking_claimed,false);
  assert.equal(doc.summary.publicly_served,false);
  assert.equal(doc.summary.rights_verified,false);
+ assert.equal(doc.summary.independent_verification_required_for_ingestion,false);
 });
 test("DENIED and unsupported channels do not create unverifiable publications",async()=>{
  const registry=[

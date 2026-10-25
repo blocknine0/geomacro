@@ -56,6 +56,7 @@ console.log(JSON.stringify({
  gdelt_global_index:index,
  private_osint_d1_persisted:true,
  private_durable_first_seen_clock_verified:true,
+ independent_verification_required_for_ingestion:false,
  original_page_independently_verified:false,
  current_signed_commercial_intelligence_verified:false,
  public_news_updated:false,

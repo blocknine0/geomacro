@@ -75,6 +75,7 @@ export async function collectPrivateOsint15m({
       discovered_within_15m_native_clock:recent.length,
       factual_items_25h:all.length,excluded_by_capacity:Math.max(0,all.length-PRIVATE_OSINT_MAX_RESULTS_PER_TICK)+collectorExcluded,
       first_discovery_latency_measured_at_d1:false,
+      independent_verification_required_for_ingestion:false,
       each_country_has_a_registered_feed:false,
       all_world_breaking_claimed:false,real_time_guaranteed:false,
       source_clock_independently_verified:false,

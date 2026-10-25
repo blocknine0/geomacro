@@ -33,6 +33,7 @@ export async function persistPrivateOsintBatch({
     receipt.ok!==true||receipt.d1_exact_readback_verified!==true||
     receipt.persisted+receipt.capacity_excluded!==group.items.length||
     receipt.checks_saved!==group.checks.length||
+    receipt.independent_verification_required_for_ingestion!==false||
     receipt.original_page_verified!==false||
     receipt.paid_product_authorized!==false||
     receipt.raw_upstream_stored!==false)
@@ -52,6 +53,7 @@ export async function persistPrivateOsintBatch({
  if(privateFeed.ok!==true||privateFeed.schema!==PRIVATE_OSINT_DURABLE_SCHEMA||
     privateFeed.retention_hours!==25||
     privateFeed.scope!=="PROTECTED_INTERNAL_OSINT_RESEARCH_ONLY"||
+    privateFeed.independent_verification_required_for_ingestion!==false||
     privateFeed.original_page_verified!==false||
     privateFeed.commercial_use_authorized!==false||
     !Array.isArray(privateFeed.items))
@@ -62,6 +64,7 @@ export async function persistPrivateOsintBatch({
    native_feed_to_first_durable_write_within_15m:in15,
    native_feed_to_first_durable_write_over_15m:over15,
    d1_write_exact_readback_verified:true,
+   independent_verification_required_for_ingestion:false,
    separate_private_d1_readback_verified:true,
    original_page_independently_verified:false,
    global_195x3_live_15m_sla_guaranteed:false,
