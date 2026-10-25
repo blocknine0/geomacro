@@ -80,6 +80,7 @@ test("scoped authenticated route is not a public or root-admin URL",async()=>{
  assert.equal(result.scope,"PROTECTED_INTERNAL_OSINT_RESEARCH_ONLY");
  assert.equal(result.original_page_verified,false);
  assert.equal(result.commercial_use_authorized,false);
+ assert.equal(result.independent_verification_required_for_ingestion,false);
 });
 test("actual news native-clock timestamp is durable, 15m first_seen measured; duplicate does not reset",async()=>{
  const {env,items,checks}=fakeD1(),body={schema:PRIVATE_OSINT_D1_SCHEMA,items:[item()],checks:[check()]};
@@ -90,6 +91,8 @@ test("actual news native-clock timestamp is durable, 15m first_seen measured; du
  assert.equal(receipt.checks_saved,1);
  assert.equal(receipt.native_feed_to_first_durable_write_within_15m,1);
  assert.equal(receipt.d1_exact_readback_verified,true);
+ assert.equal(receipt.independent_verification_required_for_ingestion,false);
+ assert.equal(body.items[0].verification.independent_event_verified,false);
  assert.equal(checks.size,1);
  const saved=[...items.values()][0];
  assert.equal(saved.first_seen_at,new Date(now).toISOString());
