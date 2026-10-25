@@ -26,22 +26,62 @@ const payload=(s=signal()):AutomatedInputPayload=>({schema:'geomacro.automated-i
  source_run_id:'1234',source_sha:'a'.repeat(40),signal:s,
  independent_reviewed:false,commercial_rights_attested:false,scored:false});
 const sign=(p:AutomatedInputPayload)=>signAutomatedIntelligenceInput(p,material);
-function store(){
+function store(initialJournal:any[]=[]){
  const rows=new Map<string,any>();
+ const journal=new Map<string,any>();
+ const putJournal=(signals:any[])=>{
+  journal.clear();
+  for(const s of signals)journal.set(s.id,{id:s.id,published_at:s.published_at,
+   first_seen_at:new Date(NOW-1000).toISOString(),story_json:JSON.stringify(s)});
+ };
+ putJournal(initialJournal);
  const env={AUTOMATED_FINDS_VERIFY_KEYS_JSON:JSON.stringify(keys),DB:{
-  prepare:(sql:string)=>({bind:(...args:any[])=>({sql,args,all:async()=>({success:true,
-   results:[...rows].sort(([a],[b])=>a.localeCompare(b)).filter(([,r])=>JSON.parse(r.value_json).payload.expires_at>args[1])
-    .slice(args[3],args[3]+args[2]).map(([key,r])=>({key,...r,signing_key_id:JSON.parse(r.value_json).integrity.signing_key_id}))})})}),
+  prepare:(sql:string)=>({bind:(...args:any[])=>({sql,args,all:async()=>{
+   if(sql.includes('FROM website_derived_intelligence')){
+    const cutoffDay=args[0],cutoffFirstSeen=args[1],limit=args[2]??600;
+    return {success:true,results:[...journal.values()].filter((r:any)=>
+     r.published_at>=cutoffDay&&r.first_seen_at>=cutoffFirstSeen)
+     .sort((a:any,b:any)=>b.published_at.localeCompare(a.published_at)||b.id.localeCompare(a.id))
+     .slice(0,limit)};
+   }
+   if(sql.startsWith('SELECT key FROM control_state WHERE key GLOB ? LIMIT')){
+    return {success:true,results:[...rows.keys()].filter(k=>k.startsWith('automated_input_v1:'))
+     .slice(0,args[1]??1000).map(key=>({key}))};
+   }
+   return {success:true,results:[...rows].sort(([a],[b])=>a.localeCompare(b))
+    .filter(([,r])=>JSON.parse(r.value_json).payload.expires_at>args[1])
+    .slice(args[3],args[3]+args[2]).map(([key,r])=>({key,...r,
+     signing_key_id:JSON.parse(r.value_json).integrity.signing_key_id}))};
+  }})}),
   batch:async(stmts:any[])=>stmts.map(s=>{
    if(s.sql.startsWith('INSERT')){const [key,value_json,updated_at]=s.args;
     const old=rows.get(key);let changes=0;
     if(!old||JSON.parse(old.value_json).integrity.signing_key_id!==JSON.parse(value_json).integrity.signing_key_id&&updated_at>old.updated_at){
      rows.set(key,{value_json,updated_at});changes=1;
     }return {success:true,meta:{changes}};
-   }return {success:true,meta:{changes:0}};
+   }
+   if(s.sql.startsWith('DELETE FROM control_state WHERE key IN')){
+    let changes=0;for(const key of s.args)if(rows.delete(key))changes++;
+    return {success:true,meta:{changes}};
+   }
+   if(s.sql.startsWith('DELETE FROM control_state WHERE key GLOB')&&s.sql.includes('OFFSET 600')){
+    const sorted=[...rows].sort((a,b)=>{
+     const ta=Date.parse(JSON.parse(a[1].value_json).payload.signal.published_at);
+     const tb=Date.parse(JSON.parse(b[1].value_json).payload.signal.published_at);
+     return tb-ta||a[0].localeCompare(b[0]);
+    });
+    for(const [key] of sorted.slice(600))rows.delete(key);
+    return {success:true,meta:{changes:Math.max(0,sorted.length-600)}};
+   }
+   if(s.sql.startsWith('DELETE FROM control_state WHERE key GLOB')){
+    let changes=0;for(const [key,r] of rows)if(key.startsWith('automated_input_v1:')&&
+     JSON.parse(r.value_json).payload.expires_at<=s.args[1]){rows.delete(key);changes++;}
+    return {success:true,meta:{changes}};
+   }
+   return {success:true,meta:{changes:0}};
   }),
  }};
- return {env,rows};
+ return {env,rows,journal,putJournal};
 }
 beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime(NOW);});
 afterEach(()=>{vi.useRealTimers();});
@@ -69,7 +109,7 @@ describe('automatic approval of all retained derived inputs',()=>{
   expect(await automatedInputId(signal('geopolitics'))).not.toBe(await automatedInputId(s));
  });
  it('atomically accepts one stored item on repeated signed delivery and verifies the readback',async()=>{
-  const db=store(),e=await sign(payload());const body={schema:'geomacro.automated-intelligence-input-batch.v1',items:[e,e]};
+  const e=await sign(payload()),db=store([e.payload.signal]);const body={schema:'geomacro.automated-intelligence-input-batch.v1',items:[e,e]};
   const first=await (await putAutomatedInputs(db.env,body,NOW)).json();
   const again=await (await putAutomatedInputs(db.env,body,NOW)).json();
   expect(first.inserted_or_resigned).toBe(1);expect(again.inserted_or_resigned).toBe(0);expect(db.rows.size).toBe(1);
@@ -82,7 +122,7 @@ describe('automatic approval of all retained derived inputs',()=>{
   expect(db.rows.size).toBe(1);
  });
  it('handles over 50 per category, all 600 journal items and reruns without another write',async()=>{
-  const db=store();const retained=Array.from({length:600},(_,i)=>signal(['geopolitics','macro','rare_earth'][i%3],i+1));
+  const retained=Array.from({length:600},(_,i)=>signal(['geopolitics','macro','rare_earth'][i%3],i+1));const db=store(retained);
   const fetchImpl=vi.fn(async(url:any,options:any)=>options.method==='PUT'
    ?putAutomatedInputs(db.env,JSON.parse(options.body),NOW)
    :getAutomatedInputs(db.env,new URL(String(url)).searchParams,NOW));
@@ -95,6 +135,27 @@ describe('automatic approval of all retained derived inputs',()=>{
   expect(again.new_signed_inputs).toBe(0);expect(again.already_signed).toBe(600);
   expect(fetchImpl.mock.calls.every(([,opt])=>opt.method==='GET')).toBe(true);
  });
+ it('prunes superseded content revisions so all 600 current D1 journal inputs survive capacity enforcement',async()=>{
+   const original=Array.from({length:600},(_,i)=>signal(['geopolitics','macro','rare_earth'][i%3],i+1));
+   const db=store(original);
+   const fetchImpl=vi.fn(async(url:any,options:any)=>options.method==='PUT'
+    ?putAutomatedInputs(db.env,JSON.parse(options.body),NOW)
+    :getAutomatedInputs(db.env,new URL(String(url)).searchParams,NOW));
+   const opts={fetchImpl,env:{GEOMACRO_COMMERCE_LEDGER_TOKEN:'x'.repeat(32),GITHUB_SHA:'a'.repeat(40),GITHUB_RUN_ID:'1234'},
+    now:new Date(NOW),readJournal:async()=>original,sign,keys};
+   const first=await publishAutomatedIntelligenceInputs(opts);
+   expect(first.new_signed_inputs).toBe(600);
+   expect(db.rows.size).toBe(600);
+   const revised=original.map(s=>({...s,what_changed:s.what_changed+' Revised content.'}));
+   db.putJournal(revised);
+   const second=await publishAutomatedIntelligenceInputs({...opts,readJournal:async()=>revised});
+   expect(second.new_signed_inputs).toBe(600);
+   expect(second.all_retained_unique_inputs_present).toBe(true);
+   expect(db.rows.size).toBe(600);
+   const expected=await Promise.all(revised.map(automatedInputId));
+   expect([...db.rows.keys()].map(k=>k.replace('automated_input_v1:','')).sort()).toEqual(expected.sort());
+   expect([...db.rows.values()].every(r=>JSON.parse(r.value_json).payload.signal.what_changed.endsWith('Revised content.'))).toBe(true);
+  });
  it('does not expose the internal signed-input route to unauthenticated callers',async()=>{
   for(const method of ['GET','PUT']){
    const r=await worker.fetch(new Request('https://control.example/v1/intelligence-inputs/automated',{method}),{});
