@@ -52,7 +52,7 @@ const result=await collectPrivateOsint15m({
   // only that terminal annotation, never expose the outlet or the original
   // external headline in the public Geomacro report.
   const originalTitle=raw.source_url.startsWith("https://news.google.com/")
-    ?raw.title.replace(/\\s+-\\s+[\\p{L}\\p{N}][\\p{L}\\p{N} .,'&()]{1,65}$/u,"")
+    ?raw.title.replace(/\s+-\s+[\p{L}\p{N}][\p{L}\p{N} .,'&()]{1,65}$/u,"")
     :raw.title;
   const event=actorActionNewsObservation(originalTitle);
   if(!event)return;
