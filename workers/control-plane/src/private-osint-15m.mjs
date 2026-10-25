@@ -67,11 +67,12 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
    // Duplicate source polls need a primary-key read, not a complete 4,000-row
    // retention scan on every tiny write batch. Actual new ids still enforce
    // the hard ring limit in the same transaction as their insert.
-   let hasNewRows=false;
-   for(const r of rows){
-     r.preexisting=Boolean(await env.DB.prepare("SELECT item_id FROM private_osint_news_25h WHERE item_id=?").bind(r.id).first());
-     if(!r.preexisting)hasNewRows=true;
-   }
+   const placeholders=rows.map(()=>"?").join(","),itemIds=rows.map(r=>r.id);
+   const before=rows.length?await env.DB.prepare("SELECT item_id FROM private_osint_news_25h WHERE item_id IN ("+placeholders+")").bind(...itemIds).all():{results:[]};
+   if(!Array.isArray(before.results))throw Error("D1_PREFETCH_INVALID");
+   const existingIds=new Set(before.results.map(r=>r.item_id));
+   for(const r of rows)r.preexisting=existingIds.has(r.id);
+   const hasNewRows=rows.some(r=>!r.preexisting);
    const statements=[
      env.DB.prepare("DELETE FROM private_osint_news_25h WHERE native_feed_published_at < ?")
        .bind(new Date(now-maxAgeMs).toISOString()),
@@ -95,22 +96,30 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
      "OR private_osint_news_25h.last_seen_at<=?")
      .bind(r.id,r.category,r.country,r.native,r.projection,when,when,new Date(now-6*3600000).toISOString()));
    }
-   for(const c of body.checks)statements.push(env.DB.prepare(
-     "INSERT INTO private_osint_source_checks_24h(source_ref,category,state,checked_at) VALUES(?,?,?,?) "+
+   // 16 rows use 65 bindings including cutoff, below D1's 100-parameter
+   // ceiling. Bundling also keeps the largest valid write below 50 queries.
+   for(let i=0;i<body.checks.length;i+=16){
+    const group=body.checks.slice(i,i+16);
+    statements.push(env.DB.prepare(
+     "INSERT INTO private_osint_source_checks_24h(source_ref,category,state,checked_at) VALUES "+group.map(()=>"(?,?,?,?)").join(",")+" "+
      "ON CONFLICT(source_ref,category) DO UPDATE SET state=excluded.state,checked_at=excluded.checked_at "+
      "WHERE private_osint_source_checks_24h.state<>excluded.state "+
      "OR private_osint_source_checks_24h.checked_at<=?")
-     .bind(c.source_ref,c.category,c.state,c.checked_at,new Date(now-3600000).toISOString()));
+     .bind(...group.flatMap(c=>[c.source_ref,c.category,c.state,c.checked_at]),new Date(now-3600000).toISOString()));
+   }
    if(hasNewRows)statements.push(env.DB.prepare(
      "DELETE FROM private_osint_news_25h WHERE item_id NOT IN "+
      "(SELECT item_id FROM private_osint_news_25h ORDER BY native_feed_published_at DESC,item_id DESC LIMIT "+maxRows+")"));
    const batch=await env.DB.batch(statements);
    if(batch.some(result=>result?.success===false))throw Error("D1_BATCH_FAILED");
+   const readback=rows.length?await env.DB.prepare(
+    "SELECT item_id,category,country_iso3,native_feed_published_at,projection_json,first_seen_at FROM private_osint_news_25h WHERE item_id IN ("+placeholders+")")
+    .bind(...itemIds).all():{results:[]};
+   if(!Array.isArray(readback.results))throw Error("D1_READBACK_INVALID");
+   const foundById=new Map(readback.results.map(r=>[r.item_id,r]));
    let retained=0,excluded=0,within15=0,after15=0;
    for(const r of rows){
-     const found=await env.DB.prepare(
-       "SELECT category,country_iso3,native_feed_published_at,projection_json,first_seen_at FROM private_osint_news_25h WHERE item_id=?")
-       .bind(r.id).first();
+     const found=foundById.get(r.id);
      if(!found){excluded++;continue}
      if(found.projection_json!==r.projection||found.category!==r.category||
         (found.country_iso3??null)!==r.country||found.native_feed_published_at!==r.native)
@@ -125,6 +134,7 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
      native_feed_to_first_durable_write_within_15m:within15,
      native_feed_to_first_durable_write_over_15m:after15,
      d1_exact_readback_verified:true,
+     existence_and_readback_bundled:true,d1_queries_this_write:statements.length+(rows.length?2:0),
      duplicate_news_last_seen_refresh_hours:6,unchanged_check_refresh_minutes:60,
      independent_verification_required_for_ingestion:false,
      original_page_verified:false,source_rights_verified:false,

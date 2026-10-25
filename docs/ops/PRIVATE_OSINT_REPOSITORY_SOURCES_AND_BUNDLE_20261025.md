@@ -20,7 +20,7 @@ requests run concurrently, with two slots per host. A large search-index
 catalogue cannot occupy all slots while unrelated publishers are pending.
 Index reads have a bounded 3.5-second timeout. Transport and parsing failures
 produce no news records and are excluded from working endpoint counts.
-Three-category selection, the 320-record tick ceiling, 4,000-row private
+Three-category selection, a bounded 768-record tick ceiling, 4,000-row private
 ring and 25-hour source-clock retention remain explicit. No universal
 195-country breaking-news latency guarantee is asserted by this intake.
 
@@ -60,6 +60,14 @@ Duplicate-only batches avoid the full ring-pruning scan. Existing rows use
 UPDATE, so a concurrent capacity eviction cannot be resurrected without the
 atomic hard-cap pruning used by a new-id insert. These measures reduce
 repeated writes; they do not certify an account-wide provider quota.
+
+Existence checks and exact readback use one parameterized IN query each.
+Source-state upserts are grouped into at most 16 rows per SQL statement.
+The maximum valid write (20 news records and 32 source checks) uses 27 D1
+queries and at most 65 bindings in one statement, under the published Free
+limits of 50 queries per invocation and 100 parameters per query:
+https://developers.cloudflare.com/d1/platform/limits/
+Production receipts report whether these bundled writer reads were observed.
 
 The publisher now prefers one three-category bundle readback. During a
 rolling deployment only an older reader's unknown-query HTTP 400 permits

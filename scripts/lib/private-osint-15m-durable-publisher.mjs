@@ -20,7 +20,7 @@ export async function persistPrivateOsintBatch({
    schema:PRIVATE_OSINT_DURABLE_SCHEMA,
    items:items.splice(0,12),checks:checks.splice(0,20),
  });
- let saved=0,excluded=0,checked=0,in15=0,over15=0;
+ let saved=0,excluded=0,checked=0,in15=0,over15=0,writerBundled=true,writeQueries=0;
  for(const group of groups){
   const response=await fetchImpl(controlPlaneRoot+"/v1/internal/private-osint-15m",{
    method:"PUT",redirect:"error",cache:"no-store",
@@ -42,6 +42,10 @@ export async function persistPrivateOsintBatch({
   checked+=receipt.checks_saved;
   in15+=receipt.native_feed_to_first_durable_write_within_15m;
   over15+=receipt.native_feed_to_first_durable_write_over_15m;
+  writerBundled=writerBundled&&receipt.existence_and_readback_bundled===true;
+  if(writeQueries!==null&&Number.isSafeInteger(receipt.d1_queries_this_write)&&receipt.d1_queries_this_write>=0)
+    writeQueries+=receipt.d1_queries_this_write;
+  else writeQueries=null;
  }
  // Authenticated private readback at end; zero public exposure.
  const read=async view=>fetchImpl(controlPlaneRoot+"/v1/internal/private-osint-15m?"+view,{
@@ -73,6 +77,8 @@ export async function persistPrivateOsintBatch({
    independent_verification_required_for_ingestion:false,
    separate_private_d1_readback_verified:true,
    private_three_category_bundle_readback_verified:bundle,
+   private_d1_writer_reads_bundled_verified:writerBundled,
+   d1_queries_for_write_batches:writeQueries,
    original_page_independently_verified:false,
    global_195x3_live_15m_sla_guaranteed:false,
    publicly_delivered:false,raw_upstream_stored:false,

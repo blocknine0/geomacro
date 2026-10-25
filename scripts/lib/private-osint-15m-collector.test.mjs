@@ -80,19 +80,19 @@ test("untrusted duplicate URL and invented country router are rejected",async()=
   normalize,resolveCountry:()=>null,concurrency:100}),/PRIVATE_OSINT_COLLECTOR_CONFIG_INVALID/);
 });
 test("large geopolitics bursts cannot crowd out fresh macro and mineral items",async()=>{
- const registry=Array.from({length:8},(_,i)=>({id:'burst'+i,url:'https://burst'+i+'.example.org/rss',
-  type:'rss',supported:true,categories:[i<6?'geopolitics':i===6?'macro':'rare_earth']}));
+ const registry=Array.from({length:14},(_,i)=>({id:'burst'+i,url:'https://burst'+i+'.example.org/rss',
+  type:'rss',supported:true,categories:[i<12?'geopolitics':i===12?'macro':'rare_earth']}));
  const r=await collectPrivateOsint15m({now,registry,normalize,resolveCountry:()=>null,
   fetchImpl:async url=>{
    const index=Number(new URL(url).hostname.match(/burst(\d+)/u)[1]);
-   const topic=index<6?'military conflict ceasefire':index===6?'central bank inflation':'critical minerals lithium';
+   const topic=index<12?'military conflict ceasefire':index===12?'central bank inflation':'critical minerals lithium';
    return new Response('<rss><channel>'+Array.from({length:90},(_,n)=>
     '<item><title>Government announces '+topic+' policy decision '+n+'</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item>').join('')+'</channel></rss>');
   }});
- assert.equal(r.items.length,320);
+ assert.equal(r.items.length,768);
  assert.equal(r.summary.selected_items_by_category.macro,90);
  assert.equal(r.summary.selected_items_by_category.rare_earth,90);
- assert.equal(r.summary.selected_items_by_category.geopolitics,140);
+ assert.equal(r.summary.selected_items_by_category.geopolitics,588);
  assert.ok(r.summary.excluded_items_by_category.geopolitics>0);
 });
 test("expanded inventory checks 300 endpoints with two per-host and eight global fetch slots",async()=>{

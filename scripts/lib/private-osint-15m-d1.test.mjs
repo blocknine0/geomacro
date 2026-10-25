@@ -40,6 +40,7 @@ function fakeD1(){
      }return null;
     },
     async all(){
+     if(sql.includes("WHERE item_id IN ("))return {results:params.map(id=>items.get(id)).filter(Boolean)};
      if(sql.includes("SELECT projection_json,first_seen_at,last_seen_at")){
       let rows=[...items.values()].filter(x=>x.native_feed_published_at>=params[0]);
       if(sql.includes("category=?")) rows=rows.filter(x=>x.category===params[1]);
@@ -57,7 +58,7 @@ function fakeD1(){
      items.set(item_id,{item_id,category,country_iso3,native_feed_published_at,
       projection_json,first_seen_at:items.get(item_id)?.first_seen_at??first_seen_at,last_seen_at});
     }else if(q.sql.startsWith("INSERT INTO private_osint_source_checks_24h")){
-     checks.set(q.params[0]+q.params[1],q.params);
+     for(let i=0;i<q.params.length-1;i+=4)checks.set(q.params[i]+q.params[i+1],q.params.slice(i,i+4));
     }else if(q.sql.startsWith("DELETE FROM private_osint_news_25h WHERE native_feed_published_at")){
      for(const [k,v] of items)if(v.native_feed_published_at<q.params[0])items.delete(k);
     }
@@ -83,6 +84,31 @@ test("scoped authenticated route is not a public or root-admin URL",async()=>{
  assert.equal(result.original_page_verified,false);
  assert.equal(result.commercial_use_authorized,false);
  assert.equal(result.independent_verification_required_for_ingestion,false);
+});
+test("largest valid write bundles reads below D1 Free query and parameter ceilings",async()=>{
+ const db=new DatabaseSync(':memory:');
+ db.exec(readFileSync(new URL('../../workers/control-plane/migrations/0028_private_osint_15m_durable.sql',import.meta.url),'utf8'));
+ let queries=0,maxParameters=0;
+ const env={DB:{prepare(sql){
+  const q={sql,params:[],bind(...params){q.params=params;maxParameters=Math.max(maxParameters,params.length);return q},
+   async all(){queries++;return {results:db.prepare(sql).all(...q.params)}}};return q;
+ },async batch(qs){
+  db.exec('BEGIN');try{
+   const result=qs.map(q=>{queries++;return {success:true,meta:{changes:Number(db.prepare(q.sql).run(...q.params).changes)}}});
+   db.exec('COMMIT');return result;
+  }catch(error){db.exec('ROLLBACK');throw error}
+ }}};
+ try{
+  const body={schema:PRIVATE_OSINT_D1_SCHEMA,
+   items:Array.from({length:20},(_,n)=>item({id:'news-'+hash('bundle:'+n)})),
+   checks:Array.from({length:32},(_,n)=>({...check(),source_ref:hash('check:'+n)}))};
+  const response=await privateOsint15mWrite(env,body,now),receipt=await response.json();
+  assert.equal(response.status,200);assert.equal(receipt.persisted,20);assert.equal(receipt.checks_saved,32);
+  assert.equal(receipt.existence_and_readback_bundled,true);
+  assert.equal(receipt.d1_queries_this_write,queries);assert.equal(queries,27);
+  assert.ok(queries<50);assert.ok(maxParameters<=100);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM private_osint_source_checks_24h').get().n,32);
+ }finally{db.close()}
 });
 test("actual news native-clock timestamp is durable, 15m first_seen measured; duplicate does not reset",async()=>{
  const {env,items,checks}=fakeD1(),body={schema:PRIVATE_OSINT_D1_SCHEMA,items:[item()],checks:[check()]};
