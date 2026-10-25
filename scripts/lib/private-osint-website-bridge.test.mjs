@@ -218,3 +218,39 @@ test("genuine original releases in hours 25-72 reach website without entering pr
  assert.equal(officialWebsiteCandidateFromOsint({...original[0],
   published_at:"2026-10-22T11:00:00.000Z"},now),null);
 });
+
+test("D1 600-row published-time eviction never produces false exact-readback failure",async()=>{
+ const baseline=Array.from({length:599},(_,i)=>({
+  id:"existing-"+i,published_at:new Date(now-i*60000).toISOString()
+ }));
+ let retained=[...baseline],writes=0;
+ const start=now-720*60000;
+ const make=(id,age)=>({
+  id:"geopolitics-"+id,category:"geopolitics",
+  status:"osint_feed_observed_unverified",same_event_corrob_verified:false,
+  severity:null,sources_credited:["Monitored feed: example.gov"],
+  published_at:new Date(now-age*60000).toISOString()
+ });
+ const candidates=[make("aaaaaaaa",2),make("bbbbbbbb",700),make("cccccccc",1)];
+ const fetchImpl=async(url,options)=>{
+   const body=JSON.parse(options.body);
+   writes+=body.signals.length;
+   retained=[...retained,...body.signals].sort((a,b)=>
+    b.published_at.localeCompare(a.published_at)||b.id.localeCompare(a.id)).slice(0,600);
+   return new Response(JSON.stringify({ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",
+    accepted:body.signals.length,persistent_derived_only:true,chargeable:false}),{status:200});
+ };
+ const receipt=await publishPrivateOsintWebsiteSignals({
+  signals:candidates,
+  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  controlToken:"a".repeat(64),now,
+  fetchImpl,readAll:async()=>retained,
+ });
+ assert.equal(writes,2);
+ assert.equal(receipt.new_derived_stories,2);
+ assert.equal(receipt.deferred_unpublished,1);
+ assert.equal(receipt.journal_readback_verified,true);
+ assert.ok(retained.some(x=>x.id==="geopolitics-aaaaaaaa"));
+ assert.ok(retained.some(x=>x.id==="geopolitics-cccccccc"));
+ assert.ok(!retained.some(x=>x.id==="geopolitics-bbbbbbbb"));
+});
