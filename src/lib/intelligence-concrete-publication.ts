@@ -57,7 +57,7 @@ export function isConcretePublicIntelligence(s:StatelessIntelligenceSignal):bool
    (s.development_type!=="unverified OSINT feed observation"||
     s.sources_credited.length!==1||
     !s.sources_credited[0].startsWith("Monitored feed: ")||
-    /(?:news\\.un\\.org|press\\.un\\.org|gov\\.uk|wto\\.org|statcan\\.gc\\.ca|beehive\\.govt\\.nz|europa\\.eu)/iu.test(s.sources_credited[0])))
+    /(?:news\.un\.org|press\.un\.org|gov\.uk|wto\.org|statcan\.gc\.ca|beehive\.govt\.nz|europa\.eu)/iu.test(s.sources_credited[0])))
    return false;
  const headline=concreteIntelligenceHeadline(s),change=intelligenceActorChange(s);
  if(!headline)return false;
