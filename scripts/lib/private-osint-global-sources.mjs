@@ -30,11 +30,11 @@ export function privateOsintGlobalSources(){
    // Only PRIVATE, native-clock parsed intake; transport remains independently
    // observable as DENIED/UNAVAILABLE/MALFORMED until a real feed is read.
    const expected="https://www.pib.gov.in";
-   if(!/^private_official_ind_pib_press_reg[13]$/u.test(s.id)||
+   if(!/^private_official_ind_pib_press_reg(?:1|3|5|6|17|20|22)$/u.test(s.id)||
       url.origin!==expected||url.pathname!=="/RssMain.aspx"||
       url.searchParams.get("ModId")!=="6"||
       url.searchParams.get("Lang")!=="1"||
-      !["1","3"].includes(url.searchParams.get("Regid"))||
+      !["1","3","5","6","17","20","22"].includes(url.searchParams.get("Regid"))||
       [...url.searchParams.keys()].length!==3||
       discovery.origin!==expected||discovery.pathname!=="/ViewRss.aspx"||
       discovery.searchParams.get("lang")!=="1"||
