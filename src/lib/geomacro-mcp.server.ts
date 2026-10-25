@@ -430,8 +430,12 @@ async function callPaidTool(
   if (!canonicalResponse.ok) {
     // A verified-original-page research answer is a successful, explicitly
     // non-chargeable result. It is not a signed or commercially admitted product.
+    const researchOnly = isSourceGroundedResearchAnswer(payload);
+    const resultPayload = researchOnly
+      ? {...payload as Record<string, unknown>, ok: true, delivery_status: "RESEARCH_ONLY"}
+      : payload;
     return responseWithCanonicalHeaders(
-      toolResult(id, payload, !isSourceGroundedResearchAnswer(payload)),
+      toolResult(id, resultPayload, !researchOnly),
       canonicalResponse,
     );
   }
