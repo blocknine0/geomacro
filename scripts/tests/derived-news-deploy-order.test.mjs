@@ -16,8 +16,8 @@ test("Worker, publisher and health endpoint share one explicit topic-policy revi
  assert.ok(deploy.includes('"scripts/lib/derived-news-readback-policy.mjs"'));
  assert.match(publisher,/requireDerivedNewsWorkerPolicy/u);
  const preflight=publisher.indexOf("const workerPolicy=await requireDerivedNewsWorkerPolicy");
- const read=publisher.indexOf("readStatelessWebsiteIntelligence(category");
- assert.ok(preflight>=0&&read>preflight,"health policy preflight must execute before source reads");
+ const sourceReadCall=publisher.indexOf("readStatelessWebsiteIntelligence(category");
+ assert.ok(preflight>=0&&sourceReadCall>preflight,"health policy preflight must execute before source reads");
  assert.match(publisher,/expectedRevision:\s*DERIVED_NEWS_TOPIC_POLICY_REVISION/u);
 });
 
