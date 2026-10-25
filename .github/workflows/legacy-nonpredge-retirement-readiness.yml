@@ -26,6 +26,7 @@ jobs:
     env:
       APP_SUPABASE_URL: ""
       SUPABASE_DB_URL: ""
+      LEGACY_SUPABASE_DB_URL: ""
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -50,7 +51,12 @@ jobs:
              r.predge_legacy_continuity_owner_hold!==true||
              r.predge_legacy_runtime_cutover_verified!==false||
              r.status!=="BLOCKED_NO_DELETION"||
-             !src.includes("UNVERIFIED_PRODUCTION_HISTORICAL_FRAGMENT_B2_READ_CUTOVER"))
+             !src.includes("UNVERIFIED_PRODUCTION_HISTORICAL_FRAGMENT_B2_READ_CUTOVER")||
+             !src.includes("LEGACY_SUPABASE_DB_URL")||
+             !src.includes("unreferenced_raw_originals")||
+             !src.includes("unreferenced_fragment_originals")||
+             !src.includes("default_transaction_read_only=on")||
+             !src.includes("!u.search"))
             throw Error("OLD_PRIMARY_RETIREMENT_SAFETY_POLICY_BYPASSED");
           NODE
   read-only-source-census:
@@ -61,6 +67,7 @@ jobs:
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      LEGACY_SUPABASE_DB_URL: ${{ secrets.LEGACY_SUPABASE_DB_URL }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -83,6 +90,12 @@ jobs:
              r.predge_legacy_runtime_cutover_verified!==false)
             throw Error("LEGACY_NO_DELETION_GUARD_FAILED");
           if(!r.source_counts)throw Error("OLD_PRIMARY_READONLY_SOURCE_INVENTORY_UNAVAILABLE");
+          if(r.known_row_unreferenced_candidate_count!==
+             r.source_counts.unreferenced_raw_originals+
+             r.source_counts.unreferenced_fragment_originals||
+             r.known_row_unreferenced_candidates_only_not_runtime_accepted!==true||
+             r.predge_protected_referenced_source_files_preserved!==true)
+            throw Error("PREDGE_PROTECTION_CANDIDATE_COUNTS_ARE_NOT_MUTATION_APPROVAL");
           NODE
       - name: Publish sanitized counts and mandatory blockers only
         if: always()

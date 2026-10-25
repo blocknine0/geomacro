@@ -9,6 +9,16 @@ import {mkdirSync,writeFileSync} from "node:fs";
 const REF="ldpwajisioljyjtojvfx";
 const ORIGIN="https://"+REF+".supabase.co";
 const path="artifacts/legacy-exit/nonpredge-old-supabase-retirement-readiness.json";
+const sourceIsPinned=(input)=>{
+ try{
+  const u=new URL(input);
+  const username=decodeURIComponent(u.username);
+  return ["postgres:","postgresql:"].includes(u.protocol)&&
+    u.pathname==="/postgres"&&Boolean(u.password)&&!u.search&&!u.hash&&
+    (u.hostname==="db."+REF+".supabase.co"&&username==="postgres"||
+      u.hostname.endsWith(".pooler.supabase.com")&&username==="postgres."+REF);
+ }catch{return false}
+};
 const report={
  schema:"geomacro.old-primary-nonpredge-retirement-readiness.v1",
  source_project:REF,
@@ -45,7 +55,14 @@ function pinned(input) {
      u.hostname.endsWith(".pooler.supabase.com")&&user==="postgres."+REF);
  } catch{return false}
 }
-if(process.env.APP_SUPABASE_URL!==ORIGIN||!pinned(process.env.SUPABASE_DB_URL??"")){
+const legacyDb=process.env.LEGACY_SUPABASE_DB_URL??"";
+const configured=sourceIsPinned(legacyDb)?legacyDb:
+  sourceIsPinned(process.env.SUPABASE_DB_URL??"")?process.env.SUPABASE_DB_URL:"";
+report.dedicated_old_db_readonly_secret_available=sourceIsPinned(legacyDb);
+// The APP_SUPABASE_URL may now serve another product after credential rotation.
+// Only the dedicated pinned OLD database URI can override that old app URL
+// assertion. This never changes existing Predge or production credentials.
+if(!configured||(!sourceIsPinned(legacyDb)&&process.env.APP_SUPABASE_URL!==ORIGIN)){
  emit("EXACT_OLD_PRIMARY_READONLY_DATABASE_URL_MISSING");
 } else {
  const q = [
@@ -58,6 +75,17 @@ if(process.env.APP_SUPABASE_URL!==ORIGIN||!pinned(process.env.SUPABASE_DB_URL??"
   " JOIN storage.objects o ON o.bucket_id=f.storage_bucket AND o.name=f.object_path),",
   "'referenced_avatar_objects',(SELECT count(*) FROM public.testnet_tester_profiles p",
   " JOIN storage.objects o ON o.bucket_id='testnet-tester-avatars' AND o.name=p.avatar_path),",
+  // Counts ONLY. No object names or paths are exported from the source.
+  // These 182 historical orphan candidates are NOT automatically safe for
+  // deletion: downstream non-DB/Predge callers still need explicit cutover.
+  "'unreferenced_raw_originals',(SELECT count(*) FROM storage.objects o WHERE",
+  " o.bucket_id='geomacro-live-intelligence' AND split_part(o.name,'/',1)='raw'",
+  " AND NOT EXISTS(SELECT 1 FROM public.live_raw_source_snapshots r WHERE",
+  " r.storage_bucket=o.bucket_id AND r.object_path=o.name)),",
+  "'unreferenced_fragment_originals',(SELECT count(*) FROM storage.objects o WHERE",
+  " o.bucket_id='geomacro-live-intelligence' AND split_part(o.name,'/',1)='fragments'",
+  " AND NOT EXISTS(SELECT 1 FROM public.live_fragment_manifest f WHERE",
+  " f.storage_bucket=o.bucket_id AND f.object_path=o.name)),",
   "'agent_payments',(SELECT count(*) FROM public.agent_payments),",
   "'commercial_payment_events',(SELECT count(*) FROM public.commercial_payment_events),",
   "'commercial_entitlement_grants',(SELECT count(*) FROM public.commercial_entitlement_grants),",
@@ -68,9 +96,10 @@ if(process.env.APP_SUPABASE_URL!==ORIGIN||!pinned(process.env.SUPABASE_DB_URL??"
   "'edge_management_secret_states_not_independently_verified',true",
   ")::text;"
  ].join(" ");
- const child=spawnSync("psql",[process.env.SUPABASE_DB_URL,"-X","-qAt",
+ const child=spawnSync("psql",[configured,"-X","-qAt",
    "-v","ON_ERROR_STOP=1","-c",q],{
-   env:{...process.env,PGSSLMODE:"require",PGCONNECT_TIMEOUT:"15"},
+   env:{...process.env,PGSSLMODE:"require",PGCONNECT_TIMEOUT:"15",
+     PGOPTIONS:"-c default_transaction_read_only=on"},
    encoding:"utf8",timeout:35000,maxBuffer:15000,
    stdio:["ignore","pipe","pipe"],
  });
@@ -82,13 +111,19 @@ if(process.env.APP_SUPABASE_URL!==ORIGIN||!pinned(process.env.SUPABASE_DB_URL??"
     data=null;
   }
   const fields=["storage_object_count","storage_metadata_bytes","post_backup_modified_objects",
-   "referenced_fragment_objects","referenced_avatar_objects","agent_payments",
+   "referenced_fragment_objects","referenced_avatar_objects",
+   "unreferenced_raw_originals","unreferenced_fragment_originals","agent_payments",
    "commercial_payment_events","commercial_entitlement_grants","commercial_credit_accounts",
    "commercial_credit_usage","live_structured_events","risk_objects"];
   if(!data||fields.some(k=>!Number.isSafeInteger(Number(data[k]))||Number(data[k])<0)){
    emit("OLD_SUPABASE_SOURCE_CENSUS_UNREADABLE");
   } else {
    report.source_counts=Object.fromEntries(fields.map(k=>[k,Number(data[k])]));
+   report.known_row_unreferenced_candidate_count=
+     report.source_counts.unreferenced_raw_originals+
+     report.source_counts.unreferenced_fragment_originals;
+   report.known_row_unreferenced_candidates_only_not_runtime_accepted=true;
+   report.predge_protected_referenced_source_files_preserved=true;
    report.source_matches_preserved_storage_baseline=
      report.source_counts.storage_object_count===23648&&
      report.source_counts.storage_metadata_bytes===57459939&&
