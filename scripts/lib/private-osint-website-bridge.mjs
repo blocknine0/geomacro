@@ -116,7 +116,7 @@ export function unverifiedWebsiteSignalFromOsint(row,now=Date.now(),summarize=nu
    ({geopolitics:"geopolitical security",macro:"official economic statistics",
      rare_earth:"critical-mineral inputs"})[row.category]:observedTopic;
  const title="Geomacro finds "+(known?summary.headline:topic+" source-feed observation");
- const changed=known?"A monitored source feed reports: "+known.change+" This report has not been independently verified.":
+ const changed=known?known.change:
    "A monitored source feed contains a dated item about "+topic+
    ". The event actor, precise action and impact have not been independently verified.";
  const id=row.category+"-"+createHash("sha256").update(row.news_id).digest("hex").slice(0,8);
