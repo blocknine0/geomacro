@@ -141,7 +141,7 @@ test("new macro/FX and critical-metals feeds are private only and deduplicated",
 test("new regional macro/minerals and maritime corridor candidates are deduplicated, bounded, private",async()=>{
  const additions=JSON.parse(readFileSync(new URL(
   "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
- assert.equal(additions.sources.length,17);
+ assert.equal(additions.sources.length,14);
  const complete=privateOsintGlobalSources();
  assert.ok(complete.length<=512);
  assert.equal(new Set(complete.map(s=>s.url)).size,complete.length);
@@ -154,13 +154,13 @@ test("new regional macro/minerals and maritime corridor candidates are deduplica
   assert.equal(found[0].publicly_deliverable,false);
  }
  const selected=complete.filter(s=>[
-  "private_expansion_eurostat_statistics",
-  "private_expansion_can_nrcan_news",
+  "private_expansion_wto_trade_news",
+  "private_expansion_mining_dot_com",
  ].includes(s.id));
- const rss='<rss><channel><item><title>Eurostat publishes inflation economic statistics update</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
- const atom='<feed><entry><title>Natural Resources Canada announces lithium and rare-earth mineral supply changes</title><published>2026-10-25T11:55:00Z</published></entry></feed>';
+ const rss='<rss><channel><item><title>WTO publishes inflation economic trade statistics update</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
+ const minerals='<rss><channel><item><title>Global mining industry announces lithium and rare-earth mineral supply changes</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
  const mock=await collectPrivateOsint15m({now,registry:selected,normalize,resolveCountry:()=>null,
-  fetchImpl:async url=>new Response(url.includes("canada.ca")?atom:rss)});
+  fetchImpl:async url=>new Response(url.includes("mining.com")?minerals:rss)});
  assert.equal(mock.summary.selected_items_by_category.macro,1);
  assert.equal(mock.summary.selected_items_by_category.rare_earth,1);
  assert.equal(mock.summary.corridor_discovery_reference_coverage.commercial_delivery_enabled,false);
