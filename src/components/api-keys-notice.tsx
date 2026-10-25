@@ -6,10 +6,10 @@ export function ApiKeysNotice() {
         <KeyRound className="h-5 w-5 text-primary" aria-hidden />
         <div>
           <h2 className="text-sm font-semibold">
-            API keys <span className="ml-2 text-primary">Coming soon</span>
+            Per-call API pricing <span className="ml-2 text-primary">Published</span>
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Browse the catalog now. Self-service access and checkout are not open yet.
+            Approved prices for all three category APIs are public below. API keys: Coming soon. Self-service access and checkout are not open yet.
           </p>
         </div>
       </div>
