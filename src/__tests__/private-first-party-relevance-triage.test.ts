@@ -85,6 +85,36 @@ describe("#2043 open intake → private topical hint without commercial gate",()
       }}],
     })).toThrow("UNDATED_PULSE_TRIAGE_UNTRUSTED");
   });
+  it("recognizes strategic raw-materials and mineral-processing vocabulary without granting event or commercial status",()=>{
+    const titles=[
+      "Government outlines a strategic raw materials strategy",
+      "Ministry expands rare earth separation and refining capacity",
+      "Consultation on mineral exploration licences",
+    ];
+    for(const title of titles){
+      const result=classifyPrivateFirstPartyTitle(title,"rare_earth");
+      expect(result.status).toBe("RELATED_UNVERIFIED");
+      expect(result.reason_code).toBe("TOPIC_HINT_ONLY");
+      expect(result.topic_codes).toContain("STRATEGIC_RAW_MATERIALS");
+      expect(result.publication_clock_verified).toBe(false);
+      expect(result.article_country_verified).toBe(false);
+      expect(result.independent_event_verified).toBe(false);
+      expect(result.commercial_rights_verified).toBe(false);
+      expect(result.score_verified).toBe(false);
+      expect(result.customer_delivery_eligible).toBe(false);
+    }
+    const row=observed("rare_earth",titles[1],"mineral-processing");
+    expect(row).toHaveLength(1);
+    expect(row[0].private_relevance_triage.topic_codes).toContain("STRATEGIC_RAW_MATERIALS");
+    expect(row[0].publication_clock_status).toBe("UNKNOWN");
+    expect(row[0].original_article_path_verified).toBe(false);
+    expect(row[0].original_article_content_verified).toBe(false);
+    expect(row[0].article_category_relevance_verified).toBe(false);
+    expect(row[0].commercial_derived_use_rights_verified).toBe(false);
+    expect(row[0].eligible_for_scoring).toBe(false);
+    expect(row[0].eligible_for_publication).toBe(false);
+    expect(JSON.stringify(row)).not.toContain(titles[1]);
+  });
   it("writes only hash/count private D1 state for genuinely new macro hint, never title or payment",async()=>{
     const initial=now;
     // Align a 30m slot so selected official macro issuer includes StatCan.
