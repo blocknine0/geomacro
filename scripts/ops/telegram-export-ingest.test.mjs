@@ -27,5 +27,5 @@ test("refuse any supplied input path resolving inside public repo",()=>{
 });
 
 test("B2 XML entities are decoded exactly once, never double-unescaped",()=>{
- assert.equal(decodeXmlTextOnce("&amp;lt; &lt; &amp;amp; &amp;gt;"),"&lt; < &amp; >");
+ assert.equal(decodeXmlTextOnce("&amp;lt; &lt; &amp;amp; &amp;gt;"),"&lt; < &amp; &gt;");
 });
