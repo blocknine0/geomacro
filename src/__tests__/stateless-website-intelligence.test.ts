@@ -277,7 +277,9 @@ describe("no-storage public Intelligence original-release reader", () => {
     expect(source).not.toContain("public_updated_at");
     expect(source).toContain("persistent_storage: false");
     expect(source).toContain("now - STATELESS_WEBSITE_DELAY_MS");
-    expect(desk).toContain("Required credits are retained");
+    expect(desk).not.toContain("Required credits are retained");
+    expect(desk).toContain("isConcretePublicIntelligence");
+    expect(desk).not.toContain("SOURCE / PUBLISHER");
     expect(desk).toContain("raw articles and source feeds are not delivered");
   });
 });
