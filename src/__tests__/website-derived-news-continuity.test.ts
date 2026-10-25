@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { deriveStatelessSignals } from "@/lib/stateless-intelligence-model";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   verifyDerivedStory, publishDerivedStories, readDerivedStories, renderDerivedStoriesHtml,
   DERIVED_NEWS_TOPIC_POLICY_REVISION,
@@ -28,7 +28,7 @@ const sample=(category="macro",published="2026-10-12T19:00:00.000Z")=>({
 });
 function db() {
   const data=new Map();
-  const counters={storyJsonUpdates:0,retentionSweepQueries:0};
+  const counters={upsertUpdateAttempts:0,storyJsonUpdates:0,retentionSweepQueries:0};
   const statement=sql=>({
     async run(){ /* Direct zero-bind retention query; no rows past cap in fixture. */ },
     bind(...args) {
@@ -39,10 +39,12 @@ function db() {
             const previous=data.get(id);
             if(!previous)data.set(id,{id,category,published_at,date_precision,story_json,first_seen_at});
             else if(previous.category===category && previous.published_at===published_at &&
-              previous.date_precision===date_precision && previous.story_json!==story_json &&
-              sql.includes("website_derived_intelligence.story_json <> excluded.story_json")) {
+              previous.date_precision===date_precision &&
+              (!sql.includes("website_derived_intelligence.story_json <> excluded.story_json") ||
+                previous.story_json!==story_json)) {
+              counters.upsertUpdateAttempts++;
+              if(previous.story_json!==story_json)counters.storyJsonUpdates++;
               previous.story_json=story_json;
-              counters.storyJsonUpdates++;
             }
           } else if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE published_at")) {
             counters.retentionSweepQueries++;
@@ -121,6 +123,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(counters.retentionSweepQueries).toBe(0);
     const revised={...first,what_changed:"An official publisher issued an updated monetary-policy statement about liquidity conditions."};
     expect((await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[revised]},NOW)).status).toBe(200);
+    expect(counters.upsertUpdateAttempts).toBe(1);
     expect(counters.storyJsonUpdates).toBe(1);
     expect(counters.retentionSweepQueries).toBe(0);
     expect((await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[]},NOW)).status).toBe(200);
@@ -134,6 +137,31 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(classifyDerivedNewsD1Failure(new Error("Network connection lost."))).toBe("D1_TRANSIENT");
     expect(classifyDerivedNewsD1Failure(new Error("no such table: secret_table"))).toBe("D1_SCHEMA_OR_SQL");
     expect(classifyDerivedNewsD1Failure(new Error("some unrecognized query text"))).toBe("D1_UNCLASSIFIED");
+  });
+
+  it("returns an allowlisted D1 failure class and never logs raw database exceptions",async()=>{
+    const writeError=new Error("Your account has exceeded D1's free tier daily row write limit. raw query secret");
+    const writeEnv={DB:{
+      prepare(){return {bind(){return {run:async()=>{throw writeError},all:async()=>{throw writeError}}}}},
+      batch:async()=>{throw writeError},
+    }};
+    const log=vi.spyOn(console,"error").mockImplementation(()=>{});
+    try{
+      const written=await publishDerivedStories(writeEnv,{
+        schema:"geomacro.website-derived-news-batch.v1",signals:[sample()],
+      },NOW);
+      const writeReceipt=await written.json();
+      expect(written.status).toBe(503);
+      expect(writeReceipt.diagnostic_code).toBe("D1_DAILY_ROW_WRITE_LIMIT");
+      expect(log.mock.calls.flat().join(" ")).not.toContain("raw query secret");
+      const read=await readDerivedStories({DB:{prepare(){return {bind(){return {
+        all:async()=>{throw new Error("Your account has exceeded D1's free tier daily row read limit. private SQL")}},
+      }}}}}},NOW);
+      const readReceipt=await read.json();
+      expect(read.status).toBe(503);
+      expect(readReceipt.diagnostic_code).toBe("D1_DAILY_ROW_READ_LIMIT");
+      expect(log.mock.calls.flat().join(" ")).not.toContain("private SQL");
+    }finally{log.mockRestore();}
   });
 
   it("admits old-but-original 30d publications and rejects future/historical",()=>{
@@ -158,6 +186,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(data.size).toBe(2);
     // An identical retained card must not consume another D1 row write, and
     // normal non-empty batches no longer run the two full-journal sweep queries.
+    expect(counters.upsertUpdateAttempts).toBe(0);
     expect(counters.storyJsonUpdates).toBe(0);
     expect(counters.retentionSweepQueries).toBe(0);
     const resp=await readDerivedStories(env,NOW);
