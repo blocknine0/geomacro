@@ -6,6 +6,10 @@ name: Private Global OSINT 15-Minute Discovery
 # GitHub schedules and publisher clocks are best-effort, not a 15m guarantee.
 on:
   workflow_dispatch: {}
+  workflow_run:
+    workflows: ["Deploy D1 Control Plane"]
+    branches: [main]
+    types: [completed]
   schedule:
     - cron: "1-56/5 * * * *"
   pull_request:
@@ -13,6 +17,9 @@ on:
       - ".github/workflows/private-global-osint-15m.yml"
       - "scripts/lib/private-osint-15m-collector.mjs"
       - "scripts/lib/private-osint-15m-collector.test.mjs"
+      - "scripts/lib/private-osint-15m-durable-publisher.mjs"
+      - "workers/control-plane/src/private-osint-15m.mjs"
+      - "workers/control-plane/migrations/0028_private_osint_15m_durable.sql"
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
       - "scripts/lib/country-news-mentions-195.mjs"
@@ -30,7 +37,7 @@ permissions:
 
 concurrency:
   group: geomacro-private-global-osint-15m
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   verify:
@@ -47,15 +54,23 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/lib/private-osint-15m-collector.mjs
+          node --check scripts/lib/private-osint-15m-durable-publisher.mjs
+          node --check workers/control-plane/src/private-osint-15m.mjs
           node --test scripts/lib/private-osint-15m-collector.test.mjs
+          node --test scripts/lib/private-osint-15m-durable-publisher.test.mjs
+          node --test scripts/lib/private-osint-15m-d1.test.mjs
   collect-private:
     needs: verify
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name != 'pull_request'
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'))
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 9
     environment: production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -65,9 +80,10 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
-      - name: Read live native-source entries privately (no news artifact or public post)
+      - name: Read live sources and verify protected durable D1 write/readback (no public post)
         env:
           GEOMACRO_OSINT_RESEARCH_PRIVATE_ONLY: "1"
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: |
           set -euo pipefail
           bun scripts/ops/private-osint-15m-tick.ts
