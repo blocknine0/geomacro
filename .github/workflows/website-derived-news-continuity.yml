@@ -309,7 +309,9 @@ jobs:
           test "$code" = "200" || { echo "::error::Derived D1 website feed unavailable"; exit 3; }
           node --input-type=module - "$body" <<'NODE'
           import {readFileSync} from "node:fs";
-          import {isSafeDerivedNewsReadbackSignal} from "./scripts/lib/derived-news-readback-policy.mjs";
+          import {pathToFileURL} from "node:url";
+          const {isSafeDerivedNewsReadbackSignal}=await import(pathToFileURL(
+            process.cwd()+"/scripts/lib/derived-news-readback-policy.mjs").href);
           const doc=JSON.parse(readFileSync(process.argv[2],"utf8"));
           const now=Date.now(),retentionMs=72*60*60*1000;
           if(doc.ok!==true || doc.schema!=="geomacro.website-derived-news-feed.v1" ||
