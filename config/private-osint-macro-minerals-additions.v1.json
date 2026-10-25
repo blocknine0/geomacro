@@ -1,0 +1,122 @@
+{
+  "schema": "geomacro.private-osint-macro-minerals-additions.v1",
+  "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
+  "purpose": "Macro/FX and critical-mineral news discovery only; do not change store pricing or publish/sell unverified data.",
+  "upstream": "https://github.com/jflogol/tradeFeed/blob/main/rss.txt",
+  "selection": "Only pinned official-publisher feed candidates not already present in Geomacro's accepted private feed manifest or registered reusable official feeds. Other repositories supplied for review are not live sources; no third-party code imported.",
+  "runtime_rule": "Each production tick verifies HTTP 200, native dated RSS item, topic relevance. Failed, stale or access-controlled feeds do not become working endpoints.",
+  "sources": [
+    {
+      "id": "private_repo8_us_bea_release",
+      "url": "https://www.bea.gov/rss/news_releases.xml",
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovered_in": "jflogol/tradeFeed:rss.txt",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_repo8_us_bls_release",
+      "url": "https://www.bls.gov/feed/news_release/rss.xml",
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovered_in": "jflogol/tradeFeed:rss.txt",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_repo8_can_boc_release",
+      "url": "https://www.bankofcanada.ca/feeds/media-releases/",
+      "continent": "north_america",
+      "publisher_country_iso3": "CAN",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovered_in": "jflogol/tradeFeed:rss.txt",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_repo8_world_bank_release",
+      "url": "https://www.worldbank.org/en/news/rss",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovered_in": "jflogol/tradeFeed:rss.txt",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_repo8_imf_release",
+      "url": "https://www.imf.org/en/news/rss",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovered_in": "jflogol/tradeFeed:rss.txt",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_repo8_us_eia_energy",
+      "url": "https://www.eia.gov/rss/todayinenergy.xml",
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovered_in": "jflogol/tradeFeed:rss.txt",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_repo8_uk_lme_metals",
+      "url": "https://www.lme.com/News/rss",
+      "continent": "europe",
+      "publisher_country_iso3": "GBR",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovered_in": "jflogol/tradeFeed:rss.txt",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    }
+  ]
+}
