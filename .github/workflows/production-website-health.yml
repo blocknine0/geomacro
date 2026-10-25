@@ -122,7 +122,7 @@ jobs:
 
           grep -Fq 'CapabilityPriceSchedule' src/routes/pricing.tsx
           grep -Fq 'GEOMACRO_CAPABILITY_PRICES' src/components/capability-price-schedule.tsx
-          grep -Fq 'GEOMACRO_PRICING_GROUPS' src/components/capability-price-schedule.tsx
+          grep -Fq 'GEOMACRO_PUBLIC_PRICING_GROUPS' src/components/capability-price-schedule.tsx
           grep -Fq 'CapabilityPriceSchedule' src/routes/data-api.tsx
           grep -Fq 'Unavailable, stale or unqualified results are not chargeable.' src/components/capability-price-schedule.tsx
           grep -Fq 'A displayed price is not an available payment quote.' src/components/capability-price-schedule.tsx
