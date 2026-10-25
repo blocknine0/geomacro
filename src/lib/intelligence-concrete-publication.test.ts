@@ -1,6 +1,6 @@
 import {describe,it,expect} from "vitest";
 import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
-import {isConcretePublicIntelligence,concreteIntelligenceHeadline,concreteGeomacroAnalysis,isConcreteHomeFind} from "./intelligence-concrete-publication";
+import {isConcretePublicIntelligence,concreteIntelligenceHeadline,concreteGeomacroAnalysis,isConcreteHomeFind,intelligenceRequiredSourceCredits} from "./intelligence-concrete-publication";
 const sample=(category:StatelessIntelligenceSignal["category"]):StatelessIntelligenceSignal=>{
  const nouns={
   geopolitics:["United Nations announced new sanctions on cross-border trade","sanctions and trade restrictions"],
@@ -26,11 +26,12 @@ describe("actual-event Intelligence publication",()=>{
    expect(concreteGeomacroAnalysis(item).length).toBeGreaterThan(45);
   }
  });
- it("rejects unverified feed rows, candidates, anonymous prose and mandatory-credit originals",()=>{
+ it("rejects unsupported unverified feed rows and candidates, while retaining credited concrete originals",()=>{
   const s=sample("geopolitics");
   expect(isConcretePublicIntelligence({...s,status:"osint_feed_observed_unverified"})).toBe(false);
   expect(isConcretePublicIntelligence({...s,status:"official_feed_candidate_unscored"})).toBe(false);
-  expect(isConcretePublicIntelligence({...s,sources_credited:["WTO news"]})).toBe(false);
+  expect(isConcretePublicIntelligence({...s,sources_credited:["WTO news"]})).toBe(true);
+  expect(intelligenceRequiredSourceCredits({...s,sources_credited:["WTO news"]})).toEqual(["WTO news"]);
   expect(isConcretePublicIntelligence({...s,title:"Geomacro finds geopolitical publisher candidate source-feed observation"})).toBe(false);
   expect(isConcretePublicIntelligence({...s,what_changed:"A monitored feed contains a dated item on a geopolitical publisher candidate."})).toBe(false);
  });
@@ -55,11 +56,12 @@ describe("actual-event Intelligence publication",()=>{
   expect(isConcretePublicIntelligence({...macro,sources_credited:["Federal Reserve Board"]})).toBe(true);
   const minerals=sample("rare_earth");
   expect(isConcretePublicIntelligence({...minerals,sources_credited:["U.S. Department of Energy"]})).toBe(true);
-  // Explicit public-attribution regimes must not be silently stripped merely
-  // because the reader requested source-hidden news cards.
+  // Explicit public-attribution regimes must be visibly acknowledged on
+  // Intelligence cards; the source-neutral homepage remains separately gated.
   for(const credit of ["Contains public sector information licensed under the Open Government Licence v3.0.",
    "UN News","United Nations","Statistics Canada","WTO news"]){
-    expect(isConcretePublicIntelligence({...macro,sources_credited:[credit]}),credit).toBe(false);
+    expect(isConcretePublicIntelligence({...macro,sources_credited:[credit]}),credit).toBe(true);
+    expect(intelligenceRequiredSourceCredits({...macro,sources_credited:[credit]})).toEqual([credit]);
   }
  });
  it("uses already derived actor/action without inventing a publisher as the actor",()=>{
