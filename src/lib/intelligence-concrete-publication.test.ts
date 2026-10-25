@@ -1,6 +1,6 @@
 import {describe,it,expect} from "vitest";
 import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
-import {isConcretePublicIntelligence,concreteGeomacroAnalysis,isConcreteHomeFind} from "./intelligence-concrete-publication";
+import {isConcretePublicIntelligence,concreteIntelligenceHeadline,concreteGeomacroAnalysis,isConcreteHomeFind} from "./intelligence-concrete-publication";
 const sample=(category:StatelessIntelligenceSignal["category"]):StatelessIntelligenceSignal=>{
  const nouns={
   geopolitics:["United Nations announced new sanctions on cross-border trade","sanctions and trade restrictions"],
@@ -33,6 +33,25 @@ describe("actual-event Intelligence publication",()=>{
   expect(isConcretePublicIntelligence({...s,sources_credited:["WTO news"]})).toBe(false);
   expect(isConcretePublicIntelligence({...s,title:"Geomacro finds geopolitical publisher candidate source-feed observation"})).toBe(false);
   expect(isConcretePublicIntelligence({...s,what_changed:"A monitored feed contains a dated item on a geopolitical publisher candidate."})).toBe(false);
+ });
+ it("shows first-party governmental original facts without blanketing every publisher by credit",()=>{
+  const macro=sample("macro");
+  expect(isConcretePublicIntelligence({...macro,sources_credited:["Federal Reserve Board"]})).toBe(true);
+  const minerals=sample("rare_earth");
+  expect(isConcretePublicIntelligence({...minerals,sources_credited:["U.S. Department of Energy"]})).toBe(true);
+  // Explicit public-attribution regimes must not be silently stripped merely
+  // because the reader requested source-hidden news cards.
+  for(const credit of ["Contains public sector information licensed under the Open Government Licence v3.0.",
+   "UN News","United Nations","Statistics Canada","WTO news"]){
+    expect(isConcretePublicIntelligence({...macro,sources_credited:[credit]}),credit).toBe(false);
+  }
+ });
+ it("uses already derived actor/action without inventing a publisher as the actor",()=>{
+   const report={...sample("geopolitics"),
+    title:"Geomacro finds Experts warn UN committee about unlawful killings",
+    what_changed:"Experts told a UN committee that unlawful killings had been reported, according to their statement."};
+   expect(concreteIntelligenceHeadline(report)).toBe("Experts warn UN committee about unlawful killings");
+   expect(isConcretePublicIntelligence(report)).toBe(true);
  });
  it("rejects synthetic or anonymous homepage cards",()=>{
   const card={domain:"macro",headline:"Actor not verified: macro publisher candidate",
