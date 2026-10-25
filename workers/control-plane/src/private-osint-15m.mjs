@@ -146,7 +146,7 @@ export async function privateOsint15mRead(env,query=new URLSearchParams(),now=Da
      first_seen_is_database_server_clock:true,
      publisher_native_feed_timestamp_not_page_proof:true,
      original_page_verified:false,commercial_use_authorized:false,
-     195_country_router_not_verified_195_country_coverage:true,
+     country_195_router_not_verified_full_coverage:true,
      retention_hours:25,offset,has_more:rows.length>100,
      next_offset:rows.length>100&&offset+100<maxRows?offset+100:null,items});
  }catch{
