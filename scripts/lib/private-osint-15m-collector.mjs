@@ -42,6 +42,9 @@ export async function collectPrivateOsint15m({
       const index=cursor++;
       responses[index]=await collectRegisteredReusableNews({
         now,fetchImpl,registry:groups[index],perCategory:8,normalize,resolveCountry,
+        // Outer worker count is the global network cap for PRIVATE OSINT;
+        // avoid multiplying by reusable public-reader inner parallelism.
+        networkConcurrency:1,
       });
     }
   };
