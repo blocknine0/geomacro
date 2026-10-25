@@ -2,7 +2,7 @@ import {afterEach,beforeEach,describe,it,expect,vi} from 'vitest';
 import {generateKeyPairSync} from 'node:crypto';
 import {signAutomatedIntelligenceInput} from '../lib/risk-object-signing.server';
 import {automatedInputId,verifyAutomatedInput,type AutomatedInputPayload} from '../lib/automated-intelligence-input';
-import {publishAutomatedIntelligenceInputs} from '../../scripts/ops/publish-automated-intelligence-inputs';
+import {publishAutomatedIntelligenceInputs,safeAutomatedInputPublicationFailure} from '../../scripts/ops/publish-automated-intelligence-inputs';
 import {putAutomatedInputs,getAutomatedInputs} from '../../workers/control-plane/src/automated-intelligence-inputs';
 // @ts-expect-error The existing JavaScript Worker entry has no declaration file.
 import worker from '../../workers/control-plane/src/index.mjs';
@@ -76,7 +76,9 @@ describe('automatic approval of all retained derived inputs',()=>{
   const read=await (await getAutomatedInputs(db.env,new URLSearchParams(),NOW)).json();
   expect(read.items).toEqual([e]);
   const bad=structuredClone(e);bad.payload.signal.title+=' modified';
-  expect((await putAutomatedInputs(db.env,{...body,items:[e,bad]},NOW)).status).toBe(400);
+  const rejected=await putAutomatedInputs(db.env,{...body,items:[e,bad]},NOW);
+  expect(rejected.status).toBe(400);
+  expect((await rejected.json()).reason_code).toBe('AUTOMATED_INPUT_SIGNATURE_INVALID');
   expect(db.rows.size).toBe(1);
  });
  it('handles over 50 per category, all 600 journal items and reruns without another write',async()=>{
@@ -99,4 +101,14 @@ describe('automatic approval of all retained derived inputs',()=>{
    expect(r.status).toBeGreaterThanOrEqual(400);
   }
  });
+});
+
+
+it('publishes only allowlisted automation failure codes, never raw exception detail',()=>{
+ expect(safeAutomatedInputPublicationFailure(new Error('AUTOMATED_INPUT_REMOTE_HTTP_400_AUTOMATED_INPUT_SIGNATURE_INVALID')))
+  .toBe('AUTOMATED_INPUT_REMOTE_HTTP_400_AUTOMATED_INPUT_SIGNATURE_INVALID');
+ expect(safeAutomatedInputPublicationFailure(new Error('private source article URL and signing key')))
+  .toBe('AUTOMATED_INPUT_UNCLASSIFIED_SIGNER_OR_TRANSPORT_FAILURE');
+ expect(safeAutomatedInputPublicationFailure(new Error('Risk Object signing private key is not configured')))
+  .toBe('AUTOMATED_INPUT_UNCLASSIFIED_SIGNER_OR_TRANSPORT_FAILURE');
 });
