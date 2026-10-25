@@ -1,0 +1,121 @@
+name: Resync Existing Control Plane Token Only
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/resync-control-plane-root-token.yml"
+      - "scripts/ops/derive-control-plane-root-token.mjs"
+      - "scripts/tests/derive-control-plane-root-token.test.mjs"
+      - "docs/ops/CONTROL_PLANE_TOKEN_RESYNC_NO_PREDGE.md"
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type RESYNC_CONTROL_PLANE_TOKEN_ONLY_NO_PREDGE_CHANGE"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-control-plane-root-token-resync
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Test token derivation and exact no-Predge mutation boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/derive-control-plane-root-token.mjs
+          node --test scripts/tests/derive-control-plane-root-token.test.mjs
+
+  resync-existing-token:
+    needs: offline-contract
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.confirmation == 'RESYNC_CONTROL_PLANE_TOKEN_ONLY_NO_PREDGE_CHANGE'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      SUPABASE_DB_URL: ""
+      SUPABASE_URL: ""
+      APP_SUPABASE_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      APP_SUPABASE_SERVICE_ROLE_KEY: ""
+      COINBASE_API_KEY: ""
+      COINBASE_COMMERCE_API_KEY: ""
+      COINBASE_X402_MAINNET_ACK: ""
+      GEOMACRO_COMMERCIAL_LAUNCH_ACK: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify canonical main and existing owner configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "blocknine0/geomacro"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$GITHUB_SHA" = "$(git rev-parse HEAD)"
+          test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || {
+            echo "::error::OWNER_SECRET_MISSING_OR_INVALID:GEOMACRO_COMMERCE_LEDGER_TOKEN"
+            exit 2
+          }
+          test -n "$CLOUDFLARE_API_TOKEN" || {
+            echo "::error::OWNER_SECRET_MISSING:CLOUDFLARE_API_TOKEN"
+            exit 2
+          }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || {
+            echo "::error::OWNER_SECRET_MISSING:CLOUDFLARE_ACCOUNT_ID"
+            exit 2
+          }
+          test "${#CLOUDFLARE_ACCOUNT_ID}" -eq 32 || {
+            echo "::error::OWNER_SECRET_INVALID:CLOUDFLARE_ACCOUNT_ID"
+            exit 2
+          }
+          for key in SUPABASE_DB_URL SUPABASE_URL APP_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_SERVICE_ROLE_KEY COINBASE_API_KEY COINBASE_COMMERCE_API_KEY COINBASE_X402_MAINNET_ACK GEOMACRO_COMMERCIAL_LAUNCH_ACK; do
+            test -z "$(printenv "$key" || true)" || {
+              echo "::error::SUPABASE_OR_PAYMENT_BOUNDARY_VIOLATED"
+              exit 2
+            }
+          done
+      - name: Update only the existing Control Plane root secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No Worker deployment, database migration, partner secret, B2 request,
+          # source publication, or payment occurs in this workflow.
+          node scripts/ops/derive-control-plane-root-token.mjs |
+            npx --yes wrangler@4.136.3 secret put CONTROL_PLANE_TOKEN --name geomacro-control-plane
+      - name: Independently read back private handoff and capability boundaries
+        env:
+          ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-private-handoff-production.mjs
