@@ -28,6 +28,14 @@ const AGE=72*3600000;
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const JOURNAL="/v1/website-derived-news";
 
+
+// First-party pinned feeds with strict original-permalink policy cannot be
+// reclassified as a weaker OSINT record when their original link is invalid.
+export function isKnownOfficialWebsiteFeed(url,category){
+ return typeof url==="string"&&CATEGORIES.has(category)&&
+   OFFICIAL.has(category+"|"+url);
+}
+
 export function officialWebsiteCandidateFromOsint(row,now=Date.now()){
  if(!row||!Number.isFinite(now)||typeof row.source_url!=="string"||
     typeof row.title!=="string"||row.title.length<25||row.title.length>250||
@@ -93,7 +101,7 @@ export function unverifiedWebsiteSignalFromOsint(row,now=Date.now(),summarize=nu
    macro:"macro publisher candidate",
    rare_earth:"minerals publisher candidate",
  };
- const topic=hints[row.category].find(([p])=>p.test(row.title))?.[1]??fallbacks[row.category];
+ const observedTopic=hints[row.category].find(([p])=>p.test(row.title))?.[1]??fallbacks[row.category];
  const implications={
    geopolitics:"A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
    macro:"A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
@@ -104,6 +112,9 @@ export function unverifiedWebsiteSignalFromOsint(row,now=Date.now(),summarize=nu
  const known=summary&&typeof summary.headline==="string"&&summary.headline.length>=12&&
    summary.headline.length<=145&&typeof summary.change==="string"&&summary.change.length>=30&&
    summary.change.length<=450&&!/[<>]|https?:\/\//iu.test(summary.headline+summary.change)?summary:null;
+ const topic=known&&observedTopic===fallbacks[row.category]?
+   ({geopolitics:"geopolitical security",macro:"official economic statistics",
+     rare_earth:"critical-mineral inputs"})[row.category]:observedTopic;
  const title="Geomacro finds "+(known?summary.headline:topic+" source-feed observation");
  const changed=known?"A monitored source feed reports: "+known.change+" This report has not been independently verified.":
    "A monitored source feed contains a dated item about "+topic+
