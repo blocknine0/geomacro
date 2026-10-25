@@ -11,6 +11,9 @@ import {privateGdeltGlobalDiscovery} from "../lib/private-osint-gdelt-global.mjs
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
+import {officialWebsiteCandidateFromOsint,publishPrivateOsintWebsiteSignals} from "../lib/private-osint-website-bridge.mjs";
+import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
+import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client.ts";
 
 const root=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(root.length<32)throw Error("PRIVATE_OSINT_PRODUCTION_CREDENTIAL_REQUIRED");
@@ -18,9 +21,21 @@ const control=createHmac("sha256",root).update("geomacro-control-plane-v1").dige
 const privateToken=createHmac("sha256",control)
   .update("geomacro-private-osint-15m-v1").digest("hex");
 const timestamp=new Date();
+// Ephemeral first-party issuer/link metadata, validated against exact pinned
+// origin/permalink rules. Unverified private-only rows remain in private D1.
+const originalCandidates=[];
+const candidateIds=new Set();
 const result=await collectPrivateOsint15m({
  now:timestamp,normalize:normalizeReusableNewsJson,
- resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195)
+ resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
+ onOriginalCandidate:raw=>{
+  const eligible=officialWebsiteCandidateFromOsint(raw,timestamp.getTime());
+  if(!eligible)return;
+  const key=eligible.category+"|"+eligible.articleUrl;
+  if(!candidateIds.has(key)){
+   candidateIds.add(key);originalCandidates.push(eligible);
+  }
+ },
 });
 const scanned=result.summary.source_checks;
 if(result.summary.configured_country_routes!==195||
@@ -41,6 +56,20 @@ if(persisted.source_checks_persisted!==result.checks.length||
  !persisted.separate_private_d1_readback_verified)
  throw Error("PRIVATE_OSINT_15M_DURABLE_PRODUCTION_ACCEPTANCE_FAILED");
 
+// Publish the same safe, unscored derived-card shape consumed by the existing
+// /intelligence desk; never copy private tags or raw originals into public D1.
+const ordered=originalCandidates.sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt));
+const lanes=["geopolitics","macro","rare_earth"].map(c=>ordered.filter(x=>x.category===c));
+const balanced=[];
+for(let n=0;balanced.length<200&&lanes.some(l=>n<l.length);n++)
+ for(const lane of lanes)if(lane[n]&&balanced.length<200)balanced.push(lane[n]);
+const websiteSignals=deriveStatelessSignals(balanced,Date.now(),
+ {websiteDelay:false,maxSignals:200}).filter(s=>s.status==="official_release_observed_unscored");
+const website=await publishPrivateOsintWebsiteSignals({
+ signals:websiteSignals,
+ controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
+ controlToken:control,readAll:fetchAllDerivedNews,now:Date.now(),
+});
 const index=await privateGdeltGlobalDiscovery({
  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195)
 });
@@ -54,11 +83,12 @@ console.log(JSON.stringify({
  },{}),
  ...persisted,
  gdelt_global_index:index,
+  website_editorial_bridge:website,
  private_osint_d1_persisted:true,
  private_durable_first_seen_clock_verified:true,
  independent_verification_required_for_ingestion:false,
  original_page_independently_verified:false,
  current_signed_commercial_intelligence_verified:false,
- public_news_updated:false,
+ public_news_updated:website.new_derived_stories>0,
  signed_or_paid_publications:0,
 }));
