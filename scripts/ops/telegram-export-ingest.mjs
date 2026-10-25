@@ -18,7 +18,7 @@ const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev";
 const sh=s=>createHash("sha256").update(s).digest("hex");
 const H=(key,s)=>createHmac("sha256",key).update(s).digest();
 function fail(){throw Error("TELEGRAM_EXPORT_PRODUCTION_FAIL_CLOSED")}
-function xml(v){
+export function decodeXmlTextOnce(v){
  // Decode XML entities in one pass. Decoding &amp; first would allow a
  // doubly encoded value such as &amp;lt; to become < after a second replace.
  const entities={"amp":"&","lt":"<","gt":">","quot":'"',"apos":"'"};
@@ -53,7 +53,7 @@ export function parseOwnerExportList(xmlText,prefix=PREFIX){
   const key=match[1].match(/<Key>([\s\S]*?)<\/Key>/u)?.[1];
   const size=Number(match[1].match(/<Size>(\d+)<\/Size>/u)?.[1]);
   if(!key||!Number.isSafeInteger(size))fail();
-  const value=xml(key);
+  const value=decodeXmlTextOnce(key);
   // Avoid attacker-controlled paths or raw user identifiers in object names:
   // owner exports use opaque hex digest filenames (no chat names).
   if(value!==prefix+"result.json"&&
