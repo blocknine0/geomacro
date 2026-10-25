@@ -48,6 +48,7 @@ test("rejects URL/path/HTML leakage in prose or malformed monitored-feed attribu
   for(const signal of [
     osint({what_changed:"The source reports https://publisher.example/article. This is unverified."}),
     osint({why_it_matters:"Read www.bankofcanada.ca/article for details before making a decision."}),
+    osint({what_changed:"Read bankofcanada.ca/rss.xml before making a decision. This is not independently verified."}),
     osint({sources_credited:["Monitored feed: https://www.bankofcanada.ca"]}),
     osint({sources_credited:["Monitored feed: www.bankofcanada.ca/rss"]}),
     osint({sources_credited:["Monitored feed: www.bankofcanada.ca","Monitored feed: news.un.org"]}),
