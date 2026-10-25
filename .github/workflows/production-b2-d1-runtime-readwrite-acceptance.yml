@@ -44,7 +44,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bun --check scripts/ops/verify-production-b2-d1-runtime-acceptance.mjs
+          node --check scripts/ops/verify-production-b2-d1-runtime-acceptance.mjs
           bun test scripts/tests/verify-production-b2-d1-runtime-acceptance.test.mjs
 
   production-runtime-read-write-readback:
