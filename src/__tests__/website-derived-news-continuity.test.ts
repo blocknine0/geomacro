@@ -48,7 +48,7 @@ function db() {
             counters.retentionSweepQueries++;
             for(const [id,row] of data) if(row.published_at < args[0] || row.first_seen_at < args[1]) data.delete(id);
           } else if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE id IN")) {
-            data.retentionSweepQueries++;
+            counters.retentionSweepQueries++;
             const sorted=[...data.values()].sort((a,b)=>
               b.published_at.localeCompare(a.published_at)||b.id.localeCompare(a.id));
             for(const row of sorted.slice(600))data.delete(row.id);
