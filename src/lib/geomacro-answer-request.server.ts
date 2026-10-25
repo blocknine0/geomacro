@@ -21,11 +21,22 @@ const esc = (value: string) => [...value]
   .map((character) => (".*+?^$()|[]{}\\".includes(character) ? "\\" + character : character))
   .join("");
 
+const COUNTRY_LABEL_OWNERS = new Map<string, Set<string>>();
+for (const country of COUNTRIES_195) {
+  for (const label of [country.name, ...country.aliases].map(norm).filter((value) => value.length >= 4)) {
+    const key = label.toLowerCase();
+    const owners = COUNTRY_LABEL_OWNERS.get(key) ?? new Set<string>();
+    owners.add(country.iso3);
+    COUNTRY_LABEL_OWNERS.set(key, owners);
+  }
+}
+
 const MATCHERS = COUNTRIES_195.flatMap((country) =>
   [country.name, ...country.aliases].map(norm).filter((label) => label.length >= 4).map((label) => ({
     iso3: country.iso3,
     label,
-    ambiguous: AMBIGUOUS_NAMES.has(label.toLowerCase()),
+    ambiguous: AMBIGUOUS_NAMES.has(label.toLowerCase()) ||
+      (COUNTRY_LABEL_OWNERS.get(label.toLowerCase())?.size ?? 0) > 1,
     re: new RegExp("(?<![\\p{L}\\p{M}\\p{N}])" + esc(label) + "(?![\\p{L}\\p{M}\\p{N}])", "giu"),
   })),
 );
