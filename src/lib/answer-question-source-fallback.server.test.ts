@@ -50,9 +50,11 @@ describe("Answer Question source research fallback", () => {
     const query = geomacroAgentToolToCanonicalQuery("answer_question", {
       question: "Latest inflation risk in Brazil",
     });
-    const canonicalPost = vi.fn()
-      .mockResolvedValueOnce(unavailable())
-      .mockResolvedValueOnce(researchPending());
+    const captured: Request[] = [];
+    const canonicalPost = vi.fn(async ({request: canonicalRequest}: {request: Request}) => {
+      captured.push(canonicalRequest);
+      return captured.length === 1 ? unavailable() : researchPending();
+    });
     const outerRequest = request();
 
     const response = await callCanonicalWithSourceResearchFallback({
@@ -64,8 +66,8 @@ describe("Answer Question source research fallback", () => {
 
     expect(response.status).toBe(422);
     expect(canonicalPost).toHaveBeenCalledTimes(2);
-    const firstRequest = canonicalPost.mock.calls[0]?.[0].request as Request;
-    const secondRequest = canonicalPost.mock.calls[1]?.[0].request as Request;
+    const firstRequest = captured[0];
+    const secondRequest = captured[1];
     expect((await firstRequest.clone().json()).fulfillment_mode).toBe("published_only");
     expect((await secondRequest.clone().json()).fulfillment_mode).toBe("live_on_demand");
     expect(secondRequest.headers.has("payment-signature")).toBe(false);
