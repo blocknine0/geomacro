@@ -3,6 +3,7 @@ import { deriveStatelessSignals } from "@/lib/stateless-intelligence-model";
 import { describe, expect, it } from "vitest";
 import {
   verifyDerivedStory, publishDerivedStories, readDerivedStories, renderDerivedStoriesHtml,
+  DERIVED_NEWS_TOPIC_POLICY_REVISION,
 } from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 
 const NOW=Date.parse("2026-10-12T20:00:00.000Z");
@@ -78,6 +79,31 @@ describe("website-only Supabase-free derived news continuity",()=>{
     };
     expect(verifyDerivedStory(story,NOW)).toBe(true);
     expect(verifyDerivedStory({...story,topic:"unreviewed fabricated claim"},NOW)).toBe(false);
+  });
+
+  it("admits safe domain-only OSINT provenance and rejects a source URL/path",async()=>{
+    expect(DERIVED_NEWS_TOPIC_POLICY_REVISION).toBe(2);
+    const osint={...sample("macro"),topic:"official economic statistics",
+      title:"Geomacro finds official economic statistics source-feed observation",
+      what_changed:"A monitored source feed contains a dated item about official economic statistics. The event actor, precise action and impact have not been independently verified.",
+      why_it_matters:"This observation can guide follow-up checks, but it does not establish a macroeconomic value, market move or verified consequence.",
+      geography:null,development_type:"unverified OSINT feed observation",
+      sources_credited:["Monitored feed: www.bankofcanada.ca"],
+      status:"osint_feed_observed_unverified"};
+    expect(verifyDerivedStory(osint,NOW)).toBe(true);
+    expect(verifyDerivedStory({...osint,sources_credited:["Monitored feed: https://www.bankofcanada.ca"]},NOW)).toBe(false);
+    expect(verifyDerivedStory({...osint,sources_credited:["Monitored feed: www.bankofcanada.ca/rss.xml"]},NOW)).toBe(false);
+    expect(verifyDerivedStory({...osint,what_changed:"A report refers to www.bankofcanada.ca/rss.xml; no article proof exists."},NOW)).toBe(false);
+
+    const {data,env}=db();
+    const response=await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[osint]},NOW);
+    expect(response.status).toBe(200);
+    const doc=await (await readDerivedStories(env,NOW)).json();
+    expect(doc.signals).toHaveLength(1);
+    expect(doc.signals[0].sources_credited).toEqual(["Monitored feed: www.bankofcanada.ca"]);
+    expect(data.size).toBe(1);
+    const route=readFileSync("workers/control-plane/src/index.mjs","utf8");
+    expect(route).toContain("derived_news_topic_policy_revision: DERIVED_NEWS_TOPIC_POLICY_REVISION");
   });
 
   it("admits old-but-original 30d publications and rejects future/historical",()=>{
