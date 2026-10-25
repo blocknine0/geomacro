@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
 import {officialWebsiteCandidateFromOsint,publishPrivateOsintWebsiteSignals}
  from "./private-osint-website-bridge.mjs";
 
@@ -69,4 +70,29 @@ test("a claimed write without exact public readback fails closed",async()=>{
      ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",
      accepted:1,persistent_derived_only:true,chargeable:false}),{status:200}),
  }),/EXACT_READBACK_FAILED/u);
+});
+
+test("collector captures the original RSS permalink ephemerally while keeping private projection source-free",async()=>{
+ const date=new Date(now).toUTCString();
+ const xml='<?xml version="1.0"?><rss version="2.0"><channel><item>'+
+ '<title>United Nations Security Council announces new sanctions measures</title>'+
+ '<link>https://press.un.org/en/2026/sc12345.doc.htm</link>'+
+ '<pubDate>'+date+'</pubDate></item></channel></rss>';
+ const observed=[];
+ const res=await collectRegisteredReusableNews({
+  now:new Date(now),registry:[{id:"un_press_global",url:"https://press.un.org/en/rss.xml",
+   categories:["geopolitics"],type:"rss",supported:true}],
+  normalize:input=>({schema:"geomacro.reusable-news-json.v1",
+   id:"news-"+"a".repeat(64),category:input.category,
+   source:{publisher_name:null,original_url:null,original_published_at:input.published_at},
+   delivery:{raw_article_included:false},
+   usage_rights:{commercial_reuse_authorized:false}}),
+  onOriginalCandidate:x=>observed.push(x),
+  fetchImpl:async()=>new Response(xml,{status:200,headers:{"content-type":"application/rss+xml"}}),
+ });
+ assert.equal(res.items.length,1);
+ assert.equal(observed.length,1);
+ assert.equal(observed[0].article_url,"https://press.un.org/en/2026/sc12345.doc.htm");
+ assert.equal(res.items[0].source.original_url,null);
+ assert.equal(officialWebsiteCandidateFromOsint(observed[0],now)?.credit,"United Nations");
 });
