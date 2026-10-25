@@ -61,3 +61,29 @@ test("RSS1 publisher dc:date works only in private mode; Atom updated stays inel
  const atom='<feed><entry><title>Central bank announces new inflation monetary policy decision</title><updated>2026-10-25T11:55:00Z</updated></entry></feed>';
  assert.equal((await collectRegisteredReusableNews({...opts,allowRdfNativeDates:true,fetchImpl:async()=>new Response(atom)})).items.length,0);
 });
+
+test("uploaded India PIB official RSS feeds join only the private OSINT discovery lane",async()=>{
+ const cfg=JSON.parse(readFileSync(new URL("../../config/private-osint-official-feed-additions.v1.json",import.meta.url)));
+ assert.equal(cfg.schema,"geomacro.private-osint-official-feed-additions.v1");
+ assert.equal(cfg.scope,"PROTECTED_INTERNAL_OSINT_ONLY");
+ assert.equal(cfg.sources.length,2);
+ assert.ok(cfg.sources.every(s=>s.provider_rights_verified===false&&s.commercial_eligible===false&&
+  s.access_verified_in_production===false&&s.publicly_deliverable===false&&
+  s.activation_state==="RUNTIME_PROBE_REQUIRED"));
+ const full=privateOsintGlobalSources();
+ for(const candidate of cfg.sources){
+   const saved=full.filter(s=>s.url===candidate.url);
+   assert.equal(saved.length,1);
+   assert.equal(saved[0].publisher_country_iso3,"IND");
+   assert.deepEqual(saved[0].categories,["geopolitics","macro","rare_earth"]);
+   assert.equal(saved[0].transport_verified_at_registration,false);
+ }
+ const r=await collectPrivateOsint15m({now,normalize,resolveCountry:()=>null,
+   registry:full.filter(s=>cfg.sources.some(x=>x.url===s.url)),
+   fetchImpl:async()=>new Response("not available",{status:403})});
+ assert.equal(r.items.length,0);
+ assert.equal(r.summary.working_source_endpoints,0);
+ assert.ok(r.checks.every(c=>c.state==="DENIED"));
+ assert.equal(r.summary.confidential_private_osint_only,true);
+ assert.equal(r.summary.independent_verification_required_for_ingestion,false);
+});
