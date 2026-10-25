@@ -167,3 +167,33 @@ test("source-private U.S. federal original feed candidates are admitted only at 
   assert.equal(candidate?.credit,null);
  }
 });
+
+test("genuine original releases in hours 25-72 reach website without entering private 25h intake",async()=>{
+ const stamp="2026-10-23T12:01:00.000Z";
+ const date=new Date(stamp).toUTCString();
+ const article="https://www.whitehouse.gov/briefings-statements/2026/10/president-announces-a-new-security-plan/";
+ const feed="https://www.whitehouse.gov/briefings-statements/feed/";
+ const xml='<?xml version="1.0"?><rss version="2.0"><channel><item>'+
+  '<title>U.S. President announces new security sanctions measures</title>'+
+  '<link>'+article+'</link><pubDate>'+date+'</pubDate>'+
+  '</item></channel></rss>';
+ const original=[];
+ const result=await collectRegisteredReusableNews({
+  now:new Date(now),
+  registry:[{id:"private_mesh_white_house",url:feed,
+   categories:["geopolitics"],type:"rss",supported:true}],
+  normalize:()=>{throw Error("private-only normalizer must not run after private 25h cutoff")},
+  onOriginalCandidate:candidate=>original.push(candidate),
+  fetchImpl:async()=>new Response(xml,{status:200,headers:{"content-type":"application/rss+xml"}}),
+ });
+ assert.equal(result.items.length,0);
+ assert.equal(original.length,1);
+ assert.equal(original[0].published_at,stamp);
+ const admitted=officialWebsiteCandidateFromOsint(original[0],now);
+ assert.ok(admitted);
+ assert.equal(admitted.credit,null);
+ assert.equal(admitted.articleUrl,article);
+ assert.equal(admitted.category,"geopolitics");
+ assert.equal(officialWebsiteCandidateFromOsint({...original[0],
+  published_at:"2026-10-22T11:00:00.000Z"},now),null);
+});
