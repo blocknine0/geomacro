@@ -27,6 +27,7 @@ on:
       - "scripts/lib/private-osint-global-sources.test.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
+      - "config/private-osint-official-feed-additions.v1.json"
       - "config/private-osint-eight-repository-intake.v1.json"
       - "workers/control-plane/src/private-osint-bundle.mjs"
       - "workers/control-plane/migrations/0029_private_osint_bundle_index.sql"
@@ -42,6 +43,7 @@ on:
       - "scripts/lib/private-osint-global-sources.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
+      - "config/private-osint-official-feed-additions.v1.json"
 
 permissions:
   contents: read
