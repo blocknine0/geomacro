@@ -2,7 +2,7 @@
 // public derived D1 journal; never fetch publishers or log individual rows.
 import {buildDerivedNewsStructural} from '../../src/lib/derived-news-structural-bridge.ts';
 export async function readPredgeJournal(get){
- const r=await get('public/website-derived-news-bundle');
+ const r=await get('public/website-derived-news-bundle',{headers:{Accept:'application/json','Cache-Control':'no-cache'},cache:'no-store'});
  const p=r?.body;
  if(r?.status!==200||p?.ok!==true||
     p.schema!=="geomacro.website-derived-news-bundle.v1"||
