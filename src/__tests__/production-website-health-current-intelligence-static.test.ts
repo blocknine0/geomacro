@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const workflow = readFileSync(".github/workflows/production-website-health.yml", "utf8");
+const freeWorkflow = readFileSync(".github/workflows/minimum-free-derived-production-health.yml", "utf8");
+const freeVerifier = readFileSync("scripts/ops/verify-minimum-free-production-health.mjs", "utf8");
 
 describe("Production Website Health current Intelligence contract", () => {
   it("mirrors the scored-first public serving contract when every launch domain is current", () => {
@@ -41,12 +43,11 @@ describe("Production Website Health current Intelligence contract", () => {
     expect(readFileSync("src/routes/intelligence.tsx", "utf8")).not.toContain("Monitoring updated ");
   });
 
-  it("covers publisher and deployment changes through the every-main-push acceptance contract", () => {
-    const pushStart = workflow.indexOf("  push:\n");
-    const scheduleStart = workflow.indexOf("  schedule:\n", pushStart);
-    const pushBlock = workflow.slice(pushStart, scheduleStart);
-    expect(pushBlock).toContain("branches:\n      - main");
-    expect(pushBlock).not.toContain("paths:");
+  it("keeps legacy signed hot-product health out of the automatic website launch gate", () => {
+    expect(workflow).toContain("Manual-only diagnostics for the legacy signed Intelligence / GRI / Risk Indices");
+    expect(workflow).not.toContain("\n  push:\n");
+    expect(workflow).not.toContain("\n  schedule:\n");
+    expect(workflow).not.toContain("\n  workflow_run:\n");
   });
 
   it("cache-busts production probes and always keeps diagnostic evidence", () => {
@@ -64,14 +65,19 @@ describe("Production Website Health current Intelligence contract", () => {
   });
 
 
-  it("verifies production deployment acceptance on every canonical main push", () => {
-    const pushStart = workflow.indexOf("  push:\n");
-    const scheduleStart = workflow.indexOf("  schedule:\n", pushStart);
-    const pushBlock = workflow.slice(pushStart, scheduleStart);
+  it("runs no-funds free-source acceptance on every main push and on cadence, using the static archive", () => {
+    const pushStart = freeWorkflow.indexOf("  push:\n");
+    const permissionsStart = freeWorkflow.indexOf("\n\npermissions:", pushStart);
+    const pushBlock = freeWorkflow.slice(pushStart, permissionsStart);
     expect(pushStart).toBeGreaterThanOrEqual(0);
-    expect(scheduleStart).toBeGreaterThan(pushStart);
-    expect(pushBlock).toContain("branches:\n      - main");
+    expect(permissionsStart).toBeGreaterThan(pushStart);
+    expect(pushBlock).toContain("branches: [main]");
     expect(pushBlock).not.toContain("paths:");
+    expect(freeWorkflow).toContain('cron: "23 */2 * * *"');
+    expect(freeWorkflow).toContain("Primary website acceptance");
+    expect(freeVerifier).toContain("geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json");
+    expect(freeVerifier).not.toContain("geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate");
+    expect(freeWorkflow).not.toContain("node scripts/ops/derived-news-latency-audit.mjs");
   });
 
 });

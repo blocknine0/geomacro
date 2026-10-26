@@ -51,8 +51,16 @@ describe("production public serving boundary", () => {
     expect(health).toContain("readB2PublicRisk");
   });
 
-  it("continuously monitors the core production website", () => {
+  it("keeps optional signed-product proofs strict while free-source health is primary", () => {
     const workflow = read(".github/workflows/production-website-health.yml");
+    const freeWorkflow=read(".github/workflows/minimum-free-derived-production-health.yml");
+    const verifier=read("scripts/ops/verify-minimum-free-production-health.mjs");
+    expect(workflow).not.toContain("\n  push:\n");
+    expect(workflow).not.toContain("\n  schedule:\n");
+    expect(workflow).not.toContain("\n  workflow_run:\n");
+    expect(freeWorkflow).toContain("branches: [main]");
+    expect(verifier).toContain("geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json");
+    expect(freeWorkflow).not.toContain("node scripts/ops/derived-news-latency-audit.mjs");
     expect(workflow).toContain("/api/health?deep=1");
     expect(workflow).toContain("/intelligence");
     expect(workflow).toContain("/global-risk");

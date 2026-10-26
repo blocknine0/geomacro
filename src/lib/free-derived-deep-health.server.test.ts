@@ -18,11 +18,10 @@ const feed=(signals:unknown[]=[story()],updates:Record<string,unknown>={})=>({
   original_release_delay_minutes:0,retention_hours:72,retention_days:3,
   delivery_scope:"free_website_only",
   scored:false,chargeable:false,supabase_dependency:false,
-  page_offset:0,page_size:250,has_more:false,next_offset:null,
   signals,...updates,
 });
-describe("authentic free-derived D1 product deep-health",()=>{
-  it("accepts one real, original-dated unscored D1 story without pretending 3-domain signed readiness",()=>{
+describe("authentic free-derived static archive deep-health",()=>{
+  it("accepts one real, original-dated unscored static archive story without pretending 3-domain signed readiness",()=>{
     const v=classifyFreeDerivedFeed(feed(),time);
     expect(v.statusCode).toBe(200);
     expect(v.body.categories).toEqual({geopolitics:1,macro:0,rare_earth:0});
@@ -34,9 +33,26 @@ describe("authentic free-derived D1 product deep-health",()=>{
     expect(v.body.free_website_ssr_attested).toBe(false);
     expect(v.body.x402_payment_authorized).toBe(false);
     expect(v.body.consumer_commercial_rights_verified).toBe(false);
+    expect(v.body.feed_source).toBe("permanent_static_archive");
+    expect(v.body.d1_reads_performed).toBe(false);
     expect(v.body.b2_read_performed).toBe(false);
     expect(v.body.supabase_access_performed).toBe(false);
   });
+  it("does not treat feed-only OSINT as official-source health proof",()=>{
+    const osint=story("macro",{
+      status:"osint_feed_observed_unverified",
+      development_type:"unverified OSINT feed observation",
+      geography:null,
+      sources_credited:["Monitored feed: example.net"],
+    });
+    const onlyOsint=classifyFreeDerivedFeed(feed([osint]),time);
+    expect(onlyOsint.statusCode).toBe(503);
+    expect(onlyOsint.body.current_72h_derived_rows).toBe(0);
+    const officialAndOsint=classifyFreeDerivedFeed(feed([story(),osint]),time);
+    expect(officialAndOsint.statusCode).toBe(200);
+    expect(officialAndOsint.body.current_72h_derived_rows).toBe(1);
+    expect(officialAndOsint.body.categories).toEqual({geopolitics:1,macro:0,rare_earth:0});
+   });
   it("reports all 3 original categories ONLY when actually present",()=>{
     const rows=[story(),story("macro"),story("rare_earth")];
     const v=classifyFreeDerivedFeed(feed(rows),time);
@@ -66,12 +82,29 @@ describe("authentic free-derived D1 product deep-health",()=>{
     for(const overrides of [
       {original_release_delay_minutes:1},{retention_hours:720},
       {chargeable:true},{scored:true},{supabase_dependency:true},
-      {delivery_scope:"paid"},{checked_at:"2026-10-20T18:00:00.000Z"},
-      {page_offset:250},{page_size:1000},{signals:"invalid"},
+      {delivery_scope:"paid"},{checked_at:"2026-10-22T00:00:00.000Z"},
+      {page_offset:250},{page_size:1000},{has_more:true},{signals:"invalid"},
     ]){
       expect(classifyFreeDerivedFeed(feed([story()],overrides),time).statusCode)
         .toBe(503);
     }
+  });
+  it("allows a cached archive generation clock only when original event times remain valid",()=>{
+    const cached=classifyFreeDerivedFeed(feed(),Date.parse("2026-10-21T00:00:00.000Z"));
+    expect(cached.statusCode).toBe(200);
+    expect(classifyFreeDerivedFeed(feed([story("geopolitics",{published_at:"2026-10-16T00:00:00.000Z"})]),
+      time).statusCode).toBe(503);
+  });
+  it("uses the permanent static public archive and not the D1 news endpoint",async()=>{
+    const create=(body:unknown)=>vi.fn<typeof fetch>(async()=>new Response(JSON.stringify(body),{
+      status:200,headers:{"content-type":"application/json"},
+    }));
+    const fetcher=create(feed());
+    const response=await probeFreeDerivedDeepHealth({fetcher,now:()=>time});
+    expect(response.statusCode).toBe(200);
+    expect(String(fetcher.mock.calls[0][0])).toContain(
+      "geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json");
+    expect(String(fetcher.mock.calls[0][0])).not.toContain("geomacro-control-plane");
   });
   it("returns HTTP 503 on remote 503, non-JSON, oversize or outage; never a synthetic green",async()=>{
     const create=(body:unknown,status=200,type="application/json")=>

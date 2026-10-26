@@ -1,4 +1,5 @@
 import {test} from "node:test";
+import {readFileSync} from "node:fs";
 import assert from "node:assert/strict";
 import {classifyMinimumFreeProduction,classifyPublishedSourceEquivalence,verifyPublishedSourceEquivalence} from "./verify-minimum-free-production-health.mjs";
 
@@ -14,14 +15,21 @@ const goodStory=()=>({
 function fixture(stories=[goodStory()]){
   return {journalStatus:200,journal:{
     ok:true,schema:"geomacro.website-derived-news-feed.v1",
+    checked_at:"2026-10-20T23:00:00.000Z",
     original_release_delay_minutes:0,retention_hours:72,retention_days:3,
-    delivery_scope:"free_website_only",signals:stories,
+    delivery_scope:"free_website_only",scored:false,chargeable:false,
+    supabase_dependency:false,signals:stories,
   },siteStatus:200,siteHtml:"<html>What changed in the world GEOMACRO FINDS "+
     stories.map(x=>x.title).join(" ")+"</html>",
   buildStatus:200,build:{schema_version:"geomacro.deployment-build.v1",
     canonical_repository:"blocknine0/geomacro",production_activation_performed:false,
     canonical_main_sha:sha},expectedSha:sha,nowMs:now};
 }
+test("free read path uses the permanent static archive and makes no D1 journal request",()=>{
+ const source=readFileSync(new URL("./verify-minimum-free-production-health.mjs",import.meta.url),"utf8");
+ assert.match(source,/https:\/\/geomacro-public-finds-archive\.daspallab202391\.workers\.dev\/latest\.json/u);
+ assert.doesNotMatch(source,/geomacro-control-plane\.daspallab202391\.workers\.dev\/v1\/public\/website-derived-news-immediate/u);
+});
 test("minimum free site accepts ONE native-dated official story, never claims all 3 or paid signed state",()=>{
   const r=classifyMinimumFreeProduction(fixture());
   assert.equal(r.ok,true);
@@ -31,7 +39,19 @@ test("minimum free site accepts ONE native-dated official story, never claims al
   assert.equal(r.legacy_signed_hot_products_verified,false);
   assert.equal(r.current_numerical_gri_verified,false);
   assert.equal(r.paid_delivery_authorized,false);
-  assert.deepEqual([r.b2_requests,r.supabase_requests,r.payments],[0,0,0]);
+  assert.deepEqual([r.d1_requests,r.b2_requests,r.supabase_requests,r.payments],[0,0,0,0]);
+});
+test("unverified OSINT can coexist in the archive but never counts as official-source proof",()=>{
+ const official=goodStory();
+ const osint={...goodStory(),id:"macro-acde1234",category:"macro",
+   title:"Geomacro finds an observed feed item that is explicitly unverified",
+   status:"osint_feed_observed_unverified",date_precision:"exact",
+   development_type:"unverified OSINT feed observation",geography:null,
+   sources_credited:["Monitored feed: example.net"]};
+ const r=classifyMinimumFreeProduction(fixture([official,osint]));
+ assert.equal(r.ok,true);
+ assert.equal(r.derived_rows,1);
+ assert.deepEqual(r.categories,{geopolitics:1,macro:0,rare_earth:0});
 });
 test("all three categories can be observed but without manufacturing a score",()=>{
   const stories=[goodStory(),

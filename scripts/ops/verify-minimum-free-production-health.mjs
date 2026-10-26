@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Cheapest independent outside-in health for the CURRENT FREE Geomacro product.
- * No B2, Supabase, publisher secrets, signing, settlement, or extra database.
- * Legacy signed Intelligence/GRI/Risk Indices health remains a separate gate.
+ * Independent outside-in acceptance for the CURRENT FREE Geomacro product.
+ * Public reads use the permanent static archive: no D1, B2, Supabase, signing,
+ * settlement, publisher secrets, or new database. Legacy signed products remain optional.
  */
 import {fileURLToPath} from "node:url";
 
 const ROOT="https://geomacro.live";
-const JOURNAL="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
+const ARCHIVE_FEED="https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json";
 const RETENTION_MS=72*60*60_000;
 const DELAY_MS=0;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
@@ -88,7 +88,7 @@ function invalid(reason,counts){
     all_three_categories_have_recent_originals:false,
     legacy_signed_hot_products_verified:false,
     current_numerical_gri_verified:false,
-    paid_delivery_authorized:false,b2_requests:0,supabase_requests:0,payments:0};
+    paid_delivery_authorized:false,d1_requests:0,b2_requests:0,supabase_requests:0,payments:0};
 }
 /**
  * "Minimum" means one actually dated free Find makes the public newsroom
@@ -109,22 +109,38 @@ export function classifyMinimumFreeProduction({
     return invalid("LIVE_BUILD_PARITY_UNVERIFIED");
   if(journalStatus!==200||!journal||journal.ok!==true||
     journal.schema!=="geomacro.website-derived-news-feed.v1"||
+    journal.scored!==false||journal.chargeable!==false||journal.supabase_dependency!==false||
     (journal.original_release_delay_minutes!==0&&journal.original_release_delay_minutes!==15)||
     journal.retention_hours!==72||journal.retention_days!==3||
     journal.delivery_scope!=="free_website_only"||
     !Array.isArray(journal.signals)||journal.signals.length>250)
-    return invalid("FREE_D1_JOURNAL_CONTRACT_INVALID");
+    return invalid("FREE_ARCHIVE_CONTRACT_INVALID");
   const counts={geopolitics:0,macro:0,rare_earth:0};
+  const checkedAt=Date.parse(String(journal.checked_at??""));
+  if(!Number.isFinite(checkedAt)||checkedAt>nowMs+60_000)
+    return invalid("FREE_ARCHIVE_CLOCK_INVALID",counts);
   const titles=[];
   for(const row of journal.signals){
-    const valid=typeof row?.title==="string"&&row.title.startsWith("Geomacro finds ")&&
+    const common=typeof row?.title==="string"&&row.title.startsWith("Geomacro finds ")&&
       CATEGORIES.includes(row.category)&&
       row.severity===null&&row.same_event_corrob_verified===false&&
-      (row.status==="official_release_observed_unscored"||
-       row.status==="official_feed_candidate_unscored")&&
       originalPublication(row,nowMs)!==null&&
       !/(?:https?:\/\/|www\.)/iu.test(JSON.stringify(row));
-    if(!valid)return invalid("FREE_D1_ORIGINAL_TIME_OR_RIGHTS_SHAPE_INVALID",counts);
+    if(row?.status==="osint_feed_observed_unverified"){
+      const credits=Array.isArray(row.sources_credited)?row.sources_credited:[];
+      const validOsint=common&&row.date_precision==="exact"&&
+        row.development_type==="unverified OSINT feed observation"&&row.geography===null&&
+        credits.length===1&&typeof credits[0]==="string"&&
+        credits[0].startsWith("Monitored feed: ");
+      if(!validOsint)return invalid("FREE_ARCHIVE_OSINT_ROW_INVALID",counts);
+      // An OSINT feed observation is visible unverified, but cannot stand in
+      // for an original-dated official release in this launch receipt.
+      continue;
+    }
+    const valid=common&&
+      (row.status==="official_release_observed_unscored"||
+       row.status==="official_feed_candidate_unscored");
+    if(!valid)return invalid("FREE_ARCHIVE_ORIGINAL_TIME_OR_RIGHTS_SHAPE_INVALID",counts);
     counts[row.category]++;
     titles.push(row.title);
   }
@@ -135,7 +151,7 @@ export function classifyMinimumFreeProduction({
   if(!html.includes("What changed in the world")||!html.includes("GEOMACRO FINDS")||
     !titles.some(title=>html.includes(title))||
     html.includes("No current verified scored development"))
-    return invalid("FREE_D1_STORIES_NOT_RENDERED_IN_FIRST_HTML",counts);
+    return invalid("FREE_ARCHIVE_STORIES_NOT_RENDERED_IN_FIRST_HTML",counts);
   return {schema:"geomacro.minimum-free-production-health.v1",ok:true,
     reason:"FREE_DERIVED_NEWS_SSR_VERIFIED",free_derived_ssr_ready:true,
     website_parity_mode:build.canonical_main_sha===expectedSha
@@ -144,7 +160,7 @@ export function classifyMinimumFreeProduction({
     all_three_categories_have_recent_originals:CATEGORIES.every(c=>counts[c]>0),
     legacy_signed_hot_products_verified:false,
     current_numerical_gri_verified:false,
-    paid_delivery_authorized:false,b2_requests:0,supabase_requests:0,payments:0};
+    paid_delivery_authorized:false,d1_requests:0,b2_requests:0,supabase_requests:0,payments:0};
 }
 async function read(url,{json=false}={}){
   const response=await fetch(url,{redirect:"error",
@@ -157,7 +173,7 @@ async function read(url,{json=false}={}){
 export async function checkMinimumFreeProduction(expectedSha){
   // Three read-only requests only. No provider API, B2 GET, D1 write, money.
   const [j,s,b]=await Promise.all([
-    read(JOURNAL,{json:true}),read(ROOT+"/intelligence"),
+    read(ARCHIVE_FEED,{json:true}),read(ROOT+"/intelligence"),
     read(ROOT+"/.well-known/geomacro-build.json",{json:true}),
   ]);
   const observedSha=b.body?.canonical_main_sha;

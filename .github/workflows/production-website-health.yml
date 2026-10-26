@@ -1,31 +1,19 @@
 name: Production Website Health
 
+# Manual-only diagnostics for the legacy signed Intelligence / GRI / Risk Indices
+# products. This is NOT the free website launch gate. Free-source acceptance
+# and current permanent Finds are verified by Minimum Free Derived Production
+# Health (No Funds); legacy signed proofs are not required for that product.
 on:
   workflow_dispatch: {}
-  push:
-    branches:
-      - main
-  schedule:
-    - cron: "11 */6 * * *"
-  # Final release acceptance follows actual backend publication. A stale
-  # website still FAILS here, without stranding or repeating signed B2 writes.
-  workflow_run:
-    workflows:
-      - GRI v1.2 Supabase-Free Current Promotion
-      - Supabase-Free Reviewed Intelligence Publication
-      - Machine Dual-Authority Intelligence Publication
-      - Risk Indices from Verified D1 Global Risk (No Funds)
-    types: [completed]
-    branches: [main]
-
 permissions:
   contents: read
 
 concurrency:
-  # A later push must not cancel acceptance of a successful signed publisher.
-  # All lanes still perform actual site SHA, B2/D1 and public HTTP checks.
-  group: geomacro-production-website-health-${{ github.event_name }}
-  cancel-in-progress: true
+  # Manual diagnostics must not cancel one another; this workflow is not
+  # scheduled or run on ordinary pushes.
+  group: geomacro-production-website-health-manual
+  cancel-in-progress: false
 
 jobs:
   public-production-smoke:
@@ -56,6 +44,7 @@ jobs:
           fetch-depth: 0
 
       - name: Admit only trusted successful signed-publisher ancestor of checked-out main
+        if: ${{ github.event_name == 'workflow_run' }}
         env:
           TRUSTED_PUBLISHER_PARENT_SHA: ${{ github.event.workflow_run.head_sha }}
           TRUSTED_PUBLISHER_PARENT_REPOSITORY: ${{ github.event.workflow_run.head_repository.full_name }}
