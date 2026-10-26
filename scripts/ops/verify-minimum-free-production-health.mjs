@@ -88,7 +88,7 @@ function invalid(reason,counts){
     all_three_categories_have_recent_originals:false,
     legacy_signed_hot_products_verified:false,
     current_numerical_gri_verified:false,
-    paid_delivery_authorized:false,b2_requests:0,supabase_requests:0,payments:0};
+    paid_delivery_authorized:false,d1_requests:0,b2_requests:0,supabase_requests:0,payments:0};
 }
 /**
  * "Minimum" means one actually dated free Find makes the public newsroom
@@ -160,7 +160,7 @@ export function classifyMinimumFreeProduction({
     all_three_categories_have_recent_originals:CATEGORIES.every(c=>counts[c]>0),
     legacy_signed_hot_products_verified:false,
     current_numerical_gri_verified:false,
-    paid_delivery_authorized:false,b2_requests:0,supabase_requests:0,payments:0};
+    paid_delivery_authorized:false,d1_requests:0,b2_requests:0,supabase_requests:0,payments:0};
 }
 async function read(url,{json=false}={}){
   const response=await fetch(url,{redirect:"error",
