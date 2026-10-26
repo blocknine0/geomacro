@@ -218,3 +218,39 @@ test("production private OSINT bypasses public health, signing and website publi
  assert.ok(tick.slice(exit,website).includes("website_publication_attempted:false"));
  assert.ok(tick.slice(exit,website).includes("paid_publication_attempted:false"));
 });
+
+
+test("verified dated Uganda source observations are not buried by larger India bursts",async()=>{
+ const registry=Array.from({length:13},(_,i)=>({
+  id:"country-fair-"+i,url:"https://fair-"+i+".example.org/rss",
+  type:"rss",supported:true,categories:[
+   i<11?"geopolitics":i===11?"macro":"rare_earth"
+  ],
+ }));
+ const result=await collectPrivateOsint15m({
+  now,registry,normalize,
+  resolveCountry:title=>title.includes("Uganda")?"UGA":"IND",
+  fetchImpl:async(url)=>{
+   const i=Number(new URL(url).hostname.match(/fair-(\d+)/u)[1]);
+   const geo=i<11,uganda=i===10;
+   const subject=geo?(uganda?"Uganda":"India")+
+    " government announces military ceasefire and sanctions":i===11?
+    "India central bank announces inflation interest rates":
+    "India government announces critical minerals lithium mining";
+   const date=uganda?"Sun, 25 Oct 2026 11:48:00 GMT":
+    "Sun, 25 Oct 2026 11:58:00 GMT";
+   const body="<rss><channel>"+Array.from({length:90},(_,n)=>
+    "<item><title>"+subject+" policy "+i+"-"+n+"</title>"+
+    "<pubDate>"+date+"</pubDate></item>").join("")+"</channel></rss>";
+   return new Response(body,{status:200});
+  }
+ });
+ assert.equal(result.items.length,768);
+ assert.equal(result.summary.selected_items_by_category.macro,90);
+ assert.equal(result.summary.selected_items_by_category.rare_earth,90);
+ assert.equal(result.summary.selected_items_by_category.geopolitics,588);
+ assert.equal(result.items.filter(x=>x.category==="geopolitics"&&x.country_iso3==="UGA").length,90);
+ assert.equal(result.summary.overflow_selection_fair_to_attributed_countries,true);
+ assert.equal(result.summary.title_based_country_matching_is_not_independent_geolocation,true);
+ assert.equal(result.summary.publicly_served,false);
+});
