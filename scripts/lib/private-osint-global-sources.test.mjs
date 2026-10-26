@@ -521,3 +521,33 @@ test("official corridor reference overlay only covers existing named routes, nev
  assert.equal(c.route_geometry_certified,false);
  assert.equal(c.commercial_delivery_enabled,false);
 });
+
+
+test("live RNZ Pacific feed is a regional Oceania fallback in all three lanes without inventing events",()=>{
+ const sources=privateOsintGlobalSources();
+ const regional=sources.find(s=>s.id==="private_nz_rnz_pacific");
+ assert.ok(regional);
+ assert.equal(regional.url,"https://www.rnz.co.nz/rss/pacific.xml");
+ assert.equal(regional.publisher_country_iso3,"NZL");
+ assert.deepEqual([...regional.categories].sort(),["geopolitics","macro","rare_earth"]);
+ const checks=regional.categories.map(category=>({
+   source_ref:createHash("sha256").update([regional.id,regional.url,category].join("\n")).digest("hex"),
+   category,state:category==="geopolitics"?"OBSERVED":"EMPTY_OR_OUTSIDE_WINDOW",
+   checked_at:now.toISOString(),
+ }));
+ const coverage=privateOsintCountryCategoryCoverage(sources,checks,[],{includeCells:true});
+ assert.equal(coverage.by_continent.oceania.cells,42);
+ assert.equal(coverage.by_continent.oceania.cells_with_regional_fallback_healthy,42);
+ assert.equal(coverage.by_continent.oceania.observed_country_category_cells_this_tick,0);
+ assert.equal(coverage.by_continent.oceania.cells_with_global_fallback_healthy,0);
+ assert.equal(coverage.cells.filter(x=>x.continent==="oceania"&&x.regional.healthy>0).length,42);
+ assert.equal(coverage.cells.filter(x=>x.continent!=="oceania"&&x.regional.healthy>0).length,0);
+ const continents=privateOsintContinentCoverage(sources,checks,[]);
+ assert.ok(continents.oceania.working_regional_endpoints>=1);
+ const publisher=privateOsintPublisherCountryCoverage(sources,checks,{includeDetails:true});
+ assert.equal(publisher.by_country.NZL.working_categories.length,3);
+ assert.equal(coverage.coverage.observed_country_category_cells_this_tick,0);
+ const failed=checks.map(row=>({...row,state:"DENIED"}));
+ const degraded=privateOsintCountryCategoryCoverage(sources,failed,[]);
+ assert.equal(degraded.by_continent.oceania.cells_with_regional_fallback_healthy,0);
+});
