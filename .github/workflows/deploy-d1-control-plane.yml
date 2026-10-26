@@ -90,6 +90,9 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Verify D1 quota-reset recovery safety contracts offline
+        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs
+
       - name: Test all-news signed publication integrity and source-proof boundaries offline
         run: node --test scripts/tests/public-signed-news.test.mjs
 
