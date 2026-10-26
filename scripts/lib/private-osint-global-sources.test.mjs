@@ -36,8 +36,8 @@ test("accepted global source inventory has distinct pinned feeds in six continen
  assert.equal(sourceMatrix.coverage.cells_with_global_fallback,585);
  assert.equal(sourceMatrix.coverage.cells_with_any_healthy_source,0);
  assert.equal(sourceMatrix.coverage.cells_without_configured_source,0);
- assert.equal(sourceMatrix.country_specific_source_countries_registered,72);
- assert.equal(sourceMatrix.countries_without_country_specific_publisher_source.length,123);
+ assert.equal(sourceMatrix.country_specific_source_countries_registered,71);
+ assert.equal(sourceMatrix.countries_without_country_specific_publisher_source.length,124);
  assert.equal(sourceMatrix.scope,"PRIVATE_SOURCE_ACQUISITION_COVERAGE_NOT_PUBLIC_FIND_COVERAGE");
  const unGenevaCandidate=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8")).sources.find(s=>s.id==="private_expansion_ungeneva_press_rss");
  assert.equal(sources.filter(source=>source.url===unGenevaCandidate.url).length,1);
@@ -197,7 +197,7 @@ test("195x3 source-coverage priority distinguishes local, regional and global fa
 test("new regional macro/minerals and maritime corridor candidates are deduplicated, bounded, private",async()=>{
  const additions=JSON.parse(readFileSync(new URL(
   "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
- assert.equal(additions.sources.length,48);
+ assert.equal(additions.sources.length,47);
  const complete=privateOsintGlobalSources();
  assert.ok(complete.length<=512);
  assert.equal(new Set(complete.map(s=>s.url)).size,complete.length);
@@ -283,7 +283,7 @@ test("regional official and sector feeds are deduplicated private candidates, an
 test("official local/regional feeds are source-registered with correct categories and current-tick probes",async()=>{
  const additions=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
  const all=privateOsintGlobalSources();
- assert.equal(additions.sources.length,48);
+ assert.equal(additions.sources.length,47);
  const ids=[
   "private_expansion_adb_asia_pacific",
   "private_expansion_bw_bankofbotswana_fx",
@@ -352,7 +352,7 @@ test("official local/regional feeds are source-registered with correct categorie
 test("official Swiss, Norwegian and Swedish central-bank RSS feeds add local macro source lanes",()=>{
  const additions=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
  const complete=privateOsintGlobalSources();
- assert.equal(additions.sources.length,48);
+ assert.equal(additions.sources.length,47);
  const ids=["private_expansion_che_snb_press","private_expansion_che_snb_monetary","private_expansion_nor_norges_press","private_expansion_swe_riksbank_press"];
  const byId=new Map(additions.sources.map(source=>[source.id,source]));
  for(const id of ids){
@@ -375,8 +375,8 @@ test("official Swiss, Norwegian and Swedish central-bank RSS feeds add local mac
  assert.equal(byId.get("private_expansion_nor_norges_press").publisher_country_iso3,"NOR");
  assert.equal(byId.get("private_expansion_swe_riksbank_press").publisher_country_iso3,"SWE");
  const matrix=privateOsintCountryCategoryCoverage(complete,[],[],{includeCells:true});
- assert.equal(matrix.country_specific_source_countries_registered,72);
- assert.equal(matrix.countries_without_country_specific_publisher_source.length,123);
+ assert.equal(matrix.country_specific_source_countries_registered,71);
+ assert.equal(matrix.countries_without_country_specific_publisher_source.length,124);
  const cheMacro=matrix.cells.find(row=>row.country_iso3==="CHE"&&row.category==="macro");
  assert.ok(cheMacro.local.registered>=2);
  assert.equal(cheMacro.local.healthy,0,"registration must not pretend the new RSS feeds already passed a live check");
@@ -386,7 +386,7 @@ test("Sri Lanka central bank RSS feeds provide a local macro lane with native-cl
  const additions=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
  const complete=privateOsintGlobalSources();
  const ids=["private_expansion_lka_cbsl_mpr","private_expansion_lka_cbsl_weekly_indicators","private_expansion_lka_cbsl_monthly_indicators"];
- assert.equal(additions.sources.length,48);
+ assert.equal(additions.sources.length,47);
  const byId=new Map(additions.sources.map(s=>[s.id,s]));
  const selected=complete.filter(s=>ids.some(id=>byId.get(id)?.url===s.url));
  assert.equal(selected.length,3);
@@ -437,7 +437,7 @@ test("new Botswana and Thailand official RSS feeds improve local publisher-count
  const ids=["private_expansion_bw_bankofbotswana_news","private_expansion_th_mdes_news"];
  const selected=all.filter(s=>ids.includes(s.id));
  assert.equal(selected.length,2);
- assert.equal(additions.sources.length,48);
+ assert.equal(additions.sources.length,47);
  const byId=new Map(additions.sources.map(s=>[s.id,s]));
  assert.equal(byId.get(ids[0]).url,"https://www.bankofbotswana.bw/rss/latest_news");
  assert.equal(byId.get(ids[1]).url,"https://mdes.go.th/news/rss/3");
@@ -553,7 +553,7 @@ test("live RNZ Pacific feed is a regional Oceania fallback in all three lanes wi
 });
 
 
-test("nine official local RSS candidates are private-only and never accepted without live native clocks",async()=>{
+test("eight official local RSS candidates are private-only and never accepted without live native clocks",async()=>{
  const sources=privateOsintGlobalSources();
  const cases=[
   ["private_expansion_ru_cbr_en_press","RUS","macro"],
@@ -564,9 +564,8 @@ test("nine official local RSS candidates are private-only and never accepted wit
   ["private_expansion_pg_mra_rss_candidate","PNG","rare_earth"],
   ["private_expansion_gy_mnr_rss_candidate","GUY","rare_earth"],
   ["private_expansion_fj_rbf_press_candidate","FJI","macro"],
-  ["private_expansion_cl_sernageomin_rss_candidate","CHL","rare_earth"],
  ];
- assert.equal(cases.length,9);
+ assert.equal(cases.length,8);
  for(const [id,iso3,category] of cases){
   const source=sources.find(s=>s.id===id)||
    sources.find(s=>id==="private_expansion_us_usgs_minerals_news"&&s.url==="https://www.usgs.gov/news/minerals/feed");
