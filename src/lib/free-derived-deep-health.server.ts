@@ -108,7 +108,8 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
       return result(false,"FREE_ARCHIVE_ROW_ORIGINAL_RIGHTS_BOUNDARY_INVALID");
     counts[row.category as Category]++;
   }
-  if(ids.size===0)return result(false,"NO_CURRENT_FREE_OFFICIAL_ORIGINAL");
+  if(Object.values(counts).reduce((sum,value)=>sum+value,0)===0)
+    return result(false,"NO_CURRENT_FREE_OFFICIAL_ORIGINAL",counts);
   return result(true,"FREE_ARCHIVE_READBACK_OK",counts);
 }
 export async function probeFreeDerivedDeepHealth({
