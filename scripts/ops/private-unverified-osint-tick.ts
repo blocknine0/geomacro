@@ -18,9 +18,12 @@ const batch=await collectPrivateUnverifiedOsint({
 });
 const proof=await persistPrivateOsintBatch({
  result:batch,privateToken:token,
+ sourceHealthSnapshotSlots:3,
  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
 });
-if(proof.source_checks_persisted!==batch.checks.length||
+if(proof.source_checks_observed_this_tick!==batch.checks.length||
+ proof.source_checks_persisted!==proof.source_checks_selected_for_d1||
+ proof.source_checks_deferred_to_snapshot+proof.source_checks_persisted!==batch.checks.length||
  !proof.d1_write_exact_readback_verified||
  !proof.separate_private_d1_readback_verified||
  proof.publicly_delivered!==false||
@@ -33,6 +36,9 @@ console.log(JSON.stringify({
  rss_candidates:batch.summary.native_feed_candidates,
  api_bulk_candidates:batch.summary.api_or_bulk_transport_only,
  source_checks_persisted:proof.source_checks_persisted,
+ source_checks_observed_this_tick:proof.source_checks_observed_this_tick,
+ source_checks_deferred_to_snapshot:proof.source_checks_deferred_to_snapshot,
+ source_health_snapshot_cadence_nominal_minutes:proof.source_health_snapshot_cadence_nominal_minutes,
  private_news_json_persisted:proof.news_rows_verified_in_d1,
  source_states:batch.summary.source_states,
  durable_private_readback:true,commercially_verified:false,public_published:false,
