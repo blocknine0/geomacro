@@ -18,6 +18,7 @@ on:
       - "scripts/tests/derived-news-public-readback.test.mjs"
       - "scripts/ops/verify-production-observed-195x3.mjs"
       - "scripts/tests/verify-production-observed-195x3.test.mjs"
+      - "scripts/ops/audit-d1-account-daily-quota-readonly.mjs"
       - ".github/workflows/website-derived-news-continuity.yml"
   workflow_dispatch: {}
   workflow_run:
@@ -40,6 +41,7 @@ on:
       - "scripts/tests/derived-news-b2-readwrite-backup.test.mjs"
       - "scripts/ops/verify-production-observed-195x3.mjs"
       - "scripts/tests/verify-production-observed-195x3.test.mjs"
+      - "scripts/ops/audit-d1-account-daily-quota-readonly.mjs"
       - "scripts/ops/verify-all-news-signed-publications.mjs"
       - "scripts/tests/public-signed-news.test.mjs"
       - "workers/control-plane/src/public-signed-news.mjs"
@@ -128,6 +130,8 @@ jobs:
           node --test scripts/tests/derived-news-b2-readwrite-backup.test.mjs
 
   refresh-derived-news:
+    outputs:
+      d1_quota_headroom: ${{ steps.d1-quota.outputs.headroom }}
     # Never race a producer against any repository push. Source-only changes
     # are handled by the existing schedule/manual trigger; Worker changes resume
     # from the trusted main deployment completion. The live policy handshake is
@@ -176,6 +180,25 @@ jobs:
           node --test scripts/lib/automatic-news-qualification-coverage.test.mjs scripts/lib/derived-original-reference-pins.test.mjs
           node --test scripts/lib/facts-only-derived-news-regression.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
+      - name: Inspect D1 account-wide free-tier headroom before optional D1 publication
+        id: d1-quota
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if node scripts/ops/audit-d1-account-daily-quota-readonly.mjs; then
+            echo "headroom=ready" >> "$GITHUB_OUTPUT"
+            echo "GEOMACRO_D1_QUOTA_HEADROOM=ready" >> "$GITHUB_ENV"
+          else
+            # Preserve the existing static public archive; never spend more
+            # D1 reads/writes while quota counters are exhausted or unknown.
+            echo "headroom=held" >> "$GITHUB_OUTPUT"
+            echo "GEOMACRO_D1_QUOTA_HEADROOM=held" >> "$GITHUB_ENV"
+            echo "::warning::D1_QUOTA_HEADROOM_HELD_PRESERVE_ARCHIVE_SKIP_D1_OPERATIONS"
+          fi
+
       - name: Require existing control-plane authorization
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
@@ -256,7 +279,7 @@ jobs:
           cd workers/public-finds-archive
           npx -y wrangler@4.136.3 deploy --config wrangler.jsonc
       - name: Refresh retained actor-action news from existing private originals without changing clocks
-        if: always()
+        if: always() && steps.d1-quota.outputs.headroom == 'ready'
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_LOW_REVIEW_PUBLIC_PEM: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_PEM }}
@@ -266,10 +289,10 @@ jobs:
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
-        if: always()
+        if: always() && steps.d1-quota.outputs.headroom == 'ready'
         run: bun scripts/ops/publish-automated-intelligence-inputs.ts
       - name: Preserve private original references for automated review continuation
-        if: always()
+        if: always() && steps.d1-quota.outputs.headroom == 'ready'
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_LOW_REVIEW_REFS_FILE: ${{ runner.temp }}/geomacro-source-review-refs.json
@@ -294,7 +317,7 @@ jobs:
             'GEOMACRO_LOW_REVIEW_ISSUER_PUBLIC_KEYS_JSON='+JSON.stringify([...new Set(keys)])+'\n');
           NODE
       - name: Review real source evidence with the separate low authority
-        if: always()
+        if: always() && steps.d1-quota.outputs.headroom == 'ready'
         env:
           GEOMACRO_LOW_REVIEW_PRIVATE_PKCS8_B64: ${{ secrets.GEOMACRO_LOW_REVIEW_PRIVATE_PKCS8_B64 }}
           GEOMACRO_LOW_REVIEW_PUBLIC_PEM: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_PEM }}
@@ -303,20 +326,22 @@ jobs:
           umask 077
           bun scripts/ops/review-derived-inputs-low-authority.ts > "$RUNNER_TEMP/geomacro-source-review-result.json"
       - name: Verify every retained newsroom signature against the approved issuer key
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.d1-quota.outputs.headroom == 'ready' }}
         run: bun scripts/ops/verify-all-news-signed-publications.mjs
       - name: Verify and emit only safe source-review aggregates
+        if: steps.d1-quota.outputs.headroom == 'ready'
         run: node scripts/ops/emit-low-source-review-status.mjs "$RUNNER_TEMP/geomacro-source-review-result.json"
       - name: Remove private review handoff and internal verdicts from the runner
         if: always()
         run: |
           rm -f -- "$RUNNER_TEMP/geomacro-source-review-refs.json" "$RUNNER_TEMP/geomacro-source-review-result.json" "$RUNNER_TEMP/geomacro-private-source-crosswalk.json"
       - name: Produce country-scoped high-impact GRI evidence worklist (zero scoring)
+        if: steps.d1-quota.outputs.headroom == 'ready'
         run: |
           node --test scripts/tests/material-gri-country-evidence-worklist.test.mjs
           node scripts/ops/build-material-gri-country-worklist.mjs
       - name: Independently verify signed Finds across combined and category reads
-        if: always()
+        if: always() && steps.d1-quota.outputs.headroom == 'ready'
         # A held B2/archive signer is a separately monitored signed-product
         # degradation, not a failure of the independently verified free D1 feed.
         continue-on-error: true
@@ -349,19 +374,19 @@ jobs:
           }
           TS
       - name: Independently verify public derived-news journal with bounded transport retries
-        if: always()
+        if: always() && steps.d1-quota.outputs.headroom == 'ready'
         shell: bash
         run: node scripts/ops/verify-derived-news-public-readback.mjs
 
       - name: Verify actual 195-by-3 website country/category observed-news readback
-        if: always()
+        if: always() && steps.d1-quota.outputs.headroom == 'ready'
         shell: bash
         run: |
           set -euo pipefail
           node --test scripts/tests/verify-production-observed-195x3.test.mjs
           node scripts/ops/verify-production-observed-195x3.mjs
       - name: Retain private actual 195-by-3 counts-only website readback
-        if: always()
+        if: always() && steps.d1-quota.outputs.headroom == 'ready'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: actual-195x3-observed-news-${{ github.run_id }}
@@ -372,7 +397,7 @@ jobs:
       - name: Confirm partner structured JSON equals the live retained Intelligence journal
         # On main push, Worker deployment may still be in progress; scheduled
         # collection and successful Worker-deploy wakeups verify exact parity.
-        if: always() && github.event_name != 'push'
+        if: always() && steps.d1-quota.outputs.headroom == 'ready' && github.event_name != 'push'
         shell: bash
         run: node scripts/ops/verify-shared-derived-news-live.mjs
 
@@ -426,7 +451,8 @@ jobs:
       always() &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name != 'pull_request'
+      github.event_name != 'pull_request' &&
+      needs.refresh-derived-news.outputs.d1_quota_headroom == 'ready'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     environment: production
