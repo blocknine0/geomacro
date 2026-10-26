@@ -145,6 +145,22 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(prepare.mock.calls[0]?.[0]).toContain("LIMIT 601");
   });
 
+  it("holds D1-heavy optional work on exhausted or unknown quota while the permanent archive still runs",()=>{
+    const workflow=readFileSync(".github/workflows/website-derived-news-continuity.yml","utf8");
+    const publisher=readFileSync("scripts/ops/publish-website-derived-news.ts","utf8");
+    const archiveAt=workflow.indexOf('      - name: Publish append-only permanent Finds archive without D1 dependency');
+    const readAt=workflow.indexOf('      - name: Read three domains and write only derived news to existing D1');
+    expect(workflow).toContain("node scripts/ops/audit-d1-account-daily-quota-readonly.mjs");
+    expect(workflow).toContain("D1_QUOTA_HEADROOM_HELD_PRESERVE_ARCHIVE_SKIP_D1_OPERATIONS");
+    expect(workflow).toContain("steps.d1-quota.outputs.headroom == 'ready'");
+    expect(archiveAt).toBeGreaterThan(readAt);
+    const archiveStep=workflow.slice(archiveAt,workflow.indexOf("\n      - name:",archiveAt+10));
+    expect(archiveStep).toContain("if: always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'");
+    expect(archiveStep).not.toContain("steps.d1-quota.outputs.headroom");
+    expect(publisher).toContain('process.env.GEOMACRO_D1_QUOTA_HEADROOM==="held"');
+    expect(publisher).toContain("D1_QUOTA_HEADROOM_HELD_STATIC_ARCHIVE_ONLY");
+  });
+
   it("indexes the independent first-seen clock used by bounded retention cleanup",()=>{
     const migration=readFileSync(
       "workers/control-plane/migrations/0030_website_derived_first_seen_index.sql","utf8");
