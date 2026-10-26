@@ -5,7 +5,7 @@ import {afterEach,describe,it} from "node:test";
 import assert from "node:assert/strict";
 import {
  ARCHIVE_INDEX_SCHEMA,ARCHIVE_MONTH_SCHEMA,isPermanentArchiveSignal,
- publishPermanentDerivedNewsArchive,
+ publishPermanentDerivedNewsArchive,selectCurrentArchiveSignals,
 } from "./publish-permanent-derived-news-archive.mjs";
 
 const NOW=Date.parse("2026-10-26T00:00:00.000Z");
@@ -45,6 +45,28 @@ const failD1=async()=>new Response(JSON.stringify({ok:false,error:"quota"}),{sta
 afterEach(()=>{for(const dir of tempDirs.splice(0))rmSync(dir,{recursive:true,force:true});});
 
 describe("permanent derived-only website archive",()=>{
+ it("round-robins current category records before applying the 250-row feed cap",()=>{
+  const rows=[
+   ...Array.from({length:300},(_,i)=>signal(i.toString(16).padStart(8,"0"),"2026-10","geopolitics")),
+   ...Array.from({length:70},(_,i)=>signal((1000+i).toString(16).padStart(8,"0"),"2026-10","macro")),
+   ...Array.from({length:14},(_,i)=>signal((2000+i).toString(16).padStart(8,"0"),"2026-10","rare_earth")),
+  ];
+  const selected=selectCurrentArchiveSignals(rows,250);
+  const counts={geopolitics:0,macro:0,rare_earth:0};
+  for(const row of selected)counts[row.category]++;
+  assert.equal(selected.length,250);
+  assert.deepEqual(counts,{geopolitics:166,macro:70,rare_earth:14});
+  assert.equal(new Set(selected.map(row=>row.id)).size,250);
+  assert.deepEqual(selected,selected.slice().sort((a,b)=>
+   b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id)));
+ });
+ it("rejects duplicate IDs and invalid category limits in current-feed selection",()=>{
+  const duplicate=signal("1234abcd","2026-10","macro");
+  assert.throws(()=>selectCurrentArchiveSignals([duplicate,{...duplicate}],250),
+   /PERMANENT_ARCHIVE_LATEST_INPUT_INVALID/);
+  assert.throws(()=>selectCurrentArchiveSignals([duplicate],251),
+   /PERMANENT_ARCHIVE_LATEST_SELECTION_INVALID/);
+ });
  it("keeps old signals forever and adds new signals without D1",async()=>{
   const p=temp();
   writeCandidates(p.candidatePath,[signal("1234abcd")]);
