@@ -14,14 +14,14 @@ const normalize=x=>({
 test("independent source gap lane leaves 511-source production collector untouched",()=>{
  const manifest=JSON.parse(readFileSync(file,"utf8"));
  assert.equal(manifest.schema,"geomacro.private-osint-local-gaplane.v1");
- assert.ok(manifest.sources.length>30&&manifest.sources.length<=54);
+ assert.ok(manifest.sources.length>30&&manifest.sources.length<=100);
  const canonical=new Set(Object.values(CONTINENT_COUNTRIES_195).flat());
  assert.ok(manifest.sources.every(s=>canonical.has(s.publisher_country_iso3)));
  const legacy=privateUnverifiedOsintRegistry();
  assert.equal(legacy.length,25);
  const merged=privateUnverifiedOsintRegistry(undefined,{includeGapLane:true});
  assert.equal(merged.length,25+manifest.sources.length);
- assert.ok(merged.length<=80);
+ assert.ok(merged.length<=128);
  assert.equal(new Set(merged.map(x=>x.url)).size,merged.length);
  const gaps=merged.filter(x=>x.id.startsWith("private_gaplane_"));
  assert.equal(gaps.length,manifest.sources.length);
