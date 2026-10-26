@@ -17,6 +17,8 @@ on:
       - ".github/workflows/recover-d1-quota-deployment-after-reset.yml"
       - "scripts/tests/d1-quota-reset-recovery-workflow.test.mjs"
       - "scripts/tests/public-free-d1-cache.test.mjs"
+      - "scripts/ops/summarize-d1-reads-insights.mjs"
+      - "scripts/tests/summarize-d1-reads-insights.test.mjs"
       - "src/lib/original-verification-policy.ts"
       - "src/lib/release-news-observation.ts"
       - "src/lib/private-source-handoff.ts"
@@ -97,7 +99,7 @@ jobs:
           node-version: "24"
 
       - name: Verify P0-1 D1 quota and public-only cache contracts offline
-        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs
+        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
 
       - name: Test all-news signed publication integrity and source-proof boundaries offline
         run: node --test scripts/tests/public-signed-news.test.mjs
@@ -198,6 +200,23 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/ops/audit-d1-account-daily-quota-readonly.mjs
+
+      - name: Inspect top D1 row-read fingerprints without revealing SQL
+        # This is Cloudflare query-insights API metadata, not a D1 SQL query.
+        # Sanitize raw query strings inside the process; never upload or echo
+        # its raw stdout, which may contain private source/table names.
+        continue-on-error: true
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw="$(mktemp)"
+          trap 'rm -f "$raw"' EXIT
+          if npx -y "wrangler@${WRANGLER_VERSION}" d1 insights "$D1_DATABASE_NAME" --timePeriod=1d --sort-type=sum --sort-by=reads --limit=20 --json > "$raw" 2>/dev/null; then
+            node ../../scripts/ops/summarize-d1-reads-insights.mjs "$raw"
+          else
+            echo "::warning::D1_READ_PRESSURE_INSIGHTS_PROVIDER_UNAVAILABLE"
+          fi
 
       - name: Apply committed D1 migrations remotely
         working-directory: workers/control-plane
