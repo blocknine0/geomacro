@@ -138,7 +138,7 @@ export async function derivedNewsStructuralResponse(
       counts,items:rows,
     },{headers:HEADERS});
   }catch{
-    return Response.json({ok:false,error:"DERIVED_STRUCTURAL_JOURNAL_UNAVAILABLE",
+    return Response.json({ok:false,error:"DERIVED_STATIC_ARCHIVE_UNAVAILABLE",
       chargeable:false,items:[]},{status:503,headers:HEADERS});
   }
 }
