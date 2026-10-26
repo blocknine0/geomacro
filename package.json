@@ -82,7 +82,7 @@
     "@tanstack/router-plugin": "^1.168.18",
     "@x402/core": "2.25.0",
     "@x402/evm": "2.25.0",
-    "ai": "6.0.280",
+    "ai": "7.0.151",
     "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
