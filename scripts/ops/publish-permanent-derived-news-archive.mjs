@@ -108,6 +108,108 @@ function sortSignals(signals){
   return signals.slice().sort((a,b)=>
     b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
 }
+
+const CATEGORY_HEADLINE_TERMS={
+  geopolitics:/\b(?:war|attack|airstrike|missile|election|president|minister|diplomacy|diplomatic|sanctions|border|military|security|foreign policy|government|coup|treaty|conflict|ukraine|russia|israel|iran|china|taiwan|sudan|yemen|nato|united nations|embassy|vote|parliament|political)\b/giu,
+  macro:/\b(?:inflation|prices?|gdp|central bank|interest rates?|currency|exchange rates?|forex|fx|monetary|fiscal|unemployment|jobs|output|growth|recession|economy|economic|bond|yield|reserves?|trade deficit|debt|cpi|pmi)\b/giu,
+  rare_earth:/\b(?:rare earths?|critical minerals?|lithium|cobalt|nickel|graphite|copper|manganese|bauxite|ores?|mining|minerals?|batteries?|smelter|refining|uranium|tantalum|gallium|germanium|magnets?|metallurgy|supply chain)\b/giu,
+};
+function normalizeHeadline(title){
+  return title.normalize("NFKC")
+    .replace(/^Geomacro finds\s+/iu,"")
+    .replace(/\s+[—–-]\s+(?:Al Jazeera|The Hindu|TASS|Xinhua|The Tribune-Democrat|Bozeman Daily Chronicle|Mining Weekly|Reuters|Associated Press|Bloomberg|Financial Times|The Guardian|The Independent|The New York Times|The Washington Post|BBC|CNN)\s*$/iu,"")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu," ")
+    .trim().replace(/\s+/gu," ");
+}
+function isTemplateObservation(signal){
+  const candidateText=[signal.title,signal.topic,signal.development_type,
+    signal.what_changed].filter(value=>typeof value==="string").join(" ");
+  const title=typeof signal.title==="string"?signal.title:"";
+  return /\b(?:source[- ]feed observation|publisher candidate|unclassified publisher update)\b/iu
+      .test(candidateText)||
+    /(?:the dated original release concerns|does not establish a named actor performing a verifiable action)/iu
+      .test(String(signal.what_changed??""))||
+    /^Geomacro finds (?:official update on|announcement on|trade restriction on|security on|warning on|warning about)\b/iu
+      .test(title);
+}
+function isOfficialObservation(signal){
+  return signal.status==="official_release_observed_unscored"||
+    signal.status==="official_feed_candidate_unscored";
+}
+function categoryRelevance(signal){
+  const text=[signal.title,signal.topic,signal.what_changed].filter(x=>typeof x==="string").join(" ");
+  const scores={geopolitics:0,macro:0,rare_earth:0};
+  for(const category of CATEGORIES){
+    const pattern=CATEGORY_HEADLINE_TERMS[category];
+    pattern.lastIndex=0;
+    scores[category]=[...text.matchAll(pattern)].length;
+  }
+  return scores[signal.category]-(Math.max(...CATEGORIES.filter(c=>c!==signal.category).map(c=>scores[c]))||0);
+}
+const AGGREGATOR_ONLY_CREDITS=new Set([
+  "Monitored feed: news.google.com",
+  "Monitored feed: news.google.com (aggregator; original publisher not verified)",
+]);
+function isAggregatorOnly(signal){
+  return Array.isArray(signal.sources_credited)&&signal.sources_credited.some(
+    credit=>typeof credit==="string"&&AGGREGATOR_ONLY_CREDITS.has(credit),
+  );
+}
+function preferDuplicateCandidate(candidate,current){
+  const relevanceDifference=categoryRelevance(candidate)-categoryRelevance(current);
+  if(relevanceDifference!==0)return relevanceDifference>0;
+  const officialDifference=Number(isOfficialObservation(candidate))-Number(isOfficialObservation(current));
+  if(officialDifference!==0)return officialDifference>0;
+  // Compare the whole source-credit label against the finite aggregator allowlist.
+  // A substring match would incorrectly classify labels containing arbitrary hosts.
+  const candidateDirect=!isAggregatorOnly(candidate);
+  const currentDirect=!isAggregatorOnly(current);
+  if(candidateDirect!==currentDirect)return candidateDirect;
+  if(candidate.published_at!==current.published_at)return candidate.published_at>current.published_at;
+  return candidate.id<current.id;
+}
+/**
+ * Keep the rolling public feed factual and usable: drop generic OSINT template
+ * placeholders, deduplicate equivalent normalized headlines across categories,
+ * then round-robin real current rows so one high-volume domain cannot starve
+ * macro or critical minerals. Permanent historical shards remain untouched.
+ */
+export function selectCurrentArchiveSignals(signals,limit=250){
+  if(!Array.isArray(signals)||!Number.isSafeInteger(limit)||limit<1||limit>250)
+    throw Error("PERMANENT_ARCHIVE_LATEST_SELECTION_INVALID");
+  const ids=new Set();
+  for(const signal of signals){
+    if(!signal||typeof signal!=="object"||Array.isArray(signal)||
+       !CATEGORY_SET.has(signal.category)||typeof signal.id!=="string"||
+       typeof signal.title!=="string"||typeof signal.published_at!=="string"||
+       !Number.isFinite(Date.parse(signal.published_at))||ids.has(signal.id))
+      throw Error("PERMANENT_ARCHIVE_LATEST_INPUT_INVALID");
+    ids.add(signal.id);
+  }
+  const uniqueByHeadline=new Map();
+  for(const signal of signals){
+    if(isTemplateObservation(signal))continue;
+    const key=normalizeHeadline(signal.title);
+    if(!key)continue;
+    const current=uniqueByHeadline.get(key);
+    if(!current||preferDuplicateCandidate(signal,current))uniqueByHeadline.set(key,signal);
+  }
+  const unique=[...uniqueByHeadline.values()];
+  const groups=new Map(CATEGORIES.map(category=>[
+    category,sortSignals(unique.filter(signal=>signal.category===category)),
+  ]));
+  const selected=[];
+  for(let offset=0;selected.length<limit;offset++){
+    let added=false;
+    for(const category of CATEGORIES){
+      const signal=groups.get(category)[offset];
+      if(signal&&selected.length<limit){selected.push(signal);added=true;}
+    }
+    if(!added)break;
+  }
+  return sortSignals(selected);
+}
 function readIndex(dataDir){
   const path=join(dataDir,"index.json");
   if(!existsSync(path))return {
@@ -150,7 +252,8 @@ export async function readRecoverableD1Seed(fetchImpl=fetch,now=Date.now()){
        typeof doc.has_more!=="boolean")
       throw Error("PERMANENT_ARCHIVE_D1_SEED_CONTRACT_INVALID");
     for(const signal of doc.signals){
-      if(isPermanentArchiveSignal(signal,now,{allowHistorical:false}))collected.push(signal);
+      if(isPermanentArchiveSignal(signal,now,{allowHistorical:false})&&
+         !isTemplateObservation(signal))collected.push(signal);
     }
     if(doc.has_more===false){
       if(doc.next_offset!==null)throw Error("PERMANENT_ARCHIVE_D1_SEED_CURSOR_INVALID");
@@ -171,7 +274,8 @@ function readCandidates(path,now){
   const seen=new Set();
   const accepted=[];
   for(const signal of doc.signals){
-    if(!isPermanentArchiveSignal(signal,now,{allowHistorical:false}))continue;
+    if(!isPermanentArchiveSignal(signal,now,{allowHistorical:false})||
+       isTemplateObservation(signal))continue;
     if(seen.has(signal.id))continue;
     seen.add(signal.id);
     accepted.push(signal);
@@ -269,7 +373,7 @@ export async function publishPermanentDerivedNewsArchive({
       ok:true,schema:PUBLIC_FEED_SCHEMA,checked_at:new Date(now).toISOString(),
       original_release_delay_minutes:0,retention_days:3,retention_hours:72,
       delivery_scope:"free_website_only",scored:false,chargeable:false,
-      supabase_dependency:false,signals:recent.slice(0,250),
+      supabase_dependency:false,signals:selectCurrentArchiveSignals(recent,250),
     };
     writeFileSync(dataLatest,JSON.stringify(latest,null,2)+"\n",{encoding:"utf8",mode:0o644});
   }

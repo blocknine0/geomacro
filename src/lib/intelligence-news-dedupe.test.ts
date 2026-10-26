@@ -33,7 +33,7 @@ describe("three-domain intelligence event dedup lock",()=>{
   ];
   expect(dedupeIntelligenceStories(cases)).toHaveLength(4);
  });
- it("runs within each category without hiding multi-category relevance",()=>{
+ it("shows a cross-domain event only once, in the category best matching the headline",()=>{
   const headline="Canada announced export controls on critical minerals";
   const rows=[
    sample("geopolitics-12345678","geopolitics",headline),
@@ -41,8 +41,8 @@ describe("three-domain intelligence event dedup lock",()=>{
    sample("rare_earth-87654321","rare_earth",headline,"2026-10-25T08:03:00.000Z"),
   ];
   const result=dedupeIntelligenceStories(rows);
-  expect(result).toHaveLength(2);
-  expect(new Set(result.map(s=>s.category))).toEqual(new Set(["geopolitics","rare_earth"]));
+  expect(result).toHaveLength(1);
+  expect(result[0].category).toBe("rare_earth");
  });
  it("keeps distinct stories whose only overlap is the issuer or general topic",()=>{
   const rows=[

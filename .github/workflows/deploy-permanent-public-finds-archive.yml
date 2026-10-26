@@ -9,6 +9,7 @@ on:
     paths:
       - ".github/workflows/deploy-permanent-public-finds-archive.yml"
       - ".github/workflows/website-derived-news-continuity.yml"
+      - "scripts/ops/publish-permanent-derived-news-archive.mjs"
       - "scripts/ops/verify-minimum-free-production-health.mjs"
       - "scripts/ops/verify-minimum-free-production-health.test.mjs"
       - "workers/public-finds-archive/**"
@@ -56,7 +57,7 @@ jobs:
           import assert from "node:assert/strict";
           import { existsSync, readFileSync, writeFileSync } from "node:fs";
           import { join } from "node:path";
-          import { isPermanentArchiveSignal } from "./scripts/ops/publish-permanent-derived-news-archive.mjs";
+          import { isPermanentArchiveSignal, selectCurrentArchiveSignals } from "./scripts/ops/publish-permanent-derived-news-archive.mjs";
           const dataDir=join(process.env.RUNNER_TEMP,"geomacro-public-archive","data");
           const assetsDir="workers/public-finds-archive/assets";
           const categories=["geopolitics","macro","rare_earth"];
@@ -90,19 +91,22 @@ jobs:
           assert.deepEqual(index.months,months);
           assert.equal(index.total_signals,rows.length);
           rows.sort((a,b)=>b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
-          const recent=rows.filter(s=>isPermanentArchiveSignal(s,now,{allowHistorical:false})).slice(0,250);
+          const recent=rows.filter(s=>isPermanentArchiveSignal(s,now,{allowHistorical:false}));
           const latest={
             ok:true,schema:"geomacro.website-derived-news-feed.v1",
             checked_at:new Date(now).toISOString(),original_release_delay_minutes:0,
             retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
-            scored:false,chargeable:false,supabase_dependency:false,signals:recent,
+            scored:false,chargeable:false,supabase_dependency:false,signals:selectCurrentArchiveSignals(recent,250),
           };
           writeFileSync(join(assetsDir,"latest.json"),JSON.stringify(latest,null,2)+"\n",{mode:0o644});
           // The archive index, rather than the rolling latest feed, is the permanent source of truth.
           writeFileSync(join(assetsDir,"index.json"),JSON.stringify(index,null,2)+"\n",{mode:0o644});
+          const latest_category_counts={geopolitics:0,macro:0,rare_earth:0};
+          for(const signal of latest.signals)latest_category_counts[signal.category]++;
           console.log(JSON.stringify({schema:"geomacro.permanent-public-finds-static-bundle.v1",
             archive_signals:rows.length,archive_months:index.months.length,
-            latest_signals:recent.length,seed_complete:index.seed_complete,
+            validated_current_archive_rows:recent.length,latest_signals:latest.signals.length,
+            latest_category_counts,seed_complete:index.seed_complete,
             d1_reads:0,d1_writes:0,supabase_writes:0,payments:0}));
           NODE
 

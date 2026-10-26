@@ -5,7 +5,7 @@ import {afterEach,describe,it} from "node:test";
 import assert from "node:assert/strict";
 import {
  ARCHIVE_INDEX_SCHEMA,ARCHIVE_MONTH_SCHEMA,isPermanentArchiveSignal,
- publishPermanentDerivedNewsArchive,
+ publishPermanentDerivedNewsArchive,selectCurrentArchiveSignals,
 } from "./publish-permanent-derived-news-archive.mjs";
 
 const NOW=Date.parse("2026-10-26T00:00:00.000Z");
@@ -45,6 +45,72 @@ const failD1=async()=>new Response(JSON.stringify({ok:false,error:"quota"}),{sta
 afterEach(()=>{for(const dir of tempDirs.splice(0))rmSync(dir,{recursive:true,force:true});});
 
 describe("permanent derived-only website archive",()=>{
+ it("round-robins current category records before applying the 250-row feed cap",()=>{
+  const rows=[
+   ...Array.from({length:300},(_,i)=>({...signal(i.toString(16).padStart(8,"0"),"2026-10","geopolitics"),
+     title:"Geomacro finds geopolitical incident number "+i})),
+   ...Array.from({length:70},(_,i)=>({...signal((1000+i).toString(16).padStart(8,"0"),"2026-10","macro"),
+     title:"Geomacro finds economic release number "+i})),
+   ...Array.from({length:14},(_,i)=>({...signal((2000+i).toString(16).padStart(8,"0"),"2026-10","rare_earth"),
+     title:"Geomacro finds mineral output report number "+i})),
+  ];
+  const selected=selectCurrentArchiveSignals(rows,250);
+  const counts={geopolitics:0,macro:0,rare_earth:0};
+  for(const row of selected)counts[row.category]++;
+  assert.equal(selected.length,250);
+  assert.deepEqual(counts,{geopolitics:166,macro:70,rare_earth:14});
+  assert.equal(new Set(selected.map(row=>row.id)).size,250);
+  assert.deepEqual(selected,selected.slice().sort((a,b)=>
+   b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id)));
+ });
+ it("drops generic OSINT placeholders from public latest but does not rewrite the archive",()=>{
+  const real=signal("1111aaaa","2026-10","geopolitics");
+  const template={...signal("2222bbbb","2026-10","geopolitics"),
+   title:"Geomacro finds geopolitical publisher candidate source-feed observation",
+   status:"osint_feed_observed_unverified"};
+  const macro=signal("3333cccc","2026-10","macro");
+  macro.title="Geomacro finds central bank set policy rate";
+  const rare=signal("4444dddd","2026-10","rare_earth");
+  rare.title="Geomacro finds Taiwan announced plans to build rare earths plant";
+  const selected=selectCurrentArchiveSignals([template,real,macro,rare]);
+  assert.deepEqual(selected.map(x=>x.id).sort(),[real.id,macro.id,rare.id].sort());
+ });
+ it("deduplicates normalized headlines across categories and prefers the matching domain",()=>{
+  const geo={...signal("1111aaaa","2026-10","geopolitics"),
+   title:"Geomacro finds Bulgaria held a presidential election dominated by economic hardship, Ukraine war - The Tribune-Democrat",
+   status:"osint_feed_observed_unverified"};
+  const macro={...signal("2222bbbb","2026-10","macro"),
+   title:"Geomacro finds Bulgaria held a presidential election dominated by economic hardship, Ukraine war",
+   status:"osint_feed_observed_unverified"};
+  const rare1={...signal("3333cccc","2026-10","rare_earth"),
+   title:"Geomacro finds Taiwan announced plans to build rare earths plant"};
+  const rare2={...signal("4444dddd","2026-10","rare_earth"),
+   title:"Geomacro finds Taiwan announced plans to build rare earths plant"};
+  const selected=selectCurrentArchiveSignals([geo,macro,rare1,rare2]);
+  assert.equal(selected.length,2);
+  assert.ok(selected.some(x=>x.id===geo.id));
+  assert.ok(!selected.some(x=>x.id===macro.id));
+  assert.ok(selected.some(x=>x.id===rare1.id||x.id===rare2.id));
+ });
+ it("treats only the exact Google News aggregator credit as aggregator-only",()=>{
+  const aggregator={...signal("1111aaaa","2026-10","macro"),
+    title:"Geomacro finds central bank announced new monetary policy",
+    status:"osint_feed_observed_unverified",
+    development_type:"unverified OSINT feed observation",
+    sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"]};
+  const directHost={...aggregator,id:"macro-2222bbbb",
+    sources_credited:["Monitored feed: news.google.com.evil.example"]};
+  const selected=selectCurrentArchiveSignals([aggregator,directHost]);
+  assert.equal(selected.length,1);
+  assert.equal(selected[0].id,directHost.id);
+ });
+ it("rejects duplicate IDs and invalid category limits in current-feed selection",()=>{
+  const duplicate=signal("1234abcd","2026-10","macro");
+  assert.throws(()=>selectCurrentArchiveSignals([duplicate,{...duplicate}],250),
+   /PERMANENT_ARCHIVE_LATEST_INPUT_INVALID/);
+  assert.throws(()=>selectCurrentArchiveSignals([duplicate],251),
+   /PERMANENT_ARCHIVE_LATEST_SELECTION_INVALID/);
+ });
  it("keeps old signals forever and adds new signals without D1",async()=>{
   const p=temp();
   writeCandidates(p.candidatePath,[signal("1234abcd")]);
@@ -71,6 +137,32 @@ describe("permanent derived-only website archive",()=>{
   const index=JSON.parse(readFileSync(join(p.archiveDir,"data/index.json"),"utf8"));
   assert.deepEqual(index.months,["2026-12","2026-10"]);
   assert.equal(index.total_signals,2);
+ });
+ it("never appends generic OSINT publisher placeholders to the permanent archive",async()=>{
+  const p=temp();
+  const real=signal("1234abcd","2026-10","macro");
+  real.title="Geomacro finds central bank announced a new policy rate";
+  const template={...signal("9999eeee","2026-10","geopolitics"),
+   title:"Geomacro finds geopolitical publisher candidate source-feed observation",
+   topic:"geopolitical publisher candidate",
+   development_type:"unverified OSINT feed observation",
+   status:"osint_feed_observed_unverified",
+   sources_credited:["Monitored feed: example.net"]};
+  const nonconcreteOfficial={...signal("8888dddd","2026-10","geopolitics"),
+   title:"Geomacro finds official update on border policy",
+   topic:"geopolitical security",
+   development_type:"official update",
+   what_changed:"The dated original release concerns border policy. The published headline does not establish a named actor performing a verifiable action; no outcome is inferred.",
+   status:"official_release_observed_unscored"};
+  writeCandidates(p.candidatePath,[template,nonconcreteOfficial,real]);
+  const result=await publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:NOW});
+  assert.equal(result.new_signals_added,1);
+  assert.equal(result.total_signals,1);
+  const month=JSON.parse(readFileSync(join(p.archiveDir,"data/archive/2026-10/macro.json"),"utf8"));
+  assert.equal(month.signals.length,1);
+  assert.equal(month.signals[0].id,real.id);
+  const latest=JSON.parse(readFileSync(join(p.assetsDir,"latest.json"),"utf8"));
+  assert.deepEqual(latest.signals.map(row=>row.id),[real.id]);
  });
  it("does not overwrite a previously published ID with changed prose",async()=>{
   const p=temp();

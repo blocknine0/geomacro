@@ -3,7 +3,7 @@ import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
 /**
  * Presentation + intake dedup of derived-only news. No publisher IDs, private
  * URLs, original text or third-party API calls are required.
- * One event appears once WITHIN its category; other categories are independent.
+ * One event appears once across the entire public desk, not once per category.
  * Keep distinct dates, opposing actions, countries and numerical measures.
  */
 const FILLER=/\b(?:geomacro finds|a monitored source feed reports|this report has not been independently verified|country or region mentioned|the dated original release)\b/giu;
@@ -30,7 +30,7 @@ const VERBS:Record<string,string>={
 const POLARITY=new Set(["not","no","never","denies","denied","reject","withdraws","withdrawn"]);
 const WINDOW=36*3600_000;
 type Descriptor={row:StatelessIntelligenceSignal;time:number;tokens:Set<string>;
- numbers:Set<string>;action:string|null;negative:boolean;headline:string};
+ numbers:Set<string>;action:string|null;negative:boolean;headline:string;categoryFit:number};
 function tokenise(text:string):string[]{
  const clean=text.toLocaleLowerCase().normalize("NFKC")
   .replace(FILLER," ").replace(/\b(?:u\.?s\.?a?|united states of america)\b/giu,"united states")
@@ -45,16 +45,29 @@ function descriptor(row:StatelessIntelligenceSignal):Descriptor{
   .replace(/\s+·\s+[^·]{2,80}$/u,"").trim();
  const words=tokenise(headline);
  const action=words.find(w=>Object.values(VERBS).includes(w))??null;
+ const topicText=[row.title,row.topic,row.what_changed].join(" ");
+ const categoryTerms:Record<string,RegExp>={
+  geopolitics:/\b(?:war|attack|missile|election|president|minister|diplomacy|sanctions|border|military|security|foreign policy|government|conflict|ukraine|russia|israel|iran|china|taiwan|sudan|yemen|nato|parliament|political)\b/giu,
+  macro:/\b(?:inflation|prices?|gdp|central bank|interest rates?|currency|exchange rates?|forex|fx|monetary|fiscal|unemployment|jobs|output|growth|recession|economy|economic|bond|yield|debt|cpi|pmi|exchange)\b/giu,
+  rare_earth:/\b(?:rare earths?|critical minerals?|lithium|cobalt|nickel|graphite|copper|manganese|bauxite|ores?|mining|minerals?|batteries?|smelter|refining|uranium|tantalum|gallium|germanium|magnets?|metallurgy|supply chain)\b/giu,
+ };
+ const scores:Record<string,number>={};
+ for(const [category,pattern] of Object.entries(categoryTerms)){
+  pattern.lastIndex=0;
+  scores[category]=[...topicText.matchAll(pattern)].length;
+ }
+ const own=scores[row.category]??0;
+ const other=Math.max(...Object.entries(scores).filter(([category])=>category!==row.category).map(([,score])=>score));
  return {row,time:Date.parse(row.published_at),headline:words.join(" "),
   tokens:new Set(words),numbers:new Set(words.filter(w=>/\d/u.test(w))),
-  action,negative:words.some(w=>POLARITY.has(w))};
+  action,negative:words.some(w=>POLARITY.has(w)),categoryFit:own-other};
 }
 function sameSet(a:Set<string>,b:Set<string>){
  return a.size===b.size&&[...a].every(x=>b.has(x));
 }
 function duplicate(a:Descriptor,b:Descriptor){
- if(a.row.category!==b.row.category||!Number.isFinite(a.time)||
-    !Number.isFinite(b.time)||Math.abs(a.time-b.time)>WINDOW)return false;
+ if(!Number.isFinite(a.time)||!Number.isFinite(b.time)||
+    Math.abs(a.time-b.time)>WINDOW)return false;
  if(a.row.geography&&b.row.geography&&a.row.geography!==b.row.geography)return false;
  if(!sameSet(a.numbers,b.numbers)||a.negative!==b.negative)return false;
  if(a.action&&b.action&&a.action!==b.action)return false;
@@ -72,7 +85,10 @@ function duplicate(a:Descriptor,b:Descriptor){
 function priority(d:Descriptor){
  const verifiedOriginal=d.row.status==="official_release_observed_unscored"?2:1;
  const precise=d.row.date_precision==="exact"?1:0;
- return verifiedOriginal*100+precise*10+Math.min(d.tokens.size,9);
+ // When an event appears in multiple category feeds, retain only the card
+ // whose title/topics best fit that domain; source status breaks near-ties.
+ return Math.max(-20,Math.min(20,d.categoryFit))*100+
+   verifiedOriginal*10+precise*2+Math.min(d.tokens.size,9);
 }
 /**
  * Deterministic and repeat-safe for live refresh, SSR hydration, existing D1
