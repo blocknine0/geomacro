@@ -84,7 +84,7 @@ export function validWdiSource2Reference(data) {
   const year = Number(row?.date);
   return row?.indicator?.id === "NY.GDP.MKTP.CD" &&
     row?.countryiso3code === "USA" && row?.country?.id === "US" &&
-    typeof row?.date === "string" && /^\\d{4}$/.test(row.date) &&
+    typeof row?.date === "string" && /^\d{4}$/.test(row.date) &&
     Number.isInteger(year) && year >= 1960 && year <= new Date().getUTCFullYear() &&
     typeof row.value === "number" && Number.isFinite(row.value) && row.value >= 0;
 }
