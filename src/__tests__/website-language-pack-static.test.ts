@@ -58,7 +58,9 @@ describe("website language pack", () => {
 
     const original = "https://geomacro.live/intelligence?category=macro&query=copper#main";
     const first = runController(original);
-    first.window.GeomacroLanguage?.navigate("bn");
+    (first.window as typeof first.window & {
+      GeomacroLanguage?: { navigate: (language: string) => void };
+    }).GeomacroLanguage?.navigate("bn");
     expect(first.assigned).toHaveLength(1);
     const translated = new URL(first.assigned[0]);
     expect(translated.hostname).toBe("translate.google.com");
@@ -69,7 +71,9 @@ describe("website language pack", () => {
     const proxy = runController(
       "https://geomacro-live.translate.goog/intelligence?category=macro&_x_tr_sl=auto&_x_tr_tl=bn&_x_tr_hl=en#latest",
     );
-    proxy.window.GeomacroLanguage?.navigate("en");
+    (proxy.window as typeof proxy.window & {
+      GeomacroLanguage?: { navigate: (language: string) => void };
+    }).GeomacroLanguage?.navigate("en");
     expect(proxy.assigned).toEqual([
       "https://geomacro.live/intelligence?category=macro#latest",
     ]);
