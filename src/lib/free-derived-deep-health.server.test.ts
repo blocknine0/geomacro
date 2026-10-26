@@ -33,9 +33,26 @@ describe("authentic free-derived static archive deep-health",()=>{
     expect(v.body.free_website_ssr_attested).toBe(false);
     expect(v.body.x402_payment_authorized).toBe(false);
     expect(v.body.consumer_commercial_rights_verified).toBe(false);
+    expect(v.body.feed_source).toBe("permanent_static_archive");
+    expect(v.body.d1_reads_performed).toBe(false);
     expect(v.body.b2_read_performed).toBe(false);
     expect(v.body.supabase_access_performed).toBe(false);
   });
+  it("does not treat feed-only OSINT as official-source health proof",()=>{
+    const osint=story("macro",{
+      status:"osint_feed_observed_unverified",
+      development_type:"unverified OSINT feed observation",
+      geography:null,
+      sources_credited:["Monitored feed: example.net"],
+    });
+    const onlyOsint=classifyFreeDerivedFeed(feed([osint]),time);
+    expect(onlyOsint.statusCode).toBe(503);
+    expect(onlyOsint.body.current_72h_derived_rows).toBe(0);
+    const officialAndOsint=classifyFreeDerivedFeed(feed([story(),osint]),time);
+    expect(officialAndOsint.statusCode).toBe(200);
+    expect(officialAndOsint.body.current_72h_derived_rows).toBe(1);
+    expect(officialAndOsint.body.categories).toEqual({geopolitics:1,macro:0,rare_earth:0});
+   });
   it("reports all 3 original categories ONLY when actually present",()=>{
     const rows=[story(),story("macro"),story("rare_earth")];
     const v=classifyFreeDerivedFeed(feed(rows),time);
