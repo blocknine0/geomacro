@@ -125,7 +125,7 @@ export function classifyMinimumFreeProduction({
       CATEGORIES.includes(row.category)&&
       row.severity===null&&row.same_event_corrob_verified===false&&
       originalPublication(row,nowMs)!==null&&
-      !/(?:https?:\/\/|www\.)/iu.test(JSON.stringify(row));
+      !/(?:https?:\/\/|www\.)/iu.test(JSON.stringify({...row,sources_credited:[]}));
     if(row?.status==="osint_feed_observed_unverified"){
       const credits=Array.isArray(row.sources_credited)?row.sources_credited:[];
       const validOsint=common&&row.date_precision==="exact"&&
