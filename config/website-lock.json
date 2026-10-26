@@ -1,13 +1,13 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "5a9468e787df7e8124f3911004562fefeba75f0f",
+  "baseline_sha": "49d13acbedcf6dd191251da6dbea10056e5b74b1",
   "published_baseline": "Founder directs Geomacro to restore actual intelligence news published after 10 October 2026, across Geopolitics, Macro/FX and Critical Minerals, not fabricated or backdated stories. Existing 30d rolling derived-only Cloudflare D1 website journal, direct browser D1 fallback, initial SSR and 30-minute background ingestion stay in place. Source expansion: first-party UK Home Office security, UK DBT Macro/FX economic trade policy, India Ministry of Mines PIB original page clock verified in IST; only admitted first-party and relevant original releases generate generic Geomacro-derived What changed / Why it matters, without copying headlines, original URLs, publisher raw text or secrets. The active /intelligence SSR loader reads independently verified derived news directly from the public D1 endpoint rather than nesting an unreliable server-function RPC, and the source reader preserves actual original time, strict 15-minute original-source delay, dedup, and source-health warnings; no synthetic news from empty publisher windows. no x402 or GRI changes; independent 60m Global Risk remains. User will manually publish only after exact-head source/test/security verification and Lovable sync; live acceptance separate. Founder directs gap recovery from prior Supabase freeze; verified first-party 2026-10-01 onward original-first-publication GOV UK archived Search + Content API, separate manual once/weekly backfill into derived-only D1. If Lovable SSR or browser transport returns no cards, free website shows source-private sandboxed/no-script Cloudflare D1 newsroom HTML fallback with original dates, Geomacro Finds, What changed and Why it matters, not fabricated latest news.  Original founder recovery live-D1 HTML cards pass through the corrected Signal[] array from fetchDirectDerivedNews() to initialJournal first HTML; the formerly erroneous history.value.signals silently discarded all records. Show unknown/loading rather than zero when network/SSR have not provided a verified count. Embedded direct D1 output remains source-private. Founder-authorized source-display recovery (October 13): first HTML paint now requests all three existing official-source category readers independently and in parallel, retains verified D1 30-day journal and explicit per-category fail-closed state, and avoids duplicate immediate browser refresh for already fetched categories. No changes to previously frozen Global Risk presentation or Ask hybrid workflow; still waiting exact-SHA website publish acceptance. Founder-authorized 23 October concise Store and returning-reader refresh approved in source; exact-SHA live acceptance remains pending. Owner supersedes the earlier 15-minute Intelligence publication delay on 23 October 2026: exact source-native releases are eligible immediately after existing verification. Preserve uncertain day dates, future/stale rejection, rights/signatures, locked pricing, funds restrictions and independent 60-minute scored Risk Index delay. New immediate reader alias uses the same D1 journal; old published browser contract remains compatible during rollout.   Current approved read-path update (2026-10-26): the permanent append-only public Geomacro Finds archive on Cloudflare Workers Static Assets is now the canonical public newsroom history; the homepage, public Find-card API and Intelligence desk read the static rolling latest feed, with the Intelligence desk also loading immutable month/category archive shards. No ordinary public newsroom read calls the D1 journal or falls back to a D1-backed server function. Live original-source ingestion continues independently and appends only validated, deduplicated Geomacro-derived cards. This explicit current architecture supersedes earlier D1 browser-fallback wording above; the D1-backed write/checkpoint path and Predge shared-feed contract remain separate. Archive seed can recover only still-retained legacy records; no missing historical records are fabricated.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update. The finalized /global-risk presentation is additionally protected by its independent permanent lock. Deployment publication is accepted separately by the exact-SHA live acceptance gate.",
   "locked_at_utc": "2026-10-10T17:25:00Z",
   "published_source_sha": "7215b0d05b05ccc4de1e5f69a333ae615abc38e3",
-  "lock_revision": "founder-approved-language-pack-navigation-20261026",
+  "lock_revision": "founder-approved-language-pack-redirect-fallback-20261026",
   "pending_publish_acceptance": true,
   "website_privacy_baseline_status": "FOUNDER_APPROVED_WEBSITE_AUDIT_PENDING_EXACT_SHA_DEPLOYMENT",
   "approved_ask_index_home_find_copy_followup_20261024": {
@@ -584,6 +584,25 @@
     "purpose": "Use one shared window.GeomacroLanguage controller for all 15 supported locales; remove competing global menu event interception; preserve path, query and hash through the translated-host proxy. Keep all Global Risk presentation, commercial pricing, source/data policy and payment gates unchanged.",
     "approved_ui_commit": "5a9468e787df7e8124f3911004562fefeba75f0f",
     "previous_baseline_sha": "3e710cc283c3a97e94a475bb3d8eb78af26568a3",
+    "global_risk_final_lock_unmodified": true,
+    "paid_pricing_unmodified": true,
+    "sources_and_payments_unchanged": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "lovable_publish_required": true,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_language_pack_fallback_20261026": {
+    "approval": "Founder explicitly reported on 2026-10-26 that the already-published language pack still failed, and requested a permanent working fix. This record authorizes the canonical Translate redirect and no-op fallback repair.",
+    "scope": [
+      "public/geomacro-language.js",
+      "src/components/site-shell.tsx",
+      "src/__tests__/website-language-pack-static.test.ts",
+      ".github/workflows/minimum-free-derived-production-health.yml"
+    ],
+    "purpose": "Use the canonical Google Translate website endpoint rather than depending on a translated-host proxy; preserve the original route, query and fragment; fall back to the same controlled navigation if the static language controller is missing or fails. Keep translation free, and keep Global Risk presentation, source/data policy, commercial pricing and payment gates unchanged.",
+    "approved_ui_commit": "49d13acbedcf6dd191251da6dbea10056e5b74b1",
+    "previous_baseline_sha": "5a9468e787df7e8124f3911004562fefeba75f0f",
     "global_risk_final_lock_unmodified": true,
     "paid_pricing_unmodified": true,
     "sources_and_payments_unchanged": true,
