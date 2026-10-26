@@ -7,7 +7,7 @@ does NOT imply a verified publisher in every country.
 
 ## Implemented operation
 `Private Global OSINT 15-Minute Discovery` runs GitHub Actions on a
-best-effort five-minute schedule and immediately after a successful trusted
+best-effort 15-minute collection schedule and immediately after a successful trusted
 D1 control-plane deployment. All selected registered source endpoint URLs
 are checked on each tick; 5-minute polling does not guarantee a request
 starts or completes within five minutes.
