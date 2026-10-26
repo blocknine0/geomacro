@@ -8,6 +8,8 @@
  * content file stays fail-closed and requires an exact live publish marker.
  */
 import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const SHA = /^[a-f0-9]{40}$/u;
 const SCHEMA = "geomacro.live-web-source-marker-check.v1";
@@ -102,6 +104,6 @@ function main() {
   else if (decision.status === "invalid") process.exitCode = 11;
 }
 
-if (import.meta.url === new URL(process.argv[1] ?? "", "file:").href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   main();
 }
