@@ -88,3 +88,31 @@ test("both protected-main writers use the same bounded-retry independent public 
  assert.match(verifier,/source_content_logged:false/u);
  assert.match(verifier,/payments_performed:0/u);
 });
+
+
+test("account-wide D1 headroom blocks private collectors while retaining full news ingestion only when healthy",()=>{
+ const workflow=read(".github/workflows/private-global-osint-15m.yml");
+ const quota=read("scripts/ops/audit-d1-account-daily-quota-readonly.mjs");
+ const publisher=read("scripts/lib/private-osint-15m-durable-publisher.mjs");
+ assert.match(workflow,/d1-quota-preflight:/u);
+ assert.match(workflow,/node scripts\/ops\/audit-d1-account-daily-quota-readonly\.mjs/u);
+ assert.equal([...workflow.matchAll(/needs\.d1-quota-preflight\.outputs\.headroom == 'ready'/gu)].length,2);
+ assert.match(quota,/rows_read:5_000_000,rows_written:100_000/u);
+ assert.match(publisher,/source_health_snapshot_cadence_nominal_minutes:snapshot\.interval_minutes\*snapshot\.slots/u);
+ assert.match(read("scripts/ops/private-osint-15m-tick.ts"),/sourceHealthSnapshotIntervalMinutes:15/u);
+ assert.match(read("scripts/ops/private-unverified-osint-tick.ts"),/sourceHealthSnapshotIntervalMinutes:15/u);
+});
+
+test("D1 daily-quota preflight leaves append-only permanent archive independent of database availability",()=>{
+ const workflow=read(".github/workflows/website-derived-news-continuity.yml");
+ const publisher=read("scripts/ops/publish-website-derived-news.ts");
+ const audit=workflow.indexOf("node scripts/ops/audit-d1-account-daily-quota-readonly.mjs");
+ const d1Writer=workflow.indexOf("bun scripts/ops/publish-website-derived-news.ts");
+ const archive=workflow.indexOf("Publish append-only permanent Finds archive without D1 dependency");
+ assert.ok(audit>=0&&d1Writer>audit&&archive>d1Writer);
+ const archiveStep=workflow.slice(archive,workflow.indexOf("\\n      - name:",archive+10));
+ assert.match(archiveStep,/if: always\(\) && github\.event_name != 'pull_request'/u);
+ assert.doesNotMatch(archiveStep,/steps\.d1-quota\.outputs\.headroom/u);
+ assert.match(publisher,/GEOMACRO_D1_QUOTA_HEADROOM===\"held\"/u);
+ assert.match(publisher,/D1_QUOTA_HEADROOM_HELD_STATIC_ARCHIVE_ONLY/u);
+});
