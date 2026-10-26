@@ -72,6 +72,8 @@ async function fetchPublicReadWithRetry(
 
 export const GEOMACRO_DERIVED_JOURNAL_URL =
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
+export const GEOMACRO_DERIVED_BUNDLE_URL =
+  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-bundle";
 export const GEOMACRO_PERMANENT_ARCHIVE_BASE_URL =
   "https://geomacro-public-finds-archive.daspallab202391.workers.dev";
 export const GEOMACRO_PERMANENT_LATEST_URL=GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/latest.json";
@@ -255,48 +257,92 @@ export async function fetchPermanentDerivedNews(
  * promote commercial rights or request a payment. Fail closed if a page is
  * missing, duplicated or served by a stale non-paginated Worker.
  */
-export async function fetchAllDerivedNews(
-  fetchImpl:typeof fetch=fetch,now=Date.now(),
+/** Backward-compatible page reader used only while an older Worker rolls out. */
+async function fetchAllDerivedNewsLegacy(
+  fetchImpl:typeof fetch,now:number,
 ):Promise<StatelessIntelligenceSignal[]> {
-  if(!Number.isFinite(now))throw Error("DERIVED_NEWS_PAGE_CLOCK_INVALID");
   const collected:StatelessIntelligenceSignal[]=[];
   const seen=new Set<string>();
   for(const offset of [0,250,500]){
-    const url=GEOMACRO_DERIVED_JOURNAL_URL+
-      (offset===0?"":"?offset="+offset);
+    const url=GEOMACRO_DERIVED_JOURNAL_URL+(offset===0?"":"?offset="+offset);
     const response=await fetchPublicReadWithRetry(fetchImpl,url,{
       method:"GET",redirect:"error",cache:"no-store",
-      // Publisher/audit readbacks must observe this run's write, not the
-      // edge-cached public snapshot. Cloudflare revalidates no-cache requests.
       headers:{Accept:"application/json","Cache-Control":"no-cache"},
     },8_000);
-    if(!response.ok || Number(response.headers.get("content-length")??0)>512_000)
+    if(!response.ok||Number(response.headers.get("content-length")??0)>512_000)
       throw Error("DERIVED_NEWS_PAGE_UNAVAILABLE");
     const body=await response.text();
     if(body.length>512_000)throw Error("DERIVED_NEWS_PAGE_TOO_LARGE");
     const doc=JSON.parse(body) as Record<string,unknown>;
-    // Stale-if-error is intentionally useful for public UI reads, but never
-    // for write acceptance or source audit. A cached fallback has an old
-    // checked_at and therefore cannot certify this exact readback.
     const checkedAt=Date.parse(String(doc.checked_at??""));
-    const readAt=now;
-    if(!Number.isFinite(checkedAt)||checkedAt>readAt+5_000||readAt-checkedAt>30_000)
+    if(!Number.isFinite(checkedAt)||checkedAt>now+5_000||now-checkedAt>30_000)
       throw Error("DERIVED_NEWS_PAGE_STALE_READBACK");
-    if(doc.page_offset!==offset||doc.page_size!==250||
-       typeof doc.has_more!=="boolean")
+    if(doc.page_offset!==offset||doc.page_size!==250||typeof doc.has_more!=="boolean")
       throw Error("DERIVED_NEWS_PAGE_CONTRACT_INVALID");
-    const rows=checkedDerivedNews(doc,now);
-    for(const row of rows){
+    for(const row of checkedDerivedNews(doc,now)){
       if(seen.has(row.id))throw Error("DERIVED_NEWS_PAGE_DUPLICATE_ID");
       seen.add(row.id);collected.push(row);
     }
     if(doc.has_more===false){
-      if(doc.next_offset!==null)return Promise.reject(
-        Error("DERIVED_NEWS_PAGE_CURSOR_INVALID"));
+      if(doc.next_offset!==null)throw Error("DERIVED_NEWS_PAGE_CURSOR_INVALID");
       return collected;
     }
     if(offset===500||doc.next_offset!==offset+250)
       throw Error("DERIVED_NEWS_PAGE_CURSOR_INVALID");
   }
   throw Error("DERIVED_NEWS_PAGINATION_INCOMPLETE");
+}
+
+/**
+ * Complete journal read using ONE D1 query/HTTP round-trip, bounded at 600
+ * retained rows. The legacy page route is consulted only during deployment
+ * propagation when the bundled route is still absent; hard D1 quota failures
+ * are never retried or downgraded to three expensive scans.
+ */
+export async function fetchAllDerivedNews(
+  fetchImpl:typeof fetch=fetch,now=Date.now(),
+):Promise<StatelessIntelligenceSignal[]> {
+  if(!Number.isFinite(now))throw Error("DERIVED_NEWS_PAGE_CLOCK_INVALID");
+  const response=await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_DERIVED_BUNDLE_URL,{
+    method:"GET",redirect:"error",cache:"no-store",
+    headers:{Accept:"application/json","Cache-Control":"no-cache"},
+  },8_000);
+  if(response.status===401||response.status===404||response.status===405){
+    try{await response.body?.cancel()}catch{/* discard old Worker response */}
+    return fetchAllDerivedNewsLegacy(fetchImpl,now);
+  }
+  if(!response.ok||Number(response.headers.get("content-length")??0)>4_000_000)
+    throw Error("DERIVED_NEWS_BUNDLE_UNAVAILABLE");
+  const body=await response.text();
+  if(body.length>4_000_000)throw Error("DERIVED_NEWS_BUNDLE_TOO_LARGE");
+  const doc=JSON.parse(body) as Record<string,unknown>;
+  // Older Worker revisions route an unrecognised public path through the
+  // default protected handler (401) or return 404/405. Only these route-absence
+  // statuses and the explicit old feed schema get a legacy fallback; 429/5xx
+  // quota/storage failures are never downgraded to multiple expensive reads.
+  if(doc.schema==="geomacro.website-derived-news-feed.v1")
+    return fetchAllDerivedNewsLegacy(fetchImpl,now);
+  const checkedAt=Date.parse(String(doc.checked_at??""));
+  if(!Number.isFinite(checkedAt)||checkedAt>now+5_000||now-checkedAt>30_000)
+    throw Error("DERIVED_NEWS_BUNDLE_STALE_READBACK");
+  if(doc.ok!==true||doc.schema!=="geomacro.website-derived-news-bundle.v1"||
+     doc.original_release_delay_minutes!==0||doc.retention_days!==3||
+     doc.retention_hours!==72||doc.delivery_scope!=="free_website_only"||
+     doc.complete!==true||doc.item_cap!==600||
+     !Array.isArray(doc.signals)||doc.signals.length>600||
+     doc.returned_rows!==doc.signals.length||
+     !Array.isArray(doc.first_ingest)||doc.first_ingest.length!==doc.signals.length||
+     doc.first_ingest.some((row:any,i:number)=>!row||row.id!==((doc.signals as any[])[i] as any)?.id||
+       !(row.first_seen_at===null||typeof row.first_seen_at==="string"&&
+         Number.isFinite(Date.parse(row.first_seen_at)))))
+    throw Error("DERIVED_NEWS_BUNDLE_CONTRACT_INVALID");
+  const collected:StatelessIntelligenceSignal[]=[];
+  const seen=new Set<string>();
+  for(const value of doc.signals){
+    if(!safeSignal(value,now))continue;
+    const row=value as StatelessIntelligenceSignal;
+    if(seen.has(row.id))throw Error("DERIVED_NEWS_BUNDLE_DUPLICATE_ID");
+    seen.add(row.id);collected.push(row);
+  }
+  return collected;
 }
