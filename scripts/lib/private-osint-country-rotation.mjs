@@ -3,19 +3,19 @@
  * host. An index query is NOT an original publisher, event location, native
  * original-page date, commercial right or a verified local source.
  *
- * 49 canonical countries per nominal 5-minute invocation => all 195 routed
- * in four successive delivered slots (20 minutes). GitHub scheduling, Google
- * indexing and source uptime cannot guarantee a 20-minute discovery SLA.
+ * 49 canonical countries per nominal 15-minute scheduled invocation => 195 routes
+ * in four successive delivered slots (60 minutes). GitHub schedules can skip
+ * or delay runs: this cycle is not an ingestion or publication SLA.
  */
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {privateOsintGlobalSources} from "./private-osint-global-sources.mjs";
 
 export const COUNTRY_DISCOVERY_PER_TICK=49;
 export const COUNTRY_DISCOVERY_CYCLE_SLOTS=4;
-export const COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES=20;
+export const COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES=60;
 const CATEGORIES=Object.freeze(["geopolitics","macro","rare_earth"]);
 const TERMS='(election OR sanctions OR security OR conflict OR border OR war OR trade OR inflation OR currency OR "central bank" OR "critical minerals" OR "rare earth" OR mining OR lithium OR copper)';
-const STEP_MS=5*60000;
+const STEP_MS=15*60000;
 
 export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=COUNTRIES_195){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
