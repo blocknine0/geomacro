@@ -92,6 +92,18 @@ describe("permanent derived-only website archive",()=>{
   assert.ok(!selected.some(x=>x.id===macro.id));
   assert.ok(selected.some(x=>x.id===rare1.id||x.id===rare2.id));
  });
+ it("treats only the exact Google News aggregator credit as aggregator-only",()=>{
+  const aggregator={...signal("1111aaaa","2026-10","macro"),
+    title:"Geomacro finds central bank announced new monetary policy",
+    status:"osint_feed_observed_unverified",
+    development_type:"unverified OSINT feed observation",
+    sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"]};
+  const directHost={...aggregator,id:"macro-2222bbbb",
+    sources_credited:["Monitored feed: news.google.com.evil.example"]};
+  const selected=selectCurrentArchiveSignals([aggregator,directHost]);
+  assert.equal(selected.length,1);
+  assert.equal(selected[0].id,directHost.id);
+ });
  it("rejects duplicate IDs and invalid category limits in current-feed selection",()=>{
   const duplicate=signal("1234abcd","2026-10","macro");
   assert.throws(()=>selectCurrentArchiveSignals([duplicate,{...duplicate}],250),
