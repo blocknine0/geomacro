@@ -55,6 +55,26 @@ test("protected, query-based and header-bearing requests bypass shared cache",as
   assert.equal(reads,7);assert.equal(puts,0);assert.equal(matches,0);
 });
 
+test("public factual JSON uses separate finite category cache keys, private receipts bypass",async()=>{
+  const home="https://geomacro-control-plane.example/v1/public/reusable-source-news";
+  const cached=new Map();let queries=0;
+  const store={async match(key){return cached.get(key.url)?.clone()??null},
+    async put(key,response){cached.set(key.url,response.clone())}};
+  const run=()=>{queries++;return result()};
+  for(const suffix of ["","?domain=macro","?domain=rare_earth","?domain=geopolitics"]){
+    const req=request(home+suffix);
+    assert.equal(eligiblePublicFreeD1CacheRequest(req),true);
+    await readPublicFreeD1Cached(req,run,{cache:store});
+    await readPublicFreeD1Cached(req,run,{cache:store});
+  }
+  assert.equal(queries,4);
+  assert.equal(cached.size,4);
+  for(const suffix of ["?country=IND","?offset=200","?domain=macro&country=IND","?domain=bitcoin"]){
+    assert.equal(eligiblePublicFreeD1CacheRequest(request(home+suffix)),false);
+  }
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(home,{Authorization:"Bearer private"})),false);
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(home,{"Cache-Control":"no-store"})),false);
+});
 test("cache failure cannot replace truthful D1 readback",async()=>{
   let reads=0;
   const broken={async match(){throw Error("CACHE_OUTAGE")},async put(){throw Error("CACHE_WRITE_FAILED")}};
@@ -80,4 +100,5 @@ test("Worker keeps public-only cache and original strict private access intact",
   assert.match(code,/return publicReadCache\(\(\)=>renderDerivedStoriesHtml\(env\)\)/);
   assert.match(code,/if\(q.size===0\)return publicReadCache/);
   assert.match(code,/return handlePrivateOsint15m\(request,env\)/);
+  assert.match(code,/return publicReadCache\(\(\)=>publicReusableSourceNews\(env,url.searchParams\)\)/);
 });
