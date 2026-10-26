@@ -241,3 +241,38 @@ test("protected D1 write categorizes free quota and missing schema without SQL d
  assert.equal(body.paid_product_authorized,false);
  assert.ok(!JSON.stringify(body).includes("secret"));
 });
+
+test("free D1 private hard-cap evicts only oldest excess rows, never a full NOT IN scan",()=>{
+ const source=readFileSync(new URL("../../workers/control-plane/src/private-osint-15m.mjs",import.meta.url),"utf8");
+ assert.ok(source.includes("ORDER BY native_feed_published_at ASC,item_id ASC LIMIT"));
+ assert.ok(!source.includes('"DELETE FROM private_osint_news_25h WHERE item_id NOT IN "'));
+ const db=new DatabaseSync(":memory:");
+ db.exec("CREATE TABLE private_osint_news_25h(item_id TEXT PRIMARY KEY,native_feed_published_at TEXT NOT NULL)");
+ db.exec("CREATE INDEX idx_private_osint_news_clock ON private_osint_news_25h(native_feed_published_at DESC,item_id DESC)");
+ const insert=db.prepare("INSERT INTO private_osint_news_25h(item_id,native_feed_published_at) VALUES(?,?)");
+ const all=[];
+ try{
+  db.exec("BEGIN");
+  for(let i=0;i<4007;i++){
+   const id=i.toString(16).padStart(64,"0");
+   const native=new Date(now-300000+Math.floor(i/3)*100).toISOString();
+   insert.run(id,native);
+   all.push({id,native});
+  }
+  db.exec("COMMIT");
+  const trim="DELETE FROM private_osint_news_25h WHERE item_id IN "+
+   "(SELECT item_id FROM private_osint_news_25h "+
+   "ORDER BY native_feed_published_at ASC,item_id ASC LIMIT "+
+   "MAX(0,(SELECT COUNT(*) FROM private_osint_news_25h)-4000))";
+  db.prepare(trim).run();
+  const retained=db.prepare("SELECT item_id FROM private_osint_news_25h ORDER BY native_feed_published_at DESC,item_id DESC").all().map(x=>x.item_id);
+  const expected=all.sort((a,b)=>b.native.localeCompare(a.native)||b.id.localeCompare(a.id))
+   .slice(0,4000).map(x=>x.id);
+  assert.deepEqual(retained,expected);
+  assert.equal(retained.length,4000);
+  db.prepare(trim).run();
+  assert.equal(db.prepare("SELECT count(*) AS n FROM private_osint_news_25h").get().n,4000);
+  const plan=db.prepare("EXPLAIN QUERY PLAN "+trim).all().map(x=>x.detail).join(" ");
+  assert.ok(plan.includes("idx_private_osint_news_clock"));
+ }finally{db.close()}
+});
