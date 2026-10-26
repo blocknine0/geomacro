@@ -16,7 +16,7 @@ The new per-tick `category_live_source_coverage` field is a specific health view
 
 ## Inventory and explicit country gaps
 
-The global accepted manifest contains 369 endpoints. The collector merges the 7 India PIB official-feed candidates, 7 macro/minerals candidates, and 32 regional candidates, for a 415-endpoint registry before any future source changes. Candidate endpoints are read and status-checked on each protected-main tick; registration itself is not health evidence.
+The global accepted manifest contains 369 endpoints. The collector merges the 7 India PIB official-feed candidates, 7 macro/minerals candidates, and 31 regional candidates, for a 414-endpoint registry before any future source changes. Candidate endpoints are read and status-checked on each protected-main tick; registration itself is not health evidence.
 
 The latest registry tests expect local publisher-country metadata for **65 of 195 countries**. **130 countries still have no country-specific publisher source recorded**. Global or regional sources provide fallbacks, but do not erase that local-source gap and do not imply that every country produces a news item on every tick.
 
@@ -28,7 +28,6 @@ Additional live-feed candidates verified against official publisher RSS/Atom lis
 
 | ID | Scope | Category lane | Publisher feed | Documentation / source listing |
 |---|---|---|---|---|
-| `private_expansion_ungeneva_press_rss` | Global multilateral | Geopolitics | https://www.ungeneva.org/news-media/press-releases-list/rss.xml | [UN Geneva RSS list](https://www.ungeneva.org/en/news-media/rss) |
 | `private_expansion_uk_fcdo_atom` | United Kingdom | Geopolitics | https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom | [FCDO organisation feed page](https://www.gov.uk/government/organisations/foreign-commonwealth-development-office) |
 | `private_expansion_bw_bankofbotswana_press` | Botswana | Geopolitics / macro | https://www.bankofbotswana.bw/rss/press_releases | [Bank of Botswana RSS feeds](https://www.bankofbotswana.bw/content/rss-feeds) |
 | `private_expansion_bw_bankofbotswana_fx` | Botswana | Macro / FX | https://www.bankofbotswana.bw/rss/exchanges | [Bank of Botswana RSS feeds](https://www.bankofbotswana.bw/content/rss-feeds) |
@@ -40,7 +39,7 @@ Additional live-feed candidates verified against official publisher RSS/Atom lis
 | `private_expansion_uk_dbt_atom` | United Kingdom | Macro / industrial and mineral policy | https://www.gov.uk/government/organisations/department-for-business-and-trade.atom | [Department for Business and Trade feed page](https://www.gov.uk/government/organisations/department-for-business-and-trade) |
 | `private_expansion_adb_asia_pacific` | Asia-Pacific | Macro / critical minerals | https://www.adb.org/rss.xml | [Asian Development Bank RSS directory](https://www.adb.org/rss) |
 
-Other regional candidates remain registered for Australia Department of Industry, South Africa DSTI and SARS, South Korea MSIT, India Income Tax, Thailand MDES, and Philippine News Agency. PNA remains a third-party-discovered feed candidate, not a publisher-documented URL.
+UN Geneva is deliberately not duplicated in the regional-candidate file because the same official RSS endpoint is already registered in `scripts/lib/global-official-release-feeds.mjs`; the collector reuses that first-party lane. Other regional candidates remain registered for Australia Department of Industry, South Africa DSTI and SARS, South Korea MSIT, India Income Tax, Thailand MDES, and Philippine News Agency. PNA remains a third-party-discovered feed candidate, not a publisher-documented URL.
 
 Two earlier candidates were removed from this set because direct audit probes returned HTTP 402 (AfDB) and HTTP 403 (Pacific Community) in the available retrieval path. They should only be restored when the production collector proves a usable response and native dates. Petromindo remains excluded: its terms prohibit using its content to construct a database and the proposed feed had returned 404.
 
