@@ -92,12 +92,20 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
    const existingIds=new Set(before.results.map(r=>r.item_id));
    for(const r of rows)r.preexisting=existingIds.has(r.id);
    const hasNewRows=rows.some(r=>!r.preexisting);
-   const statements=[
-     env.DB.prepare("DELETE FROM private_osint_news_25h WHERE native_feed_published_at < ?")
-       .bind(new Date(now-maxAgeMs).toISOString()),
-     env.DB.prepare("DELETE FROM private_osint_source_checks_24h WHERE checked_at < ?")
-       .bind(new Date(now-24*3600000).toISOString()),
-   ];
+   const statements=[];
+   // Expiration SELECT/DELETE on every 32-check-only packet multiplied Free
+   // D1 row reads across hundreds of scheduled polls. The private readers
+   // independently apply native-clock windows, so duplicate/quiet bundles
+   // need no maintenance scan. Only real newly discovered items trigger
+   // bounded physical cleanup and oldest-first ring compaction.
+   if(hasNewRows){
+     statements.push(env.DB.prepare(
+       "DELETE FROM private_osint_news_25h WHERE native_feed_published_at < ?"
+     ).bind(new Date(now-maxAgeMs).toISOString()));
+     statements.push(env.DB.prepare(
+       "DELETE FROM private_osint_source_checks_24h WHERE checked_at < ?"
+     ).bind(new Date(now-24*3600000).toISOString()));
+   }
    // One bulk UPDATE covers all existing ids, without resurrecting an id
    // concurrently evicted from the exact 4,000-row retention ring.
    // JSON arrays carry bounded, already validated noncommercial projections.
