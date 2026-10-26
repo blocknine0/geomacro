@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-26T19:49:35.720Z",
+  "updated_at": "2026-10-26T21:46:42.899Z",
   "signals": [
+    {
+      "id": "geopolitics-28b9e128",
+      "category": "geopolitics",
+      "title": "Geomacro finds First Committee: debated Disarmament Machinery Deadlock, Frequency of Resolutions",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "First Committee debated Disarmament Machinery Deadlock, Frequency of Resolutions.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "geopolitical security",
+      "published_at": "2026-10-26T20:16:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-1f0d2922",
       "category": "geopolitics",

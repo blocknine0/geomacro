@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-26T19:49:35.720Z",
+  "checked_at": "2026-10-26T21:46:42.899Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-28b9e128",
+      "category": "geopolitics",
+      "title": "Geomacro finds First Committee: debated Disarmament Machinery Deadlock, Frequency of Resolutions",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "First Committee debated Disarmament Machinery Deadlock, Frequency of Resolutions.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "geopolitical security",
+      "published_at": "2026-10-26T20:16:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-1f0d2922",
       "category": "geopolitics",
@@ -1238,25 +1257,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-65534b1d",
-      "category": "geopolitics",
-      "title": "Geomacro finds Zelensky said Ukraine’s speed restrictions remain on Starlink and its military version, Starshield, despite Trump’s assurances",
-      "what_changed": "A monitored source feed reports: Zelensky said Ukraine’s speed restrictions remain on Starlink and its military version, Starshield, despite Trump’s assurances. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-23T20:13:10.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: meduza.io"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
