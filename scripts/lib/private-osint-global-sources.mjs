@@ -443,14 +443,19 @@ export function privateOsintCategoryLiveCoverage(sources,checks=[],items=[]){
   }
   const itemCount=items.filter(item=>item&&item.category===category&&
    item.source&&typeof item.source.original_published_at==="string").length;
+  const status=healthyIds.size>0&&itemCount>0?"LIVE_FEED_AND_DATED_ITEMS_THIS_TICK":
+   healthyIds.size>0?"LIVE_FEED_HEALTHY_NO_MATCHING_DATED_ITEMS":
+   endpoints.length===0?"NO_SOURCE_REGISTERED":"NO_HEALTHY_FEED_THIS_TICK";
   return {category,...health,healthy_distinct_feed_endpoints:healthyIds.size,
-   native_dated_items_in_collector_batch:itemCount,
-   status:healthyIds.size>0?"LIVE_FEED_HEALTHY_THIS_TICK":
-    endpoints.length===0?"NO_SOURCE_REGISTERED":"NO_HEALTHY_FEED_THIS_TICK",
+   native_dated_items_in_collector_batch:itemCount,status,
    a_healthy_feed_does_not_guarantee_a_new_story:true,
    event_country_verified:false,commercially_eligible:false};
  });
- const rowsByStatus=Object.fromEntries(["LIVE_FEED_HEALTHY_THIS_TICK","NO_HEALTHY_FEED_THIS_TICK","NO_SOURCE_REGISTERED"].map(status=>[status,categories.filter(row=>row.status===status).length]));
+ const rowsByStatus=Object.fromEntries([
+  "LIVE_FEED_AND_DATED_ITEMS_THIS_TICK",
+  "LIVE_FEED_HEALTHY_NO_MATCHING_DATED_ITEMS",
+  "NO_HEALTHY_FEED_THIS_TICK","NO_SOURCE_REGISTERED",
+ ].map(status=>[status,categories.filter(row=>row.status===status).length]));
  return {
   schema:"geomacro.private-osint-category-live-source-coverage.v1",
   expected_categories:PRIVATE_OSINT_CATEGORIES.length,
@@ -458,6 +463,8 @@ export function privateOsintCategoryLiveCoverage(sources,checks=[],items=[]){
   categories_with_any_healthy_feed_this_tick:categories.filter(row=>row.healthy_distinct_feed_endpoints>0).length,
   all_categories_have_registered_sources:categories.every(row=>row.registered>0),
   all_categories_have_healthy_feed_this_tick:categories.every(row=>row.healthy_distinct_feed_endpoints>0),
+  categories_with_native_dated_items_this_tick:categories.filter(row=>row.native_dated_items_in_collector_batch>0).length,
+  all_categories_have_native_dated_items_this_tick:categories.every(row=>row.native_dated_items_in_collector_batch>0),
   observation_scope:"PRIVATE_OSINT_FEED_TRANSPORT_AND_NATIVE_DATED_ITEM_COUNTS_NOT_VERIFIED_EVENTS",
   source_states:{...rowsByStatus},
   no_healthy_feed_is_reported_as_a_gap_not_success:true,
