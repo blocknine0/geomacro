@@ -251,8 +251,12 @@ export function privateOsintGlobalSources(){
      !feed.hostname.includes(".")||
      reference.protocol!=="https:"||reference.username||reference.password||
      reference.port||reference.hash||
-     normalizedHost(feed.hostname)!==normalizedHost(reference.hostname)||
-     source.continent!==continent||source.type!=="rss"||
+     !(normalizedHost(feed.hostname)===normalizedHost(reference.hostname)||
+       (source.id==="private_gap_bhr_alayam_local"&&
+        feed.href==="https://feeds.feedburner.com/alayam-online-local-news"&&
+        reference.href==="https://www.alayam.com/pages/rss"&&
+        source.publisher_country_iso3==="BHR"))||
+     source.continent!==continent||!["rss","atom"].includes(source.type)||
      !Array.isArray(source.categories)||source.categories.length<1||
      new Set(source.categories).size!==source.categories.length||
      source.categories.some(c=>!PRIVATE_OSINT_CATEGORIES.includes(c))||
