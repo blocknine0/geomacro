@@ -1,63 +1,63 @@
-# Geomacro OSINT regional source coverage and 195×3 gap matrix
+# Geomacro OSINT source coverage: 195×3 categories + 58 corridors
 
 Date: 26 October 2026
 
-## Coverage dimensions
+## What this audit measures
 
-Geomacro now reports three different measures that must not be merged into one percentage:
+The private OSINT pipeline reports different facts separately:
 
-- **Local publisher coverage:** a source is registered with a publisher-country code matching the country in question.
-- **Regional fallback:** a source has no publisher-country claim but is registered to the same continent.
-- **Global fallback:** a publisher-neutral source is marked global. Feeds for a named publisher country are not incorrectly counted as global fallback merely because their config is grouped as `global`.
+- **Registered category sources:** source endpoints configured for geopolitics, macro/FX, or critical minerals / rare earths.
+- **Live feed health this tick:** only source checks in `OBSERVED` or `EMPTY_OR_OUTSIDE_WINDOW` count as healthy. The collector records `DENIED`, `UNAVAILABLE`, `UNSUPPORTED_FORMAT`, `MALFORMED`, and `NOT_DUE` separately.
+- **Dated items observed:** feed health alone does not mean the source published a new story. Item counts require a publisher-native date that passes the existing bounded 25-hour intake window.
+- **Country-source tiers:** local publisher metadata, same-continent fallback, and global fallback are reported separately. A publisher's location is never treated as the event country.
+- **Corridor acquisition coverage:** canonical monitor references, discovery-only overlays, and actual private feed checks are distinct. A corridor being in the registry is not proof of live physical-flow or disruption evidence.
 
-The private 195-country × 3-category source matrix reports configured, checked, healthy, denied, malformed, unsupported and unavailable sources separately for each tier. `OBSERVED` and `EMPTY_OR_OUTSIDE_WINDOW` mean transport/feed parsing succeeded for that tick; neither proves a fresh event, event truth, local original publication, reuse rights or paid eligibility.
+The new per-tick `category_live_source_coverage` field is a specific health view of all three OSINT categories. It states whether each category has at least one healthy feed this tick, and separately counts dated items. A quiet category is not fabricated into a story; a category with no healthy source is not reported as healthy.
 
-## Current source-inventory baseline
+## Inventory and explicit country gaps
 
-The last deterministic inventory reconciliation included 369 accepted endpoints, seven India PIB official-feed candidates, seven Macro/Minerals candidates and the regional candidate registry. The registry gives every country/category at least a publisher-neutral global fallback route; this is not proof that every registered endpoint is healthy.
+The global accepted manifest contains 369 endpoints. The collector merges the 7 India PIB official-feed candidates, 7 macro/minerals candidates, and 32 regional candidates, for a 415-endpoint registry before any future source changes. Candidate endpoints are read and status-checked on each protected-main tick; registration itself is not health evidence.
 
-The baseline before this branch had publisher-country-specific source metadata for 63 of 195 countries. This branch adds official local candidates for Botswana and Thailand; the deterministic registry test now expects **65 of 195 countries with at least one publisher-country-specific source, and 130 countries without one**. This is registration coverage, not proof of healthy local feeds. The production tick and detailed audit recalculate health instead of assuming every country has a working local source.
+The latest registry tests expect local publisher-country metadata for **65 of 195 countries**. **130 countries still have no country-specific publisher source recorded**. Global or regional sources provide fallbacks, but do not erase that local-source gap and do not imply that every country produces a news item on every tick.
 
-## Local and regional feeds added or clarified
+## Category source coverage
 
-| ID | Publisher / region | Category | Feed URL | Provenance |
+The inventory now has an explicit diversity guard: at least 12 registered endpoints for each of `geopolitics`, `macro`, and `rare_earth`. This catches accidental configuration regressions, not an upstream outage. Production results still depend on successful source checks and native-clock parsing.
+
+Additional live-feed candidates verified against official publisher RSS/Atom listing pages include:
+
+| ID | Scope | Category lane | Publisher feed | Documentation / source listing |
 |---|---|---|---|---|
-| `private_expansion_au_industry_news` | Australia, Department of Industry | Critical minerals | https://www.industry.gov.au/news.xml | [Official RSS list](https://www.industry.gov.au/contact-us/rss-feeds) |
-| `private_expansion_za_dsti_news` | South Africa, DSTI | Critical minerals | https://www.dsti.gov.za/rss.xml | [Official RSS list](https://www.dsti.gov.za/subscribe) |
-| `private_expansion_za_sars_news` | South Africa, SARS | Macro / trade | https://www.sars.gov.za/feed/?post_type=latest_news | [Official RSS page](https://www.sars.gov.za/about/rss-feeds/) |
-| `private_expansion_kr_msit_press` | South Korea, MSIT | Critical minerals / technology policy | https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=94 | [Official RSS guide](https://www.msit.go.kr/contents/cont.do?mId=173&mPid=147&sCode=user) |
-| `private_expansion_ind_tax_press` | India, Income Tax Department | Macro / fiscal policy | https://wm.incometaxindia.gov.in/press-release-rss-feed/-/asset_publisher/bxhj/rss | [Official tax feeds](https://www.incometaxindia.gov.in/tax-feeds) |
-| `private_expansion_bw_bankofbotswana_news` | Botswana, central bank | Macro / geopolitics | https://www.bankofbotswana.bw/rss/latest_news | [Official RSS feeds](https://www.bankofbotswana.bw/content/rss-feeds) |
-| `private_expansion_th_mdes_news` | Thailand, Ministry of Digital Economy and Society | Macro / geopolitics | https://mdes.go.th/news/rss/3 | [Official RSS list](https://mdes.go.th/rss) |
-| `private_expansion_bw_bankofbotswana_news` | Botswana, central bank | Macro / geopolitics | https://www.bankofbotswana.bw/rss/latest_news | [Official RSS feeds](https://www.bankofbotswana.bw/content/rss-feeds) |
-| `private_expansion_th_mdes_news` | Thailand, Ministry of Digital Economy and Society | Macro / geopolitics | https://mdes.go.th/news/rss/3 | [Official RSS list](https://mdes.go.th/rss) |
-| `private_expansion_ph_pna_news` | Philippines, PNA | Geopolitics | https://www.pna.gov.ph/latest.rss | [Third-party feed directory](https://inklinenews.com/feeds/philippines/) |
-| `private_expansion_afdb_development_news` | Africa, African Development Bank | All three categories, regional candidate | https://www.afdb.org/en/news-and-events/rss | [Official RSS feeds](https://www.afdb.org/en/rss-feeds) |
-| `private_expansion_adb_asia_pacific` | Asia-Pacific, Asian Development Bank | Macro / critical minerals, regional fallback | https://www.adb.org/rss.xml | [Official RSS](https://www.adb.org/rss) |
-| `private_expansion_spc_pacific_news` | Pacific Community | All three categories, regional fallback | https://www.spc.int/rss.xml | [Official newsroom](https://www.spc.int/updates/news) |
-| `private_expansion_afdb_development_news` | Africa, African Development Bank | All three categories, regional candidate | https://www.afdb.org/en/news-and-events/rss | [Official RSS feeds](https://www.afdb.org/en/rss-feeds) |
-| `private_expansion_adb_asia_pacific` | Asia-Pacific, Asian Development Bank | Macro / critical minerals, regional fallback | https://www.adb.org/rss.xml | [Official RSS](https://www.adb.org/rss) |
-| `private_expansion_spc_pacific_news` | Pacific Community | All three categories, regional fallback | https://www.spc.int/rss.xml | [Official newsroom](https://www.spc.int/updates/news) |
+| `private_expansion_ungeneva_press_rss` | Global multilateral | Geopolitics | https://www.ungeneva.org/news-media/press-releases-list/rss.xml | [UN Geneva RSS list](https://www.ungeneva.org/en/news-media/rss) |
+| `private_expansion_uk_fcdo_atom` | United Kingdom | Geopolitics | https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom | [FCDO organisation feed page](https://www.gov.uk/government/organisations/foreign-commonwealth-development-office) |
+| `private_expansion_bw_bankofbotswana_press` | Botswana | Geopolitics / macro | https://www.bankofbotswana.bw/rss/press_releases | [Bank of Botswana RSS feeds](https://www.bankofbotswana.bw/content/rss-feeds) |
+| `private_expansion_bw_bankofbotswana_fx` | Botswana | Macro / FX | https://www.bankofbotswana.bw/rss/exchanges | [Bank of Botswana RSS feeds](https://www.bankofbotswana.bw/content/rss-feeds) |
+| `private_expansion_statcan_trade_atom` | Canada | Macro / trade | https://www150.statcan.gc.ca/n1/rss/dai-quo/12-eng.atom | [Statistics Canada feed directory](https://www.statcan.gc.ca/en/sc/rss) |
+| `private_expansion_statcan_business_atom` | Canada | Macro / business | https://www150.statcan.gc.ca/n1/rss/dai-quo/33-eng.atom | [Statistics Canada feed directory](https://www.statcan.gc.ca/en/sc/rss) |
+| `private_expansion_eurostat_economy_atom` | Europe-wide | Macro / economy | Eurostat's official RSS/Atom search feed for economy and finance releases | [Eurostat RSS directory](https://ec.europa.eu/eurostat/web/rss) |
+| `private_expansion_eurostat_trade_atom` | Europe-wide | Macro / international trade | Eurostat's official RSS/Atom search feed for international trade releases | [Eurostat RSS directory](https://ec.europa.eu/eurostat/web/rss) |
+| `private_expansion_nrcan_atom` | Canada | Macro / critical minerals | https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada | [Natural Resources Canada RSS feeds](https://natural-resources.canada.ca/corporate/rss-feeds) |
+| `private_expansion_uk_dbt_atom` | United Kingdom | Macro / industrial and mineral policy | https://www.gov.uk/government/organisations/department-for-business-and-trade.atom | [Department for Business and Trade feed page](https://www.gov.uk/government/organisations/department-for-business-and-trade) |
+| `private_expansion_adb_asia_pacific` | Asia-Pacific | Macro / critical minerals | https://www.adb.org/rss.xml | [Asian Development Bank RSS directory](https://www.adb.org/rss) |
 
-These additions are all still `RUNTIME_PROBE_REQUIRED`. They do not become operational sources merely because the official page documents an RSS link. The Philippine News Agency entry remains a third-party-discovered candidate, not an officially documented feed URL.
+Other regional candidates remain registered for Australia Department of Industry, South Africa DSTI and SARS, South Korea MSIT, India Income Tax, Thailand MDES, and Philippine News Agency. PNA remains a third-party-discovered feed candidate, not a publisher-documented URL.
 
-Petromindo was deliberately excluded: the site terms prohibit using its content to construct a database and the proposed mineral RSS URL returned a 404. Do not add it back without explicit permission.
+Two earlier candidates were removed from this set because direct audit probes returned HTTP 402 (AfDB) and HTTP 403 (Pacific Community) in the available retrieval path. They should only be restored when the production collector proves a usable response and native dates. Petromindo remains excluded: its terms prohibit using its content to construct a database and the proposed feed had returned 404.
 
-## Audits and CI
+All new entries remain `RUNTIME_PROBE_REQUIRED`, `provider_rights_verified=false`, `commercial_eligible=false`, `access_verified_in_production=false`, and `publicly_deliverable=false`. The collector still probes them automatically; no candidate gets a pass merely from being listed in this document.
 
-Run `node scripts/ops/audit-private-osint-publisher-coverage.mjs` for a full offline 195×3 report. The output includes:
+## Coverage audit commands
 
-The same report now includes a **58-corridor source matrix** from the canonical corridor crosswalk. It separates canonical monitor-reference metadata, discovery-only overlay references, private OSINT feed candidates, and source health from the current private collector tick. A corridor with declared monitor refs but no polled corridor-associated feed is labelled `REFERENCE_ONLY_NOT_LIVE`; the report never equates a route being named in the registry with live flow/disruption intelligence.
+Run:
 
-- publisher-country source inventory;
-- local, same-continent regional and global-fallback counts for each country/category cell;
-- source check counts and status classes for the current tick when emitted by the production collector;
-- registered local gaps separately from any available fallback route.
+```sh
+node scripts/ops/audit-private-osint-publisher-coverage.mjs
+```
 
-The per-tick private OSINT collector emits the compact `country_category_source_coverage` summary; the offline audit includes detailed cells. The source matrix and the website's separate public-Finds 72-hour coverage endpoint do not replace each other.
+The offline report prints the country-source inventory, all 585 country-category cells, category endpoint counts, and 58 corridor rows. It is explicitly marked as an offline inventory report, not a live health snapshot. The scheduled protected-main tick adds current source states, the three-category live-feed status, native-clock dated-item counts, and verified private D1 readback counts.
 
-## Validation and limits
+## Acceptance and limits
 
-The tests use synthetic dated RSS responses to validate routing, health-state priority, duplicate protection and noncommercial flags. CI passing proves the code contract, not that every real feed currently responds or that all 585 cells received a story.
+PR tests simulate feed responses to verify RSS/Atom parsing, native-date selection, category routing, per-tick health accounting, local/regional/global priority, deduplication, and privacy/rights guardrails. CI success proves the code contract, not that every real feed currently responds.
 
-Production health is established only when the trusted main-branch collector actually reads each feed, validates a native publication clock, persists the private metadata and reads the write back from protected D1. GitHub `pull_request` production collector jobs intentionally skip. No source here is activated for public redistribution, signed products, partner feeds or x402.
+After merge, the trusted `main` collector must show healthy feeds for geopolitics, macro/FX, and critical minerals in the same tick, with private D1 persistence/readback verified. If a lane has no healthy feed, it is reported as degraded rather than marked complete. No new source here enables public raw-source delivery, signing, partner delivery, or x402.
