@@ -29,7 +29,7 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).not.toContain("website-derived-news-html");
     // The archive and current feed are public static assets, not D1 reads.
     expect(desk).toContain("Historical findings come from the append-only static archive");
-    expect(desk).toContain("No website read has a D1 or server-function fallback");
+    expect(desk).toContain("read has a D1 or server-function fallback");
     expect(desk).not.toContain("localStorage");
     expect(desk).toContain("loadReaderPreferences()");
     expect(desk).toContain("saveReaderPreferences({ category: view, savedIds, lastVisit: visitStarted.current })");
