@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {createHash,createHmac} from "node:crypto";
 import {DatabaseSync} from "node:sqlite";
 import {readFileSync} from "node:fs";
-import {handlePrivateOsint15m,privateOsint15mWrite,privateOsint15mRead,PRIVATE_OSINT_D1_SCHEMA} from "../../workers/control-plane/src/private-osint-15m.mjs";
+import {handlePrivateOsint15m,privateOsint15mWrite,privateOsint15mRead,privateOsintD1FailureClass,PRIVATE_OSINT_D1_SCHEMA} from "../../workers/control-plane/src/private-osint-15m.mjs";
 const now=Date.parse("2026-10-25T12:00:00.000Z");
 const at="2026-10-25T11:52:00.000Z";
 const hash=x=>createHash("sha256").update(x).digest("hex");
@@ -222,4 +222,22 @@ test("D1 durably accepts a newly seen news record after 15m and never resets fir
  assert.equal(readback.items.length,1);
  assert.equal(readback.items[0].private_first_seen_at,firstSeen);
  assert.equal(readback.items[0].commercially_eligible,false);
+});
+
+test("protected D1 write categorizes free quota and missing schema without SQL disclosure",async()=>{
+ assert.equal(privateOsintD1FailureClass({message:"Your account has exceeded D1's free tier daily row read limit. Upgrade or wait"}),"D1_FREE_DAILY_ROW_READ_LIMIT");
+ assert.equal(privateOsintD1FailureClass({message:"Your account has exceeded D1's free tier daily row write limit."}),"D1_FREE_DAILY_ROW_WRITE_LIMIT");
+ assert.equal(privateOsintD1FailureClass({message:"no such table: private_osint_news_25h"}),"D1_SCHEMA_UNAVAILABLE");
+ assert.equal(privateOsintD1FailureClass({message:"secret internal SQL + payment data"}),"D1_UNCLASSIFIED_STORAGE_FAILURE");
+ const message="Your account has exceeded D1's free tier daily row read limit. private secret!";
+ const fail=await privateOsint15mWrite({DB:{prepare(){throw Error(message)}}},
+   {schema:PRIVATE_OSINT_D1_SCHEMA,items:[],checks:[check()]},now);
+ assert.equal(fail.status,503);
+ const body=await fail.json();
+ assert.equal(body.failure_class,"D1_FREE_DAILY_ROW_READ_LIMIT");
+ assert.equal(body.retry_after_utc,"2026-10-26T00:00:00.000Z");
+ assert.equal(body.write_or_readback_commit_status_unknown,true);
+ assert.equal(body.public_published,false);
+ assert.equal(body.paid_product_authorized,false);
+ assert.ok(!JSON.stringify(body).includes("secret"));
 });
