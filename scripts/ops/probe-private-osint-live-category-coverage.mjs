@@ -38,6 +38,9 @@ try{
  });
  checks=result.checks;
  items=result.items;
+ const expectedChecks=sources.reduce((count,source)=>count+source.categories.length,0);
+ if(result.summary.source_endpoints_attempted!==sources.length||checks.length!==expectedChecks)
+  throw Error("PRIVATE_OSINT_LIVE_PROBE_CHECK_COUNT_MISMATCH");
  const categoryLive=privateOsintCategoryLiveCoverage(sources,checks,items);
  const publisherCountry=privateOsintPublisherCountryCoverage(sources,checks);
  const countryCategory=privateOsintCountryCategoryCoverage(sources,checks,items,{includeCells:true});
