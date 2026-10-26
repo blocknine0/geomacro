@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {PRODUCTION_FREE_UPDATE_SOURCES,PRODUCTION_FREE_SOURCE_D1_PIPELINE,collectProductionFreeSourceUpdates,summarizeFreeSourceUpdates,probeProductionFreeUpdateSource,FEDERAL_RESERVE_MONETARY_OFFICIAL_FALLBACK_URL} from '../lib/free-source-production-updates.mjs';
+import {PRODUCTION_FREE_UPDATE_SOURCES,PRODUCTION_FREE_SOURCE_D1_PIPELINE,collectProductionFreeSourceUpdates,summarizeFreeSourceUpdates,probeProductionFreeUpdateSource,FEDERAL_RESERVE_MONETARY_OFFICIAL_FALLBACK_URL,assessWdiReferenceContinuity} from '../lib/free-source-production-updates.mjs';
 const at=new Date('2026-10-16T07:10:00.000Z');
 const rss=(id='one',date='Fri, 16 Oct 2026 07:00:00 GMT')=>'<rss><channel><item><guid>'+id+'</guid><title>Private source publication</title><pubDate>'+date+'</pubDate></item></channel></rss>';
 const byUrl=new Map(PRODUCTION_FREE_UPDATE_SOURCES.map(s=>[s.url,s]));
@@ -64,6 +64,51 @@ test('the same slot performs no upstream request and the next slot reads only fa
  assert.ok(Object.values(next.per_category).some(c=>c.newly_detected_update_fingerprints>0));
  const same=await collectProductionFreeSourceUpdates({stateClient:state,now:new Date(at.getTime()+3600000),fetchImpl:network('two')});
  assert.ok(Object.values(same.per_category).every(c=>c.newly_detected_update_fingerprints===0));
+});
+test('WDI 200 malformed source recovers after 6 hours, not hourly, while preserving D1 last good reference',async()=>{
+ const state=memoryState();
+ const first=await collectProductionFreeSourceUpdates({stateClient:state,now:at,fetchImpl:network('one')});
+ assert.equal(first.wdi_reference.status,'SOURCE_READ_WITHIN_36H');
+ assert.equal(first.wdi_reference.annual_reference_is_not_current_news,true);
+ assert.equal(first.wdi_reference.last_successful_source_read_within_36h,true);
+ const good=structuredClone(state.rows.get('macro').payload.snapshot.sources.world_bank_wdi);
+ const badNetwork=async(url,options)=>{
+   const spec=byUrl.get(url);
+   if(spec.id==='world_bank_wdi')return new Response(JSON.stringify([
+      {page:1,pages:1,total:0,sourceid:'2'},[]
+   ]),{status:200});
+   return network('two')(url,options);
+ };
+ const badAt=new Date(at.getTime()+24*3600000);
+ const bad=await collectProductionFreeSourceUpdates({stateClient:state,now:badAt,fetchImpl:badNetwork});
+ assert.equal(bad.wdi_reference.status,'SOURCE_RECOVERY_BACKOFF');
+ assert.equal(bad.wdi_reference.last_success_at,good.last_success_at);
+ assert.equal(bad.wdi_reference.last_http_status,200);
+ assert.ok(bad.retained_degraded_source_readers.some(x=>x.id==='world_bank_wdi'));
+ let bankAttempts=0;
+ const countNetwork=async(url,options)=>{
+   if(byUrl.get(url).id==='world_bank_wdi')bankAttempts++;
+   return network('two')(url,options);
+ };
+ await collectProductionFreeSourceUpdates({stateClient:state,now:new Date(badAt.getTime()+60*60000),fetchImpl:countNetwork});
+ assert.equal(bankAttempts,0,'annual malformed response must not retry each hour');
+ const healed=await collectProductionFreeSourceUpdates({stateClient:state,now:new Date(badAt.getTime()+360*60000),fetchImpl:countNetwork});
+ assert.equal(bankAttempts,1);
+ assert.equal(healed.wdi_reference.status,'SOURCE_READ_WITHIN_36H');
+ assert.equal(healed.wdi_reference.d1_verified_source_checkpoint_only,true);
+ assert.equal(healed.wdi_reference.customer_delivery_not_inferred,true);
+});
+test('D1-only WDI continuity is explicit about a never-read, old, or degraded source',()=>{
+ const now=new Date('2026-10-27T12:00:00.000Z');
+ assert.equal(assessWdiReferenceContinuity(null,now).status,'AWAITING_FIRST_POLL');
+ const recent='2026-10-27T10:00:00.000Z';
+ const old='2026-10-24T09:00:00.000Z';
+ const good={state:'TRANSPORT_READABLE',last_attempt_at:recent,last_success_at:recent,http_status:200};
+ assert.equal(assessWdiReferenceContinuity(good,now).status,'SOURCE_READ_WITHIN_36H');
+ assert.equal(assessWdiReferenceContinuity({...good,last_success_at:old},now).status,'LAST_SOURCE_READ_STALE');
+ assert.equal(assessWdiReferenceContinuity({...good,state:'FORMAT_OR_SIZE_UNVERIFIED'},now).status,'SOURCE_RECOVERY_BACKOFF');
+ assert.equal(assessWdiReferenceContinuity({...good,last_success_at:null},now).status,'NO_SUCCESSFUL_REFERENCE_READ');
+ assert.ok(!JSON.stringify(assessWdiReferenceContinuity(good,now)).includes('https://'));
 });
 test('feed updated, future and date-only clocks never become precise originating publications',()=>{
  const s=PRODUCTION_FREE_UPDATE_SOURCES.find(s=>s.id==='noaa_nhc');
@@ -130,7 +175,11 @@ test('production schedule isolates refs and exposes only checkpoint credentials 
  assert.ok(workflow.includes('cancel-in-progress: false'));
  assert.ok(workflow.includes('environment: production'));
  assert.ok(workflow.includes('--production-updates'));
- assert.ok(workflow.includes('path: artifacts/free-source-updates/receipt.json'));
+ assert.ok(workflow.includes('path: |'));
+ assert.ok(workflow.includes('artifacts/free-source-updates/receipt.json'));
+ assert.ok(workflow.includes('artifacts/free-source-updates/deployed-main-readback.json'));
+ assert.ok(workflow.includes('Check actual published main build for WDI source changes'));
+ assert.ok(workflow.includes('github.event_name == \'push\' || github.event_name == \'workflow_dispatch\''));
  const writerSection=workflow.split('  read-only-production-mesh:')[1]?.split('  zoho-subscribed-maritime-candidates:')[0];
  assert.ok(writerSection);
  assert.deepEqual([...writerSection.matchAll(/secrets\.([A-Z0-9_]+)/gu)].map(m=>m[1]).sort(),['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_API_TOKEN']);

@@ -225,6 +225,38 @@ export async function probeProductionFreeUpdateSource(spec,fetchImpl=fetch,now=n
  }
  return {result,observed,official_fallback_used};
 }
+/**
+ * Verified D1-only operational readback. This proves freshness of the latest
+ * successful *source transport*, never that an annual economic observation
+ * was newly published or a current news event was verified.
+ * Emits only source identity, timestamps and closed status enums.
+ */
+export function assessWdiReferenceContinuity(row,now=new Date()){
+ if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
+   throw Error('WDI_SOURCE_CHECK_CLOCK_INVALID');
+ const lastSuccess=Date.parse(row?.last_success_at??'');
+ const lastAttempt=Date.parse(row?.last_attempt_at??'');
+ const hasSuccess=Number.isFinite(lastSuccess)&&lastSuccess<=now.getTime();
+ const status=!row?'AWAITING_FIRST_POLL':
+   row.state!=='TRANSPORT_READABLE'?'SOURCE_RECOVERY_BACKOFF':
+   !hasSuccess?'NO_SUCCESSFUL_REFERENCE_READ':
+   now.getTime()-lastSuccess>36*3600000?'LAST_SOURCE_READ_STALE':
+   'SOURCE_READ_WITHIN_36H';
+ return Object.freeze({
+   source_id:'world_bank_wdi',category:'macro',
+   status,last_attempt_at:Number.isFinite(lastAttempt)&&lastAttempt<=now.getTime()
+     ?row.last_attempt_at:null,
+   last_success_at:hasSuccess?row.last_success_at:null,
+   last_http_status:row?.http_status??null,
+   last_successful_source_read_within_36h:hasSuccess&&
+     now.getTime()-lastSuccess<=36*3600000,
+   d1_verified_source_checkpoint_only:true,
+   annual_reference_is_not_current_news:true,
+   data_release_time_not_inferred:true,
+   customer_delivery_not_inferred:true,
+ });
+}
+
 export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=fetch,now=new Date(),onObservation=null}={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))throw Error('FREE_SOURCE_UPDATE_CLOCK_INVALID');
  const before=await stateClient.loadRows();
@@ -239,7 +271,10 @@ export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=
      old.state==='DENIED_OR_RATE_LIMIT'?(
        ['marad_advisories','iea_minerals_global'].includes(spec.id)
          ?1440:Math.max(360,spec.poll_minutes)
-     ):Math.min(60,spec.poll_minutes);
+     // Annual baselines cannot justify 24 repeated attempts/day after a
+     // malformed/failed 200. A 6-hour retry recovers automatically with a
+     // bounded maximum of four attempts/day; 401/403/429 retain daily backoff.
+     ):spec.baseline?360:Math.min(60,spec.poll_minutes);
    // Scheduled jobs start with jitter. Deduplicate healthy reads by UTC
    // polling slot, not an elapsed cutoff that can skip every other cron run.
    // Publisher denials retain a full elapsed backoff, regardless of slots.
@@ -294,7 +329,9 @@ export async function collectProductionFreeSourceUpdates({stateClient,fetchImpl=
      s.state!=='TRANSPORT_READABLE').map(([id,s])=>({
        id,category,state:s.state,last_attempt_at:s.last_attempt_at,
      }))).sort((a,b)=>a.category.localeCompare(b.category)||a.id.localeCompare(b.id));
+ const wdiReference=assessWdiReferenceContinuity(snapshots.macro.sources.world_bank_wdi,now);
  return {schema:'geomacro.production-free-source-updates.v1',checked_at:now.toISOString(),
+   wdi_reference:wdiReference,
    retained_degraded_source_readers:retainedDegraded,
    families_catalogued:SOURCE_LINEUP.length,
    families_outside_this_reader:SOURCE_LINEUP.filter(s=>!PRODUCTION_FREE_UPDATE_SOURCES.some(r=>r.id===s.id)).length,

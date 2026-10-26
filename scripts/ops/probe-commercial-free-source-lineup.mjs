@@ -37,6 +37,13 @@ if(process.argv.includes('--production-updates')){
      {...receipt,operational_verdict:verdict},null,2)+'\n',{mode:0o600});
    console.log(JSON.stringify(receipt));
    console.log(JSON.stringify(verdict));
+   // Separately report only the last accepted official annual source read.
+   // Never equate annual reference data to breaking news or to paid delivery.
+   if(receipt.wdi_reference?.status!=='SOURCE_READ_WITHIN_36H')
+     console.warn('::warning title=WDI_SOURCE_READ_DEGRADED::'+
+       (receipt.wdi_reference?.status??'NO_WDI_D1_READBACK')+
+       '; existing source-2 daily polling and quota-safe recovery retained.');
+
    if(verdict.require_source_recovery_followup){
      console.warn('::warning title=OFFICIAL_PROVIDERS_DEGRADED::'+
        verdict.retained_degraded_source_count+
@@ -49,6 +56,9 @@ if(process.argv.includes('--production-updates')){
        '- Provider status: '+verdict.operator_status+'\n'+
        '- Current attempts unavailable: '+verdict.attempts_unavailable+'\n'+
        '- Retained provider failures: '+verdict.retained_degraded_source_count+'\n'+
+       '- WDI annual source read: '+(receipt.wdi_reference?.status??'UNKNOWN')+'\n'+
+       '- WDI source last success: '+(receipt.wdi_reference?.last_success_at??'NONE')+'\n'+
+       '- WDI annual data is not current news\n'+
        '- 195-country current signed coverage: NOT VERIFIED\n');
  }catch(error){
    const receipt=safeFreeSourceProductionFailure(error,{phase});
