@@ -184,7 +184,7 @@ test("regional official and sector feeds are deduplicated private candidates, an
  const complete=privateOsintGlobalSources();
  const ids=["private_expansion_au_industry_news","private_expansion_za_dsti_news",
   "private_expansion_za_sars_news","private_expansion_kr_msit_press",
-  "private_expansion_id_petromindo_minerals","private_expansion_ph_pna_news"];
+  "private_expansion_ind_tax_press","private_expansion_ph_pna_news"];
  const selected=complete.filter(s=>ids.includes(s.id));
  assert.equal(selected.length,6);
  assert.ok(additions.sources.some(s=>s.id==="private_expansion_ph_pna_news"&&s.categories[0]==="geopolitics"));
@@ -201,8 +201,8 @@ test("regional official and sector feeds are deduplicated private candidates, an
      ?"South Africa customs announces new import tariffs and trade policy measures"
      :url.includes("msit.go.kr")
       ?"Korea announces critical minerals lithium and rare-earth policy"
-      :url.includes("petromindo.com")
-       ?"Indonesia mining reports nickel cobalt and critical minerals supply changes"
+      :url.includes("incometaxindia.gov.in")
+       ?"India income tax department issues new tax policy and revenue administration update"
        :"Philippines government announces border security treaty and diplomatic agreement";
   return "<rss><channel><item><title>"+title+
    "</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate><link>https://example.org/story</link></item></channel></rss>";
@@ -213,8 +213,8 @@ test("regional official and sector feeds are deduplicated private candidates, an
  assert.equal(result.summary.source_states.OBSERVED,6);
  assert.equal(result.items.length,6);
  assert.equal(result.summary.selected_items_by_category.geopolitics,1);
- assert.equal(result.summary.selected_items_by_category.macro,1);
- assert.equal(result.summary.selected_items_by_category.rare_earth,4);
+ assert.equal(result.summary.selected_items_by_category.macro,2);
+ assert.equal(result.summary.selected_items_by_category.rare_earth,3);
  assert.ok(result.items.every(item=>item.usage_rights.commercial_reuse_authorized===false));
  assert.equal(result.summary.publicly_served,false);
  assert.equal(result.summary.rights_verified,false);
@@ -223,6 +223,7 @@ test("regional official and sector feeds are deduplicated private candidates, an
  assert.ok(coverage.by_country.AUS.working_categories.includes("rare_earth"));
  assert.ok(coverage.by_country.ZAF.working_categories.includes("macro"));
  assert.ok(coverage.by_country.PHL.working_categories.includes("geopolitics"));
+ assert.ok(coverage.by_country.IND.working_categories.includes("macro"));
 });
 
 test("official corridor reference overlay only covers existing named routes, never asserts live transport",()=>{
