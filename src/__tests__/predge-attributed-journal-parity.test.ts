@@ -33,12 +33,20 @@ describe('independent D1 journal parity for attributed private research',()=>{
   }
  });
  it('reads the complete immediate journal with strict duplicate and cursor checks',async()=>{
-  const get=async()=>({status:200,body:{ok:true,page_offset:0,page_size:250,
-   signals:journal,has_more:false,next_offset:null}});
+  const get=async()=>({status:200,path:"public/website-derived-news-bundle",body:{
+   ok:true,schema:"geomacro.website-derived-news-bundle.v1",complete:true,
+   item_cap:600,returned_rows:journal.length,signals:journal,
+   first_ingest:journal.map(s=>({id:s.id,first_seen_at:"2026-10-24T14:00:00.000Z"})),
+   original_release_delay_minutes:0,retention_hours:72,delivery_scope:"free_website_only",
+  }});
   expect(await readPredgeJournal(get)).toEqual(journal);
-  await expect(readPredgeJournal(async()=>({status:200,body:{...(await get()).body,signals:[...journal,...journal]}})))
-   .rejects.toThrow('PREDGE_JOURNAL_INVALID');
-  await expect(readPredgeJournal(async()=>({status:200,body:{...(await get()).body,next_offset:250}})))
-   .rejects.toThrow('PREDGE_JOURNAL_INVALID');
+  await expect(readPredgeJournal(async()=>({status:200,body:{
+   ...(await get()).body,signals:[...journal,...journal],returned_rows:journal.length*2,
+   first_ingest:[...journal,...journal].map(s=>({id:s.id,first_seen_at:null})),
+  }}))).rejects.toThrow('PREDGE_JOURNAL_INVALID');
+  await expect(readPredgeJournal(async()=>({status:200,body:{
+   ...(await get()).body,complete:false,
+  }}))).rejects.toThrow('PREDGE_JOURNAL_INVALID');
+  expect((await get()).path).toBe("public/website-derived-news-bundle");
  });
 });
