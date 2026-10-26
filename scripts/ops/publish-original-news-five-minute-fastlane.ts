@@ -28,7 +28,7 @@ const runAt=Date.now();
 // Full verified D1 baseline BEFORE origin polling. Repeated releases are never
 // counted as fresh 20-minute deliveries or written again on every tick.
 // Fail closed if the bounded journal reader is unavailable.
-const baseline=await fetchAllDerivedNews(fetch,runAt);
+const baseline=await fetchAllDerivedNews(fetch,runAt,{fresh:true});
 const existingIds=new Set(baseline.map(s=>s.id));
 const privateOriginals:StatelessSourceCandidate[]=[];
 const reports=await readFiveMinuteNewsFastlane(runAt,20,
@@ -99,7 +99,7 @@ if(allPublished.length){
  try{
   // Read the SAME journal via its strict 250/500-page complete verified reader;
   // don't report delivered only because D1 returned HTTP 200 on PUT.
-  const records=await fetchAllDerivedNews(fetch,Date.now());
+  const records=await fetchAllDerivedNews(fetch,Date.now(),{fresh:true});
   const ids=new Set(records.map(s=>s.id));
   if(allPublished.some(s=>!ids.has(s.id)))throw Error("D1_INDEPENDENT_READBACK_MISSING");
   const ackNow=Date.now();
