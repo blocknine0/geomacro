@@ -39,6 +39,9 @@ test("accepted global source inventory has distinct pinned feeds in six continen
  assert.equal(sourceMatrix.country_specific_source_countries_registered,65);
  assert.equal(sourceMatrix.countries_without_country_specific_publisher_source.length,130);
  assert.equal(sourceMatrix.scope,"PRIVATE_SOURCE_ACQUISITION_COVERAGE_NOT_PUBLIC_FIND_COVERAGE");
+ const unGenevaCandidate=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8")).sources.find(s=>s.id==="private_expansion_ungeneva_press_rss");
+ assert.equal(liveSources.filter(source=>source.url===unGenevaCandidate.url).length,1);
+ assert.equal(liveSources.find(source=>source.url===unGenevaCandidate.url).id,"ungeneva_press_global");
  const liveSources=privateOsintGlobalSources();
  assert.ok(["geopolitics","macro","rare_earth"].every(category=>liveSources.filter(source=>source.categories.includes(category)).length>=12));
  const manifest=JSON.parse(readFileSync(new URL('../../config/private-osint-working-sources.v1.json',import.meta.url)));
@@ -194,14 +197,15 @@ test("195x3 source-coverage priority distinguishes local, regional and global fa
 test("new regional macro/minerals and maritime corridor candidates are deduplicated, bounded, private",async()=>{
  const additions=JSON.parse(readFileSync(new URL(
   "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
- assert.equal(additions.sources.length,31);
+ assert.equal(additions.sources.length,32);
  const complete=privateOsintGlobalSources();
  assert.ok(complete.length<=512);
  assert.equal(new Set(complete.map(s=>s.url)).size,complete.length);
  for(const item of additions.sources){
   const found=complete.filter(s=>s.url===item.url);
   assert.equal(found.length,1,item.id);
-  assert.equal(found[0].id,item.id);
+  const canonicalId=item.id==="private_expansion_ungeneva_press_rss"?"ungeneva_press_global":item.id;
+   assert.equal(found[0].id,canonicalId,item.id);
   assert.equal(found[0].transport_verified_at_registration,false);
   assert.equal(found[0].commercial_eligible,false);
   assert.equal(found[0].publicly_deliverable,false);
@@ -276,7 +280,7 @@ test("regional official and sector feeds are deduplicated private candidates, an
 test("official local/regional feeds are source-registered with correct categories and current-tick probes",async()=>{
  const additions=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
  const all=privateOsintGlobalSources();
- assert.equal(additions.sources.length,31);
+ assert.equal(additions.sources.length,32);
  const ids=[
   "private_expansion_adb_asia_pacific",
   "private_expansion_bw_bankofbotswana_fx",
@@ -344,7 +348,7 @@ test("new Botswana and Thailand official RSS feeds improve local publisher-count
  const ids=["private_expansion_bw_bankofbotswana_news","private_expansion_th_mdes_news"];
  const selected=all.filter(s=>ids.includes(s.id));
  assert.equal(selected.length,2);
- assert.equal(additions.sources.length,31);
+ assert.equal(additions.sources.length,32);
  const byId=new Map(additions.sources.map(s=>[s.id,s]));
  assert.equal(byId.get(ids[0]).url,"https://www.bankofbotswana.bw/rss/latest_news");
  assert.equal(byId.get(ids[1]).url,"https://mdes.go.th/news/rss/3");
