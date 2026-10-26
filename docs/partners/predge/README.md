@@ -161,7 +161,7 @@ To restore Predge's optional research-only authenticated feed:
    `PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE` to that token. Do **not** reuse the
    old emailed/HMAC-derived token, the root/admin token or the separately
    required Risk Gate token.
-3. Redeploy `.github/workflows/deploy-control-plane-d1.yml` from main.
+3. Redeploy `.github/workflows/deploy-d1-control-plane.yml` from main.
    Verify anonymous=401, previously exposed Bearer=401, **new** Bearer=200
    and source D1-ID parity. Failing protected acceptance means do not hand
    over or claim active access.
