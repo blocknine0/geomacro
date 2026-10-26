@@ -30,7 +30,9 @@ export async function readPublicFreeD1Cached(request,calculate,{
   const key=new Request(url.origin+url.pathname,{method:"GET"});
   try {
     const cached=await cache.match(key);
-    if(cached?.status===200)return cached;
+    if(cached?.status===200 &&
+       cached.headers.get("Cache-Control")==="public, max-age="+PUBLIC_FREE_D1_TTL_SECONDS &&
+       !cached.headers.has("Set-Cookie"))return cached;
   }catch{ /* unavailable cache: fall back to truthful D1 response */ }
   const response=await calculate();
   // Do not conceal missing quotas/storage: fail-closed responses are NEVER
