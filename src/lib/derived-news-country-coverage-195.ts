@@ -18,10 +18,7 @@ const MEDIA_FOLLOWING_COUNTRY=/^\s+(?:daily|times|post|news|herald|press|observe
 function escapeRegExp(value:string){
  return [...value].map(char=>".^$*+?()[]{}|\\".includes(char)?"\\"+char:char).join("");
 }
-const uniqueCountryAliases=[...byName.entries()]
- .filter((entry):entry is [string,string]=>entry[1]!==null)
- .map(([label,iso3])=>({label,iso3}))
- .sort((a,b)=>b.label.length-a.label.length||a.label.localeCompare(b.label));
+
 /**
  * Routes one row only when its exact geography field or headline identifies
  * one unambiguous country. Multiple-country headlines stay regional/unassigned.
@@ -33,7 +30,7 @@ export function countryFromDerivedHeadline(title:string):string|null{
  if(!core)return null;
  const spans:Array<{start:number;end:number;iso3:string}>=[];
  for(const alias of uniqueCountryAliases){
-  const phrase=escapeRegExp(alias.label).replace(/ /gu,"\\s+");
+  const phrase=escapeRegExp(canonical(alias.label)).replace(/ /gu,"\\s+");
   const pattern=new RegExp("(^|[^\\p{L}\\p{N}])("+phrase+")(?=$|[^\\p{L}\\p{N}])","gu");
   for(const match of core.matchAll(pattern)){
    const start=(match.index??0)+match[1].length;
@@ -158,6 +155,11 @@ for(const country of COUNTRIES_195){
   else if(prior!==country.iso3)byName.set(key,null);
  }
 }
+
+const uniqueCountryAliases=[...byName.entries()]
+ .filter((entry):entry is [string,string]=>entry[1]!==null)
+ .map(([label,iso3])=>({label,iso3}))
+ .sort((a,b)=>b.label.length-a.label.length||a.canonical(a.label).localeCompare(canonical(b.label)));
 /** EXACT geography-name or approved alias equality, no fuzzy substring. */
 export function countryFromDerivedGeography(geography:string|null):string|null {
  if(typeof geography!=="string"||geography.length>80||
