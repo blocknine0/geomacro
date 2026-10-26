@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {persistPrivateOsintBatch,PRIVATE_OSINT_DURABLE_SCHEMA} from "./private-osint-15m-durable-publisher.mjs";
+import {createHash} from "node:crypto";
+import {persistPrivateOsintBatch,PRIVATE_OSINT_DURABLE_SCHEMA,PRIVATE_OSINT_D1_HEALTH_SNAPSHOT_SLOTS,selectPrivateOsintD1HealthChecks} from "./private-osint-15m-durable-publisher.mjs";
 const now=Date.parse("2026-10-25T12:00:00.000Z");
 const token="1".repeat(64),host="https://geomacro-control-plane.daspallab202391.workers.dev";
 const input={schema:"geomacro.private-osint-15m-batch.v1",
@@ -178,4 +179,76 @@ test("protected collector differentiates real free D1 read and write limits from
    result:input,privateToken:token,controlPlaneRoot:host,fetchImpl,now
   }),/PRIVATE_OSINT_PROTECTED_D1_WRITE_HTTP_503/);
  }
+});
+
+
+test("every real checked source is D1-snapshotted once across three five-minute UTC slots",()=>{
+ assert.equal(PRIVATE_OSINT_D1_HEALTH_SNAPSHOT_SLOTS,3);
+ const checks=Array.from({length:900},(_,i)=>({
+  source_ref:createHash("sha256").update("private-health-"+i).digest("hex"),
+  category:["geopolitics","macro","rare_earth"][i%3],
+  state:i%2?"EMPTY_OR_OUTSIDE_WINDOW":"OBSERVED",
+  checked_at:new Date(now).toISOString(),
+ }));
+ const batches=[0,1,2].map(n=>selectPrivateOsintD1HealthChecks({
+  checks,now:now+n*300000,slots:3,newsItemCount:10,
+ }));
+ assert.deepEqual(batches.map(x=>x.slot).sort(),[0,1,2]);
+ const selected=batches.flatMap(b=>b.checks);
+ assert.equal(selected.length,checks.length);
+ assert.equal(new Set(selected.map(x=>x.source_ref)).size,checks.length);
+ assert.equal(batches.reduce((x,b)=>x+b.sampled,0),checks.length);
+ assert.ok(batches.every(b=>b.deferred===checks.length-b.sampled));
+ assert.ok(batches.every(b=>b.sampled>250&&b.sampled<350));
+ assert.deepEqual(selectPrivateOsintD1HealthChecks({
+  checks,now:now+15*60000,slots:3,newsItemCount:10
+ }).checks.map(x=>x.source_ref),batches[0].checks.map(x=>x.source_ref));
+ assert.equal(selectPrivateOsintD1HealthChecks({
+  checks,now,slots:1,newsItemCount:10
+ }).sampled,900);
+ assert.throws(()=>selectPrivateOsintD1HealthChecks({
+  checks,now,slots:2
+ }),/PRIVATE_OSINT_HEALTH_SNAPSHOT_INPUT_INVALID/);
+ assert.throws(()=>selectPrivateOsintD1HealthChecks({
+  checks:[{source_ref:"original-publisher-URL"}],now,slots:3
+ }),/PRIVATE_OSINT_HEALTH_SNAPSHOT_INPUT_INVALID/);
+});
+test("private quota sampling persists EVERY dated news item but fewer D1 check UPSERTs",async()=>{
+ const checks=Array.from({length:900},(_,i)=>({
+  source_ref:createHash("sha256").update("private-quota-"+i).digest("hex"),
+  category:["geopolitics","macro","rare_earth"][i%3],
+  state:"OBSERVED",checked_at:new Date(now).toISOString(),
+ }));
+ const items=Array.from({length:33},(_,i)=>({
+  id:"news-"+i.toString(16).padStart(64,"0"),
+  source:{original_published_at:new Date(now-4*60000).toISOString()},
+ }));
+ const {f,calls}=simulate();
+ const receipt=await persistPrivateOsintBatch({
+  result:{schema:input.schema,items,checks},
+  privateToken:token,controlPlaneRoot:host,fetchImpl:f,now,
+  sourceHealthSnapshotSlots:3,
+ });
+ const writes=calls.filter(c=>c.method==="PUT").map(c=>JSON.parse(c.body));
+ assert.equal(receipt.source_checks_observed_this_tick,900);
+ assert.equal(receipt.source_health_snapshot_slots,3);
+ assert.equal(receipt.source_health_snapshot_cadence_nominal_minutes,15);
+ assert.equal(receipt.source_checks_persisted,receipt.source_checks_selected_for_d1);
+ assert.equal(receipt.source_checks_deferred_to_snapshot+receipt.source_checks_persisted,900);
+ assert.ok(receipt.source_checks_persisted>=250&&receipt.source_checks_persisted<=350);
+ assert.equal(receipt.news_rows_verified_in_d1,33);
+ assert.equal(writes.reduce((n,g)=>n+g.items.length,0),33);
+ assert.equal(writes.reduce((n,g)=>n+g.checks.length,0),receipt.source_checks_persisted);
+ assert.ok(writes.every(g=>g.items.length<=16&&g.checks.length<=32));
+ assert.ok(writes.length<15,"3-slot sampling should use far fewer D1 calls than all 900 checks");
+ assert.equal(receipt.d1_write_exact_readback_verified,true);
+ assert.equal(receipt.separate_private_d1_readback_verified,true);
+ assert.equal(calls.filter(c=>c.method==="GET").length,1);
+ const noNews={schema:input.schema,items:[],checks:[checks[0]]};
+ const tiny=await persistPrivateOsintBatch({
+  result:noNews,privateToken:token,controlPlaneRoot:host,fetchImpl:simulate().f,
+  now:now+300000,sourceHealthSnapshotSlots:3,
+ });
+ assert.equal(tiny.source_checks_persisted,1,"quiet single-source intake still gets authenticated D1 health receipt");
+ assert.equal(tiny.news_rows_verified_in_d1,0);
 });
