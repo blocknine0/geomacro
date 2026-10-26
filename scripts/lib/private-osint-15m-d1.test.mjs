@@ -54,11 +54,28 @@ function fakeD1(){
   async batch(qs){
    for(const q of qs){
     if(q.sql.startsWith("INSERT INTO private_osint_news_25h")){
-     const [item_id,category,country_iso3,native_feed_published_at,projection_json,first_seen_at,last_seen_at]=q.params;
-     items.set(item_id,{item_id,category,country_iso3,native_feed_published_at,
-      projection_json,first_seen_at:items.get(item_id)?.first_seen_at??first_seen_at,last_seen_at});
+     const [first_seen_at,last_seen_at,json,cutoff]=q.params;
+     for(const [item_id,category,country_iso3,native_feed_published_at,projection_json] of JSON.parse(json)){
+      const prev=items.get(item_id);
+      if(prev&&prev.projection_json===projection_json&&prev.last_seen_at>cutoff)continue;
+      items.set(item_id,{item_id,category,country_iso3,native_feed_published_at,
+       projection_json,first_seen_at:prev?.first_seen_at??first_seen_at,last_seen_at});
+     }
+    }else if(q.sql.startsWith("UPDATE private_osint_news_25h SET")){
+     const [last_seen_at,json,cutoff]=q.params;
+     for(const [item_id,category,country_iso3,native_feed_published_at,projection_json] of JSON.parse(json)){
+      const prev=items.get(item_id);
+      if(!prev||(prev.projection_json===projection_json&&prev.last_seen_at>cutoff))continue;
+      items.set(item_id,{item_id,category,country_iso3,native_feed_published_at,
+       projection_json,first_seen_at:prev.first_seen_at,last_seen_at});
+     }
     }else if(q.sql.startsWith("INSERT INTO private_osint_source_checks_24h")){
-     for(let i=0;i<q.params.length-1;i+=4)checks.set(q.params[i]+q.params[i+1],q.params.slice(i,i+4));
+     const [json,cutoff]=q.params;
+     for(const [source_ref,category,state,checked_at] of JSON.parse(json)){
+      const key=source_ref+category,prev=checks.get(key);
+      if(!prev||prev[2]!==state||prev[3]<=cutoff)
+       checks.set(key,[source_ref,category,state,checked_at]);
+     }
     }else if(q.sql.startsWith("DELETE FROM private_osint_news_25h WHERE native_feed_published_at")){
      for(const [k,v] of items)if(v.native_feed_published_at<q.params[0])items.delete(k);
     }
@@ -105,8 +122,8 @@ test("largest valid write bundles reads below D1 Free query and parameter ceilin
   const response=await privateOsint15mWrite(env,body,now),receipt=await response.json();
   assert.equal(response.status,200);assert.equal(receipt.persisted,20);assert.equal(receipt.checks_saved,32);
   assert.equal(receipt.existence_and_readback_bundled,true);
-  assert.equal(receipt.d1_queries_this_write,queries);assert.equal(queries,27);
-  assert.ok(queries<50);assert.ok(maxParameters<=100);
+  assert.equal(receipt.d1_queries_this_write,queries);assert.equal(queries,7,"one JSON bulk news UPSERT + one JSON health UPSERT + bounded retention and readback");
+  assert.ok(queries<=8);assert.ok(maxParameters<=4);
   assert.equal(db.prepare('SELECT count(*) AS n FROM private_osint_source_checks_24h').get().n,32);
  }finally{db.close()}
 });
