@@ -81,9 +81,12 @@ export async function persistPrivateOsintBatch({
      const raw=await response.text();
      if(raw.length<=1000){
       const doc=JSON.parse(raw);
+      // Preserve only the server's finite, non-sensitive failure taxonomy.
+      // In particular, don't flatten D1_UNCLASSIFIED_STORAGE_FAILURE into a
+      // generic HTTP 503: that hides real production blockers from the run log.
       if(doc?.error==="PRIVATE_OSINT_D1_WRITE_OR_READBACK_UNAVAILABLE"&&
          ["D1_FREE_DAILY_ROW_READ_LIMIT","D1_FREE_DAILY_ROW_WRITE_LIMIT",
-          "D1_SCHEMA_UNAVAILABLE"].includes(doc.failure_class))
+          "D1_SCHEMA_UNAVAILABLE","D1_UNCLASSIFIED_STORAGE_FAILURE"].includes(doc.failure_class))
        failureClass=doc.failure_class;
      }
     }catch{/* Old Workers / invalid response stay generic. */}
