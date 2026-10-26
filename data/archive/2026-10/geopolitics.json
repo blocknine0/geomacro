@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-26T10:58:32.172Z",
+  "updated_at": "2026-10-26T11:51:02.084Z",
   "signals": [
+    {
+      "id": "geopolitics-7653cf9b",
+      "category": "geopolitics",
+      "title": "Geomacro finds official update on border policy",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "The dated original release concerns border policy. The published headline does not establish a named actor performing a verifiable action; no outcome is inferred.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "geopolitical security",
+      "published_at": "2026-10-26T11:44:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e8e4301f",
+      "category": "geopolitics",
+      "title": "Geomacro finds announcement on foreign policy · Sudan",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "The dated original release concerns foreign policy in Sudan. The published headline does not establish a named actor performing a verifiable action; no outcome is inferred.",
+      "geography": "Sudan",
+      "development_type": "announcement",
+      "topic": "foreign policy",
+      "published_at": "2026-10-26T11:13:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-90f0554e",
       "category": "geopolitics",

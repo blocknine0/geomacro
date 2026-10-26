@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-26T10:58:32.172Z",
+  "checked_at": "2026-10-26T11:51:02.084Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,44 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-7653cf9b",
+      "category": "geopolitics",
+      "title": "Geomacro finds official update on border policy",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "The dated original release concerns border policy. The published headline does not establish a named actor performing a verifiable action; no outcome is inferred.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "geopolitical security",
+      "published_at": "2026-10-26T11:44:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e8e4301f",
+      "category": "geopolitics",
+      "title": "Geomacro finds announcement on foreign policy · Sudan",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "The dated original release concerns foreign policy in Sudan. The published headline does not establish a named actor performing a verifiable action; no outcome is inferred.",
+      "geography": "Sudan",
+      "development_type": "announcement",
+      "topic": "foreign policy",
+      "published_at": "2026-10-26T11:13:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-90f0554e",
       "category": "geopolitics",
@@ -4717,44 +4755,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.france24.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-dbb53fd8",
-      "category": "geopolitics",
-      "title": "Geomacro finds geopolitical publisher candidate source-feed observation",
-      "what_changed": "A monitored source feed contains a dated item about geopolitical publisher candidate. The event actor, precise action and impact have not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical publisher candidate",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-25T07:14:50.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.france24.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-e32aad81",
-      "category": "geopolitics",
-      "title": "Geomacro finds geopolitical publisher candidate source-feed observation",
-      "what_changed": "A monitored source feed contains a dated item about geopolitical publisher candidate. The event actor, precise action and impact have not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical publisher candidate",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-25T07:12:47.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.mehrnews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
