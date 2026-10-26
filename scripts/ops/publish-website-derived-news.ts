@@ -195,7 +195,7 @@ try {
     raw_upstream_stored:false,source_urls_logged:false,payments:0,
   };
   writeFileSync("artifacts/derived-news/permanent-archive-candidates.json",
-    JSON.stringify(archiveCandidates,null,2)+"\\n",{encoding:"utf8",mode:0o600});
+    JSON.stringify(archiveCandidates,null,2)+"\n",{encoding:"utf8",mode:0o600});
   console.log(JSON.stringify({schema:"geomacro.permanent-derived-news-candidates-receipt.v1",
     candidates:archiveCandidates.signals.length,source_sha_present:archiveCandidates.source_sha.length===40,
     independent_of_d1_write:true,raw_upstream_stored:false,payments:0}));
@@ -277,8 +277,10 @@ try {
   // D1 failure never grants a missing reference or suppresses the present
   // original-source audit. This is one bounded D1 read, not a publisher GET.
   let retained:typeof signals=[];
-  try{retained=await fetchAllDerivedNews(fetch,now.getTime());}
-  catch{console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_UNAVAILABLE");}
+  if(workerPolicyReady){
+    try{retained=await fetchAllDerivedNews(fetch,now.getTime());}
+    catch{console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_UNAVAILABLE");}
+  }else console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_SKIPPED_D1_UNAVAILABLE");
   const reconciled=new Map<string,StatelessSourceCandidate>();
   for(const category of categories){
     const sourceRefs=privateOriginals.filter(x=>x.category===category);
@@ -379,6 +381,7 @@ if(process.env.GEOMACRO_AUTOMATED_FINDS_PUBLICATION==="1"){
 // privateOriginals, issuer labels, raw headlines or article URLs. The free
 // newsroom continues even when this optional trace cannot recover its source.
 try {
+  if(!workerPolicyReady)throw Error("PERMANENT_ARCHIVE_D1_READBACK_SKIPPED");
   const reply=await fetch(
     "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate",{
     method:"GET",redirect:"error",cache:"no-store",
