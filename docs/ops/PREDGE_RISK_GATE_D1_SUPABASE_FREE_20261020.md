@@ -52,7 +52,7 @@ files, source registries or legacy consumers from the entire Geomacro repo.
    pinned SPKI public key as `src/lib/risk-object-public-registry.ts`.
    No unsigned key substitution. A future key rotation needs a reviewed code
    change plus protected trust-registry update.
-4. Merge after CI, allow the existing `deploy-control-plane-d1.yml` to
+4. Merge after CI, allow the existing `deploy-d1-control-plane.yml` to
    apply D1 migration, deploy the Worker and set secrets. Confirm the deployed
    SHA and anonymous 401, research token 401, invalid policy 400,
    quota/idempotency behavior, expired/tampered GRO rejection and audit

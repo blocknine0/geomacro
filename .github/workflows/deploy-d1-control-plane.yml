@@ -1,7 +1,12 @@
 name: Deploy D1 Control Plane
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS to deploy the production D1 Control Plane"
+        required: true
+        type: string
   push:
     branches:
       - main
@@ -19,8 +24,6 @@ on:
       - "scripts/tests/public-signed-news.test.mjs"
       - "src/lib/automated-intelligence-input.ts"
       - "src/lib/low-authority-source-review.ts"
-      - ".github/workflows/deploy-control-plane-d1.yml"
-      - "src/__tests__/cloudflare-d1-bootstrap-static.test.ts"
       - "scripts/ops/verify-predge-auth-research-delivery.mjs"
       - "src/__tests__/predge-auth-research-live-verifier.test.ts"
       - "scripts/ops/verify-d1-central-security-budget.mjs"
@@ -56,6 +59,18 @@ jobs:
       D1_DATABASE_NAME: geomacro-control-plane
       WRANGLER_VERSION: "4.136.3"
     steps:
+      - name: Require explicit manual dispatch confirmation
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          DEPLOY_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$DEPLOY_CONFIRMATION" = "DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS" || {
+            echo "::error::EXPLICIT_D1_CONTROL_PLANE_DEPLOY_CONFIRMATION_REQUIRED"
+            exit 2
+          }
+
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

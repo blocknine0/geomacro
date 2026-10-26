@@ -141,7 +141,7 @@ describe("one grant for all qualifying Predge research news, still no resale",()
  });
  it("route and auto-provisioning do not expose control-plane admin or x402 secret",()=>{
   const index=readFileSync("workers/control-plane/src/index.mjs","utf8");
-  const workflow=readFileSync(".github/workflows/deploy-control-plane-d1.yml","utf8");
+  const workflow=readFileSync(".github/workflows/deploy-d1-control-plane.yml","utf8");
   expect(index).toContain('"/v1/partner/predge/derived-structural-72h"');
   expect(index).toContain("predgeResearchDerivedNewsFeed(request,env)");
   expect(workflow).toContain("geomacro-predge-72h-research-only-v1");

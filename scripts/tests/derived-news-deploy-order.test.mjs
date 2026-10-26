@@ -15,7 +15,7 @@ test("Worker, publisher and health endpoint share one explicit topic-policy revi
  assert.match(worker,/export\s*\{\s*DERIVED_NEWS_TOPIC_POLICY_REVISION\s*\}/u);
  assert.match(worker,/isSafeDerivedNewsReadbackSignal\(s\)/u);
  assert.match(index,/derived_news_topic_policy_revision:\s*DERIVED_NEWS_TOPIC_POLICY_REVISION/u);
- const deploy=read(".github/workflows/deploy-control-plane-d1.yml");
+ const deploy=read(".github/workflows/deploy-d1-control-plane.yml");
  assert.ok(deploy.includes('"scripts/lib/derived-news-readback-policy.mjs"'));
  assert.match(publisher,/requireDerivedNewsWorkerPolicy/u);
  const preflight=publisher.indexOf("const workerPolicy=await requireDerivedNewsWorkerPolicy");
@@ -48,7 +48,7 @@ test("continuity workflow skips a same-push Worker deploy race and resumes only 
  const end=workflow.indexOf("    runs-on:",start);
  assert.ok(start>=0&&end>start);
  const condition=workflow.slice(start,end);
- assert.match(condition,/github\.event\.workflow_run\.path == '\.github\/workflows\/deploy-control-plane-d1\.yml'/u);
+ assert.match(condition,/github\.event\.workflow_run\.path == '\.github\/workflows\/deploy-d1-control-plane\.yml'/u);
  assert.ok(condition.includes("deploy-permanent-public-finds-archive.yml"));
  assert.ok(workflow.includes('workflows: ["Deploy D1 Control Plane", "Deploy Permanent Public Finds Archive"]'));
  assert.match(condition,/github\.event\.workflow_run\.head_repository\.full_name == 'blocknine0\/geomacro'/u);

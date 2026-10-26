@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
-const deploy=readFileSync(".github/workflows/deploy-control-plane-d1.yml","utf8");
+const deploy=readFileSync(".github/workflows/deploy-d1-control-plane.yml","utf8");
 const worker=readFileSync("workers/control-plane/src/index.mjs","utf8");
 
 describe("#1827 live Cloudflare D1 historical endpoint acceptance",()=>{

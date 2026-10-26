@@ -5,7 +5,7 @@ import {resolvePredgeResearchBearer,derivePredgeResearchBearer}
 
 describe("19 October emailed Predge research token revocation",()=>{
  it("will never reinstate predictable HMAC fallback at Worker deployment",()=>{
-  const deploy=readFileSync(".github/workflows/deploy-control-plane-d1.yml","utf8");
+  const deploy=readFileSync(".github/workflows/deploy-d1-control-plane.yml","utf8");
   expect(deploy).toContain("PREDGE_RESEARCH_GRANT_MODE=REVOKED_PENDING_OWNER_ROTATION");
   expect(deploy).toContain('PREDGE_RESEARCH_NEWS_TOKEN="REVOKED_ROTATION_REQUIRED"');
   expect(deploy).toContain("PREDGE_RESEARCH_PRIVILEGED_CREDENTIAL_REUSE_FORBIDDEN");

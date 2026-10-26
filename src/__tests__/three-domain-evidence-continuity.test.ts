@@ -148,7 +148,7 @@ describe("continuous three-category source observations backed by D1",()=>{
    const index=readFileSync("workers/control-plane/src/index.mjs","utf8");
    expect(index).toContain('/v1/public/three-domain-continuity');
    expect(index).toContain("threeDomainEvidenceContinuity(env)");
-   const deploy=readFileSync(".github/workflows/deploy-control-plane-d1.yml","utf8");
+   const deploy=readFileSync(".github/workflows/deploy-d1-control-plane.yml","utf8");
    expect(deploy).toContain('Verify three-domain continuity direct Worker readback (no funds)');
    expect(deploy).toContain('geomacro.three-domain-evidence-continuity.v1');
    expect(deploy).toContain('THREE_DOMAIN_CONTINUITY_DIRECT_D1_LIVE_READBACK_FAILED');

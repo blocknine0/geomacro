@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
-const workflow = readFileSync(".github/workflows/deploy-control-plane-d1.yml", "utf8");
+const workflow = readFileSync(".github/workflows/deploy-d1-control-plane.yml", "utf8");
 const wrangler = readFileSync("workers/control-plane/wrangler.example.jsonc", "utf8");
 
 describe("D1 control-plane bootstrap", () => {
   it("reuses one named D1 database and applies the committed schema remotely", () => {
     expect(workflow).toContain("D1_DATABASE_NAME: geomacro-control-plane");
+    expect(workflow).toContain("DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS");
+    expect(workflow).toContain("EXPLICIT_D1_CONTROL_PLANE_DEPLOY_CONFIRMATION_REQUIRED");
     expect(workflow).toContain("d1 list --json");
     expect(workflow).toContain('d1 create "$D1_DATABASE_NAME" --location apac');
     expect(workflow).toContain("d1 migrations apply DB --remote");

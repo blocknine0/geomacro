@@ -78,7 +78,7 @@ This demonstrates cryptographic format only. The vector key `canonical-test-key-
 Amir offered his private Telegram contact. Use `t.me/latcom` to **confirm the intended recipient's identity using the already-established email thread**, before handing over a new token. Agree an encrypted direct message or end-to-end encrypted Secret Chat on supported Telegram mobile clients (ordinary Telegram cloud chats are *not* end-to-end encrypted by default).
 
 1. Owner generates a fresh cryptographically random 32-byte research token locally; enter as protected GitHub production secret `PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE`, never share in email or source.
-2. Deploy `deploy-control-plane-d1.yml`; require production old bearer 401 and new bearer 200, plus shared D1 IDs parity. Without fresh secret, the private route remains safely disabled, not magically restored.
+2. Deploy `deploy-d1-control-plane.yml`; require production old bearer 401 and new bearer 200, plus shared D1 IDs parity. Without fresh secret, the private route remains safely disabled, not magically restored.
 3. Use the owner-only RSA-OAEP encrypted artifact workflow `predge-token-only-sealed-handoff.yml` and locally decrypt on the trusted machine; share **only** the newly active, purpose-scoped research bearer with the verified Predge contact. Never share root/control-plane admin credentials.
 4. Obtain Predge confirmation that authenticated GET works. No token or authorization header in GitHub logs, README, email, public Telegram post or issue.
 5. Risk Gate token is independently generated/stored/provisioned; do not reuse or distribute it until current GRO and commercial authorization gates are met.
