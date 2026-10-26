@@ -74,7 +74,7 @@ const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public
 const BUNDLE="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-bundle";
 export async function auditLiveDerivedJournal(fetcher=fetch,now=new Date()){
  const response=await fetcher(BUNDLE,{method:"GET",redirect:"error",cache:"no-store",
-  headers:{Accept:"application/json"},signal:AbortSignal.timeout(12000)});
+  headers:{Accept:"application/json","Cache-Control":"no-cache"},signal:AbortSignal.timeout(12000)});
  if(!response.ok||Number(response.headers.get("content-length")||0)>4_000_000)
   fail("PUBLIC_READBACK_UNAVAILABLE");
  const raw=await response.text();
@@ -145,7 +145,7 @@ export function auditObservedWebsiteLatency(journal,html,observedAt=new Date()){
 }
 export async function auditLiveWebsiteLatency(fetcher=fetch){
  const [j,s]=await Promise.all([
-  fetcher(ROOT,{headers:{Accept:"application/json"},redirect:"error",cache:"no-store",signal:AbortSignal.timeout(12000)}),
+  fetcher(ROOT,{headers:{Accept:"application/json","Cache-Control":"no-cache"},redirect:"error",cache:"no-store",signal:AbortSignal.timeout(12000)}),
   fetcher("https://geomacro.live/intelligence",{headers:{Accept:"text/html"},redirect:"error",cache:"no-store",signal:AbortSignal.timeout(12000)}),
  ]);
  if(j.status!==200||s.status!==200)fail("WEBSITE_READBACK_UNAVAILABLE");
