@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { deriveStatelessSignals } from "@/lib/stateless-intelligence-model";
 import { describe, expect, it, vi } from "vitest";
 import {
-  verifyDerivedStory, publishDerivedStories, readDerivedStories, renderDerivedStoriesHtml,
+  verifyDerivedStory, publishDerivedStories, readDerivedStories, readDerivedStoriesBundle, renderDerivedStoriesHtml,
   DERIVED_NEWS_TOPIC_POLICY_REVISION,
 } from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {classifyDerivedNewsD1Failure} from "../../scripts/lib/derived-news-d1-failure.mjs";
@@ -122,6 +122,43 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(data.size).toBe(1);
     const route=readFileSync("workers/control-plane/src/index.mjs","utf8");
     expect(route).toContain("derived_news_topic_policy_revision: DERIVED_NEWS_TOPIC_POLICY_REVISION");
+  });
+
+  it("reads the complete retained newsroom in one capped D1 query",async()=>{
+    const {env}=db();
+    const row=sample();
+    expect((await publishDerivedStories(env,{
+      schema:"geomacro.website-derived-news-batch.v1",signals:[row],
+    },NOW)).status).toBe(200);
+    const prepare=vi.spyOn(env.DB,"prepare");
+    const response=await readDerivedStoriesBundle(env,NOW);
+    expect(response.status).toBe(200);
+    const bundle=await response.json();
+    expect(bundle).toMatchObject({
+      ok:true,schema:"geomacro.website-derived-news-bundle.v1",
+      complete:true,item_cap:600,returned_rows:1,
+      original_release_delay_minutes:0,retention_hours:72,chargeable:false,
+    });
+    expect(bundle.signals).toEqual([row]);
+    expect(bundle.first_ingest).toHaveLength(1);
+    expect(prepare).toHaveBeenCalledOnce();
+    expect(prepare.mock.calls[0]?.[0]).toContain("LIMIT 601");
+  });
+
+  it("holds D1-heavy optional work on exhausted or unknown quota while the permanent archive still runs",()=>{
+    const workflow=readFileSync(".github/workflows/website-derived-news-continuity.yml","utf8");
+    const publisher=readFileSync("scripts/ops/publish-website-derived-news.ts","utf8");
+    const archiveAt=workflow.indexOf('      - name: Publish append-only permanent Finds archive without D1 dependency');
+    const readAt=workflow.indexOf('      - name: Read three domains and write only derived news to existing D1');
+    expect(workflow).toContain("node scripts/ops/audit-d1-account-daily-quota-readonly.mjs");
+    expect(workflow).toContain("D1_QUOTA_HEADROOM_HELD_PRESERVE_ARCHIVE_SKIP_D1_OPERATIONS");
+    expect(workflow).toContain("steps.d1-quota.outputs.headroom == 'ready'");
+    expect(archiveAt).toBeGreaterThan(readAt);
+    const archiveStep=workflow.slice(archiveAt,workflow.indexOf("\n      - name:",archiveAt+10));
+    expect(archiveStep).toContain("if: always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'");
+    expect(archiveStep).not.toContain("steps.d1-quota.outputs.headroom");
+    expect(publisher).toContain('process.env.GEOMACRO_D1_QUOTA_HEADROOM==="held"');
+    expect(publisher).toContain("D1_QUOTA_HEADROOM_HELD_STATIC_ARCHIVE_ONLY");
   });
 
   it("indexes the independent first-seen clock used by bounded retention cleanup",()=>{
