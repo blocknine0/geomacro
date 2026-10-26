@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {eligiblePublicFreeD1CacheRequest,readPublicFreeD1Cached,PUBLIC_FREE_D1_TTL_SECONDS}
+import {eligiblePublicFreeD1CacheRequest,readPublicFreeD1Cached,PUBLIC_FREE_D1_TTL_SECONDS,PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS}
   from "../../workers/control-plane/src/public-free-d1-cache.mjs";
 
 const base="https://geomacro-control-plane.example/v1/public/three-domain-continuity";
@@ -53,6 +53,29 @@ test("protected, query-based and header-bearing requests bypass shared cache",as
     assert.equal(r.headers.get("Cache-Control"),"no-store");
   }
   assert.equal(reads,7);assert.equal(puts,0);assert.equal(matches,0);
+});
+
+test("bundle receives a shorter TTL and respects explicit no-cache/no-store readback requests",async()=>{
+  const bundle="https://geomacro-control-plane.example/v1/public/website-derived-news-bundle";
+  assert.equal(PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS,15);
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(bundle)),true);
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(bundle,{"Cache-Control":"no-cache"})),false);
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(bundle,{"Cache-Control":"no-store"})),false);
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(base,{"Cache-Control":"max-age=0"})),false);
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(base,{"Pragma":"no-cache"})),false);
+  let reads=0,puts=0,matches=0;
+  const cache={async match(){matches++;return null},async put(key,response){
+    puts++;
+    assert.equal(response.headers.get("Cache-Control"),"public, max-age=15");
+  }};
+  const run=()=>{reads++;return result()};
+  const first=await readPublicFreeD1Cached(request(bundle),run,{cache});
+  assert.equal(first.headers.get("Cache-Control"),"public, max-age=15");
+  const second=await readPublicFreeD1Cached(request(bundle,{"Cache-Control":"no-cache"}),run,{cache});
+  assert.equal(second.headers.get("Cache-Control"),"no-store");
+  assert.equal(reads,2);
+  assert.equal(matches,1);
+  assert.equal(puts,1);
 });
 
 test("cache failure cannot replace truthful D1 readback",async()=>{
