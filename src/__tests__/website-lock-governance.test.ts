@@ -50,14 +50,14 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-language-pack-navigation-20261026");
+    expect(config.lock_revision).toBe("founder-approved-language-pack-redirect-fallback-20261026");
     const categoryPricing=config.approved_three_category_api_pricing_20261025;
     expect(categoryPricing.previous_baseline_sha).toBe("8c9ecc7df74ac45d69dc56bbd2f6e568fd590ce6");
     const permanentArchiveApproval=config.approved_permanent_finds_archive_d1_free_reads_20261026;
     expect(categoryPricing.approved_ui_commit).toBe(permanentArchiveApproval.previous_baseline_sha);
     const languageApproval = config.approved_language_pack_navigation_fix_20261026;
     expect(permanentArchiveApproval.approved_ui_commit).toBe(languageApproval.previous_baseline_sha);
-    expect(languageApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(languageApproval.approved_ui_commit).toBe("5a9468e787df7e8124f3911004562fefeba75f0f");
     expect(languageApproval.previous_baseline_sha).toBe("3e710cc283c3a97e94a475bb3d8eb78af26568a3");
     expect(languageApproval.scope).toEqual(["public/geomacro-language.js", "src/components/site-shell.tsx"]);
     expect(languageApproval.global_risk_final_lock_unmodified).toBe(true);
@@ -66,6 +66,22 @@ describe("website lock governance", () => {
     expect(languageApproval.payment_authorized).toBe(false);
     expect(languageApproval.published_source_sha_unchanged).toBe(true);
     expect(languageApproval.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    const languageFallback = config.approved_language_pack_fallback_20261026;
+    expect(languageFallback.previous_baseline_sha).toBe(languageApproval.approved_ui_commit);
+    expect(languageFallback.approved_ui_commit).toBe(config.baseline_sha);
+    expect(languageFallback.scope).toEqual([
+      "public/geomacro-language.js",
+      "src/components/site-shell.tsx",
+      "src/__tests__/website-language-pack-static.test.ts",
+      ".github/workflows/minimum-free-derived-production-health.yml",
+    ]);
+    expect(languageFallback.global_risk_final_lock_unmodified).toBe(true);
+    expect(languageFallback.paid_pricing_unmodified).toBe(true);
+    expect(languageFallback.sources_and_payments_unchanged).toBe(true);
+    expect(languageFallback.payment_authorized).toBe(false);
+    expect(languageFallback.published_source_sha_unchanged).toBe(true);
+    expect(languageFallback.lovable_publish_required).toBe(true);
+    expect(languageFallback.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(permanentArchiveApproval.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
     expect(permanentArchiveApproval.global_risk_final_lock_unmodified).toBe(true);
     expect(permanentArchiveApproval.supabase_reactivated).toBe(false);
