@@ -134,26 +134,23 @@ export function privateOsintGlobalSources(){
  for(const source of regional.sources){
   let u,discoveryUrl=null;try{u=new URL(source.url);if(source.discovery_reference_url!==undefined)discoveryUrl=new URL(source.discovery_reference_url)}catch{throw Error("PRIVATE_OSINT_REGIONAL_URL_INVALID")}
   const discoveryRefInvalid=source.discovery_reference_url!==undefined&&(!discoveryUrl||discoveryUrl.protocol!=="https:"||!discoveryUrl.hostname.includes(".")||discoveryUrl.username||discoveryUrl.password||discoveryUrl.port||discoveryUrl.hash);
-  if(discoveryRefInvalid||!/^private_expansion_[a-z0-9_]+$/u.test(source.id)||
-     additionIds.has(source.id)||u.protocol!=="https:"||
-     !u.hostname.includes(".")||u.username||u.password||u.port||u.hash||
-     !["global",...Object.keys(CONTINENT_COUNTRIES_195)].includes(source.continent)||
-     (source.publisher_country_iso3!==null&&
-      !Object.values(CONTINENT_COUNTRIES_195).flat().includes(source.publisher_country_iso3))||
-     !["rss","atom","rdf"].includes(source.type)||
-     !Array.isArray(source.categories)||!source.categories.length||source.categories.length>PRIVATE_OSINT_CATEGORIES.length||
-     new Set(source.categories).size!==source.categories.length||
-     source.categories.some(category=>!PRIVATE_OSINT_CATEGORIES.includes(category))||
-     !Array.isArray(source.related_corridor_ids)||
-     source.related_corridor_ids.some(id=>!corridorIds.has(id))||
-     new Set(source.related_corridor_ids).size!==source.related_corridor_ids.length||
-     source.activation_state!=="RUNTIME_PROBE_REQUIRED"||
-     source.provider_rights_verified!==false||
-     source.commercial_eligible!==false||
-     source.access_verified_in_production!==false||
-     source.publicly_deliverable!==false||
-     map.has(source.url)||existing.has(source.url))
-    throw Error("PRIVATE_OSINT_REGIONAL_SOURCE_UNSAFE_OR_DUPLICATE");
+  const violations=[];
+  if(discoveryRefInvalid)violations.push("DISCOVERY_REFERENCE");
+  if(!/^private_expansion_[a-z0-9_]+$/u.test(source.id))violations.push("ID");
+  if(additionIds.has(source.id))violations.push("DUPLICATE_ID");
+  if(u.protocol!=="https:"||!u.hostname.includes(".")||u.username||u.password||u.port||u.hash)violations.push("UNSAFE_FEED_URL");
+  if(!["global",...Object.keys(CONTINENT_COUNTRIES_195)].includes(source.continent))violations.push("CONTINENT");
+  if(source.publisher_country_iso3!==null&&!Object.values(CONTINENT_COUNTRIES_195).flat().includes(source.publisher_country_iso3))violations.push("PUBLISHER_COUNTRY");
+  if(!["rss","atom","rdf"].includes(source.type))violations.push("FEED_TYPE");
+  if(!Array.isArray(source.categories)||!source.categories.length||source.categories.length>PRIVATE_OSINT_CATEGORIES.length||new Set(source.categories).size!==source.categories.length||source.categories.some(category=>!PRIVATE_OSINT_CATEGORIES.includes(category)))violations.push("CATEGORIES");
+  if(!Array.isArray(source.related_corridor_ids)||source.related_corridor_ids.some(id=>!corridorIds.has(id))||new Set(source.related_corridor_ids).size!==source.related_corridor_ids.length)violations.push("CORRIDOR_REFERENCES");
+  if(source.activation_state!=="RUNTIME_PROBE_REQUIRED")violations.push("ACTIVATION_STATE");
+  if(source.provider_rights_verified!==false)violations.push("RIGHTS_GUARD");
+  if(source.commercial_eligible!==false)violations.push("COMMERCIAL_GUARD");
+  if(source.access_verified_in_production!==false)violations.push("PRODUCTION_ACCESS_GUARD");
+  if(source.publicly_deliverable!==false)violations.push("PUBLIC_DELIVERY_GUARD");
+  if(map.has(source.url)||existing.has(source.url))violations.push("DUPLICATE_URL");
+  if(violations.length)throw Error("PRIVATE_OSINT_REGIONAL_SOURCE_UNSAFE_OR_DUPLICATE:"+source.id+":"+violations.join(","));
   additionIds.add(source.id);
   map.set(source.url,{...source,supported:true,transport_verified_at_registration:false});
  }
