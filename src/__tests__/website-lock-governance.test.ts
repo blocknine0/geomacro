@@ -53,7 +53,15 @@ describe("website lock governance", () => {
     expect(config.lock_revision).toBe("founder-approved-three-category-api-pricing-20261025");
     const categoryPricing=config.approved_three_category_api_pricing_20261025;
     expect(categoryPricing.previous_baseline_sha).toBe("8c9ecc7df74ac45d69dc56bbd2f6e568fd590ce6");
-    expect(categoryPricing.approved_ui_commit).toBe(config.baseline_sha);
+    const permanentArchiveApproval=config.approved_permanent_finds_archive_d1_free_reads_20261026;
+    expect(categoryPricing.approved_ui_commit).toBe(permanentArchiveApproval.previous_baseline_sha);
+    expect(permanentArchiveApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(permanentArchiveApproval.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(permanentArchiveApproval.global_risk_final_lock_unmodified).toBe(true);
+    expect(permanentArchiveApproval.supabase_reactivated).toBe(false);
+    expect(permanentArchiveApproval.paid_infrastructure_added).toBe(false);
+    expect(permanentArchiveApproval.payment_authorized).toBe(false);
+    expect(permanentArchiveApproval.ordinary_public_reads_use_d1).toBe(false);
     expect(categoryPricing.scope).toEqual(["src/components/category-api-pricing.tsx","src/components/api-keys-notice.tsx","src/components/category-api-pricing.test.tsx","src/routes/pricing.tsx","src/routes/data-api.tsx"]);
     expect(categoryPricing.canonical_intelligence_query_prices_unchanged).toBe(true);
     expect(categoryPricing.three_category_aliases_share_canonical_engine).toBe(true);
