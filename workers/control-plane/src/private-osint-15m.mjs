@@ -127,8 +127,14 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
      .bind(...group.flatMap(c=>[c.source_ref,c.category,c.state,c.checked_at]),new Date(now-3600000).toISOString()));
    }
    if(hasNewRows)statements.push(env.DB.prepare(
-     "DELETE FROM private_osint_news_25h WHERE item_id NOT IN "+
-     "(SELECT item_id FROM private_osint_news_25h ORDER BY native_feed_published_at DESC,item_id DESC LIMIT "+maxRows+")"));
+     // Exact hard-cap retention with a fast SQLite btree COUNT and oldest-
+     // first index walk over ONLY the excess rows. The prior NOT IN newest
+     // 4,000 scanned the entire retention ring for every new 16-item batch.
+     // Preserves oldest eviction, atomic batch and immutable first_seen_at.
+     "DELETE FROM private_osint_news_25h WHERE item_id IN "+
+     "(SELECT item_id FROM private_osint_news_25h "+
+     "ORDER BY native_feed_published_at ASC,item_id ASC LIMIT "+
+     "MAX(0,(SELECT COUNT(*) FROM private_osint_news_25h)-"+maxRows+"))"));
    const batch=await env.DB.batch(statements);
    if(batch.some(result=>result?.success===false))throw Error("D1_BATCH_FAILED");
    const readback=rows.length?await env.DB.prepare(
