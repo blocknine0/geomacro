@@ -70,7 +70,8 @@ describe("all-three-category credited concrete Intelligence display rules",()=>{
   const desk=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
   expect(desk).toContain("intelligenceRequiredSourceCredits(signal)");
   expect(desk).toContain("aria-label=\"Required source attribution\"");
-  expect(desk).toContain("Not independently verified");
+  expect(desk).toContain('signal.status !== "osint_feed_observed_unverified"');
+  expect(desk).not.toContain("Not independently verified");
   expect(desk).toContain("Official release observed · Unscored");
   expect(desk).not.toContain("SOURCE / PUBLISHER");
  });
