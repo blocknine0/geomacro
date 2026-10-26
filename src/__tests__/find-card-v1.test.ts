@@ -109,7 +109,22 @@ describe("Geomacro Find Card v1—supplied exact public JSON Schema",()=>{
   ])expect(isFindCardV1(changed)).toBe(false);
  });
 });
-describe("free public v1 Finds GET from existing D1 journal",()=>{
+
+ it("locks OSINT findings to the exact existing Website Intelligence card presentation",()=>{
+  const code=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
+  // Both recency sections must render the same Story component; no OSINT-only
+  // card/layout branch is allowed. Status wording is the only visible qualifier.
+  expect(code).toContain("LOCKED PRESENTATION CONTRACT");
+  expect(code).toContain('signal.status === "osint_feed_observed_unverified"');
+  expect(code).toContain("Source-reported observation · Not independently verified");
+  expect(code).toContain("function Story({ signal, saved, onSave }");
+  expect(code.split("<Story key={signal.id} signal={signal}").length-1).toBe(2);
+  expect(code).toContain("GEOMACRO ANALYSIS / Why it matters");
+  expect(code).toContain("What changed");
+  expect(code).not.toContain("function OsintStory");
+  expect(code).not.toContain("OsintCard");
+ });
+\ndescribe("free public v1 Finds GET from existing D1 journal",()=>{
  it("projects bounded category-filtered no-funds cards without second fetch or original source",async()=>{
   const upstream=vi.fn(async()=>new Response(JSON.stringify(feed([
    safe("macro"),safe("rare_earth"),
