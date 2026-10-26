@@ -109,10 +109,53 @@ function sortSignals(signals){
     b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
 }
 
+const CATEGORY_HEADLINE_TERMS={
+  geopolitics:/\b(?:war|attack|airstrike|missile|election|president|minister|diplomacy|diplomatic|sanctions|border|military|security|foreign policy|government|coup|treaty|conflict|ukraine|russia|israel|iran|china|taiwan|sudan|yemen|nato|united nations|embassy|vote|parliament|political)\b/giu,
+  macro:/\b(?:inflation|prices?|gdp|central bank|interest rates?|currency|exchange rates?|forex|fx|monetary|fiscal|unemployment|jobs|output|growth|recession|economy|economic|bond|yield|reserves?|trade deficit|debt|cpi|pmi)\b/giu,
+  rare_earth:/\b(?:rare earths?|critical minerals?|lithium|cobalt|nickel|graphite|copper|manganese|bauxite|ores?|mining|minerals?|batteries?|smelter|refining|uranium|tantalum|gallium|germanium|magnets?|metallurgy|supply chain)\b/giu,
+};
+function normalizeHeadline(title){
+  return title.normalize("NFKC")
+    .replace(/^Geomacro finds\s+/iu,"")
+    .replace(/\s+[—–-]\s+(?:Al Jazeera|The Hindu|TASS|Xinhua|The Tribune-Democrat|Bozeman Daily Chronicle|Mining Weekly|Reuters|Associated Press|Bloomberg|Financial Times|The Guardian|The Independent|The New York Times|The Washington Post|BBC|CNN)\s*$/iu,"")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu," ")
+    .trim().replace(/\s+/gu," ");
+}
+function isTemplateObservation(signal){
+  return signal.status==="osint_feed_observed_unverified"&&
+    /\b(?:source[- ]feed observation|publisher candidate)\b/iu.test(signal.title);
+}
+function isOfficialObservation(signal){
+  return signal.status==="official_release_observed_unscored"||
+    signal.status==="official_feed_candidate_unscored";
+}
+function categoryRelevance(signal){
+  const text=[signal.title,signal.topic,signal.what_changed].filter(x=>typeof x==="string").join(" ");
+  const scores={geopolitics:0,macro:0,rare_earth:0};
+  for(const category of CATEGORIES){
+    const pattern=CATEGORY_HEADLINE_TERMS[category];
+    pattern.lastIndex=0;
+    scores[category]=[...text.matchAll(pattern)].length;
+  }
+  return scores[signal.category]-(Math.max(...CATEGORIES.filter(c=>c!==signal.category).map(c=>scores[c]))||0);
+}
+function preferDuplicateCandidate(candidate,current){
+  const officialDifference=Number(isOfficialObservation(candidate))-Number(isOfficialObservation(current));
+  if(officialDifference!==0)return officialDifference>0;
+  const relevanceDifference=categoryRelevance(candidate)-categoryRelevance(current);
+  if(relevanceDifference!==0)return relevanceDifference>0;
+  const candidateDirect=!String((candidate.sources_credited??[]).join(" ")).includes("news.google.com");
+  const currentDirect=!String((current.sources_credited??[]).join(" ")).includes("news.google.com");
+  if(candidateDirect!==currentDirect)return candidateDirect;
+  if(candidate.published_at!==current.published_at)return candidate.published_at>current.published_at;
+  return candidate.id<current.id;
+}
 /**
- * Select the rolling public latest feed without starving a low-volume category.
- * Callers must pass already validated, current archive records. We pick in
- * category round-robin order, then restore global newest-first presentation.
+ * Keep the rolling public feed factual and usable: drop generic OSINT template
+ * placeholders, deduplicate equivalent normalized headlines across categories,
+ * then round-robin real current rows so one high-volume domain cannot starve
+ * macro or critical minerals. Permanent historical shards remain untouched.
  */
 export function selectCurrentArchiveSignals(signals,limit=250){
   if(!Array.isArray(signals)||!Number.isSafeInteger(limit)||limit<1||limit>250)
@@ -121,13 +164,22 @@ export function selectCurrentArchiveSignals(signals,limit=250){
   for(const signal of signals){
     if(!signal||typeof signal!=="object"||Array.isArray(signal)||
        !CATEGORY_SET.has(signal.category)||typeof signal.id!=="string"||
-       typeof signal.published_at!=="string"||!Number.isFinite(Date.parse(signal.published_at))||
-       ids.has(signal.id))
+       typeof signal.title!=="string"||typeof signal.published_at!=="string"||
+       !Number.isFinite(Date.parse(signal.published_at))||ids.has(signal.id))
       throw Error("PERMANENT_ARCHIVE_LATEST_INPUT_INVALID");
     ids.add(signal.id);
   }
+  const uniqueByHeadline=new Map();
+  for(const signal of signals){
+    if(isTemplateObservation(signal))continue;
+    const key=normalizeHeadline(signal.title);
+    if(!key)continue;
+    const current=uniqueByHeadline.get(key);
+    if(!current||preferDuplicateCandidate(signal,current))uniqueByHeadline.set(key,signal);
+  }
+  const unique=[...uniqueByHeadline.values()];
   const groups=new Map(CATEGORIES.map(category=>[
-    category,sortSignals(signals.filter(signal=>signal.category===category)),
+    category,sortSignals(unique.filter(signal=>signal.category===category)),
   ]));
   const selected=[];
   for(let offset=0;selected.length<limit;offset++){
