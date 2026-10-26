@@ -1,0 +1,577 @@
+{
+  "schema": "geomacro.private-osint-local-rss-candidates.v1",
+  "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
+  "interpretation": "Source urls are free unauthenticated official publisher candidate RSS paths. Only on-tick real 200 parsed RSS/Atom and publisher-native dates count; HTML/403/redirects/no dates are NOT active. Publisher country is not event country; no rights cleared.",
+  "sources": [
+    {
+      "id": "private_local_candidate_gh_bank",
+      "url": "https://www.bog.gov.gh/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "GHA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.bog.gov.gh/news/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_ug_finance",
+      "url": "https://www.finance.go.ug/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "UGA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.finance.go.ug/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_zm_bank",
+      "url": "https://www.boz.zm/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "ZMB",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.boz.zm/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_mw_bank",
+      "url": "https://www.rbm.mw/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "MWI",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.rbm.mw/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_rw_bank",
+      "url": "https://www.bnr.rw/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "RWA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.bnr.rw/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_np_bank",
+      "url": "https://www.nrb.org.np/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": "NPL",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.nrb.org.np/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_bd_mfa",
+      "url": "https://mofa.gov.bd/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": "BGD",
+      "categories": [
+        "geopolitics"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://mofa.gov.bd/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_my_bank",
+      "url": "https://www.bnm.gov.my/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": "MYS",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.bnm.gov.my/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_id_bank",
+      "url": "https://www.bi.go.id/en/rss",
+      "continent": "asia",
+      "publisher_country_iso3": "IDN",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.bi.go.id/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_pe_bank",
+      "url": "https://www.bcrp.gob.pe/feed/",
+      "continent": "south_america",
+      "publisher_country_iso3": "PER",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.bcrp.gob.pe/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_bo_bank",
+      "url": "https://www.bcb.gob.bo/feed/",
+      "continent": "south_america",
+      "publisher_country_iso3": "BOL",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.bcb.gob.bo/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_py_bank",
+      "url": "https://www.bcp.gov.py/feed/",
+      "continent": "south_america",
+      "publisher_country_iso3": "PRY",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.bcp.gov.py/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_co_bank",
+      "url": "https://www.banrep.gov.co/feed/",
+      "continent": "south_america",
+      "publisher_country_iso3": "COL",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.banrep.gov.co/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_do_bank",
+      "url": "https://www.bancentral.gov.do/feed/",
+      "continent": "north_america",
+      "publisher_country_iso3": "DOM",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.bancentral.gov.do/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_jm_bank",
+      "url": "https://boj.org.jm/feed/",
+      "continent": "north_america",
+      "publisher_country_iso3": "JAM",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://boj.org.jm/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_bb_bank",
+      "url": "https://www.centralbank.org.bb/feed/",
+      "continent": "north_america",
+      "publisher_country_iso3": "BRB",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.centralbank.org.bb/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_am_bank",
+      "url": "https://www.cba.am/en/rss",
+      "continent": "asia",
+      "publisher_country_iso3": "ARM",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.cba.am/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_kg_bank",
+      "url": "https://www.nbkr.kg/rss/",
+      "continent": "asia",
+      "publisher_country_iso3": "KGZ",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.nbkr.kg/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_uz_bank",
+      "url": "https://cbu.uz/en/rss/",
+      "continent": "asia",
+      "publisher_country_iso3": "UZB",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://cbu.uz/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_mn_bank",
+      "url": "https://www.mongolbank.mn/eng/feed/",
+      "continent": "asia",
+      "publisher_country_iso3": "MNG",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.mongolbank.mn/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_kz_bank",
+      "url": "https://nationalbank.kz/en/rss",
+      "continent": "asia",
+      "publisher_country_iso3": "KAZ",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://nationalbank.kz/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_dz_news",
+      "url": "https://www.aps.dz/en/rss",
+      "continent": "africa",
+      "publisher_country_iso3": "DZA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.aps.dz/en",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_ma_news",
+      "url": "https://www.mapnews.ma/en/rss",
+      "continent": "africa",
+      "publisher_country_iso3": "MAR",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.mapnews.ma/en",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_qa_news",
+      "url": "https://www.qna.org.qa/en/rss",
+      "continent": "asia",
+      "publisher_country_iso3": "QAT",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.qna.org.qa/en",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_bh_news",
+      "url": "https://www.bna.bh/en/rss.aspx",
+      "continent": "asia",
+      "publisher_country_iso3": "BHR",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.bna.bh/en",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_om_news",
+      "url": "https://omannews.gov.om/rss",
+      "continent": "asia",
+      "publisher_country_iso3": "OMN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://omannews.gov.om/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_tz_bank",
+      "url": "https://www.bot.go.tz/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "TZA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.bot.go.tz/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_zw_bank",
+      "url": "https://www.rbz.co.zw/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "ZWE",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.rbz.co.zw/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    }
+  ]
+}
