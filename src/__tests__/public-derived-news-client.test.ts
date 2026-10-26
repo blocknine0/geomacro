@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   checkedDerivedNews, fetchDirectDerivedNews, fetchAllDerivedNews, fetchPermanentDerivedNews,
-  GEOMACRO_DERIVED_JOURNAL_URL, GEOMACRO_DERIVED_BUNDLE_URL, GEOMACRO_PERMANENT_LATEST_URL, GEOMACRO_PERMANENT_ARCHIVE_BASE_URL,
+  GEOMACRO_DERIVED_BUNDLE_URL, GEOMACRO_PERMANENT_LATEST_URL, GEOMACRO_PERMANENT_ARCHIVE_BASE_URL,
 } from "@/lib/public-derived-news-client";
 
 const NOW=Date.parse("2026-10-12T20:00:00.000Z");
@@ -177,6 +177,31 @@ describe("browser public journal fallback",()=>{
     await expect(fetchAllDerivedNews(stale as typeof fetch,Date.now()))
       .rejects.toThrow("DERIVED_NEWS_BUNDLE_STALE_READBACK");
     expect(stale).toHaveBeenCalledOnce();
+  });
+
+  it("falls back only when a deployed Worker lacks the bundle route, never on storage/quota errors",async()=>{
+    const now=Date.now();
+    const row={...signal,published_at:new Date(now-1000).toISOString()};
+    const legacyPage={...doc([row]),checked_at:new Date(now).toISOString(),
+      page_offset:0,page_size:250,has_more:false,next_offset:null};
+    const fallback=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+      if(String(input)===GEOMACRO_DERIVED_BUNDLE_URL)
+        return new Response(null,{status:401});
+      return new Response(JSON.stringify(legacyPage),{status:200,
+        headers:{"content-type":"application/json"}});
+    });
+    expect(await fetchAllDerivedNews(fallback as typeof fetch,now)).toEqual([row]);
+    expect(fallback).toHaveBeenCalledTimes(2);
+
+    const quota=vi.fn(async(input:RequestInfo|URL)=>{
+      expect(String(input)).toBe(GEOMACRO_DERIVED_BUNDLE_URL);
+      return new Response(JSON.stringify({ok:false,error:"DERIVED_NEWS_BUNDLE_UNAVAILABLE",
+        diagnostic_code:"D1_DAILY_ROW_READ_LIMIT"}),{status:503,
+        headers:{"content-type":"application/json"}});
+    });
+    await expect(fetchAllDerivedNews(quota as typeof fetch,now))
+      .rejects.toThrow("DERIVED_NEWS_BUNDLE_UNAVAILABLE");
+    expect(quota).toHaveBeenCalledTimes(3);
   });
 
   it("rejects source metadata and unknown fields even without a source URL",()=>{
