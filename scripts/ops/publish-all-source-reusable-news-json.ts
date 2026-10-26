@@ -7,6 +7,7 @@ import {collectRegisteredReusableNews} from "../lib/registered-reusable-news-sou
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {countryMentionFromTitle} from "../lib/country-news-mentions-195.mjs";
+import {prepareReusableNewsBatches} from "../lib/prepare-reusable-news-batches.mjs";
 
 const root=(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(root.length<32)throw Error("REUSABLE_SOURCE_NEWS_PROTECTED_TOKEN_MISSING");
@@ -18,11 +19,14 @@ const collected=await collectRegisteredReusableNews({
 });
 const info=collected.summary;
 if(collected.checks.length===0)throw Error("REUSABLE_SOURCE_NEWS_NO_ATTEMPTS");
-const checks=[...collected.checks],items=[...collected.items];
-const groups=[];
-while(items.length||checks.length)groups.push({
-  schema:collected.schema,items:items.splice(0,20),checks:checks.splice(0,16),
+const packing=prepareReusableNewsBatches({
+  schema:collected.schema,items:collected.items,checks:collected.checks,
 });
+const groups=packing.batches;
+if(packing.sent_items!==collected.items.length||
+   packing.sent_checks!==collected.checks.length||
+   packing.dropped_items!==0||packing.dropped_checks!==0)
+ throw Error("REUSABLE_NEWS_BATCH_COMPLETENESS_FAILED");
 let checked=0,accepted=0,capacityExcluded=0,firstSeenWithin15m=0,firstSeenLate15m=0,reobserved=0;
 for(const group of groups){
   const reply=await fetch(endpoint+"/v1/reusable-source-news",{
@@ -111,6 +115,9 @@ console.log(JSON.stringify({
   existing_items_reobserved:reobserved,
   first_seen_latencies_are_independent_original_verification:false,
   source_endpoints_selected:info.selected_source_endpoints,
+  max_safe_bundle_items:40,max_safe_bundle_checks:48,
+  bounded_bundle_count:groups.length,
+  all_collected_items_bundled_without_drops:true,
   source_checks_persisted:checked,
   factual_json_rows_accepted:accepted,
   factual_json_rows_excluded_by_capacity:capacityExcluded,
