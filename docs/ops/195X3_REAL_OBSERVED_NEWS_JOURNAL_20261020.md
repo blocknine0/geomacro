@@ -2,6 +2,9 @@
 
 Last updated: 20 October 2026. No payment, raw article export, Supabase or extra third-party API.
 
+> **Current read-path supersession (26 October 2026):** the ordinary public structural and 195×3 API reads have moved off the D1 journal and now consume `latest.json` from the permanent static archive. The response therefore covers only up to 250 currently eligible records in that rolling static feed, not every retained D1 row. The earlier 600-row D1 pagination/6-minute client-poll description below is historical implementation context, not the current public-read contract. D1 remains an ingestion/checkpoint/internal audit lane and is not queried for these public GETs.
+
+
 ## Source of truth
 195 ISO3 countries are the 193 UN member states plus Holy See (VAT) and State of Palestine (PSE). Geomacro's existing separate 250-geographical-entity inventory is not the 195-country baseline.
 
