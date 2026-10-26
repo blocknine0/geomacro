@@ -57,12 +57,25 @@ export async function persistPrivateOsintBatch({
  const checks=[...snapshot.checks];
  if(!items.length&&!checks.length)throw Error("PRIVATE_OSINT_NO_NETWORK_CHECKS");
  const groups=[];
- while(items.length||checks.length)groups.push({
-   schema:PRIVATE_OSINT_DURABLE_SCHEMA,
-   // Stay within the existing Worker 20-item/32-check contract while
-   // reducing repeated protected HTTP writes and D1 prefetch/readback queries.
-   items:items.splice(0,16),checks:checks.splice(0,32),
- });
+ const byteSize=g=>new TextEncoder().encode(JSON.stringify(g)).byteLength;
+ while(items.length||checks.length){
+   const group={schema:PRIVATE_OSINT_DURABLE_SCHEMA,items:[],checks:[]};
+   // Fully use the existing 20-news/32-check Worker contract. The 60-KiB
+   // byte boundary prevents oversized requests even for Unicode news fields.
+   while(items.length&&group.items.length<20){
+     group.items.push(items[0]);
+     if(byteSize(group)>60_000){group.items.pop();break}
+     items.shift();
+   }
+   while(checks.length&&group.checks.length<32){
+     group.checks.push(checks[0]);
+     if(byteSize(group)>60_000){group.checks.pop();break}
+     checks.shift();
+   }
+   if(!group.items.length&&!group.checks.length)
+     throw Error("PRIVATE_OSINT_SINGLE_ITEM_EXCEEDS_WORKER_REQUEST_LIMIT");
+   groups.push(group);
+ }
  let saved=0,excluded=0,checked=0,in15=0,over15=0,writerBundled=true,writeQueries=0;
  let newlyOnTime=0,newlyLate=0,previouslySeen=0,firstSeenCountersAvailable=true;
  let rowsRead=0,rowsWritten=0,allRowUsageKnown=true;
