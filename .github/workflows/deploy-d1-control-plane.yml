@@ -1,0 +1,677 @@
+name: Deploy D1 Control Plane
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS to deploy the production D1 Control Plane"
+        required: true
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - "src/lib/original-verification-policy.ts"
+      - "src/lib/release-news-observation.ts"
+      - "src/lib/private-source-handoff.ts"
+      - "src/lib/stateless-intelligence-model.ts"
+      - "src/lib/derived-news-structural-bridge.ts"
+      - "scripts/ops/predge-research-journal-parity.mjs"
+      - "lib/intelligence-publication-authority.mjs"
+      - "workers/control-plane/**"
+      - "scripts/lib/derived-news-readback-policy.mjs"
+      - "scripts/ops/verify-all-news-signed-publications.mjs"
+      - "scripts/tests/public-signed-news.test.mjs"
+      - "src/lib/automated-intelligence-input.ts"
+      - "src/lib/low-authority-source-review.ts"
+      - "scripts/ops/verify-predge-auth-research-delivery.mjs"
+      - "src/__tests__/predge-auth-research-live-verifier.test.ts"
+      - "scripts/ops/verify-d1-central-security-budget.mjs"
+      - "scripts/ops/verify-private-handoff-production.mjs"
+      - "scripts/tests/verify-private-handoff-production.test.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-d1-control-plane-production
+  cancel-in-progress: false
+
+jobs:
+  bootstrap-deploy-accept:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
+      GEOMACRO_LOW_REVIEW_PUBLIC_PEM: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_PEM }}
+      GEOMACRO_LOW_REVIEW_PUBLIC_SHA256: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256 }}
+      # Separate protected credential: never reuse the research or root/admin token.
+      PREDGE_RISK_GATE_TOKEN: ${{ secrets.PREDGE_RISK_GATE_TOKEN }}
+      RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
+      RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
+      D1_DATABASE_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.136.3"
+    steps:
+      - name: Require explicit manual dispatch confirmation
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          DEPLOY_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$DEPLOY_CONFIRMATION" = "DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS" || {
+            echo "::error::EXPLICIT_D1_CONTROL_PLANE_DEPLOY_CONFIRMATION_REQUIRED"
+            exit 2
+          }
+
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Require existing Cloudflare production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 2; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
+          test "${#ROOT_LEDGER_TOKEN}" -ge 32 || { echo "GEOMACRO_COMMERCE_LEDGER_TOKEN must be at least 32 characters"; exit 2; }
+
+      - name: Set up Node 24 for shared TypeScript signature verification
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+
+      - name: Test all-news signed publication integrity and source-proof boundaries offline
+        run: node --test scripts/tests/public-signed-news.test.mjs
+
+      - name: Test private source-handoff acceptance contracts without network
+        run: node --test scripts/tests/verify-private-handoff-production.test.mjs
+
+      - name: Discover or create the single production D1 database
+        id: d1
+        shell: bash
+        run: |
+          set -euo pipefail
+          list_db() {
+            npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json
+          }
+          find_id() {
+            node -e '
+              let s="";
+              process.stdin.on("data", d => s += d);
+              process.stdin.on("end", () => {
+                const rows = JSON.parse(s);
+                const row = rows.find(x => x.name === process.env.D1_DATABASE_NAME);
+                process.stdout.write(row?.uuid ?? row?.id ?? "");
+              });
+            '
+          }
+
+          LIST_JSON="$(list_db)"
+          DB_ID="$(printf '%s' "$LIST_JSON" | find_id)"
+          CREATED=false
+          if [ -z "$DB_ID" ]; then
+            echo "D1 database not present; creating the single bounded control-plane database."
+            npx -y "wrangler@${WRANGLER_VERSION}" d1 create "$D1_DATABASE_NAME" --location apac >/tmp/d1-create.txt
+            CREATED=true
+            LIST_JSON="$(list_db)"
+            DB_ID="$(printf '%s' "$LIST_JSON" | find_id)"
+          fi
+          test -n "$DB_ID" || { echo "Unable to resolve D1 database id after create/list"; exit 3; }
+          echo "database_id=$DB_ID" >> "$GITHUB_OUTPUT"
+          echo "created=$CREATED" >> "$GITHUB_OUTPUT"
+          echo "Resolved D1 database: $D1_DATABASE_NAME (created=$CREATED)"
+
+      - name: Build ephemeral Wrangler production config
+        env:
+          D1_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const source = fs.readFileSync('workers/control-plane/wrangler.example.jsonc', 'utf8');
+          const id = String(process.env.D1_DATABASE_ID || '').trim();
+          if (!/^[0-9a-f-]{20,}$/i.test(id)) throw new Error('INVALID_D1_DATABASE_ID');
+          const output = source.replace('REPLACE_WITH_D1_DATABASE_ID', id);
+          if (output.includes('REPLACE_WITH_D1_DATABASE_ID')) throw new Error('D1_ID_REPLACEMENT_FAILED');
+          const sourceSha = String(process.env.GITHUB_SHA ?? '');
+          if (!/^[a-f0-9]{40}$/.test(sourceSha)) throw new Error('INVALID_DEPLOY_SOURCE_SHA');
+          const config = JSON.parse(output);
+          config.vars = { ...(config.vars ?? {}), GEOMACRO_SOURCE_SHA: sourceSha };
+          // Public verification material ONLY. No private signer reaches the Worker.
+          const keys=JSON.parse(process.env.RISK_OBJECT_VERIFY_KEYS_JSON||'{}');
+          const keyId=process.env.RISK_OBJECT_SIGNING_KEY_ID;
+          const publicKey=process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64;
+          if(keyId&&publicKey){
+            if(!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(keyId))throw Error('FINDS_KEY_ID_INVALID');
+            const existing=keys[keyId];
+            if(existing&&(typeof existing==='string'?existing:existing.public_key_spki_b64)!==publicKey)
+              throw Error('FINDS_PUBLIC_KEY_REGISTRY_CONFLICT');
+            if(!existing)keys[keyId]={public_key_spki_b64:publicKey,status:'active',
+              not_before:process.env.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE||null,
+              not_after:process.env.RISK_OBJECT_SIGNING_KEY_NOT_AFTER||null};
+          }
+          config.vars.AUTOMATED_FINDS_VERIFY_KEYS_JSON=JSON.stringify(keys);
+          const lowPem=process.env.GEOMACRO_LOW_REVIEW_PUBLIC_PEM;
+          const lowPin=process.env.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256;
+          if(lowPem||lowPin){
+            const {createPublicKey,createHash}=require('node:crypto');
+            const key=createPublicKey(lowPem);
+            if(key.asymmetricKeyType!=='ed25519')throw Error('LOW_REVIEW_KEY_TYPE_INVALID');
+            const der=key.export({format:'der',type:'spki'});
+            const pub=der.toString('base64');
+            if(createHash('sha256').update(der).digest('hex')!==lowPin||
+              Object.values(keys).some(v=>(typeof v==='string'?v:v.public_key_spki_b64)===pub))
+              throw Error('LOW_REVIEW_DISTINCT_PIN_REQUIRED');
+            config.vars.GEOMACRO_LOW_REVIEW_PUBLIC_SPKI_B64=pub;
+            config.vars.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256=lowPin;
+          }
+
+          fs.writeFileSync('workers/control-plane/wrangler.runtime.jsonc', JSON.stringify(config, null, 2));
+          NODE
+
+      - name: Apply committed D1 migrations remotely
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config wrangler.runtime.jsonc
+
+      - name: Verify D1 schema directly
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "SELECT version FROM schema_meta WHERE name='control-plane' AND version>=3;")"
+          printf '%s' "$OUT" | grep -q '1' || { echo "D1 schema verification failed"; exit 4; }
+
+      - name: Derive domain-separated control-plane token
+        # Optionally accept an existing purpose-scoped token issued by Predge.
+        # The server-only secret is never sent to the PR, logs or operator UI.
+        env:
+          PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CONTROL_PLANE_TOKEN="$(node -e "const c=require('crypto'); process.stdout.write(c.createHmac('sha256', process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
+          test "${#CONTROL_PLANE_TOKEN}" -eq 64 || { echo "Control-plane token derivation failed"; exit 5; }
+          echo "::add-mask::$CONTROL_PLANE_TOKEN"
+          echo "CONTROL_PLANE_TOKEN=$CONTROL_PLANE_TOKEN" >> "$GITHUB_ENV"
+          # Distinct HMAC namespace: sharing Predge's research token never
+          # shares the control-plane admin or commercial ledger secret.
+          # Revoke the old 19-Oct deterministic HMAC research Bearer.
+          # Never re-enable this fallback: an emailed credential may be exposed.
+          PREDGE_REVOKED_OLD_TOKEN="$(node -e "const c=require('node:crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-72h-research-only-v1').digest('hex'))")"
+          echo "::add-mask::$PREDGE_REVOKED_OLD_TOKEN"
+          if test -n "${PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE:-}"; then
+            PREDGE_RESEARCH_NEWS_TOKEN="$PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE"
+            if ! [[ "$PREDGE_RESEARCH_NEWS_TOKEN" =~ ^[a-f0-9]{64}$ ]]; then
+              echo "::error::PREDGE_RESEARCH_OVERRIDE_INVALID_FORMAT"; exit 5
+            fi
+            if test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$ROOT_LEDGER_TOKEN" ||
+               test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$CONTROL_PLANE_TOKEN" ||
+               test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$PREDGE_REVOKED_OLD_TOKEN"; then
+              echo "::error::PREDGE_RESEARCH_PRIVILEGED_CREDENTIAL_REUSE_FORBIDDEN"; exit 5
+            fi
+            echo "PREDGE_RESEARCH_GRANT_MODE=PROTECTED_ROTATED_TOKEN" >> "$GITHUB_ENV"
+          else
+            # Deliberately invalid Worker token disables authenticated research
+            # until the owner provisions a fresh purpose-scoped secret.
+            # This overwrites any previously deployed deterministic token.
+            PREDGE_RESEARCH_NEWS_TOKEN="REVOKED_ROTATION_REQUIRED"
+            echo "PREDGE_RESEARCH_GRANT_MODE=REVOKED_PENDING_OWNER_ROTATION" >> "$GITHUB_ENV"
+            echo "::warning::PREDGE_RESEARCH_ROTATION_REQUIRED_PRIVATE_FEED_CLOSED"
+          fi
+          echo "::add-mask::$PREDGE_RESEARCH_NEWS_TOKEN"
+          echo "PREDGE_RESEARCH_NEWS_TOKEN=$PREDGE_RESEARCH_NEWS_TOKEN" >> "$GITHUB_ENV"
+          if test -n "${PREDGE_RISK_GATE_TOKEN:-}"; then
+            if ! [[ "$PREDGE_RISK_GATE_TOKEN" =~ ^[a-f0-9]{64}$ ]] ||
+               test "$PREDGE_RISK_GATE_TOKEN" = "$CONTROL_PLANE_TOKEN" ||
+               test "$PREDGE_RISK_GATE_TOKEN" = "$PREDGE_RESEARCH_NEWS_TOKEN" ||
+               test "$PREDGE_RISK_GATE_TOKEN" = "$ROOT_LEDGER_TOKEN"; then
+              echo "::error::PREDGE_RISK_GATE_SECRET_INVALID_OR_REUSED"; exit 5
+            fi
+            echo "::add-mask::$PREDGE_RISK_GATE_TOKEN"
+            echo "PREDGE_RISK_GATE_TOKEN_CONFIGURED=true" >> "$GITHUB_ENV"
+          else
+            echo "PREDGE_RISK_GATE_TOKEN_CONFIGURED=false" >> "$GITHUB_ENV"
+            echo "::warning::PREDGE_RISK_GATE_TOKEN missing; new endpoint fails closed until protected secret provisioned"
+          fi
+          if test -n "${RISK_OBJECT_VERIFY_KEYS_JSON:-}"; then
+            node -e 'const d=JSON.parse(process.env.RISK_OBJECT_VERIFY_KEYS_JSON); if(!d||typeof d!=="object"||Array.isArray(d))process.exit(3)'
+            echo "RISK_GATE_VERIFY_KEYS_CONFIGURED=true" >> "$GITHUB_ENV"
+          else
+            echo "RISK_GATE_VERIFY_KEYS_CONFIGURED=false" >> "$GITHUB_ENV"
+            echo "::warning::RISK_OBJECT_VERIFY_KEYS_JSON missing; signed GRO verification fails closed"
+          fi
+
+      - name: Deploy D1 control-plane Worker with pinned Wrangler
+        id: deploy
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          # An unrelated source/publication deployment must never overwrite
+          # an existing partner credential with the rotation sentinel. Stop
+          # before any deployment or secret mutation when rotation is absent.
+          test "$PREDGE_RESEARCH_NEWS_TOKEN" != "REVOKED_ROTATION_REQUIRED" || {
+            echo "::error::PREDGE_PROTECTED_ROTATED_TOKEN_REQUIRED_BEFORE_DEPLOY"; exit 5;
+          }
+          DEPLOY_LOG="$(mktemp)"
+          npx -y "wrangler@${WRANGLER_VERSION}" deploy --config wrangler.runtime.jsonc 2>&1 | tee "$DEPLOY_LOG"
+          DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
+          test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev deployment URL"; exit 6; }
+          printf '%s' "$CONTROL_PLANE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put CONTROL_PLANE_TOKEN --config wrangler.runtime.jsonc >/tmp/d1-secret-put.log
+          printf '%s' "$PREDGE_RESEARCH_NEWS_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_RESEARCH_NEWS_TOKEN --config wrangler.runtime.jsonc >/tmp/predge-research-secret-put.log
+          # Protected credentials and trust keys are installed only when
+          # configured. No private tokens are ever emitted to logs.
+          if test "${PREDGE_RISK_GATE_TOKEN_CONFIGURED:-}" = "true"; then
+            printf '%s' "$PREDGE_RISK_GATE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_RISK_GATE_TOKEN --config wrangler.runtime.jsonc >/dev/null
+          fi
+          if test "${RISK_GATE_VERIFY_KEYS_CONFIGURED:-}" = "true"; then
+            printf '%s' "$RISK_OBJECT_VERIFY_KEYS_JSON" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_VERIFY_KEYS_JSON --config wrangler.runtime.jsonc >/dev/null
+          fi
+          echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+          echo "D1 control-plane Worker deployed and server-only secret configured."
+
+      - name: Require HTTPS deployment origin
+        id: origin
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$DEPLOYMENT_URL" in
+            https://*.workers.dev) ;;
+            *) echo "Direct Wrangler did not return the expected HTTPS workers.dev origin"; exit 6 ;;
+          esac
+          echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Verify separate Supabase-free Risk Gate authentication and signed-GRO boundary (no funds)
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-predge-risk-gate-d1-live.mjs
+
+      - name: Run no-funds D1 control-plane acceptance
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          HEALTH=''
+          for attempt in 1 2 3 4 5 6; do
+            HEALTH="$(curl -fsS --max-time 10 "$CONTROL_PLANE_URL/health" || true)"
+            if printf '%s' "$HEALTH" | jq -e --arg sha "$GITHUB_SHA" '.ok == true and .deployed_source_sha == $sha' >/dev/null; then break; fi
+            sleep $((attempt * 2))
+          done
+          printf '%s' "$HEALTH" | jq -e '.schema_version >= 3' >/dev/null || { echo "D1 Worker schema v2 health acceptance failed"; exit 7; }
+          printf '%s' "$HEALTH" | jq -e --arg sha "$GITHUB_SHA" '.deployed_source_sha == $sha' >/dev/null || { echo "D1 Worker exact source SHA acceptance failed"; exit 7; }
+          printf '%s' "$HEALTH" | grep -q '"durable_payload_store":"b2"' || { echo "B2 authority contract missing"; exit 7; }
+          printf '%s' "$HEALTH" | grep -q '"commerce_ledger":"durable_object"' || { echo "Commerce authority contract missing"; exit 7; }
+
+          CODE=''
+          for attempt in 1 2 3 4 5 6; do
+            CODE="$(curl -sS -o /tmp/unauth.json -w '%{http_code}' --max-time 10 -X PUT "$CONTROL_PLANE_URL/v1/control/bootstrap_smoke" -H 'content-type: application/json' --data '{"value":{"probe":true},"version":1}' || true)"
+            if [ "$CODE" = "401" ]; then break; fi
+            if [ "$CODE" = "404" ] && grep -q 'error code: 1042' /tmp/unauth.json; then
+              echo "workers.dev route is still propagating for unauthenticated write probe; retry $attempt/6"
+              sleep $((attempt * 2))
+              continue
+            fi
+            break
+          done
+          test "$CODE" = "401" || { echo "Unauthenticated control-plane write did not fail closed: HTTP $CODE"; cat /tmp/unauth.json; exit 8; }
+
+          CODE=''
+          for attempt in 1 2 3 4 5 6; do
+            CODE="$(curl -sS -o /tmp/auth.json -w '%{http_code}' --max-time 10 -X PUT "$CONTROL_PLANE_URL/v1/control/bootstrap_smoke" -H "authorization: Bearer $CONTROL_PLANE_TOKEN" -H 'content-type: application/json' --data '{"value":{"probe":true},"version":1}' || true)"
+            if [ "$CODE" = "200" ]; then break; fi
+            if [ "$CODE" = "404" ] && grep -q 'error code: 1042' /tmp/auth.json; then
+              echo "workers.dev route is still propagating for authenticated write probe; retry $attempt/6"
+              sleep $((attempt * 2))
+              continue
+            fi
+            break
+          done
+          test "$CODE" = "200" || { echo "Authenticated control-plane write failed: HTTP $CODE"; cat /tmp/auth.json; exit 9; }
+          grep -q '"ok":true' /tmp/auth.json || { echo "Authenticated response missing ok=true"; exit 9; }
+
+      - name: Independently verify private handoff D1 reads and restricted capabilities
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-private-handoff-production.mjs
+
+      - name: Verify three-domain continuity direct Worker readback (no funds)
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          trap 'rm -f "$body"' EXIT
+          http=''
+          for attempt in 1 2 3 4 5 6; do
+            http="$(curl -sS --max-time 12 -o "$body" -w '%{http_code}' "$CONTROL_PLANE_URL/v1/public/three-domain-continuity" || true)"
+            if test "$http" = 200 && jq -e '
+              .ok==true and
+              .schema=="geomacro.three-domain-evidence-continuity.v1" and
+              .three_domains_returned==true and
+              .chargeable==false and
+              .x402_payment_required==false and
+              .upstream_new_event_guaranteed==false and
+              .commercial_rights_verified==false and
+              .signed_gro_verified==false and
+              .raw_upstream_delivered==false and
+              ((.categories|keys|sort)==(["geopolitics","macro","rare_earth"]|sort)) and
+              ([.categories[] |
+                (.category|type)=="string" and
+                (.source_check_current|type)=="boolean" and
+                .commercial_rights_verified==false and
+                .chargeable==false and .current_news_guaranteed==false] | all)
+            ' "$body" >/dev/null 2>&1; then
+              jq -c '{schema:"geomacro.continuity-live-deploy-acceptance.v1",
+                category_states:(.categories|with_entries(.value={
+                  service_state:.value.service_state,
+                  source_check_current:.value.source_check_current,
+                  derived_news_last_72h:.value.native_news_event_count_72h
+                })),
+                source_monitoring_schedule_guaranteed,
+                all_categories_have_observation, all_categories_source_check_current,
+                raw_upstream_delivered:false,chargeable:false,payments:0}' "$body"
+              exit 0
+            fi
+            sleep "$attempt"
+          done
+          echo "::error::THREE_DOMAIN_CONTINUITY_DIRECT_D1_LIVE_READBACK_FAILED"
+          exit 10
+
+      - name: Verify Predge structured feed matches three-domain website D1 journal
+        shell: bash
+        run: node scripts/ops/verify-shared-derived-news-live.mjs
+
+      - name: Verify dedicated authenticated Predge pilot route reuses same D1 IDs (no funds)
+        shell: bash
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-predge-auth-research-delivery.mjs
+
+      - name: Verify authenticated D1 central security budgets without B2 or payment
+        run: node scripts/ops/verify-d1-central-security-budget.mjs
+
+      - name: Verify last-verified Global Risk historical status without B2 or payment
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$CONTROL_PLANE_URL/v1/public/historical-continuity/global-risk"
+          # Deploy + secret put are separate Cloudflare edge revisions. The
+          # previous worker still authenticates unknown routes with HTTP 401
+          # during propagation; never mistake that for a successful public
+          # historical endpoint. Retry ONLY bounded old-revision 401/404.
+          code=""
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            code="$(curl --silent --show-error -o /tmp/gri-historical.json -w '%{http_code}' --max-time 15 "$URL" || true)"
+            if [ "$code" = "200" ] || [ "$code" = "503" ]; then
+              break
+            fi
+            if [ "$code" != "401" ] && [ "$code" != "404" ]; then
+              echo "Unexpected historical endpoint response HTTP $code"; exit 12
+            fi
+            if [ "$attempt" = "10" ]; then
+              echo "Historical endpoint not propagated after bounded retries (HTTP $code)"; exit 12
+            fi
+            echo "Historical endpoint old revision HTTP $code; propagation check $attempt/10"
+            sleep 4
+          done
+          if [ "$code" = "200" ]; then
+            jq -e '
+              .ok == true and
+              .schema == "geomacro.public-global-risk-historical-continuity.v1" and
+              .historical_only == true and
+              .current_snapshot_available == false and
+              .commercial_eligible == false and
+              .x402_chargeable == false and
+              .independently_rechecked_b2_now == false and
+              .source_news_freshness_not_asserted == true and
+              (.archive_generated_at | type == "string") and
+              (has("score") | not) and
+              (has("payload_json") | not) and
+              (has("b2_object_key") | not) and
+              (has("source_url") | not)
+            ' /tmp/gri-historical.json >/dev/null
+            echo "PASS: read-only prior hash-bound D1 historical GRI evidence; no current risk promotion."
+          elif [ "$code" = "503" ]; then
+            jq -e '
+              .ok == false and
+              .error == "GLOBAL_RISK_VERIFIED_ARCHIVE_UNAVAILABLE" and
+              .historical_only == true and
+              .current_snapshot_available == false
+            ' /tmp/gri-historical.json >/dev/null
+            echo "PASS: no qualifying prior B2 archive proof; historical status fails closed."
+          else
+            echo "Historical-only endpoint returned unexpected HTTP $code"; exit 12
+          fi
+
+      - name: Verify Risk Indices historical D1 status without B2 or payment
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$CONTROL_PLANE_URL/v1/public/historical-continuity/risk-indices"
+          code=""
+          # Bounded revision propagation checks; an old 401/404 is never PASS.
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            code="$(curl -sS -o /tmp/indices-historical.json -w '%{http_code}' --max-time 15 "$URL" || true)"
+            if [ "$code" = "200" ] || [ "$code" = "503" ]; then break; fi
+            if [ "$code" != "401" ] && [ "$code" != "404" ]; then
+              echo "Unexpected historical Risk Indices status HTTP $code"; exit 12
+            fi
+            if [ "$attempt" = "10" ]; then
+              echo "Risk Indices historical route not propagated (HTTP $code)"; exit 12
+            fi
+            sleep 4
+          done
+          if [ "$code" = "200" ]; then
+            jq -e '
+              .ok == true and
+              .schema == "geomacro.public-risk-indices-historical-continuity.v1" and
+              .product == "risk-indices" and
+              .historical_only == true and
+              .current_snapshot_available == false and
+              .commercial_eligible == false and
+              .x402_chargeable == false and
+              .independently_rechecked_b2_now == false and
+              .source_news_freshness_not_asserted == true and
+              .prior_verified_domains == ["geopolitics","macro","critical_minerals"] and
+              (.original_snapshot_as_of | type == "string") and
+              (has("indices") | not) and
+              (has("score") | not) and
+              (has("payload_json") | not) and
+              (has("b2_sha256") | not) and
+              (has("b2_object_key") | not) and
+              (has("source_url") | not)
+            ' /tmp/indices-historical.json >/dev/null
+            echo "PASS: risk indices historical D1 anchor only; no current or payment claim."
+          elif [ "$code" = "503" ]; then
+            jq -e '
+              .ok == false and
+              .error == "RISK_INDICES_VERIFIED_ARCHIVE_UNAVAILABLE" and
+              .historical_only == true and
+              .current_snapshot_available == false
+            ' /tmp/indices-historical.json >/dev/null
+            echo "PASS: no qualifying prior Risk Indices D1 archive; fail-closed."
+          else
+            echo "Unexpected risk indices historical HTTP $code"; exit 12
+          fi
+
+      - name: Verify 60-minute-delayed website GRI endpoint without Supabase or B2
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$CONTROL_PLANE_URL/v1/public/website-lagged-global-risk"
+          code=""
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            code="$(curl -sS -o /tmp/website-gri-delayed.json -w '%{http_code}' --max-time 15 "$URL" || true)"
+            if [ "$code" = "200" ] || [ "$code" = "503" ]; then break; fi
+            if [ "$code" != "401" ] && [ "$code" != "404" ]; then
+              echo "Unexpected website GRI delayed endpoint status HTTP $code"; exit 12
+            fi
+            if [ "$attempt" = "10" ]; then
+              echo "Delayed GRI website endpoint not deployed (HTTP $code)"; exit 12
+            fi
+            sleep 4
+          done
+          if [ "$code" = "200" ]; then
+            jq -e '
+              .ok == true and
+              .schema == "geomacro.website-lagged-global-risk.v1" and
+              .website_only == true and
+              .minimum_delay_minutes == 60 and
+              .verification_status == "verified" and
+              .prior_b2_readback_verified_at_write == true and
+              .independently_rechecked_b2_now == false and
+              .source_identity_disclosed == false and
+              .raw_upstream_disclosed == false and
+              .chargeable == false and
+              .paid_delivery_authorized == false and
+              .data.auditPersisted == true and
+              .data.verificationStatus == "verified" and
+              (.data.recentEvents | length == 0) and
+              (all(.data.drivers[]; .topEvent == null)) and
+              (has("payload_json") | not) and
+              (has("source_url") | not) and
+              (has("provider_name") | not)
+            ' /tmp/website-gri-delayed.json >/dev/null
+            echo "PASS: true previously verified delayed GRI; no sources, payments or B2 calls."
+          elif [ "$code" = "503" ]; then
+            jq -e '
+              .ok == false and
+              (.error == "WEBSITE_GRI_HISTORY_UNAVAILABLE" or
+               .error == "WEBSITE_GRI_60MIN_VERIFIED_HISTORY_NOT_FOUND") and
+              .chargeable == false and .source_identity_disclosed == false
+            ' /tmp/website-gri-delayed.json >/dev/null
+            echo "HOLD: no eligible verified 60min-old direct B2 snapshot; website fails closed."
+          else
+            echo "Delayed GRI endpoint failed: HTTP $code"; exit 12
+          fi
+
+      - name: Verify authenticated account-wide B2 budget reservation without contacting B2
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CONTROL_PLANE_URL"
+          unauth="$(curl --silent --show-error -o /tmp/b2-quota-unauth.json -w '%{http_code}' --max-time 15 "$CONTROL_PLANE_URL/v1/b2-quota/status")"
+          test "$unauth" = 401 || { echo "B2 quota status must be authenticated"; exit 10; }
+          curl --fail --silent --show-error --max-time 15 "$CONTROL_PLANE_URL/v1/b2-quota/status" \
+            -H "authorization: Bearer $CONTROL_PLANE_TOKEN" > /tmp/b2-quota-before.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {B2_DAILY_LIMITS} from './workers/control-plane/src/b2-account-quota.mjs';
+          const before=JSON.parse(readFileSync('/tmp/b2-quota-before.json','utf8'));
+          if(before.ok!==true||Object.entries(B2_DAILY_LIMITS).some(([kind,limit])=>before.limits?.[kind]!==limit))
+            throw Error('DEPLOYED_B2_QUOTA_POLICY_MISMATCH');
+          NODE
+          before="$(jq -r '.used.total' /tmp/b2-quota-before.json)"
+          code="$(curl --silent --show-error -o /tmp/b2-quota-reservation.json -w '%{http_code}' --max-time 15 \
+            -X POST "$CONTROL_PLANE_URL/v1/b2-quota/reserve" \
+            -H "authorization: Bearer $CONTROL_PLANE_TOKEN" \
+            -H 'content-type: application/json' \
+            --data '{"kind":"HEAD","workflow_id":"deploy_quota_smoke"}')"
+          # An exhausted *existing* shared budget is correct fail-closed behavior.
+          if [ "$code" = "200" ]; then
+            jq -e '.ok==true and .reserved==true and .kind=="HEAD" and .b2_operation_performed==false and .chargeable==false' /tmp/b2-quota-reservation.json >/dev/null
+          elif [ "$code" = "429" ]; then
+            jq -e '.ok==false and .reserved==false and .error=="B2_GLOBAL_DAILY_QUOTA_EXHAUSTED"' /tmp/b2-quota-reservation.json >/dev/null
+          else
+            echo "D1 B2 account quota endpoint failed status $code"; exit 11
+          fi
+          curl --fail --silent --show-error --max-time 15 "$CONTROL_PLANE_URL/v1/b2-quota/status" \
+            -H "authorization: Bearer $CONTROL_PLANE_TOKEN" > /tmp/b2-quota-after.json
+          jq -e --argjson before "$before" --argjson success "$([ "$code" = 200 ] && echo 1 || echo 0)" \
+            '.used.total>=($before+$success)' /tmp/b2-quota-after.json >/dev/null
+          echo "PASS: account-wide D1 reservation is authenticated, atomic and never calls B2, Supabase or commerce."
+
+      - name: Verify private 779-row source directory acceptance with no Supabase calls
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$CONTROL_PLANE_URL/v1/internal"
+          code="$(curl -sS -o /tmp/source-directory-unauthorized.json -w '%{http_code}' --max-time 15 "$root/source-directory-coverage")"
+          test "$code" = 401 || { echo "Private source directory permits anonymous access"; exit 12; }
+          curl --fail --silent --show-error --max-time 15 \
+            "$root/source-directory-coverage" \
+            -H "authorization: Bearer $CONTROL_PLANE_TOKEN" > /tmp/source-directory-coverage.json
+          jq -e '
+            .ok==true and
+            .schema=="geomacro.private-source-directory-coverage.v1" and
+            .rows_verified_in_shadow==779 and
+            .country_directory_counts=={"primary":195,"statistics":194,"monetary":195,"critical_minerals":195} and
+            .known_missing_statistics_iso2==["VA"] and
+            .status=="PRIVATE_METADATA_COPIED_NOT_ACTIVATED" and
+            .source_activated==false and
+            .commercial_rights_verified==false and
+            .supabase_requests==0 and
+            .payments==0
+          ' /tmp/source-directory-coverage.json >/dev/null
+          curl --fail --silent --show-error --max-time 15 \
+            "$root/source-directory?dataset=primary&country_iso2=US" \
+            -H "authorization: Bearer $CONTROL_PLANE_TOKEN" > /tmp/source-directory-us.json
+          jq -e '
+            .ok==true and .country_iso2=="US" and
+            .dataset=="primary" and
+            .source_directory_metadata.country_iso2=="US" and
+            (.metadata_sha256|test("^[a-f0-9]{64}$")) and
+            .source_activated==false and
+            .derivative_commercial_rights_approved==false and
+            .partner_output_authorized==false and
+            .chargeable==false
+          ' /tmp/source-directory-us.json >/dev/null
+          code="$(curl -sS -o /tmp/source-directory-va.json -w '%{http_code}' --max-time 15 \
+            "$root/source-directory?dataset=statistics&country_iso2=VA" \
+            -H "authorization: Bearer $CONTROL_PLANE_TOKEN")"
+          test "$code" = 404 || { echo "Vatican statistics directory must not be invented"; exit 12; }
+          echo "PASS: private D1 source directory 779 records, token gate and hash-bound country readback; no funds or source activation."
+
+      - name: Remove bootstrap smoke row directly from D1
+        if: success()
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "DELETE FROM control_state WHERE key='bootstrap_smoke';"
+
+      - name: Verify every retained Intelligence news signature from the deployed public readback
+        # Uses public registered verification keys only; no private signer or payment.
+        run: node scripts/ops/verify-all-news-signed-publications.mjs
+
+      - name: Confirm no paid or destructive activation occurred
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "D1 control-plane bootstrap completed without touching x402 settlement, Coinbase/Circle mainnet payment, Supabase deletion, storage.objects SQL deletion, or B2 deletion."
