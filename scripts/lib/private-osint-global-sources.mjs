@@ -242,7 +242,7 @@ export function privateOsintGlobalSources(){
    feed=new URL(source.url);
    reference=new URL(source.discovery_reference_url);
   }catch{throw Error("PRIVATE_OSINT_NATIONAL_GAP_URL_INVALID")}
-  const normalizedHost=host=>host.toLowerCase().replace(/^www\\./u,"");
+  const normalizedHost=host=>host.toLowerCase().replace(/^www\./u,"");
   const continent=Object.entries(CONTINENT_COUNTRIES_195)
    .find(([,codes])=>codes.includes(source.publisher_country_iso3))?.[0];
   if(!/^private_gap_[a-z0-9_]+$/u.test(source.id)||
