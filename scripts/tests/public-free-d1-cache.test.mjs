@@ -75,6 +75,28 @@ test("public factual JSON uses separate finite category cache keys, private rece
   assert.equal(eligiblePublicFreeD1CacheRequest(request(home,{Authorization:"Bearer private"})),false);
   assert.equal(eligiblePublicFreeD1CacheRequest(request(home,{"Cache-Control":"no-store"})),false);
 });
+test("concurrent cold-cache users share one actual D1 read per POP without data mixing",async()=>{
+ const url="https://geomacro-control-plane.example/v1/public/reusable-source-news?domain=macro";
+ let reads=0,writes=0;
+ const entries=new Map();
+ const cache={
+   async match(k){return entries.get(k.url)?.clone()??null},
+   async put(k,res){writes++;await new Promise(resolve=>setTimeout(resolve,10));entries.set(k.url,res.clone())},
+ };
+ const build=async()=>{
+   reads++;
+   await new Promise(resolve=>setTimeout(resolve,10));
+   return Response.json({ok:true,source:"bounded-macro"});
+ };
+ const outputs=await Promise.all(Array.from({length:12},
+   ()=>readPublicFreeD1Cached(request(url),build,{cache})));
+ assert.equal(reads,1);
+ assert.equal(writes,1);
+ for(const res of outputs){
+   assert.equal(res.status,200);
+   assert.deepEqual(await res.json(),{ok:true,source:"bounded-macro"});
+ }
+});
 test("cache failure cannot replace truthful D1 readback",async()=>{
   let reads=0;
   const broken={async match(){throw Error("CACHE_OUTAGE")},async put(){throw Error("CACHE_WRITE_FAILED")}};
