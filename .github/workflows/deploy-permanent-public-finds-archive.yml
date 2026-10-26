@@ -1,0 +1,163 @@
+name: Deploy Permanent Public Finds Archive
+
+# Deploy the already-built static archive independently from live source ingestion.
+# This workflow never reads or writes D1; the archive writer remains a separate pipeline.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-permanent-public-finds-archive.yml"
+      - "workers/public-finds-archive/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: permanent-public-finds-archive-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-public-static-archive:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact canonical main source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Validate and materialize the append-only archive branch without D1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive_ref="refs/remotes/origin/geomacro-permanent-finds-archive"
+          auth_header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+          git -c http.extraheader="$auth_header" fetch origin "refs/heads/geomacro-permanent-finds-archive:$archive_ref"
+          archive_dir="$RUNNER_TEMP/geomacro-public-archive"
+          mkdir -p "$archive_dir"
+          git archive "$archive_ref" data | tar -x -C "$archive_dir"
+          test -s "$archive_dir/data/index.json" || { echo "::error::PERMANENT_ARCHIVE_INDEX_MISSING"; exit 2; }
+          mkdir -p workers/public-finds-archive/assets
+          cp -a "$archive_dir/data/." workers/public-finds-archive/assets/
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { existsSync, readFileSync, writeFileSync } from "node:fs";
+          import { join } from "node:path";
+          import { isPermanentArchiveSignal } from "./scripts/ops/publish-permanent-derived-news-archive.mjs";
+          const dataDir=join(process.env.RUNNER_TEMP,"geomacro-public-archive","data");
+          const assetsDir="workers/public-finds-archive/assets";
+          const categories=["geopolitics","macro","rare_earth"];
+          const index=JSON.parse(readFileSync(join(dataDir,"index.json"),"utf8"));
+          assert.equal(index.schema,"geomacro.permanent-derived-news-archive-index.v1");
+          assert.equal(typeof index.seed_complete,"boolean");
+          assert(Array.isArray(index.months) && index.months.length<=600);
+          assert.deepEqual(index.categories,categories);
+          assert(Number.isInteger(index.total_signals) && index.total_signals>=0);
+          const now=Date.now();
+          const rows=[],ids=new Set();
+          for(const month of index.months){
+            assert.match(month,/^\d{4}-(?:0[1-9]|1[0-2])$/u);
+            for(const category of categories){
+              const path=join(dataDir,"archive",month,category+".json");
+              assert(existsSync(path),"PERMANENT_ARCHIVE_SHARD_MISSING");
+              const shard=JSON.parse(readFileSync(path,"utf8"));
+              assert.equal(shard.schema,"geomacro.permanent-derived-news-archive-month.v1");
+              assert.equal(shard.month,month);
+              assert.equal(shard.category,category);
+              assert(Array.isArray(shard.signals));
+              for(const signal of shard.signals){
+                assert.equal(signal.category,category);
+                assert(isPermanentArchiveSignal(signal,now,{allowHistorical:true}),"PERMANENT_ARCHIVE_SIGNAL_INVALID");
+                assert(!ids.has(signal.id),"PERMANENT_ARCHIVE_DUPLICATE_ID");
+                ids.add(signal.id); rows.push(signal);
+              }
+            }
+          }
+          const months=[...new Set(rows.map(s=>s.published_at.slice(0,10).slice(0,7)))].sort().reverse();
+          assert.deepEqual(index.months,months);
+          assert.equal(index.total_signals,rows.length);
+          rows.sort((a,b)=>b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
+          const recent=rows.filter(s=>isPermanentArchiveSignal(s,now,{allowHistorical:false})).slice(0,250);
+          const latest={
+            ok:true,schema:"geomacro.website-derived-news-feed.v1",
+            checked_at:new Date(now).toISOString(),original_release_delay_minutes:0,
+            retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
+            scored:false,chargeable:false,supabase_dependency:false,signals:recent,
+          };
+          writeFileSync(join(assetsDir,"latest.json"),JSON.stringify(latest,null,2)+"\n",{mode:0o644});
+          // The archive index, rather than the rolling latest feed, is the permanent source of truth.
+          writeFileSync(join(assetsDir,"index.json"),JSON.stringify(index,null,2)+"\n",{mode:0o644});
+          console.log(JSON.stringify({schema:"geomacro.permanent-public-finds-static-bundle.v1",
+            archive_signals:rows.length,archive_months:index.months.length,
+            latest_signals:recent.length,seed_complete:index.seed_complete,
+            d1_reads:0,d1_writes:0,supabase_writes:0,payments:0}));
+          NODE
+
+      - name: Deploy public static assets to the existing Cloudflare Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        working-directory: workers/public-finds-archive
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::PERMANENT_ARCHIVE_CLOUDFLARE_API_TOKEN_MISSING"; exit 2; }
+          [[ "${CLOUDFLARE_ACCOUNT_ID:-}" =~ ^[a-f0-9]{32}$ ]] || { echo "::error::PERMANENT_ARCHIVE_CLOUDFLARE_ACCOUNT_ID_MISSING"; exit 2; }
+          npx --yes wrangler@4.136.3 deploy --config wrangler.jsonc
+
+      - name: Verify public index and latest readback without D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { readFileSync } from "node:fs";
+          const base="https://geomacro-public-finds-archive.daspallab202391.workers.dev";
+          const expectedIndex=JSON.parse(readFileSync("workers/public-finds-archive/assets/index.json","utf8"));
+          const expectedLatest=JSON.parse(readFileSync("workers/public-finds-archive/assets/latest.json","utf8"));
+          async function get(path){
+            let last;
+            for(let attempt=0;attempt<5;attempt++){
+              try{
+                const response=await fetch(base+path+"?verify="+Date.now()+"-"+attempt,{
+                  headers:{Accept:"application/json","Cache-Control":"no-cache"},
+                  signal:AbortSignal.timeout(8000),
+                });
+                if(response.ok){
+                  const text=await response.text();
+                  if(text.length<2_000_000)return JSON.parse(text);
+                }
+                last=Error("PUBLIC_ARCHIVE_READBACK_HTTP_"+response.status);
+              }catch(error){last=error;}
+              await new Promise(resolve=>setTimeout(resolve,1500));
+            }
+            throw Error(path==="/index.json"?"PERMANENT_ARCHIVE_PUBLIC_INDEX_READBACK_FAILED":"PERMANENT_ARCHIVE_PUBLIC_LATEST_READBACK_FAILED");
+          }
+          const liveIndex=await get("/index.json");
+          const liveLatest=await get("/latest.json");
+          assert.equal(liveIndex.schema,expectedIndex.schema);
+          assert.equal(liveIndex.updated_at,expectedIndex.updated_at);
+          assert.equal(liveIndex.total_signals,expectedIndex.total_signals);
+          assert.equal(liveIndex.seed_complete,expectedIndex.seed_complete);
+          assert.deepEqual(liveIndex.months,expectedIndex.months);
+          assert.equal(liveLatest.ok,true);
+          assert.equal(liveLatest.schema,expectedLatest.schema);
+          assert.equal(liveLatest.delivery_scope,"free_website_only");
+          assert.equal(liveLatest.signals.length,expectedLatest.signals.length);
+          assert.equal(liveLatest.chargeable,false);
+          assert.equal(liveLatest.scored,false);
+          console.log(JSON.stringify({schema:"geomacro.permanent-public-finds-static-readback.v1",
+            public_index_readback_verified:true,public_latest_readback_verified:true,
+            archive_signals:liveIndex.total_signals,latest_signals:liveLatest.signals.length,
+            d1_reads:0,d1_writes:0,payments:0}));
+          NODE
