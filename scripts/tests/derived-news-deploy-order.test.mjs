@@ -110,7 +110,7 @@ test("D1 daily-quota preflight leaves append-only permanent archive independent 
  const d1Writer=workflow.indexOf("bun scripts/ops/publish-website-derived-news.ts");
  const archive=workflow.indexOf("Publish append-only permanent Finds archive without D1 dependency");
  assert.ok(audit>=0&&d1Writer>audit&&archive>d1Writer);
- const archiveStep=workflow.slice(archive,workflow.indexOf("\\n      - name:",archive+10));
+ const archiveStep=workflow.slice(archive,workflow.indexOf("\n      - name:",archive+10));
  assert.match(archiveStep,/if: always\(\) && github\.event_name != 'pull_request'/u);
  assert.doesNotMatch(archiveStep,/steps\.d1-quota\.outputs\.headroom/u);
  assert.ok(publisher.includes('process.env.GEOMACRO_D1_QUOTA_HEADROOM==="held"'));
