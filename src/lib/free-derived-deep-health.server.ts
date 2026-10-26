@@ -118,10 +118,20 @@ export async function probeFreeDerivedDeepHealth({
   fetcher?:typeof fetch;now?:()=>number;
 }={}){
   try{
+    // The static Worker may issue a canonical-path redirect. The deploy
+    // acceptance follows redirects, so health must do the same while refusing
+    // any redirect that leaves the pinned archive origin.
     const response=await fetcher(FEED_URL,{
-      method:"GET",redirect:"error",headers:{Accept:"application/json","Cache-Control":"no-cache"},
+      method:"GET",redirect:"follow",headers:{Accept:"application/json","Cache-Control":"no-cache"},
       signal:AbortSignal.timeout(7_000),
     });
+    const finalUrl=response.url;
+    if(finalUrl){
+      let finalOrigin="";
+      try{finalOrigin=new URL(finalUrl).origin;}catch{}
+      if(finalOrigin!==new URL(FEED_URL).origin)
+        return result(false,"FREE_ARCHIVE_REDIRECT_ORIGIN_INVALID");
+    }
     if(response.status!==200||
        !(response.headers.get("content-type")??"").includes("application/json"))
       return result(false,"FREE_ARCHIVE_TRANSPORT_UNAVAILABLE");
