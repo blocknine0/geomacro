@@ -104,6 +104,7 @@ describe("authentic free-derived static archive deep-health",()=>{
     expect(response.statusCode).toBe(200);
     expect(String(fetcher.mock.calls[0][0])).toContain(
       "geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json");
+    expect(fetcher.mock.calls[0][1]?.redirect).toBe("follow");
     expect(String(fetcher.mock.calls[0][0])).not.toContain("geomacro-control-plane");
   });
   it("returns HTTP 503 on remote 503, non-JSON, oversize or outage; never a synthetic green",async()=>{
