@@ -108,6 +108,38 @@ function sortSignals(signals){
   return signals.slice().sort((a,b)=>
     b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
 }
+
+/**
+ * Select the rolling public latest feed without starving a low-volume category.
+ * Callers must pass already validated, current archive records. We pick in
+ * category round-robin order, then restore global newest-first presentation.
+ */
+export function selectCurrentArchiveSignals(signals,limit=250){
+  if(!Array.isArray(signals)||!Number.isSafeInteger(limit)||limit<1||limit>250)
+    throw Error("PERMANENT_ARCHIVE_LATEST_SELECTION_INVALID");
+  const ids=new Set();
+  for(const signal of signals){
+    if(!signal||typeof signal!=="object"||Array.isArray(signal)||
+       !CATEGORY_SET.has(signal.category)||typeof signal.id!=="string"||
+       typeof signal.published_at!=="string"||!Number.isFinite(Date.parse(signal.published_at))||
+       ids.has(signal.id))
+      throw Error("PERMANENT_ARCHIVE_LATEST_INPUT_INVALID");
+    ids.add(signal.id);
+  }
+  const groups=new Map(CATEGORIES.map(category=>[
+    category,sortSignals(signals.filter(signal=>signal.category===category)),
+  ]));
+  const selected=[];
+  for(let offset=0;selected.length<limit;offset++){
+    let added=false;
+    for(const category of CATEGORIES){
+      const signal=groups.get(category)[offset];
+      if(signal&&selected.length<limit){selected.push(signal);added=true;}
+    }
+    if(!added)break;
+  }
+  return sortSignals(selected);
+}
 function readIndex(dataDir){
   const path=join(dataDir,"index.json");
   if(!existsSync(path))return {
@@ -269,7 +301,7 @@ export async function publishPermanentDerivedNewsArchive({
       ok:true,schema:PUBLIC_FEED_SCHEMA,checked_at:new Date(now).toISOString(),
       original_release_delay_minutes:0,retention_days:3,retention_hours:72,
       delivery_scope:"free_website_only",scored:false,chargeable:false,
-      supabase_dependency:false,signals:recent.slice(0,250),
+      supabase_dependency:false,signals:selectCurrentArchiveSignals(recent,250),
     };
     writeFileSync(dataLatest,JSON.stringify(latest,null,2)+"\n",{encoding:"utf8",mode:0o644});
   }
