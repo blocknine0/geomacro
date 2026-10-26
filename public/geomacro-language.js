@@ -24,7 +24,9 @@
       }
     }
     if (current.hostname.endsWith(".translate.goog")) {
-      return cleanQuery(new URL(`${window.location.protocol}//geomacro.live${current.pathname}${current.search}`)).toString();
+      const original = new URL(`${window.location.protocol}//geomacro.live${current.pathname}${current.search}`);
+      original.hash = current.hash;
+      return cleanQuery(original).toString();
     }
     return cleanQuery(current).toString();
   }
