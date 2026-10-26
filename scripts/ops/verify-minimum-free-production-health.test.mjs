@@ -112,14 +112,16 @@ test("real published older source is equivalent only for a trusted exact-head op
   {filename:"scripts/ops/verify-public-intelligence-browser-freshness.mjs",status:"modified"},
   {filename:"scripts/tests/public-intelligence-browser-freshness.test.mjs",status:"modified"},
   {filename:"src/__tests__/five-minute-original-news-fastlane.test.ts",status:"modified"},
-  // This exact .server module affects only the health API, not rendered HTML/JS.
-  {filename:"src/lib/free-derived-deep-health.server.ts",status:"modified"},
+  // Tests do not change published behavior; a server route module does.
   {filename:"src/lib/free-derived-deep-health.server.test.ts",status:"modified"},
  ];
  const compare={status:"ahead",base_commit:{sha:site},
    merge_base_commit:{sha:site},ahead_by:3,behind_by:0,total_commits:3,
    commits:[{sha:"c".repeat(40)},{sha:"d".repeat(40)},{sha:main}],files};
  assert.equal(classifyPublishedSourceEquivalence(compare,site,main),true);
+ // A server-only module still changes the live API route and requires publish.
+ assert.equal(classifyPublishedSourceEquivalence({...compare,files:[...files,
+   {filename:"src/lib/free-derived-deep-health.server.ts",status:"modified"}]},site,main),false);
  const publicResult=classifyMinimumFreeProduction({
   ...fixture(),expectedSha:main,
   websiteSourceEquivalent:classifyPublishedSourceEquivalence(compare,site,main),
@@ -128,7 +130,7 @@ test("real published older source is equivalent only for a trusted exact-head op
  assert.equal(publicResult.website_parity_mode,"VERIFIED_NO_WEBSITE_SOURCE_CHANGES");
  assert.equal(publicResult.paid_delivery_authorized,false);
  assert.equal(publicResult.legacy_signed_hot_products_verified,false);
- for(const filename of ["src/routes/intelligence.tsx","public/index.html","src/lib/free-derived-runtime.ts",
+ for(const filename of ["src/routes/intelligence.tsx","public/index.html","src/lib/free-derived-runtime.ts","src/lib/free-derived-deep-health.server.ts",
     "workers/control-plane/src/index.mjs","lib/risk.js",
     "scripts/lib/global-official-release-feeds.mjs","src/__tests__/runtime.ts",
     "src/__tests__/../../routes/intelligence.test.ts","package-lock.json",
