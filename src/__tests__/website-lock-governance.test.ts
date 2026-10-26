@@ -68,7 +68,12 @@ describe("website lock governance", () => {
     expect(languageApproval.pending_exact_sha_live_deployment_acceptance).toBe(true);
     const languageFallback = config.approved_language_pack_fallback_20261026;
     expect(languageFallback.previous_baseline_sha).toBe(languageApproval.approved_ui_commit);
-    expect(languageFallback.approved_ui_commit).toBe(config.baseline_sha);
+    // The language fallback approval is a historical record; the newer OSINT label-hide
+    // approval advances the active baseline without rewriting that older approval.
+    expect(languageFallback.approved_ui_commit).toBe("49d13acbedcf6dd191251da6dbea10056e5b74b1");
+    const osintStatusLabelApproval = config.approved_osint_status_label_hide_20261027;
+    expect(osintStatusLabelApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(osintStatusLabelApproval.previous_baseline_sha).toBe("49d13acbedcf6dd191251da6dbea10056e5b74b1");
     expect(languageFallback.scope).toEqual([
       "public/geomacro-language.js",
       "src/components/site-shell.tsx",
