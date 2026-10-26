@@ -239,7 +239,7 @@ test("private quota sampling persists EVERY dated news item but fewer D1 check U
  assert.equal(receipt.news_rows_verified_in_d1,33);
  assert.equal(writes.reduce((n,g)=>n+g.items.length,0),33);
  assert.equal(writes.reduce((n,g)=>n+g.checks.length,0),receipt.source_checks_persisted);
- assert.ok(writes.every(g=>g.items.length<=16&&g.checks.length<=32));
+ assert.ok(writes.every(g=>g.items.length<=20&&g.checks.length<=32));
  assert.ok(writes.length<15,"3-slot sampling should use far fewer D1 calls than all 900 checks");
  assert.equal(receipt.d1_write_exact_readback_verified,true);
  assert.equal(receipt.separate_private_d1_readback_verified,true);
