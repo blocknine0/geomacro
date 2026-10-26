@@ -884,8 +884,8 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_expansion_cl_cochilco_rss_candidate",
-      "url": "https://www.cochilco.cl/feed/",
+      "id": "private_expansion_cl_sernageomin_rss_candidate",
+      "url": "https://www.sernageomin.cl/feed/",
       "continent": "south_america",
       "publisher_country_iso3": "CHL",
       "categories": [
@@ -893,8 +893,8 @@
       ],
       "type": "rss",
       "related_corridor_ids": [],
-      "provenance_note": "Chilean Copper Commission official site publishes minerals releases; root RSS path is a candidate, not accepted as live without successful runtime probe.",
-      "discovery_reference_url": "https://www.cochilco.cl/",
+      "provenance_note": "Chile SERNAGEOMIN (National Geology and Mining Service) official news page is live, but feed path remains strictly RUNTIME_PROBE_REQUIRED. Do not infer a working feed without HTTPS RSS plus native item dates.",
+      "discovery_reference_url": "https://www.sernageomin.cl/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
