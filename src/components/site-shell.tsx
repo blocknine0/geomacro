@@ -62,10 +62,57 @@ const SITE_LANGUAGES = [
 
 function LanguageMenu() {
   const translatePage = (code: string) => {
+    if (!SITE_LANGUAGES.some((language) => language.code === code)) return;
     const controller = (window as Window & {
       GeomacroLanguage?: { navigate: (language: string) => void };
     }).GeomacroLanguage;
-    controller?.navigate(code);
+    if (controller?.navigate) {
+      try {
+        controller.navigate(code);
+        return;
+      } catch {
+        // Keep the menu functional if the optional static controller failed.
+      }
+    }
+
+    // A failed/missing public script must never turn the language selector into
+    // a silent no-op. Rebuild the canonical URL first so switching languages
+    // cannot nest a previous Translate URL or lose the current route.
+    let source = new URL(window.location.href);
+    if (source.hostname === "translate.google.com") {
+      const embedded = source.searchParams.get("u");
+      if (embedded) {
+        try {
+          source = new URL(embedded);
+        } catch {
+          for (const key of ["sl", "tl", "hl", "u"]) source.searchParams.delete(key);
+        }
+      } else {
+        for (const key of ["sl", "tl", "hl", "u"]) source.searchParams.delete(key);
+      }
+    } else if (source.hostname.endsWith(".translate.goog")) {
+      const original = new URL(`https://geomacro.live${source.pathname}${source.search}`);
+      original.hash = source.hash;
+      source = original;
+    }
+    for (const key of [...source.searchParams.keys()]) {
+      if (key.startsWith("_x_tr_")) source.searchParams.delete(key);
+    }
+    try {
+      window.localStorage.setItem("geomacro.website_language", code);
+    } catch {
+      // Browsers with blocked storage can still translate this visit.
+    }
+    if (code === "en") {
+      window.location.assign(source.toString());
+      return;
+    }
+    const translated = new URL("https://translate.google.com/translate");
+    translated.searchParams.set("sl", "auto");
+    translated.searchParams.set("tl", code);
+    translated.searchParams.set("hl", "en");
+    translated.searchParams.set("u", source.toString());
+    window.location.assign(translated.toString());
   };
 
   return (
