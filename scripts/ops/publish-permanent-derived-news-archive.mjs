@@ -143,10 +143,10 @@ function categoryRelevance(signal){
   return scores[signal.category]-(Math.max(...CATEGORIES.filter(c=>c!==signal.category).map(c=>scores[c]))||0);
 }
 function preferDuplicateCandidate(candidate,current){
-  const officialDifference=Number(isOfficialObservation(candidate))-Number(isOfficialObservation(current));
-  if(officialDifference!==0)return officialDifference>0;
   const relevanceDifference=categoryRelevance(candidate)-categoryRelevance(current);
   if(relevanceDifference!==0)return relevanceDifference>0;
+  const officialDifference=Number(isOfficialObservation(candidate))-Number(isOfficialObservation(current));
+  if(officialDifference!==0)return officialDifference>0;
   const candidateDirect=!String((candidate.sources_credited??[]).join(" ")).includes("news.google.com");
   const currentDirect=!String((current.sources_credited??[]).join(" ")).includes("news.google.com");
   if(candidateDirect!==currentDirect)return candidateDirect;
