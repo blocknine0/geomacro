@@ -12,7 +12,42 @@ describe("D1 control-plane bootstrap", () => {
     expect(workflow).toContain("d1 list --json");
     expect(workflow).toContain('d1 create "$D1_DATABASE_NAME" --location apac');
     expect(workflow).toContain("d1 migrations apply DB --remote");
+    expect(workflow).toContain("node scripts/ops/audit-d1-account-daily-quota-readonly.mjs");
+    expect(workflow.indexOf("node scripts/ops/audit-d1-account-daily-quota-readonly.mjs"))
+      .toBeLessThan(workflow.indexOf("d1 migrations apply DB --remote"));
     expect(workflow).toContain("SELECT version FROM schema_meta");
+  });
+
+  it("gates deployment on official account-wide daily D1 headroom before any migration query", () => {
+    const quotaAudit = readFileSync("scripts/ops/audit-d1-account-daily-quota-readonly.mjs", "utf8");
+    const quotaRecovery = readFileSync(".github/workflows/recover-d1-quota-deployment-after-reset.yml", "utf8");
+    const preflight = workflow.indexOf("node scripts/ops/audit-d1-account-daily-quota-readonly.mjs");
+    const migration = workflow.indexOf("d1 migrations apply DB --remote");
+    expect(preflight).toBeGreaterThanOrEqual(0);
+    expect(migration).toBeGreaterThan(preflight);
+    expect(quotaAudit).toContain("d1AnalyticsAdaptiveGroups");
+    expect(quotaAudit).toContain("D1_FREE_DAILY");
+    expect(quotaAudit).toContain("d1_writes:0");
+    expect(quotaRecovery).toContain("daily row read limit");
+    expect(quotaRecovery).toContain("daily row write limit");
+    expect(quotaRecovery).toContain("DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS");
+    expect(quotaRecovery).toContain('"confirmation":"DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS"');
+  });
+
+  it("routes one bounded complete journal bundle without the three-page OFFSET scan", () => {
+    const index = readFileSync("workers/control-plane/src/index.mjs", "utf8");
+    const reader = readFileSync("workers/control-plane/src/website-derived-intelligence.mjs", "utf8");
+    const start = reader.indexOf("export async function readDerivedStoriesBundle");
+    const end = reader.indexOf("export async function renderDerivedStoriesHtml", start);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    const bundle = reader.slice(start, end);
+    expect(index).toContain("/v1/public/website-derived-news-bundle");
+    expect(index).toContain("readDerivedStoriesBundle(env)");
+    expect(bundle).toContain("LIMIT 601");
+    expect(bundle).not.toContain("OFFSET");
+    expect(bundle).toContain("item_cap:600");
+    expect(bundle).toContain("complete:true");
   });
 
   it("uses direct pinned Wrangler rather than a repository package-manager installer", () => {
