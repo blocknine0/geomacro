@@ -12,18 +12,18 @@ const MAX_BYTES=900_000;
 const RETENTION_MS=72*60*60_000;
 const ISO=/^[A-Z]{3}$/u;
 const STRUCTURAL_STATES=new Set([
- "DERIVED_OFFICIAL_COUNTRY_MENTION_OBSERVED_UNVERIFIED",
+ "DERIVED_COUNTRY_MENTION_OBSERVED_UNVERIFIED",
  "NO_MATCHING_COUNTRY_MENTION_IN_ROLLING_STATIC_ARCHIVE"
 ]);
 
 export function inspectObservedCountryGrid(doc,now=new Date()){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
     !doc||typeof doc!=="object"||Array.isArray(doc)||
-    doc.schema!=="geomacro.195x3-observed-derived-news-coverage.v1"||
+    doc.schema!=="geomacro.195x3-public-finds-coverage.v2"||
     doc.country_count!==195||doc.category_count!==3||
     doc.total_country_category_cells!==585||doc.returned_cells!==585||
-    doc.coverage_scope!=="OBSERVED_DERIVED_RELEASES_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250_ONLY"||
-    doc.country_routing_basis!=="EXACT_DERIVED_TITLE_GEOGRAPHY_MENTION_ONLY"||
+    doc.coverage_scope!=="OBSERVED_PUBLIC_GEOMACRO_FINDS_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250"||
+    doc.country_routing_basis!=="EXACT_PUBLIC_TITLE_OR_GEOGRAPHY_MENTION_ONLY"||
     doc.not_observed_means_no_news!==false||
     doc.exhaustive_country_news_coverage_verified!==false||
     doc.producer_country_original_coverage_verified!==false||
@@ -74,7 +74,7 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
    if(occupied.has(key))throw Error("LIVE_195X3_DUPLICATE_CELL");
    occupied.add(key);countries.add(row.country_iso3);
    const positive=row.observed_derived_records_72h>0;
-   if(row.status!==(positive?"DERIVED_OFFICIAL_COUNTRY_MENTION_OBSERVED_UNVERIFIED":
+   if(row.status!==(positive?"DERIVED_COUNTRY_MENTION_OBSERVED_UNVERIFIED":
        "NO_MATCHING_COUNTRY_MENTION_IN_ROLLING_STATIC_ARCHIVE"))
      throw Error("LIVE_195X3_FALSE_COUNTRY_COVERAGE_STATUS");
    if(!positive) {

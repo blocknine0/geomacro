@@ -1,6 +1,6 @@
 import {fetchDirectDerivedNews} from "./public-derived-news-client";
 import {country195ByIso3} from "./canonical-country-registry-195";
-import {observed195x3Coverage,observedDerivedNewsForCountry} from "./derived-news-country-coverage-195";
+import {observed195x3Coverage,observedPublicFinds195x3Coverage,observedDerivedNewsForCountry} from "./derived-news-country-coverage-195";
 import {buildDerivedNewsStructural,NEWS_STRUCTURAL_SCHEMA} from "./derived-news-structural-bridge";
 import {normalizeReusableNewsJson,REUSABLE_NEWS_JSON_SCHEMA} from "./reusable-news-json";
 
@@ -67,11 +67,15 @@ export async function derivedNewsStructuralResponse(
     // All ordinary public newsroom/API reads use the permanent static
     // archive's rolling latest feed. Never fall back to D1 on this path.
     const signals=await fetchDirectDerivedNews(fetchImpl,now);
-    const all=buildDerivedNewsStructural(signals,now);
+    // This endpoint is a counts-only coverage view of already public Geomacro
+    // Finds. It deliberately bypasses the attribution-gated prose projection:
+    // the response exposes no headline, publisher, source identity, URL or text.
+    // Country mentions remain unverified and do not attest to global news coverage.
     if(coverageView)return Response.json(
-      observed195x3Coverage(all,now,{
+      observedPublicFinds195x3Coverage(signals,now,{
         country,domain:domain as Domain|null,
       }),{headers:HEADERS});
+    const all=buildDerivedNewsStructural(signals,now);
     // Country routing is exact original-title geography mention only.
     // Absence is UNKNOWN source coverage, never a "no news in country" claim.
     const scoped=country===null?all:observedDerivedNewsForCountry(all,country);

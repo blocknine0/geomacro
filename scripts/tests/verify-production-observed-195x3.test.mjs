@@ -16,7 +16,7 @@ function fixture(events=[]){
    const observed=events.find(e=>e.country_iso3===country.iso3&&e.category===category);
    const count=observed?.count??0;
    return {country_iso3:country.iso3,country_name:country.name,category,
-    status:count?"DERIVED_OFFICIAL_COUNTRY_MENTION_OBSERVED_UNVERIFIED":
+    status:count?"DERIVED_COUNTRY_MENTION_OBSERVED_UNVERIFIED":
       "NO_MATCHING_COUNTRY_MENTION_IN_ROLLING_STATIC_ARCHIVE",
     observed_derived_records_72h:count,classified_topic_releases_72h:count,
     unclassified_candidates_72h:0,
@@ -27,10 +27,10 @@ function fixture(events=[]){
  }));
  const totals={geopolitics:0,macro:0,rare_earth:0};
  for(const row of rows)totals[row.category]+=row.observed_derived_records_72h;
- return {schema:"geomacro.195x3-observed-derived-news-coverage.v1",
+ return {schema:"geomacro.195x3-public-finds-coverage.v2",
    country_count:195,category_count:3,total_country_category_cells:585,
-   returned_cells:585,coverage_scope:"OBSERVED_DERIVED_RELEASES_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250_ONLY",
-   country_routing_basis:"EXACT_DERIVED_TITLE_GEOGRAPHY_MENTION_ONLY",
+   returned_cells:585,coverage_scope:"OBSERVED_PUBLIC_GEOMACRO_FINDS_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250",
+   country_routing_basis:"EXACT_PUBLIC_TITLE_OR_GEOGRAPHY_MENTION_ONLY",
    not_observed_means_no_news:false,
    exhaustive_country_news_coverage_verified:false,
    producer_country_original_coverage_verified:false,
