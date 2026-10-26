@@ -1,5 +1,5 @@
+import {hasConcreteNewsFacts,newsEventFacts} from "./news-event-facts";
 import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
-import {intelligenceActorHeadline,intelligenceActorChange} from "./public-intelligence-actor-copy";
 import type {StatelessIntelligenceSignal,StatelessCategory} from "./stateless-intelligence-model";
 
 /**
@@ -113,7 +113,7 @@ export function findCardFromObservedRelease(
  // next-day 12:00 for day-only), no copied source title or URL.
  // A required-credit source cannot become an attribution-free Find Card.
  if(s.status!=="official_release_observed_unscored"||
-    !verifyDerivedStory(s,now)||s.sources_credited.length>0||
+    !verifyDerivedStory(s,now)||!hasConcreteNewsFacts(s)||s.sources_credited.length>0||
     !Number.isFinite(now))return null;
  const originalDate=s.date_precision==="day"
    ?s.published_at+"T00:00:00.000Z":s.published_at;
@@ -124,12 +124,15 @@ export function findCardFromObservedRelease(
    s.date_precision==="day"?"daily":
    age<=2*60*60_000?"near_realtime":
    age<=86400_000?"daily":age<=7*86400_000?"weekly":"monthly";
+ const event=newsEventFacts("",s.what_changed);
+ if(!event)return null;
+ const headline=event.headline.length<=120?event.headline:
+   event.headline.slice(0,116).replace(/\s+\S*$/u,"")+"…";
  const card:FindCardV1={
    schema:"geomacro.find.v1",id:s.id,domain:s.category,
    published_at:originalDate,date_precision:s.date_precision,
    action_class:"official_release",
-   headline:intelligenceActorHeadline(s).slice(0,120),
-   what_changed:intelligenceActorChange(s).slice(0,280),
+   headline,what_changed:s.what_changed.slice(0,280),
    facts:[],why_it_matters:meaning[s.category],
    watch_next:{kind:"follow_up_check",
      text:"Check later official releases for confirmed details; no specific deadline was verified."},
