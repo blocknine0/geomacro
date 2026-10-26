@@ -157,14 +157,16 @@ jobs:
           PY
 
       - name: Verify live build marker matches canonical main
-        # Independent outside-in diagnostic: preserve fail-closed job status,
-        # but do not hide this failure when an earlier release gate is red.
+        # Exact main SHA is required for website-affecting changes. Verified
+        # backend/workflow/test-only commits do not rebuild or alter the UI bundle.
+        # Preserve fail-closed behavior if the ancestry or path diff is untrusted.
         if: ${{ !cancelled() }}
         env:
           EXPECTED_SHA: ${{ github.sha }}
         shell: bash
         run: |
           set -euo pipefail
+          node --test scripts/ops/verify-live-web-source-marker.test.mjs
           [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::EXPECTED_CANONICAL_SHA_INVALID"; exit 1; }
           mkdir -p /tmp/production-website-health
           body="/tmp/production-website-health/build-marker.json"
@@ -182,11 +184,23 @@ jobs:
           if (marker?.schema_version !== 'geomacro.deployment-build.v1') throw new Error('LIVE_BUILD_MARKER_SCHEMA_MISMATCH');
           if (marker?.canonical_repository !== 'blocknine0/geomacro') throw new Error('LIVE_BUILD_MARKER_REPOSITORY_MISMATCH');
           if (marker?.production_activation_performed !== false) throw new Error('LIVE_BUILD_MARKER_ACTIVATION_BOUNDARY_INVALID');
-          console.log(JSON.stringify({expected,observed:observed || 'missing'}));
-          if (observed !== expected) process.exit(10);
+          if (observed !== expected) {
+            const { spawnSync } = require('node:child_process');
+            const check = spawnSync(process.execPath,
+              ['scripts/ops/verify-live-web-source-marker.mjs', observed, expected],
+              { encoding: 'utf8' });
+            if (check.stdout) process.stdout.write(check.stdout);
+            if (check.stderr) process.stderr.write(check.stderr);
+            process.exitCode = check.status ?? 11;
+          } else {
+            console.log(JSON.stringify({schema:'geomacro.live-web-source-marker-check.v1',
+              status:'exact',expected_sha:expected,published_sha:observed,
+              live_web_source_verified:true,publish_required:false}));
+          }
           NODE
               then
                 matched=true
+                last_observed="$(node -e 'const fs=require("fs");try{const b=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(String(b?.canonical_main_sha||"missing"))}catch{process.stdout.write("invalid")}' "$body")"
                 break
               else
                 status=$?
@@ -208,7 +222,11 @@ jobs:
             echo "::error title=Lovable Publish required or incomplete::LIVE_DEPLOYMENT_SHA_MISMATCH:expected=$EXPECTED_SHA:observed=$last_observed:http=$last_code; mirror source parity alone is not a deployed site"
             exit 1
           fi
-          echo "PASS: live build marker matches exact canonical main $EXPECTED_SHA."
+          if [[ "$last_observed" == "$EXPECTED_SHA" ]]; then
+            echo "PASS: live build marker matches exact canonical main $EXPECTED_SHA."
+          else
+            echo "PASS: published website source $last_observed remains compatible with canonical main $EXPECTED_SHA; no website build inputs changed after the published SHA." 
+          fi
 
       - name: Verify Lovable mirror source parity
         # Independent outside-in diagnostic: preserve fail-closed job status,
