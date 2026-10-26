@@ -28,16 +28,17 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_gap_ukr_presidency",
-      "url": "https://www.president.gov.ua/rss/news/all.rss",
-      "publisher_country_iso3": "UKR",
-      "continent": "europe",
+      "id": "private_gap_aze_trend",
+      "url": "https://en.trend.az/feeds/index.rss",
+      "publisher_country_iso3": "AZE",
+      "continent": "asia",
       "categories": [
         "geopolitics",
-        "macro"
+        "macro",
+        "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://www.president.gov.ua/",
+      "discovery_reference_url": "https://en.trend.az/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "transport_verified_at_registration": false,
       "source_kind": "LOCAL_PUBLISHER_RSS_CANDIDATE",
@@ -94,7 +95,7 @@
     },
     {
       "id": "private_gap_geo_civil",
-      "url": "https://civil.ge/feed/",
+      "url": "https://civil.ge/feed",
       "publisher_country_iso3": "GEO",
       "continent": "asia",
       "categories": [
@@ -102,7 +103,7 @@
         "macro"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://civil.ge/",
+      "discovery_reference_url": "https://civil.ge/masthead",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "transport_verified_at_registration": false,
       "source_kind": "LOCAL_PUBLISHER_RSS_CANDIDATE",
@@ -136,8 +137,8 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_gap_chl_bcn",
-      "url": "https://www.bcn.cl/noticias/rss",
+      "id": "private_gap_chl_cooperativa",
+      "url": "https://www.cooperativa.cl/noticias/site/tax/port/all/rss____1.xml",
       "publisher_country_iso3": "CHL",
       "continent": "south_america",
       "categories": [
@@ -145,7 +146,7 @@
         "macro"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://www.bcn.cl/noticias/",
+      "discovery_reference_url": "https://www.cooperativa.cl",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "transport_verified_at_registration": false,
       "source_kind": "LOCAL_PUBLISHER_RSS_CANDIDATE",
@@ -157,8 +158,8 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_gap_pry_abc_nacional",
-      "url": "https://www.abc.com.py/arc/outboundfeeds/rss/nacionales/",
+      "id": "private_gap_pry_ultimahora",
+      "url": "https://www.ultimahora.com/ultimas-noticias.atom",
       "publisher_country_iso3": "PRY",
       "continent": "south_america",
       "categories": [
@@ -166,8 +167,8 @@
         "macro",
         "rare_earth"
       ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.abc.com.py/articulos/rss-142.html",
+      "type": "atom",
+      "discovery_reference_url": "https://www.ultimahora.com/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "transport_verified_at_registration": false,
       "source_kind": "LOCAL_PUBLISHER_RSS_CANDIDATE",
@@ -201,8 +202,8 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_gap_bhr_alwatan",
-      "url": "https://alwatannews.net/rssFeed/100",
+      "id": "private_gap_bhr_alayam_local",
+      "url": "https://feeds.feedburner.com/alayam-online-local-news",
       "publisher_country_iso3": "BHR",
       "continent": "asia",
       "categories": [
@@ -211,7 +212,7 @@
         "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://alwatannews.net/",
+      "discovery_reference_url": "https://www.alayam.com/pages/rss",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "transport_verified_at_registration": false,
       "source_kind": "LOCAL_PUBLISHER_RSS_CANDIDATE",
@@ -354,5 +355,6 @@
       "access_verified_in_production": false,
       "publicly_deliverable": false
     }
-  ]
+  ],
+  "source_eligibility": "CANDIDATE_ONLY_NATIVE_DATED_GET_RUNTIME_RECHECK_EVERY_TICK"
 }
