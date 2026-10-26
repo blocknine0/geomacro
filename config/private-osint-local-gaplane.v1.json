@@ -380,9 +380,9 @@
     },
     {
       "id": "private_gaplane_are_22",
-      "url": "https://www.thenationalnews.com/arc/outboundfeeds/rss/?outputType=xml",
+      "url": "https://gulfnews.com/rss",
       "publisher_country_iso3": "ARE",
-      "discovery_reference_url": "https://www.thenationalnews.com/",
+      "discovery_reference_url": "https://gulfnews.com/",
       "categories": [
         "geopolitics",
         "macro",
@@ -617,10 +617,10 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_gaplane_uga_36",
-      "url": "https://www.monitor.co.ug/uganda/rss",
-      "publisher_country_iso3": "UGA",
-      "discovery_reference_url": "https://www.monitor.co.ug/uganda/",
+      "id": "private_gaplane_hti_first",
+      "url": "https://haitiantimes.com/feed/",
+      "publisher_country_iso3": "HTI",
+      "discovery_reference_url": "https://haitiantimes.com/",
       "categories": [
         "geopolitics",
         "macro",
@@ -719,10 +719,10 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_gaplane_fji_42",
-      "url": "https://www.fijitimes.com.fj/feed/",
-      "publisher_country_iso3": "FJI",
-      "discovery_reference_url": "https://www.fijitimes.com.fj/",
+      "id": "private_gaplane_slv_first",
+      "url": "https://www.elsalvador.com/rss",
+      "publisher_country_iso3": "SLV",
+      "discovery_reference_url": "https://www.elsalvador.com/",
       "categories": [
         "geopolitics",
         "macro",
