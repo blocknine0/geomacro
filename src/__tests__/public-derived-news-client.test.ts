@@ -168,15 +168,37 @@ describe("browser public journal fallback",()=>{
       return new Response(JSON.stringify(makeBundle(new Date(now).toISOString())),{status:200,
         headers:{"content-type":"application/json"}});
     });
-    expect(await fetchAllDerivedNews(fresh as typeof fetch,now)).toEqual([row]);
+    expect(await fetchAllDerivedNews(fresh as typeof fetch,now,{fresh:true})).toEqual([row]);
     expect(fresh).toHaveBeenCalledOnce();
 
     const stale=vi.fn(async()=>new Response(JSON.stringify(
       makeBundle(new Date(Date.now()-60_000).toISOString())),{status:200,
       headers:{"content-type":"application/json"}}));
-    await expect(fetchAllDerivedNews(stale as typeof fetch,Date.now()))
+    await expect(fetchAllDerivedNews(stale as typeof fetch,Date.now(),{fresh:true}))
       .rejects.toThrow("DERIVED_NEWS_BUNDLE_STALE_READBACK");
     expect(stale).toHaveBeenCalledOnce();
+  });
+
+  it("lets ordinary journal reads use the short public edge cache without forcing D1 readback",async()=>{
+    const now=Date.now();
+    const row={...signal,published_at:new Date(now-1000).toISOString()};
+    const payload={
+      ok:true,schema:"geomacro.website-derived-news-bundle.v1",
+      checked_at:new Date(now).toISOString(),original_release_delay_minutes:0,
+      retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
+      complete:true,item_cap:600,returned_rows:1,signals:[row],
+      first_ingest:[{id:row.id,first_seen_at:new Date(now-2000).toISOString()}],
+    };
+    const ordinary=vi.fn(async(_url:RequestInfo|URL,init?:RequestInit)=>{
+      expect(init?.cache).toBeUndefined();
+      const headers=new Headers(init?.headers);
+      expect(headers.get("cache-control")).toBeNull();
+      expect(headers.get("pragma")).toBeNull();
+      return new Response(JSON.stringify(payload),{status:200,
+        headers:{"content-type":"application/json","cache-control":"public, max-age=15"}});
+    });
+    expect(await fetchAllDerivedNews(ordinary as typeof fetch,now)).toEqual([row]);
+    expect(ordinary).toHaveBeenCalledOnce();
   });
 
   it("falls back only when a deployed Worker lacks the bundle route, never on storage/quota errors",async()=>{
