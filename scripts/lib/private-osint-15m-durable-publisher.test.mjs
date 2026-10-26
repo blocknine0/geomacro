@@ -252,3 +252,26 @@ test("private quota sampling persists EVERY dated news item but fewer D1 check U
  assert.equal(tiny.source_checks_persisted,1,"quiet single-source intake still gets authenticated D1 health receipt");
  assert.equal(tiny.news_rows_verified_in_d1,0);
 });
+
+
+test("15-minute production ticks persist only one health cohort and report the truthful 45-minute cycle",()=>{
+ const checks=Array.from({length:900},(_,i)=>({
+  source_ref:createHash("sha256").update("15m-health-cohort-"+i).digest("hex"),
+  category:["geopolitics","macro","rare_earth"][i%3],
+  state:"OBSERVED",checked_at:new Date(now).toISOString(),
+ }));
+ const batches=[0,1,2].map(n=>selectPrivateOsintD1HealthChecks({
+  checks,now:now+n*15*60000,slots:3,intervalMinutes:15,newsItemCount:10,
+ }));
+ assert.deepEqual(batches.map(x=>x.slot).sort(),[0,1,2]);
+ assert.ok(batches.every(x=>x.interval_minutes===15));
+ assert.ok(batches.every(x=>x.sampled>250&&x.sampled<350));
+ const selected=batches.flatMap(x=>x.checks);
+ assert.equal(selected.length,checks.length);
+ assert.equal(new Set(selected.map(x=>x.source_ref)).size,checks.length);
+ assert.equal(15*PRIVATE_OSINT_D1_HEALTH_SNAPSHOT_SLOTS,45);
+ assert.equal(batches[0].slot,batches[0].slot);
+ assert.throws(()=>selectPrivateOsintD1HealthChecks({
+  checks,now,slots:3,intervalMinutes:0,
+ }),/PRIVATE_OSINT_HEALTH_SNAPSHOT_INPUT_INVALID/);
+});
