@@ -109,12 +109,26 @@ jobs:
             exit 0
           fi
 
+          read_quota=false
+          write_quota=false
           if grep -aFq "Your account has exceeded D1's free tier daily row read limit" "$log_text" &&
              grep -aFq "code: 7500" "$log_text"; then
-            echo "Confirmed D1 daily row-read quota exhaustion on the latest canonical deploy; eligible for one post-reset retry."
+            read_quota=true
+          fi
+          if grep -aFq "Your account has exceeded D1's free tier daily row write limit" "$log_text"; then
+            write_quota=true
+          fi
+          if [[ "$read_quota" == "true" || "$write_quota" == "true" ]]; then
+            if [[ "$read_quota" == "true" && "$write_quota" == "true" ]]; then
+              echo "Confirmed both D1 daily row-read and row-write quota exhaustion; eligible for one post-reset retry."
+            elif [[ "$read_quota" == "true" ]]; then
+              echo "Confirmed D1 daily row-read quota exhaustion on the latest canonical deploy; eligible for one post-reset retry."
+            else
+              echo "Confirmed D1 daily row-write quota exhaustion on the latest canonical deploy; eligible for one post-reset retry."
+            fi
             echo "retry=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Latest D1 deploy failure is not the specific daily row-read quota class; no automatic retry."
+            echo "Latest D1 deploy failure is not a recognised daily row-read or row-write quota class; no automatic retry."
             echo "retry=false" >> "$GITHUB_OUTPUT"
           fi
 
