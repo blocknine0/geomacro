@@ -12,6 +12,9 @@ describe("D1 control-plane bootstrap", () => {
     expect(workflow).toContain("d1 list --json");
     expect(workflow).toContain('d1 create "$D1_DATABASE_NAME" --location apac');
     expect(workflow).toContain("d1 migrations apply DB --remote");
+    expect(workflow).toContain("node scripts/ops/audit-d1-account-daily-quota-readonly.mjs");
+    expect(workflow.indexOf("node scripts/ops/audit-d1-account-daily-quota-readonly.mjs"))
+      .toBeLessThan(workflow.indexOf("d1 migrations apply DB --remote"));
     expect(workflow).toContain("SELECT version FROM schema_meta");
   });
 
