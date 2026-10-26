@@ -1,6 +1,6 @@
-// Independent actual-publication readback from Geomacro's EXISTING live
-// 72-hour Cloudflare D1 derived journal via the website API. No new data
-// source, cron, paid service, B2, Supabase, x402, raw article or D1 writes.
+// Independent readback from the permanent static archive rolling latest feed
+// via the website API. Max 250 original-dated derived records; no D1/B2,
+// Supabase, x402, raw article, or writes on this public read path.
 // Routing every country != verified current source material in every country.
 import {mkdirSync,writeFileSync} from "node:fs";
 import {resolve} from "node:path";
@@ -13,7 +13,7 @@ const RETENTION_MS=72*60*60_000;
 const ISO=/^[A-Z]{3}$/u;
 const STRUCTURAL_STATES=new Set([
  "DERIVED_OFFICIAL_COUNTRY_MENTION_OBSERVED_UNVERIFIED",
- "NO_MATCHING_COUNTRY_MENTION_IN_BOUNDED_JOURNAL"
+ "NO_MATCHING_COUNTRY_MENTION_IN_ROLLING_STATIC_ARCHIVE"
 ]);
 
 export function inspectObservedCountryGrid(doc,now=new Date()){
@@ -22,7 +22,7 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
     doc.schema!=="geomacro.195x3-observed-derived-news-coverage.v1"||
     doc.country_count!==195||doc.category_count!==3||
     doc.total_country_category_cells!==585||doc.returned_cells!==585||
-    doc.coverage_scope!=="OBSERVED_DERIVED_RELEASES_IN_EXISTING_72H_D1_JOURNAL_ONLY"||
+    doc.coverage_scope!=="OBSERVED_DERIVED_RELEASES_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250_ONLY"||
     doc.country_routing_basis!=="EXACT_DERIVED_TITLE_GEOGRAPHY_MENTION_ONLY"||
     doc.not_observed_means_no_news!==false||
     doc.exhaustive_country_news_coverage_verified!==false||
@@ -30,12 +30,12 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
     (doc.original_release_delay_minutes!==0&&doc.original_release_delay_minutes!==15)||doc.retention_hours!==72||
     doc.payment_required_now!==false||doc.chargeable!==false||
     doc.scored!==false||doc.signed!==false||doc.raw_upstream_delivered!==false||
-    !Number.isSafeInteger(doc.source_neutral_derived_records_in_journal)||
-    doc.source_neutral_derived_records_in_journal<0||
-    doc.source_neutral_derived_records_in_journal>600||
+    !Number.isSafeInteger(doc.source_neutral_derived_records_in_public_archive_latest_250)||
+    doc.source_neutral_derived_records_in_public_archive_latest_250<0||
+    doc.source_neutral_derived_records_in_public_archive_latest_250>250||
     !Number.isSafeInteger(doc.unassigned_or_regional_derived_records_72h)||
     doc.unassigned_or_regional_derived_records_72h<0||
-    doc.unassigned_or_regional_derived_records_72h>600||
+    doc.unassigned_or_regional_derived_records_72h>250||
     !doc.observed_derived_records_by_category||
     typeof doc.observed_derived_records_by_category!=="object"||
     !Array.isArray(doc.cells)||doc.cells.length!==585)
@@ -49,7 +49,7 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
  let totalObserved=0,classified=0,unclassified=0,latest=-Infinity,empty=0;
  for(const domain of DOMAINS){
    const v=doc.observed_derived_records_by_category[domain];
-   if(!Number.isSafeInteger(v)||v<0||v>600)
+   if(!Number.isSafeInteger(v)||v<0||v>250)
      throw Error("LIVE_195X3_DOMAIN_TOTAL_INVALID");
  }
  for(const row of doc.cells){
@@ -57,7 +57,7 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
       !DOMAINS.includes(row.category)||!STRUCTURAL_STATES.has(row.status)||
       typeof row.country_name!=="string"||row.country_name.length<2||
       !Number.isSafeInteger(row.observed_derived_records_72h)||
-      row.observed_derived_records_72h<0||row.observed_derived_records_72h>600||
+      row.observed_derived_records_72h<0||row.observed_derived_records_72h>250||
       !Number.isSafeInteger(row.classified_topic_releases_72h)||
       !Number.isSafeInteger(row.unclassified_candidates_72h)||
       row.classified_topic_releases_72h<0||row.unclassified_candidates_72h<0||
@@ -75,7 +75,7 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
    occupied.add(key);countries.add(row.country_iso3);
    const positive=row.observed_derived_records_72h>0;
    if(row.status!==(positive?"DERIVED_OFFICIAL_COUNTRY_MENTION_OBSERVED_UNVERIFIED":
-       "NO_MATCHING_COUNTRY_MENTION_IN_BOUNDED_JOURNAL"))
+       "NO_MATCHING_COUNTRY_MENTION_IN_ROLLING_STATIC_ARCHIVE"))
      throw Error("LIVE_195X3_FALSE_COUNTRY_COVERAGE_STATUS");
    if(!positive) {
      empty++;
@@ -96,9 +96,9 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
  if(countries.size!==195||occupied.size!==585||
    DOMAINS.some(d=>totals[d]>doc.observed_derived_records_by_category[d])||
    Object.values(doc.observed_derived_records_by_category).reduce((a,b)=>a+b,0)!==
-     doc.source_neutral_derived_records_in_journal ||
+     doc.source_neutral_derived_records_in_public_archive_latest_250 ||
    doc.unassigned_or_regional_derived_records_72h!==
-     doc.source_neutral_derived_records_in_journal-totalObserved)
+     doc.source_neutral_derived_records_in_public_archive_latest_250-totalObserved)
    throw Error("LIVE_195X3_COUNTRY_MATRIX_INCOMPLETE");
  return {
    schema:"geomacro.production-observed-195x3-coverage-readback.v1",
@@ -106,7 +106,7 @@ export function inspectObservedCountryGrid(doc,now=new Date()){
    live_response_valid:true,country_routes:195,category_routes:3,
    returned_cells:585,observed_country_category_cells:585-empty,
    cells_without_matching_derivation:empty,
-   actual_72h_derived_news_journal_records:doc.source_neutral_derived_records_in_journal,
+   actual_72h_public_archive_latest_records:doc.source_neutral_derived_records_in_public_archive_latest_250,
    assigned_country_news_mentions_72h:totalObserved,
    unassigned_or_regional_news_72h:doc.unassigned_or_regional_derived_records_72h,
    latest_original_published_at:Number.isFinite(latest)?new Date(latest).toISOString():null,
@@ -159,7 +159,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
    schema:receipt.schema,live_response_valid:receipt.live_response_valid,
    country_routes:receipt.country_routes,returned_cells:receipt.returned_cells,
    observed_country_category_cells:receipt.observed_country_category_cells,
-   actual_72h_derived_news_journal_records:receipt.actual_72h_derived_news_journal_records,
+   actual_72h_public_archive_latest_records:receipt.actual_72h_public_archive_latest_records,
    latest_original_published_at:receipt.latest_original_published_at,
    category_mentions:receipt.observed_country_mentions_by_category,
    exhaustive_live_global_news_verified:false,
