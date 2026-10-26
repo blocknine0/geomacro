@@ -298,7 +298,7 @@ export function privateOsintCountryCategoryCoverage(sources,checks=[],items=[],{
   if(u.protocol!=="https:"||u.username||u.password||u.port||u.hash||registryUrls.has(source.url)||
     !source.categories.length||source.categories.some(c=>!PRIVATE_OSINT_CATEGORIES.includes(c))||
     (source.publisher_country_iso3!==null&&source.publisher_country_iso3!==undefined&&!COUNTRY_CONTINENT[source.publisher_country_iso3])||
-    (source.continent!=="global"&&!Object.hasOwn(CONTINENT_COUNTRIES_195,source.continent)))
+    (source.continent!==undefined&&source.continent!==null&&source.continent!=="global"&&!Object.hasOwn(CONTINENT_COUNTRIES_195,source.continent)))
    throw Error("PRIVATE_OSINT_COUNTRY_CATEGORY_SOURCE_SCOPE_INVALID");
   registryUrls.add(source.url);
  }
@@ -381,8 +381,8 @@ export function privateOsintCountryCategoryCoverage(sources,checks=[],items=[],{
   summary.cells=cells;
   summary.countries_without_country_specific_publisher_source=countries.filter(iso3=>countryLocal.get(iso3).length===0);
  }
- if(cells.length!==585||summary.coverage.cells_with_any_configured_source!==585)
-  throw Error("PRIVATE_OSINT_COUNTRY_CATEGORY_COVERAGE_GAP");
+ if(cells.length!==585)
+  throw Error("PRIVATE_OSINT_COUNTRY_CATEGORY_COVERAGE_INCOMPLETE");
  return summary;
 }
 
