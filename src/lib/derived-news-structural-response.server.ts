@@ -3,7 +3,6 @@ import {country195ByIso3} from "./canonical-country-registry-195";
 import {observed195x3Coverage,observedDerivedNewsForCountry} from "./derived-news-country-coverage-195";
 import {buildDerivedNewsStructural,NEWS_STRUCTURAL_SCHEMA} from "./derived-news-structural-bridge";
 import {normalizeReusableNewsJson,REUSABLE_NEWS_JSON_SCHEMA} from "./reusable-news-json";
-import {fetchAllReusableSourceNews} from "./live-reusable-source-news-client";
 
 const CATEGORIES=["geopolitics","macro","rare_earth"] as const;
 type Domain = typeof CATEGORIES[number];
