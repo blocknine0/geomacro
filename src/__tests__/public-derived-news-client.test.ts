@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  checkedDerivedNews, fetchDirectDerivedNews, fetchAllDerivedNews, GEOMACRO_DERIVED_JOURNAL_URL,
+  checkedDerivedNews, fetchDirectDerivedNews, fetchAllDerivedNews, fetchPermanentDerivedNews,
+  GEOMACRO_DERIVED_JOURNAL_URL, GEOMACRO_PERMANENT_LATEST_URL, GEOMACRO_PERMANENT_ARCHIVE_BASE_URL,
 } from "@/lib/public-derived-news-client";
 
 const NOW=Date.parse("2026-10-12T20:00:00.000Z");
@@ -35,9 +36,35 @@ describe("browser public journal fallback",()=>{
     }));
     const rows=await fetchDirectDerivedNews(f as typeof fetch,NOW);
     expect(f).toHaveBeenCalledOnce();
-    expect(f.mock.calls[0]?.[0]).toBe(GEOMACRO_DERIVED_JOURNAL_URL);
+    expect(f.mock.calls[0]?.[0]).toBe(GEOMACRO_PERMANENT_LATEST_URL);
     expect(rows).toEqual([signal]);
   });
+  it("loads permanent month/category shards only from static assets, never D1",async()=>{
+    const index={schema:"geomacro.permanent-derived-news-archive-index.v1",
+      updated_at:new Date(NOW).toISOString(),months:["2026-10"],
+      categories:["geopolitics","macro","rare_earth"],seed_complete:true,total_signals:1};
+    const calls:string[]=[];
+    const f=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+      const url=String(input);
+      calls.push(url);
+      expect(init?.redirect).toBe("error");
+      if(url===GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/index.json")
+        return new Response(JSON.stringify(index),{status:200});
+      const category=url.endsWith("/geopolitics.json")?"geopolitics":
+        url.endsWith("/macro.json")?"macro":"rare_earth";
+      return new Response(JSON.stringify({
+        schema:"geomacro.permanent-derived-news-archive-month.v1",
+        month:"2026-10",category,signals:category==="macro"?[signal]:[],
+      }),{status:200});
+    });
+    const rows=await fetchPermanentDerivedNews(f as typeof fetch,NOW);
+    expect(rows).toEqual([signal]);
+    expect(calls).toHaveLength(4);
+    expect(calls.every(url=>url.startsWith(GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/"))).toBe(true);
+    expect(calls.some(url=>url.includes("geomacro-control-plane"))).toBe(false);
+    expect(calls.some(url=>url.includes("supabase"))).toBe(false);
+  });
+
   it("rejects early/old/unverified/source-leaking objects and unrecognized document scope",()=>{
     expect(checkedDerivedNews(doc([
       signal,
