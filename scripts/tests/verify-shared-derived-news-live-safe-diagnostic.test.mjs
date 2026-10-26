@@ -69,7 +69,7 @@ test("schema or rights not actually approved remains red",async()=>{
  assert.equal(calls,1);
 });
 
-test("Predge shared D1 parity reads the zero-delay website journal, never the delayed legacy alias",async()=>{
+test("Predge shared D1 parity reads the complete zero-delay D1 bundle, never a delayed legacy alias",async()=>{
  const domains=["geopolitics","macro","rare_earth"];
  const counts=Object.fromEntries(domains.map(c=>[c,0]));
  const availability_by_category=Object.fromEntries(domains.map(c=>[c,{
@@ -110,5 +110,5 @@ test("Predge shared D1 parity reads the zero-delay website journal, never the de
  assert.equal(result.commercial_rights_verified,false);
  assert.equal(result.payments,0);
  assert.equal(urls.length,2);
- assert.equal(urls[1].endsWith("/website-derived-news-immediate"),true);
+ assert.equal(urls[1].endsWith("/website-derived-news-bundle"),true);
 });
