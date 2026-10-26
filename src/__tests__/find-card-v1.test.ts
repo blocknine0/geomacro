@@ -114,7 +114,7 @@ describe("Geomacro Find Card v1—supplied exact public JSON Schema",()=>{
   const code=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
   // Both recency sections render the same Story component; OSINT verification status stays internal.
   expect(code).toContain("LOCKED PRESENTATION CONTRACT");
-  expect(code).toContain('signal.status !== "osint_feed_observed_unverified"');
+  expect(code.toLowerCase()).not.toContain("unscored");
   expect(code).not.toContain("Source-reported observation · Not independently verified");
   expect(code).toContain("function Story({ signal, saved, onSave }");
   expect(code.split("<Story key={signal.id} signal={signal}").length-1).toBe(2);
