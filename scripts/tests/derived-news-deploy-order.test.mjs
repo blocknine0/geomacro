@@ -38,7 +38,7 @@ test("Worker, publisher and health endpoint share one explicit topic-policy revi
  const publicPublish=privateOsint.indexOf("const website=await publishPrivateOsintWebsiteSignals");
  assert.ok(privateGuard>=0&&privateRead>privateGuard&&privateWrite>privateRead&&
    privateExit>privateWrite&&publicPublish>privateExit);
- assert.match(privateOsint,/expectedRevision:\\s*DERIVED_NEWS_TOPIC_POLICY_REVISION/u);
+ assert.ok(privateOsint.includes("expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION"));
  assert.match(bridge,/isSafeDerivedNewsReadbackSignal\(s\)/u);
 });
 
