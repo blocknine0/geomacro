@@ -16,9 +16,9 @@ The new per-tick `category_live_source_coverage` field is a specific health view
 
 ## Inventory and explicit country gaps
 
-The global accepted manifest contains 369 endpoints. The collector merges the 7 India PIB official-feed candidates, 7 macro/minerals candidates, and 32 regional candidates, for a 415-endpoint registry before any future source changes. Candidate endpoints are read and status-checked on each protected-main tick; registration itself is not health evidence.
+The global accepted manifest contains 369 endpoints. The collector merges the 7 India PIB official-feed candidates, 7 macro/minerals candidates, and 35 regional candidates, for a 418-endpoint registry before any future source changes. Candidate endpoints are read and status-checked on each protected-main tick; registration itself is not health evidence.
 
-The latest registry tests expect local publisher-country metadata for **65 of 195 countries**. **130 countries still have no country-specific publisher source recorded**. Global or regional sources provide fallbacks, but do not erase that local-source gap and do not imply that every country produces a news item on every tick.
+The latest registry tests expect local publisher-country metadata for **66 of 195 countries**. **129 countries still have no country-specific publisher source recorded**. Global or regional sources provide fallbacks, but do not erase that local-source gap and do not imply that every country produces a news item on every tick.
 
 ## Category source coverage
 
@@ -36,6 +36,9 @@ Additional live-feed candidates verified against official publisher RSS/Atom lis
 | `private_expansion_statcan_business_atom` | Canada | Macro / business | https://www150.statcan.gc.ca/n1/rss/dai-quo/33-eng.atom | [Statistics Canada feed directory](https://www.statcan.gc.ca/en/sc/rss) |
 | `private_expansion_eurostat_economy_atom` | Europe-wide | Macro / economy | Eurostat's official RSS/Atom search feed for economy and finance releases | [Eurostat RSS directory](https://ec.europa.eu/eurostat/web/rss) |
 | `private_expansion_eurostat_trade_atom` | Europe-wide | Macro / international trade | Eurostat's official RSS/Atom search feed for international trade releases | [Eurostat RSS directory](https://ec.europa.eu/eurostat/web/rss) |
+| `private_expansion_lka_cbsl_mpr` | Sri Lanka | Macro / monetary policy | https://www.cbsl.gov.lk/en/press/press-releases/mprrss | [Central Bank of Sri Lanka RSS directory](https://www.cbsl.gov.lk/si/rss-feeds) |
+| `private_expansion_lka_cbsl_weekly_indicators` | Sri Lanka | Macro / weekly indicators | https://www.cbsl.gov.lk/en/statistics/economic-indicators/weirss | [Central Bank of Sri Lanka RSS directory](https://www.cbsl.gov.lk/si/rss-feeds) |
+| `private_expansion_lka_cbsl_monthly_indicators` | Sri Lanka | Macro / monthly indicators | https://www.cbsl.gov.lk/en/statistics/economic-indicators/meirss | [Central Bank of Sri Lanka RSS directory](https://www.cbsl.gov.lk/si/rss-feeds) |
 | `private_expansion_nrcan_atom` | Canada | Macro / critical minerals | https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada | [Natural Resources Canada RSS feeds](https://natural-resources.canada.ca/corporate/rss-feeds) |
 | `private_expansion_uk_dbt_atom` | United Kingdom | Macro / industrial and mineral policy | https://www.gov.uk/government/organisations/department-for-business-and-trade.atom | [Department for Business and Trade feed page](https://www.gov.uk/government/organisations/department-for-business-and-trade) |
 | `private_expansion_adb_asia_pacific` | Asia-Pacific | Macro / critical minerals | https://www.adb.org/rss.xml | [Asian Development Bank RSS directory](https://www.adb.org/rss) |
@@ -53,6 +56,8 @@ Run:
 ```sh
 node scripts/ops/audit-private-osint-publisher-coverage.mjs
 ```
+
+For a read-only real network snapshot of the full source registry, CI also runs `node scripts/ops/probe-private-osint-live-category-coverage.mjs` on this source PR or manual workflow dispatch. It writes a seven-day counts-only artifact listing each feed ID/category and `OBSERVED`, `EMPTY_OR_OUTSIDE_WINDOW`, `DENIED`, `UNAVAILABLE`, `MALFORMED`, or `UNSUPPORTED_FORMAT` status; no title, feed URL, raw text, token, D1/B2 write, or public publication is included. The artifact gives the actual category-health result from the runner, not a synthetic test result.
 
 The offline report prints the country-source inventory, all 585 country-category cells, category endpoint counts, and 58 corridor rows. It is explicitly marked as an offline inventory report, not a live health snapshot. The scheduled protected-main tick adds current source states, the three-category live-feed status, native-clock dated-item counts, and verified private D1 readback counts.
 
