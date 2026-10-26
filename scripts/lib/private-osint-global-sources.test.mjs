@@ -191,7 +191,9 @@ test("regional official and sector feeds are deduplicated private candidates, an
  assert.ok(additions.sources.filter(s=>ids.includes(s.id)).every(s=>
   s.activation_state==="RUNTIME_PROBE_REQUIRED"&&s.provider_rights_verified===false&&
   s.commercial_eligible===false&&s.access_verified_in_production===false&&
-  s.publicly_deliverable===false));
+  s.publicly_deliverable===false&&typeof s.provenance_note==="string"&&
+  typeof s.discovery_reference_url==="string"&&
+  new URL(s.discovery_reference_url).protocol==="https:"));
  const bodyFor=url=>{
   const title=url.includes("industry.gov.au")
    ?"Australia announces critical minerals lithium and rare-earth processing project"
