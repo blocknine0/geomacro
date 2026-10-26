@@ -9,7 +9,7 @@
       "id": "private_gap_ukr_cabinet",
       "url": "https://www.kmu.gov.ua/api/rss",
       "publisher_country_iso3": "UKR",
-      "continent": "asia",
+      "continent": "europe",
       "categories": [
         "geopolitics",
         "macro",
@@ -31,7 +31,7 @@
       "id": "private_gap_ukr_presidency",
       "url": "https://www.president.gov.ua/rss/news/all.rss",
       "publisher_country_iso3": "UKR",
-      "continent": "asia",
+      "continent": "europe",
       "categories": [
         "geopolitics",
         "macro"
@@ -52,7 +52,7 @@
       "id": "private_gap_ukr_pravda_en",
       "url": "https://www.pravda.com.ua/eng/rss/view_news/",
       "publisher_country_iso3": "UKR",
-      "continent": "asia",
+      "continent": "europe",
       "categories": [
         "geopolitics",
         "macro",
