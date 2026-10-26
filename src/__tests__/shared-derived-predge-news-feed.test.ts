@@ -21,7 +21,7 @@ function env(rows:unknown[]){
    all:async()=>({results:rows.slice(offset,offset+251).map(story=>({story_json:JSON.stringify(story)}))}),
  })})}};
 }
-describe("same 72h D1 news journal powers Geomacro website and Predge research",()=>{
+describe("Predge shared D1 feed remains separate from Geomacro static public archive",()=>{
  it("returns exactly the same stable structured records as existing canonical website API projector",async()=>{
   const signals=Array.from({length:520},(_,i)=>signal(i));
   const response=await publicSharedDerivedNewsFeed(env(signals),new URLSearchParams(),NOW);
@@ -79,7 +79,10 @@ describe("same 72h D1 news journal powers Geomacro website and Predge research",
    const website=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
    expect(index).toContain("/v1/public/derived-structural-72h");
    expect(index).toContain("publicSharedDerivedNewsFeed(env,url.searchParams)");
-   expect(website).toContain("fetchAllDerivedNews()");
+   expect(website).toContain("fetchPermanentDerivedNews()");
+   expect(website).toContain("fetchDirectDerivedNews()");
+   expect(website).not.toContain("fetchAllDerivedNews()");
+   expect(website).not.toContain("getWebsiteDerivedNews");
    expect(website).toContain("isConcretePublicIntelligence");
  });
 });
