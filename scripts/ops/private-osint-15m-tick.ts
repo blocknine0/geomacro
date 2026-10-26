@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Private OSINT ONLY: 195-country routing, 3 categories, 5m best-effort,
+ * Private OSINT ONLY: 195-country routing, 3 categories, 15m best-effort,
  * source-native RSS/Atom clocks and D1 durable first-seen readback.
  * No customer endpoint, original titles/URLs, paid rights or fake verification.
  */
@@ -89,7 +89,8 @@ if(result.summary.configured_country_routes!==195||
 // source-clock JSON is durably written and independently read back.
 const persisted=await persistPrivateOsintBatch({
  result,privateToken,now:Date.now(),
- sourceHealthSnapshotSlots:researchPrivateOnly?3:1,
+ sourceHealthSnapshotSlots:3,
+ sourceHealthSnapshotIntervalMinutes:15,
  controlPlaneRoot,
 });
 if(persisted.source_checks_observed_this_tick!==result.checks.length||
