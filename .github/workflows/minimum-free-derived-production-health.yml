@@ -117,12 +117,13 @@ jobs:
           const script=await scriptResponse.text();
           if(!html.includes('/geomacro-language.js')||
              !script.includes('window.GeomacroLanguage')||
-             !script.includes('geomacro-live.translate.goog')||
-             !script.includes('translated.searchParams.set("_x_tr_tl", code)')||
+             !script.includes('new URL("https://translate.google.com/translate")')||
+             !script.includes('translated.searchParams.set("tl", code)')||
+             !script.includes('translated.searchParams.set("u", source.toString())')||
              script.includes('handleMenuLanguage')||
-             script.includes('https://translate.google.com/translate?sl=en'))
+             script.includes('geomacro-live.translate.goog'))
             throw Error('LIVE_LANGUAGE_PACK_SINGLE_CONTROLLER_OR_ROUTE_PRESERVATION_INVALID');
           console.log(JSON.stringify({schema:'geomacro.website-language-pack-live.v1',
-            homepage_script_reference:true,shared_controller:true,translated_proxy:true,
+            homepage_script_reference:true,shared_controller:true,canonical_translate_redirect:true,
             competing_menu_handlers:false,paid_services:0,payments:0}));
           NODE
