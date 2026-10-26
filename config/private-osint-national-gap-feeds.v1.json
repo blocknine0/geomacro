@@ -28,9 +28,9 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_gap_aze_trend",
-      "url": "https://en.trend.az/feeds/index.rss",
-      "publisher_country_iso3": "AZE",
+      "id": "private_gap_jor_jordantimes",
+      "url": "https://www.jordantimes.com/rss",
+      "publisher_country_iso3": "JOR",
       "continent": "asia",
       "categories": [
         "geopolitics",
@@ -38,7 +38,7 @@
         "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://en.trend.az/",
+      "discovery_reference_url": "https://www.jordantimes.com/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "transport_verified_at_registration": false,
       "source_kind": "LOCAL_PUBLISHER_RSS_CANDIDATE",
@@ -94,16 +94,17 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_gap_geo_civil",
-      "url": "https://civil.ge/feed",
-      "publisher_country_iso3": "GEO",
+      "id": "private_gap_qat_gulftimes",
+      "url": "https://www.gulf-times.com/rssFeed/8",
+      "publisher_country_iso3": "QAT",
       "continent": "asia",
       "categories": [
         "geopolitics",
-        "macro"
+        "macro",
+        "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://civil.ge/masthead",
+      "discovery_reference_url": "https://www.gulf-times.com/Rss/Index",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "transport_verified_at_registration": false,
       "source_kind": "LOCAL_PUBLISHER_RSS_CANDIDATE",
