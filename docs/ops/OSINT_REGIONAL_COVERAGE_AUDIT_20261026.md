@@ -29,7 +29,12 @@ The prior pre-expansion inventory had publisher-country-specific source metadata
 | `private_expansion_ind_tax_press` | India, Income Tax Department | Macro / fiscal policy | https://wm.incometaxindia.gov.in/press-release-rss-feed/-/asset_publisher/bxhj/rss | [Official tax feeds](https://www.incometaxindia.gov.in/tax-feeds) |
 | `private_expansion_bw_bankofbotswana_news` | Botswana, central bank | Macro / geopolitics | https://www.bankofbotswana.bw/rss/latest_news | [Official RSS feeds](https://www.bankofbotswana.bw/content/rss-feeds) |
 | `private_expansion_th_mdes_news` | Thailand, Ministry of Digital Economy and Society | Macro / geopolitics | https://mdes.go.th/news/rss/3 | [Official RSS list](https://mdes.go.th/rss) |
+| `private_expansion_bw_bankofbotswana_news` | Botswana, central bank | Macro / geopolitics | https://www.bankofbotswana.bw/rss/latest_news | [Official RSS feeds](https://www.bankofbotswana.bw/content/rss-feeds) |
+| `private_expansion_th_mdes_news` | Thailand, Ministry of Digital Economy and Society | Macro / geopolitics | https://mdes.go.th/news/rss/3 | [Official RSS list](https://mdes.go.th/rss) |
 | `private_expansion_ph_pna_news` | Philippines, PNA | Geopolitics | https://www.pna.gov.ph/latest.rss | [Third-party feed directory](https://inklinenews.com/feeds/philippines/) |
+| `private_expansion_afdb_development_news` | Africa, African Development Bank | All three categories, regional candidate | https://www.afdb.org/en/news-and-events/rss | [Official RSS feeds](https://www.afdb.org/en/rss-feeds) |
+| `private_expansion_adb_asia_pacific` | Asia-Pacific, Asian Development Bank | Macro / critical minerals, regional fallback | https://www.adb.org/rss.xml | [Official RSS](https://www.adb.org/rss) |
+| `private_expansion_spc_pacific_news` | Pacific Community | All three categories, regional fallback | https://www.spc.int/rss.xml | [Official newsroom](https://www.spc.int/updates/news) |
 | `private_expansion_afdb_development_news` | Africa, African Development Bank | All three categories, regional candidate | https://www.afdb.org/en/news-and-events/rss | [Official RSS feeds](https://www.afdb.org/en/rss-feeds) |
 | `private_expansion_adb_asia_pacific` | Asia-Pacific, Asian Development Bank | Macro / critical minerals, regional fallback | https://www.adb.org/rss.xml | [Official RSS](https://www.adb.org/rss) |
 | `private_expansion_spc_pacific_news` | Pacific Community | All three categories, regional fallback | https://www.spc.int/rss.xml | [Official newsroom](https://www.spc.int/updates/news) |
@@ -41,6 +46,8 @@ Petromindo was deliberately excluded: the site terms prohibit using its content 
 ## Audits and CI
 
 Run `node scripts/ops/audit-private-osint-publisher-coverage.mjs` for a full offline 195×3 report. The output includes:
+
+The same report now includes a **58-corridor source matrix** from the canonical corridor crosswalk. It separates canonical monitor-reference metadata, discovery-only overlay references, private OSINT feed candidates, and source health from the current private collector tick. A corridor with declared monitor refs but no polled corridor-associated feed is labelled `REFERENCE_ONLY_NOT_LIVE`; the report never equates a route being named in the registry with live flow/disruption intelligence.
 
 - publisher-country source inventory;
 - local, same-continent regional and global-fallback counts for each country/category cell;
