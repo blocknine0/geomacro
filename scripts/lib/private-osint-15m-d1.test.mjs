@@ -293,3 +293,57 @@ test("free D1 private hard-cap evicts only oldest excess rows, never a full NOT 
   assert.ok(plan.includes("idx_private_osint_news_clock"));
  }finally{db.close()}
 });
+
+test("real SQLite bundled mixed new/existing items preserve first-seen and exactly match D1 readback",async()=>{
+ const db=new DatabaseSync(":memory:");
+ db.exec(readFileSync(new URL("../../workers/control-plane/migrations/0028_private_osint_15m_durable.sql",import.meta.url),"utf8"));
+ let calls=0,largestBind=0;
+ const env={DB:{
+  prepare(sql){
+   const q={sql,params:[],bind(...args){q.params=args;largestBind=Math.max(largestBind,args.length);return q},
+    async all(){calls++;return {results:db.prepare(sql).all(...q.params)}}
+   };return q;
+  },
+  async batch(qs){
+   db.exec("BEGIN");
+   try{
+    const result=qs.map(q=>{
+     calls++;const info=db.prepare(q.sql).run(...q.params);
+     return {success:true,meta:{changes:Number(info.changes)}};
+    });
+    db.exec("COMMIT");return result;
+   }catch(error){db.exec("ROLLBACK");throw error}
+  },
+ }};
+ const twenty=Array.from({length:20},(_,i)=>item({id:"news-"+hash("mixed-bundle-"+i)}));
+ const t1=new Date(now).toISOString(),t2=new Date(now+60000).toISOString();
+ try{
+  const seed=await privateOsint15mWrite(env,{
+   schema:PRIVATE_OSINT_D1_SCHEMA,items:twenty.slice(0,12),checks:[check()]
+  },now);
+  assert.equal(seed.status,200);
+  const before=Number(db.prepare("SELECT count(*) AS n FROM private_osint_news_25h").get().n);
+  assert.equal(before,12);
+  const updated=await privateOsint15mWrite(env,{
+   schema:PRIVATE_OSINT_D1_SCHEMA,items:twenty,
+   checks:[{...check(),checked_at:t2}]
+  },now+60000);
+  assert.equal(updated.status,200);
+  const receipt=await updated.json();
+  assert.equal(receipt.persisted,20);
+  assert.equal(receipt.newly_persisted_within_15m,8);
+  assert.equal(receipt.previously_persisted_reobserved,12);
+  assert.equal(receipt.d1_exact_readback_verified,true);
+  assert.equal(receipt.d1_queries_this_write,8);
+  assert.ok(largestBind<=20);
+  const existing=twenty.slice(0,12).map(i=>db.prepare(
+   "SELECT first_seen_at,last_seen_at FROM private_osint_news_25h WHERE item_id=?"
+  ).get(i.id.slice(5)));
+  assert.ok(existing.every(x=>x.first_seen_at===t1&&x.last_seen_at===t1),
+   "unmodified duplicate polls must not rewrite prior first-seen or last-seen");
+  const newer=twenty.slice(12).map(i=>db.prepare(
+   "SELECT first_seen_at FROM private_osint_news_25h WHERE item_id=?"
+  ).get(i.id.slice(5)));
+  assert.ok(newer.every(x=>x.first_seen_at===t2));
+ }finally{db.close()}
+});
