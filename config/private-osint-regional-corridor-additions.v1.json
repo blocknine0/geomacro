@@ -30,22 +30,25 @@
     },
     {
       "id": "private_expansion_afdb_development_news",
-      "url": "https://www.afdb.org/en/news-and-events/feed",
+      "url": "https://www.afdb.org/en/news-and-events/rss",
       "continent": "africa",
       "publisher_country_iso3": null,
       "categories": [
-        "macro"
+        "geopolitics",
+        "macro",
+        "rare_earth"
       ],
       "type": "rss",
       "related_corridor_ids": [
         "lobito_corridor"
       ],
-      "provenance_note": "African Development Bank regional release candidate; endpoint path unconfirmed",
+      "provenance_note": "The African Development Bank's official RSS-feeds page documents a News & Events feed; a public RSS directory identifies this feed URL. The live collector must prove transport, native clocks and relevant topics before treating it as working.",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
       "access_verified_in_production": false,
-      "publicly_deliverable": false
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.afdb.org/en/rss-feeds"
     },
     {
       "id": "private_expansion_uk_bgs_news",
@@ -384,6 +387,52 @@
       "access_verified_in_production": false,
       "publicly_deliverable": false,
       "discovery_reference_url": "https://inklinenews.com/feeds/philippines/"
+    },
+    {
+      "id": "private_expansion_adb_asia_pacific",
+      "url": "https://www.adb.org/rss.xml",
+      "continent": "asia",
+      "publisher_country_iso3": null,
+      "categories": [
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [
+        "cpec",
+        "middle_corridor_titr",
+        "china_europe_railway",
+        "critical_minerals_drc_indonesia"
+      ],
+      "provenance_note": "The Asian Development Bank's official RSS page links to the publisher feed. The URL returned RSS content-type during browser verification; item dates and parser compatibility remain runtime checks.",
+      "discovery_reference_url": "https://www.adb.org/rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_spc_pacific_news",
+      "url": "https://www.spc.int/rss.xml",
+      "continent": "oceania",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [
+        "re_australia_malaysia_lynas"
+      ],
+      "provenance_note": "The Pacific Community's official News page documents current regional releases; this RSS URL is a candidate requiring parser, native-clock and live transport verification before it is counted as working.",
+      "discovery_reference_url": "https://www.spc.int/updates/news",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
     }
   ]
 }
