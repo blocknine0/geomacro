@@ -157,6 +157,7 @@ test("new macro/FX and critical-metals feeds are private only and deduplicated",
  const sources=privateOsintGlobalSources();
  assert.equal(config.sources.length,8);
  assert.equal(config.scope,"PROTECTED_INTERNAL_OSINT_ONLY");
+ assert.equal(config.sources.find(s=>s.id==="private_repo8_usgs_minerals_news")?.categories[0],"rare_earth");
  assert.ok(config.sources.every(s=>!s.commercial_eligible&&!s.provider_rights_verified&&
   !s.access_verified_in_production&&!s.publicly_deliverable));
  for(const s of config.sources){
