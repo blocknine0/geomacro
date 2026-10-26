@@ -24,19 +24,23 @@ describe("signed-data publication precedes independent website release acceptanc
   ])("refuses stale or untrusted code admission: %j",change=>{
     expect(()=>verifyBackendPublicationRevision({...valid,...change})).toThrow(/BACKEND_PUBLICATION/);
   });
-  it("keeps website SHA, signed deep-health and mirror gates in final acceptance",()=>{
+  it("keeps legacy signed diagnostics manual-only and free-source health as the primary release gate",()=>{
     const health=readFileSync(".github/workflows/production-website-health.yml","utf8");
-    for(const value of ["workflow_run:","GRI v1.2 Supabase-Free Current Promotion",
-      "Risk Indices from Verified D1 Global Risk (No Funds)",
-      "github.event.workflow_run.conclusion == 'success'",
-      "github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'",
-      "github.event.workflow_run.head_sha != ''",
+    for(const value of ["workflow_dispatch:",
+      "Manual-only diagnostics for the legacy signed Intelligence / GRI / Risk Indices",
       "scripts/ops/assert-website-publication-followup.mjs",
       "TRUSTED_PUBLISHER_PARENT_SHA",
       "Verify live build marker matches canonical main",
       "Verify Lovable mirror source parity",
       "/api/health?deep=1"])
       expect(health).toContain(value);
+    expect(health).not.toContain("\n  push:\n");
+    expect(health).not.toContain("\n  schedule:\n");
+    expect(health).not.toContain("\n  workflow_run:\n");
+    const freeHealth=readFileSync(".github/workflows/minimum-free-derived-production-health.yml","utf8");
+    expect(freeHealth).toContain("branches: [main]");
+    expect(freeHealth).toContain('cron: "23 */2 * * *"');
+    expect(freeHealth).toContain("Verify exact-main permanent static archive and first HTML without funds");
     for(const name of ["gri-v12-supabase-free-reviewed-current","risk-indices-verified-d1-parent"]){
       const backend=readFileSync(".github/workflows/"+name+".yml","utf8");
       expect(backend).toContain("node scripts/ops/assert-backend-publication-main.mjs");
