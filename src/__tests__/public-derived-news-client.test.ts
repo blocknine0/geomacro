@@ -163,7 +163,7 @@ describe("browser public journal fallback",()=>{
     const fresh=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
       expect(String(input)).toBe(GEOMACRO_DERIVED_BUNDLE_URL);
       expect(init?.cache).toBe("no-store");
-      expect(init?.redirect).toBe("error");
+      expect(init?.redirect).toBe("manual");
       expect(new Headers(init?.headers).get("cache-control")).toBe("no-cache");
       return new Response(JSON.stringify(makeBundle(new Date(now).toISOString())),{status:200,
         headers:{"content-type":"application/json"}});
