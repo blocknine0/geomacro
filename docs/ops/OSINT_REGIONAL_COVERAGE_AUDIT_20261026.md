@@ -12,14 +12,14 @@ Date: 26 October 2026
 
 ## Feed candidates added
 
-| ID | Publisher / region | Category | URL |
-|---|---|---|---|
-| `private_expansion_au_industry_news` | Australia, Department of Industry | Critical minerals | https://www.industry.gov.au/news.xml |
-| `private_expansion_za_dsti_news` | South Africa, DSTI | Critical minerals | https://www.dsti.gov.za/rss.xml |
-| `private_expansion_za_sars_news` | South Africa, SARS | Macro/FX and trade | https://www.sars.gov.za/feed/?post_type=latest_news |
-| `private_expansion_kr_msit_press` | South Korea, MSIT | Critical minerals / technology policy | https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=94 |
-| `private_expansion_ind_tax_press` | India, Income Tax Department | Macro / fiscal policy | https://wm.incometaxindia.gov.in/press-release-rss-feed/-/asset_publisher/bxhj/rss |
-| `private_expansion_ph_pna_news` | Philippines, PNA | Geopolitics | https://www.pna.gov.ph/latest.rss |
+| ID | Publisher / region | Category | Feed URL | Provenance |
+|---|---|---|---|---|
+| `private_expansion_au_industry_news` | Australia, Department of Industry | Critical minerals | https://www.industry.gov.au/news.xml | [Official RSS list](https://www.industry.gov.au/contact-us/rss-feeds) |
+| `private_expansion_za_dsti_news` | South Africa, DSTI | Critical minerals | https://www.dsti.gov.za/rss.xml | [Official RSS list](https://www.dsti.gov.za/subscribe) |
+| `private_expansion_za_sars_news` | South Africa, SARS | Macro/FX and trade | https://www.sars.gov.za/feed/?post_type=latest_news | [Official RSS page](https://www.sars.gov.za/about/rss-feeds/) |
+| `private_expansion_kr_msit_press` | South Korea, MSIT | Critical minerals / technology policy | https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=94 | [Official RSS guide](https://www.msit.go.kr/contents/cont.do?mId=173&mPid=147&sCode=user) |
+| `private_expansion_ind_tax_press` | India, Income Tax Department | Macro / fiscal policy | https://wm.incometaxindia.gov.in/press-release-rss-feed/-/asset_publisher/bxhj/rss | [Official tax feeds](https://www.incometaxindia.gov.in/tax-feeds) |
+| `private_expansion_ph_pna_news` | Philippines, PNA | Geopolitics | https://www.pna.gov.ph/latest.rss | [Third-party feed directory](https://inklinenews.com/feeds/philippines/) |
 
 Petromindo was deliberately excluded: its own site terms prohibit using its content to construct a database, and the Mineral RSS URL returned a 404 in the browser probe. Do not ingest its feed unless explicit permission is obtained.
 
