@@ -87,6 +87,7 @@ on:
       - "config/private-osint-local-rss-candidates.v1.json"
       - "config/private-osint-corridor-reference-overlay.v1.json"
       - "config/operator-country-source-crosswalk.v1.json"
+      - "scripts/ops/audit-d1-account-daily-quota-readonly.mjs"
       - "scripts/lib/private-unverified-osint-intake.mjs"
       - "scripts/lib/private-unverified-osint-intake.test.mjs"
       - "scripts/ops/private-unverified-osint-tick.ts"
@@ -234,6 +235,7 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
+      needs.d1-quota-preflight.outputs.headroom == 'ready' &&
       github.event_name != 'pull_request' &&
       (github.event_name != 'workflow_run' ||
        (github.event.workflow_run.conclusion == 'success' &&
