@@ -18,6 +18,7 @@ import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
+import {readPublicFreeD1Cached} from "./public-free-d1-cache.mjs";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
 import { makeRiskIndicesHistoricalMetadata } from "./risk-indices-historical-status.mjs";
 import { projectPublic30mPulse } from "./source-pulse-public.mjs";
@@ -1266,8 +1267,12 @@ async function getPublicThreeDomain30MinSourcePulse(env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    const publicReadCache=(run)=>readPublicFreeD1Cached(request,run,{
+      cache:typeof caches!=="undefined"?caches.default:null,
+      waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
+    });
     const parts = url.pathname.split("/").filter(Boolean);
 
     if (request.method === "GET" && url.pathname === "/health") return health(env);
@@ -1276,7 +1281,7 @@ export default {
     if(request.method==="GET"&&url.pathname==="/v1/public/reusable-source-news")
       return publicReusableSourceNews(env,url.searchParams);
     if(request.method==="GET"&&url.pathname==="/v1/public/three-domain-continuity"&&!url.search)
-      return threeDomainEvidenceContinuity(env);
+      return publicReadCache(()=>threeDomainEvidenceContinuity(env));
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime-context"){
       if([...url.searchParams.keys()].some(k=>k!=="category")||url.searchParams.getAll("category").length!==1)
         return json({ok:false,error:"SOURCE_RUNTIME_QUERY_INVALID"},400);
@@ -1297,7 +1302,7 @@ export default {
     if(url.pathname==="/v1/partner/predge/risk-gate")
       return predgeRiskGateD1(request,env);
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
-      return renderDerivedStoriesHtml(env);
+      return publicReadCache(()=>renderDerivedStoriesHtml(env));
     }
     if(request.method==='GET'&&url.pathname==='/v1/public/intelligence-publications')
       return publicSignedNews(env,url.searchParams);
@@ -1308,7 +1313,7 @@ export default {
       // Only deterministic 250-row read pages of the existing 600-row D1
       // journal. No arbitrary SQL offsets or raw publisher payloads.
       const q=url.searchParams;
-      if(q.size===0)return readDerivedStories(env,Date.now(),0,legacyDelay);
+      if(q.size===0)return publicReadCache(()=>readDerivedStories(env,Date.now(),0,legacyDelay));
       if(q.size!==1||q.getAll("offset").length!==1||
          !["250","500"].includes(q.get("offset")))
         return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID",chargeable:false},400);

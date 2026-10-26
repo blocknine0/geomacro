@@ -56,8 +56,16 @@ jobs:
 
           run_id="$(jq -r '[.workflow_runs[] | select(.head_branch == "main")] | sort_by(.created_at) | last | .id // empty' "$runs_file")"
           conclusion="$(jq -r --argjson id "${run_id:-0}" '[.workflow_runs[] | select(.id == $id)][0].conclusion // empty' "$runs_file")"
+          failed_sha="$(jq -r --argjson id "${run_id:-0}" '[.workflow_runs[] | select(.id == $id)][0].head_sha // empty' "$runs_file")"
           if [[ -z "$run_id" || "$conclusion" != "failure" ]]; then
             echo "No failed latest canonical D1 deployment requires quota recovery."
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Do not replay a failed deployment of a superseded main revision.
+          if [[ "$failed_sha" != "$GITHUB_SHA" ]]; then
+            echo "::notice::D1_QUOTA_RECOVERY_STALE_MAIN_SHA_HOLD"
             echo "retry=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -80,24 +88,29 @@ jobs:
             exit 0
           fi
 
-          log_zip="$RUNNER_TEMP/deploy-job-logs.zip"
-          if ! curl --fail --location --silent --show-error \
+          # GitHub's *job* logs API returns plain text (workflow-*run* logs
+          # are ZIP archives). Do not run unzip on an ordinary job log.
+          # Never print log contents: migrations may contain private SQL.
+          log_text="$RUNNER_TEMP/deploy-job-logs.txt"
+          if ! curl --fail --location --silent --show-error --max-time 30 \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "$api/actions/jobs/$job_id/logs" -o "$log_zip"; then
+            "$api/actions/jobs/$job_id/logs" -o "$log_text"; then
             echo "::warning::D1_QUOTA_RECOVERY_LOG_LOOKUP_UNAVAILABLE"
             echo "retry=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          log_text="$RUNNER_TEMP/deploy-job-logs.txt"
-          if ! unzip -p "$log_zip" > "$log_text" 2>/dev/null; then
-            echo "::warning::D1_QUOTA_RECOVERY_LOG_ARCHIVE_UNREADABLE"
+          # Refuse truncated, unexpectedly oversized, binary or HTML logs.
+          log_bytes="$(wc -c < "$log_text")"
+          if (( log_bytes < 100 || log_bytes > 2000000 )) ||
+             ! grep -aFq 'Apply committed D1 migrations remotely' "$log_text"; then
+            echo "::warning::D1_QUOTA_RECOVERY_JOB_LOG_NOT_VERIFIABLE"
             echo "retry=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if grep -Fq "Your account has exceeded D1's free tier daily row read limit" "$log_text" &&
-             grep -Fq "code: 7500" "$log_text"; then
+          if grep -aFq "Your account has exceeded D1's free tier daily row read limit" "$log_text" &&
+             grep -aFq "code: 7500" "$log_text"; then
             echo "Confirmed D1 daily row-read quota exhaustion on the latest canonical deploy; eligible for one post-reset retry."
             echo "retry=true" >> "$GITHUB_OUTPUT"
           else
@@ -118,5 +131,5 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             -H "Content-Type: application/json" \
             "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/deploy-d1-control-plane.yml/dispatches" \
-            --data '{"ref":"main"}'
+            --data '{"ref":"main","inputs":{"confirmation":"DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS"}}'
           echo "Dispatched the existing protected deployment workflow; its own migration, secret, Worker and D1 acceptance gates remain mandatory."
