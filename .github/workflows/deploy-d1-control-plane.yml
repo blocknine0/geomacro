@@ -27,6 +27,7 @@ on:
       - "scripts/ops/verify-predge-auth-research-delivery.mjs"
       - "src/__tests__/predge-auth-research-live-verifier.test.ts"
       - "scripts/ops/verify-d1-central-security-budget.mjs"
+      - "scripts/ops/audit-d1-account-daily-quota-readonly.mjs"
       - "scripts/ops/verify-private-handoff-production.mjs"
       - "scripts/tests/verify-private-handoff-production.test.mjs"
 
