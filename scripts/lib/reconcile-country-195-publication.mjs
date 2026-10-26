@@ -76,7 +76,7 @@ export function reconcileCountry195Publication({rolling,website,now=new Date()}=
   source_and_journal_overlap_cells:matched,
   unprobed_or_stale_source_cells:unprobed,
   domain_totals:totals,
-  journal_record_total_72h:publicReceipt.actual_72h_derived_news_journal_records,
+  public_archive_record_total_72h:publicReceipt.actual_72h_public_archive_latest_records,
   source_probe_evidence_and_website_journal_have_different_time_windows:true,
   a_journal_mention_is_not_a_country_verified_original:true,
   a_source_probe_is_not_a_website_publication_guarantee:true,

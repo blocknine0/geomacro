@@ -1,9 +1,8 @@
-import {fetchAllDerivedNews} from "./public-derived-news-client";
+import {fetchDirectDerivedNews} from "./public-derived-news-client";
 import {country195ByIso3} from "./canonical-country-registry-195";
 import {observed195x3Coverage,observedDerivedNewsForCountry} from "./derived-news-country-coverage-195";
 import {buildDerivedNewsStructural,NEWS_STRUCTURAL_SCHEMA} from "./derived-news-structural-bridge";
 import {normalizeReusableNewsJson,REUSABLE_NEWS_JSON_SCHEMA} from "./reusable-news-json";
-import {fetchAllReusableSourceNews} from "./live-reusable-source-news-client";
 
 const CATEGORIES=["geopolitics","macro","rare_earth"] as const;
 type Domain = typeof CATEGORIES[number];
@@ -42,8 +41,9 @@ export function structuralNewsAvailability(
 const HEADERS={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
   "Access-Control-Allow-Origin":"*","Referrer-Policy":"no-referrer"};
 /** GET /api/v1/intelligence/query?view=structural-72h[&domain=macro]
- * Every eligible record currently retained in the 600-row D1 journal is
- * projected; a configured, down, review-gated or unobserved source is NOT
+ * Public reads use the permanent static archive rolling latest.json (<=250
+ * records), never the D1 journal. The feed is filtered by original publication
+ * time; a configured, down, review-gated or unobserved source is NOT
  * asserted to have published news. No x402, signing, new storage or raw text.
  */
 export async function derivedNewsStructuralResponse(
@@ -64,18 +64,9 @@ export async function derivedNewsStructuralResponse(
     return Response.json({ok:false,error:"DERIVED_STRUCTURAL_QUERY_INVALID",chargeable:false},
       {status:400,headers:HEADERS});
   try{
-    // Independently degrade either of the two existing D1 news lanes.
-    let sourceResult:Awaited<ReturnType<typeof fetchAllReusableSourceNews>>|null=null;
-    if(reusableView){
-      try{sourceResult=await fetchAllReusableSourceNews(fetchImpl,now,{country,domain})}
-      catch{/* a functioning editorial journal can still serve */}
-    }
-    let signals:Awaited<ReturnType<typeof fetchAllDerivedNews>>;
-    try{signals=await fetchAllDerivedNews(fetchImpl,now)}
-    catch(e){
-      if(!reusableView||sourceResult===null)throw e;
-      signals=[];
-    }
+    // All ordinary public newsroom/API reads use the permanent static
+    // archive's rolling latest feed. Never fall back to D1 on this path.
+    const signals=await fetchDirectDerivedNews(fetchImpl,now);
     const all=buildDerivedNewsStructural(signals,now);
     if(coverageView)return Response.json(
       observed195x3Coverage(all,now,{
@@ -101,12 +92,10 @@ export async function derivedNewsStructuralResponse(
         return {...normalized,source_record_id:r.id,
           original_release_at:r.original_published_at,
           date_precision:r.date_precision,
-          source_material_class:"EXISTING_GEOMACRO_DERIVED_JOURNAL",
+          source_material_class:"PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250",
           upstream_source_rights_unverified:true};
       });
-      const fromRegistered=sourceResult?.items.filter(item=>
-        (domain===null||item.category===domain)&&
-        (country===null||item.country_iso3===country))??[];
+      const fromRegistered:typeof items=[];
       const combined=[...items,...fromRegistered];
       const mixedCounts=Object.fromEntries(CATEGORIES.map(c=>[
         c,combined.filter(item=>item.category===c).length,
@@ -114,13 +103,12 @@ export async function derivedNewsStructuralResponse(
       return Response.json({
         ok:true,schema:"geomacro.reusable-news-json-live-feed.v1",
         item_schema:REUSABLE_NEWS_JSON_SCHEMA,
-        source_scope:"EXISTING_DERIVED_D1_PLUS_ROTATED_REGISTERED_SOURCE_NEWS",
-        registered_source_reader_state:sourceResult===null?
-          "UNAVAILABLE_OR_NOT_DEPLOYED":"AVAILABLE",
-        registered_source_checks_24h:sourceResult?.checked_source_states??{},
-        registered_source_items:fromRegistered.length,
+        source_scope:"PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250",
+        registered_source_reader_state:"NOT_QUERIED_PUBLIC_READ_PATH_IS_STATIC_ONLY",
+        registered_source_checks_24h:{},
+        registered_source_items:0,
         retention_hours:25,
-        source_reader_preview_has_more:sourceResult?.has_more??false,
+        source_reader_preview_has_more:false,
         editorial_derived_items:items.length,
         unobserved_sources_not_reported_as_no_news:true,
         country_filter:country,domain_filter:domain,
@@ -134,7 +122,7 @@ export async function derivedNewsStructuralResponse(
       ok:true,schema:"geomacro.derived-news-structural-feed.v1",
       item_schema:NEWS_STRUCTURAL_SCHEMA,retention_hours:72,
       original_release_delay_minutes:0,
-      source_scope:"ELIGIBLE_RELEASES_PRESENT_IN_BOUNDED_D1_JOURNAL",
+      source_scope:"ELIGIBLE_RELEASES_PRESENT_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250",
       exhaustive_all_global_sources:false,
       independent_same_event_verified:false,commercial_rights_verified:false,
       scored:false,signed:false,chargeable:false,payment_required_now:false,
@@ -150,7 +138,7 @@ export async function derivedNewsStructuralResponse(
       counts,items:rows,
     },{headers:HEADERS});
   }catch{
-    return Response.json({ok:false,error:"DERIVED_STRUCTURAL_JOURNAL_UNAVAILABLE",
+    return Response.json({ok:false,error:"DERIVED_STATIC_ARCHIVE_UNAVAILABLE",
       chargeable:false,items:[]},{status:503,headers:HEADERS});
   }
 }

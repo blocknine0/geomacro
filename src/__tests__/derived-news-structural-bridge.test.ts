@@ -63,24 +63,28 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    expect(()=>buildDerivedNewsStructural([good,{...good,topic:"foreign policy"}],NOW))
      .toThrow("DERIVED_NEWS_ID_COLLISION");
  });
- it("reads all three bounded pages, covers every retained eligible event, and leaves paid API untouched",async()=>{
+ it("keeps paged D1 reader internal but serves public structural data from static latest.json",async()=>{
    const signals=Array.from({length:520},(_,i)=>story(i));
-   const mock=vi.fn(async (input:RequestInfo|URL)=>{
+   const internalMock=vi.fn(async (input:RequestInfo|URL)=>{
      const url=new URL(String(input));
      const offset=Number(url.searchParams.get("offset")||0);
      const batch=signals.slice(offset,offset+250);
      return Response.json(feed(batch,offset,offset+250<signals.length));
    });
-   const all=await fetchAllDerivedNews(mock as typeof fetch,NOW);
+   const all=await fetchAllDerivedNews(internalMock as typeof fetch,NOW);
    expect(all).toHaveLength(520);
-   expect(mock).toHaveBeenCalledTimes(3);
+   expect(internalMock).toHaveBeenCalledTimes(3);
+   const mock=vi.fn(async (input:RequestInfo|URL)=>{
+     expect(String(input)).toBe("https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json");
+     return Response.json(feed(signals.slice(0,250)));
+   });
    const r=await derivedNewsStructuralResponse(
      new Request("https://geomacro.live/api/v1/intelligence/query?view=structural-72h&domain=macro"),
      mock as typeof fetch,NOW);
    expect(r.status).toBe(200);
    const body=await r.json();
-   expect(body.items).toHaveLength(173);
-   expect(body.counts).toEqual({geopolitics:174,macro:173,rare_earth:173});
+   expect(body.items).toHaveLength(83);
+   expect(body.counts).toEqual({geopolitics:84,macro:83,rare_earth:83});
    expect(body.generated_at).toBe(new Date(NOW).toISOString());
    expect(Object.keys(body.availability_by_category).sort()).toEqual([...domains].sort());
    for(const category of domains){
@@ -90,7 +94,8 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    }
    expect(body.chargeable).toBe(false);
    expect(body.exhaustive_all_global_sources).toBe(false);
-   expect(body.source_scope).toBe("ELIGIBLE_RELEASES_PRESENT_IN_BOUNDED_D1_JOURNAL");
+   expect(body.source_scope).toBe("ELIGIBLE_RELEASES_PRESENT_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250");
+   expect(mock).toHaveBeenCalledTimes(1);
    expect(JSON.stringify(body)).not.toContain("source_url");
  });
  it("routes the exact 195 countries × 3 categories but never claims 585 populated news cells",()=>{
@@ -117,7 +122,7 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    expect(observed.cells.find(c=>c.country_iso3==="PSE"&&c.category==="rare_earth")
      ?.observed_derived_records_72h).toBe(1);
    expect(observed.cells.find(c=>c.country_iso3==="USA"&&c.category==="macro"))
-     .toMatchObject({status:"NO_MATCHING_COUNTRY_MENTION_IN_BOUNDED_JOURNAL",
+     .toMatchObject({status:"NO_MATCHING_COUNTRY_MENTION_IN_ROLLING_STATIC_ARCHIVE",
        observed_derived_records_72h:0,all_news_exhaustive:false});
    expect(observed.not_observed_means_no_news).toBe(false);
    expect(observed.exhaustive_country_news_coverage_verified).toBe(false);
@@ -131,7 +136,7 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    expect(countryFromDerivedGeography("West Bank")).toBe("PSE");
    expect(countryFromDerivedGeography("United States")).toBe("USA");
  });
- it("serves country-specific articles and 585-cell derived mention coverage from SAME D1 pages",async()=>{
+ it("serves country-specific articles and 585-cell mention coverage from static archive without D1",async()=>{
    const rows=[
      {...story(0),geography:"India"},
      {...story(1),geography:"Ukraine"},
@@ -139,9 +144,8 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
      {...story(3),geography:null},
    ];
    const mock=vi.fn(async(input:RequestInfo|URL)=>{
-     const url=new URL(String(input));
-     const offset=Number(url.searchParams.get("offset")||0);
-     return Response.json(feed(rows.slice(offset,offset+250),offset,false));
+     expect(String(input)).toBe("https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json");
+     return Response.json(feed(rows));
    });
    const path="https://geomacro.live/api/v1/intelligence/query";
    const scoped=await derivedNewsStructuralResponse(new Request(
@@ -164,7 +168,14 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
      mock as typeof fetch,NOW);
    expect((await one.json()).cells).toMatchObject([{country_iso3:"IND",
      category:"macro",observed_derived_records_72h:0,all_news_exhaustive:false}]);
-   expect(mock).toHaveBeenCalledTimes(3);
+   const reusable=await derivedNewsStructuralResponse(new Request(
+     path+"?view=reusable-news-json"),mock as typeof fetch,NOW);
+   expect(reusable.status).toBe(200);
+   const reusableBody=await reusable.json();
+   expect(reusableBody.source_scope).toBe("PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250");
+   expect(reusableBody.registered_source_reader_state).toBe("NOT_QUERIED_PUBLIC_READ_PATH_IS_STATIC_ONLY");
+   expect(mock).toHaveBeenCalledTimes(4);
+   expect(mock.mock.calls.every(([input])=>String(input)==="https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json")).toBe(true);
    for(const prohibited of ["https://","source_id","source_url","raw_html","publisher_name"])
      expect(JSON.stringify(m)).not.toContain(prohibited);
    expect(JSON.stringify(doc)).not.toContain("raw_payload");
@@ -178,7 +189,10 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    }
  });
  it("keeps a stable 3-category status even when no official release is qualified",async()=>{
-   const f=vi.fn(async()=>Response.json(feed([],0,false)));
+   const f=vi.fn(async(input:RequestInfo|URL)=>{
+     expect(String(input)).toBe("https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json");
+     return Response.json(feed([],0,false));
+   });
    const result=await derivedNewsStructuralResponse(new Request(
      "https://geomacro.live/api/v1/intelligence/query?view=structural-72h"
    ),f as typeof fetch,NOW);
@@ -213,10 +227,10 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
      const f=vi.fn(async()=>Response.json(item));
      await expect(fetchAllDerivedNews(f as typeof fetch,NOW)).rejects.toThrow();
    }
-   const old=vi.fn(async()=>Response.json({
-     ...feed([story(0)]),page_offset:undefined,page_size:undefined,
-     has_more:undefined,next_offset:undefined,
-   }));
+   const old=vi.fn(async(input:RequestInfo|URL)=>{
+     expect(String(input)).toBe("https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json");
+     return new Response("unavailable",{status:503});
+   });
    const r=await derivedNewsStructuralResponse(
      new Request("https://geomacro.live/api/v1/intelligence/query?view=structural-72h"),
      old as typeof fetch,NOW);

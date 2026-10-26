@@ -17,7 +17,7 @@ function fixture(events=[]){
    const count=observed?.count??0;
    return {country_iso3:country.iso3,country_name:country.name,category,
     status:count?"DERIVED_OFFICIAL_COUNTRY_MENTION_OBSERVED_UNVERIFIED":
-      "NO_MATCHING_COUNTRY_MENTION_IN_BOUNDED_JOURNAL",
+      "NO_MATCHING_COUNTRY_MENTION_IN_ROLLING_STATIC_ARCHIVE",
     observed_derived_records_72h:count,classified_topic_releases_72h:count,
     unclassified_candidates_72h:0,
     latest_original_published_at:count?"2026-10-22T10:00:00.000Z":null,
@@ -29,14 +29,14 @@ function fixture(events=[]){
  for(const row of rows)totals[row.category]+=row.observed_derived_records_72h;
  return {schema:"geomacro.195x3-observed-derived-news-coverage.v1",
    country_count:195,category_count:3,total_country_category_cells:585,
-   returned_cells:585,coverage_scope:"OBSERVED_DERIVED_RELEASES_IN_EXISTING_72H_D1_JOURNAL_ONLY",
+   returned_cells:585,coverage_scope:"OBSERVED_DERIVED_RELEASES_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250_ONLY",
    country_routing_basis:"EXACT_DERIVED_TITLE_GEOGRAPHY_MENTION_ONLY",
    not_observed_means_no_news:false,
    exhaustive_country_news_coverage_verified:false,
    producer_country_original_coverage_verified:false,
    original_release_delay_minutes:0,retention_hours:72,
    generated_at:now.toISOString(),
-   source_neutral_derived_records_in_journal:rows.reduce((a,r)=>a+r.observed_derived_records_72h,0),
+   source_neutral_derived_records_in_public_archive_latest_250:rows.reduce((a,r)=>a+r.observed_derived_records_72h,0),
    unassigned_or_regional_derived_records_72h:0,
    observed_derived_records_by_category:totals,payment_required_now:false,
    chargeable:false,scored:false,signed:false,raw_upstream_delivered:false,
@@ -50,7 +50,7 @@ test("checks genuine full 585-country-category observed journal without pretendi
  assert.equal(accepted.returned_cells,585);
  assert.equal(accepted.observed_country_category_cells,2);
  assert.equal(accepted.cells_without_matching_derivation,583);
- assert.equal(accepted.actual_72h_derived_news_journal_records,3);
+ assert.equal(accepted.actual_72h_public_archive_latest_records,3);
  assert.equal(accepted.observed_country_mentions_by_category.macro,0);
  assert.equal(accepted.latest_original_published_at,"2026-10-22T10:00:00.000Z");
  assert.equal(accepted.original_source_presence_585_cells_verified,false);
@@ -61,7 +61,7 @@ test("checks genuine full 585-country-category observed journal without pretendi
 test("an honest day with zero events passes transport, never fabricates country news",()=>{
  const x=inspectObservedCountryGrid(fixture(),now);
  assert.equal(x.observed_country_category_cells,0);
- assert.equal(x.actual_72h_derived_news_journal_records,0);
+ assert.equal(x.actual_72h_public_archive_latest_records,0);
  assert.equal(x.no_observation_does_not_mean_no_news,true);
 });
 test("invalid 585 routing, forged qualified news and stale clocks all fail",()=>{

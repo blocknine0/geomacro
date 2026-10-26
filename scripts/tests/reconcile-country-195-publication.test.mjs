@@ -15,7 +15,7 @@ function fixture(occupied=false){
   return {
    country_iso3:code,country_name:code,category,
    status:hit?"DERIVED_OFFICIAL_COUNTRY_MENTION_OBSERVED_UNVERIFIED":
-     "NO_MATCHING_COUNTRY_MENTION_IN_BOUNDED_JOURNAL",
+     "NO_MATCHING_COUNTRY_MENTION_IN_ROLLING_STATIC_ARCHIVE",
    observed_derived_records_72h:hit?1:0,
    classified_topic_releases_72h:hit?1:0,unclassified_candidates_72h:0,
    latest_original_published_at:hit?"2026-10-22T13:00:00Z":null,
@@ -28,13 +28,13 @@ function fixture(occupied=false){
   schema:"geomacro.195x3-observed-derived-news-coverage.v1",
   country_count:195,category_count:3,total_country_category_cells:585,
   returned_cells:585,
-  coverage_scope:"OBSERVED_DERIVED_RELEASES_IN_EXISTING_72H_D1_JOURNAL_ONLY",
+  coverage_scope:"OBSERVED_DERIVED_RELEASES_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250_ONLY",
   country_routing_basis:"EXACT_DERIVED_TITLE_GEOGRAPHY_MENTION_ONLY",
   not_observed_means_no_news:false,
   exhaustive_country_news_coverage_verified:false,
   producer_country_original_coverage_verified:false,
   original_release_delay_minutes:0,retention_hours:72,
-  generated_at:now.toISOString(),source_neutral_derived_records_in_journal:occupied?1:0,
+  generated_at:now.toISOString(),source_neutral_derived_records_in_public_archive_latest_250:occupied?1:0,
   unassigned_or_regional_derived_records_72h:0,
   observed_derived_records_by_category:{geopolitics:occupied?1:0,macro:0,rare_earth:0},
   payment_required_now:false,chargeable:false,scored:false,signed:false,
@@ -67,7 +67,7 @@ test("a recent source probe and actual journal are separate and counted once",()
  assert.equal(x.website_country_mentioned_cells_last_72h,1);
  assert.equal(x.source_and_journal_overlap_cells,1);
  assert.equal(x.unprobed_or_stale_source_cells,584);
- assert.equal(x.journal_record_total_72h,1);
+ assert.equal(x.public_archive_record_total_72h,1);
  assert.equal(x.paid_delivery_authorized,false);
 });
 test("a website country mention does not promote an unprobed source to verified",()=>{

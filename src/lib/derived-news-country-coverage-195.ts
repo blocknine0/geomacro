@@ -1,8 +1,8 @@
 import {COUNTRIES_195,country195ByIso3} from "./canonical-country-registry-195";
 import type {DerivedNewsStructural} from "./derived-news-structural-bridge";
 
-/** Read-only country mention routing for the SAME bounded 72h D1 news journal.
- * A headline country mention is NOT a country-specific original, licensed
+/** Read-only country mention routing over the permanent archive rolling latest feed (at most 250 eligible records).
+ * A headline country mention is NOT country-specific original evidence, licensed
  * commercial evidence, a verified subject, or a claim of global completeness.
  * Never infer country from a publisher's home country or from an undated feed.
  */
@@ -42,7 +42,7 @@ export function observed195x3Coverage(
  rows:readonly DerivedNewsStructural[],now:number,
  options:{country?:string|null;domain?:NewsDomain|null}={},
 ){
- if(!Number.isFinite(now)||!Array.isArray(rows)||rows.length>600)
+ if(!Number.isFinite(now)||!Array.isArray(rows)||rows.length>250)
   throw Error("COUNTRY_NEWS_195X3_INPUT_INVALID");
  const country=options.country??null,domain=options.domain??null;
  if((country!==null&&!country195ByIso3(country))||
@@ -72,7 +72,7 @@ export function observed195x3Coverage(
    country_iso3:c.iso3,country_name:c.name,category:d,
    status:entries.length?
      "DERIVED_OFFICIAL_COUNTRY_MENTION_OBSERVED_UNVERIFIED":
-     "NO_MATCHING_COUNTRY_MENTION_IN_BOUNDED_JOURNAL",
+     "NO_MATCHING_COUNTRY_MENTION_IN_ROLLING_STATIC_ARCHIVE",
    observed_derived_records_72h:entries.length,
    classified_topic_releases_72h:entries.filter(x=>x.qualifying_topic_release_verified).length,
    unclassified_candidates_72h:entries.filter(x=>!x.qualifying_topic_release_verified).length,
@@ -88,14 +88,14 @@ export function observed195x3Coverage(
   country_count:COUNTRIES_195.length,category_count:COUNTRY_NEWS_DOMAINS.length,
   total_country_category_cells:585,
   returned_cells:cells.length,
-  coverage_scope:"OBSERVED_DERIVED_RELEASES_IN_EXISTING_72H_D1_JOURNAL_ONLY",
+  coverage_scope:"OBSERVED_DERIVED_RELEASES_IN_PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250_ONLY",
   country_routing_basis:"EXACT_DERIVED_TITLE_GEOGRAPHY_MENTION_ONLY",
   not_observed_means_no_news:false,
   exhaustive_country_news_coverage_verified:false,
   producer_country_original_coverage_verified:false,
   original_release_delay_minutes:0,retention_hours:72,
   generated_at:new Date(now).toISOString(),
-  source_neutral_derived_records_in_journal:rows.length,
+  source_neutral_derived_records_in_public_archive_latest_250:rows.length,
   unassigned_or_regional_derived_records_72h:unassigned,
   observed_derived_records_by_category:categoryTotals,
   payment_required_now:false,chargeable:false,scored:false,signed:false,
