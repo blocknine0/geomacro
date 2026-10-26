@@ -15,6 +15,10 @@ describe("D1 control-plane bootstrap", () => {
     expect(workflow).toContain("node scripts/ops/audit-d1-account-daily-quota-readonly.mjs");
     expect(workflow.indexOf("node scripts/ops/audit-d1-account-daily-quota-readonly.mjs"))
       .toBeLessThan(workflow.indexOf("d1 migrations apply DB --remote"));
+    expect(workflow).toContain("id: d1-quota-preflight");
+    expect(workflow).toContain("if: steps.d1-quota-preflight.outcome != 'success'");
+    expect(workflow.indexOf("D1_QUOTA_HEADROOM_UNVERIFIED_OR_BELOW_SAFE_RESERVE"))
+      .toBeLessThan(workflow.indexOf("d1 migrations apply DB --remote"));
     expect(workflow).toContain("SELECT version FROM schema_meta");
   });
 
