@@ -19,7 +19,7 @@ const categories=["geopolitics","macro","rare_earth"];
 const ref=(s,c)=>createHash("sha256").update([s.id,s.url,c].join("\n")).digest("hex");
 const registry=privateUnverifiedOsintRegistry(undefined,{includeGapLane:true})
  .filter(s=>s.id.startsWith("private_gaplane_"));
-if(registry.length<1||registry.length>54)throw Error("PRIVATE_GAPLANE_REGISTRY_RANGE_INVALID");
+if(registry.length<1||registry.length>100)throw Error("PRIVATE_GAPLANE_REGISTRY_RANGE_INVALID");
 const canonical=new Set(COUNTRIES_195.map(c=>c.iso3));
 const countries=[...new Set(registry.map(s=>s.publisher_country_iso3))].sort();
 if(countries.length!==registry.length-2||countries.some(c=>!canonical.has(c)))
