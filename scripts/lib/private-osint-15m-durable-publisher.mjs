@@ -1,7 +1,45 @@
 /** Protected private-only durable handoff. No GitHub artifact, public API or raw publisher payloads. */
 export const PRIVATE_OSINT_DURABLE_SCHEMA="geomacro.private-osint-15m-durable.v1";
+export const PRIVATE_OSINT_D1_HEALTH_SNAPSHOT_SLOTS=3;
+const FIVE_MINUTES_MS=5*60_000;
+/**
+ * Every original RSS/API source is fetched and classified on every OSINT tick.
+ * Only the D1 health-status snapshots are sharded into three fixed 5-minute
+ * slots, so each source/category has a nominal 15-minute refresh cadence.
+ * A missed GitHub Actions run is NOT a guaranteed deadline. Dated news items
+ * remain in the full, unsampled durable write path.
+ *
+ * This reduces repetitive D1 UPSERT/read work without representing a source
+ * as healthy from its registration. No original titles or endpoints are
+ * included in the sampling identity, only existing opaque SHA-256 refs.
+ */
+export function selectPrivateOsintD1HealthChecks({
+ checks,now,slots=1,newsItemCount=0,
+}={}){
+ if(!Array.isArray(checks)||!Number.isFinite(now)||
+    !Number.isSafeInteger(newsItemCount)||newsItemCount<0||
+    ![1,PRIVATE_OSINT_D1_HEALTH_SNAPSHOT_SLOTS].includes(slots)||
+    checks.some(check=>typeof check?.source_ref!=="string"||
+      !/^[a-f0-9]{64}$/u.test(check.source_ref)))
+  throw Error("PRIVATE_OSINT_HEALTH_SNAPSHOT_INPUT_INVALID");
+ const slot=Math.floor(now/FIVE_MINUTES_MS)%slots;
+ let selected=slots===1?[...checks]:checks.filter(check=>
+   parseInt(check.source_ref.slice(0,8),16)%slots===slot);
+ // A quiet, tiny feed set can otherwise produce an empty authenticated
+ // batch. Keep a deterministic genuine source check, never fake one.
+ if(!selected.length&&!newsItemCount&&checks.length)
+  selected=[checks[slot%checks.length]];
+ return Object.freeze({
+  checks:selected,
+  observed:checks.length,
+  sampled:selected.length,
+  deferred:checks.length-selected.length,
+  slots,slot,
+ });
+}
+
 export async function persistPrivateOsintBatch({
- result,controlPlaneRoot,privateToken,fetchImpl=fetch,now=Date.now()
+ result,controlPlaneRoot,privateToken,fetchImpl=fetch,now=Date.now(),sourceHealthSnapshotSlots=1
 }={}){
  if(!result||result.schema!=="geomacro.private-osint-15m-batch.v1"||
     !Array.isArray(result.items)||!Array.isArray(result.checks)||
@@ -13,7 +51,10 @@ export async function persistPrivateOsintBatch({
   const stamp=Date.parse(x?.source?.original_published_at??"");
   return Number.isFinite(stamp)&&stamp<=now&&now-stamp<=25*3600000;
  });
- const checks=[...result.checks];
+ const snapshot=selectPrivateOsintD1HealthChecks({
+  checks:result.checks,now,slots:sourceHealthSnapshotSlots,newsItemCount:items.length,
+ });
+ const checks=[...snapshot.checks];
  if(!items.length&&!checks.length)throw Error("PRIVATE_OSINT_NO_NETWORK_CHECKS");
  const groups=[];
  while(items.length||checks.length)groups.push({
@@ -107,7 +148,14 @@ export async function persistPrivateOsintBatch({
       !Array.isArray(privateFeed.items)))
    throw Error("PRIVATE_OSINT_PRIVATE_READER_SCHEMA_INVALID");
  return Object.freeze({schema:"geomacro.private-osint-15m-durable-production-receipt.v1",
-   source_checks_persisted:checked,news_rows_verified_in_d1:saved,
+   source_checks_persisted:checked,
+   source_checks_observed_this_tick:snapshot.observed,
+   source_checks_selected_for_d1:snapshot.sampled,
+   source_checks_deferred_to_snapshot:snapshot.deferred,
+   source_health_snapshot_slots:snapshot.slots,
+   source_health_snapshot_slot:snapshot.slot,
+   source_health_snapshot_cadence_nominal_minutes:5*snapshot.slots,
+   news_rows_verified_in_d1:saved,
    excluded_by_d1_capacity:excluded,
    native_feed_to_first_durable_write_within_15m:in15,
    native_feed_to_first_durable_write_over_15m:over15,
