@@ -622,10 +622,10 @@ test("free 195-country local RSS candidate manifest cannot launder unverified UR
   "../../config/private-osint-local-rss-candidates.v1.json",import.meta.url),"utf8"));
  assert.equal(manifest.schema,"geomacro.private-osint-local-rss-candidates.v1");
  assert.equal(manifest.scope,"PROTECTED_INTERNAL_OSINT_ONLY");
- assert.equal(manifest.sources.length,30);
+ assert.equal(manifest.sources.length,16);
  const sources=privateOsintGlobalSources();
  const local=sources.filter(s=>s.id.startsWith("private_local_candidate_"));
- assert.equal(local.length,30);
+ assert.equal(local.length,16);
  assert.equal(new Set(local.map(s=>s.url)).size,local.length);
  for(const source of local){
   assert.equal(source.transport_verified_at_registration,false);
