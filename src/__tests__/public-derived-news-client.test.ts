@@ -200,8 +200,8 @@ describe("browser public journal fallback",()=>{
         headers:{"content-type":"application/json"}});
     });
     await expect(fetchAllDerivedNews(quota as typeof fetch,now))
-      .rejects.toThrow("DERIVED_NEWS_BUNDLE_UNAVAILABLE");
-    expect(quota).toHaveBeenCalledTimes(3);
+      .rejects.toThrow("DERIVED_NEWS_PUBLIC_FETCH_D1_DAILY_ROW_READ_LIMIT");
+    expect(quota).toHaveBeenCalledOnce();
   });
 
   it("rejects source metadata and unknown fields even without a source URL",()=>{
