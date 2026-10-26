@@ -25,6 +25,8 @@ test("recover only an exact-main confirmed quota 7500 migration failure",()=>{
   assert.match(recovery,/Apply committed D1 migrations remotely/);
   assert.match(recovery,/migration_conclusion" != "failure"/);
   assert.match(recovery,/Your account has exceeded D1's free tier daily row read limit/);
+  assert.match(recovery,/Your account has exceeded D1's free tier daily row write limit/);
+  assert.match(recovery,/write_quota=true/);
   assert.match(recovery,/code: 7500/);
   assert.match(recovery,/retry=false/);
   assert.match(recovery,/steps\.diagnose\.outputs\.retry == 'true'/);
