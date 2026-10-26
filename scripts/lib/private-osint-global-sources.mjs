@@ -225,11 +225,55 @@ export function privateOsintGlobalSources(){
   localIds.add(source.id);
   map.set(source.url,{...source,supported:true});
  }
+
+ // Previously unrepresented publisher countries: these are pinned PRIVATE
+ // candidate RSS locations, not live-verified or event-country observations.
+ // Fail closed on invalid URLs, duplicates and mistaken country assignments.
+ const gapFeedManifest=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-national-gap-feeds.v1.json",import.meta.url),"utf8"));
+ if(gapFeedManifest?.schema!=="geomacro.private-osint-national-gap-feeds.v1"||
+    gapFeedManifest.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
+    !Array.isArray(gapFeedManifest.sources)||gapFeedManifest.sources.length!==16)
+  throw Error("PRIVATE_OSINT_NATIONAL_GAP_MANIFEST_INVALID");
+ const gapIds=new Set();
+ for(const source of gapFeedManifest.sources){
+  let feed,reference;
+  try{
+   feed=new URL(source.url);
+   reference=new URL(source.discovery_reference_url);
+  }catch{throw Error("PRIVATE_OSINT_NATIONAL_GAP_URL_INVALID")}
+  const normalizedHost=host=>host.toLowerCase().replace(/^www\\./u,"");
+  const continent=Object.entries(CONTINENT_COUNTRIES_195)
+   .find(([,codes])=>codes.includes(source.publisher_country_iso3))?.[0];
+  if(!/^private_gap_[a-z0-9_]+$/u.test(source.id)||
+     gapIds.has(source.id)||map.has(source.url)||candidateUrls.has(source.url)||
+     feed.protocol!=="https:"||feed.username||feed.password||feed.port||feed.hash||
+     !feed.hostname.includes(".")||
+     reference.protocol!=="https:"||reference.username||reference.password||
+     reference.port||reference.hash||
+     normalizedHost(feed.hostname)!==normalizedHost(reference.hostname)||
+     source.continent!==continent||source.type!=="rss"||
+     !Array.isArray(source.categories)||source.categories.length<1||
+     new Set(source.categories).size!==source.categories.length||
+     source.categories.some(c=>!PRIVATE_OSINT_CATEGORIES.includes(c))||
+     source.activation_state!=="RUNTIME_PROBE_REQUIRED"||
+     source.transport_verified_at_registration!==false||
+     source.source_kind!=="LOCAL_PUBLISHER_RSS_CANDIDATE"||
+     source.publisher_native_dates_required!==true||source.private_only!==true||
+     source.provider_rights_verified!==false||source.commercial_eligible!==false||
+     source.access_verified_in_production!==false||source.publicly_deliverable!==false)
+    throw Error("PRIVATE_OSINT_NATIONAL_GAP_SOURCE_UNSAFE_OR_DUPLICATE:"+source?.id);
+  gapIds.add(source.id);
+  // A shared reusable catalogue entry is NOT another fetch identity.
+  map.set(source.url,{...source,supported:true});
+ }
  // Interleave continents so an individual slow regional desk cannot put
  // another continent at the back of a large sequential registry group.
  const buckets=["global",...Object.keys(CONTINENT_COUNTRIES_195)].map(c=>[...map.values()].filter(s=>s.continent===c));
  const result=[];
  for(let n=0;buckets.some(b=>n<b.length);n++)for(const b of buckets)if(b[n])result.push(b[n]);
+ // Leave exactly 49 slots for the canonical 195-country discovery rotation.
+ if(result.length>512-49)throw Error("PRIVATE_OSINT_NATIONAL_GAP_BREACHES_RUNTIME_CAP");
  // Refuse a registry regression that silently drops a major OSINT lane.
  // This threshold validates source diversity, not event volume or live health.
  for(const category of PRIVATE_OSINT_CATEGORIES){
