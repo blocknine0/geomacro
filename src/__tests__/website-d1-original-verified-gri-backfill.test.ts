@@ -3,7 +3,7 @@ import {describe,expect,it} from "vitest";
 
 const sql=readFileSync(
   "workers/control-plane/migrations/0016_backfill_existing_verified_gri_to_website_ring.sql","utf8");
-const deploy=readFileSync(".github/workflows/deploy-control-plane-d1.yml","utf8");
+const deploy=readFileSync(".github/workflows/deploy-d1-control-plane.yml","utf8");
 const worker=readFileSync("workers/control-plane/src/index.mjs","utf8");
 
 describe("website GRI Supabase-outage bounded verified preexisting D1 backfill",()=>{
