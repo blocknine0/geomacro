@@ -18,7 +18,7 @@ const normalize=row=>({
 test("new private national feeds occupy only available source slots and are not pre-certified",()=>{
  assert.equal(config.scope,"PROTECTED_INTERNAL_OSINT_ONLY");
  assert.equal(config.sources.length,16);
- assert.equal(new Set(config.sources.map(s=>s.publisher_country_iso3)).size,13);
+ assert.equal(new Set(config.sources.map(s=>s.publisher_country_iso3)).size,14);
  const sources=privateOsintGlobalSources();
  assert.equal(new Set(sources.map(s=>s.url)).size,sources.length);
  assert.ok(sources.length+49<=512,"leave room for all 49 canonical country discovery probes per tick");
@@ -35,7 +35,7 @@ test("new private national feeds occupy only available source slots and are not 
  assert.equal(rotatingPrivateCountryDiscoverySources(fixed).length,49);
  const matrix=privateOsintCountryCategoryCoverage(sources);
  assert.equal(matrix.expected_country_category_cells,585);
- assert.ok(matrix.country_specific_source_countries_registered>=97);
+ assert.ok(matrix.country_specific_source_countries_registered>=98);
  assert.equal(matrix.coverage.cells_with_any_healthy_source,0,
   "registration must never be mistaken for a successful live fetch");
  assert.equal(matrix.coverage.observed_country_category_cells_this_tick,0);
