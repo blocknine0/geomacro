@@ -56,6 +56,8 @@ try{
  })).sort((a,b)=>a.source_id.localeCompare(b.source_id));
  const allCellsHealthy=countryCategory.coverage.cells_without_healthy_source===0;
  const everyCategoryHealthy=categoryLive.all_categories_have_healthy_feed_this_tick;
+ const everyCategoryHasItems=categoryLive.all_categories_have_native_dated_items_this_tick;
+ const fullLiveCoverage=allCellsHealthy&&everyCategoryHealthy&&everyCategoryHasItems;
  report={
   schema:"geomacro.private-osint-live-coverage-report.v1",
   generated_at:startedAt.toISOString(),completed_at:new Date().toISOString(),
@@ -63,11 +65,14 @@ try{
   source_registry_endpoints:sources.length,
   source_checks_completed:checks.length,
   observed_native_dated_items:items.length,
-  status:allCellsHealthy?"ALL_585_COUNTRY_CATEGORY_FEED_FALLBACKS_HEALTHY":
-   everyCategoryHealthy?"THREE_CATEGORY_LANES_HEALTHY_COUNTRY_CATEGORY_GAPS_REMAIN":
+  status:fullLiveCoverage?"FULL_195X3_HEALTHY_FEEDS_AND_THREE_CATEGORIES_WITH_DATED_ITEMS_THIS_TICK":
+   allCellsHealthy&&everyCategoryHealthy?"ALL_585_FALLBACKS_HEALTHY_BUT_CATEGORY_ITEM_GAP":
+   everyCategoryHealthy&&everyCategoryHasItems?"THREE_CATEGORIES_HAVE_DATED_ITEMS_BUT_COUNTRY_CELL_HEALTH_GAPS_REMAIN":
+   everyCategoryHealthy?"HEALTHY_FEEDS_BUT_AT_LEAST_ONE_CATEGORY_HAS_NO_DATED_ITEMS":
    "DEGRADED_LIVE_SOURCE_COVERAGE",
   full_585_cell_healthy_fallback:allCellsHealthy,
   all_three_category_lanes_healthy_this_tick:everyCategoryHealthy,
+  all_three_categories_have_native_dated_items_this_tick:everyCategoryHasItems,
   category_live_source_coverage:categoryLive,
   publisher_country_inventory:publisherCountry,
   country_category_source_coverage:countryCategory,
@@ -113,5 +118,5 @@ const summary={
  raw_titles_or_feed_bodies_emitted:false,private_storage_writes:false,public_publication:false,
 };
 process.stdout.write(JSON.stringify(summary,null,2)+"\n");
-if(report.status==="DEGRADED_LIVE_SOURCE_COVERAGE")
+if(!report.all_three_category_lanes_healthy_this_tick||!report.all_three_categories_have_native_dated_items_this_tick||!report.full_585_cell_healthy_fallback)
  process.stderr.write("WARNING: source gaps are recorded in the counts-only live coverage artifact.\n");
