@@ -24,6 +24,7 @@ const JOURNAL_REFRESH_MS = 2 * 60_000;
 type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
 // Stable default avoids restarting fetch effects when legacy callers omit this prop.
 const EMPTY_FEEDS: FeedState = Object.freeze({});
+import {hasConcreteNewsFacts,mergeNewsRevisions} from "@/lib/news-event-facts";
 import {filterIntelligenceDesk,INTELLIGENCE_PAGE_SIZE,type IntelligenceDeskView as View,type IntelligenceDeskPeriod} from "@/lib/intelligence-desk-view";
 
 function labelFor(category: StatelessCategory): string {
@@ -313,13 +314,10 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
   // Human-readable timeline across all three categories, newest first.
   // Day-only originals sort by their actual date, never an invented hour.
   const known = DOMAINS.filter(domain => feeds[domain.key]);
-  const merged = new Map<string, StatelessIntelligenceSignal>();
-  for (const signal of journal) merged.set(signal.id, signal);
-  for (const domain of known) {
-    for (const signal of feeds[domain.key]?.signals ?? []) merged.set(signal.id, signal);
-  }
+  // Stale generic live fetches must not overwrite concrete retained revisions.
+  const merged=mergeNewsRevisions(journal,known.flatMap(domain=>feeds[domain.key]?.signals??[]));
   const checkedAt = Date.now();
-  const allSignals = filterIntelligenceDesk(dedupeIntelligenceStories([...merged.values()].filter(isConcretePublicIntelligence)), {category:"all",query:"",period:"all"}, checkedAt);
+  const allSignals = filterIntelligenceDesk(dedupeIntelligenceStories([...merged.values()].filter(s=>isConcretePublicIntelligence(s)&&hasConcreteNewsFacts(s))), {category:"all",query:"",period:"all"}, checkedAt);
   const categorySignals = allSignals.filter(signal => signal.category === view);
   const signals = filterIntelligenceDesk(allSignals, {category:view,query,period}, checkedAt).filter(signal => !savedOnly || savedIds.includes(signal.id));
   const newSinceVisit = lastVisit === null ? null : categorySignals.filter(signal => Date.parse(signal.published_at) > lastVisit).length;
