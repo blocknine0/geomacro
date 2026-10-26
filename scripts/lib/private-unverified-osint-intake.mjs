@@ -14,7 +14,8 @@ const accepted=new Set(["rss","api","bulk"]);
 const ref=(s,c)=>createHash("sha256").update([s.id,s.url,c].join("\n")).digest("hex");
 const sourceFile=new URL("../../config/operator-country-source-crosswalk.v1.json",import.meta.url);
 
-export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourceFile,"utf8"))){
+export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourceFile,"utf8")),{includeGapLane=false}={}){
+ if(typeof includeGapLane!=="boolean")throw Error("UNVERIFIED_OSINT_LOCAL_GAP_OPTION_INVALID");
  if(raw?.schema!=="geomacro.operator-country-source-crosswalk.v1"||
     !Array.isArray(raw.national_primary)||!Array.isArray(raw.global_country_dim))
    throw Error("UNVERIFIED_OSINT_REGISTRY_INVALID");
@@ -51,6 +52,7 @@ export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourc
  // Source-gap lane stays isolated from the already 511-endpoint private OSINT
  // scanner. RSS candidates are accepted only after actual live HTTP/parse and
  // publisher-native publication timestamps; never treat a lookup URL as news.
+ if(includeGapLane){
  const gaps=JSON.parse(readFileSync(new URL(
   "../../config/private-osint-local-gaplane.v1.json",import.meta.url),"utf8"));
  if(gaps?.schema!=="geomacro.private-osint-local-gaplane.v1"||
@@ -85,6 +87,7 @@ export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourc
    rights_verified:false,commercial_eligible:false,publicly_deliverable:false,
   }));
  }
+ }
  if(!items.length||items.length>80)throw Error("UNVERIFIED_OSINT_CANDIDATES_MISSING");
  return Object.freeze(items);
 }
@@ -105,7 +108,7 @@ async function unauthenticatedTransportCheck(s,fetchImpl,now){
 }
 export async function collectPrivateUnverifiedOsint({
  now=new Date(),fetchImpl=fetch,normalize,resolveCountry,
- registry=privateUnverifiedOsintRegistry(),
+ registry=privateUnverifiedOsintRegistry(undefined,{includeGapLane:true}),
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
     typeof fetchImpl!=="function"||typeof normalize!=="function"||
