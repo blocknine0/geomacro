@@ -9,6 +9,7 @@ describe("permanent public Finds archive deployment", () => {
     );
     expect(workflow).toContain("branches:\n      - main");
     expect(workflow).toContain(".github/workflows/deploy-permanent-public-finds-archive.yml");
+    expect(workflow).toContain(".github/workflows/website-derived-news-continuity.yml");
     expect(workflow).toContain("refs/heads/geomacro-permanent-finds-archive");
     expect(workflow).toContain('git archive "$archive_ref" data');
     expect(workflow).toContain('workers/public-finds-archive/assets/index.json');

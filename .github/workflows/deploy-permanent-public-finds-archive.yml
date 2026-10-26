@@ -8,6 +8,7 @@ on:
       - main
     paths:
       - ".github/workflows/deploy-permanent-public-finds-archive.yml"
+      - ".github/workflows/website-derived-news-continuity.yml"
       - "workers/public-finds-archive/**"
   workflow_dispatch: {}
 

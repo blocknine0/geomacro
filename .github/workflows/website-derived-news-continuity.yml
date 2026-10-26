@@ -21,7 +21,7 @@ on:
       - ".github/workflows/website-derived-news-continuity.yml"
   workflow_dispatch: {}
   workflow_run:
-    workflows: ["Deploy D1 Control Plane"]
+    workflows: ["Deploy D1 Control Plane", "Deploy Permanent Public Finds Archive"]
     types: [completed]
     branches: [main]
   push:
@@ -136,7 +136,8 @@ jobs:
       github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' &&
       github.event_name != 'push' &&
       (github.event_name != 'workflow_run' ||
-       (github.event.workflow_run.path == '.github/workflows/deploy-control-plane-d1.yml' &&
+       ( (github.event.workflow_run.path == '.github/workflows/deploy-control-plane-d1.yml' ||
+         github.event.workflow_run.path == '.github/workflows/deploy-permanent-public-finds-archive.yml') &&
         github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
         github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest

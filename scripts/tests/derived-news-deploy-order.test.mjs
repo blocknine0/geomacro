@@ -42,6 +42,8 @@ test("continuity workflow skips a same-push Worker deploy race and resumes only 
  assert.ok(start>=0&&end>start);
  const condition=workflow.slice(start,end);
  assert.match(condition,/github\.event\.workflow_run\.path == '\.github\/workflows\/deploy-control-plane-d1\.yml'/u);
+ assert.ok(condition.includes("deploy-permanent-public-finds-archive.yml"));
+ assert.ok(workflow.includes('workflows: ["Deploy D1 Control Plane", "Deploy Permanent Public Finds Archive"]'));
  assert.match(condition,/github\.event\.workflow_run\.head_repository\.full_name == 'blocknine0\/geomacro'/u);
  assert.match(condition,/github\.event\.workflow_run\.head_branch == 'main'/u);
  assert.doesNotMatch(condition,/workflow_run\.conclusion == 'success'/u);
