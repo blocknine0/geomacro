@@ -27,6 +27,8 @@ on:
   push:
     branches: [main]
     paths:
+      - "src/lib/news-event-facts.ts"
+      - "scripts/tests/concrete-news-facts.test.mjs"
       - "src/lib/original-verification-policy.ts"
       - "src/lib/release-news-observation.ts"
       - "scripts/ops/refresh-derived-news-editorial.ts"
@@ -261,6 +263,7 @@ jobs:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_LOW_REVIEW_PUBLIC_PEM: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_PEM }}
           GEOMACRO_LOW_REVIEW_PUBLIC_SHA256: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256 }}
+          GEOMACRO_LOW_REVIEW_REFS_FILE: ${{ runner.temp }}/geomacro-source-review-refs.json
         run: bun scripts/ops/refresh-derived-news-editorial.ts
       - name: Automatically approve and sign every unique retained derived input
         env:
