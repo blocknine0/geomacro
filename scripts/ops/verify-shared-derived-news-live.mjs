@@ -3,7 +3,7 @@
 const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/";
 async function read(path,fetcher,maxChars=600000){
  const response=await fetcher(ROOT+path,{method:"GET",redirect:"error",
-  cache:"no-store",headers:{Accept:"application/json"},
+  cache:"no-store",headers:{Accept:"application/json","Cache-Control":"no-cache"},
   signal:AbortSignal.timeout(12_000)});
  if(!response.ok||Number(response.headers.get("content-length")||0)>maxChars)
   throw Error("D1_SHARED_NEWS_HTTP_UNAVAILABLE");
