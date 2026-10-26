@@ -192,7 +192,7 @@ export function privateOsintGlobalSources(){
   "../../config/private-osint-local-rss-candidates.v1.json",import.meta.url),"utf8"));
  if(local?.schema!=="geomacro.private-osint-local-rss-candidates.v1"||
     local.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
-    !Array.isArray(local.sources)||local.sources.length>28)
+    !Array.isArray(local.sources)||local.sources.length>30)
   throw Error("PRIVATE_OSINT_LOCAL_CANDIDATE_MANIFEST_INVALID");
  const localIds=new Set();
  for(const source of local.sources){
