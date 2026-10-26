@@ -2,8 +2,44 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-26T11:51:02.084Z",
+  "updated_at": "2026-10-26T19:49:35.720Z",
   "signals": [
+    {
+      "id": "geopolitics-1f0d2922",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning We must protect and build on 30 years of work supporting the protection of children in conflicts · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning We must protect and build on 30 years of work supporting the protection of children in conflicts. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-26T17:27:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1ef82bca",
+      "category": "geopolitics",
+      "title": "Geomacro finds UN Secretary-General António Guterres: called for dialogue and diplomacy to end the war between Iran and the United States in remarks on Monday to journalists in Cairo, Egypt · United States",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "UN Secretary-General António Guterres called for dialogue and diplomacy to end the war between Iran and the United States in remarks on Monday to journalists in Cairo, Egypt. Country or region mentioned: United States.",
+      "geography": "United States",
+      "development_type": "risk update",
+      "topic": "foreign policy",
+      "published_at": "2026-10-26T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-7653cf9b",
       "category": "geopolitics",
