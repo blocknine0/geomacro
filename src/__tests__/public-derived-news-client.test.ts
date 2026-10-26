@@ -30,10 +30,13 @@ describe("browser public journal fallback",()=>{
     }
   });
 
-  it("serves original-dated derived cards without browser server-RPC dependency",async()=>{
-    const f=vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(doc([signal])),{
-      status:200,headers:{"content-type":"application/json"},
-    }));
+  it("serves original-dated derived cards from cacheable static assets without browser server-RPC dependency",async()=>{
+    const f=vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      expect(init?.cache).toBe("default");
+      return new Response(JSON.stringify(doc([signal])),{
+        status:200,headers:{"content-type":"application/json"},
+      });
+    });
     const rows=await fetchDirectDerivedNews(f as typeof fetch,NOW);
     expect(f).toHaveBeenCalledOnce();
     expect(f.mock.calls[0]?.[0]).toBe(GEOMACRO_PERMANENT_LATEST_URL);
@@ -48,6 +51,7 @@ describe("browser public journal fallback",()=>{
       const url=String(input);
       calls.push(url);
       expect(init?.redirect).toBe("error");
+      expect(init?.cache).toBe("default");
       if(url===GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/index.json")
         return new Response(JSON.stringify(index),{status:200});
       const category=url.endsWith("/geopolitics.json")?"geopolitics":
