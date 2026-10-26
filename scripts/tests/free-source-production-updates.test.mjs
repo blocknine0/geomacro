@@ -16,7 +16,11 @@ function validBody(s,version='one'){
  if(s.id==='usgs_earthquakes')return JSON.stringify({type:'FeatureCollection',features:[{id:version,properties:{time:1,updated:2}}]});
  if(s.id==='cisa_kev')return JSON.stringify({catalogVersion:'2026',vulnerabilities:[{cveID:version,dateAdded:'2026-10-16'}]});
  if(s.id==='bls')return JSON.stringify({status:'REQUEST_SUCCEEDED',Results:{series:[{data:[{year:'2026',period:'M09',value:version}]}]}});
- if(s.id==='world_bank_wdi')return JSON.stringify([{},[{indicator:{id:'NY.GDP.MKTP.CD'},value:version}]]);
+ if(s.id==='world_bank_wdi')return JSON.stringify([
+   {page:1,pages:60,total:60,sourceid:'2'},
+   [{indicator:{id:'NY.GDP.MKTP.CD'},country:{id:'US'},
+     countryiso3code:'USA',date:'2025',value:version==='one'?100:101}]
+ ]);
  if(s.id==='treasury_fiscaldata')return JSON.stringify({data:[{record_date:'2026-09-30',value:version}]});
  if(['federal_register','us_bis_export_controls'].includes(s.id))return JSON.stringify({count:1,results:[{document_number:version,publication_date:'2026-10-16'}]});
  if(s.id==='uk_fcdo_advisories')return JSON.stringify({total:1,results:[{link:'/foreign-travel-advice/example',public_timestamp:'2026-10-16T07:00:00Z',title:version}]});
