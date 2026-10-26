@@ -128,7 +128,7 @@ export function privateOsintGlobalSources(){
   "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
  if(regional?.schema!=="geomacro.private-osint-regional-corridor-additions.v1"||
     regional.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
-    !Array.isArray(regional.sources)||regional.sources.length>32)
+    !Array.isArray(regional.sources)||regional.sources.length>48)
    throw Error("PRIVATE_OSINT_REGIONAL_EXPANSION_INVALID");
  const additionIds=new Set();
  for(const source of regional.sources){
