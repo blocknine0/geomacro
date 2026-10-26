@@ -1,12 +1,14 @@
 {
   "schema": "geomacro.permanent-derived-news-archive-index.v1",
-  "updated_at": null,
-  "months": [],
+  "updated_at": "2026-10-26T07:53:08.397Z",
+  "months": [
+    "2026-10"
+  ],
   "categories": [
     "geopolitics",
     "macro",
     "rare_earth"
   ],
-  "seed_complete": false,
-  "total_signals": 0
+  "seed_complete": true,
+  "total_signals": 589
 }
