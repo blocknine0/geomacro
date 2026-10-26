@@ -16,9 +16,12 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).toContain('getWebsiteDerivedNews(),\n            9_000');
     expect(desk).toContain("setErrors(previous => ({ ...previous, ...nextErrors }))");
     expect(desk).toContain("setJournalUnavailable(true)");
+    expect(desk).toContain("fetchPermanentDerivedNews()");
     expect(desk).toContain("fetchAllDerivedNews()");
-    expect(desk).not.toContain("fetchDirectDerivedNews()");
+    expect(desk).toContain("fetchDirectDerivedNews()");
     expect(desk).toContain("JOURNAL_REFRESH_MS = 2 * 60_000");
+    expect(desk).toContain("Permanent, append-only static archive is the primary history store");
+    expect(desk).toContain("Keep the entire last published archive visible through an outage");
     expect(desk).not.toContain('aria-label="Filter Intelligence by country"');
     expect(desk).toContain("No eligible concrete news matches this category, search and publication window.");
     expect(desk).toContain("fallback findings may be incomplete");
