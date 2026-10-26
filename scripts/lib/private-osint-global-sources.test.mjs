@@ -7,6 +7,28 @@ import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
 import {collectRegisteredReusableNews,registeredReusableNewsSources} from "./registered-reusable-news-source-collector.mjs";
 import {privateOsintCountryMention} from "./private-osint-country-mentions.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
+
+/** Compare parsed HTTPS hostnames, never substrings in attacker-controlled URLs. */
+function isExpectedFeedHost(value, expectedHost) {
+ try {
+  const url=new URL(value);
+  return url.protocol==="https:"&&url.hostname===expectedHost&&url.port===""&&
+   !url.username&&!url.password;
+ } catch { return false; }
+}
+test("feed routing rejects URL hostname spoofs",()=>{
+ assert.equal(isExpectedFeedHost("https://www.mining.com/feed/","www.mining.com"),true);
+ for(const url of [
+  "https://www.mining.com.attacker.example/feed/",
+  "https://attacker.example/www.mining.com/feed/",
+  "https://attacker.example/?source=https://www.mining.com",
+  "https://www.mining.com@attacker.example/feed/",
+  "https://www.mining.com:444/feed/",
+  "http://www.mining.com/feed/",
+  "not a URL",
+ ]) assert.equal(isExpectedFeedHost(url,"www.mining.com"),false,url);
+});
+
 const now=new Date("2026-10-25T12:00:00.000Z");
 const normalize=x=>({schema:"geomacro.reusable-news-json.v1",category:x.category,country_iso3:x.country_iso3??null,
  source:{publisher_name:null,original_url:null,original_published_at:x.published_at},
@@ -69,7 +91,7 @@ test("live denial/HTML sources emit no items and never enter working endpoint co
  ];
  const rss='<rss><channel><item><title>Kenya central bank announces inflation policy measures</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
  const result=await collectPrivateOsint15m({now,registry,normalize,resolveCountry:()=>"KEN",
- fetchImpl:async u=>u.includes('denied')?new Response('',{status:403}):new Response(u.includes('html')?'<html>sign in</html>':rss)});
+ fetchImpl:async u=>isExpectedFeedHost(u,'denied.example.org')?new Response('',{status:403}):new Response(isExpectedFeedHost(u,'html.example.org')?'<html>sign in</html>':rss)});
  assert.equal(result.summary.working_source_endpoints,1);
  assert.equal(result.items.length,1);
  assert.equal(result.summary.continent_coverage.africa.working_regional_endpoints,1);
@@ -149,7 +171,7 @@ test("new macro/FX and critical-metals feeds are private only and deduplicated",
  const feed=title=>'<rss><channel><item><title>'+title+
   '</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
  const testBatch=await collectPrivateOsint15m({now,normalize,resolveCountry:()=>null,
-  registry:selected,fetchImpl:async url=>new Response(feed(url.includes("bankofcanada")?
+  registry:selected,fetchImpl:async url=>new Response(feed(isExpectedFeedHost(url,"www.bankofcanada.ca")?
    "Bank of Canada announces new monetary policy exchange rate decision":
    "London Metal Exchange reports copper and nickel minerals supply change"))});
  assert.equal(testBatch.items.length,2);
@@ -220,7 +242,7 @@ test("new regional macro/minerals and maritime corridor candidates are deduplica
  const rss='<rss><channel><item><title>WTO publishes inflation economic trade statistics update</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
  const minerals='<rss><channel><item><title>Global mining industry announces lithium and rare-earth mineral supply changes</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
  const mock=await collectPrivateOsint15m({now,registry:selected,normalize,resolveCountry:()=>null,
-  fetchImpl:async url=>new Response(url.includes("mining.com")?minerals:rss)});
+  fetchImpl:async url=>new Response(isExpectedFeedHost(url,"www.mining.com")?minerals:rss)});
  assert.equal(mock.summary.selected_items_by_category.macro,1);
  assert.equal(mock.summary.selected_items_by_category.rare_earth,1);
  assert.equal(mock.summary.corridor_discovery_reference_coverage.commercial_delivery_enabled,false);
@@ -247,15 +269,15 @@ test("regional official and sector feeds are deduplicated private candidates, an
   typeof s.discovery_reference_url==="string"&&
   new URL(s.discovery_reference_url).protocol==="https:"));
  const bodyFor=url=>{
-  const title=url.includes("industry.gov.au")
+  const title=isExpectedFeedHost(url,"www.industry.gov.au")
    ?"Australia announces critical minerals lithium and rare-earth processing project"
-   :url.includes("dsti.gov.za")
+   :isExpectedFeedHost(url,"www.dsti.gov.za")
     ?"South Africa announces critical minerals research and rare-earth mineral policy"
-    :url.includes("sars.gov.za")
+    :isExpectedFeedHost(url,"www.sars.gov.za")
      ?"South Africa customs announces new import tariffs and trade policy measures"
-     :url.includes("msit.go.kr")
+     :isExpectedFeedHost(url,"www.msit.go.kr")
       ?"Korea announces critical minerals lithium and rare-earth policy"
-      :url.includes("incometaxindia.gov.in")
+      :isExpectedFeedHost(url,"wm.incometaxindia.gov.in")
        ?"India income tax department issues new tax policy and revenue administration update"
        :"Philippines government announces border security treaty and diplomatic agreement";
   return "<rss><channel><item><title>"+title+
@@ -453,7 +475,7 @@ test("new Botswana and Thailand official RSS feeds improve local publisher-count
  const feed=(title)=>"<rss><channel><item><title>"+title+"</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate><link>https://example.org/story</link></item></channel></rss>";
  const result=await collectPrivateOsint15m({now,registry:selected,normalize,
   resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
-  fetchImpl:async url=>new Response(feed(url.includes("bankofbotswana")
+  fetchImpl:async url=>new Response(feed(isExpectedFeedHost(url,"www.bankofbotswana.bw")
    ?"Botswana central bank announces inflation monetary policy and interest-rate decision"
    :"Thailand ministry announces cybersecurity security policy and digital economy regulation"),
    {status:200,headers:{"content-type":"application/rss+xml"}})});

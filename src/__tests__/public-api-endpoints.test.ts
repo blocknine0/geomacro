@@ -45,7 +45,7 @@ describe("public endpoint integration contract", () => {
   it("documents valid schema bounds and the baseline-only preflight instead of arbitrary objects", () => {
     const query = paths["/api/v1/intelligence/query"].post.requestBody.content["application/json"];
     expect(agentAdaptiveQuerySchema.safeParse(query.example).success).toBe(true);
-    expect(Object.keys(query.schema.properties).sort()).toEqual(Object.keys(agentAdaptiveQuerySchema.innerType().shape).sort());
+    expect(Object.keys(query.schema.properties).sort()).toEqual(Object.keys(agentAdaptiveQuerySchema.shape).sort());
     expect(query.schema.properties.detail.enum).toEqual(["compact", "standard", "full"]);
     expect(query.schema.properties.subjects.maxItems).toBe(25);
     const baseline = paths["/api/v1/intelligence/availability"].post.requestBody.content["application/json"];
