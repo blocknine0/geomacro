@@ -16,15 +16,22 @@ export const PRIVATE_OSINT_MAX_SOURCES=512;
 export const PRIVATE_OSINT_MAX_RESULTS_PER_TICK=768;
 const DOMAINS=["geopolitics","macro","rare_earth"];
 const FEED_REDIRECT_STATUSES=new Set([301,302,303,307,308]);
-const normalizedPublicFeedHost=host=>host.toLowerCase().replace(/^www\\./u,"");
+const normalizedPublicFeedHost=host=>{
+ const lower=host.toLowerCase();
+ return lower.startsWith("www.")?lower.slice(4):lower;
+};
 function safeFeedRedirect(from,to){
  let target;try{target=new URL(to,from)}catch{return null}
+ const host=target.hostname.toLowerCase();
+ const labels=host.split(".");
+ const isIpv4=labels.length===4&&labels.every(label=>label.length>0&&label.length<=3&&
+   [...label].every(char=>char>="0"&&char<="9")&&Number(label)<=255);
  if(target.protocol!=="https:"||target.username||target.password||target.port||target.hash||
-    !target.hostname.includes(".")||normalizedPublicFeedHost(target.hostname)!==normalizedPublicFeedHost(from.hostname)||
-    /^(?:localhost|.*\\.(?:local|internal|test|invalid))$/iu.test(target.hostname)||
-    /^\\d{1,3}(?:\\.\\d{1,3}){3}$/u.test(target.hostname)||target.hostname.startsWith("["))return null;
+    !host.includes(".")||normalizedPublicFeedHost(host)!==normalizedPublicFeedHost(from.hostname)||
+    host==="localhost"||["local","internal","test","invalid"].some(suffix=>host.endsWith("."+suffix))||
+    isIpv4||host.startsWith("["))return null;
  return target;
-}
+};
 /**
  * Some official publisher RSS endpoints redirect to their canonical same-host
  * URL. Follow at most three HTTPS redirects, allowing only exact host or the
