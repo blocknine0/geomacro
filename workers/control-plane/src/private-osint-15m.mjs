@@ -135,6 +135,15 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
     "SELECT item_id,category,country_iso3,native_feed_published_at,projection_json,first_seen_at FROM private_osint_news_25h WHERE item_id IN ("+placeholders+")")
     .bind(...itemIds).all():{results:[]};
    if(!Array.isArray(readback.results))throw Error("D1_READBACK_INVALID");
+   // Native D1 query metadata is optional during rollout. Track actual
+   // row consumption when every query reports it; unknown must remain null.
+   // No extra D1 queries or private source values are emitted.
+   const metadatas=[before.meta,...batch.map(x=>x?.meta),readback.meta];
+   const allUsageKnown=metadatas.every(m=>m&&
+    Number.isSafeInteger(m.rows_read)&&m.rows_read>=0&&
+    Number.isSafeInteger(m.rows_written)&&m.rows_written>=0);
+   const d1RowsRead=allUsageKnown?metadatas.reduce((sum,m)=>sum+m.rows_read,0):null;
+   const d1RowsWritten=allUsageKnown?metadatas.reduce((sum,m)=>sum+m.rows_written,0):null;
    const foundById=new Map(readback.results.map(r=>[r.item_id,r]));
    let retained=0,excluded=0,within15=0,after15=0,newWithin15=0,newLate=0,reobserved=0;
    for(const r of rows){
@@ -163,6 +172,8 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
      late_arrivals_not_rejected_by_15m_cutoff:true,
      d1_exact_readback_verified:true,
      existence_and_readback_bundled:true,d1_queries_this_write:statements.length+(rows.length?2:0),
+     d1_rows_read_this_write:d1RowsRead,d1_rows_written_this_write:d1RowsWritten,
+     d1_usage_metadata_complete:allUsageKnown,
      duplicate_news_last_seen_refresh_hours:6,unchanged_check_refresh_minutes:60,
      independent_verification_required_for_ingestion:false,
      original_page_verified:false,source_rights_verified:false,
