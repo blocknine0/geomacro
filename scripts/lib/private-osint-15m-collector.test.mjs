@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
 import {registeredReusableNewsSources} from "./registered-reusable-news-source-collector.mjs";
 const now=new Date("2026-10-25T12:00:00.000Z");
@@ -201,4 +202,19 @@ test("cross-host or downgrade feed redirects fail closed without fetching the ta
   assert.equal(result.checks[0].state,"UNAVAILABLE",destination);
   assert.equal(result.items.length,0,destination);
  }
+});
+
+test("production private OSINT bypasses public health, signing and website publication only after real D1 acceptance",()=>{
+ const tick=readFileSync(new URL("../ops/private-osint-15m-tick.ts",import.meta.url),"utf8");
+ const guard=tick.indexOf('const researchPrivateOnly=process.env.GEOMACRO_OSINT_RESEARCH_PRIVATE_ONLY==="1"');
+ const db=tick.indexOf("const persisted=await persistPrivateOsintBatch(");
+ const accepted=tick.indexOf("PRIVATE_OSINT_15M_DURABLE_PRODUCTION_ACCEPTANCE_FAILED");
+ const exit=tick.indexOf("if(researchPrivateOnly){",accepted);
+ const website=tick.indexOf("const website=await publishPrivateOsintWebsiteSignals(");
+ assert.ok(guard>=0&&db>guard&&accepted>db&&exit>accepted&&website>exit);
+ assert.ok(tick.includes("const workerPolicy=researchPrivateOnly?null:await requireDerivedNewsWorkerPolicy("));
+ assert.ok(tick.includes("onOriginalCandidate:researchPrivateOnly?null:(raw=>{"));
+ assert.ok(tick.slice(exit,website).includes("process.exit(0);"));
+ assert.ok(tick.slice(exit,website).includes("website_publication_attempted:false"));
+ assert.ok(tick.slice(exit,website).includes("paid_publication_attempted:false"));
 });

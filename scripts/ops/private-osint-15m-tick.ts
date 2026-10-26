@@ -26,11 +26,14 @@ const control=createHmac("sha256",root).update("geomacro-control-plane-v1").dige
 const privateToken=createHmac("sha256",control)
   .update("geomacro-private-osint-15m-v1").digest("hex");
 const controlPlaneRoot="https://geomacro-control-plane.daspallab202391.workers.dev";
-const workerPolicy=await requireDerivedNewsWorkerPolicy({
+// Private research must never depend on the public news journal, its policy
+// health endpoint, a signer, a paid provider or website publication.
+const researchPrivateOnly=process.env.GEOMACRO_OSINT_RESEARCH_PRIVATE_ONLY==="1";
+const workerPolicy=researchPrivateOnly?null:await requireDerivedNewsWorkerPolicy({
  fetchImpl:globalThis.fetch,url:controlPlaneRoot+"/health",
  expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION,
 });
-console.log(JSON.stringify(workerPolicy));
+if(workerPolicy)console.log(JSON.stringify(workerPolicy));
 const timestamp=new Date();
 // Ephemeral first-party issuer/link metadata, validated against exact pinned
 // origin/permalink rules. Unverified private-only rows remain in private D1.
@@ -42,7 +45,7 @@ const observedByCategory=new Map(["geopolitics","macro","rare_earth"].map(c=>[c,
 const result=await collectPrivateOsint15m({
  now:timestamp,normalize:normalizeReusableNewsJson,
  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
- onOriginalCandidate:raw=>{
+ onOriginalCandidate:researchPrivateOnly?null:(raw=>{
   const eligible=officialWebsiteCandidateFromOsint(raw,timestamp.getTime());
   if(eligible){
    const key=eligible.category+"|"+eligible.articleUrl;
@@ -72,7 +75,7 @@ const result=await collectPrivateOsint15m({
    lane.delete(oldestKey);
   }
   lane.set(identity,{...row,event});
- },
+ }),
 });
 const scanned=result.summary.source_checks;
 if(result.summary.configured_country_routes!==195||
@@ -92,6 +95,34 @@ if(persisted.source_checks_persisted!==result.checks.length||
  !persisted.d1_write_exact_readback_verified||
  !persisted.separate_private_d1_readback_verified)
  throw Error("PRIVATE_OSINT_15M_DURABLE_PRODUCTION_ACCEPTANCE_FAILED");
+
+// Production workflow sets GEOMACRO_OSINT_RESEARCH_PRIVATE_ONLY=1.
+// Complete the existing authenticated D1 write + independent readback first,
+// then emit aggregate-only status. No public website, signing, rights upgrade,
+// partner feed or paid action executes in this mode.
+if(researchPrivateOnly){
+ const index=await privateGdeltGlobalDiscovery({
+  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
+ });
+ console.log(JSON.stringify({
+  schema:"geomacro.private-osint-15m-private-production-status.v1",
+  mode:"PROTECTED_INTERNAL_OSINT_RESEARCH_ONLY",
+  ...result.summary,
+  source_checks_by_domain_state:result.checks.reduce((counts,row)=>{
+   const key=row.category+"_"+row.state;
+   counts[key]=(counts[key]??0)+1;return counts;
+  },{}),
+  ...persisted,
+  gdelt_global_index:index,
+  private_osint_d1_persisted:true,
+  separate_private_d1_readback_verified:true,
+  website_publication_attempted:false,
+  commercial_rights_approved:false,
+  paid_publication_attempted:false,
+  independent_original_page_verification_claimed:false,
+ }));
+ process.exit(0);
+}
 
 // Publish the same safe, unscored derived-card shape consumed by the existing
 // /intelligence desk; never copy private tags or raw originals into public D1.

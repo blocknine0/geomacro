@@ -29,9 +29,16 @@ test("Worker, publisher and health endpoint share one explicit topic-policy revi
  const fastBaseline=fastlane.indexOf("fetchAllDerivedNews(fetch,runAt)");
  const fastSourceRead=fastlane.indexOf("readFiveMinuteNewsFastlane(runAt,20");
  assert.ok(fastPreflight>=0&&fastBaseline>fastPreflight&&fastSourceRead>fastPreflight);
- const privatePreflight=privateOsint.indexOf("const workerPolicy=await requireDerivedNewsWorkerPolicy");
+ // Protected private OSINT must not depend on the public journal health.
+ // The non-private editorial path still has its current revision preflight.
+ const privateGuard=privateOsint.indexOf("const workerPolicy=researchPrivateOnly?null:await requireDerivedNewsWorkerPolicy");
  const privateRead=privateOsint.indexOf("collectPrivateOsint15m({");
- assert.ok(privatePreflight>=0&&privateRead>privatePreflight);
+ const privateWrite=privateOsint.indexOf("const persisted=await persistPrivateOsintBatch");
+ const privateExit=privateOsint.indexOf("if(researchPrivateOnly){",privateWrite);
+ const publicPublish=privateOsint.indexOf("const website=await publishPrivateOsintWebsiteSignals");
+ assert.ok(privateGuard>=0&&privateRead>privateGuard&&privateWrite>privateRead&&
+   privateExit>privateWrite&&publicPublish>privateExit);
+ assert.ok(privateOsint.includes("expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION"));
  assert.match(bridge,/isSafeDerivedNewsReadbackSignal\(s\)/u);
 });
 
