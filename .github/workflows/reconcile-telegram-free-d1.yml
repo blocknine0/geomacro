@@ -1,0 +1,73 @@
+name: Reconcile Free Telegram Live D1 Table (No Funds)
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Free D1 quotas normally reset at 00:00 UTC. This runs once daily, not a retry storm.
+    - cron: "17 0 * * *"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-free-telegram-d1-reconcile
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB_NAME: geomacro-control-plane
+      WRANGLER_VERSION: "4.136.3"
+    steps:
+      - name: Require existing protected Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::CLOUDFLARE_API_TOKEN not configured"; exit 2; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "::error::CLOUDFLARE_ACCOUNT_ID not configured"; exit 2; }
+      - name: Checkout current canonical main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify existing D1 and build ephemeral configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json > /tmp/geomacro-telegram-d1-databases.json
+          node <<'NODE'
+          const fs=require("node:fs");
+          const data=JSON.parse(fs.readFileSync("/tmp/geomacro-telegram-d1-databases.json","utf8"));
+          const db=data.find(item=>item.name==="geomacro-control-plane");
+          const id=db?.uuid??db?.id;
+          if(!/^[0-9a-f-]{20,}$/i.test(String(id??"")))throw Error("EXISTING_D1_DATABASE_REQUIRED");
+          const raw=fs.readFileSync("workers/control-plane/wrangler.example.jsonc","utf8");
+          const config=JSON.parse(raw);
+          config.d1_databases[0].database_id=id;
+          fs.writeFileSync("workers/control-plane/wrangler.telegram-reconcile.jsonc",JSON.stringify(config));
+          NODE
+      - name: Apply only idempotent, hash-only Telegram research table
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote \
+            --config workers/control-plane/wrangler.telegram-reconcile.jsonc \
+            --file workers/control-plane/migrations/0031_telegram_authorized_live_research.sql \
+            > /tmp/geomacro-telegram-d1-reconcile.log
+          echo "Telegram metadata D1 table reconcile completed (no other schema, publisher or commercial mutation)."
+      - name: Confirm exact research table and fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
+            --config workers/control-plane/wrangler.telegram-reconcile.jsonc \
+            --command "SELECT name FROM sqlite_master WHERE type='table' AND name='telegram_authorized_live_research';" \
+            > /tmp/geomacro-telegram-d1-confirm.json
+          node <<'NODE'
+          const fs=require("node:fs");
+          const sets=JSON.parse(fs.readFileSync("/tmp/geomacro-telegram-d1-confirm.json","utf8"));
+          const rows=(Array.isArray(sets)?sets:[sets]).flatMap(x=>x.results??[]);
+          if(rows.length!==1||rows[0].name!=="telegram_authorized_live_research")throw Error("TELEGRAM_D1_TABLE_UNVERIFIED");
+          console.log("PASS: main-owned private research table available; source authorization still required.");
+          NODE
