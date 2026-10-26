@@ -8,20 +8,23 @@
   "rights_rule": "No raw publisher story storage, public redistribution, signed promotion, partner delivery or x402 sale from this source-registration alone.",
   "sources": [
     {
-      "id": "private_expansion_wto_trade_news",
-      "url": "https://www.wto.org/library/rss/latest_news_e.xml",
-      "continent": "global",
+      "id": "private_expansion_adb_asia_pacific",
+      "url": "https://www.adb.org/rss.xml",
+      "continent": "asia",
       "publisher_country_iso3": null,
       "categories": [
-        "macro"
+        "macro",
+        "rare_earth"
       ],
       "type": "rss",
       "related_corridor_ids": [
+        "cpec",
         "middle_corridor_titr",
         "china_europe_railway",
-        "us_mexico_border_trade"
+        "critical_minerals_drc_indonesia"
       ],
-      "provenance_note": "WTO-published RSS link is HTTP; HTTPS transport still needs live proof",
+      "provenance_note": "The Asian Development Bank's official RSS page links to the publisher feed. The URL returned RSS content-type during browser verification; item dates and parser compatibility remain runtime checks.",
+      "discovery_reference_url": "https://www.adb.org/rss",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
@@ -29,35 +32,56 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_expansion_afdb_development_news",
-      "url": "https://www.afdb.org/en/news-and-events/feed",
-      "continent": "africa",
-      "publisher_country_iso3": null,
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "related_corridor_ids": [
-        "lobito_corridor"
-      ],
-      "provenance_note": "African Development Bank regional release candidate; endpoint path unconfirmed",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_expansion_uk_bgs_news",
-      "url": "https://www.bgs.ac.uk/feed/",
-      "continent": "europe",
-      "publisher_country_iso3": "GBR",
+      "id": "private_expansion_au_industry_news",
+      "url": "https://www.industry.gov.au/news.xml",
+      "continent": "oceania",
+      "publisher_country_iso3": "AUS",
       "categories": [
         "rare_earth"
       ],
       "type": "rss",
+      "related_corridor_ids": [
+        "re_australia_malaysia_lynas"
+      ],
+      "provenance_note": "Official Australian Department of Industry RSS page links to this feed for news and departmental media releases. Actual feed health and native-clock parsing remain runtime checks.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.industry.gov.au/contact-us/rss-feeds"
+    },
+    {
+      "id": "private_expansion_australian_mining",
+      "url": "https://www.australianmining.com.au/feed/",
+      "continent": "oceania",
+      "publisher_country_iso3": "AUS",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [
+        "re_australia_malaysia_lynas"
+      ],
+      "provenance_note": "Sector publisher discovery only, commercial rights unverified",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_bw_bankofbotswana_fx",
+      "url": "https://www.bankofbotswana.bw/rss/exchanges",
+      "continent": "africa",
+      "publisher_country_iso3": "BWA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
       "related_corridor_ids": [],
-      "provenance_note": "British Geological Survey news-feed candidate; endpoint unconfirmed",
+      "provenance_note": "The Bank of Botswana official RSS page lists a dedicated Exchange Rates feed. Live parser/date health is checked by the collector.",
+      "discovery_reference_url": "https://www.bankofbotswana.bw/content/rss-feeds",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
@@ -65,18 +89,18 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_expansion_panama_canal_news",
-      "url": "https://pancanal.com/en/feed/",
-      "continent": "north_america",
-      "publisher_country_iso3": "PAN",
+      "id": "private_expansion_bw_bankofbotswana_news",
+      "url": "https://www.bankofbotswana.bw/rss/latest_news",
+      "continent": "africa",
+      "publisher_country_iso3": "BWA",
       "categories": [
-        "macro"
+        "macro",
+        "geopolitics"
       ],
       "type": "rss",
-      "related_corridor_ids": [
-        "panama_canal"
-      ],
-      "provenance_note": "Panama Canal Authority update candidate; endpoint unconfirmed",
+      "related_corridor_ids": [],
+      "provenance_note": "The Bank of Botswana's official RSS page directly links this Latest News feed; live transport, native publication clocks, topic matching and any reuse permissions remain unverified.",
+      "discovery_reference_url": "https://www.bankofbotswana.bw/content/rss-feeds",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
@@ -84,18 +108,18 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_expansion_rotterdam_port_news",
-      "url": "https://www.portofrotterdam.com/en/news-and-press-releases/rss.xml",
-      "continent": "europe",
-      "publisher_country_iso3": "NLD",
+      "id": "private_expansion_bw_bankofbotswana_press",
+      "url": "https://www.bankofbotswana.bw/rss/press_releases",
+      "continent": "africa",
+      "publisher_country_iso3": "BWA",
       "categories": [
+        "geopolitics",
         "macro"
       ],
       "type": "rss",
-      "related_corridor_ids": [
-        "english_channel"
-      ],
-      "provenance_note": "Port of Rotterdam official updates candidate; endpoint unconfirmed",
+      "related_corridor_ids": [],
+      "provenance_note": "The Bank of Botswana official RSS page lists a dedicated Press Releases feed. Live parser/date health is checked by the collector.",
+      "discovery_reference_url": "https://www.bankofbotswana.bw/content/rss-feeds",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
@@ -122,18 +146,17 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_expansion_australian_mining",
-      "url": "https://www.australianmining.com.au/feed/",
-      "continent": "oceania",
-      "publisher_country_iso3": "AUS",
+      "id": "private_expansion_eurostat_economy_atom",
+      "url": "https://ec.europa.eu/eurostat/en/search?_estatsearchportlet_WAR_estatsearchportlet_collection=CAT_PREREL&_estatsearchportlet_WAR_estatsearchportlet_theme=PER_ECOFIN&p_p_id=estatsearchportlet_WAR_estatsearchportlet&p_p_lifecycle=2&p_p_mode=view&p_p_resource_id=atom&p_p_state=maximized",
+      "continent": "europe",
+      "publisher_country_iso3": null,
       "categories": [
-        "rare_earth"
+        "macro"
       ],
-      "type": "rss",
-      "related_corridor_ids": [
-        "re_australia_malaysia_lynas"
-      ],
-      "provenance_note": "Sector publisher discovery only, commercial rights unverified",
+      "type": "atom",
+      "related_corridor_ids": [],
+      "provenance_note": "Eurostat official RSS page links this Atom feed for Economy and Finance news releases. Runtime checks must validate stable response, native publication date and format.",
+      "discovery_reference_url": "https://ec.europa.eu/eurostat/web/rss",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
@@ -141,16 +164,17 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_expansion_mining_dot_com",
-      "url": "https://www.mining.com/feed/",
-      "continent": "global",
+      "id": "private_expansion_eurostat_trade_atom",
+      "url": "https://ec.europa.eu/eurostat/en/search?_estatsearchportlet_WAR_estatsearchportlet_collection=CAT_PREREL&_estatsearchportlet_WAR_estatsearchportlet_theme=PER_EXTTRA&p_p_id=estatsearchportlet_WAR_estatsearchportlet&p_p_lifecycle=2&p_p_mode=view&p_p_resource_id=atom&p_p_state=maximized",
+      "continent": "europe",
       "publisher_country_iso3": null,
       "categories": [
-        "rare_earth"
+        "macro"
       ],
-      "type": "rss",
+      "type": "atom",
       "related_corridor_ids": [],
-      "provenance_note": "Sector publisher discovery only, commercial rights unverified",
+      "provenance_note": "Eurostat official RSS page links this Atom feed for International Trade news releases. Runtime checks must validate stable response, native publication date and format.",
+      "discovery_reference_url": "https://ec.europa.eu/eurostat/web/rss",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
@@ -179,6 +203,151 @@
       "publicly_deliverable": false
     },
     {
+      "id": "private_expansion_ind_tax_press",
+      "url": "https://wm.incometaxindia.gov.in/press-release-rss-feed/-/asset_publisher/bxhj/rss",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Official Income Tax Department of India tax-feeds page explicitly lists this press-release RSS. Actual feed health and native-clock parsing remain runtime checks.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.incometaxindia.gov.in/tax-feeds"
+    },
+    {
+      "id": "private_expansion_kr_msit_press",
+      "url": "https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=94",
+      "continent": "asia",
+      "publisher_country_iso3": "KOR",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Official Korea MSIT RSS guide explicitly lists this press-release feed. Actual feed health and mineral-policy relevance remain runtime checks.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.msit.go.kr/contents/cont.do?mId=173&mPid=147&sCode=user"
+    },
+    {
+      "id": "private_expansion_lka_cbsl_monthly_indicators",
+      "url": "https://www.cbsl.gov.lk/en/statistics/economic-indicators/meirss",
+      "continent": "asia",
+      "publisher_country_iso3": "LKA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "The Central Bank of Sri Lanka's official RSS feed directory links this Monthly Economic Indicators feed. Runtime must still validate HTTP response, RSS parsing and native publication dates.",
+      "discovery_reference_url": "https://www.cbsl.gov.lk/si/rss-feeds",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_lka_cbsl_mpr",
+      "url": "https://www.cbsl.gov.lk/en/press/press-releases/mprrss",
+      "continent": "asia",
+      "publisher_country_iso3": "LKA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "The Central Bank of Sri Lanka's official RSS feed directory links this Monetary Policy Review feed. Runtime must still validate HTTP response, RSS parsing and native publication dates.",
+      "discovery_reference_url": "https://www.cbsl.gov.lk/si/rss-feeds",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_lka_cbsl_weekly_indicators",
+      "url": "https://www.cbsl.gov.lk/en/statistics/economic-indicators/weirss",
+      "continent": "asia",
+      "publisher_country_iso3": "LKA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "The Central Bank of Sri Lanka's official RSS feed directory links this Weekly Economic Indicators feed. Runtime must still validate HTTP response, RSS parsing and native publication dates.",
+      "discovery_reference_url": "https://www.cbsl.gov.lk/si/rss-feeds",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_mining_dot_com",
+      "url": "https://www.mining.com/feed/",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Sector publisher discovery only, commercial rights unverified",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_miningweekly_africa",
+      "url": "https://www.miningweekly.com/page/latest-news/feed",
+      "continent": "africa",
+      "publisher_country_iso3": "ZAF",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [
+        "lobito_corridor"
+      ],
+      "provenance_note": "Southern Africa critical-minerals feed candidate, rights and endpoint unverified",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_nrcan_atom",
+      "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
+      "continent": "north_america",
+      "publisher_country_iso3": "CAN",
+      "categories": [
+        "macro",
+        "rare_earth"
+      ],
+      "type": "atom",
+      "related_corridor_ids": [],
+      "provenance_note": "Natural Resources Canada official RSS-feeds page lists this department-specific atom feed for NRCan News Releases. Live parser/native-date health remains a runtime gate.",
+      "discovery_reference_url": "https://natural-resources.canada.ca/corporate/rss-feeds",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
       "id": "private_expansion_offshore_energy",
       "url": "https://www.offshore-energy.biz/feed/",
       "continent": "europe",
@@ -196,6 +365,43 @@
       "commercial_eligible": false,
       "access_verified_in_production": false,
       "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_panama_canal_news",
+      "url": "https://pancanal.com/en/feed/",
+      "continent": "north_america",
+      "publisher_country_iso3": "PAN",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [
+        "panama_canal"
+      ],
+      "provenance_note": "Panama Canal Authority update candidate; endpoint unconfirmed",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_ph_pna_news",
+      "url": "https://www.pna.gov.ph/latest.rss",
+      "continent": "asia",
+      "publisher_country_iso3": "PHL",
+      "categories": [
+        "geopolitics"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Candidate surfaced in a public RSS directory reporting the Philippine News Agency feed was verified in August 2026; this is not an official publisher directory. Direct endpoint health, native clocks, and reuse rights remain unverified.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://inklinenews.com/feeds/philippines/"
     },
     {
       "id": "private_expansion_railjournal_trade",
@@ -218,18 +424,18 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_expansion_za_engineering_mining",
-      "url": "https://www.engineeringnews.co.za/page/mining-news/feed",
-      "continent": "africa",
-      "publisher_country_iso3": "ZAF",
+      "id": "private_expansion_rotterdam_port_news",
+      "url": "https://www.portofrotterdam.com/en/news-and-press-releases/rss.xml",
+      "continent": "europe",
+      "publisher_country_iso3": "NLD",
       "categories": [
-        "rare_earth"
+        "macro"
       ],
       "type": "rss",
       "related_corridor_ids": [
-        "lobito_corridor"
+        "english_channel"
       ],
-      "provenance_note": "South African mining feed candidate, rights and endpoint unverified",
+      "provenance_note": "Port of Rotterdam official updates candidate; endpoint unconfirmed",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
@@ -257,18 +463,17 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_expansion_miningweekly_africa",
-      "url": "https://www.miningweekly.com/page/latest-news/feed",
-      "continent": "africa",
-      "publisher_country_iso3": "ZAF",
+      "id": "private_expansion_statcan_business_atom",
+      "url": "https://www150.statcan.gc.ca/n1/rss/dai-quo/33-eng.atom",
+      "continent": "north_america",
+      "publisher_country_iso3": "CAN",
       "categories": [
-        "rare_earth"
+        "macro"
       ],
-      "type": "rss",
-      "related_corridor_ids": [
-        "lobito_corridor"
-      ],
-      "provenance_note": "Southern Africa critical-minerals feed candidate, rights and endpoint unverified",
+      "type": "atom",
+      "related_corridor_ids": [],
+      "provenance_note": "Statistics Canada's official Feeds page lists this Atom feed for Business Performance and Ownership releases. Current server health, native timestamps and parser acceptance remain runtime checks.",
+      "discovery_reference_url": "https://www.statcan.gc.ca/en/sc/rss",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
@@ -276,24 +481,134 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_expansion_au_industry_news",
-      "url": "https://www.industry.gov.au/news.xml",
-      "continent": "oceania",
-      "publisher_country_iso3": "AUS",
+      "id": "private_expansion_statcan_trade_atom",
+      "url": "https://www150.statcan.gc.ca/n1/rss/dai-quo/12-eng.atom",
+      "continent": "north_america",
+      "publisher_country_iso3": "CAN",
       "categories": [
-        "rare_earth"
+        "macro"
       ],
-      "type": "rss",
-      "related_corridor_ids": [
-        "re_australia_malaysia_lynas"
-      ],
-      "provenance_note": "Official Australian Department of Industry RSS page links to this feed for news and departmental media releases. Actual feed health and native-clock parsing remain runtime checks.",
+      "type": "atom",
+      "related_corridor_ids": [],
+      "provenance_note": "Statistics Canada's official Feeds page lists this Atom feed for International Trade releases. Current server health, native timestamps and parser acceptance remain runtime checks.",
+      "discovery_reference_url": "https://www.statcan.gc.ca/en/sc/rss",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
       "access_verified_in_production": false,
-      "publicly_deliverable": false,
-      "discovery_reference_url": "https://www.industry.gov.au/contact-us/rss-feeds"
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_th_mdes_news",
+      "url": "https://mdes.go.th/news/rss/3",
+      "continent": "asia",
+      "publisher_country_iso3": "THA",
+      "categories": [
+        "macro",
+        "geopolitics"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Thailand's Ministry of Digital Economy and Society official RSS page lists this ministry-news feed; native-clock parsing, topic relevance and reuse permissions remain runtime checks.",
+      "discovery_reference_url": "https://mdes.go.th/rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_uk_bgs_news",
+      "url": "https://www.bgs.ac.uk/feed/",
+      "continent": "europe",
+      "publisher_country_iso3": "GBR",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "British Geological Survey news-feed candidate; endpoint unconfirmed",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_uk_dbt_atom",
+      "url": "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+      "continent": "europe",
+      "publisher_country_iso3": "GBR",
+      "categories": [
+        "macro",
+        "rare_earth"
+      ],
+      "type": "atom",
+      "related_corridor_ids": [],
+      "provenance_note": "GOV.UK's organisation Atom feed exposes Department for Business and Trade releases; macro/critical-mineral relevance is title-filtered, with feed and clock health checked at runtime.",
+      "discovery_reference_url": "https://www.gov.uk/government/organisations/department-for-business-and-trade",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_uk_fcdo_atom",
+      "url": "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
+      "continent": "europe",
+      "publisher_country_iso3": "GBR",
+      "categories": [
+        "geopolitics"
+      ],
+      "type": "atom",
+      "related_corridor_ids": [],
+      "provenance_note": "GOV.UK's organisation Atom feed exposes Foreign, Commonwealth & Development Office releases; geopolitical relevance is title-filtered, with feed and clock health checked at runtime.",
+      "discovery_reference_url": "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_ungeneva_press_rss",
+      "url": "https://www.ungeneva.org/news-media/press-releases-list/rss.xml",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "UN Geneva's official RSS page directly links this press-release feed. Its canonical first-party source identity already exists in the reusable feed catalogue; the OSINT registry will merge this candidate alias and poll the URL once.",
+      "discovery_reference_url": "https://www.ungeneva.org/en/news-media/rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_wto_trade_news",
+      "url": "https://www.wto.org/library/rss/latest_news_e.xml",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [
+        "middle_corridor_titr",
+        "china_europe_railway",
+        "us_mexico_border_trade"
+      ],
+      "provenance_note": "WTO-published RSS link is HTTP; HTTPS transport still needs live proof",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
     },
     {
       "id": "private_expansion_za_dsti_news",
@@ -314,6 +629,25 @@
       "discovery_reference_url": "https://www.dsti.gov.za/subscribe"
     },
     {
+      "id": "private_expansion_za_engineering_mining",
+      "url": "https://www.engineeringnews.co.za/page/mining-news/feed",
+      "continent": "africa",
+      "publisher_country_iso3": "ZAF",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [
+        "lobito_corridor"
+      ],
+      "provenance_note": "South African mining feed candidate, rights and endpoint unverified",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
       "id": "private_expansion_za_sars_news",
       "url": "https://www.sars.gov.za/feed/?post_type=latest_news",
       "continent": "africa",
@@ -330,60 +664,6 @@
       "access_verified_in_production": false,
       "publicly_deliverable": false,
       "discovery_reference_url": "https://www.sars.gov.za/about/rss-feeds/"
-    },
-    {
-      "id": "private_expansion_kr_msit_press",
-      "url": "https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=94",
-      "continent": "asia",
-      "publisher_country_iso3": "KOR",
-      "categories": [
-        "rare_earth"
-      ],
-      "type": "rss",
-      "related_corridor_ids": [],
-      "provenance_note": "Official Korea MSIT RSS guide explicitly lists this press-release feed. Actual feed health and mineral-policy relevance remain runtime checks.",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false,
-      "discovery_reference_url": "https://www.msit.go.kr/contents/cont.do?mId=173&mPid=147&sCode=user"
-    },
-    {
-      "id": "private_expansion_ind_tax_press",
-      "url": "https://wm.incometaxindia.gov.in/press-release-rss-feed/-/asset_publisher/bxhj/rss",
-      "continent": "asia",
-      "publisher_country_iso3": "IND",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "related_corridor_ids": [],
-      "provenance_note": "Official Income Tax Department of India tax-feeds page explicitly lists this press-release RSS. Actual feed health and native-clock parsing remain runtime checks.",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false,
-      "discovery_reference_url": "https://www.incometaxindia.gov.in/tax-feeds"
-    },
-    {
-      "id": "private_expansion_ph_pna_news",
-      "url": "https://www.pna.gov.ph/latest.rss",
-      "continent": "asia",
-      "publisher_country_iso3": "PHL",
-      "categories": [
-        "geopolitics"
-      ],
-      "type": "rss",
-      "related_corridor_ids": [],
-      "provenance_note": "Candidate surfaced in a public RSS directory reporting the Philippine News Agency feed was verified in August 2026; this is not an official publisher directory. Direct endpoint health, native clocks, and reuse rights remain unverified.",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false,
-      "discovery_reference_url": "https://inklinenews.com/feeds/philippines/"
     }
   ]
 }
