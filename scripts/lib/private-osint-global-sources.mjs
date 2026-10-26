@@ -81,6 +81,16 @@ export function privateOsintGlobalSources(){
    continent:s.continent,publisher_country_iso3:s.publisher_country_iso3}:
    {...s,supported:true});
  }
+ // OC Media is a Tbilisi-founded newsroom whose exact feed already passed
+ // the original source-native clock acceptance; its old continent='europe'
+ // metadata was a classification error. This is PUBLISHER geography only;
+ // never infer event location from this metadata.
+ const ocMedia=map.get("https://oc-media.org/feed/");
+ if(!ocMedia||ocMedia.id!=="private_mesh_oc_media"||
+    ocMedia.publisher_country_iso3!==null||ocMedia.continent!=="europe")
+  throw Error("PRIVATE_OSINT_OC_MEDIA_PUBLISHER_METADATA_DRIFT");
+ map.set(ocMedia.url,{...ocMedia,publisher_country_iso3:"GEO",continent:"asia",
+  publisher_country_evidence:"https://oc-media.org/about-us/"});
  for(const candidate of officialFeedCandidates){
   if(map.has(candidate.url)||existing.has(candidate.url))
     throw Error("PRIVATE_OSINT_OFFICIAL_FEED_ALREADY_REGISTERED");
