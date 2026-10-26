@@ -346,18 +346,16 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_expansion_id_petromindo_minerals",
-      "url": "https://www.petromindo.com/api/v1/rss/news-category/mineral",
+      "id": "private_expansion_ind_tax_press",
+      "url": "https://wm.incometaxindia.gov.in/press-release-rss-feed/-/asset_publisher/bxhj/rss",
       "continent": "asia",
-      "publisher_country_iso3": "IDN",
+      "publisher_country_iso3": "IND",
       "categories": [
-        "rare_earth"
+        "macro"
       ],
       "type": "rss",
-      "related_corridor_ids": [
-        "critical_minerals_drc_indonesia"
-      ],
-      "provenance_note": "Minerals RSS is documented by the publisher on its own site; sector-source rights and runtime status remain unverified.",
+      "related_corridor_ids": [],
+      "provenance_note": "The Government of India's Income Tax Department Tax Feeds page documents this press-release RSS; runtime transport, native-clock parsing and reuse rights remain to be verified.",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
