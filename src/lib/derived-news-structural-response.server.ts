@@ -92,7 +92,7 @@ export async function derivedNewsStructuralResponse(
         return {...normalized,source_record_id:r.id,
           original_release_at:r.original_published_at,
           date_precision:r.date_precision,
-          source_material_class:"EXISTING_GEOMACRO_DERIVED_JOURNAL",
+          source_material_class:"PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250",
           upstream_source_rights_unverified:true};
       });
       const fromRegistered:typeof items=[];
