@@ -16,7 +16,7 @@ The private 195-country × 3-category source matrix reports configured, checked,
 
 The last deterministic inventory reconciliation included 369 accepted endpoints, seven India PIB official-feed candidates, seven Macro/Minerals candidates and the regional candidate registry. The registry gives every country/category at least a publisher-neutral global fallback route; this is not proof that every registered endpoint is healthy.
 
-The prior pre-expansion inventory had publisher-country-specific source metadata for 63 of 195 countries. **132 countries had no country-specific publisher source recorded.** This gap stays explicit rather than being hidden by global fallback. The local count should increase as official country feeds are added and must be recalculated by CI rather than hard-coded in the runtime report.
+The baseline before this branch had publisher-country-specific source metadata for 63 of 195 countries. This branch adds official local candidates for Botswana and Thailand; the deterministic registry test now expects **65 of 195 countries with at least one publisher-country-specific source, and 130 countries without one**. This is registration coverage, not proof of healthy local feeds. The production tick and detailed audit recalculate health instead of assuming every country has a working local source.
 
 ## Local and regional feeds added or clarified
 
