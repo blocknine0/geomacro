@@ -1,4 +1,5 @@
 import {test} from "node:test";
+import {readFileSync} from "node:fs";
 import assert from "node:assert/strict";
 import {classifyMinimumFreeProduction,classifyPublishedSourceEquivalence,verifyPublishedSourceEquivalence} from "./verify-minimum-free-production-health.mjs";
 
