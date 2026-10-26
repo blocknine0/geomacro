@@ -96,6 +96,12 @@ jobs:
       - name: Test private source-handoff acceptance contracts without network
         run: node --test scripts/tests/verify-private-handoff-production.test.mjs
 
+      - name: Require safe account-wide D1 daily row headroom before any D1 query or migration
+        # This read-only Cloudflare GraphQL audit runs before Wrangler contacts
+        # D1. If analytics are unavailable or the free-tier reserve is low,
+        # fail closed before spending another D1 row read on a migration attempt.
+        run: node scripts/ops/audit-d1-account-daily-quota-readonly.mjs
+
       - name: Discover or create the single production D1 database
         id: d1
         shell: bash
