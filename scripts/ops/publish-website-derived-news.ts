@@ -15,6 +15,7 @@ import {createRunScopedAustralianResourcesFetch} from "../../src/lib/stateless-r
 import {
   conservativeDayReleaseMs,reconcilePrivateDerivedSourceRefs,selectBoundedRetainedOriginalTargets,
   type StatelessSourceCandidate,
+  type StatelessIntelligenceSignal,
 } from "../../src/lib/stateless-intelligence-model";
 import {checkedDerivedNews,fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
 import {auditEveryDerivedNewsOriginal} from "../lib/all-news-original-evidence-audit.mjs";
@@ -43,16 +44,29 @@ globalThis.fetch=(async(input:RequestInfo|URL,init?:RequestInit)=>{
 let success=true;
 const privateOriginals:StatelessSourceCandidate[]=[];
 const reports:StatelessIntelligenceResult[]=[];
+// Safe derived-only candidates are exported for the independent permanent website archive.
+// This happens before D1 publication, so a D1 quota outage does not discard the daily findings.
+const archiveCandidateSignals:StatelessIntelligenceSignal[]=[];
 const sourceHealthReceipts:Array<{category:string}>=[];
 const sharedOfficialDocuments=createRunScopedAustralianResourcesFetch();
 // Fail closed before any original-source reads or D1 writes if the live Worker
 // has not deployed the exact readback/topic allowlist contract this publisher
 // emits. A repository push can start this workflow before Worker deployment.
-const workerPolicy=await requireDerivedNewsWorkerPolicy({
-  fetchImpl:globalThis.fetch,url:CONTROL_PLANE_ORIGIN+"/health",
-  expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION,
-});
-console.log(JSON.stringify(workerPolicy));
+// Public archive ingestion must continue even while account-wide D1 reads
+// are quota-blocked. Only the optional D1 write/checkpoint path requires a
+// live Worker policy handshake. Static archive candidates are still built
+// from validated original-publisher feeds and independently revalidated.
+let workerPolicyReady=false;
+try{
+  const workerPolicy=await requireDerivedNewsWorkerPolicy({
+    fetchImpl:globalThis.fetch,url:CONTROL_PLANE_ORIGIN+"/health",
+    expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION,
+  });
+  workerPolicyReady=true;
+  console.log(JSON.stringify({...workerPolicy,d1_publisher_ready:true}));
+}catch{
+  console.warn("D1_PUBLISHER_UNAVAILABLE_STATIC_ARCHIVE_CONTINUES");
+}
 for (const category of categories) {
   try {
     const lanes:{index:number;transport_ok:boolean;failure_class?:string}[]=[];
@@ -85,65 +99,76 @@ for (const category of categories) {
     // plane's strict 64KiB authenticated request limit. No upstream bytes.
     // EMPTY batches remain required for truthful retention sweeps.
     const {signals,chunks}=prepareDerivedNewsBatches(eligible);
-    let acknowledged=0;
-    for(const chunk of chunks){
-      // Empty batches perform the retention sweep only once after all three
-      // source lanes complete; they are not needed between category writes.
-      if(chunk.length===0)continue;
-      const reply=await fetch(ENDPOINT,{
+    // Archive candidates before any D1 writes so a daily-row quota failure
+    // cannot discard this run's newly verified Geomacro-derived findings.
+    archiveCandidateSignals.push(...signals);
+    if(!workerPolicyReady){
+      console.log(JSON.stringify({
+        schema:"geomacro.website-derived-news-ingest-metrics.v1",category,
+        source_feeds_healthy:report.healthy_feed_count,
+        official_candidates:report.releases_examined,
+        archive_candidates:signals.length,
+        d1_write_skipped:true,
+        reason:"D1_PUBLISHER_POLICY_PREFLIGHT_UNAVAILABLE",
+        supabase_attempts:denied,payments:0,
+      }));
+    }else{
+      let acknowledged=0;
+      for(const chunk of chunks){
+        if(chunk.length===0)continue;
+        const reply=await fetch(ENDPOINT,{
+          method:"PUT",redirect:"error",cache:"no-store",
+          headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},
+          body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:chunk}),
+          signal:AbortSignal.timeout(12_000),
+        });
+        if(!reply.ok){
+          let failureClass="D1_UNCLASSIFIED";
+          try{const failure=await reply.json() as {diagnostic_code?:unknown};
+            failureClass=safeDerivedNewsD1FailureClass(failure?.diagnostic_code);
+          }catch{/* Only an allowlisted class may enter the runner log. */}
+          throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_REJECTED_"+reply.status+"_"+failureClass);
+        }
+        const receipt=await reply.json() as {ok?:boolean;accepted?:number};
+        if(receipt.ok!==true||receipt.accepted!==chunk.length)
+          throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_ACK_INVALID");
+        acknowledged+=chunk.length;
+      }
+      if(acknowledged!==signals.length)
+        throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_PARTIAL");
+      // A green collection run with ZERO releases remains observable without
+      // inventing an event. This checkpoint is optional to the static archive.
+      const checkedAt=new Date().toISOString();
+      const checkpoint=await fetch(ENDPOINT.replace("/v1/website-derived-news",
+        "/v1/checkpoint/website_derived_news_ingest/"+category),{
         method:"PUT",redirect:"error",cache:"no-store",
         headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},
-        body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:chunk}),
+        body:JSON.stringify({status:"DERIVED_NEWS_PUBLISH_COMPLETED",
+          last_attempt_at:checkedAt,last_success_at:checkedAt,cursor:null,
+          metadata:{schema:"geomacro.derived-news-source-check.v1",
+            category,checked_at:checkedAt,
+            sources_configured:report.feed_count,
+            sources_reachable:report.healthy_feed_count,
+            original_candidates_examined:report.releases_examined,
+            accepted_derived_rows:signals.length,
+            raw_upstream_stored:false,commercial_rights_verified:false,
+            paid_delivery_authorized:false}}),
         signal:AbortSignal.timeout(12_000),
       });
-      if(!reply.ok){
-        let failureClass="D1_UNCLASSIFIED";
-        try{const failure=await reply.json() as {diagnostic_code?:unknown};
-          failureClass=safeDerivedNewsD1FailureClass(failure?.diagnostic_code);
-        }catch{/* Only an allowlisted class may enter the runner log. */}
-        throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_REJECTED_"+reply.status+"_"+failureClass);
-      }
-      const receipt=await reply.json() as {ok?:boolean;accepted?:number};
-      if(receipt.ok!==true||receipt.accepted!==chunk.length)
-        throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_ACK_INVALID");
-      acknowledged+=chunk.length;
+      if(!checkpoint.ok)throw Error("DERIVED_NEWS_SOURCE_CHECK_WRITE_UNAVAILABLE");
+      const checkedReceipt=await checkpoint.json() as {ok?:boolean;scope?:string;pipeline?:string};
+      if(checkedReceipt.ok!==true||checkedReceipt.scope!==category||
+         checkedReceipt.pipeline!=="website_derived_news_ingest")
+        throw Error("DERIVED_NEWS_SOURCE_CHECK_ACK_INVALID");
+      console.log(JSON.stringify({
+        schema:"geomacro.website-derived-news-ingest-metrics.v1",category,
+        source_feeds_healthy:report.healthy_feed_count,
+        official_candidates:report.releases_examined,
+        accepted_derived_news:signals.length,
+        source_check_receipt_d1_verified:true,
+        supabase_attempts:denied,storage:"cloudflare-d1-derived-only",
+      }));
     }
-    if(acknowledged!==signals.length)
-      throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_PARTIAL");
-    // A green collection run with ZERO releases must be observable without
-    // inventing a new news event. Reuse existing authenticated D1 checkpoint.
-    // Only bounded counters/timestamps, never original links/text/credits.
-    const checkedAt=new Date().toISOString();
-    const checkpoint=await fetch(ENDPOINT.replace("/v1/website-derived-news",
-      "/v1/checkpoint/website_derived_news_ingest/"+category),{
-      method:"PUT",redirect:"error",cache:"no-store",
-      headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},
-      body:JSON.stringify({status:"DERIVED_NEWS_PUBLISH_COMPLETED",
-        last_attempt_at:checkedAt,last_success_at:checkedAt,cursor:null,
-        metadata:{schema:"geomacro.derived-news-source-check.v1",
-          category,checked_at:checkedAt,
-          sources_configured:report.feed_count,
-          sources_reachable:report.healthy_feed_count,
-          original_candidates_examined:report.releases_examined,
-          accepted_derived_rows:signals.length,
-          raw_upstream_stored:false,commercial_rights_verified:false,
-          paid_delivery_authorized:false}}),
-      signal:AbortSignal.timeout(12_000),
-    });
-    if(!checkpoint.ok)throw Error("DERIVED_NEWS_SOURCE_CHECK_WRITE_UNAVAILABLE");
-    const checkedReceipt=await checkpoint.json() as {
-      ok?:boolean;scope?:string;pipeline?:string};
-    if(checkedReceipt.ok!==true||checkedReceipt.scope!==category||
-       checkedReceipt.pipeline!=="website_derived_news_ingest")
-      throw Error("DERIVED_NEWS_SOURCE_CHECK_ACK_INVALID");
-    console.log(JSON.stringify({
-      schema:"geomacro.website-derived-news-ingest-metrics.v1",category,
-      source_feeds_healthy:report.healthy_feed_count,
-      official_candidates:report.releases_examined,
-      accepted_derived_news:signals.length,
-      source_check_receipt_d1_verified:true,
-      supabase_attempts:denied,storage:"cloudflare-d1-derived-only",
-    }));
   } catch(error) {
     success=false;
     if(!sourceHealthReceipts.some(r=>r.category===category))
@@ -155,10 +180,34 @@ for (const category of categories) {
     console.error("::error::WEBSITE_DERIVED_NEWS_INGEST_"+category.toUpperCase()+"_UNAVAILABLE_"+code);
   }
 }
+// Export only validated, source-neutral Geomacro-derived cards for the permanent static archive.
+// This receipt deliberately excludes URLs, feed XML, source IDs, source headlines and private references.
+try {
+  mkdirSync("artifacts/derived-news",{recursive:true});
+  const uniqueArchiveCandidates=new Map<string,StatelessIntelligenceSignal>();
+  for(const signal of archiveCandidateSignals) uniqueArchiveCandidates.set(signal.id,signal);
+  const archiveCandidates={
+    schema:"geomacro.permanent-derived-news-candidates.v1",
+    checked_at:new Date().toISOString(),
+    source_sha:String(process.env.GITHUB_SHA??""),
+    signals:[...uniqueArchiveCandidates.values()].sort((a,b)=>
+      b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id)),
+    raw_upstream_stored:false,source_urls_logged:false,payments:0,
+  };
+  writeFileSync("artifacts/derived-news/permanent-archive-candidates.json",
+    JSON.stringify(archiveCandidates,null,2)+"\n",{encoding:"utf8",mode:0o600});
+  console.log(JSON.stringify({schema:"geomacro.permanent-derived-news-candidates-receipt.v1",
+    candidates:archiveCandidates.signals.length,source_sha_present:archiveCandidates.source_sha.length===40,
+    independent_of_d1_write:true,raw_upstream_stored:false,payments:0}));
+}catch {
+  success=false;
+  console.error("::error::PERMANENT_DERIVED_NEWS_CANDIDATE_EXPORT_FAILED");
+}
+
 // Physical TTL/600-row cleanup is an explicit, authenticated empty batch.
  // Run it once per successful three-category collection, not once per category
  // plus every non-empty news write; failed D1 publication must not amplify load.
-if(success&&denied===0){
+if(success&&denied===0&&workerPolicyReady){
   try{
     const sweep=await fetch(ENDPOINT,{
       method:"PUT",redirect:"error",cache:"no-store",
@@ -228,8 +277,10 @@ try {
   // D1 failure never grants a missing reference or suppresses the present
   // original-source audit. This is one bounded D1 read, not a publisher GET.
   let retained:typeof signals=[];
-  try{retained=await fetchAllDerivedNews(fetch,now.getTime());}
-  catch{console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_UNAVAILABLE");}
+  if(workerPolicyReady){
+    try{retained=await fetchAllDerivedNews(fetch,now.getTime());}
+    catch{console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_UNAVAILABLE");}
+  }else console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_SKIPPED_D1_UNAVAILABLE");
   const reconciled=new Map<string,StatelessSourceCandidate>();
   for(const category of categories){
     const sourceRefs=privateOriginals.filter(x=>x.category===category);
@@ -307,7 +358,7 @@ if (denied!==0||!success) process.exitCode=2;
 // journal above remains independent if signing/archive publication fails.
 if(process.env.GEOMACRO_AUTOMATED_FINDS_PUBLICATION==="1"){
   try{
-    if(denied!==0||!success)throw Error("AUTOMATED_FINDS_SOURCE_READ_INCOMPLETE");
+    if(!workerPolicyReady||denied!==0||!success)throw Error("AUTOMATED_FINDS_SOURCE_READ_INCOMPLETE");
     const {publishCollectedAutomatedFinds}=await import("./publish-automated-finds");
     await publishCollectedAutomatedFinds(reports);
   }catch(error){
@@ -330,6 +381,7 @@ if(process.env.GEOMACRO_AUTOMATED_FINDS_PUBLICATION==="1"){
 // privateOriginals, issuer labels, raw headlines or article URLs. The free
 // newsroom continues even when this optional trace cannot recover its source.
 try {
+  if(!workerPolicyReady)throw Error("PERMANENT_ARCHIVE_D1_READBACK_SKIPPED");
   const reply=await fetch(
     "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate",{
     method:"GET",redirect:"error",cache:"no-store",

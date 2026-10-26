@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, Gem } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
-import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
-import { fetchAllDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchDirectDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
 import {isConcretePublicIntelligence,concreteGeomacroAnalysis,concreteIntelligenceHeadline,intelligenceRequiredSourceCredits} from "@/lib/intelligence-concrete-publication";
 import {dedupeIntelligenceStories} from "@/lib/intelligence-news-dedupe";
 import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
@@ -19,8 +18,8 @@ const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
 ];
 const displayProse = (text: string) => text.replace(/\s*\u2014\s*/gu, "; ");
 const REFRESH_MS = 2 * 60_000;
-// Refresh the public source-credited 72h journal every two minutes while the
-// Intelligence desk is visible; pagination still reads every retained page.
+// Poll the small static rolling snapshot every two minutes. Historical shards
+// are loaded from the permanent static archive once per desk visit; neither path uses D1.
 const JOURNAL_REFRESH_MS = 2 * 60_000;
 type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
 // Stable default avoids restarting fetch effects when legacy callers omit this prop.
@@ -241,32 +240,60 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
     };
   }, [initial, initialFeeds]);
 
-  // Durable source-neutral 72-hour D1 journal, verified across every bounded page.
+  // Historical findings come from the append-only static archive. The rolling
+  // static snapshot adds new findings between archive publications. No website
+  // read has a D1 or server-function fallback.
   useEffect(() => {
     let alive = true;
     let pending = false;
+    let archiveLoaded = false;
+    const sortSignals = (signals: StatelessIntelligenceSignal[]) =>
+      signals.sort((a, b) =>
+        b.published_at.localeCompare(a.published_at) || a.id.localeCompare(b.id));
+    const mergeArchive = (
+      previous: StatelessIntelligenceSignal[],
+      archived: StatelessIntelligenceSignal[],
+    ): StatelessIntelligenceSignal[] => {
+      const merged = new Map(previous.map(signal => [signal.id, signal]));
+      // The immutable archive wins when SSR's rolling snapshot repeats an ID.
+      for (const signal of archived) merged.set(signal.id, signal);
+      return sortSignals([...merged.values()]);
+    };
+    const mergeUnseen = (
+      previous: StatelessIntelligenceSignal[],
+      incoming: StatelessIntelligenceSignal[],
+    ): StatelessIntelligenceSignal[] => {
+      const seen = new Set(previous.map(signal => signal.id));
+      const additions = incoming.filter(signal => !seen.has(signal.id));
+      if (additions.length === 0) return previous;
+      return sortSignals([...previous, ...additions]);
+    };
     const sync = async () => {
       if (pending) return;
       pending = true;
       try {
-      // Browser-direct D1 is crucial when a Lovable server-function roundtrip
-      // fails despite the verified, public, source-private D1 journal.
-      try {
-        const signals = await fetchAllDerivedNews();
-        if (alive) { setJournal(signals); setJournalUnavailable(false); }
-      } catch {
-        // The legacy server function is only a secondary fallback; preserve
-        // previously rendered SSR or in-tab cards if BOTH paths fail.
+        if (!archiveLoaded) {
+          try {
+            const historical = await fetchPermanentDerivedNews();
+            if (!alive) return;
+            setJournal(previous => mergeArchive(previous, historical));
+            archiveLoaded = true;
+            setJournalUnavailable(false);
+          } catch {
+            if (alive) setJournalUnavailable(true);
+          }
+        }
         try {
-          const result = await withPublicRuntimeTimeout(
-            getWebsiteDerivedNews(),
-            9_000,
-            "Intelligence journal fallback timed out.",
-          );
-          if (alive) { setJournal(result.signals); setJournalUnavailable(true); }
-        } catch { if (alive) setJournalUnavailable(true); }
+          const recent = await fetchDirectDerivedNews();
+          if (!alive) return;
+          setJournal(previous => mergeUnseen(previous, recent));
+          if (archiveLoaded) setJournalUnavailable(false);
+        } catch {
+          if (alive) setJournalUnavailable(true);
+        }
+      } finally {
+        pending = false;
       }
-      } finally { pending = false; }
     };
     manualJournalRefresh.current = () => { void sync(); };
     void sync();

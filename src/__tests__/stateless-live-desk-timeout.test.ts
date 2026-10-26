@@ -9,15 +9,17 @@ describe("Intelligence browser RPC stall recovery", () => {
       .rejects.toThrow("Intelligence publisher check timed out.");
   });
 
-  it("bounds every browser publisher request and the fallback journal RPC", () => {
+  it("bounds publisher requests and reads the permanent public journal without D1 fallback", () => {
     const desk = readFileSync("src/components/intelligence/stateless-live-desk.tsx", "utf8");
     expect(desk).toContain('import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";');
     expect(desk).toContain("getStatelessIntelligence({ data: { category } }),\n            9_000");
-    expect(desk).toContain('getWebsiteDerivedNews(),\n            9_000');
+    expect(desk).toContain("fetchPermanentDerivedNews()");
+    expect(desk).toContain("fetchDirectDerivedNews()");
+    expect(desk).not.toContain("fetchAllDerivedNews()");
+    expect(desk).not.toContain("getWebsiteDerivedNews");
+    expect(desk).not.toContain("@/lib/website-derived-news.functions");
     expect(desk).toContain("setErrors(previous => ({ ...previous, ...nextErrors }))");
     expect(desk).toContain("setJournalUnavailable(true)");
-    expect(desk).toContain("fetchAllDerivedNews()");
-    expect(desk).not.toContain("fetchDirectDerivedNews()");
     expect(desk).toContain("JOURNAL_REFRESH_MS = 2 * 60_000");
     expect(desk).not.toContain('aria-label="Filter Intelligence by country"');
     expect(desk).toContain("No eligible concrete news matches this category, search and publication window.");
@@ -25,8 +27,9 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).toContain("initialJournal = []");
     expect(desk).toContain("Previously received in-tab findings may be out of date");
     expect(desk).not.toContain("website-derived-news-html");
-    // Underlying requests can settle after the UI timed out; no mutation
-    // to upstream source clocks, credits, public scores, or private storage.
+    // The archive and current feed are public static assets, not D1 reads.
+    expect(desk).toContain("Historical findings come from the append-only static archive");
+    expect(desk).toContain("read has a D1 or server-function fallback");
     expect(desk).not.toContain("localStorage");
     expect(desk).toContain("loadReaderPreferences()");
     expect(desk).toContain("saveReaderPreferences({ category: view, savedIds, lastVisit: visitStarted.current })");

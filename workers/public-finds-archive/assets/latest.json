@@ -1,0 +1,13 @@
+{
+  "schema": "geomacro.website-derived-news-feed.v1",
+  "checked_at": null,
+  "original_release_delay_minutes": 0,
+  "retention_days": 3,
+  "retention_hours": 72,
+  "delivery_scope": "free_website_only",
+  "scored": false,
+  "chargeable": false,
+  "supabase_dependency": false,
+  "signals": [],
+  "ok": true
+}

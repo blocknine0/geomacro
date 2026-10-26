@@ -376,8 +376,11 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(route).toContain('url.pathname === "/v1/website-derived-news"');
     expect(cron).toContain('cron: "7 * * * *"');
     expect(cron).toContain("bun scripts/ops/publish-website-derived-news.ts");
-    expect(ui).toContain("getWebsiteDerivedNews()");
-    expect(ui).toContain('const merged = new Map<string, StatelessIntelligenceSignal>()');
+    expect(ui).toContain("fetchPermanentDerivedNews()");
+    expect(ui).toContain("fetchDirectDerivedNews()");
+    expect(ui).not.toContain("getWebsiteDerivedNews");
+    expect(ui).not.toContain("fetchAllDerivedNews()");
+    expect(ui).toContain("const merged = new Map(previous.map(signal => [signal.id, signal]));");
     // Presentation copy is locked to the approved published website baseline until separately published.
     expect(ui).toContain("isConcretePublicIntelligence");
     expect(ui).not.toContain("SOURCE / PUBLISHER");
