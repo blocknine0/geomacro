@@ -2,7 +2,7 @@ import {describe,expect,it,vi} from "vitest";
 import {readFileSync} from "node:fs";
 import {buildDerivedNewsStructural} from "../lib/derived-news-structural-bridge";
 import {COUNTRIES_195} from "../lib/canonical-country-registry-195";
-import {countryFromDerivedGeography,observed195x3Coverage} from "../lib/derived-news-country-coverage-195";
+import {countryFromDerivedGeography,countryFromDerivedHeadline,observed195x3Coverage,observedPublicFinds195x3Coverage} from "../lib/derived-news-country-coverage-195";
 import {derivedNewsStructuralResponse,structuralNewsAvailability} from "../lib/derived-news-structural-response.server";
 import {fetchAllDerivedNews} from "../lib/public-derived-news-client";
 import {readDerivedStories} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
@@ -135,6 +135,55 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    expect(countryFromDerivedGeography("Türkiye")).toBe("TUR");
    expect(countryFromDerivedGeography("West Bank")).toBe("PSE");
    expect(countryFromDerivedGeography("United States")).toBe("USA");
+ });
+ it("routes public Finds into counts-only 195x3 cells without exposing headlines or publishers",()=>{
+   const brazil={...story(0),id:"geopolitics-deadbeef",
+     title:"Geomacro finds Brazil issued a new border security notice",
+     category:"geopolitics" as const,geography:null,topic:"geopolitical security"};
+   const india={...story(1),id:"macro-cafefeed",
+     title:"Geomacro finds India reported new inflation figures",
+     category:"macro" as const,geography:null,topic:"inflation and prices"};
+   const canada={...story(2),id:"rare_earth-deadbeef",
+     title:"Geomacro finds Canada announced a critical mineral processing plan",
+     category:"rare_earth" as const,geography:null,
+     status:"osint_feed_observed_unverified" as const,
+     development_type:"unverified OSINT feed observation",
+     sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"]};
+   const regional={...story(3),id:"geopolitics-cafebabe",
+     title:"Geomacro finds China signed a new agreement with India",
+     category:"geopolitics" as const,geography:null};
+   const output=observedPublicFinds195x3Coverage([brazil,india,canada,regional],NOW);
+   expect(output.schema).toBe("geomacro.195x3-public-finds-coverage.v2");
+   expect(output.country_count).toBe(195);
+   expect(output.total_country_category_cells).toBe(585);
+   expect(output.returned_cells).toBe(585);
+   expect(output.source_neutral_derived_records_in_public_archive_latest_250).toBe(4);
+   expect(output.unassigned_or_regional_derived_records_72h).toBe(1);
+   expect(output.cells.find(c=>c.country_iso3==="BRA"&&c.category==="geopolitics"))
+     .toMatchObject({status:"DERIVED_COUNTRY_MENTION_OBSERVED_UNVERIFIED",
+       observed_derived_records_72h:1,country_subject_verified:false,commercial_rights_verified:false});
+   expect(output.cells.find(c=>c.country_iso3==="IND"&&c.category==="macro")
+     ?.observed_derived_records_72h).toBe(1);
+   expect(output.cells.find(c=>c.country_iso3==="CAN"&&c.category==="rare_earth")
+     ?.observed_derived_records_72h).toBe(1);
+   expect(output.cells.find(c=>c.country_iso3==="CHN"&&c.category==="geopolitics")
+     ?.observed_derived_records_72h).toBe(0);
+   expect(output.not_observed_means_no_news).toBe(false);
+   expect(output.exhaustive_country_news_coverage_verified).toBe(false);
+   expect(output.scored).toBe(false);
+   expect(output.signed).toBe(false);
+   expect(output.chargeable).toBe(false);
+   const serialized=JSON.stringify(output);
+   for(const privateOrRaw of [
+     "Brazil issued a new border security notice",
+     "India reported new inflation figures",
+     "news.google.com",
+     "sources_credited",
+     "source_url",
+   ])expect(serialized).not.toContain(privateOrRaw);
+   expect(countryFromDerivedHeadline("Geomacro finds Brazil issued a new border security notice - Reuters")).toBe("BRA");
+   expect(countryFromDerivedHeadline("Geomacro finds China signed a new agreement with India")).toBeNull();
+   expect(countryFromDerivedHeadline("Geomacro finds China Daily issued a regional update")).toBeNull();
  });
  it("serves country-specific articles and 585-cell mention coverage from static archive without D1",async()=>{
    const rows=[
