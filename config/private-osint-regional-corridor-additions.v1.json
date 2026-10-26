@@ -287,12 +287,13 @@
       "related_corridor_ids": [
         "re_australia_malaysia_lynas"
       ],
-      "provenance_note": "Department of Industry, Science and Resources lists this RSS for departmental news and media releases; runtime transport and native-clock checks remain required.",
+      "provenance_note": "Official Australian Department of Industry RSS page links to this feed for news and departmental media releases. Actual feed health and native-clock parsing remain runtime checks.",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
       "access_verified_in_production": false,
-      "publicly_deliverable": false
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.industry.gov.au/contact-us/rss-feeds"
     },
     {
       "id": "private_expansion_za_dsti_news",
@@ -304,12 +305,13 @@
       ],
       "type": "rss",
       "related_corridor_ids": [],
-      "provenance_note": "South Africa Department of Science, Technology and Innovation documents this RSS feed on its official subscribe page; topic relevance and runtime health remain unverified.",
+      "provenance_note": "Official South Africa DSTI subscribe page explicitly lists this RSS 2.0 feed. Actual feed health and topic relevance remain runtime checks.",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
       "access_verified_in_production": false,
-      "publicly_deliverable": false
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.dsti.gov.za/subscribe"
     },
     {
       "id": "private_expansion_za_sars_news",
@@ -321,12 +323,13 @@
       ],
       "type": "rss",
       "related_corridor_ids": [],
-      "provenance_note": "South African Revenue Service documents an RSS for Latest News; runtime transport and relevant native-dated items remain required.",
+      "provenance_note": "Official SARS RSS page subscribe link resolves to this latest-news feed. Actual feed health, native clocks and relevant macro items remain runtime checks.",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
       "access_verified_in_production": false,
-      "publicly_deliverable": false
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.sars.gov.za/about/rss-feeds/"
     },
     {
       "id": "private_expansion_kr_msit_press",
@@ -338,12 +341,13 @@
       ],
       "type": "rss",
       "related_corridor_ids": [],
-      "provenance_note": "Korea Ministry of Science and ICT official RSS guide lists this press-release feed; runtime transport and topic relevance remain required.",
+      "provenance_note": "Official Korea MSIT RSS guide explicitly lists this press-release feed. Actual feed health and mineral-policy relevance remain runtime checks.",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
       "access_verified_in_production": false,
-      "publicly_deliverable": false
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.msit.go.kr/contents/cont.do?mId=173&mPid=147&sCode=user"
     },
     {
       "id": "private_expansion_ind_tax_press",
@@ -355,12 +359,13 @@
       ],
       "type": "rss",
       "related_corridor_ids": [],
-      "provenance_note": "The Government of India's Income Tax Department Tax Feeds page documents this press-release RSS; runtime transport, native-clock parsing and reuse rights remain to be verified.",
+      "provenance_note": "Official Income Tax Department of India tax-feeds page explicitly lists this press-release RSS. Actual feed health and native-clock parsing remain runtime checks.",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
       "access_verified_in_production": false,
-      "publicly_deliverable": false
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.incometaxindia.gov.in/tax-feeds"
     },
     {
       "id": "private_expansion_ph_pna_news",
@@ -372,12 +377,13 @@
       ],
       "type": "rss",
       "related_corridor_ids": [],
-      "provenance_note": "Candidate URL surfaced in a public RSS feed directory for the Philippine News Agency; direct endpoint health, native clocks and publisher reuse rights require verification.",
+      "provenance_note": "Candidate surfaced in a public RSS directory reporting the Philippine News Agency feed was verified in August 2026; this is not an official publisher directory. Direct endpoint health, native clocks, and reuse rights remain unverified.",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
       "access_verified_in_production": false,
-      "publicly_deliverable": false
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://inklinenews.com/feeds/philippines/"
     }
   ]
 }
