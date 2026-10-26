@@ -75,13 +75,26 @@ export function observedPublicFinds195x3Coverage(
  for(const row of rows){
   if(!row||typeof row!=="object"||Array.isArray(row)||
      typeof row.id!=="string"||seen.has(row.id)||
+     !/^(?:geopolitics|macro|rare_earth)-[a-f0-9]{8}$/u.test(row.id)||
      !COUNTRY_NEWS_DOMAINS.includes(row.category as NewsDomain)||
      !PUBLIC_FIND_STATUSES.has(String(row.status))||
-     typeof row.title!=="string"||typeof row.published_at!=="string")
+     typeof row.title!=="string"||!row.title.startsWith("Geomacro finds ")||
+     typeof row.published_at!=="string"||
+     !["exact","day"].includes(row.date_precision)||
+     row.severity!==null||row.same_event_corrob_verified!==false||
+     !Array.isArray(row.sources_credited)||row.sources_credited.length>2||
+     row.sources_credited.some(credit=>typeof credit!=="string"||credit.length>230))
    throw Error("COUNTRY_NEWS_195X3_PUBLIC_FIND_INVALID");
   seen.add(row.id);
   const at=Date.parse(row.published_at);
-  if(!Number.isFinite(at)||at>now||at<now-PUBLIC_FIND_RETENTION_MS)continue;
+  const validClock=row.date_precision==="exact"
+    ? /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u.test(row.published_at)&&
+      Number.isFinite(at)&&new Date(at).toISOString().slice(0,19)===row.published_at.slice(0,19)
+    : /^\d{4}-\d{2}-\d{2}$/u.test(row.published_at)&&
+      Number.isFinite(at)&&new Date(at).toISOString().slice(0,10)===row.published_at&&
+      at+36*60*60_000<=now;
+  if(!validClock)throw Error("COUNTRY_NEWS_195X3_PUBLIC_FIND_CLOCK_INVALID");
+  if(at>now||at<now-PUBLIC_FIND_RETENTION_MS)continue;
   const category=row.category as NewsDomain;
   categoryTotals[category]++;
   recent.push(row);
