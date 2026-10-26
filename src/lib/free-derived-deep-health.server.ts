@@ -109,7 +109,7 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
     counts[row.category as Category]++;
   }
   if(ids.size===0)return result(false,"NO_CURRENT_FREE_OFFICIAL_ORIGINAL");
-  return result(true,"FREE_D1_DERIVED_NEWS_READBACK_OK",counts);
+  return result(true,"FREE_ARCHIVE_READBACK_OK",counts);
 }
 export async function probeFreeDerivedDeepHealth({
   fetcher=fetch,now=()=>Date.now(),
@@ -128,6 +128,6 @@ export async function probeFreeDerivedDeepHealth({
     if(text.length>1_000_000)return result(false,"FREE_ARCHIVE_RESPONSE_OVERSIZE");
     return classifyFreeDerivedFeed(JSON.parse(text) as FreeFeed,now());
   }catch{
-    return result(false,"FREE_D1_TRANSPORT_UNAVAILABLE");
+    return result(false,"FREE_ARCHIVE_TRANSPORT_UNAVAILABLE");
   }
 }
