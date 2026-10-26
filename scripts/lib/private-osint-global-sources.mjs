@@ -132,8 +132,9 @@ export function privateOsintGlobalSources(){
    throw Error("PRIVATE_OSINT_REGIONAL_EXPANSION_INVALID");
  const additionIds=new Set();
  for(const source of regional.sources){
-  let u;try{u=new URL(source.url)}catch{throw Error("PRIVATE_OSINT_REGIONAL_URL_INVALID")}
-  if(!/^private_expansion_[a-z0-9_]+$/u.test(source.id)||
+  let u,discoveryUrl=null;try{u=new URL(source.url);if(source.discovery_reference_url!==undefined)discoveryUrl=new URL(source.discovery_reference_url)}catch{throw Error("PRIVATE_OSINT_REGIONAL_URL_INVALID")}
+  const discoveryRefInvalid=source.discovery_reference_url!==undefined&&(!discoveryUrl||discoveryUrl.protocol!=="https:"||!discoveryUrl.hostname.includes(".")||discoveryUrl.username||discoveryUrl.password||discoveryUrl.port||discoveryUrl.hash);
+  if(discoveryRefInvalid||!/^private_expansion_[a-z0-9_]+$/u.test(source.id)||
      additionIds.has(source.id)||u.protocol!=="https:"||
      !u.hostname.includes(".")||u.username||u.password||u.port||u.hash||
      !["global",...Object.keys(CONTINENT_COUNTRIES_195)].includes(source.continent)||
