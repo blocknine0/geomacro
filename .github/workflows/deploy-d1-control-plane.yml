@@ -16,6 +16,7 @@ on:
       - ".github/workflows/deploy-d1-control-plane.yml"
       - ".github/workflows/recover-d1-quota-deployment-after-reset.yml"
       - "scripts/tests/d1-quota-reset-recovery-workflow.test.mjs"
+      - "scripts/tests/public-free-d1-cache.test.mjs"
       - "src/lib/original-verification-policy.ts"
       - "src/lib/release-news-observation.ts"
       - "src/lib/private-source-handoff.ts"
@@ -95,8 +96,8 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Verify D1 quota-reset recovery safety contracts offline
-        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs
+      - name: Verify P0-1 D1 quota and public-only cache contracts offline
+        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs
 
       - name: Test all-news signed publication integrity and source-proof boundaries offline
         run: node --test scripts/tests/public-signed-news.test.mjs
