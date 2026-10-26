@@ -57,7 +57,7 @@ export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourc
   "../../config/private-osint-local-gaplane.v1.json",import.meta.url),"utf8"));
  if(gaps?.schema!=="geomacro.private-osint-local-gaplane.v1"||
     gaps.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
-    !Array.isArray(gaps.sources)||gaps.sources.length>54)
+    !Array.isArray(gaps.sources)||gaps.sources.length>100)
   throw Error("UNVERIFIED_OSINT_LOCAL_GAP_MANIFEST_INVALID");
  for(const source of gaps.sources){
   let url,reference;
@@ -88,7 +88,7 @@ export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourc
   }));
  }
  }
- if(!items.length||items.length>80)throw Error("UNVERIFIED_OSINT_CANDIDATES_MISSING");
+ if(!items.length||items.length>128)throw Error("UNVERIFIED_OSINT_CANDIDATES_MISSING");
  return Object.freeze(items);
 }
 async function unauthenticatedTransportCheck(s,fetchImpl,now){
@@ -113,7 +113,7 @@ export async function collectPrivateUnverifiedOsint({
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
     typeof fetchImpl!=="function"||typeof normalize!=="function"||
     typeof resolveCountry!=="function"||!Array.isArray(registry)||
-    !registry.length||registry.length>80||
+    !registry.length||registry.length>128||
     registry.some(s=>s.activation_state!=="PRIVATE_UNVERIFIED_OBSERVATION"))
   throw Error("UNVERIFIED_OSINT_COLLECTOR_CONFIG_INVALID");
  const feeds=registry.filter(s=>s.access==="rss");
