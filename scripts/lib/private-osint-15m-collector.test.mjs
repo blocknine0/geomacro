@@ -166,3 +166,39 @@ test("a breaking-news burst reserves bounded private intake for after-15m items 
    "late arrivals in a crowded domain cannot be entirely starved");
  assert.equal(result.summary.late_arrivals_not_rejected_by_15m_cutoff,true);
 });
+
+test("same-publisher HTTPS RSS redirects are followed with bounded hops and remain privately attributed",async()=>{
+ const registry=[{id:"redirect-publisher",url:"https://www.publisher.example.org/rss",type:"rss",supported:true,categories:["macro"]}];
+ const requests=[];
+ const rss="<rss><channel><item><title>Central bank announces inflation and monetary policy decision</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>";
+ const result=await collectPrivateOsint15m({now,registry,normalize,resolveCountry:()=>null,fetchImpl:async(url,options)=>{
+  requests.push({url,headers:new Headers(options.headers)});
+  if(requests.length===1)return new Response(null,{status:301,headers:{location:"https://publisher.example.org/rss/native"}});
+  return new Response(rss,{status:200,headers:{"content-type":"application/rss+xml"}});
+ }});
+ assert.equal(requests.length,2);
+ assert.equal(requests[0].url,"https://www.publisher.example.org/rss");
+ assert.equal(requests[1].url,"https://publisher.example.org/rss/native");
+ assert.equal(requests[0].headers.get("user-agent"),"GeomacroOSINT/1.0 (+https://geomacro.live)");
+ assert.equal(result.checks.length,1);
+ assert.equal(result.checks[0].state,"OBSERVED");
+ assert.equal(result.summary.working_source_endpoints,1);
+ assert.equal(result.items.length,1);
+ assert.equal(result.summary.publicly_served,false);
+});
+
+test("cross-host or downgrade feed redirects fail closed without fetching the target",async()=>{
+ const registry=[{id:"redirect-hostile",url:"https://publisher.example.org/rss",type:"rss",supported:true,categories:["geopolitics"]}];
+ const destinations=["https://other.example.net/private-feed","http://publisher.example.org/unsecure"];
+ for(const destination of destinations){
+  const calls=[];
+  const result=await collectPrivateOsint15m({now,registry,normalize,resolveCountry:()=>null,fetchImpl:async(url)=>{
+   calls.push(url);
+   return new Response(null,{status:302,headers:{location:destination}});
+  }});
+  assert.equal(calls.length,1,destination);
+  assert.equal(result.checks.length,1,destination);
+  assert.equal(result.checks[0].state,"UNAVAILABLE",destination);
+  assert.equal(result.items.length,0,destination);
+ }
+});

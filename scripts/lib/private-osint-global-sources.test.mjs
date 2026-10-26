@@ -36,8 +36,8 @@ test("accepted global source inventory has distinct pinned feeds in six continen
  assert.equal(sourceMatrix.coverage.cells_with_global_fallback,585);
  assert.equal(sourceMatrix.coverage.cells_with_any_healthy_source,0);
  assert.equal(sourceMatrix.coverage.cells_without_configured_source,0);
- assert.equal(sourceMatrix.country_specific_source_countries_registered,66);
- assert.equal(sourceMatrix.countries_without_country_specific_publisher_source.length,129);
+ assert.equal(sourceMatrix.country_specific_source_countries_registered,67);
+ assert.equal(sourceMatrix.countries_without_country_specific_publisher_source.length,128);
  assert.equal(sourceMatrix.scope,"PRIVATE_SOURCE_ACQUISITION_COVERAGE_NOT_PUBLIC_FIND_COVERAGE");
  const unGenevaCandidate=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8")).sources.find(s=>s.id==="private_expansion_ungeneva_press_rss");
  assert.equal(sources.filter(source=>source.url===unGenevaCandidate.url).length,1);
@@ -197,7 +197,7 @@ test("195x3 source-coverage priority distinguishes local, regional and global fa
 test("new regional macro/minerals and maritime corridor candidates are deduplicated, bounded, private",async()=>{
  const additions=JSON.parse(readFileSync(new URL(
   "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
- assert.equal(additions.sources.length,35);
+ assert.equal(additions.sources.length,39);
  const complete=privateOsintGlobalSources();
  assert.ok(complete.length<=512);
  assert.equal(new Set(complete.map(s=>s.url)).size,complete.length);
@@ -283,7 +283,7 @@ test("regional official and sector feeds are deduplicated private candidates, an
 test("official local/regional feeds are source-registered with correct categories and current-tick probes",async()=>{
  const additions=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
  const all=privateOsintGlobalSources();
- assert.equal(additions.sources.length,35);
+ assert.equal(additions.sources.length,39);
  const ids=[
   "private_expansion_adb_asia_pacific",
   "private_expansion_bw_bankofbotswana_fx",
@@ -349,11 +349,44 @@ test("official local/regional feeds are source-registered with correct categorie
  assert.equal(blocked.summary.category_live_source_coverage.categories_with_any_healthy_feed_this_tick,0);
  assert.ok(blocked.summary.category_live_source_coverage.category_coverage.every(row=>row.status==="NO_HEALTHY_FEED_THIS_TICK"));
 });
+test("official Swiss, Norwegian and Swedish central-bank RSS feeds add local macro source lanes",()=>{
+ const additions=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
+ const complete=privateOsintGlobalSources();
+ assert.equal(additions.sources.length,39);
+ const ids=["private_expansion_che_snb_press","private_expansion_che_snb_monetary","private_expansion_nor_norges_press","private_expansion_swe_riksbank_press"];
+ const byId=new Map(additions.sources.map(source=>[source.id,source]));
+ for(const id of ids){
+  const row=byId.get(id);
+  assert.ok(row,id);
+  assert.ok(row.discovery_reference_url,id);
+  assert.ok(row.provenance_note.length>30,id);
+  assert.equal(row.categories.length,1,id);
+  assert.deepEqual(row.categories,["macro"],id);
+  assert.equal(row.activation_state,"RUNTIME_PROBE_REQUIRED",id);
+  assert.equal(row.provider_rights_verified,false,id);
+  assert.equal(row.commercial_eligible,false,id);
+  assert.equal(row.access_verified_in_production,false,id);
+  assert.equal(row.publicly_deliverable,false,id);
+  const found=complete.filter(source=>source.url===row.url);
+  assert.equal(found.length,1,id);
+ }
+ assert.equal(byId.get("private_expansion_che_snb_press").publisher_country_iso3,"CHE");
+ assert.equal(byId.get("private_expansion_che_snb_monetary").type,"rdf");
+ assert.equal(byId.get("private_expansion_nor_norges_press").publisher_country_iso3,"NOR");
+ assert.equal(byId.get("private_expansion_swe_riksbank_press").publisher_country_iso3,"SWE");
+ const matrix=privateOsintCountryCategoryCoverage(complete,[],[],{includeCells:true});
+ assert.equal(matrix.country_specific_source_countries_registered,67);
+ assert.equal(matrix.countries_without_country_specific_publisher_source.length,128);
+ const cheMacro=matrix.cells.find(row=>row.country_iso3==="CHE"&&row.category==="macro");
+ assert.ok(cheMacro.local.registered>=2);
+ assert.equal(cheMacro.local.healthy,0,"registration must not pretend the new RSS feeds already passed a live check");
+ assert.equal(cheMacro.commercially_eligible,false);
+});
 test("Sri Lanka central bank RSS feeds provide a local macro lane with native-clock checks",async()=>{
  const additions=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
  const complete=privateOsintGlobalSources();
  const ids=["private_expansion_lka_cbsl_mpr","private_expansion_lka_cbsl_weekly_indicators","private_expansion_lka_cbsl_monthly_indicators"];
- assert.equal(additions.sources.length,35);
+ assert.equal(additions.sources.length,39);
  const byId=new Map(additions.sources.map(s=>[s.id,s]));
  const selected=complete.filter(s=>ids.some(id=>byId.get(id)?.url===s.url));
  assert.equal(selected.length,3);
@@ -404,7 +437,7 @@ test("new Botswana and Thailand official RSS feeds improve local publisher-count
  const ids=["private_expansion_bw_bankofbotswana_news","private_expansion_th_mdes_news"];
  const selected=all.filter(s=>ids.includes(s.id));
  assert.equal(selected.length,2);
- assert.equal(additions.sources.length,35);
+ assert.equal(additions.sources.length,39);
  const byId=new Map(additions.sources.map(s=>[s.id,s]));
  assert.equal(byId.get(ids[0]).url,"https://www.bankofbotswana.bw/rss/latest_news");
  assert.equal(byId.get(ids[1]).url,"https://mdes.go.th/news/rss/3");
