@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.private-osint-local-rss-candidates.v1",
   "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
-  "interpretation": "Source urls are free unauthenticated official publisher candidate RSS paths. Only on-tick real 200 parsed RSS/Atom and publisher-native dates count; HTML/403/redirects/no dates are NOT active. Publisher country is not event country; no rights cleared.",
+  "interpretation": "Candidates from local official institutions and original national news publishers. Country metadata denotes publisher location only. Probe HTTPS RSS parser and native item date before counting healthy. No licensed republication.",
   "sources": [
     {
       "id": "private_local_candidate_gh_bank",
@@ -13,266 +13,6 @@
       ],
       "type": "rss",
       "discovery_reference_url": "https://www.bog.gov.gh/news/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_ug_finance",
-      "url": "https://www.finance.go.ug/feed/",
-      "continent": "africa",
-      "publisher_country_iso3": "UGA",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.finance.go.ug/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_zm_bank",
-      "url": "https://www.boz.zm/feed/",
-      "continent": "africa",
-      "publisher_country_iso3": "ZMB",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.boz.zm/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_mw_bank",
-      "url": "https://www.rbm.mw/feed/",
-      "continent": "africa",
-      "publisher_country_iso3": "MWI",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.rbm.mw/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_rw_bank",
-      "url": "https://www.bnr.rw/feed/",
-      "continent": "africa",
-      "publisher_country_iso3": "RWA",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.bnr.rw/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_np_bank",
-      "url": "https://www.nrb.org.np/feed/",
-      "continent": "asia",
-      "publisher_country_iso3": "NPL",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.nrb.org.np/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_bd_mfa",
-      "url": "https://mofa.gov.bd/feed/",
-      "continent": "asia",
-      "publisher_country_iso3": "BGD",
-      "categories": [
-        "geopolitics"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://mofa.gov.bd/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_my_bank",
-      "url": "https://www.bnm.gov.my/feed/",
-      "continent": "asia",
-      "publisher_country_iso3": "MYS",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.bnm.gov.my/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_id_bank",
-      "url": "https://www.bi.go.id/en/rss",
-      "continent": "asia",
-      "publisher_country_iso3": "IDN",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.bi.go.id/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_pe_bank",
-      "url": "https://www.bcrp.gob.pe/feed/",
-      "continent": "south_america",
-      "publisher_country_iso3": "PER",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.bcrp.gob.pe/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_bo_bank",
-      "url": "https://www.bcb.gob.bo/feed/",
-      "continent": "south_america",
-      "publisher_country_iso3": "BOL",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.bcb.gob.bo/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_py_bank",
-      "url": "https://www.bcp.gov.py/feed/",
-      "continent": "south_america",
-      "publisher_country_iso3": "PRY",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.bcp.gov.py/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_co_bank",
-      "url": "https://www.banrep.gov.co/feed/",
-      "continent": "south_america",
-      "publisher_country_iso3": "COL",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.banrep.gov.co/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_do_bank",
-      "url": "https://www.bancentral.gov.do/feed/",
-      "continent": "north_america",
-      "publisher_country_iso3": "DOM",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://www.bancentral.gov.do/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
@@ -304,15 +44,17 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_local_candidate_bb_bank",
-      "url": "https://www.centralbank.org.bb/feed/",
-      "continent": "north_america",
-      "publisher_country_iso3": "BRB",
+      "id": "private_local_candidate_ug_independent",
+      "url": "https://www.independent.co.ug/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "UGA",
       "categories": [
-        "macro"
+        "geopolitics",
+        "macro",
+        "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://www.centralbank.org.bb/",
+      "discovery_reference_url": "https://www.independent.co.ug/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
@@ -324,15 +66,193 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_local_candidate_am_bank",
-      "url": "https://www.cba.am/en/rss",
+      "id": "private_local_candidate_rw_newtimes",
+      "url": "https://www.newtimes.co.rw/rss",
+      "continent": "africa",
+      "publisher_country_iso3": "RWA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.newtimes.co.rw/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_zm_lusakatimes",
+      "url": "https://www.lusakatimes.com/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "ZMB",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.lusakatimes.com/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_mw_nyasatimes",
+      "url": "https://www.nyasatimes.com/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "MWI",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.nyasatimes.com/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_zw_newsday",
+      "url": "https://www.newsday.co.zw/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "ZWE",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.newsday.co.zw/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_np_kathmandupost",
+      "url": "https://kathmandupost.com/rss",
+      "continent": "asia",
+      "publisher_country_iso3": "NPL",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://kathmandupost.com/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_bd_dailystar",
+      "url": "https://www.thedailystar.net/rss.xml",
+      "continent": "asia",
+      "publisher_country_iso3": "BGD",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.thedailystar.net/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_my_thestar",
+      "url": "https://www.thestar.com.my/rss",
+      "continent": "asia",
+      "publisher_country_iso3": "MYS",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.thestar.com.my/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_id_antara",
+      "url": "https://en.antaranews.com/rss/news.xml",
+      "continent": "asia",
+      "publisher_country_iso3": "IDN",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://en.antaranews.com/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_am_armenpress",
+      "url": "https://armenpress.am/en/rss.xml",
       "continent": "asia",
       "publisher_country_iso3": "ARM",
       "categories": [
-        "macro"
+        "geopolitics",
+        "macro",
+        "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://www.cba.am/",
+      "discovery_reference_url": "https://armenpress.am/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
@@ -344,15 +264,17 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_local_candidate_kg_bank",
-      "url": "https://www.nbkr.kg/rss/",
+      "id": "private_local_candidate_kg_24kg",
+      "url": "https://24.kg/english/rss/",
       "continent": "asia",
       "publisher_country_iso3": "KGZ",
       "categories": [
-        "macro"
+        "geopolitics",
+        "macro",
+        "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://www.nbkr.kg/",
+      "discovery_reference_url": "https://24.kg/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
@@ -364,35 +286,17 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_local_candidate_uz_bank",
-      "url": "https://cbu.uz/en/rss/",
-      "continent": "asia",
-      "publisher_country_iso3": "UZB",
-      "categories": [
-        "macro"
-      ],
-      "type": "rss",
-      "discovery_reference_url": "https://cbu.uz/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
-      "transport_verified_at_registration": false,
-      "publisher_native_dates_required": true,
-      "private_only": true,
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
-      "id": "private_local_candidate_mn_bank",
-      "url": "https://www.mongolbank.mn/eng/feed/",
+      "id": "private_local_candidate_mn_montsame",
+      "url": "https://montsame.mn/en/rss",
       "continent": "asia",
       "publisher_country_iso3": "MNG",
       "categories": [
-        "macro"
+        "geopolitics",
+        "macro",
+        "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://www.mongolbank.mn/",
+      "discovery_reference_url": "https://montsame.mn/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
@@ -404,15 +308,17 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_local_candidate_kz_bank",
-      "url": "https://nationalbank.kz/en/rss",
+      "id": "private_local_candidate_uz_uza",
+      "url": "https://uza.uz/en/rss",
       "continent": "asia",
-      "publisher_country_iso3": "KAZ",
+      "publisher_country_iso3": "UZB",
       "categories": [
-        "macro"
+        "geopolitics",
+        "macro",
+        "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://nationalbank.kz/",
+      "discovery_reference_url": "https://uza.uz/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
@@ -424,8 +330,8 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_local_candidate_dz_news",
-      "url": "https://www.aps.dz/en/rss",
+      "id": "private_local_candidate_dz_tsa",
+      "url": "https://www.tsa-algerie.com/feed/",
       "continent": "africa",
       "publisher_country_iso3": "DZA",
       "categories": [
@@ -434,7 +340,7 @@
         "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://www.aps.dz/en",
+      "discovery_reference_url": "https://www.tsa-algerie.com/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
@@ -446,8 +352,8 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_local_candidate_ma_news",
-      "url": "https://www.mapnews.ma/en/rss",
+      "id": "private_local_candidate_ma_moroccoworld",
+      "url": "https://www.moroccoworldnews.com/feed",
       "continent": "africa",
       "publisher_country_iso3": "MAR",
       "categories": [
@@ -456,7 +362,7 @@
         "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://www.mapnews.ma/en",
+      "discovery_reference_url": "https://www.moroccoworldnews.com/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
@@ -468,8 +374,8 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_local_candidate_qa_news",
-      "url": "https://www.qna.org.qa/en/rss",
+      "id": "private_local_candidate_qa_peninsula",
+      "url": "https://thepeninsulaqatar.com/rss",
       "continent": "asia",
       "publisher_country_iso3": "QAT",
       "categories": [
@@ -478,7 +384,7 @@
         "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://www.qna.org.qa/en",
+      "discovery_reference_url": "https://thepeninsulaqatar.com/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
@@ -490,8 +396,8 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_local_candidate_bh_news",
-      "url": "https://www.bna.bh/en/rss.aspx",
+      "id": "private_local_candidate_bh_gdn",
+      "url": "https://www.gdnonline.com/rss",
       "continent": "asia",
       "publisher_country_iso3": "BHR",
       "categories": [
@@ -500,7 +406,7 @@
         "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://www.bna.bh/en",
+      "discovery_reference_url": "https://www.gdnonline.com/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
@@ -512,17 +418,17 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_local_candidate_om_news",
-      "url": "https://omannews.gov.om/rss",
-      "continent": "asia",
-      "publisher_country_iso3": "OMN",
+      "id": "private_local_candidate_tz_citizen",
+      "url": "https://www.thecitizen.co.tz/rss",
+      "continent": "africa",
+      "publisher_country_iso3": "TZA",
       "categories": [
         "geopolitics",
         "macro",
         "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://omannews.gov.om/",
+      "discovery_reference_url": "https://www.thecitizen.co.tz/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
@@ -534,15 +440,17 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_local_candidate_tz_bank",
-      "url": "https://www.bot.go.tz/feed/",
-      "continent": "africa",
-      "publisher_country_iso3": "TZA",
+      "id": "private_local_candidate_pe_andina",
+      "url": "https://andina.pe/agencia/rss",
+      "continent": "south_america",
+      "publisher_country_iso3": "PER",
       "categories": [
-        "macro"
+        "geopolitics",
+        "macro",
+        "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://www.bot.go.tz/",
+      "discovery_reference_url": "https://andina.pe/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
@@ -554,15 +462,193 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_local_candidate_zw_bank",
-      "url": "https://www.rbz.co.zw/feed/",
-      "continent": "africa",
-      "publisher_country_iso3": "ZWE",
+      "id": "private_local_candidate_bo_eldeber",
+      "url": "https://www.eldeber.com.bo/rss",
+      "continent": "south_america",
+      "publisher_country_iso3": "BOL",
       "categories": [
-        "macro"
+        "geopolitics",
+        "macro",
+        "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://www.rbz.co.zw/",
+      "discovery_reference_url": "https://www.eldeber.com.bo/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_py_abc",
+      "url": "https://www.abc.com.py/rss/",
+      "continent": "south_america",
+      "publisher_country_iso3": "PRY",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.abc.com.py/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_do_diariolibre",
+      "url": "https://www.diariolibre.com/rss",
+      "continent": "north_america",
+      "publisher_country_iso3": "DOM",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.diariolibre.com/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_bb_today",
+      "url": "https://barbadostoday.bb/feed/",
+      "continent": "north_america",
+      "publisher_country_iso3": "BRB",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://barbadostoday.bb/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_cl_biobio",
+      "url": "https://www.biobiochile.cl/feed/",
+      "continent": "south_america",
+      "publisher_country_iso3": "CHL",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.biobiochile.cl/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_mz_club",
+      "url": "https://clubofmozambique.com/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "MOZ",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://clubofmozambique.com/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_sr_starnieuws",
+      "url": "https://www.starnieuws.com/rss/",
+      "continent": "south_america",
+      "publisher_country_iso3": "SUR",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.starnieuws.com/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_co_elespectador",
+      "url": "https://www.elespectador.com/feed/",
+      "continent": "south_america",
+      "publisher_country_iso3": "COL",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.elespectador.com/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
+      "transport_verified_at_registration": false,
+      "publisher_native_dates_required": true,
+      "private_only": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_local_candidate_af_tolonews",
+      "url": "https://tolonews.com/rss",
+      "continent": "asia",
+      "publisher_country_iso3": "AFG",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://tolonews.com/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "source_kind": "LOCAL_PUBLISHER_INDEX_CANDIDATE",
       "transport_verified_at_registration": false,
