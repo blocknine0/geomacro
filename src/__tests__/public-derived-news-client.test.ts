@@ -32,7 +32,8 @@ describe("browser public journal fallback",()=>{
 
   it("serves original-dated derived cards from cacheable static assets without browser server-RPC dependency",async()=>{
     const f=vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
-      expect(init?.cache).toBe("default");
+      expect(init?.cache).toBeUndefined();
+      expect(init?.redirect).toBe("manual");
       return new Response(JSON.stringify(doc([signal])),{
         status:200,headers:{"content-type":"application/json"},
       });
