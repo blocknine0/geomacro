@@ -58,8 +58,8 @@ test("accepted global source inventory has distinct pinned feeds in six continen
  assert.equal(sourceMatrix.coverage.cells_with_global_fallback,585);
  assert.equal(sourceMatrix.coverage.cells_with_any_healthy_source,0);
  assert.equal(sourceMatrix.coverage.cells_without_configured_source,0);
- assert.equal(sourceMatrix.country_specific_source_countries_registered,71);
- assert.equal(sourceMatrix.countries_without_country_specific_publisher_source.length,124);
+ assert.equal(sourceMatrix.country_specific_source_countries_registered,94);
+ assert.equal(sourceMatrix.countries_without_country_specific_publisher_source.length,101);
  assert.equal(sourceMatrix.scope,"PRIVATE_SOURCE_ACQUISITION_COVERAGE_NOT_PUBLIC_FIND_COVERAGE");
  const unGenevaCandidate=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8")).sources.find(s=>s.id==="private_expansion_ungeneva_press_rss");
  assert.equal(sources.filter(source=>source.url===unGenevaCandidate.url).length,1);
@@ -397,8 +397,8 @@ test("official Swiss, Norwegian and Swedish central-bank RSS feeds add local mac
  assert.equal(byId.get("private_expansion_nor_norges_press").publisher_country_iso3,"NOR");
  assert.equal(byId.get("private_expansion_swe_riksbank_press").publisher_country_iso3,"SWE");
  const matrix=privateOsintCountryCategoryCoverage(complete,[],[],{includeCells:true});
- assert.equal(matrix.country_specific_source_countries_registered,71);
- assert.equal(matrix.countries_without_country_specific_publisher_source.length,124);
+ assert.equal(matrix.country_specific_source_countries_registered,94);
+ assert.equal(matrix.countries_without_country_specific_publisher_source.length,101);
  const cheMacro=matrix.cells.find(row=>row.country_iso3==="CHE"&&row.category==="macro");
  assert.ok(cheMacro.local.registered>=2);
  assert.equal(cheMacro.local.healthy,0,"registration must not pretend the new RSS feeds already passed a live check");
@@ -615,4 +615,26 @@ test("eight official local RSS candidates are private-only and never accepted wi
  assert.equal(denied.checks[0].state,"DENIED");
  assert.equal(denied.items.length,0);
  assert.equal(privateOsintPublisherCountryCoverage([usgs,cbr],denied.checks).working_publisher_country_specific_endpoints,0);
+});
+
+test("free 195-country local RSS candidate manifest cannot launder unverified URLs into healthy sources",()=>{
+ const manifest=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-local-rss-candidates.v1.json",import.meta.url),"utf8"));
+ assert.equal(manifest.schema,"geomacro.private-osint-local-rss-candidates.v1");
+ assert.equal(manifest.scope,"PROTECTED_INTERNAL_OSINT_ONLY");
+ assert.equal(manifest.sources.length,28);
+ const sources=privateOsintGlobalSources();
+ const local=sources.filter(s=>s.id.startsWith("private_local_candidate_"));
+ assert.equal(local.length,28);
+ assert.equal(new Set(local.map(s=>s.url)).size,local.length);
+ for(const source of local){
+  assert.equal(source.transport_verified_at_registration,false);
+  assert.equal(source.private_only,true);
+  assert.equal(source.publisher_native_dates_required,true);
+  assert.equal(source.provider_rights_verified,false);
+  assert.equal(source.commercial_eligible,false);
+  assert.equal(source.access_verified_in_production,false);
+  assert.equal(source.publicly_deliverable,false);
+ }
+ assert.equal(privateOsintPublisherCountryCoverage(local,[]).working_publisher_country_specific_endpoints,0);
 });
