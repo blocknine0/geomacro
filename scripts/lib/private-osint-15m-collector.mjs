@@ -15,6 +15,44 @@ export const PRIVATE_OSINT_POLL_MINUTES=5;
 export const PRIVATE_OSINT_MAX_SOURCES=512;
 export const PRIVATE_OSINT_MAX_RESULTS_PER_TICK=768;
 const DOMAINS=["geopolitics","macro","rare_earth"];
+const FEED_REDIRECT_STATUSES=new Set([301,302,303,307,308]);
+const normalizedPublicFeedHost=host=>host.toLowerCase().replace(/^www\\./u,"");
+function safeFeedRedirect(from,to){
+ let target;try{target=new URL(to,from)}catch{return null}
+ if(target.protocol!=="https:"||target.username||target.password||target.port||target.hash||
+    !target.hostname.includes(".")||normalizedPublicFeedHost(target.hostname)!==normalizedPublicFeedHost(from.hostname)||
+    /^(?:localhost|.*\\.(?:local|internal|test|invalid))$/iu.test(target.hostname)||
+    /^\\d{1,3}(?:\\.\\d{1,3}){3}$/u.test(target.hostname)||target.hostname.startsWith("["))return null;
+ return target;
+}
+/**
+ * Some official publisher RSS endpoints redirect to their canonical same-host
+ * URL. Follow at most three HTTPS redirects, allowing only exact host or the
+ * same host with/without www. This avoids dropping readable feeds while
+ * refusing cross-site redirect chains or protocol downgrades. No redirects
+ * are used for article URLs; this is only the pinned feed transport.
+ */
+async function fetchPrivateFeedSafely(url,options,fetchImpl){
+ const original=new URL(url);
+ let current=original,didRedirect=false;
+ const headers=new Headers(options?.headers??{});
+ if(!headers.has("user-agent"))headers.set("user-agent","GeomacroOSINT/1.0 (+https://geomacro.live)");
+ for(let hop=0;hop<=3;hop++){
+  const response=await fetchImpl(current.href,{...options,headers,redirect:"manual"});
+  if(!FEED_REDIRECT_STATUSES.has(response.status)){
+   if(didRedirect&&response.status===200)
+    return new Response(response.body,{status:response.status,statusText:response.statusText,headers:response.headers});
+   return response;
+  }
+  const location=response.headers.get("location");
+  if(!location||hop===3)return response;
+  const next=safeFeedRedirect(current,location);
+  if(!next)return new Response(null,{status:502});
+  try{await response.body?.cancel()}catch{}
+  current=next;didRedirect=true;
+ }
+ return new Response(null,{status:502});
+}
 export async function collectPrivateOsint15m({
   now=new Date(),fetchImpl=fetch,registry=privateOsintGlobalSources(),
   normalize,resolveCountry,concurrency=8,onOriginalCandidate=null,
@@ -38,8 +76,10 @@ export async function collectPrivateOsint15m({
   // A large news-index catalogue must not block unrelated original publishers.
   const responses=Array(registry.length),running=new Set(),hosts=new Map();
   const pending=registry.map((source,index)=>({source,index,host:new URL(source.url).hostname}));
-  const privateFetch=(url,options)=>fetchImpl(url,new URL(url).hostname==="news.google.com"?
-    {...options,signal:AbortSignal.any([options.signal,AbortSignal.timeout(3500)])}:options);
+  const privateFetch=(url,options)=>fetchPrivateFeedSafely(url,
+    new URL(url).hostname==="news.google.com"?
+      {...options,signal:AbortSignal.any([options.signal,AbortSignal.timeout(3500)])}:options,
+    fetchImpl);
   try{
     while(pending.length||running.size){
       while(running.size<concurrency){
