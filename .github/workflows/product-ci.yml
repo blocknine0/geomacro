@@ -30,6 +30,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify permanent workflow inventory and frozen Predge definitions
+        run: node scripts/ops/verify-github-workflow-inventory.mjs
+
       # Pin the exact Bun version that produced and validated the committed
       # lockfile. Do not float on "latest": lockfile semantics can change
       # between Bun releases and create false/intermittent CI failures.
