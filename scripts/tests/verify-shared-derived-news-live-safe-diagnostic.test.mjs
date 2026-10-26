@@ -92,10 +92,13 @@ test("Predge shared D1 parity reads the zero-delay website journal, never the de
     raw_upstream_delivered:false,items:[],counts,availability_by_category
    }),{status:200,headers:{"content-type":"application/json"}});
   }
-  if(url.endsWith("/website-derived-news-immediate")){
+  if(url.endsWith("/website-derived-news-bundle")){
    return new Response(JSON.stringify({
-    ok:true,page_offset:0,page_size:250,signals:[],
-    has_more:false,next_offset:null
+    ok:true,schema:"geomacro.website-derived-news-bundle.v1",
+    checked_at:new Date().toISOString(),original_release_delay_minutes:0,
+    retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
+    complete:true,item_cap:600,returned_rows:0,signals:[],first_ingest:[],
+    ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER"
    }),{status:200,headers:{"content-type":"application/json"}});
   }
   assert.fail("unexpected or delayed legacy derived news endpoint: "+url);
