@@ -194,7 +194,7 @@ test("195x3 source-coverage priority distinguishes local, regional and global fa
 test("new regional macro/minerals and maritime corridor candidates are deduplicated, bounded, private",async()=>{
  const additions=JSON.parse(readFileSync(new URL(
   "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
- assert.equal(additions.sources.length,32);
+ assert.equal(additions.sources.length,31);
  const complete=privateOsintGlobalSources();
  assert.ok(complete.length<=512);
  assert.equal(new Set(complete.map(s=>s.url)).size,complete.length);
@@ -276,7 +276,7 @@ test("regional official and sector feeds are deduplicated private candidates, an
 test("official local/regional feeds are source-registered with correct categories and current-tick probes",async()=>{
  const additions=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
  const all=privateOsintGlobalSources();
- assert.equal(additions.sources.length,32);
+ assert.equal(additions.sources.length,31);
  const ids=[
   "private_expansion_adb_asia_pacific",
   "private_expansion_bw_bankofbotswana_fx",
@@ -286,7 +286,6 @@ test("official local/regional feeds are source-registered with correct categorie
   "private_expansion_statcan_business_atom",
   "private_expansion_eurostat_economy_atom",
   "private_expansion_eurostat_trade_atom",
-  "private_expansion_ungeneva_press_rss",
   "private_expansion_uk_dbt_atom",
   "private_expansion_uk_fcdo_atom",
  ];
@@ -306,12 +305,12 @@ test("official local/regional feeds are source-registered with correct categorie
  }
  assert.equal(byId.get("private_expansion_nrcan_atom").type,"atom");
  assert.ok(byId.get("private_expansion_nrcan_atom").categories.includes("rare_earth"));
- assert.ok(byId.get("private_expansion_ungeneva_press_rss").categories.includes("geopolitics"));
+ assert.ok(byId.get("private_expansion_uk_fcdo_atom").categories.includes("geopolitics"));
  assert.ok(byId.get("private_expansion_eurostat_economy_atom").categories.includes("macro"));
  const atom=(title)=>"<feed xmlns=\"http://www.w3.org/2005/Atom\"><title>source feed</title><entry><title>"+title+"</title><published>2026-10-25T11:55:00Z</published><updated>2026-10-25T11:55:00Z</updated><link href=\"https://example.org/story\" rel=\"alternate\"/></entry></feed>";
  const rss=(title)=>"<rss version=\"2.0\"><channel><item><title>"+title+"</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate><link>https://example.org/story</link></item></channel></rss>";
  const cases=[
-  ["private_expansion_ungeneva_press_rss","geopolitics","UN Geneva announces new ceasefire and diplomatic sanctions statement"],
+  ["private_expansion_uk_fcdo_atom","geopolitics","UK foreign office announces new ceasefire and diplomatic sanctions statement"],
   ["private_expansion_eurostat_economy_atom","macro","Eurostat reports inflation and GDP economic statistics"],
   ["private_expansion_nrcan_atom","rare_earth","Canada announces critical minerals lithium and rare-earth supply policy"],
  ];
@@ -345,7 +344,7 @@ test("new Botswana and Thailand official RSS feeds improve local publisher-count
  const ids=["private_expansion_bw_bankofbotswana_news","private_expansion_th_mdes_news"];
  const selected=all.filter(s=>ids.includes(s.id));
  assert.equal(selected.length,2);
- assert.equal(additions.sources.length,32);
+ assert.equal(additions.sources.length,31);
  const byId=new Map(additions.sources.map(s=>[s.id,s]));
  assert.equal(byId.get(ids[0]).url,"https://www.bankofbotswana.bw/rss/latest_news");
  assert.equal(byId.get(ids[1]).url,"https://mdes.go.th/news/rss/3");
