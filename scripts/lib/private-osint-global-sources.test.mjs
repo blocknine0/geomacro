@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {createHash} from "node:crypto";
-import {privateOsintGlobalSources,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,PRIVATE_OSINT_TOPICS} from "./private-osint-global-sources.mjs";
+import {privateOsintGlobalSources,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintCorridorSourceCoverage,privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,PRIVATE_OSINT_TOPICS} from "./private-osint-global-sources.mjs";
 import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
 import {privateOsintCountryMention} from "./private-osint-country-mentions.mjs";
@@ -350,6 +350,30 @@ test("new Botswana and Thailand official RSS feeds improve local publisher-count
  assert.equal(thailandGeo.source_tier_status,"LOCAL_SOURCE_HEALTHY");
  assert.equal(botswana.event_country_verified,false);
  assert.equal(thailandMacro.commercially_eligible,false);
+});
+
+test("58-corridor matrix separates reference-only routes from healthy private feeds",()=>{
+ const source={id:"coverage_test_hormuz_feed",url:"https://coverage-test.example/hormuz",continent:"global",publisher_country_iso3:null,
+  categories:["macro"],related_corridor_ids:["strait_of_hormuz"],supported:true};
+ const sourceRef=createHash("sha256").update([source.id,source.url,"macro"].join("\n")).digest("hex");
+ const report=privateOsintCorridorSourceCoverage([source],[{source_ref:sourceRef,state:"OBSERVED"}],{includeCells:true});
+ assert.equal(report.corridor_count,58);
+ assert.equal(report.returned_corridors,58);
+ assert.ok(report.coverage.with_canonical_monitor_reference>0);
+ assert.ok(report.coverage.with_overlay_reference_surface>0);
+ assert.ok(report.coverage.with_private_feed_candidate>0);
+ assert.ok(report.coverage.with_private_feed_healthy_this_tick>0);
+ assert.equal(report.physical_flow_verified,false);
+ assert.equal(report.route_geometry_certified,false);
+ const hormuz=report.cells.find(x=>x.corridor_id==="strait_of_hormuz");
+ assert.equal(hormuz.private_osint_feed_candidate_count,1);
+ assert.equal(hormuz.private_osint_feed_sources_healthy_this_tick,1);
+ assert.equal(hormuz.acquisition_status,"PRIVATE_FEED_HEALTHY_THIS_TICK");
+ assert.equal(hormuz.commercially_eligible,false);
+ const sundas=report.cells.find(x=>x.corridor_id==="sunda_lombok_straits");
+ assert.equal(sundas.private_osint_feed_candidate_count,0);
+ assert.equal(sundas.acquisition_status,"REFERENCE_ONLY_NOT_LIVE");
+ assert.equal(sundas.current_disruption_verified,false);
 });
 
 test("official corridor reference overlay only covers existing named routes, never asserts live transport",()=>{
