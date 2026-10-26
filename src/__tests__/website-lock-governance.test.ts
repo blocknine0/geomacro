@@ -72,8 +72,15 @@ describe("website lock governance", () => {
     // approval advances the active baseline without rewriting that older approval.
     expect(languageFallback.approved_ui_commit).toBe("49d13acbedcf6dd191251da6dbea10056e5b74b1");
     const osintStatusLabelApproval = config.approved_osint_status_label_hide_20261027;
-    expect(osintStatusLabelApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(osintStatusLabelApproval.approved_ui_commit).toBe("0d742df4aa4366345cf8a4d27aeaee4fea40aea8");
     expect(osintStatusLabelApproval.previous_baseline_sha).toBe("49d13acbedcf6dd191251da6dbea10056e5b74b1");
+    const unscoredWordHideApproval = config.approved_intelligence_unscored_word_hide_20261027;
+    expect(unscoredWordHideApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(unscoredWordHideApproval.previous_baseline_sha).toBe(osintStatusLabelApproval.approved_ui_commit);
+    expect(unscoredWordHideApproval.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
+    expect(unscoredWordHideApproval.payment_authorized).toBe(false);
+    expect(unscoredWordHideApproval.lovable_publish_required).toBe(true);
+    expect(unscoredWordHideApproval.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(languageFallback.scope).toEqual([
       "public/geomacro-language.js",
       "src/components/site-shell.tsx",

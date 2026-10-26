@@ -80,9 +80,6 @@ function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;s
           </span>
         </div>
         <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{look.reading}</p>
-        {signal.status !== "osint_feed_observed_unverified" ? (
-          <p className="mt-2 text-[11px] font-semibold text-muted-foreground">Official release observed · Unscored</p>
-        ) : null}
         <h3 className="mt-2 text-xl font-semibold leading-snug tracking-tight text-foreground">{displayProse(concreteIntelligenceHeadline(signal) ?? "")}</h3>
         {signal.geography ? <p className="mt-2 text-xs text-muted-foreground">{displayProse(signal.geography)}</p> : null}
         <p className="mt-4 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">What changed</p>
@@ -349,7 +346,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         </p>
         <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Clock3 className="h-4 w-4" aria-hidden />
-          <span>No added publication delay · Original dates shown · Unscored findings</span>
+          <span>No added publication delay · Original dates shown</span>
         </p>
       </header>
 
