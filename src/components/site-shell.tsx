@@ -85,16 +85,18 @@ function LanguageMenu() {
         try {
           source = new URL(embedded);
         } catch {
-          // Keep the current URL and clean translator-only query parameters.
+          for (const key of ["sl", "tl", "hl", "u"]) source.searchParams.delete(key);
         }
+      } else {
+        for (const key of ["sl", "tl", "hl", "u"]) source.searchParams.delete(key);
       }
     } else if (source.hostname.endsWith(".translate.goog")) {
-      source = new URL(`https://geomacro.live${source.pathname}${source.search}`);
+      const original = new URL(`https://geomacro.live${source.pathname}${source.search}`);
+      original.hash = source.hash;
+      source = original;
     }
     for (const key of [...source.searchParams.keys()]) {
-      if (key.startsWith("_x_tr_") || key === "sl" || key === "tl" || key === "hl" || key === "u") {
-        source.searchParams.delete(key);
-      }
+      if (key.startsWith("_x_tr_")) source.searchParams.delete(key);
     }
     try {
       window.localStorage.setItem("geomacro.website_language", code);
