@@ -89,9 +89,12 @@ if(result.summary.configured_country_routes!==195||
 // source-clock JSON is durably written and independently read back.
 const persisted=await persistPrivateOsintBatch({
  result,privateToken,now:Date.now(),
+ sourceHealthSnapshotSlots:researchPrivateOnly?3:1,
  controlPlaneRoot,
 });
-if(persisted.source_checks_persisted!==result.checks.length||
+if(persisted.source_checks_observed_this_tick!==result.checks.length||
+ persisted.source_checks_persisted!==persisted.source_checks_selected_for_d1||
+ persisted.source_checks_deferred_to_snapshot+persisted.source_checks_persisted!==result.checks.length||
  !persisted.d1_write_exact_readback_verified||
  !persisted.separate_private_d1_readback_verified)
  throw Error("PRIVATE_OSINT_15M_DURABLE_PRODUCTION_ACCEPTANCE_FAILED");
