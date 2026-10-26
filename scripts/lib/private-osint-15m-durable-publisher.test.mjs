@@ -16,6 +16,7 @@ function simulate(){
     ok:true,persisted:b.items.length,capacity_excluded:0,checks_saved:b.checks.length,
     d1_exact_readback_verified:true,
     existence_and_readback_bundled:true,d1_queries_this_write:3,
+    d1_usage_metadata_complete:true,d1_rows_read_this_write:8,d1_rows_written_this_write:4,
     native_feed_to_first_durable_write_within_15m:b.items.length,
     native_feed_to_first_durable_write_over_15m:0,
     newly_persisted_within_15m:b.items.length,
@@ -46,6 +47,9 @@ test("all batches are protected; independent private reader verifies durable rec
  assert.equal(result.private_three_category_bundle_readback_verified,true);
  assert.equal(result.private_d1_writer_reads_bundled_verified,true);
  assert.equal(result.d1_queries_for_write_batches,3);
+ assert.equal(result.d1_rows_read_for_write_batches,8);
+ assert.equal(result.d1_rows_written_for_write_batches,4);
+ assert.equal(result.d1_usage_metadata_complete,true);
  assert.ok(calls[1].url.endsWith('?view=bundle'));
  assert.equal(result.original_page_independently_verified,false);
  assert.equal(result.independent_verification_required_for_ingestion,false);
