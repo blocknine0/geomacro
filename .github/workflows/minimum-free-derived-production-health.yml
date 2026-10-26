@@ -1,6 +1,6 @@
 name: Minimum Free Derived Production Health (No Funds)
 
-# PRIMARY website acceptance for the currently offered free-source, unscored product.
+# Primary website acceptance for the currently offered free-source, unscored product.
 # No signing / paid-source dependency; never green-lights paid GRI/GRO or x402.
 on:
   workflow_dispatch: {}
