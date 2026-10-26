@@ -65,6 +65,7 @@ on:
       - "src/lib/reusable-news-json.ts"
       - "scripts/ops/plan-d1-bundled-work.mjs"
       - "scripts/tests/plan-d1-bundled-work.test.mjs"
+      - "scripts/tests/critical-workflow-budget-guards.test.mjs"
   push:
     branches: [main]
     paths:
@@ -134,6 +135,7 @@ jobs:
           node --test scripts/lib/private-unverified-osint-intake.test.mjs
           node --test scripts/lib/private-osint-bundle.test.mjs
           node --test scripts/tests/plan-d1-bundled-work.test.mjs
+          node --test scripts/tests/critical-workflow-budget-guards.test.mjs
           node --test scripts/lib/registered-reusable-news-source-collector.test.mjs scripts/lib/registered-news-15m-cadence.test.mjs
   quota-admission:
     name: Account-wide D1 no-query bundled quota gate
