@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {privateOsintGlobalSources,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintPublisherCountryCoverage,PRIVATE_OSINT_TOPICS} from "./private-osint-global-sources.mjs";
+import {createHash} from "node:crypto";
+import {privateOsintGlobalSources,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,PRIVATE_OSINT_TOPICS} from "./private-osint-global-sources.mjs";
 import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
 import {privateOsintCountryMention} from "./private-osint-country-mentions.mjs";
@@ -28,6 +29,16 @@ test("accepted global source inventory has distinct pinned feeds in six continen
  assert.ok(publisherCoverage.missing_registered_country_category_cells>0);
  assert.ok(publisherCoverage.countries_without_publisher_specific_endpoint.length>0);
  assert.equal(publisherCoverage.interpretation.startsWith("Publisher-country inventory only"),true);
+ const sourceMatrix=privateOsintCountryCategoryCoverage(sources,[],[],{includeCells:true});
+ assert.equal(sourceMatrix.expected_country_category_cells,585);
+ assert.equal(sourceMatrix.returned_country_category_cells,585);
+ assert.equal(sourceMatrix.coverage.cells_with_any_configured_source,585);
+ assert.equal(sourceMatrix.coverage.cells_with_global_fallback,585);
+ assert.equal(sourceMatrix.coverage.cells_with_any_healthy_source,0);
+ assert.equal(sourceMatrix.coverage.cells_without_configured_source,0);
+ assert.equal(sourceMatrix.country_specific_source_countries_registered,63);
+ assert.equal(sourceMatrix.countries_without_country_specific_publisher_source.length,132);
+ assert.equal(sourceMatrix.scope,"PRIVATE_SOURCE_ACQUISITION_COVERAGE_NOT_PUBLIC_FIND_COVERAGE");
  const manifest=JSON.parse(readFileSync(new URL('../../config/private-osint-working-sources.v1.json',import.meta.url)));
  assert.equal(manifest.accepted_endpoint_count,manifest.sources.length);
  assert.ok(manifest.sources.every(s=>s.acceptance.http_status===200&&s.acceptance.feed_parsed&&s.acceptance.bounded_feed_bytes<=1024*1024));
@@ -146,10 +157,42 @@ test("new macro/FX and critical-metals feeds are private only and deduplicated",
  assert.equal(denied.summary.working_source_endpoints,0);
 });
 
+test("195x3 source-coverage priority distinguishes local, regional and global fallback health",()=>{
+ const sources=privateOsintGlobalSources();
+ const local={id:"coverage_test_local_aus_macro",url:"https://coverage-test.example/aus/macro",continent:"oceania",publisher_country_iso3:"AUS",categories:["macro"],supported:true};
+ const regional={id:"coverage_test_regional_oceania_macro",url:"https://coverage-test.example/oceania/macro",continent:"oceania",publisher_country_iso3:null,categories:["macro"],supported:true};
+ const globalMacro={id:"coverage_test_global_macro",url:"https://coverage-test.example/global/macro",continent:"global",publisher_country_iso3:null,categories:["macro"],supported:true};
+ const globalGeo={id:"coverage_test_global_geo",url:"https://coverage-test.example/global/geo",continent:"global",publisher_country_iso3:null,categories:["geopolitics"],supported:true};
+ const globalMinerals={id:"coverage_test_global_minerals",url:"https://coverage-test.example/global/minerals",continent:"global",publisher_country_iso3:null,categories:["rare_earth"],supported:true};
+ const ref=(source,category)=>createHash("sha256").update([source.id,source.url,category].join("\\n")).digest("hex");
+ const checks=[
+  {source_ref:ref(local,"macro"),state:"DENIED"},
+  {source_ref:ref(regional,"macro"),state:"OBSERVED"},
+  {source_ref:ref(globalMacro,"macro"),state:"OBSERVED"},
+  {source_ref:ref(globalGeo,"geopolitics"),state:"OBSERVED"},
+  {source_ref:ref(globalMinerals,"rare_earth"),state:"EMPTY_OR_OUTSIDE_WINDOW"},
+ ];
+ const items=[{country_iso3:"AUS",category:"macro"},{country_iso3:"AUS",category:"rare_earth"}];
+ const matrix=privateOsintCountryCategoryCoverage([...sources,local,regional,globalMacro,globalGeo,globalMinerals],checks,items,{includeCells:true});
+ const ausMacro=matrix.cells.find(c=>c.country_iso3==="AUS"&&c.category==="macro");
+ const ausGeo=matrix.cells.find(c=>c.country_iso3==="AUS"&&c.category==="geopolitics");
+ const ausRare=matrix.cells.find(c=>c.country_iso3==="AUS"&&c.category==="rare_earth");
+ assert.equal(ausMacro.local.healthy,0);
+ assert.equal(ausMacro.regional.healthy,1);
+ assert.equal(ausMacro.source_tier_status,"REGIONAL_FALLBACK_HEALTHY");
+ assert.equal(ausMacro.observed_private_items_this_tick,1);
+ assert.equal(ausGeo.source_tier_status,"GLOBAL_FALLBACK_HEALTHY");
+ assert.equal(ausRare.global.healthy,1);
+ assert.equal(ausRare.source_tier_status,"GLOBAL_FALLBACK_HEALTHY");
+ assert.equal(ausRare.observed_private_items_this_tick,1);
+ assert.equal(ausRare.event_country_verified,false);
+ assert.equal(ausRare.commercially_eligible,false);
+});
+
 test("new regional macro/minerals and maritime corridor candidates are deduplicated, bounded, private",async()=>{
  const additions=JSON.parse(readFileSync(new URL(
   "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
- assert.equal(additions.sources.length,20);
+ assert.equal(additions.sources.length,22);
  const complete=privateOsintGlobalSources();
  assert.ok(complete.length<=512);
  assert.equal(new Set(complete.map(s=>s.url)).size,complete.length);
@@ -226,6 +269,42 @@ test("regional official and sector feeds are deduplicated private candidates, an
  assert.ok(coverage.by_country.ZAF.working_categories.includes("macro"));
  assert.ok(coverage.by_country.PHL.working_categories.includes("geopolitics"));
  assert.ok(coverage.by_country.IND.working_categories.includes("macro"));
+});
+
+test("Africa, Asia-Pacific and Oceania regional feeds have documented provenance and category-specific candidate checks",async()=>{
+ const additions=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
+ const all=privateOsintGlobalSources();
+ const ids=["private_expansion_afdb_development_news","private_expansion_adb_asia_pacific","private_expansion_spc_pacific_news"];
+ assert.equal(additions.sources.length,22);
+ const selected=all.filter(s=>ids.includes(s.id));
+ assert.equal(selected.length,3);
+ const docs=new Map(additions.sources.map(s=>[s.id,s]));
+ assert.equal(docs.get("private_expansion_afdb_development_news").url,"https://www.afdb.org/en/news-and-events/rss");
+ assert.equal(docs.get("private_expansion_adb_asia_pacific").url,"https://www.adb.org/rss.xml");
+ assert.equal(docs.get("private_expansion_spc_pacific_news").url,"https://www.spc.int/rss.xml");
+ for(const id of ids){
+  const row=docs.get(id);
+  assert.ok(row.discovery_reference_url,id);
+  assert.ok(row.provenance_note.length>20,id);
+  assert.equal(row.activation_state,"RUNTIME_PROBE_REQUIRED");
+  assert.equal(row.provider_rights_verified,false);
+  assert.equal(row.commercial_eligible,false);
+  assert.equal(row.publicly_deliverable,false);
+ }
+ const rss=title=>"<rss><channel><item><title>"+title+"</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>";
+ const result=await collectPrivateOsint15m({now,registry:selected,normalize,resolveCountry:()=>null,
+  fetchImpl:async url=>new Response(rss(url.includes("afdb.org")
+   ?"African Development Bank announces critical minerals financing and new economic reforms"
+   :url.includes("adb.org")
+    ?"Asian Development Bank announces critical mineral supply and economic trade infrastructure"
+    :"Pacific Community reports regional security emergency and critical mineral trade policy"),
+    {status:200,headers:{"content-type":"application/rss+xml"}})});
+ assert.equal(result.summary.source_endpoints_attempted,3);
+ assert.ok(result.checks.length>=6);
+ assert.ok(result.summary.selected_items_by_category.macro>=1);
+ assert.ok(result.summary.selected_items_by_category.rare_earth>=2);
+ assert.equal(result.summary.publicly_served,false);
+ assert.equal(result.summary.rights_verified,false);
 });
 
 test("official corridor reference overlay only covers existing named routes, never asserts live transport",()=>{
