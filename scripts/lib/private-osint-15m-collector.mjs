@@ -9,6 +9,7 @@
  * article bodies persisted. Never promote OSINT to verified/paid news.
  */
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
+import {privateOsintRuntimeSources,COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES} from "./private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources,PRIVATE_OSINT_TOPICS,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,privateOsintCorridorSourceCoverage,privateOsintCategoryLiveCoverage} from "./private-osint-global-sources.mjs";
 export const PRIVATE_OSINT_TARGET_MINUTES=15;
 export const PRIVATE_OSINT_POLL_MINUTES=5;
@@ -61,7 +62,7 @@ async function fetchPrivateFeedSafely(url,options,fetchImpl){
  return new Response(null,{status:502});
 }
 export async function collectPrivateOsint15m({
-  now=new Date(),fetchImpl=fetch,registry=privateOsintGlobalSources(),
+  now=new Date(),fetchImpl=fetch,registry=privateOsintRuntimeSources(now),
   normalize,resolveCountry,concurrency=8,onOriginalCandidate=null,
 }={}){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
@@ -99,7 +100,8 @@ export async function collectPrivateOsint15m({
           now,fetchImpl:privateFetch,registry:[source],perCategory:8,normalize,resolveCountry,
           networkConcurrency:1,topicPatterns:PRIVATE_OSINT_TOPICS,
           allowRdfNativeDates:true,maxFeedBytes:1024*1024,
-          deduplicateIndexItems:true,onOriginalCandidate,
+          deduplicateIndexItems:true,
+          onOriginalCandidate:source.private_discovery_index_only?null:onOriginalCandidate,
         }).then(r=>{responses[index]=r}).finally(()=>{
           hosts.set(host,hosts.get(host)-1);running.delete(task);
         });
@@ -152,6 +154,10 @@ export async function collectPrivateOsint15m({
     summary:{
       configured_country_routes:195,configured_categories:3,configured_country_category_routes:585,
       registered_source_endpoints:registry.length,source_endpoints_attempted:registry.length,
+      rotating_country_index_sources_this_tick:registry.filter(s=>s.private_discovery_index_only===true).length,
+      rotating_country_index_nominal_full_cycle_minutes:COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,
+      rotating_country_index_is_not_original_publisher:true,
+      rotating_country_index_does_not_supply_event_country:true,
       source_checks:checks.size,source_states:count,
       index_items_deduplicated_across_queries:true,
       working_source_endpoints:registry.filter(s=>s.categories.some(category=>

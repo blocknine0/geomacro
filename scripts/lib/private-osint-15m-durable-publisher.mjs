@@ -18,7 +18,9 @@ export async function persistPrivateOsintBatch({
  const groups=[];
  while(items.length||checks.length)groups.push({
    schema:PRIVATE_OSINT_DURABLE_SCHEMA,
-   items:items.splice(0,12),checks:checks.splice(0,20),
+   // Stay within the existing Worker 20-item/32-check contract while
+   // reducing repeated protected HTTP writes and D1 prefetch/readback queries.
+   items:items.splice(0,16),checks:checks.splice(0,32),
  });
  let saved=0,excluded=0,checked=0,in15=0,over15=0,writerBundled=true,writeQueries=0;
  let newlyOnTime=0,newlyLate=0,previouslySeen=0,firstSeenCountersAvailable=true;

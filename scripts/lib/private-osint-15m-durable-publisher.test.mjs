@@ -129,3 +129,28 @@ test("protected publisher preserves true new-late vs repeated news counts",async
  assert.equal(r.newly_persisted_within_15m,0);
  assert.equal(r.previously_persisted_reobserved,0);
 });
+
+test("high-volume private OSINT uses 16 news and 32 health checks per protected D1 batch",async()=>{
+ const items=Array.from({length:33},(_,i)=>({
+  id:"news-"+i.toString(16).padStart(64,"0"),
+  source:{original_published_at:new Date(now-5*60000).toISOString()},
+ }));
+ const checks=Array.from({length:65},(_,i)=>({
+  source_ref:(i+100).toString(16).padStart(64,"0"),
+  category:"macro",state:"OBSERVED",checked_at:new Date(now).toISOString(),
+ }));
+ const {f,calls}=simulate();
+ const receipt=await persistPrivateOsintBatch({
+  result:{schema:input.schema,items,checks},
+  privateToken:token,controlPlaneRoot:host,fetchImpl:f,now,
+ });
+ const writes=calls.filter(c=>c.method==="PUT").map(c=>JSON.parse(c.body));
+ assert.equal(writes.length,3);
+ assert.ok(writes.every(b=>b.items.length<=16&&b.checks.length<=32));
+ assert.deepEqual(writes.map(b=>[b.items.length,b.checks.length]),
+  [[16,32],[16,32],[1,1]]);
+ assert.equal(receipt.news_rows_verified_in_d1,33);
+ assert.equal(receipt.source_checks_persisted,65);
+ assert.equal(receipt.d1_write_exact_readback_verified,true);
+ assert.equal(calls.filter(c=>c.method==="GET").length,1);
+});

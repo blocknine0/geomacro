@@ -8,11 +8,12 @@
 import {createHash} from "node:crypto";
 import {writeFileSync} from "node:fs";
 import {
- privateOsintGlobalSources,privateOsintCategoryLiveCoverage,
+ privateOsintCategoryLiveCoverage,
  privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,
  privateOsintCorridorSourceCoverage,
 } from "../lib/private-osint-global-sources.mjs";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
+import {privateOsintRuntimeSources,COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES} from "../lib/private-osint-country-rotation.mjs";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 
@@ -28,7 +29,7 @@ const sourceRef=(source,category)=>createHash("sha256")
  .update([source.id,source.url,category].join("\n")).digest("hex");
 const outputPath="/tmp/geomacro-private-osint-live-coverage.json";
 const startedAt=new Date();
-const sources=privateOsintGlobalSources();
+const sources=privateOsintRuntimeSources(startedAt);
 let checks=[],items=[],report;
 try{
  const result=await collectPrivateOsint15m({
@@ -67,6 +68,9 @@ try{
   source_registry_endpoints:sources.length,
   source_checks_completed:checks.length,
   observed_native_dated_items:items.length,
+  rotating_country_index_queries_this_tick:sources.filter(s=>s.private_discovery_index_only===true).length,
+  rotating_country_index_nominal_full_cycle_minutes:COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,
+  rotating_country_index_original_page_verified:false,
   status:fullSourceCoverage&&allCountryEventCellsObserved?"FULL_195X3_SOURCE_FALLBACK_AND_COUNTRY_ATTRIBUTED_ITEMS_THIS_TICK":
    fullSourceCoverage?"FULL_585_SOURCE_FALLBACKS_AND_THREE_CATEGORY_ITEMS_COUNTRY_EVENT_CELLS_PARTIAL":
    allCellsHealthy&&everyCategoryHealthy?"FULL_585_SOURCE_FALLBACKS_HEALTHY_CATEGORY_ITEM_GAP":
@@ -111,6 +115,8 @@ const summary={
  schema:report.schema,status:report.status,
  source_registry_endpoints:report.source_registry_endpoints,
  source_checks_completed:report.source_checks_completed,
+ rotating_country_index_queries_this_tick:report.rotating_country_index_queries_this_tick??null,
+ rotating_country_index_nominal_full_cycle_minutes:report.rotating_country_index_nominal_full_cycle_minutes??null,
  observed_native_dated_items:report.observed_native_dated_items??null,
  category_statuses:report.category_live_source_coverage?.category_coverage?.map(row=>({
   category:row.category,registered:row.registered,checked:row.checked,

@@ -16,12 +16,15 @@ on:
     paths:
       - ".github/workflows/private-global-osint-15m.yml"
       - "scripts/lib/private-osint-15m-collector.mjs"
+      - "scripts/lib/private-osint-country-rotation.mjs"
+      - "scripts/lib/private-osint-country-rotation.test.mjs"
       - "scripts/lib/private-osint-15m-collector.test.mjs"
       - "scripts/lib/derived-news-readback-policy.mjs"
       - "scripts/tests/derived-news-readback-policy.test.mjs"
       - "scripts/tests/derived-news-worker-policy.test.mjs"
       - "scripts/tests/derived-news-deploy-order.test.mjs"
       - "scripts/lib/private-osint-15m-durable-publisher.mjs"
+      - "scripts/lib/private-osint-15m-durable-publisher.test.mjs"
       - "scripts/lib/private-osint-website-bridge.mjs"
       - "scripts/lib/private-osint-website-bridge.test.mjs"
       - "scripts/lib/private-osint-website-derived-contract.test.mjs"
@@ -64,6 +67,8 @@ on:
       - "scripts/lib/private-osint-website-bridge.mjs"
       - "src/lib/stateless-intelligence-model.ts"
       - "scripts/lib/private-osint-15m-collector.mjs"
+      - "scripts/lib/private-osint-country-rotation.mjs"
+      - "scripts/lib/private-osint-country-rotation.test.mjs"
       - "scripts/lib/private-osint-15m-collector.test.mjs"
       - "scripts/ops/probe-private-osint-live-category-coverage.mjs"
       - "scripts/ops/private-osint-15m-tick.ts"
@@ -110,6 +115,8 @@ jobs:
           node --test scripts/lib/private-osint-website-bridge.test.mjs scripts/lib/website-derived-retention-priority.test.mjs
           node --test scripts/lib/private-osint-website-derived-contract.test.mjs
           node --check workers/control-plane/src/private-osint-15m.mjs
+          node --check scripts/lib/private-osint-country-rotation.mjs
+          node --test scripts/lib/private-osint-country-rotation.test.mjs
           node --test scripts/lib/private-osint-15m-collector.test.mjs
           node --test scripts/lib/private-osint-15m-durable-publisher.test.mjs
           node --test scripts/lib/private-osint-15m-d1.test.mjs
