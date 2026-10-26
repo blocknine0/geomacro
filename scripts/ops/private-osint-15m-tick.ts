@@ -45,7 +45,7 @@ const observedByCategory=new Map(["geopolitics","macro","rare_earth"].map(c=>[c,
 const result=await collectPrivateOsint15m({
  now:timestamp,normalize:normalizeReusableNewsJson,
  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
- onOriginalCandidate:researchPrivateOnly?null:raw=>{
+ onOriginalCandidate:researchPrivateOnly?null:(raw=>{
   const eligible=officialWebsiteCandidateFromOsint(raw,timestamp.getTime());
   if(eligible){
    const key=eligible.category+"|"+eligible.articleUrl;
@@ -75,7 +75,7 @@ const result=await collectPrivateOsint15m({
    lane.delete(oldestKey);
   }
   lane.set(identity,{...row,event});
- },
+ }),
 });
 const scanned=result.summary.source_checks;
 if(result.summary.configured_country_routes!==195||
