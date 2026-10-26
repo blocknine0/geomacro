@@ -160,6 +160,10 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
+      - name: Verify append-only permanent archive retains old items and tolerates D1 outage
+        run: |
+          node --check scripts/ops/publish-permanent-derived-news-archive.mjs
+          node --test scripts/ops/publish-permanent-derived-news-archive.test.mjs
       - name: Test individual news original-byte evidence vs unverified and commercial boundaries
         run: |
           node --test scripts/lib/bundled-original-source-quota.test.mjs
