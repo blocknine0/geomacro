@@ -53,6 +53,9 @@ const CATEGORY_STYLE = {
   rare_earth: { bar: "bg-amber-500", icon: "text-amber-500", marker: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300", reading: "CRITICAL MINERALS SIGNAL" },
 } as const;
 
+// LOCKED PRESENTATION CONTRACT: OSINT and official-derived findings share this exact
+// Story component, category styling, layout, save action, What changed and Why it matters.
+// OSINT may differ only by its explicit unverified status label and safe attribution.
 function Story({ signal, saved, onSave }: {signal: StatelessIntelligenceSignal;saved:boolean;onSave:()=>void}) {
   const look = CATEGORY_STYLE[signal.category];
   const mandatoryCredits=intelligenceRequiredSourceCredits(signal);
