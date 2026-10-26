@@ -24,6 +24,7 @@ export async function persistPrivateOsintBatch({
  });
  let saved=0,excluded=0,checked=0,in15=0,over15=0,writerBundled=true,writeQueries=0;
  let newlyOnTime=0,newlyLate=0,previouslySeen=0,firstSeenCountersAvailable=true;
+ let rowsRead=0,rowsWritten=0,allRowUsageKnown=true;
  for(const group of groups){
   const response=await fetchImpl(controlPlaneRoot+"/v1/internal/private-osint-15m",{
    method:"PUT",redirect:"error",cache:"no-store",
@@ -59,6 +60,12 @@ export async function persistPrivateOsintBatch({
     receipt.paid_product_authorized!==false||
     receipt.raw_upstream_stored!==false)
     throw Error("PRIVATE_OSINT_PROTECTED_D1_ACK_NOT_VERIFIED");
+  if(receipt.d1_usage_metadata_complete===true&&
+     Number.isSafeInteger(receipt.d1_rows_read_this_write)&&receipt.d1_rows_read_this_write>=0&&
+     Number.isSafeInteger(receipt.d1_rows_written_this_write)&&receipt.d1_rows_written_this_write>=0){
+   rowsRead+=receipt.d1_rows_read_this_write;
+   rowsWritten+=receipt.d1_rows_written_this_write;
+  }else allRowUsageKnown=false;
   saved+=receipt.persisted;excluded+=receipt.capacity_excluded;
   checked+=receipt.checks_saved;
   in15+=receipt.native_feed_to_first_durable_write_within_15m;
@@ -113,6 +120,9 @@ export async function persistPrivateOsintBatch({
    private_three_category_bundle_readback_verified:bundle,
    private_d1_writer_reads_bundled_verified:writerBundled,
    d1_queries_for_write_batches:writeQueries,
+   d1_rows_read_for_write_batches:allRowUsageKnown?rowsRead:null,
+   d1_rows_written_for_write_batches:allRowUsageKnown?rowsWritten:null,
+   d1_usage_metadata_complete:allRowUsageKnown,
    original_page_independently_verified:false,
    global_195x3_live_15m_sla_guaranteed:false,
    publicly_delivered:false,raw_upstream_stored:false,
