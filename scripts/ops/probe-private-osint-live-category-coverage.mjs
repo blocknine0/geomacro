@@ -14,6 +14,7 @@ import {
 } from "../lib/private-osint-global-sources.mjs";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
+import {privateGdeltGlobalDiscovery} from "../lib/private-osint-gdelt-global.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 
 const normalize=item=>({
@@ -45,6 +46,33 @@ try{
  const publisherCountry=privateOsintPublisherCountryCoverage(sources,checks);
  const countryCategory=privateOsintCountryCategoryCoverage(sources,checks,items,{includeCells:true});
  const corridor=privateOsintCorridorSourceCoverage(sources,checks,{includeCells:true});
+ let gdelt={
+  schema:"geomacro.private-gdelt-discovery-hints.v1",
+  checks:["geopolitics","macro","rare_earth"].map(category=>({category,state:"UNAVAILABLE",index_metadata_hints:0})),
+  global_article_index_hints:0,mapped_country_count:0,
+  mapped_country_category_cells:[],
+  mapped_country_category_counts:{geopolitics:0,macro:0,rare_earth:0},
+  unmapped_or_ambiguous_hints:0,source_publisher_clock_verified:false,
+  gdelt_index_time_is_not_publication_time:true,
+  source_original_pages_verified:false,commercial_rights_verified:false,
+  original_article_urls_or_titles_emitted:false,headline_body_stored:false,
+  raw_content_downloaded:false,private_only:true,public_published:false,
+  paid_products_authorized:false,index_refresh_guaranteed_within_15m:false,
+  live_probe_error_code:"UNAVAILABLE",
+ };
+ try{
+  gdelt=await privateGdeltGlobalDiscovery({
+   now:startedAt,
+   resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
+  });
+ }catch(error){
+  gdelt.live_probe_error_code=typeof error?.message==="string"&&/^[A-Z0-9_:.-]{1,120}$/u.test(error.message)
+   ?error.message:"UNCLASSIFIED_GDELT_PROBE_ERROR";
+ }
+ const rssObservedKeys=new Set(countryCategory.cells.filter(cell=>
+   cell.observed_private_items_this_tick>0).map(cell=>cell.country_iso3+":"+cell.category));
+ const gdeltKeys=new Set(gdelt.mapped_country_category_cells.map(cell=>cell.country_iso3+":"+cell.category));
+ const combinedDiscoveryKeys=new Set([...rssObservedKeys,...gdeltKeys]);
  const endpointStatuses=sources.map(source=>({
   source_id:source.id,
   continent:source.continent??null,
@@ -67,6 +95,12 @@ try{
   source_registry_endpoints:sources.length,
   source_checks_completed:checks.length,
   observed_native_dated_items:items.length,
+  rss_country_category_cells_with_native_dated_items_this_tick:observedCountryCategoryCells,
+  gdelt_country_category_index_hint_cells_this_tick:gdelt.mapped_country_category_cells.length,
+  combined_country_category_discovery_cells_this_tick:combinedDiscoveryKeys.size,
+  country_category_cells_without_any_rss_or_gdelt_hint_this_tick:585-combinedDiscoveryKeys.size,
+  gdelt_index_time_is_not_native_publication_time:true,
+  gdelt_live_index:gdelt,
   status:fullSourceCoverage&&allCountryEventCellsObserved?"FULL_195X3_SOURCE_FALLBACK_AND_COUNTRY_ATTRIBUTED_ITEMS_THIS_TICK":
    fullSourceCoverage?"FULL_585_SOURCE_FALLBACKS_AND_THREE_CATEGORY_ITEMS_COUNTRY_EVENT_CELLS_PARTIAL":
    allCellsHealthy&&everyCategoryHealthy?"FULL_585_SOURCE_FALLBACKS_HEALTHY_CATEGORY_ITEM_GAP":
@@ -112,6 +146,11 @@ const summary={
  source_registry_endpoints:report.source_registry_endpoints,
  source_checks_completed:report.source_checks_completed,
  observed_native_dated_items:report.observed_native_dated_items??null,
+ rss_country_category_cells_with_native_dated_items_this_tick:report.rss_country_category_cells_with_native_dated_items_this_tick??null,
+ gdelt_country_category_index_hint_cells_this_tick:report.gdelt_country_category_index_hint_cells_this_tick??null,
+ combined_country_category_discovery_cells_this_tick:report.combined_country_category_discovery_cells_this_tick??null,
+ country_category_cells_without_any_rss_or_gdelt_hint_this_tick:report.country_category_cells_without_any_rss_or_gdelt_hint_this_tick??null,
+ gdelt_checks:report.gdelt_live_index?.checks?.map(row=>({category:row.category,state:row.state,index_metadata_hints:row.index_metadata_hints}))??[],
  category_statuses:report.category_live_source_coverage?.category_coverage?.map(row=>({
   category:row.category,registered:row.registered,checked:row.checked,
   healthy_distinct_feed_endpoints:row.healthy_distinct_feed_endpoints,
