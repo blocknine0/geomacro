@@ -201,17 +201,17 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_gap_rou_hotnews",
-      "url": "https://hotnews.ro/feed",
-      "publisher_country_iso3": "ROU",
-      "continent": "europe",
+      "id": "private_gap_bhr_alwatan",
+      "url": "https://alwatannews.net/rssFeed/100",
+      "publisher_country_iso3": "BHR",
+      "continent": "asia",
       "categories": [
         "geopolitics",
         "macro",
         "rare_earth"
       ],
       "type": "rss",
-      "discovery_reference_url": "https://hotnews.ro/ce-este-rss-1654765",
+      "discovery_reference_url": "https://alwatannews.net/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "transport_verified_at_registration": false,
       "source_kind": "LOCAL_PUBLISHER_RSS_CANDIDATE",
