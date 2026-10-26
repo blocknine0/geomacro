@@ -26,7 +26,7 @@ export async function privateGdeltGlobalDiscovery({
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
   typeof resolveCountry!=="function"||typeof fetchImpl!=="function"||
   typeof sleepImpl!=="function")throw Error("OSINT_GDELT_CONFIG_INVALID");
- const outcomes=[],hintIds=new Set(),countryHints=new Set();
+ const outcomes=[],hintIds=new Set(),countryHints=new Set(),countryCategoryHints=new Set();
  let total=0,ambiguous=0;
  for(let i=0;i<SEARCHES.length;i++){
    if(i)await sleepImpl(5200);
@@ -56,7 +56,10 @@ export async function privateGdeltGlobalDiscovery({
              const country=resolveCountry(head);
              if(country!==null&&!/^[A-Z]{3}$/u.test(country))
                throw Error("OSINT_GDELT_COUNTRY_INVALID");
-             if(country===null)ambiguous++;else countryHints.add(country);
+             if(country===null)ambiguous++;else{
+               countryHints.add(country);
+               countryCategoryHints.add(category+"\n"+country);
+             }
              // A hashed research identity only; never copy index headline/URL
              // into DB, logs, GitHub artifacts or the customer feed.
              const id=hash(category+"\n"+original+"\n"+head);
@@ -72,7 +75,15 @@ export async function privateGdeltGlobalDiscovery({
  return {
   schema:"geomacro.private-gdelt-discovery-hints.v1",
   checks:outcomes,global_article_index_hints:total,
-  mapped_country_count:countryHints.size,unmapped_or_ambiguous_hints:ambiguous,
+  mapped_country_count:countryHints.size,
+  mapped_country_category_cells:[...countryCategoryHints].map(key=>{
+    const [category,country_iso3]=key.split("\n");
+    return {category,country_iso3};
+  }).sort((a,b)=>a.country_iso3.localeCompare(b.country_iso3)||a.category.localeCompare(b.category)),
+  mapped_country_category_counts:Object.fromEntries(SEARCHES.map(([category])=>[
+    category,[...countryCategoryHints].filter(key=>key.startsWith(category+"\n")).length
+  ])),
+  unmapped_or_ambiguous_hints:ambiguous,
   canonical_195_country_router:true,source_publisher_clock_verified:false,
   gdelt_index_time_is_not_publication_time:true,
   source_original_pages_verified:false,commercial_rights_verified:false,
