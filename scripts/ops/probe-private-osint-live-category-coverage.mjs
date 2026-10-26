@@ -113,6 +113,7 @@ const summary={
  }))??[],
  country_category_cells:report.country_category_source_coverage?.returned_country_category_cells??null,
  healthy_country_category_cells:report.country_category_source_coverage?.coverage?.cells_with_any_healthy_source??null,
+ all_three_categories_have_native_dated_items_this_tick:report.all_three_categories_have_native_dated_items_this_tick??false,
  country_specific_publisher_countries:report.country_category_source_coverage?.country_specific_source_countries_registered??null,
  endpoint_status_rows:report.endpoint_statuses?.length??0,
  raw_titles_or_feed_bodies_emitted:false,private_storage_writes:false,public_publication:false,
