@@ -113,8 +113,9 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const response=await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[osint]},NOW);
     expect(response.status).toBe(200);
     const feedResponse=await readDerivedStories(env,NOW);
-    expect(feedResponse.headers.get("Cache-Control"))
-      .toBe("public, max-age=60, stale-while-revalidate=300, stale-if-error=900");
+    // This is a D1 journal readback/audit endpoint, not the public static archive.
+    // Never cache its checked_at envelope: signed publisher acceptance must read fresh D1 state.
+    expect(feedResponse.headers.get("Cache-Control")).toBe("no-store");
     const doc=await feedResponse.json();
     expect(doc.signals).toHaveLength(1);
     expect(doc.signals[0].sources_credited).toEqual(["Monitored feed: www.bankofcanada.ca"]);
