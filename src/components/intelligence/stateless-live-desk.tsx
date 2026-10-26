@@ -247,6 +247,18 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
     let alive = true;
     let pending = false;
     let archiveLoaded = false;
+    const sortSignals = (signals: StatelessIntelligenceSignal[]) =>
+      signals.sort((a, b) =>
+        b.published_at.localeCompare(a.published_at) || a.id.localeCompare(b.id));
+    const mergeArchive = (
+      previous: StatelessIntelligenceSignal[],
+      archived: StatelessIntelligenceSignal[],
+    ): StatelessIntelligenceSignal[] => {
+      const merged = new Map(previous.map(signal => [signal.id, signal]));
+      // The immutable archive wins when SSR's rolling snapshot repeats an ID.
+      for (const signal of archived) merged.set(signal.id, signal);
+      return sortSignals([...merged.values()]);
+    };
     const mergeUnseen = (
       previous: StatelessIntelligenceSignal[],
       incoming: StatelessIntelligenceSignal[],
@@ -254,8 +266,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
       const seen = new Set(previous.map(signal => signal.id));
       const additions = incoming.filter(signal => !seen.has(signal.id));
       if (additions.length === 0) return previous;
-      return [...previous, ...additions].sort((a, b) =>
-        b.published_at.localeCompare(a.published_at) || a.id.localeCompare(b.id));
+      return sortSignals([...previous, ...additions]);
     };
     const sync = async () => {
       if (pending) return;
@@ -265,7 +276,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           try {
             const historical = await fetchPermanentDerivedNews();
             if (!alive) return;
-            setJournal(previous => mergeUnseen(previous, historical));
+            setJournal(previous => mergeArchive(previous, historical));
             archiveLoaded = true;
             setJournalUnavailable(false);
           } catch {
