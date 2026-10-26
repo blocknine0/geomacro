@@ -79,3 +79,10 @@ The general website presentation baseline is now the exact reviewed merge SHA ab
 The founder explicitly requested repair of the non-working language selector. PR #2905 merged as `5a9468e787df7e8124f3911004562fefeba75f0f`; its Website Lock failure was recorded and then addressed by this separate approval-baseline change. Only `public/geomacro-language.js` and `src/components/site-shell.tsx` are in scope: the dropdown now routes through one shared language controller, removes competing global click/pointer/keyboard interception, and preserves route/query/hash while switching locale.
 
 The general presentation baseline is now pinned to the exact reviewed UI commit above. The immutable Global Risk baseline remains `0270ab7876cabe372c246f76fbcf299ed1b0e1fc`. The previously observed `published_source_sha` is unchanged, `locked=true` remains enabled, and `pending_publish_acceptance=true` remains set. The website must be manually published in Lovable after this approval is merged; this approval does not claim the fixed language pack is live yet.
+
+
+## Founder-approved language-pack fallback repair (2026-10-26)
+
+After the first single-controller fix was published, the founder reported that language switching still did not work reliably and requested a permanent repair. The follow-up changes use the canonical Google Translate website endpoint rather than relying on the translated-host proxy, preserve the current path/query/fragment, and give the React language menu a fallback when the static controller is absent or fails.
+
+The exact reviewed source commit is `49d13acbedcf6dd191251da6dbea10056e5b74b1`; this approval baseline is governance metadata, not proof of deployment. The existing `published_source_sha` remains unchanged; `locked=true`, payment-off, the paid pricing schedule and the independent Global Risk freeze remain intact. A manual Lovable Publish and outside-in language-pack check remain required for this frontend change.
