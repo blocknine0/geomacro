@@ -307,7 +307,7 @@ export async function fetchAllDerivedNews(
     method:"GET",redirect:"error",cache:"no-store",
     headers:{Accept:"application/json","Cache-Control":"no-cache"},
   },8_000);
-  if(response.status===404||response.status===405){
+  if(response.status===401||response.status===404||response.status===405){
     try{await response.body?.cancel()}catch{/* discard old Worker response */}
     return fetchAllDerivedNewsLegacy(fetchImpl,now);
   }
@@ -316,8 +316,10 @@ export async function fetchAllDerivedNews(
   const body=await response.text();
   if(body.length>4_000_000)throw Error("DERIVED_NEWS_BUNDLE_TOO_LARGE");
   const doc=JSON.parse(body) as Record<string,unknown>;
-  // Older Worker revisions can briefly route an unrecognised path to a
-  // generic JSON endpoint; only that explicit old feed schema gets a fallback.
+  // Older Worker revisions route an unrecognised public path through the
+  // default protected handler (401) or return 404/405. Only these route-absence
+  // statuses and the explicit old feed schema get a legacy fallback; 429/5xx
+  // quota/storage failures are never downgraded to multiple expensive reads.
   if(doc.schema==="geomacro.website-derived-news-feed.v1")
     return fetchAllDerivedNewsLegacy(fetchImpl,now);
   const checkedAt=Date.parse(String(doc.checked_at??""));
