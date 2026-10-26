@@ -265,6 +265,123 @@ export function privateOsintPublisherCountryCoverage(sources, checks, {includeDe
 }
 const sourceRef=(s,c)=>createHash("sha256").update([s.id,s.url,c].join("\n")).digest("hex");
 
+const HEALTHY_SOURCE_STATES=new Set(["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW"]);
+const KNOWN_SOURCE_STATES=new Set(["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW","UNAVAILABLE","UNSUPPORTED_FORMAT","DENIED","MALFORMED","NOT_DUE"]);
+const COUNTRY_CONTINENT=Object.fromEntries(Object.entries(CONTINENT_COUNTRIES_195).flatMap(([continent,countries])=>countries.map(iso3=>[iso3,continent])));
+
+/**
+ * 195-country × 3-category acquisition matrix for the private source registry.
+ * A local source means publisher-country metadata matches the country.
+ * A regional fallback means the source is marked for the same continent and
+ * has no asserted publisher country. Global sources are counted separately.
+ * Health describes this collector tick only; it is not event verification,
+ * proof every country has a local publisher, or commercial source rights.
+ */
+export function privateOsintCountryCategoryCoverage(sources,checks=[],items=[],{includeCells=false}={}){
+ if(!Array.isArray(sources)||!Array.isArray(checks)||!Array.isArray(items)||typeof includeCells!=="boolean")
+  throw Error("PRIVATE_OSINT_COUNTRY_CATEGORY_COVERAGE_INPUT_INVALID");
+ const countries=Object.values(CONTINENT_COUNTRIES_195).flat();
+ if(countries.length!==195||new Set(countries).size!==195)
+  throw Error("PRIVATE_OSINT_COUNTRY_CATEGORY_COVERAGE_REGISTRY_INVALID");
+ const stateByRef=new Map();
+ for(const check of checks){
+  if(!check||typeof check.source_ref!=="string"||!/^[a-f0-9]{64}$/u.test(check.source_ref)||
+     !KNOWN_SOURCE_STATES.has(check.state))throw Error("PRIVATE_OSINT_COUNTRY_CATEGORY_CHECK_INVALID");
+  stateByRef.set(check.source_ref,check.state);
+ }
+ const registryUrls=new Set();
+ for(const source of sources){
+  if(!source||typeof source.id!=="string"||typeof source.url!=="string"||!Array.isArray(source.categories))
+   throw Error("PRIVATE_OSINT_COUNTRY_CATEGORY_SOURCE_INVALID");
+  let u;try{u=new URL(source.url)}catch{throw Error("PRIVATE_OSINT_COUNTRY_CATEGORY_SOURCE_URL_INVALID")}
+  if(u.protocol!=="https:"||u.username||u.password||u.port||u.hash||registryUrls.has(source.url)||
+    !source.categories.length||source.categories.some(c=>!PRIVATE_OSINT_CATEGORIES.includes(c))||
+    (source.publisher_country_iso3!==null&&source.publisher_country_iso3!==undefined&&!COUNTRY_CONTINENT[source.publisher_country_iso3])||
+    (source.continent!=="global"&&!Object.hasOwn(CONTINENT_COUNTRIES_195,source.continent)))
+   throw Error("PRIVATE_OSINT_COUNTRY_CATEGORY_SOURCE_SCOPE_INVALID");
+  registryUrls.add(source.url);
+ }
+ const countTier=(registry,category)=>{
+  const counts={registered:registry.length,checked:0,healthy:0,not_due:0,unavailable:0,unsupported_format:0,denied:0,malformed:0,unobserved_checks:0};
+  for(const source of registry){
+   const state=stateByRef.get(sourceRef(source,category));
+   if(!state){counts.unobserved_checks++;continue}
+   counts.checked++;
+   if(HEALTHY_SOURCE_STATES.has(state))counts.healthy++;
+   if(state==="NOT_DUE")counts.not_due++;
+   if(state==="UNAVAILABLE")counts.unavailable++;
+   if(state==="UNSUPPORTED_FORMAT")counts.unsupported_format++;
+   if(state==="DENIED")counts.denied++;
+   if(state==="MALFORMED")counts.malformed++;
+  }
+  return counts;
+ };
+ const cells=[];
+ for(const iso3 of countries){
+  const continent=COUNTRY_CONTINENT[iso3];
+  for(const category of PRIVATE_OSINT_CATEGORIES){
+   const local=sources.filter(s=>s.publisher_country_iso3===iso3&&s.categories.includes(category));
+   const regional=sources.filter(s=>!s.publisher_country_iso3&&s.continent===continent&&s.categories.includes(category));
+   const global=sources.filter(s=>s.continent==="global"&&s.categories.includes(category));
+   const tiers={local:countTier(local,category),regional:countTier(regional,category),global:countTier(global,category)};
+   const registered=tiers.local.registered+tiers.regional.registered+tiers.global.registered;
+   const checked=tiers.local.checked+tiers.regional.checked+tiers.global.checked;
+   const healthy=tiers.local.healthy+tiers.regional.healthy+tiers.global.healthy;
+   const tier=tiers.local.healthy?"LOCAL_SOURCE_HEALTHY":
+     tiers.regional.healthy?"REGIONAL_FALLBACK_HEALTHY":
+     tiers.global.healthy?"GLOBAL_FALLBACK_HEALTHY":
+     registered===0?"NO_SOURCE_CONFIGURED":
+     checked===0?"CONFIGURED_NOT_YET_CHECKED":"NO_HEALTHY_SOURCE_IN_LAST_TICK";
+   const observed=items.filter(item=>item&&item.country_iso3===iso3&&item.category===category).length;
+   cells.push({country_iso3:iso3,continent,category,source_tier_status:tier,
+    local:tiers.local,regional:tiers.regional,global:tiers.global,
+    configured_source_slots:registered,checked_source_slots:checked,healthy_source_slots:healthy,
+    observed_private_items_this_tick:observed,
+    local_publisher_source_present:tiers.local.registered>0,
+    regional_or_global_fallback_present:tiers.regional.registered+tiers.global.registered>0,
+    event_country_verified:false,original_source_rights_verified:false,commercially_eligible:false});
+  }
+ }
+ const aggregate=(subset)=>({
+  cells:subset.length,
+  cells_with_local_source:subset.filter(x=>x.local.registered>0).length,
+  cells_with_local_source_healthy:subset.filter(x=>x.local.healthy>0).length,
+  cells_with_regional_fallback:subset.filter(x=>x.regional.registered>0).length,
+  cells_with_regional_fallback_healthy:subset.filter(x=>x.regional.healthy>0).length,
+  cells_with_global_fallback:subset.filter(x=>x.global.registered>0).length,
+  cells_with_global_fallback_healthy:subset.filter(x=>x.global.healthy>0).length,
+  cells_with_any_configured_source:subset.filter(x=>x.configured_source_slots>0).length,
+  cells_with_any_healthy_source:subset.filter(x=>x.healthy_source_slots>0).length,
+  cells_without_configured_source:subset.filter(x=>x.configured_source_slots===0).length,
+  cells_without_healthy_source:subset.filter(x=>x.healthy_source_slots===0).length,
+  observed_country_category_cells_this_tick:subset.filter(x=>x.observed_private_items_this_tick>0).length,
+  observed_private_items_this_tick:subset.reduce((n,x)=>n+x.observed_private_items_this_tick,0),
+ });
+ const byContinent=Object.fromEntries(Object.entries(CONTINENT_COUNTRIES_195).map(([continent,iso3s])=>[continent,aggregate(cells.filter(x=>iso3s.includes(x.country_iso3)))]));
+ const byCategory=Object.fromEntries(PRIVATE_OSINT_CATEGORIES.map(category=>[category,aggregate(cells.filter(x=>x.category===category))]));
+ const countryLocal=new Map(countries.map(iso3=>[iso3,sources.filter(s=>s.publisher_country_iso3===iso3)]));
+ const countriesWithLocal=countries.filter(iso3=>countryLocal.get(iso3).length>0);
+ const summary={
+  schema:"geomacro.private-osint-country-category-source-coverage.v1",
+  country_count:195,category_count:3,expected_country_category_cells:585,returned_country_category_cells:cells.length,
+  scope:"PRIVATE_SOURCE_ACQUISITION_COVERAGE_NOT_PUBLIC_FIND_COVERAGE",
+  source_tier_order:"LOCAL_THEN_REGIONAL_THEN_GLOBAL_FOR_REPORTING_ONLY",
+  local_means_publisher_country_metadata_match:true,
+  regional_means_same_continent_without_publisher_country:true,
+  global_means_source_continent_is_global:true,
+  a_healthy_feed_does_not_prove_a_recent_event:true,
+  zero_observed_items_does_not_mean_no_news:true,
+  publisher_country_is_not_event_country:true,
+  country_specific_source_countries_registered:countriesWithLocal.length,
+  countries_without_country_specific_publisher_source:countries.filter(iso3=>countryLocal.get(iso3).length===0),
+  coverage:aggregate(cells),by_continent:byContinent,by_category:byCategory,
+ };
+ if(includeCells)summary.cells=cells;
+ if(cells.length!==585||summary.coverage.cells_with_any_configured_source!==585)
+  throw Error("PRIVATE_OSINT_COUNTRY_CATEGORY_COVERAGE_GAP");
+ return summary;
+}
+
 /** Registration coverage only; official HTML/API discovery references are NOT auto-scraped. */
 export function privateOsintCorridorReferenceCoverage(){
  const canonical=JSON.parse(readFileSync(new URL(
