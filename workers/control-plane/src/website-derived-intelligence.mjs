@@ -4,6 +4,7 @@
  * Never persist upstream title, URL, article text, publisher id or raw feed.
  * Exact public original-time delay is rechecked on write AND on every read.
  */
+import {hasConcreteNewsFacts} from "../../../src/lib/news-event-facts.ts";
 import {isSafeDerivedNewsReadbackSignal, DERIVED_NEWS_TOPIC_POLICY_REVISION} from "../../../scripts/lib/derived-news-readback-policy.mjs";
 import {classifyDerivedNewsD1Failure} from "../../../scripts/lib/derived-news-d1-failure.mjs";
 export {DERIVED_NEWS_TOPIC_POLICY_REVISION};
@@ -226,7 +227,7 @@ export async function renderDerivedStoriesHtml(env,now=Date.now()){
       "Referrer-Policy":"no-referrer","X-Content-Type-Options":"nosniff"}});
   const body=await response.json();
   const labels={geopolitics:"Geopolitics",macro:"Macro / FX",rare_earth:"Critical Minerals"};
-  const records=body.signals.filter(s=>verifyDerivedStory(s,now)).slice(0,150);
+  const records=body.signals.filter(s=>verifyDerivedStory(s,now)&&hasConcreteNewsFacts(s)).slice(0,150);
   const stories=records.map(s=>'<article><div class="label">'+
     (s.status==="osint_feed_observed_unverified"?"UNVERIFIED OSINT FEED":s.status==="official_feed_candidate_unscored"?"SOURCE CANDIDATE · TOPIC UNVERIFIED":"GEOMACRO FINDS")+' · '+
     escapeHtml(labels[s.category])+' · <time>'+escapeHtml(s.published_at)+
