@@ -196,7 +196,7 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
       page_offset:offset,page_size:250,has_more:results.length>250,
       next_offset:results.length>250&&offset<500?offset+250:null,
       ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
-      first_ingest:firstIngest,signals},200,true);
+      first_ingest:firstIngest,signals},200,false);
   } catch(error) {
     const failure_class=classifyDerivedNewsD1Failure(error);
     console.error(JSON.stringify({schema:"geomacro.derived-news-d1-failure.v1",
