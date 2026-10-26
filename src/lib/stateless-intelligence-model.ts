@@ -585,7 +585,7 @@ export function deriveStatelessSignals(
     const previousNews=actorActionNewsObservation(item.title)??(candidateOnly?null:releaseNewsObservation(item.title));
     const news=legacy?(candidateOnly?null:releaseNewsObservation(item.title)):
       options.editorialVersion==="actor_action_v2"?previousNews:
-      (candidateOnly?null:newsEventFacts(item.title,item.description??"",item.sourceId))??previousNews;
+      (candidateOnly||item.sourceId==="au_geoscience"?null:newsEventFacts(item.title,item.description??"",item.sourceId))??previousNews;
     const geography=candidateOnly?null:geographyMention(item.title)??(news?geographyMention(news.headline):null);
     const kind=candidateOnly?"unclassified publisher update":developmentKind(item.title);
     result.push({
