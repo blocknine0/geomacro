@@ -1,9 +1,9 @@
 {
   "schema": "geomacro.private-osint-regional-corridor-additions.v1",
   "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
-  "as_of": "2026-10-25",
+  "as_of": "2026-10-26",
   "source_eligibility": "CANDIDATES_NOT_LIVE_ACCEPTANCE",
-  "purpose": "Expand free-to-access discovery prospects for Macro/FX, Critical Minerals and named corridors without assuming redistribution rights, feed validity or 15-minute delivery.",
+  "purpose": "Expand free-to-access discovery prospects for geopolitics, Macro/FX, Critical Minerals and named corridors without assuming redistribution rights, feed validity or 15-minute delivery.",
   "source_clock_rule": "Only native dated items inside the existing 25-hour collector window may become private research observations.",
   "rights_rule": "No raw publisher story storage, public redistribution, signed promotion, partner delivery or x402 sale from this source-registration alone.",
   "sources": [
@@ -269,6 +269,112 @@
         "lobito_corridor"
       ],
       "provenance_note": "Southern Africa critical-minerals feed candidate, rights and endpoint unverified",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_au_industry_news",
+      "url": "https://www.industry.gov.au/news.xml",
+      "continent": "oceania",
+      "publisher_country_iso3": "AUS",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [
+        "re_australia_malaysia_lynas"
+      ],
+      "provenance_note": "Department of Industry, Science and Resources lists this RSS for departmental news and media releases; runtime transport and native-clock checks remain required.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_za_dsti_news",
+      "url": "https://www.dsti.gov.za/rss.xml",
+      "continent": "africa",
+      "publisher_country_iso3": "ZAF",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "South Africa Department of Science, Technology and Innovation documents this RSS feed on its official subscribe page; topic relevance and runtime health remain unverified.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_za_sars_news",
+      "url": "https://www.sars.gov.za/feed/?post_type=latest_news",
+      "continent": "africa",
+      "publisher_country_iso3": "ZAF",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "South African Revenue Service documents an RSS for Latest News; runtime transport and relevant native-dated items remain required.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_kr_msit_press",
+      "url": "https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=94",
+      "continent": "asia",
+      "publisher_country_iso3": "KOR",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Korea Ministry of Science and ICT official RSS guide lists this press-release feed; runtime transport and topic relevance remain required.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_id_petromindo_minerals",
+      "url": "https://www.petromindo.com/api/v1/rss/news-category/mineral",
+      "continent": "asia",
+      "publisher_country_iso3": "IDN",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [
+        "critical_minerals_drc_indonesia"
+      ],
+      "provenance_note": "Minerals RSS is documented by the publisher on its own site; sector-source rights and runtime status remain unverified.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_ph_pna_news",
+      "url": "https://www.pna.gov.ph/latest.rss",
+      "continent": "asia",
+      "publisher_country_iso3": "PHL",
+      "categories": [
+        "geopolitics"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Candidate URL surfaced in a public RSS feed directory for the Philippine News Agency; direct endpoint health, native clocks and publisher reuse rights require verification.",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
