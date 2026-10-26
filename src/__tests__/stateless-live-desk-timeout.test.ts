@@ -12,7 +12,7 @@ describe("Intelligence browser RPC stall recovery", () => {
   it("bounds publisher requests and reads the permanent public journal without D1 fallback", () => {
     const desk = readFileSync("src/components/intelligence/stateless-live-desk.tsx", "utf8");
     expect(desk).toContain('import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";');
-    expect(desk).toContain("getStatelessIntelligence({ data: { category } }),\\n            9_000");
+    expect(desk).toContain("getStatelessIntelligence({ data: { category } }),\n            9_000");
     expect(desk).toContain("fetchPermanentDerivedNews()");
     expect(desk).toContain("fetchDirectDerivedNews()");
     expect(desk).not.toContain("fetchAllDerivedNews()");
@@ -29,7 +29,7 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).not.toContain("website-derived-news-html");
     // The archive and current feed are public static assets, not D1 reads.
     expect(desk).toContain("Historical findings come from the append-only static archive");
-    expect(desk).not.toContain("D1 or server-function fallback");
+    expect(desk).toContain("No website read has a D1 or server-function fallback");
     expect(desk).not.toContain("localStorage");
     expect(desk).toContain("loadReaderPreferences()");
     expect(desk).toContain("saveReaderPreferences({ category: view, savedIds, lastVisit: visitStarted.current })");
