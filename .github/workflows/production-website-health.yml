@@ -156,7 +156,7 @@ jobs:
           print("PASS: commercial presentation source budgets remain bounded.")
           PY
 
-      - name: Verify live website source tree; publish only when web inputs change
+      - name: Verify live build marker matches canonical main
         # Exact main SHA is required for website-affecting changes. Verified
         # backend/workflow/test-only commits do not rebuild or alter the UI bundle.
         # Preserve fail-closed behavior if the ancestry or path diff is untrusted.
