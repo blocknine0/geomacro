@@ -127,6 +127,42 @@
       "publicly_deliverable": false
     },
     {
+      "id": "private_expansion_che_snb_monetary",
+      "url": "https://www.snb.ch/public/rss/en/mopo",
+      "continent": "europe",
+      "publisher_country_iso3": "CHE",
+      "categories": [
+        "macro"
+      ],
+      "type": "rdf",
+      "related_corridor_ids": [],
+      "provenance_note": "The Swiss National Bank's official RSS directory lists a dedicated monetary-policy RSS feed. Its runtime HTTP/parser/native-clock health is checked per tick; it is not enabled for redistribution.",
+      "discovery_reference_url": "https://www.snb.ch/en/services-events/digital-services/rss-calendar-feeds",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_che_snb_press",
+      "url": "https://www.snb.ch/public/rss/en/pressrel",
+      "continent": "europe",
+      "publisher_country_iso3": "CHE",
+      "categories": [
+        "macro"
+      ],
+      "type": "rdf",
+      "related_corridor_ids": [],
+      "provenance_note": "The Swiss National Bank's official RSS directory lists a dedicated press-release RSS feed. Its runtime HTTP/parser/native-clock health is checked per tick; it is not enabled for redistribution.",
+      "discovery_reference_url": "https://www.snb.ch/en/services-events/digital-services/rss-calendar-feeds",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
       "id": "private_expansion_eiti_disclosures",
       "url": "https://eiti.org/rss.xml",
       "continent": "global",
@@ -329,6 +365,24 @@
       "publicly_deliverable": false
     },
     {
+      "id": "private_expansion_nor_norges_press",
+      "url": "https://www.norges-bank.no/en/rss-feeds/Press-releases---Norges-Bank/",
+      "continent": "europe",
+      "publisher_country_iso3": "NOR",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Norges Bank's official RSS page directly links its press-release feed. The read-only live probe must validate the response, RSS parser and publication-native clock before it is considered working.",
+      "discovery_reference_url": "https://www.norges-bank.no/en/rss-feeds/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
       "id": "private_expansion_nrcan_atom",
       "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
       "continent": "north_america",
@@ -492,6 +546,24 @@
       "related_corridor_ids": [],
       "provenance_note": "Statistics Canada's official Feeds page lists this Atom feed for International Trade releases. Current server health, native timestamps and parser acceptance remain runtime checks.",
       "discovery_reference_url": "https://www.statcan.gc.ca/en/sc/rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_swe_riksbank_press",
+      "url": "https://www.riksbank.se/sv/rss/pressmeddelanden/",
+      "continent": "europe",
+      "publisher_country_iso3": "SWE",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Sveriges Riksbank's official RSS subscription page lists the Swedish press-release feed. The read-only live probe must validate response, RSS parser and native publication clock before it is considered working.",
+      "discovery_reference_url": "https://www.riksbank.se/sv/press-och-publicerat/Prenumerera-via-RSS/",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
