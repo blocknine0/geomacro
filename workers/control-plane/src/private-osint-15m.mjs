@@ -13,6 +13,25 @@ const states=new Set(["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW","UNAVAILABLE","UNSUPP
 const sha=/^[a-f0-9]{64}$/u, iso=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u;
 const maxAgeMs=25*60*60*1000,maxRows=4000;
 export const PRIVATE_OSINT_D1_SCHEMA="geomacro.private-osint-15m-durable.v1";
+/**
+ * Never echo SQL/provider exceptions or source content. Protected callers can
+ * distinguish the Cloudflare Free daily hard stop from missing migrations or
+ * transient storage failure, without leaking raw D1 messages.
+ */
+export function privateOsintD1FailureClass(error){
+ const message=String(error?.message??"");
+ if(/(?:exceeded D1.*daily row read limit|D1.*daily row read limit exceeded|D1_DAILY_ROW_READ_LIMIT)/iu.test(message))
+  return "D1_FREE_DAILY_ROW_READ_LIMIT";
+ if(/(?:exceeded D1.*daily row write limit|D1.*daily row write limit exceeded|D1_DAILY_ROW_WRITE_LIMIT)/iu.test(message))
+  return "D1_FREE_DAILY_ROW_WRITE_LIMIT";
+ if(/(?:no such table|no such column|no such index)/iu.test(message))
+  return "D1_SCHEMA_UNAVAILABLE";
+ return "D1_UNCLASSIFIED_STORAGE_FAILURE";
+}
+function privateOsintQuotaReset(now){
+ const date=new Date(now);
+ return new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate()+1)).toISOString();
+}
 const respond=(v,status=200)=>Response.json(v,{status,headers:{
  "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff",
  "Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex,nofollow",
@@ -149,8 +168,14 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
      original_page_verified:false,source_rights_verified:false,
      breaking_news_global_15m_guaranteed:false,
      publicly_served:false,paid_product_authorized:false,raw_upstream_stored:false});
- }catch{
+ }catch(error){
+   const failure_class=privateOsintD1FailureClass(error);
+   const quota=failure_class==="D1_FREE_DAILY_ROW_READ_LIMIT"||
+     failure_class==="D1_FREE_DAILY_ROW_WRITE_LIMIT";
    return respond({ok:false,error:"PRIVATE_OSINT_D1_WRITE_OR_READBACK_UNAVAILABLE",
+     failure_class,
+     retry_after_utc:quota?privateOsintQuotaReset(now):null,
+     source_items_committed_unverified:true,
      public_published:false,paid_product_authorized:false},503);
  }
 }
