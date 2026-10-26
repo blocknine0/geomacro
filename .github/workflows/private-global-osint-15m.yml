@@ -179,7 +179,7 @@ jobs:
           retention-days: 7
 
   live-local-gap-probe:
-    name: Read-only 44-country publisher candidate native RSS validation
+    name: Read-only 52-country publisher candidate native RSS validation
     needs: verify
     if: >-
       github.repository == 'blocknine0/geomacro' &&
