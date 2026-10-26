@@ -882,24 +882,6 @@
       "commercial_eligible": false,
       "access_verified_in_production": false,
       "publicly_deliverable": false
-    },
-    {
-      "id": "private_expansion_cl_sernageomin_rss_candidate",
-      "url": "https://www.sernageomin.cl/feed/",
-      "continent": "south_america",
-      "publisher_country_iso3": "CHL",
-      "categories": [
-        "rare_earth"
-      ],
-      "type": "rss",
-      "related_corridor_ids": [],
-      "provenance_note": "Chile SERNAGEOMIN (National Geology and Mining Service) official news page is live, but feed path remains strictly RUNTIME_PROBE_REQUIRED. Do not infer a working feed without HTTPS RSS plus native item dates.",
-      "discovery_reference_url": "https://www.sernageomin.cl/",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
     }
   ]
 }
