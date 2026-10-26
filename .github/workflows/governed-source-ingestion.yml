@@ -18,13 +18,38 @@ on:
       - "scripts/ops/verify-governed-d1-checkpoint.mjs"
       - "scripts/test-governed-source-ingestion.mjs"
       - ".github/workflows/governed-source-ingestion.yml"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
 
 permissions: {contents: read}
 concurrency: {group: governed-source-ingestion, cancel-in-progress: false}
 
 jobs:
-  ingest:
+  quota-admission:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment: production
+    outputs:
+      maintenance: ${{ steps.budget.outputs.maintenance }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Reserve D1 free headroom before any B2/D1 source work
+        id: budget
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/plan-d1-bundled-work.mjs
+
+  ingest:
+    needs: quota-admission
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.quota-admission.outputs.maintenance == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
