@@ -25,6 +25,8 @@ on:
       - "scripts/lib/free-source-production-failure.mjs"
       - "scripts/tests/free-source-production-failure.test.mjs"
       - "scripts/ops/probe-commercial-free-source-lineup.mjs"
+      - "scripts/ops/verify-wdi-site-deployment.mjs"
+      - "scripts/tests/verify-wdi-site-deployment.test.mjs"
       - ".github/workflows/free-commercial-source-lineup.yml"
   push:
     branches: [main]
@@ -48,6 +50,8 @@ on:
       - "scripts/lib/free-source-production-failure.mjs"
       - "scripts/tests/free-source-production-failure.test.mjs"
       - "scripts/ops/probe-commercial-free-source-lineup.mjs"
+      - "scripts/ops/verify-wdi-site-deployment.mjs"
+      - "scripts/tests/verify-wdi-site-deployment.test.mjs"
       - ".github/workflows/free-commercial-source-lineup.yml"
   schedule:
     - cron: "17,47 * * * *"
@@ -72,7 +76,9 @@ jobs:
         with:
           node-version: "22"
       - name: Exact dataset rights plus 3-category source transport contracts
-        run: node --test scripts/tests/gdelt-free-batch-manifest.test.mjs scripts/tests/operator-commercial-free-source-lineup.test.mjs scripts/tests/free-source-production-updates.test.mjs scripts/tests/global-official-release-feeds.test.mjs scripts/tests/free-source-operational-verdict.test.mjs scripts/tests/free-source-production-failure.test.mjs scripts/tests/marad-official-corridor-context.test.mjs scripts/tests/zoho-maritime-subscription-mail.test.mjs
+        run: node --test scripts/tests/gdelt-free-batch-manifest.test.mjs scripts/tests/operator-commercial-free-source-lineup.test.mjs scripts/tests/free-source-production-updates.test.mjs scripts/tests/global-official-release-feeds.test.mjs scripts/tests/free-source-operational-verdict.test.mjs scripts/tests/free-source-production-failure.test.mjs scripts/tests/marad-official-corridor-context.test.mjs scripts/tests/verify-wdi-site-deployment.test.mjs scripts/tests/zoho-maritime-subscription-mail.test.mjs
+      - name: Validate WDI public build checker syntax
+        run: node --check scripts/ops/verify-wdi-site-deployment.mjs
 
   read-only-production-mesh:
     needs: source-contract
@@ -110,12 +116,21 @@ jobs:
           echo "D1_DATABASE_ID=$db_id" >> "$GITHUB_ENV"
       - name: Collect bounded source changes and verify D1 checkpoint readback
         run: node scripts/ops/probe-commercial-free-source-lineup.mjs --production-updates
+      # Main-only outside-in readback of the published website build marker.
+      # No extra World Bank provider read, customer API, rights or payment.
+      # Recording a stale deployment must not undo successful D1 checkpoints.
+      - name: Check actual published main build for WDI source changes
+        if: ${{ always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        continue-on-error: true
+        run: node scripts/ops/verify-wdi-site-deployment.mjs
       - name: Retain source-free update receipt only
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
         with:
           name: free-source-updates-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/free-source-updates/receipt.json
+          path: |
+            artifacts/free-source-updates/receipt.json
+            artifacts/free-source-updates/deployed-main-readback.json
           if-no-files-found: ignore
           retention-days: 3
 
