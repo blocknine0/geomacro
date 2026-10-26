@@ -15,7 +15,7 @@ test("Worker, publisher and health endpoint share one explicit topic-policy revi
  assert.match(worker,/export\s*\{\s*DERIVED_NEWS_TOPIC_POLICY_REVISION\s*\}/u);
  assert.match(worker,/isSafeDerivedNewsReadbackSignal\(s\)/u);
  assert.match(index,/derived_news_topic_policy_revision:\s*DERIVED_NEWS_TOPIC_POLICY_REVISION/u);
- const deploy=read(".github/workflows/deploy-control-plane-d1.yml");
+ const deploy=read(".github/workflows/deploy-d1-control-plane.yml");
  assert.ok(deploy.includes('"scripts/lib/derived-news-readback-policy.mjs"'));
  assert.match(publisher,/requireDerivedNewsWorkerPolicy/u);
  const preflight=publisher.indexOf("const workerPolicy=await requireDerivedNewsWorkerPolicy");
