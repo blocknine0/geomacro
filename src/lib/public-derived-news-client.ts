@@ -265,6 +265,8 @@ async function fetchAllDerivedNewsLegacy(
   const seen=new Set<string>();
   for(const offset of [0,250,500]){
     const url=GEOMACRO_DERIVED_JOURNAL_URL+(offset===0?"":"?offset="+offset);
+    // The page fallback is used only for a rolling deployment; request
+    // exact fresh pages because the old Worker may serve a longer public TTL.
     const response=await fetchPublicReadWithRetry(fetchImpl,url,{
       method:"GET",redirect:"error",cache:"no-store",
       headers:{Accept:"application/json","Cache-Control":"no-cache"},
@@ -300,13 +302,18 @@ async function fetchAllDerivedNewsLegacy(
  * are never retried or downgraded to three expensive scans.
  */
 export async function fetchAllDerivedNews(
-  fetchImpl:typeof fetch=fetch,now=Date.now(),
+  fetchImpl:typeof fetch=fetch,now=Date.now(),options:{fresh?:boolean}={},
 ):Promise<StatelessIntelligenceSignal[]> {
   if(!Number.isFinite(now))throw Error("DERIVED_NEWS_PAGE_CLOCK_INVALID");
-  const response=await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_DERIVED_BUNDLE_URL,{
-    method:"GET",redirect:"error",cache:"no-store",
-    headers:{Accept:"application/json","Cache-Control":"no-cache"},
-  },8_000);
+  const fresh=options.fresh===true;
+  // Ordinary website/Ask reads may use the Worker’s short 15s per-POP cache.
+  // Exact publication/acceptance callers explicitly set fresh:true, which
+  // bypasses that cache without turning every user read into a D1 query.
+  const headers:Record<string,string>={Accept:"application/json"};
+  if(fresh)headers["Cache-Control"]="no-cache";
+  const init:RequestInit={method:"GET",redirect:"error",headers};
+  if(fresh)init.cache="no-store";
+  const response=await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_DERIVED_BUNDLE_URL,init,8_000);
   if(response.status===401||response.status===404||response.status===405){
     try{await response.body?.cancel()}catch{/* discard old Worker response */}
     return fetchAllDerivedNewsLegacy(fetchImpl,now);
