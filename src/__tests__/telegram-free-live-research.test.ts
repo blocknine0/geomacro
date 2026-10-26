@@ -8,9 +8,22 @@ const sample={
 };
 const now=Date.parse("2026-10-26T22:30:00Z");
 function store(rows=[sample]){
- let queries=[],values=[];
- return {env:{DB:{prepare(sql){queries.push(sql);return{bind(...params){values.push(params);return{async all(){return{results:rows}}}}}}}},
-  },queries,values};
+ const queries:string[]=[];
+ const values:unknown[][]=[];
+ const env={
+  DB:{
+   prepare(sql:string){
+    queries.push(sql);
+    return {
+     bind(...params:unknown[]){
+      values.push(params);
+      return {all:async()=>({results:rows})};
+     },
+    };
+   },
+  },
+ };
+ return {env,queries,values};
 }
 describe("consent-gated Telegram metadata live D1 reader",()=>{
  it("returns private hash-only unverified lead without channel or source message",async()=>{
