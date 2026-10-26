@@ -1,8 +1,10 @@
-name: Private Global OSINT 15-Minute Discovery
+name: Global OSINT to Website Intelligence (15-Minute Discovery)
 
-# PRIVATE collection research only: reads pinned first-party/registered RSS,
-# Atom and official GOV.UK JSON, and emits counts with zero original text,
-# links, Telegram messages, B2 writes, Supabase or public product effects.
+# Collects private source observations and durably verifies private D1 first.
+# The production collector may publish only safe, derived, deduplicated and
+# explicitly unverified/source-credited cards to the existing public 72h
+# website journal. Never publish raw private rows, original titles/URLs,
+# Telegram messages, Supabase data, signed claims or chargeable products.
 # GitHub schedules and publisher clocks are best-effort, not a 15m guarantee.
 on:
   workflow_dispatch: {}
@@ -184,9 +186,8 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
-      - name: Read sources, verify private D1, publish safe sourced news to website journal
+      - name: Read sources, verify private D1, publish safe derived news to website journal
         env:
-          GEOMACRO_OSINT_RESEARCH_PRIVATE_ONLY: "1"
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: |
           set -euo pipefail
