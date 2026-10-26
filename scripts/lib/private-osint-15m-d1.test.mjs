@@ -123,7 +123,7 @@ test("largest valid write bundles reads below D1 Free query and parameter ceilin
   assert.equal(response.status,200);assert.equal(receipt.persisted,20);assert.equal(receipt.checks_saved,32);
   assert.equal(receipt.existence_and_readback_bundled,true);
   assert.equal(receipt.d1_queries_this_write,queries);assert.equal(queries,7,"one JSON bulk news UPSERT + one JSON health UPSERT + bounded retention and readback");
-  assert.ok(queries<=8);assert.ok(maxParameters<=4);
+  assert.ok(queries<=8);assert.ok(maxParameters<=20,"the only 20-parameter statements are exact indexed prefetch/readback");
   assert.equal(db.prepare('SELECT count(*) AS n FROM private_osint_source_checks_24h').get().n,32);
  }finally{db.close()}
 });
