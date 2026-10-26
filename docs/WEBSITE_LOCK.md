@@ -72,3 +72,10 @@ The existing six-hour `Production Website Health` adds a **separate parallel** n
 The general website presentation baseline is now the exact reviewed merge SHA above. The frozen Global Risk baseline remains `0270ab7876cabe372c246f76fbcf299ed1b0e1fc`. The previously observed `published_source_sha` in `config/website-lock.json` is **not** rewritten, `locked=true`, `pending_publish_acceptance=true`, and no funds or Supabase writes are authorized.
 
 **Deployment requires independent outside-in acceptance:** protected canonical main → Lovable mirror → owner hosted Publish → public build marker exactly matches canonical main → real website free Find card and Ask/Intelligence mobile/desktop smoke → strict signed Intelligence/GRI/Risk Indices and deep-health 200 only from actual current proofs. A merged approval record is not a public site deployment.
+
+
+## Founder-approved website language-pack repair (2026-10-26)
+
+The founder explicitly requested repair of the non-working language selector. PR #2905 merged as `5a9468e787df7e8124f3911004562fefeba75f0f`; its Website Lock failure was recorded and then addressed by this separate approval-baseline change. Only `public/geomacro-language.js` and `src/components/site-shell.tsx` are in scope: the dropdown now routes through one shared language controller, removes competing global click/pointer/keyboard interception, and preserves route/query/hash while switching locale.
+
+The general presentation baseline is now pinned to the exact reviewed UI commit above. The immutable Global Risk baseline remains `0270ab7876cabe372c246f76fbcf299ed1b0e1fc`. The previously observed `published_source_sha` is unchanged, `locked=true` remains enabled, and `pending_publish_acceptance=true` remains set. The website must be manually published in Lovable after this approval is merged; this approval does not claim the fixed language pack is live yet.
