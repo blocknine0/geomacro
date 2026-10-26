@@ -1,9 +1,10 @@
 /**
- * Independent production deep-health for the free 72h D1 derived-news
- * product. This is NOT the legacy signed Intelligence/GRI/Risk Indices health.
- * Every 200 is backed by real original-dated unscored D1 records.
+ * Independent production deep-health for the free 72h permanent static Finds
+ * archive. This is NOT legacy signed Intelligence/GRI/Risk Indices health.
+ * Public health reads do not consume D1 quota; only genuinely original-dated,
+ * unscored official observations count toward availability.
  */
-const FEED_URL="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
+const FEED_URL="https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json";
 const RETENTION=72*60*60_000;
 const MIN_DELAY=0;
 const CAT=["geopolitics","macro","rare_earth"] as const;
@@ -12,6 +13,7 @@ type FreeStory={
   category?:unknown;date_precision?:unknown;published_at?:unknown;
   title?:unknown;severity?:unknown;same_event_corrob_verified?:unknown;
   status?:unknown;id?:unknown;source_url?:unknown;
+  development_type?:unknown;geography?:unknown;sources_credited?:unknown;
 };
 type FreeFeed={
   ok?:unknown;schema?:unknown;checked_at?:unknown;
@@ -65,18 +67,22 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
      input.delivery_scope!=="free_website_only"||
      input.scored!==false||input.chargeable!==false||
      input.supabase_dependency!==false||
-     input.page_offset!==0||input.page_size!==250||
+     (input.page_offset!==undefined&&input.page_offset!==0)||
+     (input.page_size!==undefined&&input.page_size!==250)||
+     (input.has_more!==undefined&&input.has_more!==false)||
+     (input.next_offset!==undefined&&input.next_offset!==null)||
      !Array.isArray(input.signals)||input.signals.length>250)
-    return result(false,"FREE_D1_CONTRACT_INVALID");
-  // Retrieval/checkpoint time does not turn old events into fresh evidence.
+    return result(false,"FREE_ARCHIVE_CONTRACT_INVALID");
+  // The archive's generated_at clock can be cached; it never makes an old
+  // story current. The actual event/feed timestamps below are the freshness gate.
   const checked=Date.parse(String(input.checked_at??""));
-  if(!Number.isFinite(checked)||checked>now+60_000||now-checked>120_000)
-    return result(false,"FREE_D1_RESPONSE_CLOCK_STALE");
+  if(!Number.isFinite(checked)||checked>now+60_000)
+    return result(false,"FREE_ARCHIVE_CLOCK_INVALID");
   const counts=empty();
   const ids=new Set<string>();
   for(const unknown of input.signals){
     if(!unknown||typeof unknown!=="object"||Array.isArray(unknown))
-      return result(false,"FREE_D1_ROW_INVALID");
+      return result(false,"FREE_ARCHIVE_ROW_INVALID");
     const row=unknown as FreeStory;
     if(!CAT.includes(row.category as Category)||
       typeof row.id!=="string"||!new RegExp("^(geopolitics|macro|rare_earth)-[a-f0-9]{8}$","u").test(row.id)||
@@ -84,14 +90,25 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
       !row.title.startsWith("Geomacro finds ")||
       row.title.length>240||
       row.severity!==null||row.same_event_corrob_verified!==false||
-      !["official_release_observed_unscored","official_feed_candidate_unscored"].includes(String(row.status))||
       !validPublication(row,now)||
       /https?:\/\/|www\.|<script/iu.test(JSON.stringify(row)))
-      return result(false,"FREE_D1_ROW_ORIGINAL_RIGHTS_BOUNDARY_INVALID");
+      return result(false,"FREE_ARCHIVE_ROW_ORIGINAL_RIGHTS_BOUNDARY_INVALID");
     ids.add(row.id);
+    if(row.status==="osint_feed_observed_unverified"){
+      const credits=Array.isArray(row.sources_credited)?row.sources_credited:[];
+      if(row.date_precision!=="exact"||
+         row.development_type!=="unverified OSINT feed observation"||
+         row.geography!==null||credits.length!==1||
+         typeof credits[0]!=="string"||!credits[0].startsWith("Monitored feed: "))
+        return result(false,"FREE_ARCHIVE_OSINT_ROW_INVALID");
+      // Count no unverified feed-only observation as an original-source Find.
+      continue;
+    }
+    if(!["official_release_observed_unscored","official_feed_candidate_unscored"].includes(String(row.status)))
+      return result(false,"FREE_ARCHIVE_ROW_ORIGINAL_RIGHTS_BOUNDARY_INVALID");
     counts[row.category as Category]++;
   }
-  if(ids.size===0)return result(false,"NO_CURRENT_FREE_ORIGINAL_OBSERVATION");
+  if(ids.size===0)return result(false,"NO_CURRENT_FREE_OFFICIAL_ORIGINAL");
   return result(true,"FREE_D1_DERIVED_NEWS_READBACK_OK",counts);
 }
 export async function probeFreeDerivedDeepHealth({
@@ -106,9 +123,9 @@ export async function probeFreeDerivedDeepHealth({
     });
     if(response.status!==200||
        !(response.headers.get("content-type")??"").includes("application/json"))
-      return result(false,"FREE_D1_TRANSPORT_UNAVAILABLE");
+      return result(false,"FREE_ARCHIVE_TRANSPORT_UNAVAILABLE");
     const text=await response.text();
-    if(text.length>1_000_000)return result(false,"FREE_D1_RESPONSE_OVERSIZE");
+    if(text.length>1_000_000)return result(false,"FREE_ARCHIVE_RESPONSE_OVERSIZE");
     return classifyFreeDerivedFeed(JSON.parse(text) as FreeFeed,now());
   }catch{
     return result(false,"FREE_D1_TRANSPORT_UNAVAILABLE");
