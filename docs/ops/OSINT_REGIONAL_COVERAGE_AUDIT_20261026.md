@@ -4,7 +4,7 @@ Date: 26 October 2026
 
 ## Changes in this branch
 
-- Add six regional feed candidates documented by their publishers or surfaced as discovery candidates: Australia Department of Industry; South Africa DSTI and SARS; Korea MSIT; Indonesia Petromindo Minerals; Philippine News Agency.
+- Add six regional feed candidates documented by their publishers or surfaced as discovery candidates: Australia Department of Industry; South Africa DSTI and SARS; Korea MSIT; India Income Tax Department; Philippine News Agency.
 - Permit the private regional candidate registry to classify feeds in any existing category: geopolitics, macro/FX, and critical minerals.
 - Add a publisher-country coverage audit reporting country-specific endpoints and healthy source checks separately. Publisher country is inventory metadata, not event location.
 - Include compact source-origin coverage counters in the private 15-minute OSINT summary and add an on-demand no-network detailed audit command.
@@ -18,8 +18,10 @@ Date: 26 October 2026
 | `private_expansion_za_dsti_news` | South Africa, DSTI | Critical minerals | https://www.dsti.gov.za/rss.xml |
 | `private_expansion_za_sars_news` | South Africa, SARS | Macro/FX and trade | https://www.sars.gov.za/feed/?post_type=latest_news |
 | `private_expansion_kr_msit_press` | South Korea, MSIT | Critical minerals / technology policy | https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=94 |
-| `private_expansion_id_petromindo_minerals` | Indonesia, Petromindo | Critical minerals | https://www.petromindo.com/api/v1/rss/news-category/mineral |
+| `private_expansion_ind_tax_press` | India, Income Tax Department | Macro / fiscal policy | https://wm.incometaxindia.gov.in/press-release-rss-feed/-/asset_publisher/bxhj/rss |
 | `private_expansion_ph_pna_news` | Philippines, PNA | Geopolitics | https://www.pna.gov.ph/latest.rss |
+
+Petromindo was deliberately excluded: its own site terms prohibit using its content to construct a database, and the Mineral RSS URL returned a 404 in the browser probe. Do not ingest its feed unless explicit permission is obtained.
 
 Every newly added endpoint is `RUNTIME_PROBE_REQUIRED`. `provider_rights_verified`, `commercial_eligible`, `access_verified_in_production`, and `publicly_deliverable` remain false. The Philippine News Agency URL is recorded as a discovery candidate surfaced in a public feed directory, not as a confirmed direct publisher-documented endpoint.
 
