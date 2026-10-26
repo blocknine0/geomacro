@@ -168,7 +168,13 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
      mock as typeof fetch,NOW);
    expect((await one.json()).cells).toMatchObject([{country_iso3:"IND",
      category:"macro",observed_derived_records_72h:0,all_news_exhaustive:false}]);
-   expect(mock).toHaveBeenCalledTimes(3);
+   const reusable=await derivedNewsStructuralResponse(new Request(
+     path+"?view=reusable-news-json"),mock as typeof fetch,NOW);
+   expect(reusable.status).toBe(200);
+   const reusableBody=await reusable.json();
+   expect(reusableBody.source_scope).toBe("PERMANENT_STATIC_ARCHIVE_ROLLING_LATEST_250");
+   expect(reusableBody.registered_source_reader_state).toBe("NOT_QUERIED_PUBLIC_READ_PATH_IS_STATIC_ONLY");
+   expect(mock).toHaveBeenCalledTimes(4);
    expect(mock.mock.calls.every(([input])=>String(input)==="https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json")).toBe(true);
    for(const prohibited of ["https://","source_id","source_url","raw_html","publisher_name"])
      expect(JSON.stringify(m)).not.toContain(prohibited);
