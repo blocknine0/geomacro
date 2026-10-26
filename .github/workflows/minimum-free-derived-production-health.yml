@@ -99,7 +99,10 @@ jobs:
             category_counts:v.categories,legacy_signed_attested:false,payments:0}));
           NODE
 
+      # Run independently even when the health endpoint fails, so the language
+      # regression is never hidden behind an earlier product-health blocker.
       - name: Verify published language pack uses the single route-preserving controller
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
