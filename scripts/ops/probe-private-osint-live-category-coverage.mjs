@@ -55,9 +55,11 @@ try{
   }),
  })).sort((a,b)=>a.source_id.localeCompare(b.source_id));
  const allCellsHealthy=countryCategory.coverage.cells_without_healthy_source===0;
+ const observedCountryCategoryCells=countryCategory.coverage.observed_country_category_cells_this_tick;
+ const allCountryEventCellsObserved=observedCountryCategoryCells===585;
  const everyCategoryHealthy=categoryLive.all_categories_have_healthy_feed_this_tick;
  const everyCategoryHasItems=categoryLive.all_categories_have_native_dated_items_this_tick;
- const fullLiveCoverage=allCellsHealthy&&everyCategoryHealthy&&everyCategoryHasItems;
+ const fullSourceCoverage=allCellsHealthy&&everyCategoryHealthy&&everyCategoryHasItems;
  report={
   schema:"geomacro.private-osint-live-coverage-report.v1",
   generated_at:startedAt.toISOString(),completed_at:new Date().toISOString(),
@@ -65,12 +67,16 @@ try{
   source_registry_endpoints:sources.length,
   source_checks_completed:checks.length,
   observed_native_dated_items:items.length,
-  status:fullLiveCoverage?"FULL_195X3_HEALTHY_FEEDS_AND_THREE_CATEGORIES_WITH_DATED_ITEMS_THIS_TICK":
-   allCellsHealthy&&everyCategoryHealthy?"ALL_585_FALLBACKS_HEALTHY_BUT_CATEGORY_ITEM_GAP":
+  status:fullSourceCoverage&&allCountryEventCellsObserved?"FULL_195X3_SOURCE_FALLBACK_AND_COUNTRY_ATTRIBUTED_ITEMS_THIS_TICK":
+   fullSourceCoverage?"FULL_585_SOURCE_FALLBACKS_AND_THREE_CATEGORY_ITEMS_COUNTRY_EVENT_CELLS_PARTIAL":
+   allCellsHealthy&&everyCategoryHealthy?"FULL_585_SOURCE_FALLBACKS_HEALTHY_CATEGORY_ITEM_GAP":
    everyCategoryHealthy&&everyCategoryHasItems?"THREE_CATEGORIES_HAVE_DATED_ITEMS_BUT_COUNTRY_CELL_HEALTH_GAPS_REMAIN":
    everyCategoryHealthy?"HEALTHY_FEEDS_BUT_AT_LEAST_ONE_CATEGORY_HAS_NO_DATED_ITEMS":
    "DEGRADED_LIVE_SOURCE_COVERAGE",
   full_585_cell_healthy_fallback:allCellsHealthy,
+  all_585_country_category_cells_have_items_this_tick:allCountryEventCellsObserved,
+  observed_country_category_cells_this_tick:observedCountryCategoryCells,
+  country_category_cells_without_attributed_items_this_tick:585-observedCountryCategoryCells,
   all_three_category_lanes_healthy_this_tick:everyCategoryHealthy,
   all_three_categories_have_native_dated_items_this_tick:everyCategoryHasItems,
   category_live_source_coverage:categoryLive,
@@ -114,6 +120,9 @@ const summary={
  country_category_cells:report.country_category_source_coverage?.returned_country_category_cells??null,
  healthy_country_category_cells:report.country_category_source_coverage?.coverage?.cells_with_any_healthy_source??null,
  all_three_categories_have_native_dated_items_this_tick:report.all_three_categories_have_native_dated_items_this_tick??false,
+ observed_country_category_cells_this_tick:report.observed_country_category_cells_this_tick??null,
+ country_category_cells_without_attributed_items_this_tick:report.country_category_cells_without_attributed_items_this_tick??null,
+ all_585_country_category_cells_have_items_this_tick:report.all_585_country_category_cells_have_items_this_tick??false,
  country_specific_publisher_countries:report.country_category_source_coverage?.country_specific_source_countries_registered??null,
  endpoint_status_rows:report.endpoint_statuses?.length??0,
  raw_titles_or_feed_bodies_emitted:false,private_storage_writes:false,public_publication:false,
