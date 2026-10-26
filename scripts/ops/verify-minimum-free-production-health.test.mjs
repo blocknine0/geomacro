@@ -39,7 +39,7 @@ test("minimum free site accepts ONE native-dated official story, never claims al
   assert.equal(r.legacy_signed_hot_products_verified,false);
   assert.equal(r.current_numerical_gri_verified,false);
   assert.equal(r.paid_delivery_authorized,false);
-  assert.deepEqual([r.b2_requests,r.supabase_requests,r.payments],[0,0,0]);
+  assert.deepEqual([r.d1_requests,r.b2_requests,r.supabase_requests,r.payments],[0,0,0,0]);
 });
 test("unverified OSINT can coexist in the archive but never counts as official-source proof",()=>{
  const official=goodStory();
