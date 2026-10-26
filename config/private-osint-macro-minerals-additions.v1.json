@@ -117,6 +117,22 @@
       "commercial_eligible": false,
       "access_verified_in_production": false,
       "publicly_deliverable": false
+    },
+    {
+      "id": "private_repo8_usgs_minerals_news",
+      "url": "https://www.usgs.gov/news/minerals/feed",
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovered_in": "USGS Mineral Resources Program official RSS link",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
     }
   ]
 }
