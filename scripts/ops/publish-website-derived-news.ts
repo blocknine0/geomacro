@@ -285,7 +285,7 @@ try {
   // original-source audit. This is one bounded D1 read, not a publisher GET.
   let retained:typeof signals=[];
   if(workerPolicyReady){
-    try{retained=await fetchAllDerivedNews(fetch,now.getTime());}
+    try{retained=await fetchAllDerivedNews(fetch,now.getTime(),{fresh:true});}
     catch{console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_UNAVAILABLE");}
   }else console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_SKIPPED_D1_UNAVAILABLE");
   const reconciled=new Map<string,StatelessSourceCandidate>();
