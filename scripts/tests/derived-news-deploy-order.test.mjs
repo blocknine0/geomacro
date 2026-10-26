@@ -113,6 +113,6 @@ test("D1 daily-quota preflight leaves append-only permanent archive independent 
  const archiveStep=workflow.slice(archive,workflow.indexOf("\\n      - name:",archive+10));
  assert.match(archiveStep,/if: always\(\) && github\.event_name != 'pull_request'/u);
  assert.doesNotMatch(archiveStep,/steps\.d1-quota\.outputs\.headroom/u);
- assert.match(publisher,/GEOMACRO_D1_QUOTA_HEADROOM===\"held\"/u);
+ assert.ok(publisher.includes('process.env.GEOMACRO_D1_QUOTA_HEADROOM==="held"'));
  assert.match(publisher,/D1_QUOTA_HEADROOM_HELD_STATIC_ARCHIVE_ONLY/u);
 });
