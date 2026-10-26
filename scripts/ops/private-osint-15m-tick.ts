@@ -174,7 +174,7 @@ let websiteDisplayReceipt={status:"PUBLIC_D1_READ_UNAVAILABLE",total:0,
  categories:{geopolitics:0,macro:0,rare_earth:0},eligible:0,
  eligible_by_category:{geopolitics:0,macro:0,rare_earth:0}};
 try{
- const retained=await fetchAllDerivedNews(fetch,Date.now());
+ const retained=await fetchAllDerivedNews(fetch,Date.now(),{fresh:true});
  const eligibleRows=retained.filter(isConcretePublicIntelligence);
  const accepted=dedupeIntelligenceStories(eligibleRows);
  const summarize=(rows)=>Object.fromEntries(
