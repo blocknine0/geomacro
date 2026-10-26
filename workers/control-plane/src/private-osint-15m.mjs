@@ -98,34 +98,53 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
      env.DB.prepare("DELETE FROM private_osint_source_checks_24h WHERE checked_at < ?")
        .bind(new Date(now-24*3600000).toISOString()),
    ];
-   for(const r of rows){
-    // UPDATE cannot resurrect an old id evicted by a concurrent new batch.
-    // Only insert paths need and receive the atomic hard-cap pruning below.
-    if(r.preexisting)statements.push(env.DB.prepare(
-     "UPDATE private_osint_news_25h SET category=?,country_iso3=?,native_feed_published_at=?,projection_json=?,last_seen_at=? "+
-     "WHERE item_id=? AND (projection_json<>? OR last_seen_at<=?)")
-     .bind(r.category,r.country,r.native,r.projection,when,r.id,r.projection,new Date(now-6*3600000).toISOString()));
-    else statements.push(env.DB.prepare(
-     "INSERT INTO private_osint_news_25h(item_id,category,country_iso3,native_feed_published_at,projection_json,first_seen_at,last_seen_at) "+
-     "VALUES(?,?,?,?,?,?,?) ON CONFLICT(item_id) DO UPDATE SET "+
+   // One bulk UPDATE covers all existing ids, without resurrecting an id
+   // concurrently evicted from the exact 4,000-row retention ring.
+   // JSON arrays carry bounded, already validated noncommercial projections.
+   // This replaces up to 20 per-item statements with one indexed bulk query.
+   const existing=rows.filter(r=>r.preexisting);
+   const newer=rows.filter(r=>!r.preexisting);
+   const packed=r=>[r.id,r.category,r.country,r.native,r.projection];
+   const cutoffRefresh=new Date(now-6*3600000).toISOString();
+   if(existing.length)statements.push(env.DB.prepare(
+     "UPDATE private_osint_news_25h SET "+
+     "category=json_extract(j.value,'$[1]'),"+
+     "country_iso3=json_extract(j.value,'$[2]'),"+
+     "native_feed_published_at=json_extract(j.value,'$[3]'),"+
+     "projection_json=json_extract(j.value,'$[4]'),"+
+     "last_seen_at=? FROM json_each(?) AS j "+
+     "WHERE item_id=json_extract(j.value,'$[0]') "+
+     "AND (private_osint_news_25h.projection_json<>json_extract(j.value,'$[4]') "+
+     "OR private_osint_news_25h.last_seen_at<=?)")
+     .bind(when,JSON.stringify(existing.map(packed)),cutoffRefresh));
+   // Upsert only genuinely unseen ids. The conflict branch preserves the
+   // immutable first-seen clock if another collector inserted in parallel.
+   if(newer.length)statements.push(env.DB.prepare(
+     "INSERT INTO private_osint_news_25h"+
+     "(item_id,category,country_iso3,native_feed_published_at,projection_json,first_seen_at,last_seen_at) "+
+     "SELECT json_extract(value,'$[0]'),json_extract(value,'$[1]'),"+
+     "json_extract(value,'$[2]'),json_extract(value,'$[3]'),"+
+     "json_extract(value,'$[4]'),?,? FROM json_each(?) WHERE 1 "+
+     "ON CONFLICT(item_id) DO UPDATE SET "+
      "category=excluded.category,country_iso3=excluded.country_iso3,"+
      "native_feed_published_at=excluded.native_feed_published_at,"+
      "projection_json=excluded.projection_json,last_seen_at=excluded.last_seen_at "+
      "WHERE private_osint_news_25h.projection_json<>excluded.projection_json "+
      "OR private_osint_news_25h.last_seen_at<=?")
-     .bind(r.id,r.category,r.country,r.native,r.projection,when,when,new Date(now-6*3600000).toISOString()));
-   }
-   // 16 rows use 65 bindings including cutoff, below D1's 100-parameter
-   // ceiling. Bundling also keeps the largest valid write below 50 queries.
-   for(let i=0;i<body.checks.length;i+=16){
-    const group=body.checks.slice(i,i+16);
-    statements.push(env.DB.prepare(
-     "INSERT INTO private_osint_source_checks_24h(source_ref,category,state,checked_at) VALUES "+group.map(()=>"(?,?,?,?)").join(",")+" "+
-     "ON CONFLICT(source_ref,category) DO UPDATE SET state=excluded.state,checked_at=excluded.checked_at "+
+     .bind(when,when,JSON.stringify(newer.map(packed)),cutoffRefresh));
+   // One batched health UPSERT for all 32 checks; unchanged samples retain
+   // the existing 60-minute refresh policy, and failed states remain real.
+   if(body.checks.length)statements.push(env.DB.prepare(
+     "INSERT INTO private_osint_source_checks_24h(source_ref,category,state,checked_at) "+
+     "SELECT json_extract(value,'$[0]'),json_extract(value,'$[1]'),"+
+     "json_extract(value,'$[2]'),json_extract(value,'$[3]') "+
+     "FROM json_each(?) WHERE 1 ON CONFLICT(source_ref,category) DO UPDATE "+
+     "SET state=excluded.state,checked_at=excluded.checked_at "+
      "WHERE private_osint_source_checks_24h.state<>excluded.state "+
      "OR private_osint_source_checks_24h.checked_at<=?")
-     .bind(...group.flatMap(c=>[c.source_ref,c.category,c.state,c.checked_at]),new Date(now-3600000).toISOString()));
-   }
+     .bind(JSON.stringify(body.checks.map(c=>[
+       c.source_ref,c.category,c.state,c.checked_at
+     ])),new Date(now-3600000).toISOString()));
    if(hasNewRows)statements.push(env.DB.prepare(
      // Exact hard-cap retention with a fast SQLite btree COUNT and oldest-
      // first index walk over ONLY the excess rows. The prior NOT IN newest
