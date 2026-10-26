@@ -65,6 +65,9 @@ on:
       - "workers/control-plane/migrations/0029_private_osint_bundle_index.sql"
       - "scripts/lib/private-osint-bundle.test.mjs"
       - "src/lib/reusable-news-json.ts"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
+      - "scripts/tests/critical-workflow-budget-guards.test.mjs"
   push:
     branches: [main]
     paths:
@@ -136,7 +139,45 @@ jobs:
           node --check scripts/lib/private-unverified-osint-intake.mjs
           node --test scripts/lib/private-unverified-osint-intake.test.mjs
           node --test scripts/lib/private-osint-bundle.test.mjs
+          node --test scripts/tests/plan-d1-bundled-work.test.mjs
+          node --test scripts/tests/critical-workflow-budget-guards.test.mjs
           node --test scripts/lib/registered-reusable-news-source-collector.test.mjs scripts/lib/registered-news-15m-cadence.test.mjs
+  quota-admission:
+    name: Account-wide D1 no-query bundled quota gate
+    needs: verify
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment: production
+    outputs:
+      critical: ${{ steps.budget.outputs.critical }}
+      research: ${{ steps.budget.outputs.research }}
+      maintenance: ${{ steps.budget.outputs.maintenance }}
+      state: ${{ steps.budget.outputs.state }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Observe Cloudflare account-wide D1 rows; reserve for priority lanes
+        id: budget
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/plan-d1-bundled-work.mjs
+      - name: Clearly mark held collector cycles without inventing source news
+        if: steps.budget.outputs.critical != 'true' || steps.budget.outputs.research != 'true'
+        env:
+          D1_ADMISSION_STATE: ${{ steps.budget.outputs.state }}
+        run: |
+          echo "::notice::D1_BUDGET_ADMISSION_${D1_ADMISSION_STATE}; held source jobs are not completed ingestion. No records or coverage counts invented."
+
   live-source-probe:
     name: Read-only live OSINT category and 195x3 source-health probe
     needs: verify
@@ -171,8 +212,9 @@ jobs:
           retention-days: 7
 
   collect-private:
-    needs: verify
+    needs: [verify, quota-admission]
     if: >-
+      needs.quota-admission.outputs.critical == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&
@@ -199,8 +241,9 @@ jobs:
           bun scripts/ops/private-osint-15m-tick.ts
 
   collect-unverified-private:
-    needs: verify
+    needs: [verify, quota-admission]
     if: >-
+      needs.quota-admission.outputs.research == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&

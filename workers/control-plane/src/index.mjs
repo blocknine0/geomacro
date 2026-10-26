@@ -1279,7 +1279,7 @@ export default {
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime"&&!url.search)return getSourceRuntimeStatus(env);
     if(request.method==="GET"&&url.pathname==="/v1/public/reusable-source-news")
-      return publicReusableSourceNews(env,url.searchParams);
+      return publicReadCache(()=>publicReusableSourceNews(env,url.searchParams));
     if(request.method==="GET"&&url.pathname==="/v1/public/three-domain-continuity"&&!url.search)
       return publicReadCache(()=>threeDomainEvidenceContinuity(env));
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime-context"){

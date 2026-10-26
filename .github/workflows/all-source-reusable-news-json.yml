@@ -21,6 +21,11 @@ on:
       - "scripts/ops/publish-all-source-reusable-news-json.ts"
       - "workers/control-plane/src/reusable-source-news.mjs"
       - "workers/control-plane/migrations/0026_reusable_source_news.sql"
+      - "scripts/lib/prepare-reusable-news-batches.mjs"
+      - "scripts/tests/prepare-reusable-news-batches.test.mjs"
+      - "scripts/lib/reusable-source-news-d1.test.mjs"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
 
 permissions:
   contents: read
@@ -52,6 +57,8 @@ jobs:
           node --test scripts/lib/registered-news-15m-cadence.test.mjs
           node --test scripts/lib/country-news-mentions-195.test.mjs
           node --test scripts/lib/reusable-source-news-d1.test.mjs
+          node --test scripts/tests/prepare-reusable-news-batches.test.mjs
+          node --test scripts/tests/plan-d1-bundled-work.test.mjs
 
   collect-and-publish:
     needs: offline-contract
@@ -96,12 +103,25 @@ jobs:
           set -euo pipefail
           test -n "$GEOMACRO_COMMERCE_LEDGER_TOKEN" ||
             { echo "::error::Missing protected D1 publisher secret"; exit 2; }
+      - name: Gate bundled factual D1 production on account-wide Free headroom
+        id: quota
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: bun scripts/ops/plan-d1-bundled-work.mjs
+      - name: Report held source intake without claiming a new news cycle
+        if: steps.quota.outputs.critical != 'true'
+        env:
+          QUOTA_STATE: ${{ steps.quota.outputs.state }}
+        run: echo "::notice::D1_FACTUAL_INTAKE_HELD_${QUOTA_STATE}; source fetch and D1 write intentionally not executed."
       - name: Collect, publish and read back factual JSON
+        if: steps.quota.outputs.critical == 'true'
         shell: bash
         run: |
           set -euo pipefail
           bun scripts/ops/publish-all-source-reusable-news-json.ts
       - name: Upload verified bounded all-source factual JSON
+        if: steps.quota.outputs.critical == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-all-source-reusable-json

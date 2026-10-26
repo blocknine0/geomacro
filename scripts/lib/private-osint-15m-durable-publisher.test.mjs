@@ -135,7 +135,7 @@ test("protected publisher preserves true new-late vs repeated news counts",async
  assert.equal(r.previously_persisted_reobserved,0);
 });
 
-test("high-volume private OSINT uses 16 news and 32 health checks per protected D1 batch",async()=>{
+test("high-volume private OSINT uses maximum 20 news and 32 health checks per protected D1 batch",async()=>{
  const items=Array.from({length:33},(_,i)=>({
   id:"news-"+i.toString(16).padStart(64,"0"),
   source:{original_published_at:new Date(now-5*60000).toISOString()},
@@ -151,9 +151,9 @@ test("high-volume private OSINT uses 16 news and 32 health checks per protected 
  });
  const writes=calls.filter(c=>c.method==="PUT").map(c=>JSON.parse(c.body));
  assert.equal(writes.length,3);
- assert.ok(writes.every(b=>b.items.length<=16&&b.checks.length<=32));
+ assert.ok(writes.every(b=>b.items.length<=20&&b.checks.length<=32));
  assert.deepEqual(writes.map(b=>[b.items.length,b.checks.length]),
-  [[16,32],[16,32],[1,1]]);
+  [[20,32],[13,32],[0,1]]);
  assert.equal(receipt.news_rows_verified_in_d1,33);
  assert.equal(receipt.source_checks_persisted,65);
  assert.equal(receipt.d1_write_exact_readback_verified,true);
@@ -239,7 +239,7 @@ test("private quota sampling persists EVERY dated news item but fewer D1 check U
  assert.equal(receipt.news_rows_verified_in_d1,33);
  assert.equal(writes.reduce((n,g)=>n+g.items.length,0),33);
  assert.equal(writes.reduce((n,g)=>n+g.checks.length,0),receipt.source_checks_persisted);
- assert.ok(writes.every(g=>g.items.length<=16&&g.checks.length<=32));
+ assert.ok(writes.every(g=>g.items.length<=20&&g.checks.length<=32));
  assert.ok(writes.length<15,"3-slot sampling should use far fewer D1 calls than all 900 checks");
  assert.equal(receipt.d1_write_exact_readback_verified,true);
  assert.equal(receipt.separate_private_d1_readback_verified,true);

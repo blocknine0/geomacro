@@ -19,6 +19,7 @@ on:
       - "scripts/ops/verify-production-observed-195x3.mjs"
       - "scripts/tests/verify-production-observed-195x3.test.mjs"
       - ".github/workflows/website-derived-news-continuity.yml"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
   workflow_dispatch: {}
   workflow_run:
     workflows: ["Deploy D1 Control Plane", "Deploy Permanent Public Finds Archive"]
@@ -127,12 +128,41 @@ jobs:
           node --test scripts/tests/derived-news-public-readback.test.mjs
           node --test scripts/tests/derived-news-b2-readwrite-backup.test.mjs
 
+  quota-admission:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      github.event_name != 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment: production
+    outputs:
+      research: ${{ steps.budget.outputs.research }}
+      maintenance: ${{ steps.budget.outputs.maintenance }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - id: budget
+        name: Reserve D1 account-wide headroom for core original ingestion
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/plan-d1-bundled-work.mjs
+
   refresh-derived-news:
+    needs: quota-admission
     # Never race a producer against any repository push. Source-only changes
     # are handled by the existing schedule/manual trigger; Worker changes resume
     # from the trusted main deployment completion. The live policy handshake is
     # the final fail-closed guard, even when downstream signature audit fails.
     if: >-
+      needs.quota-admission.outputs.research == 'true' &&
       github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' &&
       github.event_name != 'push' &&
       (github.event_name != 'workflow_run' ||
@@ -418,12 +448,13 @@ jobs:
   private-b2-derived-news-acceptance:
     # Dedicated red/green storage job: B2 failure must not hide inside a
     # successful hourly public newsroom workflow, nor stop the D1 website.
-    needs: refresh-derived-news
+    needs: [refresh-derived-news, quota-admission]
     # Independently archive only the VALID 72h public D1 journal even if
     # unrelated signed-Finds, website SHA or GRI checks failed earlier.
     # Source scope / native publication time / 72h must pass again before any B2 PUT.
     if: >-
       always() &&
+      needs.quota-admission.outputs.maintenance == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request'
