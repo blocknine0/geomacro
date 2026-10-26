@@ -9,6 +9,8 @@ on:
     paths:
       - ".github/workflows/deploy-permanent-public-finds-archive.yml"
       - ".github/workflows/website-derived-news-continuity.yml"
+      - "scripts/ops/verify-minimum-free-production-health.mjs"
+      - "scripts/ops/verify-minimum-free-production-health.test.mjs"
       - "workers/public-finds-archive/**"
   workflow_dispatch: {}
 
