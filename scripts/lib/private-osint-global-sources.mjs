@@ -99,6 +99,7 @@ export function privateOsintGlobalSources(){
   ["private_repo8_imf_release","https://www.imf.org/en/news/rss"],
   ["private_repo8_us_eia_energy","https://www.eia.gov/rss/todayinenergy.xml"],
   ["private_repo8_uk_lme_metals","https://www.lme.com/News/rss"],
+  ["private_repo8_usgs_minerals_news","https://www.usgs.gov/news/minerals/feed"],
  ]);
  if(macroMinerals?.schema!=="geomacro.private-osint-macro-minerals-additions.v1"||
     macroMinerals.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
