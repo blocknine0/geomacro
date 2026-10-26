@@ -36,8 +36,8 @@ test("accepted global source inventory has distinct pinned feeds in six continen
  assert.equal(sourceMatrix.coverage.cells_with_global_fallback,585);
  assert.equal(sourceMatrix.coverage.cells_with_any_healthy_source,0);
  assert.equal(sourceMatrix.coverage.cells_without_configured_source,0);
- assert.equal(sourceMatrix.country_specific_source_countries_registered,63);
- assert.equal(sourceMatrix.countries_without_country_specific_publisher_source.length,132);
+ assert.equal(sourceMatrix.country_specific_source_countries_registered,65);
+ assert.equal(sourceMatrix.countries_without_country_specific_publisher_source.length,130);
  assert.equal(sourceMatrix.scope,"PRIVATE_SOURCE_ACQUISITION_COVERAGE_NOT_PUBLIC_FIND_COVERAGE");
  const manifest=JSON.parse(readFileSync(new URL('../../config/private-osint-working-sources.v1.json',import.meta.url)));
  assert.equal(manifest.accepted_endpoint_count,manifest.sources.length);
@@ -192,7 +192,7 @@ test("195x3 source-coverage priority distinguishes local, regional and global fa
 test("new regional macro/minerals and maritime corridor candidates are deduplicated, bounded, private",async()=>{
  const additions=JSON.parse(readFileSync(new URL(
   "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
- assert.equal(additions.sources.length,22);
+ assert.equal(additions.sources.length,24);
  const complete=privateOsintGlobalSources();
  assert.ok(complete.length<=512);
  assert.equal(new Set(complete.map(s=>s.url)).size,complete.length);
@@ -275,7 +275,7 @@ test("Africa, Asia-Pacific and Oceania regional feeds have documented provenance
  const additions=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
  const all=privateOsintGlobalSources();
  const ids=["private_expansion_afdb_development_news","private_expansion_adb_asia_pacific","private_expansion_spc_pacific_news"];
- assert.equal(additions.sources.length,22);
+ assert.equal(additions.sources.length,24);
  const selected=all.filter(s=>ids.includes(s.id));
  assert.equal(selected.length,3);
  const docs=new Map(additions.sources.map(s=>[s.id,s]));
@@ -305,6 +305,51 @@ test("Africa, Asia-Pacific and Oceania regional feeds have documented provenance
  assert.ok(result.summary.selected_items_by_category.rare_earth>=2);
  assert.equal(result.summary.publicly_served,false);
  assert.equal(result.summary.rights_verified,false);
+});
+
+test("new Botswana and Thailand official RSS feeds improve local publisher-country coverage",async()=>{
+ const additions=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
+ const all=privateOsintGlobalSources();
+ const ids=["private_expansion_bw_bankofbotswana_news","private_expansion_th_mdes_news"];
+ const selected=all.filter(s=>ids.includes(s.id));
+ assert.equal(selected.length,2);
+ assert.equal(additions.sources.length,24);
+ const byId=new Map(additions.sources.map(s=>[s.id,s]));
+ assert.equal(byId.get(ids[0]).url,"https://www.bankofbotswana.bw/rss/latest_news");
+ assert.equal(byId.get(ids[1]).url,"https://mdes.go.th/news/rss/3");
+ for(const id of ids){
+  const entry=byId.get(id);
+  assert.ok(entry.discovery_reference_url);
+  assert.ok(entry.provenance_note.length>25);
+  assert.equal(entry.activation_state,"RUNTIME_PROBE_REQUIRED");
+  assert.equal(entry.provider_rights_verified,false);
+  assert.equal(entry.commercial_eligible,false);
+  assert.equal(entry.publicly_deliverable,false);
+ }
+ const feed=(title)=>"<rss><channel><item><title>"+title+"</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate><link>https://example.org/story</link></item></channel></rss>";
+ const result=await collectPrivateOsint15m({now,registry:selected,normalize,
+  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
+  fetchImpl:async url=>new Response(feed(url.includes("bankofbotswana")
+   ?"Botswana central bank announces inflation monetary policy and interest-rate decision"
+   :"Thailand ministry announces cybersecurity security policy and digital economy regulation"),
+   {status:200,headers:{"content-type":"application/rss+xml"}})});
+ assert.equal(result.summary.source_endpoints_attempted,2);
+ assert.equal(result.checks.length,4);
+ assert.equal(result.summary.selected_items_by_category.macro,2);
+ assert.equal(result.summary.selected_items_by_category.geopolitics,1);
+ assert.deepEqual(new Set(result.items.map(x=>x.country_iso3)),new Set(["BWA","THA"]));
+ const matrix=privateOsintCountryCategoryCoverage(all,result.checks,result.items,{includeCells:true});
+ const botswana=matrix.cells.find(x=>x.country_iso3==="BWA"&&x.category==="macro");
+ const thailandMacro=matrix.cells.find(x=>x.country_iso3==="THA"&&x.category==="macro");
+ const thailandGeo=matrix.cells.find(x=>x.country_iso3==="THA"&&x.category==="geopolitics");
+ assert.ok(botswana.local.healthy>0);
+ assert.equal(botswana.source_tier_status,"LOCAL_SOURCE_HEALTHY");
+ assert.ok(thailandMacro.local.healthy>0);
+ assert.equal(thailandMacro.source_tier_status,"LOCAL_SOURCE_HEALTHY");
+ assert.ok(thailandGeo.local.healthy>0);
+ assert.equal(thailandGeo.source_tier_status,"LOCAL_SOURCE_HEALTHY");
+ assert.equal(botswana.event_country_verified,false);
+ assert.equal(thailandMacro.commercially_eligible,false);
 });
 
 test("official corridor reference overlay only covers existing named routes, never asserts live transport",()=>{
