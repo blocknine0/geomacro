@@ -8,16 +8,19 @@ import {
  privateOsintGlobalSources,
  privateOsintPublisherCountryCoverage,
  privateOsintCountryCategoryCoverage,
+ privateOsintCorridorSourceCoverage,
 } from "../lib/private-osint-global-sources.mjs";
 
 const sources=privateOsintGlobalSources();
 const publisherCountryCoverage=privateOsintPublisherCountryCoverage(sources,[],{includeDetails:true});
 const sourceCoverageMatrix=privateOsintCountryCategoryCoverage(sources,[],[],{includeCells:true});
+const corridorSourceCoverage=privateOsintCorridorSourceCoverage(sources,[],{includeCells:true});
 const report={
  generated_at:new Date().toISOString(),
  source_registry_count:sources.length,
  publisher_country_inventory:publisherCountryCoverage,
  country_category_source_coverage:sourceCoverageMatrix,
+ corridor_source_coverage:corridorSourceCoverage,
  live_health_scope:"NOT_PROBED_BY_THIS_OFFLINE_COMMAND",
  public_finds_observation_scope:"SEPARATE_LIVE_72H_ARCHIVE_ENDPOINT",
 };
