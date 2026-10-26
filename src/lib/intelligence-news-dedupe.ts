@@ -47,7 +47,7 @@ function descriptor(row:StatelessIntelligenceSignal):Descriptor{
  const action=words.find(w=>Object.values(VERBS).includes(w))??null;
  const topicText=[row.title,row.topic,row.what_changed].join(" ");
  const categoryTerms:Record<string,RegExp>={
-  geopolitics:/\b(?:war|attack|missile|election|president|minister|diplomacy|sanctions|border|military|security|foreign policy|government|conflict|ukraine|russia|israel|iran|china|taiwan|sudan|yemen|nato|parliament|political|export controls?)\b/giu,
+  geopolitics:/\b(?:war|attack|missile|election|president|minister|diplomacy|sanctions|border|military|security|foreign policy|government|conflict|ukraine|russia|israel|iran|china|taiwan|sudan|yemen|nato|parliament|political)\b/giu,
   macro:/\b(?:inflation|prices?|gdp|central bank|interest rates?|currency|exchange rates?|forex|fx|monetary|fiscal|unemployment|jobs|output|growth|recession|economy|economic|bond|yield|debt|cpi|pmi|exchange)\b/giu,
   rare_earth:/\b(?:rare earths?|critical minerals?|lithium|cobalt|nickel|graphite|copper|manganese|bauxite|ores?|mining|minerals?|batteries?|smelter|refining|uranium|tantalum|gallium|germanium|magnets?|metallurgy|supply chain)\b/giu,
  };
