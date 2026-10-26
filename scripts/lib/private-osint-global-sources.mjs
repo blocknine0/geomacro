@@ -386,6 +386,101 @@ export function privateOsintCountryCategoryCoverage(sources,checks=[],items=[],{
  return summary;
 }
 
+/**
+ * Route-level source acquisition coverage for the 58 canonical corridors.
+ * Canonical monitor_refs and overlay links are reference metadata only;
+ * private feed health is reported separately from those references.
+ * None of these counts proves physical-flow coverage, route geometry, a
+ * current disruption, source rights, or commercial risk eligibility.
+ */
+export function privateOsintCorridorSourceCoverage(sources,checks=[],{includeCells=false}={}){
+ if(!Array.isArray(sources)||!Array.isArray(checks)||typeof includeCells!=="boolean")
+  throw Error("PRIVATE_OSINT_CORRIDOR_SOURCE_COVERAGE_INPUT_INVALID");
+ const canonical=JSON.parse(readFileSync(new URL("../../config/operator-corridor-source-crosswalk.v1.json",import.meta.url),"utf8"));
+ const overlay=JSON.parse(readFileSync(new URL("../../config/private-osint-corridor-reference-overlay.v1.json",import.meta.url),"utf8"));
+ privateOsintCorridorReferenceCoverage();
+ if(canonical?.schema!=="geomacro.operator-corridor-source-crosswalk.v1"||
+    !Array.isArray(canonical.corridors)||canonical.corridors.length!==58||
+    !Array.isArray(canonical.source_registry)||
+    !Array.isArray(overlay.sources))throw Error("PRIVATE_OSINT_CORRIDOR_SOURCE_REGISTRY_INVALID");
+ const corridors=canonical.corridors,known=new Set(corridors.map(c=>c.id));
+ if(known.size!==58)throw Error("PRIVATE_OSINT_CORRIDOR_SOURCE_IDS_INVALID");
+ const stateByRef=new Map();
+ for(const check of checks){
+  if(!check||typeof check.source_ref!=="string"||!/^[a-f0-9]{64}$/u.test(check.source_ref)||
+     !KNOWN_SOURCE_STATES.has(check.state))throw Error("PRIVATE_OSINT_CORRIDOR_CHECK_INVALID");
+  stateByRef.set(check.source_ref,check.state);
+ }
+ const sourceIds=new Set(canonical.source_registry.map(s=>s.source_id));
+ const cells=corridors.map(corridor=>{
+  if(!corridor||typeof corridor.id!=="string"||typeof corridor.name!=="string")
+   throw Error("PRIVATE_OSINT_CORRIDOR_ROW_INVALID");
+  const monitorRefs=Array.isArray(corridor.monitor_refs)?corridor.monitor_refs:[];
+  const knownMonitorRefs=monitorRefs.filter(ref=>ref&&typeof ref.source_id==="string"&&sourceIds.has(ref.source_id));
+  const overlaySources=overlay.sources.filter(s=>(s.related_corridor_ids??[]).includes(corridor.id));
+  const feedSources=sources.filter(s=>Array.isArray(s.related_corridor_ids)&&s.related_corridor_ids.includes(corridor.id));
+  let checkedFeedSources=0,healthyFeedSources=0,notDueFeedSources=0,unavailableFeedSources=0,deniedFeedSources=0,malformedFeedSources=0,unsupportedFeedSources=0;
+  const feedSourceStates=[];
+  for(const source of feedSources){
+   const states=(source.categories??[]).map(category=>stateByRef.get(sourceRef(source,category))).filter(Boolean);
+   if(states.length)checkedFeedSources++;
+   if(states.some(state=>HEALTHY_SOURCE_STATES.has(state)))healthyFeedSources++;
+   if(states.includes("NOT_DUE"))notDueFeedSources++;
+   if(states.includes("UNAVAILABLE"))unavailableFeedSources++;
+   if(states.includes("DENIED"))deniedFeedSources++;
+   if(states.includes("MALFORMED"))malformedFeedSources++;
+   if(states.includes("UNSUPPORTED_FORMAT"))unsupportedFeedSources++;
+   feedSourceStates.push({source_id:source.id,category_count:(source.categories??[]).length,checked_categories:states.length,healthy:states.some(state=>HEALTHY_SOURCE_STATES.has(state)),states:[...new Set(states)].sort()});
+  }
+  const status=healthyFeedSources>0?"PRIVATE_FEED_HEALTHY_THIS_TICK":
+   checkedFeedSources>0?"PRIVATE_FEEDS_CHECKED_NONE_HEALTHY":
+   feedSources.length>0?"PRIVATE_FEED_CANDIDATE_NOT_CHECKED_THIS_TICK":
+   monitorRefs.length>0||overlaySources.length>0?"REFERENCE_ONLY_NOT_LIVE":"NO_LINKED_SOURCE_REFERENCE";
+  return {
+   corridor_id:corridor.id,corridor_name:corridor.name,corridor_type:corridor.type??"unknown",
+   canonical_monitor_reference_count:monitorRefs.length,
+   canonical_monitor_refs_matched_to_source_registry:knownMonitorRefs.length,
+   overlay_reference_surface_count:overlaySources.length,
+   private_osint_feed_candidate_count:feedSources.length,
+   private_osint_feed_sources_checked_this_tick:checkedFeedSources,
+   private_osint_feed_sources_healthy_this_tick:healthyFeedSources,
+   private_osint_feed_sources_not_due:notDueFeedSources,
+   private_osint_feed_sources_unavailable:unavailableFeedSources,
+   private_osint_feed_sources_denied:deniedFeedSources,
+   private_osint_feed_sources_malformed:malformedFeedSources,
+   private_osint_feed_sources_unsupported:unsupportedFeedSources,
+   acquisition_status:status,
+   route_geometry_certified:false,physical_flow_verified:false,current_disruption_verified:false,
+   source_rights_verified:false,commercially_eligible:false,
+   ...(includeCells?{monitor_refs:monitorRefs.map(ref=>({source_id:ref.source_id,link_state:ref.link_state??null})),overlay_reference_ids:overlaySources.map(s=>s.id),private_feed_sources:feedSourceStates}:{}),
+  };
+ });
+ const aggregate=rows=>({
+  corridors:rows.length,
+  with_canonical_monitor_reference:rows.filter(c=>c.canonical_monitor_reference_count>0).length,
+  with_monitor_reference_matched_to_registry:rows.filter(c=>c.canonical_monitor_refs_matched_to_source_registry>0).length,
+  with_overlay_reference_surface:rows.filter(c=>c.overlay_reference_surface_count>0).length,
+  with_private_feed_candidate:rows.filter(c=>c.private_osint_feed_candidate_count>0).length,
+  with_private_feed_checked_this_tick:rows.filter(c=>c.private_osint_feed_sources_checked_this_tick>0).length,
+  with_private_feed_healthy_this_tick:rows.filter(c=>c.private_osint_feed_sources_healthy_this_tick>0).length,
+  with_no_private_feed_candidate:rows.filter(c=>c.private_osint_feed_candidate_count===0).length,
+  with_no_source_reference:rows.filter(c=>c.canonical_monitor_reference_count===0&&c.overlay_reference_surface_count===0&&c.private_osint_feed_candidate_count===0).length,
+ });
+ const summary={
+  schema:"geomacro.private-osint-corridor-source-coverage.v1",
+  corridor_count:58,returned_corridors:cells.length,
+  scope:"CANONICAL_MONITOR_REFERENCES_AND_PRIVATE_FEED_CANDIDATES_NOT_PHYSICAL_FLOW_VERIFICATION",
+  overlay_reference_scope:"DISCOVERY_ONLY_NO_AUTO_SCRAPING",
+  health_scope:"CURRENT_PRIVATE_COLLECTOR_TICK_ONLY",
+  physical_flow_verified:false,route_geometry_certified:false,current_disruption_verified:false,source_rights_verified:false,commercial_delivery_enabled:false,
+  coverage:aggregate(cells),
+ };
+ if(includeCells)summary.cells=cells;
+ if(cells.length!==58||summary.coverage.with_no_source_reference>0&&summary.coverage.with_canonical_monitor_reference!==58)
+  throw Error("PRIVATE_OSINT_CORRIDOR_SOURCE_COVERAGE_INCOMPLETE");
+ return summary;
+}
+
 /** Registration coverage only; official HTML/API discovery references are NOT auto-scraped. */
 export function privateOsintCorridorReferenceCoverage(){
  const canonical=JSON.parse(readFileSync(new URL(
