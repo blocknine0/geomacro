@@ -1293,7 +1293,7 @@ export default {
       return getAutomatedFinds(env,url.searchParams.get("category"));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/derived-structural-72h")
-      return publicSharedDerivedNewsFeed(env,url.searchParams);
+      return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams));
     if(request.method==="GET"&&url.pathname==="/v1/partner/predge/derived-structural-72h")
       return predgeResearchDerivedNewsFeed(request,env);
     if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-d1-readiness"&&!url.search)
