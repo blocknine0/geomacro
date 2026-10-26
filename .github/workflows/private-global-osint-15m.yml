@@ -39,6 +39,7 @@ on:
       - "scripts/lib/private-osint-global-sources.mjs"
       - "scripts/lib/private-osint-global-sources.test.mjs"
       - "scripts/ops/audit-private-osint-publisher-coverage.mjs"
+      - "scripts/ops/probe-private-osint-live-category-coverage.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
       - "config/private-osint-official-feed-additions.v1.json"
@@ -64,6 +65,7 @@ on:
       - "src/lib/stateless-intelligence-model.ts"
       - "scripts/lib/private-osint-15m-collector.mjs"
       - "scripts/lib/private-osint-15m-collector.test.mjs"
+      - "scripts/ops/probe-private-osint-live-category-coverage.mjs"
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/lib/private-osint-global-sources.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
@@ -117,6 +119,39 @@ jobs:
           node --test scripts/lib/private-unverified-osint-intake.test.mjs
           node --test scripts/lib/private-osint-bundle.test.mjs
           node --test scripts/lib/registered-reusable-news-source-collector.test.mjs scripts/lib/registered-news-15m-cadence.test.mjs
+  live-source-probe:
+    name: Read-only live OSINT category and 195x3 source-health probe
+    needs: verify
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      ((github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == 'blocknine0/geomacro') ||
+       github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Probe public RSS/Atom sources without storage or publication
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/probe-private-osint-live-category-coverage.mjs
+          node scripts/ops/probe-private-osint-live-category-coverage.mjs
+      - name: Save counts-only live coverage report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-private-osint-live-coverage-${{ github.run_id }}
+          path: /tmp/geomacro-private-osint-live-coverage.json
+          if-no-files-found: warn
+          retention-days: 7
+
   collect-private:
     needs: verify
     if: >-
