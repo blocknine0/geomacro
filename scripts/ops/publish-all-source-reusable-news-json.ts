@@ -61,7 +61,8 @@ for(const group of groups){
   reobserved+=body.previously_observed_count;
 }
 const status=await fetch(endpoint+"/v1/public/reusable-source-news",{
-  method:"GET",redirect:"error",cache:"no-store",headers:{Accept:"application/json"},
+  method:"GET",redirect:"error",cache:"no-store",
+  headers:{Accept:"application/json",Authorization:"Bearer "+token},
   signal:AbortSignal.timeout(12000),
 });
 if(!status.ok)throw Error("REUSABLE_SOURCE_NEWS_PUBLIC_READ_UNAVAILABLE");
@@ -82,7 +83,7 @@ while(cursor!==null){
      cursor>=4000)throw Error("REUSABLE_SOURCE_NEWS_PAGING_UNBOUNDED");
   const page=await fetch(endpoint+"/v1/public/reusable-source-news?offset="+cursor,{
     method:"GET",redirect:"error",cache:"no-store",
-    headers:{Accept:"application/json"},signal:AbortSignal.timeout(12000),
+    headers:{Accept:"application/json",Authorization:"Bearer "+token},signal:AbortSignal.timeout(12000),
   });
   if(!page.ok)throw Error("REUSABLE_SOURCE_NEWS_PAGE_READ_UNAVAILABLE");
   const doc=await page.json();
