@@ -27,6 +27,10 @@ test("recover only an exact-main confirmed quota 7500 migration failure",()=>{
   assert.match(recovery,/Your account has exceeded D1's free tier daily row read limit/);
   assert.match(recovery,/Your account has exceeded D1's free tier daily row write limit/);
   assert.match(recovery,/write_quota=true/);
+  assert.match(recovery,/Require verified D1 Free-tier daily row headroom before migrations/);
+  assert.match(recovery,/preflight_conclusion" != "failure"/);
+  assert.match(recovery,/D1_QUOTA_HEADROOM_UNVERIFIED_OR_BELOW_SAFE_RESERVE/);
+  assert.match(recovery,/preflight_hold=true/);
   assert.match(recovery,/code: 7500/);
   assert.match(recovery,/retry=false/);
   assert.match(recovery,/steps\.diagnose\.outputs\.retry == 'true'/);
