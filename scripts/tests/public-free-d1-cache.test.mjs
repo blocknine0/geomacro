@@ -55,6 +55,13 @@ test("protected, query-based and header-bearing requests bypass shared cache",as
   assert.equal(reads,7);assert.equal(puts,0);assert.equal(matches,0);
 });
 
+test("unfiltered public structural feed reuses a bounded public cache while query filters bypass it",async()=>{
+  const structural="https://geomacro-control-plane.example/v1/public/derived-structural-72h";
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(structural)),true);
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(structural+"?domain=macro")),false);
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(structural,{"Authorization":"Bearer token"})),false);
+});
+
 test("bundle receives a shorter TTL and respects explicit no-cache/no-store readback requests",async()=>{
   const bundle="https://geomacro-control-plane.example/v1/public/website-derived-news-bundle";
   assert.equal(PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS,15);
@@ -100,6 +107,7 @@ test("no private Set-Cookie response is cached and HTML path is explicitly publi
 test("Worker keeps public-only cache and original strict private access intact",()=>{
   const code=readFileSync(new URL("../../workers/control-plane/src/index.mjs",import.meta.url),"utf8");
   assert.match(code,/return publicReadCache\(\(\)=>threeDomainEvidenceContinuity\(env\)\)/);
+  assert.match(code,/return publicReadCache\(\(\)=>publicSharedDerivedNewsFeed\(env,url.searchParams\)\)/);
   assert.match(code,/return publicReadCache\(\(\)=>renderDerivedStoriesHtml\(env\)\)/);
   assert.match(code,/return publicReadCache\(\(\)=>readDerivedStoriesBundle\(env\)\)/);
   assert.match(code,/website-derived-news-bundle/);
