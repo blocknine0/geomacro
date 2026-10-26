@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import {createHash} from "node:crypto";
 import {privateOsintGlobalSources,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintCorridorSourceCoverage,privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,privateOsintCategoryLiveCoverage,PRIVATE_OSINT_TOPICS} from "./private-osint-global-sources.mjs";
 import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
-import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
+import {collectRegisteredReusableNews,registeredReusableNewsSources} from "./registered-reusable-news-source-collector.mjs";
 import {privateOsintCountryMention} from "./private-osint-country-mentions.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 const now=new Date("2026-10-25T12:00:00.000Z");
@@ -40,9 +40,9 @@ test("accepted global source inventory has distinct pinned feeds in six continen
  assert.equal(sourceMatrix.countries_without_country_specific_publisher_source.length,130);
  assert.equal(sourceMatrix.scope,"PRIVATE_SOURCE_ACQUISITION_COVERAGE_NOT_PUBLIC_FIND_COVERAGE");
  const unGenevaCandidate=JSON.parse(readFileSync(new URL("../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8")).sources.find(s=>s.id==="private_expansion_ungeneva_press_rss");
- assert.equal(liveSources.filter(source=>source.url===unGenevaCandidate.url).length,1);
- assert.equal(liveSources.find(source=>source.url===unGenevaCandidate.url).id,"ungeneva_press_global");
- const liveSources=privateOsintGlobalSources();
+ assert.equal(sources.filter(source=>source.url===unGenevaCandidate.url).length,1);
+ assert.equal(sources.find(source=>source.url===unGenevaCandidate.url).id,"ungeneva_press_global");
+ const liveSources=sources;
  assert.ok(["geopolitics","macro","rare_earth"].every(category=>liveSources.filter(source=>source.categories.includes(category)).length>=12));
  const manifest=JSON.parse(readFileSync(new URL('../../config/private-osint-working-sources.v1.json',import.meta.url)));
  assert.equal(manifest.accepted_endpoint_count,manifest.sources.length);
@@ -293,9 +293,10 @@ test("official local/regional feeds are source-registered with correct categorie
   "private_expansion_uk_dbt_atom",
   "private_expansion_uk_fcdo_atom",
  ];
- const selected=all.filter(s=>ids.includes(s.id));
- assert.equal(selected.length,ids.length);
  const byId=new Map(additions.sources.map(s=>[s.id,s]));
+ const selected=all.filter(s=>ids.some(id=>byId.get(id)?.url===s.url));
+ assert.equal(selected.length,ids.length);
+ assert.equal(new Set(selected.map(s=>s.url)).size,ids.length);
  for(const id of ids){
   const row=byId.get(id);
   assert.ok(row,id);
@@ -314,15 +315,16 @@ test("official local/regional feeds are source-registered with correct categorie
  const atom=(title)=>"<feed xmlns=\"http://www.w3.org/2005/Atom\"><title>source feed</title><entry><title>"+title+"</title><published>2026-10-25T11:55:00Z</published><updated>2026-10-25T11:55:00Z</updated><link href=\"https://example.org/story\" rel=\"alternate\"/></entry></feed>";
  const rss=(title)=>"<rss version=\"2.0\"><channel><item><title>"+title+"</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate><link>https://example.org/story</link></item></channel></rss>";
  const cases=[
-  ["private_expansion_uk_fcdo_atom","geopolitics","UK foreign office announces new ceasefire and diplomatic sanctions statement"],
-  ["private_expansion_eurostat_economy_atom","macro","Eurostat reports inflation and GDP economic statistics"],
-  ["private_expansion_nrcan_atom","rare_earth","Canada announces critical minerals lithium and rare-earth supply policy"],
+  [byId.get("private_expansion_uk_fcdo_atom").url,"geopolitics","UK foreign office announces new ceasefire and diplomatic sanctions statement"],
+  [byId.get("private_expansion_eurostat_economy_atom").url,"macro","Eurostat reports inflation and GDP economic statistics"],
+  [byId.get("private_expansion_nrcan_atom").url,"rare_earth","Canada announces critical minerals lithium and rare-earth supply policy"],
  ];
- const probe=selected.filter(s=>cases.some(c=>c[0]===s.id));
+ const probe=selected.filter(s=>cases.some(c=>c[0]===s.url));
+ assert.equal(probe.length,3);
  const result=await collectPrivateOsint15m({now,registry:probe,normalize,resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
   fetchImpl:async url=>{
    const source=probe.find(s=>s.url===url);
-   const title=cases.find(c=>c[0]===source.id)[2];
+   const title=cases.find(c=>c[0]===url)[2];
    return new Response(source.type==="atom"?atom(title):rss(title),{status:200,headers:{"content-type":source.type==="atom"?"application/atom+xml":"application/rss+xml"}});
   }});
  assert.equal(result.summary.source_endpoints_attempted,3);
