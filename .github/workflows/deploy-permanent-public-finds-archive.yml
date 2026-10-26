@@ -103,7 +103,7 @@ jobs:
           writeFileSync(join(assetsDir,"index.json"),JSON.stringify(index,null,2)+"\n",{mode:0o644});
           console.log(JSON.stringify({schema:"geomacro.permanent-public-finds-static-bundle.v1",
             archive_signals:rows.length,archive_months:index.months.length,
-            latest_signals:recent.length,seed_complete:index.seed_complete,
+            eligible_current_rows:recent.length,latest_signals:latest.signals.length,seed_complete:index.seed_complete,
             d1_reads:0,d1_writes:0,supabase_writes:0,payments:0}));
           NODE
 
