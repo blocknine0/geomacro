@@ -38,8 +38,10 @@ export async function verifyPrivateSourceHandoff(item:PrivateSourceHandoff,input
  await verifyAutomatedInput(input,keys,now);
  const r=item.ref;
  if(!r||typeof r!=='object'||Array.isArray(r)||
-  Object.keys(r).some(k=>!['title','articleUrl','publishedAt','datePrecision','sourceId','category','credit','originalBodyTopic'].includes(k))||
+  Object.keys(r).some(k=>!['title','articleUrl','publishedAt','datePrecision','sourceId','category','credit','originalBodyTopic','description'].includes(k))||
   !privateOriginalBodyTopicShapeValid(r)||
+  (r.description!==undefined&&(typeof r.description!=="string"||r.description.length>1500||
+    /[<>]|https?:\/\/|www\./iu.test(r.description)))||
   typeof r.title!=='string'||r.title.length<1||r.title.length>2000||
   typeof r.articleUrl!=='string'||r.articleUrl.length>2048||
   typeof r.sourceId!=='string'||!/^[a-zA-Z0-9_.:-]{1,128}$/.test(r.sourceId)||
@@ -58,6 +60,7 @@ export async function verifyPrivateSourceHandoff(item:PrivateSourceHandoff,input
  // Preserve exact validation of already-signed pre-editorial-update inputs.
  // New output uses actor/action v2; no existing signature or payload is edited.
  const candidates=[deriveStatelessSignals([r],now)[0],
+  deriveStatelessSignals([r],now,{editorialVersion:'actor_action_v2'})[0],
   deriveStatelessSignals([r],now,{editorialVersion:'legacy_v1'})[0]];
  let bound=false;
  for(const derived of candidates){

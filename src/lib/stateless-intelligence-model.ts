@@ -1,3 +1,4 @@
+import {newsEventFacts} from "./news-event-facts";
 import {releaseNewsObservation,actorActionNewsObservation} from "./release-news-observation";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,verifiedGlobalRdfFeed} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { visiblePublisherText } from "./stateless-publisher-text";
@@ -25,6 +26,8 @@ export type StatelessSourceSpec = {
 
 export type StatelessSourceCandidate = {
   title: string;
+  /** Bounded private first-party lead; excluded from the public signal. */
+  description?: string;
   articleUrl: string;
   publishedAt: string;
   datePrecision?: "day";
@@ -310,7 +313,7 @@ export function topicForOriginal(
 
 export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, now = Date.now()): {
   dated: StatelessSourceCandidate[];
-  undatedGov: { title: string; articleUrl: string }[];
+  undatedGov: { title: string; articleUrl: string; description?:string }[];
   metrics: { seen: number; relevant: number; original_link_valid: number; native_clock_valid: number; undated_original: number };
 } {
   const metrics = { seen: 0, relevant: 0, original_link_valid: 0, native_clock_valid: 0, undated_original: 0 };
@@ -327,7 +330,7 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
     ? /<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu
     : /<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/giu;
   const dated: StatelessSourceCandidate[] = [];
-  const undatedGov: { title: string; articleUrl: string }[] = [];
+  const undatedGov: { title: string; articleUrl: string; description?:string }[] = [];
   const seen = new Set<string>();
   for (const match of [...xml.matchAll(entryPattern)].slice(0, 75)) {
     metrics.seen++;
@@ -336,6 +339,7 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
     // Fixed Statistics Canada subject Atom titles encode small HTML fragments.
     // Strip markup as text ONLY for these four trusted first-party lanes;
     // never accept an Atom "updated" clock as publication evidence.
+    const description=privateSourceDescription(unescapeXml(tagValue(item,source.media==="rss"?"description":"summary")??""));
     const title = source.statcanOriginalPage
       ? visiblePublisherText(rawTitle)
       : rawTitle;
@@ -362,13 +366,13 @@ export function parseFirstPartyFeed(xml: string, source: StatelessSourceSpec, no
       metrics.native_clock_valid++;
       dated.push({
         sourceId: source.id, category: source.category, title,
-        articleUrl, publishedAt: new Date(ms).toISOString(), credit: source.credit,
+        ...(description?{description}:{}),articleUrl, publishedAt: new Date(ms).toISOString(), credit: source.credit,
       });
     } else if (((!rawClock && (source.govContentApi || source.statcanOriginalPage)) || source.canadaOriginalPage) &&
                undatedGov.length < (source.canadaOriginalPage ? 8 : source.statcanOriginalPage ? 2 : 4)) {
       metrics.undated_original++;
       // Atom "updated" is never substituted for the original publication.
-      undatedGov.push({ title, articleUrl });
+      undatedGov.push({ title, articleUrl,...(description?{description}:{}) });
     }
   }
   return { dated, undatedGov, metrics };
@@ -514,10 +518,21 @@ function viewIdentifier(input: string): string {
   return (h >>> 0).toString(16).padStart(8, "0");
 }
 
+/** Bounded in-memory original description, never distributed as a public signal. */
+export function privateSourceDescription(value:unknown):string|undefined{
+ if(typeof value!=="string"||!value||value.length>384*1024)return undefined;
+ const text=visiblePublisherText(value).replace(/&(?:quot|apos|rsquo|lsquo);/giu,
+  token=>token==="&quot;"?'"':"'").replace(/\s+/gu," ").trim();
+ if(!text||/[<>]|https?:\/\/|www\./iu.test(text))return undefined;
+ if(text.length<=1500)return text;
+ const end=text.slice(0,1500).lastIndexOf(". ");
+ return end>30?text.slice(0,end+1):undefined;
+}
+
 export function deriveStatelessSignals(
   candidates: readonly StatelessSourceCandidate[],
   now = Date.now(),
-  options: {websiteDelay?:boolean;maxSignals?:number;editorialVersion?:"legacy_v1"|"actor_action_v2"} = {},
+  options: {websiteDelay?:boolean;maxSignals?:number;editorialVersion?:"legacy_v1"|"actor_action_v2"|"news_facts_v3"} = {},
 ): StatelessIntelligenceSignal[] {
   if (!Number.isFinite(now)) return [];
   const maxSignals=options.maxSignals===undefined?50:options.maxSignals;
@@ -567,8 +582,10 @@ export function deriveStatelessSignals(
     const focus=candidateOnly?selected.name:
       SAFE_FOCUS[item.category].find(rule => rule.test.test(item.title))?.label ?? selected.name;
     const legacy=options.editorialVersion==="legacy_v1";
+    const previousNews=actorActionNewsObservation(item.title)??(candidateOnly?null:releaseNewsObservation(item.title));
     const news=legacy?(candidateOnly?null:releaseNewsObservation(item.title)):
-      actorActionNewsObservation(item.title)??(candidateOnly?null:releaseNewsObservation(item.title));
+      options.editorialVersion==="actor_action_v2"?previousNews:
+      (candidateOnly||item.sourceId==="au_geoscience"?null:newsEventFacts(item.title,item.description??"",item.sourceId))??previousNews;
     const geography=candidateOnly?null:geographyMention(item.title)??(news?geographyMention(news.headline):null);
     const kind=candidateOnly?"unclassified publisher update":developmentKind(item.title);
     result.push({
