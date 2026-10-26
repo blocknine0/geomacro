@@ -8,5 +8,6 @@
   "scored": false,
   "chargeable": false,
   "supabase_dependency": false,
-  "signals": []
+  "signals": [],
+  "ok": true
 }
