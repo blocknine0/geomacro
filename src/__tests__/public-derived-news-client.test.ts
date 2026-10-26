@@ -51,8 +51,8 @@ describe("browser public journal fallback",()=>{
     const f=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
       const url=String(input);
       calls.push(url);
-      expect(init?.redirect).toBe("error");
-      expect(init?.cache).toBe("default");
+      expect(init?.redirect).toBe("manual");
+      expect(init?.cache).toBeUndefined();
       if(url===GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/index.json")
         return new Response(JSON.stringify(index),{status:200});
       const category=url.endsWith("/geopolitics.json")?"geopolitics":
