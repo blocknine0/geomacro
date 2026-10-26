@@ -175,7 +175,7 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
    return respond({ok:false,error:"PRIVATE_OSINT_D1_WRITE_OR_READBACK_UNAVAILABLE",
      failure_class,
      retry_after_utc:quota?privateOsintQuotaReset(now):null,
-     source_items_committed_unverified:true,
+     write_or_readback_commit_status_unknown:true,
      public_published:false,paid_product_authorized:false},503);
  }
 }
