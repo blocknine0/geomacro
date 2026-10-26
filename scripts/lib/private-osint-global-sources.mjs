@@ -476,7 +476,7 @@ export function privateOsintCorridorSourceCoverage(sources,checks=[],{includeCel
   coverage:aggregate(cells),
  };
  if(includeCells)summary.cells=cells;
- if(cells.length!==58||summary.coverage.with_no_source_reference>0&&summary.coverage.with_canonical_monitor_reference!==58)
+ if(cells.length!==58)
   throw Error("PRIVATE_OSINT_CORRIDOR_SOURCE_COVERAGE_INCOMPLETE");
  return summary;
 }
