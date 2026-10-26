@@ -551,3 +551,46 @@ test("live RNZ Pacific feed is a regional Oceania fallback in all three lanes wi
  const degraded=privateOsintCountryCategoryCoverage(sources,failed,[]);
  assert.equal(degraded.by_continent.oceania.cells_with_regional_fallback_healthy,0);
 });
+
+
+test("nine official local RSS candidates are private-only and never accepted without live native clocks",async()=>{
+ const sources=privateOsintGlobalSources();
+ const cases=[
+  ["private_expansion_ru_cbr_en_press","RUS","macro"],
+  ["private_expansion_ru_cbr_ru_press","RUS","macro"],
+  ["private_expansion_ru_cbr_en_news","RUS","macro"],
+  ["private_expansion_us_usgs_minerals_news","USA","rare_earth"],
+  ["private_expansion_ng_fmino_rss","NGA","geopolitics"],
+  ["private_expansion_pg_mra_rss_candidate","PNG","rare_earth"],
+  ["private_expansion_gy_mnr_rss_candidate","GUY","rare_earth"],
+  ["private_expansion_fj_rbf_press_candidate","FJI","macro"],
+  ["private_expansion_cl_cochilco_rss_candidate","CHL","rare_earth"],
+ ];
+ assert.equal(cases.length,9);
+ for(const [id,iso3,category] of cases){
+  const source=sources.find(s=>s.id===id);
+  assert.ok(source,id);
+  assert.equal(source.publisher_country_iso3,iso3);
+  assert.equal(source.categories.includes(category),true);
+  assert.equal(source.activation_state,"RUNTIME_PROBE_REQUIRED");
+  assert.equal(source.transport_verified_at_registration,false);
+  assert.equal(source.provider_rights_verified,false);
+  assert.equal(source.commercial_eligible,false);
+  assert.equal(source.publicly_deliverable,false);
+ }
+ const usgs=sources.find(x=>x.id==="private_expansion_us_usgs_minerals_news");
+ const cbr=sources.find(x=>x.id==="private_expansion_ru_cbr_en_press");
+ const feed='<?xml version="1.0"?><rss version="2.0"><channel>'+
+  '<item><title>Russia central bank announces inflation and interest rates decision</title>'+
+  '<pubDate>Sun, 25 Oct 2026 11:52:00 GMT</pubDate></item></channel></rss>';
+ const observed=await collectPrivateOsint15m({now,registry:[cbr],normalize,resolveCountry:()=>null,
+   fetchImpl:async()=>new Response(feed,{status:200})});
+ assert.equal(observed.checks[0].state,"OBSERVED");
+ assert.equal(observed.items.length,1);
+ assert.equal(observed.items[0].country_iso3,null,"publisher country is not event country");
+ const denied=await collectPrivateOsint15m({now,registry:[usgs],normalize,resolveCountry:()=>null,
+   fetchImpl:async()=>new Response(null,{status:403})});
+ assert.equal(denied.checks[0].state,"DENIED");
+ assert.equal(denied.items.length,0);
+ assert.equal(privateOsintPublisherCountryCoverage([usgs,cbr],denied.checks).working_publisher_country_specific_endpoints,0);
+});
