@@ -159,7 +159,7 @@ for(const country of COUNTRIES_195){
 const uniqueCountryAliases=[...byName.entries()]
  .filter((entry):entry is [string,string]=>entry[1]!==null)
  .map(([label,iso3])=>({label,iso3}))
- .sort((a,b)=>b.label.length-a.label.length||a.canonical(a.label).localeCompare(canonical(b.label)));
+ .sort((a,b)=>b.label.length-a.label.length||a.label.localeCompare(b.label));
 /** EXACT geography-name or approved alias equality, no fuzzy substring. */
 export function countryFromDerivedGeography(geography:string|null):string|null {
  if(typeof geography!=="string"||geography.length>80||
