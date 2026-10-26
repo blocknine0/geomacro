@@ -374,10 +374,13 @@ export function privateOsintCountryCategoryCoverage(sources,checks=[],items=[],{
   zero_observed_items_does_not_mean_no_news:true,
   publisher_country_is_not_event_country:true,
   country_specific_source_countries_registered:countriesWithLocal.length,
-  countries_without_country_specific_publisher_source:countries.filter(iso3=>countryLocal.get(iso3).length===0),
+  countries_without_country_specific_publisher_source_count:countries.length-countriesWithLocal.length,
   coverage:aggregate(cells),by_continent:byContinent,by_category:byCategory,
  };
- if(includeCells)summary.cells=cells;
+ if(includeCells){
+  summary.cells=cells;
+  summary.countries_without_country_specific_publisher_source=countries.filter(iso3=>countryLocal.get(iso3).length===0);
+ }
  if(cells.length!==585||summary.coverage.cells_with_any_configured_source!==585)
   throw Error("PRIVATE_OSINT_COUNTRY_CATEGORY_COVERAGE_GAP");
  return summary;
