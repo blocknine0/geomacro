@@ -16,6 +16,28 @@ export const PRIVATE_OSINT_POLL_MINUTES=5;
 export const PRIVATE_OSINT_MAX_SOURCES=512;
 export const PRIVATE_OSINT_MAX_RESULTS_PER_TICK=768;
 const DOMAINS=["geopolitics","macro","rare_earth"];
+/**
+ * Under a true >768-item burst, an intensely covered country must not starve
+ * another country which has genuinely observed dated source items.
+ * Fairness uses the existing conservative title-based country attribution,
+ * never guesses a country from source publisher or index-query location.
+ * The normal non-overflow newest-first ordering remains unchanged.
+ */
+function roundRobinAttributedCountries(items){
+ const groups=new Map();
+ for(const item of items){
+  const country=/^[A-Z]{3}$/u.test(item.country_iso3??"")?
+   item.country_iso3:"UNATTRIBUTED";
+  if(!groups.has(country))groups.set(country,[]);
+  groups.get(country).push(item);
+ }
+ if(groups.size<2)return items;
+ const cohorts=[...groups.values()],result=[];
+ for(let n=0;result.length<items.length;n++)
+  for(const cohort of cohorts)if(cohort[n])result.push(cohort[n]);
+ return result;
+}
+
 const FEED_REDIRECT_STATUSES=new Set([301,302,303,307,308]);
 const normalizedPublicFeedHost=host=>{
  const lower=host.toLowerCase();
@@ -133,9 +155,11 @@ export async function collectPrivateOsint15m({
   const lanes=DOMAINS.map(category=>{
     const domainItems=all.filter(x=>x.category===category);
     if(all.length<=PRIVATE_OSINT_MAX_RESULTS_PER_TICK)return domainItems;
-    const fresh=domainItems.filter(x=>Date.parse(x.source.original_published_at)>=cutoff);
-    const late=domainItems.filter(x=>Date.parse(x.source.original_published_at)<cutoff);
-    if(!fresh.length||!late.length)return domainItems;
+    const fresh=roundRobinAttributedCountries(domainItems.filter(x=>
+      Date.parse(x.source.original_published_at)>=cutoff));
+    const late=roundRobinAttributedCountries(domainItems.filter(x=>
+      Date.parse(x.source.original_published_at)<cutoff));
+    if(!fresh.length||!late.length)return roundRobinAttributedCountries(domainItems);
     const mixed=[];
     let fi=0,li=0;
     while(fi<fresh.length||li<late.length){
@@ -174,6 +198,8 @@ export async function collectPrivateOsint15m({
       selected_after_15m_native_clock:selected.filter(x=>
         Date.parse(x.source.original_published_at)<cutoff).length,
       late_arrivals_not_rejected_by_15m_cutoff:true,
+      overflow_selection_fair_to_attributed_countries:true,
+      title_based_country_matching_is_not_independent_geolocation:true,
       factual_items_25h:all.length,excluded_by_capacity:Math.max(0,all.length-PRIVATE_OSINT_MAX_RESULTS_PER_TICK)+collectorExcluded,
       selected_items_by_category:Object.fromEntries(DOMAINS.map(c=>[c,selected.filter(x=>x.category===c).length])),
       excluded_items_by_category:Object.fromEntries(DOMAINS.map(c=>[c,all.filter(x=>x.category===c).length-selected.filter(x=>x.category===c).length])),
