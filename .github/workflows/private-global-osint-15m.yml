@@ -49,6 +49,9 @@ on:
       - "scripts/ops/probe-private-osint-live-category-coverage.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
+      - "config/private-osint-local-gaplane.v1.json"
+      - "scripts/ops/probe-private-osint-local-gaplane.mjs"
+      - "scripts/lib/private-osint-local-gaplane.test.mjs"
       - "config/private-osint-national-gap-feeds.v1.json"
       - "scripts/lib/private-osint-national-gap-feeds.test.mjs"
       - "config/private-osint-official-feed-additions.v1.json"
@@ -85,6 +88,9 @@ on:
       - "scripts/lib/private-osint-global-sources.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
+      - "config/private-osint-local-gaplane.v1.json"
+      - "scripts/ops/probe-private-osint-local-gaplane.mjs"
+      - "scripts/lib/private-osint-local-gaplane.test.mjs"
       - "config/private-osint-national-gap-feeds.v1.json"
       - "scripts/lib/private-osint-national-gap-feeds.test.mjs"
       - "config/private-osint-official-feed-additions.v1.json"
@@ -138,6 +144,8 @@ jobs:
           node scripts/ops/audit-private-osint-publisher-coverage.mjs > /tmp/geomacro-osint-publisher-coverage.json
           node --check scripts/lib/private-unverified-osint-intake.mjs
           node --test scripts/lib/private-unverified-osint-intake.test.mjs
+          node --test scripts/lib/private-osint-local-gaplane.test.mjs
+          node --check scripts/ops/probe-private-osint-local-gaplane.mjs
           node --test scripts/lib/private-osint-bundle.test.mjs
           node --test scripts/tests/plan-d1-bundled-work.test.mjs
           node --test scripts/tests/critical-workflow-budget-guards.test.mjs
@@ -208,6 +216,38 @@ jobs:
         with:
           name: geomacro-private-osint-live-coverage-${{ github.run_id }}
           path: /tmp/geomacro-private-osint-live-coverage.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  live-local-gap-probe:
+    name: Read-only 91-country publisher candidate native RSS validation
+    needs: verify
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      ((github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == 'blocknine0/geomacro') ||
+       github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Probe first-party publisher RSS candidates without secrets or storage
+        run: |
+          set -euo pipefail
+          node scripts/ops/probe-private-osint-local-gaplane.mjs
+      - name: Keep private counts-only publisher-country gap diagnosis
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-private-local-gaplane-${{ github.run_id }}
+          path: /tmp/geomacro-private-local-gaplane-probe.json
           if-no-files-found: warn
           retention-days: 7
 
