@@ -27,8 +27,11 @@ export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=
  const slot=Math.floor(now.getTime()/STEP_MS)%COUNTRY_DISCOVERY_CYCLE_SLOTS;
  const selected=countries.slice(slot*COUNTRY_DISCOVERY_PER_TICK,(slot+1)*COUNTRY_DISCOVERY_PER_TICK);
  return Object.freeze(selected.map(country=>{
-  const name=country.name.replace(/["\\\r\n]/gu," ").trim();
-  const query='"'+name+'" '+TERMS+' when:1d';
+  // Known canonical aliases catch terms such as DRC, Ivory Coast and Burma.
+  // These remain SEARCH HINTS only; no country is attributed from a query.
+  const names=[country.name,...(Array.isArray(country.aliases)?country.aliases:[])].slice(0,3)
+   .map(name=>'"'+name.replace(/["\\\r\n]/gu," ").trim()+'"');
+  const query="("+names.join(" OR ")+") "+TERMS+" when:1d";
   const url=new URL("https://news.google.com/rss/search");
   url.searchParams.set("q",query);
   url.searchParams.set("hl","en-US");
