@@ -162,6 +162,12 @@ export function privateOsintGlobalSources(){
  const buckets=["global",...Object.keys(CONTINENT_COUNTRIES_195)].map(c=>[...map.values()].filter(s=>s.continent===c));
  const result=[];
  for(let n=0;buckets.some(b=>n<b.length);n++)for(const b of buckets)if(b[n])result.push(b[n]);
+ // Refuse a registry regression that silently drops a major OSINT lane.
+ // This threshold validates source diversity, not event volume or live health.
+ for(const category of PRIVATE_OSINT_CATEGORIES){
+  const configured=result.filter(source=>source.categories.includes(category)).length;
+  if(configured<12)throw Error("PRIVATE_OSINT_CATEGORY_SOURCE_DIVERSITY_TOO_LOW:"+category);
+ }
  return result;
 }
 
