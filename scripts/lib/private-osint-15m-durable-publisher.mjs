@@ -131,7 +131,10 @@ export async function persistPrivateOsintBatch({
   method:"GET",redirect:"error",cache:"no-store",headers:{Accept:"application/json","Authorization":"Bearer "+privateToken},
   signal:AbortSignal.timeout(12000),
  });
- let status=await read("view=bundle"),bundle=true;
+ // Prove private D1 durability with at most two indexed rows per category,
+ // not 100 news projections per lane on every five-minute poll. The full
+ // paginated private bundle API remains unchanged for actual research reads.
+ let status=await read("view=bundle&limit=1"),bundle=true;
  // One bounded rolling-deployment fallback, only for the older private
  // reader's unknown-query 400. Auth, storage and malformed bundles fail closed.
  if(status.status===400){bundle=false;status=await read("offset=0")}
