@@ -557,24 +557,6 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_expansion_ungeneva_press_rss",
-      "url": "https://www.ungeneva.org/news-media/press-releases-list/rss.xml",
-      "continent": "global",
-      "publisher_country_iso3": null,
-      "categories": [
-        "geopolitics"
-      ],
-      "type": "rss",
-      "related_corridor_ids": [],
-      "provenance_note": "UN Geneva's official RSS page directly links its Press Releases feed. It provides multilateral/diplomatic source discovery; current feed health, native clocks and parser acceptance remain runtime checks.",
-      "discovery_reference_url": "https://www.ungeneva.org/en/news-media/rss",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
-      "provider_rights_verified": false,
-      "commercial_eligible": false,
-      "access_verified_in_production": false,
-      "publicly_deliverable": false
-    },
-    {
       "id": "private_expansion_uk_dbt_atom",
       "url": "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
       "continent": "europe",
