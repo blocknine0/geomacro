@@ -6,7 +6,6 @@
     ["ko", "한국어"], ["hi", "हिन्दी"], ["bn", "বাংলা"], ["ar", "العربية"],
     ["ru", "Русский"], ["tr", "Türkçe"], ["id", "Bahasa Indonesia"],
   ];
-  const LABEL_TO_CODE = new Map(LANGUAGES.map(([code, label]) => [label, code]));
   const CODE_SET = new Set(LANGUAGES.map(([code]) => code));
 
   function cleanQuery(url) {
@@ -49,13 +48,22 @@
   function navigate(code) {
     if (!CODE_SET.has(code)) return;
     remember(code);
-    const source = sourceUrl();
+    const source = new URL(sourceUrl());
     if (code === "en") {
-      window.location.assign(source);
+      window.location.assign(source.toString());
       return;
     }
-    const target = encodeURIComponent(source);
-    window.location.assign(`https://translate.google.com/translate?sl=en&tl=${encodeURIComponent(code)}&u=${target}`);
+
+    // Google Translate's translated-host proxy preserves deep links and query
+    // parameters; the legacy /translate?u= redirect caused route/selector races.
+    const translated = new URL(`https://geomacro-live.translate.goog${source.pathname}`);
+    source.searchParams.forEach((value, key) => translated.searchParams.append(key, value));
+    translated.searchParams.set("_x_tr_sl", "auto");
+    translated.searchParams.set("_x_tr_tl", code);
+    translated.searchParams.set("_x_tr_hl", "en");
+    translated.searchParams.set("_x_tr_pto", "wapp");
+    translated.hash = source.hash;
+    window.location.assign(translated.toString());
   }
 
   function syncSelect(select) {
@@ -100,20 +108,6 @@
     injectStandaloneSelector();
   }
 
-  function handleMenuLanguage(event) {
-    if (event.type === "keydown" && event.key !== "Enter" && event.key !== " ") return;
-    const target = event.target instanceof Element ? event.target.closest('[role="menuitem"]') : null;
-    if (!target) return;
-    const code = LABEL_TO_CODE.get((target.textContent || "").trim());
-    if (!code) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    navigate(code);
-  }
-
-  document.addEventListener("pointerdown", handleMenuLanguage, true);
-  document.addEventListener("click", handleMenuLanguage, true);
-  document.addEventListener("keydown", handleMenuLanguage, true);
   document.addEventListener("DOMContentLoaded", bindAll);
   const observer = new MutationObserver(() => bindAll());
   observer.observe(document.documentElement, { childList: true, subtree: true });

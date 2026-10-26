@@ -62,12 +62,10 @@ const SITE_LANGUAGES = [
 
 function LanguageMenu() {
   const translatePage = (code: string) => {
-    if (code === "en") {
-      window.location.reload();
-      return;
-    }
-    const target = encodeURIComponent(window.location.href);
-    window.location.assign(`https://translate.google.com/translate?sl=auto&tl=${encodeURIComponent(code)}&u=${target}`);
+    const controller = (window as Window & {
+      GeomacroLanguage?: { navigate: (language: string) => void };
+    }).GeomacroLanguage;
+    controller?.navigate(code);
   };
 
   return (
