@@ -57,15 +57,22 @@ const sharedOfficialDocuments=createRunScopedAustralianResourcesFetch();
 // live Worker policy handshake. Static archive candidates are still built
 // from validated original-publisher feeds and independently revalidated.
 let workerPolicyReady=false;
-try{
-  const workerPolicy=await requireDerivedNewsWorkerPolicy({
-    fetchImpl:globalThis.fetch,url:CONTROL_PLANE_ORIGIN+"/health",
-    expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION,
-  });
-  workerPolicyReady=true;
-  console.log(JSON.stringify({...workerPolicy,d1_publisher_ready:true}));
-}catch{
-  console.warn("D1_PUBLISHER_UNAVAILABLE_STATIC_ARCHIVE_CONTINUES");
+if(process.env.GEOMACRO_D1_QUOTA_HEADROOM==="held"){
+  // The permanent static archive must still collect safe derived findings.
+  // Do not probe the D1 Worker or issue any D1 reads/writes while the
+  // account-wide Free-tier reserve is exhausted or the quota audit is unknown.
+  console.warn("D1_QUOTA_HEADROOM_HELD_STATIC_ARCHIVE_ONLY");
+}else{
+  try{
+    const workerPolicy=await requireDerivedNewsWorkerPolicy({
+      fetchImpl:globalThis.fetch,url:CONTROL_PLANE_ORIGIN+"/health",
+      expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION,
+    });
+    workerPolicyReady=true;
+    console.log(JSON.stringify({...workerPolicy,d1_publisher_ready:true}));
+  }catch{
+    console.warn("D1_PUBLISHER_UNAVAILABLE_STATIC_ARCHIVE_CONTINUES");
+  }
 }
 for (const category of categories) {
   try {
