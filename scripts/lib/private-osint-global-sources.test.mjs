@@ -204,8 +204,11 @@ test("new regional macro/minerals and maritime corridor candidates are deduplica
  for(const item of additions.sources){
   const found=complete.filter(s=>s.url===item.url);
   assert.equal(found.length,1,item.id);
-  const canonicalId=item.id==="private_expansion_ungeneva_press_rss"?"ungeneva_press_global":item.id;
-   assert.equal(found[0].id,canonicalId,item.id);
+  const manifest=JSON.parse(readFileSync(new URL("../../config/private-osint-working-sources.v1.json",import.meta.url),"utf8"));
+  const manifestSource=manifest.sources.find(source=>source.url===item.url);
+  const reusableSource=registeredReusableNewsSources().find(source=>source.url===item.url);
+  const canonicalId=manifestSource?.id??reusableSource?.id??item.id;
+  assert.equal(found[0].id,canonicalId,item.id);
   assert.equal(found[0].transport_verified_at_registration,false);
   assert.equal(found[0].commercial_eligible,false);
   assert.equal(found[0].publicly_deliverable,false);
