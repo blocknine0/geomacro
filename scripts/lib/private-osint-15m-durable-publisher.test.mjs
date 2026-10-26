@@ -161,7 +161,7 @@ test("high-volume private OSINT uses 16 news and 32 health checks per protected 
 });
 
 test("protected collector differentiates real free D1 read and write limits from opaque failures",async()=>{
- for(const failureClass of ["D1_FREE_DAILY_ROW_READ_LIMIT","D1_FREE_DAILY_ROW_WRITE_LIMIT","D1_SCHEMA_UNAVAILABLE"]){
+ for(const failureClass of ["D1_FREE_DAILY_ROW_READ_LIMIT","D1_FREE_DAILY_ROW_WRITE_LIMIT","D1_SCHEMA_UNAVAILABLE","D1_UNCLASSIFIED_STORAGE_FAILURE"]){
   const fetchImpl=async()=>Response.json({
    ok:false,error:"PRIVATE_OSINT_D1_WRITE_OR_READBACK_UNAVAILABLE",
    failure_class:failureClass,retry_after_utc:"2026-10-26T00:00:00.000Z"
