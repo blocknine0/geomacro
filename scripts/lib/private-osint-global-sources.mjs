@@ -387,6 +387,64 @@ export function privateOsintCountryCategoryCoverage(sources,checks=[],items=[],{
 }
 
 /**
+ * Category-level live feed coverage: configured endpoints and current-tick
+ * transport/feed health are deliberately separate from stories observed.
+ * OBSERVED and EMPTY_OR_OUTSIDE_WINDOW mean a feed was readable/parsed;
+ * only dated matching items count as observations, and neither is verified
+ * intelligence, publication rights, or a promise of a story every poll.
+ */
+export function privateOsintCategoryLiveCoverage(sources,checks=[],items=[]){
+ if(!Array.isArray(sources)||!Array.isArray(checks)||!Array.isArray(items))
+  throw Error("PRIVATE_OSINT_CATEGORY_LIVE_COVERAGE_INPUT_INVALID");
+ const statesByRef=new Map();
+ for(const check of checks){
+  if(!check||typeof check.source_ref!=="string"||!/^[a-f0-9]{64}$/u.test(check.source_ref)||
+     !KNOWN_SOURCE_STATES.has(check.state))throw Error("PRIVATE_OSINT_CATEGORY_LIVE_COVERAGE_CHECK_INVALID");
+  statesByRef.set(check.source_ref,check.state);
+ }
+ const categories=PRIVATE_OSINT_CATEGORIES.map(category=>{
+  const endpoints=sources.filter(source=>source&&typeof source.id==="string"&&
+   typeof source.url==="string"&&Array.isArray(source.categories)&&source.categories.includes(category));
+  const health={registered:endpoints.length,checked:0,healthy:0,observed:0,empty:0,not_due:0,unavailable:0,unsupported_format:0,denied:0,malformed:0,unobserved_checks:0};
+  const healthyIds=new Set();
+  for(const source of endpoints){
+   const state=statesByRef.get(sourceRef(source,category));
+   if(!state){health.unobserved_checks++;continue}
+   health.checked++;
+   if(HEALTHY_SOURCE_STATES.has(state)){health.healthy++;healthyIds.add(source.url)}
+   if(state==="OBSERVED"){health.observed++;}
+   if(state==="EMPTY_OR_OUTSIDE_WINDOW"){health.empty++;}
+   if(state==="NOT_DUE")health.not_due++;
+   if(state==="UNAVAILABLE")health.unavailable++;
+   if(state==="UNSUPPORTED_FORMAT")health.unsupported_format++;
+   if(state==="DENIED")health.denied++;
+   if(state==="MALFORMED")health.malformed++;
+  }
+  const itemCount=items.filter(item=>item&&item.category===category&&
+   item.source&&typeof item.source.original_published_at==="string").length;
+  return {category,...health,healthy_distinct_feed_endpoints:healthyIds.size,
+   native_dated_items_in_collector_batch:itemCount,
+   status:healthyIds.size>0?"LIVE_FEED_HEALTHY_THIS_TICK":
+    endpoints.length===0?"NO_SOURCE_REGISTERED":"NO_HEALTHY_FEED_THIS_TICK",
+   a_healthy_feed_does_not_guarantee_a_new_story:true,
+   event_country_verified:false,commercially_eligible:false};
+ });
+ const rowsByStatus=Object.fromEntries(["LIVE_FEED_HEALTHY_THIS_TICK","NO_HEALTHY_FEED_THIS_TICK","NO_SOURCE_REGISTERED"].map(status=>[status,categories.filter(row=>row.status===status).length]));
+ return {
+  schema:"geomacro.private-osint-category-live-source-coverage.v1",
+  expected_categories:PRIVATE_OSINT_CATEGORIES.length,
+  categories_with_registered_sources:categories.filter(row=>row.registered>0).length,
+  categories_with_any_healthy_feed_this_tick:categories.filter(row=>row.healthy_distinct_feed_endpoints>0).length,
+  all_categories_have_registered_sources:categories.every(row=>row.registered>0),
+  all_categories_have_healthy_feed_this_tick:categories.every(row=>row.healthy_distinct_feed_endpoints>0),
+  observation_scope:"PRIVATE_OSINT_FEED_TRANSPORT_AND_NATIVE_DATED_ITEM_COUNTS_NOT_VERIFIED_EVENTS",
+  source_states:{...rowsByStatus},
+  no_healthy_feed_is_reported_as_a_gap_not_success:true,
+  category_coverage:categories,
+ };
+}
+
+/**
  * Route-level source acquisition coverage for the 58 canonical corridors.
  * Canonical monitor_refs and overlay links are reference metadata only;
  * private feed health is reported separately from those references.
