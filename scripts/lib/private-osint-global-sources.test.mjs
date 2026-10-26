@@ -564,7 +564,7 @@ test("nine official local RSS candidates are private-only and never accepted wit
   ["private_expansion_pg_mra_rss_candidate","PNG","rare_earth"],
   ["private_expansion_gy_mnr_rss_candidate","GUY","rare_earth"],
   ["private_expansion_fj_rbf_press_candidate","FJI","macro"],
-  ["private_expansion_cl_cochilco_rss_candidate","CHL","rare_earth"],
+  ["private_expansion_cl_sernageomin_rss_candidate","CHL","rare_earth"],
  ];
  assert.equal(cases.length,9);
  for(const [id,iso3,category] of cases){
