@@ -14,10 +14,16 @@ import {
 const sources=privateOsintGlobalSources();
 const publisherCountryCoverage=privateOsintPublisherCountryCoverage(sources,[],{includeDetails:true});
 const sourceCoverageMatrix=privateOsintCountryCategoryCoverage(sources,[],[],{includeCells:true});
+const registeredCategoryInventory=Object.fromEntries(["geopolitics","macro","rare_earth"].map(category=>[category,{
+ registered_endpoints:sources.filter(source=>source.categories.includes(category)).length,
+ live_health_probed:false,
+ live_healthy_endpoints:null,
+}]));
 const corridorSourceCoverage=privateOsintCorridorSourceCoverage(sources,[],{includeCells:true});
 const report={
  generated_at:new Date().toISOString(),
  source_registry_count:sources.length,
+ registered_category_inventory:registeredCategoryInventory,
  publisher_country_inventory:publisherCountryCoverage,
  country_category_source_coverage:sourceCoverageMatrix,
  corridor_source_coverage:corridorSourceCoverage,
