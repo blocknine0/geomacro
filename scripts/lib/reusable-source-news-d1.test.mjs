@@ -159,9 +159,9 @@ test("40-news + 48-check batch uses at most seven D1 SQL queries and exact readb
  assert.equal(second.status,200);
  assert.equal(again.previously_observed_count,40);
  assert.equal(again.first_observed_within_15m_count,0);
- assert.equal(again.d1_bundled_query_count,3,
-   "repeat batch should skip expiration and expensive 4000-row pruning");
- assert.equal(env.metrics.queries-n,3);
+ assert.equal(again.d1_bundled_query_count,4,
+   "repeat batch uses prefetch, news/checks UPSERT and exact readback without prune");
+ assert.equal(env.metrics.queries-n,4);
  const page=await publicReusableSourceNews(env,new URLSearchParams(),now+60_000);
  assert.equal((await page.json()).items.length,40);
 });
