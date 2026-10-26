@@ -74,7 +74,7 @@ export const GEOMACRO_DERIVED_JOURNAL_URL =
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 export const GEOMACRO_PERMANENT_ARCHIVE_BASE_URL =
   "https://geomacro-public-finds-archive.daspallab202391.workers.dev";
-const GEOMACRO_PERMANENT_LATEST_URL=GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/latest.json";
+export const GEOMACRO_PERMANENT_LATEST_URL=GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/latest.json";
 const PERMANENT_ARCHIVE_INDEX_SCHEMA="geomacro.permanent-derived-news-archive-index.v1";
 const PERMANENT_ARCHIVE_MONTH_SCHEMA="geomacro.permanent-derived-news-archive-month.v1";
 const PERMANENT_ARCHIVE_CATEGORIES=["geopolitics","macro","rare_earth"] as const;
