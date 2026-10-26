@@ -9,6 +9,7 @@ export const PUBLIC_FREE_D1_TTL_SECONDS = 45;
 export const PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS = 15;
 const PATHS = new Set([
   "/v1/public/three-domain-continuity",
+  "/v1/public/derived-structural-72h",
   "/v1/public/website-derived-news",
   "/v1/public/website-derived-news-immediate",
   "/v1/public/website-derived-news-bundle",
