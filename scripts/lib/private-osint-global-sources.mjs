@@ -149,9 +149,27 @@ export function privateOsintGlobalSources(){
   if(source.commercial_eligible!==false)violations.push("COMMERCIAL_GUARD");
   if(source.access_verified_in_production!==false)violations.push("PRODUCTION_ACCESS_GUARD");
   if(source.publicly_deliverable!==false)violations.push("PUBLIC_DELIVERY_GUARD");
-  if(map.has(source.url)||existing.has(source.url))violations.push("DUPLICATE_URL");
   if(violations.length)throw Error("PRIVATE_OSINT_REGIONAL_SOURCE_UNSAFE_OR_DUPLICATE:"+source.id+":"+violations.join(","));
   additionIds.add(source.id);
+  // If a feed URL already exists under the canonical reusable-source registry,
+  // merge its category/provenance metadata into that one fetch identity rather
+  // than throwing away a useful lane or polling the same URL twice.
+  const registered=map.get(source.url);
+  const reusable=existing.get(source.url);
+  if(registered){
+   map.set(source.url,{...registered,...source,id:registered.id,
+    categories:[...new Set([...registered.categories,...source.categories])],
+    related_corridor_ids:[...new Set([...(registered.related_corridor_ids??[]),...source.related_corridor_ids])],
+    supported:true,
+    transport_verified_at_registration:registered.transport_verified_at_registration===true});
+   continue;
+  }
+  if(reusable){
+   map.set(source.url,{...reusable,...source,id:reusable.id,
+    categories:[...new Set([...reusable.categories,...source.categories])],
+    supported:true,transport_verified_at_registration:false});
+   continue;
+  }
   map.set(source.url,{...source,supported:true,transport_verified_at_registration:false});
  }
  // Interleave continents so an individual slow regional desk cannot put
