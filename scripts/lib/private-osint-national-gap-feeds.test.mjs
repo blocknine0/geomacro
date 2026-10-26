@@ -29,13 +29,16 @@ test("new private national feeds occupy only available source slots and are not 
  assert.ok(config.sources.every(s=>s.publisher_native_dates_required===true&&
   s.access_verified_in_production===false&&s.commercial_eligible===false));
  assert.ok(rows.every(s=>s.categories.every(c=>PRIVATE_OSINT_CATEGORIES.includes(c))));
+ const oc=sources.find(s=>s.id==="private_mesh_oc_media");
+ assert.ok(oc&&oc.publisher_country_iso3==="GEO"&&oc.continent==="asia");
+ assert.equal(sources.filter(s=>s.url===oc.url).length,1);
  const runtime=privateOsintRuntimeSources(fixed,sources);
  assert.equal(runtime.length,sources.length+49);
  assert.ok(runtime.length<=512);
  assert.equal(rotatingPrivateCountryDiscoverySources(fixed).length,49);
  const matrix=privateOsintCountryCategoryCoverage(sources);
  assert.equal(matrix.expected_country_category_cells,585);
- assert.ok(matrix.country_specific_source_countries_registered>=98);
+ assert.ok(matrix.country_specific_source_countries_registered>=99);
  assert.equal(matrix.coverage.cells_with_any_healthy_source,0,
   "registration must never be mistaken for a successful live fetch");
  assert.equal(matrix.coverage.observed_country_category_cells_this_tick,0);
