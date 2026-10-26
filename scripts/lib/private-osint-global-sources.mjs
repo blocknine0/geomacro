@@ -141,8 +141,9 @@ export function privateOsintGlobalSources(){
      (source.publisher_country_iso3!==null&&
       !Object.values(CONTINENT_COUNTRIES_195).flat().includes(source.publisher_country_iso3))||
      !["rss","atom","rdf"].includes(source.type)||
-     !Array.isArray(source.categories)||source.categories.length!==1||
-     !PRIVATE_OSINT_CATEGORIES.includes(source.categories[0])||
+     !Array.isArray(source.categories)||!source.categories.length||source.categories.length>PRIVATE_OSINT_CATEGORIES.length||
+     new Set(source.categories).size!==source.categories.length||
+     source.categories.some(category=>!PRIVATE_OSINT_CATEGORIES.includes(category))||
      !Array.isArray(source.related_corridor_ids)||
      source.related_corridor_ids.some(id=>!corridorIds.has(id))||
      new Set(source.related_corridor_ids).size!==source.related_corridor_ids.length||
