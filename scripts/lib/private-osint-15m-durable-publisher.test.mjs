@@ -270,7 +270,7 @@ test("15-minute production ticks persist only one health cohort and report the t
  assert.equal(selected.length,checks.length);
  assert.equal(new Set(selected.map(x=>x.source_ref)).size,checks.length);
  assert.equal(15*PRIVATE_OSINT_D1_HEALTH_SNAPSHOT_SLOTS,45);
- assert.equal(batches[0].slot,batches[0].slot);
+ assert.deepEqual(batches.map(x=>x.slot),[0,1,2]);
  assert.throws(()=>selectPrivateOsintD1HealthChecks({
   checks,now,slots:3,intervalMinutes:0,
  }),/PRIVATE_OSINT_HEALTH_SNAPSHOT_INPUT_INVALID/);
