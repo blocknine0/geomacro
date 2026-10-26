@@ -86,3 +86,36 @@ test('bundle reader retains the distinct private credential and rejects corrupte
   assert.equal(denied.status,503);assert.ok(!(await denied.text()).includes('raw-article'));
  }finally{f.db.close()}
 });
+
+test('private one-row proof mode reads at most two indexed rows per category without changing full pagination',async()=>{
+ const f=fixture();try{
+  const proof=await privateOsintBundleRead(f.env,new URLSearchParams('view=bundle&limit=1'),now);
+  assert.equal(proof.status,200);
+  const b=await proof.json();
+  assert.equal(f.batches(),1);
+  assert.equal(b.single_d1_batch_read,true);
+  assert.equal(b.category_count,3);
+  assert.equal(b.page_size_per_category,1);
+  assert.equal(b.total_items,3);
+  assert.deepEqual(['geopolitics','macro','rare_earth'].map(d=>b.categories[d].count),[1,1,1]);
+  assert.ok(b.has_more);assert.ok(b.next_cursor);
+  const next=await privateOsintBundleRead(f.env,new URLSearchParams({
+    view:'bundle',limit:'1',cursor:b.next_cursor
+  }),now);
+  assert.equal(next.status,200);
+  const second=await next.json();
+  assert.equal(second.page_size_per_category,1);
+  assert.ok(second.categories.geopolitics.items[0].id!==b.categories.geopolitics.items[0].id);
+  // Reject unbounded scans, duplicate query parameters and tampering
+  // before contacting the protected D1 database.
+  const before=f.batches();
+  for(const query of [
+   'view=bundle&limit=2','view=bundle&limit=100','view=bundle&limit=0',
+   'view=bundle&limit=1&limit=1','view=bundle&limit=4294967295'
+  ]){
+   const denied=await privateOsintBundleRead(f.env,new URLSearchParams(query),now);
+   assert.equal(denied.status,400,query);
+  }
+  assert.equal(f.batches(),before);
+ }finally{f.db.close()}
+});

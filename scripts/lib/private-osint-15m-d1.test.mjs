@@ -54,11 +54,28 @@ function fakeD1(){
   async batch(qs){
    for(const q of qs){
     if(q.sql.startsWith("INSERT INTO private_osint_news_25h")){
-     const [item_id,category,country_iso3,native_feed_published_at,projection_json,first_seen_at,last_seen_at]=q.params;
-     items.set(item_id,{item_id,category,country_iso3,native_feed_published_at,
-      projection_json,first_seen_at:items.get(item_id)?.first_seen_at??first_seen_at,last_seen_at});
+     const [first_seen_at,last_seen_at,json,cutoff]=q.params;
+     for(const [item_id,category,country_iso3,native_feed_published_at,projection_json] of JSON.parse(json)){
+      const prev=items.get(item_id);
+      if(prev&&prev.projection_json===projection_json&&prev.last_seen_at>cutoff)continue;
+      items.set(item_id,{item_id,category,country_iso3,native_feed_published_at,
+       projection_json,first_seen_at:prev?.first_seen_at??first_seen_at,last_seen_at});
+     }
+    }else if(q.sql.startsWith("UPDATE private_osint_news_25h SET")){
+     const [last_seen_at,json,cutoff]=q.params;
+     for(const [item_id,category,country_iso3,native_feed_published_at,projection_json] of JSON.parse(json)){
+      const prev=items.get(item_id);
+      if(!prev||(prev.projection_json===projection_json&&prev.last_seen_at>cutoff))continue;
+      items.set(item_id,{item_id,category,country_iso3,native_feed_published_at,
+       projection_json,first_seen_at:prev.first_seen_at,last_seen_at});
+     }
     }else if(q.sql.startsWith("INSERT INTO private_osint_source_checks_24h")){
-     for(let i=0;i<q.params.length-1;i+=4)checks.set(q.params[i]+q.params[i+1],q.params.slice(i,i+4));
+     const [json,cutoff]=q.params;
+     for(const [source_ref,category,state,checked_at] of JSON.parse(json)){
+      const key=source_ref+category,prev=checks.get(key);
+      if(!prev||prev[2]!==state||prev[3]<=cutoff)
+       checks.set(key,[source_ref,category,state,checked_at]);
+     }
     }else if(q.sql.startsWith("DELETE FROM private_osint_news_25h WHERE native_feed_published_at")){
      for(const [k,v] of items)if(v.native_feed_published_at<q.params[0])items.delete(k);
     }
@@ -105,8 +122,8 @@ test("largest valid write bundles reads below D1 Free query and parameter ceilin
   const response=await privateOsint15mWrite(env,body,now),receipt=await response.json();
   assert.equal(response.status,200);assert.equal(receipt.persisted,20);assert.equal(receipt.checks_saved,32);
   assert.equal(receipt.existence_and_readback_bundled,true);
-  assert.equal(receipt.d1_queries_this_write,queries);assert.equal(queries,27);
-  assert.ok(queries<50);assert.ok(maxParameters<=100);
+  assert.equal(receipt.d1_queries_this_write,queries);assert.equal(queries,7,"one JSON bulk news UPSERT + one JSON health UPSERT + bounded retention and readback");
+  assert.ok(queries<=8);assert.ok(maxParameters<=20,"the only 20-parameter statements are exact indexed prefetch/readback");
   assert.equal(db.prepare('SELECT count(*) AS n FROM private_osint_source_checks_24h').get().n,32);
  }finally{db.close()}
 });
@@ -274,5 +291,59 @@ test("free D1 private hard-cap evicts only oldest excess rows, never a full NOT 
   assert.equal(db.prepare("SELECT count(*) AS n FROM private_osint_news_25h").get().n,4000);
   const plan=db.prepare("EXPLAIN QUERY PLAN "+trim).all().map(x=>x.detail).join(" ");
   assert.ok(plan.includes("idx_private_osint_news_clock"));
+ }finally{db.close()}
+});
+
+test("real SQLite bundled mixed new/existing items preserve first-seen and exactly match D1 readback",async()=>{
+ const db=new DatabaseSync(":memory:");
+ db.exec(readFileSync(new URL("../../workers/control-plane/migrations/0028_private_osint_15m_durable.sql",import.meta.url),"utf8"));
+ let calls=0,largestBind=0;
+ const env={DB:{
+  prepare(sql){
+   const q={sql,params:[],bind(...args){q.params=args;largestBind=Math.max(largestBind,args.length);return q},
+    async all(){calls++;return {results:db.prepare(sql).all(...q.params)}}
+   };return q;
+  },
+  async batch(qs){
+   db.exec("BEGIN");
+   try{
+    const result=qs.map(q=>{
+     calls++;const info=db.prepare(q.sql).run(...q.params);
+     return {success:true,meta:{changes:Number(info.changes)}};
+    });
+    db.exec("COMMIT");return result;
+   }catch(error){db.exec("ROLLBACK");throw error}
+  },
+ }};
+ const twenty=Array.from({length:20},(_,i)=>item({id:"news-"+hash("mixed-bundle-"+i)}));
+ const t1=new Date(now).toISOString(),t2=new Date(now+60000).toISOString();
+ try{
+  const seed=await privateOsint15mWrite(env,{
+   schema:PRIVATE_OSINT_D1_SCHEMA,items:twenty.slice(0,12),checks:[check()]
+  },now);
+  assert.equal(seed.status,200);
+  const before=Number(db.prepare("SELECT count(*) AS n FROM private_osint_news_25h").get().n);
+  assert.equal(before,12);
+  const updated=await privateOsint15mWrite(env,{
+   schema:PRIVATE_OSINT_D1_SCHEMA,items:twenty,
+   checks:[{...check(),checked_at:t2}]
+  },now+60000);
+  assert.equal(updated.status,200);
+  const receipt=await updated.json();
+  assert.equal(receipt.persisted,20);
+  assert.equal(receipt.newly_persisted_within_15m,8);
+  assert.equal(receipt.previously_persisted_reobserved,12);
+  assert.equal(receipt.d1_exact_readback_verified,true);
+  assert.equal(receipt.d1_queries_this_write,8);
+  assert.ok(largestBind<=20);
+  const existing=twenty.slice(0,12).map(i=>db.prepare(
+   "SELECT first_seen_at,last_seen_at FROM private_osint_news_25h WHERE item_id=?"
+  ).get(i.id.slice(5)));
+  assert.ok(existing.every(x=>x.first_seen_at===t1&&x.last_seen_at===t1),
+   "unmodified duplicate polls must not rewrite prior first-seen or last-seen");
+  const newer=twenty.slice(12).map(i=>db.prepare(
+   "SELECT first_seen_at FROM private_osint_news_25h WHERE item_id=?"
+  ).get(i.id.slice(5)));
+  assert.ok(newer.every(x=>x.first_seen_at===t2));
  }finally{db.close()}
 });

@@ -51,7 +51,7 @@ test("all batches are protected; independent private reader verifies durable rec
  assert.equal(result.d1_rows_read_for_write_batches,8);
  assert.equal(result.d1_rows_written_for_write_batches,4);
  assert.equal(result.d1_usage_metadata_complete,true);
- assert.ok(calls[1].url.endsWith('?view=bundle'));
+ assert.ok(calls[1].url.endsWith('?view=bundle&limit=1'));
  assert.equal(result.original_page_independently_verified,false);
  assert.equal(result.independent_verification_required_for_ingestion,false);
  assert.equal(result.publicly_delivered,false);
@@ -61,7 +61,7 @@ test("one older-reader 400 can fall back during deployment, but a malformed 200 
  const legacy=async(url,opts)=>{
   if(opts.method==='PUT')return f(url,opts);
   reads++;
-  if(url.endsWith('view=bundle'))return Response.json({error:'PRIVATE_OSINT_QUERY_INVALID'},{status:400});
+  if(url.endsWith('view=bundle&limit=1'))return Response.json({error:'PRIVATE_OSINT_QUERY_INVALID'},{status:400});
   return Response.json({ok:true,schema:PRIVATE_OSINT_DURABLE_SCHEMA,retention_hours:25,
    scope:'PROTECTED_INTERNAL_OSINT_RESEARCH_ONLY',independent_verification_required_for_ingestion:false,
    original_page_verified:false,commercial_use_authorized:false,items:[]});
