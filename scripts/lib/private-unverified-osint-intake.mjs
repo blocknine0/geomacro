@@ -47,6 +47,44 @@ export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourc
    rights_verified:false,commercial_eligible:false,publicly_deliverable:false,
   }));
  }
+
+ // Source-gap lane stays isolated from the already 511-endpoint private OSINT
+ // scanner. RSS candidates are accepted only after actual live HTTP/parse and
+ // publisher-native publication timestamps; never treat a lookup URL as news.
+ const gaps=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-local-gaplane.v1.json",import.meta.url),"utf8"));
+ if(gaps?.schema!=="geomacro.private-osint-local-gaplane.v1"||
+    gaps.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
+    !Array.isArray(gaps.sources)||gaps.sources.length>54)
+  throw Error("UNVERIFIED_OSINT_LOCAL_GAP_MANIFEST_INVALID");
+ for(const source of gaps.sources){
+  let url,reference;
+  try{url=new URL(source.url);reference=new URL(source.discovery_reference_url)}
+  catch{throw Error("UNVERIFIED_OSINT_LOCAL_GAP_URL_INVALID")}
+  if(!/^private_gaplane_[a-z0-9_]+$/u.test(source.id)||
+     ids.has(source.id)||urls.has(url.href)||url.href!==source.url||
+     url.protocol!=="https:"||url.username||url.password||url.port||url.hash||
+     !url.hostname.includes(".")||
+     reference.protocol!=="https:"||reference.username||reference.password||
+     reference.port||reference.hash||!reference.hostname.includes(".")||
+     !/^[A-Z]{3}$/u.test(source.publisher_country_iso3??"")||
+     source.activation_state!=="RUNTIME_PROBE_REQUIRED"||
+     source.publisher_native_dates_required!==true||
+     source.transport_verified_at_registration!==false||
+     source.commercial_eligible!==false||source.publicly_deliverable!==false||
+     !Array.isArray(source.categories)||source.categories.length!==3||
+     new Set(source.categories).size!==3||
+     source.categories.some(c=>!Object.hasOwn(domains,c))||
+     !["rss","atom"].includes(source.type))
+   throw Error("UNVERIFIED_OSINT_LOCAL_GAP_CANDIDATE_UNSAFE:"+source?.id);
+  ids.add(source.id);urls.add(url.href);
+  items.push(Object.freeze({
+   ...source,access:"rss",supported:true,
+   publisher_countries:[source.publisher_country_iso3],
+   activation_state:"PRIVATE_UNVERIFIED_OBSERVATION",
+   rights_verified:false,commercial_eligible:false,publicly_deliverable:false,
+  }));
+ }
  if(!items.length||items.length>80)throw Error("UNVERIFIED_OSINT_CANDIDATES_MISSING");
  return Object.freeze(items);
 }
