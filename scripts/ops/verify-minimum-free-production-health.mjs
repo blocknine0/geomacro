@@ -179,6 +179,13 @@ export async function checkMinimumFreeProduction(expectedSha){
   const observedSha=b.body?.canonical_main_sha;
   const websiteSourceEquivalent=observedSha===expectedSha?false:
     await verifyPublishedSourceEquivalence(observedSha,expectedSha);
+  // Public deployment marker only; this allows a stale Lovable Publish to be
+  // diagnosed without logging feed contents, headers, or credentials.
+  console.log(JSON.stringify({schema:"geomacro.live-build-parity-diagnostic.v1",
+    expected_main_sha:validSha(expectedSha)?expectedSha:null,
+    published_canonical_main_sha:validSha(observedSha)?observedSha:null,
+    exact_main_sha_match:observedSha===expectedSha,
+    verified_no_website_source_changes:websiteSourceEquivalent}));
   return classifyMinimumFreeProduction({
     journalStatus:j.status,journal:j.body,siteStatus:s.status,siteHtml:s.body,
     buildStatus:b.status,build:b.body,expectedSha,websiteSourceEquivalent,
