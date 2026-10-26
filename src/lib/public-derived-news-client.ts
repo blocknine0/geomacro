@@ -174,7 +174,7 @@ export async function fetchDirectDerivedNews(
   now = Date.now(),
 ): Promise<StatelessIntelligenceSignal[]> {
   const response = await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_PERMANENT_LATEST_URL,{
-    method:"GET",redirect:"error",cache:"no-store",
+    method:"GET",redirect:"error",cache:"default",
     headers:{Accept:"application/json"},
   },8_000);
   if (!response.ok || Number(response.headers.get("content-length") ?? 0) > 512_000) {
@@ -195,7 +195,7 @@ export async function fetchPermanentDerivedNews(
 ):Promise<StatelessIntelligenceSignal[]>{
   if(!Number.isFinite(now))throw Error("DERIVED_NEWS_ARCHIVE_CLOCK_INVALID");
   const indexResponse=await fetchImpl(GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/index.json",{
-    method:"GET",redirect:"error",cache:"no-store",
+    method:"GET",redirect:"error",cache:"default",
     headers:{Accept:"application/json"},signal:AbortSignal.timeout(8_000),
   });
   if(!indexResponse.ok||Number(indexResponse.headers.get("content-length")??0)>256_000)
@@ -220,7 +220,7 @@ export async function fetchPermanentDerivedNews(
       const url=GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/archive/"+
         task.month+"/"+task.category+".json";
       const response=await fetchImpl(url,{
-        method:"GET",redirect:"error",cache:"no-store",
+        method:"GET",redirect:"error",cache:"default",
         headers:{Accept:"application/json"},signal:AbortSignal.timeout(12_000),
       });
       if(!response.ok||Number(response.headers.get("content-length")??0)>20*1024*1024)
