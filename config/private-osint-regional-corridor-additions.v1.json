@@ -239,6 +239,60 @@
       "discovery_reference_url": "https://www.msit.go.kr/contents/cont.do?mId=173&mPid=147&sCode=user"
     },
     {
+      "id": "private_expansion_lka_cbsl_monthly_indicators",
+      "url": "https://www.cbsl.gov.lk/en/statistics/economic-indicators/meirss",
+      "continent": "asia",
+      "publisher_country_iso3": "LKA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "The Central Bank of Sri Lanka's official RSS feed directory links this Monthly Economic Indicators feed. Runtime must still validate HTTP response, RSS parsing and native publication dates.",
+      "discovery_reference_url": "https://www.cbsl.gov.lk/si/rss-feeds",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_lka_cbsl_mpr",
+      "url": "https://www.cbsl.gov.lk/en/press/press-releases/mprrss",
+      "continent": "asia",
+      "publisher_country_iso3": "LKA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "The Central Bank of Sri Lanka's official RSS feed directory links this Monetary Policy Review feed. Runtime must still validate HTTP response, RSS parsing and native publication dates.",
+      "discovery_reference_url": "https://www.cbsl.gov.lk/si/rss-feeds",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_lka_cbsl_weekly_indicators",
+      "url": "https://www.cbsl.gov.lk/en/statistics/economic-indicators/weirss",
+      "continent": "asia",
+      "publisher_country_iso3": "LKA",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "The Central Bank of Sri Lanka's official RSS feed directory links this Weekly Economic Indicators feed. Runtime must still validate HTTP response, RSS parsing and native publication dates.",
+      "discovery_reference_url": "https://www.cbsl.gov.lk/si/rss-feeds",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
       "id": "private_expansion_mining_dot_com",
       "url": "https://www.mining.com/feed/",
       "continent": "global",
