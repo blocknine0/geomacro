@@ -1,3 +1,4 @@
+import {hasConcreteNewsFacts} from "./news-event-facts";
 import {isFindCardV1,type FindCardV1} from "./find-card-v1";
 
 /**
@@ -16,7 +17,7 @@ export function eligibleHomeFindCards(cards:readonly unknown[],now=Date.now()):F
   if(!Array.isArray(cards)||!Number.isFinite(now))return [];
   const deduped=new Set<string>();
   return cards.filter((card):card is FindCardV1=>{
-    if(!isFindCardV1(card)||deduped.has(card.id))return false;
+    if(!isFindCardV1(card)||!hasConcreteNewsFacts({title:card.headline,what_changed:card.what_changed})||deduped.has(card.id))return false;
     const published=Date.parse(card.published_at);
     const delay=card.date_precision==="day"?DAY_ONLY_EMBARGO:PUBLICATION_DELAY_MS;
     if(!Number.isFinite(published)||published+delay>now||
