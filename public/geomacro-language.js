@@ -54,15 +54,16 @@
       return;
     }
 
-    // Google Translate's translated-host proxy preserves deep links and query
-    // parameters; the legacy /translate?u= redirect caused route/selector races.
-    const translated = new URL(`https://geomacro-live.translate.goog${source.pathname}`);
-    source.searchParams.forEach((value, key) => translated.searchParams.append(key, value));
-    translated.searchParams.set("_x_tr_sl", "auto");
-    translated.searchParams.set("_x_tr_tl", code);
-    translated.searchParams.set("_x_tr_hl", "en");
-    translated.searchParams.set("_x_tr_pto", "wapp");
-    translated.hash = source.hash;
+    // Use the supported Google Translate website endpoint. The former
+    // translated-host construction depended on a proxy hostname remaining
+    // reachable and could silently leave some visitors on an untranslated page.
+    // The single-controller fix prevents the old competing-navigation race;
+    // pass the complete canonical URL so deep paths, query and fragments survive.
+    const translated = new URL("https://translate.google.com/translate");
+    translated.searchParams.set("sl", "auto");
+    translated.searchParams.set("tl", code);
+    translated.searchParams.set("hl", "en");
+    translated.searchParams.set("u", source.toString());
     window.location.assign(translated.toString());
   }
 
