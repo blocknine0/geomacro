@@ -736,6 +736,170 @@
       "access_verified_in_production": false,
       "publicly_deliverable": false,
       "discovery_reference_url": "https://www.sars.gov.za/about/rss-feeds/"
+    },
+    {
+      "id": "private_expansion_ru_cbr_en_press",
+      "url": "https://www.cbr.ru/rss/EngRssPress",
+      "continent": "europe",
+      "publisher_country_iso3": "RUS",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Official Bank of Russia lists an English press-release RSS v2 endpoint. HTTPS/native item dates remain production probe requirements.",
+      "discovery_reference_url": "https://www.cbr.ru/eng/about/rss/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_ru_cbr_ru_press",
+      "url": "https://www.cbr.ru/rss/RssPress",
+      "continent": "europe",
+      "publisher_country_iso3": "RUS",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Official Bank of Russia lists its Russian-language press-release RSS v2 endpoint. HTTPS/native item dates remain runtime checks.",
+      "discovery_reference_url": "https://www.cbr.ru/development/RSS/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_ru_cbr_en_news",
+      "url": "https://www.cbr.ru/rss/EngRssNews",
+      "continent": "europe",
+      "publisher_country_iso3": "RUS",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Official Bank of Russia lists an English site-news RSS v2 endpoint; only matching native-dated macro titles enter private observation.",
+      "discovery_reference_url": "https://www.cbr.ru/eng/about/rss/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_us_usgs_minerals_news",
+      "url": "https://www.usgs.gov/news/minerals/feed",
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "USGS Mineral Resources Program links directly to the minerals news RSS feed. RSS content type seen through official page link.",
+      "discovery_reference_url": "https://www.usgs.gov/programs/mineral-resources-program/news",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_ng_fmino_rss",
+      "url": "https://fmino.gov.ng/feed/",
+      "continent": "africa",
+      "publisher_country_iso3": "NGA",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Official Nigerian ministry lists RSS news channels. WordPress-style root RSS URL is a hypothesis requiring exact live RSS/native-date proof; never treat it as working at registration.",
+      "discovery_reference_url": "https://fmino.gov.ng/rss-feeds/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_pg_mra_rss_candidate",
+      "url": "https://mra.gov.pg/feed/",
+      "continent": "oceania",
+      "publisher_country_iso3": "PNG",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Papua New Guinea Mineral Resources Authority publishes releases; feed path is a discovery candidate only until transport/parser/native dates are verified.",
+      "discovery_reference_url": "https://mra.gov.pg/media-release/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_gy_mnr_rss_candidate",
+      "url": "https://mnr.gov.gy/feed/",
+      "continent": "south_america",
+      "publisher_country_iso3": "GUY",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Guyana Ministry of Natural Resources publishes news; root RSS path is unverified and must not count as live without a successful source probe.",
+      "discovery_reference_url": "https://mnr.gov.gy/2026/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_fj_rbf_press_candidate",
+      "url": "https://www.rbf.gov.fj/category/press/feed/",
+      "continent": "oceania",
+      "publisher_country_iso3": "FJI",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Reserve Bank of Fiji publishes press releases; category RSS path is unverified until source native dated RSS probe passes.",
+      "discovery_reference_url": "https://www.rbf.gov.fj/category/press/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_cl_cochilco_rss_candidate",
+      "url": "https://www.cochilco.cl/feed/",
+      "continent": "south_america",
+      "publisher_country_iso3": "CHL",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Chilean Copper Commission official site publishes minerals releases; root RSS path is a candidate, not accepted as live without successful runtime probe.",
+      "discovery_reference_url": "https://www.cochilco.cl/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
     }
   ]
 }
