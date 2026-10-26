@@ -123,8 +123,10 @@ function normalizeHeadline(title){
     .trim().replace(/\s+/gu," ");
 }
 function isTemplateObservation(signal){
-  return signal.status==="osint_feed_observed_unverified"&&
-    /\b(?:source[- ]feed observation|publisher candidate)\b/iu.test(signal.title);
+  const candidateText=[signal.title,signal.topic,signal.development_type]
+    .filter(value=>typeof value==="string").join(" ");
+  return /\b(?:source[- ]feed observation|publisher candidate|unclassified publisher update)\b/iu
+    .test(candidateText);
 }
 function isOfficialObservation(signal){
   return signal.status==="official_release_observed_unscored"||
@@ -234,7 +236,8 @@ export async function readRecoverableD1Seed(fetchImpl=fetch,now=Date.now()){
        typeof doc.has_more!=="boolean")
       throw Error("PERMANENT_ARCHIVE_D1_SEED_CONTRACT_INVALID");
     for(const signal of doc.signals){
-      if(isPermanentArchiveSignal(signal,now,{allowHistorical:false}))collected.push(signal);
+      if(isPermanentArchiveSignal(signal,now,{allowHistorical:false})&&
+         !isTemplateObservation(signal))collected.push(signal);
     }
     if(doc.has_more===false){
       if(doc.next_offset!==null)throw Error("PERMANENT_ARCHIVE_D1_SEED_CURSOR_INVALID");
@@ -255,7 +258,8 @@ function readCandidates(path,now){
   const seen=new Set();
   const accepted=[];
   for(const signal of doc.signals){
-    if(!isPermanentArchiveSignal(signal,now,{allowHistorical:false}))continue;
+    if(!isPermanentArchiveSignal(signal,now,{allowHistorical:false})||
+       isTemplateObservation(signal))continue;
     if(seen.has(signal.id))continue;
     seen.add(signal.id);
     accepted.push(signal);
