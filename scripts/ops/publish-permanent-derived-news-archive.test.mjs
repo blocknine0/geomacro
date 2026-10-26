@@ -126,6 +126,26 @@ describe("permanent derived-only website archive",()=>{
   assert.deepEqual(index.months,["2026-12","2026-10"]);
   assert.equal(index.total_signals,2);
  });
+ it("never appends generic OSINT publisher placeholders to the permanent archive",async()=>{
+  const p=temp();
+  const real=signal("1234abcd","2026-10","macro");
+  real.title="Geomacro finds central bank announced a new policy rate";
+  const template={...signal("9999eeee","2026-10","geopolitics"),
+   title:"Geomacro finds geopolitical publisher candidate source-feed observation",
+   topic:"geopolitical publisher candidate",
+   development_type:"unverified OSINT feed observation",
+   status:"osint_feed_observed_unverified",
+   sources_credited:["Monitored feed: example.net"]};
+  writeCandidates(p.candidatePath,[template,real]);
+  const result=await publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:NOW});
+  assert.equal(result.new_signals_added,1);
+  assert.equal(result.total_signals,1);
+  const month=JSON.parse(readFileSync(join(p.archiveDir,"data/archive/2026-10/macro.json"),"utf8"));
+  assert.equal(month.signals.length,1);
+  assert.equal(month.signals[0].id,real.id);
+  const latest=JSON.parse(readFileSync(join(p.assetsDir,"latest.json"),"utf8"));
+  assert.deepEqual(latest.signals.map(row=>row.id),[real.id]);
+ });
  it("does not overwrite a previously published ID with changed prose",async()=>{
   const p=temp();
   writeCandidates(p.candidatePath,[signal("1234abcd")]);
