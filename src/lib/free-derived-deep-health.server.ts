@@ -43,7 +43,7 @@ function result(ok:boolean,reason:string,counts=empty()){
   const rows=Object.values(counts).reduce((a,b)=>a+b,0);
   return {statusCode:ok?200:503,body:{
     schema:"geomacro.free-derived-deep-health.v1",ok,
-    product:"free-derived-news",reason,
+    product:"free-derived-news",reason,feed_source:"permanent_static_archive",d1_reads_performed:false,
     current_72h_derived_rows:ok?rows:0,
     categories:counts,
     all_three_categories_have_recent_originals:
