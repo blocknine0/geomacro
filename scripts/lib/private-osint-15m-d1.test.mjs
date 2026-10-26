@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {createHash,createHmac} from "node:crypto";
 import {DatabaseSync} from "node:sqlite";
 import {readFileSync} from "node:fs";
-import {handlePrivateOsint15m,privateOsint15mWrite,privateOsint15mRead,PRIVATE_OSINT_D1_SCHEMA} from "../../workers/control-plane/src/private-osint-15m.mjs";
+import {handlePrivateOsint15m,privateOsint15mWrite,privateOsint15mRead,privateOsintD1FailureClass,PRIVATE_OSINT_D1_SCHEMA} from "../../workers/control-plane/src/private-osint-15m.mjs";
 const now=Date.parse("2026-10-25T12:00:00.000Z");
 const at="2026-10-25T11:52:00.000Z";
 const hash=x=>createHash("sha256").update(x).digest("hex");
@@ -222,4 +222,57 @@ test("D1 durably accepts a newly seen news record after 15m and never resets fir
  assert.equal(readback.items.length,1);
  assert.equal(readback.items[0].private_first_seen_at,firstSeen);
  assert.equal(readback.items[0].commercially_eligible,false);
+});
+
+test("protected D1 write categorizes free quota and missing schema without SQL disclosure",async()=>{
+ assert.equal(privateOsintD1FailureClass({message:"Your account has exceeded D1's free tier daily row read limit. Upgrade or wait"}),"D1_FREE_DAILY_ROW_READ_LIMIT");
+ assert.equal(privateOsintD1FailureClass({message:"Your account has exceeded D1's free tier daily row write limit."}),"D1_FREE_DAILY_ROW_WRITE_LIMIT");
+ assert.equal(privateOsintD1FailureClass({message:"no such table: private_osint_news_25h"}),"D1_SCHEMA_UNAVAILABLE");
+ assert.equal(privateOsintD1FailureClass({message:"secret internal SQL + payment data"}),"D1_UNCLASSIFIED_STORAGE_FAILURE");
+ const message="Your account has exceeded D1's free tier daily row read limit. private secret!";
+ const fail=await privateOsint15mWrite({DB:{prepare(){throw Error(message)}}},
+   {schema:PRIVATE_OSINT_D1_SCHEMA,items:[],checks:[check()]},now);
+ assert.equal(fail.status,503);
+ const body=await fail.json();
+ assert.equal(body.failure_class,"D1_FREE_DAILY_ROW_READ_LIMIT");
+ assert.equal(body.retry_after_utc,"2026-10-26T00:00:00.000Z");
+ assert.equal(body.write_or_readback_commit_status_unknown,true);
+ assert.equal(body.public_published,false);
+ assert.equal(body.paid_product_authorized,false);
+ assert.ok(!JSON.stringify(body).includes("secret"));
+});
+
+test("free D1 private hard-cap evicts only oldest excess rows, never a full NOT IN scan",()=>{
+ const source=readFileSync(new URL("../../workers/control-plane/src/private-osint-15m.mjs",import.meta.url),"utf8");
+ assert.ok(source.includes("ORDER BY native_feed_published_at ASC,item_id ASC LIMIT"));
+ assert.ok(!source.includes('"DELETE FROM private_osint_news_25h WHERE item_id NOT IN "'));
+ const db=new DatabaseSync(":memory:");
+ db.exec("CREATE TABLE private_osint_news_25h(item_id TEXT PRIMARY KEY,native_feed_published_at TEXT NOT NULL)");
+ db.exec("CREATE INDEX idx_private_osint_news_clock ON private_osint_news_25h(native_feed_published_at DESC,item_id DESC)");
+ const insert=db.prepare("INSERT INTO private_osint_news_25h(item_id,native_feed_published_at) VALUES(?,?)");
+ const all=[];
+ try{
+  db.exec("BEGIN");
+  for(let i=0;i<4007;i++){
+   const id=i.toString(16).padStart(64,"0");
+   const native=new Date(now-300000+Math.floor(i/3)*100).toISOString();
+   insert.run(id,native);
+   all.push({id,native});
+  }
+  db.exec("COMMIT");
+  const trim="DELETE FROM private_osint_news_25h WHERE item_id IN "+
+   "(SELECT item_id FROM private_osint_news_25h "+
+   "ORDER BY native_feed_published_at ASC,item_id ASC LIMIT "+
+   "MAX(0,(SELECT COUNT(*) FROM private_osint_news_25h)-4000))";
+  db.prepare(trim).run();
+  const retained=db.prepare("SELECT item_id FROM private_osint_news_25h ORDER BY native_feed_published_at DESC,item_id DESC").all().map(x=>x.item_id);
+  const expected=all.sort((a,b)=>b.native.localeCompare(a.native)||b.id.localeCompare(a.id))
+   .slice(0,4000).map(x=>x.id);
+  assert.deepEqual(retained,expected);
+  assert.equal(retained.length,4000);
+  db.prepare(trim).run();
+  assert.equal(db.prepare("SELECT count(*) AS n FROM private_osint_news_25h").get().n,4000);
+  const plan=db.prepare("EXPLAIN QUERY PLAN "+trim).all().map(x=>x.detail).join(" ");
+  assert.ok(plan.includes("idx_private_osint_news_clock"));
+ }finally{db.close()}
 });

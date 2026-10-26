@@ -184,6 +184,47 @@ export function privateOsintGlobalSources(){
   }
   map.set(source.url,{...source,supported:true,transport_verified_at_registration:false});
  }
+ // Extra country-local official publisher candidate paths are PRIVATE probes,
+ // not pre-certified national feeds. Runtime HTTP/parser/native-date status is
+ // the only authority to mark an endpoint healthy. Never assign an event
+ // country from the source's publisher country.
+ const local=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-local-rss-candidates.v1.json",import.meta.url),"utf8"));
+ if(local?.schema!=="geomacro.private-osint-local-rss-candidates.v1"||
+    local.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
+    !Array.isArray(local.sources)||local.sources.length>16)
+  throw Error("PRIVATE_OSINT_LOCAL_CANDIDATE_MANIFEST_INVALID");
+ const localIds=new Set();
+ for(const source of local.sources){
+  let url,reference;
+  try{url=new URL(source.url);reference=new URL(source.discovery_reference_url)}
+  catch{throw Error("PRIVATE_OSINT_LOCAL_CANDIDATE_URL_INVALID")}
+  const knownContinent=Object.entries(CONTINENT_COUNTRIES_195)
+   .find(([,countries])=>countries.includes(source.publisher_country_iso3))?.[0];
+  if(!/^private_local_candidate_[a-z0-9_]+$/u.test(source.id)||
+     localIds.has(source.id)||map.has(source.url)||existing.has(source.url)||
+     url.protocol!=="https:"||url.username||url.password||url.port||url.hash||
+     !url.hostname.includes(".")||
+     reference.protocol!=="https:"||reference.username||reference.password||
+     reference.port||reference.hash||
+     knownContinent!==source.continent||
+     source.type!=="rss"||
+     !Array.isArray(source.categories)||!source.categories.length||
+     new Set(source.categories).size!==source.categories.length||
+     source.categories.some(category=>!PRIVATE_OSINT_CATEGORIES.includes(category))||
+     source.activation_state!=="RUNTIME_PROBE_REQUIRED"||
+     source.source_kind!=="LOCAL_PUBLISHER_INDEX_CANDIDATE"||
+     source.publisher_native_dates_required!==true||
+     source.transport_verified_at_registration!==false||
+     source.private_only!==true||
+     source.provider_rights_verified!==false||
+     source.commercial_eligible!==false||
+     source.access_verified_in_production!==false||
+     source.publicly_deliverable!==false)
+   throw Error("PRIVATE_OSINT_LOCAL_CANDIDATE_UNSAFE_OR_DUPLICATE:"+source?.id);
+  localIds.add(source.id);
+  map.set(source.url,{...source,supported:true});
+ }
  // Interleave continents so an individual slow regional desk cannot put
  // another continent at the back of a large sequential registry group.
  const buckets=["global",...Object.keys(CONTINENT_COUNTRIES_195)].map(c=>[...map.values()].filter(s=>s.continent===c));

@@ -13,6 +13,25 @@ const states=new Set(["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW","UNAVAILABLE","UNSUPP
 const sha=/^[a-f0-9]{64}$/u, iso=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u;
 const maxAgeMs=25*60*60*1000,maxRows=4000;
 export const PRIVATE_OSINT_D1_SCHEMA="geomacro.private-osint-15m-durable.v1";
+/**
+ * Never echo SQL/provider exceptions or source content. Protected callers can
+ * distinguish the Cloudflare Free daily hard stop from missing migrations or
+ * transient storage failure, without leaking raw D1 messages.
+ */
+export function privateOsintD1FailureClass(error){
+ const message=String(error?.message??"");
+ if(/(?:exceeded D1.*daily row read limit|D1.*daily row read limit exceeded|D1_DAILY_ROW_READ_LIMIT)/iu.test(message))
+  return "D1_FREE_DAILY_ROW_READ_LIMIT";
+ if(/(?:exceeded D1.*daily row write limit|D1.*daily row write limit exceeded|D1_DAILY_ROW_WRITE_LIMIT)/iu.test(message))
+  return "D1_FREE_DAILY_ROW_WRITE_LIMIT";
+ if(/(?:no such table|no such column|no such index)/iu.test(message))
+  return "D1_SCHEMA_UNAVAILABLE";
+ return "D1_UNCLASSIFIED_STORAGE_FAILURE";
+}
+function privateOsintQuotaReset(now){
+ const date=new Date(now);
+ return new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate()+1)).toISOString();
+}
 const respond=(v,status=200)=>Response.json(v,{status,headers:{
  "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff",
  "Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex,nofollow",
@@ -108,14 +127,29 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
      .bind(...group.flatMap(c=>[c.source_ref,c.category,c.state,c.checked_at]),new Date(now-3600000).toISOString()));
    }
    if(hasNewRows)statements.push(env.DB.prepare(
-     "DELETE FROM private_osint_news_25h WHERE item_id NOT IN "+
-     "(SELECT item_id FROM private_osint_news_25h ORDER BY native_feed_published_at DESC,item_id DESC LIMIT "+maxRows+")"));
+     // Exact hard-cap retention with a fast SQLite btree COUNT and oldest-
+     // first index walk over ONLY the excess rows. The prior NOT IN newest
+     // 4,000 scanned the entire retention ring for every new 16-item batch.
+     // Preserves oldest eviction, atomic batch and immutable first_seen_at.
+     "DELETE FROM private_osint_news_25h WHERE item_id IN "+
+     "(SELECT item_id FROM private_osint_news_25h "+
+     "ORDER BY native_feed_published_at ASC,item_id ASC LIMIT "+
+     "MAX(0,(SELECT COUNT(*) FROM private_osint_news_25h)-"+maxRows+"))"));
    const batch=await env.DB.batch(statements);
    if(batch.some(result=>result?.success===false))throw Error("D1_BATCH_FAILED");
    const readback=rows.length?await env.DB.prepare(
     "SELECT item_id,category,country_iso3,native_feed_published_at,projection_json,first_seen_at FROM private_osint_news_25h WHERE item_id IN ("+placeholders+")")
     .bind(...itemIds).all():{results:[]};
    if(!Array.isArray(readback.results))throw Error("D1_READBACK_INVALID");
+   // Native D1 query metadata is optional during rollout. Track actual
+   // row consumption when every query reports it; unknown must remain null.
+   // No extra D1 queries or private source values are emitted.
+   const metadatas=[before.meta,...batch.map(x=>x?.meta),readback.meta];
+   const allUsageKnown=metadatas.every(m=>m&&
+    Number.isSafeInteger(m.rows_read)&&m.rows_read>=0&&
+    Number.isSafeInteger(m.rows_written)&&m.rows_written>=0);
+   const d1RowsRead=allUsageKnown?metadatas.reduce((sum,m)=>sum+m.rows_read,0):null;
+   const d1RowsWritten=allUsageKnown?metadatas.reduce((sum,m)=>sum+m.rows_written,0):null;
    const foundById=new Map(readback.results.map(r=>[r.item_id,r]));
    let retained=0,excluded=0,within15=0,after15=0,newWithin15=0,newLate=0,reobserved=0;
    for(const r of rows){
@@ -144,13 +178,21 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
      late_arrivals_not_rejected_by_15m_cutoff:true,
      d1_exact_readback_verified:true,
      existence_and_readback_bundled:true,d1_queries_this_write:statements.length+(rows.length?2:0),
+     d1_rows_read_this_write:d1RowsRead,d1_rows_written_this_write:d1RowsWritten,
+     d1_usage_metadata_complete:allUsageKnown,
      duplicate_news_last_seen_refresh_hours:6,unchanged_check_refresh_minutes:60,
      independent_verification_required_for_ingestion:false,
      original_page_verified:false,source_rights_verified:false,
      breaking_news_global_15m_guaranteed:false,
      publicly_served:false,paid_product_authorized:false,raw_upstream_stored:false});
- }catch{
+ }catch(error){
+   const failure_class=privateOsintD1FailureClass(error);
+   const quota=failure_class==="D1_FREE_DAILY_ROW_READ_LIMIT"||
+     failure_class==="D1_FREE_DAILY_ROW_WRITE_LIMIT";
    return respond({ok:false,error:"PRIVATE_OSINT_D1_WRITE_OR_READBACK_UNAVAILABLE",
+     failure_class,
+     retry_after_utc:quota?privateOsintQuotaReset(now):null,
+     write_or_readback_commit_status_unknown:true,
      public_published:false,paid_product_authorized:false},503);
  }
 }

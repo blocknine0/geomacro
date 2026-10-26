@@ -16,6 +16,7 @@ function simulate(){
     ok:true,persisted:b.items.length,capacity_excluded:0,checks_saved:b.checks.length,
     d1_exact_readback_verified:true,
     existence_and_readback_bundled:true,d1_queries_this_write:3,
+    d1_usage_metadata_complete:true,d1_rows_read_this_write:8,d1_rows_written_this_write:4,
     native_feed_to_first_durable_write_within_15m:b.items.length,
     native_feed_to_first_durable_write_over_15m:0,
     newly_persisted_within_15m:b.items.length,
@@ -46,6 +47,9 @@ test("all batches are protected; independent private reader verifies durable rec
  assert.equal(result.private_three_category_bundle_readback_verified,true);
  assert.equal(result.private_d1_writer_reads_bundled_verified,true);
  assert.equal(result.d1_queries_for_write_batches,3);
+ assert.equal(result.d1_rows_read_for_write_batches,8);
+ assert.equal(result.d1_rows_written_for_write_batches,4);
+ assert.equal(result.d1_usage_metadata_complete,true);
  assert.ok(calls[1].url.endsWith('?view=bundle'));
  assert.equal(result.original_page_independently_verified,false);
  assert.equal(result.independent_verification_required_for_ingestion,false);
@@ -153,4 +157,25 @@ test("high-volume private OSINT uses 16 news and 32 health checks per protected 
  assert.equal(receipt.source_checks_persisted,65);
  assert.equal(receipt.d1_write_exact_readback_verified,true);
  assert.equal(calls.filter(c=>c.method==="GET").length,1);
+});
+
+test("protected collector differentiates real free D1 read and write limits from opaque failures",async()=>{
+ for(const failureClass of ["D1_FREE_DAILY_ROW_READ_LIMIT","D1_FREE_DAILY_ROW_WRITE_LIMIT","D1_SCHEMA_UNAVAILABLE"]){
+  const fetchImpl=async()=>Response.json({
+   ok:false,error:"PRIVATE_OSINT_D1_WRITE_OR_READBACK_UNAVAILABLE",
+   failure_class:failureClass,retry_after_utc:"2026-10-26T00:00:00.000Z"
+  },{status:503});
+  await assert.rejects(persistPrivateOsintBatch({
+   result:input,privateToken:token,controlPlaneRoot:host,fetchImpl,now
+  }),new RegExp("PRIVATE_OSINT_"+failureClass));
+ }
+ for(const malicious of [
+  new Response("private source name / leaked server SQL",{status:503}),
+  Response.json({failure_class:"SECRET_PROVIDER_PAYLOAD"}, {status:503})
+ ]){
+  const fetchImpl=async()=>malicious;
+  await assert.rejects(persistPrivateOsintBatch({
+   result:input,privateToken:token,controlPlaneRoot:host,fetchImpl,now
+  }),/PRIVATE_OSINT_PROTECTED_D1_WRITE_HTTP_503/);
+ }
 });
