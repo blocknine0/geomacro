@@ -175,7 +175,11 @@ test('production schedule isolates refs and exposes only checkpoint credentials 
  assert.ok(workflow.includes('cancel-in-progress: false'));
  assert.ok(workflow.includes('environment: production'));
  assert.ok(workflow.includes('--production-updates'));
- assert.ok(workflow.includes('path: artifacts/free-source-updates/receipt.json'));
+ assert.ok(workflow.includes('path: |'));
+ assert.ok(workflow.includes('artifacts/free-source-updates/receipt.json'));
+ assert.ok(workflow.includes('artifacts/free-source-updates/deployed-main-readback.json'));
+ assert.ok(workflow.includes('Check actual published main build for WDI source changes'));
+ assert.ok(workflow.includes('github.event_name == \'push\' || github.event_name == \'workflow_dispatch\''));
  const writerSection=workflow.split('  read-only-production-mesh:')[1]?.split('  zoho-subscribed-maritime-candidates:')[0];
  assert.ok(writerSection);
  assert.deepEqual([...writerSection.matchAll(/secrets\.([A-Z0-9_]+)/gu)].map(m=>m[1]).sort(),['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_API_TOKEN']);
