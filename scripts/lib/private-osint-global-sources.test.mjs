@@ -39,6 +39,8 @@ test("accepted global source inventory has distinct pinned feeds in six continen
  assert.equal(sourceMatrix.country_specific_source_countries_registered,65);
  assert.equal(sourceMatrix.countries_without_country_specific_publisher_source.length,130);
  assert.equal(sourceMatrix.scope,"PRIVATE_SOURCE_ACQUISITION_COVERAGE_NOT_PUBLIC_FIND_COVERAGE");
+ const liveSources=privateOsintGlobalSources();
+ assert.ok(["geopolitics","macro","rare_earth"].every(category=>liveSources.filter(source=>source.categories.includes(category)).length>=12));
  const manifest=JSON.parse(readFileSync(new URL('../../config/private-osint-working-sources.v1.json',import.meta.url)));
  assert.equal(manifest.accepted_endpoint_count,manifest.sources.length);
  assert.ok(manifest.sources.every(s=>s.acceptance.http_status===200&&s.acceptance.feed_parsed&&s.acceptance.bounded_feed_bytes<=1024*1024));
