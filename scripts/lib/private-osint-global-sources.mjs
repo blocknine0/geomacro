@@ -124,10 +124,17 @@ export function privateOsintGlobalSources(){
       s.categories[0]!==expectedCategory||
       s.activation_state!=="RUNTIME_PROBE_REQUIRED"||
       s.provider_rights_verified!==false||s.commercial_eligible!==false||
-      s.access_verified_in_production!==false||s.publicly_deliverable!==false||
-      map.has(s.url)||existing.has(s.url))
+      s.access_verified_in_production!==false||s.publicly_deliverable!==false)
      throw Error("PRIVATE_MACRO_MINERALS_SOURCE_SCOPE_UNSAFE_OR_DUPLICATE");
    seenMacroMineralsIds.add(s.id);
+   const registered=map.get(s.url)??existing.get(s.url);
+   if(registered){
+     if(registered.publisher_country_iso3!==s.publisher_country_iso3||
+        registered.continent!==s.continent||
+        JSON.stringify([...registered.categories].sort())!==JSON.stringify([...s.categories].sort()))
+       throw Error("PRIVATE_MACRO_MINERALS_DUPLICATE_METADATA_CONFLICT");
+     continue;
+   }
    map.set(s.url,{...s,supported:true,transport_verified_at_registration:false});
  }
 
