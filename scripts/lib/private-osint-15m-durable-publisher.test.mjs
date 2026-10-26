@@ -154,3 +154,24 @@ test("high-volume private OSINT uses 16 news and 32 health checks per protected 
  assert.equal(receipt.d1_write_exact_readback_verified,true);
  assert.equal(calls.filter(c=>c.method==="GET").length,1);
 });
+
+test("protected collector differentiates real free D1 read and write limits from opaque failures",async()=>{
+ for(const failureClass of ["D1_FREE_DAILY_ROW_READ_LIMIT","D1_FREE_DAILY_ROW_WRITE_LIMIT","D1_SCHEMA_UNAVAILABLE"]){
+  const fetchImpl=async()=>Response.json({
+   ok:false,error:"PRIVATE_OSINT_D1_WRITE_OR_READBACK_UNAVAILABLE",
+   failure_class:failureClass,retry_after_utc:"2026-10-26T00:00:00.000Z"
+  },{status:503});
+  await assert.rejects(persistPrivateOsintBatch({
+   result:input,privateToken:token,controlPlaneRoot:host,fetchImpl,now
+  }),new RegExp("PRIVATE_OSINT_"+failureClass));
+ }
+ for(const malicious of [
+  new Response("private source name / leaked server SQL",{status:503}),
+  Response.json({failure_class:"SECRET_PROVIDER_PAYLOAD"}, {status:503})
+ ]){
+  const fetchImpl=async()=>malicious;
+  await assert.rejects(persistPrivateOsintBatch({
+   result:input,privateToken:token,controlPlaneRoot:host,fetchImpl,now
+  }),/PRIVATE_OSINT_PROTECTED_D1_WRITE_HTTP_503/);
+ }
+});
