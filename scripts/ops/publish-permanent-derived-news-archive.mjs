@@ -147,13 +147,24 @@ function categoryRelevance(signal){
   }
   return scores[signal.category]-(Math.max(...CATEGORIES.filter(c=>c!==signal.category).map(c=>scores[c]))||0);
 }
+const AGGREGATOR_ONLY_CREDITS=new Set([
+  "Monitored feed: news.google.com",
+  "Monitored feed: news.google.com (aggregator; original publisher not verified)",
+]);
+function isAggregatorOnly(signal){
+  return Array.isArray(signal.sources_credited)&&signal.sources_credited.some(
+    credit=>typeof credit==="string"&&AGGREGATOR_ONLY_CREDITS.has(credit),
+  );
+}
 function preferDuplicateCandidate(candidate,current){
   const relevanceDifference=categoryRelevance(candidate)-categoryRelevance(current);
   if(relevanceDifference!==0)return relevanceDifference>0;
   const officialDifference=Number(isOfficialObservation(candidate))-Number(isOfficialObservation(current));
   if(officialDifference!==0)return officialDifference>0;
-  const candidateDirect=!String((candidate.sources_credited??[]).join(" ")).includes("news.google.com");
-  const currentDirect=!String((current.sources_credited??[]).join(" ")).includes("news.google.com");
+  // Compare the whole source-credit label against the finite aggregator allowlist.
+  // A substring match would incorrectly classify labels containing arbitrary hosts.
+  const candidateDirect=!isAggregatorOnly(candidate);
+  const currentDirect=!isAggregatorOnly(current);
   if(candidateDirect!==currentDirect)return candidateDirect;
   if(candidate.published_at!==current.published_at)return candidate.published_at>current.published_at;
   return candidate.id<current.id;
