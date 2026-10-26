@@ -26,6 +26,10 @@ test("195 countries rotate across exactly four nominal slots with 3 topical lane
  assert.deepEqual(new Set(all.map(s=>s.discovery_country_iso3)),
    new Set(COUNTRIES_195.map(c=>c.iso3)));
  assert.equal(new Set(all.map(s=>s.url)).size,195);
+ const congo=all.find(s=>s.discovery_country_iso3==="COD");
+ assert.ok(new URL(congo.url).searchParams.get("q").includes(\'"DRC"\'));
+ const myanmar=all.find(s=>s.discovery_country_iso3==="MMR");
+ assert.ok(new URL(myanmar.url).searchParams.get("q").includes(\'"Burma"\'));
  for(const source of all){
   const url=new URL(source.url);
   assert.equal(url.origin,"https://news.google.com");
