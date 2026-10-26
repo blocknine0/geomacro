@@ -110,7 +110,7 @@ export function privateOsintGlobalSources(){
  for(const s of macroMinerals.sources){
    const expectedUrl=pinnedMacroMinerals.get(s.id);
    const u=new URL(s.url);
-   const expectedCategory=s.id==="private_repo8_uk_lme_metals"?"rare_earth":"macro";
+   const expectedCategory=["private_repo8_uk_lme_metals","private_repo8_usgs_minerals_news"].includes(s.id)?"rare_earth":"macro";
    const expectedContinent=s.id==="private_repo8_uk_lme_metals"?"europe":
      ["private_repo8_world_bank_release","private_repo8_imf_release"].includes(s.id)?"global":"north_america";
    const expectedCountry=s.id==="private_repo8_uk_lme_metals"?"GBR":
