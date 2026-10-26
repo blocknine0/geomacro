@@ -11,6 +11,11 @@ on:
     branches:
       - main
     paths:
+      # Keep the guarded automatic deployment reachable when the recovery
+      # workflow or deploy workflow itself is repaired on canonical main.
+      - ".github/workflows/deploy-d1-control-plane.yml"
+      - ".github/workflows/recover-d1-quota-deployment-after-reset.yml"
+      - "scripts/tests/d1-quota-reset-recovery-workflow.test.mjs"
       - "src/lib/original-verification-policy.ts"
       - "src/lib/release-news-observation.ts"
       - "src/lib/private-source-handoff.ts"
@@ -182,6 +187,16 @@ jobs:
 
           fs.writeFileSync('workers/control-plane/wrangler.runtime.jsonc', JSON.stringify(config, null, 2));
           NODE
+
+      - name: Observe account-wide D1 free quota without spending D1 rows
+        # Diagnostic only. Cloudflare GraphQL reports account-wide usage;
+        # neither a missing metrics permission nor exhausted headroom grants
+        # permission to skip migrations, pay, or bypass any production gate.
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/audit-d1-account-daily-quota-readonly.mjs
 
       - name: Apply committed D1 migrations remotely
         working-directory: workers/control-plane
