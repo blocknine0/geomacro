@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+import {openSync,writeFileSync,closeSync,constants} from 'node:fs';
+import {readPrivateSourceRefs} from './persist-private-source-handoffs';
 // Re-render retained Geomacro-owned cards from their existing protected source
 // references. No raw reference or publisher headline is printed or published.
 import {createHmac,createPublicKey} from 'node:crypto';
@@ -19,6 +21,19 @@ export function refreshRetainedSignal(signal:Parameters<typeof automatedInputId>
  return next;
 }
 
+export function carryRetainedEditorialRefs(refs:Map<string,Parameters<typeof refreshRetainedSignal>[1]>,
+ journalIds:Set<string>,env=process.env){
+ if(!refs.size||!env.GEOMACRO_LOW_REVIEW_REFS_FILE)return;
+ const combined=new Map([...readPrivateSourceRefs(env)].filter(([id])=>journalIds.has(id)));
+ for(const [id,ref] of refs)if(journalIds.has(id))combined.set(id,ref);
+ if(combined.size>600)throw Error('PRIVATE_HANDOFF_EDITORIAL_REF_BOUND');
+ const body=JSON.stringify({refs:[...combined]});
+ if(Buffer.byteLength(body,'utf8')>2_000_000)throw Error('PRIVATE_HANDOFF_EDITORIAL_REF_BOUND');
+ const fd=openSync(env.GEOMACRO_LOW_REVIEW_REFS_FILE,
+  constants.O_WRONLY|constants.O_CREAT|constants.O_TRUNC|constants.O_NOFOLLOW,0o600);
+ try{writeFileSync(fd,body);}finally{closeSync(fd);}
+}
+
 if(import.meta.main){
  try{
   const root=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??'').trim();
@@ -35,12 +50,13 @@ if(import.meta.main){
   const retained=await readPrivateSourceHandoffs({keys,trust,now,
    env:{...process.env,GEOMACRO_LOW_REVIEW_TOKEN:capability}});
   const journal=await fetchAllDerivedNews(fetch,now.getTime()),revised=[];
+  const revisedRefs=new Map<string,Parameters<typeof refreshRetainedSignal>[1]>();
   let missing=0;
   for(const signal of journal){
    const ref=retained.originals.get(await automatedInputId(signal));
    if(!ref){missing++;continue;}
    const next=refreshRetainedSignal(signal,ref,now.getTime());
-   if(await automatedInputId(next)!==await automatedInputId(signal))revised.push(next);
+   if(await automatedInputId(next)!==await automatedInputId(signal)){revised.push(next);revisedRefs.set(next.id,ref);}
   }
   const {chunks}=prepareDerivedNewsBatches(revised);
   for(const signals of chunks){
@@ -58,6 +74,7 @@ if(import.meta.main){
     if(!actual||await automatedInputId(actual)!==await automatedInputId(signal))throw Error('READBACK');
    }
   }
+  carryRetainedEditorialRefs(revisedRefs,new Set(journal.map(s=>s.id)));
   console.log(JSON.stringify({schema:'geomacro.actor-action-editorial-refresh.v1',
    retained_news:journal.length,derived_rows_refreshed:revised.length,
    rows_without_matching_private_reference:missing,original_dates_rewritten:false,
