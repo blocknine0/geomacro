@@ -164,7 +164,7 @@ test("195x3 source-coverage priority distinguishes local, regional and global fa
  const globalMacro={id:"coverage_test_global_macro",url:"https://coverage-test.example/global/macro",continent:"global",publisher_country_iso3:null,categories:["macro"],supported:true};
  const globalGeo={id:"coverage_test_global_geo",url:"https://coverage-test.example/global/geo",continent:"global",publisher_country_iso3:null,categories:["geopolitics"],supported:true};
  const globalMinerals={id:"coverage_test_global_minerals",url:"https://coverage-test.example/global/minerals",continent:"global",publisher_country_iso3:null,categories:["rare_earth"],supported:true};
- const ref=(source,category)=>createHash("sha256").update([source.id,source.url,category].join("\\n")).digest("hex");
+ const ref=(source,category)=>createHash("sha256").update([source.id,source.url,category].join("\n")).digest("hex");
  const checks=[
   {source_ref:ref(local,"macro"),state:"DENIED"},
   {source_ref:ref(regional,"macro"),state:"OBSERVED"},
