@@ -1,14 +1,14 @@
 // Read-only post-deploy acceptance of the SAME D1 record IDs delivered
 // to Geomacro Intelligence and the Predge pilot. No source fetching or funds.
 const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/";
-async function read(path,fetcher){
+async function read(path,fetcher,maxChars=600000){
  const response=await fetcher(ROOT+path,{method:"GET",redirect:"error",
   cache:"no-store",headers:{Accept:"application/json"},
   signal:AbortSignal.timeout(12_000)});
- if(!response.ok||Number(response.headers.get("content-length")||0)>600000)
+ if(!response.ok||Number(response.headers.get("content-length")||0)>maxChars)
   throw Error("D1_SHARED_NEWS_HTTP_UNAVAILABLE");
  const txt=await response.text();
- if(txt.length>600000)throw Error("D1_SHARED_NEWS_OVERSIZE");
+ if(txt.length>maxChars)throw Error("D1_SHARED_NEWS_OVERSIZE");
  return JSON.parse(txt);
 }
 export async function verifySharedNewsLive(fetcher=fetch){
@@ -27,27 +27,24 @@ export async function verifySharedNewsLive(fetcher=fetch){
      !Number.isSafeInteger(feed.availability_by_category[c].journal_derived_records_72h)))
    throw Error("D1_SHARED_NEWS_CONTRACT_INVALID");
  const journal=new Map();
- for(const offset of [0,250,500]){
-  // The shared 72h public research feed reads zero-delay D1 rows. The
-  // legacy /website-derived-news alias has a 15-minute presentation hold;
-  // comparing it with the immediate shared feed creates false parity reds
-  // precisely when new genuine rows arrive. Compare the SAME immediate D1
-  // journal, never reassign first-seen or publisher publication timestamps.
-  const page=await read("website-derived-news-immediate"+
-    (offset?"?offset="+offset:""),fetcher);
-  if(page.ok!==true||page.page_offset!==offset||page.page_size!==250||
-     !Array.isArray(page.signals)||page.signals.length>250||
-     typeof page.has_more!=="boolean")throw Error("D1_SHARED_NEWS_PAGE_INVALID");
-  for(const story of page.signals){
-   if(journal.has(story.id))throw Error("D1_SHARED_NEWS_DUPLICATE");
-   journal.set(story.id,story);
-  }
-  if(!page.has_more){
-   if(page.next_offset!==null)throw Error("D1_SHARED_NEWS_CURSOR_INVALID");
-   break;
-  }
-  if(offset===500||page.next_offset!==offset+250)
-   throw Error("D1_SHARED_NEWS_CURSOR_INVALID");
+ // One bounded bundle fetch replaces three repeated LIMIT/OFFSET reads.
+ // The source-neutral structural feed above already reuses this same D1
+ // journal through the one-query Worker bundle.
+ const bundle=await read("website-derived-news-bundle",fetcher,4_000_000);
+ const checkedAt=Date.parse(bundle.checked_at??"");
+ if(bundle.ok!==true||bundle.schema!=="geomacro.website-derived-news-bundle.v1"||
+    bundle.complete!==true||bundle.item_cap!==600||bundle.returned_rows!==bundle.signals?.length||
+    bundle.delivery_scope!=="free_website_only"||bundle.retention_hours!==72||
+    bundle.original_release_delay_minutes!==0||
+    !Number.isFinite(checkedAt)||Date.now()-checkedAt>30_000||
+    !Array.isArray(bundle.signals)||bundle.signals.length>600||
+    !Array.isArray(bundle.first_ingest)||bundle.first_ingest.length!==bundle.signals.length||
+    bundle.first_ingest.some((row,i)=>!row||row.id!==bundle.signals[i]?.id||
+      !(row.first_seen_at===null||typeof row.first_seen_at==="string"&&Number.isFinite(Date.parse(row.first_seen_at)))))
+   throw Error("D1_SHARED_NEWS_BUNDLE_INVALID");
+ for(const story of bundle.signals){
+  if(typeof story?.id!=="string"||journal.has(story.id))throw Error("D1_SHARED_NEWS_DUPLICATE");
+  journal.set(story.id,story);
  }
  const expected=[...journal.values()].filter(s=>s.sources_credited?.length===0);
  if(expected.length!==feed.items.length)
@@ -95,6 +92,7 @@ const SAFE_SHARED_NEWS_FAILURES=new Set([
  "D1_SHARED_NEWS_OVERSIZE",
  "D1_SHARED_NEWS_CONTRACT_INVALID",
  "D1_SHARED_NEWS_PAGE_INVALID",
+ "D1_SHARED_NEWS_BUNDLE_INVALID",
  "D1_SHARED_NEWS_DUPLICATE",
  "D1_SHARED_NEWS_CURSOR_INVALID",
  "D1_SHARED_NEWS_DIFFERENT_ID_COUNT",
