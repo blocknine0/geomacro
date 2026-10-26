@@ -232,7 +232,10 @@ describe("website lock governance", () => {
     const desk = read("src/components/intelligence/stateless-live-desk.tsx");
     expect(desk).not.toContain('aria-label="Filter Intelligence by country"');
     expect(desk).not.toContain("COUNTRIES_195");
-    expect(desk).toContain("fetchAllDerivedNews()");
+    expect(desk).toContain("fetchPermanentDerivedNews()");
+    expect(desk).toContain("fetchDirectDerivedNews()");
+    expect(desk).not.toContain("fetchAllDerivedNews()");
+    expect(desk).not.toContain("getWebsiteDerivedNews");
     expect(desk).toContain("JOURNAL_REFRESH_MS = 2 * 60_000");
     expect(desk).toContain("No eligible concrete news matches this category, search and publication window.");
     expect(desk).toContain('<option value="all">All available releases</option>');
