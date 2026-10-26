@@ -142,9 +142,9 @@
     },
     {
       "id": "private_gaplane_mkd_8",
-      "url": "https://sdk.mk/index.php/feed/",
+      "url": "https://www.mrt.com.mk/rss.xml",
       "publisher_country_iso3": "MKD",
-      "discovery_reference_url": "https://safeandinformed.com/feeds/north-macedonia",
+      "discovery_reference_url": "https://www.mrt.com.mk/",
       "categories": [
         "geopolitics",
         "macro",
@@ -176,9 +176,9 @@
     },
     {
       "id": "private_gaplane_svn_10",
-      "url": "https://www.rtvslo.si/feeds/01.xml",
+      "url": "https://www.delo.si/rss/",
       "publisher_country_iso3": "SVN",
-      "discovery_reference_url": "https://safeandinformed.com/feeds/slovenia",
+      "discovery_reference_url": "https://www.delo.si/",
       "categories": [
         "geopolitics",
         "macro",
@@ -193,9 +193,9 @@
     },
     {
       "id": "private_gaplane_ury_11",
-      "url": "https://www.elpais.com.uy/rss.xml",
+      "url": "https://www.elobservador.com.uy/rss/pages/ultimo-momento.xml",
       "publisher_country_iso3": "URY",
-      "discovery_reference_url": "https://safeandinformed.com/feeds/uruguay",
+      "discovery_reference_url": "https://www.elobservador.com.uy/",
       "categories": [
         "geopolitics",
         "macro",
@@ -210,9 +210,9 @@
     },
     {
       "id": "private_gaplane_aze_12",
-      "url": "https://www.azernews.az/rss.php",
+      "url": "https://apa.az/en/rss",
       "publisher_country_iso3": "AZE",
-      "discovery_reference_url": "https://www.azernews.az/",
+      "discovery_reference_url": "https://apa.az/en/",
       "categories": [
         "geopolitics",
         "macro",
@@ -227,9 +227,9 @@
     },
     {
       "id": "private_gaplane_blr_13",
-      "url": "https://belsat.eu/en/feed/",
+      "url": "https://nashaniva.com/rss",
       "publisher_country_iso3": "BLR",
-      "discovery_reference_url": "https://belsat.eu/en/",
+      "discovery_reference_url": "https://nashaniva.com/",
       "categories": [
         "geopolitics",
         "macro",
@@ -244,9 +244,9 @@
     },
     {
       "id": "private_gaplane_bol_14",
-      "url": "https://www.la-razon.com/feed/",
+      "url": "https://www.opinion.com.bo/rss/",
       "publisher_country_iso3": "BOL",
-      "discovery_reference_url": "https://www.la-razon.com/",
+      "discovery_reference_url": "https://www.opinion.com.bo/",
       "categories": [
         "geopolitics",
         "macro",
@@ -278,9 +278,9 @@
     },
     {
       "id": "private_gaplane_gtm_16",
-      "url": "https://www.prensalibre.com/feed/",
+      "url": "https://www.plazapublica.com.gt/rss",
       "publisher_country_iso3": "GTM",
-      "discovery_reference_url": "https://www.prensalibre.com/",
+      "discovery_reference_url": "https://www.plazapublica.com.gt/",
       "categories": [
         "geopolitics",
         "macro",
@@ -312,9 +312,9 @@
     },
     {
       "id": "private_gaplane_nic_18",
-      "url": "https://www.laprensani.com/feed/",
+      "url": "https://nuevaya.com.ni/feed/",
       "publisher_country_iso3": "NIC",
-      "discovery_reference_url": "https://www.laprensani.com/",
+      "discovery_reference_url": "https://nuevaya.com.ni/",
       "categories": [
         "geopolitics",
         "macro",
@@ -363,9 +363,9 @@
     },
     {
       "id": "private_gaplane_kwt_21",
-      "url": "https://www.kuwaittimes.com/feed/",
+      "url": "https://www.arabtimesonline.com/news/feed/",
       "publisher_country_iso3": "KWT",
-      "discovery_reference_url": "https://www.kuwaittimes.com/",
+      "discovery_reference_url": "https://www.arabtimesonline.com/news/",
       "categories": [
         "geopolitics",
         "macro",
@@ -380,9 +380,9 @@
     },
     {
       "id": "private_gaplane_are_22",
-      "url": "https://gulfnews.com/rss",
+      "url": "https://www.khaleejtimes.com/feeds",
       "publisher_country_iso3": "ARE",
-      "discovery_reference_url": "https://gulfnews.com/",
+      "discovery_reference_url": "https://www.khaleejtimes.com/",
       "categories": [
         "geopolitics",
         "macro",
@@ -397,9 +397,9 @@
     },
     {
       "id": "private_gaplane_pse_23",
-      "url": "https://english.wafa.ps/rss",
+      "url": "https://www.maannews.net/rss",
       "publisher_country_iso3": "PSE",
-      "discovery_reference_url": "https://english.wafa.ps/",
+      "discovery_reference_url": "https://www.maannews.net/",
       "categories": [
         "geopolitics",
         "macro",
@@ -414,9 +414,9 @@
     },
     {
       "id": "private_gaplane_tun_24",
-      "url": "https://www.tap.info.tn/en/rss",
+      "url": "https://www.leaders.com.tn/rss",
       "publisher_country_iso3": "TUN",
-      "discovery_reference_url": "https://www.tap.info.tn/en/",
+      "discovery_reference_url": "https://www.leaders.com.tn/",
       "categories": [
         "geopolitics",
         "macro",
@@ -431,9 +431,9 @@
     },
     {
       "id": "private_gaplane_mng_25",
-      "url": "https://montsame.mn/en/rss",
+      "url": "https://ikon.mn/rss",
       "publisher_country_iso3": "MNG",
-      "discovery_reference_url": "https://montsame.mn/en/",
+      "discovery_reference_url": "https://ikon.mn/",
       "categories": [
         "geopolitics",
         "macro",
@@ -465,9 +465,9 @@
     },
     {
       "id": "private_gaplane_civ_27",
-      "url": "https://www.fratmat.info/feed/",
+      "url": "https://www.koaci.com/rss/",
       "publisher_country_iso3": "CIV",
-      "discovery_reference_url": "https://www.fratmat.info/",
+      "discovery_reference_url": "https://www.koaci.com/",
       "categories": [
         "geopolitics",
         "macro",
@@ -482,9 +482,9 @@
     },
     {
       "id": "private_gaplane_ago_28",
-      "url": "https://www.angop.ao/feed/",
+      "url": "https://novojornal.co.ao/feed/",
       "publisher_country_iso3": "AGO",
-      "discovery_reference_url": "https://www.angop.ao/",
+      "discovery_reference_url": "https://novojornal.co.ao/",
       "categories": [
         "geopolitics",
         "macro",
@@ -567,9 +567,9 @@
     },
     {
       "id": "private_gaplane_rwa_33",
-      "url": "https://www.newtimes.co.rw/feed",
+      "url": "https://www.ktpress.rw/feed/",
       "publisher_country_iso3": "RWA",
-      "discovery_reference_url": "https://www.newtimes.co.rw/",
+      "discovery_reference_url": "https://www.ktpress.rw/",
       "categories": [
         "geopolitics",
         "macro",
@@ -584,9 +584,9 @@
     },
     {
       "id": "private_gaplane_gmb_34",
-      "url": "https://thepoint.gm/feed/",
+      "url": "https://foroyaa.net/feed/",
       "publisher_country_iso3": "GMB",
-      "discovery_reference_url": "https://thepoint.gm/",
+      "discovery_reference_url": "https://foroyaa.net/",
       "categories": [
         "geopolitics",
         "macro",
@@ -601,9 +601,9 @@
     },
     {
       "id": "private_gaplane_som_35",
-      "url": "https://hiiraan.com/rss.aspx",
+      "url": "https://jowhar.com/feed/",
       "publisher_country_iso3": "SOM",
-      "discovery_reference_url": "https://www.hiiraan.com/",
+      "discovery_reference_url": "https://jowhar.com/",
       "categories": [
         "geopolitics",
         "macro",
@@ -635,9 +635,9 @@
     },
     {
       "id": "private_gaplane_tgo_37",
-      "url": "https://togobreakingnews.info/feed/",
+      "url": "https://togolibre.net/feed/",
       "publisher_country_iso3": "TGO",
-      "discovery_reference_url": "https://togobreakingnews.info/",
+      "discovery_reference_url": "https://togolibre.net/",
       "categories": [
         "geopolitics",
         "macro",
@@ -669,9 +669,9 @@
     },
     {
       "id": "private_gaplane_mdv_39",
-      "url": "https://en.sun.mv/rss.xml",
+      "url": "https://psmnews.mv/feed/",
       "publisher_country_iso3": "MDV",
-      "discovery_reference_url": "https://en.sun.mv/",
+      "discovery_reference_url": "https://psmnews.mv/",
       "categories": [
         "geopolitics",
         "macro",
@@ -686,9 +686,9 @@
     },
     {
       "id": "private_gaplane_khm_40",
-      "url": "https://www.khmertimeskh.com/feed/",
+      "url": "https://www.phnompenhpost.com/rss",
       "publisher_country_iso3": "KHM",
-      "discovery_reference_url": "https://www.khmertimeskh.com/",
+      "discovery_reference_url": "https://www.phnompenhpost.com/",
       "categories": [
         "geopolitics",
         "macro",
@@ -720,9 +720,9 @@
     },
     {
       "id": "private_gaplane_slv_first",
-      "url": "https://www.elsalvador.com/rss",
+      "url": "https://www.laprensagrafica.com/rss.xml",
       "publisher_country_iso3": "SLV",
-      "discovery_reference_url": "https://www.elsalvador.com/",
+      "discovery_reference_url": "https://www.laprensagrafica.com/",
       "categories": [
         "geopolitics",
         "macro",
@@ -737,9 +737,9 @@
     },
     {
       "id": "private_gaplane_yem_43",
-      "url": "https://www.saba.ye/en/rss",
+      "url": "https://marebpress.net/news_rss.php",
       "publisher_country_iso3": "YEM",
-      "discovery_reference_url": "https://www.saba.ye/en/",
+      "discovery_reference_url": "https://marebpress.net/",
       "categories": [
         "geopolitics",
         "macro",
@@ -774,6 +774,142 @@
       "url": "https://www.derstandard.at/rss",
       "publisher_country_iso3": "AUT",
       "discovery_reference_url": "https://safeandinformed.com/feeds/austria",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_bih_new",
+      "url": "https://n1info.ba/feed/",
+      "publisher_country_iso3": "BIH",
+      "discovery_reference_url": "https://n1info.ba/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_and_new",
+      "url": "https://www.bondia.ad/rss.xml",
+      "publisher_country_iso3": "AND",
+      "discovery_reference_url": "https://www.bondia.ad/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_dma_new",
+      "url": "https://dominicanewsonline.com/news/feed/",
+      "publisher_country_iso3": "DMA",
+      "discovery_reference_url": "https://dominicanewsonline.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_smr_new",
+      "url": "https://giornalesm.com/feed/",
+      "publisher_country_iso3": "SMR",
+      "discovery_reference_url": "https://giornalesm.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_gab_new",
+      "url": "https://fr.infosgabon.com/feed/",
+      "publisher_country_iso3": "GAB",
+      "discovery_reference_url": "https://fr.infosgabon.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_gin_new",
+      "url": "https://guineenews.org/feed/",
+      "publisher_country_iso3": "GIN",
+      "discovery_reference_url": "https://guineenews.org/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_slb_new",
+      "url": "https://www.solomontimes.com/rss/latest-news.xml",
+      "publisher_country_iso3": "SLB",
+      "discovery_reference_url": "https://www.solomontimes.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_ben_new",
+      "url": "https://lanation.bj/feed/",
+      "publisher_country_iso3": "BEN",
+      "discovery_reference_url": "https://lanation.bj/",
       "categories": [
         "geopolitics",
         "macro",
