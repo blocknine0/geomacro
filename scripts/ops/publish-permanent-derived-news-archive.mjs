@@ -123,10 +123,15 @@ function normalizeHeadline(title){
     .trim().replace(/\s+/gu," ");
 }
 function isTemplateObservation(signal){
-  const candidateText=[signal.title,signal.topic,signal.development_type]
-    .filter(value=>typeof value==="string").join(" ");
+  const candidateText=[signal.title,signal.topic,signal.development_type,
+    signal.what_changed].filter(value=>typeof value==="string").join(" ");
+  const title=typeof signal.title==="string"?signal.title:"";
   return /\b(?:source[- ]feed observation|publisher candidate|unclassified publisher update)\b/iu
-    .test(candidateText);
+      .test(candidateText)||
+    /(?:the dated original release concerns|does not establish a named actor performing a verifiable action)/iu
+      .test(String(signal.what_changed??""))||
+    /^Geomacro finds (?:official update on|announcement on|trade restriction on|security on|warning on|warning about)\b/iu
+      .test(title);
 }
 function isOfficialObservation(signal){
   return signal.status==="official_release_observed_unscored"||
