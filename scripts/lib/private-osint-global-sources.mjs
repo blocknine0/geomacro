@@ -4,6 +4,18 @@ import {registeredReusableNewsSources} from "./registered-reusable-news-source-c
 import {CONTINENT_COUNTRIES_195} from "./continent-country-195-rotation.mjs";
 
 export const PRIVATE_OSINT_CATEGORIES=Object.freeze(["geopolitics","macro","rare_earth"]);
+// RNZ's Pacific newsroom is an Oceania regional desk even though RNZ is
+// published in New Zealand. Preserve NZL publisher provenance; do not treat
+// an arbitrary national feed as a regional fallback.
+const RNZ_PACIFIC_REGIONAL_URL="https://www.rnz.co.nz/rss/pacific.xml";
+function isRegionalOsintFallback(source,continent){
+ return source?.continent===continent&&(
+   !source.publisher_country_iso3||
+   continent==="oceania"&&source.id==="private_nz_rnz_pacific"&&
+   source.publisher_country_iso3==="NZL"&&source.url===RNZ_PACIFIC_REGIONAL_URL
+ );
+}
+
 // These expressions detect provisional topics in native-language feed titles.
 // They do not translate, corroborate, score, or grant publication authority.
 export const PRIVATE_OSINT_TOPICS=Object.freeze({
@@ -192,7 +204,7 @@ export function privateOsintContinentCoverage(sources,checks,items){
  // of an endpoint; one healthy fetch covers those registered topic filters.
  const sourceHealthy=s=>s.categories.some(c=>healthy.has(sourceRef(s,c)));
  return Object.fromEntries(Object.entries(CONTINENT_COUNTRIES_195).map(([continent,countries])=>{
-  const regional=sources.filter(s=>s.continent===continent&&!s.publisher_country_iso3),global=sources.filter(s=>s.continent==="global"&&!s.publisher_country_iso3);
+  const regional=sources.filter(s=>isRegionalOsintFallback(s,continent)),global=sources.filter(s=>s.continent==="global"&&!s.publisher_country_iso3);
   const observed=new Set(items.filter(i=>countries.includes(i.country_iso3)).map(i=>i.country_iso3+":"+i.category));
   return [continent,{country_routes:countries.length,category_routes:countries.length*3,
    regional_endpoints:regional.length,working_regional_endpoints:regional.filter(sourceHealthy).length,
@@ -343,7 +355,7 @@ export function privateOsintCountryCategoryCoverage(sources,checks=[],items=[],{
   const continent=COUNTRY_CONTINENT[iso3];
   for(const category of PRIVATE_OSINT_CATEGORIES){
    const local=sources.filter(s=>s.publisher_country_iso3===iso3&&s.categories.includes(category));
-   const regional=sources.filter(s=>!s.publisher_country_iso3&&s.continent===continent&&s.categories.includes(category));
+   const regional=sources.filter(s=>isRegionalOsintFallback(s,continent)&&s.categories.includes(category));
    const global=sources.filter(s=>s.continent==="global"&&!s.publisher_country_iso3&&s.categories.includes(category));
    const tiers={local:countTier(local,category),regional:countTier(regional,category),global:countTier(global,category)};
    const registered=tiers.local.registered+tiers.regional.registered+tiers.global.registered;
