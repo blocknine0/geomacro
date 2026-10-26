@@ -52,6 +52,12 @@ test("unverified OSINT can coexist in the archive but never counts as official-s
  assert.equal(r.ok,true);
  assert.equal(r.derived_rows,1);
  assert.deepEqual(r.categories,{geopolitics:1,macro:0,rare_earth:0});
+ // www feed-host attribution is allowed; it is not an article URL or a verification claim.
+ const wwwCredit={...osint,sources_credited:["Monitored feed: www.bankofcanada.ca"]};
+ const accepted=classifyMinimumFreeProduction(fixture([official,wwwCredit]));
+ assert.equal(accepted.ok,true);
+ assert.equal(accepted.derived_rows,1);
+ assert.deepEqual(accepted.categories,{geopolitics:1,macro:0,rare_earth:0});
 });
 test("all three categories can be observed but without manufacturing a score",()=>{
   const stories=[goodStory(),
