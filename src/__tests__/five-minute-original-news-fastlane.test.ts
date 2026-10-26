@@ -142,9 +142,9 @@ describe("bounded five-minute FIRST-PARTY news fastlane",()=>{
    expect(pub).toContain("primary_publisher_status:report.primary_publisher_status??[]");
    expect(pub).toContain("fallback_publisher_status:report.fallback_publisher_status??[]");
    expect(pub).toContain("fallback_for_primary_outage_or_no_recent_release:true");
-   expect(pub).toContain("const baseline=await fetchAllDerivedNews(fetch,runAt)");
+   expect(pub).toContain("const baseline=await fetchAllDerivedNews(fetch,runAt,{fresh:true})");
    expect(pub).toContain("!existingIds.has(s.id)");
-   expect(pub).toContain("fetchAllDerivedNews(fetch,Date.now())");
+   expect(pub).toContain("fetchAllDerivedNews(fetch,Date.now(),{fresh:true})");
    expect(pub).toContain("exact_first_writer_attribution_verified:false");
    expect(pub).toContain("measurement_is_true_first_insert_utc:false");
    expect(pub).toContain("FASTLANE_D1_FULL_JOURNAL_READBACK_FAILED");
