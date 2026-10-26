@@ -433,6 +433,44 @@
       "commercial_eligible": false,
       "access_verified_in_production": false,
       "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_bw_bankofbotswana_news",
+      "url": "https://www.bankofbotswana.bw/rss/latest_news",
+      "continent": "africa",
+      "publisher_country_iso3": "BWA",
+      "categories": [
+        "macro",
+        "geopolitics"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "The Bank of Botswana's official RSS page directly links this Latest News feed; live transport, native publication clocks, topic matching and any reuse permissions remain unverified.",
+      "discovery_reference_url": "https://www.bankofbotswana.bw/content/rss-feeds",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_th_mdes_news",
+      "url": "https://mdes.go.th/news/rss/3",
+      "continent": "asia",
+      "publisher_country_iso3": "THA",
+      "categories": [
+        "macro",
+        "geopolitics"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Thailand's Ministry of Digital Economy and Society official RSS page lists this ministry-news feed; native-clock parsing, topic relevance and reuse permissions remain runtime checks.",
+      "discovery_reference_url": "https://mdes.go.th/rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
     }
   ]
 }
