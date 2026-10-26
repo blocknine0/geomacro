@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {publishReusableSourceNews,publicReusableSourceNews} from "../../workers/control-plane/src/reusable-source-news.mjs";
 import {createHash} from "node:crypto";
+import {DatabaseSync} from "node:sqlite";
+import {readFileSync} from "node:fs";
 
 const now=Date.parse("2026-10-25T00:00:00.000Z"),at="2026-10-24T23:55:00.000Z";
 const hash=x=>createHash("sha256").update(x).digest("hex");
@@ -27,50 +29,33 @@ function fixture(overrides={}){
  return {...base,...overrides};
 }
 function fakeD1(){
- const news=new Map(),status=new Map();
+ const db=new DatabaseSync(":memory:");
+ db.exec(readFileSync(new URL("../../workers/control-plane/migrations/0026_reusable_source_news.sql",import.meta.url),"utf8"));
+ const metrics={queries:0,writes:0};
  return {DB:{
    prepare(sql){
-     let args=[];
-     const statement={
-       bind(...input){args=input;statement.args=input;return statement},
-       async first(){if(sql.includes("FROM reusable_news_items WHERE item_id")){
-         const found=news.get(args[0]);return found?{projection_json:found.projection_json,first_seen_at:found.first_seen_at}:null;
-       }return null},
-       async all(){
-         if(sql.includes("FROM reusable_source_checks")){
-           const states=new Map();
-           for(const row of status.values())states.set(row.state,(states.get(row.state)??0)+1);
-           return {results:[...states].map(([state,total])=>({state,total}))};
-         }
-         if(sql.includes("SELECT projection_json")){
-           let arr=[...news.values()].sort((a,b)=>b.published_at.localeCompare(a.published_at));
-           if(sql.includes("published_at >= ?"))arr=arr.filter(x=>x.published_at>=args[0]);
-           if(sql.includes("category = ?"))arr=arr.filter(x=>x.category===args[1]);
-           if(sql.includes("json_extract"))arr=arr.filter(x=>
-             JSON.parse(x.projection_json).country_iso3===args.at(-2));
-           const off=Number(args.at(-1));
-           return {results:arr.slice(off,off+201).map(x=>({projection_json:x.projection_json}))};
-         }
-         return {results:[]};
+     const statement={sql,params:[],
+       bind(...args){statement.params=args;return statement},
+       async first(){
+         metrics.queries++;return db.prepare(sql).get(...statement.params)??null;
        },
-       sql,args,
-     };return statement;
+       async all(){
+         metrics.queries++;return {results:db.prepare(sql).all(...statement.params)};
+       }};
+     return statement;
    },
    async batch(statements){
-     for(const q of statements){
-       if(q.sql.startsWith("INSERT INTO reusable_news_items")){
-         const [id,category,published_at,projection_json,first_seen_at]=q.args;
-         const prior=news.get(id);
-         news.set(id,{category,published_at,projection_json,first_seen_at:prior?.first_seen_at??first_seen_at});
-       }else if(q.sql.startsWith("DELETE FROM reusable_news_items WHERE published_at <")){
-         for(const [id,row] of news)if(row.published_at<q.args[0])news.delete(id);
-       }else if(q.sql.startsWith("INSERT INTO reusable_source_checks")){
-         const [ref,category,state,checked_at]=q.args;
-         status.set(ref,{category,state,checked_at});
-       }
-     }return [];
-   }
-  }};
+     db.exec("BEGIN");
+     try{
+       const out=statements.map(stmt=>{
+         metrics.writes++;metrics.queries++;
+         db.prepare(stmt.sql).run(...stmt.params);
+         return {success:true};
+       });
+       db.exec("COMMIT");return out;
+     }catch(error){db.exec("ROLLBACK");throw error}
+   },
+ },metrics};
 }
 const check={source_ref:hash("allowlisted-registered-source"),category:"macro",
   state:"OBSERVED",checked_at:new Date(now).toISOString()};
@@ -152,6 +137,33 @@ test("rolling 25h D1 feed rejects older native publication, not mere retrieval t
  const absent=await publicReusableSourceNews(env,
   new URLSearchParams("country=USA"),now);
  assert.equal((await absent.json()).items.length,0);
+});
+test("40-news + 48-check batch uses at most seven D1 SQL queries and exact readback",async()=>{
+ const env=fakeD1();
+ const items=Array.from({length:40},(_,i)=>fixture({id:"news-"+hash("new:"+i)}));
+ const checks=Array.from({length:48},(_,i)=>({...check,source_ref:hash("check:"+i)}));
+ const initial=await publishReusableSourceNews(env,{
+   schema:"geomacro.reusable-source-news-batch.v1",items,checks,
+ },now);
+ assert.equal(initial.status,200,JSON.stringify(await initial.clone().json()));
+ const receipt=await initial.json();
+ assert.equal(receipt.accepted,40);
+ assert.equal(receipt.checked_sources,48);
+ assert.equal(receipt.d1_readback_verified,true);
+ assert.ok(receipt.d1_bundled_query_count<=7);
+ const n=env.metrics.queries;
+ const second=await publishReusableSourceNews(env,{
+   schema:"geomacro.reusable-source-news-batch.v1",items,checks,
+ },now+60_000);
+ const again=await second.json();
+ assert.equal(second.status,200);
+ assert.equal(again.previously_observed_count,40);
+ assert.equal(again.first_observed_within_15m_count,0);
+ assert.equal(again.d1_bundled_query_count,3,
+   "repeat batch should skip expiration and expensive 4000-row pruning");
+ assert.equal(env.metrics.queries-n,3);
+ const page=await publicReusableSourceNews(env,new URLSearchParams(),now+60_000);
+ assert.equal((await page.json()).items.length,40);
 });
 test("bounded 25h country paging rejects arbitrary offsets",async()=>{
  const env=fakeD1();
