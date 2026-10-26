@@ -30,7 +30,25 @@ export async function persistPrivateOsintBatch({
    headers:{"Accept":"application/json","Content-Type":"application/json","Authorization":"Bearer "+privateToken},
    body:JSON.stringify(group),signal:AbortSignal.timeout(16000),
   });
-  if(response.status!==200)throw Error("PRIVATE_OSINT_PROTECTED_D1_WRITE_HTTP_"+response.status);
+  if(response.status!==200){
+   // The protected Worker reports bounded codes, never raw Cloudflare SQL
+   // errors. No sensitive response bodies are echoed or retained.
+   if(response.status===503){
+    let failureClass=null;
+    try{
+     const raw=await response.text();
+     if(raw.length<=1000){
+      const doc=JSON.parse(raw);
+      if(doc?.error==="PRIVATE_OSINT_D1_WRITE_OR_READBACK_UNAVAILABLE"&&
+         ["D1_FREE_DAILY_ROW_READ_LIMIT","D1_FREE_DAILY_ROW_WRITE_LIMIT",
+          "D1_SCHEMA_UNAVAILABLE"].includes(doc.failure_class))
+       failureClass=doc.failure_class;
+     }
+    }catch{/* Old Workers / invalid response stay generic. */}
+    if(failureClass)throw Error("PRIVATE_OSINT_"+failureClass);
+   }
+   throw Error("PRIVATE_OSINT_PROTECTED_D1_WRITE_HTTP_"+response.status);
+  }
   const receipt=await response.json();
   if(receipt?.schema!=="geomacro.private-osint-15m-write-receipt.v1"||
     receipt.ok!==true||receipt.d1_exact_readback_verified!==true||
