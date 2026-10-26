@@ -338,8 +338,10 @@ test("official local/regional feeds are source-registered with correct categorie
  const health=result.summary.category_live_source_coverage;
  assert.equal(health.categories_with_any_healthy_feed_this_tick,3);
  assert.equal(health.all_categories_have_healthy_feed_this_tick,true);
+ assert.equal(health.all_categories_have_native_dated_items_this_tick,true);
+ assert.equal(health.categories_with_native_dated_items_this_tick,3);
  assert.deepEqual(health.category_coverage.map(row=>row.category),["geopolitics","macro","rare_earth"]);
- assert.ok(health.category_coverage.every(row=>row.status==="LIVE_FEED_HEALTHY_THIS_TICK"));
+ assert.ok(health.category_coverage.every(row=>row.status==="LIVE_FEED_AND_DATED_ITEMS_THIS_TICK"));
  assert.ok(result.items.every(item=>item.usage_rights.commercial_reuse_authorized===false));
  assert.equal(result.summary.publicly_served,false);
  assert.equal(result.summary.rights_verified,false);
@@ -385,7 +387,7 @@ test("Sri Lanka central bank RSS feeds provide a local macro lane with native-cl
  assert.ok(result.items.every(item=>item.country_iso3==="LKA"));
  const live=result.summary.category_live_source_coverage.category_coverage.find(row=>row.category==="macro");
  assert.equal(live.healthy_distinct_feed_endpoints,3);
- assert.equal(live.status,"LIVE_FEED_HEALTHY_THIS_TICK");
+ assert.equal(live.status,"LIVE_FEED_AND_DATED_ITEMS_THIS_TICK");
  const country=privateOsintPublisherCountryCoverage(selected,result.checks,{includeDetails:true});
  assert.equal(country.by_country.LKA.registered_endpoints,3);
  assert.deepEqual(country.by_country.LKA.working_categories,["macro"]);
