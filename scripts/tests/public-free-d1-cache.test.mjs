@@ -101,6 +101,12 @@ test("Worker keeps public-only cache and original strict private access intact",
   const code=readFileSync(new URL("../../workers/control-plane/src/index.mjs",import.meta.url),"utf8");
   assert.match(code,/return publicReadCache\(\(\)=>threeDomainEvidenceContinuity\(env\)\)/);
   assert.match(code,/return publicReadCache\(\(\)=>renderDerivedStoriesHtml\(env\)\)/);
+  assert.match(code,/return publicReadCache\(\(\)=>readDerivedStoriesBundle\(env\)\)/);
+  assert.match(code,/website-derived-news-bundle/);
+  const cache=readFileSync(new URL("../../workers/control-plane/src/public-free-d1-cache.mjs",import.meta.url),"utf8");
+  assert.match(cache,/PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS = 15/);
+  assert.match(cache,/Cache-Control/);
+
   assert.match(code,/if\(q.size===0\)return publicReadCache/);
   assert.match(code,/return handlePrivateOsint15m\(request,env\)/);
 });
