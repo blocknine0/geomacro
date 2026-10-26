@@ -136,7 +136,13 @@ describe("permanent derived-only website archive",()=>{
    development_type:"unverified OSINT feed observation",
    status:"osint_feed_observed_unverified",
    sources_credited:["Monitored feed: example.net"]};
-  writeCandidates(p.candidatePath,[template,real]);
+  const nonconcreteOfficial={...signal("8888dddd","2026-10","geopolitics"),
+   title:"Geomacro finds official update on border policy",
+   topic:"geopolitical security",
+   development_type:"official update",
+   what_changed:"The dated original release concerns border policy. The published headline does not establish a named actor performing a verifiable action; no outcome is inferred.",
+   status:"official_release_observed_unscored"};
+  writeCandidates(p.candidatePath,[template,nonconcreteOfficial,real]);
   const result=await publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:NOW});
   assert.equal(result.new_signals_added,1);
   assert.equal(result.total_signals,1);
