@@ -26,7 +26,7 @@ const SPECS = [
   },
   {
     id: "world_bank_wdi", category: "macro",
-    url: "https://api.worldbank.org/v2/country/USA/indicator/NY.GDP.MKTP.CD?format=json&source=2&per_page=1",
+    url: "https://api.worldbank.org/v2/country/USA/indicator/NY.GDP.MKTP.CD?format=json&source=2&per_page=1&mrnev=1",
     format: "json", maxBytes: 100_000, nature: "annual-reference-period-not-event",
   },
   {
@@ -66,6 +66,28 @@ export const FREE_NO_KEY_TRANSPORT_SPECS = Object.freeze(SPECS.map(spec => {
     throw new Error("SOURCE_LINEUP_UNSAFE_URL:" + spec.id);
   return Object.freeze(spec);
 }));
+
+/**
+ * A 200 status, an empty page, a null annual observation, or an unrelated
+ * World Bank source is NOT a successful WDI baseline refresh. The pinned
+ * request asks for the most recent non-empty USA GDP value (mrnev=1).
+ * Reference years and retrieval timestamps are never publication clocks.
+ */
+export function validWdiSource2Reference(data) {
+  if (!Array.isArray(data) || data.length !== 2) return false;
+  const [page, rows] = data;
+  if (!page || typeof page !== "object" || Array.isArray(page) ||
+      Number(page.page) !== 1 || Number(page.pages) < 1 ||
+      String(page.sourceid) !== "2" || Number(page.total) < 1 ||
+      !Array.isArray(rows) || rows.length !== 1) return false;
+  const row = rows[0];
+  const year = Number(row?.date);
+  return row?.indicator?.id === "NY.GDP.MKTP.CD" &&
+    row?.countryiso3code === "USA" && row?.country?.id === "US" &&
+    typeof row?.date === "string" && /^\\d{4}$/.test(row.date) &&
+    Number.isInteger(year) && year >= 1960 && year <= new Date().getUTCFullYear() &&
+    typeof row.value === "number" && Number.isFinite(row.value) && row.value >= 0;
+}
 
 export function validateFreeLineupProbePayload(spec, payload) {
   if(spec.id==="gdelt_events"&&spec.category==="geopolitics"&&
@@ -128,8 +150,7 @@ export function validateFreeLineupProbePayload(spec, payload) {
     : spec.id === "bls"
       ? data?.status === "REQUEST_SUCCEEDED" && Array.isArray(data?.Results?.series)
       : spec.id === "world_bank_wdi"
-        ? Array.isArray(data) && Array.isArray(data[1]) &&
-          data[1].every(x => x?.indicator?.id === "NY.GDP.MKTP.CD")
+        ? validWdiSource2Reference(data)
         : spec.id === "treasury_fiscaldata"
           ? Array.isArray(data?.data)
           : spec.id === "federal_register"
@@ -200,7 +221,10 @@ export async function probeNoKeySource(spec, fetchImpl = fetch, {onPayload=null}
         spec.format === "html" ? "text/html" :
         ['atom','rss','xml'].includes(spec.format) ? "application/rss+xml, application/atom+xml, application/xml, text/xml" :
           "application/json", 'user-agent':'Geomacro-Source-Updates/1.0 (contact@geomacro.live)' },
-      signal: AbortSignal.timeout(7_000),
+      // WDI is an annual reference, not a high-frequency news feed. A single
+      // bounded 25s read avoids false outage on slow World Bank responses;
+      // never retry, redirect, or exceed the established polling cadence.
+      signal: AbortSignal.timeout(spec.id === "world_bank_wdi" ? 25_000 : 7_000),
     };
     let response=await fetchImpl(spec.url,options);
     if(unDistribution&&response.status>=300&&response.status<400){
