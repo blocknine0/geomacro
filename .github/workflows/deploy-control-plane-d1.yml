@@ -6,6 +6,8 @@ on:
     branches:
       - main
     paths:
+      - "src/lib/news-event-facts.ts"
+      - "scripts/tests/concrete-news-facts.test.mjs"
       - "src/lib/original-verification-policy.ts"
       - "src/lib/release-news-observation.ts"
       - "src/lib/private-source-handoff.ts"
