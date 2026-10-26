@@ -7,6 +7,16 @@ on:
         description: "Type DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS to deploy the production D1 Control Plane"
         required: true
         type: string
+  pull_request:
+    paths:
+      - ".github/workflows/deploy-d1-control-plane.yml"
+      - ".github/workflows/recover-d1-quota-deployment-after-reset.yml"
+      - "workers/control-plane/src/index.mjs"
+      - "workers/control-plane/src/public-free-d1-cache.mjs"
+      - "scripts/ops/summarize-d1-reads-insights.mjs"
+      - "scripts/tests/d1-quota-reset-recovery-workflow.test.mjs"
+      - "scripts/tests/public-free-d1-cache.test.mjs"
+      - "scripts/tests/summarize-d1-reads-insights.test.mjs"
   push:
     branches:
       - main
@@ -46,6 +56,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  p0-1-offline-regression:
+    if: github.event_name == 'pull_request' && github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Run offline D1 recovery, caching and hashed-insights regression
+        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
+
   bootstrap-deploy-accept:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
