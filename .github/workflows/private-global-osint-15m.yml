@@ -38,6 +38,7 @@ on:
       - "scripts/lib/country-news-mentions-195.mjs"
       - "scripts/lib/private-osint-global-sources.mjs"
       - "scripts/lib/private-osint-global-sources.test.mjs"
+      - "scripts/ops/audit-private-osint-publisher-coverage.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
       - "config/private-osint-official-feed-additions.v1.json"
@@ -111,6 +112,7 @@ jobs:
           node --test scripts/lib/private-osint-15m-durable-publisher.test.mjs
           node --test scripts/lib/private-osint-15m-d1.test.mjs
           node --test scripts/lib/private-osint-global-sources.test.mjs
+          node scripts/ops/audit-private-osint-publisher-coverage.mjs > /tmp/geomacro-osint-publisher-coverage.json
           node --check scripts/lib/private-unverified-osint-intake.mjs
           node --test scripts/lib/private-unverified-osint-intake.test.mjs
           node --test scripts/lib/private-osint-bundle.test.mjs

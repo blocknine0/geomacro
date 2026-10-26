@@ -1,9 +1,9 @@
 {
   "schema": "geomacro.private-osint-regional-corridor-additions.v1",
   "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
-  "as_of": "2026-10-25",
+  "as_of": "2026-10-26",
   "source_eligibility": "CANDIDATES_NOT_LIVE_ACCEPTANCE",
-  "purpose": "Expand free-to-access discovery prospects for Macro/FX, Critical Minerals and named corridors without assuming redistribution rights, feed validity or 15-minute delivery.",
+  "purpose": "Expand free-to-access discovery prospects for geopolitics, Macro/FX, Critical Minerals and named corridors without assuming redistribution rights, feed validity or 15-minute delivery.",
   "source_clock_rule": "Only native dated items inside the existing 25-hour collector window may become private research observations.",
   "rights_rule": "No raw publisher story storage, public redistribution, signed promotion, partner delivery or x402 sale from this source-registration alone.",
   "sources": [
@@ -274,6 +274,116 @@
       "commercial_eligible": false,
       "access_verified_in_production": false,
       "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_au_industry_news",
+      "url": "https://www.industry.gov.au/news.xml",
+      "continent": "oceania",
+      "publisher_country_iso3": "AUS",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [
+        "re_australia_malaysia_lynas"
+      ],
+      "provenance_note": "Official Australian Department of Industry RSS page links to this feed for news and departmental media releases. Actual feed health and native-clock parsing remain runtime checks.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.industry.gov.au/contact-us/rss-feeds"
+    },
+    {
+      "id": "private_expansion_za_dsti_news",
+      "url": "https://www.dsti.gov.za/rss.xml",
+      "continent": "africa",
+      "publisher_country_iso3": "ZAF",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Official South Africa DSTI subscribe page explicitly lists this RSS 2.0 feed. Actual feed health and topic relevance remain runtime checks.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.dsti.gov.za/subscribe"
+    },
+    {
+      "id": "private_expansion_za_sars_news",
+      "url": "https://www.sars.gov.za/feed/?post_type=latest_news",
+      "continent": "africa",
+      "publisher_country_iso3": "ZAF",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Official SARS RSS page subscribe link resolves to this latest-news feed. Actual feed health, native clocks and relevant macro items remain runtime checks.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.sars.gov.za/about/rss-feeds/"
+    },
+    {
+      "id": "private_expansion_kr_msit_press",
+      "url": "https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=94",
+      "continent": "asia",
+      "publisher_country_iso3": "KOR",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Official Korea MSIT RSS guide explicitly lists this press-release feed. Actual feed health and mineral-policy relevance remain runtime checks.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.msit.go.kr/contents/cont.do?mId=173&mPid=147&sCode=user"
+    },
+    {
+      "id": "private_expansion_ind_tax_press",
+      "url": "https://wm.incometaxindia.gov.in/press-release-rss-feed/-/asset_publisher/bxhj/rss",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Official Income Tax Department of India tax-feeds page explicitly lists this press-release RSS. Actual feed health and native-clock parsing remain runtime checks.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://www.incometaxindia.gov.in/tax-feeds"
+    },
+    {
+      "id": "private_expansion_ph_pna_news",
+      "url": "https://www.pna.gov.ph/latest.rss",
+      "continent": "asia",
+      "publisher_country_iso3": "PHL",
+      "categories": [
+        "geopolitics"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Candidate surfaced in a public RSS directory reporting the Philippine News Agency feed was verified in August 2026; this is not an official publisher directory. Direct endpoint health, native clocks, and reuse rights remain unverified.",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "discovery_reference_url": "https://inklinenews.com/feeds/philippines/"
     }
   ]
 }

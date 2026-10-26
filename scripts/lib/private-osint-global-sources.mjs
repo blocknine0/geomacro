@@ -8,7 +8,7 @@ export const PRIVATE_OSINT_CATEGORIES=Object.freeze(["geopolitics","macro","rare
 // They do not translate, corroborate, score, or grant publication authority.
 export const PRIVATE_OSINT_TOPICS=Object.freeze({
  geopolitics:/(?:\b(?:wars?|conflicts?|sanctions?|ceasefire|treaty|military|security|diploma\w*|peace|refugees?|elections?|embargo|attacks?|missiles?|border|coup|guerra|conflit\w*|conflito|sanciones|sanções|cessez.le.feu|seguridad|sécurité|elecciones|eleições|militar\w*|diplomaci\w*|frontera|fronteira|paix|krieg|sicherheit|konflikt|angriff)\b|战争|冲突|制裁|停火|軍事|選挙|전쟁|분쟁|제재|حرب|عسكري|عقوبات|انتخابات|войн|конфликт|санкци|যুদ্ধ|নিরাপত্তা|নির্বাচন|संघर्ष|चुनाव|युद्ध|מלחמה|צבאי|סנקציות|הפסקת אש|בחירות|גושפנקה|جنگ|تحریم|воєн|війна|wojna|háború)/iu,
- macro:/(?:\b(?:inflation|monetary|central bank|interest rates?|fx|foreign exchange|gdp|currency|tariffs?|economic|economy|fiscal|unemployment|trade|shipping|freight|port congestion|canal transit|cargo|container terminal|cross-border transport|rail corridor|logistics|pipeline flows?|customs clearance|border crossings?|inflación|inflação|inflazione|inflasi|banque centrale|banco central|banca centrale|taux|taxa de juros|tasas? de interés|econom[ií]a|économi\w*|econ[oô]mi\w*|comercio|comércio|desemprego|chômage|pib|devises|währung|zentralbank|zinsen|wirtschaft)\b|经济|通胀|央行|利率|汇率|経済|金融|금리|경제|تضخم|اقتصاد|فائدة|инфляц|эконом|ставк|অর্থনীতি|মূল্যস্ফীতি|সুদের|मुद्रास्फीति|अर्थव्यवस्था|ब्याज|אינפלציה|ריבית|בנק מרכזי|כלכל|שער חליפין|تورم|اقتصادی|بهره|інфляц|inflacja|inflace|infláció|bank centralny)/iu,
+ macro:/(?:\b(?:inflation|monetary|central bank|interest rates?|fx|foreign exchange|gdp|currency|tariffs?|economic|economy|fiscal|tax(?:ation)?|revenue|customs|duties?|unemployment|trade|shipping|freight|port congestion|canal transit|cargo|container terminal|cross-border transport|rail corridor|logistics|pipeline flows?|customs clearance|border crossings?|inflación|inflação|inflazione|inflasi|banque centrale|banco central|banca centrale|taux|taxa de juros|tasas? de interés|econom[ií]a|économi\w*|econ[oô]mi\w*|comercio|comércio|desemprego|chômage|pib|devises|währung|zentralbank|zinsen|wirtschaft)\b|经济|通胀|央行|利率|汇率|経済|金融|금리|경제|تضخم|اقتصاد|فائدة|инфляц|эконом|ставк|অর্থনীতি|মূল্যস্ফীতি|সুদের|मुद्रास्फीति|अर्थव्यवस्था|ब्याज|אינפלציה|ריבית|בנק מרכזי|כלכל|שער חליפין|تورم|اقتصادی|بهره|інфляц|inflacja|inflace|infláció|bank centralny)/iu,
  rare_earth:/(?:\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|mining|mine closures?|mining royalties|mineral exports?|ore processing|smelting|refining|battery minerals?|spodumene|bauxite|manganese|vanadium|antimony|indium|scandium|tantalum|niobium|platinum group metals?|cobalt|lithium|nickel|graphite|copper|gallium|germanium|neodymium|dysprosium|terbium|tungsten|mineral supply|refinery|minerais? cr[ií]ticos?|minerales? cr[ií]ticos?|terras? raras?|tierras? raras?|terres? rares?|min[eé]raux critiques?|min[eé]raux strat[eé]giques?|minería|mineração|minier\w*|litio|l[ií]tio|cobalto|cobre|cuivre|gali[ou]m|germ[aâ]nio|seltene erden|bergbau|kupfer)\b|关键矿产|稀土|锂|钴|稀土類|希土類|鉱山|희토류|리튬|معادن|редкозем|литий|кобальт|খনিজ|लिथियम|खनिज|מינרלים|ליתיום|קובלט|נחושת|יסודות נדירים|معادن کمیاب|مواد معدنی|літій|рідкозем|górnictwo|bányászat)/iu,
 });
 
@@ -132,8 +132,9 @@ export function privateOsintGlobalSources(){
    throw Error("PRIVATE_OSINT_REGIONAL_EXPANSION_INVALID");
  const additionIds=new Set();
  for(const source of regional.sources){
-  let u;try{u=new URL(source.url)}catch{throw Error("PRIVATE_OSINT_REGIONAL_URL_INVALID")}
-  if(!/^private_expansion_[a-z0-9_]+$/u.test(source.id)||
+  let u,discoveryUrl=null;try{u=new URL(source.url);if(source.discovery_reference_url!==undefined)discoveryUrl=new URL(source.discovery_reference_url)}catch{throw Error("PRIVATE_OSINT_REGIONAL_URL_INVALID")}
+  const discoveryRefInvalid=source.discovery_reference_url!==undefined&&(!discoveryUrl||discoveryUrl.protocol!=="https:"||!discoveryUrl.hostname.includes(".")||discoveryUrl.username||discoveryUrl.password||discoveryUrl.port||discoveryUrl.hash);
+  if(discoveryRefInvalid||!/^private_expansion_[a-z0-9_]+$/u.test(source.id)||
      additionIds.has(source.id)||u.protocol!=="https:"||
      !u.hostname.includes(".")||u.username||u.password||u.port||u.hash||
      !["global",...Object.keys(CONTINENT_COUNTRIES_195)].includes(source.continent)||
@@ -141,7 +142,7 @@ export function privateOsintGlobalSources(){
       !Object.values(CONTINENT_COUNTRIES_195).flat().includes(source.publisher_country_iso3))||
      !["rss","atom","rdf"].includes(source.type)||
      !Array.isArray(source.categories)||source.categories.length!==1||
-     !["macro","rare_earth"].includes(source.categories[0])||
+     !PRIVATE_OSINT_CATEGORIES.includes(source.categories[0])||
      !Array.isArray(source.related_corridor_ids)||
      source.related_corridor_ids.some(id=>!corridorIds.has(id))||
      new Set(source.related_corridor_ids).size!==source.related_corridor_ids.length||
@@ -179,6 +180,89 @@ export function privateOsintContinentCoverage(sources,checks,items){
  }));
 }
 import {createHash} from "node:crypto";
+/**
+ * Publisher-country registry coverage is an inventory metric, not event
+ * attribution. A country code describes the source publishing authority;
+ * it never means every event in that country is covered.
+ */
+export function privateOsintPublisherCountryCoverage(sources, checks, {includeDetails=false}={}) {
+ if(!Array.isArray(sources)||!Array.isArray(checks)||typeof includeDetails!=="boolean")
+  throw Error("PRIVATE_OSINT_PUBLISHER_COUNTRY_COVERAGE_INPUT_INVALID");
+ const countries=Object.values(CONTINENT_COUNTRIES_195).flat();
+ const known=new Set(countries);
+ const healthyStates=new Set(["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW"]);
+ const stateByRef=new Map(checks.filter(c=>c&&typeof c.source_ref==="string").map(c=>[c.source_ref,c.state]));
+ const rows=Object.fromEntries(countries.map(iso3=>[iso3,{
+  registered_endpoints:0,working_endpoints:0,
+  registered_categories:new Set(),working_categories:new Set(),
+ }]));
+ const registryCells=new Set(),workingCells=new Set();
+ let countrySpecificEndpoints=0,workingCountrySpecificEndpoints=0,globalOrUnknownEndpoints=0;
+ for(const source of sources){
+  const iso3=source?.publisher_country_iso3;
+  if(!iso3||!known.has(iso3)){globalOrUnknownEndpoints++;continue}
+  countrySpecificEndpoints++;
+  const row=rows[iso3];row.registered_endpoints++;
+  let endpointWorking=false;
+  for(const category of source.categories??[]){
+   if(!PRIVATE_OSINT_CATEGORIES.includes(category))continue;
+   row.registered_categories.add(category);
+   registryCells.add(iso3+":"+category);
+   if(healthyStates.has(stateByRef.get(sourceRef(source,category)))){
+    endpointWorking=true;
+    row.working_categories.add(category);
+    workingCells.add(iso3+":"+category);
+   }
+  }
+  if(endpointWorking){row.working_endpoints++;workingCountrySpecificEndpoints++}
+ }
+ const categoryCount=PRIVATE_OSINT_CATEGORIES.length;
+ const byCountry=Object.fromEntries(Object.entries(rows).map(([iso3,row])=>[iso3,{
+  registered_endpoints:row.registered_endpoints,
+  working_endpoints:row.working_endpoints,
+  registered_categories:[...row.registered_categories].sort(),
+  working_categories:[...row.working_categories].sort(),
+  missing_registered_categories:PRIVATE_OSINT_CATEGORIES.filter(c=>!row.registered_categories.has(c)),
+  missing_working_categories:PRIVATE_OSINT_CATEGORIES.filter(c=>!row.working_categories.has(c)),
+ }]));
+ const byContinent=Object.fromEntries(Object.entries(CONTINENT_COUNTRIES_195).map(([continent,iso3s])=>{
+  const countryRows=iso3s.map(iso3=>rows[iso3]);
+  return [continent,{
+   country_count:iso3s.length,
+   countries_with_any_publisher_endpoint:countryRows.filter(x=>x.registered_endpoints>0).length,
+   countries_with_all_three_category_feeds:countryRows.filter(x=>x.registered_categories.size===categoryCount).length,
+   countries_with_no_publisher_endpoint:countryRows.filter(x=>x.registered_endpoints===0).length,
+   registered_country_category_cells:countryRows.reduce((n,x)=>n+x.registered_categories.size,0),
+   working_country_category_cells:countryRows.reduce((n,x)=>n+x.working_categories.size,0),
+  }];
+ }));
+ const summary={
+  schema:"geomacro.private-osint-publisher-country-coverage.v1",
+  interpretation:"Publisher-country inventory only; not event-country coverage, truth verification, source rights, or proof every country/category has a working local source.",
+  country_count:countries.length,
+  category_count:categoryCount,
+  country_category_slots:countries.length*categoryCount,
+  publisher_country_specific_endpoints:countrySpecificEndpoints,
+  working_publisher_country_specific_endpoints:workingCountrySpecificEndpoints,
+  global_or_unknown_publisher_endpoints:globalOrUnknownEndpoints,
+  countries_with_any_publisher_endpoint:Object.values(rows).filter(x=>x.registered_endpoints>0).length,
+  countries_with_all_three_category_feeds:Object.values(rows).filter(x=>x.registered_categories.size===categoryCount).length,
+  countries_with_no_publisher_endpoint:Object.values(rows).filter(x=>x.registered_endpoints===0).length,
+  registered_country_category_cells:registryCells.size,
+  missing_registered_country_category_cells:countries.length*categoryCount-registryCells.size,
+  working_country_category_cells:workingCells.size,
+  unverified_or_unavailable_country_category_cells:countries.length*categoryCount-workingCells.size,
+  by_continent:byContinent,
+ };
+ if(includeDetails){
+  summary.countries_without_publisher_specific_endpoint=countries.filter(iso3=>rows[iso3].registered_endpoints===0);
+  summary.missing_registered_country_category_cells_detail=countries.flatMap(iso3=>
+   PRIVATE_OSINT_CATEGORIES.filter(category=>!rows[iso3].registered_categories.has(category))
+    .map(category=>({country_iso3:iso3,category})));
+  summary.by_country=byCountry;
+ }
+ return summary;
+}
 const sourceRef=(s,c)=>createHash("sha256").update([s.id,s.url,c].join("\n")).digest("hex");
 
 /** Registration coverage only; official HTML/API discovery references are NOT auto-scraped. */

@@ -9,7 +9,7 @@
  * article bodies persisted. Never promote OSINT to verified/paid news.
  */
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
-import {privateOsintGlobalSources,PRIVATE_OSINT_TOPICS,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage} from "./private-osint-global-sources.mjs";
+import {privateOsintGlobalSources,PRIVATE_OSINT_TOPICS,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintPublisherCountryCoverage} from "./private-osint-global-sources.mjs";
 export const PRIVATE_OSINT_TARGET_MINUTES=15;
 export const PRIVATE_OSINT_POLL_MINUTES=5;
 export const PRIVATE_OSINT_MAX_SOURCES=512;
@@ -111,6 +111,7 @@ export async function collectPrivateOsint15m({
         [...checks.values()].some(c=>c.source_ref===sourceRef(s,category)&&
           ["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW"].includes(c.state)))).length,
       continent_coverage:privateOsintContinentCoverage(registry,[...checks.values()],all),
+      publisher_country_source_coverage:privateOsintPublisherCountryCoverage(registry,[...checks.values()]),
       corridor_discovery_reference_coverage:privateOsintCorridorReferenceCoverage(),
       discovered_within_15m_native_clock:recent.length,
       discovered_after_15m_native_clock:all.length-recent.length,

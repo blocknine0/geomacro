@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {privateOsintGlobalSources,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,PRIVATE_OSINT_TOPICS} from "./private-osint-global-sources.mjs";
+import {privateOsintGlobalSources,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintPublisherCountryCoverage,PRIVATE_OSINT_TOPICS} from "./private-osint-global-sources.mjs";
 import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
 import {privateOsintCountryMention} from "./private-osint-country-mentions.mjs";
@@ -20,6 +20,14 @@ test("accepted global source inventory has distinct pinned feeds in six continen
  assert.equal(Object.values(coverage).reduce((n,c)=>n+c.country_routes,0),195);
  assert.equal(Object.values(coverage).reduce((n,c)=>n+c.category_routes,0),585);
  assert.ok(Object.values(coverage).every(c=>c.regional_endpoints>0&&c.working_regional_endpoints===0&&c.observed_country_category_cells===0));
+ const publisherCoverage=privateOsintPublisherCountryCoverage(sources,[],{includeDetails:true});
+ assert.equal(publisherCoverage.country_count,195);
+ assert.equal(publisherCoverage.country_category_slots,585);
+ assert.equal(Object.keys(publisherCoverage.by_country).length,195);
+ assert.equal(publisherCoverage.working_country_category_cells,0);
+ assert.ok(publisherCoverage.missing_registered_country_category_cells>0);
+ assert.ok(publisherCoverage.countries_without_publisher_specific_endpoint.length>0);
+ assert.equal(publisherCoverage.interpretation.startsWith("Publisher-country inventory only"),true);
  const manifest=JSON.parse(readFileSync(new URL('../../config/private-osint-working-sources.v1.json',import.meta.url)));
  assert.equal(manifest.accepted_endpoint_count,manifest.sources.length);
  assert.ok(manifest.sources.every(s=>s.acceptance.http_status===200&&s.acceptance.feed_parsed&&s.acceptance.bounded_feed_bytes<=1024*1024));
@@ -141,7 +149,7 @@ test("new macro/FX and critical-metals feeds are private only and deduplicated",
 test("new regional macro/minerals and maritime corridor candidates are deduplicated, bounded, private",async()=>{
  const additions=JSON.parse(readFileSync(new URL(
   "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
- assert.equal(additions.sources.length,14);
+ assert.equal(additions.sources.length,20);
  const complete=privateOsintGlobalSources();
  assert.ok(complete.length<=512);
  assert.equal(new Set(complete.map(s=>s.url)).size,complete.length);
@@ -168,6 +176,56 @@ test("new regional macro/minerals and maritime corridor candidates are deduplica
   fetchImpl:async()=>new Response("",{status:403})});
  assert.equal(blocked.items.length,0);
  assert.equal(blocked.summary.working_source_endpoints,0);
+});
+
+test("regional official and sector feeds are deduplicated private candidates, and synthetic observations remain unverified",async()=>{
+ const additions=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-regional-corridor-additions.v1.json",import.meta.url),"utf8"));
+ const complete=privateOsintGlobalSources();
+ const ids=["private_expansion_au_industry_news","private_expansion_za_dsti_news",
+  "private_expansion_za_sars_news","private_expansion_kr_msit_press",
+  "private_expansion_ind_tax_press","private_expansion_ph_pna_news"];
+ const selected=complete.filter(s=>ids.includes(s.id));
+ assert.equal(selected.length,6);
+ assert.ok(additions.sources.some(s=>s.id==="private_expansion_ph_pna_news"&&s.categories[0]==="geopolitics"));
+ assert.ok(additions.sources.filter(s=>ids.includes(s.id)).every(s=>
+  s.activation_state==="RUNTIME_PROBE_REQUIRED"&&s.provider_rights_verified===false&&
+  s.commercial_eligible===false&&s.access_verified_in_production===false&&
+  s.publicly_deliverable===false&&typeof s.provenance_note==="string"&&
+  typeof s.discovery_reference_url==="string"&&
+  new URL(s.discovery_reference_url).protocol==="https:"));
+ const bodyFor=url=>{
+  const title=url.includes("industry.gov.au")
+   ?"Australia announces critical minerals lithium and rare-earth processing project"
+   :url.includes("dsti.gov.za")
+    ?"South Africa announces critical minerals research and rare-earth mineral policy"
+    :url.includes("sars.gov.za")
+     ?"South Africa customs announces new import tariffs and trade policy measures"
+     :url.includes("msit.go.kr")
+      ?"Korea announces critical minerals lithium and rare-earth policy"
+      :url.includes("incometaxindia.gov.in")
+       ?"India income tax department issues new tax policy and revenue administration update"
+       :"Philippines government announces border security treaty and diplomatic agreement";
+  return "<rss><channel><item><title>"+title+
+   "</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate><link>https://example.org/story</link></item></channel></rss>";
+ };
+ const result=await collectPrivateOsint15m({now,registry:selected,normalize,resolveCountry:()=>null,
+  fetchImpl:async url=>new Response(bodyFor(url),{status:200,headers:{"content-type":"application/rss+xml"}})});
+ assert.equal(result.summary.source_endpoints_attempted,6);
+ assert.equal(result.summary.source_states.OBSERVED,6);
+ assert.equal(result.items.length,6);
+ assert.equal(result.summary.selected_items_by_category.geopolitics,1);
+ assert.equal(result.summary.selected_items_by_category.macro,2);
+ assert.equal(result.summary.selected_items_by_category.rare_earth,3);
+ assert.ok(result.items.every(item=>item.usage_rights.commercial_reuse_authorized===false));
+ assert.equal(result.summary.publicly_served,false);
+ assert.equal(result.summary.rights_verified,false);
+ const coverage=privateOsintPublisherCountryCoverage(selected,result.checks,{includeDetails:true});
+ assert.ok(coverage.working_country_category_cells>=6);
+ assert.ok(coverage.by_country.AUS.working_categories.includes("rare_earth"));
+ assert.ok(coverage.by_country.ZAF.working_categories.includes("macro"));
+ assert.ok(coverage.by_country.PHL.working_categories.includes("geopolitics"));
+ assert.ok(coverage.by_country.IND.working_categories.includes("macro"));
 });
 
 test("official corridor reference overlay only covers existing named routes, never asserts live transport",()=>{
