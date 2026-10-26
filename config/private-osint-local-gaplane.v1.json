@@ -921,6 +921,669 @@
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_atg_supplement",
+      "url": "https://antiguanewsroom.com/feed/",
+      "publisher_country_iso3": "ATG",
+      "discovery_reference_url": "https://antiguanewsroom.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_bdi_supplement",
+      "url": "https://www.iwacu-burundi.org/feed/",
+      "publisher_country_iso3": "BDI",
+      "discovery_reference_url": "https://www.iwacu-burundi.org/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_blz_supplement",
+      "url": "https://www.breakingbelizenews.com/feed/",
+      "publisher_country_iso3": "BLZ",
+      "discovery_reference_url": "https://www.breakingbelizenews.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_brn_supplement",
+      "url": "https://borneobulletin.com.bn/feed/",
+      "publisher_country_iso3": "BRN",
+      "discovery_reference_url": "https://borneobulletin.com.bn/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_btn_supplement",
+      "url": "https://kuenselonline.com/feed/",
+      "publisher_country_iso3": "BTN",
+      "discovery_reference_url": "https://kuenselonline.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_caf_supplement",
+      "url": "https://www.radiondekeluka.org/feed/",
+      "publisher_country_iso3": "CAF",
+      "discovery_reference_url": "https://www.radiondekeluka.org/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_cmr_supplement",
+      "url": "https://www.cameroon-tribune.cm/feed/",
+      "publisher_country_iso3": "CMR",
+      "discovery_reference_url": "https://www.cameroon-tribune.cm/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_cog_supplement",
+      "url": "https://www.adiac-congo.com/rss.xml",
+      "publisher_country_iso3": "COG",
+      "discovery_reference_url": "https://www.adiac-congo.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_com_supplement",
+      "url": "https://www.comoresinfos.net/feed/",
+      "publisher_country_iso3": "COM",
+      "discovery_reference_url": "https://www.comoresinfos.net/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_cpv_supplement",
+      "url": "https://expressodasilhas.cv/feed/",
+      "publisher_country_iso3": "CPV",
+      "discovery_reference_url": "https://expressodasilhas.cv/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_dji_supplement",
+      "url": "https://www.lanation.dj/feed/",
+      "publisher_country_iso3": "DJI",
+      "discovery_reference_url": "https://www.lanation.dj/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_eri_supplement",
+      "url": "https://shabait.com/feed/",
+      "publisher_country_iso3": "ERI",
+      "discovery_reference_url": "https://shabait.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_gnb_supplement",
+      "url": "https://www.odemocratagb.com/feed/",
+      "publisher_country_iso3": "GNB",
+      "discovery_reference_url": "https://www.odemocratagb.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_gnq_supplement",
+      "url": "https://ahoraeg.com/feed/",
+      "publisher_country_iso3": "GNQ",
+      "discovery_reference_url": "https://ahoraeg.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_grd_supplement",
+      "url": "https://nowgrenada.com/feed/",
+      "publisher_country_iso3": "GRD",
+      "discovery_reference_url": "https://nowgrenada.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_hnd_supplement",
+      "url": "https://www.laprensa.hn/rss",
+      "publisher_country_iso3": "HND",
+      "discovery_reference_url": "https://www.laprensa.hn/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_irq_supplement",
+      "url": "https://shafaq.com/en/rss",
+      "publisher_country_iso3": "IRQ",
+      "discovery_reference_url": "https://shafaq.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_kna_supplement",
+      "url": "https://www.thestkittsnevisobserver.com/feed/",
+      "publisher_country_iso3": "KNA",
+      "discovery_reference_url": "https://www.thestkittsnevisobserver.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_lby_supplement",
+      "url": "https://libyaobserver.ly/feed/",
+      "publisher_country_iso3": "LBY",
+      "discovery_reference_url": "https://libyaobserver.ly/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_lca_supplement",
+      "url": "https://stluciatimes.com/feed/",
+      "publisher_country_iso3": "LCA",
+      "discovery_reference_url": "https://stluciatimes.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_lie_supplement",
+      "url": "https://www.vaterland.li/rss",
+      "publisher_country_iso3": "LIE",
+      "discovery_reference_url": "https://www.vaterland.li/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_lso_supplement",
+      "url": "https://lestimes.com/feed/",
+      "publisher_country_iso3": "LSO",
+      "discovery_reference_url": "https://lestimes.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_mco_supplement",
+      "url": "https://www.monaco-tribune.com/en/feed/",
+      "publisher_country_iso3": "MCO",
+      "discovery_reference_url": "https://www.monaco-tribune.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_mdg_supplement",
+      "url": "https://www.madagascar-tribune.com/spip.php?page=backend",
+      "publisher_country_iso3": "MDG",
+      "discovery_reference_url": "https://www.madagascar-tribune.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_mhl_supplement",
+      "url": "https://marshallislandsjournal.com/feed/",
+      "publisher_country_iso3": "MHL",
+      "discovery_reference_url": "https://marshallislandsjournal.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_mlt_supplement",
+      "url": "https://timesofmalta.com/rss",
+      "publisher_country_iso3": "MLT",
+      "discovery_reference_url": "https://timesofmalta.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_mrt_supplement",
+      "url": "https://cridem.org/rss.xml",
+      "publisher_country_iso3": "MRT",
+      "discovery_reference_url": "https://cridem.org/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_stp_supplement",
+      "url": "https://www.telanon.info/feed/",
+      "publisher_country_iso3": "STP",
+      "discovery_reference_url": "https://www.telanon.info/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_sur_supplement",
+      "url": "https://www.waterkant.net/feed/",
+      "publisher_country_iso3": "SUR",
+      "discovery_reference_url": "https://www.waterkant.net/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_swz_supplement",
+      "url": "https://www.eswatiniobserver.com/feed/",
+      "publisher_country_iso3": "SWZ",
+      "discovery_reference_url": "https://www.eswatiniobserver.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_syc_supplement",
+      "url": "https://www.nation.sc/rss",
+      "publisher_country_iso3": "SYC",
+      "discovery_reference_url": "https://www.nation.sc/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_tjk_supplement",
+      "url": "https://asiaplustj.info/en/rss",
+      "publisher_country_iso3": "TJK",
+      "discovery_reference_url": "https://asiaplustj.info/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_tkm_supplement",
+      "url": "https://turkmenportal.com/en/rss",
+      "publisher_country_iso3": "TKM",
+      "discovery_reference_url": "https://turkmenportal.com/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_tls_supplement",
+      "url": "https://tatoli.tl/feed/",
+      "publisher_country_iso3": "TLS",
+      "discovery_reference_url": "https://tatoli.tl/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_ton_supplement",
+      "url": "https://matangitonga.to/rss.xml",
+      "publisher_country_iso3": "TON",
+      "discovery_reference_url": "https://matangitonga.to/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_tto_supplement",
+      "url": "https://newsday.co.tt/feed/",
+      "publisher_country_iso3": "TTO",
+      "discovery_reference_url": "https://newsday.co.tt/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_vat_supplement",
+      "url": "https://www.vaticannews.va/en.rss.xml",
+      "publisher_country_iso3": "VAT",
+      "discovery_reference_url": "https://www.vaticannews.va/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_vut_supplement",
+      "url": "https://www.dailypost.vu/site/rss/",
+      "publisher_country_iso3": "VUT",
+      "discovery_reference_url": "https://www.dailypost.vu/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_wsm_supplement",
+      "url": "https://www.samoaobserver.ws/rss",
+      "publisher_country_iso3": "WSM",
+      "discovery_reference_url": "https://www.samoaobserver.ws/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
     }
   ]
 }
