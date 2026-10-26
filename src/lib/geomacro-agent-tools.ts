@@ -140,7 +140,7 @@ export const riskGateDecisionToolSchema = z.object({
 }).strict();
 
 export const verifyRiskObjectToolSchema = z.object({
-  risk_object: z.record(z.unknown()),
+  risk_object: z.record(z.string(), z.unknown()),
 }).strict();
 
 function domainTopics(selected: readonly GeomacroAgentDomain[]): AgentQueryTopic[] {

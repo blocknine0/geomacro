@@ -65,7 +65,7 @@ export const a2aPartSchema = z
     url: z.string().url().max(2_048).optional(),
     mediaType: z.string().trim().min(1).max(160).optional(),
     filename: z.string().trim().min(1).max(255).optional(),
-    metadata: z.record(z.unknown()).optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -89,7 +89,7 @@ export const a2aMessageSchema = z.object({
   contextId: protocolId.optional(),
   role: z.enum(["ROLE_USER", "ROLE_AGENT"]),
   parts: z.array(a2aPartSchema).min(1).max(8),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   extensions: z.array(z.string().url().max(2_048)).max(16).optional(),
   referenceTaskIds: z.array(protocolId).max(16).optional(),
 });
@@ -121,7 +121,7 @@ export const a2aSendMessageRequestSchema = z.object({
       returnImmediately: z.boolean().optional(),
     })
     .optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type A2ASendMessageRequest = z.infer<typeof a2aSendMessageRequestSchema>;

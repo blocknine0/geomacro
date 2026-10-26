@@ -63,7 +63,7 @@ const remoteTaskSchema = z
       .passthrough(),
     artifacts: z.array(z.unknown()).max(64).optional(),
     history: z.array(z.unknown()).max(100).optional(),
-    metadata: z.record(z.unknown()).optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
   })
   .passthrough();
 
