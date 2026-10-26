@@ -107,6 +107,17 @@ describe("authentic free-derived static archive deep-health",()=>{
     expect(fetcher.mock.calls[0][1]?.redirect).toBe("follow");
     expect(String(fetcher.mock.calls[0][0])).not.toContain("geomacro-control-plane");
   });
+  it("rejects a redirect that leaves the pinned archive origin",async()=>{
+    const response=new Response(JSON.stringify(feed()),{
+      status:200,headers:{"content-type":"application/json"},
+    });
+    Object.defineProperty(response,"url",{value:"https://untrusted.example/latest.json"});
+    const result=await probeFreeDerivedDeepHealth({
+      fetcher:vi.fn<typeof fetch>(async()=>response),now:()=>time,
+    });
+    expect(result.statusCode).toBe(503);
+    expect(result.body.reason).toBe("FREE_ARCHIVE_REDIRECT_ORIGIN_INVALID");
+  });
   it("returns HTTP 503 on remote 503, non-JSON, oversize or outage; never a synthetic green",async()=>{
     const create=(body:unknown,status=200,type="application/json")=>
       vi.fn<typeof fetch>(async()=>new Response(JSON.stringify(body),{
