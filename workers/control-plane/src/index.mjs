@@ -2,6 +2,7 @@ import {publicSignedNews} from './public-signed-news.mjs';
 import {handlePrivateOsint15m} from './private-osint-15m.mjs';
 import {readPrivateTelegramResearchJson} from './telegram-research-json.mjs';
 import {publicReusableSourceNews,publishReusableSourceNews} from './reusable-source-news.mjs';
+import {writeOwnerTelegramExportJson,privateOwnerTelegramExportJson} from './telegram-export-derived-json.mjs';
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
 import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
@@ -1343,6 +1344,10 @@ export default {
     try {
       if(request.method==="PUT"&&url.pathname==="/v1/reusable-source-news"&&!url.search)
         return publishReusableSourceNews(env,await readJson(request,96*1024));
+      if(request.method==="PUT"&&url.pathname==="/v1/internal/telegram-export-derived-json"&&!url.search)
+        return writeOwnerTelegramExportJson(env,await readJson(request,50_000));
+      if(request.method==="GET"&&url.pathname==="/v1/internal/telegram-export-derived-json")
+        return privateOwnerTelegramExportJson(env,url.searchParams);
       if(request.method==="GET"&&url.pathname==="/v1/internal/telegram-research-json")
         return readPrivateTelegramResearchJson(env,url.searchParams);
       if(url.pathname==='/v1/intelligence-inputs/automated'){

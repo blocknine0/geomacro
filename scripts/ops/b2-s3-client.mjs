@@ -10,7 +10,7 @@ const MAX_ATTEMPTS = 4;
 const DEFAULT_REQUEST_BUDGET = 64;
 const MAX_REQUEST_BUDGET = 500;
 const DEFAULT_ALLOWED_PREFIXES = Object.freeze(["geomacro-evidence/v1/"]);
-const EXTRA_ALLOWED_PREFIXES = Object.freeze(new Set(["telegram/leads/"]));
+const EXTRA_ALLOWED_PREFIXES = Object.freeze(new Set(["telegram/leads/", "telegram/owner-exports/"]));
 const B2_NATIVE_AUTHORIZE_URL = "https://api.backblazeb2.com/b2api/v4/b2_authorize_account";
 
 function safeB2ErrorCode(text) {

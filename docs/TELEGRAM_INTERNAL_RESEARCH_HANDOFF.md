@@ -81,3 +81,11 @@ The output and input **must both be outside the repository**. The output is a ne
 ## Separate automation paths
 
 The existing authorized publisher Bot webhook and B2/D1 lead-queue consumer are independent from this offline human research track. Do not use the webhook consumer or generic canonical flash ingest to accept manual research packets, or change publisher_authorized, activation, TELEGRAM_PRODUCTION_DEPLOY_ENABLED or payment gates on the basis of a research reference. A green CI result certifies these fail-closed contracts only, not real-time collection or commercial publication.
+
+## Distinct owner Telegram Desktop export input path
+
+The manually entered hash-pointer review packet described above remains
+independent. New owner-uploaded private B2 Telegram Desktop export JSON
+files may yield a separate bounded private derived research journal.
+No live Telegram API/MTProto/t.me collection or automatic promotion to
+verified commercial intelligence is introduced; see the owner ADR.

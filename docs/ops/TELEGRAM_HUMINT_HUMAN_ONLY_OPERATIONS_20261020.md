@@ -45,3 +45,12 @@ Official sources:
 `manual_humint_input_recorded`, `official_original_independently_verified`, `editor_approved`, `commercial_derived_use_rights_verified`, `verified_derived_publication`, `payment_receipt_verified` are six DIFFERENT facts. None may be inferred from a successful cron, candidate registry, human observation or private research packet.
 
 Live Telegram authorization verdict at writing: **OFF** (no actually authorized channel receipts verified). Human-led offline research path: implemented and available on the owner's machine. Production original-source RSS and existing Web Intelligence: separate free cloud-side sources.
+
+## Owner-provided file input, distinct from the human-reference path
+
+An owner's manual Telegram Desktop public-chat JSON export can now
+produce source-neutral, **UNVERIFIED_CLAIM** private derived research
+under `OWNER_DECLARED_TELEGRAM_DERIVED_ONLY`.
+This does not authorize bulk collection or automatically establish
+publisher/platform consent, verified facts, signed indices or paid quote
+eligibility. The pre-existing human evidence-review path is unchanged.
