@@ -59,6 +59,7 @@ on:
       - "scripts/lib/private-unverified-osint-intake.mjs"
       - "scripts/lib/private-unverified-osint-intake.test.mjs"
       - "scripts/ops/private-unverified-osint-tick.ts"
+      - "scripts/ops/audit-d1-account-daily-quota-readonly.mjs"
       - "workers/control-plane/src/private-osint-bundle.mjs"
       - "workers/control-plane/migrations/0029_private_osint_bundle_index.sql"
       - "scripts/lib/private-osint-bundle.test.mjs"
@@ -86,6 +87,7 @@ on:
       - "config/private-osint-local-rss-candidates.v1.json"
       - "config/private-osint-corridor-reference-overlay.v1.json"
       - "config/operator-country-source-crosswalk.v1.json"
+      - "scripts/ops/audit-d1-account-daily-quota-readonly.mjs"
       - "scripts/lib/private-unverified-osint-intake.mjs"
       - "scripts/lib/private-unverified-osint-intake.test.mjs"
       - "scripts/ops/private-unverified-osint-tick.ts"
@@ -98,6 +100,40 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  d1-quota-preflight:
+    name: Read-only account-wide D1 daily quota headroom
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment: production
+    outputs:
+      headroom: ${{ steps.inspect.outputs.headroom }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Inspect official Cloudflare D1 account-wide row counters without D1 queries
+        id: inspect
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if node scripts/ops/audit-d1-account-daily-quota-readonly.mjs; then
+            echo "headroom=ready" >> "$GITHUB_OUTPUT"
+          else
+            echo "headroom=held" >> "$GITHUB_OUTPUT"
+            echo "::warning::D1_QUOTA_HEADROOM_HELD_PRIVATE_COLLECTORS_SKIPPED"
+          fi
+
   verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 3
@@ -166,10 +202,11 @@ jobs:
           retention-days: 7
 
   collect-private:
-    needs: verify
+    needs: [verify, d1-quota-preflight]
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
+      needs.d1-quota-preflight.outputs.headroom == 'ready' &&
       github.event_name != 'pull_request' &&
       (github.event_name != 'workflow_run' ||
        (github.event.workflow_run.conclusion == 'success' &&
@@ -194,10 +231,11 @@ jobs:
           bun scripts/ops/private-osint-15m-tick.ts
 
   collect-unverified-private:
-    needs: verify
+    needs: [verify, d1-quota-preflight]
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
+      needs.d1-quota-preflight.outputs.headroom == 'ready' &&
       github.event_name != 'pull_request' &&
       (github.event_name != 'workflow_run' ||
        (github.event.workflow_run.conclusion == 'success' &&
