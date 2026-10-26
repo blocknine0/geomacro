@@ -129,7 +129,7 @@ test("uploaded India PIB official RSS feeds join only the private OSINT discover
  const cfg=JSON.parse(readFileSync(new URL("../../config/private-osint-official-feed-additions.v1.json",import.meta.url)));
  assert.equal(cfg.schema,"geomacro.private-osint-official-feed-additions.v1");
  assert.equal(cfg.scope,"PROTECTED_INTERNAL_OSINT_ONLY");
- assert.equal(cfg.sources.length,8);
+ assert.equal(cfg.sources.length,7);
  assert.ok(cfg.sources.every(s=>s.provider_rights_verified===false&&s.commercial_eligible===false&&
   s.access_verified_in_production===false&&s.publicly_deliverable===false&&
   s.activation_state==="RUNTIME_PROBE_REQUIRED"));
