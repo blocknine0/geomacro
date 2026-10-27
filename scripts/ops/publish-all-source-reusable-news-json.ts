@@ -113,7 +113,7 @@ writeFileSync("artifacts/reusable-source-news/news.json",
 // explicitly uncovered even if all 195 routing entries are present.
 const actualCoverage=observedCountryCategoryCoverage(complete,COUNTRIES_195);
 writeFileSync("artifacts/reusable-source-news/coverage.json",
-  JSON.stringify(actualCoverage,null,2)+"\\n",{mode:0o600});
+  JSON.stringify(actualCoverage,null,2)+"\n",{mode:0o600});
 // The scheduled ingest automatically compiles every retained input once per
 // snapshot, with no 12-way source retrieval or paid-model calls. D1 remains
 // canonical; these artifacts are reproducible derived packets, not a new DB.
