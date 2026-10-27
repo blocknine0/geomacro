@@ -39,7 +39,7 @@ function availability(plan:any):AgentQueryDeliverability {
   const value:AgentQueryDeliverability={deliverable:true,code:"AVAILABLE",query_plan_hash:plan.query_plan_hash,checked_at:new Date().toISOString(),missing_modules:[],stale_modules:[],ineligible_source_ids:[],source_contracts:[{source_id:"PRIVATE_TEST_ONLY",commercial_usage_status:"DERIVED_ONLY",raw_redistribution_allowed:false,attribution_required:false,licence_name:null}],subjects:[{subject:plan.subjects[0],status:"AVAILABLE",available_modules:plan.required_modules,latest_evidence_at:"2025-12-31T23:59:59.000Z",required_source_ids:["PRIVATE_TEST_ONLY"],governed_fallback_modules:[]}]};
   if(plan.product)retainQualifiedStructuralEvidence(value,plan,plan.subjects.map((subject:any)=>({worldBank:{},context:{status:"AVAILABLE",subject,
     observations:plan.required_modules.flatMap((dimension:string)=>(subject.type==="country"?[subject.country_iso3]:[subject.origin_country_iso3,subject.destination_country_iso3]).map((country_iso3:string)=>({
-      country_iso3,dimension,value_numeric:1,observed_at:"2026-10-17T12:00:00Z",normalized_hash:"a".repeat(64),provenance:{},
+      observation_id:"synthetic:"+country_iso3+":"+dimension,source_id:"PRIVATE_TEST_ONLY",country_iso3,partner_country_iso3:null,dimension,metric:"synthetic_derived_metric",value_numeric:1,value_text:null,unit:"index",quality_status:"VERIFIED",observed_at:"2026-10-17T12:00:00.000Z",published_at:null,normalized_hash:"a".repeat(64),provenance:{measurement_period:{start:"2026-10-17T12:00:00.000Z",end:"2026-10-17T12:00:00.000Z",granularity:"instant"}},
     }))),metadata:{composition_method:"ENDPOINT_COMPOSED_V0_1",route_modeling_status:"NOT_MODELED"}}})),new Date().toISOString());
   return value;
 }

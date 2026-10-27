@@ -1,6 +1,7 @@
 import type { AgentQueryPlan } from "./agent-query-plan";
 import type { QualifiedSubjectEvidence } from "./agent-query-qualified-evidence.server";
 import { sourceNativeObservationTime } from "./source-native-observation-time";
+import { canonicalStructuralEvidence } from "./canonical-structural-evidence";
 import { isStoreProfile, isStructuralStoreProduct } from "./store-product-selection";
 import { verifyCommercialRiskObjectArtifact } from "./commercial-risk-object-policy";
 import type { StructuralContext } from "./structural-context.server";
@@ -21,9 +22,7 @@ export function storeProductRows(plan: AgentQueryPlan, context: StructuralContex
     : [subject.origin_country_iso3, subject.destination_country_iso3];
   const rows = context.observations.filter(row => countries.includes(row.country_iso3 ?? "") &&
     (dimensions[module] ?? [module]).includes(row.dimension.trim().toLowerCase()) &&
-    /^[a-f0-9]{64}$/u.test(row.normalized_hash) &&
-    (typeof row.value_numeric === "number" && Number.isFinite(row.value_numeric) ||
-      typeof row.value_text === "string" && row.value_text.trim().length > 0) &&
+    canonicalStructuralEvidence(row, asOf) !== null &&
     fresh(sourceNativeObservationTime(row, now), now, plan.module_max_age_seconds[module]));
   if (subject.type === "country") return rows;
   // Preserve at least one actual observation from each endpoint before the

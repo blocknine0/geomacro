@@ -37,7 +37,7 @@ function observation(country: string, module: string, index: number): Structural
     dimension: module, country_iso3: country, partner_country_iso3: null, observed_at: NATIVE, published_at: NATIVE,
     metric: "synthetic_derived_metric", value_numeric: index + 1, value_text: null, unit: "index",
     event_type: null, signal_type: null, source_url: "https://private.invalid/not-customer-data", parser_version: "test-only",
-    methodology_status: "evidence", quality_status: "accepted", provenance: {}, normalized_hash: (index % 10).toString().repeat(64), retrieved_at: NATIVE };
+    methodology_status: "evidence", quality_status: "accepted", provenance: { measurement_period: { start: "2026-10-23T00:00:00.000Z", end: "2026-10-23T00:00:00.000Z", granularity: "instant" } }, normalized_hash: (index % 10).toString().repeat(64), retrieved_at: NATIVE };
 }
 function context(subject: any): StructuralContext {
   const countries = subject.type === "country" ? [subject.country_iso3] : [subject.origin_country_iso3, subject.destination_country_iso3];
