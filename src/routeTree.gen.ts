@@ -66,6 +66,7 @@ import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.
 import { Route as ApiV1IntelligenceAvailabilityRouteImport } from './routes/api.v1.intelligence.availability'
 import { Route as ApiV1IntelligenceCriticalMineralsRouteImport } from './routes/api.v1.intelligence.critical-minerals'
 import { Route as ApiV1IntelligenceGeopoliticsRouteImport } from './routes/api.v1.intelligence.geopolitics'
+import { Route as ApiV1IntelligenceInterpretRouteImport } from './routes/api.v1.intelligence.interpret'
 import { Route as ApiV1IntelligenceLiveStructuredRouteImport } from './routes/api.v1.intelligence.live-structured'
 import { Route as ApiV1IntelligenceMacroFxRouteImport } from './routes/api.v1.intelligence.macro-fx'
 import { Route as ApiV1IntelligenceProductsAvailabilityRouteImport } from './routes/api.v1.intelligence.products-availability'
@@ -365,6 +366,12 @@ const ApiV1IntelligenceGeopoliticsRoute =
     path: '/api/v1/intelligence/geopolitics',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiV1IntelligenceInterpretRoute =
+  ApiV1IntelligenceInterpretRouteImport.update({
+    id: '/api/v1/intelligence/interpret',
+    path: '/api/v1/intelligence/interpret',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV1IntelligenceLiveStructuredRoute =
   ApiV1IntelligenceLiveStructuredRouteImport.update({
     id: '/api/v1/intelligence/live-structured',
@@ -474,6 +481,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
+  '/api/v1/intelligence/interpret': typeof ApiV1IntelligenceInterpretRoute
   '/api/v1/intelligence/live-structured': typeof ApiV1IntelligenceLiveStructuredRoute
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
   '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
@@ -542,6 +550,7 @@ export interface FileRoutesByTo {
   '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
+  '/api/v1/intelligence/interpret': typeof ApiV1IntelligenceInterpretRoute
   '/api/v1/intelligence/live-structured': typeof ApiV1IntelligenceLiveStructuredRoute
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
   '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
@@ -611,6 +620,7 @@ export interface FileRoutesById {
   '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
+  '/api/v1/intelligence/interpret': typeof ApiV1IntelligenceInterpretRoute
   '/api/v1/intelligence/live-structured': typeof ApiV1IntelligenceLiveStructuredRoute
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
   '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
@@ -681,6 +691,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
+    | '/api/v1/intelligence/interpret'
     | '/api/v1/intelligence/live-structured'
     | '/api/v1/intelligence/macro-fx'
     | '/api/v1/intelligence/products-availability'
@@ -749,6 +760,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
+    | '/api/v1/intelligence/interpret'
     | '/api/v1/intelligence/live-structured'
     | '/api/v1/intelligence/macro-fx'
     | '/api/v1/intelligence/products-availability'
@@ -817,6 +829,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
+    | '/api/v1/intelligence/interpret'
     | '/api/v1/intelligence/live-structured'
     | '/api/v1/intelligence/macro-fx'
     | '/api/v1/intelligence/products-availability'
@@ -886,6 +899,7 @@ export interface RootRouteChildren {
   ApiV1IntelligenceAvailabilityRoute: typeof ApiV1IntelligenceAvailabilityRoute
   ApiV1IntelligenceCriticalMineralsRoute: typeof ApiV1IntelligenceCriticalMineralsRoute
   ApiV1IntelligenceGeopoliticsRoute: typeof ApiV1IntelligenceGeopoliticsRoute
+  ApiV1IntelligenceInterpretRoute: typeof ApiV1IntelligenceInterpretRoute
   ApiV1IntelligenceLiveStructuredRoute: typeof ApiV1IntelligenceLiveStructuredRoute
   ApiV1IntelligenceMacroFxRoute: typeof ApiV1IntelligenceMacroFxRoute
   ApiV1IntelligenceProductsAvailabilityRoute: typeof ApiV1IntelligenceProductsAvailabilityRoute
@@ -1298,6 +1312,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1IntelligenceGeopoliticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/intelligence/interpret': {
+      id: '/api/v1/intelligence/interpret'
+      path: '/api/v1/intelligence/interpret'
+      fullPath: '/api/v1/intelligence/interpret'
+      preLoaderRoute: typeof ApiV1IntelligenceInterpretRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/intelligence/live-structured': {
       id: '/api/v1/intelligence/live-structured'
       path: '/api/v1/intelligence/live-structured'
@@ -1423,6 +1444,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1IntelligenceCriticalMineralsRoute:
     ApiV1IntelligenceCriticalMineralsRoute,
   ApiV1IntelligenceGeopoliticsRoute: ApiV1IntelligenceGeopoliticsRoute,
+  ApiV1IntelligenceInterpretRoute: ApiV1IntelligenceInterpretRoute,
   ApiV1IntelligenceLiveStructuredRoute: ApiV1IntelligenceLiveStructuredRoute,
   ApiV1IntelligenceMacroFxRoute: ApiV1IntelligenceMacroFxRoute,
   ApiV1IntelligenceProductsAvailabilityRoute:
