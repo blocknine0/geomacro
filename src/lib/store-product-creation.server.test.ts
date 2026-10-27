@@ -1,3 +1,5 @@
+import {materializeNewsProduct} from "./news-product-factory.server";
+import {normalizeReusableNewsJson} from "./reusable-news-json";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { buildAgentQueryPlan } from "./agent-query-plan";
@@ -5,7 +7,7 @@ import { GEOMACRO_STORE_REQUEST_EXAMPLES } from "./store-product-examples";
 import { resolveGeomacroCapabilityPrice } from "./capability-pricing-catalog";
 import { checkAgentQueryDeliverability } from "./agent-query-deliverability.server";
 import { resolveEligiblePublishedCapabilityPrice } from "./verified-capability-coinbase-binding.server";
-import { prepareVerifiedCapabilityOffer } from "./capability-x402-offer.server";
+import { prepareVerifiedCapabilityOffer, assembleVerifiedCapabilityProduct } from "./capability-x402-offer.server";
 import { freezeCanonicalCapabilityHttpBody } from "./capability-x402-exact-http-body.server";
 import { geomacroAgentToolToCanonicalQuery } from "./geomacro-agent-tools";
 import type { StructuralContext, StructuralObservation } from "./structural-context.server";
@@ -83,6 +85,19 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("all active Store creation contracts on the canonical mainnet engine (offline synthetic evidence)", () => {
+  it.each(Object.keys(GEOMACRO_STORE_REQUEST_EXAMPLES) as Array<keyof typeof GEOMACRO_STORE_REQUEST_EXAMPLES>)("materializes the news-triggered %s context with the canonical assembler",async id=>{
+    const news=normalizeReusableNewsJson({category:"rare_earth",country_iso3:"USA",
+      published_at:"2026-10-24T12:58:00.000Z",text:"USA announced a critical mineral production investment of 25 million USD."});
+    const result=await materializeNewsProduct({news,product_id:id,destination_country_iso3:"CAN",
+      ...(id==="signed_new"?{issued_after:"2026-10-24T12:59:00.000Z"}:{})},{
+        check:plan=>checkAgentQueryDeliverability(plan,{now:NOW,sourceEligibilityChecker:rights,externalModuleChecker:async()=>true}),
+      });
+    expect(result.status).toBe("QUALIFIED_CONTEXT_PREPARED");
+    expect(result).toHaveProperty("prepared_context");
+    expect(result.payment_authorized).toBe(false);
+    expect(result.news_extraction_verified).toBe(false);
+    expect(mocks.freeze).not.toHaveBeenCalled();
+  });
   it.each(Object.keys(GEOMACRO_STORE_REQUEST_EXAMPLES) as Array<keyof typeof GEOMACRO_STORE_REQUEST_EXAMPLES>)("creates, prices and freezes %s using the real assembler", async id => {
     const raw = request(id), { plan, availability } = await admitted(raw);
     expect(availability.deliverable).toBe(true);
@@ -112,6 +127,15 @@ describe("all active Store creation contracts on the canonical mainnet engine (o
       for (const field of schema.required ?? []) expect(value).toHaveProperty(field);
     }
     expect(publishedResponse.properties.payment.properties.provider.enum).toContain(intelligence.payment.provider);
+  });
+  it.each(Object.keys(GEOMACRO_STORE_REQUEST_EXAMPLES) as Array<keyof typeof GEOMACRO_STORE_REQUEST_EXAMPLES>)("prepares %s with no durable quote write", async id => {
+    const {plan,availability}=await admitted(request(id));
+    const {price,prepared}=await assembleVerifiedCapabilityProduct({plan,availability,clientRequestId:null});
+    expect(price.capability).toBe(plan.product!.capability);
+    expect(price.variant).toBe(plan.product!.variant);
+    expect(prepared.delivered_product_hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(prepared).not.toHaveProperty("payment");
+    expect(mocks.freeze).not.toHaveBeenCalled();
   });
   it("rejects origin-only corridor data even when the overall module timestamp is fresh", async () => {
     mocks.context.mockImplementation((subject: any) => ({ ...context(subject), observations: context(subject).observations.filter(row => row.country_iso3 === "USA") }));

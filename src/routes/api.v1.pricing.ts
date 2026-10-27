@@ -1,3 +1,4 @@
+import {structuredProductSetup} from "../lib/structured-product-setup";
 import {createFileRoute} from "@tanstack/react-router";
 import {publicGeomacroPaidPricingManifest} from "../lib/geomacro-paid-pricing-manifest.server";
 import {geomacroKeylessX402BuyerCatalog} from "../lib/keyless-x402-buyer-catalog";
@@ -15,6 +16,10 @@ export const Route=createFileRoute("/api/v1/pricing")({
     OPTIONS:async()=>new Response(null,{status:204,headers}),
     GET:async({request}:{request:Request})=>{
       const url=new URL(request.url);
+      if(!url.hash && url.searchParams.getAll('view').length===1 &&
+         url.searchParams.get('view')==='setup' &&
+         [...url.searchParams.keys()].every(k=>k==='view'))
+        return Response.json(structuredProductSetup(),{status:200,headers});
       if(!url.hash && url.searchParams.getAll('view').length===1 &&
          url.searchParams.get('view')==='buyer' &&
          [...url.searchParams.keys()].every(k=>k==='view')){

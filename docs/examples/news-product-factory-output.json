@@ -1,0 +1,712 @@
+{
+  "schema": "geomacro.news-product-factory.v1",
+  "input_id": "news-dc88615ac747f97e",
+  "category": "rare_earth",
+  "country_iso3": "USA",
+  "destination_country_iso3": "CAN",
+  "original_published_at": "2026-10-27T12:00:00.000Z",
+  "facts": {
+    "event_types": [
+      "investment",
+      "mineral_supply"
+    ],
+    "actions": [
+      "announce"
+    ],
+    "organizations": [],
+    "numeric_mentions": [
+      {
+        "value": "25",
+        "unit": "million",
+        "scale": "million",
+        "relationship": "UNBOUND_SOURCE_MENTION"
+      }
+    ],
+    "publication_time": "2026-10-27T12:00:00.000Z",
+    "country_iso3": "USA",
+    "extraction_status": "MACHINE_EXTRACTED_UNVERIFIED",
+    "independent_evidence_count": null,
+    "verified_current_value": null,
+    "verified_previous_value": null,
+    "verified_delta": null
+  },
+  "analysis": {
+    "possible_transmission_channels": [
+      "mineral_availability",
+      "processing_capacity",
+      "import_dependency"
+    ],
+    "transmission_is_scenario_not_observed_impact": true,
+    "watch_for": [
+      "original_release_or_correction",
+      "qualified_baseline_comparison",
+      "independent_confirmation"
+    ],
+    "unknowns": [
+      "numeric_subject_and_time_binding",
+      "independent_confirmation",
+      "measured_impact",
+      "commercial_admission"
+    ],
+    "no_forecast_or_risk_score_inferred": true
+  },
+  "products": [
+    {
+      "id": "country_digest",
+      "capability": "structural_country_digest",
+      "variant": "standard",
+      "price_usdc": "0.02",
+      "amount_atomic": "20000",
+      "status": "CANONICAL_QUALIFICATION_REQUIRED",
+      "draft": {
+        "event_types": [
+          "investment",
+          "mineral_supply"
+        ],
+        "publication_time": "2026-10-27T12:00:00.000Z",
+        "category": "rare_earth"
+      },
+      "canonical_request": {
+        "fulfillment_mode": "published_only",
+        "delivery_tier": "structural_baseline",
+        "product": {
+          "capability": "structural_country_digest",
+          "variant": "standard"
+        },
+        "subjects": [
+          {
+            "type": "country",
+            "country_iso3": "USA"
+          }
+        ],
+        "topics": [
+          "critical_minerals"
+        ],
+        "detail": "compact"
+      },
+      "request_time_fields": [],
+      "purchase_endpoint": "/api/v1/intelligence/query",
+      "ready_for_paid_delivery": false
+    },
+    {
+      "id": "corridor_digest",
+      "capability": "structural_corridor_digest",
+      "variant": "standard",
+      "price_usdc": "0.05",
+      "amount_atomic": "50000",
+      "status": "CANONICAL_QUALIFICATION_REQUIRED",
+      "draft": {
+        "event_types": [
+          "investment",
+          "mineral_supply"
+        ],
+        "publication_time": "2026-10-27T12:00:00.000Z",
+        "category": "rare_earth"
+      },
+      "canonical_request": {
+        "fulfillment_mode": "published_only",
+        "delivery_tier": "structural_baseline",
+        "product": {
+          "capability": "structural_corridor_digest",
+          "variant": "standard"
+        },
+        "subjects": [
+          {
+            "type": "corridor",
+            "origin_country_iso3": "USA",
+            "destination_country_iso3": "CAN"
+          }
+        ],
+        "topics": [
+          "critical_minerals"
+        ],
+        "detail": "compact"
+      },
+      "request_time_fields": [],
+      "purchase_endpoint": "/api/v1/intelligence/query",
+      "ready_for_paid_delivery": false
+    },
+    {
+      "id": "country_profile",
+      "capability": "structural_country_profile",
+      "variant": "standard",
+      "price_usdc": "0.03",
+      "amount_atomic": "30000",
+      "status": "CANONICAL_QUALIFICATION_REQUIRED",
+      "draft": {
+        "facts": {
+          "event_types": [
+            "investment",
+            "mineral_supply"
+          ],
+          "actions": [
+            "announce"
+          ],
+          "organizations": [],
+          "numeric_mentions": [
+            {
+              "value": "25",
+              "unit": "million",
+              "scale": "million",
+              "relationship": "UNBOUND_SOURCE_MENTION"
+            }
+          ],
+          "publication_time": "2026-10-27T12:00:00.000Z",
+          "country_iso3": "USA",
+          "extraction_status": "MACHINE_EXTRACTED_UNVERIFIED",
+          "independent_evidence_count": null,
+          "verified_current_value": null,
+          "verified_previous_value": null,
+          "verified_delta": null
+        },
+        "analysis": {
+          "possible_transmission_channels": [
+            "mineral_availability",
+            "processing_capacity",
+            "import_dependency"
+          ],
+          "transmission_is_scenario_not_observed_impact": true,
+          "watch_for": [
+            "original_release_or_correction",
+            "qualified_baseline_comparison",
+            "independent_confirmation"
+          ],
+          "unknowns": [
+            "numeric_subject_and_time_binding",
+            "independent_confirmation",
+            "measured_impact",
+            "commercial_admission"
+          ],
+          "no_forecast_or_risk_score_inferred": true
+        },
+        "context_required": [
+          "critical_minerals",
+          "macro_risk"
+        ]
+      },
+      "canonical_request": {
+        "fulfillment_mode": "published_only",
+        "delivery_tier": "structural_baseline",
+        "product": {
+          "capability": "structural_country_profile",
+          "variant": "standard"
+        },
+        "subjects": [
+          {
+            "type": "country",
+            "country_iso3": "USA"
+          }
+        ],
+        "topics": [
+          "critical_minerals",
+          "macro_risk"
+        ],
+        "detail": "full"
+      },
+      "request_time_fields": [],
+      "purchase_endpoint": "/api/v1/intelligence/query",
+      "ready_for_paid_delivery": false
+    },
+    {
+      "id": "corridor_profile",
+      "capability": "structural_corridor_profile",
+      "variant": "standard",
+      "price_usdc": "0.08",
+      "amount_atomic": "80000",
+      "status": "CANONICAL_QUALIFICATION_REQUIRED",
+      "draft": {
+        "facts": {
+          "event_types": [
+            "investment",
+            "mineral_supply"
+          ],
+          "actions": [
+            "announce"
+          ],
+          "organizations": [],
+          "numeric_mentions": [
+            {
+              "value": "25",
+              "unit": "million",
+              "scale": "million",
+              "relationship": "UNBOUND_SOURCE_MENTION"
+            }
+          ],
+          "publication_time": "2026-10-27T12:00:00.000Z",
+          "country_iso3": "USA",
+          "extraction_status": "MACHINE_EXTRACTED_UNVERIFIED",
+          "independent_evidence_count": null,
+          "verified_current_value": null,
+          "verified_previous_value": null,
+          "verified_delta": null
+        },
+        "analysis": {
+          "possible_transmission_channels": [
+            "mineral_availability",
+            "processing_capacity",
+            "import_dependency"
+          ],
+          "transmission_is_scenario_not_observed_impact": true,
+          "watch_for": [
+            "original_release_or_correction",
+            "qualified_baseline_comparison",
+            "independent_confirmation"
+          ],
+          "unknowns": [
+            "numeric_subject_and_time_binding",
+            "independent_confirmation",
+            "measured_impact",
+            "commercial_admission"
+          ],
+          "no_forecast_or_risk_score_inferred": true
+        },
+        "context_required": [
+          "critical_minerals",
+          "macro_risk"
+        ]
+      },
+      "canonical_request": {
+        "fulfillment_mode": "published_only",
+        "delivery_tier": "structural_baseline",
+        "product": {
+          "capability": "structural_corridor_profile",
+          "variant": "standard"
+        },
+        "subjects": [
+          {
+            "type": "corridor",
+            "origin_country_iso3": "USA",
+            "destination_country_iso3": "CAN"
+          }
+        ],
+        "topics": [
+          "critical_minerals",
+          "macro_risk"
+        ],
+        "detail": "full"
+      },
+      "request_time_fields": [],
+      "purchase_endpoint": "/api/v1/intelligence/query",
+      "ready_for_paid_delivery": false
+    },
+    {
+      "id": "query_focused",
+      "capability": "intelligence_query",
+      "variant": "focused",
+      "price_usdc": "0.05",
+      "amount_atomic": "50000",
+      "status": "CANONICAL_QUALIFICATION_REQUIRED",
+      "draft": {
+        "facts": {
+          "event_types": [
+            "investment",
+            "mineral_supply"
+          ],
+          "actions": [
+            "announce"
+          ],
+          "organizations": [],
+          "numeric_mentions": [
+            {
+              "value": "25",
+              "unit": "million",
+              "scale": "million",
+              "relationship": "UNBOUND_SOURCE_MENTION"
+            }
+          ],
+          "publication_time": "2026-10-27T12:00:00.000Z",
+          "country_iso3": "USA",
+          "extraction_status": "MACHINE_EXTRACTED_UNVERIFIED",
+          "independent_evidence_count": null,
+          "verified_current_value": null,
+          "verified_previous_value": null,
+          "verified_delta": null
+        },
+        "topics": [
+          "critical_minerals",
+          "macro_risk"
+        ]
+      },
+      "canonical_request": {
+        "fulfillment_mode": "published_only",
+        "delivery_tier": "signed_risk_intelligence",
+        "product": {
+          "capability": "intelligence_query",
+          "variant": "focused"
+        },
+        "subjects": [
+          {
+            "type": "country",
+            "country_iso3": "USA"
+          }
+        ],
+        "topics": [
+          "critical_minerals"
+        ],
+        "detail": "compact"
+      },
+      "request_time_fields": [],
+      "purchase_endpoint": "/api/v1/intelligence/query",
+      "ready_for_paid_delivery": false
+    },
+    {
+      "id": "query_standard",
+      "capability": "intelligence_query",
+      "variant": "standard",
+      "price_usdc": "0.10",
+      "amount_atomic": "100000",
+      "status": "CANONICAL_QUALIFICATION_REQUIRED",
+      "draft": {
+        "facts": {
+          "event_types": [
+            "investment",
+            "mineral_supply"
+          ],
+          "actions": [
+            "announce"
+          ],
+          "organizations": [],
+          "numeric_mentions": [
+            {
+              "value": "25",
+              "unit": "million",
+              "scale": "million",
+              "relationship": "UNBOUND_SOURCE_MENTION"
+            }
+          ],
+          "publication_time": "2026-10-27T12:00:00.000Z",
+          "country_iso3": "USA",
+          "extraction_status": "MACHINE_EXTRACTED_UNVERIFIED",
+          "independent_evidence_count": null,
+          "verified_current_value": null,
+          "verified_previous_value": null,
+          "verified_delta": null
+        },
+        "analysis": {
+          "possible_transmission_channels": [
+            "mineral_availability",
+            "processing_capacity",
+            "import_dependency"
+          ],
+          "transmission_is_scenario_not_observed_impact": true,
+          "watch_for": [
+            "original_release_or_correction",
+            "qualified_baseline_comparison",
+            "independent_confirmation"
+          ],
+          "unknowns": [
+            "numeric_subject_and_time_binding",
+            "independent_confirmation",
+            "measured_impact",
+            "commercial_admission"
+          ],
+          "no_forecast_or_risk_score_inferred": true
+        },
+        "topics": [
+          "critical_minerals",
+          "macro_risk"
+        ]
+      },
+      "canonical_request": {
+        "fulfillment_mode": "published_only",
+        "delivery_tier": "signed_risk_intelligence",
+        "product": {
+          "capability": "intelligence_query",
+          "variant": "standard"
+        },
+        "subjects": [
+          {
+            "type": "country",
+            "country_iso3": "USA"
+          }
+        ],
+        "topics": [
+          "critical_minerals",
+          "macro_risk"
+        ],
+        "detail": "standard"
+      },
+      "request_time_fields": [],
+      "purchase_endpoint": "/api/v1/intelligence/query",
+      "ready_for_paid_delivery": false
+    },
+    {
+      "id": "query_complex",
+      "capability": "intelligence_query",
+      "variant": "complex_multi_source",
+      "price_usdc": "0.15",
+      "amount_atomic": "150000",
+      "status": "CANONICAL_QUALIFICATION_REQUIRED",
+      "draft": {
+        "facts": {
+          "event_types": [
+            "investment",
+            "mineral_supply"
+          ],
+          "actions": [
+            "announce"
+          ],
+          "organizations": [],
+          "numeric_mentions": [
+            {
+              "value": "25",
+              "unit": "million",
+              "scale": "million",
+              "relationship": "UNBOUND_SOURCE_MENTION"
+            }
+          ],
+          "publication_time": "2026-10-27T12:00:00.000Z",
+          "country_iso3": "USA",
+          "extraction_status": "MACHINE_EXTRACTED_UNVERIFIED",
+          "independent_evidence_count": null,
+          "verified_current_value": null,
+          "verified_previous_value": null,
+          "verified_delta": null
+        },
+        "analysis": {
+          "possible_transmission_channels": [
+            "mineral_availability",
+            "processing_capacity",
+            "import_dependency"
+          ],
+          "transmission_is_scenario_not_observed_impact": true,
+          "watch_for": [
+            "original_release_or_correction",
+            "qualified_baseline_comparison",
+            "independent_confirmation"
+          ],
+          "unknowns": [
+            "numeric_subject_and_time_binding",
+            "independent_confirmation",
+            "measured_impact",
+            "commercial_admission"
+          ],
+          "no_forecast_or_risk_score_inferred": true
+        },
+        "topics": [
+          "critical_minerals",
+          "macro_risk"
+        ]
+      },
+      "canonical_request": {
+        "fulfillment_mode": "published_only",
+        "delivery_tier": "signed_risk_intelligence",
+        "product": {
+          "capability": "intelligence_query",
+          "variant": "complex_multi_source"
+        },
+        "subjects": [
+          {
+            "type": "country",
+            "country_iso3": "USA"
+          }
+        ],
+        "topics": [
+          "critical_minerals",
+          "macro_risk"
+        ],
+        "detail": "full"
+      },
+      "request_time_fields": [],
+      "purchase_endpoint": "/api/v1/intelligence/query",
+      "ready_for_paid_delivery": false
+    },
+    {
+      "id": "signed_existing",
+      "capability": "signed_risk_object",
+      "variant": "existing_valid_signed",
+      "price_usdc": "0.05",
+      "amount_atomic": "50000",
+      "status": "CANONICAL_QUALIFICATION_REQUIRED",
+      "draft": {
+        "evidence_reference": "news-dc88615ac747f97e",
+        "signature": null,
+        "risk": null
+      },
+      "canonical_request": {
+        "fulfillment_mode": "published_only",
+        "delivery_tier": "signed_risk_intelligence",
+        "product": {
+          "capability": "signed_risk_object",
+          "variant": "existing_valid_signed"
+        },
+        "subjects": [
+          {
+            "type": "country",
+            "country_iso3": "USA"
+          }
+        ],
+        "topics": [
+          "risk_object"
+        ],
+        "detail": "compact"
+      },
+      "request_time_fields": [],
+      "purchase_endpoint": "/api/v1/intelligence/query",
+      "ready_for_paid_delivery": false
+    },
+    {
+      "id": "signed_new",
+      "capability": "signed_risk_object",
+      "variant": "newly_qualified_signed",
+      "price_usdc": "0.10",
+      "amount_atomic": "100000",
+      "status": "RECENT_ISSUANCE_CUTOFF_REQUIRED",
+      "draft": {
+        "evidence_reference": "news-dc88615ac747f97e",
+        "signature": null,
+        "risk": null
+      },
+      "canonical_request": {
+        "fulfillment_mode": "published_only",
+        "delivery_tier": "signed_risk_intelligence",
+        "product": {
+          "capability": "signed_risk_object",
+          "variant": "newly_qualified_signed"
+        },
+        "subjects": [
+          {
+            "type": "country",
+            "country_iso3": "USA"
+          }
+        ],
+        "topics": [
+          "risk_object"
+        ],
+        "detail": "compact"
+      },
+      "request_time_fields": [
+        "product.issued_after"
+      ],
+      "purchase_endpoint": "/api/v1/intelligence/query",
+      "ready_for_paid_delivery": false
+    },
+    {
+      "id": "gate_existing",
+      "capability": "risk_gate_bundle",
+      "variant": "existing_proof_preflight",
+      "price_usdc": "0.10",
+      "amount_atomic": "100000",
+      "status": "CANONICAL_QUALIFICATION_REQUIRED",
+      "draft": {
+        "evidence_reference": "news-dc88615ac747f97e",
+        "policy_evaluation": null,
+        "signed_object_included_in_price": true
+      },
+      "canonical_request": {
+        "fulfillment_mode": "published_only",
+        "delivery_tier": "signed_risk_intelligence",
+        "product": {
+          "capability": "risk_gate_bundle",
+          "variant": "existing_proof_preflight"
+        },
+        "subjects": [
+          {
+            "type": "country",
+            "country_iso3": "USA"
+          }
+        ],
+        "topics": [
+          "risk_gate",
+          "risk_object"
+        ],
+        "risk_gate_context": {
+          "policy_preset": "balanced",
+          "action_type": "exposure_review"
+        },
+        "detail": "compact"
+      },
+      "request_time_fields": [],
+      "purchase_endpoint": "/api/v1/intelligence/query",
+      "ready_for_paid_delivery": false
+    },
+    {
+      "id": "gate_standard",
+      "capability": "risk_gate_bundle",
+      "variant": "standard",
+      "price_usdc": "0.15",
+      "amount_atomic": "150000",
+      "status": "CANONICAL_QUALIFICATION_REQUIRED",
+      "draft": {
+        "evidence_reference": "news-dc88615ac747f97e",
+        "policy_evaluation": null,
+        "signed_object_included_in_price": true
+      },
+      "canonical_request": {
+        "fulfillment_mode": "published_only",
+        "delivery_tier": "signed_risk_intelligence",
+        "product": {
+          "capability": "risk_gate_bundle",
+          "variant": "standard"
+        },
+        "subjects": [
+          {
+            "type": "country",
+            "country_iso3": "USA"
+          }
+        ],
+        "topics": [
+          "risk_gate",
+          "risk_object",
+          "critical_minerals",
+          "macro_risk"
+        ],
+        "risk_gate_context": {
+          "policy_preset": "balanced",
+          "action_type": "exposure_review"
+        },
+        "detail": "standard"
+      },
+      "request_time_fields": [],
+      "purchase_endpoint": "/api/v1/intelligence/query",
+      "ready_for_paid_delivery": false
+    },
+    {
+      "id": "gate_complex",
+      "capability": "risk_gate_bundle",
+      "variant": "complex_multi_source",
+      "price_usdc": "0.25",
+      "amount_atomic": "250000",
+      "status": "CANONICAL_QUALIFICATION_REQUIRED",
+      "draft": {
+        "evidence_reference": "news-dc88615ac747f97e",
+        "policy_evaluation": null,
+        "signed_object_included_in_price": true
+      },
+      "canonical_request": {
+        "fulfillment_mode": "published_only",
+        "delivery_tier": "signed_risk_intelligence",
+        "product": {
+          "capability": "risk_gate_bundle",
+          "variant": "complex_multi_source"
+        },
+        "subjects": [
+          {
+            "type": "country",
+            "country_iso3": "USA"
+          }
+        ],
+        "topics": [
+          "risk_gate",
+          "risk_object",
+          "critical_minerals",
+          "macro_risk"
+        ],
+        "risk_gate_context": {
+          "policy_preset": "balanced",
+          "action_type": "exposure_review"
+        },
+        "detail": "full"
+      },
+      "request_time_fields": [],
+      "purchase_endpoint": "/api/v1/intelligence/query",
+      "ready_for_paid_delivery": false
+    }
+  ],
+  "unique_input_count": 1,
+  "variant_count": 12,
+  "raw_source_material_included": false,
+  "commercial_admission_inferred": false,
+  "execution_authorized": false,
+  "packet_sha256": "86fbc4d353e71eace17ee54549bcb51f68a0f2aaa3deb0111042a71bc87ff6fc"
+}

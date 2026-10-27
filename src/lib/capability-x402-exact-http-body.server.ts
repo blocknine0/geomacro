@@ -65,6 +65,7 @@ export function sendFrozenCapabilityHttpBody(
       "X-Content-Type-Options":"nosniff",
       ...headers,
       "X-Geomacro-Delivery-SHA256":frozen.sha256,
+      "X-Geomacro-Brand":"Geomacro",
     },
   });
 }

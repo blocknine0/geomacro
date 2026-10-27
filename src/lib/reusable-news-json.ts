@@ -48,7 +48,7 @@ type NewsInput={category:string;text:string;source_name?:string;
   license?:string;headline?:string};
 const FIELD_ALLOW=new Set(["category","text","source_name","source_url",
   "published_at","country_iso3","license","headline"]);
-function inputError(){throw Error("NEWS_JSON_INPUT_INVALID")}
+function inputError():never{throw Error("NEWS_JSON_INPUT_INVALID")}
 function validUtc(s:string){
   if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u.test(s))return false;
   const ms=Date.parse(s);

@@ -21,6 +21,9 @@ on:
       - "scripts/ops/publish-all-source-reusable-news-json.ts"
       - "workers/control-plane/src/reusable-source-news.mjs"
       - "workers/control-plane/migrations/0026_reusable_source_news.sql"
+      - "src/lib/news-product-factory.ts"
+      - "workers/control-plane/src/news-product-factory.mjs"
+      - "scripts/tests/news-product-factory.test.mjs"
       - "scripts/lib/prepare-reusable-news-batches.mjs"
       - "scripts/tests/prepare-reusable-news-batches.test.mjs"
       - "scripts/lib/reusable-source-news-d1.test.mjs"
@@ -53,6 +56,7 @@ jobs:
           node --check scripts/lib/registered-reusable-news-source-collector.mjs
           node --check scripts/lib/country-news-mentions-195.mjs
           node --check workers/control-plane/src/reusable-source-news.mjs
+          node --test scripts/tests/news-product-factory.test.mjs
           node --test scripts/lib/registered-reusable-news-source-collector.test.mjs
           node --test scripts/lib/registered-news-15m-cadence.test.mjs
           node --test scripts/lib/country-news-mentions-195.test.mjs
@@ -125,6 +129,8 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-all-source-reusable-json
-          path: artifacts/reusable-source-news/news.json
+          path: |
+            artifacts/reusable-source-news/news.json
+            artifacts/reusable-source-news/products.json
           if-no-files-found: error
           retention-days: 3
