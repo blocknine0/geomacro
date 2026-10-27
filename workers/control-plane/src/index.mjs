@@ -1304,7 +1304,8 @@ export default {
     if(request.method==="GET"&&url.pathname==="/v1/public/derived-structural-72h")
       return publicReadCache(async()=>
         await readPublicNewsR2Snapshot(request,env) ??
-        await publicSharedDerivedNewsFeed(env,url.searchParams));
+        await publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),
+          "source_neutral",false,eligiblePublicFreeD1CacheRequest(request)));
     if(request.method==="GET"&&url.pathname==="/v1/partner/predge/derived-structural-72h")
       return predgeResearchDerivedNewsFeed(request,env);
     if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-d1-readiness"&&!url.search)
@@ -1325,13 +1326,15 @@ export default {
       return publicReadCache(()=>renderDerivedStoriesHtml(env,Date.now(),
         ()=>readPublicFreeD1Cached(pageRequest,async()=>
           await readPublicNewsR2Snapshot(pageRequest,env) ??
-          await readDerivedStories(env,Date.now(),0,0),{
+          await readDerivedStories(env,Date.now(),0,0,
+            eligiblePublicFreeD1CacheRequest(pageRequest)),{
             cache:typeof caches!=="undefined"?caches.default:null,
             waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
           })));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/website-derived-news-bundle"&&!url.search)
-      return publicReadCache(()=>readDerivedStoriesBundle(env));
+      return publicReadCache(()=>readDerivedStoriesBundle(env,Date.now(),
+        eligiblePublicFreeD1CacheRequest(request)));
     if(request.method==='GET'&&url.pathname==='/v1/public/intelligence-publications')
       return publicSignedNews(env,url.searchParams);
     if (request.method === "GET" && ["/v1/public/website-derived-news","/v1/public/website-derived-news-immediate"].includes(url.pathname)) {
@@ -1343,13 +1346,15 @@ export default {
       const q=url.searchParams;
       if(q.size===0)return publicReadCache(async()=>
         await readPublicNewsR2Snapshot(request,env) ??
-        await readDerivedStories(env,Date.now(),0,legacyDelay));
+        await readDerivedStories(env,Date.now(),0,legacyDelay,
+          eligiblePublicFreeD1CacheRequest(request)));
       if(q.size!==1||q.getAll("offset").length!==1||
          !["250","500"].includes(q.get("offset")))
         return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID",chargeable:false},400);
       return publicReadCache(async()=>
         await readPublicNewsR2Snapshot(request,env) ??
-        await readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay));
+        await readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay,
+          eligiblePublicFreeD1CacheRequest(request)));
     }
     if (request.method === "GET" && url.pathname === "/v1/public/source-pulse-30m") {
       return getPublicThreeDomain30MinSourcePulse(env);

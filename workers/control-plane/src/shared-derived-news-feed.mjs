@@ -14,7 +14,7 @@ const headers={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
   "Referrer-Policy":"no-referrer","Access-Control-Allow-Origin":"*"};
 const reply=(data,status=200)=>Response.json(data,{status,headers});
 
-export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(),now=Date.now(),projection="source_neutral",includeMacroContext=false){
+export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(),now=Date.now(),projection="source_neutral",includeMacroContext=false,allowMaterialized=false){
   if(!env?.DB||!Number.isFinite(now))
     return reply({ok:false,error:"SHARED_NEWS_D1_UNAVAILABLE",chargeable:false},503);
   if([...query.keys()].some(k=>k!=="domain") ||
@@ -25,7 +25,7 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
   const signals=[],seen=new Set();
   try{
     // All machine categories share the same bounded one-query journal read.
-    const response=await readDerivedStoriesBundle(env,now);
+    const response=await readDerivedStoriesBundle(env,now,allowMaterialized);
     if(response.status!==200){
       const denied=await response.json().catch(()=>null);
       if(denied?.error==="DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED")

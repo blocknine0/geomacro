@@ -7,6 +7,9 @@ import {MACRO_TOPICS} from "../../../scripts/lib/macro-fx-metals.mjs";
  */
 import {isSafeDerivedNewsReadbackSignal, DERIVED_NEWS_TOPIC_POLICY_REVISION} from "../../../scripts/lib/derived-news-readback-policy.mjs";
 import {classifyDerivedNewsD1Failure} from "../../../scripts/lib/derived-news-d1-failure.mjs";
+import {getMaterializedNewsPage,getMaterializedNewsBundle,
+  invalidateMaterializedNewsStatement,refreshMaterializedNewsPages}
+  from "./materialized-public-news-pages.mjs";
 export {DERIVED_NEWS_TOPIC_POLICY_REVISION};
 // The founder-approved auto-ingest journal is strictly a rolling 72h window.
 // Old signed Finds/B2 archival products are independent (not reclassified here).
@@ -124,8 +127,12 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
         AND website_derived_intelligence.date_precision=excluded.date_precision
         AND website_derived_intelligence.story_json <> excluded.story_json`
     ).bind(s.id,s.category,s.published_at,s.date_precision,JSON.stringify(s),new Date(now).toISOString()));
-    // D1 batch is atomic. An empty batch is still a retention sweep.
-    if(statements.length)await env.DB.batch(statements);
+    // Invalidate public materializations atomically with any producer write.
+    // Revision JOIN ensures an interrupted sweep cannot serve older records.
+    if(statements.length){
+      statements.push(invalidateMaterializedNewsStatement(env));
+      await env.DB.batch(statements);
+    }
     // Avoid two full-journal retention/sort queries for every non-empty
     // publisher chunk. The existing authenticated empty batch is the bounded
     // once-per-run sweep; public reads still enforce the same 72h window.
@@ -146,6 +153,11 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
         "AND json_extract(story_json, '$.topic') NOT IN ('geopolitical publisher candidate','macro publisher candidate','minerals publisher candidate') THEN 1 " +
         "ELSE 0 END DESC, published_at DESC, id DESC LIMIT -1 OFFSET 600)"
       ).run();
+      // One bounded canonical scan per admitted sweep, not per end-user read.
+      // Failure cannot silently turn an otherwise valid ingest into fake
+      // "zero news": callers fall back to actual canonical D1 journal.
+      try{await refreshMaterializedNewsPages(env,now)}
+      catch{console.error("DERIVED_NEWS_MATERIALIZATION_UNAVAILABLE");}
     }
     return json({ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",
       accepted:body.signals.length,persistent_derived_only:true,chargeable:false});
@@ -157,11 +169,16 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
       diagnostic_code:failure_class},503);
   }
 }
-export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelayMinutes=0) {
+export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelayMinutes=0,allowMaterialized=false) {
   if(![0,15].includes(legacyDelayMinutes)||!Number.isSafeInteger(offset)||![0,250,500].includes(offset))
     return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID"},400);
   try {
-    const {results=[]}=await env.DB.prepare(
+    const projected=allowMaterialized?
+      await getMaterializedNewsPage(env,offset,now):null;
+    // Protected readback, stale/missing snapshot and any failed materialization
+    // still issue the original verified source-journal SELECT unchanged.
+    const {results=[]}=projected!==null?{results:projected}:
+      await env.DB.prepare(
       "SELECT story_json, first_seen_at FROM website_derived_intelligence WHERE published_at>=? AND first_seen_at>=? ORDER BY published_at DESC, id DESC LIMIT 251 OFFSET ?"
     ).bind(new Date(now-AUTO_INGEST_RETENTION_MS).toISOString().slice(0,10),
       new Date(now-AUTO_INGEST_RETENTION_MS).toISOString(),offset).all();
@@ -209,11 +226,14 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
 
 
 /** Bounded single-query readback; no private publisher originals. */
-export async function readDerivedStoriesBundle(env,now=Date.now()) {
+export async function readDerivedStoriesBundle(env,now=Date.now(),allowMaterialized=false) {
   if(!Number.isFinite(now))
     return json({ok:false,error:"DERIVED_NEWS_BUNDLE_CLOCK_INVALID",chargeable:false},400);
   try {
-    const {results=[]}=await env.DB.prepare(
+    const projected=allowMaterialized?
+      await getMaterializedNewsBundle(env,now):null;
+    const {results=[]}=projected!==null?{results:projected}:
+      await env.DB.prepare(
       "SELECT story_json,first_seen_at FROM website_derived_intelligence "+
       "WHERE published_at>=? AND first_seen_at>=? "+
       "ORDER BY published_at DESC,id DESC LIMIT 601"
