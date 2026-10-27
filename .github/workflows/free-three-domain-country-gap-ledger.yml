@@ -9,6 +9,8 @@ on:
     branches: [main]
     paths:
       - "scripts/ops/audit-free-three-domain-country-gaps.mjs"
+      - "scripts/ops/attribute-d1-query-insights.mjs"
+      - "scripts/tests/attribute-d1-query-insights.test.mjs"
       - "scripts/lib/country-195-geography-crosswalk.mjs"
       - "src/lib/canonical-country-registry-195.ts"
       - "scripts/tests/free-three-domain-country-gap-audit.test.mjs"
@@ -19,6 +21,8 @@ on:
   pull_request:
     paths:
       - "scripts/ops/audit-free-three-domain-country-gaps.mjs"
+      - "scripts/ops/attribute-d1-query-insights.mjs"
+      - "scripts/tests/attribute-d1-query-insights.test.mjs"
       - "scripts/lib/country-195-geography-crosswalk.mjs"
       - "src/lib/canonical-country-registry-195.ts"
       - "scripts/tests/free-three-domain-country-gap-audit.test.mjs"
@@ -130,6 +134,18 @@ jobs:
             x402_global_coverage_chargeable
           }' artifacts/free-three-domain-gaps/iso3-metadata-gaps.json \
             >> "$GITHUB_STEP_SUMMARY"
+      - name: Attribute expensive D1 SQL without logging SQL or consuming D1 rows
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp)"
+          trap 'rm -f "$tmp"' EXIT
+          if npx -y wrangler@4.136.3 d1 insights geomacro-control-plane --timePeriod=1d --sort-type=sum --sort-by=reads --limit=20 --json > "$tmp" 2>/dev/null; then
+            node scripts/ops/attribute-d1-query-insights.mjs "$tmp"
+          else
+            echo "::warning::D1_PROVIDER_INSIGHTS_UNAVAILABLE_NOT_EXACTLY_ATTRIBUTED"
+          fi
       - name: Retain short-lived ISO3-only metadata receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
