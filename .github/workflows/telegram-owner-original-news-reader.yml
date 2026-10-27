@@ -1,0 +1,27 @@
+name: Telegram owner original-news read-only monitor
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "41 * * * *"
+permissions:
+  contents: read
+jobs:
+  read-only:
+    if: ${{ vars.TELEGRAM_OWNER_NEWS_READ_ENABLED == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      READ_URL: ${{ secrets.GEOMACRO_OWNER_NEWS_READ_URL }}
+      READ_TOKEN: ${{ secrets.GEOMACRO_OWNER_NEWS_READ_TOKEN }}
+    steps:
+      - name: Prove GeoMacro read-only producer connection
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$READ_URL" =~ ^https://[a-zA-Z0-9.-]+/v1/private/owner-news$ ]] || { echo "::error::Main reader URL missing or invalid"; exit 1; }
+          [[ "${#READ_TOKEN}" -ge 32 ]] || { echo "::error::Main reader secret missing"; exit 1; }
+          curl -fsS --max-time 10 --retry 2 -H "Authorization: Bearer $READ_TOKEN" \
+            "$READ_URL" > /tmp/owner-original-news.json
+          jq -e '.schema=="geomacro.private-owner-original-news.v1" and .source=="FIRST_PARTY_OFFICIAL_RELEASES" and .verification_status=="UNVERIFIED" and .commercial_eligible==false and (.items|type=="array" and length<=50)' /tmp/owner-original-news.json >/dev/null
+          count="$(jq -r '.items|length' /tmp/owner-original-news.json)"
+          echo "Main producer READ-ONLY GET schema verified; items observed: $count. No verified-fact claim." >> "$GITHUB_STEP_SUMMARY"
