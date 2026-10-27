@@ -130,21 +130,46 @@ for (const [alias, id] of [
   ["crude oil", "CRUDE_OIL"], ["কাঁচা তেল", "CRUDE_OIL"], ["原油", "CRUDE_OIL"],
 ] as const) add(commodityIndex, alias, id);
 
-function hasToken(question: string, term: string): boolean {
+/**
+ * Only match a complete lexical token for spaced scripts. CJK scripts can
+ * appear without spaces, so the dictionary treats their sequences as tokens.
+ * Country/entity aliases are candidates, not a replacement for an explicitly
+ * validated ISO3 subject in a paid plan.
+ */
+function matchingSpans(question: string, term: string): Array<{ start: number; end: number }> {
+  const spans: Array<{ start: number; end: number }> = [];
   let start = question.indexOf(term);
   const cjk = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(term);
   while (start !== -1) {
     const end = start + term.length;
     if (cjk || (!/[\p{L}\p{N}]/u.test(question[start - 1] ?? "") &&
-      !/[\p{L}\p{N}]/u.test(question[end] ?? ""))) return true;
+      !/[\p{L}\p{N}]/u.test(question[end] ?? ""))) spans.push({ start, end });
     start = question.indexOf(term, start + 1);
   }
-  return false;
+  return spans;
 }
+
+function hasToken(question: string, term: string): boolean {
+  return matchingSpans(question, term).length > 0;
+}
+
 function matches(question: string, index: AliasIndex): string[] {
-  const ids = new Set<string>();
+  const candidates: Array<{ id: string; start: number; end: number }> = [];
   for (const [alias, id] of index) {
-    if (id && hasToken(question, alias)) ids.add(id);
+    // A shared alias maps to null and must never select a random entity.
+    if (!id) continue;
+    for (const span of matchingSpans(question, alias)) candidates.push({ ...span, id });
+  }
+  // Match longest-first so "Guinea-Bissau" cannot also qualify "Guinea",
+  // nor "South Sudan" separately qualify "Sudan".
+  candidates.sort((a, b) =>
+    (b.end - b.start) - (a.end - a.start) || a.start - b.start || a.id.localeCompare(b.id));
+  const accepted: Array<{ start: number; end: number }> = [];
+  const ids = new Set<string>();
+  for (const candidate of candidates) {
+    if (accepted.some(span => candidate.start < span.end && candidate.end > span.start)) continue;
+    accepted.push(candidate);
+    ids.add(candidate.id);
   }
   return [...ids].sort();
 }
