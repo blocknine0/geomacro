@@ -102,7 +102,7 @@ export function AskWorkspace() {
   const ask = useCallback(
     async (raw: string) => {
       const question = raw.trim();
-      if (question.length < 4 || question.length > MAX_LEN || pending) return;
+      if (question.length < 2 || question.length > MAX_LEN || pending) return;
 
       const controller = new AbortController();
       requestRef.current = controller;
@@ -184,7 +184,7 @@ export function AskWorkspace() {
     }
   };
 
-  const canSubmit = query.trim().length >= 4 && !loading;
+  const canSubmit = query.trim().length >= 2 && !loading;
 
   return (
     <div className="relative mx-auto flex h-[calc(100dvh-5.5rem)] min-h-[30rem] w-full max-w-[1600px] overflow-hidden border-x border-border/50 bg-background">

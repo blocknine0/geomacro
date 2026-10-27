@@ -143,7 +143,7 @@ export default defineEventHandler(async (event) => {
 
     if (error instanceof Error && error.name === "ZodError") {
       setResponseStatus(event, 400);
-      return errorPayload("ASK_INVALID_INPUT", "Enter a valid risk question between 4 and 300 characters.");
+      return errorPayload("ASK_INVALID_INPUT", "Enter a valid risk question between 2 and 300 characters.");
     }
 
     console.error(

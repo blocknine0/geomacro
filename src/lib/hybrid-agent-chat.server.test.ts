@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("./ask-geomacro-core.server", () => ({
   ASK_GEOMACRO_MAX_LENGTH: 300,
   parseAskGeomacroInput: vi.fn(({ question }: { question: string }) => {
-    if (question.length < 4 || question.length > 300) throw new Error("Invalid question");
+    if (question.length < 2 || question.length > 300) throw new Error("Invalid question");
     return { question };
   }),
   executeAskGeomacro: vi.fn(async () => ({ status: "verified" })),

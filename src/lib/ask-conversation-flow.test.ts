@@ -21,6 +21,11 @@ describe("real public conversation core (no provider or funds)",()=>{
   expect(minerals.answer.summary).not.toContain("inflation");
   await expect(executeHybridChatTurn({question:"Explain more"},"flow-empty")).rejects.toThrow("AMBIGUOUS_FOLLOW_UP");
  });
+ it("accepts short greetings through canonical validation",async()=>{
+  const result=await executeHybridChatTurn({question:"Hi"},"flow-greeting");
+  expect(result.answer.answer_kind).toBe("guidance");
+  expect(result.answer.summary).toContain("I'm Geomacro");
+ });
  it("declines unrelated chat through the same canonical core",async()=>{
   const answer=await executeAskGeomacro({question:"Latest football news in India?"},"flow-sports");
   expect(answer.answer_kind).toBe("guidance");

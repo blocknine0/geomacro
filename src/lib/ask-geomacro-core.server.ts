@@ -16,7 +16,7 @@ const AskInput = z.object({
   question: z
     .string()
     .trim()
-    .min(4)
+    .min(2)
     .max(ASK_GEOMACRO_MAX_LENGTH)
     .refine((value) => !INJECTION_RE.test(value), { message: "Invalid input" }),
 });
