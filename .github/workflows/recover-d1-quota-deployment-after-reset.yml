@@ -67,6 +67,8 @@ jobs:
           # Exact-SHA comparison alone would prevent any post-reset recovery.
           # Fail closed unless the *failed main revision* is an ancestor of
           # the current main commit. Never redeploy a fork or divergent tree.
+          # Critically, refuse any intervening Worker deploy, Worker source or
+          # PREDGE path changes: locked PREDGE deployment behavior stays put.
           if ! [[ "$failed_sha" =~ ^[a-f0-9]{40}$ ]] ||
              ! [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]; then
             echo "::warning::D1_QUOTA_RECOVERY_SHA_UNVERIFIED"
@@ -88,7 +90,12 @@ jobs:
               (.behind_by == 0) and
               (.ahead_by | type == "number" and . > 0) and
               (.base_commit.sha == $failed) and
-              (.merge_base_commit.sha == $failed)
+              (.merge_base_commit.sha == $failed) and
+              (.files | type == "array" and length < 300) and
+              ([.files[].filename | select(test(
+                "(^workers/control-plane/|^\\.github/workflows/deploy-d1-control-plane\\.yml$|predge)";
+                "i"
+              ))] | length == 0)
             ' "$compare_file" >/dev/null; then
               echo "::warning::D1_QUOTA_RECOVERY_DIVERGENT_MAIN_HOLD"
               echo "retry=false" >> "$GITHUB_OUTPUT"
