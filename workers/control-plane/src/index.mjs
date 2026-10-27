@@ -12,6 +12,7 @@ import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mj
 import { readDerivedStories, readDerivedStoriesBundle, publishDerivedStories, renderDerivedStoriesHtml, DERIVED_NEWS_TOPIC_POLICY_REVISION } from "./website-derived-intelligence.mjs";
 import {refreshMaterializedNewsPages} from "./materialized-public-news-pages.mjs";
 import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
+import {projectPublicMachineDomainResponse} from "./public-machine-domain-reuse.mjs";
 import {readNewsIntakePolicy,storeNewsIntakePolicy} from "./news-intake-policy.mjs";
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
@@ -1278,7 +1279,7 @@ export default {
   },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    const publicReadCache=(run)=>readPublicFreeD1Cached(request,run,{
+    const publicReadCache=(run,cacheRequest=request)=>readPublicFreeD1Cached(cacheRequest,run,{
       cache:typeof caches!=="undefined"?caches.default:null,
       waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
     });
@@ -1305,10 +1306,26 @@ export default {
     if(request.method==="GET"&&url.pathname==="/v1/public/fastlane-intelligence")
       return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),"attributed_research",true));
     if(request.method==="GET"&&url.pathname==="/v1/public/derived-structural-72h")
-      return publicReadCache(async()=>
-        await readPublicNewsR2Snapshot(request,env) ??
-        await publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),
-          "source_neutral",false,eligiblePublicFreeD1CacheRequest(request)));
+      return publicReadCache(async()=>{
+        // The 3 public category variants project from one source-neutral
+        // full feed (one bounded D1 scan / public POP cache key), not three
+        // independent 601-row journal scans. Authenticated/no-cache and
+        // invalid query requests always retain their canonical origin path.
+        const domain=url.searchParams.get("domain");
+        if(domain!==null&&eligiblePublicFreeD1CacheRequest(request)){
+          const baseUrl=new URL(request.url);
+          baseUrl.search="";
+          const baseRequest=new Request(baseUrl.toString(),{method:"GET"});
+          const source=await publicReadCache(async()=>
+            await readPublicNewsR2Snapshot(baseRequest,env) ??
+            await publicSharedDerivedNewsFeed(env,new URLSearchParams(),Date.now(),
+              "source_neutral",false,true),baseRequest);
+          return projectPublicMachineDomainResponse(source,domain);
+        }
+        return await readPublicNewsR2Snapshot(request,env) ??
+          await publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),
+            "source_neutral",false,eligiblePublicFreeD1CacheRequest(request));
+      });
     if(request.method==="GET"&&url.pathname==="/v1/partner/predge/derived-structural-72h")
       return predgeResearchDerivedNewsFeed(request,env);
     if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-d1-readiness"&&!url.search)
