@@ -71,6 +71,20 @@ test("UTC paced watermarks bound early-day spikes without paying or minting new 
  assert.ok(d1LanePacedCeiling("maintenance",morning).rows_read<
    d1LanePacedCeiling("research",morning).rows_read);
 });
+
+test("disposable read-saver continues only with 250k/5k account safety reserve",()=>{
+ const q=planD1BundledWork(quota(4_345_068,23_531),{now});
+ assert.equal(q.critical,false);
+ assert.equal(q.source_intake,false);
+ assert.equal(q.snapshot_refresh,true);
+ assert.equal(q.snapshot_refresh_does_not_admit_ingestion,true);
+ assert.equal(q.snapshot_refresh_max_source_rows_per_run,601);
+ for(const [r,w] of [[4_750_001,23_531],[4_700_000,95_001],
+                     [5_000_000,0],[1_000,99_999]]){
+  assert.equal(planD1BundledWork(quota(r,w),{now}).snapshot_refresh,false);
+ }
+ assert.equal(planD1BundledWork(null,{now}).snapshot_refresh,false);
+});
 test("provider error or denied GraphQL is safe HOLD with no writes",async()=>{
  const x=await checkD1BundledWork({
    env:{CLOUDFLARE_API_TOKEN:"x".repeat(24),CLOUDFLARE_ACCOUNT_ID:"a".repeat(32)},
