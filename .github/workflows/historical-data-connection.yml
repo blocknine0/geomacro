@@ -1,38 +1,66 @@
-name: Historical Data Connection
+name: Historical Data Connection (Independent Supabase)
 
+# Restores only a quota-bounded live serving canary. The historical project is
+# distinct from the main app's frozen/standby Supabase. NEVER enable raw jobs.
 on:
-  workflow_dispatch: {}
-  # Supabase-backed historical connection probe permanently frozen.
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/historical-main-readback.mjs"
+      - "scripts/ops/historical-main-readback.test.mjs"
+      - ".github/workflows/historical-data-connection.yml"
+  pull_request:
+    paths:
+      - "scripts/ops/historical-main-readback.mjs"
+      - "scripts/ops/historical-main-readback.test.mjs"
+      - ".github/workflows/historical-data-connection.yml"
+  schedule:
+    - cron: "17 5 * * 2"
+  workflow_dispatch:
+    inputs:
+      probe_now:
+        description: "Run three bounded historical Supabase reads"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: geomacro-historical-data-connection
-  cancel-in-progress: true
+  group: geomacro-independent-historical-connection-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  probe:
-    # No scheduled historical Supabase reads or keepalive.
-    if: ${{ false }}
+  contract:
+    name: Offline historical separation tests
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify isolated bounded readback
+        run: node --test scripts/ops/historical-main-readback.test.mjs
+
+  probe:
+    name: Read only the separate historical Supabase (3 GET max)
+    needs: contract
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.probe_now == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
     environment: production
     env:
       HISTORICAL_SUPABASE_URL: https://nqvpcbnnvjsrlvyxxevk.supabase.co
       HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}
     steps:
-      - name: Checkout canonical source
+      - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Probe governed historical interfaces
-        run: node global-intelligence/scripts/probe-historical-data.mjs | tee /tmp/historical-probe.json
-      - name: Require all historical domains connected
-        run: |
-          set -euo pipefail
-          jq -e '
-            .geopolitics.status == "PASS" and
-            .macro.status == "PASS" and
-            .rare_earths.status == "PASS"
-          ' /tmp/historical-probe.json >/dev/null
+      - name: Three-domain independent historical Supabase readback
+        run: node scripts/ops/historical-main-readback.mjs

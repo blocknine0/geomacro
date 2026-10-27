@@ -20,9 +20,13 @@ describe("historical data runtime adapter", () => {
     expect(adapter).not.toContain("VITE_HISTORICAL_");
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}");
-    expect(workflow).toContain('.geopolitics.status == "PASS"');
-    expect(workflow).toContain('.macro.status == "PASS"');
-    expect(workflow).toContain('.rare_earths.status == "PASS"');
+    const canary = read("scripts/ops/historical-main-readback.mjs");
+    expect(canary).toContain('"geopolitics", "commercial_structural_country_profiles"');
+    expect(canary).toContain('"macroeconomics", "commercial_historical_macro_observations"');
+    expect(canary).toContain('"critical_minerals", "rare_earth_canonical_observations"');
+    expect(canary).toContain('row.status === "PRESENT"');
+    expect(canary).toContain('redirect: "error"');
+    expect(canary).not.toContain("SUPABASE_DB_URL");
   });
 
   it("keeps rare-earth source-level redistribution behind an explicit rights gate", () => {

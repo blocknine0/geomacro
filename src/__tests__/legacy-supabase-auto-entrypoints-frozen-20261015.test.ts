@@ -6,7 +6,6 @@ import { readFileSync } from "node:fs";
 // The canonical source discovery and B2/D1 product workflows remain separate.
 const frozen = [
   ["source-evidence-graph-auto-promotion.yml", "production-source-alignment"],
-  ["historical-data-connection.yml", "probe"],
   ["usgs-earthquake-hazards-sync.yml", "sync"],
   ["risk-indices-realtime-direct-postgres.yml", "publish-three-risk-indices"],
 ] as const;
@@ -24,6 +23,27 @@ describe("frozen legacy Supabase automation", () => {
       expect(guard).toContain("    if: ${{ false }}");
     });
   }
+
+  it("permits only the pinned three-GET historical-only canary, never the old Postgres writer", () => {
+    const workflow = readFileSync(".github/workflows/historical-data-connection.yml", "utf8");
+    const probe = readFileSync("scripts/ops/historical-main-readback.mjs", "utf8");
+    expect(workflow).toContain("Independent Supabase");
+    expect(workflow).toContain("    needs: contract");
+    expect(workflow).toContain("HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}");
+    expect(workflow).toContain("HISTORICAL_SUPABASE_URL: https://nqvpcbnnvjsrlvyxxevk.supabase.co");
+    expect(workflow).not.toContain("SUPABASE_DB_URL");
+    expect(workflow).not.toContain("SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}");
+    expect(workflow).not.toContain("global-intelligence/scripts/probe-historical-data.mjs");
+    expect(probe).toContain('main_supabase_queries: 0');
+    expect(probe).toContain('main_d1_queries: 0');
+    expect(probe).toContain('b2_operations: 0');
+    expect(probe).toContain('writes: 0');
+    expect(probe).toContain('raw_records_emitted: 0');
+    expect(probe).toContain('redirect: "error"');
+    expect(probe).toContain('target.searchParams.set("limit", "1")');
+    expect(probe).toContain('target.searchParams.set(column, filter)');
+    expect(probe).not.toContain("POST");
+  });
 
   it("preserves verification of USGS and independent Telegram source transport", () => {
     const usgs = readFileSync(".github/workflows/usgs-earthquake-hazards-sync.yml", "utf8");
