@@ -221,8 +221,10 @@ export async function readDerivedStoriesBundle(env,now=Date.now()) {
       new Date(now-AUTO_INGEST_RETENTION_MS).toISOString().slice(0,10),
       new Date(now-AUTO_INGEST_RETENTION_MS).toISOString()
     ).all();
-    if(!Array.isArray(results)||results.length>600)
-      throw Error("DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED");
+    if(!Array.isArray(results))throw Error("DERIVED_NEWS_BUNDLE_ROWS_INVALID");
+    if(results.length>600)return json({ok:false,
+      error:"DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED",chargeable:false,
+      signals:[],retention_hours:72,actual_rows_at_least:601},503);
     const signals=[],firstIngest=[];
     for(const row of results){
       try {
