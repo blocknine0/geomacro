@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {buildNativeCountryRepairWorklist} from "../ops/build-native-country-repair-worklist.mjs";
 const cats=["geopolitics","macro","rare_earth"];
-const countries=Array.from({length:195},(_,i)=>"X"+String(i).padStart(2,"0"));
+const countries=Array.from({length:195},(_,i)=> String.fromCharCode(65+Math.floor(i/26),65+i%26,65));
 function cell(country_iso3,category,i){
  const local={registered:i%4===0?0:1,healthy:i%4===1?0:i%4===0?0:1};
  const regional={healthy:i%4===0?0:1};
