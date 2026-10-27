@@ -77,7 +77,15 @@ describe("website lock governance", () => {
     const unscoredWordHideApproval = config.approved_intelligence_unscored_word_hide_20261027;
     const fastlaneApproval=config.approved_macro_minerals_fastlanes_20261027;
     expect(unscoredWordHideApproval.approved_ui_commit).toBe(fastlaneApproval.previous_baseline_sha);
-    expect(fastlaneApproval.approved_ui_commit).toBe(config.baseline_sha);
+    const factoryApproval=config.approved_news_factory_pricing_setup_20261027;
+    expect(fastlaneApproval.approved_ui_commit).toBe(factoryApproval.previous_baseline_sha);
+    expect(factoryApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(factoryApproval.approved_ui_commit).toBe("7678071ff8c68f238968943556295545491f98b6");
+    expect(factoryApproval.scope).toEqual(["src/components/structured-product-setup.tsx","src/routes/pricing.tsx"]);
+    expect(factoryApproval.global_risk_final_lock_unmodified).toBe(true);
+    expect(factoryApproval.predge_unmodified).toBe(true);
+    expect(factoryApproval.published_source_sha_unchanged).toBe(true);
+    expect(factoryApproval.pending_exact_sha_publish_acceptance).toBe(true);
     expect(fastlaneApproval.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx","src/components/intelligence/macro-fastlane-panel.tsx"]);
     expect(fastlaneApproval.payment_authorized).toBe(false);
     expect(fastlaneApproval.pending_exact_sha_live_deployment_acceptance).toBe(true);
