@@ -80,7 +80,7 @@ function nativeMeasurementPeriod(row: StructuralObservation): MeasurementPeriod 
   // These are source-native reference period declarations from existing
   // verified release adapters; never infer an annual or quarterly period
   // merely from the year/month of an arbitrary timestamp.
-  if (provenance?.date_precision === "YEAR" && Number.isInteger(provenance.reference_year)) {
+  if (provenance?.date_precision === "YEAR" && typeof provenance.reference_year === "number" && Number.isInteger(provenance.reference_year)) {
     const year = provenance.reference_year as number;
     if (year >= 1900 && year <= 2200 && observed === year + "-12-31T23:59:59.000Z")
       return explicitPeriod(String(year));
