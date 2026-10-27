@@ -52,6 +52,11 @@ test("post-reset main deployment may advance after old failed SHA, but only veri
  assert.match(recovery,/\.behind_by == 0/);
  assert.match(recovery,/\.base_commit\.sha == \$failed/);
  assert.match(recovery,/\.merge_base_commit\.sha == \$failed/);
+ assert.match(recovery,/\.files \| type == "array" and length < 300/);
+ assert.match(recovery,/\^workers\/control-plane\//);
+ assert.match(recovery,/predge/);
+ assert.match(recovery,/deploy-d1-control-plane/);
+
  assert.match(recovery,/D1_QUOTA_RECOVERY_ANCESTRY_UNAVAILABLE/);
  assert.match(recovery,/D1_QUOTA_RECOVERY_DIVERGENT_MAIN_HOLD/);
  assert.match(recovery,/D1_QUOTA_RECOVERY_FAILED_COMMIT_IS_MAIN_ANCESTOR/);
