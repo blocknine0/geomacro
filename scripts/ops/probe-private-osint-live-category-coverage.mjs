@@ -8,7 +8,7 @@
 import {createHash} from "node:crypto";
 import {writeFileSync} from "node:fs";
 import {
- privateOsintCategoryLiveCoverage,
+ privateOsintGlobalSources,privateOsintCategoryLiveCoverage,
  privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,
  privateOsintCorridorSourceCoverage,
 } from "../lib/private-osint-global-sources.mjs";
