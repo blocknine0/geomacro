@@ -36,10 +36,10 @@ describe("multilingual no-funds query interpreter", () => {
   });
 
   it("infers directed Bengali corridors without confusing them with country comparisons", () => {
-    const result = interpret({question:"ভারত থেকে বাংলাদেশে লিথিয়াম করিডোর প্রোফাইল"});
+    const result = interpret({question:"ভারত থেকে বাংলাদেশে লিথিয়াম ও মুদ্রাস্ফীতির করিডোর প্রোফাইল"});
     expect(result.subjects).toEqual([{type:"corridor",origin_country_iso3:"IND",destination_country_iso3:"BGD"}]);
     expect(result.selected_product).toEqual({capability:"structural_corridor_profile",variant:"standard"});
-    // Only one actual dimension is present; a paid profile is NOT allowed.
+    expect(result.indicative_catalog_price.amount_usdc).toBe("0.08");
   });
 
   it("routes an English comparison to complex intelligence without swapping entities", () => {
