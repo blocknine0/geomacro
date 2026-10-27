@@ -7,6 +7,9 @@ import {MACRO_TOPICS} from "../../../scripts/lib/macro-fx-metals.mjs";
  */
 import {isSafeDerivedNewsReadbackSignal, DERIVED_NEWS_TOPIC_POLICY_REVISION} from "../../../scripts/lib/derived-news-readback-policy.mjs";
 import {classifyDerivedNewsD1Failure} from "../../../scripts/lib/derived-news-d1-failure.mjs";
+import {getMaterializedNewsPage,getMaterializedNewsBundle,
+  refreshMaterializedNewsPages}
+  from "./materialized-public-news-pages.mjs";
 export {DERIVED_NEWS_TOPIC_POLICY_REVISION};
 // The founder-approved auto-ingest journal is strictly a rolling 72h window.
 // Old signed Finds/B2 archival products are independent (not reclassified here).
@@ -124,7 +127,9 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
         AND website_derived_intelligence.date_precision=excluded.date_precision
         AND website_derived_intelligence.story_json <> excluded.story_json`
     ).bind(s.id,s.category,s.published_at,s.date_precision,JSON.stringify(s),new Date(now).toISOString()));
-    // D1 batch is atomic. An empty batch is still a retention sweep.
+    // D1 migration 0033 automatically bumps data_revision on any canonical
+    // INSERT/UPDATE/DELETE (transactionally in the original 50-write batch).
+    // Trigger fencing avoids a dangerous 51st statement in a full batch.
     if(statements.length)await env.DB.batch(statements);
     // Avoid two full-journal retention/sort queries for every non-empty
     // publisher chunk. The existing authenticated empty batch is the bounded
@@ -146,6 +151,11 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
         "AND json_extract(story_json, '$.topic') NOT IN ('geopolitical publisher candidate','macro publisher candidate','minerals publisher candidate') THEN 1 " +
         "ELSE 0 END DESC, published_at DESC, id DESC LIMIT -1 OFFSET 600)"
       ).run();
+      // One bounded canonical scan per admitted sweep, not per end-user read.
+      // Failure cannot silently turn an otherwise valid ingest into fake
+      // "zero news": callers fall back to actual canonical D1 journal.
+      try{await refreshMaterializedNewsPages(env,now)}
+      catch{console.error("DERIVED_NEWS_MATERIALIZATION_UNAVAILABLE");}
     }
     return json({ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",
       accepted:body.signals.length,persistent_derived_only:true,chargeable:false});
@@ -157,11 +167,16 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
       diagnostic_code:failure_class},503);
   }
 }
-export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelayMinutes=0) {
+export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelayMinutes=0,allowMaterialized=false) {
   if(![0,15].includes(legacyDelayMinutes)||!Number.isSafeInteger(offset)||![0,250,500].includes(offset))
     return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID"},400);
   try {
-    const {results=[]}=await env.DB.prepare(
+    const projected=allowMaterialized?
+      await getMaterializedNewsPage(env,offset,now):null;
+    // Protected readback, stale/missing snapshot and any failed materialization
+    // still issue the original verified source-journal SELECT unchanged.
+    const {results=[]}=projected!==null?{results:projected}:
+      await env.DB.prepare(
       "SELECT story_json, first_seen_at FROM website_derived_intelligence WHERE published_at>=? AND first_seen_at>=? ORDER BY published_at DESC, id DESC LIMIT 251 OFFSET ?"
     ).bind(new Date(now-AUTO_INGEST_RETENTION_MS).toISOString().slice(0,10),
       new Date(now-AUTO_INGEST_RETENTION_MS).toISOString(),offset).all();
@@ -188,7 +203,7 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
         }
       } catch { /* reject malformed row, never leak SQL metadata */ }
     }
-    return json({ok:true,schema:"geomacro.website-derived-news-feed.v1",
+    const output=json({ok:true,schema:"geomacro.website-derived-news-feed.v1",
       checked_at:new Date(now).toISOString(),
       original_release_delay_minutes:legacyDelayMinutes,
       retention_days:3,retention_hours:72,
@@ -198,6 +213,8 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
       next_offset:results.length>250&&offset<500?offset+250:null,
       ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
       first_ingest:firstIngest,signals},200,false);
+    if(projected!==null)output.headers.set("X-GeoMacro-Public-Offload","d1-materialized");
+    return output;
   } catch(error) {
     const failure_class=classifyDerivedNewsD1Failure(error);
     console.error(JSON.stringify({schema:"geomacro.derived-news-d1-failure.v1",
@@ -209,11 +226,14 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
 
 
 /** Bounded single-query readback; no private publisher originals. */
-export async function readDerivedStoriesBundle(env,now=Date.now()) {
+export async function readDerivedStoriesBundle(env,now=Date.now(),allowMaterialized=false) {
   if(!Number.isFinite(now))
     return json({ok:false,error:"DERIVED_NEWS_BUNDLE_CLOCK_INVALID",chargeable:false},400);
   try {
-    const {results=[]}=await env.DB.prepare(
+    const projected=allowMaterialized?
+      await getMaterializedNewsBundle(env,now):null;
+    const {results=[]}=projected!==null?{results:projected}:
+      await env.DB.prepare(
       "SELECT story_json,first_seen_at FROM website_derived_intelligence "+
       "WHERE published_at>=? AND first_seen_at>=? "+
       "ORDER BY published_at DESC,id DESC LIMIT 601"
@@ -240,7 +260,7 @@ export async function readDerivedStoriesBundle(env,now=Date.now()) {
         }
       }catch{/* Fail closed per row without exposing persisted prose or metadata. */}
     }
-    return json({ok:true,schema:"geomacro.website-derived-news-bundle.v1",
+    const output=json({ok:true,schema:"geomacro.website-derived-news-bundle.v1",
       checked_at:new Date(now).toISOString(),
       original_release_delay_minutes:0,retention_days:3,retention_hours:72,
       delivery_scope:"free_website_only",complete:true,
@@ -248,6 +268,8 @@ export async function readDerivedStoriesBundle(env,now=Date.now()) {
       ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
       first_ingest:firstIngest,signals,
       scored:false,chargeable:false,supabase_dependency:false},200,false);
+    if(projected!==null)output.headers.set("X-GeoMacro-Public-Offload","d1-materialized");
+    return output;
   } catch(error) {
     const failure_class=classifyDerivedNewsD1Failure(error);
     console.error(JSON.stringify({schema:"geomacro.derived-news-d1-failure.v1",

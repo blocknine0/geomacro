@@ -97,7 +97,8 @@ describe("Predge shared D1 feed remains separate from Geomacro static public arc
    const index=readFileSync("workers/control-plane/src/index.mjs","utf8");
    const website=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
    expect(index).toContain("/v1/public/derived-structural-72h");
-   expect(index).toContain("publicSharedDerivedNewsFeed(env,url.searchParams)");
+   expect(index).toContain('publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),');
+   expect(index).toContain('eligiblePublicFreeD1CacheRequest(request)');
    expect(website).toContain("fetchPermanentDerivedNews()");
    expect(website).toContain("fetchDirectDerivedNews()");
    expect(website).not.toContain("fetchAllDerivedNews()");
