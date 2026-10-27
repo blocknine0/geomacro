@@ -30,7 +30,26 @@ HISTORICAL_SUPABASE_URL=<dedicated-historical-project-url>
 HISTORICAL_SUPABASE_SERVICE_ROLE_KEY=<dedicated-server-secret>
 ```
 
-Do not populate either historical credential from main `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY`. Historical live database reads and the presence of data still require explicit production readback validation.
+Do not populate either historical credential from main `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY`.
+
+### Independent historical-to-main live connection proof
+
+`.github/workflows/historical-data-connection.yml` now runs a three-domain,
+one-row-per-view **server-side historical-only readback**, weekly and upon
+changes to the probe contract. Its URL is pinned to the historical Supabase,
+and its credentials come only from `HISTORICAL_SUPABASE_SERVICE_ROLE_KEY`.
+It uses exactly three bounded REST GETs, no sort/full scans, no database
+writes, no main Supabase queries, no D1 queries and no B2 operations.
+The geopolitical country-profile probe is scoped to `country_iso3=eq.USA`
+to prevent a global aggregate from hiding an expensive query behind LIMIT 1.
+PR tests do not access live credentials; the first main push readback reports
+real historical production access separately.
+
+This **proves serving-interface reachability only**, not whole-world coverage,
+full historical backfills, fresh snapshots, restored high-volume writers or
+production website activation. The main SSR historical direct read remains
+`GEOMACRO_HISTORICAL_SUPABASE_READ_MODE=off` unless explicitly opted into
+`fallback`; neither probe changes that setting or the main Supabase standby.
 
 ## Governed database interfaces
 
