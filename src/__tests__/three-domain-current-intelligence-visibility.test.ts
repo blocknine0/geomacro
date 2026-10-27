@@ -86,9 +86,9 @@ describe("#1827 website Intelligence freshness visibility without invented three
     const source = readFileSync("src/components/home/live-intelligence-showcase.tsx","utf8");
     expect(source).toContain("selectHomepageFreeFind(visibleCards)");
     expect(source).toContain("homeFindsPulse(visibleCards)");
-    expect(source).toContain("GEOMACRO / THREE INTELLIGENCE DOMAINS");
-    expect(source).toContain("No eligible concrete news");
-    expect(source).toContain("domainCards.map(domain=>");
+    expect(source).toContain("Browse by topic");
+    expect(source).not.toContain("No eligible concrete news");
+    expect(source).toContain("relatedDomains.map(domain=>");
     expect(source).toContain("isConcreteHomeFind");
     expect(source).not.toContain("RiskBadge");
   });

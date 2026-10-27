@@ -18,7 +18,7 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(card).not.toContain("categoryHighlights");
     expect(card).not.toContain("<AccessOptions />");
     expect(card).not.toContain("Release observed · specific details pending");
-    expect(card).toContain("domainCards.map(domain=>");
+    expect(card).toContain("relatedDomains.map(domain=>");
     expect(card).toContain("isConcreteHomeFind");
   });
 
@@ -28,7 +28,7 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(card).toContain("Original release within 24h");
     expect(card).toContain("Earlier original release · not current");
     expect(card).not.toContain("independent same-event review not established");
-    expect(card).toContain("No eligible concrete news");
+    expect(card).not.toContain("No eligible concrete news");
     expect(card).not.toContain("useIntelligence(");
     expect(card).not.toContain("RiskBadge");
     expect(card).not.toContain("event.severity");

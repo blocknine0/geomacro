@@ -70,6 +70,14 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
   }));
   const card=winner?.card;
   const display=card?publicHomeFindCopy(card):null;
+  // Only genuine, distinct findings become story tiles. Quiet categories
+  // stay navigable without manufacturing a story or repeating empty cards.
+  const relatedDomains=domainCards.filter(domain=>domain.winner && domain.winner.card.id!==card?.id);
+  const browseDomains=[
+    {key:"geopolitics",name:"Geopolitics"},
+    {key:"macro",name:"Macro / FX"},
+    {key:"rare_earth",name:"Critical Minerals"},
+  ] as const;
 
   return (
     <div className="relative mx-auto w-full min-w-0 max-w-xl lg:mx-0 lg:max-w-none">
@@ -105,20 +113,21 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
             </Link>
           </div>
         ):(
-          <div className="mt-5 rounded-xl border border-border/50 bg-background/25 p-4">
+          <div role="status" aria-live="polite" className="mt-5 rounded-xl border border-border/50 bg-background/25 p-4">
             <p className="text-sm font-medium">
-              {!checked?"Checking current official releases…":unavailable?
-                "Free intelligence feed temporarily unavailable":"No eligible public release in the current journal"}
+              {!checked?"Loading Geomacro findings…":unavailable?
+                "Highlights are temporarily unavailable.":"No highlights to show right now."}
             </p>
-            <Link to="/intelligence" className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">Explore the intelligence desk for available country and topic coverage.</p>
+            <Link to="/intelligence" className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">
               Open free Intelligence <ArrowRight className="h-3 w-3" aria-hidden="true" />
             </Link>
           </div>
         )}
         <div className="mt-5 border-t border-border/55 pt-4" aria-label="Three domain Intelligence showcase">
-          <p className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">GEOMACRO / THREE INTELLIGENCE DOMAINS</p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {domainCards.map(domain=>{
+          <p className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Browse by topic</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {relatedDomains.map(domain=>{
               const story=domain.winner?.card;
               const copy=story?publicHomeFindCopy(story):null;
               const look=domain.key==="geopolitics"
@@ -133,7 +142,7 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
                     <p className={"flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wide "+look.label}>
                       <look.Icon className="h-3.5 w-3.5" aria-hidden />{look.name}
                     </p>
-                    <p className="text-xs font-semibold leading-5 text-foreground">{copy?.headline??"No eligible concrete news"}</p>
+                    <p className="text-xs font-semibold leading-5 text-foreground">{copy?.headline}</p>
                     {copy?<p className="text-[11px] leading-5 text-muted-foreground">{copy.what_changed}</p>:null}
                     {story?<time dateTime={story.published_at} className="block text-[10px] text-muted-foreground">{eventDate(story.published_at)} UTC</time>:null}
                   </div>
@@ -141,6 +150,14 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
               );
             })}
           </div>
+          <nav aria-label="Browse intelligence topics" className="mt-3 flex flex-wrap gap-2">
+            {browseDomains.map(({key,name})=>(
+              <Link key={key} to="/intelligence" search={{category:key}}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition hover:border-primary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                {name}<ArrowRight className="h-3 w-3" aria-hidden />
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
     </div>

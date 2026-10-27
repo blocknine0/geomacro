@@ -52,7 +52,6 @@ export function intelligenceRequiredSourceCredits(s:StatelessIntelligenceSignal)
  return s.sources_credited.filter(credit=>typeof credit==="string"&&
    credit.length<=230&&REQUIRED_VISIBLE_CREDIT.test(credit));
 }
-const TOPIC_SENSITIVE=/\b(?:alleged|allegation|reported|announced|urged|warned|proposed|planned|rejected|approved|agreed|cut|raised|increased|signed|supported|supports|launched|issued|imposed|introduced|lowered|reduced|published|opened|unveiled|denied|confirmed|condemned|authorized|authorised|agreed)\b/iu;
 export type IntelligenceDisplayRejection =
  "INVALID_STATE_OR_CREDIT"|"UNVERIFIED_ORIGINAL_SOURCE"|"UNKNOWN_ACTOR_OR_ACTION"|
  "GENERIC_OR_UNSAFE_COPY"|"INVALID_PUBLICATION_DATE"|null;
@@ -125,5 +124,5 @@ export function isConcreteHomeFind(card:FindCardV1):boolean{
    headline.length>=22&&change.length>=30&&
    !GENERIC.test(headline+" "+change)&&
    !/Actor not verified|no outcome is inferred|not establish who|publisher|original.dated publication/iu.test(headline+" "+change)&&
-   TOPIC_SENSITIVE.test(headline+" "+change);
+   ACTOR_ACTION.test(headline+" "+change);
 }
