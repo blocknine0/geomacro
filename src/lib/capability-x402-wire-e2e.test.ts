@@ -115,9 +115,9 @@ for(const rail of ["coinbase","circle"] as const)describe(`${rail}: actual handl
    expect(quote.variant).toBe(body.product.variant);
    const bytes=requests.find(x=>x.action==="capability-prequote-freeze")!.body.customerBytes;
    expect(commerceSha256(bytes)).toBe(quote.prepared_answer_sha256);
-   const delivered=await call(rail,payment,body);expect(delivered.status).toBe(200);expect(await delivered.text()).toBe(bytes);
+   const delivered=await call(rail,payment,body);expect(delivered.status).toBe(200);expect(delivered.headers.get("X-Geomacro-Brand")).toBe("Geomacro");expect(await delivered.text()).toBe(bytes);
    mock.availability.mockRejectedValue(Error("SOURCE_NOW_UNAVAILABLE"));
-   const replay=await call(rail,payment,body);expect(replay.status).toBe(200);expect(await replay.text()).toBe(bytes);
+   const replay=await call(rail,payment,body);expect(replay.status).toBe(200);expect(replay.headers.get("X-Geomacro-Brand")).toBe("Geomacro");expect(await replay.text()).toBe(bytes);
    expect(rail==="coinbase"?mock.coinbaseSettle:mock.circleSettle).toHaveBeenCalledTimes(1);
  });
  it("does not freeze or quote a digest missing its advertised dimension coverage",async()=>{
