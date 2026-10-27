@@ -1,7 +1,7 @@
 import {MACRO_NEWS_SOURCES,planMacroSources,pinnedMacroArticle,boundedMacroGet,normalizeMetalQuote,macroPreciousTopic} from './macro-fx-metals.mjs';
 import {MACRO_CALENDARS,parseMacroCalendar} from './macro-release-calendar.mjs';
 import {verifiedPublisherPageDate} from './official-original-article-date.mjs';
-const clean=s=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/\s+/g,' ').trim();
+const clean=s=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]*>/g,' ').replace(/&(?:amp|quot|apos|#39);/g,e=>({'&amp;':'&','&quot;':'"','&apos;':"'",'&#39;':"'"})[e]).replace(/\s+/g,' ').trim();
 const tag=(s,name)=>new RegExp('<(?:atom:)?'+name+'(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:atom:)?'+name+'>','i').exec(s)?.[1]??'';
 const relevant=t=>macroPreciousTopic(t)||/\b(?:monetary|interest rates?|policy rates?|federal funds|FOMC|repo|inflation|consumer price|producer price|employment|payroll|foreign exchange|currency|exchange rate|financial stability|liquidity|balance of payments|reserve assets?|gold reserves?|manufacturing|industrial demand|solar demand|positioning|commitments of traders)\b/i.test(t);
 export function parseMacroFeed(xml,spec,now){

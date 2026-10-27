@@ -56,7 +56,7 @@ export function planMacroSources(now,{release=false,reusedIds=[]}={}){
 }
 export function pinnedMacroArticle(raw,spec){
  try{
-  let value=String(raw).replace(/&amp;/gi,'&').trim();
+  let value=String(raw).trim();
   if(spec.id==='boj_press_global')value=value.replace(/^http:\/\/www\.boj\.or\.jp\//,'https://www.boj.or.jp/');
   if(spec.rbi)value=value.replace(/^http:\/\/(?:www\.)?rbi\.org\.in\//i,'https://www.rbi.org.in/').replace(/^https:\/\/rbi\.org\.in\//i,'https://www.rbi.org.in/');
   if(spec.id==='ecb_press')value=value.replace('eu//press/','eu/press/');

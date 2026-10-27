@@ -68,7 +68,7 @@ test('The same bundle reuses one global fallback request across regional failure
  const result=await collectCriticalMineralsFastlane({now,macroNeedsFallback:true,fetchImpl:async url=>{
   urls.push(url);
   if(url==='https://www.mining.com/feed/')return new Response(rss('Chile announces new copper and lithium export rules','https://www.mining.com/chile-copper-lithium-export-rules/'));
-  if(url.includes('news.google.com'))return new Response(rss('China announces rare earth export controls','https://news.google.com/rss/articles/example'));
+  if(new URL(url).hostname==='news.google.com')return new Response(rss('China announces rare earth export controls','https://news.google.com/rss/articles/example'));
   return new Response('',{status:403});
  }});
  assert.equal(MINERALS_MESH.length,6);assert.equal(urls.filter(u=>u==='https://www.mining.com/feed/').length,1);assert.ok(urls.length<=13);assert.ok(result.signals.length>0);
@@ -90,7 +90,7 @@ test('State projection persists no arbitrary raw fields and release tick cannot 
 test('Release minute publishes into the same journal with fixed quota lease and separated prices',async()=>{
  const state=freshState();state.checked_at=new Date(now-120000).toISOString();state.events=[{kind:'cpi',source:'bls',at:new Date(now).toISOString()}];
  const db=new DB(state),lease=state.quota_lease_until;
- const result=await runMacroReleaseTick({DB:db},{now,fetchImpl:async url=>url.includes('bls.gov')?new Response(atom('Consumer Price Index release','https://www.bls.gov/news.release/cpi.nr0.htm')):new Response(JSON.stringify({symbol:url.endsWith('XAU')?'XAU':'XAG',price:100,currency:'USD',updatedAt:at}))});
+ const result=await runMacroReleaseTick({DB:db},{now,fetchImpl:async url=>new URL(url).hostname==='www.bls.gov'?new Response(atom('Consumer Price Index release','https://www.bls.gov/news.release/cpi.nr0.htm')):new Response(JSON.stringify({symbol:url.endsWith('XAU')?'XAU':'XAG',price:100,currency:'USD',updatedAt:at}))});
  assert.equal(result.state,'RELEASE_POLLED');assert.equal(db.news.size,1);assert.equal(db.state.quota_lease_until,lease);assert.equal(db.state.quotes.length,2);
  const signal=[...db.news.values()][0];assert.equal(signal.category,'macro');assert.equal(macroPriceEvidence(signal,db.state).price_reaction,null);
  assert.equal((await runMacroReleaseTick({DB:db},{now,fetchImpl:async()=>{throw Error('duplicate');}})).state,'ALREADY_POLLED');
@@ -131,4 +131,13 @@ test('Concurrent cron snapshots cannot erase a later quota lease or overwrite a 
   const result=JSON.parse(execFileSync('python3',['-c',code],{encoding:'utf8',input:JSON.stringify({sql,states})}));
   assert.equal(result.checked_at,newer.checked_at);assert.equal(result.quota_lease_until,older.quota_lease_until);assert.equal(result.quotes[0].value,101);
  }
+});
+test('Publisher text is decoded once and hidden script clocks cannot fabricate a current release',async()=>{
+ const spec=MACRO_NEWS_SOURCES.find(s=>s.id==='bls_cpi');
+ const rows=parseMacroFeed(atom('Consumer Price Index &amp;quot;release&amp;quot;','https://www.bls.gov/news.release/cpi.nr0.htm'),spec,now);
+ assert.equal(rows[0].title,'Consumer Price Index &quot;release&quot;');
+ const {verifiedDirectRelease,directReleaseSpec}=await import('../lib/macro-direct-release.mjs');
+ const event={kind:'fomc',at:'2026-10-28T18:00:00.000Z'};
+ const hidden='<h3>Federal Reserve issues FOMC statement</h3><script>October 28, 2026 For release at 2:00 p.m. EDT</script x><p>September 16, 2026 For release at 2:00 p.m. EDT</p>';
+ assert.equal(verifiedDirectRelease(hidden,directReleaseSpec(event),event,Date.parse(event.at)+60000),null);
 });

@@ -11,7 +11,7 @@ const googleMinerals=feed('google_minerals','https://news.google.com/rss/search?
 const financialAlternative=feed('fxstreet_news','https://www.fxstreet.com/rss/news','global');
 const googleMacro=feed('google_macro_metals','https://news.google.com/rss/search?q='+encodeURIComponent('(forex OR \"central bank\" OR gold OR silver) (rates OR demand OR supply OR intervention OR reserves) when:1d')+'&hl=en-US&gl=US&ceid=US:en','global');
 const mineralNative=/(?:\b(?:litio|cobalto|cobre|n[ií]quel|grafito|tierras raras|minerales cr[ií]ticos|minera[cç][aã]o|min[eé]raux critiques|seltene erden)\b|关键矿产|稀土|锂|钴|희토류|리튬|редкозем)/iu;
-const clean=s=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&apos;|&#39;/g,"'").replace(/\s+/g,' ').trim();
+const clean=s=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]*>/g,' ').replace(/&(?:amp|quot|apos|#39);/g,e=>({'&amp;':'&','&quot;':'"','&apos;':"'",'&#39;':"'"})[e]).replace(/\s+/g,' ').trim();
 const tag=(s,t)=>new RegExp('<(?:[a-z]+:)?'+t+'(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[a-z]+:)?'+t+'>','i').exec(s)?.[1]??'';
 export function parseSectorFeed(xml,spec,now){
  if(typeof xml!=='string'||xml.length>384*1024||/<!DOCTYPE|<!ENTITY/i.test(xml)||!/<(?:rss|feed)(?:\s|>)/i.test(xml))throw Error('SECTOR_FEED_INVALID');

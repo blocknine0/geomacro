@@ -1,8 +1,9 @@
+import {visiblePublisherText} from "../../src/lib/stateless-publisher-text.ts";
 import {boundedMacroGet} from './macro-fx-metals.mjs';
 import {zonedRelease} from './macro-release-calendar.mjs';
 import {verifiedPublisherPageDate} from './official-original-article-date.mjs';
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
-const clean=s=>s.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,' ').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi,' ').replace(/<[^>]*>/g,' ').replace(/&nbsp;|&#160;/g,' ').replace(/\s+/g,' ').trim();
+const clean=visiblePublisherText;
 export function directReleaseSpec(event){
  const date=new Intl.DateTimeFormat('en-CA',{timeZone:event.kind==='ecb_rates'?'Europe/Berlin':'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(event.at)).replace(/-/g,'');
  if(event.kind==='fomc')return {id:'fed_press',url:'https://www.federalreserve.gov/newsevents/pressreleases/monetary'+date+'a.htm',credit:'Federal Reserve Board'};
