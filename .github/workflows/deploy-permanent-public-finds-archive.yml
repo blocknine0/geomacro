@@ -13,7 +13,16 @@ on:
       - "scripts/ops/verify-minimum-free-production-health.mjs"
       - "scripts/ops/verify-minimum-free-production-health.test.mjs"
       - "workers/public-finds-archive/**"
+  # FREE static Worker refresh is independent of D1 research quota admission.
+  # Only 8 best-effort bounded runs/day, no extra DB/B2/R2/paid calls.
+  schedule:
+    - cron: "17 */3 * * *"
   workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/deploy-permanent-public-finds-archive.yml"
+      - "scripts/ops/decide-public-finds-static-freshness-deploy.mjs"
+      - "scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs"
 
 permissions:
   contents: read
@@ -23,6 +32,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify-static-freshness-policy:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: No-D1 archive freshness and no-billing regression
+        run: |
+          node --check scripts/ops/decide-public-finds-static-freshness-deploy.mjs
+          node --test scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs
+          node --test scripts/ops/publish-permanent-derived-news-archive.test.mjs
   deploy-public-static-archive:
     concurrency:
       group: geomacro-permanent-news-publication
@@ -113,7 +138,18 @@ jobs:
             d1_reads:0,d1_writes:0,supabase_writes:0,payments:0}));
           NODE
 
+      - name: Determine if existing public archive needs a clock-valid refresh
+        id: refresh
+        # Only schedules skip an identical immutable-content deployment.
+        # Push and manually approved dispatch still deploy the existing Worker.
+        if: github.event_name == 'schedule'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/decide-public-finds-static-freshness-deploy.mjs
+
       - name: Deploy public static assets to the existing Cloudflare Worker
+        if: github.event_name != 'schedule' || steps.refresh.outputs.deploy == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
