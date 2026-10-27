@@ -132,7 +132,7 @@ test('deployment recovery gates producer writes and reviewer credentials on cano
  for(const step of ['Refresh retained actor-action news','Automatically approve and sign',
   'Preserve private originals']){
   assert.match(producer.slice(producer.indexOf('- name: '+step)),
-   /^- name:[^\n]+\n\s+if: \$\{\{ !cancelled\(\) && steps.wakeup.outcome == 'success' \}\}/);
+   /^- name:[^\n]+\n\s+if: \$\{\{ steps\.budget\.outputs\.critical == 'true' && !cancelled\(\) && steps\.wakeup\.outcome == 'success' \}\}/);
  }
  assert.ok(producer.indexOf('--original-news-deploy')<producer.indexOf('run: bun scripts/ops/publish-original-news-five-minute-fastlane.ts'));
  assert.ok(reviewer.indexOf('--original-news-deploy')<reviewer.indexOf('Derive only the restricted review capability'));
