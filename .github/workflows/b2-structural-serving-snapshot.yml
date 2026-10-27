@@ -92,6 +92,12 @@ jobs:
           for k in HISTORICAL_SUPABASE_SERVICE_ROLE_KEY B2_KEY_ID B2_APPLICATION_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
             test -n "${!k:-}" || { echo "::notice::STRUCTURAL_PUBLISH_HELD_MISSING_CREDENTIAL"; exit 3; }
           done
+          # Staging/live/manifest hashes must be read back through a dedicated
+          # archival reader, not silently through the same write credential.
+          test -n "${B2_ARCHIVE_READ_KEY_ID:-}" || { echo "::error::Dedicated structural readback ID missing"; exit 3; }
+          test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" || { echo "::error::Dedicated structural readback key missing"; exit 3; }
+          test "${B2_ARCHIVE_READ_KEY_ID}" != "${B2_KEY_ID}" || { echo "::error::Independent structural readback required"; exit 3; }
+          echo "Dedicated structural readback credential is present"
       - name: Require central maintenance D1 budget
         id: budget
         run: node scripts/ops/plan-d1-bundled-work.mjs
