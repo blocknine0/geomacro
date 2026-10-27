@@ -24,3 +24,15 @@ Nauru Government Information Office publishes the fortnightly Naoero Bulletin on
 ## Open acceptance
 
 Latest branch offline tests and protected real network source probes must pass. The production post-merge run must again prove private D1 writes/readbacks and quotas; no single run establishes 24-hour cadence or a guarantee that every country/category has a new event in each slot.
+
+## Latest independent last-mile source probe
+
+[Actions run 40468270756](https://github.com/blocknine0/geomacro/actions/runs/40468270756) physically polled **96 first-party RSS candidate endpoints in 94 previously missing original-publisher countries**. It recorded 67 parseable, healthy RSS endpoints covering 66 of those 94 countries, 64 native-dated topical items from the supplemental lane and 10 attributed country/category cells in that run. The three new publisher-local candidates for FSM, KIR and TUV individually returned parser-accepted RSS feeds, but were classified `EMPTY_OR_OUTSIDE_WINDOW` in all three categories — healthy feed transport, **not a fresh verified country event**.
+
+The two remaining local-country original source locations are now bounded no-credential **transport checks only**:
+- NRU: Nauru Government Information Office Naoero Bulletin (fortnightly HTML/PDF archive; no confirmed RSS).
+- PRK: official Korean Central News Agency website (native publisher HTML; no confirmed accessible RSS).
+
+The private supplementary registry thus contains **25 existing source candidates + 96 native RSS local sources + 2 non-RSS status-only official publishers = 123 candidate endpoints**, under the fixed 128 ceiling. We have pinned source locations for all 195 country routing entities in the *combined* catalogue, but this is **not 195 usable country-local RSS sources**. Countries with no genuine current original news stay `NO_NATIVE_DATED_EVENT` in the user-safe interpretation. Attributing the publisher's country to a story or making one up remains forbidden.
+
+Expected savings from the cron-phase fix apply only to D1 health rows (previously 1390 writes/tick in main; now about one third); hourly/45m persisted health is not a real-time SLA.
