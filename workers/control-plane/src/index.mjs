@@ -1300,7 +1300,7 @@ export default {
       return getAutomatedFinds(env,url.searchParams.get("category"));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/fastlane-intelligence")
-      return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),"attributed_research"));
+      return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),"attributed_research",true));
     if(request.method==="GET"&&url.pathname==="/v1/public/derived-structural-72h")
       return publicReadCache(async()=>
         await readPublicNewsR2Snapshot(request,env) ??

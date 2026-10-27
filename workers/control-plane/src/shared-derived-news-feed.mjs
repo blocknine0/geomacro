@@ -14,7 +14,7 @@ const headers={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
   "Referrer-Policy":"no-referrer","Access-Control-Allow-Origin":"*"};
 const reply=(data,status=200)=>Response.json(data,{status,headers});
 
-export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(),now=Date.now(),projection="source_neutral"){
+export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(),now=Date.now(),projection="source_neutral",includeMacroContext=false){
   if(!env?.DB||!Number.isFinite(now))
     return reply({ok:false,error:"SHARED_NEWS_D1_UNAVAILABLE",chargeable:false},503);
   if([...query.keys()].some(k=>k!=="domain") ||
@@ -42,8 +42,11 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
     }
     const projected=buildDerivedNewsStructural(signals,now,projection);
     let macroState={};
-    if(projection==="attributed_research"&&projected.some(s=>s.category==="macro")){try{macroState=await loadMacroState(env);}catch{/* news is independent of the quote stream */}}
-    const all=projected.map(row=>projection==="attributed_research"&&row.category==="macro"?{...row,macro_context:macroPriceEvidence({id:row.id,category:row.category,topic:row.topic,title:row.headline,what_changed:row.observed_change,published_at:row.original_published_at},macroState)}:row);
+    // Only the dedicated fastlane opts into price context. Existing partner
+    // projections retain exact parity with their established journal projector.
+    const enrichMacro=includeMacroContext&&projection==="attributed_research";
+    if(enrichMacro&&projected.some(s=>s.category==="macro")){try{macroState=await loadMacroState(env);}catch{/* news is independent of the quote stream */}}
+    const all=projected.map(row=>enrichMacro&&row.category==="macro"?{...row,macro_context:macroPriceEvidence({id:row.id,category:row.category,topic:row.topic,title:row.headline,what_changed:row.observed_change,published_at:row.original_published_at},macroState)}:row);
     const producerChecks=await getNewsProducerChecks(env,now);
     const qualified=Object.fromEntries(CATEGORIES.map(c=>[
       c,all.filter(row=>row.category===c && row.qualifying_topic_release_verified).length
