@@ -43,6 +43,7 @@ type HybridRuntimeAnswer = {
 };
 
 export type HybridAskAnswer = AskAnswer & {
+  answer_kind?: "explainer" | "guidance";
   data_mode: HybridRuntimeAnswer["data_mode"];
   cache_status: HybridRuntimeAnswer["cache_status"];
   source_identity_exposed: false;

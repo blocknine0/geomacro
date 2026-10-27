@@ -1,3 +1,4 @@
+import { askDomains } from "./ask-domain-guide";
 import {
   ASK_GEOMACRO_MAX_LENGTH,
   executeAskGeomacro,
@@ -20,6 +21,22 @@ export function resolveGroundedFollowUp(
   question: string,
   history: ReadonlyArray<{ role: "user" | "assistant"; content: string }>,
 ): { question: string; mode: HybridChatMode } {
+  const previousTopic = [...history].reverse().find(turn => turn.role === "user")?.content ?? "";
+  const followUp = /^(?:please\s+)?(?:explain (?:more|further|that|it)(?: simply| in simple terms)?|tell me more|go deeper|why(?: is that| does (?:that|it) matter)?|what (?:does (?:that|it) mean|are the (?:risks|implications))|(?:make it |be )?(?:shorter|simpler)|summari[sz]e(?: that| it)?)[.!?]*$/i;
+  if (followUp.test(question)) {
+    if (!previousTopic || !askDomains(previousTopic).length) throw new Error("AMBIGUOUS_FOLLOW_UP");
+    const topic = previousTopic.replace(/^(?:Explain further|Why does this matter|Summarize): /, "");
+    const prefix = /why|matter|risks|implications/i.test(question) ? "Why does this matter" :
+      /shorter|summari/i.test(question) ? "Summarize" : "Explain further";
+    const rewritten = `${prefix}: ${topic}`;
+    parseAskGeomacroInput({ question: rewritten });
+    return {question:rewritten, mode:"bounded_follow_up"};
+  }
+  if (/^(?:show (?:me )?)?(?:the )?(?:latest|recent|current) (?:news|updates|developments)[.!?]*$/i.test(question) && askDomains(previousTopic).length === 1) {
+    const domain = askDomains(previousTopic)[0];
+    const label = domain === "macro" ? "macro" : domain === "rare_earth" ? "critical minerals" : "geopolitics";
+    return {question:`Latest ${label} news today?`, mode:"bounded_follow_up"};
+  }
   const match = /^(?:(?:and|but)\s+)?(?:what about|how about|and for)\s+([a-z][a-z .'-]{1,65})\s*\??$/i.exec(question);
   if (!match) return { question, mode: "grounded_ask" };
 
@@ -70,6 +87,16 @@ export function resolveGroundedFollowUp(
   ].filter((part): part is string => part !== null);
 
   const target = match[1].trim();
+  const domains = askDomains(previous);
+  if (topic.length === 0 && domains.length === 1) {
+    const country = COUNTRIES_195.find(row => [row.name, row.iso3, ...row.aliases].some(name => name.toLowerCase() === target.toLowerCase()));
+    if (!country) throw new Error("AMBIGUOUS_FOLLOW_UP");
+    const metric = /\binflation\b/i.test(previous) ? "annual inflation rate" : /\bgdp\b/i.test(previous) ? "annual GDP growth" : null;
+    const label = domains[0] === "macro" ? "macro" : domains[0] === "rare_earth" ? "critical minerals" : "geopolitics";
+    const rewritten = metric ? `What is the latest ${metric} in ${country.name}?` : `Latest ${label} news in ${country.name} today?`;
+    parseAskGeomacroInput({question:rewritten});
+    return {question:rewritten,mode:"bounded_follow_up"};
+  }
   if (topic.length !== 1 || /^(?:it|this|that|there|here|those|them|same|more|today|yesterday)$/i.test(target)) {
     throw new Error("AMBIGUOUS_FOLLOW_UP");
   }
@@ -103,7 +130,8 @@ export async function executeHybridChatTurn(
   const resolved = resolveGroundedFollowUp(rawQuestion, parsed.history);
   const answer = await executeAskGeomacro({ question: resolved.question }, clientKey);
   return {
-    answer,
+    answer: /^(?:please\s+)?(?:(?:make it |be )?(?:shorter)|summari[sz]e(?: that| it)?)[.!?]*$/i.test(rawQuestion)
+      ? {...answer, what_changed:"", why_it_matters:"", geomacro_view:""} : answer,
     context_turns: parsed.history.length,
     mode: resolved.mode,
     resolved_question: resolved.question,

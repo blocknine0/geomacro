@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("./ask-geomacro-core.server", () => ({
   ASK_GEOMACRO_MAX_LENGTH: 300,
   parseAskGeomacroInput: vi.fn(({ question }: { question: string }) => {
-    if (question.length < 4 || question.length > 300) throw new Error("Invalid question");
+    if (question.length < 2 || question.length > 300) throw new Error("Invalid question");
     return { question };
   }),
   executeAskGeomacro: vi.fn(async () => ({ status: "verified" })),
@@ -75,4 +75,16 @@ describe("hybrid agent canonical Ask adapter", () => {
     await expect(executeHybridChatTurn({ question: "x".repeat(301) }, "client"))
       .rejects.toThrow("QUESTION_TOO_LONG");
   });
+});
+
+
+describe("concept-to-research conversation",()=>{
+ it("carries inflation into a country-specific official measurement",()=>{
+  expect(resolveGroundedFollowUp("What about India?",[{role:"user",content:"What is inflation?"}]).question)
+    .toBe("What is the latest annual inflation rate in India?");
+ });
+ it("switches a mineral explanation to its category's current news",()=>{
+  expect(resolveGroundedFollowUp("Show latest news",[{role:"user",content:"What are rare earths?"}]).question)
+    .toBe("Latest critical minerals news today?");
+ });
 });

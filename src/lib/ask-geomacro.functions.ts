@@ -15,7 +15,7 @@ const AskInput = z.object({
   question: z
     .string()
     .trim()
-    .min(4)
+    .min(2)
     .max(300)
     .refine((value) => !INJECTION_RE.test(value), { message: "Invalid input" }),
 });

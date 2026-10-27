@@ -70,6 +70,7 @@ function firstUseful(...values: string[]): string {
  */
 export function directAnswerForQuestion(answer: AskAnswer, question = ""): string {
   const q = question.toLowerCase();
+  if ("answer_kind" in answer && answer.answer_kind === "guidance") return answer.summary;
 
   // Exact independent Risk Index questions are category-specific, including
   // an honest no-current-signed-reading answer. A generic "what changed"
