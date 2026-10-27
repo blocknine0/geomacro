@@ -43,8 +43,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'MAX_TOTAL_DB_READS = 96' scripts/ops/publish-b2-structural-serving-snapshot.ts
-          grep -q 'MAX_TOTAL_SOURCE_ROWS = 18_000' scripts/ops/publish-b2-structural-serving-snapshot.ts
+          grep -q 'MAX_TOTAL_DB_READS = 550' scripts/ops/publish-b2-structural-serving-snapshot.ts
+          grep -q 'MAX_TOTAL_SOURCE_ROWS = 200_000' scripts/ops/publish-b2-structural-serving-snapshot.ts
+          grep -q 'MAX_TOTAL_HISTORICAL_DOWNLOAD_BYTES = 256 \* 1024 \* 1024' scripts/ops/publish-b2-structural-serving-snapshot.ts
           grep -q 'B2_STRUCTURAL_HISTORICAL_DB_QUERY_CAP' scripts/ops/publish-b2-structural-serving-snapshot.ts
           grep -q 'const b2 = createB2Client' scripts/ops/publish-b2-structural-serving-snapshot.ts
           grep -q 'B2_ACCOUNT_QUOTA_REQUIRED: "1"' .github/workflows/b2-structural-serving-snapshot.yml
