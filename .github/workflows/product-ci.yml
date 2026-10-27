@@ -36,6 +36,9 @@ jobs:
       - name: Audit retained workflow triggers and dependencies without changes
         run: node --test scripts/tests/audit-github-workflow-graph.test.mjs
 
+      - name: Audit implicit executable workflow callers without secrets or API calls
+        run: node --test scripts/tests/audit-workflow-code-callers.test.mjs
+
       # Pin the exact Bun version that produced and validated the committed
       # lockfile. Do not float on "latest": lockfile semantics can change
       # between Bun releases and create false/intermittent CI failures.
