@@ -267,8 +267,13 @@ export async function readDerivedStoriesBundle(env,now=Date.now()) {
 const escapeHtml = text => String(text ?? "").replace(/\s*\u2014\s*/gu,"; ")
   .replace(/&/gu,"&amp;").replace(/</gu,"&lt;").replace(/>/gu,"&gt;")
   .replace(/"/gu,"&quot;").replace(/'/gu,"&#39;");
-export async function renderDerivedStoriesHtml(env,now=Date.now()){
-  const response=await readDerivedStories(env,now);
+export async function renderDerivedStoriesHtml(
+  env,now=Date.now(),sourcePage=()=>readDerivedStories(env,now)
+){
+  // The anonymous HTML and immediate JSON views have exactly the same
+  // zero-delay page-0 source. Accept an already-validated response to share
+  // the same public per-POP D1/R2 cache; direct callers retain D1 semantics.
+  const response=await sourcePage();
   if(response.status!==200)return new Response(
     "<!doctype html><html><meta charset=utf-8><body><p>Intelligence timeline temporarily unavailable.</p></body></html>",
     {status:503,headers:{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store",

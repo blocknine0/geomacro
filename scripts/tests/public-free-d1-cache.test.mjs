@@ -239,3 +239,31 @@ test("derived public journal and machine 120-second POP cache saves hot D1 scans
   assert.equal(scans,2,"trusted readback bypasses public edge cache");
  }
 });
+
+test("HTML fallback and immediate JSON share the exact eligible D1 page 0 key",async()=>{
+ const source=readFileSync(new URL("../../workers/control-plane/src/index.mjs",import.meta.url),"utf8");
+ assert.ok(source.includes('pageUrl.pathname="/v1/public/website-derived-news-immediate"'));
+ assert.ok(source.includes('headers:request.headers'));
+ assert.ok(source.includes('renderDerivedStoriesHtml(env,Date.now(),'));
+ assert.ok(source.includes('readPublicFreeD1Cached(pageRequest,async()=>'));
+ const jsonRoot="https://geomacro-control-plane.example/v1/public/website-derived-news-immediate";
+ let physicalD1Reads=0;const entries=new Map();
+ const cache={async match(k){return entries.get(k.url)?.clone()??null},
+    async put(k,v){entries.set(k.url,v.clone())}};
+ const readD1=async()=>{physicalD1Reads++;return Response.json({
+  ok:true,schema:"geomacro.website-derived-news-feed.v1",signals:[]
+ })};
+ const htmlUrl="https://geomacro-control-plane.example/v1/public/website-derived-news-html";
+ const pageReq=htmlReq=>{
+   const url=new URL(htmlReq.url);
+   url.pathname="/v1/public/website-derived-news-immediate";
+   return new Request(url.toString(),{method:"GET",headers:htmlReq.headers});
+ };
+ await readPublicFreeD1Cached(request(jsonRoot),readD1,{cache});
+ await readPublicFreeD1Cached(pageReq(request(htmlUrl)),readD1,{cache});
+ assert.equal(physicalD1Reads,1);
+ await readPublicFreeD1Cached(pageReq(request(htmlUrl,{"Cache-Control":"no-cache"})),readD1,{cache});
+ assert.equal(physicalD1Reads,2,"origin readback must not receive stale JSON or HTML");
+ await readPublicFreeD1Cached(pageReq(request(htmlUrl,{Authorization:"Bearer protected"})),readD1,{cache});
+ assert.equal(physicalD1Reads,3,"authenticated requests never share public cache");
+});
