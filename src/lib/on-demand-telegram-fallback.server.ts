@@ -1,5 +1,6 @@
 import {fetchWithoutRedirect} from "./fetch-without-redirect";
 import { country195ByIso3 } from "./canonical-country-registry-195";
+import {hasPrivateTelegramSignalReader,readPrivateTelegramSignals} from "./telegram-signals-repository.server";
 /**
  * Optional private, per-question research lookup. It never turns a Telegram
  * lead into verified intelligence or an x402 deliverable.
@@ -71,17 +72,30 @@ export async function lookupTelegramFallback(input: {
   originalArticleEvidenceSufficient: boolean;
 }): Promise<TelegramFallbackOutcome> {
   const config = trustedReaderConfig();
+  const supabaseReadOnlyAvailable = hasPrivateTelegramSignalReader();
   if (!shouldSeekTelegramLead({ categories: input.categories,
       originalArticleEvidenceSufficient: input.originalArticleEvidenceSufficient,
-      authorizedReaderAvailable: Boolean(config) })) {
+      authorizedReaderAvailable: Boolean(config) || supabaseReadOnlyAvailable })) {
     return { attempted: false, status: input.originalArticleEvidenceSufficient ||
       input.categories.length === 0 ? "NOT_NEEDED" : "NOT_CONFIGURED", ...EMPTY };
   }
-  if (!config || !country195ByIso3(input.country_iso3) ||
+  if ((!config && !supabaseReadOnlyAvailable) || !country195ByIso3(input.country_iso3) ||
       input.categories.length > 3 || new Set(input.categories).size !== input.categories.length ||
       input.categories.some(category => !["geopolitics", "macro", "rare_earth"].includes(category)))
     return { attempted: false, status: "UNAVAILABLE", ...EMPTY };
   try {
+    if(supabaseReadOnlyAvailable) {
+      // The producer returns private metadata only. No Supabase credentials,
+      // writes, billing, risk scoring, or PREDGE integration enter this path.
+      const rows=(await Promise.all(input.categories.map(category=>
+        readPrivateTelegramSignals({country_iso3:input.country_iso3,category,limit:20})))).flat();
+      const distinct=new Set(rows.map(item=>item.signal_id)).size;
+      return {attempted:true,status:distinct?"UNVERIFIED_LEADS":"NO_LEADS",
+        ...EMPTY,unverified_lead_count:distinct,
+        // Source identifiers are intentionally absent from read receipts.
+        searched_channel_count:0};
+    }
+    if(!config)return {attempted:false,status:"NOT_CONFIGURED",...EMPTY};
     const response = await fetchWithoutRedirect(config.url, {
       method: "POST", redirect: "error", cache: "no-store",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${config.token}` },
