@@ -1,3 +1,4 @@
+import {readNewsProductFactory} from './news-product-factory.mjs';
 import {readPublicMacro,loadMacroState,storeMacroState,runMacroReleaseTick} from "./macro-fastlane.mjs";
 import {publicSignedNews} from './public-signed-news.mjs';
 import {handlePrivateOsint15m} from './private-osint-15m.mjs';
@@ -1404,6 +1405,8 @@ export default {
       }
       if(request.method==="PUT"&&url.pathname==="/v1/public-news-r2-snapshot"&&!url.search)
         return publishPublicNewsR2Snapshot(env,await readJson(request,PUBLIC_NEWS_R2_MAX_BYTES));
+      if(request.method==='GET'&&url.pathname==='/v1/internal/news-product-factory')
+        return readNewsProductFactory(env,url.searchParams);
       if(request.method==="PUT"&&url.pathname==="/v1/reusable-source-news"&&!url.search)
         return publishReusableSourceNews(env,await readJson(request,96*1024));
       if(request.method==="PUT"&&url.pathname==="/v1/internal/telegram-export-derived-json"&&!url.search)

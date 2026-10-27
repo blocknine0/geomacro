@@ -1,3 +1,5 @@
+import {materializeNewsProduct} from "./news-product-factory.server";
+import {normalizeReusableNewsJson} from "./reusable-news-json";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { buildAgentQueryPlan } from "./agent-query-plan";
@@ -83,6 +85,19 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("all active Store creation contracts on the canonical mainnet engine (offline synthetic evidence)", () => {
+  it.each(Object.keys(GEOMACRO_STORE_REQUEST_EXAMPLES) as Array<keyof typeof GEOMACRO_STORE_REQUEST_EXAMPLES>)("materializes the news-triggered %s context with the canonical assembler",async id=>{
+    const news=normalizeReusableNewsJson({category:"rare_earth",country_iso3:"USA",
+      published_at:"2026-10-24T12:58:00.000Z",text:"USA announced a critical mineral production investment of 25 million USD."});
+    const result=await materializeNewsProduct({news,product_id:id,destination_country_iso3:"CAN",
+      ...(id==="signed_new"?{issued_after:"2026-10-24T12:59:00.000Z"}:{})},{
+        check:plan=>checkAgentQueryDeliverability(plan,{now:NOW,sourceEligibilityChecker:rights,externalModuleChecker:async()=>true}),
+      });
+    expect(result.status).toBe("QUALIFIED_CONTEXT_PREPARED");
+    expect(result).toHaveProperty("prepared_context");
+    expect(result.payment_authorized).toBe(false);
+    expect(result.news_extraction_verified).toBe(false);
+    expect(mocks.freeze).not.toHaveBeenCalled();
+  });
   it.each(Object.keys(GEOMACRO_STORE_REQUEST_EXAMPLES) as Array<keyof typeof GEOMACRO_STORE_REQUEST_EXAMPLES>)("creates, prices and freezes %s using the real assembler", async id => {
     const raw = request(id), { plan, availability } = await admitted(raw);
     expect(availability.deliverable).toBe(true);

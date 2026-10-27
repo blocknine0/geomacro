@@ -1,7 +1,8 @@
+import {buildNewsProductPacket,NEWS_PRODUCT_FACTORY_VERSION} from "../../src/lib/news-product-factory.ts";
 #!/usr/bin/env bun
 // Production collector: registered sources -> one factual JSON -> protected
 // Cloudflare D1 -> D1 readback. No raw source, premium, Supabase or x402.
-import {createHmac} from "node:crypto";
+import {createHmac,createHash} from "node:crypto";
 import {mkdirSync,writeFileSync} from "node:fs";
 import {collectRegisteredReusableNews} from "../lib/registered-reusable-news-source-collector.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
@@ -105,8 +106,33 @@ const archive={...publicBody,offset:0,has_more:false,next_offset:null,
 mkdirSync("artifacts/reusable-source-news",{recursive:true});
 writeFileSync("artifacts/reusable-source-news/news.json",
   JSON.stringify(archive,null,2)+"\n",{mode:0o600});
+// The scheduled ingest automatically compiles every retained input once per
+// snapshot, with no 12-way source retrieval or paid-model calls. D1 remains
+// canonical; these artifacts are reproducible derived packets, not a new DB.
+let factoryCount=0,factoryExpired=0;
+const factoryNow=Date.now(),factoryHash=createHash("sha256"),factorySample=[];
+for(const item of complete){
+  const native=Date.parse(item?.source?.original_published_at??"");
+  if(Number.isFinite(native)&&factoryNow-native>25*3600000){factoryExpired++;continue;}
+  const packet=await buildNewsProductPacket(item,{now:factoryNow});
+  factoryHash.update(packet.input_id+"\n"+packet.packet_sha256+"\n");
+  if(factorySample.length===0)factorySample.push(packet);
+  factoryCount++;
+}
+// Persist a bounded receipt/sample, not 4,000 x 12 repeated full payloads on
+// every scheduled run. Full packets are reproducible from canonical D1 via
+// the authenticated private reader; no second data store is needed.
+writeFileSync("artifacts/reusable-source-news/products.json",JSON.stringify({
+  schema:NEWS_PRODUCT_FACTORY_VERSION,count:factoryCount,
+  ordered_packet_manifest_sha256:factoryHash.digest("hex"),sample:factorySample,
+  full_packet_reader:"/v1/internal/news-product-factory",
+  generated_at:archive.snapshot_generated_at,paid_delivery_authorized:false,
+})+"\n",{mode:0o600});
 console.log(JSON.stringify({
   schema:"geomacro.source-news-json-production-run.v1",
+  news_product_factory_packets:factoryCount,
+  news_product_factory_expired_during_readback:factoryExpired,
+  product_variants_per_news:12,
   source_registry_endpoints:info.registered_source_endpoints,
   source_poll_slot_minutes:info.nominal_poll_slot_minutes,
   nominal_category_revisit_minutes:info.nominal_max_category_revisit_minutes,
