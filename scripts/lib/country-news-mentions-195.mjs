@@ -6,7 +6,7 @@
  * as ISO3. Structured request ISO3 validation is a separate mechanism.
  */
 const normalize=x=>String(x??"").normalize("NFKC").toLocaleLowerCase("en")
- .replace(/[^\\p{L}\\p{N}]+/gu," ").replace(/\\s+/gu," ").trim();
+ .replace(/[^\p{L}\p{N}]+/gu," ").replace(/\s+/gu," ").trim();
 
 const LOCALES=Object.freeze([
  "en","bn","hi","es","fr","de","pt","ru","ar","zh","ja","ko",
