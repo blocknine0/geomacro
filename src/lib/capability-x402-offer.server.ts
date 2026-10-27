@@ -11,6 +11,7 @@ import {sanitizeAndRehashPaidPreparedResponse,assertPublicPaidOutputBoundary} fr
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY} from "./geomacro-structured-commercial-license";
 import {assertGeomacroIntelligenceResponseContract} from "./geomacro-intelligence-contract";
 import {assertPricedStructuredDelivery} from "./capability-structured-delivery.server";
+import {assertLockedCapabilityDataBoundary} from "./capability-priced-data-boundary.server";
 import {readQualifiedStructuralEvidence} from "./agent-query-qualified-evidence.server";
 
 /** One price classifier, governed assembler and existing durable vault.
@@ -41,6 +42,7 @@ export async function prepareVerifiedCapabilityOffer(input:{
   assertGeomacroIntelligenceResponseContract(prepared);
   assertPublicPaidOutputBoundary(prepared);
   assertPricedStructuredDelivery(prepared,price.capability,price.variant);
+  assertLockedCapabilityDataBoundary(prepared,price.capability,price.variant);
   const response=sanitizeAndRehashPaidPreparedResponse({...prepared,
     availability:publicAgentQueryAvailability(input.availability),
     payment:{required:true,provider:input.rail,
@@ -76,6 +78,7 @@ export function assertFrozenCapabilityResponse(response:Record<string,unknown>) 
     if(selected && (selected.capability!==capability||selected.variant!==variant))
       throw Error("CAPABILITY_FROZEN_STORE_PRODUCT_MISMATCH");
     assertPricedStructuredDelivery(response,capability,variant);
+    assertLockedCapabilityDataBoundary(response,capability,variant);
   }
 }
 
