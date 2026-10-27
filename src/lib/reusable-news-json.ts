@@ -54,7 +54,7 @@ function validUtc(s:string){
   const ms=Date.parse(s);
   return Number.isFinite(ms)&&new Date(ms).toISOString().slice(0,19)===s.slice(0,19);
 }
-function normalizedText(s:string){return s.normalize("NFKC").replace(/\\s+/gu," ").trim()}
+function normalizedText(s:string){return s.normalize("NFKC").replace(/\s+/gu," ").trim()}
 // Most scripts retain a 25-character factual minimum; compact CJK headlines
 // can express complete news facts in fewer code points. This changes only the
 // text admission threshold, never rights, scoring or verification status.
@@ -62,7 +62,7 @@ function substantiveNewsText(s:string):boolean{
  const text=normalizedText(s);
  if(text.length>=25)return true;
  return text.length>=14&&
-   (text.match(/[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]/gu)??[]).length>=12;
+   (text.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu)??[]).length>=12;
 }
 function eventFingerprint(s:string){
   // Stable noncryptographic deduplication hint only, never a content proof.
