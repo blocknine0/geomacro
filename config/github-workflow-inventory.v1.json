@@ -316,6 +316,7 @@
     "telegram-b2-d1-consumer.yml",
     "telegram-discovery-roots-audit.yml",
     "telegram-manual-research-contract.yml",
+    "telegram-signals-readonly-health.yml",
     "three-category-combined-open-data.yml",
     "three-category-live-official-api-acceptance.yml",
     "three-domain-30m-original-publisher-pulse.yml",
