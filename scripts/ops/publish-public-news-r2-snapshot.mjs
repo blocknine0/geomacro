@@ -25,7 +25,7 @@ async function read(path,fetchImpl){
   try{return JSON.parse(raw)}catch{throw Error("R2_SOURCE_D1_CONTRACT_INVALID")}
 }
 /**
- * Project the ONE complete, authenticated-at-origin D1 public journal bundle
+ * Project the ONE complete, canonical-origin D1 public journal bundle
  * into the unchanged exact three-page R2 wire contract. The source supplies
  * original record IDs, timestamps and first-ingest clocks; we never infer a
  * new event, new verification, publication time or commercial permission.
