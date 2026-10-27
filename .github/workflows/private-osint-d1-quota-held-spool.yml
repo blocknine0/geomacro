@@ -1,0 +1,110 @@
+name: Private OSINT Encrypted Holding When D1 Quota Held
+
+# Separate Free GitHub Actions artifact capacity is used for short-lived
+# AES-GCM ciphertext. Never publish clear source observations or treat this
+# archive as D1 delivery. Only protected main and protected production secrets.
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/private-osint-d1-quota-held-spool.yml"
+      - "scripts/ops/private-osint-stage-held.ts"
+      - "scripts/ops/private-osint-replay-held.mjs"
+      - "scripts/lib/private-osint-encrypted-spool.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/private-osint-d1-quota-held-spool.yml"
+      - "scripts/ops/private-osint-stage-held.ts"
+      - "scripts/ops/private-osint-replay-held.mjs"
+      - "scripts/lib/private-osint-encrypted-spool.mjs"
+      - "scripts/lib/private-osint-encrypted-spool.test.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-private-osint-quota-held-ciphertext
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Ciphertext privacy and tamper regression
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/private-osint-encrypted-spool.mjs
+          node --check scripts/ops/private-osint-replay-held.mjs
+          node --test scripts/lib/private-osint-encrypted-spool.test.mjs
+
+  quota-admission:
+    needs: verify
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment: production
+    outputs:
+      state: ${{ steps.quota.outputs.state }}
+      critical: ${{ steps.quota.outputs.critical }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Provider-wide no-D1-query quota observation
+        id: quota
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/plan-d1-bundled-work.mjs
+
+  encrypted-holding:
+    needs: [verify, quota-admission]
+    if: >-
+      needs.quota-admission.outputs.state == 'HELD' &&
+      needs.quota-admission.outputs.critical != 'true' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Read actual native-dated RSS and AES-GCM seal only safe projections
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"
+        run: |
+          set -euo pipefail
+          bun scripts/ops/private-osint-stage-held.ts
+      - name: Save ONLY encrypted private-OSINT temporary artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-encrypted-private-osint-held
+          path: /tmp/geomacro-encrypted-held-spool/sealed.json
+          if-no-files-found: ignore
+          retention-days: 2
+          compression-level: 0

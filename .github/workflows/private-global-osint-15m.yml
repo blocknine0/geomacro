@@ -40,6 +40,9 @@ on:
       - "workers/control-plane/src/private-osint-15m.mjs"
       - "workers/control-plane/migrations/0028_private_osint_15m_durable.sql"
       - "scripts/ops/private-osint-15m-tick.ts"
+      - "scripts/ops/private-osint-replay-held.mjs"
+      - "scripts/lib/private-osint-encrypted-spool.mjs"
+      - "scripts/lib/private-osint-encrypted-spool.test.mjs"
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
       - "src/components/intelligence/stateless-live-desk.tsx"
       - "scripts/lib/country-news-mentions-195.mjs"
@@ -98,6 +101,9 @@ on:
       - "scripts/ops/build-native-country-repair-worklist.mjs"
       - "scripts/tests/native-country-repair-worklist.test.mjs"
       - "scripts/ops/private-osint-15m-tick.ts"
+      - "scripts/ops/private-osint-replay-held.mjs"
+      - "scripts/lib/private-osint-encrypted-spool.mjs"
+      - "scripts/lib/private-osint-encrypted-spool.test.mjs"
       - "scripts/lib/private-osint-global-sources.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
@@ -151,6 +157,8 @@ jobs:
           node --check scripts/lib/private-osint-country-rotation.mjs
           node --check scripts/lib/private-osint-local-publisher-rotation.mjs
           node --test scripts/lib/private-osint-country-rotation.test.mjs
+          node --test scripts/lib/private-osint-encrypted-spool.test.mjs
+          node --check scripts/ops/private-osint-replay-held.mjs
           node --test scripts/lib/private-osint-local-publisher-rotation.test.mjs
           node --test scripts/lib/private-osint-15m-collector.test.mjs
           node --test scripts/lib/private-osint-15m-durable-publisher.test.mjs
@@ -303,6 +311,39 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/private-osint-15m-tick.ts
+
+
+  replay-quota-held-encrypted-spool:
+    name: Recover one encrypted held-source batch into verified canonical D1
+    needs: [verify, quota-admission, collect-private]
+    if: >-
+      needs.collect-private.result == 'success' &&
+      needs.quota-admission.outputs.critical == 'true' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    environment: production
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Recover bounded authenticated ciphertext after normal fresh D1 write succeeds
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          GEOMACRO_OSINT_SPOOL_RECOVERY_ADMISSION: "CRITICAL_TRUE"
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node scripts/ops/private-osint-replay-held.mjs
 
   collect-unverified-private:
     needs: [verify, quota-admission]

@@ -1,16 +1,18 @@
 /**
  * Per-POP read-through cache for exact, anonymous, PUBLIC free D1 projections.
- * A bounded 45s window reduces repeated D1 reads for public website pages
+ * A bounded public-only cache reduces repeated D1 reads for website pages
  * (0/250/500) and the source-neutral machine pilot feed, across matching
  * requests at a given POP. No new D1/B2 writes, remote vendor or credentials.
  * Never cache protected/private responses, partner Predge views, signed
  * products, errors/503/429 or paid routes.
  * This is a best-effort query reduction, NOT a global quota reservation or
- * proof that an upstream news publisher is fresh.
+ * proof that an upstream news publisher is fresh. High-read derived pages
+ * use at most a 5-minute anonymous POP-local TTL; free public journal bundles
+ * use 60s. Authenticated/no-cache proof reads always hit canonical D1.
  */
 export const PUBLIC_FREE_D1_TTL_SECONDS = 45;
-export const PUBLIC_FREE_D1_DERIVED_TTL_SECONDS = 120;
-export const PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS = 15;
+export const PUBLIC_FREE_D1_DERIVED_TTL_SECONDS = 300;
+export const PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS = 60;
 const PATHS = new Set([
   "/v1/public/macro-fastlane",
   "/v1/public/fastlane-intelligence",

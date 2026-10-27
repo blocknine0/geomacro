@@ -1,0 +1,105 @@
+/**
+ * AES-GCM sealed, short-lived GitHub Actions holding area ONLY when account-wide
+ * D1 admission is HELD. GitHub artifact bytes may be publicly retrievable:
+ * persist ciphertext, never native feed titles, raw URLs, provider keys or
+ * unencrypted source observations. D1 remains the canonical ingest database.
+ */
+import {createCipheriv,createDecipheriv,createHmac,randomBytes} from "node:crypto";
+import {gzipSync,gunzipSync} from "node:zlib";
+import {validateReusableSourceNewsItem} from "../../workers/control-plane/src/reusable-source-news.mjs";
+
+export const OSINT_SPOOL_ENVELOPE="geomacro.encrypted-private-osint-held-spool.v1";
+export const OSINT_SPOOL_ARTIFACT_NAME="geomacro-encrypted-private-osint-held";
+const SCOPE="geomacro.osint-held-spool.aes256gcm.v1";
+const MAX_ITEMS=768,MAX_INPUT_BYTES=2_400_000,MAX_OUTPUT_BYTES=3_500_000;
+const MAX_AGE_MS=25*3600000;
+const validTime=x=>typeof x==="string"&&Number.isFinite(Date.parse(x))&&
+ new Date(x).toISOString()===x;
+const key=root=>{
+ if(typeof root!=="string"||root.length<32||root.length>4096)
+  throw Error("OSINT_SPOOL_CREDENTIAL_UNAVAILABLE");
+ return createHmac("sha256",root).update(SCOPE).digest();
+};
+function acceptedItems(items,now){
+ if(!Array.isArray(items)||items.length>MAX_ITEMS)throw Error("OSINT_SPOOL_ITEM_LIMIT");
+ const ids=new Set();
+ for(const item of items){
+  validateReusableSourceNewsItem(item,now);
+  if(ids.has(item.id))throw Error("OSINT_SPOOL_DUPLICATE_NEWS_ID");
+  ids.add(item.id);
+ }
+ return items;
+}
+export function sealPrivateOsintSpool({items,root,now=Date.now(),nonce=randomBytes(12)}){
+ if(!Number.isFinite(now)||!Buffer.isBuffer(nonce)||nonce.byteLength!==12)
+  throw Error("OSINT_SPOOL_CLOCK_OR_NONCE_INVALID");
+ const checked=acceptedItems(items,now);
+ if(!checked.length)return null;
+ const created_at=new Date(now).toISOString();
+ const plain=Buffer.from(JSON.stringify({schema:"geomacro.private-osint-spool-payload.v1",
+  created_at,items:checked}));
+ if(plain.byteLength>MAX_INPUT_BYTES)throw Error("OSINT_SPOOL_INPUT_TOO_LARGE");
+ const zipped=gzipSync(plain,{level:6});
+ const cipher=createCipheriv("aes-256-gcm",key(root),nonce);
+ cipher.setAAD(Buffer.from(SCOPE+"|"+created_at));
+ const ciphertext=Buffer.concat([cipher.update(zipped),cipher.final()]);
+ return Object.freeze({schema:OSINT_SPOOL_ENVELOPE,created_at,
+  algorithm:"aes-256-gcm+gzip",nonce:nonce.toString("base64"),
+  ciphertext:ciphertext.toString("base64"),
+  tag:cipher.getAuthTag().toString("base64"),
+  unverified_observation_count:checked.length,
+  canonical_d1_write_verified:false,rights_authorized:false});
+}
+export function unsealPrivateOsintSpool(envelope,root,now=Date.now()){
+ if(!envelope||typeof envelope!=="object"||Array.isArray(envelope)||
+   Object.keys(envelope).sort().join(",")!==
+     ["algorithm","canonical_d1_write_verified","ciphertext","created_at",
+      "nonce","rights_authorized","schema","tag","unverified_observation_count"].sort().join(",")||
+   envelope.schema!==OSINT_SPOOL_ENVELOPE||envelope.algorithm!=="aes-256-gcm+gzip"||
+   envelope.canonical_d1_write_verified!==false||envelope.rights_authorized!==false||
+   !validTime(envelope.created_at)||!Number.isFinite(now)||
+   !Number.isSafeInteger(envelope.unverified_observation_count)||
+   envelope.unverified_observation_count<1||
+   envelope.unverified_observation_count>MAX_ITEMS||
+   typeof envelope.ciphertext!=="string"||
+   envelope.ciphertext.length>MAX_OUTPUT_BYTES||
+   typeof envelope.nonce!=="string"||!/^[A-Za-z0-9+/]{16}$/u.test(envelope.nonce)||
+   typeof envelope.tag!=="string"||!/^[A-Za-z0-9+/]{22}==$/u.test(envelope.tag))
+  throw Error("OSINT_SPOOL_ENVELOPE_INVALID");
+ const age=now-Date.parse(envelope.created_at);
+ if(age<0||age>MAX_AGE_MS)throw Error("OSINT_SPOOL_EXPIRED");
+ let doc;
+ try{
+  const decipher=createDecipheriv("aes-256-gcm",key(root),
+    Buffer.from(envelope.nonce,"base64"));
+  decipher.setAAD(Buffer.from(SCOPE+"|"+envelope.created_at));
+  decipher.setAuthTag(Buffer.from(envelope.tag,"base64"));
+  const zipped=Buffer.concat([decipher.update(Buffer.from(envelope.ciphertext,"base64")),
+    decipher.final()]);
+  doc=JSON.parse(gunzipSync(zipped,{maxOutputLength:MAX_INPUT_BYTES}).toString("utf8"));
+ }catch{throw Error("OSINT_SPOOL_AUTHENTICATION_FAILED")}
+ if(doc?.schema!=="geomacro.private-osint-spool-payload.v1"||
+    doc.created_at!==envelope.created_at||
+    !Array.isArray(doc.items)||doc.items.length!==envelope.unverified_observation_count)
+  throw Error("OSINT_SPOOL_PROTECTED_CONTENT_INVALID");
+ // Reapply the same strict 25-hour native publisher clock on replay. Native
+ // source items that expired since sealed collection must never be extended.
+ const fresh=doc.items.filter(item=>{
+  const t=Date.parse(item?.source?.original_published_at??"");
+  return Number.isFinite(t)&&t<=now&&now-t<=MAX_AGE_MS;
+ });
+ acceptedItems(fresh,now);
+ return Object.freeze({items:fresh,expired:doc.items.length-fresh.length,
+  original_count:doc.items.length,created_at:doc.created_at,
+  verified_d1:false});
+}
+export function selectPrivateOsintSpoolArtifacts(artifacts,now=Date.now(),limit=1){
+ if(!Array.isArray(artifacts)||artifacts.length>100||
+    !Number.isFinite(now)||!Number.isSafeInteger(limit)||limit<1||limit>2)
+  throw Error("OSINT_SPOOL_ARTIFACT_LIST_INVALID");
+ return artifacts.filter(x=>x&&x.name===OSINT_SPOOL_ARTIFACT_NAME&&
+  Number.isSafeInteger(x.id)&&x.id>0&&x.expired===false&&
+  x.workflow_run?.head_branch==="main"&&validTime(x.created_at)&&
+  Date.parse(x.created_at)<=now&&now-Date.parse(x.created_at)<=MAX_AGE_MS
+ ).sort((a,b)=>a.created_at.localeCompare(b.created_at)).slice(0,limit);
+}

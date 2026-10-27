@@ -341,7 +341,8 @@
     "world-bank-ppg-sovereign-fiscal-shadow.yml",
     "world-bank-qpsd-fiscal-coverage.yml",
     "x402-global-zero-fund-coverage.yml",
-    "x402-pilot-product-lane-zero-fund.yml"
+    "x402-pilot-product-lane-zero-fund.yml",
+    "private-osint-d1-quota-held-spool.yml"
   ],
   "criticalWorkflowFiles": [
     "auto-ingest-news.yml",
