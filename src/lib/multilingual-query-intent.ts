@@ -81,7 +81,7 @@ const TOPIC_WORDS: Partial<Record<AgentQueryTopic, readonly string[]>> = {
     "যুদ্ধ", "সংঘাত", "ভূরাজনীতি", "युद्ध", "भूराजनीति", "الحرب",
     "نزاع", "guerra", "geopolítica", "conflit", "guerre",
     "krieg", "геополитика", "война", "战争", "地缘政治", "戦争", "전쟁"],
-  trade_corridor: ["trade", "tariff", "shipping route", "supply chain", "corridor",
+  trade_corridor: ["trade", "tariff", "shipping route", "supply chain",
     "বাণিজ্য", "শুল্ক", "সরবরাহ শৃঙ্খল", "व्यापार", "आपूर्ति श्रृंखला",
     "comercio", "aranceles", "commerce", "droits de douane", "handel",
     "торговля", "التجارة", "关税", "贸易", "貿易", "무역", "comércio"],
@@ -147,7 +147,7 @@ const PROFILE_WORDS = ["profile", "প্রোফাইল", "प्रोफ�
 const SIGNED_WORDS = TOPIC_WORDS.risk_object ?? [];
 const GATE_WORDS = TOPIC_WORDS.risk_gate ?? [];
 const DIRECTION_WORDS = ["to", "→", "->", "থেকে", "से", "तक", "إلى", "الى",
-  "a", "à", "para", "до", "向", "到", "에서", "까지", "から", "へ"];
+  "hacia", "vers", "nach", "para", "до", "向", "到", "에서", "까지", "から", "へ"];
 
 type Mention = { iso3: string; start: number; end: number };
 let aliasCache: Map<string, Set<string>> | null = null;
@@ -169,7 +169,7 @@ function countryAliases() {
       IND: ["ভারত", "ভারতের", "ভারতে", "भारत"],
       BGD: ["বাংলাদেশ", "বাংলাদেশের", "বাংলাদেশে", "बांग्लादेश"],
       CHN: ["চীন", "চীনের", "चीन"], USA: ["আমেরিকা", "মার্কিন যুক্তরাষ্ট্র", "अमेरिका"],
-      RUS: ["রাশিয়া", "रूस"], PAK: ["পাকিস্তান", "পাকিস্তানের", "पाकिस्तान"],
+      RUS: ["রাশিয়া", "रूस", "России", "Россия"], PAK: ["পাকিস্তান", "পাকিস্তানের", "पाकिस्तान"],
       DEU: ["জার্মানি", "जर्मनी"], GBR: ["ব্রিটেন", "ब्रिटेन"],
       ARE: ["সংযুক্ত আরব আমিরাত"],
     };
@@ -225,7 +225,8 @@ function findSubjects(question: string, intent: AgentQueryIntent | null,
     const between = norm(question).slice(mentions[0].end, mentions[1].start);
     if (!DIRECTION_WORDS.some(word => hasToken(between,word) ||
        (word === "→" && between.includes("→")) ||
-       (word === "->" && between.includes("->"))))
+       (word === "->" && between.includes("->")) ||
+       /^\s*(?:a|à)\s*$/u.test(between)))
       throw Error("CORRIDOR_DIRECTION_UNCLEAR");
     return [{ type: "corridor", origin_country_iso3: mentions[0].iso3,
       destination_country_iso3: mentions[1].iso3 }];
