@@ -5,6 +5,7 @@ import {
   type B2StructuralServingSnapshot,
 } from "./b2-structural.server";
 import { historicalSupabaseReadFallbackAllowed } from "./historical-supabase-read-mode.server";
+import { quotaGuardedHistoricalFetch } from "./historical-supabase-fetch.server";
 import { loadQualifiedMcsCountryContext } from "./qualified-mcs-country-digest.server";
 import { loadQualifiedTreasuryFxCountryContext } from "./qualified-treasury-fx.server";
 import {sourceNativeObservationTime} from "./source-native-observation-time";
@@ -103,6 +104,7 @@ function getHistoricalClient(): SupabaseClient | null {
   if (!url || !serviceKey) return null;
   cachedHistoricalClient = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: quotaGuardedHistoricalFetch },
   });
   return cachedHistoricalClient;
 }

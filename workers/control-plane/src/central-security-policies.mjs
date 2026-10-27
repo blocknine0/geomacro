@@ -1,5 +1,16 @@
 // Same server-owned limits in Nitro and the authenticated D1 budget service.
 export const CENTRAL_SECURITY_POLICIES = {
+  // Strict globally shared D1 admission before EVERY direct historical
+  // Supabase website fallback request. One 72-request daily pool across
+  // server isolates, all users, and countries; denied reads never bypass.
+  historical_supabase_fallback: {
+    windowSeconds: 86400,
+    perClient: 72,
+    global: 72,
+    maxBodyBytes: 0,
+    distributed: true,
+    failClosed: true,
+  },
   // One purpose-scoped Predge research bearer, hard 500 GETs per UTC day.
   // Existing atomic D1 security-budget table; no new migration or cron.
   predge_research_news: {
