@@ -17,7 +17,7 @@ const news=()=>({
   delivery_scope:"free_website_only",retention_hours:72,
   original_release_delay_minutes:0,page_offset:0,page_size:250,
   has_more:false,next_offset:null,scored:false,chargeable:false,
-  checked_at:time,signals:[]
+  checked_at:time,signals:[],first_ingest:[]
 });
 const machine=()=>({
   ok:true,schema:"geomacro.derived-news-structural-feed.v1",
