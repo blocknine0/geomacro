@@ -9,10 +9,12 @@
  * proof that an upstream news publisher is fresh.
  */
 export const PUBLIC_FREE_D1_TTL_SECONDS = 45;
+export const PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS = 15;
 const PATHS = new Set([
   "/v1/public/three-domain-continuity",
   "/v1/public/website-derived-news",
   "/v1/public/website-derived-news-immediate",
+  "/v1/public/website-derived-news-bundle",
   "/v1/public/website-derived-news-html",
   "/v1/public/reusable-source-news",
   "/v1/public/derived-structural-72h",
@@ -29,6 +31,7 @@ const categoryQuery = query => query.startsWith("domain=") &&
   DOMAINS.has(query.slice("domain=".length)) &&
   query === "domain="+query.slice("domain=".length);
 const forbidden = new Set(["authorization","cookie","range","x-api-key"]);
+const ttlForPath=pathname=>pathname==="/v1/public/website-derived-news-bundle"?PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS:PUBLIC_FREE_D1_TTL_SECONDS;
 // Per-isolate single-flight avoids the D1 read stampede between a cache miss
 // and the cache PUT. Cache API remains authoritative across requests/POPs.
 const inFlightPublicReads=new Map();
@@ -62,10 +65,11 @@ export async function readPublicFreeD1Cached(request,calculate,{
   const url=new URL(request.url);
   // Cache key never captures cookies, tokens, headers or query parameters.
   const key=new Request(url.origin+url.pathname+url.search,{method:"GET"});
+  const ttl=ttlForPath(url.pathname);
   try {
     const cached=await cache.match(key);
     if(cached?.status===200 &&
-       cached.headers.get("Cache-Control")==="public, max-age="+PUBLIC_FREE_D1_TTL_SECONDS &&
+       cached.headers.get("Cache-Control")==="public, max-age="+ttl &&
        !cached.headers.has("Set-Cookie"))return cached;
   }catch{ /* unavailable cache: fall back to truthful D1 response */ }
   const pending=inFlightPublicReads.get(key.url);
@@ -76,7 +80,7 @@ export async function readPublicFreeD1Cached(request,calculate,{
     if(response?.status!==200||response.headers.has("Set-Cookie"))
       return response;
     const headers=new Headers(response.headers);
-    headers.set("Cache-Control","public, max-age="+PUBLIC_FREE_D1_TTL_SECONDS);
+    headers.set("Cache-Control","public, max-age="+ttl);
     headers.set("Vary","Accept-Encoding");
     const bounded=new Response(response.body,{status:200,headers});
     try{
