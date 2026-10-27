@@ -182,7 +182,7 @@ test("protected collector differentiates real free D1 read and write limits from
 });
 
 
-test("every real checked source is D1-snapshotted once across three five-minute UTC slots",()=>{
+test("every real checked source is D1-snapshotted once across three consecutive fifteen-minute UTC cron slots",()=>{
  assert.equal(PRIVATE_OSINT_D1_HEALTH_SNAPSHOT_SLOTS,3);
  const checks=Array.from({length:900},(_,i)=>({
   source_ref:createHash("sha256").update("private-health-"+i).digest("hex"),
@@ -191,17 +191,27 @@ test("every real checked source is D1-snapshotted once across three five-minute 
   checked_at:new Date(now).toISOString(),
  }));
  const batches=[0,1,2].map(n=>selectPrivateOsintD1HealthChecks({
-  checks,now:now+n*300000,slots:3,newsItemCount:10,
+  checks,now:now+n*900000,slots:3,newsItemCount:10,
  }));
  assert.deepEqual(batches.map(x=>x.slot).sort(),[0,1,2]);
  const selected=batches.flatMap(b=>b.checks);
  assert.equal(selected.length,checks.length);
  assert.equal(new Set(selected.map(x=>x.source_ref)).size,checks.length);
+ // Regression: 15-minute cron would select the same modulo-3 slot
+ // forever if the phase duration incorrectly stayed at five minutes.
+ const delayedSameSlot=selectPrivateOsintD1HealthChecks({
+  checks,now:now+3*60000,slots:3,newsItemCount:10,
+ });
+ assert.equal(delayedSameSlot.slot,batches[0].slot);
+ const followingScheduledTick=selectPrivateOsintD1HealthChecks({
+  checks,now:now+15*60000,slots:3,newsItemCount:10,
+ });
+ assert.notEqual(followingScheduledTick.slot,batches[0].slot);
  assert.equal(batches.reduce((x,b)=>x+b.sampled,0),checks.length);
  assert.ok(batches.every(b=>b.deferred===checks.length-b.sampled));
  assert.ok(batches.every(b=>b.sampled>250&&b.sampled<350));
  assert.deepEqual(selectPrivateOsintD1HealthChecks({
-  checks,now:now+15*60000,slots:3,newsItemCount:10
+  checks,now:now+45*60000,slots:3,newsItemCount:10
  }).checks.map(x=>x.source_ref),batches[0].checks.map(x=>x.source_ref));
  assert.equal(selectPrivateOsintD1HealthChecks({
   checks,now,slots:1,newsItemCount:10
@@ -232,7 +242,7 @@ test("private quota sampling persists EVERY dated news item but fewer D1 check U
  const writes=calls.filter(c=>c.method==="PUT").map(c=>JSON.parse(c.body));
  assert.equal(receipt.source_checks_observed_this_tick,900);
  assert.equal(receipt.source_health_snapshot_slots,3);
- assert.equal(receipt.source_health_snapshot_cadence_nominal_minutes,15);
+ assert.equal(receipt.source_health_snapshot_cadence_nominal_minutes,45);
  assert.equal(receipt.source_checks_persisted,receipt.source_checks_selected_for_d1);
  assert.equal(receipt.source_checks_deferred_to_snapshot+receipt.source_checks_persisted,900);
  assert.ok(receipt.source_checks_persisted>=250&&receipt.source_checks_persisted<=350);
