@@ -7,7 +7,7 @@ import {writeOwnerTelegramExportJson,privateOwnerTelegramExportJson} from './tel
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
 import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
-import { readDerivedStories, readDerivedStoriesBundle, publishDerivedStories, renderDerivedStoriesHtml, DERIVED_NEWS_TOPIC_POLICY_REVISION } from "./website-derived-intelligence.mjs";
+import { readDerivedStories, publishDerivedStories, renderDerivedStoriesHtml, DERIVED_NEWS_TOPIC_POLICY_REVISION } from "./website-derived-intelligence.mjs";
 import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
@@ -1279,7 +1279,7 @@ export default {
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime"&&!url.search)return getSourceRuntimeStatus(env);
     if(request.method==="GET"&&url.pathname==="/v1/public/reusable-source-news")
-      return publicReusableSourceNews(env,url.searchParams);
+      return publicReadCache(()=>publicReusableSourceNews(env,url.searchParams));
     if(request.method==="GET"&&url.pathname==="/v1/public/three-domain-continuity"&&!url.search)
       return publicReadCache(()=>threeDomainEvidenceContinuity(env));
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime-context"){
@@ -1304,8 +1304,6 @@ export default {
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
       return publicReadCache(()=>renderDerivedStoriesHtml(env));
     }
-    if(request.method==="GET"&&url.pathname==="/v1/public/website-derived-news-bundle"&&!url.search)
-      return publicReadCache(()=>readDerivedStoriesBundle(env));
     if(request.method==='GET'&&url.pathname==='/v1/public/intelligence-publications')
       return publicSignedNews(env,url.searchParams);
     if (request.method === "GET" && ["/v1/public/website-derived-news","/v1/public/website-derived-news-immediate"].includes(url.pathname)) {
@@ -1319,7 +1317,7 @@ export default {
       if(q.size!==1||q.getAll("offset").length!==1||
          !["250","500"].includes(q.get("offset")))
         return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID",chargeable:false},400);
-      return readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay);
+      return publicReadCache(()=>readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay));
     }
     if (request.method === "GET" && url.pathname === "/v1/public/source-pulse-30m") {
       return getPublicThreeDomain30MinSourcePulse(env);

@@ -2,24 +2,21 @@
 // public derived D1 journal; never fetch publishers or log individual rows.
 import {buildDerivedNewsStructural} from '../../src/lib/derived-news-structural-bridge.ts';
 export async function readPredgeJournal(get){
- const r=await get('public/website-derived-news-bundle',{headers:{Accept:'application/json','Cache-Control':'no-cache'},cache:'no-store'});
- const p=r?.body;
- if(r?.status!==200||p?.ok!==true||
-    p.schema!=="geomacro.website-derived-news-bundle.v1"||
-    p.complete!==true||p.item_cap!==600||p.returned_rows!==p.signals?.length||
-    p.delivery_scope!=="free_website_only"||p.retention_hours!==72||
-    p.original_release_delay_minutes!==0||
-    !Array.isArray(p.signals)||p.signals.length>600||
-    !Array.isArray(p.first_ingest)||p.first_ingest.length!==p.signals.length||
-    p.first_ingest.some((row,i)=>!row||row.id!==p.signals[i]?.id||
-      !(row.first_seen_at===null||typeof row.first_seen_at==="string"&&Number.isFinite(Date.parse(row.first_seen_at)))))
-  throw Error('PREDGE_JOURNAL_INVALID');
- const seen=new Set();
- for(const signal of p.signals){
-  if(typeof signal?.id!=='string'||seen.has(signal.id))throw Error('PREDGE_JOURNAL_INVALID');
-  seen.add(signal.id);
+ const signals=[],seen=new Set();
+ for(const offset of [0,250,500]){
+  const r=await get('public/website-derived-news-immediate'+(offset?'?offset='+offset:''));
+  const p=r.body;
+  if(r.status!==200||p?.ok!==true||p.page_offset!==offset||p.page_size!==250||
+     !Array.isArray(p.signals)||p.signals.length>250||typeof p.has_more!=='boolean')
+   throw Error('PREDGE_JOURNAL_INVALID');
+  for(const s of p.signals){
+   if(typeof s?.id!=='string'||seen.has(s.id))throw Error('PREDGE_JOURNAL_INVALID');
+   seen.add(s.id);signals.push(s);
+  }
+  if(!p.has_more){if(p.next_offset!==null)throw Error('PREDGE_JOURNAL_INVALID');return signals;}
+  if(offset===500||p.next_offset!==offset+250)throw Error('PREDGE_JOURNAL_INVALID');
  }
- return p.signals;
+ throw Error('PREDGE_JOURNAL_INVALID');
 }
 export function predgeJournalParity(research,publicFeed,journal){
  if(!Array.isArray(journal)||journal.length>600)return false;

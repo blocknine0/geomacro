@@ -208,58 +208,6 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
 
 
 /**
- * Single-query readback for internal consumers that need the complete bounded
- * 600-row journal. Three LIMIT/OFFSET pages repeatedly scan earlier index rows;
- * this bundle reads the existing retention ring once and fails closed if the
- * hard row cap has drifted. The public 250-row compatibility endpoint remains.
- */
-export async function readDerivedStoriesBundle(env,now=Date.now()) {
-  if(!Number.isFinite(now))
-    return json({ok:false,error:"DERIVED_NEWS_BUNDLE_CLOCK_INVALID",chargeable:false},400);
-  try {
-    const {results=[]}=await env.DB.prepare(
-      "SELECT story_json,first_seen_at FROM website_derived_intelligence "+
-      "WHERE published_at>=? AND first_seen_at>=? "+
-      "ORDER BY published_at DESC,id DESC LIMIT 601"
-    ).bind(
-      new Date(now-AUTO_INGEST_RETENTION_MS).toISOString().slice(0,10),
-      new Date(now-AUTO_INGEST_RETENTION_MS).toISOString()
-    ).all();
-    if(!Array.isArray(results)||results.length>600)
-      throw Error("DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED");
-    const signals=[],firstIngest=[];
-    for(const row of results){
-      try {
-        const signal=JSON.parse(row.story_json);
-        if(verifyDerivedStory(signal,now)&&
-           (originalTime(signal,now)?.at??-Infinity)>=now-AUTO_INGEST_RETENTION_MS){
-          const firstMs=Date.parse(row.first_seen_at);
-          signals.push(signal);
-          firstIngest.push({id:signal.id,
-            first_seen_at:Number.isFinite(firstMs)&&firstMs<=now+60_000&&
-              firstMs>=(originalTime(signal,now)?.eligibleAt??Infinity)
-                ?new Date(firstMs).toISOString():null});
-        }
-      }catch{/* Fail closed per row without exposing persisted prose or metadata. */}
-    }
-    return json({ok:true,schema:"geomacro.website-derived-news-bundle.v1",
-      checked_at:new Date(now).toISOString(),
-      original_release_delay_minutes:0,retention_days:3,retention_hours:72,
-      delivery_scope:"free_website_only",complete:true,
-      item_cap:600,returned_rows:signals.length,
-      ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
-      first_ingest:firstIngest,signals,
-      scored:false,chargeable:false,supabase_dependency:false},200,false);
-  } catch(error) {
-    const failure_class=classifyDerivedNewsD1Failure(error);
-    console.error(JSON.stringify({schema:"geomacro.derived-news-d1-failure.v1",
-      operation:"news_bundle_read",failure_class}));
-    return json({ok:false,error:"DERIVED_NEWS_BUNDLE_UNAVAILABLE",
-      diagnostic_code:failure_class,chargeable:false,signals:[]},503);
-  }
-}
-
-/**
  * Fail-visible, self-contained newsroom HTML from the SAME D1 rows. Embedded
  * on the website only while its Lovable SSR/server-function/client fetch
  * path has not produced cards. Browser loads Worker HTML directly, so a

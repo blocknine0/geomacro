@@ -14,7 +14,8 @@ const accepted=new Set(["rss","api","bulk"]);
 const ref=(s,c)=>createHash("sha256").update([s.id,s.url,c].join("\n")).digest("hex");
 const sourceFile=new URL("../../config/operator-country-source-crosswalk.v1.json",import.meta.url);
 
-export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourceFile,"utf8"))){
+export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourceFile,"utf8")),{includeGapLane=false}={}){
+ if(typeof includeGapLane!=="boolean")throw Error("UNVERIFIED_OSINT_LOCAL_GAP_OPTION_INVALID");
  if(raw?.schema!=="geomacro.operator-country-source-crosswalk.v1"||
     !Array.isArray(raw.national_primary)||!Array.isArray(raw.global_country_dim))
    throw Error("UNVERIFIED_OSINT_REGISTRY_INVALID");
@@ -47,7 +48,85 @@ export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourc
    rights_verified:false,commercial_eligible:false,publicly_deliverable:false,
   }));
  }
- if(!items.length||items.length>80)throw Error("UNVERIFIED_OSINT_CANDIDATES_MISSING");
+
+ // Source-gap lane stays isolated from the already 511-endpoint private OSINT
+ // scanner. RSS candidates are accepted only after actual live HTTP/parse and
+ // publisher-native publication timestamps; never treat a lookup URL as news.
+ if(includeGapLane){
+ const gaps=JSON.parse(readFileSync(new URL(
+  "../../config/private-osint-local-gaplane.v1.json",import.meta.url),"utf8"));
+ if(gaps?.schema!=="geomacro.private-osint-local-gaplane.v1"||
+    gaps.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
+    !Array.isArray(gaps.sources)||gaps.sources.length>100)
+  throw Error("UNVERIFIED_OSINT_LOCAL_GAP_MANIFEST_INVALID");
+ for(const source of gaps.sources){
+  let url,reference;
+  try{url=new URL(source.url);reference=new URL(source.discovery_reference_url)}
+  catch{throw Error("UNVERIFIED_OSINT_LOCAL_GAP_URL_INVALID")}
+  if(!/^private_gaplane_[a-z0-9_]+$/u.test(source.id)||
+     ids.has(source.id)||urls.has(url.href)||url.href!==source.url||
+     url.protocol!=="https:"||url.username||url.password||url.port||url.hash||
+     !url.hostname.includes(".")||
+     reference.protocol!=="https:"||reference.username||reference.password||
+     reference.port||reference.hash||!reference.hostname.includes(".")||
+     !/^[A-Z]{3}$/u.test(source.publisher_country_iso3??"")||
+     source.activation_state!=="RUNTIME_PROBE_REQUIRED"||
+     source.publisher_native_dates_required!==true||
+     source.transport_verified_at_registration!==false||
+     source.commercial_eligible!==false||source.publicly_deliverable!==false||
+     !Array.isArray(source.categories)||source.categories.length!==3||
+     new Set(source.categories).size!==3||
+     source.categories.some(c=>!Object.hasOwn(domains,c))||
+     !["rss","atom"].includes(source.type))
+   throw Error("UNVERIFIED_OSINT_LOCAL_GAP_CANDIDATE_UNSAFE:"+source?.id);
+  ids.add(source.id);urls.add(url.href);
+  items.push(Object.freeze({
+   ...source,access:"rss",supported:true,
+   publisher_countries:[source.publisher_country_iso3],
+   activation_state:"PRIVATE_UNVERIFIED_OBSERVATION",
+   rights_verified:false,commercial_eligible:false,publicly_deliverable:false,
+  }));
+ }
+ }
+ // Nauru GIO publishes a fortnightly bulletin; KCNA is DPRK's native media.
+ // Neither public website was proven to offer publisher-native RSS. ONLY
+ // perform bounded unauthenticated transport status checks; HTTP 200 != news.
+ if(includeGapLane){
+  const doc=JSON.parse(readFileSync(new URL(
+   "../../config/private-osint-official-nonrss-sources.v1.json",import.meta.url),"utf8"));
+  if(doc?.schema!=="geomacro.private-osint-official-nonrss-sources.v1"||
+     doc.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
+     !Array.isArray(doc.sources)||doc.sources.length!==2)
+   throw Error("UNVERIFIED_OSINT_NONRSS_MANIFEST_INVALID");
+  const seen=new Set();
+  for(const source of doc.sources){
+   let url;try{url=new URL(source.url)}catch{throw Error("UNVERIFIED_OSINT_NONRSS_URL_INVALID")}
+   const allowed=(source.publisher_country_iso3==="NRU"&&
+    url.href==="https://www.nauru.gov.nr/government-information-office/naoero-bulletin.aspx")||
+    (source.publisher_country_iso3==="PRK"&&url.href==="https://www.kcna.kp/en");
+   if(!allowed||seen.has(source.publisher_country_iso3)||
+      !/^private_official_nonrss_[a-z0-9_]+$/u.test(source.id)||
+      ids.has(source.id)||urls.has(url.href)||
+      url.protocol!=="https:"||url.username||url.password||url.port||url.hash||
+      !Array.isArray(source.categories)||source.categories.length!==3||
+      new Set(source.categories).size!==3||
+      source.categories.some(c=>!Object.hasOwn(domains,c))||
+      source.access!=="bulk"||source.type!=="html"||
+      source.source_clock_status!=="NOT_FEED_NATIVE"||
+      source.native_news_emission_enabled!==false||
+      source.transport_verified_at_registration!==false||
+      source.commercial_eligible!==false||source.publicly_deliverable!==false)
+    throw Error("UNVERIFIED_OSINT_NONRSS_SOURCE_UNSAFE");
+   seen.add(source.publisher_country_iso3);
+   urls.add(url.href);ids.add(source.id);
+   items.push(Object.freeze({...source,supported:false,
+    publisher_countries:[source.publisher_country_iso3],
+    activation_state:"PRIVATE_UNVERIFIED_OBSERVATION",
+    rights_verified:false,commercial_eligible:false,publicly_deliverable:false}));
+  }
+  if(seen.size!==2)throw Error("UNVERIFIED_OSINT_NONRSS_COUNTRIES_INCOMPLETE");
+ }
+ if(!items.length||items.length>128)throw Error("UNVERIFIED_OSINT_CANDIDATES_MISSING");
  return Object.freeze(items);
 }
 async function unauthenticatedTransportCheck(s,fetchImpl,now){
@@ -67,12 +146,12 @@ async function unauthenticatedTransportCheck(s,fetchImpl,now){
 }
 export async function collectPrivateUnverifiedOsint({
  now=new Date(),fetchImpl=fetch,normalize,resolveCountry,
- registry=privateUnverifiedOsintRegistry(),
+ registry=privateUnverifiedOsintRegistry(undefined,{includeGapLane:true}),
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
     typeof fetchImpl!=="function"||typeof normalize!=="function"||
     typeof resolveCountry!=="function"||!Array.isArray(registry)||
-    !registry.length||registry.length>80||
+    !registry.length||registry.length>128||
     registry.some(s=>s.activation_state!=="PRIVATE_UNVERIFIED_OBSERVATION"))
   throw Error("UNVERIFIED_OSINT_COLLECTOR_CONFIG_INVALID");
  const feeds=registry.filter(s=>s.access==="rss");

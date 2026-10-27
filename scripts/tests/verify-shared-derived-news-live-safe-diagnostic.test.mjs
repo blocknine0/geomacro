@@ -69,7 +69,7 @@ test("schema or rights not actually approved remains red",async()=>{
  assert.equal(calls,1);
 });
 
-test("Predge shared D1 parity reads the complete zero-delay D1 bundle, never a delayed legacy alias",async()=>{
+test("Predge shared D1 parity reads the zero-delay website journal, never the delayed legacy alias",async()=>{
  const domains=["geopolitics","macro","rare_earth"];
  const counts=Object.fromEntries(domains.map(c=>[c,0]));
  const availability_by_category=Object.fromEntries(domains.map(c=>[c,{
@@ -82,7 +82,8 @@ test("Predge shared D1 parity reads the complete zero-delay D1 bundle, never a d
   reference_data_is_not_a_new_official_release:true
  }]));
  const urls=[];
- const fetcher=async(url)=>{
+ const fetcher=async(url,init)=>{
+  assert.equal(init?.headers?.["Cache-Control"],"no-cache");
   urls.push(url);
   if(url.endsWith("/derived-structural-72h")){
    return new Response(JSON.stringify({
@@ -92,13 +93,10 @@ test("Predge shared D1 parity reads the complete zero-delay D1 bundle, never a d
     raw_upstream_delivered:false,items:[],counts,availability_by_category
    }),{status:200,headers:{"content-type":"application/json"}});
   }
-  if(url.endsWith("/website-derived-news-bundle")){
+  if(url.endsWith("/website-derived-news-immediate")){
    return new Response(JSON.stringify({
-    ok:true,schema:"geomacro.website-derived-news-bundle.v1",
-    checked_at:new Date().toISOString(),original_release_delay_minutes:0,
-    retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
-    complete:true,item_cap:600,returned_rows:0,signals:[],first_ingest:[],
-    ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER"
+    ok:true,page_offset:0,page_size:250,signals:[],
+    has_more:false,next_offset:null
    }),{status:200,headers:{"content-type":"application/json"}});
   }
   assert.fail("unexpected or delayed legacy derived news endpoint: "+url);
@@ -110,5 +108,5 @@ test("Predge shared D1 parity reads the complete zero-delay D1 bundle, never a d
  assert.equal(result.commercial_rights_verified,false);
  assert.equal(result.payments,0);
  assert.equal(urls.length,2);
- assert.equal(urls[1].endsWith("/website-derived-news-bundle"),true);
+ assert.equal(urls[1].endsWith("/website-derived-news-immediate"),true);
 });

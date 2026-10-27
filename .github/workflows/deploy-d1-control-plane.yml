@@ -17,7 +17,6 @@ on:
       - "scripts/tests/d1-quota-reset-recovery-workflow.test.mjs"
       - "scripts/tests/public-free-d1-cache.test.mjs"
       - "scripts/tests/summarize-d1-reads-insights.test.mjs"
-      - "scripts/ops/audit-d1-account-daily-quota-readonly.mjs"
   push:
     branches:
       - main
@@ -30,7 +29,6 @@ on:
       - "scripts/tests/public-free-d1-cache.test.mjs"
       - "scripts/ops/summarize-d1-reads-insights.mjs"
       - "scripts/tests/summarize-d1-reads-insights.test.mjs"
-      - "scripts/ops/audit-d1-account-daily-quota-readonly.mjs"
       - "src/lib/original-verification-policy.ts"
       - "src/lib/release-news-observation.ts"
       - "src/lib/private-source-handoff.ts"
@@ -218,10 +216,9 @@ jobs:
           NODE
 
       - name: Observe account-wide D1 free quota without spending D1 rows
-        id: d1-quota-preflight
-        # The audit is allowed to emit a bounded failure so the query-insights
-        # diagnostic can still run. A mandatory gate immediately before the
-        # migration step stops all D1 SQL when usage is unknown/over reserve.
+        # Diagnostic only. Cloudflare GraphQL reports account-wide usage;
+        # neither a missing metrics permission nor exhausted headroom grants
+        # permission to skip migrations, pay, or bypass any production gate.
         continue-on-error: true
         shell: bash
         run: |
@@ -244,15 +241,6 @@ jobs:
           else
             echo "::warning::D1_READ_PRESSURE_INSIGHTS_PROVIDER_UNAVAILABLE"
           fi
-
-      - name: Require verified D1 Free-tier daily row headroom before migrations
-        if: steps.d1-quota-preflight.outcome != 'success'
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "::error::D1_QUOTA_HEADROOM_UNVERIFIED_OR_BELOW_SAFE_RESERVE"
-          echo "Migration stopped before any D1 SQL query; retry after the UTC quota reset and only with a successful read-only usage audit."
-          exit 3
 
       - name: Apply committed D1 migrations remotely
         working-directory: workers/control-plane

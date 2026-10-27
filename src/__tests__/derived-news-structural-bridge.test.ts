@@ -73,10 +73,7 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    });
    const all=await fetchAllDerivedNews(internalMock as typeof fetch,NOW);
    expect(all).toHaveLength(520);
-   // The first call probes the new bundle route; the explicit old feed schema
-   // then exercises the one-release legacy compatibility reader.
-   expect(internalMock).toHaveBeenCalledTimes(4);
-   expect(String(internalMock.mock.calls[0]?.[0])).toContain("website-derived-news-bundle");
+   expect(internalMock).toHaveBeenCalledTimes(3);
    const mock=vi.fn(async (input:RequestInfo|URL)=>{
      expect(String(input)).toBe("https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json");
      return Response.json(feed(signals.slice(0,250)));

@@ -34,7 +34,7 @@ if(import.meta.main){
   const now=new Date();
   const retained=await readPrivateSourceHandoffs({keys,trust,now,
    env:{...process.env,GEOMACRO_LOW_REVIEW_TOKEN:capability}});
-  const journal=await fetchAllDerivedNews(fetch,now.getTime(),{fresh:true}),revised=[];
+  const journal=await fetchAllDerivedNews(fetch,now.getTime()),revised=[];
   let missing=0;
   for(const signal of journal){
    const ref=retained.originals.get(await automatedInputId(signal));
@@ -52,7 +52,7 @@ if(import.meta.main){
    if(response.status!==200||response.redirected||ack.ok!==true||ack.accepted!==signals.length)throw Error('ACK');
   }
   if(revised.length){
-   const after=new Map((await fetchAllDerivedNews(fetch,Date.now(),{fresh:true})).map(s=>[s.id,s]));
+   const after=new Map((await fetchAllDerivedNews(fetch,Date.now())).map(s=>[s.id,s]));
    for(const signal of revised){
     const actual=after.get(signal.id);
     if(!actual||await automatedInputId(actual)!==await automatedInputId(signal))throw Error('READBACK');

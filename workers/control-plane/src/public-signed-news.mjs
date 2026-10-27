@@ -2,7 +2,7 @@ import {ORIGINAL_VERIFICATION_WINDOW_HOURS} from '../../../src/lib/original-veri
 // Public proofs for the SAME derived-only newsroom rows. Existing issuer
 // signatures remain ingestion proofs; original-page review is a separate
 // narrow authority. Neither is silently upgraded to the legacy GRO/GRI proof.
-import {readDerivedStoriesBundle} from './website-derived-intelligence.mjs';
+import {readDerivedStories} from './website-derived-intelligence.mjs';
 import {checkedDerivedNews} from '../../../src/lib/public-derived-news-client.ts';
 import {automatedInputContent,automatedInputId,inputHash,verifyAutomatedInput} from '../../../src/lib/automated-intelligence-input.ts';
 import {verifyLowSourceReview} from '../../../src/lib/low-authority-source-review.ts';
@@ -17,7 +17,7 @@ const counts=items=>({total:items.length,
  current_source_verified_signed:items.filter(x=>x.current_source_verified_signed).length,
  pending_signature:items.filter(x=>!x.signature_verified).length,
 });
-export async function publicSignedNews(env,query=new URLSearchParams(),now=Date.now(),{readStories,readBundle=readDerivedStoriesBundle}={}){
+export async function publicSignedNews(env,query=new URLSearchParams(),now=Date.now(),{readStories=readDerivedStories}={}){
  const raw=query.get('offset')??'0',offset=Number(raw);
  if([...query.keys()].some(k=>k!=='offset')||query.getAll('offset').length>1||
     !/^(?:0|[1-9][0-9]{0,2})$/.test(raw)||offset%SIZE||offset>=600)
@@ -25,44 +25,18 @@ export async function publicSignedNews(env,query=new URLSearchParams(),now=Date.
  if(!env?.DB||!Number.isFinite(now))return reply({ok:false,error:'SIGNED_NEWS_UNAVAILABLE'},503);
  try{
   const journal=[],seen=new Set();
-  if(typeof readStories==="function"){
-   // Test/deployment compatibility injection can emulate the old page reader;
-   // production uses the single-query bundle path below.
-   for(const start of [0,250,500]){
-    const response=await readStories(env,now,start);
-    if(response.status!==200)throw Error('JOURNAL');
-    const page=await response.json();
-    if(page.page_offset!==start||page.page_size!==250||typeof page.has_more!=='boolean')throw Error('PAGE');
-    for(const signal of checkedDerivedNews(page,now)){
-     if(seen.has(signal.id))throw Error('DUPLICATE');
-     seen.add(signal.id);journal.push(signal);
-    }
-    if(journal.length>600)throw Error('CAPACITY');
-    if(!page.has_more){if(page.next_offset!==null)throw Error('CURSOR');break;}
-    if(start===500||page.next_offset!==start+250)throw Error('CURSOR');
+  for(const start of [0,250,500]){
+   const response=await readStories(env,now,start);
+   if(response.status!==200)throw Error('JOURNAL');
+   const page=await response.json();
+   if(page.page_offset!==start||page.page_size!==250||typeof page.has_more!=='boolean')throw Error('PAGE');
+   for(const signal of checkedDerivedNews(page,now)){
+    if(seen.has(signal.id))throw Error('DUPLICATE');
+    seen.add(signal.id);journal.push(signal);
    }
-  }else{
-   const response=await readBundle(env,now);
-   if(response.status!==200)throw Error('JOURNAL_BUNDLE');
-   const bundle=await response.json();
-   if(bundle?.ok!==true||bundle.schema!=='geomacro.website-derived-news-bundle.v1'||
-      bundle.delivery_scope!=='free_website_only'||bundle.retention_hours!==72||
-      bundle.original_release_delay_minutes!==0||bundle.complete!==true||
-      bundle.item_cap!==600||!Array.isArray(bundle.signals)||bundle.signals.length>600||
-      bundle.returned_rows!==bundle.signals.length||
-      !Array.isArray(bundle.first_ingest)||bundle.first_ingest.length!==bundle.signals.length||
-      bundle.first_ingest.some((row,i)=>!row||row.id!==bundle.signals[i]?.id||
-       !(row.first_seen_at===null||typeof row.first_seen_at==='string'&&Number.isFinite(Date.parse(row.first_seen_at)))))
-     throw Error('JOURNAL_BUNDLE_CONTRACT');
-   for(let offset=0;offset<bundle.signals.length;offset+=250){
-    const page={ok:true,schema:'geomacro.website-derived-news-feed.v1',
-      original_release_delay_minutes:0,retention_days:3,retention_hours:72,
-      delivery_scope:'free_website_only',signals:bundle.signals.slice(offset,offset+250)};
-    for(const signal of checkedDerivedNews(page,now)){
-     if(seen.has(signal.id))throw Error('DUPLICATE');
-     seen.add(signal.id);journal.push(signal);
-    }
-   }
+   if(journal.length>600)throw Error('CAPACITY');
+   if(!page.has_more){if(page.next_offset!==null)throw Error('CURSOR');break;}
+   if(start===500||page.next_offset!==start+250)throw Error('CURSOR');
   }
   // One exact canonical identity per unique derived item, including revisions.
   // Alternate journal IDs are aliases, never duplicate signed publications.

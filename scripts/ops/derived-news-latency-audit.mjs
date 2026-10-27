@@ -71,45 +71,18 @@ export function auditDerivedJournalPages(pages,now=new Date()){
  });
 }
 const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
-const BUNDLE="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-bundle";
 export async function auditLiveDerivedJournal(fetcher=fetch,now=new Date()){
- const response=await fetcher(BUNDLE,{method:"GET",redirect:"error",cache:"no-store",
-  headers:{Accept:"application/json","Cache-Control":"no-cache"},signal:AbortSignal.timeout(12000)});
- if(!response.ok||Number(response.headers.get("content-length")||0)>4_000_000)
-  fail("PUBLIC_READBACK_UNAVAILABLE");
- const raw=await response.text();
- if(raw.length>4_000_000)fail("PUBLIC_READBACK_OVERSIZE");
- const bundle=JSON.parse(raw);
- if(bundle?.ok!==true||bundle.schema!=="geomacro.website-derived-news-bundle.v1"||
-    bundle.complete!==true||bundle.item_cap!==600||bundle.returned_rows!==bundle.signals?.length||
-    bundle.delivery_scope!=="free_website_only"||bundle.retention_hours!==72||
-    bundle.original_release_delay_minutes!==0||
-    !Array.isArray(bundle.signals)||bundle.signals.length>600||
-    !Array.isArray(bundle.first_ingest)||bundle.first_ingest.length!==bundle.signals.length||
-    bundle.first_ingest.some((row,i)=>!row||row.id!==bundle.signals[i]?.id||
-      !(row.first_seen_at===null||typeof row.first_seen_at==="string"&&Number.isFinite(Date.parse(row.first_seen_at)))))
-  fail("BUNDLE_INVALID");
- const at=parse(bundle.checked_at);
- if(!Number.isFinite(at)||at>now.getTime()+60_000||now.getTime()-at>5*60_000)
-  fail("CLOCK_STALE");
  const pages=[];
- if(bundle.signals.length===0){
-  pages.push({ok:true,schema:"geomacro.website-derived-news-feed.v1",
-   checked_at:bundle.checked_at,original_release_delay_minutes:0,
-   retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
-   ingest_clock_kind:bundle.ingest_clock_kind,page_offset:0,page_size:250,
-   has_more:false,next_offset:null,signals:[],first_ingest:[]});
- }else{
-  for(let start=0;start<bundle.signals.length;start+=250){
-   const signals=bundle.signals.slice(start,start+250);
-   const first_ingest=bundle.first_ingest.slice(start,start+250);
-   const hasMore=start+250<bundle.signals.length;
-   pages.push({ok:true,schema:"geomacro.website-derived-news-feed.v1",
-    checked_at:bundle.checked_at,original_release_delay_minutes:0,
-    retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
-    ingest_clock_kind:bundle.ingest_clock_kind,page_offset:start,page_size:250,
-    has_more:hasMore,next_offset:hasMore?start+250:null,signals,first_ingest});
-  }
+ for(const offset of [0,250,500]){
+  const url=ROOT+(offset?"?offset="+offset:"");
+  const response=await fetcher(url,{method:"GET",redirect:"error",cache:"no-store",
+   headers:{Accept:"application/json"},signal:AbortSignal.timeout(12000)});
+  if(!response.ok||Number(response.headers.get("content-length")||0)>600000)
+   fail("PUBLIC_READBACK_UNAVAILABLE");
+  const raw=await response.text();
+  if(raw.length>600000)fail("PUBLIC_READBACK_OVERSIZE");
+  const p=JSON.parse(raw);pages.push(p);
+  if(p.has_more!==true)break;
  }
  return auditDerivedJournalPages(pages,now);
 }
@@ -145,7 +118,7 @@ export function auditObservedWebsiteLatency(journal,html,observedAt=new Date()){
 }
 export async function auditLiveWebsiteLatency(fetcher=fetch){
  const [j,s]=await Promise.all([
-  fetcher(ROOT,{headers:{Accept:"application/json","Cache-Control":"no-cache"},redirect:"error",cache:"no-store",signal:AbortSignal.timeout(12000)}),
+  fetcher(ROOT,{headers:{Accept:"application/json"},redirect:"error",cache:"no-store",signal:AbortSignal.timeout(12000)}),
   fetcher("https://geomacro.live/intelligence",{headers:{Accept:"text/html"},redirect:"error",cache:"no-store",signal:AbortSignal.timeout(12000)}),
  ]);
  if(j.status!==200||s.status!==200)fail("WEBSITE_READBACK_UNAVAILABLE");

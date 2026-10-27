@@ -17,14 +17,8 @@ function signal(i:number){
   same_event_corrob_verified:false,severity:null};
 }
 function env(rows:unknown[]){
- return {DB:{prepare:(sql:string)=>({bind:(...args:any[])=>({
-   all:async()=>{
-     const paged=args.length>=3,offset=paged?(args[2]??0):0;
-     const limit=paged?251:601;
-     return {results:rows.slice(offset,offset+limit).map(story=>({
-       story_json:JSON.stringify(story),first_seen_at:new Date(NOW-60_000).toISOString(),
-     }))};
-   },
+ return {DB:{prepare:()=>({bind:(_since:string,_seen:string,offset:number)=>({
+   all:async()=>({results:rows.slice(offset,offset+251).map(story=>({story_json:JSON.stringify(story)}))}),
  })})}};
 }
 describe("Predge shared D1 feed remains separate from Geomacro static public archive",()=>{

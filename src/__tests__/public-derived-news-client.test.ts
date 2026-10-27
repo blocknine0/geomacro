@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   checkedDerivedNews, fetchDirectDerivedNews, fetchAllDerivedNews, fetchPermanentDerivedNews,
-  GEOMACRO_DERIVED_BUNDLE_URL, GEOMACRO_PERMANENT_LATEST_URL, GEOMACRO_PERMANENT_ARCHIVE_BASE_URL,
+  GEOMACRO_DERIVED_JOURNAL_URL, GEOMACRO_PERMANENT_LATEST_URL, GEOMACRO_PERMANENT_ARCHIVE_BASE_URL,
 } from "@/lib/public-derived-news-client";
 
 const NOW=Date.parse("2026-10-12T20:00:00.000Z");
@@ -150,80 +150,25 @@ describe("browser public journal fallback",()=>{
     expect(forbiddenCalls).toBe(1);
   });
 
-  it("uses one uncached complete D1 bundle for exact publisher readback and rejects stale fallback",async()=>{
+  it("bypasses edge cache for exact publisher readback and rejects a stale fallback",async()=>{
     const now=Date.now();
     const row={...signal,published_at:new Date(now-1000).toISOString()};
-    const makeBundle=(checkedAt:string)=>({
-      ok:true,schema:"geomacro.website-derived-news-bundle.v1",
-      checked_at:checkedAt,original_release_delay_minutes:0,retention_days:3,
-      retention_hours:72,delivery_scope:"free_website_only",complete:true,
-      item_cap:600,returned_rows:1,signals:[row],
-      first_ingest:[{id:row.id,first_seen_at:new Date(now-2000).toISOString()}],
-    });
-    const fresh=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
-      expect(String(input)).toBe(GEOMACRO_DERIVED_BUNDLE_URL);
-      expect(init?.cache).toBe("no-store");
-      expect(init?.redirect).toBe("manual");
+    const freshPage={...doc([row]),checked_at:new Date(now).toISOString(),
+      page_offset:0,page_size:250,has_more:false,next_offset:null};
+    const fresh=vi.fn(async(_url:RequestInfo|URL,init?:RequestInit)=>{
       expect(new Headers(init?.headers).get("cache-control")).toBe("no-cache");
-      return new Response(JSON.stringify(makeBundle(new Date(now).toISOString())),{status:200,
+      return new Response(JSON.stringify(freshPage),{status:200,
         headers:{"content-type":"application/json"}});
     });
-    expect(await fetchAllDerivedNews(fresh as typeof fetch,now,{fresh:true})).toEqual([row]);
+    expect(await fetchAllDerivedNews(fresh as typeof fetch,now)).toEqual([row]);
     expect(fresh).toHaveBeenCalledOnce();
 
-    const stale=vi.fn(async()=>new Response(JSON.stringify(
-      makeBundle(new Date(Date.now()-60_000).toISOString())),{status:200,
+    const stalePage={...freshPage,checked_at:new Date(Date.now()-60_000).toISOString()};
+    const stale=vi.fn(async()=>new Response(JSON.stringify(stalePage),{status:200,
       headers:{"content-type":"application/json"}}));
-    await expect(fetchAllDerivedNews(stale as typeof fetch,Date.now(),{fresh:true}))
-      .rejects.toThrow("DERIVED_NEWS_BUNDLE_STALE_READBACK");
+    await expect(fetchAllDerivedNews(stale as typeof fetch,Date.now()))
+      .rejects.toThrow("DERIVED_NEWS_PAGE_STALE_READBACK");
     expect(stale).toHaveBeenCalledOnce();
-  });
-
-  it("lets ordinary journal reads use the short public edge cache without forcing D1 readback",async()=>{
-    const now=Date.now();
-    const row={...signal,published_at:new Date(now-1000).toISOString()};
-    const payload={
-      ok:true,schema:"geomacro.website-derived-news-bundle.v1",
-      checked_at:new Date(now).toISOString(),original_release_delay_minutes:0,
-      retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
-      complete:true,item_cap:600,returned_rows:1,signals:[row],
-      first_ingest:[{id:row.id,first_seen_at:new Date(now-2000).toISOString()}],
-    };
-    const ordinary=vi.fn(async(_url:RequestInfo|URL,init?:RequestInit)=>{
-      expect(init?.cache).toBeUndefined();
-      const headers=new Headers(init?.headers);
-      expect(headers.get("cache-control")).toBeNull();
-      expect(headers.get("pragma")).toBeNull();
-      return new Response(JSON.stringify(payload),{status:200,
-        headers:{"content-type":"application/json","cache-control":"public, max-age=15"}});
-    });
-    expect(await fetchAllDerivedNews(ordinary as typeof fetch,now)).toEqual([row]);
-    expect(ordinary).toHaveBeenCalledOnce();
-  });
-
-  it("falls back only when a deployed Worker lacks the bundle route, never on storage/quota errors",async()=>{
-    const now=Date.now();
-    const row={...signal,published_at:new Date(now-1000).toISOString()};
-    const legacyPage={...doc([row]),checked_at:new Date(now).toISOString(),
-      page_offset:0,page_size:250,has_more:false,next_offset:null};
-    const fallback=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
-      if(String(input)===GEOMACRO_DERIVED_BUNDLE_URL)
-        return new Response(null,{status:401});
-      return new Response(JSON.stringify(legacyPage),{status:200,
-        headers:{"content-type":"application/json"}});
-    });
-    expect(await fetchAllDerivedNews(fallback as typeof fetch,now)).toEqual([row]);
-    expect(fallback).toHaveBeenCalledTimes(2);
-
-    const quota=vi.fn(async(input:RequestInfo|URL)=>{
-      expect(String(input)).toBe(GEOMACRO_DERIVED_BUNDLE_URL);
-      return new Response(JSON.stringify({ok:false,error:"DERIVED_NEWS_BUNDLE_UNAVAILABLE",
-        diagnostic_code:"D1_DAILY_ROW_READ_LIMIT"}),{status:503,
-        headers:{"content-type":"application/json"}});
-    });
-    await expect(fetchAllDerivedNews(quota as typeof fetch,now))
-      .rejects.toThrow("DERIVED_NEWS_PUBLIC_FETCH_D1_DAILY_ROW_READ_LIMIT");
-    expect(quota).toHaveBeenCalledOnce();
   });
 
   it("rejects source metadata and unknown fields even without a source URL",()=>{

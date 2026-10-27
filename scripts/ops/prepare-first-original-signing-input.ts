@@ -145,7 +145,7 @@ export async function main(){
  let journalCandidateCountries=0;
  if(!manuallyRequested){
    try {
-     const sharedNews=await fetchAllDerivedNews(fetch,now.getTime(),{fresh:true});
+     const sharedNews=await fetchAllDerivedNews(fetch,now.getTime());
      const decision=selectPriorityOriginalReviewCountry(sharedNews,rotatingCountry,now);
      const routed=finalizeOriginalReviewCountry({
        opportunity,priority:decision,

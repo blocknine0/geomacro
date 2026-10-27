@@ -1,13 +1,17 @@
 /** Protected private-only durable handoff. No GitHub artifact, public API or raw publisher payloads. */
 export const PRIVATE_OSINT_DURABLE_SCHEMA="geomacro.private-osint-15m-durable.v1";
 export const PRIVATE_OSINT_D1_HEALTH_SNAPSHOT_SLOTS=3;
-const DEFAULT_HEALTH_CHECK_INTERVAL_MINUTES=5;
+export const OSINT_SCHEDULE_SLOT_MS=15*60_000;
 /**
  * Every original RSS/API source is fetched and classified on every OSINT tick.
- * D1 health-status writes may be sharded across fixed slots. The interval is
- * explicit because the actual workflow runs every 15 minutes, not every 5.
- * A missed GitHub Actions run is NOT a guaranteed deadline. Dated news items
- * remain in the full, unsampled durable write path.
+ * Only D1 health-status snapshots are sharded across three consecutive
+ * 15-minute scheduled ticks, so each source/category has a nominal 45-minute
+ * stored-health refresh cadence. Poll and persist ALL native-dated news items
+ * on EVERY scheduled 15-minute run. GitHub schedule is best effort.
+ *
+ * CRITICAL: sharding by 5-minute modulo slots while running every 15 minutes
+ * permanently starves two out of three partitions. Use the 15-minute
+ * schedule period for phase selection, including real-world jitter.
  *
  * This reduces repetitive D1 UPSERT/read work without representing a source
  * as healthy from its registration. No original titles or endpoints are
@@ -15,16 +19,14 @@ const DEFAULT_HEALTH_CHECK_INTERVAL_MINUTES=5;
  */
 export function selectPrivateOsintD1HealthChecks({
  checks,now,slots=1,newsItemCount=0,
- intervalMinutes=DEFAULT_HEALTH_CHECK_INTERVAL_MINUTES,
 }={}){
  if(!Array.isArray(checks)||!Number.isFinite(now)||
     !Number.isSafeInteger(newsItemCount)||newsItemCount<0||
     ![1,PRIVATE_OSINT_D1_HEALTH_SNAPSHOT_SLOTS].includes(slots)||
-    !Number.isSafeInteger(intervalMinutes)||intervalMinutes<1||intervalMinutes>60||
     checks.some(check=>typeof check?.source_ref!=="string"||
       !/^[a-f0-9]{64}$/u.test(check.source_ref)))
   throw Error("PRIVATE_OSINT_HEALTH_SNAPSHOT_INPUT_INVALID");
- const slot=Math.floor(now/(intervalMinutes*60_000))%slots;
+ const slot=Math.floor(now/OSINT_SCHEDULE_SLOT_MS)%slots;
  let selected=slots===1?[...checks]:checks.filter(check=>
    parseInt(check.source_ref.slice(0,8),16)%slots===slot);
  // A quiet, tiny feed set can otherwise produce an empty authenticated
@@ -36,39 +38,48 @@ export function selectPrivateOsintD1HealthChecks({
   observed:checks.length,
   sampled:selected.length,
   deferred:checks.length-selected.length,
-  slots,slot,interval_minutes:intervalMinutes,
+  slots,slot,
  });
 }
 
 export async function persistPrivateOsintBatch({
- result,controlPlaneRoot,privateToken,fetchImpl=fetch,now=Date.now(),sourceHealthSnapshotSlots=1,
- sourceHealthSnapshotIntervalMinutes=DEFAULT_HEALTH_CHECK_INTERVAL_MINUTES
+ result,controlPlaneRoot,privateToken,fetchImpl=fetch,now=Date.now(),sourceHealthSnapshotSlots=1
 }={}){
  if(!result||result.schema!=="geomacro.private-osint-15m-batch.v1"||
     !Array.isArray(result.items)||!Array.isArray(result.checks)||
     typeof controlPlaneRoot!=="string"||!/^https:\/\/geomacro-control-plane\.[a-z0-9-]+\.workers\.dev$/u.test(controlPlaneRoot)||
     !/^([a-f0-9]{64})$/u.test(privateToken??"")||
-    typeof fetchImpl!=="function"||!Number.isFinite(now)||
-    !Number.isSafeInteger(sourceHealthSnapshotIntervalMinutes)||
-    sourceHealthSnapshotIntervalMinutes<1||sourceHealthSnapshotIntervalMinutes>60)
+    typeof fetchImpl!=="function"||!Number.isFinite(now))
   throw Error("PRIVATE_OSINT_PUBLISHER_CONFIG_INVALID");
  const items=result.items.filter(x=>{
   const stamp=Date.parse(x?.source?.original_published_at??"");
   return Number.isFinite(stamp)&&stamp<=now&&now-stamp<=25*3600000;
  });
  const snapshot=selectPrivateOsintD1HealthChecks({
-  checks:result.checks,now,slots:sourceHealthSnapshotSlots,
-  intervalMinutes:sourceHealthSnapshotIntervalMinutes,newsItemCount:items.length,
+  checks:result.checks,now,slots:sourceHealthSnapshotSlots,newsItemCount:items.length,
  });
  const checks=[...snapshot.checks];
  if(!items.length&&!checks.length)throw Error("PRIVATE_OSINT_NO_NETWORK_CHECKS");
  const groups=[];
- while(items.length||checks.length)groups.push({
-   schema:PRIVATE_OSINT_DURABLE_SCHEMA,
-   // Stay within the existing Worker 20-item/32-check contract while
-   // reducing repeated protected HTTP writes and D1 prefetch/readback queries.
-   items:items.splice(0,16),checks:checks.splice(0,32),
- });
+ const byteSize=g=>new TextEncoder().encode(JSON.stringify(g)).byteLength;
+ while(items.length||checks.length){
+   const group={schema:PRIVATE_OSINT_DURABLE_SCHEMA,items:[],checks:[]};
+   // Fully use the existing 20-news/32-check Worker contract. The 60-KiB
+   // byte boundary prevents oversized requests even for Unicode news fields.
+   while(items.length&&group.items.length<20){
+     group.items.push(items[0]);
+     if(byteSize(group)>60_000){group.items.pop();break}
+     items.shift();
+   }
+   while(checks.length&&group.checks.length<32){
+     group.checks.push(checks[0]);
+     if(byteSize(group)>60_000){group.checks.pop();break}
+     checks.shift();
+   }
+   if(!group.items.length&&!group.checks.length)
+     throw Error("PRIVATE_OSINT_SINGLE_ITEM_EXCEEDS_WORKER_REQUEST_LIMIT");
+   groups.push(group);
+ }
  let saved=0,excluded=0,checked=0,in15=0,over15=0,writerBundled=true,writeQueries=0;
  let newlyOnTime=0,newlyLate=0,previouslySeen=0,firstSeenCountersAvailable=true;
  let rowsRead=0,rowsWritten=0,allRowUsageKnown=true;
@@ -166,8 +177,7 @@ export async function persistPrivateOsintBatch({
    source_checks_deferred_to_snapshot:snapshot.deferred,
    source_health_snapshot_slots:snapshot.slots,
    source_health_snapshot_slot:snapshot.slot,
-   source_health_snapshot_interval_minutes:snapshot.interval_minutes,
-   source_health_snapshot_cadence_nominal_minutes:snapshot.interval_minutes*snapshot.slots,
+   source_health_snapshot_cadence_nominal_minutes:15*snapshot.slots,
    news_rows_verified_in_d1:saved,
    excluded_by_d1_capacity:excluded,
    native_feed_to_first_durable_write_within_15m:in15,

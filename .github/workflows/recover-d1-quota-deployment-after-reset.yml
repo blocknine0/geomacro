@@ -82,9 +82,8 @@ jobs:
 
           job_id="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].id // empty' "$jobs_file")"
           migration_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Apply committed D1 migrations remotely") | .conclusion' "$jobs_file" 2>/dev/null || true)"
-          preflight_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Require verified D1 Free-tier daily row headroom before migrations") | .conclusion' "$jobs_file" 2>/dev/null || true)"
-          if [[ -z "$job_id" || ( "$migration_conclusion" != "failure" && "$preflight_conclusion" != "failure" ) ]]; then
-            echo "Latest deployment did not fail at the migration step or explicit D1 quota-headroom gate; no automatic retry."
+          if [[ -z "$job_id" || "$migration_conclusion" != "failure" ]]; then
+            echo "Latest deployment did not fail at the D1 migration step; no automatic retry."
             echo "retry=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -103,46 +102,19 @@ jobs:
           fi
           # Refuse truncated, unexpectedly oversized, binary or HTML logs.
           log_bytes="$(wc -c < "$log_text")"
-          migration_log=false
-          preflight_log=false
-          grep -aFq 'Apply committed D1 migrations remotely' "$log_text" && migration_log=true
-          grep -aFq 'Require verified D1 Free-tier daily row headroom before migrations' "$log_text" && preflight_log=true
           if (( log_bytes < 100 || log_bytes > 2000000 )) ||
-             [[ "$migration_log" != "true" && "$preflight_log" != "true" ]]; then
+             ! grep -aFq 'Apply committed D1 migrations remotely' "$log_text"; then
             echo "::warning::D1_QUOTA_RECOVERY_JOB_LOG_NOT_VERIFIABLE"
             echo "retry=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          read_quota=false
-          write_quota=false
-          preflight_hold=false
           if grep -aFq "Your account has exceeded D1's free tier daily row read limit" "$log_text" &&
              grep -aFq "code: 7500" "$log_text"; then
-            read_quota=true
-          fi
-          if grep -aFq "Your account has exceeded D1's free tier daily row write limit" "$log_text"; then
-            write_quota=true
-          fi
-          if [[ "$preflight_conclusion" == "failure" ]] &&
-             grep -aFq "D1_QUOTA_HEADROOM_UNVERIFIED_OR_BELOW_SAFE_RESERVE" "$log_text"; then
-            # No D1 SQL ran: the next dispatch must pass a new live account-wide
-            # quota audit before it is allowed to apply migrations.
-            preflight_hold=true
-          fi
-          if [[ "$read_quota" == "true" || "$write_quota" == "true" || "$preflight_hold" == "true" ]]; then
-            if [[ "$preflight_hold" == "true" ]]; then
-              echo "Confirmed explicit D1 quota-headroom gate failure before any D1 SQL; eligible for a fresh post-reset headroom check."
-            elif [[ "$read_quota" == "true" && "$write_quota" == "true" ]]; then
-              echo "Confirmed both D1 daily row-read and row-write quota exhaustion; eligible for one post-reset retry."
-            elif [[ "$read_quota" == "true" ]]; then
-              echo "Confirmed D1 daily row-read quota exhaustion on the latest canonical deploy; eligible for one post-reset retry."
-            else
-              echo "Confirmed D1 daily row-write quota exhaustion on the latest canonical deploy; eligible for one post-reset retry."
-            fi
+            echo "Confirmed D1 daily row-read quota exhaustion on the latest canonical deploy; eligible for one post-reset retry."
             echo "retry=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Latest D1 deploy failure is not a recognised daily row quota or explicit preflight hold; no automatic retry."
+            echo "Latest D1 deploy failure is not the specific daily row-read quota class; no automatic retry."
             echo "retry=false" >> "$GITHUB_OUTPUT"
           fi
 

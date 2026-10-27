@@ -25,7 +25,7 @@ async function main(){
   e.GEOMACRO_STANDING_DELEGATION_REVOKED==="YES")fail();
 
  const now=Date.now();
- const signals=await fetchAllDerivedNews(fetch,now,{fresh:true});
+ const signals=await fetchAllDerivedNews(fetch,now);
  const registry=readFileSync("src/lib/canonical-country-registry-195.ts","utf8");
  const packet=buildCompleteIntelligenceGriReview({
   signals,registrySource:registry,now

@@ -8,7 +8,7 @@ import {
 } from "./private-osint-country-rotation.mjs";
 
 const at=new Date("2026-10-25T12:00:00.000Z");
-const min=5*60000;
+const min=15*60000;
 const normalized=item=>({
  schema:"geomacro.reusable-news-json.v1",category:item.category,
  country_iso3:item.country_iso3??null,
@@ -18,7 +18,7 @@ const normalized=item=>({
 });
 test("195 countries rotate across exactly four nominal slots with 3 topical lanes",()=>{
  assert.equal(COUNTRY_DISCOVERY_PER_TICK,49);
- assert.equal(COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,20);
+ assert.equal(COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,60);
  const batches=[0,1,2,3].map(n=>rotatingPrivateCountryDiscoverySources(new Date(at.getTime()+n*min)));
  assert.deepEqual(batches.map(b=>b.length),[49,49,49,48]);
  const all=batches.flat();

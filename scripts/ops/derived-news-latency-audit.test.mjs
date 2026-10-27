@@ -36,28 +36,17 @@ test("fails closed on duplicate ID, forged clock and a missing audit field",()=>
  assert.throws(()=>auditDerivedJournalPages([{...p([a]),first_ingest:undefined}],NOW),/PAGE_INVALID/);
  assert.throws(()=>auditDerivedJournalPages([p([a],true,0)],NOW),/PAGE_INVALID/);
 });
-test("reads the full retained-journal latency audit through one bounded D1 bundle request",async()=>{
+test("reads only 250-row pages and doesn't echo source content",async()=>{
  const seen=[];
- const document={
-  ok:true,schema:"geomacro.website-derived-news-bundle.v1",
-  checked_at:NOW.toISOString(),original_release_delay_minutes:0,
-  retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
-  complete:true,item_cap:600,returned_rows:2,
-  signals:[a.signal,b.signal],
-  first_ingest:[a.clock,b.clock],
-  ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
- };
  const out=await auditLiveDerivedJournal(async(url,opts)=>{
   seen.push({url,opts});
-  return Response.json(document);
+  return Response.json(p([a]));
  },NOW);
  assert.equal(seen.length,1);
- assert.ok(seen[0].url.endsWith("/website-derived-news-bundle"));
+ assert.ok(seen[0].url.endsWith("/website-derived-news-immediate"));
  assert.equal(seen[0].opts.method,"GET");
- assert.equal(seen[0].opts.cache,"no-store");
  assert.equal(out.raw_upstream_content_logged,false);
  assert.equal(out.commercial_rights_verified,false);
- assert.equal(out.retained_unique_rows,2);
 });
 test("detects pagination and does not pretend 600 retained rows are all world news",()=>{
  const vals=Array.from({length:251},(_,i)=>{

@@ -18,7 +18,7 @@ const batch=await collectPrivateUnverifiedOsint({
 });
 const proof=await persistPrivateOsintBatch({
  result:batch,privateToken:token,
- sourceHealthSnapshotSlots:3,sourceHealthSnapshotIntervalMinutes:15,
+ sourceHealthSnapshotSlots:3,
  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
 });
 if(proof.source_checks_observed_this_tick!==batch.checks.length||

@@ -116,7 +116,7 @@ if(import.meta.main){
  try{
   const now=new Date(),{trust}=lowReviewerMaterial();await assertLowReviewTrust(trust);
   const retained=await readPrivateSourceHandoffs({keys:loadRiskObjectVerificationKeysFromEnv(),trust,now});
-  const signals=await fetchAllDerivedNews(fetch,now.getTime(),{fresh:true});
+  const signals=await fetchAllDerivedNews(fetch,now.getTime());
   const originalRefs=new Map();
   for(const signal of signals){const ref=retained.originals.get(await automatedInputId(signal));if(ref)originalRefs.set(signal.id,ref);}
   const result=await reviewDerivedInputs({signals,originalRefs,previousReviews:retained.previous,now,

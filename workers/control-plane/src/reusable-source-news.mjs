@@ -103,43 +103,98 @@ export async function publishReusableSourceNews(env,body,now=Date.now()){
     checks.add(check.source_ref);
   }
   try{
-    // Each batch is validated before any writes. Use one transaction via
-    // D1 batch to avoid partially promoted groups on an adapter error.
-    const prepared=[
-      env.DB.prepare("DELETE FROM reusable_news_items WHERE published_at < ?")
-        .bind(new Date(now-MS25).toISOString()),
-      env.DB.prepare("DELETE FROM reusable_source_checks WHERE checked_at < ?")
-        .bind(new Date(now-24*3600000).toISOString()),
-    ];
-    for(const row of rows){
-      prepared.push(env.DB.prepare(
-        "INSERT INTO reusable_news_items(item_id,category,published_at,projection_json,first_seen_at) VALUES(?,?,?,?,?) "+
-        "ON CONFLICT(item_id) DO UPDATE SET category=excluded.category,published_at=excluded.published_at,projection_json=excluded.projection_json")
-        .bind(row.id,row.category,row.at,row.json,checkedAt));
+    const ids=rows.map(r=>r.id);
+    const markers=rows.map(()=>"?").join(",");
+    // An exact indexed prefetch replaces N independent readback lookups.
+    // First-seen is immutable; a repeated native feed never becomes "new".
+    const priorRows=rows.length?await env.DB.prepare(
+      "SELECT item_id,first_seen_at FROM reusable_news_items WHERE item_id IN ("+markers+")"
+    ).bind(...ids).all():{results:[]};
+    if(!Array.isArray(priorRows.results)||priorRows.results.length>rows.length)
+      throw Error("REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH");
+    const previous=new Map(priorRows.results.map(r=>[r.item_id,r.first_seen_at]));
+    if(previous.size!==priorRows.results.length)
+      throw Error("REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH");
+    const newlyObserved=rows.some(r=>!previous.has(r.id));
+    const prepared=[];
+    // TTL sweep is required only for new items, not every duplicate feed
+    // observation / 48-source health bundle. All read routes already exclude
+    // expired native dates independently.
+    if(newlyObserved){
+      prepared.push(env.DB.prepare("DELETE FROM reusable_news_items WHERE published_at < ?")
+        .bind(new Date(now-MS25).toISOString()));
+      prepared.push(env.DB.prepare("DELETE FROM reusable_source_checks WHERE checked_at < ?")
+        .bind(new Date(now-24*3600000).toISOString()));
     }
-    for(const check of body.checks){
+    if(rows.length){
       prepared.push(env.DB.prepare(
-        "INSERT INTO reusable_source_checks(source_ref,category,state,checked_at) VALUES(?,?,?,?) ON CONFLICT(source_ref) DO UPDATE SET category=excluded.category,state=excluded.state,checked_at=excluded.checked_at")
-        .bind(check.source_ref,check.category,check.state,check.checked_at));
+        "INSERT INTO reusable_news_items(item_id,category,published_at,projection_json,first_seen_at) "+
+        "SELECT json_extract(value,'$[0]'),json_extract(value,'$[1]'),"+
+        "json_extract(value,'$[2]'),json_extract(value,'$[3]'),? "+
+        "FROM json_each(?) WHERE 1 "+
+        "ON CONFLICT(item_id) DO UPDATE SET "+
+        "category=excluded.category,published_at=excluded.published_at,"+
+        "projection_json=excluded.projection_json "+
+        "WHERE reusable_news_items.category<>excluded.category "+
+        "OR reusable_news_items.published_at<>excluded.published_at "+
+        "OR reusable_news_items.projection_json<>excluded.projection_json"
+      ).bind(checkedAt,JSON.stringify(rows.map(r=>[
+        r.id,r.category,r.at,r.json
+      ]))));
     }
-    // Bound the rolling 25h D1 lane; limit is explicit, never claim all news.
-    prepared.push(env.DB.prepare(
-      "DELETE FROM reusable_news_items WHERE item_id NOT IN (SELECT item_id FROM reusable_news_items ORDER BY published_at DESC,item_id DESC LIMIT "+REUSABLE_NEWS_MAX_STORED_ITEMS+")"
-    ));
-    await env.DB.batch(prepared);
+    if(body.checks.length){
+      // 48 checks per SQL statement. Unchanged health checks refresh at most
+      // hourly; a changed state is recorded immediately. No fake fetches.
+      prepared.push(env.DB.prepare(
+        "INSERT INTO reusable_source_checks(source_ref,category,state,checked_at) "+
+        "SELECT json_extract(value,'$[0]'),json_extract(value,'$[1]'),"+
+        "json_extract(value,'$[2]'),json_extract(value,'$[3]') "+
+        "FROM json_each(?) WHERE 1 "+
+        "ON CONFLICT(source_ref) DO UPDATE SET "+
+        "category=excluded.category,state=excluded.state,checked_at=excluded.checked_at "+
+        "WHERE reusable_source_checks.category<>excluded.category "+
+        "OR reusable_source_checks.state<>excluded.state "+
+        "OR reusable_source_checks.checked_at<=?"
+      ).bind(JSON.stringify(body.checks.map(c=>[
+        c.source_ref,c.category,c.state,c.checked_at
+      ])),new Date(now-3600000).toISOString()));
+    }
+    if(newlyObserved){
+      // Only new items can push the hard 4,000-row cap. Oldest-first indexed
+      // eviction avoids the former full-ring NOT IN scan on every feed poll.
+      prepared.push(env.DB.prepare(
+        "DELETE FROM reusable_news_items WHERE item_id IN "+
+        "(SELECT item_id FROM reusable_news_items "+
+        "ORDER BY published_at ASC,item_id ASC LIMIT "+
+        "MAX(0,(SELECT COUNT(*) FROM reusable_news_items)-"+REUSABLE_NEWS_MAX_STORED_ITEMS+"))"
+      ));
+    }
+    if(prepared.length){
+      const writes=await env.DB.batch(prepared);
+      if(!Array.isArray(writes)||writes.some(x=>x?.success===false))
+        throw Error("REUSABLE_SOURCE_NEWS_D1_WRITE_FAILED");
+    }
+    // Independent exact D1 readback: one index lookup for up to 40 IDs, not
+    // 40 separate requests. Never assume an UPSERT is a durable write proof.
+    const after=rows.length?await env.DB.prepare(
+      "SELECT item_id,projection_json,first_seen_at FROM reusable_news_items WHERE item_id IN ("+markers+")"
+    ).bind(...ids).all():{results:[]};
+    if(!Array.isArray(after.results)||after.results.length>rows.length)
+      throw Error("REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH");
+    const savedById=new Map(after.results.map(x=>[x.item_id,x]));
+    if(savedById.size!==after.results.length)
+      throw Error("REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH");
     let retained=0,capacityExcluded=0,firstSeenWithin15m=0,firstSeenLate15m=0,previouslySeen=0;
-    // Check admitted IDs by D1 independent readback, even for old duplicates.
     for(const row of rows){
-      const found=await env.DB.prepare(
-        "SELECT projection_json,first_seen_at FROM reusable_news_items WHERE item_id = ?").bind(row.id).first();
+      const found=savedById.get(row.id);
       if(!found){capacityExcluded++;continue}
-      if(found.projection_json!==row.json)throw Error("REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH");
-      // first_seen_at is immutable across upserts. Count a new observation
-      // once only; rereading a 24h-old news item is not a new 15m breach.
+      if(found.projection_json!==row.json||
+         (previous.has(row.id)&&found.first_seen_at!==previous.get(row.id)))
+        throw Error("REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH");
       const firstSeen=Date.parse(found.first_seen_at??"");
       if(!Number.isFinite(firstSeen)||firstSeen>now+10*60_000)
         throw Error("REUSABLE_SOURCE_NEWS_D1_READBACK_MISMATCH");
-      if(found.first_seen_at===checkedAt){
+      if(!previous.has(row.id)&&found.first_seen_at===checkedAt){
         if(firstSeen-Date.parse(row.at)<=15*60_000)firstSeenWithin15m++;
         else firstSeenLate15m++;
       }else previouslySeen++;
@@ -151,6 +206,8 @@ export async function publishReusableSourceNews(env,body,now=Date.now()){
       first_observed_within_15m_count:firstSeenWithin15m,
       first_observed_later_than_15m_count:firstSeenLate15m,
       previously_observed_count:previouslySeen,
+      d1_bundled_query_count:prepared.length+(rows.length?2:0),
+      d1_batch_checks:body.checks.length,d1_batch_news:rows.length,
       first_observation_is_not_independent_verification:true,
       retention_hours:REUSABLE_NEWS_RETENTION_HOURS,
       d1_readback_verified:true,raw_upstream_stored:false,
