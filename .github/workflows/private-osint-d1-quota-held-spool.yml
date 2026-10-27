@@ -14,12 +14,16 @@ on:
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
+      - "scripts/ops/private-osint-reuse-fresh-stage.mjs"
+      - "scripts/tests/private-osint-reuse-fresh-stage.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/private-osint-d1-quota-held-spool.yml"
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
+      - "scripts/ops/private-osint-reuse-fresh-stage.mjs"
+      - "scripts/tests/private-osint-reuse-fresh-stage.test.mjs"
       - "scripts/lib/private-osint-encrypted-spool.test.mjs"
       - "scripts/lib/private-osint-shared-read-contract.mjs"
       - "scripts/lib/private-osint-shared-read-contract.test.mjs"
@@ -51,6 +55,8 @@ jobs:
           node --check scripts/ops/private-osint-replay-held.mjs
           node --test scripts/lib/private-osint-encrypted-spool.test.mjs
           node --test scripts/lib/private-osint-shared-read-contract.test.mjs
+          node --check scripts/ops/private-osint-reuse-fresh-stage.mjs
+          node --test scripts/tests/private-osint-reuse-fresh-stage.test.mjs
           node --test scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
 
   quota-admission:
@@ -82,6 +88,12 @@ jobs:
         run: node scripts/ops/plan-d1-bundled-work.mjs
 
   encrypted-holding:
+    concurrency:
+      group: geomacro-private-osint-held-publisher-fetch
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
     needs: [verify, quota-admission]
     if: >-
       needs.quota-admission.outputs.state == 'HELD' &&
@@ -100,7 +112,17 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Reuse a successful fifteen-minute same-source encrypted read when current
+        id: reuse
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"
+        run: node scripts/ops/private-osint-reuse-fresh-stage.mjs
       - name: Read actual native-dated RSS and AES-GCM seal only safe projections
+        if: steps.reuse.outputs.collect == 'true'
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"
@@ -108,6 +130,7 @@ jobs:
           set -euo pipefail
           bun scripts/ops/private-osint-stage-held.ts
       - name: Save ONLY encrypted private-OSINT temporary artifact
+        if: steps.reuse.outputs.collect == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-encrypted-private-osint-held
