@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {registeredReusableNewsSources,selectRegisteredNewsSources,
- collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
+ collectRegisteredReusableNews,PRESIDENTIAL_ACTION_SOURCE_FEEDS} from "./registered-reusable-news-source-collector.mjs";
 
 const when=new Date("2026-10-25T00:00:00.000Z");
 const feed="<rss version=\"2.0\"><channel>"+
@@ -106,4 +106,63 @@ test("source-native 25h clock rejects 25h+1 sec and admits 25h-1 sec",async()=>{
   categories:["macro"],supported:true,type:"rss"}],
   normalize,fetchImpl:async()=>response(rss)});
  assert.equal(doc.items.length,1);
+});
+
+
+test("original US presidential publication lanes are pinned without evicting country/minerals rotation",()=>{
+ const registered=registeredReusableNewsSources();
+ for(const source of PRESIDENTIAL_ACTION_SOURCE_FEEDS)
+   assert.ok(registered.some(x=>x.id===source.id&&x.url===source.url));
+ for(const minute of [0,5,10,15,20,25,30]){
+   const selected=selectRegisteredNewsSources(new Date(Date.parse("2026-10-27T12:00:00.000Z")+minute*60000));
+   assert.ok(selected.some(s=>s.id==="white_house_presidential_actions"),"White House original actions: "+minute);
+   assert.ok(selected.some(s=>s.id==="federal_register_executive_orders"),"Federal Register: "+minute);
+   assert.equal(new Set(selected.map(s=>s.url)).size,selected.length);
+   assert.ok(selected.length<=26);
+ }
+});
+test("native-dated presidential actions are privately observed without requiring a war keyword",async()=>{
+ const now=new Date("2026-10-27T13:00:00.000Z");
+ const wh=PRESIDENTIAL_ACTION_SOURCE_FEEDS[0];
+ const documentTitle="Improving Federal Services Through New Administrative Procedures";
+ const xml="<rss><channel><item><title>"+documentTitle+"</title>"+
+   "<pubDate>Tue, 27 Oct 2026 12:53:00 GMT</pubDate></item></channel></rss>";
+ const out=await collectRegisteredReusableNews({now,registry:[{...wh,supported:true,type:"rss"}],
+   normalize,fetchImpl:async()=>response(xml)});
+ assert.equal(out.items.length,1);
+ assert.equal(out.items[0].category,"geopolitics");
+ assert.equal(out.items[0].usage_rights.commercial_reuse_authorized,false);
+ assert.equal(out.items[0].delivery.raw_article_included,false);
+ assert.equal(out.summary.source_rights_commercial_authorized,false);
+ assert.ok(!JSON.stringify(out).includes(documentTitle),"original headline stays ephemeral");
+});
+test("non-official neutral title is not fabricated into geopolitical news",async()=>{
+ const out=await collectRegisteredReusableNews({now:when,registry:[{
+   id:"third_party",url:"https://publisher.example/rss",categories:["geopolitics"],
+   supported:true,type:"rss",officialDocument:false
+ }],normalize,fetchImpl:async()=>response("<rss><channel><item>"+
+   "<title>Improving Federal Services Through Administrative Procedures</title>"+
+   "<pubDate>Sat, 24 Oct 2026 23:52:00 GMT</pubDate></item></channel></rss>")});
+ assert.equal(out.items.length,0);
+});
+test("native-language macro, mineral and armed-conflict headlines are admitted as unverified candidates",async()=>{
+ const cases=[
+  ["macro","中国宣布新的利率政策和人民币汇率调整对金融市场的影响"],
+  ["rare_earth","中国宣布关键矿产和稀土出口管制新政策"],
+  ["geopolitics","联合国对停火谈判和边境战争局势发表声明"],
+  ["macro","भारत सरकार ने मुद्रास्फीति पर नया आर्थिक विवरण जारी किया"],
+  ["rare_earth","বাংলাদেশ সরকার লিথিয়াম খনিজ উত্তোলন সম্পর্কে নতুন ঘোষণা দিল"],
+  ["geopolitics","الأمم المتحدة تعلن وقف إطلاق النار والاتفاق على الحدود"],
+ ];
+ for(const [category,title] of cases){
+   const xml="<rss><channel><item><title>"+title+"</title>"+
+     "<pubDate>Sat, 24 Oct 2026 23:50:00 GMT</pubDate></item></channel></rss>";
+   const out=await collectRegisteredReusableNews({now:when,registry:[{
+     id:"native_issuer",url:"https://example.org/feed",categories:[category],
+     supported:true,type:"rss"
+   }],normalize,fetchImpl:async()=>response(xml)});
+   assert.equal(out.items.length,1,category+" | "+title);
+   assert.equal(out.items[0].category,category);
+   assert.equal(out.items[0].usage_rights.commercial_reuse_authorized,false);
+ }
 });
