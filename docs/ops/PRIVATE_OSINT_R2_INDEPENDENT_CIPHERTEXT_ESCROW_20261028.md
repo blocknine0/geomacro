@@ -37,3 +37,32 @@ Quota limitations remain real. R2 does not let a disabled D1 Free instance accep
 5. Keep P0 master #1827 open until multi-day production acceptance. Independent raw publisher archive access still depends on its separate B2 rights, origin and quota governance.
 
 The private R2 mirror protects against losing source-neutral evidence if GitHub artifact storage becomes unavailable. It does NOT guarantee zero permanent data loss if *both* stores fail, publisher endpoints fail or cloud quotas are exhausted simultaneously.
+
+
+## Protected recovery from a private R2 object (new)
+
+When a GitHub Actions encrypted artifact is unavailable, the private R2 mirror
+now has its **own supported restore reader**, rather than being a write-only
+escrow. The exact content-addressed key is printed in the successful private
+R2 mirror receipt. Run the EXISTING `Private OSINT Encrypted Holding When D1
+Quota Held` GitHub Actions workflow manually on canonical main and supply
+`r2_restore_key` with that exact `geomacro/private-osint-held/v1/YYYY/MM/DD/SHA256.json`
+object key. Never submit credentials or publisher titles as inputs.
+
+The manual restore job is offered **only** when the account-wide independent
+Cloudflare quota planner reports `critical=true`. It then performs exactly
+one signed, bucket-scoped GET from private R2, confirms the key's SHA-256
+equals the ciphertext, decrypts AES-GCM using the existing protected root,
+checks the unmodified original publisher-native 25h clock, and sends source
+neutral observations to the unchanged canonical D1 writer. The terminal
+receipt requires **exact same source-input SHA, zero capacity exclusions,
+authenticated D1 write verification and independent private three-category
+readback**. It does not automatically delete the immutable private R2 escrow;
+a failed D1 receipt retains it for audit. This path never touches PREDGE.
+
+This is an operator-triggered **disaster recovery** for lost GitHub artifacts,
+not a parallel always-on second canonical writer. Normal quota-admitted
+GitHub artifact replay still runs automatically; duplicate storage writes
+and unbounded R2 listing during routine operation are deliberately avoided.
+Objects older than the 25h native intake window can remain private evidence
+but cannot be reinserted as fresh 25h source news.
