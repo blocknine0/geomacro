@@ -11,10 +11,10 @@ test('source-only admission reaches one maximum-packed publisher and static arch
  assert.match(source,/publish-permanent-derived-news-archive\.mjs/);
  const followup=producer.slice(producer.indexOf('      - name: Automatically approve and sign'));
  assert.match(followup,/steps\.budget\.outputs\.critical == 'true'/);
- assert.match(workflow,/quota_admitted: \$\{\{ steps\.budget\.outputs\.critical \}\}/);
+ assert.match(workflow,/quota_admitted: \$\{\{ steps\.budget\.outputs\.critical == 'true' && steps\.intake-clock\.outputs\.due == 'true'/);
  const script=read('scripts/ops/publish-original-news-five-minute-fastlane.ts');
  assert.match(script,/archiveSignals=verifiedArchiveSignals/);
- assert.match(script,/publishPending.length<50/);
+ assert.match(script,/publishPending.length<intakeMaxRows/);
  assert.match(script,/signals:\[\]/);
  assert.match(script,/permanent-derived-news-candidates\.v1/);
  assert.match(script,/packDerivedNewsBatches\(publishPending\)/);

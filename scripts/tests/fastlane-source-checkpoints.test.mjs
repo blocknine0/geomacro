@@ -24,7 +24,7 @@ test('one unreachable category cannot inherit another category success; fallback
 test('HTTP success without the exact D1 scope acknowledgement never becomes verified freshness',async()=>{
  await assert.rejects(publishFastlaneSourceCheckpoints({reports:reports(),checkedAt:at,origin:'https://geomacro-control-plane.daspallab202391.workers.dev',token:'a'.repeat(64),fetchImpl:async()=>Response.json({ok:true,scope:'wrong',pipeline:'website_derived_news_ingest'})}),/NOT_ACKNOWLEDGED/);
  const script=readFileSync('scripts/ops/publish-original-news-five-minute-fastlane.ts','utf8');
- const gate=script.indexOf('if(journalVerified){\n const response=await fetch(macroStateUrl');
+ const gate=script.indexOf('if(journalVerified){',script.indexOf('// Advance conditional-GET cursors'));
  assert.ok(gate>script.indexOf('verifiedArchiveSignals=records'));
  assert.ok(script.indexOf('await publishFastlaneSourceCheckpoints(',gate)>gate);
 });
