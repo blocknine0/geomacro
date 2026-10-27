@@ -12,7 +12,7 @@ const REQUIRED=[
 "scripts/ops/verify-derived-news-public-readback.mjs",
 "scripts/ops/verify-shared-derived-news-live.mjs",
 "scripts/ops/verify-production-observed-195x3.mjs"];
-const invalidPath=p=>typeof p!=="string"||!(/^(?:[a-zA-Z0-9_.-]+\\/)*[a-zA-Z0-9_.-]+$/u).test(p)||p.split("/").includes("..");
+const invalidPath=p=>typeof p!=="string"||!p.split("/").every(seg=>/^[a-zA-Z0-9_.-]+$/u.test(seg)&&seg!==".."&&seg!==".");
 export function validateNewsHubTopology(read=p=>readFileSync(resolve(ROOT,p),"utf8")){
  const doc=JSON.parse(read(FILE));
  if(doc?.schema!=="geomacro.news-intelligence-hub-topology.v1"||

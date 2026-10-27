@@ -104,8 +104,8 @@
         {
           "path": ".github/workflows/auto-distribution-shadow.yml",
           "markers": [
-            "schedule:",
-            "auto-distribute"
+            "poll-public-early-warning.mjs",
+            "test-distribution-receipt-ledger.mjs"
           ]
         },
         {

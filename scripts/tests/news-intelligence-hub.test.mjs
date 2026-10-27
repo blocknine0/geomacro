@@ -40,8 +40,8 @@ test("one receipt covers website, shared machine ids and accurate missing cells"
  assert.equal(r.commercial_rights_verified,false);
  assert.equal(r.additional_direct_d1_writes,0);
 });
-test("reject machine projections larger than journal",()=>{
+test("reject machine projections exceeding 600 row D1 journal bounds",()=>{
  assert.throws(()=>assembleNewsHubReceipt({verified:true,categories},
-  {same_journal_ids_verified:true,counts:{...counts,macro:5}},coverage),
- /NEWS_HUB_MACHINE_PROJECTION_EXCEEDS_JOURNAL/);
+  {same_journal_ids_verified:true,counts:{...counts,macro:610}},coverage),
+ /NEWS_HUB_BUNDLE_BOUND_EXCEEDED/);
 });

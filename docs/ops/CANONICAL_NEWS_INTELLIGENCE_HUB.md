@@ -19,8 +19,8 @@ secondary source-specific customer publication pipelines.
    B2 archive.
 4. **Distribution** — Website, public D1 structural feed, reusable JSON and
    authorized consumers READ the same canonical journal. The new central
-   bundled readback compares the actual website D1 reader, exact shared machine
-   record IDs and website country matrix in one bounded run. This is not a
+   bundled readback checks the actual website D1 reader, exact shared machine
+   record IDs and separately-scoped static-archive country matrix in one bounded run; the matrix is not the same journal window. This is not a
    new public push channel or an override of gated commercial products.
 5. **Health & Recovery** — existing missed-writer cadence backstop and
    auto-ingest recovery remain active. The new control workflow validates all

@@ -18,8 +18,10 @@ export function assembleNewsHubReceipt(website,shared,coverage,now=new Date()){
      !Number.isSafeInteger(shared.counts?.[k])||
      !Number.isSafeInteger(coverage.observed_journal_records_by_category?.[k])))
     throw Error("NEWS_HUB_LIVE_READBACK_CONTRACT_FAILED");
- if(CATS.some(k=>shared.counts[k]>coverage.observed_journal_records_by_category[k]))
-    throw Error("NEWS_HUB_MACHINE_PROJECTION_EXCEEDS_JOURNAL");
+ if(CATS.reduce((n,k)=>n+shared.counts[k],0)>600 ||
+    CATS.reduce((n,k)=>n+website.categories[k].stored_72h,0)>250 ||
+    coverage.observed_country_category_cells+coverage.cells_without_matching_derivation!==585)
+    throw Error("NEWS_HUB_BUNDLE_BOUND_EXCEEDED");
  return Object.freeze({
   schema:"geomacro.central-news-intelligence-hub-bundle.v1",
   checked_at:now.toISOString(),source_authority:"existing D1 derived Intelligence journal",
@@ -55,7 +57,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   writeFileSync("artifacts/news-hub/bundled-readback.json",JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
   console.log(JSON.stringify(receipt));
  }catch(err){
-  const allow=new Set(["NEWS_HUB_LIVE_READBACK_CONTRACT_FAILED","NEWS_HUB_MACHINE_PROJECTION_EXCEEDS_JOURNAL"]);
+  const allow=new Set(["NEWS_HUB_LIVE_READBACK_CONTRACT_FAILED","NEWS_HUB_BUNDLE_BOUND_EXCEEDED"]);
   console.error(err instanceof Error&&allow.has(err.message)?err.message:"NEWS_HUB_LIVE_READBACK_UNAVAILABLE");
   process.exitCode=2;
  }
