@@ -20,7 +20,8 @@ function countryAliases(countries){
  function add(raw,iso3){
   if(typeof raw!=="string")return;
   const phrase=normalize(raw);
-  if(phrase.length<3||phrase.length>110)return;
+  const cjk=/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(phrase);
+  if((phrase.length<3&&!(cjk&&phrase.length>=2))||phrase.length>110)return;
   if(!seen.has(phrase))seen.set(phrase,iso3);
   else if(seen.get(phrase)!==iso3)seen.set(phrase,null);
  }
