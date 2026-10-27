@@ -82,7 +82,8 @@ test("Predge shared D1 parity reads the zero-delay website journal, never the de
   reference_data_is_not_a_new_official_release:true
  }]));
  const urls=[];
- const fetcher=async(url)=>{
+ const fetcher=async(url,init)=>{
+  assert.equal(init?.headers?.["Cache-Control"],"no-cache");
   urls.push(url);
   if(url.endsWith("/derived-structural-72h")){
    return new Response(JSON.stringify({

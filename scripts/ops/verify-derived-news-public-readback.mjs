@@ -72,7 +72,8 @@ export async function verifyDerivedNewsPublicReadback({
     try{
       response=await fetchImpl(DERIVED_NEWS_PUBLIC_READBACK_ENDPOINT,{
         method:"GET",redirect:"error",cache:"no-store",
-        headers:{Accept:"application/json"},
+        // Force an independent D1 read; avoid cache-hit false acceptance.
+        headers:{Accept:"application/json","Cache-Control":"no-cache"},
         signal:AbortSignal.timeout(12_000),
       });
     }catch{
