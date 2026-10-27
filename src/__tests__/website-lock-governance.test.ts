@@ -81,7 +81,13 @@ describe("website lock governance", () => {
     expect(fastlaneApproval.approved_ui_commit).toBe(factoryApproval.previous_baseline_sha);
     const overviewApproval = config.approved_api_agent_buyer_overview_20261027;
     expect(factoryApproval.approved_ui_commit).toBe(overviewApproval.previous_baseline_sha);
-    expect(overviewApproval.approved_ui_commit).toBe(config.baseline_sha);
+    const homeApproval = config.approved_homepage_navigation_motion_20261028;
+    expect(overviewApproval.approved_ui_commit).toBe(homeApproval.previous_baseline_sha);
+    expect(homeApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(homeApproval.predge_unmodified).toBe(true);
+    expect(homeApproval.paid_pricing_unmodified).toBe(true);
+    expect(homeApproval.payment_authorized).toBe(false);
+    expect(homeApproval.scope).toContain("src/components/intelligence-background.tsx");
     expect(overviewApproval.scope).toEqual(["src/routes/data-api.tsx", "src/components/capability-price-schedule.tsx"]);
     expect(overviewApproval.predge_unmodified).toBe(true);
     expect(overviewApproval.internal_tool_implementation_retained).toBe(true);
