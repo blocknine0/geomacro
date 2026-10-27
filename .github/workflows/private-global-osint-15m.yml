@@ -326,6 +326,9 @@ jobs:
 
   stage-private-sources-when-d1-held:
     name: Preserve actual native-dated source observations when canonical D1 is held
+    concurrency:
+      group: geomacro-private-osint-held-publisher-fetch
+      cancel-in-progress: false
     needs: [verify, quota-admission]
     if: >-
       needs.quota-admission.outputs.critical != 'true' &&
