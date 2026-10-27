@@ -87,7 +87,12 @@ describe("website lock governance", () => {
     expect(homeApproval.approved_ui_commit).toBe(findsApproval.previous_baseline_sha);
     const askChatApproval = config.approved_ask_three_category_chat_20261028;
     expect(findsApproval.approved_ui_commit).toBe(askChatApproval.previous_baseline_sha);
-    expect(askChatApproval.approved_ui_commit).toBe(config.baseline_sha);
+    const publicAskApproval = config.approved_ask_public_geomacro_info_20261028;
+    expect(askChatApproval.approved_ui_commit).toBe(publicAskApproval.previous_baseline_sha);
+    expect(publicAskApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(publicAskApproval.public_information_only).toBe(true);
+    expect(publicAskApproval.private_retrieval_added).toBe(false);
+    expect(publicAskApproval.payment_authorized).toBe(false);
     expect(askChatApproval.predge_unmodified).toBe(true);
     expect(askChatApproval.payment_authorized).toBe(false);
     expect(askChatApproval.source_rights_and_original_clocks_preserved).toBe(true);
