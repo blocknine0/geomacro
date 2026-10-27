@@ -9,6 +9,7 @@ import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {countryMentionFromTitle} from "../lib/country-news-mentions-195.mjs";
 import {prepareReusableNewsBatches} from "../lib/prepare-reusable-news-batches.mjs";
+import {observedCountryCategoryCoverage} from "../lib/observed-country-category-coverage.mjs";
 
 const root=(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(root.length<32)throw Error("REUSABLE_SOURCE_NEWS_PROTECTED_TOKEN_MISSING");
@@ -106,6 +107,13 @@ const archive={...publicBody,offset:0,has_more:false,next_offset:null,
 mkdirSync("artifacts/reusable-source-news",{recursive:true});
 writeFileSync("artifacts/reusable-source-news/news.json",
   JSON.stringify(archive,null,2)+"\n",{mode:0o600});
+// A PRIVATE gap matrix is built exclusively from the already authenticated
+// 25h D1 readback. No per-country upstream polling and no additional D1 query.
+// Publisher country is NOT event country; all unmentioned and stale rows stay
+// explicitly uncovered even if all 195 routing entries are present.
+const actualCoverage=observedCountryCategoryCoverage(complete,COUNTRIES_195);
+writeFileSync("artifacts/reusable-source-news/coverage.json",
+  JSON.stringify(actualCoverage,null,2)+"\\n",{mode:0o600});
 // The scheduled ingest automatically compiles every retained input once per
 // snapshot, with no 12-way source retrieval or paid-model calls. D1 remains
 // canonical; these artifacts are reproducible derived packets, not a new DB.
@@ -137,6 +145,11 @@ console.log(JSON.stringify({
   supported_registered_sources_by_category:info.supported_registered_sources_by_category,
   actual_observed_country_count_by_category:info.actual_observed_country_count_by_category,
   observed_country_count_is_not_195x3_coverage_certification:true,
+  d1_readback_observed_countries_by_category:actualCoverage.actual_observed_countries_by_category,
+  d1_readback_missing_countries_by_category:Object.fromEntries(
+    Object.entries(actualCoverage.missing_countries_by_category).map(([k,v])=>[k,v.length])),
+  d1_readback_observed_country_category_cells:actualCoverage.observed_cells,
+  d1_readback_585_cell_completeness_verified:false,
   pinned_presidential_sources_selected:info.pinned_presidential_sources_selected,
   source_poll_slot_minutes:info.nominal_poll_slot_minutes,
   nominal_category_revisit_minutes:info.nominal_max_category_revisit_minutes,
