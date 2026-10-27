@@ -222,3 +222,23 @@ test("bundle read-through uses a 15s TTL, single-flight, and strict acceptance b
  assert.equal(eligiblePublicFreeD1CacheRequest(request(url+"?offset=250")),false);
  assert.equal(eligiblePublicFreeD1CacheRequest(request(url)),true);
 });
+
+test("60-second full public news bundle reuses one bounded D1 read, bypasses no-cache origin proof",async()=>{
+  const name="https://geomacro-control-plane.example/v1/public/website-derived-news-bundle";
+  const entries=new Map();let d1reads=0;
+  const cache={async match(k){return entries.get(k.url)?.clone()??null},
+    async put(k,v){entries.set(k.url,v.clone())}};
+  const run=async()=>{d1reads++;return Response.json({ok:true,signals:[],checked_at:"2026-10-27T09:00:00Z"})};
+  const req=request(name);
+  for(let i=0;i<8;i++){
+    const result=await readPublicFreeD1Cached(req,run,{cache});
+    assert.equal(result.status,200);
+    assert.equal(result.headers.get("Cache-Control"),"public, max-age=60");
+  }
+  assert.equal(d1reads,1);
+  assert.equal(entries.size,1);
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(name,{"Cache-Control":"no-cache"})),false);
+  const uncache=await readPublicFreeD1Cached(request(name,{"Cache-Control":"no-cache"}),run,{cache});
+  assert.equal(uncache.status,200);
+  assert.equal(d1reads,2);
+});
