@@ -125,7 +125,7 @@ export async function reconcileWebsiteFindsToCanonicalD1({
   schema:"geomacro.website-d1-parity-reconcile.v1",
   same_canonical_derived_ids_verified:true,website_latest_eligible:website.length,
   missing_before:0,inserted:0,exact_d1_readback_verified:true,
-  recovered_category_counts:counts,source_fetches:0,extra_source_scaping:false,
+  recovered_category_counts:counts,source_fetches:0,extra_source_scraping:false,
   b2_requests:0,payments:0,predge_authenticated_readback_verified:false,
  });
  const root=String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
