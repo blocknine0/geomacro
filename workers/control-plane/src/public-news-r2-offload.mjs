@@ -9,6 +9,7 @@ import {eligiblePublicFreeD1CacheRequest} from "./public-free-d1-cache.mjs";
 
 export const PUBLIC_NEWS_R2_KEY="geomacro/public-news/v1/current.json";
 export const PUBLIC_NEWS_R2_MAX_AGE_MS=8*60_000;
+export const PUBLIC_NEWS_R2_LAST_KNOWN_MAX_AGE_MS=24*60*60_000;
 export const PUBLIC_NEWS_R2_MAX_BYTES=850_000;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const CATSET=new Set(CATEGORIES);
@@ -54,14 +55,17 @@ function validatePage(doc,offset,now,seen){
     seen.set(item.id,item);
   }
 }
-export function validatePublicNewsR2Bundle(value,now=Date.now()){
+export function validatePublicNewsR2Bundle(value,now=Date.now(),{
+  maxAgeMs=PUBLIC_NEWS_R2_MAX_AGE_MS,
+}={}){
+  if(![PUBLIC_NEWS_R2_MAX_AGE_MS,PUBLIC_NEWS_R2_LAST_KNOWN_MAX_AGE_MS].includes(maxAgeMs))fail();
   if(!value||typeof value!=="object"||Array.isArray(value)||
      value.schema!=="geomacro.public-source-neutral-r2-bundle.v1"||
      !/^[a-f0-9]{40}$/.test(String(value.origin_deployed_source_sha??""))||
      !Number.isFinite(now))fail();
   const made=Date.parse(String(value.produced_at??""));
   if(!Number.isFinite(made)||made>now+15000||
-     now-made>PUBLIC_NEWS_R2_MAX_AGE_MS||now-made< -15000)fail();
+     now-made>maxAgeMs||now-made< -15000)fail();
   const pages=value.pages,seen=new Map();
   if(!pages||typeof pages!=="object"||Array.isArray(pages)||
      !pages["0"]||Object.keys(pages).some(x=>!OFFSETS.includes(x)))fail();
@@ -127,6 +131,8 @@ export async function readPublicNewsR2Snapshot(request,env,now=Date.now()){
   }else if(url.pathname==="/v1/public/derived-structural-72h"){
     category=url.search?url.search.slice(8):null;
     if(category!==null&&!CATSET.has(category))return null;
+  }else if(url.pathname==="/v1/public/website-derived-news-bundle"&&!url.search){
+    key="bundle";
   }else return null;
   try{
     const object=await env.PUBLIC_NEWS_R2.get(PUBLIC_NEWS_R2_KEY);
@@ -134,19 +140,55 @@ export async function readPublicNewsR2Snapshot(request,env,now=Date.now()){
     const raw=await object.text();
     if(enc.encode(raw).byteLength>PUBLIC_NEWS_R2_MAX_BYTES)return null;
     const bundle=JSON.parse(raw);
-    validatePublicNewsR2Bundle(bundle,now);
-    const data=key!==null?bundle.pages[key]:
+    // Public serving may survive a D1 hard-stop using LAST-KNOWN confirmed
+    // source-neutral material, but never silently extend the original clocks,
+    // signer claims, commercial eligibility or claim canonical freshness.
+    // The authenticated no-cache D1 routes bypass this offload entirely.
+    const age=now-Date.parse(bundle?.produced_at??"");
+    const lastKnown=age>PUBLIC_NEWS_R2_MAX_AGE_MS;
+    validatePublicNewsR2Bundle(bundle,now,{
+      maxAgeMs:PUBLIC_NEWS_R2_LAST_KNOWN_MAX_AGE_MS,
+    });
+    if(typeof env.GEOMACRO_SOURCE_SHA==="string"&&
+       /^[a-f0-9]{40}$/.test(env.GEOMACRO_SOURCE_SHA)&&
+       bundle.origin_deployed_source_sha!==env.GEOMACRO_SOURCE_SHA)return null;
+    let data;
+    if(key==="bundle"){
+      const signals=[],first_ingest=[];
+      for(const offset of OFFSETS){
+        const page=bundle.pages[offset];
+        if(!page)break;
+        if(!Array.isArray(page.first_ingest)||
+           page.first_ingest.length!==page.signals.length)return null;
+        signals.push(...page.signals);
+        first_ingest.push(...page.first_ingest);
+        if(!page.has_more)break;
+      }
+      if(signals.length>600)return null;
+      data={ok:true,schema:"geomacro.website-derived-news-bundle.v1",
+        checked_at:bundle.produced_at,original_release_delay_minutes:0,
+        retention_days:3,retention_hours:72,
+        delivery_scope:"free_website_only",complete:true,item_cap:600,
+        returned_rows:signals.length,
+        ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
+        first_ingest,signals,
+        scored:false,chargeable:false,supabase_dependency:false};
+    }else data=key!==null?bundle.pages[key]:
       category===null?bundle.machine:{
         ...bundle.machine,items:bundle.machine.items.filter(x=>x.category===category)
       };
     if(!data)return null;
-    return Response.json(data,{headers:{
-      "Cache-Control":"public, max-age=45",
+    const headers={
+      "Cache-Control":lastKnown?"public, max-age=60":"public, max-age=45",
       "X-Content-Type-Options":"nosniff",
       "Access-Control-Allow-Origin":"*",
       "Referrer-Policy":"no-referrer",
-      "X-GeoMacro-Public-Offload":"r2"
-    }});
+      "X-GeoMacro-Public-Offload":"r2",
+      "X-GeoMacro-Canonical-Status":lastKnown?"last-known-snapshot":"snapshot-within-8m",
+      "X-GeoMacro-Snapshot-At":bundle.produced_at,
+    };
+    if(lastKnown)headers.Warning='110 - "Last-known observation; canonical D1 freshness not verified"';
+    return Response.json(data,{headers});
   }catch{
     // A malformed or absent cache is NEVER converted to an empty-news event.
     return null;

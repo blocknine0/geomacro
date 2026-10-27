@@ -11,7 +11,7 @@ import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
-import {sealPrivateOsintSpool} from "../lib/private-osint-encrypted-spool.mjs";
+import {sealPrivateOsintSpool,selectEligiblePrivateOsintSpoolItems} from "../lib/private-osint-encrypted-spool.mjs";
 
 if(process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
  process.env.GITHUB_REF!=="refs/heads/main"||
@@ -31,7 +31,8 @@ if(result.summary.source_endpoints_attempted!==sources.length||
  result.summary.configured_categories!==3||
  result.checks.length<sources.length)
  throw Error("OSINT_SPOOL_SOURCE_COVERAGE_INVALID");
-const envelope=sealPrivateOsintSpool({items:result.items,root,now:Date.now()});
+const prepared=selectEligiblePrivateOsintSpoolItems(result.items,Date.now());
+const envelope=sealPrivateOsintSpool({items:prepared.items,root,now:Date.now()});
 if(envelope){
  const dest="/tmp/geomacro-encrypted-held-spool";
  mkdirSync(dest,{recursive:true,mode:0o700});
@@ -42,7 +43,10 @@ console.log(JSON.stringify({
  mode:"ENCRYPTED_QUOTA_HELD_PRIVATE_ONLY",checked_source_endpoints:sources.length,
  checked_country_routes:195,checked_categories:3,
  source_health_by_state:result.summary.source_states,
- captured_unverified_items:result.items.length,
+ captured_unverified_items:prepared.items.length,
+ rejected_invalid_or_expired_source_items:prepared.invalid,
+ deduplicated_source_items:prepared.duplicates,
+ examined_source_items:prepared.examined,
  encrypted_artifact_emitted:envelope!==null,
  d1_writes:0,d1_canonical_readback_verified:false,
  b2_operations:0,r2_operations:0,kv_operations:0,

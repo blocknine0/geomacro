@@ -30,6 +30,30 @@ function acceptedItems(items,now){
  }
  return items;
 }
+/**
+ * Triage collector output BEFORE attempting to seal. Native-source dates can
+ * cross the 25h eligibility boundary while 511 feeds are being fetched, and
+ * one bad publisher must not cancel all other eligible country observations.
+ * Never change a timestamp, rights flag, country or verification claim.
+ * Invalid/duplicate items are counted, never serialized or logged.
+ */
+export function selectEligiblePrivateOsintSpoolItems(items,now=Date.now()){
+ if(!Array.isArray(items)||items.length>MAX_ITEMS||!Number.isFinite(now))
+  throw Error("OSINT_SPOOL_SOURCE_BATCH_INVALID");
+ const eligible=[],seen=new Set();
+ let invalid=0,duplicates=0;
+ for(const item of items){
+  try{
+   validateReusableSourceNewsItem(item,now);
+   if(seen.has(item.id)){duplicates++;continue}
+   seen.add(item.id);
+   eligible.push(item);
+  }catch{invalid++}
+ }
+ return Object.freeze({items:eligible,invalid,duplicates,
+  examined:items.length,source_clock_cannot_be_extended:true,
+  original_verification_not_granted:true});
+}
 export function sealPrivateOsintSpool({items,root,now=Date.now(),nonce=randomBytes(12)}){
  if(!Number.isFinite(now)||!Buffer.isBuffer(nonce)||nonce.byteLength!==12)
   throw Error("OSINT_SPOOL_CLOCK_OR_NONCE_INVALID");

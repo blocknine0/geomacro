@@ -1336,8 +1336,9 @@ export default {
           })));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/website-derived-news-bundle"&&!url.search)
-      return publicReadCache(()=>readDerivedStoriesBundle(env,Date.now(),
-        eligiblePublicFreeD1CacheRequest(request)));
+      return publicReadCache(async()=>await readPublicNewsR2Snapshot(request,env) ??
+        await readDerivedStoriesBundle(env,Date.now(),
+          eligiblePublicFreeD1CacheRequest(request)));
     if(request.method==='GET'&&url.pathname==='/v1/public/intelligence-publications')
       return publicSignedNews(env,url.searchParams);
     if (request.method === "GET" && ["/v1/public/website-derived-news","/v1/public/website-derived-news-immediate"].includes(url.pathname)) {
