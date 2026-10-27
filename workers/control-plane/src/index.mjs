@@ -1,3 +1,4 @@
+import {readPublicMacro,loadMacroState,storeMacroState,runMacroReleaseTick} from "./macro-fastlane.mjs";
 import {publicSignedNews} from './public-signed-news.mjs';
 import {handlePrivateOsint15m} from './private-osint-15m.mjs';
 import {readPrivateTelegramResearchJson} from './telegram-research-json.mjs';
@@ -1267,6 +1268,9 @@ async function getPublicThreeDomain30MinSourcePulse(env) {
 }
 
 export default {
+  async scheduled(controller,env,ctx){
+    ctx.waitUntil(runMacroReleaseTick(env).then(receipt=>console.log(JSON.stringify({schema:"geomacro.macro-release-tick.v1",...receipt}))).catch(()=>console.error("MACRO_RELEASE_TICK_UNAVAILABLE")));
+  },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const publicReadCache=(run)=>readPublicFreeD1Cached(request,run,{
@@ -1277,6 +1281,7 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/health") return health(env);
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
+    if(request.method==="GET"&&url.pathname==="/v1/public/macro-fastlane"&&!url.search)return publicReadCache(()=>readPublicMacro(env));
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime"&&!url.search)return getSourceRuntimeStatus(env);
     if(request.method==="GET"&&url.pathname==="/v1/public/reusable-source-news")
       return publicReadCache(()=>publicReusableSourceNews(env,url.searchParams));
@@ -1292,6 +1297,8 @@ export default {
         return json({ok:false,error:"AUTOMATED_FINDS_QUERY_INVALID"},400);
       return getAutomatedFinds(env,url.searchParams.get("category"));
     }
+    if(request.method==="GET"&&url.pathname==="/v1/public/fastlane-intelligence")
+      return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),"attributed_research"));
     if(request.method==="GET"&&url.pathname==="/v1/public/derived-structural-72h")
       return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams));
     if(request.method==="GET"&&url.pathname==="/v1/partner/predge/derived-structural-72h")
@@ -1348,6 +1355,10 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      if(url.pathname==="/v1/internal/macro-fastlane"&&!url.search){
+        if(request.method==="GET")return json({ok:true,state:await loadMacroState(env)});
+        if(request.method==="PUT")return storeMacroState(env,await readJson(request,50000));
+      }
       if(request.method==="PUT"&&url.pathname==="/v1/reusable-source-news"&&!url.search)
         return publishReusableSourceNews(env,await readJson(request,96*1024));
       if(request.method==="PUT"&&url.pathname==="/v1/internal/telegram-export-derived-json"&&!url.search)

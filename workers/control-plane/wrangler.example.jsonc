@@ -3,6 +3,7 @@
   "main": "src/index.mjs",
   "compatibility_date": "2026-10-03",
   "workers_dev": true,
+  "triggers": {"crons": ["* * * * *"]},
   "cache": {
     "enabled": true
   },

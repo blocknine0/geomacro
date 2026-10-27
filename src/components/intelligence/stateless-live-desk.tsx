@@ -1,3 +1,4 @@
+import {MacroFastlanePanel} from "./macro-fastlane-panel";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, Gem } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
@@ -13,7 +14,7 @@ import { loadReaderPreferences, saveReaderPreferences } from "@/lib/reader-prefe
 
 const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
   { key: "geopolitics", label: "Geopolitics" },
-  { key: "macro", label: "Macro / FX" },
+  { key: "macro", label: "Macro Economics" },
   { key: "rare_earth", label: "Critical Minerals" },
 ];
 const displayProse = (text: string) => text.replace(/\s*\u2014\s*/gu, "; ");
@@ -49,7 +50,7 @@ function formatInstant(value: string): string {
 
 const CATEGORY_STYLE = {
   geopolitics: { bar: "bg-rose-500", icon: "text-rose-500", marker: "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300", reading: "GEOPOLITICAL SIGNAL" },
-  macro: { bar: "bg-sky-500", icon: "text-sky-500", marker: "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300", reading: "MACRO / FX SIGNAL" },
+  macro: { bar: "bg-sky-500", icon: "text-sky-500", marker: "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300", reading: "MACRO ECONOMICS SIGNAL" },
   rare_earth: { bar: "bg-amber-500", icon: "text-amber-500", marker: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300", reading: "CRITICAL MINERALS SIGNAL" },
 } as const;
 
@@ -342,7 +343,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           What changed in the world
         </h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
-          Your briefing on Geopolitics, Macro / FX and Critical Minerals.
+          Your briefing on Geopolitics, Macro Economics and Critical Minerals.
         </p>
         <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Clock3 className="h-4 w-4" aria-hidden />
@@ -372,6 +373,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
         </div>
       </section>
 
+      {view === "macro" && <MacroFastlanePanel />}
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="flex min-h-11 flex-1 items-center gap-2 rounded-xl border border-border bg-card px-3">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />

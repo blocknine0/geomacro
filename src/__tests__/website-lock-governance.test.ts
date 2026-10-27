@@ -75,7 +75,12 @@ describe("website lock governance", () => {
     expect(osintStatusLabelApproval.approved_ui_commit).toBe("0d742df4aa4366345cf8a4d27aeaee4fea40aea8");
     expect(osintStatusLabelApproval.previous_baseline_sha).toBe("49d13acbedcf6dd191251da6dbea10056e5b74b1");
     const unscoredWordHideApproval = config.approved_intelligence_unscored_word_hide_20261027;
-    expect(unscoredWordHideApproval.approved_ui_commit).toBe(config.baseline_sha);
+    const fastlaneApproval=config.approved_macro_minerals_fastlanes_20261027;
+    expect(unscoredWordHideApproval.approved_ui_commit).toBe(fastlaneApproval.previous_baseline_sha);
+    expect(fastlaneApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(fastlaneApproval.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx","src/components/intelligence/macro-fastlane-panel.tsx"]);
+    expect(fastlaneApproval.payment_authorized).toBe(false);
+    expect(fastlaneApproval.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(unscoredWordHideApproval.previous_baseline_sha).toBe(osintStatusLabelApproval.approved_ui_commit);
     expect(unscoredWordHideApproval.scope).toEqual(["src/components/intelligence/stateless-live-desk.tsx"]);
     expect(unscoredWordHideApproval.payment_authorized).toBe(false);

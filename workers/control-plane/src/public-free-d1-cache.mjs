@@ -10,6 +10,8 @@
  */
 export const PUBLIC_FREE_D1_TTL_SECONDS = 45;
 const PATHS = new Set([
+  "/v1/public/macro-fastlane",
+  "/v1/public/fastlane-intelligence",
   "/v1/public/three-domain-continuity",
   "/v1/public/website-derived-news",
   "/v1/public/website-derived-news-immediate",
@@ -43,7 +45,8 @@ export function eligiblePublicFreeD1CacheRequest(request){
   if(url.search){
     const raw=url.search.slice(1);
     if(url.pathname==="/v1/public/reusable-source-news" ||
-       url.pathname==="/v1/public/derived-structural-72h"){
+       url.pathname==="/v1/public/derived-structural-72h" ||
+       url.pathname==="/v1/public/fastlane-intelligence"){
       if(!categoryQuery(raw))return false;
     }else if(PAGED_NEWS_PATHS.has(url.pathname)){
       if(!CANONICAL_OFFSETS.has(raw))return false;

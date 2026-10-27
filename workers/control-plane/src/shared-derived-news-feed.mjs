@@ -1,3 +1,4 @@
+import {loadMacroState,macroPriceEvidence} from "./macro-fastlane.mjs";
 /** Read-only machine/Predge pilot projection from the SAME 72h D1 journal
  * the Geomacro Intelligence page consumes. No partner-specific scrape, queue,
  * raw publisher text, new D1 table, B2 GET, Supabase, score or x402.
@@ -50,7 +51,10 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
         throw Error("SHARED_NEWS_INVALID_CURSOR");
     }
     if(!complete)throw Error("SHARED_NEWS_INCOMPLETE");
-    const all=buildDerivedNewsStructural(signals,now,projection);
+    const projected=buildDerivedNewsStructural(signals,now,projection);
+    let macroState={};
+    if(projected.some(s=>s.category==="macro")){try{macroState=await loadMacroState(env);}catch{/* news is independent of the quote stream */}}
+    const all=projected.map(row=>row.category==="macro"?{...row,macro_context:macroPriceEvidence({id:row.id,category:row.category,topic:row.topic,title:row.headline,what_changed:row.observed_change,published_at:row.original_published_at},macroState)}:row);
     const producerChecks=await getNewsProducerChecks(env,now);
     const qualified=Object.fromEntries(CATEGORIES.map(c=>[
       c,all.filter(row=>row.category===c && row.qualifying_topic_release_verified).length

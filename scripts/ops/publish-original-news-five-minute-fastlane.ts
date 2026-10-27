@@ -1,4 +1,7 @@
 #!/usr/bin/env bun
+import {collectCriticalMineralsFastlane} from "../lib/critical-minerals-fastlane.mjs";
+import {collectMacroFastlane} from "../lib/macro-fastlane-collector.mjs";
+import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model";
 /**
  * 5-minute BEST EFFORT news latency fastlane, exactly one existing first-party
  * original publisher per domain. NO GDELT-as-original, no paid source,
@@ -32,15 +35,43 @@ const baseline=await fetchAllDerivedNews(fetch,runAt);
 const existingIds=new Set(baseline.map(s=>s.id));
 const privateOriginals:StatelessSourceCandidate[]=[];
 const reports=await readFiveMinuteNewsFastlane(runAt,20,
- process.env.GEOMACRO_LOW_SOURCE_REVIEW==='1'?items=>privateOriginals.push(...items):undefined);
+ items=>privateOriginals.push(...items));
+// One existing quota-admitted run shares its complete D1 baseline and primary
+// Fed/ECB origin reads with the Macro Economics FX/precious-metals bundle.
+const macroStateUrl=controlPlaneOrigin+"/v1/internal/macro-fastlane";
+const stateResponse=await fetch(macroStateUrl,{headers:{Authorization:"Bearer "+token},redirect:"error",signal:AbortSignal.timeout(10000)});
+if(!stateResponse.ok)throw Error("MACRO_STATE_READ_UNAVAILABLE");
+const previousMacroState=(await stateResponse.json() as {state:unknown}).state;
+const macro=await collectMacroFastlane({now:runAt,state:previousMacroState,
+ reusedCandidates:privateOriginals,reusedIds:FIVE_MINUTE_NEWS_FASTLANE.filter(s=>s.category==="macro").map(s=>s.id)});
+privateOriginals.push(...macro.candidates.filter(c=>!privateOriginals.some(p=>p.sourceId===c.sourceId&&p.articleUrl===c.articleUrl)));
+const macroReport=reports.find(r=>r.category==="macro");
+if(!macroReport)throw Error("MACRO_REPORT_ABSENT");
+macroReport.signals=deriveStatelessSignals(macro.candidates,runAt,{maxSignals:40});
+for(const shared of macroReport.primary_publisher_status??[]){
+ if(["fed_press","ecb_press"].includes(shared.id))macro.state.source_checks=[...macro.state.source_checks.filter(c=>c.id!==shared.id),{id:shared.id,state:shared.reachable?"OK":"UNAVAILABLE",candidates:shared.native_candidate_count}];
+}
+console.log(JSON.stringify(macro.receipt));
+const mineral=await collectCriticalMineralsFastlane({now:runAt,state:previousMacroState,reusedCandidates:privateOriginals,
+ macroNeedsFallback:macro.state.source_checks.some(c=>["ACCESS_DENIED","UNAVAILABLE","RATE_LIMITED"].includes(c.state))});
+macro.state.mineral_cursors=mineral.cursors;
+macro.state.mineral_checks=mineral.checks;
+macro.state.mineral_regions=mineral.receipt.regional_groups;
+for(const category of ["macro","rare_earth"] as const){
+ const report=reports.find(r=>r.category===category);
+ if(report)report.signals=[...new Map([...report.signals,...mineral.signals.filter(s=>s.category===category)].map(s=>[s.id,s])).values()].sort((a,b)=>b.published_at.localeCompare(a.published_at)).slice(0,60);
+}
+console.log(JSON.stringify(mineral.receipt));
+let journalVerified=true;
 let failure=false,allPublished:StatelessIntelligenceSignal[]=[];
+const pending:StatelessIntelligenceSignal[]=[];
 for(const category of categories){
  const report=reports.find(r=>r.category===category);
  const expectedOrigins=FIVE_MINUTE_NEWS_FASTLANE.filter(s=>s.category===category).length;
  // Every primary publisher is always attempted. Only if all primaries fail
  // or none has a qualifying recent release, ONE existing alternative is polled.
  if(!report||report.feed_count<expectedOrigins||
-    report.feed_count>expectedOrigins+1||report.healthy_feed_count<1){
+    report.feed_count>expectedOrigins+1||(report.healthy_feed_count<1&&!report.signals.length)){
    failure=true;
    console.warn("::warning::FASTLANE_ORIGINAL_PUBLISHER_UNAVAILABLE_"+category.toUpperCase());
    continue;
@@ -54,24 +85,7 @@ for(const category of categories){
    (s.date_precision==="exact"
       ?Date.parse(s.published_at)<=runAt
       :Date.parse(s.published_at)+36*3600000<=runAt));
- try {
-  for(let i=0;i<candidates.length;i+=20){
-   const batch=candidates.slice(i,i+20);
-   const response=await fetch(endpoint,{
-    method:"PUT",redirect:"error",cache:"no-store",
-    headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
-    body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:batch}),
-    signal:AbortSignal.timeout(12000),
-   });
-   if(!response.ok)throw Error("D1_WRITE_UNAVAILABLE");
-   const receipt=await response.json() as {ok?:boolean;accepted?:number};
-   if(receipt.ok!==true||receipt.accepted!==batch.length)throw Error("D1_ACK_INVALID");
-   allPublished.push(...batch);
-  }
- }catch{
-   failure=true;
-   console.error("::error::FASTLANE_D1_WRITE_UNVERIFIED_"+category.toUpperCase());
- }
+ pending.push(...candidates);
  console.log(JSON.stringify({
    schema:"geomacro.5min-original-lane.v1",category,
    original_publisher_health:true,
@@ -95,6 +109,19 @@ for(const category of categories){
    independent_same_event_verified:false,chargeable:false,
  }));
 }
+// Cross-category writes are packed into the maximum accepted 50-row batch.
+// Empty ticks do not cause retention scans or write unchanged release rows.
+try{
+ for(let i=0;i<pending.length;i+=50){
+  const batch=pending.slice(i,i+50);
+  const response=await fetch(endpoint,{method:"PUT",redirect:"error",cache:"no-store",
+   headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+   body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:batch}),signal:AbortSignal.timeout(12000)});
+  const ack=await response.json() as {ok?:boolean;accepted?:number};
+  if(!response.ok||ack.ok!==true||ack.accepted!==batch.length)throw Error("BUNDLED_JOURNAL_ACK_INVALID");
+  allPublished.push(...batch);
+ }
+}catch{journalVerified=false;failure=true;console.error("::error::BUNDLED_FASTLANE_JOURNAL_WRITE_FAILED");}
 if(allPublished.length){
  try{
   // Read the SAME journal via its strict 250/500-page complete verified reader;
@@ -128,9 +155,16 @@ if(allPublished.length){
     raw_upstream_delivered:false,
   }));
  }catch{
-  failure=true;
+  journalVerified=false;failure=true;
   console.error("::error::FASTLANE_D1_FULL_JOURNAL_READBACK_FAILED");
  }
+}
+// Advance conditional-GET cursors and grant a short release-time quota
+// lease only after journal publication/readback succeeds. A failed run never
+// loses candidates behind a persisted ETag or renews the minute poller.
+if(journalVerified){
+ const response=await fetch(macroStateUrl,{method:"PUT",redirect:"error",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify(macro.state),signal:AbortSignal.timeout(12000)});
+ if(!response.ok){failure=true;console.error("::error::MACRO_BUNDLE_STATE_WRITE_FAILED");}
 }
 console.log(JSON.stringify({
  schema:"geomacro.5min-three-domain-original-news-run.v1",
@@ -138,7 +172,7 @@ console.log(JSON.stringify({
  max_conditional_fallback_publishers_per_run:3,
  fallback_for_primary_outage_or_no_recent_release:true,
  scheduled_interval_minutes:5,latency_objective_minutes:20,
- max_derived_rows_per_category:20,all_world_news_guaranteed:false,
+ max_derived_rows_per_category:60,all_world_news_guaranteed:false,
  publisher_source_clock_not_fetch_clock:true,
  existing_d1_72h_journal_only:true,b2_requests:0,supabase_requests:0,
  x402_charges:0,original_content_persisted:false,

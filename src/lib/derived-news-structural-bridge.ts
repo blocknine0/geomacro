@@ -1,3 +1,5 @@
+import {isSafeMonitoredFeedCredit} from "../../scripts/lib/derived-news-readback-policy.mjs";
+import {macroEventContext} from "../../scripts/lib/macro-fx-metals.mjs";
 import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import type {StatelessIntelligenceSignal,StatelessCategory} from "./stateless-intelligence-model";
 
@@ -29,6 +31,14 @@ const RESEARCH_SOURCE_CREDITS=new Set<string>([
   "European Central Bank",
   "European Commission",
   "Bank of Japan",
+  "Bank of England",
+  "Swiss National Bank",
+  "Reserve Bank of India",
+  "World Gold Council",
+  "LBMA",
+  "Commodity Futures Trading Commission",
+  "CME Group",
+  "The Silver Institute",
   "Bank of Canada",
   "New Zealand Government (Beehive)",
   "WTO news",
@@ -42,6 +52,7 @@ const RESEARCH_SOURCE_CREDITS=new Set<string>([
   "© European Union, 2026. Source attribution required."
 ]);
 export type DerivedNewsStructural={
+  macro_context?:ReturnType<typeof macroEventContext>;
   schema:typeof NEWS_STRUCTURAL_SCHEMA;
   sources_credited?:readonly string[];
   attribution_required?:true;
@@ -52,7 +63,7 @@ export type DerivedNewsStructural={
   geography_mentioned:string|null;
   headline:string;observed_change:string;potential_relevance:string;
   confidence_state:"OFFICIAL_RELEASE_OBSERVED_UNSCORED"|
-    "DATED_OFFICIAL_FEED_CANDIDATE_UNCLASSIFIED";
+    "DATED_OFFICIAL_FEED_CANDIDATE_UNCLASSIFIED"|"MONITORED_SOURCE_REPORT_UNVERIFIED";
   topical_match_verified:boolean;
   qualifying_topic_release_verified:boolean;
   further_validation_required:true;
@@ -79,7 +90,7 @@ export function buildDerivedNewsStructural(
     // authenticated research projection carries known source notices visibly.
     if(signal.sources_credited.length!==0 &&
        (projection!=="attributed_research" ||
-        !signal.sources_credited.every(c=>RESEARCH_SOURCE_CREDITS.has(c))))continue;
+        !signal.sources_credited.every(c=>RESEARCH_SOURCE_CREDITS.has(c)||(signal.status==="osint_feed_observed_unverified"&&isSafeMonitoredFeedCredit(c)))))continue;
     const canonical=JSON.stringify(signal);
     const previous=seen.get(signal.id);
     if(previous!==undefined){
@@ -87,6 +98,7 @@ export function buildDerivedNewsStructural(
       continue;
     }
     seen.set(signal.id,canonical);
+    const monitored=signal.status==="osint_feed_observed_unverified";
     const candidateOnly=signal.status==="official_feed_candidate_unscored";
     rows.push(Object.freeze({
       schema:NEWS_STRUCTURAL_SCHEMA,id:signal.id,category:signal.category,
@@ -98,20 +110,21 @@ export function buildDerivedNewsStructural(
           c==="Contains public sector information licensed under the Open Government Licence v3.0."?
           c+" https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/":c)),
       }:{}),
+      ...(macroEventContext(signal)?{macro_context:macroEventContext(signal)}:{}),
       event_family:EVENT_FAMILIES[signal.category],
       development_type:signal.development_type,topic:signal.topic,
       original_published_at:signal.published_at,date_precision:signal.date_precision,
       geography_mentioned:signal.geography,
-      headline:candidateOnly?"Official-source candidate; relevance not verified":
+      headline:monitored?"Monitored "+signal.topic+" report observed":candidateOnly?"Official-source candidate; relevance not verified":
         "Official "+signal.topic+" release observed",
       // Already Geomacro-authored bounded derived prose, NOT upstream text.
       observed_change:signal.what_changed,
       potential_relevance:signal.why_it_matters,
-      confidence_state:candidateOnly?
+      confidence_state:monitored?"MONITORED_SOURCE_REPORT_UNVERIFIED":candidateOnly?
         "DATED_OFFICIAL_FEED_CANDIDATE_UNCLASSIFIED":
         "OFFICIAL_RELEASE_OBSERVED_UNSCORED",
       topical_match_verified:!candidateOnly,
-      qualifying_topic_release_verified:!candidateOnly,
+      qualifying_topic_release_verified:!candidateOnly&&!monitored,
       further_validation_required:true,
       event_detail_verified:false,country_subject_verified:false,
       independent_same_event_verified:false,
