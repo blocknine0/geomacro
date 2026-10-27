@@ -7,6 +7,7 @@
 import {createCipheriv,createDecipheriv,createHmac,randomBytes} from "node:crypto";
 import {gzipSync,gunzipSync} from "node:zlib";
 import {validateReusableSourceNewsItem} from "../../workers/control-plane/src/reusable-source-news.mjs";
+import {buildPrivateSourceSharedReadManifest,assertPrivateSourceSharedReadManifest} from "./private-osint-shared-read-contract.mjs";
 
 export const OSINT_SPOOL_ENVELOPE="geomacro.encrypted-private-osint-held-spool.v1";
 export const OSINT_SPOOL_ARTIFACT_NAME="geomacro-encrypted-private-osint-held";
@@ -61,7 +62,8 @@ export function sealPrivateOsintSpool({items,root,now=Date.now(),nonce=randomByt
  if(!checked.length)return null;
  const created_at=new Date(now).toISOString();
  const plain=Buffer.from(JSON.stringify({schema:"geomacro.private-osint-spool-payload.v1",
-  created_at,items:checked}));
+  created_at,items:checked,
+  shared_source_read:buildPrivateSourceSharedReadManifest(checked,now)}));
  if(plain.byteLength>MAX_INPUT_BYTES)throw Error("OSINT_SPOOL_INPUT_TOO_LARGE");
  const zipped=gzipSync(plain,{level:6});
  const cipher=createCipheriv("aes-256-gcm",key(root),nonce);
@@ -106,6 +108,12 @@ export function unsealPrivateOsintSpool(envelope,root,now=Date.now()){
     doc.created_at!==envelope.created_at||
     !Array.isArray(doc.items)||doc.items.length!==envelope.unverified_observation_count)
   throw Error("OSINT_SPOOL_PROTECTED_CONTENT_INVALID");
+ // Legacy pre-manifest v1 ciphertext remains decryptable. Newly staged
+ // ciphertext verifies SAME fact bytes and categories under the captured
+ // native clock before any expiry filtering or D1 replay.
+ if(doc.shared_source_read!==undefined)
+  assertPrivateSourceSharedReadManifest(doc.items,doc.shared_source_read,
+    Date.parse(doc.created_at));
  // Reapply the same strict 25-hour native publisher clock on replay. Native
  // source items that expired since sealed collection must never be extended.
  const fresh=doc.items.filter(item=>{
@@ -115,6 +123,9 @@ export function unsealPrivateOsintSpool(envelope,root,now=Date.now()){
  acceptedItems(fresh,now);
  return Object.freeze({items:fresh,expired:doc.items.length-fresh.length,
   original_count:doc.items.length,created_at:doc.created_at,
+  shared_source_read:buildPrivateSourceSharedReadManifest(fresh,now),
+  original_shared_source_read:doc.shared_source_read??
+    buildPrivateSourceSharedReadManifest(doc.items,Date.parse(doc.created_at)),
   verified_d1:false});
 }
 export function selectPrivateOsintSpoolArtifacts(artifacts,now=Date.now(),limit=1){
