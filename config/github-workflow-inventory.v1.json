@@ -95,8 +95,8 @@
     "day7-final-commercial-launch-gate.yml",
     "deploy-b2-shared-quota-safety.yml",
     "deploy-commerce-ledger-worker.yml",
-    "deploy-d1-control-plane.yml",
     "deploy-country-flash-supabase.yml",
+    "deploy-d1-control-plane.yml",
     "deploy-global-risk-edge.yml",
     "deploy-intelligence-edge.yml",
     "deploy-live-structure-intelligence.yml",
@@ -219,6 +219,7 @@
     "minimum-free-derived-production-health.yml",
     "multisource-sovereign-fiscal-coverage.yml",
     "nevermined-x402-sandbox-acceptance.yml",
+    "news-intelligence-hub-continuity.yml",
     "no-supabase-commerce-acceptance.yml",
     "nz-wto-official-rss-diagnostics.yml",
     "observation-provenance-b2-archive-canary.yml",
@@ -362,6 +363,7 @@
     "intelligence-current-scoring-all-domains.yml",
     "intelligence-machine-current.yml",
     "intelligence-orchestrator.yml",
+    "news-intelligence-hub-continuity.yml",
     "open-realtime-source-mesh.yml",
     "permanent-runtime-health.yml",
     "predge-research-continuity.yml",
@@ -404,7 +406,8 @@
     "risk-indices-verified-parent-backstop.yml": "Risk Indices Verified GRI Parent Repair Backstop (No Funds)",
     "permanent-runtime-health.yml": "Permanent Runtime Health",
     "open-realtime-source-mesh.yml": "Geomacro Open Realtime Source Mesh",
-    "predge-token-only-sealed-handoff.yml": "Predge Token-Only Encrypted Handoff (No Funds)"
+    "predge-token-only-sealed-handoff.yml": "Predge Token-Only Encrypted Handoff (No Funds)",
+    "news-intelligence-hub-continuity.yml": "GeoMacro Central News Intelligence Hub"
   },
   "lockedTriggerStrings": {
     "private-global-osint-15m.yml": [
@@ -428,6 +431,13 @@
     "three-domain-30m-original-publisher-pulse.yml": [
       "cron: \"12,42 * * * *\"",
       "\"Three-Domain Unified Private Source Intake\""
+    ],
+    "news-intelligence-hub-continuity.yml": [
+      "cron: \"58 * * * *\"",
+      "node scripts/ops/plan-d1-bundled-work.mjs",
+      "node scripts/ops/verify-news-hub-live-bundle.mjs",
+      "needs.shared-quota-admission.outputs.admitted == 'true'",
+      "cancel-in-progress: false"
     ]
   },
   "predgeBlobSha1": {
