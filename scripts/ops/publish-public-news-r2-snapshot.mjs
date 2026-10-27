@@ -5,7 +5,7 @@
  */
 import {createHmac} from "node:crypto";
 import {resolve} from "node:path";
-import {pathToFileURL} from "node:url";
+import {fileURLToPath} from "node:url";
 import {validatePublicNewsR2Bundle,PUBLIC_NEWS_R2_MAX_BYTES}
   from "../../workers/control-plane/src/public-news-r2-offload.mjs";
 
@@ -79,7 +79,7 @@ export async function publishPublicNewsR2Snapshot({
     source_original_clock_preserved:true,d1_writes:0,b2_requests:0,
     new_upstream_reads:0,payments:0};
 }
-if(process.argv[1]&&resolve(process.argv[1])===pathToFileURL(import.meta.url).pathname){
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   try{console.log(JSON.stringify(await publishPublicNewsR2Snapshot()))}
   catch{console.error("PUBLIC_NEWS_R2_SNAPSHOT_PUBLISH_UNAVAILABLE");process.exitCode=2}
 }
