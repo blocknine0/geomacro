@@ -1,3 +1,4 @@
+import { geomacroPublicAnswer } from "./geomacro-public-knowledge";
 import { COUNTRIES_195 } from "./canonical-country-registry-195";
 import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
 
@@ -39,6 +40,8 @@ function response(summary: string, extra: Partial<HybridAskAnswer> = {}): Hybrid
 
 export function domainGuideAnswer(question: string): HybridAskAnswer | null {
   const q = question.trim();
+  const publicInfo = geomacroPublicAnswer(q);
+  if (publicInfo) return publicInfo;
   if (/^(?:hi|hello|hey|help|what can you do|who are you|thanks|thank you)[!?.]*$/i.test(q))
     return response("I'm Geomacro. Ask me about Geopolitics, Macro Economics or Critical Minerals / Rare Earths. I can explain concepts, check available news and data, and explore follow-up questions.");
   if (/\b(?:football|cricket|sports?|recipes?|cake|poems?|songs?|javascript|python|diagnos(?:e|is)|symptoms?|horoscope)\b/i.test(q))

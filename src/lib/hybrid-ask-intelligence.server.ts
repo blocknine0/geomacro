@@ -1,3 +1,4 @@
+import type { GeomacroPublicLink } from "./geomacro-public-links";
 import { readB2PublicIntelligence, readB2PublicRisk } from "./b2-live.server";
 import { riskIndicesFromGlobalRisk } from "./risk-indices-from-global-risk";
 import type { AskAnswer } from "./ask-intelligence.server";
@@ -43,7 +44,8 @@ type HybridRuntimeAnswer = {
 };
 
 export type HybridAskAnswer = AskAnswer & {
-  answer_kind?: "explainer" | "guidance";
+  answer_kind?: "explainer" | "guidance" | "public_info";
+  public_links?: GeomacroPublicLink[];
   data_mode: HybridRuntimeAnswer["data_mode"];
   cache_status: HybridRuntimeAnswer["cache_status"];
   source_identity_exposed: false;

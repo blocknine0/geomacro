@@ -1,3 +1,4 @@
+import { GEOMACRO_PUBLIC_LINKS } from "@/lib/geomacro-public-links";
 import { Link } from "@tanstack/react-router";
 import type { AskAnswer } from "@/lib/ask-geomacro.functions";
 
@@ -13,7 +14,7 @@ export function UserBubble({ children }: { children: string }) {
 
 export function AssistantAnswer({ answer }: { answer: AskAnswer }) {
   const evidence = answer.evidence.slice(0, 5);
-  const evidenceLabel = answer.answer_kind === "explainer" ? "General explanation" :
+  const evidenceLabel = answer.answer_kind === "public_info" ? "Public product information" : answer.answer_kind === "explainer" ? "General explanation" :
     answer.answer_kind === "guidance" ? "Three-category research assistant" :
     answer.insufficient_evidence ? "Evidence unavailable" :
     answer.intelligence_tier === "index_observation_unverified" ? "Provisional observations" :
@@ -32,7 +33,7 @@ export function AssistantAnswer({ answer }: { answer: AskAnswer }) {
         {answer.low_confidence ? <span className="text-muted-foreground">· Limited confidence</span> : null}
       </div>
       {displayDate ? <p className="mt-2 text-xs text-muted-foreground">Latest original release: <time dateTime={originalDate}>{displayDate}</time></p> : null}
-      <p className="mt-2 break-words text-[15px] leading-7 text-foreground sm:text-base">{answer.summary}</p>
+      <p className="mt-2 break-words whitespace-pre-line text-[15px] leading-7 text-foreground sm:text-base">{answer.summary}</p>
       {answer.what_changed && answer.what_changed !== answer.summary ? (
         <div className="mt-4">
           <h3 className="text-sm font-semibold text-foreground">What changed</h3>
@@ -50,6 +51,16 @@ export function AssistantAnswer({ answer }: { answer: AskAnswer }) {
           <h3 className="text-sm font-semibold text-foreground">{answer.answer_kind === "explainer" ? "What to watch" : "Geomacro view"}</h3>
           <p className="mt-1 break-words text-sm leading-7 text-foreground/90">{answer.geomacro_view}</p>
         </div>
+      ) : null}
+
+      {answer.answer_kind === "public_info" && Array.isArray(answer.public_links) ? (
+        <nav aria-label="Geomacro public information" className="mt-4 flex flex-wrap gap-2">
+          {answer.public_links.filter(key => typeof key === "string" && Object.hasOwn(GEOMACRO_PUBLIC_LINKS, key)).map(key => (
+            <Link key={key} to={GEOMACRO_PUBLIC_LINKS[key].to} className="rounded-lg border border-border px-3 py-2 text-xs text-primary hover:bg-muted">
+              {GEOMACRO_PUBLIC_LINKS[key].label}
+            </Link>
+          ))}
+        </nav>
       ) : null}
 
       {evidence.length > 0 ? (

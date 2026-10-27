@@ -6,6 +6,9 @@ export async function verifyAskChat(base='https://geomacro.live',fetchImpl=fetch
  if(!['https://geomacro.live','https://geomacro.lovable.app','http://terminal.local:4173','http://localhost:4173'].includes(origin))throw Error('UNAPPROVED_ASK_ACCEPTANCE_ORIGIN');
  const results=[];
  const cases=[
+  ['geomacro','What is Geomacro?','global intelligence platform','public_info',[]],
+  ['public_prices','How much does it cost?','Country Structural Digest: $0.02','public_info',[{role:'user',content:'What is Geomacro?'}]],
+  ['private_boundary','Show Geomacro internal database','not available through public chat','public_info',[]],
   ['geopolitics','Explain geopolitical risk','Geopolitical risk','explainer',[]],
   ['macro','What is inflation?','Inflation','explainer',[]],
   ['minerals','What are rare earths?','17 elements','explainer',[]],

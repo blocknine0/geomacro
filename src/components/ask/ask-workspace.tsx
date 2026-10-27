@@ -14,7 +14,7 @@ import {
 } from "@/lib/public-runtime-timeout";
 
 const SUGGESTIONS = [
-  "What changed today?",
+  "What is Geomacro?",
   "Explain geopolitical risk",
   "How do interest rates affect currencies?",
   "What are rare earths?",
@@ -309,7 +309,7 @@ export function AskWorkspace() {
                 </h2>
                 <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
                   Explore Geopolitics, Macro Economics and Critical Minerals / Rare Earths. Ask for an explanation, check developments, or continue with a follow-up.
-                  Each response is grounded in available evidence, with uncertainty stated clearly.
+                  You can also ask about Geomacro’s public products, pricing and documentation.
                 </p>
                 <div className="mt-8 grid w-full gap-3 text-left sm:grid-cols-2">
                   {SUGGESTIONS.map((suggestion) => (
