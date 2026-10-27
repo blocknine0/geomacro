@@ -29,6 +29,8 @@ on:
       - "scripts/lib/website-derived-news-failover.mjs"
       - "scripts/ops/refresh-public-news-pages-under-quota.mjs"
       - "scripts/tests/refresh-public-news-pages-under-quota.test.mjs"
+      - "scripts/ops/verify-public-d1-materialization-live.mjs"
+      - "scripts/tests/verify-public-d1-materialization-live.test.mjs"
       - "workers/control-plane/src/materialized-public-news-pages.mjs"
       - "scripts/tests/website-derived-news-failover.test.mjs"
       - "scripts/lib/automated-finds-run-health.mjs"
@@ -54,6 +56,8 @@ on:
       - "scripts/lib/website-derived-news-failover.mjs"
       - "scripts/ops/refresh-public-news-pages-under-quota.mjs"
       - "scripts/tests/refresh-public-news-pages-under-quota.test.mjs"
+      - "scripts/ops/verify-public-d1-materialization-live.mjs"
+      - "scripts/tests/verify-public-d1-materialization-live.test.mjs"
       - "workers/control-plane/src/materialized-public-news-pages.mjs"
       - "scripts/tests/website-derived-news-failover.test.mjs"
       - "scripts/lib/automated-finds-run-health.mjs"
@@ -132,9 +136,15 @@ jobs:
           node --test scripts/tests/refresh-public-news-pages-under-quota.test.mjs
           node --test scripts/tests/materialized-public-news-pages.test.mjs
       - name: Materialize verified public D1 page snapshots without source ingestion
+        id: materialize
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: node scripts/ops/refresh-public-news-pages-under-quota.mjs
+      - name: Prove anonymous actual D1 materialized read and protected no-cache origin parity
+        if: steps.materialize.outputs.refresh_active == 'true'
+        run: |
+          node --test scripts/tests/verify-public-d1-materialization-live.test.mjs
+          node scripts/ops/verify-public-d1-materialization-live.mjs
 
   cadence-contract:
     if: github.event_name == 'pull_request' || github.event_name == 'push'

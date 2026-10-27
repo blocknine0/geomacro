@@ -4,6 +4,7 @@
  * no new cron/source fetch/D1 news write/B2/paid services.
  */
 import {createHmac} from "node:crypto";
+import {appendFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 const ORIGIN="https://geomacro-control-plane.daspallab202391.workers.dev";
@@ -69,6 +70,9 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   const receipt=await refreshBoundedPublicNewsPages();
   if(receipt.state==="DEPLOY_PENDING")
     console.log("::notice::PUBLIC_PAGE_REFRESH_DEPLOY_PENDING_NOT_ACTIVATED");
+  if(process.env.GITHUB_OUTPUT)
+    appendFileSync(process.env.GITHUB_OUTPUT,
+      "refresh_active="+String(receipt.verified_current_revision===true)+"\n");
   console.log(JSON.stringify(receipt));
  }
  catch(e){console.error("::error::"+(typeof e?.message==="string"&&
