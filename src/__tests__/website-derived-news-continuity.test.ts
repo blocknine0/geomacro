@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { deriveStatelessSignals } from "@/lib/stateless-intelligence-model";
 import { describe, expect, it, vi } from "vitest";
 import {
-  verifyDerivedStory, publishDerivedStories, readDerivedStories, renderDerivedStoriesHtml,
+  verifyDerivedStory, publishDerivedStories, readDerivedStories, readDerivedStoriesBundle, renderDerivedStoriesHtml,
   DERIVED_NEWS_TOPIC_POLICY_REVISION,
 } from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {classifyDerivedNewsD1Failure} from "../../scripts/lib/derived-news-d1-failure.mjs";
@@ -122,6 +122,27 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(data.size).toBe(1);
     const route=readFileSync("workers/control-plane/src/index.mjs","utf8");
     expect(route).toContain("derived_news_topic_policy_revision: DERIVED_NEWS_TOPIC_POLICY_REVISION");
+  });
+
+  it("reads the complete retained newsroom in one capped D1 query",async()=>{
+    const {env}=db();
+    const row=sample();
+    expect((await publishDerivedStories(env,{
+      schema:"geomacro.website-derived-news-batch.v1",signals:[row],
+    },NOW)).status).toBe(200);
+    const prepare=vi.spyOn(env.DB,"prepare");
+    const response=await readDerivedStoriesBundle(env,NOW);
+    expect(response.status).toBe(200);
+    const bundle=await response.json();
+    expect(bundle).toMatchObject({
+      ok:true,schema:"geomacro.website-derived-news-bundle.v1",
+      complete:true,item_cap:600,returned_rows:1,
+      original_release_delay_minutes:0,retention_hours:72,chargeable:false,
+    });
+    expect(bundle.signals).toEqual([row]);
+    expect(bundle.first_ingest).toHaveLength(1);
+    expect(prepare).toHaveBeenCalledOnce();
+    expect(prepare.mock.calls[0]?.[0]).toContain("LIMIT 601");
   });
 
   it("indexes the independent first-seen clock used by bounded retention cleanup",()=>{

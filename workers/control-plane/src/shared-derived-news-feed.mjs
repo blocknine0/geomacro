@@ -4,7 +4,7 @@ import {loadMacroState,macroPriceEvidence} from "./macro-fastlane.mjs";
  * raw publisher text, new D1 table, B2 GET, Supabase, score or x402.
  * Evaluation observations are NOT rights-certified commercial content.
  */
-import {readDerivedStories} from "./website-derived-intelligence.mjs";
+import {readDerivedStoriesBundle} from "./website-derived-intelligence.mjs";
 import {getNewsProducerChecks} from "./derived-news-qualification-status.mjs";
 import {buildDerivedNewsStructural,NEWS_STRUCTURAL_SCHEMA}
   from "../../../src/lib/derived-news-structural-bridge.ts";
@@ -13,13 +13,6 @@ const CATEGORIES=["geopolitics","macro","rare_earth"];
 const headers={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
   "Referrer-Policy":"no-referrer","Access-Control-Allow-Origin":"*"};
 const reply=(data,status=200)=>Response.json(data,{status,headers});
-const contractPage=(value,offset)=>value?.ok===true &&
-  value.schema==="geomacro.website-derived-news-feed.v1" &&
-  value.delivery_scope==="free_website_only" &&
-  value.retention_hours===72 && (value.original_release_delay_minutes===0||value.original_release_delay_minutes===15) &&
-  value.page_offset===offset && value.page_size===250 &&
-  typeof value.has_more==="boolean" && Array.isArray(value.signals) &&
-  value.signals.length<=250;
 
 export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(),now=Date.now(),projection="source_neutral"){
   if(!env?.DB||!Number.isFinite(now))
@@ -31,26 +24,15 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
   const domain=query.get("domain");
   const signals=[],seen=new Set();
   try{
-    let complete=false;
-    for(const offset of [0,250,500]){
-      const response=await readDerivedStories(env,now,offset);
-      if(response.status!==200)throw Error("SHARED_NEWS_PAGE_UNAVAILABLE");
-      const data=await response.json();
-      if(!contractPage(data,offset))throw Error("SHARED_NEWS_CONTRACT_INVALID");
-      for(const signal of data.signals){
-        if(!signal || typeof signal.id!=="string" || seen.has(signal.id))
-          throw Error("SHARED_NEWS_DUPLICATE_OR_INVALID_ID");
-        seen.add(signal.id);
-        signals.push(signal);
-      }
-      if(!data.has_more){
-        if(data.next_offset!==null)throw Error("SHARED_NEWS_INVALID_CURSOR");
-        complete=true;break;
-      }
-      if(offset===500||data.next_offset!==offset+250)
-        throw Error("SHARED_NEWS_INVALID_CURSOR");
+    // All machine categories share the same bounded one-query journal read.
+    const response=await readDerivedStoriesBundle(env,now);
+    if(response.status!==200)throw Error("SHARED_NEWS_BUNDLE_UNAVAILABLE");
+    const data=await response.json();
+    if(data.ok!==true||data.schema!=="geomacro.website-derived-news-bundle.v1"||data.complete!==true||data.item_cap!==600||!Array.isArray(data.signals)||data.signals.length>600||data.returned_rows!==data.signals.length)throw Error("SHARED_NEWS_BUNDLE_INVALID");
+    for(const signal of data.signals){
+      if(!signal||typeof signal.id!=="string"||seen.has(signal.id))throw Error("SHARED_NEWS_DUPLICATE_OR_INVALID_ID");
+      seen.add(signal.id);signals.push(signal);
     }
-    if(!complete)throw Error("SHARED_NEWS_INCOMPLETE");
     const projected=buildDerivedNewsStructural(signals,now,projection);
     let macroState={};
     if(projected.some(s=>s.category==="macro")){try{macroState=await loadMacroState(env);}catch{/* news is independent of the quote stream */}}
