@@ -436,7 +436,7 @@
       "cron: \"58 * * * *\"",
       "node scripts/ops/plan-d1-bundled-work.mjs",
       "node scripts/ops/verify-news-hub-live-bundle.mjs",
-      "needs.shared-quota-admission.outputs.admitted == 'true'",
+      "if: steps.budget.outputs.research == 'true'",
       "cancel-in-progress: false"
     ]
   },
