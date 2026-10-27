@@ -9,23 +9,29 @@
  */
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {privateOsintGlobalSources} from "./private-osint-global-sources.mjs";
+import {rotatingPrivateLocalPublisherSources,PRIVATE_LOCAL_FEEDS_PER_TICK} from "./private-osint-local-publisher-rotation.mjs";
 
 export const COUNTRY_DISCOVERY_PER_TICK=49;
 export const COUNTRY_DISCOVERY_CYCLE_SLOTS=4;
+// Existing index-only country discovery is intentionally throttled when the
+// 24 native publisher candidates occupy the same no-extra-fetch request budget.
+export const COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK=25;
+export const COUNTRY_DISCOVERY_LOCAL_LANE_CYCLE_MINUTES=120;
 export const COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES=60;
 const CATEGORIES=Object.freeze(["geopolitics","macro","rare_earth"]);
 const TERMS='(election OR sanctions OR security OR conflict OR border OR war OR trade OR inflation OR currency OR "central bank" OR "critical minerals" OR "rare earth" OR mining OR lithium OR copper)';
 const STEP_MS=15*60000;
 
-export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=COUNTRIES_195){
+export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=COUNTRIES_195,perTick=COUNTRY_DISCOVERY_PER_TICK){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
+    ![COUNTRY_DISCOVERY_PER_TICK,COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK].includes(perTick)||
     !Array.isArray(countries)||countries.length!==195||
     new Set(countries.map(c=>c?.iso3)).size!==195||
     countries.some(c=>!/^[A-Z]{3}$/u.test(c?.iso3??"")||
       typeof c?.name!=="string"||!c.name.trim()||c.name.length>90))
    throw Error("PRIVATE_OSINT_COUNTRY_INDEX_REGISTRY_INVALID");
- const slot=Math.floor(now.getTime()/STEP_MS)%COUNTRY_DISCOVERY_CYCLE_SLOTS;
- const selected=countries.slice(slot*COUNTRY_DISCOVERY_PER_TICK,(slot+1)*COUNTRY_DISCOVERY_PER_TICK);
+ const slot=Math.floor(now.getTime()/STEP_MS)%Math.ceil(countries.length/perTick);
+ const selected=countries.slice(slot*perTick,(slot+1)*perTick);
  return Object.freeze(selected.map(country=>{
   // Known canonical aliases catch terms such as DRC, Ivory Coast and Burma.
   // These remain SEARCH HINTS only; no country is attributed from a query.
@@ -50,15 +56,26 @@ export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=
  }));
 }
 
-export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGlobalSources(),countries=COUNTRIES_195){
- if(!Array.isArray(base)||base.length===0||base.length>512)
+export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGlobalSources(),countries=COUNTRIES_195,
+ {includeLocalGapLane=false}={}){
+ if(!Array.isArray(base)||base.length===0||base.length>512||
+   typeof includeLocalGapLane!=="boolean")
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_BASE_INVALID");
  const urls=new Set(base.map(s=>s.url));
  if(urls.size!==base.length)throw Error("PRIVATE_OSINT_COUNTRY_INDEX_BASE_DUPLICATE");
- const additional=rotatingPrivateCountryDiscoverySources(now,countries);
- // Never poll a registered pinned feed twice within a tick.
- const fresh=additional.filter(s=>!urls.has(s.url));
- if(base.length+fresh.length>512)
+ // Native country publisher feeds take priority over an equal number of
+ // index-only searches. Do not add a D1 read/write or increase source GETs.
+ const local=includeLocalGapLane?rotatingPrivateLocalPublisherSources(now):[];
+ const countryIndex=rotatingPrivateCountryDiscoverySources(now,countries,
+   includeLocalGapLane?COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK:COUNTRY_DISCOVERY_PER_TICK);
+ const fresh=[];
+ for(const source of [...local,...countryIndex]){
+   if(urls.has(source.url))continue;
+   urls.add(source.url);
+   fresh.push(source);
+ }
+ if(base.length+fresh.length>512||
+    (includeLocalGapLane&&fresh.length>PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
  return [...base,...fresh];
 }
