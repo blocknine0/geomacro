@@ -108,7 +108,10 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
       row.title.length>240||
       row.severity!==null||row.same_event_corrob_verified!==false||
       !validPublication(row,now)||
-      /https?:\/\/|www\.|<script/iu.test(JSON.stringify(\n        row.status==="osint_feed_observed_unverified"?\n          {...row,sources_credited:[]} : row\n      )))
+      /https?:\/\/|www\.|<script/iu.test(JSON.stringify(
+        row.status==="osint_feed_observed_unverified"?
+          {...row,sources_credited:[]} : row
+      )))
       return result(false,"FREE_ARCHIVE_ROW_ORIGINAL_RIGHTS_BOUNDARY_INVALID");
     ids.add(row.id);
     if(row.status==="osint_feed_observed_unverified"){
