@@ -53,7 +53,9 @@ export function eligiblePublicFreeD1CacheRequest(request){
     }else return false;
   }
   if(request.headers.has("cache-control")&&
-     /(?:no-cache|no-store)/iu.test(request.headers.get("cache-control")))return false;
+     /(?:no-cache|no-store|max-age\s*=\s*0)/iu.test(request.headers.get("cache-control")))return false;
+  // Cache-Control and Pragma are both used by strict readback clients.
+  if(/(?:^|,)\s*no-cache\s*(?:,|$)/iu.test(request.headers.get("pragma")??""))return false;
   return [...forbidden].every(name=>!request.headers.has(name));
 }
 export async function readPublicFreeD1Cached(request,calculate,{
