@@ -118,6 +118,9 @@ concurrency:
 
 jobs:
   source-contract:
+    # PR/main-push source changes are tested once. Avoid repeating a full
+    # offline suite every scheduled/workflow_run production source pulse.
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
@@ -149,6 +152,10 @@ jobs:
     outputs:
       private_scoring_needed: ${{ steps.d1.outputs.private_scoring_needed }}
     if: >-
+      always() &&
+      (needs.source-contract.result == 'success' ||
+       (needs.source-contract.result == 'skipped' &&
+        github.event_name != 'push')) &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&
