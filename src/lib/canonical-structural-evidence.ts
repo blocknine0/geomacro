@@ -125,7 +125,7 @@ export function canonicalStructuralEvidence(
     Date.parse(period.start) > Date.parse(asOfClock)) return null;
 
   const quality = typeof row.quality_status === "string" ? row.quality_status.trim().toUpperCase() : "";
-  if (!quality || /(?:UNKNOWN|UNVERIFIED|PENDING|REVIEW|REJECT|INVALID|FAILED)/u.test(quality)) return null;
+  if (quality !== "VERIFIED" && quality !== "ACCEPTED") return null;
   const numeric = typeof row.value_numeric === "number" && Number.isFinite(row.value_numeric);
   const text = typeof row.value_text === "string" && row.value_text.trim().length > 0;
   if (!numeric && !text) return null;
