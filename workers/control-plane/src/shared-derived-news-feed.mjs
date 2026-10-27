@@ -26,7 +26,14 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
   try{
     // All machine categories share the same bounded one-query journal read.
     const response=await readDerivedStoriesBundle(env,now);
-    if(response.status!==200)throw Error("SHARED_NEWS_BUNDLE_UNAVAILABLE");
+    if(response.status!==200){
+      const denied=await response.json().catch(()=>null);
+      if(denied?.error==="DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED")
+        return reply({ok:false,error:"SHARED_NEWS_D1_JOURNAL_OVER_CAP",
+          diagnostic_scope:"BOUNDED_72H_JOURNAL_REQUIRES_AUTHORIZED_TTL_SWEEP",
+          chargeable:false,items:[]},503);
+      throw Error("SHARED_NEWS_BUNDLE_UNAVAILABLE");
+    }
     const data=await response.json();
     if(data.ok!==true||data.schema!=="geomacro.website-derived-news-bundle.v1"||data.complete!==true||data.item_cap!==600||!Array.isArray(data.signals)||data.signals.length>600||data.returned_rows!==data.signals.length)throw Error("SHARED_NEWS_BUNDLE_INVALID");
     for(const signal of data.signals){
