@@ -40,3 +40,22 @@ export async function collectDirectReleaseCandidates(events,{now=Date.now(),fetc
  }
  return {candidates,checks,requests};
 }
+
+/** Small fixed vocabulary for the minute Worker; expensive newsroom NLP stays
+ * in the existing GitHub bundle. IDs are identical to the full derivation. */
+export function deriveCriticalReleaseSignals(candidates,events,now){
+ const kinds={fed_press:{kind:'fomc',actor:'Federal Reserve',subject:'FOMC policy statement',topic:'monetary policy'},ecb_press:{kind:'ecb_rates',actor:'European Central Bank',subject:'monetary policy release',topic:'monetary policy'},bls_cpi:{kind:'cpi',actor:'US Bureau of Labor Statistics',subject:'consumer price index release',topic:'inflation and prices'},bls_ppi:{kind:'ppi',actor:'US Bureau of Labor Statistics',subject:'producer price index release',topic:'inflation and prices'},bls_employment:{kind:'nfp',actor:'US Bureau of Labor Statistics',subject:'Employment Situation release',topic:'official economic statistics'}};
+ const rows=[],seen=new Set();
+ for(const candidate of candidates.slice(0,40)){
+  const spec=kinds[candidate.sourceId],at=Date.parse(candidate.publishedAt);
+  if(!spec||!Number.isFinite(at)||at>now||!events.some(e=>e.kind===spec.kind&&Math.abs(Date.parse(e.at)-at)<=60000))continue;
+  const identity=candidate.sourceId+'|'+(candidate.sourceId.startsWith('bls_')?candidate.publishedAt:candidate.articleUrl);
+  let hash=2166136261;for(let i=0;i<identity.length;i++){hash^=identity.charCodeAt(i);hash=Math.imul(hash,16777619);}
+  const id='macro-'+(hash>>>0).toString(16).padStart(8,'0');if(seen.has(id))continue;seen.add(id);
+  rows.push({id,category:'macro',title:'Geomacro finds '+spec.actor+': published '+spec.subject,
+   what_changed:spec.actor+' published its '+spec.subject+'. The original release was observed; numerical values and changes require the underlying statement or statistical tables.',
+   why_it_matters:'The release can inform monetary expectations, currency exposure and precious-metals analysis. Rate levels, consensus surprise and any market-price reaction require separate evidence.',
+   topic:spec.topic,geography:null,development_type:'official update',published_at:new Date(at).toISOString(),date_precision:'exact',observed_release_count:1,sources_credited:candidate.credit?[candidate.credit]:[],status:'official_release_observed_unscored',same_event_corrob_verified:false,severity:null});
+ }
+ return rows;
+}

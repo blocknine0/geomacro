@@ -1,9 +1,8 @@
-import {collectDirectReleaseCandidates} from "../../../scripts/lib/macro-direct-release.mjs";
+import {collectDirectReleaseCandidates,deriveCriticalReleaseSignals} from "../../../scripts/lib/macro-direct-release.mjs";
 import {MINERALS_SOURCE_IDS} from "../../../scripts/lib/critical-minerals-registry.mjs";
 import {collectMacroFastlane} from '../../../scripts/lib/macro-fastlane-collector.mjs';
 import {MACRO_NEWS_SOURCES,normalizeMetalQuote,measuredPriceReaction,macroEventContext} from '../../../scripts/lib/macro-fx-metals.mjs';
 import {releaseWindowEvents,criticalSourceIds} from '../../../scripts/lib/macro-release-calendar.mjs';
-import {deriveStatelessSignals} from '../../../src/lib/stateless-intelligence-model.ts';
 import {publishDerivedStories} from './website-derived-intelligence.mjs';
 const KEY='macro_fx_metals_fastlane_v1';
 const reply=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store','Access-Control-Allow-Origin':'*','X-Content-Type-Options':'nosniff'}});
@@ -70,7 +69,7 @@ export async function runMacroReleaseTick(env,{now=Date.now(),fetchImpl=fetch}={
  const sourceIds=criticalSourceIds(window);
  const collected=await collectMacroFastlane({now,fetchImpl,state,sourceIds,release:true,prices:true,calendars:false});
  const direct=await collectDirectReleaseCandidates(window,{now,fetchImpl,existing:collected.candidates});
- const signals=deriveStatelessSignals([...collected.candidates,...direct.candidates],now,{maxSignals:40});
+ const signals=deriveCriticalReleaseSignals([...collected.candidates,...direct.candidates],window,now);
  if(signals.length){const response=await publishDerivedStories(env,{schema:'geomacro.website-derived-news-batch.v1',signals},now);if(!response.ok)throw Error('MACRO_RELEASE_PUBLICATION_FAILED');}
  collected.state.quota_lease_until=state.quota_lease_until;
  collected.state.source_checks=[...state.source_checks.filter(c=>!sourceIds.includes(c.id)),...collected.state.source_checks];

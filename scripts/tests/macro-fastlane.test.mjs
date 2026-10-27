@@ -111,3 +111,12 @@ test('Direct release acceptance requires actual original-page timestamp matching
  const fed='<h4><a id="42828">2026 FOMC Meetings</a></h4><div class="fomc-meeting__month"><strong>October</strong></div><div class="fomc-meeting__date">27-28</div>';
  assert.equal(parseMacroCalendar('fed',fed,now)[0].at,event.at);
 });
+test('Minute-worker fixed release projection shares full newsroom event IDs and avoids false rate claims',async()=>{
+ const {deriveCriticalReleaseSignals}=await import('../lib/macro-direct-release.mjs');
+ for(const [id,title,url,kind]of [['fed_press','Federal Reserve issues FOMC statement','https://www.federalreserve.gov/newsevents/pressreleases/monetary20261027a.htm','fomc'],['bls_cpi','Consumer Price Index release','https://www.bls.gov/news.release/cpi.nr0.htm','cpi']]){
+  const candidate={sourceId:id,title,articleUrl:url,category:'macro',credit:null,publishedAt:at};
+  const full=deriveStatelessSignals([candidate],now)[0];
+  const fast=deriveCriticalReleaseSignals([candidate],[{kind,at}],now)[0];
+  assert.equal(fast.id,full.id);assert.ok(verifyDerivedStory(fast,now));assert.equal(fast.severity,null);assert.equal(fast.same_event_corrob_verified,false);
+ }
+});

@@ -228,7 +228,7 @@ jobs:
         run: |
           bun run vitest run src/__tests__/five-minute-original-news-fastlane.test.ts src/__tests__/automated-intelligence-input.test.ts src/__tests__/low-authority-source-review.test.ts
           bun test scripts/tests/private-source-handoff-sqlite.test.ts
-          bun scripts/tests/macro-fastlane.test.mjs
+          bun test scripts/tests/macro-fastlane.test.mjs
           bun build scripts/ops/publish-original-news-five-minute-fastlane.ts --target=bun --outfile=/tmp/geomacro-bundled-news-fastlane.js
           node --test scripts/tests/derived-news-readback-policy.test.mjs
           node --test scripts/tests/derived-news-worker-policy.test.mjs
