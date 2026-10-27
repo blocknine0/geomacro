@@ -336,6 +336,7 @@
     "website-derived-news-cadence-backstop.yml",
     "website-derived-news-continuity.yml",
     "website-final-crosscheck.yml",
+    "website-finds-canonical-d1-reconcile.yml",
     "website-lock.yml",
     "website-news-gap-backfill.yml",
     "wgi-political-stability-sync.yml",
