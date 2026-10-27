@@ -22,7 +22,7 @@ describe("canonical capability pricing parity on the public website",()=>{
     expect(categoryApiPricing).toContain("GEOMACRO_CAPABILITY_PRICES.intelligence_query");
     expect(categoryApiPricing).toContain("GEOMACRO_OFFICIAL_API_CATALOG");
     expect(pricing).toContain("<CategoryApiPricing />");
-    expect(dataApi).toContain("<CategoryApiPricing />");
+    expect(dataApi).not.toContain("CategoryApiPricing");
     expect(pricing).toContain("<CapabilityPriceSchedule />");
     expect(dataApi).toContain("<CapabilityPriceSchedule compact />");
     for(const source of [pricing,dataApi]){

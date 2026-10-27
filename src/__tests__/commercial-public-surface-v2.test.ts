@@ -100,8 +100,8 @@ describe("commercial public surface v2", () => {
     expect(status).toContain('environment === "production"');
     expect(status).toContain("production activation pending");
     expect(status.toLowerCase()).not.toContain("testnet");
-    expect(dataApi).toContain("AgentCommerceStatus");
-    expect(dataApi).toContain("Try the request console");
+    expect(dataApi).toContain("<ApiKeysNotice />");
+    expect(dataApi).not.toContain("Try the request console");
     expect(dataApi).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(home).not.toContain("AgentCommerceStatus compact");
     expect(home).not.toContain("0.05 USDC");

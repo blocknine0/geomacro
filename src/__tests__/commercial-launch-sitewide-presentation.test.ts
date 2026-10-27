@@ -32,7 +32,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     expect(pricing).toContain("<CapabilityPriceSchedule />");
     expect(api).toContain("<CapabilityPriceSchedule compact />");
     expect(pricing).toContain("<CategoryApiPricing />");
-    expect(api).toContain("<CategoryApiPricing />");
+    expect(api).not.toContain("CategoryApiPricing");
     expect(read("src/components/category-api-pricing.tsx")).toContain("There is no category surcharge.");
     expect(notice).toContain("API keys");
     expect(notice).toContain("Coming soon");
@@ -48,7 +48,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     }
     expect(shell).not.toContain("AgentCommerceStatus compact");
     expect(api).toContain("API & Agents");
-    expect(api).toContain("Get concise, structured Geomacro intelligence built for decisions");
+    expect(api).toContain("All products deliver structured Geomacro JSON.");
     expect(api).not.toContain("Runtime truth, not marketing copy");
     expect((riskGate.match(/>PRIVATE PILOT<\/Badge>/gu) ?? []).length).toBe(1);
     expect(about).toContain("The customer remains responsible for any decision or action");
@@ -67,7 +67,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     expect(about).toContain('id="privacy"');
     expect(about).toContain('id="product-use"');
     expect(about).toContain("Risk Gate remains non-authorizing");
-    expect(api).toContain("AgentCommerceStatus");
+    expect(api).toContain("<ApiKeysNotice />");
     expect(api).toContain("Paid API requests become available only when the live payment");
     expect(pricing).toContain("ApiKeysNotice");
     expect(riskGate).toContain("execution_authorized = false");

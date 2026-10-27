@@ -1,15 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Braces, Bot, Globe2 } from "lucide-react";
-import { AgentCommerceStatus } from "@/components/agent-commerce-status";
-import { CategoryApiLaunchPanel } from "@/components/category-api-launch-panel";
+import { ArrowRight } from "lucide-react";
 import { ApiKeysNotice } from "@/components/api-keys-notice";
-import { CategoryApiPricing } from "@/components/category-api-pricing";
 import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
-import { ApiEndpointDirectory } from "@/components/api-endpoint-directory";
-import { NewsJsonWorkbench } from "@/components/news-json-workbench";
 const TITLE = "API & Agents | Geomacro";
 const DESCRIPTION =
-  "Public per-call USDC pricing for Geopolitics, Macro/FX and Critical Minerals APIs. Paid delivery remains production-gated.";
+  "See what Geomacro structured-data products deliver and their per-delivery USDC prices across Geopolitics, Macro/FX and Critical Minerals.";
 const URL = "https://geomacro.live/data-api";
 export const Route = createFileRoute("/data-api")({
   head: () => ({
@@ -35,68 +30,30 @@ function DataApiPage() {
     <main className="gm-container py-12 sm:py-16">
       <header className="max-w-3xl">
         <p className="gm-eyebrow">API & Agents</p>
-        <h1 className="gm-page-title">Bring global context into your workflow.</h1>
+        <h1 className="gm-page-title">Structured intelligence. Clear pricing.</h1>
         <p className="gm-intro">
-          Structured answers across Geopolitics, Macro / FX and Critical Minerals.
+          Geopolitics, Macro / FX and Critical Minerals for your applications and agents.
+          Choose a product below to see what you receive and its price per delivery.
         </p>
       </header>
-      <div className="mt-9"><NewsJsonWorkbench /></div>
-      <div className="mt-8">
-        <ApiKeysNotice />
-      </div>
-      <div className="mt-8">
-        <CategoryApiPricing />
-      </div>
-      <div className="my-10 grid gap-4 md:grid-cols-3">
-        {[
-          {
-            icon: Braces,
-            title: "Structured output",
-            body: "Clear fields for what changed, why it matters and the evidence limits.",
-          },
-          {
-            icon: Globe2,
-            title: "Countries & corridors",
-            body: "Request a country, topic or directional corridor.",
-          },
-          {
-            icon: Bot,
-            title: "For your agent",
-            body: "One intelligence engine for application and agent requests.",
-          },
-        ].map(({ icon: Icon, title, body }) => (
-          <article key={title} className="rounded-xl border border-border p-6">
-            <Icon className="h-5 w-5 text-primary" />
-            <h2 className="mt-5 font-semibold">{title}</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
-          </article>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-6 border-y border-border py-5">
-        <Link to="/pricing" className="gm-text-link">
-          Open Store <ArrowRight className="h-4 w-4" />
+      <div className="mt-8"><ApiKeysNotice /></div>
+      <div className="mt-10"><CapabilityPriceSchedule compact /></div>
+      <p className="mt-6 max-w-3xl text-sm leading-6 text-muted-foreground">
+        All products deliver structured Geomacro JSON. Availability is checked for each request.
+        Risk Gate includes its Signed Risk Object without a second object charge.
+        Signed risk products are private pilots; customers retain control of every action.
+      </p>
+      <p className="mt-3 max-w-3xl text-xs leading-6 text-muted-foreground">
+        Paid API requests become available only when the live payment and delivery service confirms activation.
+      </p>
+      <div className="mt-8 flex flex-wrap gap-6 border-t border-border pt-6">
+        <Link to="/contact" className="gm-text-link">
+          Discuss your workflow <ArrowRight className="h-4 w-4" />
         </Link>
         <Link to="/docs" className="gm-text-link">
-          Read documentation <ArrowRight className="h-4 w-4" />
+          Developer documentation <ArrowRight className="h-4 w-4" />
         </Link>
-        <a href="/api/v1/agent?view=openapi" className="gm-text-link">
-          API schema ↗
-        </a>
       </div>
-      <details className="mt-8"><summary className="cursor-pointer text-sm font-medium">Delivery status & product boundaries</summary><div className="mt-4"><AgentCommerceStatus /></div><div className="mt-4 space-y-3 text-xs leading-6 text-muted-foreground"><p>Paid API requests become available only when the live payment and delivery service confirms activation.</p><p>Free Explorer is website/dashboard access, not a free API.</p><p>Payment never bypasses evidence, freshness, source-rights or product controls.</p><p>Get concise, structured Geomacro intelligence built for decisions, while underlying evidence remains protected.</p><p>Corridor model: ENDPOINT_COMPOSED_V0_1. route_modeling_status = NOT_MODELED. Risk Gate: execution_authorized=false.</p></div></details>
-    <details className="mt-8"><summary className="cursor-pointer text-sm font-medium">Try the request console</summary><CategoryApiLaunchPanel /></details>
-      <ApiEndpointDirectory />
-      <details className="mt-8">
-        <summary className="cursor-pointer text-sm font-medium">
-          Browse exact product prices
-        </summary>
-        <div className="mt-6">
-          <CapabilityPriceSchedule compact />
-        </div>
-      </details>
-      <p className="mt-8 text-xs text-muted-foreground">
-        API and AI-agent marketplace listings are planned after launch.
-      </p>
     </main>
   );
 }

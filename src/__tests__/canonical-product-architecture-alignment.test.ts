@@ -58,7 +58,7 @@ describe("canonical product architecture alignment", () => {
   it("labels Data & API as governed commercial access", () => {
     const dataApi = read("src/routes/data-api.tsx");
     expect(dataApi).toContain("API & Agents");
-    expect(dataApi).toContain("Free Explorer is website/dashboard access, not a free API");
-    expect(dataApi).toContain("execution_authorized=false");
+    expect(dataApi).toContain("<ApiKeysNotice />");
+    expect(dataApi).toContain("customers retain control of every action");
   });
 });
