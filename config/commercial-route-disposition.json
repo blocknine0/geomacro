@@ -105,6 +105,10 @@
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"
     },
+    "/api/v1/intelligence/interpret": {
+      "classification": "EXPERIMENTAL",
+      "status": "NO_FUNDS_DETERMINISTIC_QUERY_INTERPRETATION"
+    },
     "/api/v1/intelligence/live-structured": {
       "classification": "EXPERIMENTAL",
       "status": "FREE_NO_FUNDS_UNSCORED_SOURCE_OBSERVATIONS"
