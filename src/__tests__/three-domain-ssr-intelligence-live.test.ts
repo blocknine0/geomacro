@@ -67,7 +67,7 @@ describe("first HTML paint shows actual original-dated Intelligence from all thr
     }));
     expect(missing).not.toContain(intelligenceActorHeadline(signal("geopolitics")));
     expect(missing).not.toContain(intelligenceActorHeadline(signal("macro")));
-    expect(missing).toContain("Loading Macro / FX");
+    expect(missing).toContain("Loading Macro Economics");
   });
   it("shows the supplied country and actual derived change without em dashes",()=>{
     const geo=state("geopolitics");
