@@ -29,6 +29,7 @@ export function privateOsintR2Config(env){
  const access=env?.GEOMACRO_PRIVATE_OSINT_R2_ACCESS_KEY_ID;
  const secret=env?.GEOMACRO_PRIVATE_OSINT_R2_SECRET_ACCESS_KEY;
  if(!hex32.test(account??"")||!bucketRe.test(bucket??"")||
+    !bucket.startsWith("geomacro-private-osint-")||
     typeof access!=="string"||access.length<16||access.length>256||
     typeof secret!=="string"||secret.length<32||secret.length>256)
   fail("DEDICATED_BUCKET_OR_SCOPED_CREDENTIALS_REQUIRED");
