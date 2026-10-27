@@ -72,7 +72,7 @@ jobs:
         with:
           node-version: "24"
       - name: Run offline D1 recovery, caching and hashed-insights regression
-        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
+        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
 
   bootstrap-deploy-accept:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
@@ -129,7 +129,7 @@ jobs:
           node-version: "24"
 
       - name: Verify P0-1 D1 quota and public-only cache contracts offline
-        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
+        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
 
       - name: Test all-news signed publication integrity and source-proof boundaries offline
         run: node --test scripts/tests/public-signed-news.test.mjs
@@ -485,6 +485,34 @@ jobs:
           done
           echo "::error::THREE_DOMAIN_CONTINUITY_DIRECT_D1_LIVE_READBACK_FAILED"
           exit 10
+
+      - name: Count only D1 derived journal rows before shared Website/machine parity
+        id: derived_cap
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw="$(mktemp)"
+          trap 'rm -f "$raw"' EXIT
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json --config wrangler.runtime.jsonc --command "SELECT COUNT(*) AS journal_rows FROM website_derived_intelligence;" > "$raw"
+          node ../../scripts/ops/check-derived-journal-overcap.mjs "$raw"
+
+      - name: Repair only independently proven >600-row D1 derived journal
+        if: steps.derived_cap.outputs.overcap == 'true'
+        working-directory: workers/control-plane
+        shell: bash
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        run: |
+          set -euo pipefail
+          # One bounded maintenance sweep, no upstream source GET, no news
+          # fabrication. Do not spend the account-wide D1 Free reserve.
+          node --input-type=module -e 'import {readCloudflareD1AccountQuota} from "../../scripts/ops/audit-d1-account-daily-quota-readonly.mjs"; const q=await readCloudflareD1AccountQuota(); if(!q.caution_headroom_met) process.exit(3);'
+          response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
+          status="$(curl --silent --show-error --max-time 15 --output "$response" --write-out "%{http_code}" --request PUT "$CONTROL_PLANE_URL/v1/website-derived-news" -H "Authorization: Bearer $CONTROL_PLANE_TOKEN" -H "Content-Type: application/json" --data '{"schema":"geomacro.website-derived-news-batch.v1","signals":[]}' )"
+          test "$status" = 200 && jq -e '.ok==true and .accepted==0 and .persistent_derived_only==true and .chargeable==false' "$response" >/dev/null || { echo "::error::DERIVED_D1_JOURNAL_SWEEP_UNVERIFIED"; exit 4; }
+          echo '::notice::DERIVED_D1_JOURNAL_OVER_CAP_SWEEP_CONFIRMED'
 
       - name: Verify Predge structured feed matches three-domain website D1 journal
         shell: bash
