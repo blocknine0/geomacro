@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {planD1BundledWork,checkD1BundledWork} from "../ops/plan-d1-bundled-work.mjs";
+import {planD1BundledWork,checkD1BundledWork,d1LanePacedCeiling} from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
 
 const now=new Date("2026-10-27T12:00:00.000Z");
@@ -20,18 +20,18 @@ test("one account-wide observation decides all three bounded lanes",()=>{
  assert.equal(p.maintenance,true);
  assert.equal(p.d1_queries,0);assert.equal(p.paid_calls,0);
 });
-test("max bundled work yields to critical ingestion instead of burning whole free D1 account",()=>{
- const p=planD1BundledWork(quota(3_900_000,50_000),{now});
+test("paced bundles preserve critical work while research/maintenance yield first",()=>{
+ const p=planD1BundledWork(quota(2_100_000,30_000),{now});
  assert.equal(p.state,"CRITICAL_ONLY");
  assert.equal(p.maintenance,false);
  assert.equal(p.research,false);
  assert.equal(p.critical,true);
- const q=planD1BundledWork(quota(4_300_000,50_000),{now});
+ const q=planD1BundledWork(quota(3_900_000,50_000),{now});
  assert.equal(q.state,"HELD");
  assert.equal(q.critical,false);
 });
 test("write reserve stops discretionary lanes before daily write cap",()=>{
- const q=planD1BundledWork(quota(1_000,81_000),{now});
+ const q=planD1BundledWork(quota(1_000,40_000),{now});
  assert.equal(q.state,"CRITICAL_ONLY");
  assert.equal(q.critical,true);
  assert.equal(q.research,false);
@@ -51,6 +51,25 @@ test("stale partial impossible or forged counter state cannot authorize D1",()=>
   assert.equal(p.state,"HELD");
   assert.equal(p.critical,false);
  }
+});
+test("UTC paced watermarks bound early-day spikes without paying or minting new requests",()=>{
+ const morning=new Date("2026-10-27T06:45:00.000Z");
+ const early=planD1BundledWork(quota(1_720_587,17_836),{now:morning});
+ assert.equal(early.state,"CRITICAL_ONLY");
+ assert.equal(early.critical,true);
+ assert.equal(early.research,false);
+ assert.equal(early.maintenance,false);
+ assert.equal(early.admission_paced_to_utc_day,true);
+ const mid=planD1BundledWork(quota(2_900_000,50_000),{now});
+ assert.equal(mid.state,"HELD");
+ const start=d1LanePacedCeiling("critical",new Date("2026-10-27T00:00:00.000Z"));
+ const finish=d1LanePacedCeiling("critical",new Date("2026-10-27T23:59:59.999Z"));
+ assert.equal(start.rows_read,1_000_000);
+ assert.equal(start.rows_written,10_000);
+ assert.ok(finish.rows_read<4_250_000 && finish.rows_read>4_249_900);
+ assert.ok(finish.rows_written<85_000 && finish.rows_written>84_990);
+ assert.ok(d1LanePacedCeiling("maintenance",morning).rows_read<
+   d1LanePacedCeiling("research",morning).rows_read);
 });
 test("provider error or denied GraphQL is safe HOLD with no writes",async()=>{
  const x=await checkD1BundledWork({

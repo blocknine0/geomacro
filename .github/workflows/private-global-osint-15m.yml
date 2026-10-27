@@ -72,6 +72,10 @@ on:
       - "scripts/ops/plan-d1-bundled-work.mjs"
       - "scripts/tests/plan-d1-bundled-work.test.mjs"
       - "scripts/tests/critical-workflow-budget-guards.test.mjs"
+      - "scripts/tests/critical-fastlane-d1-pacing-workflows.test.mjs"
+      - ".github/workflows/five-minute-original-news-fastlane.yml"
+      - ".github/workflows/three-domain-30m-original-publisher-pulse.yml"
+      - ".github/workflows/auto-ingest-news.yml"
   push:
     branches: [main]
     paths:
@@ -151,6 +155,7 @@ jobs:
           node --test scripts/lib/private-osint-bundle.test.mjs
           node --test scripts/tests/plan-d1-bundled-work.test.mjs
           node --test scripts/tests/critical-workflow-budget-guards.test.mjs
+          node --test scripts/tests/critical-fastlane-d1-pacing-workflows.test.mjs
           node --test scripts/lib/registered-reusable-news-source-collector.test.mjs scripts/lib/registered-news-15m-cadence.test.mjs
   quota-admission:
     name: Account-wide D1 no-query bundled quota gate

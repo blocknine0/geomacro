@@ -118,6 +118,9 @@ concurrency:
 
 jobs:
   source-contract:
+    # PR/main-push source changes are tested once. Avoid repeating a full
+    # offline suite every scheduled/workflow_run production source pulse.
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
@@ -149,6 +152,10 @@ jobs:
     outputs:
       private_scoring_needed: ${{ steps.d1.outputs.private_scoring_needed }}
     if: >-
+      always() &&
+      (needs.source-contract.result == 'success' ||
+       (needs.source-contract.result == 'skipped' &&
+        github.event_name != 'push')) &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&
@@ -169,11 +176,23 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # One preflight within this same production runner, not an extra job.
+      - name: Govern source pulse with paced Free D1 account budget
+        id: budget
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/plan-d1-bundled-work.mjs
+      - name: Report held source slot without fictitious zero original events
+        if: steps.budget.outputs.research != 'true'
+        run: echo "::notice::HALF_HOUR_SOURCE_PULSE_QUOTA_HELD; no D1 or original-fetch proof."
       - name: Setup Node.js 22
+        if: steps.budget.outputs.research == 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v4
         with:
           node-version: "22"
       - name: Bounded, origin-validated half-hour source observation across all 3 domains
+        if: steps.budget.outputs.research == 'true'
         run: |
           set -uo pipefail
           rc=0
@@ -237,7 +256,7 @@ jobs:
           fi
       - name: Publish compact observation-only D1 checkpoints and read them back
         id: d1
-        if: always()
+        if: always() && steps.budget.outputs.research == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -248,7 +267,7 @@ jobs:
           # New source-native fingerprints justify PRIVATE scoring only.
           node scripts/lib/auto-private-scoring-trigger.mjs
       - name: Verify direct three-domain continuity Worker status (no funds)
-        if: github.event_name == 'schedule'
+        if: steps.budget.outputs.research == 'true' && github.event_name == 'schedule'
         shell: bash
         run: |
           set -euo pipefail
@@ -277,7 +296,7 @@ jobs:
           }));
           NODE
       - name: Preserve two-day source-native counts, never raw news or session tokens
-        if: always()
+        if: always() && steps.budget.outputs.research == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
         with:
           name: original-source-pulse-${{ github.run_id }}

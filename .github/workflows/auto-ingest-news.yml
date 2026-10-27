@@ -103,6 +103,8 @@ jobs:
           JS
 
   ingest-supabase-free-derived-news:
+    outputs:
+      quota_admitted: ${{ steps.budget.outputs.research }}
     # No cross-workflow 'uses' recursion. Dispatch only the SAME canonical
     # primary's D1 backstop on a verified missed publication, never start
     # an alternative upstream collector or a paid/signed product.
@@ -120,13 +122,23 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
+      - name: Check paced shared D1 budget before recovery decision/dispatch
+        id: budget
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/plan-d1-bundled-work.mjs
+      - name: Report held catch-up without inventing a successful collection
+        if: steps.budget.outputs.research != 'true'
+        run: echo "::notice::HOURLY_D1_BACKSTOP_HELD_BY_ACCOUNT_BUDGET; no new source fetch or D1 review."
       - name: Decide from genuinely successful D1-writer/readback clocks, not news age
+        if: steps.budget.outputs.research == 'true'
         id: decide
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/ops/check-website-derived-news-cadence.mjs
       - name: Request existing bounded Supabase-free backstop if genuine publisher missed
-        if: steps.decide.outputs.should_run == 'true'
+        if: steps.budget.outputs.research == 'true' && steps.decide.outputs.should_run == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -148,7 +160,7 @@ jobs:
             partner_data_transmitted:false,provider_calls:0,b2_requests:0,payments:0}));
           JS
       - name: Verify healthy primary requires no duplicate provider collection
-        if: steps.decide.outputs.should_run != 'true'
+        if: steps.budget.outputs.research == 'true' && steps.decide.outputs.should_run != 'true'
         run: echo "AUTO_INGEST_EXISTING_FREE_D1_PRIMARY_RECENT_NO_NEW_COLLECTOR"
   material-gri-derived-review:
     # Runs on every :37/manual/push invocation. A dispatched catch-up is
@@ -157,7 +169,7 @@ jobs:
     # journal: no duplicate raw collection, quota-heavy B2, or inferred odds.
     # This is a private evidence-review queue, not GRI scoring/publication.
     needs: ingest-supabase-free-derived-news
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.ingest-supabase-free-derived-news.result == 'success'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.ingest-supabase-free-derived-news.result == 'success' && needs.ingest-supabase-free-derived-news.outputs.quota_admitted == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
