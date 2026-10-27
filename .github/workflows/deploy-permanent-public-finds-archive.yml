@@ -24,6 +24,9 @@ concurrency:
 
 jobs:
   deploy-public-static-archive:
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 12

@@ -30,7 +30,7 @@ export function macroIndexLeads(html,spec){
  }
  return leads;
 }
-export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state={},reusedCandidates=[],reusedIds=[],sourceIds=null,release=false,prices=true,calendars=true}={}){
+export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state={},reusedCandidates=[],reusedIds=[],sourceIds=null,release=false,prices=true,calendars=true,quoteClock=()=>now}={}){
  const sources=sourceIds?MACRO_NEWS_SOURCES.filter(s=>sourceIds.includes(s.id)):planMacroSources(now,{release,reusedIds});
  if(sources.length>9)throw Error('MACRO_SOURCE_BUDGET_EXCEEDED');
  const candidates=[...reusedCandidates.filter(x=>x.category==='macro')],checks=[],cursors={...state.cursors};let requests=0;
@@ -67,7 +67,7 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
  for(const source of sources.filter(s=>s.id.startsWith('bls_')))await read(source);
  const quotes=[],priceChecks=[];
  if(prices)await Promise.all(['XAU','XAG'].map(async symbol=>{
-  try{const data=await get('https://api.gold-api.com/price/'+symbol,{accept:'application/json'});const quote=normalizeMetalQuote(JSON.parse(data.text),symbol,now);if(quote)quotes.push(quote);priceChecks.push({instrument:symbol+'/USD',state:quote?'CURRENT_INDICATION':'STALE_OR_INVALID'});}catch{priceChecks.push({instrument:symbol+'/USD',state:'UNAVAILABLE'});}
+  try{const data=await get('https://api.gold-api.com/price/'+symbol,{accept:'application/json'});const quote=normalizeMetalQuote(JSON.parse(data.text),symbol,quoteClock());if(quote)quotes.push(quote);priceChecks.push({instrument:symbol+'/USD',state:quote?'CURRENT_INDICATION':'STALE_OR_INVALID'});}catch{priceChecks.push({instrument:symbol+'/USD',state:'UNAVAILABLE'});}
  }));
  let events=Array.isArray(state.events)?state.events:[];const calendarChecks=[];
  if(calendars&&(!Number.isFinite(state.calendar_checked_at)||now-state.calendar_checked_at>=6*3600000)){
@@ -78,7 +78,8 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
   }));
   events=merged.filter(e=>Date.parse(e.at)>=now-3600000).sort((a,b)=>a.at.localeCompare(b.at)).slice(0,128);
  }
- const history=[...(state.quotes??[]),...quotes].filter(q=>Date.parse(q.observed_at)>=now-90*60000&&Date.parse(q.observed_at)<=now);
+ const quoteNow=quoteClock();
+ const history=[...(state.quotes??[]),...quotes].filter(q=>Date.parse(q.observed_at)>=quoteNow-90*60000&&Date.parse(q.observed_at)<=quoteNow);
  const uniqueQuotes=[...new Map(history.map(q=>[q.instrument+'|'+q.observed_at,q])).values()].slice(-40);
  const sourceChecks=[...new Map([...(state.source_checks??[]),...checks].map(c=>[c.id,c])).values()];
  return {candidates,state:{mineral_cursors:state.mineral_cursors??{},mineral_checks:state.mineral_checks??[],...(state.mineral_regions?.length?{mineral_regions:state.mineral_regions}:{}),schema:'geomacro.macro-fastlane-state.v1',checked_at:new Date(now).toISOString(),cursors,events,quotes:uniqueQuotes,

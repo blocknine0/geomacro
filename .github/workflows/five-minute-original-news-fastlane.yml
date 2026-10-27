@@ -21,6 +21,9 @@ on:
   push:
     branches: [main]
     paths:
+      - "scripts/tests/bounded-news-intake-publication.test.mjs"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
       - "scripts/lib/macro-direct-release.mjs"
       - "scripts/lib/critical-minerals-fastlane.mjs"
       - "scripts/lib/critical-minerals-registry.mjs"
@@ -81,6 +84,9 @@ on:
       - "scripts/tests/gri-news-wakeup.test.mjs"
   pull_request:
     paths:
+      - "scripts/tests/bounded-news-intake-publication.test.mjs"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
       - "scripts/lib/macro-direct-release.mjs"
       - "scripts/lib/critical-minerals-fastlane.mjs"
       - "scripts/lib/critical-minerals-registry.mjs"
@@ -233,6 +239,7 @@ jobs:
           bun run vitest run src/__tests__/five-minute-original-news-fastlane.test.ts src/__tests__/automated-intelligence-input.test.ts src/__tests__/low-authority-source-review.test.ts
           bun test scripts/tests/private-source-handoff-sqlite.test.ts
           bun test scripts/tests/macro-fastlane.test.mjs
+          node --test scripts/tests/plan-d1-bundled-work.test.mjs scripts/tests/bounded-news-intake-publication.test.mjs
           bun build scripts/ops/publish-original-news-five-minute-fastlane.ts --target=bun --outfile=/tmp/geomacro-bundled-news-fastlane.js
           node --test scripts/tests/derived-news-readback-policy.test.mjs
           node --test scripts/tests/derived-news-worker-policy.test.mjs
@@ -246,6 +253,11 @@ jobs:
           bun run vitest run src/__tests__/release-news-observation.test.ts
 
   original-five-minute-derived-news:
+    permissions:
+      contents: write
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
     outputs:
       quota_admitted: ${{ steps.budget.outputs.critical }}
     if: >-
@@ -257,7 +269,7 @@ jobs:
         github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
         github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-24.04
-    timeout-minutes: 4
+    timeout-minutes: 6
     environment: production
     env:
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
@@ -282,32 +294,72 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/ops/plan-d1-bundled-work.mjs
       - name: Report held source slot without falsifying source events
-        if: steps.budget.outputs.critical != 'true'
+        if: steps.budget.outputs.source_intake != 'true'
         run: echo "::notice::FIVE_MINUTE_NEWS_QUOTA_HELD; no original source fetch or D1 news write."
       - name: Verify trusted D1 deployment ancestry before any producer write or signature
         id: wakeup
-        if: steps.budget.outputs.critical == 'true'
+        if: steps.budget.outputs.source_intake == 'true'
         run: node scripts/ops/verify-gri-news-wakeup.mjs --original-news-deploy
-      - if: steps.budget.outputs.critical == 'true'
+      - if: steps.budget.outputs.source_intake == 'true'
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.4.2"
       - name: Install locked dependencies for the existing issuer signer
-        if: steps.budget.outputs.critical == 'true'
+        if: steps.budget.outputs.source_intake == 'true'
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Verify existing D1 derived-news authorization is configured
-        if: steps.budget.outputs.critical == 'true'
+        if: steps.budget.outputs.source_intake == 'true'
         run: |
           test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || {
             echo "::error::Five-minute existing derived journal authorization absent"
             exit 2
           }
       - name: Publish bounded current original-dated three-category derived news
-        if: steps.budget.outputs.critical == 'true'
+        if: steps.budget.outputs.source_intake == 'true'
         env:
-          GEOMACRO_LOW_SOURCE_REVIEW: "1"
+          GEOMACRO_SOURCE_INTAKE_ONLY: ${{ steps.budget.outputs.critical == 'true' && '0' || '1' }}
+          GEOMACRO_LOW_SOURCE_REVIEW: ${{ steps.budget.outputs.critical == 'true' && '1' || '0' }}
           GEOMACRO_LOW_REVIEW_REFS_FILE: ${{ runner.temp }}/geomacro-source-review-refs.json
         run: bun scripts/ops/publish-original-news-five-minute-fastlane.ts
+      - name: Publish append-only permanent Finds archive without D1 dependency
+        id: permanent-archive
+        if: ${{ !cancelled() && steps.budget.outputs.source_intake == 'true' && steps.wakeup.outcome == 'success' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s artifacts/derived-news/permanent-archive-candidates.json || { echo "::notice::NO_VERIFIED_INTAKE_ARCHIVE_BATCH"; exit 0; }
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::PERMANENT_ARCHIVE_CLOUDFLARE_TOKEN_MISSING"; exit 2; }
+          test "${#CLOUDFLARE_ACCOUNT_ID}" -eq 32 || { echo "::error::PERMANENT_ARCHIVE_CLOUDFLARE_ACCOUNT_MISSING"; exit 2; }
+          auth_header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+          archive_ref="refs/remotes/origin/geomacro-permanent-finds-archive"
+          git -c http.extraheader="$auth_header" fetch origin "refs/heads/geomacro-permanent-finds-archive:$archive_ref"
+          archive_dir="$RUNNER_TEMP/geomacro-permanent-finds-archive"
+          git worktree add --detach "$archive_dir" "$archive_ref"
+          assets_dir="$GITHUB_WORKSPACE/workers/public-finds-archive/assets"
+          node --input-type=module -e 'import {readFileSync} from "node:fs"; if(JSON.parse(readFileSync(process.argv[1],"utf8")).seed_complete!==true)throw Error("PERMANENT_ARCHIVE_SEED_REQUIRED");' "$archive_dir/data/index.json"
+          node scripts/ops/publish-permanent-derived-news-archive.mjs \
+            "$archive_dir" "$assets_dir" artifacts/derived-news/permanent-archive-candidates.json
+          result_file="$RUNNER_TEMP/permanent-derived-news-archive-result.json"
+          test -s "$result_file" || { echo "::error::PERMANENT_ARCHIVE_RESULT_MISSING"; exit 2; }
+          deploy_needed="$(jq -r '.deploy_needed == true' "$result_file")"
+          git -C "$archive_dir" add data
+          if ! git -C "$archive_dir" diff --cached --quiet; then
+            git -C "$archive_dir" config user.name "github-actions[bot]"
+            git -C "$archive_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$archive_dir" commit -m "Append permanent Geomacro Finds archive"
+            git -C "$archive_dir" -c http.extraheader="$auth_header" push origin HEAD:refs/heads/geomacro-permanent-finds-archive
+          fi
+          echo "deploy_needed=$deploy_needed" >> "$GITHUB_OUTPUT"
+          if [[ "$deploy_needed" != "true" ]]; then
+            echo "Permanent static archive has no new state to deploy."
+            exit 0
+          fi
+          cd workers/public-finds-archive
+          npx -y wrangler@4.136.3 deploy --config wrangler.jsonc
       - name: Publish current verified source-neutral D1 snapshot to optional R2
         # Reuses one admitted 5-minute runner; no extra cron, source fetch,
         # D1 write or B2 request. Failure is visible but cannot block originals.

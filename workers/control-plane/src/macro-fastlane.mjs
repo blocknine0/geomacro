@@ -65,6 +65,7 @@ export async function readPublicMacro(env,now=Date.now()){
  try{return reply(publicMacroProjection(await loadMacroState(env),now));}catch{return reply({ok:false,error:'MACRO_READ_UNAVAILABLE',category:'macro'},503);}
 }
 export async function runMacroReleaseTick(env,{now=Date.now(),fetchImpl=fetch}={}){
+ const startClock=Date.now(),quoteClock=()=>now+Date.now()-startClock;
  const state=await loadMacroState(env);
  // Expiring admission is refreshed ONLY by the existing quota-gated GitHub
  // bundle. Cron never renews its own lease or bypasses an exhausted account.
@@ -74,13 +75,13 @@ export async function runMacroReleaseTick(env,{now=Date.now(),fetchImpl=fetch}={
  // Same minute cannot be retried into unbounded origin/D1 consumption.
  if(Date.parse(state.checked_at)>now-55000)return {state:'ALREADY_POLLED',source_requests:0};
  const sourceIds=criticalSourceIds(window);
- const collected=await collectMacroFastlane({now,fetchImpl,state,sourceIds,release:true,prices:true,calendars:false});
+ const collected=await collectMacroFastlane({now,quoteClock,fetchImpl,state,sourceIds,release:true,prices:true,calendars:false});
  const direct=await collectDirectReleaseCandidates(window,{now,fetchImpl,existing:collected.candidates});
  const signals=deriveCriticalReleaseSignals([...collected.candidates,...direct.candidates],window,now);
- if(signals.length){const response=await publishDerivedStories(env,{schema:'geomacro.website-derived-news-batch.v1',signals},now);if(!response.ok)throw Error('MACRO_RELEASE_PUBLICATION_FAILED');}
+ if(signals.length){const response=await publishDerivedStories(env,{schema:'geomacro.website-derived-news-batch.v1',signals},now);if(!response.ok)throw Error('MACRO_RELEASE_PUBLICATION_FAILED');const prune=await publishDerivedStories(env,{schema:'geomacro.website-derived-news-batch.v1',signals:[]},now);if(!prune.ok)throw Error('MACRO_RELEASE_RETENTION_FAILED');}
  collected.state.quota_lease_until=state.quota_lease_until;
  collected.state.source_checks=[...state.source_checks.filter(c=>!sourceIds.includes(c.id)),...collected.state.source_checks];
- const stored=await storeMacroState(env,collected.state,now);if(!stored.ok)throw Error('MACRO_RELEASE_STATE_FAILED');
+ const stored=await storeMacroState(env,collected.state,quoteClock());if(!stored.ok)throw Error('MACRO_RELEASE_STATE_FAILED');
  return {state:'RELEASE_POLLED',category:'macro',source_requests:collected.receipt.upstream_requests+direct.requests,direct_original_checks:direct.checks,derived_rows:signals.length,prices:collected.state.price_checks,latency_verified:false};
 }
 export function macroPriceEvidence(signal,state){

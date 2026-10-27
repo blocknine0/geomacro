@@ -85,3 +85,22 @@ A deployment revision preflight prevents a producer from polling/writing against
 an old Worker. Existing deployment completion and hourly recovery workflows resume
 collection. Provider, calendar and quote failures remain visible in safe receipts.
 No global completeness or guaranteed 1–2 minute end-to-end latency is asserted.
+
+## Source-only admission during discretionary pacing holds
+
+Production exposed a pacing hold with 2.17 million daily reads still available.
+The existing preflight now exposes a separate `source_intake` grant only when
+remaining provider headroom fits **all remaining five-minute source bundles**
+plus protected account reserves. Each held-mode bundle admits at most 50 new
+cards, packed into one write. The conservative allocation is 4,000 reads and
+101 writes per remaining slot, plus 100,000 read / 2,000 write incident margins.
+The protected 750,000 read / 15,000 write reserves remain. Unknown or insufficient
+provider counters still deny the grant. This is observational, not atomic.
+
+This narrow grant does not run signing, review, R2 snapshot exports or latency
+audit fan-out. It shares the already-read final journal with the append-only
+static archive, so website delivery continues without a second D1 fetch. Archive
+publication requires the existing branch to be seeded and shares one concurrency
+lock with the hourly publisher and standalone static deployer. Retention sweeps
+before/after intake and after critical release insertion prevent the 601-row
+readability failure. Retention-withheld rows are not claimed delivered.
