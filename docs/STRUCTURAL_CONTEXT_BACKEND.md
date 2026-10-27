@@ -51,13 +51,18 @@ production website activation.
 
 ### Quota-governed website fallback and B2 publication
 
-The read-only web candidate now sets
-`GEOMACRO_HISTORICAL_SUPABASE_READ_MODE=fallback` while leaving **main**
-`GEOMACRO_SUPABASE_RUNTIME_MODE=standby`. Production SSR with both
-`HISTORICAL_SUPABASE_URL` / `HISTORICAL_SUPABASE_SERVICE_ROLE_KEY` and
-`GEOMACRO_COMMERCE_LEDGER_TOKEN` can also activate fallback automatically
-when the historical mode variable is not explicitly set. An explicit
-`GEOMACRO_HISTORICAL_SUPABASE_READ_MODE=off` overrides this behavior.
+The separate, intentionally public **read-only web candidate does not
+receive historical Supabase credentials or the central ledger token** and
+must not advertise live historical DB fallback. Its deployed bindings remain
+strictly scoped to anonymous candidate diagnostics. Production **trusted
+server-side SSR** with both `HISTORICAL_SUPABASE_URL` /
+`HISTORICAL_SUPABASE_SERVICE_ROLE_KEY` and
+`GEOMACRO_COMMERCE_LEDGER_TOKEN` can activate the governed historical
+fallback automatically when the historical mode variable is unset. An
+explicit `GEOMACRO_HISTORICAL_SUPABASE_READ_MODE=off` always overrides it.
+A separate secure production host/deployment must supply those server-only
+credentials; this change does not inject them into the candidate or a
+browser.
 
 The application always attempts a verified B2 structural snapshot first.
 Every subsequent historical Supabase REST request must consume exactly one

@@ -14,7 +14,8 @@ on:
       - scripts/ops/publish-b2-structural-serving-snapshot.ts
       - .github/workflows/b2-structural-serving-snapshot.yml
   schedule:
-    - cron: "12 1 * * 0"
+    # Immediately after UTC quota reset, before other producer bursts.
+    - cron: "3 0 * * 0"
   workflow_dispatch:
     inputs:
       publish_now:
