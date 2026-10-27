@@ -186,8 +186,8 @@ test("only the two canonical website 250/500 pages are independently cached",asy
 
 test("cache never covers paid, protected or Predge machine routes after offload",()=>{
   const source=readFileSync(new URL("../../workers/control-plane/src/index.mjs",import.meta.url),"utf8");
-  assert.ok(source.includes("return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams));"));
-  assert.ok(source.includes('return publicReadCache(()=>readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay));'));
+  assert.ok(source.includes('await publicSharedDerivedNewsFeed(env,url.searchParams)'));
+  assert.ok(source.includes('await readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay)'));
   assert.ok(source.includes("return predgeResearchDerivedNewsFeed(request,env);"));
   assert.ok(source.includes("if (!auth.ok) return json("));
 });

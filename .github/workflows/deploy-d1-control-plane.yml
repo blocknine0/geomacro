@@ -68,7 +68,7 @@ jobs:
         with:
           node-version: "24"
       - name: Run offline D1 recovery, caching and hashed-insights regression
-        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
+        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
 
   bootstrap-deploy-accept:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
@@ -90,6 +90,8 @@ jobs:
       RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
       D1_DATABASE_NAME: geomacro-control-plane
       WRANGLER_VERSION: "4.136.3"
+      PUBLIC_NEWS_R2_BUCKET: ${{ vars.GEOMACRO_PUBLIC_NEWS_R2_BUCKET }}
+      PUBLIC_NEWS_KV_NAMESPACE_ID: ${{ vars.GEOMACRO_PUBLIC_NEWS_KV_NAMESPACE_ID }}
     steps:
       - name: Require explicit manual dispatch confirmation
         if: github.event_name == 'workflow_dispatch'
@@ -123,7 +125,7 @@ jobs:
           node-version: "24"
 
       - name: Verify P0-1 D1 quota and public-only cache contracts offline
-        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
+        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
 
       - name: Test all-news signed publication integrity and source-proof boundaries offline
         run: node --test scripts/tests/public-signed-news.test.mjs
@@ -212,6 +214,22 @@ jobs:
             config.vars.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256=lowPin;
           }
 
+          // Opt-in R2/KV only: no paid provision, new database or B2 mutation.
+          const r2=String(process.env.PUBLIC_NEWS_R2_BUCKET||'').trim();
+          const kv=String(process.env.PUBLIC_NEWS_KV_NAMESPACE_ID||'').trim();
+          if(kv&&!r2)throw Error('PUBLIC_NEWS_KV_REQUIRES_R2');
+          if(r2){
+            if(!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(r2))
+              throw Error('PUBLIC_NEWS_R2_BUCKET_INVALID');
+            config.r2_buckets=[...(config.r2_buckets??[]),
+              {binding:'PUBLIC_NEWS_R2',bucket_name:r2}];
+            config.vars.PUBLIC_NEWS_OFFLOAD_ENABLED='1';
+            if(kv){
+              if(!/^[a-f0-9]{32}$/.test(kv))throw Error('PUBLIC_NEWS_KV_NAMESPACE_INVALID');
+              config.kv_namespaces=[...(config.kv_namespaces??[]),
+                {binding:'PUBLIC_NEWS_KV',id:kv}];
+            }
+          }
           fs.writeFileSync('workers/control-plane/wrangler.runtime.jsonc', JSON.stringify(config, null, 2));
           NODE
 
