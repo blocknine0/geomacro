@@ -1425,7 +1425,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1IntelligenceGeopoliticsRoute: ApiV1IntelligenceGeopoliticsRoute,
   ApiV1IntelligenceLiveStructuredRoute: ApiV1IntelligenceLiveStructuredRoute,
   ApiV1IntelligenceMacroFxRoute: ApiV1IntelligenceMacroFxRoute,
-  ApiV1IntelligenceProductsAvailabilityRoute: ApiV1IntelligenceProductsAvailabilityRoute,
+  ApiV1IntelligenceProductsAvailabilityRoute:
+    ApiV1IntelligenceProductsAvailabilityRoute,
   ApiV1IntelligenceQueryRoute: ApiV1IntelligenceQueryRoute,
   ApiV1PaymentsNetworksRoute: ApiV1PaymentsNetworksRoute,
   ApiV1PaymentsPreflightRoute: ApiV1PaymentsPreflightRoute,
