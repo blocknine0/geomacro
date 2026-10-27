@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import {auditWorkflowGraph} from "./audit-github-workflow-graph.mjs";
 
 const root = process.cwd();
 const manifest = JSON.parse(fs.readFileSync(path.join(root,"config/github-workflow-inventory.v1.json"),"utf8"));
@@ -46,6 +47,15 @@ for (const filename of manifest.archivedWorkflowFiles) {
 }
 if (errors.length) {
   for (const error of errors) console.error("::error::" + error);
+  process.exit(1);
+}
+// Fully account for every retained YAML as a trigger/dependency candidate.
+ // Classification is static-only and does NOT authorize retirement.
+const audit=auditWorkflowGraph(root);
+if(audit.retained_workflow_count!==allowed.length||
+   audit.nodes.filter(n=>n.predge_frozen).length!==Object.keys(manifest.predgeBlobSha1).length||
+   audit.nodes.some(n=>n.safe_to_retire!==false)) {
+  console.error("::error::WORKFLOW_AUDIT_COVERAGE_OR_FREEZE_INVALID");
   process.exit(1);
 }
 console.log("Workflow inventory OK: " + allowed.length + " registered, " + manifest.criticalWorkflowFiles.length + " critical pinned, " + Object.keys(manifest.predgeBlobSha1).length + " Predge frozen, " + manifest.archivedWorkflowFiles.length + " reversibly archived.");
