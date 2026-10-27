@@ -47,7 +47,7 @@ describe("commercial access is explained sitewide", () => {
   it("provides buyer action on Intelligence, Ask and Docs without promising paid availability", () => {
     expect(intelligence).toContain("Free to browse.");
     expect(intelligence).toContain("compare access options");
-    expect(ask).toContain("Ask a public risk question for free");
+    expect(ask).toContain("Public chat is free; structured API products use separate x402 pricing.");
     expect(ask).toContain("compare API and monthly access");
     expect(docs).toContain("Explore free Intelligence");
     expect(docs).toContain("Visit Store");
