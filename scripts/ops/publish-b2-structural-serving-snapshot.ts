@@ -14,10 +14,16 @@ const PROOF_KEY = `${LIVE_PREFIX}/latest-proof.json`;
 const PAGE_SIZE = 500;
 // Fail closed on over-large warehouse scans; no partial B2 promotion.
 const MAX_SOURCES = 60;
-const MAX_SOURCE_ROWS = 12_000;
-const MAX_COVERAGE_SOURCE_ROWS = 6_000;
-const MAX_TOTAL_SOURCE_ROWS = 18_000;
-const MAX_TOTAL_DB_READS = 96;
+// PostgreSQL's live planner footprint is ~147k structural observation rows.
+// Weekly bounded refresh can read the whole qualified candidate set only if
+// BOTH row and actual downloaded-byte ceilings allow it. This never makes
+// the weekly task an unmetered full-database/backfill job.
+const MAX_SOURCE_ROWS = 200_000;
+const MAX_COVERAGE_SOURCE_ROWS = 20_000;
+const MAX_TOTAL_SOURCE_ROWS = 200_000;
+const MAX_TOTAL_DB_READS = 550;
+const MAX_TOTAL_HISTORICAL_DOWNLOAD_BYTES = 256 * 1024 * 1024;
+const MAX_SINGLE_HISTORICAL_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_PROFILES = 500;
 const MAX_COVERAGE = 20_000;
 const MAX_DIRECT = 20_000;
@@ -34,6 +40,7 @@ if (
 ) throw new Error("B2_STRUCTURAL_PUBLISH_CONFIG_REQUIRED");
 
 let historicalDbReads = 0;
+let historicalDbDownloadBytes = 0;
 const boundedHistoricalFetch: typeof fetch = async (input, init) => {
   const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
   if (url.origin !== HISTORICAL_URL || !url.pathname.startsWith("/rest/v1/") ||
@@ -43,7 +50,33 @@ const boundedHistoricalFetch: typeof fetch = async (input, init) => {
   if (++historicalDbReads > MAX_TOTAL_DB_READS) {
     throw new Error("B2_STRUCTURAL_HISTORICAL_DB_QUERY_CAP");
   }
-  return fetch(input, { ...init, redirect: "error", signal: AbortSignal.timeout(15_000) });
+  const response = await fetch(input, {
+    ...init, redirect: "error", signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok || !response.body) return response;
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    for (;;) {
+      const part = await reader.read();
+      if (part.done) break;
+      length += part.value.byteLength;
+      historicalDbDownloadBytes += part.value.byteLength;
+      if (length > MAX_SINGLE_HISTORICAL_RESPONSE_BYTES ||
+          historicalDbDownloadBytes > MAX_TOTAL_HISTORICAL_DOWNLOAD_BYTES) {
+        throw new Error("B2_STRUCTURAL_HISTORICAL_DOWNLOAD_BYTES_CAP");
+      }
+      chunks.push(part.value);
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const part of chunks) { bytes.set(part, offset); offset += part.byteLength; }
+  return new Response(bytes, { status: response.status,
+    statusText: response.statusText, headers: response.headers });
 };
 const db = createClient(
   HISTORICAL_URL,
@@ -467,6 +500,7 @@ console.log(JSON.stringify({
   direct_observations: direct.length,
   compressed_bytes: packed.length,
   historical_db_reads: historicalDbReads,
+  historical_db_download_bytes: historicalDbDownloadBytes,
   b2_objects_verified: 3,
   proof_bound_runtime_read: true,
 }));
