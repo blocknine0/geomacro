@@ -86,7 +86,12 @@ test("R2 unavailable/stale/invalid never returns fake success, always yields D1 
     PUBLIC_NEWS_R2:{async get(){return {size:123,async text(){
       return JSON.stringify(bundle());
     }}}}};
-  assert.equal(await readPublicNewsR2Snapshot(req,env,now+9*60_000),null);
+  const old=await readPublicNewsR2Snapshot(req,env,now+9*60_000);
+  assert.equal(old.status,200);
+  assert.equal(old.headers.get("X-GeoMacro-Canonical-Status"),"last-known-snapshot");
+  assert.equal(old.headers.get("X-GeoMacro-Public-Offload"),"r2");
+  assert.ok(old.headers.get("Warning").includes("canonical D1 freshness not verified"));
+  assert.equal(await readPublicNewsR2Snapshot(req,env,now+25*60*60_000),null);
   env.PUBLIC_NEWS_R2.get=async()=>{throw Error("R2 billing or outage")};
   assert.equal(await readPublicNewsR2Snapshot(req,env,now),null);
   env.PUBLIC_NEWS_R2.get=async()=>({size:5,async text(){return "{"}});
@@ -157,4 +162,47 @@ test("GitHub batch reads the real D1-origin contracts with no-cache and publishe
   assert.equal(receipt.new_upstream_reads,0);
   assert.equal(receipt.sha256,"f".repeat(64));
   assert.equal(published,1);assert.equal(requests,7);
+});
+
+test("anonymous bundle served from source-native-time-validated R2 without any D1 query",async()=>{
+ let r2Reads=0,reads=0;
+ const env={PUBLIC_NEWS_OFFLOAD_ENABLED:"1",GEOMACRO_SOURCE_SHA:sha,
+  PUBLIC_NEWS_R2:{async get(key){r2Reads++;return {
+   size:300,async text(){return JSON.stringify(bundle())}
+  }}}};
+ const req=new Request(base+"/v1/public/website-derived-news-bundle");
+ const hit=await readPublicNewsR2Snapshot(req,env,now);
+ assert.equal(hit.status,200);
+ const decoded=await hit.json();
+ assert.equal(decoded.schema,"geomacro.website-derived-news-bundle.v1");
+ assert.equal(decoded.complete,true);
+ assert.equal(decoded.returned_rows,0);
+ assert.deepEqual(decoded.first_ingest,[]);
+ assert.deepEqual(decoded.signals,[]);
+ assert.equal(r2Reads,1);assert.equal(reads,0);
+ const old=await readPublicNewsR2Snapshot(req,env,now+90*60_000);
+ assert.equal(old.status,200);
+ assert.equal(old.headers.get("X-GeoMacro-Canonical-Status"),"last-known-snapshot");
+ assert.equal(old.headers.get("X-GeoMacro-Snapshot-At"),time);
+ const invalid=await readPublicNewsR2Snapshot(req,{
+  ...env,GEOMACRO_SOURCE_SHA:"b".repeat(40)},now);
+ assert.equal(invalid,null,"mismatched worker SHA must not serve old snapshots");
+ const protectedReq=new Request(req.url,{headers:{Authorization:"Bearer owner"}});
+ assert.equal(await readPublicNewsR2Snapshot(protectedReq,env,now),null);
+ assert.equal(await readPublicNewsR2Snapshot(new Request(
+  base+"/v1/partner/predge/derived-structural-72h"),env,now),null);
+});
+test("fallback cannot falsely extend 72-hour native item validity",async()=>{
+ const valid=new Date(now-70*60*60_000).toISOString();
+ const real=bundle();
+ // Put an invalid publisher event into otherwise empty snapshot. Such item is
+ // refused, not rewritten to a current timestamp to make readback pass.
+ real.pages["0"].signals=[{category:"macro",published_at:valid}];
+ const env={PUBLIC_NEWS_OFFLOAD_ENABLED:"1",
+  PUBLIC_NEWS_R2:{async get(){return {
+   size:450,async text(){return JSON.stringify(real)}
+  }}}};
+ const res=await readPublicNewsR2Snapshot(new Request(
+  base+"/v1/public/website-derived-news-immediate"),env,now+6*60*60_000);
+ assert.equal(res,null);
 });
