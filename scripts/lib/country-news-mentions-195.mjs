@@ -6,7 +6,7 @@
  * as ISO3. Structured request ISO3 validation is a separate mechanism.
  */
 const normalize=x=>String(x??"").normalize("NFKC").toLocaleLowerCase("en")
- .replace(/[^\p{L}\p{N}]+/gu," ").replace(/\s+/gu," ").trim();
+ .replace(/[^\p{L}\p{M}\p{N}]+/gu," ").replace(/\s+/gu," ").trim();
 
 const LOCALES=Object.freeze([
  "en","bn","hi","es","fr","de","pt","ru","ar","zh","ja","ko",
@@ -52,14 +52,18 @@ export function countryMentionFromTitle(title,countries){
  const padded=" "+phrase+" ";
  const accepted=[],detected=new Set();
  for(const item of countryAliases(countries)){
-  let pos=padded.indexOf(" "+item.phrase+" ");
+  // Chinese/Japanese/Korean country names can be adjacent to other text
+  // without spaces; all other scripts require lexical word boundaries.
+  const cjk=/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(item.phrase);
+  const token=cjk?item.phrase:" "+item.phrase+" ";
+  let pos=padded.indexOf(token);
   while(pos!==-1){
-   const span={start:pos,end:pos+item.phrase.length+2};
+   const span={start:pos,end:pos+token.length};
    if(!accepted.some(a=>span.start<a.end&&span.end>a.start)){
     accepted.push(span);
     detected.add(item.iso3);
    }
-   pos=padded.indexOf(" "+item.phrase+" ",pos+1);
+   pos=padded.indexOf(token,pos+1);
   }
  }
  return detected.size===1?[...detected][0]:null;
