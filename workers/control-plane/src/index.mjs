@@ -19,6 +19,8 @@ import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-s
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
 import {readPublicFreeD1Cached} from "./public-free-d1-cache.mjs";
+import {readPublicNewsR2Snapshot,publishPublicNewsR2Snapshot,PUBLIC_NEWS_R2_MAX_BYTES}
+  from "./public-news-r2-offload.mjs";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
 import { makeRiskIndicesHistoricalMetadata } from "./risk-indices-historical-status.mjs";
 import { projectPublic30mPulse } from "./source-pulse-public.mjs";
@@ -1293,7 +1295,9 @@ export default {
       return getAutomatedFinds(env,url.searchParams.get("category"));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/derived-structural-72h")
-      return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams));
+      return publicReadCache(async()=>
+        await readPublicNewsR2Snapshot(request,env) ??
+        await publicSharedDerivedNewsFeed(env,url.searchParams));
     if(request.method==="GET"&&url.pathname==="/v1/partner/predge/derived-structural-72h")
       return predgeResearchDerivedNewsFeed(request,env);
     if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-d1-readiness"&&!url.search)
@@ -1315,11 +1319,15 @@ export default {
       // Only deterministic 250-row read pages of the existing 600-row D1
       // journal. No arbitrary SQL offsets or raw publisher payloads.
       const q=url.searchParams;
-      if(q.size===0)return publicReadCache(()=>readDerivedStories(env,Date.now(),0,legacyDelay));
+      if(q.size===0)return publicReadCache(async()=>
+        await readPublicNewsR2Snapshot(request,env) ??
+        await readDerivedStories(env,Date.now(),0,legacyDelay));
       if(q.size!==1||q.getAll("offset").length!==1||
          !["250","500"].includes(q.get("offset")))
         return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID",chargeable:false},400);
-      return publicReadCache(()=>readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay));
+      return publicReadCache(async()=>
+        await readPublicNewsR2Snapshot(request,env) ??
+        await readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay));
     }
     if (request.method === "GET" && url.pathname === "/v1/public/source-pulse-30m") {
       return getPublicThreeDomain30MinSourcePulse(env);
@@ -1350,6 +1358,8 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      if(request.method==="PUT"&&url.pathname==="/v1/public-news-r2-snapshot"&&!url.search)
+        return publishPublicNewsR2Snapshot(env,await readJson(request,PUBLIC_NEWS_R2_MAX_BYTES));
       if(request.method==="PUT"&&url.pathname==="/v1/reusable-source-news"&&!url.search)
         return publishReusableSourceNews(env,await readJson(request,96*1024));
       if(request.method==="PUT"&&url.pathname==="/v1/internal/telegram-export-derived-json"&&!url.search)

@@ -27,6 +27,8 @@ on:
       - "scripts/tests/actor-action-news.test.mjs"
       - ".github/workflows/five-minute-original-news-fastlane.yml"
       - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
+      - "scripts/ops/publish-public-news-r2-snapshot.mjs"
+      - "scripts/tests/public-news-r2-offload.test.mjs"
       - "scripts/lib/derived-news-readback-policy.mjs"
       - "scripts/tests/derived-news-readback-policy.test.mjs"
       - "scripts/tests/derived-news-worker-policy.test.mjs"
@@ -77,6 +79,8 @@ on:
       - "scripts/tests/actor-action-news.test.mjs"
       - ".github/workflows/five-minute-original-news-fastlane.yml"
       - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
+      - "scripts/ops/publish-public-news-r2-snapshot.mjs"
+      - "scripts/tests/public-news-r2-offload.test.mjs"
       - "scripts/lib/derived-news-readback-policy.mjs"
       - "scripts/tests/derived-news-readback-policy.test.mjs"
       - "scripts/tests/derived-news-worker-policy.test.mjs"
@@ -286,6 +290,12 @@ jobs:
           GEOMACRO_LOW_SOURCE_REVIEW: "1"
           GEOMACRO_LOW_REVIEW_REFS_FILE: ${{ runner.temp }}/geomacro-source-review-refs.json
         run: bun scripts/ops/publish-original-news-five-minute-fastlane.ts
+      - name: Publish current verified source-neutral D1 snapshot to optional R2
+        # Reuses one admitted 5-minute runner; no extra cron, source fetch,
+        # D1 write or B2 request. Failure is visible but cannot block originals.
+        if: ${{ steps.budget.outputs.critical == 'true' && steps.wakeup.outcome == 'success' && vars.GEOMACRO_PUBLIC_NEWS_R2_BUCKET != '' }}
+        continue-on-error: true
+        run: node scripts/ops/publish-public-news-r2-snapshot.mjs
       - name: Refresh retained actor-action news from existing private originals without changing clocks
         if: ${{ steps.budget.outputs.critical == 'true' && !cancelled() && steps.wakeup.outcome == 'success' }}
         env:
