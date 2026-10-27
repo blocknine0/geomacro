@@ -49,14 +49,12 @@ jobs:
           node scripts/ops/verify-news-intelligence-hub-topology.mjs
           node --test scripts/tests/news-intelligence-hub.test.mjs
 
-  shared-quota-admission:
+  one-bundled-quota-and-distribution-readback:
     needs: five-group-topology
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
+    timeout-minutes: 8
     environment: production
-    outputs:
-      admitted: ${{ steps.budget.outputs.research }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -74,24 +72,11 @@ jobs:
       - name: Truthful quota hold with zero extra D1 reads
         if: steps.budget.outputs.research != 'true'
         run: echo "::notice::NEWS_HUB_BUNDLED_READBACK_QUOTA_HELD; no D1 fetch or false publication claim."
-
-  single-bundled-distribution-readback:
-    needs: shared-quota-admission
-    if: needs.shared-quota-admission.outputs.admitted == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 6
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: main
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version: "22"
       - name: Verify one D1 journal drives Website, machine projection and 195 by 3 coverage
+        if: steps.budget.outputs.research == 'true'
         run: node scripts/ops/verify-news-hub-live-bundle.mjs
       - name: Save only counts and source-neutral contract evidence (no raw news)
-        if: always()
+        if: always() && steps.budget.outputs.research == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-central-news-hub-bundled-${{ github.run_id }}
