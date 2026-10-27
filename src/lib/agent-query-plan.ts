@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { resolveMultilingualQueryVocabulary } from "./multilingual-query-dictionary";
 import { z } from "zod";
 import { storeProductSelectionSchema, assertStoreProductScope, isStructuralStoreProduct,
   type StoreProductSelection } from "./store-product-selection";
@@ -212,16 +213,18 @@ export function inferAgentQueryTopics(question: string | undefined): AgentQueryT
   const matches = QUESTION_TOPIC_RULES
     .filter((rule) => rule.patterns.some((pattern) => pattern.test(question)))
     .map((rule) => rule.topic);
-  return [...new Set(matches)].sort() as AgentQueryTopic[];
+  return [...new Set([...matches, ...resolveMultilingualQueryVocabulary(question).topics])].sort() as AgentQueryTopic[];
 }
 
 export function inferAgentQueryIntent(question: string | undefined): AgentQueryIntent | null {
   if (!question) return null;
-  const matches = [...new Set(
-    QUESTION_INTENT_RULES
+  const multilingual = resolveMultilingualQueryVocabulary(question).intents;
+  const matches = [...new Set([
+    ...multilingual,
+    ...QUESTION_INTENT_RULES
       .filter((rule) => rule.patterns.some((pattern) => pattern.test(question)))
       .map((rule) => rule.intent),
-  )];
+  ])];
   if (matches.length > 1) throw new Error("AMBIGUOUS_QUERY_INTENT");
   return matches[0] ?? null;
 }
