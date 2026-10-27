@@ -70,8 +70,9 @@ describe("verified B2 structural serving continuity", () => {
     expect(publisher).toContain("sourceRowsScanned");
     expect(publisher).toContain("B2_STRUCTURAL_KEYSET_PROGRESS_INVALID");
     expect(publisher).toContain("B2_STRUCTURAL_TRUNCATION_GUARD_source_rows");
-    expect(publisher).toContain("MAX_TOTAL_SOURCE_ROWS = 18_000");
-    expect(publisher).toContain("MAX_TOTAL_DB_READS = 96");
+    expect(publisher).toContain("MAX_TOTAL_SOURCE_ROWS = 200_000");
+    expect(publisher).toContain("MAX_TOTAL_DB_READS = 550");
+    expect(publisher).toContain("MAX_TOTAL_HISTORICAL_DOWNLOAD_BYTES = 256 * 1024 * 1024");
     expect(publisher).not.toContain("MAX_BASE_ROWS");
     expect(publisher).not.toContain("const baseRows =");
   });
