@@ -10,7 +10,7 @@ test("five minute producer reuses its own runner for quota admission and gates s
  assert.match(producer,/id: budget/);
  assert.match(producer,/run: node scripts\/ops\/plan-d1-bundled-work\.mjs/);
  assert.match(producer,/quota_admitted: \$\{\{ steps\.budget\.outputs\.critical \}\}/);
- assert.match(producer,/if: steps\.budget\.outputs\.critical == 'true'/);
+ assert.match(producer,/if: steps\.budget\.outputs\.source_intake == 'true'/);
  assert.match(producer,/steps\.budget\.outputs\.critical == 'true' && !cancelled\(\)/);
  assert.match(producer,/if: always\(\) && steps\.budget\.outputs\.critical == 'true'/);
  assert.match(downstream,/needs\.original-five-minute-derived-news\.outputs\.quota_admitted == 'true'/);

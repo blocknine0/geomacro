@@ -156,6 +156,9 @@ jobs:
         run: node scripts/ops/plan-d1-bundled-work.mjs
 
   refresh-derived-news:
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
     needs: quota-admission
     # Never race a producer against any repository push. Source-only changes
     # are handled by the existing schedule/manual trigger; Worker changes resume

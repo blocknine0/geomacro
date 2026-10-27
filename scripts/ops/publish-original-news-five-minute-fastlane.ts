@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+import {packDerivedNewsBatches} from "../lib/macro-fx-metals.mjs";
+import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {collectCriticalMineralsFastlane} from "../lib/critical-minerals-fastlane.mjs";
 import {collectMacroFastlane} from "../lib/macro-fastlane-collector.mjs";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model";
@@ -10,7 +12,7 @@ import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model
  * no B2, no signing, no x402 settlement.
  */
 import {createHmac} from "node:crypto";
-import {writeFileSync} from 'node:fs';
+import {writeFileSync,mkdirSync} from 'node:fs';
 import {FIVE_MINUTE_NEWS_FASTLANE,readFiveMinuteNewsFastlane} from "../../src/lib/stateless-public-intelligence.server";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
 import {reconcilePrivateDerivedSourceRefs,selectBoundedRetainedOriginalTargets,type StatelessSourceCandidate,type StatelessIntelligenceSignal} from "../../src/lib/stateless-intelligence-model";
@@ -27,10 +29,15 @@ const workerPolicy=await requireDerivedNewsWorkerPolicy({
  expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION,
 });
 console.log(JSON.stringify(workerPolicy));
+const sourceIntakeOnly=process.env.GEOMACRO_SOURCE_INTAKE_ONLY==='1';
 const runAt=Date.now();
 // Full verified D1 baseline BEFORE origin polling. Repeated releases are never
 // counted as fresh 20-minute deliveries or written again on every tick.
 // Fail closed if the bounded journal reader is unavailable.
+// Repair the bounded journal before reading: unrelated prior writers can
+// leave a 601st row, which the strict bundle correctly refuses to serve.
+const initialSweep=await fetch(endpoint,{method:"PUT",redirect:"error",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:[]}),signal:AbortSignal.timeout(12000)});
+if(!initialSweep.ok)throw Error("FASTLANE_INITIAL_RETENTION_SWEEP_FAILED");
 const baseline=await fetchAllDerivedNews(fetch,runAt);
 const existingIds=new Set(baseline.map(s=>s.id));
 const privateOriginals:StatelessSourceCandidate[]=[];
@@ -45,7 +52,7 @@ try{
  if(!stateResponse.ok)throw Error("MACRO_STATE_READ_UNAVAILABLE");
  previousMacroState=(await stateResponse.json() as {state:Record<string,unknown>}).state;
 }catch{console.warn("::warning::MACRO_CURSOR_READ_UNAVAILABLE; bounded source polling continues without conditional-GET cursors");}
-const macro=await collectMacroFastlane({now:runAt,state:previousMacroState,
+const macro=await collectMacroFastlane({now:runAt,quoteClock:Date.now,state:previousMacroState,
  reusedCandidates:privateOriginals,reusedIds:FIVE_MINUTE_NEWS_FASTLANE.filter(s=>s.category==="macro").map(s=>s.id)});
 privateOriginals.push(...macro.candidates.filter(c=>!privateOriginals.some(p=>p.sourceId===c.sourceId&&p.articleUrl===c.articleUrl)));
 const macroReport=reports.find(r=>r.category==="macro");
@@ -68,6 +75,7 @@ console.log(JSON.stringify(mineral.receipt));
 let journalVerified=true;
 let failure=false,allPublished:StatelessIntelligenceSignal[]=[];
 const pending:StatelessIntelligenceSignal[]=[];
+let verifiedArchiveSignals=baseline;
 for(const category of categories){
  const report=reports.find(r=>r.category===category);
  const expectedOrigins=FIVE_MINUTE_NEWS_FASTLANE.filter(s=>s.category===category).length;
@@ -82,7 +90,7 @@ for(const category of categories){
  // Preserve native publication clocks and reject future originals.
  // Exact clocks have no added delay; day-only date uncertainty remains.
  const candidates=report.signals.filter(s=>
-   s.category===category&&s.severity===null&&
+   verifyDerivedStory(s,runAt)&&s.category===category&&s.severity===null&&
    s.same_event_corrob_verified===false&&!existingIds.has(s.id)&&
    Date.parse(s.published_at)>=runAt-72*3600000&&
    (s.date_precision==="exact"
@@ -112,11 +120,17 @@ for(const category of categories){
    independent_same_event_verified:false,chargeable:false,
  }));
 }
+// Source-only allocation caps newly written rows at 50, balanced across all
+// three categories. The existing critical lane retains its normal wider cap.
+const publishPending:StatelessIntelligenceSignal[]=[];
+if(sourceIntakeOnly){
+ const lanes=categories.map(c=>pending.filter(s=>s.category===c).sort((a,b)=>b.published_at.localeCompare(a.published_at)));
+ for(let i=0;publishPending.length<50&&lanes.some(l=>i<l.length);i++)for(const lane of lanes)if(lane[i]&&publishPending.length<50)publishPending.push(lane[i]);
+}else publishPending.push(...pending);
 // Cross-category writes are packed into the maximum accepted 50-row batch.
 // Empty ticks do not cause retention scans or write unchanged release rows.
 try{
- for(let i=0;i<pending.length;i+=50){
-  const batch=pending.slice(i,i+50);
+ for(const batch of packDerivedNewsBatches(publishPending)){
   const response=await fetch(endpoint,{method:"PUT",redirect:"error",cache:"no-store",
    headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
    body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:batch}),signal:AbortSignal.timeout(12000)});
@@ -127,11 +141,18 @@ try{
 }catch{journalVerified=false;failure=true;console.error("::error::BUNDLED_FASTLANE_JOURNAL_WRITE_FAILED");}
 if(allPublished.length){
  try{
+  // One retention sweep prevents a 601st row from making the next bounded
+  // journal bundle unreadable. It preserves native clocks and archive history.
+  const prune=await fetch(endpoint,{method:"PUT",redirect:"error",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({schema:"geomacro.website-derived-news-batch.v1",signals:[]}),signal:AbortSignal.timeout(12000)});
+  if(!prune.ok)throw Error("JOURNAL_RETENTION_SWEEP_FAILED");
   // Read the SAME journal via its strict 250/500-page complete verified reader;
   // don't report delivered only because D1 returned HTTP 200 on PUT.
   const records=await fetchAllDerivedNews(fetch,Date.now());
   const ids=new Set(records.map(s=>s.id));
-  if(allPublished.some(s=>!ids.has(s.id)))throw Error("D1_INDEPENDENT_READBACK_MISSING");
+  const retentionWithheld=allPublished.filter(s=>!ids.has(s.id)).length;
+  if(retentionWithheld)console.log(JSON.stringify({schema:"geomacro.news-retention-held.v1",rows_not_retained:retentionWithheld,claimed_delivered:false}));
+  allPublished=allPublished.filter(s=>ids.has(s.id));
+  verifiedArchiveSignals=records;
   const ackNow=Date.now();
   const originalExact=allPublished.filter(s=>s.date_precision==="exact");
   const counts=originalExact.reduce((a,s)=>{
@@ -180,6 +201,13 @@ console.log(JSON.stringify({
  existing_d1_72h_journal_only:true,b2_requests:0,supabase_requests:0,
  x402_charges:0,original_content_persisted:false,
 }));
+// Reuse the already verified complete baseline and successful writes. Static
+// website publication must not perform another D1 fetch for the same batch.
+if(journalVerified){
+ mkdirSync("artifacts/derived-news",{recursive:true});
+ const archiveSignals=verifiedArchiveSignals;
+ writeFileSync("artifacts/derived-news/permanent-archive-candidates.json",JSON.stringify({schema:"geomacro.permanent-derived-news-candidates.v1",signals:archiveSignals}),{mode:0o600});
+}
 if(process.env.GEOMACRO_LOW_SOURCE_REVIEW==='1'){
  try{
   const path=process.env.GEOMACRO_LOW_REVIEW_REFS_FILE??'',temp=process.env.RUNNER_TEMP??'';

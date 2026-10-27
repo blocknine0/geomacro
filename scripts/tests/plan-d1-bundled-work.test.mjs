@@ -81,3 +81,19 @@ test("provider error or denied GraphQL is safe HOLD with no writes",async()=>{
  assert.equal(x.reason,"D1_ACCOUNT_QUOTA_PROBE_FAILED");
  assert.equal(x.d1_rows_written,0);
 });
+test('observed production pacing hold still admits only a full-day budgeted small source bundle',()=>{
+ const at=new Date('2026-10-27T09:17:28.000Z');
+ const result=planD1BundledWork(quota(2825556,21330),{now:at});
+ assert.equal(result.critical,false);assert.equal(result.research,false);assert.equal(result.maintenance,false);
+ assert.equal(result.source_intake,true);
+ const budget=result.source_intake_budget_to_utc_reset;
+ assert.ok(budget.rows_read<=4000*288+100000);assert.ok(budget.rows_written<=101*288+2000);
+ assert.ok(result.remaining_rows_read-budget.rows_read>750000);
+ assert.ok(result.remaining_rows_written-budget.rows_written>15000);
+ assert.equal(result.source_intake_does_not_admit_signing_or_audits,true);
+});
+test('bounded source intake cannot consume the protected reserve or use unknown quota counters',()=>{
+ for(const [read,written]of [[4300000,10000],[1000,86000],[5000000,100000]])assert.equal(planD1BundledWork(quota(read,written),{now}).source_intake,false);
+ assert.equal(planD1BundledWork(null,{now}).source_intake,false);
+ assert.equal(planD1BundledWork({...quota(1000,100),day_utc:'2026-10-26'},{now}).source_intake,false);
+});

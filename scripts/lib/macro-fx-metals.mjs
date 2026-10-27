@@ -91,3 +91,17 @@ export async function boundedMacroGet(url,{fetchImpl=fetch,accept='application/x
  const bytes=new Uint8Array(size);let offset=0;for(const p of parts){bytes.set(p,offset);offset+=p.length;}
  return {text:new TextDecoder('utf-8',{fatal:true}).decode(bytes),etag:res.headers.get('etag')?.slice(0,200)??null};
 }
+/** Fill each existing 64 KiB ingress request as far as row and UTF-8 limits allow. */
+export function packDerivedNewsBatches(signals,maxRows=50,maxBytes=60*1024){
+ if(!Array.isArray(signals)||!Number.isSafeInteger(maxRows)||maxRows<1||maxRows>50||!Number.isSafeInteger(maxBytes)||maxBytes<1000||maxBytes>64*1024)throw Error('NEWS_BATCH_BUDGET_INVALID');
+ const encoder=new TextEncoder();
+ const overhead=encoder.encode(JSON.stringify({schema:'geomacro.website-derived-news-batch.v1',signals:[]})).byteLength;
+ const batches=[];let batch=[],bytes=overhead;
+ for(const signal of signals){
+  const size=encoder.encode(JSON.stringify(signal)).byteLength;
+  if(size+overhead>maxBytes)throw Error('NEWS_SIGNAL_EXCEEDS_BYTE_BUDGET');
+  if(batch.length&&(batch.length===maxRows||bytes+size+1>maxBytes)){batches.push(batch);batch=[];bytes=overhead;}
+  bytes+=size+(batch.length?1:0);batch.push(signal);
+ }
+ if(batch.length)batches.push(batch);return batches;
+}

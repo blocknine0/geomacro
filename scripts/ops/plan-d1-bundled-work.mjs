@@ -45,7 +45,7 @@ const safeInt=x=>Number.isSafeInteger(x)&&x>=0;
 const held=(reason,now)=>Object.freeze({
   schema:"geomacro.d1-free-bundled-work-admission.v1",
   day_utc:now.toISOString().slice(0,10),state:"HELD",
-  reason,critical:false,research:false,maintenance:false,
+  reason,critical:false,research:false,maintenance:false,source_intake:false,
   d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
   budget_is_nonatomic_provider_snapshot:true,
 });
@@ -72,6 +72,15 @@ export function planD1BundledWork(snapshot,{now=new Date()}={}){
     snapshot.observed_rows_read<paced[lane].rows_read &&
     snapshot.observed_rows_written<paced[lane].rows_written,
   ]));
+  // One serial five-minute collector can continue during discretionary pacing
+  // holds only if the remaining DAY fits its worst-case finite allocation.
+  // This never admits the signer, reviewer, R2 exporter or audit fan-out.
+  const slotsRemaining=Math.ceil((DAY_MS-(now.getTime()%DAY_MS))/300_000);
+  const intakeBudget={rows_read:4000*slotsRemaining+100000,
+    rows_written:101*slotsRemaining+2000,remaining_five_minute_slots:slotsRemaining};
+  const sourceIntake=grants.critical || (
+    snapshot.remaining_rows_read>D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read &&
+    snapshot.remaining_rows_written>D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written);
   // The observed account budget is the shared physical constraint.
   // Do not declare an exhausted account healthy even if a second DB is idle.
   const state=grants.maintenance?"NORMAL":grants.research?"CONSERVE":
@@ -80,7 +89,9 @@ export function planD1BundledWork(snapshot,{now=new Date()}={}){
     schema:"geomacro.d1-free-bundled-work-admission.v1",
     day_utc:snapshot.day_utc,state,
     reason:state==="HELD"?"D1_FREE_RESERVE_REACHED":"ACCOUNT_WIDE_HEADROOM_OBSERVED",
-    ...grants,
+    ...grants,source_intake:sourceIntake,
+    source_intake_budget_to_utc_reset:intakeBudget,
+    source_intake_does_not_admit_signing_or_audits:true,
     observed_rows_read:snapshot.observed_rows_read,
     observed_rows_written:snapshot.observed_rows_written,
     remaining_rows_read:snapshot.remaining_rows_read,
@@ -111,11 +122,13 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   };
   console.log(JSON.stringify(receipt));
   if(process.env.GITHUB_OUTPUT){
-    for(const key of ["critical","research","maintenance"]){
+    for(const key of ["critical","research","maintenance","source_intake"]){
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key])+"\n");
     }
     appendFileSync(process.env.GITHUB_OUTPUT,"state="+result.state+"\n");
   }
-  if(result.state==="HELD")
+  if(result.source_intake&&result.critical!==true)
+    console.log("::notice::SOURCE_INTAKE_ONLY — bounded original news and static archive may continue; signing/review/audits stay held.");
+  if(result.state==="HELD"&&!result.source_intake)
     console.log("::notice::D1_BUNDLED_WORK_HELD — source publication not attempted; coverage degraded, not zero events.");
 }

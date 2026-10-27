@@ -15,7 +15,7 @@ const atom=(title,url,clock=at)=>`<feed><entry><title>${title}</title><link href
 const freshState=()=>({schema:'geomacro.macro-fastlane-state.v1',checked_at:new Date(now).toISOString(),quota_lease_until:new Date(now+12*60000).toISOString(),cursors:{},events:[],quotes:[],source_checks:[],price_checks:[],calendar_checks:[],calendar_checked_at:now});
 class DB{
  constructor(state={}){this.state=state;this.news=new Map();this.operations=[];}
- prepare(sql){const db=this;return {bind(...args){return {async first(){db.operations.push('read_state');return Object.keys(db.state).length?{value_json:JSON.stringify(db.state)}:null;},async run(){if(sql.startsWith('INSERT INTO control_state')){db.state=JSON.parse(args[1]);db.operations.push('write_state');}else if(sql.includes('website_derived_intelligence')){db.news.set(args[0],JSON.parse(args[4]));db.operations.push('write_news');}return {success:true};},sql,args};}};}
+ prepare(sql){const db=this;return {async run(){db.operations.push('retention');return {success:true};},bind(...args){return {async first(){db.operations.push('read_state');return Object.keys(db.state).length?{value_json:JSON.stringify(db.state)}:null;},async run(){if(sql.startsWith('INSERT INTO control_state')){db.state=JSON.parse(args[1]);db.operations.push('write_state');}else if(sql.startsWith('INSERT INTO website_derived_intelligence')){db.news.set(args[0],JSON.parse(args[4]));db.operations.push('write_news');}return {success:true};},sql,args};}};}
  async batch(statements){for(const s of statements){this.news.set(s.args[0],JSON.parse(s.args[4]));this.operations.push('write_news');}return statements.map(()=>({success:true}));}
 }
 test('Macro lanes cover all pinned issuers and never double-fetch shared Fed/ECB',()=>{
@@ -140,4 +140,20 @@ test('Publisher text is decoded once and hidden script clocks cannot fabricate a
  const event={kind:'fomc',at:'2026-10-28T18:00:00.000Z'};
  const hidden='<h3>Federal Reserve issues FOMC statement</h3><script>October 28, 2026 For release at 2:00 p.m. EDT</script x><p>September 16, 2026 For release at 2:00 p.m. EDT</p>';
  assert.equal(verifiedDirectRelease(hidden,directReleaseSpec(event),event,Date.parse(event.at)+60000),null);
+});
+test('Quote validation uses receipt time after polling, without admitting actually future quotes',async()=>{
+ const received=now+30000;
+ const result=await collectMacroFastlane({now,quoteClock:()=>received,state:freshState(),sourceIds:[],calendars:false,fetchImpl:async url=>new Response(JSON.stringify({symbol:url.endsWith('XAU')?'XAU':'XAG',price:100,currency:'USD',updatedAt:new Date(now+20000).toISOString()}))});
+ assert.equal(result.state.quotes.length,2);
+ assert.ok(result.state.quotes.every(q=>Date.parse(q.received_at)===received));
+ assert.equal(normalizeMetalQuote({symbol:'XAU',currency:'USD',price:100,updatedAt:new Date(received+1000).toISOString()},'XAU',received),null);
+});
+test('Maximum packing respects both the 50-row cap and the existing UTF-8 HTTP ingress limit',async()=>{
+ const {packDerivedNewsBatches}=await import('../lib/macro-fx-metals.mjs');
+ const rows=Array.from({length:120},(_,id)=>({id,text:'অ'.repeat(700)}));
+ const batches=packDerivedNewsBatches(rows);
+ assert.deepEqual(batches.flat(),rows);
+ assert.ok(batches.every(b=>b.length<=50&&new TextEncoder().encode(JSON.stringify({schema:'geomacro.website-derived-news-batch.v1',signals:b})).byteLength<=60*1024));
+ assert.ok(batches.length>Math.ceil(rows.length/50));
+ assert.equal(packDerivedNewsBatches([]).length,0);
 });
