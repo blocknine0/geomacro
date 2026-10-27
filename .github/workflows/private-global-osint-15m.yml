@@ -19,6 +19,8 @@ on:
       - ".github/workflows/private-global-osint-15m.yml"
       - "scripts/lib/private-osint-15m-collector.mjs"
       - "scripts/lib/private-osint-country-rotation.mjs"
+      - "scripts/lib/private-osint-local-publisher-rotation.mjs"
+      - "scripts/lib/private-osint-local-publisher-rotation.test.mjs"
       - "scripts/lib/private-osint-country-rotation.test.mjs"
       - "scripts/lib/private-osint-15m-collector.test.mjs"
       - "scripts/lib/derived-news-readback-policy.mjs"
@@ -88,6 +90,8 @@ on:
       - "src/lib/stateless-intelligence-model.ts"
       - "scripts/lib/private-osint-15m-collector.mjs"
       - "scripts/lib/private-osint-country-rotation.mjs"
+      - "scripts/lib/private-osint-local-publisher-rotation.mjs"
+      - "scripts/lib/private-osint-local-publisher-rotation.test.mjs"
       - "scripts/lib/private-osint-country-rotation.test.mjs"
       - "scripts/lib/private-osint-15m-collector.test.mjs"
       - "scripts/ops/probe-private-osint-live-category-coverage.mjs"
@@ -145,7 +149,9 @@ jobs:
           node --test scripts/lib/private-osint-website-derived-contract.test.mjs
           node --check workers/control-plane/src/private-osint-15m.mjs
           node --check scripts/lib/private-osint-country-rotation.mjs
+          node --check scripts/lib/private-osint-local-publisher-rotation.mjs
           node --test scripts/lib/private-osint-country-rotation.test.mjs
+          node --test scripts/lib/private-osint-local-publisher-rotation.test.mjs
           node --test scripts/lib/private-osint-15m-collector.test.mjs
           node --test scripts/lib/private-osint-15m-durable-publisher.test.mjs
           node --test scripts/lib/private-osint-15m-d1.test.mjs

@@ -9,7 +9,7 @@
  * article bodies persisted. Never promote OSINT to verified/paid news.
  */
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
-import {privateOsintRuntimeSources,COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES} from "./private-osint-country-rotation.mjs";
+import {privateOsintRuntimeSources,COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,COUNTRY_DISCOVERY_LOCAL_LANE_CYCLE_MINUTES} from "./private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources,PRIVATE_OSINT_TOPICS,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,privateOsintCorridorSourceCoverage,privateOsintCategoryLiveCoverage} from "./private-osint-global-sources.mjs";
 export const PRIVATE_OSINT_TARGET_MINUTES=15;
 export const PRIVATE_OSINT_POLL_MINUTES=5;
@@ -179,7 +179,16 @@ export async function collectPrivateOsint15m({
       configured_country_routes:195,configured_categories:3,configured_country_category_routes:585,
       registered_source_endpoints:registry.length,source_endpoints_attempted:registry.length,
       rotating_country_index_sources_this_tick:registry.filter(s=>s.private_discovery_index_only===true).length,
-      rotating_country_index_nominal_full_cycle_minutes:COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,
+      rotating_country_index_nominal_full_cycle_minutes:
+        registry.some(s=>s.private_country_local_candidate===true)?
+          COUNTRY_DISCOVERY_LOCAL_LANE_CYCLE_MINUTES:COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,
+      local_publisher_candidate_endpoints_this_tick:
+        registry.filter(s=>s.private_country_local_candidate===true).length,
+      local_publisher_country_candidates_this_tick:new Set(registry
+        .filter(s=>s.private_country_local_candidate===true)
+        .map(s=>s.publisher_country_iso3)).size,
+      local_publisher_native_time_and_category_required:true,
+      publisher_country_does_not_assign_event_country:true,
       rotating_country_index_is_not_original_publisher:true,
       rotating_country_index_does_not_supply_event_country:true,
       source_checks:checks.size,source_states:count,

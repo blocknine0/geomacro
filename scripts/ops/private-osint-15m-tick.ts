@@ -6,6 +6,8 @@
  */
 import {createHmac,createHash} from "node:crypto";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
+import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
+import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
 import {persistPrivateOsintBatch} from "../lib/private-osint-15m-durable-publisher.mjs";
 import {privateGdeltGlobalDiscovery} from "../lib/private-osint-gdelt-global.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
@@ -42,8 +44,13 @@ const candidateIds=new Set();
 // At most 300 most recent concrete reports from each lane; no publisher
 // titles/links ever enter public D1 and no extra fetch or provider charge.
 const observedByCategory=new Map(["geopolitics","macro","rare_earth"].map(c=>[c,new Map()]));
+// The same bounded 15-minute production job now includes 24 native country
+// publisher candidates and 25 index-only country leads per slot. This reuses
+// the 49 optional GET positions; no parallel job, quota bypass or extra D1.
+const runtimeSources=privateOsintRuntimeSources(timestamp,privateOsintGlobalSources(),
+ COUNTRIES_195,{includeLocalGapLane:true});
 const result=await collectPrivateOsint15m({
- now:timestamp,normalize:normalizeReusableNewsJson,
+ now:timestamp,registry:runtimeSources,normalize:normalizeReusableNewsJson,
  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
  onOriginalCandidate:researchPrivateOnly?null:(raw=>{
   const eligible=officialWebsiteCandidateFromOsint(raw,timestamp.getTime());

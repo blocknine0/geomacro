@@ -8,7 +8,7 @@
 import {createHash} from "node:crypto";
 import {writeFileSync} from "node:fs";
 import {
- privateOsintCategoryLiveCoverage,
+ privateOsintGlobalSources,privateOsintCategoryLiveCoverage,
  privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,
  privateOsintCorridorSourceCoverage,
 } from "../lib/private-osint-global-sources.mjs";
@@ -29,7 +29,10 @@ const sourceRef=(source,category)=>createHash("sha256")
  .update([source.id,source.url,category].join("\n")).digest("hex");
 const outputPath="/tmp/geomacro-private-osint-live-coverage.json";
 const startedAt=new Date();
-const sources=privateOsintRuntimeSources(startedAt);
+// Probe the exact same country-local production rotation rather than only
+// read-only country gap catalogues which never write canonical D1.
+const sources=privateOsintRuntimeSources(startedAt,privateOsintGlobalSources(),
+ COUNTRIES_195,{includeLocalGapLane:true});
 let checks=[],items=[],report;
 try{
  const result=await collectPrivateOsint15m({
@@ -69,7 +72,12 @@ try{
   source_checks_completed:checks.length,
   observed_native_dated_items:items.length,
   rotating_country_index_queries_this_tick:sources.filter(s=>s.private_discovery_index_only===true).length,
-  rotating_country_index_nominal_full_cycle_minutes:COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,
+  rotating_country_index_nominal_full_cycle_minutes:
+    sources.some(s=>s.private_country_local_candidate===true)?120:COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,
+  country_local_publisher_feeds_selected_this_tick:sources.filter(s=>s.private_country_local_candidate===true).length,
+  country_local_publisher_countries_selected_this_tick:
+    new Set(sources.filter(s=>s.private_country_local_candidate===true).map(s=>s.publisher_country_iso3)).size,
+  country_local_candidate_publisher_is_not_event_country:true,
   rotating_country_index_original_page_verified:false,
   status:fullSourceCoverage&&allCountryEventCellsObserved?"FULL_195X3_SOURCE_FALLBACK_AND_COUNTRY_ATTRIBUTED_ITEMS_THIS_TICK":
    fullSourceCoverage?"FULL_585_SOURCE_FALLBACKS_AND_THREE_CATEGORY_ITEMS_COUNTRY_EVENT_CELLS_PARTIAL":
