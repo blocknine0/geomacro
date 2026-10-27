@@ -93,6 +93,11 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
         </div>
         {card&&winner?(
           <div className="mt-5">
+            {unavailable ? (
+              <div role="status" aria-live="polite" className="mb-4 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs leading-5 text-foreground">
+                Latest previously observed finding. New source checks are unavailable; this is not a confirmed current ingestion update.
+              </div>
+            ) : null}
             <h2 className="max-w-[34rem] text-[clamp(1.25rem,2vw,1.7rem)] font-semibold leading-snug tracking-[-0.025em]">
               {display?.headline}
             </h2>
@@ -103,7 +108,7 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
             <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
               <Clock3 className="h-3 w-3 shrink-0" aria-hidden="true" />
               <time dateTime={winner.originalAt}>{eventDate(winner.originalAt)} UTC</time>
-              <span>{winner.isCurrent?"Original release within 24h":"Earlier original release · not current"}</span>
+              <span>{unavailable?"Source freshness unverified":winner.isCurrent?"Original release within 24h":"Earlier original release · not current"}</span>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
               Geomacro / Intelligence
