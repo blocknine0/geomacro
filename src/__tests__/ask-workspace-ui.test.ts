@@ -27,7 +27,7 @@ describe("Ask Geomacro conversational workspace", () => {
 
   it("keeps chat sessions separate and sends only the active chat's last question as context", () => {
     expect(workspace).toContain("const previousQuestion = active.turns.at(-1)?.resolvedQuestion;");
-    expect(workspace).toContain("requestPublicAsk(question, previousQuestion)");
+    expect(workspace).toContain("requestPublicAsk(question, previousQuestion, controller.signal)");
     expect(workspace).toContain("session.id === chatId");
     expect(workspace).toContain("const MAX_VISIBLE_TURNS = 12;");
     expect(workspace).toContain("const MAX_SESSIONS = 10;");

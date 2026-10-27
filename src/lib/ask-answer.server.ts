@@ -1,3 +1,4 @@
+import { domainGuideAnswer } from "./ask-domain-guide";
 import {
   answerQuestion as answerHybridQuestion,
   type HybridAskAnswer,
@@ -154,6 +155,8 @@ function unavailableScoredIndex(label: string): HybridAskAnswer {
 }
 
 export async function answerAskQuestion(question: string): Promise<HybridAskAnswer> {
+  const guide = domainGuideAnswer(question);
+  if (guide) return guide;
   // Explicit named index questions are never answered by keyword-matched
   // news or B2 articles. First try the existing signed/verified Risk Indices
   // reader; if unavailable or label-mismatched, give a useful, truthful

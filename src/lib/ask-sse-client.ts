@@ -19,7 +19,7 @@ export function decodeAskEvent(frame:string){
 /** The response is SSE *progress* plus a fully verified bounded final answer.
  * Never append speculative token text to the chat transcript. */
 export async function streamPublicAsk(
-  question:string,history:readonly Turn[],onStage?:(stage:AskStreamStage)=>void,
+  question:string,history:readonly Turn[],onStage?:(stage:AskStreamStage)=>void, signal?:AbortSignal,
 ):Promise<StreamedAsk>{
  let response:Response;
  try {
@@ -29,10 +29,11 @@ export async function streamPublicAsk(
      credentials:"same-origin",cache:"no-store",
      // A nonresponsive newer stream must not consume the entire browser
      // request timeout; the original same-origin GET remains a backstop.
-     signal:AbortSignal.timeout(17_000),
+     signal:signal ? AbortSignal.any([signal, AbortSignal.timeout(17_000)]) : AbortSignal.timeout(17_000),
      body:JSON.stringify({question,history:history.slice(-8)}),
    });
  }catch(error){
+   if(signal?.aborted) throw signal.reason ?? new DOMException("Stopped", "AbortError");
    if(error instanceof TypeError||
       (error instanceof Error&&["TimeoutError","AbortError"].includes(error.name)))
      throw new LegacyAskTransportOnlyError();
@@ -82,6 +83,7 @@ export async function streamPublicAsk(
    }
   }
  }catch(error){
+   if(signal?.aborted) throw signal.reason ?? new DOMException("Stopped", "AbortError");
    // Network/body disconnect only; never retry a correctly framed SSE
    // verification rejection, which must remain a visible error.
    if(error instanceof TypeError||
@@ -91,4 +93,14 @@ export async function streamPublicAsk(
  }finally{reader.releaseLock();}
  if(!completed)throw new LegacyAskTransportOnlyError();
  return completed;
+}
+
+/** Stop must settle the UI even when a proxy buffers the network abort. */
+export function withAskCancellation<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+ return new Promise<T>((resolve,reject)=>{
+  const cancel=()=>reject(signal.reason ?? new DOMException("Stopped","AbortError"));
+  if(signal.aborted){cancel();return;}
+  signal.addEventListener("abort",cancel,{once:true});
+  operation.then(resolve,reject).finally(()=>signal.removeEventListener("abort",cancel));
+ });
 }

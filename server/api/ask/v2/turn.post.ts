@@ -64,7 +64,9 @@ export default defineEventHandler(async event=>{
      error instanceof Error&&error.message==="AMBIGUOUS_FOLLOW_UP"?
      "ASK_CLARIFY_FOLLOW_UP":"ASK_UNAVAILABLE";
     emit("error",{ok:false,error:{code,message:code==="ASK_UNAVAILABLE"?
-     "Verified research is temporarily unavailable.":"Please refine the question or retry later."}});
+     "Verified research is temporarily unavailable. Please retry.":code==="ASK_CLARIFY_FOLLOW_UP"?
+     "Please name the topic you mean, or ask a complete question in Geopolitics, Macro Economics or Critical Minerals.":
+     "Too many requests. Please wait a minute before trying again."}});
    }finally{try{controller.close();}catch{/* disconnected */}}
   }
  });

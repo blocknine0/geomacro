@@ -1,3 +1,4 @@
+import { withPublicRuntimeTimeout } from "./public-runtime-timeout";
 import { z } from "zod";
 
 import { answerAskQuestion } from "./ask-answer.server";
@@ -52,5 +53,21 @@ export async function executeAskGeomacro(
     throw new AskGeomacroRateLimitError();
   }
 
-  return toCommercialAskBrief(await answerAskQuestion(data.question), data.question) as AskAnswer;
+  try {
+    return await withPublicRuntimeTimeout(
+      (async () => toCommercialAskBrief(await answerAskQuestion(data.question), data.question) as AskAnswer)(),
+      14_000,
+      "ASK_RESEARCH_DEADLINE",
+    );
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "ASK_RESEARCH_DEADLINE") throw error;
+    return {
+      summary: "The evidence check took too long to complete. Please retry or narrow the question to a topic and country.",
+      what_changed: "", why_it_matters: "", geomacro_view: "",
+      evidence: [], insufficient_evidence: true, mean_relevance: null,
+      low_confidence: true, gri: null, generatedAt: new Date().toISOString(),
+      data_mode: "ephemeral_live", cache_status: "miss", source_identity_exposed: false,
+      durable_live_storage_write: false,
+    };
+  }
 }

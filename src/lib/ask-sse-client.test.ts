@@ -1,5 +1,5 @@
 import {afterEach,describe,expect,it,vi} from "vitest";
-import {decodeAskEvent,streamPublicAsk,LegacyAskTransportOnlyError} from "./ask-sse-client";
+import {decodeAskEvent,streamPublicAsk,withAskCancellation,LegacyAskTransportOnlyError} from "./ask-sse-client";
 import {readFileSync} from "node:fs";
 describe("Ask progress-stream security and compatibility",()=>{
  it("strictly parses allowlisted named JSON events, no arbitrary event types",()=>{
@@ -19,7 +19,7 @@ describe("Ask progress-stream security and compatibility",()=>{
   expect(route).toContain('emit("answer"');
   expect(route).not.toContain("settleCoinbaseX402");
   expect(route).not.toContain("signRiskObject");
-  expect(ui).toContain("streamPublicAsk(question, history, setResearchStage)");
+  expect(ui).toContain("streamPublicAsk(question, history, setResearchStage, controller.signal)");
   expect(ui).toContain("LegacyAskTransportOnlyError");
   expect(readFileSync("src/lib/ask-legacy-transport.ts","utf8")).toContain('fetch("/api/public-ask"');
   expect(client).toContain("MAX_EVENT_BYTES");
@@ -70,4 +70,20 @@ describe("Ask Geomacro reliable free public transport with old Lovable edge",()=
   expect(result.answer.insufficient_evidence).toBe(true);
   expect(result.answer.summary).toBe(body.summary);
  });
+});
+
+describe("explicit cancellation",()=>{
+ afterEach(()=>vi.unstubAllGlobals());
+ it("does not turn user Stop into a legacy retry",async()=>{
+  const controller=new AbortController();
+  vi.stubGlobal("fetch",vi.fn(async()=>{controller.abort();throw new DOMException("Stopped","AbortError");}));
+  await expect(streamPublicAsk("Explain inflation",[],undefined,controller.signal))
+    .rejects.not.toBeInstanceOf(LegacyAskTransportOnlyError);
+ });
+});
+
+it("Stop settles independently of a buffering network proxy",async()=>{
+ const c=new AbortController();
+ const pending=withAskCancellation(new Promise<never>(()=>{}),c.signal);
+ c.abort();await expect(pending).rejects.toMatchObject({name:"AbortError"});
 });

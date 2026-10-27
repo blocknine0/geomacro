@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUp, Check, Copy, Loader2, Menu, MessageSquare, PanelLeftClose, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowUp, Check, Copy, Loader2, Menu, MessageSquare, PanelLeftClose, Plus, ShieldCheck, Square, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/foundation/async-states";
 import type { AskAnswer } from "@/lib/ask-geomacro.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
-import { streamPublicAsk, LegacyAskTransportOnlyError, type AskStreamStage } from "@/lib/ask-sse-client";
+import { streamPublicAsk, withAskCancellation, LegacyAskTransportOnlyError, type AskStreamStage } from "@/lib/ask-sse-client";
 import { requestPublicAsk } from "@/lib/ask-legacy-transport";
 import { AssistantAnswer, UserBubble } from "./ask-answer-view";
 import {
@@ -15,9 +15,9 @@ import {
 
 const SUGGESTIONS = [
   "What changed today?",
-  "What is driving geopolitical risk?",
-  "What is driving macro risk?",
-  "What is changing in critical minerals?",
+  "Explain geopolitical risk",
+  "How do interest rates affect currencies?",
+  "What are rare earths?",
 ] as const;
 
 const MAX_LEN = 300;
@@ -47,6 +47,8 @@ export function AskWorkspace() {
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [researchStage, setResearchStage] = useState<AskStreamStage>("researching");
   const sequence = useRef(0);
+  const requestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => requestRef.current?.abort(), []);
   const messagesRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
 
@@ -102,6 +104,8 @@ export function AskWorkspace() {
       const question = raw.trim();
       if (question.length < 4 || question.length > MAX_LEN || pending) return;
 
+      const controller = new AbortController();
+      requestRef.current = controller;
       const chatId = active.id;
       const previousQuestion = active.turns.at(-1)?.resolvedQuestion;
       const turnId = ++sequence.current;
@@ -116,16 +120,17 @@ export function AskWorkspace() {
           role: "user" as const, content: turn.resolvedQuestion,
         }));
         const result = await withPublicRuntimeTimeout(
-          streamPublicAsk(question, history, setResearchStage).catch(error => {
+          withAskCancellation(streamPublicAsk(question, history, setResearchStage, controller.signal).catch(error => {
             // Old Lovable deploys can temporarily lack the new POST stream;
-            // fallback ONLY on explicit 404/405, never on provider or auth errors.
+            // fallback only on a missing/broken transport, never security or rate-limit verdicts.
             if (error instanceof LegacyAskTransportOnlyError)
-              return requestPublicAsk(question, previousQuestion);
+              return requestPublicAsk(question, previousQuestion, controller.signal);
             throw error;
-          }),
+          }), controller.signal),
           PUBLIC_ASK_REQUEST_TIMEOUT_MS,
           "Ask Geomacro request timed out.",
         );
+        if (controller.signal.aborted) return;
         setSessions((current) =>
           current.map((session) =>
             session.id === chatId
@@ -141,22 +146,36 @@ export function AskWorkspace() {
           ),
         );
       } catch (err) {
+        if (controller.signal.aborted) return;
+        controller.abort();
         setFailure({ chatId, question, error: reportError("ask-geomacro", err, "research query") });
       } finally {
-        setPending(null);
+        if (requestRef.current === controller) {
+          requestRef.current = null;
+          setPending(null);
+        }
       }
     },
     [active, pending],
   );
 
+  const stopResponse = () => {
+    const stopped = pending;
+    const controller = requestRef.current;
+    requestRef.current = null;
+    controller?.abort();
+    setPending(null);
+    if (stopped?.chatId === activeId) setQuery(stopped.question);
+  };
+
   const copyAnswer = async (turn: ChatTurn) => {
     const { answer } = turn;
-    const body = [
+    const body = [...new Set([
       answer.summary,
       answer.what_changed,
       answer.why_it_matters,
       answer.geomacro_view,
-    ].filter(Boolean).join("\n\n");
+    ].filter(Boolean))].join("\n\n");
     try {
       await navigator.clipboard.writeText(body);
       setCopiedId(turn.id);
@@ -265,7 +284,7 @@ export function AskWorkspace() {
             </div>
           </div>
           <span className="hidden rounded-full border border-border px-3 py-1 font-mono text-[10px] uppercase tracking-wide text-muted-foreground sm:inline-flex">
-            Geopolitics · Macro/FX · Minerals
+            Geopolitics · Macro Economics · Critical Minerals
           </span>
           <button
             type="button"
@@ -289,7 +308,7 @@ export function AskWorkspace() {
                   What would you like to understand?
                 </h2>
                 <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
-                  Ask a public risk question for free. Explore geopolitical developments, macro/FX and critical minerals.
+                  Explore Geopolitics, Macro Economics and Critical Minerals / Rare Earths. Ask for an explanation, check developments, or continue with a follow-up.
                   Each response is grounded in available evidence, with uncertainty stated clearly.
                 </p>
                 <div className="mt-8 grid w-full gap-3 text-left sm:grid-cols-2">
@@ -321,6 +340,11 @@ export function AskWorkspace() {
                   >
                     {copiedId === turn.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copiedId === turn.id ? "Copied" : "Copy"}
+                  </button>
+                  <button type="button" disabled={loading} onClick={() => void ask(turn.question)}
+                    aria-label="Ask this question again"
+                    className="ml-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50">
+                    <RotateCcw className="h-3.5 w-3.5" /> Ask again
                   </button>
                 </div>
               </div>
@@ -378,7 +402,10 @@ export function AskWorkspace() {
                   placeholder="Message Ask Geomacro…"
                   className="min-h-12 max-h-36 flex-1 resize-y bg-transparent px-3 py-2 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-60"
                 />
-                <Button
+                {loading ? <Button key="stop" type="button" size="icon" className="mb-0.5 h-10 w-10 shrink-0 rounded-xl"
+                  aria-label="Stop response" onClick={stopResponse}>
+                  <Square className="h-4 w-4" />
+                </Button> : <Button key="send"
                   type="submit"
                   size="icon"
                   className="mb-0.5 h-10 w-10 shrink-0 rounded-xl"
@@ -386,11 +413,11 @@ export function AskWorkspace() {
                   aria-label="Send question"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
-                </Button>
+                </Button>}
               </div>
             </form>
             <p className="mt-2 text-center text-[11px] leading-5 text-muted-foreground">
-              Enter to send · Shift+Enter for a new line · Follow-ups use bounded context, not previous answers as evidence.
+              {query.length}/{MAX_LEN} · Enter to send · Shift+Enter for a new line · Follow-ups use bounded context, not previous answers as evidence.
             </p>
             <p className="text-center text-[11px] leading-5 text-muted-foreground">
               Public chat is free; structured API products use separate x402 pricing.{" "}

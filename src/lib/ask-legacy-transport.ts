@@ -9,9 +9,11 @@ type PublicAskResponse =
 export async function requestPublicAsk(
   question: string,
   previousQuestion?: string,
+  signal?: AbortSignal,
 ): Promise<{ answer: AskAnswer; resolvedQuestion: string }> {
   const response = await fetch("/api/public-ask", {
     method: "GET",
+    signal,
     headers: {
       Accept: "application/json",
       "X-Geomacro-Question": question.slice(0, MAX_LEN),
