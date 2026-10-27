@@ -79,7 +79,14 @@ describe("website lock governance", () => {
     expect(unscoredWordHideApproval.approved_ui_commit).toBe(fastlaneApproval.previous_baseline_sha);
     const factoryApproval=config.approved_news_factory_pricing_setup_20261027;
     expect(fastlaneApproval.approved_ui_commit).toBe(factoryApproval.previous_baseline_sha);
-    expect(factoryApproval.approved_ui_commit).toBe(config.baseline_sha);
+    const overviewApproval = config.approved_api_agent_buyer_overview_20261027;
+    expect(factoryApproval.approved_ui_commit).toBe(overviewApproval.previous_baseline_sha);
+    expect(overviewApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(overviewApproval.scope).toEqual(["src/routes/data-api.tsx", "src/components/capability-price-schedule.tsx"]);
+    expect(overviewApproval.predge_unmodified).toBe(true);
+    expect(overviewApproval.internal_tool_implementation_retained).toBe(true);
+    expect(overviewApproval.paid_pricing_unmodified).toBe(true);
+    expect(overviewApproval.payment_authorized).toBe(false);
     expect(factoryApproval.approved_ui_commit).toBe("7678071ff8c68f238968943556295545491f98b6");
     expect(factoryApproval.scope).toEqual(["src/components/structured-product-setup.tsx","src/routes/pricing.tsx"]);
     expect(factoryApproval.global_risk_final_lock_unmodified).toBe(true);
