@@ -8,7 +8,8 @@ import {verifyFirstSalePriceManifest} from "./first-sale-price-proof.mjs";
 export const EARNING_PILOT_CASES = [
   { name: "geopolitics", topic: "conflict_geopolitics", country: "USA" },
   { name: "macro_fx", topic: "macro_risk", country: "USA" },
-  { name: "critical_minerals", topic: "critical_minerals", country: "USA" },
+  { name: "critical_minerals", topic: "critical_minerals", country: "USA",
+    first_sale_product: true },
 ];
 // One bounded alternate-market diagnosis reuses the exact same governed
 // availability endpoint, with no additional source spider, B2 scan or wallet.
@@ -17,7 +18,8 @@ export const EARNING_PILOT_CASES = [
 export const EARNING_PILOT_ALTERNATE_CASES = Object.freeze([
   Object.freeze({ name: "geopolitics", topic: "conflict_geopolitics", country: "UKR" }),
   Object.freeze({ name: "macro_fx", topic: "macro_risk", country: "BRA" }),
-  Object.freeze({ name: "critical_minerals", topic: "critical_minerals", country: "AUS" }),
+  Object.freeze({ name: "critical_minerals", topic: "critical_minerals", country: "AUS",
+    first_sale_product: true }),
 ]);
 /** Choose exactly one of two approved three-case sets on existing six-hour diagnostics.
  * Every result is no-funds diagnostic, not a payment or launch authorization.
@@ -154,6 +156,7 @@ export async function acceptEarningPilotLive({
   const firstSalePrice=verifyFirstSalePriceManifest(await get("/api/v1/pricing"));
 
   let eligibleCount=0,lockedCount=0,quoteReadyCount=0;
+  let firstSaleExplicitEligible=0,firstSaleExplicitQuoteReady=0;
   let governedUnavailableCount=0,requestFailureCount=0;
   // This is a diagnostic, not a purchase operation. Each country/domain is
   // separately checked; a 503/429 for one must not hide another genuine
@@ -161,6 +164,9 @@ export async function acceptEarningPilotLive({
   for(const item of pilotCases){
     const body={
       schema_version:"geomacro.agent-query.v1",
+      ...(item.first_sale_product ? {product:{
+        capability:"structural_country_digest",variant:"standard"
+      }} : {}),
       delivery_tier:"structural_baseline",
       fulfillment_mode:"published_only",
       subjects:[{type:"country",country_iso3:item.country}],
@@ -227,6 +233,9 @@ export async function acceptEarningPilotLive({
       throw Error("EARNING_PILOT_FALSE_POSITIVE_"+item.name.toUpperCase());
     if(available)eligibleCount++;
     if(available && data.status==="ELIGIBLE_FOR_X402_QUOTE")quoteReadyCount++;
+    if(available&&item.first_sale_product)firstSaleExplicitEligible++;
+    if(available&&item.first_sale_product&&
+       data.status==="ELIGIBLE_FOR_X402_QUOTE")firstSaleExplicitQuoteReady++;
     if(available && data.status==="ELIGIBLE_BUT_PAYMENT_RAIL_LOCKED")lockedCount++;
     if(!available)governedUnavailableCount++;
     steps.push({
@@ -258,10 +267,18 @@ export async function acceptEarningPilotLive({
     eligible_category_count:eligibleCount,
     payment_locked_category_count:lockedCount,
     quote_ready_category_count:quoteReadyCount,
+    first_sale_exact_product_preflight_verified: true,
+    first_sale_explicit_eligible_count:firstSaleExplicitEligible,
+    first_sale_explicit_quote_ready_count:firstSaleExplicitQuoteReady,
+    first_sale_product:"structural_country_digest",
+    first_sale_variant:"standard",
+    first_sale_catalog_price_usdc:firstSalePrice.catalog_only_usdc,
+    first_sale_offer_is_not_settlement:true,
     governed_no_payable_category_count:governedUnavailableCount,
     preflight_transport_error_category_count:requestFailureCount,
     first_earning_ready:!diagnosticOnly && !alternateProfile &&
-      exactMainPublished && firstSalePrice.founder_price_catalog_verified && quoteReadyCount>0,
+      exactMainPublished && firstSalePrice.founder_price_catalog_verified &&
+      firstSaleExplicitQuoteReady>0,
     no_funds_preflight_complete:true,
     checks:steps,
   };
