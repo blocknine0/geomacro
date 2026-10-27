@@ -83,7 +83,7 @@ test("GitHub artifact selection accepts protected main and at most 2 valid fresh
  assert.deepEqual(selectPrivateOsintSpoolArtifacts(
   [a2,bad,expired,stale,wrong,a1],now,2).map(x=>x.id),[8,9]);
  assert.deepEqual(selectPrivateOsintSpoolArtifacts([],now,1),[]);
- assert.throws(()=>selectPrivateOsintSpoolArtifacts(Array(101).fill(a1),now));
+ assert.throws(()=>selectPrivateOsintSpoolArtifacts(Array(301).fill(a1),now));
 });
 
 test("separate same-name ciphertext runs replay oldest first with main run ID required",()=>{
