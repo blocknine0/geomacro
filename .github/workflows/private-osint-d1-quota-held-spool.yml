@@ -6,7 +6,13 @@ name: Private OSINT Encrypted Holding When D1 Quota Held
 on:
   schedule:
     - cron: "7 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      r2_restore_key:
+        description: "Optional exact SHA-256 private ciphertext object key to restore into verified canonical D1, only while quota-admitted"
+        required: false
+        type: string
+        default: ""
   push:
     branches: [main]
     paths:
@@ -16,6 +22,8 @@ on:
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.test.mjs"
+      - "scripts/lib/private-osint-r2-encrypted-restore.test.mjs"
+      - "scripts/ops/private-osint-restore-r2-to-d1.mjs"
       - "scripts/ops/private-osint-mirror-held-to-r2.mjs"
       - "scripts/ops/private-osint-reuse-fresh-stage.mjs"
       - "scripts/tests/private-osint-reuse-fresh-stage.test.mjs"
@@ -27,6 +35,8 @@ on:
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.test.mjs"
+      - "scripts/lib/private-osint-r2-encrypted-restore.test.mjs"
+      - "scripts/ops/private-osint-restore-r2-to-d1.mjs"
       - "scripts/ops/private-osint-mirror-held-to-r2.mjs"
       - "scripts/ops/private-osint-reuse-fresh-stage.mjs"
       - "scripts/tests/private-osint-reuse-fresh-stage.test.mjs"
@@ -63,6 +73,8 @@ jobs:
           node --test scripts/lib/private-osint-shared-read-contract.test.mjs
           node --check scripts/ops/private-osint-mirror-held-to-r2.mjs
           node --test scripts/lib/private-osint-r2-encrypted-escrow.test.mjs
+          node --check scripts/ops/private-osint-restore-r2-to-d1.mjs
+          node --test scripts/lib/private-osint-r2-encrypted-restore.test.mjs
           node --check scripts/ops/private-osint-reuse-fresh-stage.mjs
           node --test scripts/tests/private-osint-reuse-fresh-stage.test.mjs
           node --test scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
@@ -161,3 +173,42 @@ jobs:
           if-no-files-found: ignore
           retention-days: 2
           compression-level: 0
+
+  restore-one-encrypted-private-r2-object-to-canonical-d1:
+    name: Restore one private R2 SHA object to verified D1 when quota admits
+    needs: [verify, quota-admission]
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.r2_restore_key != '' &&
+      vars.GEOMACRO_PRIVATE_OSINT_R2_BUCKET != '' &&
+      needs.quota-admission.outputs.critical == 'true'
+    concurrency:
+      group: geomacro-private-osint-r2-manual-d1-restore
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Restore AES-GCM source-neutral evidence with independent canonical D1 proof
+        env:
+          GEOMACRO_OSINT_R2_RESTORE_ADMISSION: "CRITICAL_TRUE"
+          GEOMACRO_OSINT_R2_RESTORE_OBJECT_KEY: ${{ inputs.r2_restore_key }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GEOMACRO_PRIVATE_OSINT_R2_BUCKET: ${{ vars.GEOMACRO_PRIVATE_OSINT_R2_BUCKET }}
+          GEOMACRO_PRIVATE_OSINT_R2_ACCESS_KEY_ID: ${{ secrets.GEOMACRO_PRIVATE_OSINT_R2_ACCESS_KEY_ID }}
+          GEOMACRO_PRIVATE_OSINT_R2_SECRET_ACCESS_KEY: ${{ secrets.GEOMACRO_PRIVATE_OSINT_R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          node scripts/ops/private-osint-restore-r2-to-d1.mjs

@@ -126,3 +126,48 @@ export async function mirrorEncryptedOsintToPrivateR2({
   canonical_d1_status:"PENDING_QUOTA_ADMISSION",
  });
 }
+
+/**
+ * Scoped PRIVATE R2 escrow read. The path supplies the immutable SHA-256
+ * commitment; no listing, user URL fetch, publisher access or D1 SQL.
+ * An expired publisher-clock observation remains historical-only.
+ */
+export async function readEncryptedOsintFromPrivateR2({
+ objectKey,root,env=process.env,fetchImpl=fetch,now=new Date(),
+}={}){
+ if(!keyRe.test(objectKey??"")||!(now instanceof Date)||
+    !Number.isFinite(now.getTime())||typeof fetchImpl!=="function")
+  fail("RESTORE_KEY_INVALID");
+ const config=privateOsintR2Config(env);
+ const endpoint="https://"+config.account+".r2.cloudflarestorage.com";
+ const request=sigV4({method:"GET",endpoint,...config,
+   key:objectKey,body:Buffer.alloc(0),now});
+ let response;
+ try{
+  response=await fetchImpl(request.url,{method:"GET",redirect:"error",
+   headers:request.headers,signal:AbortSignal.timeout(18000)});
+ }catch{fail("RESTORE_GET_UNAVAILABLE")}
+ if(response?.status!==200||response.redirected)
+  fail("RESTORE_GET_NOT_VERIFIED");
+ if(Number(response.headers?.get?.("content-length")??0)>maxBytes)
+  fail("RESTORE_OVERSIZE");
+ let bytes;
+ try{bytes=Buffer.from(await response.arrayBuffer())}
+ catch{fail("RESTORE_GET_UNAVAILABLE")}
+ const digest=hash(bytes);
+ if(bytes.length<30||bytes.length>maxBytes||
+    !objectKey.endsWith("/"+digest+".json"))
+  fail("RESTORE_OBJECT_SHA256_MISMATCH");
+ let envelope;
+ try{envelope=JSON.parse(bytes.toString("utf8"))}
+ catch{fail("RESTORE_JSON_INVALID")}
+ if(privateOsintR2ObjectKey(envelope)!==objectKey)
+  fail("RESTORE_OBJECT_KEY_MISMATCH");
+ const decoded=unsealPrivateOsintSpool(envelope,root,now.getTime());
+ if(decoded.items.length===0)
+  fail("RESTORE_NO_CURRENT_NATIVE_CLOCK_OBSERVATIONS");
+ return Object.freeze({decoded,
+  encrypted_sha256:digest,encrypted_bytes:bytes.length,
+  object_key:objectKey,verified_ciphertext_from_private_r2:true,
+  canonical_d1_verified:false,raw_source_material_returned:false});
+}
