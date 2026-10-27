@@ -1,4 +1,4 @@
-import {fetchWithoutRedirect} from "./fetch-without-redirect";
+import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
 
 /**
  * Main GeoMacro reads owner-group ORIGINAL first-party feed alert receipts from
@@ -60,11 +60,11 @@ export async function readOwnerOriginalNews(
  if(!config)return {status:"NOT_CONFIGURED",verification_status:"UNVERIFIED",
   commercial_eligible:false,items:[]};
  try {
-  const response=await fetchWithoutRedirect(config.url,{
+  const response=await fetchWithoutRedirectUsing(fetcher,config.url,{
    method:"GET",redirect:"error",cache:"no-store",
    headers:{Authorization:`Bearer ${config.token}`,Accept:"application/json"},
    signal:AbortSignal.timeout(9000)
-  },fetcher);
+  });
   if(!response.ok||response.headers.get("content-type")?.split(";")[0]?.trim()!=="application/json"||
      Number(response.headers.get("content-length")??0)>45000)
    throw Error("OWNER_ORIGINAL_READER_BAD_HTTP");
