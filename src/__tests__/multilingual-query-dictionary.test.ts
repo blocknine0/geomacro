@@ -52,6 +52,25 @@ describe("global multilingual structured-query vocabulary", () => {
     expect(() => inferAgentQueryIntent("ভারত তুলনা এবং ক্রমতালিকা")).toThrow("AMBIGUOUS_QUERY_INTENT");
   });
 
+  it.each([
+    ["Guinea-Bissau", ["GNB"]],
+    ["Equatorial Guinea", ["GNQ"]],
+    ["Papua New Guinea", ["PNG"]],
+    ["South Sudan", ["SSD"]],
+    ["Guinea-Bissau and Guinea", ["GIN", "GNB"]],
+    ["South Sudan and Sudan", ["SDN", "SSD"]],
+  ])("does not misattribute nested country names in %s", (question, countries) => {
+    expect(resolveMultilingualQueryVocabulary(question).countries).toEqual(countries);
+  });
+
+  it("keeps the country mention list separate from price or risk qualification", () => {
+    const result = resolveMultilingualQueryVocabulary("South Sudan and Guinea-Bissau inflation");
+    expect(result.countries).toEqual(["GNB", "SSD"]);
+    expect(result.topics).toContain("macro_risk");
+    expect(Object.keys(result)).not.toContain("verified");
+    expect(Object.keys(result)).not.toContain("commercial_eligible");
+  });
+
   it("rejects oversized input and never mints a country from ambiguous text", () => {
     expect(() => resolveMultilingualQueryVocabulary("x".repeat(2001)))
       .toThrow("MULTILINGUAL_QUERY_LENGTH_INVALID");
