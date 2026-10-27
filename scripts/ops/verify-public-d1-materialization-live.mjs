@@ -11,7 +11,12 @@ const ROUTE="/v1/public/website-derived-news-immediate?offset=500";
 const MAX_BYTES=200_000;
 async function read(fetchImpl,noCache){
  const res=await fetchImpl(ORIGIN+ROUTE,{
-  method:"GET",redirect:"error",cache:"no-store",
+  method:"GET",redirect:"error",
+  // Anonymous proof MUST be a cache-eligible browser-like GET. Fetch cache
+  // mode "no-store" can synthesize request Cache-Control and force Worker
+  // canonical D1 bypass, yielding a false negative on genuine snapshots.
+  // Protected origin verification must still explicitly opt out.
+  ...(noCache?{cache:"no-store"}:{}),
   headers:{"Accept":"application/json",...(noCache?{"Cache-Control":"no-cache"}:{})},
   signal:AbortSignal.timeout(12_000),
  });
