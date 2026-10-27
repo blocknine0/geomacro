@@ -84,6 +84,10 @@ export function shapeD1HotQuery(q){
   // range scans, retention compaction and bounded keyset/news-page reads.
   has_rowid_offset:/\boffset\s+\?/iu.test(normalized),
   has_subquery_count:/\(\s*select\s+count\s*\(/iu.test(normalized),
+  has_not_in:/\bnot\s+in\s*\(/iu.test(normalized),
+  has_order_desc:/\border\s+by\s+[a-z0-9_.]+\s+desc\b/iu.test(normalized),
+  has_order_asc:/\border\s+by\s+[a-z0-9_.]+\s+asc\b/iu.test(normalized),
+  has_limit_4000:/\blimit\s+4000\b/iu.test(normalized),
  });
 }
 function classify(q){
@@ -109,8 +113,33 @@ export function attributeD1ReadInsights(input,{top=20}={}){
   if(hashes.has(fingerprint))throw Error("D1_ATTRIBUTION_DUPLICATE_PROVIDER_FINGERPRINT");
   hashes.add(fingerprint);
   const owner=classify(row.query);
+  const shape=shapeD1HotQuery(row.query);
+  // An exact source SHA is still withheld until the provider SQL bytes match.
+  // A unique structural fit to a checked-in historical statement can name
+  // the *candidate* legacy callsite without converting it into verified SQL.
+  const legacyNotIn=owner.query_id==="PRIVATE_OSINT_EVENT_JOURNAL"&&
+   shape.statement_kind==="DELETE"&&shape.has_not_in&&
+   shape.has_nested_select&&shape.has_order_by&&shape.has_order_desc&&
+   shape.has_limit&&!shape.has_count_star&&!shape.has_subquery_count;
+  const publicPaged=owner.query_id==="WEBSITE_DERIVED_JOURNAL"&&
+   shape.statement_kind==="SELECT"&&shape.has_limit&&shape.has_offset&&
+   shape.has_order_by&&!shape.has_nested_select;
+  const candidate=legacyNotIn?{
+    pattern:"HISTORIC_NOT_IN_4000_RING_RETENTION",
+    source_commit:"a6e56a0617ba1820f7c715a7b9f431d122c1c5ba",
+    source_callsite:"workers/control-plane/src/private-osint-15m.mjs:privateOsint15mWrite",
+    attribution:"STRUCTURAL_MATCH_NONEXACT",
+    still_executing_in_current_deployment:"NOT_PROVEN",
+  }:publicPaged?{
+    pattern:"PAGED_WEBSITE_DERIVED_JOURNAL_READ",
+    source_commit:null,
+    source_callsite:"workers/control-plane/src/website-derived-intelligence.mjs:readDerivedStories",
+    attribution:"STRUCTURAL_MATCH_NONEXACT",
+    still_executing_in_current_deployment:"NOT_PROVEN",
+  }:null;
   return {query_sha256:fingerprint,...owner,
-   sql_shape:shapeD1HotQuery(row.query),
+   sql_shape:shape,
+   historical_source_pattern:candidate,
    total_rows_read:row.totalRowsRead,
    total_rows_written:row.totalRowsWritten,
    executions:row.numberOfTimesRun,
