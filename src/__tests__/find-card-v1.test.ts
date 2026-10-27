@@ -28,6 +28,18 @@ const feed=(signals:unknown[])=>({ok:true,schema:"geomacro.website-derived-news-
  original_release_delay_minutes:0,retention_days:3,retention_hours:72,delivery_scope:"free_website_only",signals});
 
 describe("Geomacro Find Card v1—supplied exact public JSON Schema",()=>{
+ it("bounds long headlines at a whole-word boundary and preserves the original date",()=>{
+  const headline="United Nations called for dialogue and diplomacy concerning a detailed international policy announcement with further discussions expected later";
+  const input={...safe("geopolitics"),title:"Geomacro finds "+headline,
+    what_changed:"United Nations called for dialogue and diplomacy in its dated statement about international policy."};
+  const card=findCardFromObservedRelease(input,NOW);
+  expect(card).not.toBeNull();
+  expect(card!.headline.length).toBeLessThanOrEqual(120);
+  expect(card!.headline.endsWith("…")).toBe(true);
+  expect(headline.startsWith(card!.headline.slice(0,-1)+" ")).toBe(true);
+  expect(card!.published_at).toBe(input.published_at);
+  expect(isFindCardV1(card)).toBe(true);
+ });
  it("publishes the canonical 2020-12 schema, all required fields and five conditional rules",()=>{
   const s=JSON.parse(readFileSync("public/schemas/v1/find-card.json","utf8"));
   expect(s.$id).toBe("https://geomacro.live/schemas/v1/find-card.json");

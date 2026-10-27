@@ -705,7 +705,8 @@
     "approved_ui_commit": "4d561d4a9c0291aea149da8b066349ae90d7d36f",
     "scope": [
       "src/components/home/live-intelligence-showcase.tsx",
-      "src/lib/intelligence-concrete-publication.ts"
+      "src/lib/intelligence-concrete-publication.ts",
+      "src/lib/find-card-v1.ts"
     ],
     "predge_unmodified": true,
     "payment_authorized": false,

@@ -106,6 +106,13 @@ const meaning:Record<StatelessCategory,string>={
  macro:"Macroeconomic releases can inform funding, FX and cross-border exposures; a directional impact is not established.",
  rare_earth:"Critical-mineral announcements can affect supply-chain planning; production or price effects are not yet established.",
 };
+/** Keep the public headline bound without presenting a chopped word as fact. */
+function boundedFindHeadline(text:string):string{
+ if(text.length<=120)return text;
+ const prefix=text.slice(0,119);
+ const boundary=prefix.lastIndexOf(" ");
+ return (boundary>0?prefix.slice(0,boundary):prefix).trimEnd()+"…";
+}
 export function findCardFromObservedRelease(
  s:StatelessIntelligenceSignal, now=Date.now(),
 ):FindCardV1|null{
@@ -128,7 +135,7 @@ export function findCardFromObservedRelease(
    schema:"geomacro.find.v1",id:s.id,domain:s.category,
    published_at:originalDate,date_precision:s.date_precision,
    action_class:"official_release",
-   headline:intelligenceActorHeadline(s).slice(0,120),
+   headline:boundedFindHeadline(intelligenceActorHeadline(s)),
    what_changed:intelligenceActorChange(s).slice(0,280),
    facts:[],why_it_matters:meaning[s.category],
    watch_next:{kind:"follow_up_check",
