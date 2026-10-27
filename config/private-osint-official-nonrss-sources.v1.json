@@ -1,0 +1,41 @@
+{
+  "schema": "geomacro.private-osint-official-nonrss-sources.v1",
+  "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
+  "purpose": "Official source endpoints where no native-dated RSS/Atom is verified; perform status-only GET checks, never create news from HTTP 200.",
+  "sources": [
+    {
+      "id": "private_official_nonrss_nru_bulletin",
+      "url": "https://www.nauru.gov.nr/government-information-office/naoero-bulletin.aspx",
+      "publisher_country_iso3": "NRU",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "access": "bulk",
+      "type": "html",
+      "source_clock_status": "NOT_FEED_NATIVE",
+      "native_news_emission_enabled": false,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_official_nonrss_prk_kcna",
+      "url": "https://www.kcna.kp/en",
+      "publisher_country_iso3": "PRK",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "access": "bulk",
+      "type": "html",
+      "source_clock_status": "NOT_FEED_NATIVE",
+      "native_news_emission_enabled": false,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    }
+  ]
+}
