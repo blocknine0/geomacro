@@ -113,6 +113,10 @@
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"
     },
+    "/api/v1/intelligence/products-availability": {
+      "classification": "PRODUCTION",
+      "status": "NO_FUNDS_PREFLIGHT"
+    },
     "/api/v1/intelligence/query": {
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"

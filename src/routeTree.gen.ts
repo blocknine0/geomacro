@@ -68,6 +68,7 @@ import { Route as ApiV1IntelligenceCriticalMineralsRouteImport } from './routes/
 import { Route as ApiV1IntelligenceGeopoliticsRouteImport } from './routes/api.v1.intelligence.geopolitics'
 import { Route as ApiV1IntelligenceLiveStructuredRouteImport } from './routes/api.v1.intelligence.live-structured'
 import { Route as ApiV1IntelligenceMacroFxRouteImport } from './routes/api.v1.intelligence.macro-fx'
+import { Route as ApiV1IntelligenceProductsAvailabilityRouteImport } from './routes/api.v1.intelligence.products-availability'
 import { Route as ApiV1IntelligenceQueryRouteImport } from './routes/api.v1.intelligence.query'
 import { Route as ApiV1PaymentsNetworksRouteImport } from './routes/api.v1.payments.networks'
 import { Route as ApiV1PaymentsPreflightRouteImport } from './routes/api.v1.payments.preflight'
@@ -376,6 +377,12 @@ const ApiV1IntelligenceMacroFxRoute =
     path: '/api/v1/intelligence/macro-fx',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiV1IntelligenceProductsAvailabilityRoute =
+  ApiV1IntelligenceProductsAvailabilityRouteImport.update({
+    id: '/api/v1/intelligence/products-availability',
+    path: '/api/v1/intelligence/products-availability',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV1IntelligenceQueryRoute = ApiV1IntelligenceQueryRouteImport.update({
   id: '/api/v1/intelligence/query',
   path: '/api/v1/intelligence/query',
@@ -469,6 +476,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
   '/api/v1/intelligence/live-structured': typeof ApiV1IntelligenceLiveStructuredRoute
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
+  '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
@@ -536,6 +544,7 @@ export interface FileRoutesByTo {
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
   '/api/v1/intelligence/live-structured': typeof ApiV1IntelligenceLiveStructuredRoute
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
+  '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
@@ -604,6 +613,7 @@ export interface FileRoutesById {
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
   '/api/v1/intelligence/live-structured': typeof ApiV1IntelligenceLiveStructuredRoute
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
+  '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
@@ -673,6 +683,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/geopolitics'
     | '/api/v1/intelligence/live-structured'
     | '/api/v1/intelligence/macro-fx'
+    | '/api/v1/intelligence/products-availability'
     | '/api/v1/intelligence/query'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/preflight'
@@ -740,6 +751,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/geopolitics'
     | '/api/v1/intelligence/live-structured'
     | '/api/v1/intelligence/macro-fx'
+    | '/api/v1/intelligence/products-availability'
     | '/api/v1/intelligence/query'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/preflight'
@@ -807,6 +819,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/geopolitics'
     | '/api/v1/intelligence/live-structured'
     | '/api/v1/intelligence/macro-fx'
+    | '/api/v1/intelligence/products-availability'
     | '/api/v1/intelligence/query'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/preflight'
@@ -875,6 +888,7 @@ export interface RootRouteChildren {
   ApiV1IntelligenceGeopoliticsRoute: typeof ApiV1IntelligenceGeopoliticsRoute
   ApiV1IntelligenceLiveStructuredRoute: typeof ApiV1IntelligenceLiveStructuredRoute
   ApiV1IntelligenceMacroFxRoute: typeof ApiV1IntelligenceMacroFxRoute
+  ApiV1IntelligenceProductsAvailabilityRoute: typeof ApiV1IntelligenceProductsAvailabilityRoute
   ApiV1IntelligenceQueryRoute: typeof ApiV1IntelligenceQueryRoute
   ApiV1PaymentsNetworksRoute: typeof ApiV1PaymentsNetworksRoute
   ApiV1PaymentsPreflightRoute: typeof ApiV1PaymentsPreflightRoute
@@ -1298,6 +1312,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1IntelligenceMacroFxRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/intelligence/products-availability': {
+      id: '/api/v1/intelligence/products-availability'
+      path: '/api/v1/intelligence/products-availability'
+      fullPath: '/api/v1/intelligence/products-availability'
+      preLoaderRoute: typeof ApiV1IntelligenceProductsAvailabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/intelligence/query': {
       id: '/api/v1/intelligence/query'
       path: '/api/v1/intelligence/query'
@@ -1404,6 +1425,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1IntelligenceGeopoliticsRoute: ApiV1IntelligenceGeopoliticsRoute,
   ApiV1IntelligenceLiveStructuredRoute: ApiV1IntelligenceLiveStructuredRoute,
   ApiV1IntelligenceMacroFxRoute: ApiV1IntelligenceMacroFxRoute,
+  ApiV1IntelligenceProductsAvailabilityRoute:
+    ApiV1IntelligenceProductsAvailabilityRoute,
   ApiV1IntelligenceQueryRoute: ApiV1IntelligenceQueryRoute,
   ApiV1PaymentsNetworksRoute: ApiV1PaymentsNetworksRoute,
   ApiV1PaymentsPreflightRoute: ApiV1PaymentsPreflightRoute,
