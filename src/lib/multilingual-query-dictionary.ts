@@ -25,7 +25,7 @@ function add(index: AliasIndex, raw: string, id: string): void {
 
 const countryIndex: AliasIndex = new Map();
 for (const row of COUNTRIES_195) {
-  for (const alias of [row.name, ...row.aliases, row.iso3])
+  for (const alias of [row.name, ...row.aliases])
     add(countryIndex, alias, row.iso3);
 }
 const currencyCodes = [
@@ -38,6 +38,9 @@ for (const code of currencyCodes) {
   // Codes which are ordinary English words cannot match generically.
   if (!["TRY"].includes(code)) add(currencyIndex, code, code);
 }
+add(countryIndex, "Congo", "AMBIGUOUS_COUNTRY_NAME");
+// Qualified Congo names must use a full explicit alias (DR Congo / Congo-Brazzaville).
+countryIndex.set("congo", null);
 for (const locale of QUERY_DICTIONARY_LOCALES) {
   try {
     const regions = new Intl.DisplayNames([locale], { type: "region" });
@@ -119,8 +122,8 @@ for (const [alias, id] of [
 const commodityIndex: AliasIndex = new Map();
 for (const [alias, id] of [
   ["gold", "GOLD"], ["সোনা", "GOLD"], ["স্বর্ণ", "GOLD"],
-  ["सोना", "GOLD"], ["oro", "GOLD"], ["золото", "GOLD"], ["ذهب", "GOLD"], ["黄金", "GOLD"],
-  ["silver", "SILVER"], ["রূপা", "SILVER"], ["चाँदी", "SILVER"],
+  ["सोना", "GOLD"], ["oro", "GOLD"], ["золото", "GOLD"], ["ذهب", "GOLD"], ["الذهب", "GOLD"], ["黄金", "GOLD"],
+  ["silver", "SILVER"], ["রূপা", "SILVER"], ["রূপার", "SILVER"], ["चाँदी", "SILVER"],
   ["plata", "SILVER"], ["серебро", "SILVER"], ["فضة", "SILVER"], ["白银", "SILVER"],
   ["lithium", "LITHIUM"], ["লিথিয়াম", "LITHIUM"], ["लिथियम", "LITHIUM"],
   ["литий", "LITHIUM"], ["锂", "LITHIUM"],
@@ -149,6 +152,8 @@ function matches(question: string, index: AliasIndex): string[] {
 export function resolveMultilingualQueryVocabulary(raw: string) {
   if (typeof raw !== "string" || raw.length > 2_000) throw Error("MULTILINGUAL_QUERY_LENGTH_INVALID");
   const question = normalize(raw);
+  // Shared short aliases are not safe subject extraction.
+  // ISO3 country codes remain accepted only in explicit validated subject fields.
   const currencies = matches(question, currencyIndex);
   const commodities = matches(question, commodityIndex);
   const indicators = matches(question, indicatorIndex);
