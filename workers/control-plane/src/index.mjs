@@ -1439,6 +1439,21 @@ export default {
         const receipt = await reserveB2AccountQuota(env.DB, body);
         return json(receipt, receipt.ok ? 200 : 429);
       }
+      if(request.method==="GET"&&url.pathname==="/v1/internal/website-derived-news-origin"){
+        // Authenticated direct canonical D1, NOT public Cache API, R2,
+        // materialized pages or CDN-key aliases. Protected acceptance alone.
+        const q=url.searchParams;
+        if(q.size!==1||q.getAll("offset").length!==1||
+           q.get("offset")!=="500"||url.search!=="?offset=500")
+          return json({ok:false,error:"CANONICAL_READBACK_OFFSET_INVALID"},400);
+        const direct=await readDerivedStories(env,Date.now(),500,0,false);
+        if(direct.headers.has("X-GeoMacro-Public-Offload"))
+          return json({ok:false,error:"CANONICAL_READBACK_OFFLOAD_FORBIDDEN"},503);
+        const headers=new Headers(direct.headers);
+        headers.set("Cache-Control","no-store");
+        headers.set("X-GeoMacro-Origin-Readback","d1-canonical");
+        return new Response(direct.body,{status:direct.status,headers});
+      }
       if(request.method==="PUT"&&url.pathname==="/v1/internal/public-news-page-refresh"&&!url.search){
         // Owner authenticated, public-only, no new publisher source fetch
         // or D1 event write. Output is metadata-only, no raw/source data.
