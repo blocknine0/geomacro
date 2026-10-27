@@ -46,7 +46,7 @@ const held=(reason,now)=>Object.freeze({
   schema:"geomacro.d1-free-bundled-work-admission.v1",
   day_utc:now.toISOString().slice(0,10),state:"HELD",
   reason,critical:false,research:false,maintenance:false,source_intake:false,
-  snapshot_refresh:false,
+  snapshot_refresh:false,structural_snapshot:false,
   d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
   budget_is_nonatomic_provider_snapshot:true,
 });
@@ -92,6 +92,12 @@ export function planD1BundledWork(snapshot,{now=new Date()}={}){
     snapshot.observed_rows_written<95_000;
   // The observed account budget is the shared physical constraint.
   // Do not declare an exhausted account healthy even if a second DB is idle.
+  // Structural B2 snapshot is not a generic maintenance job: it spends at
+  // most 12 atomically reserved B2 operations and a few quota-ledger D1 rows.
+  // Admit it only within the EXISTING conservative snapshot refresh corridor;
+  // B2 network attempts still require their own shared atomic reservations.
+  const structuralSnapshot=snapshotRefresh &&
+    snapshot.remaining_rows_read>250_100 && snapshot.remaining_rows_written>5_100;
   const state=grants.maintenance?"NORMAL":grants.research?"CONSERVE":
     grants.critical?"CRITICAL_ONLY":"HELD";
   return Object.freeze({
@@ -100,6 +106,9 @@ export function planD1BundledWork(snapshot,{now=new Date()}={}){
     reason:state==="HELD"?"D1_FREE_RESERVE_REACHED":"ACCOUNT_WIDE_HEADROOM_OBSERVED",
     ...grants,source_intake:sourceIntake,
     snapshot_refresh:snapshotRefresh,
+    structural_snapshot:structuralSnapshot,
+    structural_snapshot_max_b2_network_attempts:12,
+    structural_snapshot_requires_atomic_b2_account_reservation:true,
     snapshot_refresh_max_source_rows_per_run:601,
     snapshot_refresh_does_not_admit_ingestion:true,
     source_intake_budget_to_utc_reset:intakeBudget,
@@ -134,7 +143,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   };
   console.log(JSON.stringify(receipt));
   if(process.env.GITHUB_OUTPUT){
-    for(const key of ["critical","research","maintenance","source_intake","snapshot_refresh"]){
+    for(const key of ["critical","research","maintenance","source_intake","snapshot_refresh","structural_snapshot"]){
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key])+"\n");
     }
     appendFileSync(process.env.GITHUB_OUTPUT,"state="+result.state+"\n");
