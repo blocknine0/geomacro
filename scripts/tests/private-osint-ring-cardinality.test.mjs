@@ -28,7 +28,8 @@ test("0032 exact one-time backfill and transactional triggers preserve cardinali
 });
 test("indexed hard cap retains newest 4000 and immutable first_seen",()=>{
  const db=dbWithRing(4008);
- assert.ok(worker.includes("(SELECT item_count FROM private_osint_ring_cardinality_v1 WHERE single=1)-"+4000));
+ assert.ok(worker.includes("(SELECT item_count FROM private_osint_ring_cardinality_v1 WHERE single=1)-"));
+ assert.match(worker,/maxRows=4000/);
  assert.ok(!worker.includes("SELECT COUNT(*) FROM private_osint_news_25h"));
  const queryPlan=db.prepare("EXPLAIN QUERY PLAN "+compact).all().map(x=>x.detail).join("|");
  assert.match(queryPlan,/idx_private_osint_news_clock/);
