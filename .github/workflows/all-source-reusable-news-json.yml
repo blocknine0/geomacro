@@ -16,6 +16,9 @@ on:
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
       - "scripts/lib/country-news-mentions-195.mjs"
       - "scripts/lib/country-news-mentions-195.test.mjs"
+      - "scripts/lib/observed-country-category-coverage.mjs"
+      - "scripts/lib/observed-country-category-coverage.test.mjs"
+      - "src/lib/reusable-news-json.ts"
       - "scripts/lib/registered-reusable-news-source-collector.test.mjs"
       - "scripts/lib/registered-news-15m-cadence.test.mjs"
       - "scripts/ops/publish-all-source-reusable-news-json.ts"
@@ -60,6 +63,7 @@ jobs:
           node --test scripts/lib/registered-reusable-news-source-collector.test.mjs
           node --test scripts/lib/registered-news-15m-cadence.test.mjs
           node --test scripts/lib/country-news-mentions-195.test.mjs
+          node --test scripts/lib/observed-country-category-coverage.test.mjs
           node --test scripts/lib/reusable-source-news-d1.test.mjs
           node --test scripts/tests/prepare-reusable-news-batches.test.mjs
           node --test scripts/tests/plan-d1-bundled-work.test.mjs
@@ -132,5 +136,6 @@ jobs:
           path: |
             artifacts/reusable-source-news/news.json
             artifacts/reusable-source-news/products.json
+            artifacts/reusable-source-news/coverage.json
           if-no-files-found: error
           retention-days: 3
