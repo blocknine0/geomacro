@@ -14,15 +14,11 @@ import {assertPricedStructuredDelivery} from "./capability-structured-delivery.s
 import {assertLockedCapabilityDataBoundary} from "./capability-priced-data-boundary.server";
 import {readQualifiedStructuralEvidence} from "./agent-query-qualified-evidence.server";
 
-/** One price classifier, governed assembler and existing durable vault.
- * No client-provided evidence or flags, synthetic signature, new scoring or
- * alternate pricing engine is admitted here. Structural digests remain
- * explicitly unsigned structural data, not signed current risk objects. */
-export async function prepareVerifiedCapabilityOffer(input:{
+/** Prepare and validate the actual product from admitted evidence. Shared by
+ * no-charge setup checks and paid offers; no quote, ledger write or settlement. */
+export async function assembleVerifiedCapabilityProduct(input:{
   plan:AgentQueryPlan;availability:AgentQueryDeliverability;
-  clientRequestId:string|null;requestFingerprint:string;
-  rail:"coinbase_x402"|"circle_gateway_x402";
-  network:string;asset:string;recipient:string;
+  clientRequestId:string|null;
 }) {
   const price=resolveEligiblePublishedCapabilityPrice(input.plan,input.availability);
   const qualifiedStructural=readQualifiedStructuralEvidence(input.availability,input.plan);
@@ -43,6 +39,21 @@ export async function prepareVerifiedCapabilityOffer(input:{
   assertPublicPaidOutputBoundary(prepared);
   assertPricedStructuredDelivery(prepared,price.capability,price.variant);
   assertLockedCapabilityDataBoundary(prepared,price.capability,price.variant);
+  assertFrozenCapabilityCurrentForSettlement(prepared);
+  return {price,prepared};
+}
+
+/** One price classifier, governed assembler and existing durable vault.
+ * No client-provided evidence or flags, synthetic signature, new scoring or
+ * alternate pricing engine is admitted here. Structural digests remain
+ * explicitly unsigned structural data, not signed current risk objects. */
+export async function prepareVerifiedCapabilityOffer(input:{
+  plan:AgentQueryPlan;availability:AgentQueryDeliverability;
+  clientRequestId:string|null;requestFingerprint:string;
+  rail:"coinbase_x402"|"circle_gateway_x402";
+  network:string;asset:string;recipient:string;
+}) {
+  const {price,prepared}=await assembleVerifiedCapabilityProduct(input);
   const response=sanitizeAndRehashPaidPreparedResponse({...prepared,
     availability:publicAgentQueryAvailability(input.availability),
     payment:{required:true,provider:input.rail,

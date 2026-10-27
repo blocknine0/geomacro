@@ -1,3 +1,4 @@
+import {StructuredProductSetup} from "../components/structured-product-setup";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
@@ -43,6 +44,7 @@ function PricingPage() {
       <div className="mt-10">
         <CapabilityPriceSchedule />
       </div>
+      <StructuredProductSetup />
       <section className="mt-10 grid gap-5 border-t border-border pt-8 md:grid-cols-2">
         <div>
           <h2 className="text-lg font-semibold">Just exploring?</h2>
