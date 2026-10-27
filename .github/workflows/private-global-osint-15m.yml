@@ -44,6 +44,8 @@ on:
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-encrypted-spool.test.mjs"
+      - "scripts/lib/private-osint-shared-read-contract.mjs"
+      - "scripts/lib/private-osint-shared-read-contract.test.mjs"
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
       - "src/components/intelligence/stateless-live-desk.tsx"
       - "scripts/lib/country-news-mentions-195.mjs"
@@ -108,6 +110,8 @@ on:
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-encrypted-spool.test.mjs"
+      - "scripts/lib/private-osint-shared-read-contract.mjs"
+      - "scripts/lib/private-osint-shared-read-contract.test.mjs"
       - "scripts/lib/private-osint-global-sources.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
@@ -162,6 +166,7 @@ jobs:
           node --check scripts/lib/private-osint-local-publisher-rotation.mjs
           node --test scripts/lib/private-osint-country-rotation.test.mjs
           node --test scripts/lib/private-osint-encrypted-spool.test.mjs
+          node --test scripts/lib/private-osint-shared-read-contract.test.mjs
           node --check scripts/ops/private-osint-replay-held.mjs
           node --test scripts/lib/private-osint-local-publisher-rotation.test.mjs
           node --test scripts/lib/private-osint-15m-collector.test.mjs
