@@ -82,6 +82,8 @@ describe("private canonical structural evidence", () => {
     ["foreign partner", { partner_country_iso3: "ZZZ" }],
     ["missing quality", { quality_status: null }],
     ["review-only quality", { quality_status: "PENDING_REVIEW" }],
+    ["not-verified quality", { quality_status: "NOT_VERIFIED" }],
+    ["plausible-but-not-approved quality", { quality_status: "PROVISIONAL" }],
     ["no metric value", { value_numeric: null, value_text: null }],
     ["missing measurement unit", { unit: null }],
     ["invalid content hash", { normalized_hash: "unverified" }],
