@@ -1,0 +1,190 @@
+{
+  "schema": "geomacro.news-intelligence-hub-topology.v1",
+  "authority": {
+    "private_evidence": "existing restricted Cloudflare D1 / B2",
+    "derived_journal": "website_derived_intelligence on Cloudflare D1",
+    "website_read": "/v1/public/website-derived-news-immediate",
+    "machine_read": "/v1/public/derived-structural-72h",
+    "historical_archive": "existing permanent Finds B2 writer"
+  },
+  "domains": [
+    "geopolitics",
+    "macro",
+    "rare_earth"
+  ],
+  "groups": [
+    {
+      "key": "collector",
+      "workflows": [
+        {
+          "path": ".github/workflows/private-global-osint-15m.yml",
+          "markers": [
+            "private-osint-15m-tick.ts",
+            "private-unverified-osint-tick.ts",
+            "plan-d1-bundled-work.mjs"
+          ]
+        },
+        {
+          "path": ".github/workflows/five-minute-original-news-fastlane.yml",
+          "markers": [
+            "publish-original-news-five-minute-fastlane.ts",
+            "plan-d1-bundled-work.mjs"
+          ]
+        },
+        {
+          "path": ".github/workflows/three-domain-30m-original-publisher-pulse.yml",
+          "markers": [
+            "original-publisher-pulse:",
+            "plan-d1-bundled-work.mjs"
+          ]
+        },
+        {
+          "path": ".github/workflows/telegram-b2-d1-consumer.yml",
+          "markers": [
+            "drain-telegram-b2-leads.mjs",
+            "B2_ACCOUNT_QUOTA_REQUIRED"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "processor",
+      "workflows": [
+        {
+          "path": ".github/workflows/intelligence-orchestrator.yml",
+          "markers": [
+            "scripts/intelligence-orchestrator.mjs",
+            "geomacro-intelligence-orchestrator"
+          ]
+        },
+        {
+          "path": ".github/workflows/restricted-private-current-scoring.yml",
+          "markers": [
+            "workflow_call:",
+            "private"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "publisher",
+      "workflows": [
+        {
+          "path": ".github/workflows/website-derived-news-continuity.yml",
+          "markers": [
+            "publish-website-derived-news.ts",
+            "publish-automated-intelligence-inputs.ts",
+            "verify-shared-derived-news-live.mjs"
+          ]
+        },
+        {
+          "path": ".github/workflows/five-minute-original-news-fastlane.yml",
+          "markers": [
+            "publish-original-news-five-minute-fastlane.ts"
+          ]
+        },
+        {
+          "path": ".github/workflows/private-global-osint-15m.yml",
+          "markers": [
+            "private-osint-15m-tick.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "distribution",
+      "workflows": [
+        {
+          "path": ".github/workflows/reusable-news-json-export.yml",
+          "markers": [
+            "reusable-news-json",
+            "upload-artifact"
+          ]
+        },
+        {
+          "path": ".github/workflows/auto-distribution-shadow.yml",
+          "markers": [
+            "poll-public-early-warning.mjs",
+            "test-distribution-receipt-ledger.mjs"
+          ]
+        },
+        {
+          "path": ".github/workflows/news-intelligence-hub-continuity.yml",
+          "markers": [
+            "scripts/ops/verify-news-hub-live-bundle.mjs",
+            "plan-d1-bundled-work.mjs"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "health_recovery",
+      "workflows": [
+        {
+          "path": ".github/workflows/website-derived-news-cadence-backstop.yml",
+          "markers": [
+            "check-website-derived-news-cadence.mjs",
+            "plan-d1-bundled-work.mjs"
+          ]
+        },
+        {
+          "path": ".github/workflows/auto-ingest-news.yml",
+          "markers": [
+            "check-website-derived-news-cadence.mjs",
+            "plan-d1-bundled-work.mjs"
+          ]
+        },
+        {
+          "path": ".github/workflows/news-intelligence-hub-continuity.yml",
+          "markers": [
+            "scripts/ops/verify-news-hub-live-bundle.mjs",
+            "plan-d1-bundled-work.mjs"
+          ]
+        }
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "path": "workers/control-plane/src/website-derived-intelligence.mjs",
+      "markers": [
+        "publishDerivedStories",
+        "readDerivedStories",
+        "AUTO_INGEST_RETENTION_MS",
+        "ON CONFLICT(id)"
+      ]
+    },
+    {
+      "path": "scripts/ops/verify-derived-news-public-readback.mjs",
+      "markers": [
+        "website-derived-news-immediate",
+        "verifyDerivedNewsPublicReadback"
+      ]
+    },
+    {
+      "path": "scripts/ops/verify-shared-derived-news-live.mjs",
+      "markers": [
+        "derived-structural-72h",
+        "website-derived-news-immediate",
+        "same_journal_ids_verified"
+      ]
+    },
+    {
+      "path": "scripts/ops/verify-production-observed-195x3.mjs",
+      "markers": [
+        "country-coverage-195x3",
+        "returned_cells:585"
+      ]
+    }
+  ],
+  "invariants": {
+    "new_raw_source_storage": false,
+    "first_seen_immutable": true,
+    "source_native_clock_required": true,
+    "private_unverified_lead_must_not_auto_promote": true,
+    "exact_cron_sla": false,
+    "all_195x3_native_news_verified": false,
+    "automated_commercial_rights_claim": false,
+    "quota_preflight_is_atomic_reservation": false
+  }
+}

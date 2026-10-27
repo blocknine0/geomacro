@@ -1,0 +1,85 @@
+name: GeoMacro Central News Intelligence Hub
+
+# This is the quota-bounded single publication/distribution READBACK authority.
+# Existing Source Collector, Intelligence Processor, and Publisher workflows remain
+# the producers. This one must never create a duplicate upstream fetcher or D1 writer.
+# GitHub cron is best effort; existing native-dated writer and D1/B2 replay persist.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "58 * * * *"
+  pull_request:
+    paths:
+      - "config/news-intelligence-hub.json"
+      - "scripts/ops/verify-news-intelligence-hub-topology.mjs"
+      - "scripts/ops/verify-news-hub-live-bundle.mjs"
+      - "scripts/tests/news-intelligence-hub.test.mjs"
+      - ".github/workflows/news-intelligence-hub-continuity.yml"
+  push:
+    branches: [main]
+    paths:
+      - "config/news-intelligence-hub.json"
+      - "scripts/ops/verify-news-intelligence-hub-topology.mjs"
+      - "scripts/ops/verify-news-hub-live-bundle.mjs"
+      - "scripts/tests/news-intelligence-hub.test.mjs"
+      - ".github/workflows/news-intelligence-hub-continuity.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-central-news-hub-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  five-group-topology:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Checkout exactly this revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Enforce source collection, processing, publishing, distribution and recovery topology
+        run: |
+          node scripts/ops/verify-news-intelligence-hub-topology.mjs
+          node --test scripts/tests/news-intelligence-hub.test.mjs
+
+  one-bundled-quota-and-distribution-readback:
+    needs: five-group-topology
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Existing free-tier account-wide D1 paced bundled-work gate
+        id: budget
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/plan-d1-bundled-work.mjs
+      - name: Truthful quota hold with zero extra D1 reads
+        if: steps.budget.outputs.research != 'true'
+        run: echo "::notice::NEWS_HUB_BUNDLED_READBACK_QUOTA_HELD; no D1 fetch or false publication claim."
+      - name: Verify one D1 journal drives Website, machine projection and 195 by 3 coverage
+        if: steps.budget.outputs.research == 'true'
+        run: node scripts/ops/verify-news-hub-live-bundle.mjs
+      - name: Save only counts and source-neutral contract evidence (no raw news)
+        if: always() && steps.budget.outputs.research == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-central-news-hub-bundled-${{ github.run_id }}
+          path: artifacts/news-hub/bundled-readback.json
+          if-no-files-found: warn
+          retention-days: 3
