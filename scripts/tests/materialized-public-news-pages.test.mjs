@@ -37,12 +37,13 @@ function makeState(count=510){
     insert.run(s.id,s.category,s.published_at,s.date_precision,
       JSON.stringify(s),new Date(clock-500).toISOString());
   }
-  let originReads=0;
+  let originReads=0,materializedBundleReads=0;
   let beforeBatch=()=>{};
   const env={DB:{
     prepare(sql){
       if(sql.includes("FROM website_derived_intelligence")&&
          sql.includes("SELECT story_json"))originReads++;
+      if(sql.includes("SELECT p.page_offset,p.rows_json,p.generated_at"))materializedBundleReads++;
       const statement=sqlite.prepare(sql);
       const bound=(args=[])=>({
         async all(){return {results:statement.all(...args),success:true}},
@@ -64,6 +65,7 @@ function makeState(count=510){
   }};
   return {env,sqlite,
     get originReads(){return originReads},
+    get materializedBundleReads(){return materializedBundleReads},
     setBeforeBatch(fn){beforeBatch=fn}};
 }
 
@@ -87,8 +89,11 @@ test("producer scans 510 canonical rows once; anonymous pages read 1+revision ro
   // valid through minute 30 while source revisions remain unchanged.
   assert.notEqual(await getMaterializedNewsPage(x.env,0,clock+29*60_000),null);
   assert.notEqual(await getMaterializedNewsPage(x.env,0,clock+34*60_000),null);
+  const beforeBundleReads=x.materializedBundleReads;
   const all=await getMaterializedNewsBundle(x.env,clock);
   assert.equal(all.length,510);
+  assert.equal(x.materializedBundleReads,beforeBundleReads+1,
+    "full public materialized bundle uses one D1 query, not three");
   assert.equal(x.originReads,1,"all page reads bypass the 251/601-row source SQL");
   const cached=await readDerivedStories(x.env,clock,0,0,true);
   assert.equal(cached.headers.get("X-GeoMacro-Public-Offload"),"d1-materialized");
@@ -158,5 +163,25 @@ test("601-row untrimmed journal refuses cache publication instead of hiding over
   await assert.rejects(refreshMaterializedNewsPages(x.env,clock),
     /MATERIALIZED_JOURNAL_OVER_CAP_OR_INVALID/);
   assert.equal(await getMaterializedNewsPage(x.env,0,clock),null);
+  x.sqlite.close();
+});
+
+test("one-query materialized bundle fails closed after revision or TTL expiry",async()=>{
+  const x=makeState(510);
+  await refreshMaterializedNewsPages(x.env,clock);
+  assert.equal((await getMaterializedNewsBundle(x.env,clock)).length,510);
+  const reads=x.materializedBundleReads;
+  const s=signal(900);
+  x.sqlite.prepare("INSERT INTO website_derived_intelligence VALUES (?,?,?,?,?,?)")
+    .run(s.id,s.category,s.published_at,s.date_precision,
+      JSON.stringify(s),new Date(clock).toISOString());
+  assert.equal(await getMaterializedNewsBundle(x.env,clock),null,
+    "an intervening canonical write must invalidate the entire snapshot");
+  assert.equal(x.materializedBundleReads,reads+1);
+  await refreshMaterializedNewsPages(x.env,clock);
+  assert.equal((await getMaterializedNewsBundle(x.env,clock)).length,511);
+  assert.equal(await getMaterializedNewsBundle(x.env,
+    clock+MATERIALIZED_PUBLIC_PAGES_TTL_MS+1),null,
+    "an expired materialization cannot masquerade as current source data");
   x.sqlite.close();
 });

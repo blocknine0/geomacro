@@ -4,6 +4,9 @@ import {readFileSync} from "node:fs";
 import {eligiblePublicFreeD1CacheRequest,readPublicFreeD1Cached,PUBLIC_FREE_D1_TTL_SECONDS,PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS,PUBLIC_FREE_D1_DERIVED_TTL_SECONDS}
   from "../../workers/control-plane/src/public-free-d1-cache.mjs";
 
+import {projectPublicMachineDomainResponse}
+  from "../../workers/control-plane/src/public-machine-domain-reuse.mjs";
+
 const base="https://geomacro-control-plane.example/v1/public/three-domain-continuity";
 const request=(url=base,headers={})=>new Request(url,{headers});
 const result=(status=200)=>Response.json({ok:status===200},{status,
@@ -296,4 +299,77 @@ test("five-minute derived and 60-second bundle public caches preserve authentica
  }
  assert.equal(origin,8);
  assert.equal(objects.size,4);
+});
+
+test("three public machine domains reuse one complete source-neutral origin payload",async()=>{
+  const categories=["geopolitics","macro","rare_earth"];
+  const item=category=>({
+    schema:"geomacro.derived-news-structural.v1",category,id:category+"-1",
+    raw_upstream_delivered:false,chargeable:false,payable:false,
+    commercial_derived_rights_verified:false,
+    original_published_at:"2026-10-28T01:30:00.000Z",
+  });
+  const original={ok:true,schema:"geomacro.derived-news-structural-feed.v1",
+    projection:"source_neutral",raw_upstream_delivered:false,
+    commercial_rights_verified:false,
+    partner_resale_or_commercial_redistribution_authorized:false,
+    chargeable:false,scored:false,signed:false,
+    counts:{geopolitics:1,macro:1,rare_earth:1},
+    availability_by_category:Object.fromEntries(categories.map(category=>
+      [category,{latest_source_check:{current_source_check_verified:true}}])),
+    generated_at:"2026-10-28T01:35:00.000Z",
+    items:categories.map(item),
+  };
+  const response=Response.json(original,{headers:{
+    "X-GeoMacro-Public-Offload":"r2",
+    "X-GeoMacro-Canonical-Status":"snapshot-within-8m",
+    "Cache-Control":"public, max-age=45",
+    "ETag":"old-body-digest",
+  }});
+  for(const category of categories){
+    const derived=await projectPublicMachineDomainResponse(response,category);
+    assert.equal(derived.status,200);
+    assert.equal(derived.headers.get("X-GeoMacro-Public-Offload"),"r2");
+    assert.equal(derived.headers.get("X-GeoMacro-Canonical-Status"),"snapshot-within-8m");
+    assert.equal(derived.headers.get("ETag"),null,
+      "filtered body must not inherit the full-feed ETag");
+    const parsed=await derived.json();
+    assert.deepEqual(parsed.items,[item(category)]);
+    assert.deepEqual(parsed.counts,original.counts,
+      "existing per-category endpoint keeps all-domain diagnostic counts");
+    assert.deepEqual(parsed.availability_by_category,original.availability_by_category);
+    assert.equal(parsed.generated_at,original.generated_at);
+  }
+  assert.deepEqual(await response.json(),original,"original cached body remains untouched");
+});
+
+test("public machine projection propagates 503 and rejects untrusted bundles",async()=>{
+  const unavailable=Response.json({ok:false,error:"D1_FREE_QUOTA_EXCEEDED"},
+    {status:503,headers:{"Cache-Control":"no-store"}});
+  const projected=await projectPublicMachineDomainResponse(unavailable,"macro");
+  assert.equal(projected.status,503);
+  assert.equal((await projected.json()).error,"D1_FREE_QUOTA_EXCEEDED");
+  const bogus=Response.json({ok:true,schema:"geomacro.derived-news-structural-feed.v1",
+    projection:"attributed_research",items:[]});
+  const denied=await projectPublicMachineDomainResponse(bogus,"macro");
+  assert.equal(denied.status,503);
+  assert.equal(denied.headers.get("Cache-Control"),"no-store");
+  const badCategory=await projectPublicMachineDomainResponse(bogus,"unauthorized");
+  assert.equal(badCategory.status,503);
+});
+
+test("only public cache-eligible category queries use base-bundle reuse",()=>{
+  const worker=readFileSync(new URL("../../workers/control-plane/src/index.mjs",import.meta.url),"utf8");
+  assert.ok(worker.includes("if(domain!==null&&eligiblePublicFreeD1CacheRequest(request))"));
+  assert.ok(worker.includes("baseUrl.search=\"\";"));
+  assert.ok(worker.includes("projectPublicMachineDomainResponse(source,domain)"));
+  assert.ok(worker.includes('return predgeResearchDerivedNewsFeed(request,env);'),
+    "PREDGE still uses its existing private authenticated endpoint unchanged");
+  const root="https://geomacro-control-plane.example/v1/public/derived-structural-72h?domain=macro";
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(root)),true);
+  for(const headers of [
+    {Authorization:"Bearer protected"},
+    {"Cache-Control":"no-cache"},{"Cache-Control":"no-store"},
+    {Cookie:"sid=secret"},{Pragma:"no-cache"},
+  ])assert.equal(eligiblePublicFreeD1CacheRequest(request(root,headers)),false);
 });
