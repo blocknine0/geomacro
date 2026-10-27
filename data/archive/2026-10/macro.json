@@ -2,8 +2,445 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-26T21:46:42.899Z",
+  "updated_at": "2026-10-27T09:41:10.198Z",
   "signals": [
+    {
+      "id": "macro-c45a65b4",
+      "category": "macro",
+      "title": "Geomacro finds Raghuram Rajan urged against using forex reserves to defend rupee - NewsBytes",
+      "what_changed": "A monitored source feed reports: Raghuram Rajan urged against using forex reserves to defend rupee - NewsBytes. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T08:56:07.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-38b9e2ca",
+      "category": "macro",
+      "title": "Geomacro finds Carney said Trump moving closer to Canada's trade demands as midterms loom",
+      "what_changed": "A monitored source feed reports: Carney said Trump moving closer to Canada's trade demands as midterms loom. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T04:36:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-bd3b9e22",
+      "category": "macro",
+      "title": "Geomacro finds Silver Automation Instruments released High-Viscosity Oil Flow Meter Selection Guide as Heavy-Oil Metering Demand Grows - iHarare News",
+      "what_changed": "A monitored source feed reports: Silver Automation Instruments released High-Viscosity Oil Flow Meter Selection Guide as Heavy-Oil Metering Demand Grows - iHarare News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T04:25:46.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-826ab961",
+      "category": "macro",
+      "title": "Geomacro finds Cadence raised 2026 outlook to 21% revenue growth and $8.40 non-GAAP EPS as it launches Maestro models - Seeking Alpha",
+      "what_changed": "A monitored source feed reports: Cadence raised 2026 outlook to 21% revenue growth and $8.40 non-GAAP EPS as it launches Maestro models - Seeking Alpha. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T02:31:26.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-97ceaae5",
+      "category": "macro",
+      "title": "Geomacro finds Silver Automation Instruments released High-Viscosity Oil Flow Meter Selection Guide as Heavy-Oil Metering Demand Grows - Thailand Business News",
+      "what_changed": "A monitored source feed reports: Silver Automation Instruments released High-Viscosity Oil Flow Meter Selection Guide as Heavy-Oil Metering Demand Grows - Thailand Business News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T02:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-77a04b99",
+      "category": "macro",
+      "title": "Geomacro finds Gold held Above $4,000 per Ounce, Investors Await the U.S. Federal Reserve’s Decision - Українські Національні Новини (УНН)",
+      "what_changed": "A monitored source feed reports: Gold held Above $4,000 per Ounce, Investors Await the U.S. Federal Reserve’s Decision - Українські Національні Новини (УНН). This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T01:56:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b97392bd",
+      "category": "macro",
+      "title": "Geomacro finds Gold held Above $4,000 per Ounce, Investors Await the U.S. Federal Reserve’s Decision - Українські Національні Новини (УНН)",
+      "what_changed": "A monitored source feed reports: Gold held Above $4,000 per Ounce, Investors Await the U.S. Federal Reserve’s Decision - Українські Національні Новини (УНН). This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T01:56:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ab59b2b5",
+      "category": "macro",
+      "title": "Geomacro finds Sugar Land increased minimum requirements for tax abatements - Community Impact Newspaper",
+      "what_changed": "A monitored source feed reports: Sugar Land increased minimum requirements for tax abatements - Community Impact Newspaper. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T21:49:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-cb6275ca",
+      "category": "macro",
+      "title": "Geomacro finds Cadence increased full-year fiscal 2026 guidance as backlog builds to $8.2B - Seeking Alpha",
+      "what_changed": "A monitored source feed reports: Cadence increased full-year fiscal 2026 guidance as backlog builds to $8.2B - Seeking Alpha. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T20:19:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-db7a3ad5",
+      "category": "macro",
+      "title": "Geomacro finds UPSA urged graduates to embrace entrepreneurship amid graduate unemployment",
+      "what_changed": "A monitored source feed reports: UPSA urged graduates to embrace entrepreneurship amid graduate unemployment. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T20:03:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-33a9d305",
+      "category": "macro",
+      "title": "Geomacro finds MultiChoice Ghana said Inflation and Currency Depreciation Affect DStv Prices - Modern Ghana",
+      "what_changed": "A monitored source feed reports: MultiChoice Ghana said Inflation and Currency Depreciation Affect DStv Prices - Modern Ghana. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T19:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c0fe8eb8",
+      "category": "macro",
+      "title": "Geomacro finds Scott Bessent said Iran's economy is 'collapsing' as Treasury tightens financial vise",
+      "what_changed": "A monitored source feed reports: Scott Bessent said Iran's economy is 'collapsing' as Treasury tightens financial vise. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T18:51:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: moxie.foxbusiness.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-dd909064",
+      "category": "macro",
+      "title": "Geomacro finds Bessent said Iran economy will contract by more than 25% - Iran International",
+      "what_changed": "A monitored source feed reports: Bessent said Iran economy will contract by more than 25% - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T17:49:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-43bc6bfd",
+      "category": "macro",
+      "title": "Geomacro finds Bones Coffee released new Bones After Dark - Tea & Coffee Trade Journal",
+      "what_changed": "A monitored source feed reports: Bones Coffee released new Bones After Dark - Tea & Coffee Trade Journal. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T14:31:55.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-61692c25",
+      "category": "macro",
+      "title": "Geomacro finds USTR proposed two-month extension of China maritime trade fee suspension - Logistics Management",
+      "what_changed": "A monitored source feed reports: USTR proposed two-month extension of China maritime trade fee suspension - Logistics Management. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T14:20:26.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-5a5bf900",
+      "category": "macro",
+      "title": "Geomacro finds Udupi Cochin Shipyard Ltd. launched first of eight 6,300 DWT dry cargo vessels built for European firm",
+      "what_changed": "A monitored source feed reports: Udupi Cochin Shipyard Ltd. launched first of eight 6,300 DWT dry cargo vessels built for European firm. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T14:06:11.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-642b4fee",
+      "category": "macro",
+      "title": "Geomacro finds Wheat Slipping lowered on Monday Morning Trade - Barchart.com",
+      "what_changed": "A monitored source feed reports: Wheat Slipping lowered on Monday Morning Trade - Barchart.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T12:31:11.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-87025f6c",
+      "category": "macro",
+      "title": "Geomacro finds SELPE and RNDU signed memorandum to boost trade ties between Greece and Azerbaijan",
+      "what_changed": "A monitored source feed reports: SELPE and RNDU signed memorandum to boost trade ties between Greece and Azerbaijan. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T09:50:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.naftemporiki.gr"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-df7cb568",
+      "category": "macro",
+      "title": "Geomacro finds China proposed measures against foreign entities' infringement of trade secrets - Reuters",
+      "what_changed": "A monitored source feed reports: China proposed measures against foreign entities' infringement of trade secrets - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T08:29:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-7a4b2d16",
+      "category": "macro",
+      "title": "Geomacro finds Ministry called for tapping local potential to boost village economy",
+      "what_changed": "A monitored source feed reports: Ministry called for tapping local potential to boost village economy. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T08:14:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.antaranews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-6203b895",
+      "category": "macro",
+      "title": "Geomacro finds Trump said Canada trade deal coming ‘soon’",
+      "what_changed": "A monitored source feed reports: Trump said Canada trade deal coming ‘soon’. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T06:45:26.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-4750ff97",
+      "category": "macro",
+      "title": "Geomacro finds South Korea's Lee said unlikely to join Pacific trade pact within his term - Reuters",
+      "what_changed": "A monitored source feed reports: South Korea's Lee said unlikely to join Pacific trade pact within his term - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T05:52:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-26f48304",
+      "category": "macro",
+      "title": "Geomacro finds EAEU raised import duties on light industry goods until September 2027",
+      "what_changed": "A monitored source feed reports: EAEU raised import duties on light industry goods until September 2027. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T04:22:46.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: 24.kg"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-2a8eacec",
       "category": "macro",
@@ -451,6 +888,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-25T09:06:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-adb36983",
+      "category": "macro",
+      "title": "Geomacro finds Russia said it hit a cargo vessel and Ukrainian logistic hubs overnight - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Russia said it hit a cargo vessel and Ukrainian logistic hubs overnight - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-25T09:02:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

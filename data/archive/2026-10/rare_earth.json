@@ -2,8 +2,217 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-26T21:46:42.899Z",
+  "updated_at": "2026-10-27T09:41:10.198Z",
   "signals": [
+    {
+      "id": "rare_earth-ffed85d3",
+      "category": "rare_earth",
+      "title": "Geomacro finds Copper Price held Near USD 6.63 as China Demand and Tight Supply Support Trading - Kalkine",
+      "what_changed": "A monitored source feed reports: Copper Price held Near USD 6.63 as China Demand and Tight Supply Support Trading - Kalkine. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T09:06:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-1c8abf00",
+      "category": "rare_earth",
+      "title": "Geomacro finds India held 7, 8% of Global Rare-Earth Reserves but Still Imports Key Battery Materials: OECD - The Policy Edge",
+      "what_changed": "A monitored source feed reports: India held 7, 8% of Global Rare-Earth Reserves but Still Imports Key Battery Materials: OECD - The Policy Edge. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T08:44:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-eb0061a7",
+      "category": "rare_earth",
+      "title": "Geomacro finds Canada's Capstone Copper announced $3bn investment plan in Chile",
+      "what_changed": "A monitored source feed reports: Canada's Capstone Copper announced $3bn investment plan in Chile. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T07:06:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-fc212f4f",
+      "category": "rare_earth",
+      "title": "Geomacro finds Canada's Capstone Copper announced $3bn investment plan in Chile - Mining Weekly",
+      "what_changed": "A monitored source feed reports: Canada's Capstone Copper announced $3bn investment plan in Chile - Mining Weekly. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T07:06:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-571e4b57",
+      "category": "rare_earth",
+      "title": "Geomacro finds Stavely Minerals Thursday's Gossan Scoping Study reported A$818M NPV7 and 40% IRR for Copper-Gold-Silver Project - Kalkine",
+      "what_changed": "A monitored source feed reports: Stavely Minerals Thursday's Gossan Scoping Study reported A$818M NPV7 and 40% IRR for Copper-Gold-Silver Project - Kalkine. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T02:36:25.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-f6d813a9",
+      "category": "rare_earth",
+      "title": "Geomacro finds Nickel-Cobalt Electrode cut Hydrogen Material Cost by 99% - Intelligent Living",
+      "what_changed": "A monitored source feed reports: Nickel-Cobalt Electrode cut Hydrogen Material Cost by 99% - Intelligent Living. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T00:44:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-2f871e2c",
+      "category": "rare_earth",
+      "title": "Geomacro finds Hawk Resources confirmed Copper-Gold-Silver Hits Across 550m of Cactus Corridor in Utah - Kalkine",
+      "what_changed": "A monitored source feed reports: Hawk Resources confirmed Copper-Gold-Silver Hits Across 550m of Cactus Corridor in Utah - Kalkine. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T23:15:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-4bd9c543",
+      "category": "rare_earth",
+      "title": "Geomacro finds Teck Resources said strike begins at Highland Valley Copper mine (NYSE:TECK) - Seeking Alpha",
+      "what_changed": "A monitored source feed reports: Teck Resources said strike begins at Highland Valley Copper mine (NYSE:TECK) - Seeking Alpha. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T12:21:57.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-4c011ca5",
+      "category": "rare_earth",
+      "title": "Geomacro finds Wildcat DFS confirmed potential for Australia's next large-scale lithium mine at Tabba Tabba",
+      "what_changed": "A monitored source feed reports: Wildcat DFS confirmed potential for Australia's next large-scale lithium mine at Tabba Tabba. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T08:47:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-bc4466aa",
+      "category": "rare_earth",
+      "title": "Geomacro finds Wildcat DFS confirmed potential for Australia's next large-scale lithium mine at Tabba Tabba - Mining Weekly",
+      "what_changed": "A monitored source feed reports: Wildcat DFS confirmed potential for Australia's next large-scale lithium mine at Tabba Tabba - Mining Weekly. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T08:47:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-51264d0a",
+      "category": "rare_earth",
+      "title": "Geomacro finds Teck said strike begins at Highland Valley Copper mine in British Columbia - Mining Weekly",
+      "what_changed": "A monitored source feed reports: Teck said strike begins at Highland Valley Copper mine in British Columbia - Mining Weekly. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T06:43:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-28503fb3",
       "category": "rare_earth",
