@@ -40,6 +40,7 @@ on:
       - "workers/control-plane/src/private-osint-15m.mjs"
       - "workers/control-plane/migrations/0028_private_osint_15m_durable.sql"
       - "scripts/ops/private-osint-15m-tick.ts"
+      - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-encrypted-spool.test.mjs"
@@ -101,6 +102,7 @@ on:
       - "scripts/ops/build-native-country-repair-worklist.mjs"
       - "scripts/tests/native-country-repair-worklist.test.mjs"
       - "scripts/ops/private-osint-15m-tick.ts"
+      - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-encrypted-spool.test.mjs"
@@ -312,6 +314,46 @@ jobs:
           set -euo pipefail
           bun scripts/ops/private-osint-15m-tick.ts
 
+
+  stage-private-sources-when-d1-held:
+    name: Preserve actual native-dated source observations when canonical D1 is held
+    needs: [verify, quota-admission]
+    if: >-
+      needs.quota-admission.outputs.critical != 'true' &&
+      needs.quota-admission.result == 'success' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Poll country publishers and seal unverified factual JSON without D1
+        env:
+          GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          bun scripts/ops/private-osint-stage-held.ts
+      - name: Retain only encrypted original-clock observations, never plaintext
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-encrypted-private-osint-held
+          path: /tmp/geomacro-encrypted-held-spool/sealed.json
+          if-no-files-found: ignore
+          retention-days: 2
+          compression-level: 0
 
   replay-quota-held-encrypted-spool:
     name: Recover one encrypted held-source batch into verified canonical D1
