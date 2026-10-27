@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
 import { ApiKeysNotice } from "@/components/api-keys-notice";
 import { CategoryApiPricing } from "@/components/category-api-pricing";
+import { CategoryApiLaunchPanel } from "@/components/category-api-launch-panel";
 
 const TITLE = "Store & Pricing | Geomacro";
 const DESCRIPTION =
@@ -43,6 +44,17 @@ function PricingPage() {
       <div className="mt-10">
         <CapabilityPriceSchedule />
       </div>
+      <details className="mt-10 rounded-2xl border border-border p-5 sm:p-6">
+        <summary className="cursor-pointer text-base font-semibold">
+          Check a Country Digest — 0.02 USDC if qualified
+        </summary>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Evidence and commercial reuse rights are verified before any payment
+          request. Merchant activation is required; a catalog price is not a live quote.
+          Unavailable results remain free and no real-money payment runs automatically.
+        </p>
+        <CategoryApiLaunchPanel initialMode="country_digest" />
+      </details>
       <section className="mt-10 grid gap-5 border-t border-border pt-8 md:grid-cols-2">
         <div>
           <h2 className="text-lg font-semibold">Just exploring?</h2>
