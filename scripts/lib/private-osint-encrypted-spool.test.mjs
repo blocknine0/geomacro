@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {randomBytes} from "node:crypto";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {sealPrivateOsintSpool,unsealPrivateOsintSpool,
- selectPrivateOsintSpoolArtifacts,OSINT_SPOOL_ARTIFACT_NAME,
+ selectPrivateOsintSpoolArtifacts,planPrivateOsintEncryptedReplay,
+ canDeletePrivateOsintSpoolArtifacts,OSINT_SPOOL_ARTIFACT_NAME,
  OSINT_SPOOL_ENVELOPE} from "./private-osint-encrypted-spool.mjs";
 
 const now=Date.parse("2026-10-27T17:45:00.000Z");
@@ -73,7 +74,7 @@ test("deceptive rights, raw original URLs and duplicate item ids cannot enter se
 });
 test("GitHub artifact selection accepts protected main and at most 2 valid fresh envelopes",()=>{
  const a1={name:OSINT_SPOOL_ARTIFACT_NAME,id:8,expired:false,
-  created_at:"2026-10-27T17:00:00.000Z",workflow_run:{head_branch:"main"}};
+  created_at:"2026-10-27T17:00:00.000Z",workflow_run:{head_branch:"main",id:40555928607}};
  const a2={...a1,id:9,created_at:"2026-10-27T17:15:00.000Z"};
  const bad={...a1,id:10,workflow_run:{head_branch:"feature"}};
  const expired={...a1,id:11,expired:true};
@@ -83,4 +84,52 @@ test("GitHub artifact selection accepts protected main and at most 2 valid fresh
   [a2,bad,expired,stale,wrong,a1],now,2).map(x=>x.id),[8,9]);
  assert.deepEqual(selectPrivateOsintSpoolArtifacts([],now,1),[]);
  assert.throws(()=>selectPrivateOsintSpoolArtifacts(Array(101).fill(a1),now));
+});
+
+test("separate same-name ciphertext runs replay oldest first with main run ID required",()=>{
+ const a1={name:OSINT_SPOOL_ARTIFACT_NAME,id:120,expired:false,
+  created_at:"2026-10-27T17:00:00.000Z",
+  workflow_run:{head_branch:"main",id:40555928607}};
+ const a2={...a1,id:121,created_at:"2026-10-27T17:15:00.000Z"};
+ const a3={...a1,id:122,created_at:"2026-10-27T17:30:00.000Z"};
+ assert.deepEqual(selectPrivateOsintSpoolArtifacts([a3,a1,a2],now,2).map(x=>x.id),[120,121]);
+ assert.deepEqual(selectPrivateOsintSpoolArtifacts([{...a1,workflow_run:{head_branch:"main"}}],now),[]);
+ assert.equal(selectPrivateOsintSpoolArtifacts(Array(300).fill({...a3,id:200}),now).length,1);
+ assert.throws(()=>selectPrivateOsintSpoolArtifacts(Array(301).fill(a3),now));
+});
+test("duplicate cross-artifact news ID is one D1 record and never bypasses strict readback",()=>{
+ const seal1=sealPrivateOsintSpool({items:[a,b],root:secret,now});
+ const seal2=sealPrivateOsintSpool({items:[a,c],root:secret,now});
+ const decoded=[
+  unsealPrivateOsintSpool(seal1,secret,now),
+  unsealPrivateOsintSpool(seal2,secret,now),
+ ];
+ const planned=planPrivateOsintEncryptedReplay(decoded);
+ assert.equal(planned.originals,4);
+ assert.equal(planned.items.length,3);
+ assert.equal(planned.duplicates_removed,1);
+ assert.equal(canDeletePrivateOsintSpoolArtifacts({
+  d1_write_exact_readback_verified:true,
+  separate_private_d1_readback_verified:true,
+  private_three_category_bundle_readback_verified:true,
+  news_rows_verified_in_d1:3,excluded_by_d1_capacity:0,
+ },planned),true);
+ for(const receipt of [
+  {d1_write_exact_readback_verified:true,separate_private_d1_readback_verified:true,
+   private_three_category_bundle_readback_verified:true,
+   news_rows_verified_in_d1:2,excluded_by_d1_capacity:1},
+  {d1_write_exact_readback_verified:true,separate_private_d1_readback_verified:false,
+   private_three_category_bundle_readback_verified:true,
+   news_rows_verified_in_d1:3,excluded_by_d1_capacity:0},
+  null,
+ ])assert.equal(canDeletePrivateOsintSpoolArtifacts(receipt,planned),false);
+});
+test("all expired native-clock observations may be retired without inventing canonical news",()=>{
+ const obsolete=planPrivateOsintEncryptedReplay([{
+  original_count:2,expired:2,items:[],verified_d1:false,
+ }]);
+ assert.equal(obsolete.items.length,0);
+ assert.equal(canDeletePrivateOsintSpoolArtifacts(null,obsolete),true);
+ assert.equal(canDeletePrivateOsintSpoolArtifacts(null,
+  {...obsolete,expired:1}),false);
 });
