@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {eligiblePublicFreeD1CacheRequest,readPublicFreeD1Cached,PUBLIC_FREE_D1_TTL_SECONDS,PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS}
+import {eligiblePublicFreeD1CacheRequest,readPublicFreeD1Cached,PUBLIC_FREE_D1_TTL_SECONDS,PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS,PUBLIC_FREE_D1_DERIVED_TTL_SECONDS}
   from "../../workers/control-plane/src/public-free-d1-cache.mjs";
 
 const base="https://geomacro-control-plane.example/v1/public/three-domain-continuity";
@@ -266,4 +266,34 @@ test("HTML fallback and immediate JSON share the exact eligible D1 page 0 key",a
  assert.equal(physicalD1Reads,2,"origin readback must not receive stale JSON or HTML");
  await readPublicFreeD1Cached(pageReq(request(htmlUrl,{Authorization:"Bearer protected"})),readD1,{cache});
  assert.equal(physicalD1Reads,3,"authenticated requests never share public cache");
+});
+
+test("five-minute derived and 60-second bundle public caches preserve authenticated D1 proof",async()=>{
+ assert.equal(PUBLIC_FREE_D1_DERIVED_TTL_SECONDS,300);
+ assert.equal(PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS,60);
+ const urls=[
+  ["https://geomacro-control-plane.example/v1/public/website-derived-news-immediate",300],
+  ["https://geomacro-control-plane.example/v1/public/website-derived-news-html",300],
+  ["https://geomacro-control-plane.example/v1/public/derived-structural-72h",300],
+  ["https://geomacro-control-plane.example/v1/public/website-derived-news-bundle",60],
+ ];
+ let origin=0;
+ const objects=new Map();
+ const cache={async match(k){return objects.get(k.url)?.clone()??null},
+  async put(k,v){objects.set(k.url,v.clone())}};
+ for(const [url,ttl] of urls){
+  const compute=async()=>{origin++;return Response.json({ok:true,at:origin})};
+  const first=await readPublicFreeD1Cached(request(url),compute,{cache});
+  const second=await readPublicFreeD1Cached(request(url),compute,{cache});
+  assert.equal(first.headers.get("cache-control"),"public, max-age="+ttl);
+  assert.equal(second.headers.get("cache-control"),"public, max-age="+ttl);
+  assert.deepEqual(await first.json(),await second.json());
+  // Admin authenticated/no-cache readbacks must bypass POP cache.
+  const privateFetch=await readPublicFreeD1Cached(
+   request(url,{"Cache-Control":"no-cache","Authorization":"Bearer internal"}),
+   compute,{cache});
+  assert.equal(privateFetch.headers.get("cache-control"),null);
+ }
+ assert.equal(origin,8);
+ assert.equal(objects.size,4);
 });
