@@ -88,6 +88,44 @@ export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourc
   }));
  }
  }
+ // Nauru GIO publishes a fortnightly bulletin; KCNA is DPRK's native media.
+ // Neither public website was proven to offer publisher-native RSS. ONLY
+ // perform bounded unauthenticated transport status checks; HTTP 200 != news.
+ if(includeGapLane){
+  const doc=JSON.parse(readFileSync(new URL(
+   "../../config/private-osint-official-nonrss-sources.v1.json",import.meta.url),"utf8"));
+  if(doc?.schema!=="geomacro.private-osint-official-nonrss-sources.v1"||
+     doc.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
+     !Array.isArray(doc.sources)||doc.sources.length!==2)
+   throw Error("UNVERIFIED_OSINT_NONRSS_MANIFEST_INVALID");
+  const seen=new Set();
+  for(const source of doc.sources){
+   let url;try{url=new URL(source.url)}catch{throw Error("UNVERIFIED_OSINT_NONRSS_URL_INVALID")}
+   const allowed=(source.publisher_country_iso3==="NRU"&&
+    url.href==="https://www.nauru.gov.nr/government-information-office/naoero-bulletin.aspx")||
+    (source.publisher_country_iso3==="PRK"&&url.href==="https://www.kcna.kp/en");
+   if(!allowed||seen.has(source.publisher_country_iso3)||
+      !/^private_official_nonrss_[a-z0-9_]+$/u.test(source.id)||
+      ids.has(source.id)||urls.has(url.href)||
+      url.protocol!=="https:"||url.username||url.password||url.port||url.hash||
+      !Array.isArray(source.categories)||source.categories.length!==3||
+      new Set(source.categories).size!==3||
+      source.categories.some(c=>!Object.hasOwn(domains,c))||
+      source.access!=="bulk"||source.type!=="html"||
+      source.source_clock_status!=="NOT_FEED_NATIVE"||
+      source.native_news_emission_enabled!==false||
+      source.transport_verified_at_registration!==false||
+      source.commercial_eligible!==false||source.publicly_deliverable!==false)
+    throw Error("UNVERIFIED_OSINT_NONRSS_SOURCE_UNSAFE");
+   seen.add(source.publisher_country_iso3);
+   urls.add(url.href);ids.add(source.id);
+   items.push(Object.freeze({...source,supported:false,
+    publisher_countries:[source.publisher_country_iso3],
+    activation_state:"PRIVATE_UNVERIFIED_OBSERVATION",
+    rights_verified:false,commercial_eligible:false,publicly_deliverable:false}));
+  }
+  if(seen.size!==2)throw Error("UNVERIFIED_OSINT_NONRSS_COUNTRIES_INCOMPLETE");
+ }
  if(!items.length||items.length>128)throw Error("UNVERIFIED_OSINT_CANDIDATES_MISSING");
  return Object.freeze(items);
 }
