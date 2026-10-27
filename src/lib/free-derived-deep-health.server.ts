@@ -23,6 +23,23 @@ type FreeFeed={
   signals?:unknown;page_offset?:unknown;page_size?:unknown;
   has_more?:unknown;next_offset?:unknown;
 };
+/** The unverified-only source hostname is not an upstream article URL. */
+const FEED_HOST_LABEL=/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
+function safeOsintMonitoredHostCredit(value:unknown):value is string{
+ if(typeof value!=="string"||value.length>230||
+    !value.startsWith("Monitored feed: "))return false;
+ let host=value.slice("Monitored feed: ".length);
+ const suffix=" (aggregator; original publisher not verified)";
+ if(host.endsWith(suffix)){
+  host=host.slice(0,-suffix.length);
+  if(host!=="news.google.com")return false;
+ }
+ if(!host||host.length>120||host!==host.toLowerCase()||
+    host.startsWith(".")||host.endsWith(".")||host.includes(".."))return false;
+ const labels=host.split(".");
+ return labels.length>=2&&labels.every(x=>x.length<=63&&FEED_HOST_LABEL.test(x))&&
+   /^[a-z]{2,63}$/u.test(labels.at(-1)??"");
+}
 const empty=()=>({geopolitics:0,macro:0,rare_earth:0});
 function validPublication(story:FreeStory,now:number){
   if(typeof story.published_at!=="string")return false;
@@ -91,7 +108,10 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
       row.title.length>240||
       row.severity!==null||row.same_event_corrob_verified!==false||
       !validPublication(row,now)||
-      /https?:\/\/|www\.|<script/iu.test(JSON.stringify(row)))
+      /https?:\/\/|www\.|<script/iu.test(JSON.stringify(
+        row.status==="osint_feed_observed_unverified"?
+          {...row,sources_credited:[]} : row
+      )))
       return result(false,"FREE_ARCHIVE_ROW_ORIGINAL_RIGHTS_BOUNDARY_INVALID");
     ids.add(row.id);
     if(row.status==="osint_feed_observed_unverified"){
@@ -99,7 +119,7 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
       if(row.date_precision!=="exact"||
          row.development_type!=="unverified OSINT feed observation"||
          row.geography!==null||credits.length!==1||
-         typeof credits[0]!=="string"||!credits[0].startsWith("Monitored feed: "))
+         !safeOsintMonitoredHostCredit(credits[0]))
         return result(false,"FREE_ARCHIVE_OSINT_ROW_INVALID");
       // Count no unverified feed-only observation as an original-source Find.
       continue;

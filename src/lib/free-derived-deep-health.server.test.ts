@@ -53,6 +53,44 @@ describe("authentic free-derived static archive deep-health",()=>{
     expect(officialAndOsint.body.current_72h_derived_rows).toBe(1);
     expect(officialAndOsint.body.categories).toEqual({geopolitics:1,macro:0,rare_earth:0});
    });
+  it("accepts unverified OSINT monitored hostname incl www without allowing article link/raw source",()=>{
+    const observed=story("macro",{
+      status:"osint_feed_observed_unverified",
+      development_type:"unverified OSINT feed observation",
+      geography:null,
+      sources_credited:["Monitored feed: www.bankofcanada.ca"],
+    });
+    const valid=classifyFreeDerivedFeed(feed([story(),observed]),time);
+    expect(valid.statusCode).toBe(200);
+    expect(valid.body.categories).toEqual({geopolitics:1,macro:0,rare_earth:0});
+    expect(valid.body.current_72h_derived_rows).toBe(1);
+    expect(valid.body.current_signed_hot_snapshots_attested).toBe(false);
+    expect(valid.body.consumer_commercial_rights_verified).toBe(false);
+    const aggregator={...observed,sources_credited:[
+      "Monitored feed: news.google.com (aggregator; original publisher not verified)"]};
+    expect(classifyFreeDerivedFeed(feed([story(),aggregator]),time).statusCode).toBe(200);
+    for(const credit of [
+      "Monitored feed: https://bankofcanada.ca/story",
+      "Monitored feed: www.bankofcanada.ca/monetary-policy",
+      "Monitored feed: www.bankofcanada.ca?secret=foo",
+      "Monitored feed: www.bankofcanada.ca#fragment",
+      "Monitored feed: bankofcanada.ca (aggregator; original publisher not verified)",
+      "Monitored feed: www.bankofcanada.ca.evil/path",
+      "Monitored feed: -bankofcanada.ca",
+      "Monitored feed: example..org",
+      "Monitored feed: www.bankofcanada.ca<script>alert(1)</script>",
+    ]){
+      const bad=classifyFreeDerivedFeed(feed([story(),{
+        ...observed,sources_credited:[credit]}]),time);
+      expect(bad.statusCode).toBe(503);
+    }
+    for(const bad of [
+      {...observed,upstream_url:"https://publisher.example/article"},
+      {...observed,what_changed:"www.publisher.example/raw"},
+      {...observed,geography:"Toronto"},
+      {...observed,status:"official_release_observed_unscored"},
+    ])expect(classifyFreeDerivedFeed(feed([story(),bad]),time).statusCode).toBe(503);
+  });
   it("reports all 3 original categories ONLY when actually present",()=>{
     const rows=[story(),story("macro"),story("rare_earth")];
     const v=classifyFreeDerivedFeed(feed(rows),time);
