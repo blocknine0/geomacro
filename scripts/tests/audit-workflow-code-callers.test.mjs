@@ -32,8 +32,8 @@ test("offline executable code census includes script callers; flags missing/dyna
   assert.equal(v.registered_workflows,2);
   assert.deepEqual(v.static_references,[
    {workflow:"consumer.yml",source:"scripts/ops/trigger.sh",kind:"REST_DISPATCH"},
-   {workflow:"publisher.yml",source:"scripts/ops/trigger.sh",kind:"CLI_DISPATCH"},
    {workflow:"publisher.yml",source:"scripts/ops/trace.mjs",kind:"PATH_REFERENCE"},
+   {workflow:"publisher.yml",source:"scripts/ops/trigger.sh",kind:"CLI_DISPATCH"},
   ]);
   assert.deepEqual(v.references_to_unregistered_workflows,[
    {workflow:"mystery.yml",source:"scripts/ops/trigger.sh",kind:"CLI_DISPATCH"},
