@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {verifyMaterializedAnonymousRead} from "../ops/verify-public-d1-materialization-live.mjs";
-function page(receipt,ids=["abc01234"]){
+function page(receipt,ids=["macro-abc01234"]){
  return Response.json({ok:true,schema:"geomacro.website-derived-news-feed.v1",
   page_offset:500,page_size:250,chargeable:false,has_more:false,
   signals:ids.map(id=>({id}))},{
@@ -28,7 +28,7 @@ test("missing offload receipt never passes CI and never needs origin read",async
  assert.equal(calls,1);
 });
 test("different IDs and false canonical no-cache offload are hard failures",async()=>{
- for(const [origin,expected] of [[page(null,["def56789"]),/IDS_DIFFER/],
+ for(const [origin,expected] of [[page(null,["macro-def56789"]),/IDS_DIFFER/],
   [page("d1-materialized"),/ORIGIN_BYPASS_INVALID/]]){
   let calls=0;
   await assert.rejects(verifyMaterializedAnonymousRead({fetchImpl:async()=>{

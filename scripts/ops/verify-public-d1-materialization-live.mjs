@@ -27,7 +27,7 @@ async function read(fetchImpl,noCache){
     doc.chargeable!==false)
   throw Error("MATERIALIZED_PUBLIC_PROOF_SCHEMA_INVALID");
  const ids=doc.signals.map(item=>item?.id);
- if(ids.some(id=>typeof id!=="string"||!/^[-a-z0-9_]{8,96}$/u.test(id))||
+ if(ids.some(id=>typeof id!=="string"||!/^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(id))||
     new Set(ids).size!==ids.length)
   throw Error("MATERIALIZED_PUBLIC_PROOF_IDS_INVALID");
  return {ids,hasMore:doc.has_more,
