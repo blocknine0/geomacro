@@ -9,6 +9,7 @@ import {join} from "node:path";
 import {execFileSync} from "node:child_process";
 import {createHmac} from "node:crypto";
 import {persistPrivateOsintBatch} from "../lib/private-osint-15m-durable-publisher.mjs";
+import {buildPrivateSourceSharedReadManifest} from "../lib/private-osint-shared-read-contract.mjs";
 import {selectPrivateOsintSpoolArtifacts,unsealPrivateOsintSpool,
  planPrivateOsintEncryptedReplay,canDeletePrivateOsintSpoolArtifacts,
  OSINT_SPOOL_ARTIFACT_NAME} from "../lib/private-osint-encrypted-spool.mjs";
@@ -86,6 +87,11 @@ if(planned.items.length){
   now:Date.now(),sourceHealthSnapshotSlots:3,
  });
 }
+const sharedSourceRead=buildPrivateSourceSharedReadManifest(planned.items,Date.now());
+if(planned.items.length&&(
+   receipt?.shared_source_read_content_sha256!==sharedSourceRead.content_sha256||
+   receipt?.shared_source_read_item_count!==planned.items.length))
+ throw Error("OSINT_SPOOL_D1_SHARED_INPUT_MISMATCH_KEEP_BACKLOG");
 if(!canDeletePrivateOsintSpoolArtifacts(receipt,planned))
  throw Error("OSINT_SPOOL_D1_DURABILITY_OR_CAPACITY_UNVERIFIED_KEEP_BACKLOG");
 // Deletion occurs only AFTER completed D1 write and independent readback,
@@ -95,6 +101,7 @@ console.log(JSON.stringify({
  schema:"geomacro.private-osint-spool-replay.v1",
  artifacts_recovered:selected.length,
  distinct_items_eligible:planned.items.length,
+ shared_source_read_sha256:sharedSourceRead.content_sha256,
  duplicate_items_suppressed:planned.duplicates_removed,
  native_clock_expired_items:planned.expired,
  d1_exact_readback_verified:planned.items.length>0,
