@@ -94,12 +94,53 @@ export function unsealPrivateOsintSpool(envelope,root,now=Date.now()){
   verified_d1:false});
 }
 export function selectPrivateOsintSpoolArtifacts(artifacts,now=Date.now(),limit=1){
- if(!Array.isArray(artifacts)||artifacts.length>100||
+ if(!Array.isArray(artifacts)||artifacts.length>300||
     !Number.isFinite(now)||!Number.isSafeInteger(limit)||limit<1||limit>2)
   throw Error("OSINT_SPOOL_ARTIFACT_LIST_INVALID");
  return artifacts.filter(x=>x&&x.name===OSINT_SPOOL_ARTIFACT_NAME&&
   Number.isSafeInteger(x.id)&&x.id>0&&x.expired===false&&
+  Number.isSafeInteger(x.workflow_run?.id)&&x.workflow_run.id>0&&
   x.workflow_run?.head_branch==="main"&&validTime(x.created_at)&&
   Date.parse(x.created_at)<=now&&now-Date.parse(x.created_at)<=MAX_AGE_MS
  ).sort((a,b)=>a.created_at.localeCompare(b.created_at)).slice(0,limit);
+}
+
+/**
+ * At most two authenticated ciphertext artifacts are replayed per admitted
+ * D1 cycle; avoid writing the same news ID twice within an atomic Worker
+ * request. Caller MUST unseal and revalidate original timestamps first.
+ */
+export function planPrivateOsintEncryptedReplay(decoded){
+ if(!Array.isArray(decoded)||decoded.length>2||
+    decoded.some(b=>!b||!Array.isArray(b.items)||
+      !Number.isSafeInteger(b.original_count)||b.original_count<1||
+      !Number.isSafeInteger(b.expired)||b.expired<0||
+      b.items.length+b.expired!==b.original_count||
+      b.verified_d1!==false))
+  throw Error("OSINT_SPOOL_REPLAY_PLAN_INVALID");
+ const byId=new Map();let originals=0,expired=0;
+ for(const batch of decoded){
+  originals+=batch.original_count;
+  expired+=batch.expired;
+  for(const item of batch.items){
+   if(!item||typeof item.id!=="string"||!/^[a-f0-9]{64}$/u.test(item.id.slice(5))||
+       !item.id.startsWith("news-"))
+    throw Error("OSINT_SPOOL_REPLAY_ITEM_INVALID");
+   if(!byId.has(item.id))byId.set(item.id,item);
+   else if(JSON.stringify(byId.get(item.id))!==JSON.stringify(item))
+    throw Error("OSINT_SPOOL_REPLAY_ID_COLLISION");
+  }
+ }
+ return Object.freeze({items:[...byId.values()],originals,expired,
+   duplicates_removed:originals-expired-byId.size,
+   d1_verified:false,commercially_verified:false});
+}
+export function canDeletePrivateOsintSpoolArtifacts(receipt,planned){
+ if(!planned||!Array.isArray(planned.items))return false;
+ if(planned.items.length===0)return planned.expired===planned.originals;
+ return receipt?.d1_write_exact_readback_verified===true&&
+   receipt?.separate_private_d1_readback_verified===true&&
+   receipt?.private_three_category_bundle_readback_verified===true&&
+   receipt?.excluded_by_d1_capacity===0&&
+   receipt?.news_rows_verified_in_d1===planned.items.length;
 }
