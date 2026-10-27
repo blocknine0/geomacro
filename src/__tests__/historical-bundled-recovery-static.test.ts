@@ -10,7 +10,7 @@ describe("historical structural B2 snapshot central bundled budget", () => {
     expect(workflow).toContain('B2_REQUEST_BUDGET: "12"');
     expect(workflow).toContain("B2_ACCOUNT_QUOTA_WORKFLOW_ID: structural_snapshot");
     expect(workflow).toContain("plan-d1-bundled-work.mjs");
-    expect(workflow).toContain("steps.budget.outputs.maintenance == 'true'");
+    expect(workflow).toContain("steps.budget.outputs.structural_snapshot == 'true'");
     expect(workflow).toContain('D1_DATABASE_NAME: geomacro-control-plane');
     expect(workflow).toContain('echo "D1_DATABASE_ID=$DB_ID"');
     expect(workflow).toContain("environment: production");

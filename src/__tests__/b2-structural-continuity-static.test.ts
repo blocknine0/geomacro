@@ -106,7 +106,7 @@ describe("verified B2 structural serving continuity", () => {
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
     expect(workflow).toContain("plan-d1-bundled-work.mjs");
-    expect(workflow).toContain("steps.budget.outputs.maintenance == 'true'");
+    expect(workflow).toContain("steps.budget.outputs.structural_snapshot == 'true'");
     expect(workflow).toContain('D1_DATABASE_NAME: geomacro-control-plane');
     expect(workflow).toContain("HISTORICAL_SUPABASE_SERVICE_ROLE_KEY");
     expect(workflow).toContain("publish-b2-structural-serving-snapshot.ts");
