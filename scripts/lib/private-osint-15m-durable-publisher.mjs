@@ -1,4 +1,5 @@
 /** Protected private-only durable handoff. No GitHub artifact, public API or raw publisher payloads. */
+import {buildPrivateSourceSharedReadManifest} from "./private-osint-shared-read-contract.mjs";
 export const PRIVATE_OSINT_DURABLE_SCHEMA="geomacro.private-osint-15m-durable.v1";
 export const PRIVATE_OSINT_D1_HEALTH_SNAPSHOT_SLOTS=3;
 export const OSINT_SCHEDULE_SLOT_MS=15*60_000;
@@ -55,6 +56,7 @@ export async function persistPrivateOsintBatch({
   const stamp=Date.parse(x?.source?.original_published_at??"");
   return Number.isFinite(stamp)&&stamp<=now&&now-stamp<=25*3600000;
  });
+ const sharedSourceRead=buildPrivateSourceSharedReadManifest(items,now);
  const snapshot=selectPrivateOsintD1HealthChecks({
   checks:result.checks,now,slots:sourceHealthSnapshotSlots,newsItemCount:items.length,
  });
@@ -171,6 +173,12 @@ export async function persistPrivateOsintBatch({
       !Array.isArray(privateFeed.items)))
    throw Error("PRIVATE_OSINT_PRIVATE_READER_SCHEMA_INVALID");
  return Object.freeze({schema:"geomacro.private-osint-15m-durable-production-receipt.v1",
+   // This hash is the exact source-neutral ingestion record identity for
+   // SAME input already sealed in fallback. Not a public raw-feed digest,
+   // independent original-page proof or additional D1 query.
+   shared_source_read_content_sha256:sharedSourceRead.content_sha256,
+   shared_source_read_item_count:sharedSourceRead.item_count,
+   shared_source_read_counts_by_category:sharedSourceRead.counts_by_category,
    source_checks_persisted:checked,
    source_checks_observed_this_tick:snapshot.observed,
    source_checks_selected_for_d1:snapshot.sampled,
