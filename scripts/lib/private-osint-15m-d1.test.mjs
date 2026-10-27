@@ -4,6 +4,7 @@ import {createHash,createHmac} from "node:crypto";
 import {DatabaseSync} from "node:sqlite";
 import {readFileSync} from "node:fs";
 import {handlePrivateOsint15m,privateOsint15mWrite,privateOsint15mRead,privateOsintD1FailureClass,PRIVATE_OSINT_D1_SCHEMA} from "../../workers/control-plane/src/private-osint-15m.mjs";
+const ringMigration=readFileSync(new URL("../../workers/control-plane/migrations/0032_private_osint_ring_cardinality.sql",import.meta.url),"utf8");
 const now=Date.parse("2026-10-25T12:00:00.000Z");
 const at="2026-10-25T11:52:00.000Z";
 const hash=x=>createHash("sha256").update(x).digest("hex");
@@ -105,6 +106,7 @@ test("scoped authenticated route is not a public or root-admin URL",async()=>{
 test("largest valid write bundles reads below D1 Free query and parameter ceilings",async()=>{
  const db=new DatabaseSync(':memory:');
  db.exec(readFileSync(new URL('../../workers/control-plane/migrations/0028_private_osint_15m_durable.sql',import.meta.url),'utf8'));
+ db.exec(ringMigration);
  let queries=0,maxParameters=0;
  const env={DB:{prepare(sql){
   const q={sql,params:[],bind(...params){q.params=params;maxParameters=Math.max(maxParameters,params.length);return q},
@@ -178,6 +180,7 @@ test("malformed and oversized writes fail closed, no query scope escalation",asy
 test("real SQLite coalesces duplicate poll writes while preserving immediate new first-seen and state changes",async()=>{
  const db=new DatabaseSync(':memory:');
  db.exec(readFileSync(new URL('../../workers/control-plane/migrations/0028_private_osint_15m_durable.sql',import.meta.url),'utf8'));
+ db.exec(ringMigration);
  const env={DB:{prepare(sql){
   const q={sql,params:[],bind(...params){q.params=params;return q},
    async first(){return db.prepare(sql).get(...q.params)??null},
@@ -188,20 +191,21 @@ test("real SQLite coalesces duplicate poll writes while preserving immediate new
    db.exec('COMMIT');return result;
   }catch(error){db.exec('ROLLBACK');throw error}
  }}};
- const count=()=>Number(db.prepare('SELECT total_changes() AS n').get().n);
+ const baseline=Number(db.prepare('SELECT total_changes() AS n').get().n);
+ const count=()=>Number(db.prepare('SELECT total_changes() AS n').get().n)-baseline;
  const write=async(time,state='OBSERVED')=>{
   const response=await privateOsint15mWrite(env,{schema:PRIVATE_OSINT_D1_SCHEMA,items:[item()],
    checks:[{...check(),checked_at:new Date(time).toISOString(),state}]},time);
   assert.equal(response.status,200);return response.json();
  };
  try{
-  await write(now);assert.equal(count(),2);
-  const duplicate=await write(now+60000);assert.equal(count(),2);
+  await write(now);assert.equal(count(),3);
+  const duplicate=await write(now+60000);assert.equal(count(),3);
   assert.equal(duplicate.d1_exact_readback_verified,true);
   assert.equal(duplicate.duplicate_news_last_seen_refresh_hours,6);
-  await write(now+120000,'DENIED');assert.equal(count(),3);
-  await write(now+62*60000,'DENIED');assert.equal(count(),4);
-  await write(now+6*3600000+60000,'DENIED');assert.equal(count(),6);
+  await write(now+120000,'DENIED');assert.equal(count(),4);
+  await write(now+62*60000,'DENIED');assert.equal(count(),5);
+  await write(now+6*3600000+60000,'DENIED');assert.equal(count(),7);
   const row=db.prepare('SELECT first_seen_at,last_seen_at FROM private_osint_news_25h').get();
   assert.equal(row.first_seen_at,new Date(now).toISOString());
   assert.equal(row.last_seen_at,new Date(now+6*3600000+60000).toISOString());
@@ -277,16 +281,18 @@ test("free D1 private hard-cap evicts only oldest excess rows, never a full NOT 
    all.push({id,native});
   }
   db.exec("COMMIT");
+  db.exec(ringMigration); // Backfill actual preexisting 4007 private items
   const trim="DELETE FROM private_osint_news_25h WHERE item_id IN "+
    "(SELECT item_id FROM private_osint_news_25h "+
    "ORDER BY native_feed_published_at ASC,item_id ASC LIMIT "+
-   "MAX(0,(SELECT COUNT(*) FROM private_osint_news_25h)-4000))";
+   "MAX(0,(SELECT item_count FROM private_osint_ring_cardinality_v1 WHERE single=1)-4000))";
   db.prepare(trim).run();
   const retained=db.prepare("SELECT item_id FROM private_osint_news_25h ORDER BY native_feed_published_at DESC,item_id DESC").all().map(x=>x.item_id);
   const expected=all.sort((a,b)=>b.native.localeCompare(a.native)||b.id.localeCompare(a.id))
    .slice(0,4000).map(x=>x.id);
   assert.deepEqual(retained,expected);
   assert.equal(retained.length,4000);
+   assert.equal(db.prepare("SELECT item_count FROM private_osint_ring_cardinality_v1").get().item_count,4000);
   db.prepare(trim).run();
   assert.equal(db.prepare("SELECT count(*) AS n FROM private_osint_news_25h").get().n,4000);
   const plan=db.prepare("EXPLAIN QUERY PLAN "+trim).all().map(x=>x.detail).join(" ");
@@ -297,6 +303,7 @@ test("free D1 private hard-cap evicts only oldest excess rows, never a full NOT 
 test("real SQLite bundled mixed new/existing items preserve first-seen and exactly match D1 readback",async()=>{
  const db=new DatabaseSync(":memory:");
  db.exec(readFileSync(new URL("../../workers/control-plane/migrations/0028_private_osint_15m_durable.sql",import.meta.url),"utf8"));
+ db.exec(ringMigration);
  let calls=0,largestBind=0;
  const env={DB:{
   prepare(sql){

@@ -222,3 +222,20 @@ test("bundle read-through uses a 15s TTL, single-flight, and strict acceptance b
  assert.equal(eligiblePublicFreeD1CacheRequest(request(url+"?offset=250")),false);
  assert.equal(eligiblePublicFreeD1CacheRequest(request(url)),true);
 });
+
+test("derived public journal and machine 120-second POP cache saves hot D1 scans",async()=>{
+ for(const path of ["website-derived-news-immediate","website-derived-news","derived-structural-72h","website-derived-news-html"]){
+  let scans=0;const memory=new Map();
+  const cache={async match(k){return memory.get(k.url)?.clone()??null},
+    async put(k,v){memory.set(k.url,v.clone())}};
+  const url="https://geomacro-control-plane.example/v1/public/"+path;
+  const compute=async()=>{scans++;return Response.json({ok:true,path})};
+  const first=await readPublicFreeD1Cached(request(url),compute,{cache});
+  const second=await readPublicFreeD1Cached(request(url),compute,{cache});
+  assert.equal(first.headers.get("Cache-Control"),"public, max-age=120");
+  assert.equal(second.headers.get("Cache-Control"),"public, max-age=120");
+  assert.equal(scans,1);
+  await readPublicFreeD1Cached(request(url,{"Cache-Control":"no-cache"}),compute,{cache});
+  assert.equal(scans,2,"trusted readback bypasses public edge cache");
+ }
+});
