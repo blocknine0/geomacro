@@ -24,6 +24,63 @@ async function read(path,fetchImpl){
   if(raw.length>MAX_HTTP_BYTES)throw Error("R2_SOURCE_D1_OVERSIZE");
   try{return JSON.parse(raw)}catch{throw Error("R2_SOURCE_D1_CONTRACT_INVALID")}
 }
+/**
+ * Project the ONE complete, canonical-origin D1 public journal bundle
+ * into the unchanged exact three-page R2 wire contract. The source supplies
+ * original record IDs, timestamps and first-ingest clocks; we never infer a
+ * new event, new verification, publication time or commercial permission.
+ * No separate OFFSET reads. Invalid/mixed/stale origin results fail closed.
+ */
+export function projectPublicR2PagesFromJournalBundle(doc,now=Date.now()){
+  if(!Number.isFinite(now)||!doc||doc.ok!==true||
+     doc.schema!=="geomacro.website-derived-news-bundle.v1"||
+     doc.complete!==true||doc.item_cap!==600||
+     doc.original_release_delay_minutes!==0||
+     doc.retention_days!==3||doc.retention_hours!==72||
+     doc.delivery_scope!=="free_website_only"||
+     doc.ingest_clock_kind!=="D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER"||
+     doc.scored!==false||doc.chargeable!==false||
+     doc.supabase_dependency!==false||
+     !Number.isSafeInteger(doc.returned_rows)||
+     !Array.isArray(doc.signals)||!Array.isArray(doc.first_ingest)||
+     doc.signals.length>600||doc.signals.length!==doc.returned_rows||
+     doc.first_ingest.length!==doc.signals.length)
+    throw Error("R2_SOURCE_D1_BUNDLE_CONTRACT_INVALID");
+  const checked=Date.parse(String(doc.checked_at??""));
+  if(!Number.isFinite(checked)||checked>now+15_000||now-checked>60_000)
+    throw Error("R2_SOURCE_D1_BUNDLE_STALE");
+  const seen=new Set();
+  for(let i=0;i<doc.signals.length;i++){
+    const signal=doc.signals[i],ingest=doc.first_ingest[i];
+    if(!signal||typeof signal.id!=="string"||seen.has(signal.id)||
+       ingest?.id!==signal.id||
+       !(ingest.first_seen_at===null||
+         typeof ingest.first_seen_at==="string"&&
+         Number.isFinite(Date.parse(ingest.first_seen_at))&&
+         Date.parse(ingest.first_seen_at)<=now+60_000))
+      throw Error("R2_SOURCE_D1_BUNDLE_ROW_INVALID");
+    seen.add(signal.id);
+  }
+  const pages={};
+  for(const offset of [0,250,500]){
+    if(offset>0&&offset>=doc.signals.length)break;
+    const signals=doc.signals.slice(offset,offset+250);
+    const more=offset+250<doc.signals.length;
+    pages[String(offset)]={
+      ok:true,schema:"geomacro.website-derived-news-feed.v1",
+      checked_at:doc.checked_at,
+      original_release_delay_minutes:0,retention_days:3,retention_hours:72,
+      delivery_scope:"free_website_only",scored:false,chargeable:false,
+      supabase_dependency:false,page_offset:offset,page_size:250,
+      has_more:more,next_offset:more?offset+250:null,
+      ingest_clock_kind:doc.ingest_clock_kind,
+      first_ingest:doc.first_ingest.slice(offset,offset+250),
+      signals,
+    };
+  }
+  return pages;
+}
+
 export async function buildPublicNewsR2Snapshot({fetchImpl=fetch,now=new Date()}={}){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
     throw Error("R2_SOURCE_CLOCK_INVALID");
@@ -31,14 +88,10 @@ export async function buildPublicNewsR2Snapshot({fetchImpl=fetch,now=new Date()}
   const health=await read("/health",fetchImpl);
   if(health?.ok!==true||!/^[a-f0-9]{40}$/.test(String(health.deployed_source_sha??"")))
     throw Error("R2_SOURCE_WORKER_SHA_UNVERIFIED");
-  const pages={};
-  for(const offset of [0,250,500]){
-    const path="/v1/public/website-derived-news-immediate"+
-      (offset?"?offset="+offset:"");
-    const page=await read(path,fetchImpl);
-    pages[String(offset)]=page;
-    if(page?.has_more===false)break;
-  }
+  // One bounded source-origin SELECT replaces three cumulative OFFSET reads.
+  // Strict no-cache still proves deployed canonical D1, never its own R2.
+  const journal=await read("/v1/public/website-derived-news-bundle",fetchImpl);
+  const pages=projectPublicR2PagesFromJournalBundle(journal,now.getTime());
   const machine=await read("/v1/public/derived-structural-72h",fetchImpl);
   const value={schema:"geomacro.public-source-neutral-r2-bundle.v1",
     produced_at:now.toISOString(),
