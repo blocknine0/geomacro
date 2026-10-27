@@ -77,7 +77,7 @@ export function planD1BundledWork(snapshot,{now=new Date()}={}){
   // This never admits the signer, reviewer, R2 exporter or audit fan-out.
   const slotsRemaining=Math.ceil((DAY_MS-(now.getTime()%DAY_MS))/300_000);
   const intakeBudget={rows_read:4000*slotsRemaining+100000,
-    rows_written:101*slotsRemaining+2000,remaining_five_minute_slots:slotsRemaining};
+    rows_written:104*slotsRemaining+2000,remaining_five_minute_slots:slotsRemaining};
   const sourceIntake=grants.critical || (
     snapshot.remaining_rows_read>D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read &&
     snapshot.remaining_rows_written>D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written);

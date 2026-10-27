@@ -93,7 +93,8 @@ The existing preflight now exposes a separate `source_intake` grant only when
 remaining provider headroom fits **all remaining five-minute source bundles**
 plus protected account reserves. Each held-mode bundle admits at most 50 new
 cards, packed into one write. The conservative allocation is 4,000 reads and
-101 writes per remaining slot, plus 100,000 read / 2,000 write incident margins.
+104 writes per remaining slot (including three existing collector checkpoints),
+plus 100,000 read / 2,000 write incident margins.
 The protected 750,000 read / 15,000 write reserves remain. Unknown or insufficient
 provider counters still deny the grant. This is observational, not atomic.
 
@@ -104,3 +105,13 @@ publication requires the existing branch to be seeded and shares one concurrency
 lock with the hourly publisher and standalone static deployer. Retention sweeps
 before/after intake and after critical release insertion prevent the 601-row
 readability failure. Retention-withheld rows are not claimed delivered.
+
+After complete verified journal readback, the five-minute publisher updates the
+existing per-category authenticated collector checkpoints used by Predge's
+continuity monitor. An actually unreachable category retains its prior success;
+a healthy quiet poll records zero releases. These are source-check receipts,
+never acknowledgements from Predge's own application. Predge reads the same
+72-hour journal immediately on its next authenticated request, with no extra
+exact-release delay or second ingestion. Partner polling and client receipt
+remain separate from endpoint availability. The existing partner contract,
+token, 500/day limit and pilot expiry remain locked.
