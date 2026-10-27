@@ -125,7 +125,19 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Free GraphQL quota observation executes before any publisher reads;
+      # no extra runner or unbounded D1 budget ledger SQL.
+      - name: Govern half-hour pulse with paced shared D1 budget
+        id: budget
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/plan-d1-bundled-work.mjs
+      - name: Report degraded source coverage on held original pulse
+        if: steps.budget.outputs.research != 'true'
+        run: echo "::notice::HALF_HOUR_SOURCE_PULSE_QUOTA_HELD; no D1 checkpoints or source-fetch proof."
       - name: Setup Node.js 22
+        if: steps.budget.outputs.research == 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v4
         with:
           node-version: "22"
@@ -174,6 +186,7 @@ jobs:
         with:
           node-version: "22"
       - name: Bounded, origin-validated half-hour source observation across all 3 domains
+        if: steps.budget.outputs.research == 'true'
         run: |
           set -uo pipefail
           rc=0
@@ -237,7 +250,7 @@ jobs:
           fi
       - name: Publish compact observation-only D1 checkpoints and read them back
         id: d1
-        if: always()
+        if: always() && steps.budget.outputs.research == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -248,7 +261,7 @@ jobs:
           # New source-native fingerprints justify PRIVATE scoring only.
           node scripts/lib/auto-private-scoring-trigger.mjs
       - name: Verify direct three-domain continuity Worker status (no funds)
-        if: github.event_name == 'schedule'
+        if: steps.budget.outputs.research == 'true' && github.event_name == 'schedule'
         shell: bash
         run: |
           set -euo pipefail
@@ -277,7 +290,7 @@ jobs:
           }));
           NODE
       - name: Preserve two-day source-native counts, never raw news or session tokens
-        if: always()
+        if: always() && steps.budget.outputs.research == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
         with:
           name: original-source-pulse-${{ github.run_id }}
