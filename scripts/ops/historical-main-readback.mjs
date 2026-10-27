@@ -108,8 +108,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     });
     console.log(JSON.stringify(result));
     if (result.status !== "PASS") process.exitCode = 1;
-  } catch (error) {
-    console.log(JSON.stringify({ status: "UNCONFIGURED", reason: String(error.message),
+  } catch {
+    // No malformed URL/key text must appear in CI logs.
+    console.log(JSON.stringify({ status: "UNCONFIGURED",
+      reason: "historical_url_or_credentials_invalid",
       requests_attempted_max: 0, writes: 0 }));
     process.exitCode = 1;
   }
