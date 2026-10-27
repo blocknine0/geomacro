@@ -63,11 +63,45 @@ jobs:
             exit 0
           fi
 
-          # Do not replay a failed deployment of a superseded main revision.
-          if [[ "$failed_sha" != "$GITHUB_SHA" ]]; then
-            echo "::notice::D1_QUOTA_RECOVERY_STALE_MAIN_SHA_HOLD"
+          # A D1 7500 deployment can fail before later GeoMacro-only merges.
+          # Exact-SHA comparison alone would prevent any post-reset recovery.
+          # Fail closed unless the *failed main revision* is an ancestor of
+          # the current main commit. Never redeploy a fork or divergent tree.
+          # Critically, refuse any intervening Worker deploy, Worker source or
+          # PREDGE path changes: locked PREDGE deployment behavior stays put.
+          if ! [[ "$failed_sha" =~ ^[a-f0-9]{40}$ ]] ||
+             ! [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "::warning::D1_QUOTA_RECOVERY_SHA_UNVERIFIED"
             echo "retry=false" >> "$GITHUB_OUTPUT"
             exit 0
+          fi
+          if [[ "$failed_sha" != "$GITHUB_SHA" ]]; then
+            compare_file="$RUNNER_TEMP/deploy-main-ancestry.json"
+            if ! curl --fail --silent --show-error --max-time 20 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$api/compare/$failed_sha...$GITHUB_SHA" -o "$compare_file"; then
+              echo "::warning::D1_QUOTA_RECOVERY_ANCESTRY_UNAVAILABLE"
+              echo "retry=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if ! jq -e --arg failed "$failed_sha" --arg head "$GITHUB_SHA" '
+              (.status == "ahead") and
+              (.behind_by == 0) and
+              (.ahead_by | type == "number" and . > 0) and
+              (.base_commit.sha == $failed) and
+              (.merge_base_commit.sha == $failed) and
+              (.files | type == "array" and length < 300) and
+              ([.files[].filename | select(test(
+                "(^workers/control-plane/|^\\.github/workflows/deploy-d1-control-plane\\.yml$|predge)";
+                "i"
+              ))] | length == 0)
+            ' "$compare_file" >/dev/null; then
+              echo "::warning::D1_QUOTA_RECOVERY_DIVERGENT_MAIN_HOLD"
+              echo "retry=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "::notice::D1_QUOTA_RECOVERY_FAILED_COMMIT_IS_MAIN_ANCESTOR"
           fi
 
           jobs_file="$RUNNER_TEMP/deploy-jobs.json"
