@@ -110,7 +110,7 @@ export function buildDerivedNewsStructural(
           c==="Contains public sector information licensed under the Open Government Licence v3.0."?
           c+" https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/":c)),
       }:{}),
-      ...(macroEventContext(signal)?{macro_context:macroEventContext(signal)}:{}),
+      ...(projection==="attributed_research"&&macroEventContext(signal)?{macro_context:macroEventContext(signal)}:{}),
       event_family:EVENT_FAMILIES[signal.category],
       development_type:signal.development_type,topic:signal.topic,
       original_published_at:signal.published_at,date_precision:signal.date_precision,
