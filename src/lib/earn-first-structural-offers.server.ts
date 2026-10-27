@@ -7,9 +7,21 @@ import {
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import { getCoinbaseX402Config } from "./coinbase-x402.server";
 import { STORE_STRUCTURAL_PRODUCTS } from "./store-product-selection";
+import { resolveGeomacroCapabilityPrice } from "./capability-pricing-catalog";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const PURCHASE_PATH = "/api/v1/intelligence/query";
+const FIRST_SALE_PRICE=resolveGeomacroCapabilityPrice("structural_country_digest","standard");
+const FIRST_SALE_SAMPLE=Object.freeze({
+  schema_version:"geomacro.agent-query.v1",
+  product:{capability:"structural_country_digest",variant:"standard"},
+  delivery_tier:"structural_baseline",fulfillment_mode:"published_only",
+  subjects:[{type:"country",country_iso3:"AUS"}],
+  topics:["critical_minerals"],detail:"compact",
+});
+// This is an executable buyer request template, not proof this market has
+// current commercially permitted evidence or that USDC settlement is enabled.
+
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -55,6 +67,22 @@ export const earnFirstStructuralOfferHandlers = {
     availability_endpoint: "/api/v1/intelligence/availability",
     offers: templates,
     supported_store_products: STORE_STRUCTURAL_PRODUCTS,
+    first_qualified_country_digest:{
+      schema_version:"geomacro.first-sale-structural-country-digest.v1",
+      capability:FIRST_SALE_PRICE.capability,variant:FIRST_SALE_PRICE.variant,
+      catalog_price_usdc:FIRST_SALE_PRICE.amount_usdc,
+      catalog_amount_atomic:FIRST_SALE_PRICE.amount_atomic,
+      catalog_price_is_payment_quote:false,
+      payment_authorized:false,payment_required_now:false,
+      signed_current_risk_object_included:false,
+      availability:{method:"POST",path:"/api/v1/intelligence/availability"},
+      purchase:{method:"POST",path:PURCHASE_PATH,only_after_exact_eligible_preflight:true},
+      example_no_funds_request:FIRST_SALE_SAMPLE,
+      data_freshness_and_commercial_rights_must_be_verified:true,
+      real_merchant_activation_and_separate_owner_authorization_required:true,
+      current_merchant_status:"RECHECK_AT_REQUEST_TIME",
+      historical_unscored_only:true,
+    },
     instructions: "POST delivery_tier structural_baseline. Legacy requests require one country/topic. Explicit product selection supports country/corridor digests or full profiles with at least two qualified dimensions. Preflight checks data only; request an exact quote on the canonical purchase endpoint. It is not a payment receipt.",
   }),
   POST: async ({request}: {request: Request}) =>

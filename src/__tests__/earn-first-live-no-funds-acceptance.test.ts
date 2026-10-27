@@ -51,7 +51,8 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     const report=await acceptEarningPilotLive({expectedSha:sha,fetchImpl,
       now:new Date("2026-10-13T15:00:00Z")});
     expect(report.no_funds_preflight_complete).toBe(true);
-    expect(report.first_earning_ready).toBe(true);
+    expect(report.first_earning_ready).toBe(false);
+    expect(report.first_sale_explicit_quote_ready_count).toBe(0);
     expect(report.quote_ready_category_count).toBe(1);
     expect(report.first_sale_catalog_only.catalog_only_usdc).toBe("0.02");
     expect(report.first_sale_catalog_only.payable_quote_verified).toBe(false);
@@ -61,6 +62,11 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     expect(report.checkout_or_settlement_attempted).toBe(false);
     expect(received).toHaveLength(6); // build SHA, offer catalog, price catalog, three categories
     expect(received.filter(x=>x.method==="POST")).toHaveLength(3);
+    const mined=JSON.parse(received.filter(x=>x.method==="POST")[2].body??"{}");
+    expect(mined.product).toEqual({capability:"structural_country_digest",variant:"standard"});
+    expect(mined.delivery_tier).toBe("structural_baseline");
+    expect(mined.fulfillment_mode).toBe("published_only");
+    expect(mined.topics).toEqual(["critical_minerals"]);
     expect(report.checks.slice(2).map(x=>x.country_iso3)).toEqual(["USA","USA","USA"]);
     for(const x of received){
       expect(x.headers.has("payment-signature")).toBe(false);
@@ -73,6 +79,16 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     expect(JSON.stringify(report)).not.toContain("source_contract");
     expect(JSON.stringify(report)).not.toContain("source_url");
   });
+  it("counts first earning readiness only for a genuinely qualified exact 0.02 USDC product",async()=>{
+    const {fetchImpl,received}=calls([unavailable,unavailable,eligible]);
+    const report=await acceptEarningPilotLive({expectedSha:sha,fetchImpl});
+    expect(report.first_sale_explicit_eligible_count).toBe(1);
+    expect(report.first_sale_explicit_quote_ready_count).toBe(1);
+    expect(report.first_earning_ready).toBe(true);
+    expect(report.real_funds_touched).toBe(false);
+    const exact=JSON.parse(received.filter(x=>x.method==="POST")[2].body??"{}");
+    expect(exact.product).toEqual({capability:"structural_country_digest",variant:"standard"});
+  });
   it("reports 503 on one category without hiding a separately eligible baseline",async()=>{
     const {fetchImpl,received}=calls([
       {__httpStatus:503},eligible,{__httpStatus:429},
@@ -82,7 +98,8 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     expect(report.preflight_transport_error_category_count).toBe(2);
     expect(report.eligible_category_count).toBe(1);
     expect(report.quote_ready_category_count).toBe(1);
-    expect(report.first_earning_ready).toBe(true);
+    expect(report.first_earning_ready).toBe(false);
+    expect(report.first_sale_explicit_quote_ready_count).toBe(0);
     expect(report.checks.map(x=>x.status)).toEqual([
       "PASS","PASS","PREFLIGHT_SERVER_UNAVAILABLE",
       "ELIGIBLE_GOVERNED_BASELINE","PREFLIGHT_RATE_LIMITED",
