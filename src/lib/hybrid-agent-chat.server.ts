@@ -22,8 +22,17 @@ export function resolveGroundedFollowUp(
   history: ReadonlyArray<{ role: "user" | "assistant"; content: string }>,
 ): { question: string; mode: HybridChatMode } {
   const previousTopic = [...history].reverse().find(turn => turn.role === "user")?.content ?? "";
+  if (/\bgeomacro\b/i.test(previousTopic) && !/\bgeomacro\b/i.test(question) &&
+      /\b(?:pricing|prices?|cost|fees?|free|paid|products?|api|agents?|docs?|documentation|contact|privacy|sources?|founder|team|partners?|account|history|internal|database|password|tokens?|credentials?)\b|^how (?:do I|can I|much)|^(?:explain|tell me) more[.!?]*$/i.test(question)) {
+    const rewritten = /^(?:explain|tell me) more[.!?]*$/i.test(question) ? "Tell me about Geomacro" : `Geomacro: ${question}`;
+    parseAskGeomacroInput({question:rewritten});
+    return {question:rewritten,mode:"bounded_follow_up"};
+  }
   const followUp = /^(?:please\s+)?(?:explain (?:more|further|that|it)(?: simply| in simple terms)?|tell me more|go deeper|why(?: is that| does (?:that|it) matter)?|what (?:does (?:that|it) mean|are the (?:risks|implications))|(?:make it |be )?(?:shorter|simpler)|summari[sz]e(?: that| it)?)[.!?]*$/i;
   if (followUp.test(question)) {
+    if (/\bgeomacro\b/i.test(previousTopic) && !askDomains(previousTopic).length) {
+      return {question:"Tell me about Geomacro",mode:"bounded_follow_up"};
+    }
     if (!previousTopic || !askDomains(previousTopic).length) throw new Error("AMBIGUOUS_FOLLOW_UP");
     const topic = previousTopic.replace(/^(?:Explain further|Why does this matter|Summarize): /, "");
     const prefix = /why|matter|risks|implications/i.test(question) ? "Why does this matter" :

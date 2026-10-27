@@ -117,6 +117,7 @@ export function directAnswerForQuestion(answer: AskAnswer, question = ""): strin
  * answer into summary for the chatbot-style public surface.
  */
 export function toCommercialAskBrief(answer: AskAnswer, question = ""): AskAnswer {
+  if ("answer_kind" in answer && answer.answer_kind === "public_info") return answer;
   const compacted: AskAnswer = {
     ...answer,
     summary: concise(answer.summary, 2, 320),
