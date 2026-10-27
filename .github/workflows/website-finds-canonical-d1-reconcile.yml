@@ -91,7 +91,7 @@ jobs:
             echo "::error::WEBSITE_D1_RECONCILE_ACCOUNT_QUOTA_HELD"
             exit 2
           fi
-          if [ "$(date -u +%Y-%m-%d)" \< "2026-10-29" ]; then
+          if [[ "$(date -u +%Y-%m-%d)" < "2026-10-29" ]]; then
             echo "::error::WEBSITE_D1_RECONCILE_STARTS_2026_10_29"
             exit 2
           fi
