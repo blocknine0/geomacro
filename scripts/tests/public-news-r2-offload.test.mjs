@@ -5,7 +5,8 @@ import {
   PUBLIC_NEWS_R2_KEY,validatePublicNewsR2Bundle,
   readPublicNewsR2Snapshot,publishPublicNewsR2Snapshot
 } from "../../workers/control-plane/src/public-news-r2-offload.mjs";
-import {buildPublicNewsR2Snapshot,publishPublicNewsR2Snapshot as exportSnapshot}
+import {buildPublicNewsR2Snapshot,publishPublicNewsR2Snapshot as exportSnapshot,
+  projectPublicR2PagesFromJournalBundle}
   from "../ops/publish-public-news-r2-snapshot.mjs";
 
 const sha="a".repeat(40);
@@ -18,6 +19,16 @@ const news=()=>({
   original_release_delay_minutes:0,page_offset:0,page_size:250,
   has_more:false,next_offset:null,scored:false,chargeable:false,
   checked_at:time,signals:[],first_ingest:[]
+});
+const fullJournal=(signals=[],first_ingest=signals.map(s=>({
+  id:s.id,first_seen_at:time
+})))=>({
+  ok:true,schema:"geomacro.website-derived-news-bundle.v1",
+  checked_at:time,original_release_delay_minutes:0,
+  retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
+  complete:true,item_cap:600,returned_rows:signals.length,
+  ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
+  first_ingest,signals,scored:false,chargeable:false,supabase_dependency:false
 });
 const machine=()=>({
   ok:true,schema:"geomacro.derived-news-structural-feed.v1",
@@ -140,7 +151,7 @@ test("GitHub batch reads the real D1-origin contracts with no-cache and publishe
     if(init.method==="GET"){
       assert.equal(init.headers["Cache-Control"],"no-cache");
       if(url.endsWith("/health"))return json({ok:true,deployed_source_sha:sha});
-      if(url.endsWith("/website-derived-news-immediate"))return json(news());
+      if(url.endsWith("/website-derived-news-bundle"))return json(fullJournal());
       if(url.endsWith("/derived-structural-72h"))return json(machine());
       assert.fail("unexpected D1 read "+url);
     }
@@ -161,7 +172,8 @@ test("GitHub batch reads the real D1-origin contracts with no-cache and publishe
   assert.equal(receipt.d1_writes,0);assert.equal(receipt.b2_requests,0);
   assert.equal(receipt.new_upstream_reads,0);
   assert.equal(receipt.sha256,"f".repeat(64));
-  assert.equal(published,1);assert.equal(requests,7);
+  assert.equal(published,1);assert.equal(requests,5,
+    "two independent build runs each use health + one bundle + machine; publisher PUT adds one");
 });
 
 test("anonymous bundle served from source-native-time-validated R2 without any D1 query",async()=>{
@@ -205,4 +217,56 @@ test("fallback cannot falsely extend 72-hour native item validity",async()=>{
  const res=await readPublicNewsR2Snapshot(new Request(
   base+"/v1/public/website-derived-news-immediate"),env,now+6*60*60_000);
  assert.equal(res,null);
+});
+
+test("one full journal reprojects 0/250/500 public pages without independent D1 OFFSET reads",()=>{
+  const signals=Array.from({length:511},(_,i)=>({
+    id:"macro-"+i.toString(16).padStart(8,"0"),
+    category:"macro",published_at:time,
+  }));
+  const ingest=signals.map(s=>({id:s.id,first_seen_at:time}));
+  const pages=projectPublicR2PagesFromJournalBundle(fullJournal(signals,ingest),now);
+  assert.deepEqual(Object.keys(pages),["0","250","500"]);
+  assert.deepEqual([pages["0"].signals.length,pages["250"].signals.length,
+    pages["500"].signals.length],[250,250,11]);
+  assert.deepEqual([pages["0"].has_more,pages["250"].has_more,pages["500"].has_more],
+    [true,true,false]);
+  assert.deepEqual([pages["0"].next_offset,pages["250"].next_offset,
+    pages["500"].next_offset],[250,500,null]);
+  for(const offset of [0,250,500]){
+    const page=pages[String(offset)];
+    assert.deepEqual(page.first_ingest,
+      ingest.slice(offset,offset+250),"never invent/change source first-ingest clocks");
+    assert.deepEqual(page.signals,signals.slice(offset,offset+250));
+    assert.equal(page.checked_at,time);
+    assert.equal(page.scored,false);
+    assert.equal(page.chargeable,false);
+  }
+  assert.deepEqual(Object.keys(projectPublicR2PagesFromJournalBundle(fullJournal(),now)),
+    ["0"],"empty canonical news must remain genuinely empty");
+});
+
+test("reject duplicate/origin-invalid/corrupt first-ingest and stale bundle; never fabricate R2 readback",()=>{
+ const rows=[
+  {id:"macro-00000001",category:"macro",published_at:time},
+  {id:"macro-00000002",category:"macro",published_at:time},
+ ];
+ const v=fullJournal(rows);
+ const invalid=[
+  {...v,complete:false},
+  {...v,returned_rows:3},
+  {...v,signals:[rows[0],rows[0]]},
+  {...v,first_ingest:[{id:rows[1].id,first_seen_at:time},v.first_ingest[1]]},
+  {...v,first_ingest:[{id:rows[0].id,first_seen_at:"2040-01-01T00:00:00Z"},v.first_ingest[1]]},
+  {...v,first_ingest:[]},
+  {...v,chargeable:true},
+  {...v,delivery_scope:"protected"},
+  {...v,item_cap:999},
+ ];
+ for(const item of invalid){
+  assert.throws(()=>projectPublicR2PagesFromJournalBundle(item,now),
+    /R2_SOURCE_D1_BUNDLE_/);
+ }
+ assert.throws(()=>projectPublicR2PagesFromJournalBundle(v,now+70_000),
+   /R2_SOURCE_D1_BUNDLE_STALE/);
 });
