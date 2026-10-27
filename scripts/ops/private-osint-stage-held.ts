@@ -16,7 +16,7 @@ import {sealPrivateOsintSpool} from "../lib/private-osint-encrypted-spool.mjs";
 if(process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
  process.env.GITHUB_REF!=="refs/heads/main"||
  process.env.GEOMACRO_OSINT_SPOOL_ADMISSION!=="HELD"||
- !["schedule","workflow_dispatch","push"].includes(process.env.GITHUB_EVENT_NAME??""))
+ !["schedule","workflow_dispatch","push","workflow_run"].includes(process.env.GITHUB_EVENT_NAME??""))
  throw Error("OSINT_SPOOL_PROTECTED_MAIN_HELD_ONLY");
 const now=new Date(),root=process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN;
 const sources=privateOsintRuntimeSources(now,privateOsintGlobalSources(),
