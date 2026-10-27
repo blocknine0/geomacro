@@ -77,6 +77,9 @@ test("disposable read-saver continues only with 250k/5k account safety reserve",
  assert.equal(q.critical,false);
  assert.equal(q.source_intake,false);
  assert.equal(q.snapshot_refresh,true);
+ assert.equal(q.structural_snapshot,true);
+ assert.equal(q.structural_snapshot_max_b2_network_attempts,12);
+ assert.equal(q.structural_snapshot_requires_atomic_b2_account_reservation,true);
  assert.equal(q.snapshot_refresh_does_not_admit_ingestion,true);
  assert.equal(q.snapshot_refresh_max_source_rows_per_run,601);
  for(const [r,w] of [[4_750_001,23_531],[4_700_000,95_001],
@@ -84,6 +87,9 @@ test("disposable read-saver continues only with 250k/5k account safety reserve",
   assert.equal(planD1BundledWork(quota(r,w),{now}).snapshot_refresh,false);
  }
  assert.equal(planD1BundledWork(null,{now}).snapshot_refresh,false);
+ assert.equal(planD1BundledWork(null,{now}).structural_snapshot,false);
+ assert.equal(planD1BundledWork(quota(4_750_001,0),{now}).structural_snapshot,false);
+ assert.equal(planD1BundledWork(quota(1_000,99_999),{now}).structural_snapshot,false);
 });
 test("provider error or denied GraphQL is safe HOLD with no writes",async()=>{
  const x=await checkD1BundledWork({
