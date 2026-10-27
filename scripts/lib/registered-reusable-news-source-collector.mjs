@@ -282,10 +282,24 @@ export async function collectRegisteredReusableNews({
     // Even if the bounded 40-record item quota is reached, check every
     // selected source and report its status. Never silently drop issuers.
   }
+  // Receipt describes OBSERVED attributable countries only. A registered
+  // country route, healthy feed, global publisher or CLDR name does not count
+  // as a native-dated event for any country. Never log raw title or URL.
+  const observedCountries=Object.fromEntries(CATEGORY.map(category=>[
+    category,new Set(items.filter(i=>i.category===category&&
+      /^[A-Z]{3}$/u.test(i.country_iso3??"")).map(i=>i.country_iso3)).size,
+  ]));
+  const registeredFeeds=Object.fromEntries(CATEGORY.map(category=>[
+    category,registry.filter(s=>s.supported&&s.categories.includes(category)).length,
+  ]));
   return {
     schema:"geomacro.reusable-source-news-batch.v1",items,
     checks,
     summary:{registered_source_endpoints:registry.length,
+      supported_registered_sources_by_category:registeredFeeds,
+      actual_observed_country_count_by_category:observedCountries,
+      observed_country_count_is_not_195x3_coverage_certification:true,
+      pinned_presidential_sources_selected:active.filter(s=>s.priority===true).length,
       nominal_poll_slot_minutes:REGISTERED_NEWS_POLL_SLOT_MINUTES,
       nominal_max_category_revisit_minutes:Math.max(...CATEGORY.map(category=>
         Math.ceil(registry.filter(s=>s.categories.includes(category)).length/perCategory)*REGISTERED_NEWS_POLL_SLOT_MINUTES)),
