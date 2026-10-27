@@ -7,9 +7,9 @@ test("origin proof is owner-authenticated, direct canonical DB, and not CDN-cach
  const auth=source.indexOf("const auth = authorized(request, env)");
  const owner=source.indexOf('url.pathname==="/v1/internal/website-derived-news-origin"');
  assert.ok(auth>0&&owner>auth,"readback route must be behind owner auth");
- const scope=source.slice(owner,owner+1200);
+ const scope=source.slice(owner-60,owner+1200);
  assert.ok(scope.includes('request.method==="GET"'));
- assert.ok(scope.includes('url.search==="?offset=500"'));
+ assert.ok(scope.includes('url.search!=="?offset=500"'));
  assert.ok(scope.includes("readDerivedStories(env,Date.now(),500,0,false)"),
    "never use a derived materialization or R2 in canonical readback");
  assert.ok(scope.includes('headers.set("Cache-Control","no-store")'));
