@@ -33,3 +33,27 @@ test("provider schema mismatch and duplicate fingerprint are fail-closed",()=>{
  assert.throws(()=>attributeD1ReadInsights([row("SELECT 1"),row("SELECT 1")]),/DUPLICATE/);
  assert.equal(CURRENT_HIGH_READ_FINGERPRINTS.length,2);
 });
+
+test("SQL shape identifies hot query operation without leaking private SQL",()=>{
+ const raw="DELETE FROM private_osint_news_25h WHERE item_id IN (SELECT item_id FROM private_osint_news_25h ORDER BY native_feed_published_at ASC LIMIT MAX(0,(SELECT COUNT(*) FROM private_osint_news_25h)-4000))";
+ const report=attributeD1ReadInsights([row(raw,5000,1)]);
+ const shape=report.top_rows_read[0].sql_shape;
+ assert.equal(shape.statement_kind,"DELETE");
+ assert.equal(shape.has_count_star,true);
+ assert.equal(shape.has_subquery_count,true);
+ assert.equal(shape.has_order_by,true);
+ assert.equal(shape.has_nested_select,true);
+ assert.equal(shape.has_limit,true);
+ const json=JSON.stringify(report);
+ assert.ok(!json.includes("private_osint_news_25h"));
+ assert.ok(!json.includes("native_feed_published_at"));
+});
+test("public derived scan shape distinguishes SELECT OFFSET and no SQL exposure",()=>{
+ const raw="SELECT story_json,first_seen_at FROM website_derived_intelligence WHERE published_at>=? ORDER BY published_at DESC LIMIT 251 OFFSET ?";
+ const shape=attributeD1ReadInsights([row(raw,400,1)]).top_rows_read[0].sql_shape;
+ assert.equal(shape.statement_kind,"SELECT");
+ assert.equal(shape.has_order_by,true);
+ assert.equal(shape.has_offset,true);
+ assert.equal(shape.has_rowid_offset,true);
+ assert.equal(shape.has_subquery_count,false);
+});
