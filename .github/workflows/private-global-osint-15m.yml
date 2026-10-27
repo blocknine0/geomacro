@@ -43,6 +43,9 @@ on:
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
+      - "scripts/lib/private-osint-r2-encrypted-escrow.mjs"
+      - "scripts/lib/private-osint-r2-encrypted-escrow.test.mjs"
+      - "scripts/ops/private-osint-mirror-held-to-r2.mjs"
       - "scripts/lib/private-osint-encrypted-spool.test.mjs"
       - "scripts/lib/private-osint-shared-read-contract.mjs"
       - "scripts/lib/private-osint-shared-read-contract.test.mjs"
@@ -109,6 +112,9 @@ on:
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
+      - "scripts/lib/private-osint-r2-encrypted-escrow.mjs"
+      - "scripts/lib/private-osint-r2-encrypted-escrow.test.mjs"
+      - "scripts/ops/private-osint-mirror-held-to-r2.mjs"
       - "scripts/lib/private-osint-encrypted-spool.test.mjs"
       - "scripts/lib/private-osint-shared-read-contract.mjs"
       - "scripts/lib/private-osint-shared-read-contract.test.mjs"
@@ -167,6 +173,8 @@ jobs:
           node --test scripts/lib/private-osint-country-rotation.test.mjs
           node --test scripts/lib/private-osint-encrypted-spool.test.mjs
           node --test scripts/lib/private-osint-shared-read-contract.test.mjs
+          node --check scripts/ops/private-osint-mirror-held-to-r2.mjs
+          node --test scripts/lib/private-osint-r2-encrypted-escrow.test.mjs
           node --check scripts/ops/private-osint-replay-held.mjs
           node --test scripts/lib/private-osint-local-publisher-rotation.test.mjs
           node --test scripts/lib/private-osint-15m-collector.test.mjs
@@ -358,6 +366,21 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/private-osint-stage-held.ts
+      - name: Optional dedicated R2 private AES-GCM escrow with independent byte readback
+        if: ${{ vars.GEOMACRO_PRIVATE_OSINT_R2_BUCKET != '' }}
+        id: r2_mirror
+        continue-on-error: true
+        env:
+          GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GEOMACRO_PRIVATE_OSINT_R2_BUCKET: ${{ vars.GEOMACRO_PRIVATE_OSINT_R2_BUCKET }}
+          GEOMACRO_PRIVATE_OSINT_R2_ACCESS_KEY_ID: ${{ secrets.GEOMACRO_PRIVATE_OSINT_R2_ACCESS_KEY_ID }}
+          GEOMACRO_PRIVATE_OSINT_R2_SECRET_ACCESS_KEY: ${{ secrets.GEOMACRO_PRIVATE_OSINT_R2_SECRET_ACCESS_KEY }}
+        run: node scripts/ops/private-osint-mirror-held-to-r2.mjs
+      - name: Warn when optional R2 evidence mirror failed
+        if: ${{ steps.r2_mirror.outcome == 'failure' }}
+        run: echo "::warning::PRIVATE_OSINT_R2_ESCROW_FAILED_GITHUB_CIPHERTEXT_RETAINED"
       - name: Retain only encrypted original-clock observations, never plaintext
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
