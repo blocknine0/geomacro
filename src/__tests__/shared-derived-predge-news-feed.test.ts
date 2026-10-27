@@ -22,6 +22,23 @@ function env(rows:unknown[]){
  })}))}};
 }
 describe("Predge shared D1 feed remains separate from Geomacro static public archive",()=>{
+ it("keeps partner item parity while only the fastlane opts into Macro price evidence",async()=>{
+  const rows=[signal(1)];
+  const partnerEnv=env(rows),fastlaneEnv=env(rows);
+  const partner=await(await publicSharedDerivedNewsFeed(partnerEnv,new URLSearchParams(),NOW,"attributed_research")).json();
+  expect(partner.items).toEqual(buildDerivedNewsStructural(rows,NOW,"attributed_research"));
+  const fastlane=await(await publicSharedDerivedNewsFeed(fastlaneEnv,new URLSearchParams(),NOW,"attributed_research",true)).json();
+  const stateReads=(e:ReturnType<typeof env>)=>e.DB.prepare.mock.calls.filter(([sql])=>sql.includes("control_state")).length;
+  expect(stateReads(fastlaneEnv)).toBe(stateReads(partnerEnv)+1);
+  expect(fastlane.items[0]).toHaveProperty("macro_context");
+  const {macro_context,...sameItem}=fastlane.items[0];
+  const {macro_context:baseContext,...partnerItem}=partner.items[0];
+  expect(sameItem).toEqual(partnerItem);
+  expect(baseContext.price_reaction).toBeNull();
+  expect(macro_context.event_id).toBe(partner.items[0].id);
+  expect(macro_context.parent_category).toBe("macro");
+  expect(readFileSync("workers/control-plane/src/index.mjs","utf8")).toContain('publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),"attributed_research",true)');
+ });
  it("returns exactly the same stable structured records as existing canonical website API projector",async()=>{
   const signals=Array.from({length:520},(_,i)=>signal(i));
   const seeded=env(signals);
