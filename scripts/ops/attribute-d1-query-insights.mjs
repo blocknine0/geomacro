@@ -66,24 +66,24 @@ export function shapeD1HotQuery(q){
  if(typeof q!=="string"||q.length<1||q.length>32000)
   throw Error("D1_SHAPE_SQL_INVALID");
  const normalized=normalize(q);
- const head=/^(select|insert|update|delete|replace|with|pragma)\\b/iu.exec(normalized);
+ const head=/^(select|insert|update|delete|replace|with|pragma)\b/iu.exec(normalized);
  const verb=head?head[1].toUpperCase():"UNKNOWN";
  return Object.freeze({
   statement_kind:verb,
-  has_count_star:/\\bcount\\s*\\(\\s*\\*\\s*\\)/iu.test(normalized),
-  has_order_by:/\\border\\s+by\\b/iu.test(normalized),
-  has_limit:/\\blimit\\b/iu.test(normalized),
-  has_offset:/\\boffset\\b/iu.test(normalized),
-  has_join:/\\bjoin\\b/iu.test(normalized),
-  has_group_by:/\\bgroup\\s+by\\b/iu.test(normalized),
-  has_json_each:/\\bjson_each\\s*\\(/iu.test(normalized),
-  has_where:/\\bwhere\\b/iu.test(normalized),
-  has_conflict:/\\bon\\s+conflict\\b/iu.test(normalized),
-  has_nested_select:/\\(\\s*select\\b/iu.test(normalized),
+  has_count_star:/\bcount\s*\(\s*\*\s*\)/iu.test(normalized),
+  has_order_by:/\border\s+by\b/iu.test(normalized),
+  has_limit:/\blimit\b/iu.test(normalized),
+  has_offset:/\boffset\b/iu.test(normalized),
+  has_join:/\bjoin\b/iu.test(normalized),
+  has_group_by:/\bgroup\s+by\b/iu.test(normalized),
+  has_json_each:/\bjson_each\s*\(/iu.test(normalized),
+  has_where:/\bwhere\b/iu.test(normalized),
+  has_conflict:/\bon\s+conflict\b/iu.test(normalized),
+  has_nested_select:/\(\s*select\b/iu.test(normalized),
   // sqlite btree read minimization needs exactly these flags to distinguish
   // range scans, retention compaction and bounded keyset/news-page reads.
-  has_rowid_offset:/\\boffset\\s+\\?/iu.test(normalized),
-  has_subquery_count:/\\(\\s*select\\s+count\\s*\\(/iu.test(normalized),
+  has_rowid_offset:/\boffset\s+\?/iu.test(normalized),
+  has_subquery_count:/\(\s*select\s+count\s*\(/iu.test(normalized),
  });
 }
 function classify(q){
