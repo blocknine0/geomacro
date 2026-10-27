@@ -85,7 +85,13 @@ describe("website lock governance", () => {
     expect(overviewApproval.approved_ui_commit).toBe(homeApproval.previous_baseline_sha);
     const findsApproval = config.approved_homepage_finds_visibility_20261028;
     expect(homeApproval.approved_ui_commit).toBe(findsApproval.previous_baseline_sha);
-    expect(findsApproval.approved_ui_commit).toBe(config.baseline_sha);
+    const askChatApproval = config.approved_ask_three_category_chat_20261028;
+    expect(findsApproval.approved_ui_commit).toBe(askChatApproval.previous_baseline_sha);
+    expect(askChatApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(askChatApproval.predge_unmodified).toBe(true);
+    expect(askChatApproval.payment_authorized).toBe(false);
+    expect(askChatApproval.source_rights_and_original_clocks_preserved).toBe(true);
+    expect(askChatApproval.scope).toContain("src/components/ask/ask-workspace.tsx");
     expect(findsApproval.predge_unmodified).toBe(true);
     expect(findsApproval.source_clocks_and_rights_unchanged).toBe(true);
     expect(findsApproval.payment_authorized).toBe(false);
