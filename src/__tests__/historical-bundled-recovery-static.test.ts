@@ -17,8 +17,10 @@ describe("historical structural B2 snapshot central bundled budget", () => {
   });
 
   it("never truncates historical coverage to deliver a falsely complete snapshot", () => {
-    expect(publisher).toContain("MAX_TOTAL_DB_READS = 96");
-    expect(publisher).toContain("MAX_TOTAL_SOURCE_ROWS = 18_000");
+    expect(publisher).toContain("MAX_TOTAL_DB_READS = 550");
+    expect(publisher).toContain("MAX_TOTAL_SOURCE_ROWS = 200_000");
+    expect(publisher).toContain("MAX_TOTAL_HISTORICAL_DOWNLOAD_BYTES = 256 * 1024 * 1024");
+    expect(publisher).toContain("B2_STRUCTURAL_HISTORICAL_DOWNLOAD_BYTES_CAP");
     expect(publisher).toContain("B2_STRUCTURAL_HISTORICAL_DB_QUERY_CAP");
     expect(publisher).toContain("B2_STRUCTURAL_TRUNCATION_GUARD_source_rows");
     expect(publisher).toContain('url.origin !== HISTORICAL_URL');
