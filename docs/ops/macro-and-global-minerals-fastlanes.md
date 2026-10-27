@@ -90,11 +90,15 @@ No global completeness or guaranteed 1–2 minute end-to-end latency is asserted
 
 Production exposed a pacing hold with 2.17 million daily reads still available.
 The existing preflight now exposes a separate `source_intake` grant only when
-remaining provider headroom fits **all remaining five-minute source bundles**
-plus protected account reserves. Each held-mode bundle admits at most 50 new
-cards, packed into one write. The conservative allocation is 4,000 reads and
-104 writes per remaining slot (including three existing collector checkpoints),
-plus 100,000 read / 2,000 write incident margins.
+remaining provider headroom fits **all remaining source bundles at the selected
+cadence** plus protected account reserves. The guard tries 5/10/15/30/60-minute
+cadences and the largest fitting 50/25/10/5/3-row cap, preferring timely polling.
+Per-slot planning allocates 3,200 reads and `16 * row_cap + 40` writes, including
+index/retention overhead, public-page materialization and source checkpoints,
+plus 100,000 read / 2,000 write
+incident margins. These are conservative engineering allocations, not atomic
+provider reservations. The observed 3,871,312-read / 22,960-write incident at
+10:18 UTC admits a 10-minute, 25-row source bundle instead of a blanket hold.
 The protected 750,000 read / 15,000 write reserves remain. Unknown or insufficient
 provider counters still deny the grant. This is observational, not atomic.
 
@@ -102,9 +106,14 @@ This narrow grant does not run signing, review, R2 snapshot exports or latency
 audit fan-out. It shares the already-read final journal with the append-only
 static archive, so website delivery continues without a second D1 fetch. Archive
 publication requires the existing branch to be seeded and shares one concurrency
-lock with the hourly publisher and standalone static deployer. Retention sweeps
-before/after intake and after critical release insertion prevent the 601-row
-readability failure. Retention-withheld rows are not claimed delivered.
+lock with the hourly publisher and standalone static deployer. A healthy baseline
+now requires one complete journal read and no preliminary retention sweep.
+Only an explicitly proven overcapacity fault permits one repair; retries reuse
+that observed error rather than re-reading D1. Post-write cleanup and final
+readback still enforce the existing 600-row journal. Retention-withheld rows are
+not claimed delivered. Generic publisher placeholders remain observations rather
+than new news-card candidates. If a row cap defers real releases, feed ETags do
+not advance past them; the next due bounded poll retries the native feeds.
 
 After complete verified journal readback, the five-minute publisher updates the
 existing per-category authenticated collector checkpoints used by Predge's
@@ -115,3 +124,13 @@ never acknowledgements from Predge's own application. Predge reads the same
 exact-release delay or second ingestion. Partner polling and client receipt
 remain separate from endpoint availability. The existing partner contract,
 token, 500/day limit and pilot expiry remain locked.
+
+The existing five-minute GitHub wakeup schedule stays unchanged. An authenticated
+success clock in one existing `control_state` row enforces the selected effective
+cadence across retries, pushes and deployment wakeups. Quote/minute-cron snapshots
+cannot refresh this clock. A skipped not-due run performs no source fetch and
+cannot manufacture a successful collector check. Official release windows may
+use the separately protected incident allocation. `/v1/public/macro-fastlane`
+exposes the last intake, effective cadence, row cap and next due time separately
+from the short critical-release polling lease. Completely exhausted or unknown
+provider usage still fails closed; delayed schedules remain possible.

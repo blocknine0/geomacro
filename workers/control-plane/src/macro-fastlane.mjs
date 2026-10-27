@@ -4,6 +4,7 @@ import {collectMacroFastlane} from '../../../scripts/lib/macro-fastlane-collecto
 import {MACRO_NEWS_SOURCES,normalizeMetalQuote,measuredPriceReaction,macroEventContext} from '../../../scripts/lib/macro-fx-metals.mjs';
 import {releaseWindowEvents,criticalSourceIds} from '../../../scripts/lib/macro-release-calendar.mjs';
 import {publishDerivedStories} from './website-derived-intelligence.mjs';
+import {loadNewsIntakePolicy} from './news-intake-policy.mjs';
 const KEY='macro_fx_metals_fastlane_v1';
 const reply=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store','Access-Control-Allow-Origin':'*','X-Content-Type-Options':'nosniff'}});
 const ids=new Set(MACRO_NEWS_SOURCES.map(x=>x.id));
@@ -47,12 +48,13 @@ export async function storeMacroState(env,state,now=Date.now()){
  version=control_state.version+1,updated_at=MAX(control_state.updated_at,excluded.updated_at)` ).bind(KEY,JSON.stringify(clean),clean.checked_at).run();
  return reply({ok:true,category:'macro',state_saved:true,state_merge_policy:'NEWEST_SNAPSHOT_PLUS_LONGEST_QUOTA_LEASE'});
 }
-export function publicMacroProjection(state,now=Date.now()){
+export function publicMacroProjection(state,now=Date.now(),intakePolicy=null){
  const fresh=Number.isFinite(Date.parse(state?.checked_at))&&now-Date.parse(state.checked_at)<=15*60000&&Date.parse(state.checked_at)<=now;
  const quotes=(state?.quotes??[]).filter(q=>now-Date.parse(q.observed_at)<=5*60000&&Date.parse(q.observed_at)<=now);
  const latest=Object.values(Object.fromEntries(quotes.map(q=>[q.instrument,q])));
  return {ok:true,schema:'geomacro.macro-fastlane-public.v1',category:'macro',parent_label:'Macro Economics',lanes:['forex','precious_metals'],checked_at:state?.checked_at??null,
   status:fresh?'RECENT_POLL_OBSERVED':'POLL_FRESHNESS_UNVERIFIED',quota_state:Date.parse(state?.quota_lease_until)>now?'ADMITTED':'HELD',quota_admitted_until:state?.quota_lease_until??null,
+  source_intake:intakePolicy?.schema==='geomacro.news-intake-admission.v1'?{interval_minutes:intakePolicy.interval_minutes,max_new_rows:intakePolicy.max_new_rows,last_success_at:intakePolicy.last_success_at,next_due_at:new Date(Date.parse(intakePolicy.last_success_at)+intakePolicy.interval_minutes*60000).toISOString(),mode:intakePolicy.interval_minutes===5?'FIVE_MINUTE_TARGET':'ADAPTIVE_CADENCE',success_clock_is_not_a_new_release:true}:null,
   news_stream:'/v1/public/website-derived-news-immediate',machine_stream:'/v1/public/fastlane-intelligence?domain=macro',
   critical_minerals:{category:"rare_earth",regional_groups:state?.mineral_regions??[],source_health:state?.mineral_checks??[],global_completeness_verified:false},
   source_health:state?.source_checks??[],calendar_health:state?.calendar_checks??[],price_health:state?.price_checks??[],
@@ -62,7 +64,7 @@ export function publicMacroProjection(state,now=Date.now()){
   guaranteed_latency:false,real_time_exchange_quotes_verified:false,raw_news_delivered:false};
 }
 export async function readPublicMacro(env,now=Date.now()){
- try{return reply(publicMacroProjection(await loadMacroState(env),now));}catch{return reply({ok:false,error:'MACRO_READ_UNAVAILABLE',category:'macro'},503);}
+ try{const state=await loadMacroState(env);let policy=null;try{policy=await loadNewsIntakePolicy(env);}catch{/* Source-clock failure cannot hide otherwise available quotes/news. */}return reply(publicMacroProjection(state,now,policy));}catch{return reply({ok:false,error:'MACRO_READ_UNAVAILABLE',category:'macro'},503);}
 }
 export async function runMacroReleaseTick(env,{now=Date.now(),fetchImpl=fetch}={}){
  const startClock=Date.now(),quoteClock=()=>now+Date.now()-startClock;

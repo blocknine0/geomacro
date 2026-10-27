@@ -11,6 +11,7 @@ import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mj
 import { readDerivedStories, readDerivedStoriesBundle, publishDerivedStories, renderDerivedStoriesHtml, DERIVED_NEWS_TOPIC_POLICY_REVISION } from "./website-derived-intelligence.mjs";
 import {refreshMaterializedNewsPages} from "./materialized-public-news-pages.mjs";
 import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
+import {readNewsIntakePolicy,storeNewsIntakePolicy} from "./news-intake-policy.mjs";
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
@@ -1386,6 +1387,17 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      if(request.method==='GET'&&url.pathname==='/v1/internal/website-derived-news-bundle'&&!url.search){
+        const direct=await readDerivedStoriesBundle(env,Date.now(),false);
+        const headers=new Headers(direct.headers);
+        headers.set('Cache-Control','private, no-store');
+        headers.set('X-GeoMacro-Origin-Readback','d1-canonical');
+        return new Response(direct.body,{status:direct.status,headers});
+      }
+      if(url.pathname==='/v1/internal/news-intake-policy'&&!url.search){
+        if(request.method==='GET')return readNewsIntakePolicy(env);
+        if(request.method==='PUT')return storeNewsIntakePolicy(env,await readJson(request,1024));
+      }
       if(url.pathname==="/v1/internal/macro-fastlane"&&!url.search){
         if(request.method==="GET")return json({ok:true,state:await loadMacroState(env)});
         if(request.method==="PUT")return storeMacroState(env,await readJson(request,50000));

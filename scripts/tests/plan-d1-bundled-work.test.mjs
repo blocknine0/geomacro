@@ -107,10 +107,23 @@ test('observed production pacing hold still admits only a full-day budgeted smal
  assert.equal(result.critical,false);assert.equal(result.research,false);assert.equal(result.maintenance,false);
  assert.equal(result.source_intake,true);
  const budget=result.source_intake_budget_to_utc_reset;
- assert.ok(budget.rows_read<=4000*288+100000);assert.ok(budget.rows_written<=104*288+2000);
+ assert.ok(budget.rows_read<=3200*288+100000);assert.ok(budget.rows_written<result.remaining_rows_written-15000);
  assert.ok(result.remaining_rows_read-budget.rows_read>750000);
  assert.ok(result.remaining_rows_written-budget.rows_written>15000);
  assert.equal(result.source_intake_does_not_admit_signing_or_audits,true);
+});
+test('actual 3.87m-read incident degrades cadence and batch size instead of holding usable source quota',()=>{
+ const p=planD1BundledWork(quota(3871312,22960),{now:new Date('2026-10-27T10:18:57Z')});
+ assert.equal(p.critical,false);assert.equal(p.source_intake,true);
+ assert.equal(p.source_intake_interval_minutes,10);assert.equal(p.source_intake_max_new_rows,25);
+ const b=p.source_intake_budget_to_utc_reset;
+ assert.ok(p.remaining_rows_read-b.rows_read>750000);
+ assert.ok(p.remaining_rows_written-b.rows_written>15000);
+ for(const read of [1000000,2800000,3871312,4000000,4100000]){
+  const r=planD1BundledWork(quota(read,22960),{now});
+  assert.equal(r.source_intake,true);
+  assert.ok(r.remaining_rows_read-r.source_intake_budget_to_utc_reset.rows_read>750000);
+ }
 });
 test('bounded source intake cannot consume the protected reserve or use unknown quota counters',()=>{
  for(const [read,written]of [[4300000,10000],[1000,86000],[5000000,100000]])assert.equal(planD1BundledWork(quota(read,written),{now}).source_intake,false);

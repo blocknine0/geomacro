@@ -42,6 +42,23 @@ export function d1LanePacedCeiling(lane,now){
   });
 }
 const safeInt=x=>Number.isSafeInteger(x)&&x>=0;
+export function planSourceIntake(snapshot,now){
+ const remainingMs=DAY_MS-(now.getTime()%DAY_MS);
+ // Bound the entire remaining day before admitting a smaller source bundle.
+ // Preserve the same 750k/15k reserves and 100k/2k incident margins. Actual
+ // cadence is enforced by an authenticated last-success clock, not cron time.
+ for(const interval_minutes of [5,10,15,30,60]){
+  const slots=Math.ceil(remainingMs/(interval_minutes*60000));
+  for(const max_new_rows of [50,25,10,5,3]){
+   const rows_read=3200*slots+100000;
+   const rows_written=(16*max_new_rows+40)*slots+2000;
+   if(snapshot.remaining_rows_read>D1_BUNDLE_LANES.critical.read_reserve+rows_read&&
+      snapshot.remaining_rows_written>D1_BUNDLE_LANES.critical.write_reserve+rows_written)
+    return {interval_minutes,max_new_rows,rows_read,rows_written,remaining_source_slots:slots,remaining_five_minute_slots:Math.ceil(remainingMs/300000)};
+  }
+ }
+ return null;
+}
 const held=(reason,now)=>Object.freeze({
   schema:"geomacro.d1-free-bundled-work-admission.v1",
   day_utc:now.toISOString().slice(0,10),state:"HELD",
@@ -76,12 +93,8 @@ export function planD1BundledWork(snapshot,{now=new Date()}={}){
   // One serial five-minute collector can continue during discretionary pacing
   // holds only if the remaining DAY fits its worst-case finite allocation.
   // This never admits the signer, reviewer, R2 exporter or audit fan-out.
-  const slotsRemaining=Math.ceil((DAY_MS-(now.getTime()%DAY_MS))/300_000);
-  const intakeBudget={rows_read:4000*slotsRemaining+100000,
-    rows_written:104*slotsRemaining+2000,remaining_five_minute_slots:slotsRemaining};
-  const sourceIntake=grants.critical || (
-    snapshot.remaining_rows_read>D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read &&
-    snapshot.remaining_rows_written>D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written);
+  const intakeBudget=planSourceIntake(snapshot,now);
+  const sourceIntake=intakeBudget!==null;
   // Bounded public-serving refresh, even if intake pacing is HELD. The
   // Worker checks the 8-minute revision fence *before* its <=601-row scan.
   // Separate from source intake/signing; reserve 250k read and 5k write rows
@@ -103,8 +116,10 @@ export function planD1BundledWork(snapshot,{now=new Date()}={}){
   return Object.freeze({
     schema:"geomacro.d1-free-bundled-work-admission.v1",
     day_utc:snapshot.day_utc,state,
-    reason:state==="HELD"?"D1_FREE_RESERVE_REACHED":"ACCOUNT_WIDE_HEADROOM_OBSERVED",
+    reason:state==="HELD"?(sourceIntake?"DISCRETIONARY_PACING_HELD_SOURCE_ADMITTED":"D1_FREE_RESERVE_REACHED"):"ACCOUNT_WIDE_HEADROOM_OBSERVED",
     ...grants,source_intake:sourceIntake,
+    source_intake_interval_minutes:intakeBudget?.interval_minutes??null,
+    source_intake_max_new_rows:intakeBudget?.max_new_rows??0,
     snapshot_refresh:snapshotRefresh,
     structural_snapshot:structuralSnapshot,
     structural_snapshot_max_b2_network_attempts:12,
@@ -146,6 +161,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
     for(const key of ["critical","research","maintenance","source_intake","snapshot_refresh","structural_snapshot"]){
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key])+"\n");
     }
+    for(const key of ["source_intake_interval_minutes","source_intake_max_new_rows"])
+      appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key]??0)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"state="+result.state+"\n");
   }
   if(result.source_intake&&result.critical!==true)

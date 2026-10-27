@@ -9,7 +9,7 @@ test("five minute producer reuses its own runner for quota admission and gates s
  const downstream=s.slice(s.indexOf("  continue-private-source-review:"),s.indexOf("  fastlane-contract:"));
  assert.match(producer,/id: budget/);
  assert.match(producer,/run: node scripts\/ops\/plan-d1-bundled-work\.mjs/);
- assert.match(producer,/quota_admitted: \$\{\{ steps\.budget\.outputs\.critical \}\}/);
+ assert.match(producer,/quota_admitted: \$\{\{ steps\.budget\.outputs\.critical == 'true' && steps\.intake-clock\.outputs\.due == 'true'/);
  assert.match(producer,/if: steps\.budget\.outputs\.source_intake == 'true'/);
  assert.match(producer,/steps\.budget\.outputs\.critical == 'true' && !cancelled\(\)/);
  assert.match(producer,/if: always\(\) && steps\.budget\.outputs\.critical == 'true'/);
