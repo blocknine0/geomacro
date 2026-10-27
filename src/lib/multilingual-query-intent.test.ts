@@ -97,7 +97,7 @@ describe("multilingual no-funds query interpreter", () => {
   });
 
   it("never mislabels an unsupported historical or ranking request as an eligible sale", () => {
-    expect(()=>interpret({question:"Rank by risk India versus China"}))
+    expect(()=>interpret({question:"Rank by risk India versus China on inflation"}))
       .toThrow("AMBIGUOUS_QUERY_INTENT");
     expect(()=>interpret({question:"Inflation India",as_of:"2020-01-01T00:00:00Z"}))
       .toThrow("HISTORICAL_AS_OF_UNSUPPORTED_FOR_REQUESTED_MODULES");
