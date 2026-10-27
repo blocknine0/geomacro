@@ -96,7 +96,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
   });
 
   it("admits safe domain-only OSINT provenance and rejects a source URL/path",async()=>{
-    expect(DERIVED_NEWS_TOPIC_POLICY_REVISION).toBe(2);
+    expect(DERIVED_NEWS_TOPIC_POLICY_REVISION).toBe(3);
     const osint={...sample("macro"),topic:"official economic statistics",
       title:"Geomacro finds official economic statistics source-feed observation",
       what_changed:"A monitored source feed contains a dated item about official economic statistics. The event actor, precise action and impact have not been independently verified.",

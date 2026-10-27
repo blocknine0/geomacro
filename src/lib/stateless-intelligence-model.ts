@@ -1,3 +1,4 @@
+import {macroPreciousTopic} from "../../scripts/lib/macro-fx-metals.mjs";
 import {newsEventFacts} from "./news-event-facts";
 import {releaseNewsObservation,actorActionNewsObservation} from "./release-news-observation";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,globalOriginalArticleUrl,verifiedGlobalRdfFeed} from '../../scripts/lib/global-official-release-feeds.mjs';
@@ -300,7 +301,8 @@ const UNCLASSIFIED_FEED_TOPIC:Record<StatelessCategory,{name:string;implication:
 export function topicForOriginal(
   title: string, category: StatelessCategory, sourceId: string, dayVerified: boolean,
 ) {
-  return selectOfficialTopic(title, category) ??
+  if(category === "rare_earth" && macroPreciousTopic(title) && !/rare[- ]earth|critical minerals?|lithium|cobalt|neodymium|dysprosium/i.test(title)) return null;
+  return (category === "macro" ? macroPreciousTopic(title) : null) ?? selectOfficialTopic(title, category) ??
     (category === "macro" && sourceId === "wto_trade_original_rss" &&
       WTO_ORIGINAL_TRADE_POLICY_TOPIC.test.test(title) ? WTO_ORIGINAL_TRADE_POLICY_TOPIC : null) ??
     (category === "macro" && sourceId === "eia_press_macro" &&
@@ -571,12 +573,13 @@ export function deriveStatelessSignals(
     // an identical original item across two subject feeds is one story.
     const family = item.sourceId.startsWith("statcan_") ? "statcan_daily"
       : item.sourceId.startsWith("un_news") ? "un_news" : item.sourceId;
-    const fingerprint = family + "|" + url.href;
+    const fingerprint = item.sourceId.startsWith("bls_")
+      ? family + "|" + item.publishedAt : family + "|" + url.href;
     // Delivery identity is category + exact admitted original URL. A source
     // can expose the same article through RSS and its HTML index; feed-lane
     // IDs must not turn one release into two findings. Keep the historical
     // fingerprint above solely for stable public IDs of the selected lane.
-    const deliveryIdentity = item.category + "|" + url.href;
+    const deliveryIdentity = item.category + "|" + (item.sourceId.startsWith("bls_") ? fingerprint : url.href);
     if (unique.has(deliveryIdentity)) continue;
     unique.add(deliveryIdentity);
     const focus=candidateOnly?selected.name:

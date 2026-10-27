@@ -11,7 +11,7 @@ test("Worker, publisher and health endpoint share one explicit topic-policy revi
  const fastlane=read("scripts/ops/publish-original-news-five-minute-fastlane.ts");
  const privateOsint=read("scripts/ops/private-osint-15m-tick.ts");
  const bridge=read("scripts/lib/private-osint-website-bridge.mjs");
- assert.match(policy,/DERIVED_NEWS_TOPIC_POLICY_REVISION\s*=\s*2/u);
+ assert.match(policy,/DERIVED_NEWS_TOPIC_POLICY_REVISION\s*=\s*3/u);
  assert.match(worker,/export\s*\{\s*DERIVED_NEWS_TOPIC_POLICY_REVISION\s*\}/u);
  assert.match(worker,/isSafeDerivedNewsReadbackSignal\(s\)/u);
  assert.match(index,/derived_news_topic_policy_revision:\s*DERIVED_NEWS_TOPIC_POLICY_REVISION/u);

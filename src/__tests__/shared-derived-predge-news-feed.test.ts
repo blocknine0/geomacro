@@ -1,4 +1,4 @@
-import {describe,it,expect} from "vitest";
+import {describe,it,expect,vi} from "vitest";
 import {readFileSync} from "node:fs";
 import {publicSharedDerivedNewsFeed} from "../../workers/control-plane/src/shared-derived-news-feed.mjs";
 import {buildDerivedNewsStructural} from "../lib/derived-news-structural-bridge";
@@ -17,14 +17,16 @@ function signal(i:number){
   same_event_corrob_verified:false,severity:null};
 }
 function env(rows:unknown[]){
- return {DB:{prepare:()=>({bind:(_since:string,_seen:string,offset:number)=>({
-   all:async()=>({results:rows.slice(offset,offset+251).map(story=>({story_json:JSON.stringify(story)}))}),
- })})}};
+ return {DB:{prepare:vi.fn((sql:string)=>({bind:(_since:string,_seen:string,offset=0)=>({
+   all:async()=>({results:rows.slice(offset,offset+(sql.includes("LIMIT 601")?601:251)).map(story=>({story_json:JSON.stringify(story)}))}),
+ })}))}};
 }
 describe("Predge shared D1 feed remains separate from Geomacro static public archive",()=>{
  it("returns exactly the same stable structured records as existing canonical website API projector",async()=>{
   const signals=Array.from({length:520},(_,i)=>signal(i));
-  const response=await publicSharedDerivedNewsFeed(env(signals),new URLSearchParams(),NOW);
+  const seeded=env(signals);
+  const response=await publicSharedDerivedNewsFeed(seeded,new URLSearchParams(),NOW);
+  expect(seeded.DB.prepare.mock.calls.filter(([sql])=>sql.includes("website_derived_intelligence"))).toHaveLength(1);
   expect(response.status).toBe(200);
   const data=await response.json();
   expect(data.items).toEqual(buildDerivedNewsStructural(signals,NOW));

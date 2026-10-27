@@ -1,3 +1,4 @@
+import {MACRO_TOPICS} from "../../../scripts/lib/macro-fx-metals.mjs";
 /**
  * Free website-only rolling derived-news journal. Independent of Supabase,
  * B2 hot-snapshot/commercial checks, signed GRO and x402.
@@ -15,7 +16,7 @@ export const AUTO_INGEST_RETENTION_MS = 72 * 60 * 60_000;
 const LOOKBACK_MS = 30 * 86400_000;
 const DELAY_MS = 0;
 const CATEGORIES = new Set(["geopolitics", "macro", "rare_earth"]);
-const TOPICS = new Set(["sanctions and trade restrictions","security and diplomacy",
+const TOPICS = new Set([...Object.values(MACRO_TOPICS).map(x=>x.name),"sanctions and trade restrictions","security and diplomacy",
   "geopolitical security","foreign policy","global FX, trade and industrial conditions","banking and capital regulation",
   "monetary policy","inflation and prices",
   "FX and external balances","financial conditions","trade and economic relations",
@@ -272,7 +273,7 @@ export async function renderDerivedStoriesHtml(env,now=Date.now()){
       "Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors https://geomacro.live",
       "Referrer-Policy":"no-referrer","X-Content-Type-Options":"nosniff"}});
   const body=await response.json();
-  const labels={geopolitics:"Geopolitics",macro:"Macro / FX",rare_earth:"Critical Minerals"};
+  const labels={geopolitics:"Geopolitics",macro:"Macro Economics",rare_earth:"Critical Minerals"};
   const records=body.signals.filter(s=>verifyDerivedStory(s,now)).slice(0,150);
   const stories=records.map(s=>'<article><div class="label">'+
     (s.status==="osint_feed_observed_unverified"?"UNVERIFIED OSINT FEED":s.status==="official_feed_candidate_unscored"?"SOURCE CANDIDATE · TOPIC UNVERIFIED":"GEOMACRO FINDS")+' · '+

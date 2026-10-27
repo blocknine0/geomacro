@@ -21,6 +21,14 @@ on:
   push:
     branches: [main]
     paths:
+      - "scripts/lib/macro-direct-release.mjs"
+      - "scripts/lib/critical-minerals-fastlane.mjs"
+      - "scripts/lib/critical-minerals-registry.mjs"
+      - "scripts/lib/macro-fx-metals.mjs"
+      - "scripts/lib/macro-fastlane-collector.mjs"
+      - "scripts/lib/macro-release-calendar.mjs"
+      - "workers/control-plane/src/macro-fastlane.mjs"
+      - "scripts/tests/macro-fastlane.test.mjs"
       - "src/lib/original-verification-policy.ts"
       - "src/lib/release-news-observation.ts"
       - "scripts/ops/refresh-derived-news-editorial.ts"
@@ -73,6 +81,14 @@ on:
       - "scripts/tests/gri-news-wakeup.test.mjs"
   pull_request:
     paths:
+      - "scripts/lib/macro-direct-release.mjs"
+      - "scripts/lib/critical-minerals-fastlane.mjs"
+      - "scripts/lib/critical-minerals-registry.mjs"
+      - "scripts/lib/macro-fx-metals.mjs"
+      - "scripts/lib/macro-fastlane-collector.mjs"
+      - "scripts/lib/macro-release-calendar.mjs"
+      - "workers/control-plane/src/macro-fastlane.mjs"
+      - "scripts/tests/macro-fastlane.test.mjs"
       - "src/lib/original-verification-policy.ts"
       - "src/lib/release-news-observation.ts"
       - "scripts/ops/refresh-derived-news-editorial.ts"
@@ -216,6 +232,8 @@ jobs:
         run: |
           bun run vitest run src/__tests__/five-minute-original-news-fastlane.test.ts src/__tests__/automated-intelligence-input.test.ts src/__tests__/low-authority-source-review.test.ts
           bun test scripts/tests/private-source-handoff-sqlite.test.ts
+          bun test scripts/tests/macro-fastlane.test.mjs
+          bun build scripts/ops/publish-original-news-five-minute-fastlane.ts --target=bun --outfile=/tmp/geomacro-bundled-news-fastlane.js
           node --test scripts/tests/derived-news-readback-policy.test.mjs
           node --test scripts/tests/derived-news-worker-policy.test.mjs
           node --test scripts/tests/derived-news-deploy-order.test.mjs

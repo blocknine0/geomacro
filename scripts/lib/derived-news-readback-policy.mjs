@@ -7,7 +7,7 @@
  * source URLs; this boundary validates only the public provenance shape. URLs, paths and upstream content
  * remain forbidden in public prose and in all other provenance records.
  */
-export const DERIVED_NEWS_TOPIC_POLICY_REVISION = 2;
+export const DERIVED_NEWS_TOPIC_POLICY_REVISION = 3;
 
 const DOMAIN_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
 const PROSE_URL_OR_DOMAIN_PATH = /(?:https?:\/\/|www\.|(?:[a-z0-9-]+\.)+[a-z]{2,63}\/)/iu;
