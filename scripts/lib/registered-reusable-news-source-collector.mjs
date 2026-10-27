@@ -46,7 +46,7 @@ const scalar=x=>typeof x==="string"?x:"";
 function substantiveHeadline(title){
  if(title.length>=25&&title.length<=250)return true;
  return title.length>=14&&title.length<25&&
-  (title.match(/[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]/gu)??[]).length>=12;
+  (title.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu)??[]).length>=12;
 }
 const cleanText=s=>scalar(s).replace(/<!\[CDATA\[([\s\S]*?)\]\]>/giu,"$1")
   .replace(/<[^>]*>/gu," ").replace(/&#(\d{1,5});/gu,(_,n)=>{
