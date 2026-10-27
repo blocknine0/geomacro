@@ -20,14 +20,21 @@ test("GitHub job log is plain text, never assumed to be workflow-run ZIP",()=>{
   assert.match(recovery,/grep -aFq/);
 });
 
-test("recover only an exact-main confirmed quota 7500 migration failure",()=>{
+test("recover only an exact-main confirmed quota 7500 migration/schema failure",()=>{
   assert.match(recovery,/\$failed_sha" != "\$GITHUB_SHA"/);
   assert.match(recovery,/Apply committed D1 migrations remotely/);
   assert.match(recovery,/migration_conclusion" != "failure"/);
+  assert.match(recovery,/schema_conclusion" != "failure"/);
   assert.match(recovery,/Your account has exceeded D1's free tier daily row read limit/);
   assert.match(recovery,/code: 7500/);
   assert.match(recovery,/retry=false/);
   assert.match(recovery,/steps\.diagnose\.outputs\.retry == 'true'/);
+});
+test('held green publishers get one post-reset wakeup without bypassing their quota or cadence guard',()=>{
+ assert.match(recovery,/Wake the existing quota-guarded source publisher after UTC reset/);
+ assert.match(recovery,/actions\/workflows\/five-minute-original-news-fastlane\.yml\/dispatches/);
+ assert.match(recovery,/SOURCE_RESET_WAKEUP_DISPATCHED; publication\/readback not yet asserted/);
+ assert.equal((recovery.match(/cron:/g)||[]).length,1);
 });
 
 test("recovery is no-funds, with no manual grant bypass or partner mutation",()=>{

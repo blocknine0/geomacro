@@ -26,7 +26,7 @@ test("Worker, publisher and health endpoint share one explicit topic-policy revi
  const hourlyRead=publisher.indexOf("readStatelessWebsiteIntelligence(category");
  assert.ok(hourlyPreflight>=0&&hourlyRead>hourlyPreflight);
  const fastPreflight=fastlane.indexOf("const workerPolicy=await requireDerivedNewsWorkerPolicy");
- const fastBaseline=fastlane.indexOf("fetchAllDerivedNews(fetch,runAt)");
+ const fastBaseline=fastlane.indexOf("const baseline=await readIntakeBaseline(");
  const fastSourceRead=fastlane.indexOf("readFiveMinuteNewsFastlane(runAt,20");
  assert.ok(fastPreflight>=0&&fastBaseline>fastPreflight&&fastSourceRead>fastPreflight);
  // Protected private OSINT must not depend on the public journal health.

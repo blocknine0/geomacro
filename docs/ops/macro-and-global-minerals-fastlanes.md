@@ -134,3 +134,11 @@ use the separately protected incident allocation. `/v1/public/macro-fastlane`
 exposes the last intake, effective cadence, row cap and next due time separately
 from the short critical-release polling lease. Completely exhausted or unknown
 provider usage still fails closed; delayed schedules remain possible.
+
+The existing 00:10 UTC quota-reset recovery also wakes the existing source
+publisher when its previous quota-held workflow was green with skipped source
+steps. It does not require a failed migration to resume news. Migration/schema
+deployment retry still requires the exact canonical head and the actual D1 7500
+daily-limit error. The source publisher must independently re-observe today's
+quota and due clock; a dispatch is never reported as completed ingestion or
+Predge receipt. Already consumed daily capacity cannot be restored by this guard.

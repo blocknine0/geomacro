@@ -82,8 +82,9 @@ jobs:
 
           job_id="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].id // empty' "$jobs_file")"
           migration_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Apply committed D1 migrations remotely") | .conclusion' "$jobs_file" 2>/dev/null || true)"
-          if [[ -z "$job_id" || "$migration_conclusion" != "failure" ]]; then
-            echo "Latest deployment did not fail at the D1 migration step; no automatic retry."
+          schema_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Verify D1 schema directly") | .conclusion' "$jobs_file" 2>/dev/null || true)"
+          if [[ -z "$job_id" ]] || [[ "$migration_conclusion" != "failure" && "$schema_conclusion" != "failure" ]]; then
+            echo "Latest deployment did not fail at a D1 migration/schema step; no automatic retry."
             echo "retry=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -133,3 +134,22 @@ jobs:
             "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/deploy-d1-control-plane.yml/dispatches" \
             --data '{"ref":"main","inputs":{"confirmation":"DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS"}}'
           echo "Dispatched the existing protected deployment workflow; its own migration, secret, Worker and D1 acceptance gates remain mandatory."
+
+      - name: Wake the existing quota-guarded source publisher after UTC reset
+        # A quota-held publisher can be green with every source step skipped.
+        # Do not require a failed deployment to resume news. The publisher
+        # independently verifies today's account quota and actual due clock.
+        if: always() && steps.diagnose.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --request POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -H "Content-Type: application/json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/five-minute-original-news-fastlane.yml/dispatches" \
+            --data '{"ref":"main"}'
+          echo "SOURCE_RESET_WAKEUP_DISPATCHED; publication/readback not yet asserted."
