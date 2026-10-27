@@ -77,4 +77,10 @@ describe("actual-event Intelligence publication",()=>{
   expect(isConcreteHomeFind(card as never)).toBe(false);
   expect(isConcreteHomeFind({...card,headline:"Federal Reserve announced new monetary policy measures",what_changed:"Federal Reserve announced a new monetary policy measure and the original dated announcement."} as never)).toBe(true);
  });
+ it.each(["called for dialogue", "appealed for dialogue", "maintained the policy rate", "released an economic outlook"])(
+  "keeps an already qualified homepage action visible: %s", action=>{
+   expect(isConcreteHomeFind({domain:"geopolitics",headline:"United Nations "+action,
+     what_changed:"United Nations "+action+" in its dated statement."} as never)).toBe(true);
+  });
+
 });
