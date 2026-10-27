@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {eligiblePublicFreeD1CacheRequest,readPublicFreeD1Cached,PUBLIC_FREE_D1_TTL_SECONDS}
+import {eligiblePublicFreeD1CacheRequest,readPublicFreeD1Cached,PUBLIC_FREE_D1_TTL_SECONDS,PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS}
   from "../../workers/control-plane/src/public-free-d1-cache.mjs";
 
 const base="https://geomacro-control-plane.example/v1/public/three-domain-continuity";
@@ -190,4 +190,35 @@ test("cache never covers paid, protected or Predge machine routes after offload"
   assert.ok(source.includes('return publicReadCache(()=>readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay));'));
   assert.ok(source.includes("return predgeResearchDerivedNewsFeed(request,env);"));
   assert.ok(source.includes("if (!auth.ok) return json("));
+});
+
+
+test("bundle read-through uses a 15s TTL, single-flight, and strict acceptance bypass",async()=>{
+ const url="https://geomacro-control-plane.example/v1/public/website-derived-news-bundle";
+ const objects=new Map();let reads=0;
+ const cache={
+  async match(key){return objects.get(key.url)?.clone()??null},
+  async put(key,value){objects.set(key.url,value.clone())},
+ };
+ const run=async()=>{reads++;return Response.json({
+  ok:true,schema:"geomacro.website-derived-news-bundle.v1",signals:[],
+ })};
+ const first=await readPublicFreeD1Cached(request(url),run,{cache});
+ const second=await readPublicFreeD1Cached(request(url),run,{cache});
+ assert.equal(PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS,15);
+ assert.equal(first.headers.get("Cache-Control"),"public, max-age=15");
+ assert.equal(second.headers.get("Cache-Control"),"public, max-age=15");
+ assert.equal(reads,1);
+ for(const headers of [
+  {"Cache-Control":"no-cache"},{"Cache-Control":"no-store"},
+  {"Cache-Control":"max-age=0"},{"Pragma":"no-cache"},
+  {"Authorization":"Bearer private"},{"Cookie":"sid=private"},
+ ]){
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(url,headers)),false);
+  const response=await readPublicFreeD1Cached(request(url,headers),run,{cache});
+  assert.equal(response.headers.get("Cache-Control"),null);
+ }
+ assert.equal(reads,7);
+ assert.equal(eligiblePublicFreeD1CacheRequest(request(url+"?offset=250")),false);
+ assert.equal(eligiblePublicFreeD1CacheRequest(request(url)),true);
 });
