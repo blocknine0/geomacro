@@ -33,6 +33,9 @@ jobs:
       - name: Verify permanent workflow inventory and frozen Predge definitions
         run: node scripts/ops/verify-github-workflow-inventory.mjs
 
+      - name: Audit retained workflow triggers and dependencies without changes
+        run: node --test scripts/tests/audit-github-workflow-graph.test.mjs
+
       # Pin the exact Bun version that produced and validated the committed
       # lockfile. Do not float on "latest": lockfile semantics can change
       # between Bun releases and create false/intermittent CI failures.
