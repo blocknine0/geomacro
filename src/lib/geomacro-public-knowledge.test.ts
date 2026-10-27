@@ -29,6 +29,10 @@ describe("approved public Geomacro knowledge",()=>{
   expect(a.summary).toMatch(/not (?:have|covered)/);
   expect(a.summary).not.toContain("blocknine0");
  });
+ it("distinguishes the public Store from conversation storage",()=>{
+  expect(geomacroPublicAnswer("What is the Geomacro Store?")?.summary).toContain("public product catalog");
+  expect(geomacroPublicAnswer("Does Geomacro store my chats?")?.summary).toContain("current browser tab");
+ });
  it("gives only the published support address",()=>{
   expect(geomacroPublicAnswer("How do I contact Geomacro?")?.summary).toContain("contact@geomacro.live");
  });
