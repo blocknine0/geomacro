@@ -113,15 +113,43 @@ export async function getMaterializedNewsPage(env,offset,now=Date.now()){
   }catch{ return null; } // missing migration or invalid record -> honest D1 origin
 }
 export async function getMaterializedNewsBundle(env,now=Date.now()){
-  // One row/page, three fixed pages. Source-clock and 600-row cap are
-  // re-evaluated by canonical bundle projector on every request.
-  const rows=[];
-  for(const offset of OFFSETS){
-    const page=await getMaterializedNewsPage(env,offset,now);
-    if(!page)return null;
-    const available=page.slice(0,PAGE_SIZE);
-    rows.push(...available);
-    if(page.length<=PAGE_SIZE)break;
-  }
-  return rows.length<=MAX_JOURNAL_ROWS?rows:null;
+  // A single revision-fenced D1 statement reads the 3 indexed materialized
+  // rows together, rather than up to three individual SQL queries. The
+  // original 72h/first-seen and 600-row checks remain in the projector.
+  // Protected/no-cache readback never calls this public-only function.
+  if(!env?.DB||!Number.isFinite(now))return null;
+  try{
+    const {results}=await env.DB.prepare(
+      "SELECT p.page_offset,p.rows_json,p.generated_at "+
+      "FROM website_derived_materialized_pages_v1 p "+
+      "JOIN website_derived_materialized_meta_v1 m ON m.id=1 "+
+      "WHERE p.page_offset IN (0,250,500) AND "+
+      "p.data_revision=m.data_revision AND "+
+      "m.snapshot_revision=m.data_revision ORDER BY p.page_offset"
+    ).all();
+    if(!Array.isArray(results)||results.length>OFFSETS.length)return null;
+    const pages=new Map();
+    for(const row of results){
+      if(!OFFSETS.includes(row?.page_offset)||pages.has(row.page_offset))
+        return null;
+      pages.set(row.page_offset,row);
+    }
+    const rows=[];let generatedAt=null;
+    for(const offset of OFFSETS){
+      const entry=pages.get(offset);
+      if(!entry||typeof entry.rows_json!=="string"||
+         UTF8.encode(entry.rows_json).byteLength>MAX_PAGE_BYTES)return null;
+      const age=now-Date.parse(entry.generated_at);
+      if(!Number.isFinite(age)||age< -15_000||
+         age>MATERIALIZED_PUBLIC_PAGES_TTL_MS)return null;
+      if(generatedAt!==null&&generatedAt!==entry.generated_at)return null;
+      generatedAt=entry.generated_at;
+      const page=JSON.parse(entry.rows_json);
+      if(!Array.isArray(page)||page.length>PAGE_SIZE+1||
+         page.some(row=>!rowShape(row)))return null;
+      rows.push(...page.slice(0,PAGE_SIZE));
+      if(page.length<=PAGE_SIZE)break;
+    }
+    return rows.length<=MAX_JOURNAL_ROWS?rows:null;
+  }catch{return null} // stale/failed materialization -> canonical D1 fallback
 }
