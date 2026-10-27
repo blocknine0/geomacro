@@ -12,9 +12,12 @@ const LIVE_PREFIX = "geomacro-evidence/v1/structural/serving";
 const SNAPSHOT_KEY = `${LIVE_PREFIX}/latest.json.gz`;
 const PROOF_KEY = `${LIVE_PREFIX}/latest-proof.json`;
 const PAGE_SIZE = 500;
-const MAX_SOURCES = 5_000;
-const MAX_SOURCE_ROWS = 250_000;
-const MAX_COVERAGE_SOURCE_ROWS = 20_000;
+// Fail closed on over-large warehouse scans; no partial B2 promotion.
+const MAX_SOURCES = 60;
+const MAX_SOURCE_ROWS = 12_000;
+const MAX_COVERAGE_SOURCE_ROWS = 6_000;
+const MAX_TOTAL_SOURCE_ROWS = 18_000;
+const MAX_TOTAL_DB_READS = 96;
 const MAX_PROFILES = 500;
 const MAX_COVERAGE = 20_000;
 const MAX_DIRECT = 20_000;
@@ -30,10 +33,23 @@ if (
   !process.env.B2_APPLICATION_KEY
 ) throw new Error("B2_STRUCTURAL_PUBLISH_CONFIG_REQUIRED");
 
+let historicalDbReads = 0;
+const boundedHistoricalFetch: typeof fetch = async (input, init) => {
+  const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+  if (url.origin !== HISTORICAL_URL || !url.pathname.startsWith("/rest/v1/") ||
+      (init?.method ?? "GET").toUpperCase() !== "GET") {
+    throw new Error("B2_STRUCTURAL_DB_READ_ONLY_PINNED_HISTORICAL_REQUIRED");
+  }
+  if (++historicalDbReads > MAX_TOTAL_DB_READS) {
+    throw new Error("B2_STRUCTURAL_HISTORICAL_DB_QUERY_CAP");
+  }
+  return fetch(input, { ...init, redirect: "error", signal: AbortSignal.timeout(15_000) });
+};
 const db = createClient(
   HISTORICAL_URL,
   process.env.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { persistSession: false, autoRefreshToken: false }, db: { retry: false } },
+  { auth: { persistSession: false, autoRefreshToken: false },
+    db: { retry: false }, global: { fetch: boundedHistoricalFetch } },
 );
 const b2 = createB2Client({
   endpointUrl: ENDPOINT,
@@ -185,8 +201,8 @@ async function readCommercialLatestRows(
 
       sourceRows += data.length;
       sourceRowsScanned += data.length;
-      if (sourceRows > MAX_SOURCE_ROWS) {
-        throw new Error(`B2_STRUCTURAL_TRUNCATION_GUARD_source_rows_${sourceId}`);
+      if (sourceRows > MAX_SOURCE_ROWS || sourceRowsScanned > MAX_TOTAL_SOURCE_ROWS) {
+        throw new Error("B2_STRUCTURAL_TRUNCATION_GUARD_source_rows");
       }
 
       for (const row of data as AnyRow[]) {
@@ -450,6 +466,7 @@ console.log(JSON.stringify({
   coverage_rows: coverage.length,
   direct_observations: direct.length,
   compressed_bytes: packed.length,
+  historical_db_reads: historicalDbReads,
   b2_objects_verified: 3,
   proof_bound_runtime_read: true,
 }));
