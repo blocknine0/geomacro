@@ -19,7 +19,9 @@ test("actual anonymous materialization and mandatory no-cache canonical parity",
  assert.equal(result.public_gets,2);
  assert.equal(calls.length,2);
  assert.equal(calls[1].headers["Cache-Control"],"no-cache");
+ assert.equal(calls[1].cache,"no-store");
  assert.equal(calls[0].headers["Cache-Control"],undefined);
+ assert.equal(calls[0].cache,undefined,"anonymous probe must stay edge-cache eligible");
 });
 test("missing offload receipt never passes CI and never needs origin read",async()=>{
  let calls=0;
