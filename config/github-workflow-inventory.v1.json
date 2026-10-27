@@ -245,6 +245,7 @@
     "predge-token-only-sealed-handoff.yml",
     "private-global-osint-15m.yml",
     "private-independent-review-package.yml",
+    "private-osint-d1-quota-held-spool.yml",
     "private-revenue-ledger-readiness.yml",
     "private-supabase-runtime-audit.yml",
     "product-canonical-alignment.yml",
@@ -316,6 +317,7 @@
     "telegram-b2-d1-consumer.yml",
     "telegram-discovery-roots-audit.yml",
     "telegram-manual-research-contract.yml",
+    "telegram-owner-original-news-reader.yml",
     "telegram-signals-readonly-health.yml",
     "three-category-combined-open-data.yml",
     "three-category-live-official-api-acceptance.yml",
@@ -341,8 +343,7 @@
     "world-bank-ppg-sovereign-fiscal-shadow.yml",
     "world-bank-qpsd-fiscal-coverage.yml",
     "x402-global-zero-fund-coverage.yml",
-    "x402-pilot-product-lane-zero-fund.yml",
-    "private-osint-d1-quota-held-spool.yml"
+    "x402-pilot-product-lane-zero-fund.yml"
   ],
   "criticalWorkflowFiles": [
     "auto-ingest-news.yml",
