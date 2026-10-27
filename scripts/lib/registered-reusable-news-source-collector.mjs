@@ -19,11 +19,26 @@ const MAX_ITEMS_PER_RUN=480;
 // is a NOMINAL source-discovery target; GitHub cron may be late or dropped.
 export const REGISTERED_NEWS_POLL_SLOT_MINUTES=5;
 const SOURCE_FETCH_CONCURRENCY=6;
+// English and reviewed original-language headline tokens. These are keyword
+// discovery hints, not translation, an attributed country, or event proof.
 const TOPICS={
-  geopolitics:/\b(?:war|conflict|sanctions?|ceasefire|treaty|military|security|diploma|peace|geopolitics?|refugees?|elections?|embargo)\b/iu,
-  macro:/\b(?:inflation|monetary|central bank|interest rate|fx|foreign exchange|GDP|currency|tariffs?|economic|fiscal|unemployment|trade)\b/iu,
-  rare_earth:/\b(?:critical minerals?|rare[- ]earths?|mining|cobalt|lithium|nickel|graphite|copper|gallium|germanium|mineral supply|refinery)\b/iu,
+  geopolitics:/(?:\b(?:war|warfare|conflict|hostilities|invasion|sanctions?|ceasefire|airstrikes?|missiles?|drone strikes?|artillery|shelling|treaty|military|security|diploma\w*|peace|geopolitics?|refugees?|elections?|embargo|troop movements?|armed clashes?|border clashes?)\b|战争|停火|制裁|军事|袭击|حرب|وقف إطلاق النار|عقوبات|الهجوم|যুদ্ধ|নিষেধাজ্ঞা|युद्ध|प्रतिबंध|войн\w*|санкци\w*|перемири\w*|\bguerra\b|\balto el fuego\b)/iu,
+  macro:/(?:\b(?:inflation|deflation|monetary|central bank|interest rates?|policy rates?|rate cuts?|rate hikes?|fx|foreign exchange|GDP|currency|tariffs?|economic|fiscal|unemployment|trade deficit|exchange rates?|consumer prices?|CPI|sovereign debt|gross domestic product)\b|通胀|通脹|利率|汇率|匯率|经济|經濟|التضخم|سعر الصرف|মুদ্রাস্ফীতি|বিনিময় হার|मुद्रास्फीति|महंगाई|инфляци\w*|\binflación\b|\binflação\b)/iu,
+  rare_earth:/(?:\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|mining|cobalt|lithium|nickel|graphite|copper|gallium|germanium|tungsten|antimony|manganese|uranium|mineral supply|refiner(?:y|ies)|mineral processing|permanent magnets?|neodymium|dysprosium)\b|稀土|关键矿产|關鍵礦產|锂|鋰|钴|鈷|التعدين|المعادن الحرجة|লিথিয়াম|বিরল মৃত্তিকা|लिथियम|दुर्लभ मृदा|литий|редкозем\w*|\bminerales críticos\b|\bminerais críticos\b)/iu,
 };
+
+// Existing protected inventory already recognizes the White House RSS; add
+// the primary original-action lane to THIS bounded collector as well.
+// The filtered Federal Register feed is a separate publication of US
+// presidential documents, not automatically independent event corroboration.
+export const PRESIDENTIAL_ACTION_SOURCE_FEEDS=Object.freeze([
+  Object.freeze({id:"white_house_presidential_actions",url:"https://www.whitehouse.gov/presidential-actions/feed/",
+    categories:["geopolitics"],format:"rss",priority:true,officialDocument:true}),
+  Object.freeze({id:"federal_register_executive_orders",url:"https://www.federalregister.gov/api/v1/documents.rss?conditions%5Bcorrection%5D=0&conditions%5Bpresident%5D=&conditions%5Bpresidential_document_type%5D=executive_order&conditions%5Bsigning_date%5D%5Byear%5D=&conditions%5Btype%5D%5B%5D=PRESDOCU",
+    categories:["geopolitics"],format:"rss",priority:true,officialDocument:true}),
+  Object.freeze({id:"white_house_briefings_statements",url:"https://www.whitehouse.gov/briefings-statements/feed/",
+    categories:["geopolitics","macro","rare_earth"],format:"rss",priority:false,officialDocument:false}),
+]);
 const hex=x=>createHash("sha256").update(x).digest("hex");
 const scalar=x=>typeof x==="string"?x:"";
 const cleanText=s=>scalar(s).replace(/<!\[CDATA\[([\s\S]*?)\]\]>/giu,"$1")
@@ -58,13 +73,15 @@ function normalizeCatalogueSource(r){
   const supported=["rss","atom","xml","rdf"].includes(type)||
     (type==="json"&&url.hostname==="www.gov.uk"&&
       url.pathname==="/api/search.json"&&r.id.startsWith("govuk_"));
-  return {id:r.id,url:r.url,categories,type,supported};
+  return {id:r.id,url:r.url,categories,type,supported,
+    priority:r.priority===true,officialDocument:r.officialDocument===true};
 }
 export function registeredReusableNewsSources(){
   const inputs=[
     ...GLOBAL_OFFICIAL_RELEASE_FEEDS,
     ...EXPANDED_OFFICIAL_SOURCES,
     ...PUBLIC_FEED_ROTATION.map(x=>({...x,categories:CATEGORY})),
+    ...PRESIDENTIAL_ACTION_SOURCE_FEEDS,
   ];
   const map=new Map();
   for(const item of inputs){
@@ -76,6 +93,8 @@ export function registeredReusableNewsSources(){
     if(old){
       old.categories=[...new Set([...old.categories,...source.categories])];
       old.supported=old.supported||source.supported;
+      old.priority=old.priority||source.priority;
+      old.officialDocument=old.officialDocument||source.officialDocument;
       if(!old.supported)old.type=source.type;
     }else map.set(key,source);
   }
@@ -91,6 +110,13 @@ export function selectRegisteredNewsSources(now=new Date(),registry=registeredRe
   // Selected per-category registration is deterministic across re-runs.
   const slot=Math.floor(now.getTime()/(REGISTERED_NEWS_POLL_SLOT_MINUTES*60_000));
   const selected=new Map();
+  // A fixed two-feed presidential lane avoids losing official actions when a
+  // rotating slot is delayed. Retain the FULL preexisting eight/feed/category
+  // rotation: priority feeds are extra, never displace country or mineral sources.
+  for(const source of registry.filter(s=>s.priority===true)){
+    if(!source.supported||!source.categories?.length)continue;
+    selected.set(source.url,{...source,categories:[...source.categories]});
+  }
   for(const category of CATEGORY){
     const matches=registry.filter(s=>s.categories.includes(category));
     if(!matches.length)continue;
@@ -216,7 +242,11 @@ export async function collectRegisteredReusableNews({
       const at=originalClock(item.native,now.getTime());
       if(!at)continue;
       for(const category of activeCategories){
-        if(!topicPatterns[category].test(item.title))continue;
+        // Every native-dated government presidential document merits private
+        // policy-action discovery even if its title contains no risk keyword.
+        // This is NOT evidence of war, a country event or paid eligibility.
+        if(!(s.officialDocument===true&&category==="geopolitics")&&
+           !topicPatterns[category].test(item.title))continue;
         // Source text remains ephemeral. Only finite machine fact tags are
         // produced; third-party noncommercial titles never enter D1.
         const country=resolveCountry(item.title);
