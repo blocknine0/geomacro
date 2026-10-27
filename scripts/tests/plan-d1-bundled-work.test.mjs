@@ -21,7 +21,7 @@ test("one account-wide observation decides all three bounded lanes",()=>{
  assert.equal(p.d1_queries,0);assert.equal(p.paid_calls,0);
 });
 test("paced bundles preserve critical work while research/maintenance yield first",()=>{
- const p=planD1BundledWork(quota(1_500_000,30_000),{now});
+ const p=planD1BundledWork(quota(2_100_000,30_000),{now});
  assert.equal(p.state,"CRITICAL_ONLY");
  assert.equal(p.maintenance,false);
  assert.equal(p.research,false);
@@ -31,7 +31,7 @@ test("paced bundles preserve critical work while research/maintenance yield firs
  assert.equal(q.critical,false);
 });
 test("write reserve stops discretionary lanes before daily write cap",()=>{
- const q=planD1BundledWork(quota(1_000,51_000),{now});
+ const q=planD1BundledWork(quota(1_000,40_000),{now});
  assert.equal(q.state,"CRITICAL_ONLY");
  assert.equal(q.critical,true);
  assert.equal(q.research,false);
