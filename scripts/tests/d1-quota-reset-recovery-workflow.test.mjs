@@ -43,3 +43,29 @@ test("recovery is no-funds, with no manual grant bypass or partner mutation",()=
   assert.doesNotMatch(recovery,/\b(?:USDC|payment|settlement)\b.*(?:send|transfer|charge)/iu);
   assert.match(deploy,/test "\$DEPLOY_CONFIRMATION" = "DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS"/);
 });
+
+test("post-reset main deployment may advance after old failed SHA, but only verified GitHub ancestry can retry",()=>{
+ assert.match(recovery,/if \[\[ "\$failed_sha" != "\$GITHUB_SHA" \]\]; then/);
+ assert.match(recovery,/\^\[a-f0-9\]\{40\}\$/);
+ assert.match(recovery,/\$api\/compare\/\$failed_sha\.\.\.\$GITHUB_SHA/);
+ assert.match(recovery,/\.status == "ahead"/);
+ assert.match(recovery,/\.behind_by == 0/);
+ assert.match(recovery,/\.base_commit\.sha == \$failed/);
+ assert.match(recovery,/\.merge_base_commit\.sha == \$failed/);
+ assert.match(recovery,/D1_QUOTA_RECOVERY_ANCESTRY_UNAVAILABLE/);
+ assert.match(recovery,/D1_QUOTA_RECOVERY_DIVERGENT_MAIN_HOLD/);
+ assert.match(recovery,/D1_QUOTA_RECOVERY_FAILED_COMMIT_IS_MAIN_ANCESTOR/);
+ assert.doesNotMatch(recovery,/\.commits\[-1\]\.sha/);
+ // Exact-GitHub-main verification must occur *before* inspecting any
+ // protected D1 failure evidence or dispatching the deploy.
+ assert.ok(recovery.indexOf("compare/$failed_sha...$GITHUB_SHA")<
+   recovery.indexOf('jobs_file="$RUNNER_TEMP/deploy-jobs.json"'));
+ assert.ok(recovery.indexOf("code: 7500")<
+   recovery.indexOf("Dispatch canonical Worker deployment after quota reset"));
+});
+test("free/no-new-spend deployment recovery requires no R2 checkout, Workers Paid plan or private PREDGE alteration",()=>{
+ assert.doesNotMatch(recovery,/CLOUDFLARE_BILLING_READ_TOKEN|GEOMACRO_PRIVATE_OSINT_R2_ACCESS_KEY_ID/);
+ assert.doesNotMatch(recovery,/R2\\s+create|workers_paid|subscribe|chargeCard/iu);
+ assert.match(recovery,/Wake the existing quota-guarded source publisher after UTC reset/);
+ assert.match(recovery,/actions\/workflows\/five-minute-original-news-fastlane\.yml\/dispatches/);
+});
