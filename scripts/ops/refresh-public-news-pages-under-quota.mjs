@@ -12,6 +12,30 @@ export async function refreshBoundedPublicNewsPages({fetchImpl=fetch,env=process
  const secret=String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
  if(secret.length<32)throw Error("PUBLIC_PAGE_REFRESH_OWNER_TOKEN_MISSING");
  const token=createHmac("sha256",secret).update("geomacro-control-plane-v1").digest("hex");
+ // On main push the old Worker may still be serving while the protected
+ // deploy applies migrations. Do not classify a pre-deploy 404 as storage
+ // outage or accidentally call a different deployed Worker source revision.
+ const expected=String(env.GITHUB_SHA??"").trim();
+ if(!/^[a-f0-9]{40}$/.test(expected))
+  throw Error("PUBLIC_PAGE_REFRESH_DEPLOY_SHA_REQUIRED");
+ const health=await fetchImpl(ORIGIN+"/health",{
+  method:"GET",cache:"no-store",redirect:"error",
+  headers:{"Cache-Control":"no-cache"},
+  signal:AbortSignal.timeout(10_000),
+ });
+ if(!health.ok)return Object.freeze({
+  schema:"geomacro.public-page-refresh-owner-proof.v1",
+  verified_current_revision:false,state:"DEPLOY_PENDING",
+  expected_deploy_verified:false,source_fetches:0,source_news_writes:0,
+  b2_requests:0,signed_products_created:0
+ });
+ const meta=await health.json().catch(()=>null);
+ if(meta?.deployed_source_sha!==expected)return Object.freeze({
+  schema:"geomacro.public-page-refresh-owner-proof.v1",
+  verified_current_revision:false,state:"DEPLOY_PENDING",
+  expected_deploy_verified:false,source_fetches:0,source_news_writes:0,
+  b2_requests:0,signed_products_created:0
+ });
  const response=await fetchImpl(ORIGIN+"/v1/internal/public-news-page-refresh",{
   method:"PUT",redirect:"error",cache:"no-store",
   headers:{Authorization:"Bearer "+token,"Cache-Control":"no-cache"},
@@ -41,7 +65,12 @@ export async function refreshBoundedPublicNewsPages({fetchImpl=fetch,env=process
   d1_provider_daily_quota_guarantee:false});
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
- try{console.log(JSON.stringify(await refreshBoundedPublicNewsPages()))}
+ try{
+  const receipt=await refreshBoundedPublicNewsPages();
+  if(receipt.state==="DEPLOY_PENDING")
+    console.log("::notice::PUBLIC_PAGE_REFRESH_DEPLOY_PENDING_NOT_ACTIVATED");
+  console.log(JSON.stringify(receipt));
+ }
  catch(e){console.error("::error::"+(typeof e?.message==="string"&&
    /^PUBLIC_PAGE_REFRESH_[A-Z0-9_]+$/.test(e.message)?
    e.message:"PUBLIC_PAGE_REFRESH_TRANSPORT_OR_UNCLASSIFIED"));process.exitCode=2;}

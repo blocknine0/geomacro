@@ -20,7 +20,7 @@ import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
-import {readPublicFreeD1Cached} from "./public-free-d1-cache.mjs";
+import {readPublicFreeD1Cached,eligiblePublicFreeD1CacheRequest} from "./public-free-d1-cache.mjs";
 import {readPublicNewsR2Snapshot,publishPublicNewsR2Snapshot,PUBLIC_NEWS_R2_MAX_BYTES}
   from "./public-news-r2-offload.mjs";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";

@@ -9,7 +9,7 @@ on:
   workflow_call: {}
   workflow_dispatch: {}
   workflow_run:
-    workflows: ["Geomacro Intelligence Orchestrator", "Three-Domain 30-Minute Original Publisher Pulse"]
+    workflows: ["Geomacro Intelligence Orchestrator", "Three-Domain 30-Minute Original Publisher Pulse", "Deploy D1 Control Plane"]
     branches: [main]
     types: [completed]
   schedule:
@@ -111,7 +111,8 @@ jobs:
       needs.quota-admission.outputs.snapshot_refresh == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name != 'pull_request'
+      github.event_name != 'pull_request' &&
+      github.event_name != 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     environment: production
