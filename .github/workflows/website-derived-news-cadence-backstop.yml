@@ -140,8 +140,10 @@ jobs:
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: node scripts/ops/refresh-public-news-pages-under-quota.mjs
-      - name: Prove anonymous actual D1 materialized read and protected no-cache origin parity
+      - name: Prove anonymous materialized read against owner-only direct D1 origin
         if: steps.materialize.outputs.refresh_active == 'true'
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: |
           node --test scripts/tests/verify-public-d1-materialization-live.test.mjs
           node scripts/ops/verify-public-d1-materialization-live.mjs
