@@ -9,6 +9,7 @@
  * proof that an upstream news publisher is fresh.
  */
 export const PUBLIC_FREE_D1_TTL_SECONDS = 45;
+export const PUBLIC_FREE_D1_DERIVED_TTL_SECONDS = 120;
 export const PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS = 15;
 const PATHS = new Set([
   "/v1/public/macro-fastlane",
@@ -33,7 +34,16 @@ const categoryQuery = query => query.startsWith("domain=") &&
   DOMAINS.has(query.slice("domain=".length)) &&
   query === "domain="+query.slice("domain=".length);
 const forbidden = new Set(["authorization","cookie","range","x-api-key"]);
-const ttlForPath=pathname=>pathname==="/v1/public/website-derived-news-bundle"?PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS:PUBLIC_FREE_D1_TTL_SECONDS;
+const HIGH_READ_DERIVED_PATHS=new Set([
+  "/v1/public/website-derived-news",
+  "/v1/public/website-derived-news-immediate",
+  "/v1/public/website-derived-news-html",
+  "/v1/public/derived-structural-72h",
+]);
+const ttlForPath=pathname=>
+  pathname==="/v1/public/website-derived-news-bundle"?PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS:
+  HIGH_READ_DERIVED_PATHS.has(pathname)?PUBLIC_FREE_D1_DERIVED_TTL_SECONDS:
+  PUBLIC_FREE_D1_TTL_SECONDS;
 // Per-isolate single-flight avoids the D1 read stampede between a cache miss
 // and the cache PUT. Cache API remains authoritative across requests/POPs.
 const inFlightPublicReads=new Map();
