@@ -62,6 +62,8 @@ export default defineConfig({
     ],
   },
   vite: {
+    // Exact development-preview host; keep Vite host checking enabled.
+    server: { allowedHosts: ["terminal.local"] },
     plugins: [polyfillResolver()],
     resolve: {
       // Force one browser React/TanStack runtime in production bundles.

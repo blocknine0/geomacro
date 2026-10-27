@@ -1,14 +1,14 @@
-import logoAsset from "@/assets/geomacro-logo.png.asset.json";
+import { GEOMACRO_LOGO_DATA_URI, GEOMACRO_LOGO_INTRINSIC_WIDTH, GEOMACRO_LOGO_INTRINSIC_HEIGHT } from "@/lib/geomacro-logo-embedded";
 
-// Source image is ~589x186 (≈3.16:1). The orange background is part of the
-// mark, so it reads strongly on both light and dark themes without recoloring.
-const LOGO_RATIO = 589 / 186;
+// Keep the official mark self-contained and preserve its actual proportions.
+// Platform-specific asset URLs are not available on every host or preview.
+const LOGO_RATIO = GEOMACRO_LOGO_INTRINSIC_WIDTH / GEOMACRO_LOGO_INTRINSIC_HEIGHT;
 
 export function Wordmark({ className, height = 32 }: { className?: string; height?: number }) {
   const width = Math.round(height * LOGO_RATIO);
   return (
     <img
-      src={logoAsset.url}
+      src={GEOMACRO_LOGO_DATA_URI}
       alt="Geomacro"
       width={width}
       height={height}

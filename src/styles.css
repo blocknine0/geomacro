@@ -231,8 +231,31 @@
 .gm-text-link { display: inline-flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 500; font-size: 14px; text-underline-offset: 5px; }
 .gm-text-link:hover { text-decoration: underline; }
 .gm-hero { background: radial-gradient(ellipse at 90% 0%, color-mix(in oklab, var(--primary) 7%, transparent), transparent 55%); }
-.gm-site { --background: #101418; --card: #191e23; --popover: #191e23; --foreground: #f2f0eb; --muted-foreground: #a8afb5; --primary: #efad62; --primary-foreground: #16191d; --border: #30363c; --input: #3b424a; --ring: #efad62; }
+.gm-site { --background: #101418; --card: #191e23; --popover: #191e23; --foreground: #f2f0eb; --muted-foreground: #b6bec7; --primary: #efad62; --primary-foreground: #16191d; --border: #30363c; --input: #3b424a; --ring: #efad62; }
 .gm-site main { min-width: 0; }
 .gm-site summary { min-height: 36px; }
 .gm-site p, .gm-site h1, .gm-site h2, .gm-site h3 { overflow-wrap: anywhere; }
 @media (max-width: 640px) { .gm-container { padding-inline: 16px; } }
+
+/* A quiet global-intelligence theme; content always stays above the artwork. */
+.gm-intelligence-background { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; contain: strict; }
+.gm-intelligence-grid { position: absolute; inset: 0; opacity: .18; background-image: linear-gradient(#55616e 1px, transparent 1px), linear-gradient(90deg, #55616e 1px, transparent 1px); background-size: 96px 96px; mask-image: linear-gradient(110deg, transparent 20%, #000 100%); }
+.gm-intelligence-globe { position: absolute; width: min(85vw, 1050px); height: auto; right: -20%; top: 3rem; color: #efad62; opacity: .14; }
+.gm-globe-orbit { transform-origin: 400px 400px; animation: gm-orbit-turn 110s linear infinite; }
+.gm-intelligence-glow { position: absolute; right: -10%; top: 5%; width: 65vw; height: 65vw; max-width: 900px; max-height: 900px; border-radius: 50%; background: radial-gradient(circle, #315575 0%, transparent 65%); opacity: .12; animation: gm-context-drift 28s ease-in-out infinite alternate; }
+.gm-intelligence-background[data-paused="true"] *, .gm-intelligence-background[data-paused="true"] { animation-play-state: paused !important; }
+.gm-site header, .gm-site footer { background-color: #101418f5; }
+.gm-site .gm-hero { background: linear-gradient(100deg, #101418f5 5%, #101418b8 55%, #10141880); }
+.gm-site main a, .gm-site footer a { text-underline-offset: 4px; }
+.gm-site :focus-visible { outline: 2px solid #efad62; outline-offset: 3px; }
+@keyframes gm-orbit-turn { to { transform: rotate(360deg); } }
+@keyframes gm-context-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-3%, 4%, 0); } }
+@media (max-width: 640px) {
+  .gm-intelligence-grid { background-size: 72px 72px; opacity: .10; }
+  .gm-intelligence-globe { width: 150vw; right: -85%; top: 9rem; opacity: .09; }
+  .gm-intelligence-glow { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gm-intelligence-background, .gm-intelligence-background * { animation: none !important; transition: none !important; }
+}
+@media print { .gm-intelligence-background { display: none; } }

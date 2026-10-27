@@ -48,7 +48,7 @@ describe("Geomacro Finds commercial homepage presentation", () => {
 
   it("has a balanced responsive hero and correct risk-indices route", () => {
     expect(home).toContain("lg:grid-cols-2");
-    expect(home).toContain("text-[clamp(3rem,6vw,5.5rem)]");
+    expect(home).toContain("text-[clamp(2.5rem,4.5vw,4rem)]");
     expect(home).toContain("<LiveIntelligenceShowcase initialFindCards={initialFindCards} />");
     expect(home).toContain('to="/risk-indices"');
     expect(home).toContain("Follow the risks that affect your work.");
