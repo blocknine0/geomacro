@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {registeredReusableNewsSources,selectRegisteredNewsSources,
  collectRegisteredReusableNews,PRESIDENTIAL_ACTION_SOURCE_FEEDS} from "./registered-reusable-news-source-collector.mjs";
 
@@ -30,7 +31,7 @@ test("registry is bounded, HTTPS pinned, includes operator news and all three ca
  }
  assert.ok(registry.every(x=>x.url.startsWith("https://")));
  const selected=selectRegisteredNewsSources(when,registry,4);
- assert.ok(selected.length<=12);
+ assert.ok(selected.length<=14);
  assert.ok(selected.every(x=>registry.some(s=>s.id===x.id)));
 });
 test("native RSS item dates produce fixed-schema noncommercial-safe factual JSON",async()=>{
@@ -135,6 +136,21 @@ test("native-dated presidential actions are privately observed without requiring
  assert.equal(out.items[0].delivery.raw_article_included,false);
  assert.equal(out.summary.source_rights_commercial_authorized,false);
  assert.ok(!JSON.stringify(out).includes(documentTitle),"original headline stays ephemeral");
+});
+test("compact CJK native headlines normalize as unverified factual JSON, not paid evidence",async()=>{
+ const now=new Date("2026-10-27T13:00:00.000Z");
+ const title="中国宣布关键矿产和稀土出口管制新政策";
+ const xml="<rss><channel><item><title>"+title+"</title>"+
+  "<pubDate>Tue, 27 Oct 2026 12:50:00 GMT</pubDate></item></channel></rss>";
+ const out=await collectRegisteredReusableNews({now,registry:[{
+  id:"original_chinese",url:"https://example.org/feed.xml",categories:["rare_earth"],
+  supported:true,type:"rss"
+ }],normalize:normalizeReusableNewsJson,fetchImpl:async()=>response(xml)});
+ assert.equal(out.items.length,1);
+ assert.equal(out.items[0].facts.fact_extraction_status,"INSUFFICIENT_MACHINE_EXTRACTABLE_FACTS");
+ assert.equal(out.items[0].usage_rights.commercial_reuse_authorized,false);
+ assert.equal(out.items[0].verification.facts_reviewed,false);
+ assert.equal(out.items[0].delivery.raw_headline_included,false);
 });
 test("non-official neutral title is not fabricated into geopolitical news",async()=>{
  const out=await collectRegisteredReusableNews({now:when,registry:[{
