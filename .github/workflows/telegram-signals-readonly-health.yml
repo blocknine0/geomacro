@@ -1,0 +1,38 @@
+name: Telegram producer read-only bridge monitor
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "17 * * * *"
+permissions:
+  contents: read
+jobs:
+  private-api-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      ENABLED: ${{ vars.TELEGRAM_SIGNALS_READ_ENABLED }}
+      READ_URL: ${{ secrets.GEOMACRO_TELEGRAM_SIGNALS_READ_URL }}
+      READ_TOKEN: ${{ secrets.GEOMACRO_TELEGRAM_SIGNALS_READ_TOKEN }}
+    steps:
+      - name: Probe private GET endpoint only
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$ENABLED" != "true" ]]; then
+            echo "READ_ONLY_BRIDGE_NOT_ACTIVATED" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ -z "$READ_URL" || "${#READ_TOKEN}" -lt 32 ]]; then
+            echo "::error::Private producer read endpoint not configured"
+            exit 1
+          fi
+          [[ "$READ_URL" =~ ^https://[a-zA-Z0-9.-]+/v1/private/telegram/signals$ ]] || exit 1
+          code="$(curl --silent --show-error --max-time 10 -o /tmp/tg-consumer.json -w '%{http_code}' \
+            -H "Authorization: Bearer $READ_TOKEN" \
+            "$READ_URL?category=macro&limit=1")"
+          if [[ "$code" != "200" ]]; then
+            echo "::error::Private producer unavailable HTTP $code"
+            exit 1
+          fi
+          jq -e '.schema=="geomacro.private-telegram-signals.v1" and .verification_status=="UNVERIFIED" and .commercial_eligible==false and .source_text_retained==false and (.records | type == "array")' /tmp/tg-consumer.json >/dev/null
+          echo "Read-only GET schema and authentication verified; no claim of live news coverage." >> "$GITHUB_STEP_SUMMARY"
