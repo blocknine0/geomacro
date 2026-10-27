@@ -20,6 +20,8 @@ test("five minute producer reuses its own runner for quota admission and gates s
 test("30-minute original pulse does not invoke D1 checkpoint or readback after a held tick",()=>{
  const s=workflow("three-domain-30m-original-publisher-pulse.yml");
  const body=s.slice(s.indexOf("  original-publisher-pulse:"),s.indexOf("  private-scoring-from-new-originals:"));
+ assert.match(s,/source-contract:\\n[\\s\\S]*?if: github\\.event_name == 'pull_request' \\|\\| github\\.event_name == 'push'/);
+ assert.match(body,/always\\(\\) &&[\\s\\S]*?needs\\.source-contract\\.result == 'skipped'/);
  assert.match(body,/id: budget/);
  assert.match(body,/if: steps\.budget\.outputs\.research == 'true'/);
  assert.match(body,/if: always\(\) && steps\.budget\.outputs\.research == 'true'/);
