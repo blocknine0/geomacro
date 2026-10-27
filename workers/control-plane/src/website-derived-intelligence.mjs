@@ -8,7 +8,7 @@ import {MACRO_TOPICS} from "../../../scripts/lib/macro-fx-metals.mjs";
 import {isSafeDerivedNewsReadbackSignal, DERIVED_NEWS_TOPIC_POLICY_REVISION} from "../../../scripts/lib/derived-news-readback-policy.mjs";
 import {classifyDerivedNewsD1Failure} from "../../../scripts/lib/derived-news-d1-failure.mjs";
 import {getMaterializedNewsPage,getMaterializedNewsBundle,
-  invalidateMaterializedNewsStatement,refreshMaterializedNewsPages}
+  refreshMaterializedNewsPages}
   from "./materialized-public-news-pages.mjs";
 export {DERIVED_NEWS_TOPIC_POLICY_REVISION};
 // The founder-approved auto-ingest journal is strictly a rolling 72h window.
@@ -127,12 +127,10 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
         AND website_derived_intelligence.date_precision=excluded.date_precision
         AND website_derived_intelligence.story_json <> excluded.story_json`
     ).bind(s.id,s.category,s.published_at,s.date_precision,JSON.stringify(s),new Date(now).toISOString()));
-    // Invalidate public materializations atomically with any producer write.
-    // Revision JOIN ensures an interrupted sweep cannot serve older records.
-    if(statements.length){
-      statements.push(invalidateMaterializedNewsStatement(env));
-      await env.DB.batch(statements);
-    }
+    // D1 migration 0033 automatically bumps data_revision on any canonical
+    // INSERT/UPDATE/DELETE (transactionally in the original 50-write batch).
+    // Trigger fencing avoids a dangerous 51st statement in a full batch.
+    if(statements.length)await env.DB.batch(statements);
     // Avoid two full-journal retention/sort queries for every non-empty
     // publisher chunk. The existing authenticated empty batch is the bounded
     // once-per-run sweep; public reads still enforce the same 72h window.

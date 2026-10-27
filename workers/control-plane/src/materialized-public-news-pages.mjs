@@ -20,12 +20,6 @@ const rowShape=row=>row&&typeof row.story_json==="string"&&
   row.story_json.length>=100&&row.story_json.length<=4096&&
   typeof row.first_seen_at==="string"&&row.first_seen_at.length<=40;
 
-export function invalidateMaterializedNewsStatement(env){
-  // This statement is appended *inside* the exact ingestion D1.batch,
-  // never after it; no partially stale materialization may be served.
-  return env.DB.prepare("UPDATE website_derived_materialized_meta_v1 SET data_revision=data_revision+1 WHERE id=1");
-}
-
 export async function refreshMaterializedNewsPages(env,now=Date.now()){
   if(!Number.isFinite(now))throw Error("MATERIALIZED_CLOCK_INVALID");
   const metadata=await env.DB.prepare(
