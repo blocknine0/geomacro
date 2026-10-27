@@ -52,7 +52,7 @@ test("AES GCM authentication rejects changed ciphertext, wrong root, wrong tag a
   "2026-10-27T17:44:00.000Z"},secret,now),/AUTHENTICATION_FAILED/);
 });
 test("old source publication fails closed even if artifact itself is still fresh",()=>{
- const old=row("macro","2026-10-26T17:50:00.000Z",
+ const old=row("macro","2026-10-26T16:50:00.000Z",
   "India inflation report from earlier reporting period");
  const sealed=sealPrivateOsintSpool({items:[a,old],root:secret,now});
  const late=unsealPrivateOsintSpool(sealed,secret,now+10*60000);
