@@ -13,6 +13,24 @@ export const PUBLIC_NEWS_R2_MAX_BYTES=850_000;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const CATSET=new Set(CATEGORIES);
 const OFFSETS=["0","250","500"];
+// The machine model has an exact, source-neutral projection contract. Unknown
+// row keys (including raw article fields) are never persisted or served.
+const MACHINE_ROW_KEYS=new Set([
+  "schema","id","category","event_family","development_type","topic",
+  "original_published_at","date_precision","geography_mentioned",
+  "headline","observed_change","potential_relevance","confidence_state",
+  "topical_match_verified","qualifying_topic_release_verified",
+  "further_validation_required","event_detail_verified",
+  "country_subject_verified","independent_same_event_verified",
+  "commercial_derived_rights_verified","signed_product_verified",
+  "numeric_impact_established","raw_upstream_delivered","chargeable","payable"
+]);
+const PAGE_KEYS=new Set([
+  "ok","schema","checked_at","original_release_delay_minutes",
+  "retention_days","retention_hours","delivery_scope","scored","chargeable",
+  "supabase_dependency","page_offset","page_size","has_more","next_offset",
+  "ingest_clock_kind","first_ingest","signals"
+]);
 const enc=new TextEncoder();
 const reply=(data,status=200)=>Response.json(data,{status,headers:{
   "Cache-Control":"no-store","X-Content-Type-Options":"nosniff"
@@ -24,6 +42,7 @@ function validatePage(doc,offset,now,seen){
      doc.delivery_scope!=="free_website_only"||doc.retention_hours!==72||
      doc.original_release_delay_minutes!==0||
      doc.page_offset!==Number(offset)||doc.page_size!==250||
+     Object.keys(doc).some(k=>!PAGE_KEYS.has(k))||
      typeof doc.has_more!=="boolean"||!Array.isArray(doc.signals)||
      doc.signals.length>250||doc.scored!==false||doc.chargeable!==false)fail();
   for(const item of doc.signals){
@@ -72,6 +91,13 @@ export function validatePublicNewsR2Bundle(value,now=Date.now()){
   if(required.length!==feed.items.length)fail();
   const matched=new Set();
   for(const row of feed.items){
+    if(!row||typeof row!=="object"||Array.isArray(row)||
+       Object.keys(row).some(k=>!MACHINE_ROW_KEYS.has(k))||
+       row.schema!=="geomacro.derived-news-structural.v1"||
+       row.raw_upstream_delivered!==false||row.chargeable!==false||
+       row.signed_product_verified!==false||
+       row.numeric_impact_established!==false||
+       row.further_validation_required!==true)fail();
     const story=seen.get(row?.id);
     if(!story||matched.has(row.id)||story.sources_credited.length!==0||
        story.category!==row.category||
