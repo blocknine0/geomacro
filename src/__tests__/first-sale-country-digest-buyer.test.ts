@@ -89,7 +89,7 @@ describe("first real-sale country digest buyer contract (zero funds)",()=>{
   expect(panel).toContain('validateFirstSaleCountryDigestQuote');
   expect(panel).toContain('new URL("/api/v1/intelligence/query",window.location.origin)');
   expect(panel).toContain('"PAYMENT-SIGNATURE":payment.proof');
-  expect(panel).toContain('setMessage("Qualified country digest found, but merchant settlement is not active. No payment requested.")'.replace('setMessage(','').slice(0,20));
+  expect(panel).toContain("Qualified country digest found, but merchant settlement is not active. No payment requested.");
   expect(panel).not.toContain('COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC');
  });
 });
