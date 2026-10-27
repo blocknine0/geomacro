@@ -4,7 +4,7 @@ import {
   readB2StructuralServingSnapshot,
   type B2StructuralServingSnapshot,
 } from "./b2-structural.server";
-import { supabaseReadFallbackAllowed } from "./supabase-runtime-mode.server";
+import { historicalSupabaseReadFallbackAllowed } from "./historical-supabase-read-mode.server";
 import { loadQualifiedMcsCountryContext } from "./qualified-mcs-country-digest.server";
 import { loadQualifiedTreasuryFxCountryContext } from "./qualified-treasury-fx.server";
 import {sourceNativeObservationTime} from "./source-native-observation-time";
@@ -96,7 +96,7 @@ type CorridorProfileRow = {
 let cachedHistoricalClient: SupabaseClient | null = null;
 
 function getHistoricalClient(): SupabaseClient | null {
-  if (!supabaseReadFallbackAllowed()) return null;
+  if (!historicalSupabaseReadFallbackAllowed()) return null;
   if (cachedHistoricalClient) return cachedHistoricalClient;
   const url = process.env.HISTORICAL_SUPABASE_URL;
   const serviceKey = process.env.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY;
@@ -523,6 +523,10 @@ export async function loadStructuralContext(
 ): Promise<StructuralContext> {
   const subject = normalizeSubject(requestedSubject);
   const db = getHistoricalClient();
+  // A separately enabled historical warehouse never becomes the default
+  // public request path: use the verified B2 structural snapshot first.
+  const b2Continuity = db ? await loadB2StructuralContext(subject) : null;
+  if (b2Continuity?.status === "AVAILABLE") return b2Continuity;
 
   if (!db) {
     if (options.allowQualifiedRelease === true && subject.type === "country") {
@@ -605,7 +609,7 @@ export async function loadStructuralContext(
     }
 
     console.error("[structural-context] curated historical query failed", error);
-    const b2 = await loadB2StructuralContext(subject);
+    const b2 = b2Continuity ?? await loadB2StructuralContext(subject);
     if (b2) return b2;
     return unavailableContext(subject);
   }

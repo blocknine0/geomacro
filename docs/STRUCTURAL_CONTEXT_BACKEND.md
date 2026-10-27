@@ -13,6 +13,25 @@ HISTORICAL_SUPABASE_SERVICE_ROLE_KEY
 
 Never expose either value with a `VITE_` prefix and never make the historical service-role credential available to browser code.
 
+### Independent historical Supabase runtime
+
+The historical project is **a separate Supabase database** from main Geomacro's standby/recovery Supabase. Main `GEOMACRO_SUPABASE_RUNTIME_MODE` does **not** govern the historical database or its credentials.
+
+`GEOMACRO_HISTORICAL_SUPABASE_READ_MODE=off` is the safe, quota-preserving default for main application reads. With `fallback`, the server first checks the verified private B2 structural snapshot; only if the subject lacks an available B2 profile does it query the historical project's curated serving views using server-only historical credentials. It never queries raw historical tables. The setting does not turn on any historical ingestion workflow, migrations or database writes.
+
+Historical ingestion and migration jobs are independently controlled by the historical repository. Existing disabled production schedules/holds remain disabled until a separately authorized quota and safety review; do not interpret the main Supabase freeze as the source of these historical-specific controls.
+
+Example server-only configuration:
+
+```dotenv
+GEOMACRO_SUPABASE_RUNTIME_MODE=standby
+GEOMACRO_HISTORICAL_SUPABASE_READ_MODE=fallback
+HISTORICAL_SUPABASE_URL=<dedicated-historical-project-url>
+HISTORICAL_SUPABASE_SERVICE_ROLE_KEY=<dedicated-server-secret>
+```
+
+Do not populate either historical credential from main `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY`. Historical live database reads and the presence of data still require explicit production readback validation.
+
 ## Governed database interfaces
 
 The historical warehouse's base commercial evidence boundary remains:

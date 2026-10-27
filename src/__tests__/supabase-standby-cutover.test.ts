@@ -40,12 +40,13 @@ describe("Supabase cold-standby production policy", () => {
     ).toBe(true);
   });
 
-  it("cuts the normal app, risk and historical structural clients out of production serving", () => {
+  it("keeps main app/risk standby independent from opt-in historical structural reads", () => {
     expect(appSupabase).toContain("supabaseReadFallbackAllowed(env)");
     expect(riskSupabase).toContain("if (!supabasePrimaryTrafficAllowed(env)) return null;");
     expect(riskSupabase).toContain('if (env.NODE_ENV === "production") return false;');
     expect(riskSupabase).toContain("AUTHORITATIVE_RISK_PROJECT_REF");
-    expect(structural).toContain("if (!supabaseReadFallbackAllowed()) return null;");
+    expect(structural).toContain("if (!historicalSupabaseReadFallbackAllowed()) return null;");
+    expect(structural).not.toContain("if (!supabaseReadFallbackAllowed()) return null;");
     expect(structural).toContain("readB2StructuralServingSnapshot");
   });
 
