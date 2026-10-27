@@ -46,6 +46,7 @@ const held=(reason,now)=>Object.freeze({
   schema:"geomacro.d1-free-bundled-work-admission.v1",
   day_utc:now.toISOString().slice(0,10),state:"HELD",
   reason,critical:false,research:false,maintenance:false,source_intake:false,
+  snapshot_refresh:false,
   d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
   budget_is_nonatomic_provider_snapshot:true,
 });
@@ -81,6 +82,14 @@ export function planD1BundledWork(snapshot,{now=new Date()}={}){
   const sourceIntake=grants.critical || (
     snapshot.remaining_rows_read>D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read &&
     snapshot.remaining_rows_written>D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written);
+  // Bounded public-serving refresh, even if intake pacing is HELD. The
+  // Worker checks the 8-minute revision fence *before* its <=601-row scan.
+  // Separate from source intake/signing; reserve 250k read and 5k write rows
+  // on the delayed (non-atomic) account-wide provider counter.
+  const snapshotRefresh=snapshot.remaining_rows_read>250_000 &&
+    snapshot.remaining_rows_written>5_000 &&
+    snapshot.observed_rows_read<4_750_000 &&
+    snapshot.observed_rows_written<95_000;
   // The observed account budget is the shared physical constraint.
   // Do not declare an exhausted account healthy even if a second DB is idle.
   const state=grants.maintenance?"NORMAL":grants.research?"CONSERVE":
@@ -90,6 +99,9 @@ export function planD1BundledWork(snapshot,{now=new Date()}={}){
     day_utc:snapshot.day_utc,state,
     reason:state==="HELD"?"D1_FREE_RESERVE_REACHED":"ACCOUNT_WIDE_HEADROOM_OBSERVED",
     ...grants,source_intake:sourceIntake,
+    snapshot_refresh:snapshotRefresh,
+    snapshot_refresh_max_source_rows_per_run:601,
+    snapshot_refresh_does_not_admit_ingestion:true,
     source_intake_budget_to_utc_reset:intakeBudget,
     source_intake_does_not_admit_signing_or_audits:true,
     observed_rows_read:snapshot.observed_rows_read,
@@ -122,7 +134,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   };
   console.log(JSON.stringify(receipt));
   if(process.env.GITHUB_OUTPUT){
-    for(const key of ["critical","research","maintenance","source_intake"]){
+    for(const key of ["critical","research","maintenance","source_intake","snapshot_refresh"]){
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key])+"\n");
     }
     appendFileSync(process.env.GITHUB_OUTPUT,"state="+result.state+"\n");
