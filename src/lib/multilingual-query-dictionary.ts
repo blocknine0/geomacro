@@ -14,7 +14,10 @@ export const QUERY_DICTIONARY_LOCALES = [
 
 type AliasIndex = Map<string, string | null>;
 const normalize = (text: string) => text.normalize("NFKC").toLowerCase()
-  .replace(/[\u2019\u02bc\u02bb]/gu, "'").replace(/\s+/gu, " ").trim();
+  .replace(/[\u2019\u02bc\u02bb]/gu, "'")
+  // Publisher names and multilingual queries regularly use Unicode dashes.
+  .replace(/[\u2010-\u2015\u2212]/gu, "-").replace(/\s*-\s*/gu, "-")
+  .replace(/\s+/gu, " ").trim();
 
 function add(index: AliasIndex, raw: string, id: string): void {
   const alias = normalize(raw);
