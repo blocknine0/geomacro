@@ -1584,6 +1584,57 @@
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_fsm_original_candidate",
+      "url": "https://kpress.fm/feed/",
+      "publisher_country_iso3": "FSM",
+      "discovery_reference_url": "https://kpress.fm/about-us/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_kir_original_candidate",
+      "url": "https://bpa.org.ki/feed/",
+      "publisher_country_iso3": "KIR",
+      "discovery_reference_url": "https://bpa.org.ki/radio-kiribati/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_gaplane_tuv_original_candidate",
+      "url": "https://finance.gov.tv/feed/",
+      "publisher_country_iso3": "TUV",
+      "discovery_reference_url": "https://finance.gov.tv/publications/",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
     }
   ]
 }
