@@ -1,7 +1,10 @@
 /**
  * Per-POP read-through cache for exact, anonymous, PUBLIC free D1 projections.
- * A bounded 45s window reduces repeated 250-750-row D1 reads; never cache
- * protected/private responses, live signed products, error/503 or paid routes.
+ * A bounded 45s window reduces repeated D1 reads for public website pages
+ * (0/250/500) and the source-neutral machine pilot feed, across matching
+ * requests at a given POP. No new D1/B2 writes, remote vendor or credentials.
+ * Never cache protected/private responses, partner Predge views, signed
+ * products, errors/503/429 or paid routes.
  * This is a best-effort query reduction, NOT a global quota reservation or
  * proof that an upstream news publisher is fresh.
  */
@@ -12,7 +15,19 @@ const PATHS = new Set([
   "/v1/public/website-derived-news-immediate",
   "/v1/public/website-derived-news-html",
   "/v1/public/reusable-source-news",
+  "/v1/public/derived-structural-72h",
 ]);
+const PAGED_NEWS_PATHS = new Set([
+  "/v1/public/website-derived-news",
+  "/v1/public/website-derived-news-immediate",
+]);
+const DOMAINS = new Set(["macro","geopolitics","rare_earth"]);
+const CANONICAL_OFFSETS = new Set(["offset=250","offset=500"]);
+// Query string must be *literally canonical*: no duplicate, encoded, nested
+// or arbitrary filtering that can poison a shared public cache key.
+const categoryQuery = query => query.startsWith("domain=") &&
+  DOMAINS.has(query.slice("domain=".length)) &&
+  query === "domain="+query.slice("domain=".length);
 const forbidden = new Set(["authorization","cookie","range","x-api-key"]);
 // Per-isolate single-flight avoids the D1 read stampede between a cache miss
 // and the cache PUT. Cache API remains authoritative across requests/POPs.
@@ -21,15 +36,18 @@ export function eligiblePublicFreeD1CacheRequest(request){
   if(request?.method!=="GET")return false;
   const url=new URL(request.url);
   if(!PATHS.has(url.pathname))return false;
-  // The public native-news lane is requested by category. Cache only the
-  // three fixed category filters, never arbitrary country, offset or encoded
-  // query permutations. Internal authenticated readback MUST bypass cache.
+  // Cache only exact public categories and bounded journal pages; no custom
+  // country, arbitrary offset, query aliases or untrusted query permutations.
+  // Internal readback must explicitly send Cache-Control: no-cache, and
+  // authenticated requests are always excluded below.
   if(url.search){
-    const params=url.searchParams;
-    if(url.pathname!=="/v1/public/reusable-source-news"||
-       params.size!==1||params.getAll("domain").length!==1||
-       !["geopolitics","macro","rare_earth"].includes(params.get("domain")))
-      return false;
+    const raw=url.search.slice(1);
+    if(url.pathname==="/v1/public/reusable-source-news" ||
+       url.pathname==="/v1/public/derived-structural-72h"){
+      if(!categoryQuery(raw))return false;
+    }else if(PAGED_NEWS_PATHS.has(url.pathname)){
+      if(!CANONICAL_OFFSETS.has(raw))return false;
+    }else return false;
   }
   if(request.headers.has("cache-control")&&
      /(?:no-cache|no-store)/iu.test(request.headers.get("cache-control")))return false;

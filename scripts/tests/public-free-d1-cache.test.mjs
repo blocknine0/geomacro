@@ -124,3 +124,70 @@ test("Worker keeps public-only cache and original strict private access intact",
   assert.match(code,/return handlePrivateOsint15m\(request,env\)/);
   assert.match(code,/return publicReadCache\(\(\)=>publicReusableSourceNews\(env,url.searchParams\)\)/);
 });
+
+test("source-neutral public machine feed shares exact one D1 projection per bounded key",async()=>{
+  const root="https://geomacro-control-plane.example/v1/public/derived-structural-72h";
+  const stored=new Map();let reads=0;
+  const cache={async match(k){return stored.get(k.url)?.clone()??null},
+    async put(k,v){stored.set(k.url,v.clone())}};
+  const run=async()=>{reads++;return Response.json({
+    ok:true,schema:"geomacro.derived-news-structural-feed.v1",
+    projection:"source_neutral",items:[],scored:false,signed:false
+  },{headers:{"Cache-Control":"no-store"}})};
+  for(const query of ["","?domain=macro","?domain=rare_earth","?domain=geopolitics"]){
+    const req=request(root+query);
+    assert.equal(eligiblePublicFreeD1CacheRequest(req),true);
+    const first=await readPublicFreeD1Cached(req,run,{cache});
+    const second=await readPublicFreeD1Cached(req,run,{cache});
+    assert.deepEqual(await first.json(),await second.json());
+  }
+  assert.equal(reads,4);
+  assert.equal(stored.size,4);
+  for(const query of [
+    "?country=IND","?domain=macro&country=IND","?domain=%6dacro",
+    "?domain=macro&domain=macro","?domain=unknown","?offset=250",
+    "?domain=macro%20","?domain=geopolitics#invalid"
+  ]){
+    const req=request(root+query);
+    if(query.includes("#"))continue; // fragments do not traverse HTTP
+    assert.equal(eligiblePublicFreeD1CacheRequest(req),false,query);
+  }
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(root,{
+    Authorization:"Bearer machine-internal"
+  })),false);
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(root,{
+    "Cache-Control":"no-cache"
+  })),false);
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(
+    root.replace("/public/","/partner/predge/"))),false);
+});
+
+test("only the two canonical website 250/500 pages are independently cached",async()=>{
+  let reads=0,puts=0;
+  const stored=new Map();
+  const cache={async match(k){return stored.get(k.url)?.clone()??null},
+    async put(k,r){puts++;stored.set(k.url,r.clone())}};
+  const run=async()=>{reads++;return Response.json({ok:true,signals:[]})};
+  for(const path of ["website-derived-news","website-derived-news-immediate"]){
+    const root="https://geomacro-control-plane.example/v1/public/"+path;
+    for(const q of ["","?offset=250","?offset=500"]){
+      assert.equal(eligiblePublicFreeD1CacheRequest(request(root+q)),true);
+      await readPublicFreeD1Cached(request(root+q),run,{cache});
+      await readPublicFreeD1Cached(request(root+q),run,{cache});
+    }
+    for(const q of [
+      "?offset=0","?offset=750","?offset=250&offset=500",
+      "?offset=%32%35%30","?country=USA","?domain=macro","?offset=250&x=1"
+    ])assert.equal(eligiblePublicFreeD1CacheRequest(request(root+q)),false,q);
+  }
+  assert.equal(reads,6);assert.equal(puts,6);
+  assert.equal(stored.size,6);
+});
+
+test("cache never covers paid, protected or Predge machine routes after offload",()=>{
+  const source=readFileSync(new URL("../../workers/control-plane/src/index.mjs",import.meta.url),"utf8");
+  assert.match(source,/return publicReadCache\\(\\(\\)=>publicSharedDerivedNewsFeed\\(env,url.searchParams\\)\\)/);
+  assert.match(source,/return publicReadCache\\(\\(\\)=>readDerivedStories\\(env,Date.now\\(\\),Number\\(q.get\\("offset"\\)\\),legacyDelay\\)\\)/);
+  assert.match(source,/return predgeResearchDerivedNewsFeed\\(request,env\\)/);
+  assert.match(source,/if \\(!auth.ok\\) return json\\(/);
+});

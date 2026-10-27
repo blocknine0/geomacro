@@ -1293,7 +1293,7 @@ export default {
       return getAutomatedFinds(env,url.searchParams.get("category"));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/derived-structural-72h")
-      return publicSharedDerivedNewsFeed(env,url.searchParams);
+      return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams));
     if(request.method==="GET"&&url.pathname==="/v1/partner/predge/derived-structural-72h")
       return predgeResearchDerivedNewsFeed(request,env);
     if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-d1-readiness"&&!url.search)
@@ -1317,7 +1317,7 @@ export default {
       if(q.size!==1||q.getAll("offset").length!==1||
          !["250","500"].includes(q.get("offset")))
         return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID",chargeable:false},400);
-      return readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay);
+      return publicReadCache(()=>readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay));
     }
     if (request.method === "GET" && url.pathname === "/v1/public/source-pulse-30m") {
       return getPublicThreeDomain30MinSourcePulse(env);
