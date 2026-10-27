@@ -38,5 +38,7 @@ test("national issuer native-language headings can identify a country but not mu
  assert.equal(countryMentionFromTitle("বাংলাদেশ মুদ্রাস্ফীতি হালনাগাদ",COUNTRIES_195),"BGD");
  assert.equal(countryMentionFromTitle("भारत में मुद्रास्फीति पर नया फैसला",COUNTRIES_195),"IND");
  assert.equal(countryMentionFromTitle("Россия объявила меры по экспорту",COUNTRIES_195),"RUS");
+ assert.equal(countryMentionFromTitle("中国宣布关键矿产和稀土出口管制措施",COUNTRIES_195),"CHN");
+ assert.equal(countryMentionFromTitle("中国和日本宣布贸易政策",COUNTRIES_195),null);
  assert.equal(countryMentionFromTitle("भारत এবং বাংলাদেশ trade update",COUNTRIES_195),null);
 });
