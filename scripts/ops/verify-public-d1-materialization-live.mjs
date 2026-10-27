@@ -2,7 +2,8 @@
 /**
  * Strict production anonymous-vs-origin materialization proof.
  * This is customer-serving read validation, not a synthetic production probe.
- * 2 bounded public GETs, no D1 mutations, B2 calls, source URLs, or credentials.
+ * One anonymous GET plus one owner-authenticated canonical D1 GET. No D1
+ * mutation, B2 call, publisher source fetch, or credential exposure.
  */
 import {createHmac} from "node:crypto";
 import {resolve} from "node:path";
