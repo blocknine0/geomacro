@@ -21,6 +21,8 @@ on:
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-encrypted-spool.test.mjs"
+      - "scripts/lib/cloudflare-workers-paid-plan-proof.mjs"
+      - "scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs"
 
 permissions:
   contents: read
@@ -46,6 +48,7 @@ jobs:
           node --check scripts/lib/private-osint-encrypted-spool.mjs
           node --check scripts/ops/private-osint-replay-held.mjs
           node --test scripts/lib/private-osint-encrypted-spool.test.mjs
+          node --test scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
 
   quota-admission:
     needs: verify
