@@ -80,16 +80,11 @@ describe("first real-sale country digest buyer contract (zero funds)",()=>{
   expect(()=>validateFirstSaleCountryDigestQuote(invalid,origin,now)).toThrow();
   expect(()=>validateFirstSaleCountryDigestQuote(quote(),origin,Date.parse("2026-12-01T00:00:00Z"))).toThrow();
  });
- it("Store links to exact no-funds launch panel and retains unlocked price authority",()=>{
+ it("browser SDK remains unmounted until explicit published Website Lock approval",()=>{
   const pricing=readFileSync("src/routes/pricing.tsx","utf8");
   const panel=readFileSync("src/components/category-api-launch-panel.tsx","utf8");
-  expect(pricing).toContain('<CategoryApiLaunchPanel initialMode="country_digest" />');
-  expect(panel).toContain('buildFirstSaleCountryDigestRequest');
-  expect(panel).toContain('acceptFirstSaleNoFundsPreflight');
-  expect(panel).toContain('validateFirstSaleCountryDigestQuote');
-  expect(panel).toContain('new URL("/api/v1/intelligence/query",window.location.origin)');
-  expect(panel).toContain('"PAYMENT-SIGNATURE":payment.proof');
-  expect(panel).toContain("Qualified country digest found, but merchant settlement is not active. No payment requested.");
-  expect(panel).not.toContain('COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC');
+  expect(pricing).not.toContain('initialMode="country_digest"');
+  expect(panel).not.toContain("buildFirstSaleCountryDigestRequest");
+  // A deploy of the unapproved UI would break exact published website parity.
  });
 });
