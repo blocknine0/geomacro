@@ -29,6 +29,19 @@ const PRIVATE_FIELDS=new Set([
  "publisher","publisher_name","provider","provider_name",
  "raw_content","raw_payload","raw_article","raw_source","provenance",
  "original_source","retrieval_metadata",
+ // Alternative spellings and nested transport metadata must never appear
+ // in the website's public historical projection; aggregate risk scores,
+ // verification hashes and source-count metrics remain intact.
+ "sourceURL","sourceUrl","sourceLink","source_link",
+ "publisherURL","publisherUrl","publisher_url","publisher_link",
+ "providerURL","providerUrl","provider_url",
+ "articleURL","articleUrl","article_url","article_title","raw_title",
+ "referenceURL","referenceUrl","reference_url",
+ "citationURL","citationUrl","citation_url",
+ "evidenceURL","evidenceUrl","evidence_url",
+ "raw_headline","raw_record","raw_sources","source_payload",
+ "b2_object_key","s3_object_key","private_bucket","api_key",
+ "bearer_token","secret","access_token",
 ]);
 function redactPrivateFields(value){
  if(Array.isArray(value))return value.map(redactPrivateFields);

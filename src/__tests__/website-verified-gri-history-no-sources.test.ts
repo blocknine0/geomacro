@@ -82,6 +82,34 @@ describe("bounded privacy-safe genuine prior verified website GRI history",()=>{
   expect(JSON.stringify(r)).not.toContain("leak-source.example");
   expect(JSON.stringify(r)).not.toContain("Top Secret Agency");
  });
+ it("redacts nested alternate publisher/source URL, article and transport metadata without changing scores",()=>{
+  const o=stored();
+  const original=JSON.parse(o.payload_json);
+  original.data.sourceURL="https://private.example/source";
+  original.data.transport={
+    sourceLink:"https://private.example/link",
+    citationUrl:"https://private.example/citation",
+    raw_record:"TOP SECRET ARTICLE",
+    b2_object_key:"geomacro-evidence/private/bundle",
+    secret:"bearer-not-for-public",
+    source_count:3,
+  };
+  original.data.drivers[0].publisherUrl="https://private.example/publisher";
+  original.data.domainIndices.geopolitics.article_url="https://private.example/article";
+  const output=privateVerifiedGriHistoryProjection({
+    ...o,payload_json:JSON.stringify(original)
+  },{now});
+  expect(output?.ok).toBe(true);
+  const json=JSON.stringify(output);
+  for(const forbidden of [
+    "private.example","TOP SECRET ARTICLE","geomacro-evidence/private",
+    "bearer-not-for-public","sourceURL","raw_record","b2_object_key",
+    "article_url","publisherUrl"
+  ])expect(json).not.toContain(forbidden);
+  expect(output?.data?.transport?.source_count).toBe(3);
+  expect(output?.data?.domainIndices.geopolitics.score).toBe(41);
+  expect(output?.data?.proofHash).toBe("a".repeat(64));
+ });
  it("refuses malformed, unverified, future-domain and post-cutoff private publisher event claims",()=>{
   const o=stored();
   expect(privateVerifiedGriHistoryProjection({...o,proof_schema:"unverified"}, {now})).toBeNull();
