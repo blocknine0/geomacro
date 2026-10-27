@@ -7,8 +7,31 @@ async function read(path,fetcher){
   // the Cloudflare per-POP Cache API on production requests.
   cache:"no-store",headers:{Accept:"application/json","Cache-Control":"no-cache"},
   signal:AbortSignal.timeout(12_000)});
- if(!response.ok||Number(response.headers.get("content-length")||0)>600000)
-  throw Error("D1_SHARED_NEWS_HTTP_UNAVAILABLE");
+ if(!response.ok){
+  // Only a small fixed allowlist leaves the isolated verifier runner.
+  // Never log response text, headers, URLs, or private records. This
+  // distinguishes a D1/Worker 503 from an edge 429 or auth/route failure.
+  const error=new Error("D1_SHARED_NEWS_HTTP_UNAVAILABLE");
+  error.safe_http_status=[400,401,403,404,408,409,413,422,429,500,502,503,504,520,522,524]
+    .includes(response.status)?response.status:0;
+  error.safe_route=path.startsWith("derived-structural-72h")?
+    "SOURCE_NEUTRAL_MACHINE":"CANONICAL_NEWS_PAGE";
+  if(error.safe_http_status===503){
+    try{
+      const size=Number(response.headers.get("content-length")||0);
+      if(size<=2048){
+        const doc=await response.clone().json();
+        if(["SHARED_NEWS_D1_JOURNAL_OVER_CAP","SHARED_NEWS_D1_UNAVAILABLE",
+             "DERIVED_NEWS_D1_READ_UNAVAILABLE","D1_FREE_QUOTA_EXCEEDED",
+             "DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED"].includes(doc?.error))
+          error.safe_public_code=doc.error;
+      }
+    }catch{/* No response body or upstream text is ever surfaced */ }
+  }
+  throw error;
+ }
+ if(Number(response.headers.get("content-length")||0)>600000)
+  throw Error("D1_SHARED_NEWS_OVERSIZE");
  const txt=await response.text();
  if(txt.length>600000)throw Error("D1_SHARED_NEWS_OVERSIZE");
  return JSON.parse(txt);
@@ -107,9 +130,21 @@ const SAFE_SHARED_NEWS_FAILURES=new Set([
 export function safeSharedNewsParityFailure(error){
  const reason=error instanceof Error&&SAFE_SHARED_NEWS_FAILURES.has(error.message)
   ?error.message:"D1_SHARED_NEWS_UNCLASSIFIED_OR_TRANSPORT_FAILURE";
+ const scoped=reason==="D1_SHARED_NEWS_HTTP_UNAVAILABLE";
+ const status=scoped&&[400,401,403,404,408,409,413,422,429,500,502,503,504,520,522,524]
+  .includes(error?.safe_http_status)?error.safe_http_status:0;
+ const route=scoped&&["SOURCE_NEUTRAL_MACHINE","CANONICAL_NEWS_PAGE"].includes(error?.safe_route)?
+  error.safe_route:null;
+ const publicCode=scoped&&[
+  "SHARED_NEWS_D1_JOURNAL_OVER_CAP","SHARED_NEWS_D1_UNAVAILABLE",
+  "DERIVED_NEWS_D1_READ_UNAVAILABLE","D1_FREE_QUOTA_EXCEEDED",
+  "DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED"
+ ].includes(error?.safe_public_code)?error.safe_public_code:null;
  return Object.freeze({
   schema:"geomacro.shared-d1-predge-safe-failure.v1",
-  verified:false,reason,partner_delivery_verified:false,
+  verified:false,reason,upstream_http_status:status,
+  failed_public_route:route,upstream_public_error_code:publicCode,
+  partner_delivery_verified:false,
   original_source_rights_verified:false,paid_product_ready:false,
   private_article_or_record_id_exposed:false,
   raw_upstream_data_exposed:false,network_retry_or_write_performed:false,

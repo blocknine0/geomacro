@@ -110,3 +110,36 @@ test("Predge shared D1 parity reads the zero-delay website journal, never the de
  assert.equal(urls.length,2);
  assert.equal(urls[1].endsWith("/website-derived-news-immediate"),true);
 });
+
+test("protected non-200 diagnosis differentiates Worker D1 503 overcap from 429 and never leaks upstream",async()=>{
+ for(const [status,body,expectCode] of [
+  [503,{error:"SHARED_NEWS_D1_JOURNAL_OVER_CAP"},"SHARED_NEWS_D1_JOURNAL_OVER_CAP"],
+  [503,{error:"PRIVATE_DB_PASSWORD_AAA"},null],
+  [429,{error:"SECRET_PARAMETER"},null]
+ ]){
+  let calls=0;
+  await assert.rejects(()=>verifySharedNewsLive(async()=>{
+   calls++;return Response.json(body,{status});
+  }),e=>{
+   const receipt=safeSharedNewsParityFailure(e);
+   assert.equal(receipt.reason,"D1_SHARED_NEWS_HTTP_UNAVAILABLE");
+   assert.equal(receipt.upstream_http_status,status);
+   assert.equal(receipt.failed_public_route,"SOURCE_NEUTRAL_MACHINE");
+   assert.equal(receipt.upstream_public_error_code,expectCode);
+   assert.equal(receipt.raw_upstream_data_exposed,false);
+   assert.equal(JSON.stringify(receipt).includes("PRIVATE_DB_PASSWORD_AAA"),false);
+   assert.equal(JSON.stringify(receipt).includes("SECRET_PARAMETER"),false);
+   return true;
+  });
+  assert.equal(calls,1,"never retry or amplify D1 queries on quota errors");
+ }
+});
+test("diagnostic does not trust arbitrary error properties or expose attacker-supplied status",()=>{
+ const e=Object.assign(new Error("D1_SHARED_NEWS_HTTP_UNAVAILABLE"),{
+  safe_http_status:206,safe_route:"SECRET_TOKEN",safe_public_code:"sensitive"
+ });
+ const receipt=safeSharedNewsParityFailure(e);
+ assert.equal(receipt.upstream_http_status,0);
+ assert.equal(receipt.failed_public_route,null);
+ assert.equal(receipt.upstream_public_error_code,null);
+});

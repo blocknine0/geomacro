@@ -9,6 +9,7 @@ import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligen
 import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
 import { readDerivedStories, readDerivedStoriesBundle, publishDerivedStories, renderDerivedStoriesHtml, DERIVED_NEWS_TOPIC_POLICY_REVISION } from "./website-derived-intelligence.mjs";
+import {refreshMaterializedNewsPages} from "./materialized-public-news-pages.mjs";
 import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
@@ -1437,6 +1438,26 @@ export default {
         const body = await readJson(request, 1024);
         const receipt = await reserveB2AccountQuota(env.DB, body);
         return json(receipt, receipt.ok ? 200 : 429);
+      }
+      if(request.method==="PUT"&&url.pathname==="/v1/internal/public-news-page-refresh"&&!url.search){
+        // Owner authenticated, public-only, no new publisher source fetch
+        // or D1 event write. Output is metadata-only, no raw/source data.
+        try{
+          const receipt=await refreshMaterializedNewsPages(env,Date.now());
+          const accepted=["MATERIALIZED_ALREADY_CURRENT","MATERIALIZED_COMMIT_VERIFIED"]
+            .includes(receipt.status);
+          return json({ok:accepted,
+            schema:"geomacro.public-derived-materialization-refresh.v1",
+            state:receipt.status,pages:receipt.pages,
+            read_queries:receipt.producer_read_queries,
+            canonical_count:receipt.canonical_rows,
+            publisher_sources_polled:0,publisher_events_inserted:0,
+            b2_requests:0,signed_products_created:0},accepted?200:409);
+        }catch(error){
+          return json({ok:false,error:error?.message==="MATERIALIZED_JOURNAL_OVER_CAP_OR_INVALID"?
+            "MATERIALIZED_JOURNAL_OVER_CAP":"MATERIALIZED_REFRESH_UNAVAILABLE",
+            publisher_sources_polled:0,publisher_events_inserted:0,b2_requests:0},503);
+        }
       }
       if (request.method === "PUT" && url.pathname === "/v1/website-derived-news" && !url.search) {
         const batch = await readJson(request, 64 * 1024);

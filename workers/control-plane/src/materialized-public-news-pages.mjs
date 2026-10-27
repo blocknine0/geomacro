@@ -23,10 +23,18 @@ const rowShape=row=>row&&typeof row.story_json==="string"&&
 export async function refreshMaterializedNewsPages(env,now=Date.now()){
   if(!Number.isFinite(now))throw Error("MATERIALIZED_CLOCK_INVALID");
   const metadata=await env.DB.prepare(
-    "SELECT data_revision FROM website_derived_materialized_meta_v1 WHERE id=1"
+    "SELECT m.data_revision,m.snapshot_revision,"+
+    "(SELECT p.generated_at FROM website_derived_materialized_pages_v1 p "+
+    "WHERE p.page_offset=0) AS latest_snapshot_at "+
+    "FROM website_derived_materialized_meta_v1 m WHERE m.id=1"
   ).first();
   if(!Number.isSafeInteger(metadata?.data_revision)||metadata.data_revision<0)
     throw Error("MATERIALIZED_REVISION_MISSING");
+  const snapshotAge=now-Date.parse(metadata.latest_snapshot_at??"");
+  if(metadata.snapshot_revision===metadata.data_revision&&
+     Number.isFinite(snapshotAge)&&snapshotAge>=0&&snapshotAge<8*60_000)
+    return {status:"MATERIALIZED_ALREADY_CURRENT",pages:3,
+      canonical_rows:null,producer_read_queries:1,snapshot_is_disposable:true};
   const {results}=await env.DB.prepare(
     "SELECT story_json,first_seen_at FROM website_derived_intelligence "+
     "WHERE published_at>=? AND first_seen_at>=? "+
@@ -62,10 +70,20 @@ export async function refreshMaterializedNewsPages(env,now=Date.now()){
   const receipt=await env.DB.batch(statements);
   if(!Array.isArray(receipt)||receipt.some(x=>x?.success===false))
     throw Error("MATERIALIZED_ATOMIC_PUBLISH_FAILED");
-  // No extra D1 origin readback required: later requests only use the
-  // revision-joined materialization; an overlap returns NULL and falls back.
-  return {status:"MATERIALIZED_COMMIT_SUBMITTED",pages:3,
-    canonical_rows:results.length,producer_read_queries:2,
+  const proof=await env.DB.prepare(
+    "SELECT m.data_revision,m.snapshot_revision,p.generated_at "+
+    "FROM website_derived_materialized_meta_v1 m "+
+    "JOIN website_derived_materialized_pages_v1 p ON p.page_offset=0 "+
+    "WHERE m.id=1 AND p.data_revision=m.data_revision"
+  ).first();
+  if(proof?.data_revision!==metadata.data_revision||
+     proof?.snapshot_revision!==metadata.data_revision||
+     proof?.generated_at!==producedAt)
+    return {status:"MATERIALIZED_REVISION_RACE_HELD",pages:0,
+      canonical_rows:results.length,producer_read_queries:3,
+      snapshot_is_disposable:true};
+  return {status:"MATERIALIZED_COMMIT_VERIFIED",pages:3,
+    canonical_rows:results.length,producer_read_queries:3,
     snapshot_is_disposable:true};
 }
 

@@ -71,7 +71,10 @@ test("producer scans 510 canonical rows once; anonymous pages read 1+revision ro
   const x=makeState();
   assert.equal(await getMaterializedNewsPage(x.env,0,clock),null);
   const receipt=await refreshMaterializedNewsPages(x.env,clock);
+  assert.equal(receipt.status,"MATERIALIZED_COMMIT_VERIFIED");
   assert.equal(receipt.canonical_rows,510);
+  const idempotent=await refreshMaterializedNewsPages(x.env,clock+2000);
+  assert.equal(idempotent.status,"MATERIALIZED_ALREADY_CURRENT");
   assert.equal(x.originReads,1);
   const page=await getMaterializedNewsPage(x.env,0,clock);
   assert.equal(page.length,251);
@@ -134,7 +137,8 @@ test("concurrent producer revision fences an overlapping materialization transac
          JSON.stringify(added),new Date(clock).toISOString());
     x.setBeforeBatch(()=>{});
   });
-  await refreshMaterializedNewsPages(x.env,clock);
+  const rejected=await refreshMaterializedNewsPages(x.env,clock);
+  assert.equal(rejected.status,"MATERIALIZED_REVISION_RACE_HELD");
   assert.equal(await getMaterializedNewsPage(x.env,0,clock),null,
     "revision CAS cannot mark stale 10-item snapshot as current");
   await refreshMaterializedNewsPages(x.env,clock);
