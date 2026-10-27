@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {randomBytes} from "node:crypto";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {sealPrivateOsintSpool,unsealPrivateOsintSpool,
- selectPrivateOsintSpoolArtifacts,planPrivateOsintEncryptedReplay,
+ selectPrivateOsintSpoolArtifacts,selectEligiblePrivateOsintSpoolItems,planPrivateOsintEncryptedReplay,
  canDeletePrivateOsintSpoolArtifacts,OSINT_SPOOL_ARTIFACT_NAME,
  OSINT_SPOOL_ENVELOPE} from "./private-osint-encrypted-spool.mjs";
 
@@ -132,4 +132,26 @@ test("all expired native-clock observations may be retired without inventing can
  assert.equal(canDeletePrivateOsintSpoolArtifacts(null,obsolete),true);
  assert.equal(canDeletePrivateOsintSpoolArtifacts(null,
   {...obsolete,expired:1}),false);
+});
+
+test("25h clock boundary or one malformed publisher cannot cancel all valid encrypted intake",()=>{
+ const expired=row("macro","2026-10-26T16:00:00.000Z",
+  "India inflation report and interest rate policy update from earlier window");
+ const bad={...a,source:{...a.source,original_url:"https://provider.example/raw-news"}};
+ const badRights={...b,usage_rights:{...b.usage_rights,
+  commercial_reuse_authorized:true}};
+ const result=selectEligiblePrivateOsintSpoolItems([a,expired,bad,a,b,badRights,c],now);
+ assert.equal(result.examined,7);
+ assert.equal(result.invalid,3);
+ assert.equal(result.duplicates,1);
+ assert.equal(result.items.length,3);
+ assert.deepEqual(new Set(result.items.map(x=>x.category)),
+  new Set(["macro","rare_earth","geopolitics"]));
+ assert.ok(result.items.every(x=>x.verification.original_page_verified===false));
+ const encrypted=sealPrivateOsintSpool({items:result.items,root:secret,now});
+ assert.equal(encrypted.unverified_observation_count,3);
+ assert.ok(!JSON.stringify(encrypted).includes("provider.example"));
+ assert.equal(selectEligiblePrivateOsintSpoolItems([expired,bad],now).items.length,0);
+ assert.throws(()=>selectEligiblePrivateOsintSpoolItems(Array(769).fill(a),now),
+  /OSINT_SPOOL_SOURCE_BATCH_INVALID/);
 });
