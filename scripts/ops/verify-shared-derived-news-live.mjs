@@ -3,7 +3,9 @@
 const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/";
 async function read(path,fetcher){
  const response=await fetcher(ROOT+path,{method:"GET",redirect:"error",
-  cache:"no-store",headers:{Accept:"application/json"},
+  // Explicit edge bypass: Node fetch cache:"no-store" alone does not bypass
+  // the Cloudflare per-POP Cache API on production requests.
+  cache:"no-store",headers:{Accept:"application/json","Cache-Control":"no-cache"},
   signal:AbortSignal.timeout(12_000)});
  if(!response.ok||Number(response.headers.get("content-length")||0)>600000)
   throw Error("D1_SHARED_NEWS_HTTP_UNAVAILABLE");

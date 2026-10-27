@@ -34,6 +34,7 @@ test("D1 readback recovers from a transient DNS/network failure and verifies the
       assert.equal(init.redirect,"error");
       assert.equal(init.cache,"no-store");
       assert.equal(init.headers.Accept,"application/json");
+      assert.equal(init.headers["Cache-Control"],"no-cache");
       if(calls===1)throw Error("ENOTFOUND raw-host-and-response-must-not-be-logged");
       return ok(body([
         signal("geopolitics","aaaa1111"),
