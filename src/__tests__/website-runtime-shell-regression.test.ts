@@ -20,7 +20,7 @@ describe("website runtime and shell regressions", () => {
     const shell = read("src/components/site-shell.tsx");
     const home = read("src/routes/index.tsx");
 
-    expect(shell).toContain('<div id="main-content" className="flex-1">{children}</div>');
+    expect(shell).toContain('<div id="main-content" tabIndex={-1} className="flex-1 scroll-mt-20 outline-none">{children}</div>');
     expect(shell).not.toContain('<main id="main-content"');
     expect(home).toContain("function HomePage()");
     expect(home).toContain("<main>");

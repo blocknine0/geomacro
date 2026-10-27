@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import type { ReactNode } from "react";
-import { ChevronDown, Languages, Menu, Twitter } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { ChevronDown, Languages, Menu, Pause, Play, Twitter } from "lucide-react";
+import { IntelligenceBackground } from "@/components/intelligence-background";
 import { Wordmark } from "@/components/wordmark";
 import { Button } from "@/components/ui/button";
 import { ProductionCoverageProof } from "@/components/production-coverage-proof";
@@ -9,6 +10,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
@@ -25,11 +27,11 @@ const PRIMARY_NAV = [
   { to: "/intelligence", label: "Intelligence" },
   { to: "/risk-indices", label: "Risk Indices" },
   { to: "/ask-geomacro", label: "Ask Geomacro" },
+  { to: "/data-api", label: "API & Agents" },
   { to: "/pricing", label: "Store" },
 ] as const;
 
 const EXPLORE_NAV = [
-  { to: "/data-api", label: "API & Agents", description: "API keys coming soon" },
   { to: "/institutional", label: "For teams", description: "Risk, treasury and supply-chain workflows" },
   { to: "/ecosystem", label: "Ecosystem & Partnerships", description: "Integrations, partnerships and commercial ecosystem" },
   { to: "/research", label: "Research & Evidence", description: "Methodology, coverage evidence and limitations" },
@@ -121,7 +123,7 @@ function LanguageMenu() {
         <Button
           variant="ghost"
           size="sm"
-          className="h-9 gap-1.5 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+          className="h-11 min-w-11 gap-1.5 px-2.5 text-xs text-muted-foreground hover:text-foreground"
           aria-label="Choose website language"
         >
           <Languages className="h-3.5 w-3.5" />
@@ -142,21 +144,21 @@ function LanguageMenu() {
   );
 }
 
-function ExploreMenu() {
+function ExploreMenu({ active }: { active: boolean }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className="inline-flex items-center gap-1 whitespace-nowrap py-2 transition hover:text-foreground">
+        <button type="button" aria-label="Explore more pages" data-active={active || undefined} className="inline-flex min-h-11 items-center gap-1 whitespace-nowrap rounded-md px-1 py-2 transition hover:text-foreground data-[active=true]:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           Explore <ChevronDown className="h-3.5 w-3.5" aria-hidden />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-80 max-w-[calc(100vw-2rem)] max-h-[min(75dvh,36rem)] overflow-y-auto">
         <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
           Product, evidence and company
         </DropdownMenuLabel>
         {EXPLORE_NAV.map((item) => (
           <DropdownMenuItem key={item.to} asChild>
-            <Link to={item.to} className="flex flex-col items-start gap-0.5 py-2.5">
+            <Link to={item.to} activeProps={{ className: "bg-muted text-foreground" }} className="flex min-h-11 flex-col items-start gap-0.5 py-2.5">
               <span>{item.label}</span>
               <span className="text-xs text-muted-foreground">{item.description}</span>
             </Link>
@@ -177,8 +179,8 @@ function MobileGroup({ title, items }: { title: string; items: ReadonlyArray<{ t
             <Link
               to={item.to}
               activeOptions={{ exact: item.to === "/" }}
-              className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              activeProps={{ className: "rounded-lg px-3 py-2.5 text-sm bg-muted text-foreground" }}
+              className="min-h-11 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              activeProps={{ className: "rounded-lg px-3 py-2.5 text-sm bg-muted text-foreground", "aria-current": "page" }}
             >
               {item.label}
             </Link>
@@ -190,12 +192,25 @@ function MobileGroup({ title, items }: { title: string; items: ReadonlyArray<{ t
 }
 
 export function SiteShell({ children }: { children: ReactNode }) {
+  const [motionPaused, setMotionPaused] = useState(false);
+  useEffect(() => {
+    try { setMotionPaused(window.localStorage.getItem("geomacro.background-paused") === "true"); } catch { /* Storage is optional. */ }
+  }, []);
+  const toggleMotion = () => {
+    setMotionPaused((previous) => {
+      const next = !previous;
+      try { window.localStorage.setItem("geomacro.background-paused", String(next)); } catch { /* Keep this visit functional. */ }
+      return next;
+    });
+  };
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const exploreMobile = EXPLORE_NAV.map(({ to, label }) => ({ to, label }));
   const showProductionEvidence = PRODUCTION_EVIDENCE_ROUTES.has(pathname);
+  const exploreActive = EXPLORE_NAV.some(({ to }) => pathname === to || pathname.startsWith(`${to}/`));
 
   return (
-    <div className="gm-site relative min-h-screen bg-background text-foreground">
+    <div className="gm-site relative isolate min-h-screen bg-background text-foreground">
+      <IntelligenceBackground paused={motionPaused} />
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
@@ -215,7 +230,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[88vw] max-w-sm overflow-y-auto border-border/70 bg-background/98 px-4">
                   <SheetHeader className="px-2">
-                    <SheetTitle><Wordmark height={28} /></SheetTitle>
+                    <SheetTitle>Geomacro navigation</SheetTitle>
+                    <SheetDescription>Choose a product, explore Geomacro or contact the team.</SheetDescription>
                   </SheetHeader>
                   <nav className="mt-7 space-y-6 pb-8" aria-label="Mobile navigation">
                     <MobileGroup title="Core" items={PRIMARY_NAV} />
@@ -229,25 +245,31 @@ export function SiteShell({ children }: { children: ReactNode }) {
               </Link>
             </div>
 
-            <nav aria-label="Primary" className="hidden items-center gap-5 text-sm text-muted-foreground xl:flex">
+            <nav aria-label="Primary" className="hidden items-center gap-3 text-sm text-muted-foreground xl:flex">
               {PRIMARY_NAV.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
                   activeOptions={{ exact: item.to === "/" }}
-                  className="whitespace-nowrap py-2 transition hover:text-foreground"
-                  activeProps={{ className: "text-foreground" }}
+                  className="inline-flex min-h-11 items-center whitespace-nowrap rounded-md px-1 py-2 transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  activeProps={{ className: "text-foreground font-medium", "aria-current": "page" }}
                 >
                   {item.label}
                 </Link>
               ))}
-              <ExploreMenu />
+              <ExploreMenu active={exploreActive} />
               <Button asChild size="sm" className="ml-1 h-9 px-4 text-xs">
                 <Link to="/contact">Contact</Link>
               </Button>
             </nav>
 
             <div className="flex min-w-[44px] items-center justify-end gap-1">
+              <Button type="button" variant="ghost" size="icon" onClick={toggleMotion}
+                aria-label={motionPaused ? "Enable background animation" : "Pause background animation"}
+                aria-pressed={motionPaused} title={motionPaused ? "Enable background animation" : "Pause background animation"}
+                className="h-11 w-11 shrink-0 text-muted-foreground hover:text-foreground">
+                {motionPaused ? <Play className="h-3.5 w-3.5" aria-hidden /> : <Pause className="h-3.5 w-3.5" aria-hidden />}
+              </Button>
               <LanguageMenu />
             </div>
           </div>
@@ -255,7 +277,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
         {showProductionEvidence ? <ProductionCoverageProof /> : null}
 
-        <div id="main-content" className="flex-1">{children}</div>
+        <div id="main-content" tabIndex={-1} className="flex-1 scroll-mt-20 outline-none">{children}</div>
 
 
 
@@ -313,7 +335,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6 lg:flex-row lg:items-center lg:justify-between">
               <span>Intelligence findings have no added publication delay · Risk Indices retain their 60-minute delay · API keys coming soon</span>
-              <Link to="/about" className="hover:text-foreground">Privacy · Product use · Trust</Link>
+              <Link to="/about" hash="privacy" className="hover:text-foreground">Privacy · Product use · Trust</Link>
             </div>
           </div>
         </footer>

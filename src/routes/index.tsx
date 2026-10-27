@@ -6,7 +6,7 @@ import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 
 const TITLE = "Geomacro | What changed. Why it matters.";
 const DESCRIPTION =
-  "Follow Geopolitics, Macro / FX and Critical Minerals. Read clear findings, ask questions and explore structured intelligence in the Geomacro Store.";
+  "Geomacro is a global intelligence platform for Geopolitics, Macro / FX and Critical Minerals. Read findings, ask questions and explore structured data for applications and AI agents.";
 const URL = "https://geomacro.live/";
 const IMAGE = "https://geomacro.live/og-image-v2.png";
 
