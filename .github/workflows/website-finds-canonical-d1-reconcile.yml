@@ -1,0 +1,103 @@
+name: Website Finds to Canonical D1 Reconciliation (No Funds)
+
+# Starting 2026-10-29: restore the exact eligible static Website Finds IDs
+# that D1 quota-held first-party writers could not persist. The existing
+# private PREDGE reader (including its auth, D1 governor, and contract) is
+# NOT modified or dispatched here. Only public-derived original-source cards.
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Daily at 01:40 UTC / 07:10 IST, after 00:10 UTC D1 reset recovery.
+    - cron: "40 1 * * *"
+  pull_request:
+    paths:
+      - ".github/workflows/website-finds-canonical-d1-reconcile.yml"
+      - "scripts/ops/reconcile-website-finds-to-d1.mjs"
+      - "scripts/tests/reconcile-website-finds-to-d1.test.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-website-canonical-d1-reconcile
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Prove website-to-existing-canonical D1 missing-ID-only replay
+        run: |
+          node --check scripts/ops/reconcile-website-finds-to-d1.mjs
+          node --test scripts/tests/reconcile-website-finds-to-d1.test.mjs
+
+  quota-admission:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment: production
+    outputs:
+      critical: ${{ steps.budget.outputs.critical }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Preserve existing account-wide D1 ingestion reserve
+        id: budget
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/plan-d1-bundled-work.mjs
+
+  reconcile-website-ids:
+    needs: quota-admission
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Fail visibly unless the existing quota guard authorizes source catch-up
+        env:
+          D1_CRITICAL_ADMITTED: ${{ needs.quota-admission.outputs.critical }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${D1_CRITICAL_ADMITTED}" != "true" ]; then
+            echo "::error::WEBSITE_D1_RECONCILE_ACCOUNT_QUOTA_HELD"
+            exit 2
+          fi
+          if [ "$(date -u +%Y-%m-%d)" \< "2026-10-29" ]; then
+            echo "::error::WEBSITE_D1_RECONCILE_STARTS_2026_10_29"
+            exit 2
+          fi
+      - name: Run fixed-scope tests before the first private owner operation
+        run: node --test scripts/tests/reconcile-website-finds-to-d1.test.mjs
+      - name: Restore only missing current website Findings with exact D1 readback
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: node scripts/ops/reconcile-website-finds-to-d1.mjs
