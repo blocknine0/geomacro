@@ -8,6 +8,7 @@ import {
  assertPrivateSourceSharedReadManifest
 } from "./private-osint-shared-read-contract.mjs";
 import {sealPrivateOsintSpool,unsealPrivateOsintSpool} from "./private-osint-encrypted-spool.mjs";
+import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
 
 const now=Date.parse("2026-10-27T19:33:00.000Z");
 const root="dummy-NOT-REAL-test-token-"+randomBytes(48).toString("hex");
@@ -98,4 +99,35 @@ test("older encrypted pre-manifest GitHub artifacts remain readable without exte
  assert.equal(recovered.verified_d1,false);
  assert.equal(recovered.original_shared_source_read.content_sha256,
   buildPrivateSourceSharedReadManifest([a,b],now).content_sha256);
+});
+
+test("one raw RSS GET is parsed once and its exact native source event drives all 3 domain observations",async()=>{
+ const xml="<rss><channel><item><title>"+
+  "India inflation military sanctions impacting lithium mineral supply chain"+
+  "</title><pubDate>Tue, 27 Oct 2026 19:32:00 GMT</pubDate></item></channel></rss>";
+ let networkGets=0;
+ const source={id:"private_test_shared",url:"https://feeds.example.org/news.xml",
+  type:"rss",supported:true,categories:["geopolitics","macro","rare_earth"]};
+ const result=await collectPrivateOsint15m({
+  now:new Date(now),registry:[source],normalize:normalizeReusableNewsJson,
+  resolveCountry:()=>null,
+  fetchImpl:async(url,options)=>{
+   networkGets++;
+   assert.equal(url,source.url);
+   assert.equal(options.method,"GET");
+   return new Response(xml,{status:200,headers:{"Content-Type":"application/rss+xml"}});
+  }
+ });
+ assert.equal(networkGets,1,"one source raw read, NOT one per category");
+ assert.equal(result.checks.length,3);
+ assert.equal(result.items.length,3);
+ assert.deepEqual(new Set(result.items.map(x=>x.category)),
+  new Set(["geopolitics","macro","rare_earth"]));
+ assert.deepEqual(new Set(result.items.map(x=>x.source.original_published_at)),
+  new Set(["2026-10-27T19:32:00.000Z"]));
+ const manifest=buildPrivateSourceSharedReadManifest(result.items,now);
+ assert.equal(manifest.item_count,3);
+ assert.equal(manifest.raw_publisher_stored,false);
+ assert.equal(result.summary.source_endpoints_attempted,1);
+ assert.equal(result.summary.configured_country_category_routes,585);
 });
