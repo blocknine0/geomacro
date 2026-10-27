@@ -21,10 +21,7 @@ export function prepareWebCandidate({root=process.cwd(),sha=process.env.GITHUB_S
     // Workers Free enforces its own CPU ceiling and rejects any cpu_ms
     // override (100328). Never turn this into a paid-plan upgrade.
     workers_dev:true,preview_urls:false,
-    vars:{GEOMACRO_SUPABASE_RUNTIME_MODE:"standby",
-      // Historical project is independently quota-governed, B2-first and
-      // fail-closed without BOTH server-only historical and D1 credentials.
-      GEOMACRO_HISTORICAL_SUPABASE_READ_MODE:"fallback"},
+    vars:{GEOMACRO_SUPABASE_RUNTIME_MODE:"standby"},
     observability:{enabled:false}};
   // Conservative ceiling, below the currently documented Worker bundle cap.
   let bytes=0;
