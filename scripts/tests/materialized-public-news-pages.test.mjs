@@ -75,11 +75,18 @@ test("producer scans 510 canonical rows once; anonymous pages read 1+revision ro
   assert.equal(receipt.canonical_rows,510);
   const idempotent=await refreshMaterializedNewsPages(x.env,clock+2000);
   assert.equal(idempotent.status,"MATERIALIZED_ALREADY_CURRENT");
+  const heldTwentyMinutes=await refreshMaterializedNewsPages(x.env,clock+20*60_000);
+  assert.equal(heldTwentyMinutes.status,"MATERIALIZED_ALREADY_CURRENT");
+  assert.equal(x.originReads,1,"nonchanged version cannot trigger another source scan");
   assert.equal(x.originReads,1);
   const page=await getMaterializedNewsPage(x.env,0,clock);
   assert.equal(page.length,251);
   const last=await getMaterializedNewsPage(x.env,500,clock);
   assert.equal(last.length,10);
+  // Quota-held backstop runs every 30 minutes; the public page remains
+  // valid through minute 30 while source revisions remain unchanged.
+  assert.notEqual(await getMaterializedNewsPage(x.env,0,clock+29*60_000),null);
+  assert.notEqual(await getMaterializedNewsPage(x.env,0,clock+34*60_000),null);
   const all=await getMaterializedNewsBundle(x.env,clock);
   assert.equal(all.length,510);
   assert.equal(x.originReads,1,"all page reads bypass the 251/601-row source SQL");

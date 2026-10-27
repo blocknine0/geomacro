@@ -26,7 +26,9 @@ account-wide reads.
 - Anonymous public Website immediate/legacy HTML and native page 0/250/500,
   source-neutral machine journal and public bundle may use the materialized
   records **only if** R2 is unavailable/disabled and URL+headers are eligible.
-  Materializations expire 10 minutes after the publisher sweep; missing,
+  Materializations expire after 35 minutes with no source revision, matching
+  the existing 30-minute quota-held backstop. Canonical news changes trigger
+  immediate transactionally fenced invalidation, regardless of TTL. Missing,
   oversize, stale, failed-migration or revision-mismatched data always falls
   back to canonical D1. Source-native original dates, rights, 72h retention,
   dedupe and publication qualification are checked again by the original

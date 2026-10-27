@@ -9,7 +9,12 @@
  * Protected origin/readback NEVER consults this cache.
  */
 export const MATERIALIZED_PUBLIC_PAGES_SCHEMA="geomacro.public-derived-page-materialized.v1";
-export const MATERIALIZED_PUBLIC_PAGES_TTL_MS=10*60_000;
+// Existing backstop refreshes twice hourly. Source INSERT/UPDATE/DELETE
+// trigger revisions make stale caches unreadable immediately; a longer
+// no-change TTL prevents 20-minute gaps of costly canonical D1 page scans
+// between accepted :22/:52 refreshes when upstream ingestion is quota-held.
+export const MATERIALIZED_PUBLIC_PAGES_TTL_MS=35*60_000;
+export const MATERIALIZED_REFRESH_MIN_AGE_MS=25*60_000;
 const OFFSETS=[0,250,500];
 const PAGE_SIZE=250;
 const MAX_PAGE_BYTES=1_650_000;
@@ -32,7 +37,7 @@ export async function refreshMaterializedNewsPages(env,now=Date.now()){
     throw Error("MATERIALIZED_REVISION_MISSING");
   const snapshotAge=now-Date.parse(metadata.latest_snapshot_at??"");
   if(metadata.snapshot_revision===metadata.data_revision&&
-     Number.isFinite(snapshotAge)&&snapshotAge>=0&&snapshotAge<8*60_000)
+     Number.isFinite(snapshotAge)&&snapshotAge>=0&&snapshotAge<MATERIALIZED_REFRESH_MIN_AGE_MS)
     return {status:"MATERIALIZED_ALREADY_CURRENT",pages:3,
       canonical_rows:null,producer_read_queries:1,snapshot_is_disposable:true};
   const {results}=await env.DB.prepare(
