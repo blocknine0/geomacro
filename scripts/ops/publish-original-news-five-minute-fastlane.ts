@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import {packDerivedNewsBatches} from "../lib/macro-fx-metals.mjs";
+import {publishFastlaneSourceCheckpoints} from "../lib/fastlane-source-checkpoints.mjs";
 import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {collectCriticalMineralsFastlane} from "../lib/critical-minerals-fastlane.mjs";
 import {collectMacroFastlane} from "../lib/macro-fastlane-collector.mjs";
@@ -189,6 +190,16 @@ if(allPublished.length){
 if(journalVerified){
  const response=await fetch(macroStateUrl,{method:"PUT",redirect:"error",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify(macro.state),signal:AbortSignal.timeout(12000)});
  if(!response.ok){failure=true;console.error("::error::MACRO_BUNDLE_STATE_WRITE_FAILED");}
+ // The existing Predge continuity monitor reads these authenticated source
+ // checkpoints. Refresh only after actual publication and complete readback.
+ try{
+  const financial=new Set(['fxstreet_news','google_macro_metals']);
+  const supplementary={
+   macro:{checks:[...macro.polledChecks,...mineral.checks.filter(c=>financial.has(c.id))],candidates:macro.candidates.length+mineral.signals.filter(s=>s.category==='macro').length},
+   rare_earth:{checks:mineral.checks.filter(c=>!financial.has(c.id)),candidates:mineral.signals.filter(s=>s.category==='rare_earth').length},
+  };
+  console.log(JSON.stringify(await publishFastlaneSourceCheckpoints({reports,supplementary,published:allPublished,checkedAt:new Date().toISOString(),origin:controlPlaneOrigin,token})));
+ }catch{failure=true;console.error('::error::FASTLANE_SOURCE_CHECKPOINT_WRITE_FAILED');}
 }
 console.log(JSON.stringify({
  schema:"geomacro.5min-three-domain-original-news-run.v1",

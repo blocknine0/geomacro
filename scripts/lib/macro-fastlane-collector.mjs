@@ -82,7 +82,7 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
  const history=[...(state.quotes??[]),...quotes].filter(q=>Date.parse(q.observed_at)>=quoteNow-90*60000&&Date.parse(q.observed_at)<=quoteNow);
  const uniqueQuotes=[...new Map(history.map(q=>[q.instrument+'|'+q.observed_at,q])).values()].slice(-40);
  const sourceChecks=[...new Map([...(state.source_checks??[]),...checks].map(c=>[c.id,c])).values()];
- return {candidates,state:{mineral_cursors:state.mineral_cursors??{},mineral_checks:state.mineral_checks??[],...(state.mineral_regions?.length?{mineral_regions:state.mineral_regions}:{}),schema:'geomacro.macro-fastlane-state.v1',checked_at:new Date(now).toISOString(),cursors,events,quotes:uniqueQuotes,
+ return {candidates,polledChecks:checks,state:{mineral_cursors:state.mineral_cursors??{},mineral_checks:state.mineral_checks??[],...(state.mineral_regions?.length?{mineral_regions:state.mineral_regions}:{}),schema:'geomacro.macro-fastlane-state.v1',checked_at:new Date(now).toISOString(),cursors,events,quotes:uniqueQuotes,
   calendar_checked_at:calendarChecks.length?now:state.calendar_checked_at??0,calendar_checks:calendarChecks.length?calendarChecks:state.calendar_checks??[],source_checks:sourceChecks,price_checks:priceChecks,
   quota_lease_until:new Date(now+12*60000).toISOString()},receipt:{schema:'geomacro.macro-fastlane-run.v1',category:'macro',lanes:['forex','precious_metals'],source_checks:sourceChecks,price_checks:priceChecks,calendar_checks:calendarChecks,upstream_requests:requests,shared_originals:reusedCandidates.length,raw_content_persisted:false,real_time_price_latency_verified:false,github_cron_sla_verified:false}};
 }

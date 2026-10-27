@@ -87,7 +87,7 @@ test('observed production pacing hold still admits only a full-day budgeted smal
  assert.equal(result.critical,false);assert.equal(result.research,false);assert.equal(result.maintenance,false);
  assert.equal(result.source_intake,true);
  const budget=result.source_intake_budget_to_utc_reset;
- assert.ok(budget.rows_read<=4000*288+100000);assert.ok(budget.rows_written<=101*288+2000);
+ assert.ok(budget.rows_read<=4000*288+100000);assert.ok(budget.rows_written<=104*288+2000);
  assert.ok(result.remaining_rows_read-budget.rows_read>750000);
  assert.ok(result.remaining_rows_written-budget.rows_written>15000);
  assert.equal(result.source_intake_does_not_admit_signing_or_audits,true);
