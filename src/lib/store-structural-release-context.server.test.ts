@@ -29,7 +29,7 @@ function release(country: string, dimension = "critical_minerals"): StructuralCo
     observed_at: "2025-12-31T23:59:59.000Z", published_at: null, retrieved_at: NOW.toISOString(),
     event_type: null, signal_type: "ANNUAL_STRUCTURAL_NOT_CURRENT_NEWS", source_url: null,
     parser_version: "synthetic-test-only", methodology_status: "EVIDENCE_ONLY_NOT_IN_GRI_V1_2", quality_status: "VERIFIED",
-    provenance: { date_precision: "YEAR", reference_period_end_is_not_publication_time: true }, normalized_hash: "a".repeat(64),
+    provenance: { date_precision: "YEAR", reference_year: 2025, reference_period_end_is_not_publication_time: true }, normalized_hash: "a".repeat(64),
   }] };
 }
 // Synthetic rights rows model explicit source-by-source authorization; they
