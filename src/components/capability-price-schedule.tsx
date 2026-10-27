@@ -112,6 +112,7 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
         </h2>
         <span className="text-xs text-muted-foreground">USDC · per eligible delivery</span>
       </div>
+      {!compact && (
       <div role="group" aria-label="Filter store products" className="mt-5 flex flex-wrap gap-2">
         {["All products", ...groups.map((g) => g.label)].map((label) => (
           <button
@@ -130,6 +131,7 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
           </button>
         ))}
       </div>
+      )}
       <div
         className={
           compact
@@ -172,6 +174,19 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
                   </div>
                 ))}
               </dl>
+              {compact ? (
+                <div className="mt-5">
+                  <p className="text-sm font-medium">What you receive</p>
+                  <ul className="mt-3 space-y-2">
+                    {product.includes.map((item) => (
+                      <li key={item} className="flex gap-2 text-xs leading-5 text-muted-foreground">
+                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
               <details className="mt-5">
                 <summary className="cursor-pointer text-sm font-medium text-primary">
                   What you receive
@@ -185,6 +200,7 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
                   ))}
                 </ul>
               </details>
+              )}
               <div className="mt-auto pt-6">
                 <a
                   href={`mailto:contact@geomacro.live?subject=${encodeURIComponent(`Geomacro launch access: ${product.title}`)}`}
@@ -202,6 +218,7 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
           );
         })}
       </div>
+      {!compact && (
       <details className="mt-6 border-t border-border pt-5">
         <summary className="cursor-pointer text-xs text-muted-foreground">
           Delivery & pricing details
@@ -217,6 +234,7 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
           ].join(" ")}
         </p>
       </details>
+      )}
     </section>
   );
 }

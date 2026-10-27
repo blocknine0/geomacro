@@ -32,7 +32,7 @@ describe("Coming Soon status is truthful across commercial website", () => {
     expect(guide).toContain('"Coming Soon"');
     expect(commerce).toContain("Mainnet USDC · production activation pending");
     expect(commerce).toContain('state.mode === "production"');
-    expect(api).toContain("AgentCommerceStatus");
+    expect(api).toContain("<ApiKeysNotice />");
   });
 
   it("preserves restricted pilot status but labels unrestricted public access Coming Soon", () => {
@@ -44,7 +44,7 @@ describe("Coming Soon status is truthful across commercial website", () => {
   });
 
   it("does not present autonomous agent and future services as active products", () => {
-    expect(api).toContain("<CategoryApiLaunchPanel />");
+    expect(api).not.toContain("CategoryApiLaunchPanel");
     const buyer = read("src/components/category-api-launch-panel.tsx");
     expect(buyer).toContain("published_only");
     expect(buyer).toContain("response.status!==402");
