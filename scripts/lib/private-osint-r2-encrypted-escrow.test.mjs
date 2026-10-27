@@ -80,9 +80,6 @@ test("missing or invalid dedicated provisioning always fails closed",async()=>{
   {...env,GEOMACRO_PRIVATE_OSINT_R2_SECRET_ACCESS_KEY:undefined},
   {...env,CLOUDFLARE_ACCOUNT_ID:"other"},
  ]){
-  // Public-looking bucket names are not inherently private according to an
-  // R2 GET; IAM policy must additionally be locked by the operator.
-  if(bad.GEOMACRO_PRIVATE_OSINT_R2_BUCKET==="geomacro-public-news")continue;
   assert.throws(()=>privateOsintR2Config(bad),
    /PRIVATE_OSINT_R2_DEDICATED_BUCKET_OR_SCOPED_CREDENTIALS_REQUIRED/);
  }
