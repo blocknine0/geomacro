@@ -120,3 +120,15 @@ test('Minute-worker fixed release projection shares full newsroom event IDs and 
   assert.equal(fast.id,full.id);assert.ok(verifyDerivedStory(fast,now));assert.equal(fast.severity,null);assert.equal(fast.same_event_corrob_verified,false);
  }
 });
+test('Concurrent cron snapshots cannot erase a later quota lease or overwrite a newer price snapshot',async()=>{
+ const {readFileSync}=await import('node:fs');const {execFileSync}=await import('node:child_process');
+ const source=readFileSync('workers/control-plane/src/macro-fastlane.mjs','utf8');
+ const sql=/env\.DB\.prepare\(`(INSERT INTO control_state[\s\S]*?)` \)/.exec(source)?.[1];assert.ok(sql);
+ const code=`import json,sqlite3,sys\np=json.load(sys.stdin)\nd=sqlite3.connect(':memory:')\nd.execute('CREATE TABLE control_state(key TEXT PRIMARY KEY,value_json TEXT,version INTEGER,updated_at TEXT)')\nfor s in p['states']: d.execute(p['sql'],('macro_fx_metals_fastlane_v1',json.dumps(s),s['checked_at']))\nprint(d.execute('SELECT value_json FROM control_state').fetchone()[0])`;
+ const older={checked_at:'2026-10-27T12:00:00.000Z',quota_lease_until:'2026-10-27T12:20:00.000Z',quotes:[{value:100}]};
+ const newer={checked_at:'2026-10-27T12:01:00.000Z',quota_lease_until:'2026-10-27T12:12:00.000Z',quotes:[{value:101}]};
+ for(const states of [[older,newer],[newer,older]]){
+  const result=JSON.parse(execFileSync('python3',['-c',code],{encoding:'utf8',input:JSON.stringify({sql,states})}));
+  assert.equal(result.checked_at,newer.checked_at);assert.equal(result.quota_lease_until,older.quota_lease_until);assert.equal(result.quotes[0].value,101);
+ }
+});

@@ -8,6 +8,7 @@ import {sectorFeed as feed,MINERALS_MESH} from "./critical-minerals-registry.mjs
 export {MINERALS_MESH,MINERALS_SOURCE_IDS} from "./critical-minerals-registry.mjs";
 const globalAlternative=feed('mining_technology','https://www.mining-technology.com/news/feed/','global');
 const googleMinerals=feed('google_minerals','https://news.google.com/rss/search?q='+encodeURIComponent('(\"critical minerals\" OR \"rare earth\" OR lithium OR cobalt OR nickel OR graphite OR copper OR gallium OR germanium) (export OR supply OR mine OR policy OR sanctions) when:1d')+'&hl=en-US&gl=US&ceid=US:en','global');
+const financialAlternative=feed('fxstreet_news','https://www.fxstreet.com/rss/news','global');
 const googleMacro=feed('google_macro_metals','https://news.google.com/rss/search?q='+encodeURIComponent('(forex OR \"central bank\" OR gold OR silver) (rates OR demand OR supply OR intervention OR reserves) when:1d')+'&hl=en-US&gl=US&ceid=US:en','global');
 const mineralNative=/(?:\b(?:litio|cobalto|cobre|n[ií]quel|grafito|tierras raras|minerales cr[ií]ticos|minera[cç][aã]o|min[eé]raux critiques|seltene erden)\b|关键矿产|稀土|锂|钴|희토류|리튬|редкозем)/iu;
 const clean=s=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&apos;|&#39;/g,"'").replace(/\s+/g,' ').trim();
@@ -19,7 +20,7 @@ export function parseSectorFeed(xml,spec,now){
   const title=clean(tag(chunk,'title'));if(title.length<25||title.length>250||/[<>]/.test(title))continue;
   const precious=macroPreciousTopic(title);
   const mineral=MINERAL_RELEASE_TOPIC.test(title)||mineralNative.test(title);
-  const macro=precious||/\b(?:forex|currency|monetary policy|interest rate|central bank|foreign exchange)\b/i.test(title);
+  const macro=precious||/\b(?:forex|currency|monetary policy|interest rate|central bank|foreign exchange)\b/i.test(title)||/\b(?:EUR|USD|GBP|JPY|CHF|INR|AUD|CAD|NZD)[/-](?:EUR|USD|GBP|JPY|CHF|INR|AUD|CAD|NZD)\b/.test(title);
   // Gold/silver-only reports never fall into critical minerals via "mining".
   const substantiveMineral=mineral&&(!precious||/\b(?:critical minerals?|rare[- ]earth|lithium|cobalt|copper|nickel|graphite|gallium|germanium)\b/i.test(title));
   if(!substantiveMineral&&!macro)continue;
@@ -66,7 +67,7 @@ export async function collectCriticalMineralsFastlane({now=Date.now(),fetchImpl=
  for(const region of regions)region.global_substitute_healthy=Boolean(worldwide?.healthy);
 
  if(regions.some(r=>!r.recent_primary_release))await read(googleMinerals);
- if(macroNeedsFallback)await read(googleMacro);
+ if(macroNeedsFallback){await read(financialAlternative);await read(googleMacro);}
  if(requests>13)throw Error('MINERAL_FASTLANE_REQUEST_CAP_EXCEEDED');
  const unique=[...new Map(signals.map(s=>[s.id,s])).values()].sort((a,b)=>b.published_at.localeCompare(a.published_at));
  return {signals:['macro','rare_earth'].flatMap(category=>unique.filter(s=>s.category===category).slice(0,40)),cursors,checks,

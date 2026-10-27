@@ -37,8 +37,15 @@ export async function storeMacroState(env,state,now=Date.now()){
   cursors:Object.fromEntries(Object.entries(state.cursors).map(([id,c])=>[id,{etag:c.etag,retry_after:c.retry_after,checked_at:c.checked_at}])),
   source_checks:state.source_checks.map(({id,state,candidates})=>({id,state,candidates})),price_checks:state.price_checks.map(({instrument,state})=>({instrument,state})),calendar_checks:state.calendar_checks.map(({id,state,events})=>({id,state,events})),
  };
- await env.DB.prepare('INSERT INTO control_state(key,value_json,version,updated_at) VALUES(?,?,1,?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,version=control_state.version+1,updated_at=excluded.updated_at WHERE control_state.updated_at<=excluded.updated_at').bind(KEY,JSON.stringify(clean),clean.checked_at).run();
- return reply({ok:true,category:'macro',state_saved:true});
+ await env.DB.prepare(`INSERT INTO control_state(key,value_json,version,updated_at) VALUES(?,?,1,?)
+ ON CONFLICT(key) DO UPDATE SET
+ value_json=CASE WHEN control_state.updated_at>excluded.updated_at
+  THEN json_set(control_state.value_json,'$.quota_lease_until',
+   MAX(json_extract(control_state.value_json,'$.quota_lease_until'),json_extract(excluded.value_json,'$.quota_lease_until')))
+  ELSE json_set(excluded.value_json,'$.quota_lease_until',
+   MAX(json_extract(control_state.value_json,'$.quota_lease_until'),json_extract(excluded.value_json,'$.quota_lease_until'))) END,
+ version=control_state.version+1,updated_at=MAX(control_state.updated_at,excluded.updated_at)` ).bind(KEY,JSON.stringify(clean),clean.checked_at).run();
+ return reply({ok:true,category:'macro',state_saved:true,state_merge_policy:'NEWEST_SNAPSHOT_PLUS_LONGEST_QUOTA_LEASE'});
 }
 export function publicMacroProjection(state,now=Date.now()){
  const fresh=Number.isFinite(Date.parse(state?.checked_at))&&now-Date.parse(state.checked_at)<=15*60000&&Date.parse(state.checked_at)<=now;

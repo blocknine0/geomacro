@@ -39,9 +39,12 @@ const reports=await readFiveMinuteNewsFastlane(runAt,20,
 // One existing quota-admitted run shares its complete D1 baseline and primary
 // Fed/ECB origin reads with the Macro Economics FX/precious-metals bundle.
 const macroStateUrl=controlPlaneOrigin+"/v1/internal/macro-fastlane";
-const stateResponse=await fetch(macroStateUrl,{headers:{Authorization:"Bearer "+token},redirect:"error",signal:AbortSignal.timeout(10000)});
-if(!stateResponse.ok)throw Error("MACRO_STATE_READ_UNAVAILABLE");
-const previousMacroState=(await stateResponse.json() as {state:unknown}).state;
+let previousMacroState={};
+try{
+ const stateResponse=await fetch(macroStateUrl,{headers:{Authorization:"Bearer "+token},redirect:"error",signal:AbortSignal.timeout(10000)});
+ if(!stateResponse.ok)throw Error("MACRO_STATE_READ_UNAVAILABLE");
+ previousMacroState=(await stateResponse.json() as {state:Record<string,unknown>}).state;
+}catch{console.warn("::warning::MACRO_CURSOR_READ_UNAVAILABLE; bounded source polling continues without conditional-GET cursors");}
 const macro=await collectMacroFastlane({now:runAt,state:previousMacroState,
  reusedCandidates:privateOriginals,reusedIds:FIVE_MINUTE_NEWS_FASTLANE.filter(s=>s.category==="macro").map(s=>s.id)});
 privateOriginals.push(...macro.candidates.filter(c=>!privateOriginals.some(p=>p.sourceId===c.sourceId&&p.articleUrl===c.articleUrl)));
@@ -53,7 +56,7 @@ for(const shared of macroReport.primary_publisher_status??[]){
 }
 console.log(JSON.stringify(macro.receipt));
 const mineral=await collectCriticalMineralsFastlane({now:runAt,state:previousMacroState,reusedCandidates:privateOriginals,
- macroNeedsFallback:macro.state.source_checks.some(c=>["ACCESS_DENIED","UNAVAILABLE","RATE_LIMITED"].includes(c.state))});
+ macroNeedsFallback:macro.state.source_checks.some(c=>!["OK","NOT_MODIFIED"].includes(c.state))||!macro.candidates.some(c=>runAt-Date.parse(c.publishedAt)<=60*60000)});
 macro.state.mineral_cursors=mineral.cursors;
 macro.state.mineral_checks=mineral.checks;
 macro.state.mineral_regions=mineral.receipt.regional_groups;
@@ -88,7 +91,7 @@ for(const category of categories){
  pending.push(...candidates);
  console.log(JSON.stringify({
    schema:"geomacro.5min-original-lane.v1",category,
-   original_publisher_health:true,
+   original_publisher_health:report.healthy_feed_count>0,
    original_publishers_checked:expectedOrigins,
    original_publishers_reachable:report.healthy_feed_count,
    one_unreachable_publisher_does_not_block_other_origin:true,
