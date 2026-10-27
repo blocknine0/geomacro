@@ -103,6 +103,9 @@ jobs:
           JS
 
   ingest-supabase-free-derived-news:
+    # Read the same production-scoped Cloudflare credentials as the original
+    # publishers; without this context GraphQL checks fail closed forever.
+    environment: production
     outputs:
       quota_admitted: ${{ steps.budget.outputs.research }}
     # No cross-workflow 'uses' recursion. Dispatch only the SAME canonical

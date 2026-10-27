@@ -31,6 +31,8 @@ test("30-minute original pulse does not invoke D1 checkpoint or readback after a
 });
 test("hourly recovery dispatch and material review inherit actual admitted source-budget state",()=>{
  const s=workflow("auto-ingest-news.yml");
+ const hourly=s.slice(s.indexOf("  ingest-supabase-free-derived-news:"),s.indexOf("  material-gri-derived-review:"));
+ assert.match(hourly,/environment: production/);
  assert.match(s,/quota_admitted: \$\{\{ steps\.budget\.outputs\.research \}\}/);
  assert.match(s,/if: steps\.budget\.outputs\.research == 'true' && steps\.decide\.outputs\.should_run == 'true'/);
  assert.match(s,/needs\.ingest-supabase-free-derived-news\.outputs\.quota_admitted == 'true'/);
