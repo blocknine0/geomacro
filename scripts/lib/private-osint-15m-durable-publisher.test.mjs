@@ -1,11 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
+import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {persistPrivateOsintBatch,PRIVATE_OSINT_DURABLE_SCHEMA,PRIVATE_OSINT_D1_HEALTH_SNAPSHOT_SLOTS,selectPrivateOsintD1HealthChecks} from "./private-osint-15m-durable-publisher.mjs";
 const now=Date.parse("2026-10-25T12:00:00.000Z");
 const token="1".repeat(64),host="https://geomacro-control-plane.daspallab202391.workers.dev";
+function validItem(id,minutes=7){
+ const original=normalizeReusableNewsJson({
+  category:"macro",text:"India central bank announces inflation and monetary policy outlook",
+  published_at:new Date(now-minutes*60000).toISOString(),license:"unknown",
+  country_iso3:"IND",
+ });
+ return {...original,id:"news-"+id};
+}
 const input={schema:"geomacro.private-osint-15m-batch.v1",
- items:[{id:"news-"+("a".repeat(64)),source:{original_published_at:new Date(now-7*60000).toISOString()}}],
+ items:[validItem("a".repeat(64))],
  checks:[{category:"macro",state:"OBSERVED",source_ref:"b".repeat(64),checked_at:new Date(now).toISOString()}]};
 function simulate(){
  const calls=[];
@@ -95,6 +104,7 @@ test("reject arbitrary endpoints, missing scoped token and oversized/invalid dat
 });
 test("expired source-native clock cannot be resent and no private title is generated",async()=>{
  const old={...input,items:[{...input.items[0],source:{
+  ...input.items[0].source,
   original_published_at:new Date(now-26*3600000).toISOString()
  }}]};
  const {f,calls}=simulate();
@@ -108,6 +118,7 @@ test("expired source-native clock cannot be resent and no private title is gener
 
 test("protected publisher preserves true new-late vs repeated news counts",async()=>{
  const old={...input,items:[{...input.items[0],source:{
+   ...input.items[0].source,
    original_published_at:new Date(now-35*60000).toISOString()
  }}]};
  const {f}=simulate();
@@ -137,8 +148,7 @@ test("protected publisher preserves true new-late vs repeated news counts",async
 
 test("high-volume private OSINT uses maximum 20 news and 32 health checks per protected D1 batch",async()=>{
  const items=Array.from({length:33},(_,i)=>({
-  id:"news-"+i.toString(16).padStart(64,"0"),
-  source:{original_published_at:new Date(now-5*60000).toISOString()},
+  ...validItem(i.toString(16).padStart(64,"0"),5),
  }));
  const checks=Array.from({length:65},(_,i)=>({
   source_ref:(i+100).toString(16).padStart(64,"0"),
@@ -230,8 +240,7 @@ test("private quota sampling persists EVERY dated news item but fewer D1 check U
   state:"OBSERVED",checked_at:new Date(now).toISOString(),
  }));
  const items=Array.from({length:33},(_,i)=>({
-  id:"news-"+i.toString(16).padStart(64,"0"),
-  source:{original_published_at:new Date(now-4*60000).toISOString()},
+  ...validItem(i.toString(16).padStart(64,"0"),4),
  }));
  const {f,calls}=simulate();
  const receipt=await persistPrivateOsintBatch({
