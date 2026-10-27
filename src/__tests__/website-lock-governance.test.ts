@@ -83,7 +83,12 @@ describe("website lock governance", () => {
     expect(factoryApproval.approved_ui_commit).toBe(overviewApproval.previous_baseline_sha);
     const homeApproval = config.approved_homepage_navigation_motion_20261028;
     expect(overviewApproval.approved_ui_commit).toBe(homeApproval.previous_baseline_sha);
-    expect(homeApproval.approved_ui_commit).toBe(config.baseline_sha);
+    const findsApproval = config.approved_homepage_finds_visibility_20261028;
+    expect(homeApproval.approved_ui_commit).toBe(findsApproval.previous_baseline_sha);
+    expect(findsApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(findsApproval.predge_unmodified).toBe(true);
+    expect(findsApproval.source_clocks_and_rights_unchanged).toBe(true);
+    expect(findsApproval.payment_authorized).toBe(false);
     expect(homeApproval.predge_unmodified).toBe(true);
     expect(homeApproval.paid_pricing_unmodified).toBe(true);
     expect(homeApproval.payment_authorized).toBe(false);
