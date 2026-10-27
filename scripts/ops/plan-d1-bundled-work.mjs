@@ -9,6 +9,7 @@ import {appendFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {D1_FREE_DAILY,readCloudflareD1AccountQuota} from "./audit-d1-account-daily-quota-readonly.mjs";
+import {readCloudflareWorkersPaidProof,WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
 
 export const D1_BUNDLE_LANES=Object.freeze({
   // Strict end-of-day reserves + a finite opening burst. Without pacing,
@@ -67,7 +68,7 @@ const held=(reason,now)=>Object.freeze({
   d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
   budget_is_nonatomic_provider_snapshot:true,
 });
-export function planD1BundledWork(snapshot,{now=new Date()}={}){
+export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
     throw Error("D1_BUNDLE_NOW_INVALID");
   if(!snapshot||snapshot.schema!=="geomacro.d1-account-daily-quota-readonly.v1"||
@@ -80,6 +81,52 @@ export function planD1BundledWork(snapshot,{now=new Date()}={}){
      snapshot.remaining_rows_written!==Math.max(0,D1_FREE_DAILY.rows_written-snapshot.observed_rows_written))
     return held("D1_ACCOUNT_USAGE_UNVERIFIED",now);
 
+
+  // Provider-verified, account-scoped Workers Paid has no 5M/day hard
+  // physical read stop. Retain an independent, CONSERVATIVE 18M/180k
+  // account-wide DAILY soft budget (well below official monthly allotments).
+  // No paid subscription is created. Research, signing, unrelated public
+  // backfills and B2 upgrades are NOT granted by this special intake lane.
+  const paid=paidProof?.schema===WORKERS_PAID_PROOF_SCHEMA&&
+    paidProof.verified===true&&
+    paidProof.source==="CLOUDFLARE_ACCOUNT_SUBSCRIPTIONS_BILLING_READ"&&
+    paidProof.subscription_changed===false&&
+    paidProof.billing_action_performed===false&&
+    typeof paidProof.observed_at==="string"&&
+    Number.isFinite(Date.parse(paidProof.observed_at))&&
+    Date.parse(paidProof.observed_at)<=now.getTime()&&
+    now.getTime()-Date.parse(paidProof.observed_at)<=5*60_000;
+  if(paid){
+    const elapsed=(now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z"))/DAY_MS;
+    const dailyReads=Math.floor(4_000_000+14_000_000*Math.max(0,Math.min(1,elapsed)));
+    const dailyWrites=Math.floor(40_000+140_000*Math.max(0,Math.min(1,elapsed)));
+    const admitted=snapshot.observed_rows_read<dailyReads&&
+      snapshot.observed_rows_written<dailyWrites;
+    return Object.freeze({
+      schema:"geomacro.d1-free-bundled-work-admission.v1",
+      day_utc:snapshot.day_utc,state:admitted?"CRITICAL_ONLY":"HELD",
+      reason:admitted?"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET":
+        "WORKERS_PAID_CONSERVATIVE_SOFT_BUDGET_REACHED",
+      critical:admitted,research:false,maintenance:false,
+      source_intake:false,source_intake_interval_minutes:null,
+      source_intake_max_new_rows:0,snapshot_refresh:false,
+      structural_snapshot:false,
+      structural_snapshot_max_b2_network_attempts:0,
+      structural_snapshot_requires_atomic_b2_account_reservation:true,
+      snapshot_refresh_does_not_admit_ingestion:true,
+      source_intake_does_not_admit_signing_or_audits:true,
+      observed_rows_read:snapshot.observed_rows_read,
+      observed_rows_written:snapshot.observed_rows_written,
+      paid_capacity_verified_by_provider:true,
+      free_plan_5m_cap_not_applied_only_with_verified_subscription:true,
+      daily_account_soft_limit_read:dailyReads,
+      daily_account_soft_limit_write:dailyWrites,
+      paid_subscription_change_performed:false,
+      paid_billing_is_operator_controlled:true,
+      d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
+      budget_is_nonatomic_provider_snapshot:true,
+    });
+  }
   const paced=Object.fromEntries(Object.keys(D1_BUNDLE_LANES).map(lane=>[
     lane,d1LanePacedCeiling(lane,now),
   ]));
@@ -145,7 +192,15 @@ export function planD1BundledWork(snapshot,{now=new Date()}={}){
 export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=new Date()}={}){
   try{
     const quota=await readCloudflareD1AccountQuota({env,fetchImpl,now});
-    return planD1BundledWork(quota,{now});
+    // Optional READ-only provider billing evidence. If the account has not
+    // enabled Billing Read or paid entitlement proof fails, remain on the
+    // original conservative Free plan guard. No magic paid-mode env switch.
+    let paidProof=null;
+    if(env.CLOUDFLARE_BILLING_READ_TOKEN){
+      try{paidProof=await readCloudflareWorkersPaidProof({env,fetchImpl,now});}
+      catch{/* ambiguous entitlement always uses Free quota admission */}
+    }
+    return planD1BundledWork(quota,{now,paidProof});
   }catch{
     return held("D1_ACCOUNT_QUOTA_PROBE_FAILED",now);
   }

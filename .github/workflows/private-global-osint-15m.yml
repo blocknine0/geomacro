@@ -78,6 +78,8 @@ on:
       - "scripts/lib/private-osint-bundle.test.mjs"
       - "src/lib/reusable-news-json.ts"
       - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/lib/cloudflare-workers-paid-plan-proof.mjs"
+      - "scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs"
       - "scripts/tests/plan-d1-bundled-work.test.mjs"
       - "scripts/tests/critical-workflow-budget-guards.test.mjs"
       - "scripts/tests/critical-fastlane-d1-pacing-workflows.test.mjs"
@@ -174,6 +176,7 @@ jobs:
           node --check scripts/ops/probe-private-osint-local-gaplane.mjs
           node --test scripts/lib/private-osint-bundle.test.mjs
           node --test scripts/tests/plan-d1-bundled-work.test.mjs
+          node --test scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
           node --test scripts/tests/critical-workflow-budget-guards.test.mjs
           node --test scripts/tests/critical-fastlane-d1-pacing-workflows.test.mjs
           node --test scripts/lib/registered-reusable-news-source-collector.test.mjs scripts/lib/registered-news-15m-cadence.test.mjs
@@ -204,6 +207,7 @@ jobs:
         id: budget
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/ops/plan-d1-bundled-work.mjs
       - name: Clearly mark held collector cycles without inventing source news
