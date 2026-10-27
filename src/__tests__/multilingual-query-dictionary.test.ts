@@ -54,6 +54,8 @@ describe("global multilingual structured-query vocabulary", () => {
 
   it.each([
     ["Guinea-Bissau", ["GNB"]],
+    ["Guinea–Bissau", ["GNB"]],
+    ["Guinea — Bissau", ["GNB"]],
     ["Equatorial Guinea", ["GNQ"]],
     ["Papua New Guinea", ["PNG"]],
     ["South Sudan", ["SSD"]],
