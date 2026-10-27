@@ -47,9 +47,41 @@ real historical production access separately.
 
 This **proves serving-interface reachability only**, not whole-world coverage,
 full historical backfills, fresh snapshots, restored high-volume writers or
-production website activation. The main SSR historical direct read remains
-`GEOMACRO_HISTORICAL_SUPABASE_READ_MODE=off` unless explicitly opted into
-`fallback`; neither probe changes that setting or the main Supabase standby.
+production website activation.
+
+### Quota-governed website fallback and B2 publication
+
+The read-only web candidate now sets
+`GEOMACRO_HISTORICAL_SUPABASE_READ_MODE=fallback` while leaving **main**
+`GEOMACRO_SUPABASE_RUNTIME_MODE=standby`. Production SSR with both
+`HISTORICAL_SUPABASE_URL` / `HISTORICAL_SUPABASE_SERVICE_ROLE_KEY` and
+`GEOMACRO_COMMERCE_LEDGER_TOKEN` can also activate fallback automatically
+when the historical mode variable is not explicitly set. An explicit
+`GEOMACRO_HISTORICAL_SUPABASE_READ_MODE=off` overrides this behavior.
+
+The application always attempts a verified B2 structural snapshot first.
+Every subsequent historical Supabase REST request must consume exactly one
+atomic D1 central-security ticket in the shared
+`historical_supabase_fallback` pool (hard limit **72/day globally**).
+The URL must match the pinned separate historical project, GET only, no
+redirect, and it fails closed if the central Worker is not deployed, token
+missing, provider denies, or quota exhausts. A denial is NOT valid historical
+context. Neither browser source code nor static asset output contains a
+historical service role.
+
+`b2-structural-serving-snapshot.yml` attempts a weekly/first-main-push
+canonical structural snapshot only if the account-wide D1 maintenance planner
+permits it. Each B2 request reserves the existing atomic D1 B2 ticket, maximum
+12 B2 network attempts/run, and at most 96 historical read requests / 18,000
+source rows may be scanned. Too-large datasets abort without publishing a
+partial or forged current snapshot. New historical producer micro ingestion is
+independently governed by its historical-project daily reservation RPC.
+
+**Operational caveats:** deploying this code alone does not install credentials
+in the actual hosted website, deploy the central control-plane Worker, or prove
+DNS/site traffic is exercising the fallback. Validate all three production
+readback and deployment steps before declaring live website activation.
+
 
 ## Governed database interfaces
 
