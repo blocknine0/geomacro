@@ -57,7 +57,7 @@ describe("verified B2 structural serving continuity", () => {
     expect(publisher).not.toContain("raw_hash");
   });
 
-  it("streams indexed source rows into canonical latest-per-key state without a global raw-row cap", () => {
+  it("streams indexed rows with hard per-run source and SQL scan ceilings", () => {
     const publisher = read("scripts/ops/publish-b2-structural-serving-snapshot.ts");
     expect(publisher).toContain("readCommercialLatestRows");
     expect(publisher).toContain("latestByKey");
@@ -69,7 +69,9 @@ describe("verified B2 structural serving continuity", () => {
     expect(publisher).toContain("MAX_SOURCE_ROWS");
     expect(publisher).toContain("sourceRowsScanned");
     expect(publisher).toContain("B2_STRUCTURAL_KEYSET_PROGRESS_INVALID");
-    expect(publisher).toContain("B2_STRUCTURAL_TRUNCATION_GUARD_source_rows_");
+    expect(publisher).toContain("B2_STRUCTURAL_TRUNCATION_GUARD_source_rows");
+    expect(publisher).toContain("MAX_TOTAL_SOURCE_ROWS = 18_000");
+    expect(publisher).toContain("MAX_TOTAL_DB_READS = 96");
     expect(publisher).not.toContain("MAX_BASE_ROWS");
     expect(publisher).not.toContain("const baseRows =");
   });
@@ -98,16 +100,17 @@ describe("verified B2 structural serving continuity", () => {
     expect(client).toContain("B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE");
   });
 
-  it("never runs legacy Supabase publisher on main, schedule, or operator dispatch", () => {
+  it("enables only central-quota governed historical snapshot successor", () => {
     const workflow = read(".github/workflows/b2-structural-serving-snapshot.yml");
-    expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).toContain("if: ${{ false }}");
-    expect(workflow).not.toMatch(/^\s+push:/m);
-    expect(workflow).not.toMatch(/^\s+schedule:/m);
+    expect(workflow).toContain("schedule:");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+    expect(workflow).toContain("plan-d1-bundled-work.mjs");
+    expect(workflow).toContain("steps.budget.outputs.maintenance == 'true'");
+    expect(workflow).toContain('D1_DATABASE_NAME: geomacro-control-plane');
     expect(workflow).toContain("HISTORICAL_SUPABASE_SERVICE_ROLE_KEY");
     expect(workflow).toContain("publish-b2-structural-serving-snapshot.ts");
-    // Source and previous verified archives are preserved; execution is
-    // frozen until reviewed replacement proves no Supabase and B2 quotas.
+    expect(workflow).not.toContain("SUPABASE_DB_URL");
   });
 
   it("stages, verifies, promotes and proof-binds B2 structural serving", () => {
