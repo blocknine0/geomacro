@@ -99,14 +99,14 @@ jobs:
           test -n "${B2_ARCHIVE_READ_APPLICATION_KEY:-}" || { echo "::error::Dedicated structural readback key missing"; exit 3; }
           test "${B2_ARCHIVE_READ_KEY_ID}" != "${B2_KEY_ID}" || { echo "::error::Independent structural readback required"; exit 3; }
           echo "Dedicated structural readback credential is present"
-      - name: Require central maintenance D1 budget
+      - name: Require central structural snapshot D1 budget
         id: budget
         run: node scripts/ops/plan-d1-bundled-work.mjs
       - name: Quota-held report
-        if: steps.budget.outputs.maintenance != 'true'
-        run: echo "::notice::STRUCTURAL_PUBLISH_QUOTA_HELD; no historical read or B2 write"
+        if: steps.budget.outputs.structural_snapshot != 'true'
+        run: echo "::notice::STRUCTURAL_SNAPSHOT_BUNDLED_QUOTA_HELD; zero historical reads / B2 operations"
       - name: Resolve EXISTING central D1 account quota ledger
-        if: steps.budget.outputs.maintenance == 'true'
+        if: steps.budget.outputs.structural_snapshot == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -121,5 +121,5 @@ jobs:
           test -n "$DB_ID" || { echo "::error::Missing central D1 quota governor"; exit 3; }
           echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
       - name: Publish and SHA-readback historical structural snapshot
-        if: steps.budget.outputs.maintenance == 'true'
+        if: steps.budget.outputs.structural_snapshot == 'true'
         run: bun scripts/ops/publish-b2-structural-serving-snapshot.ts
