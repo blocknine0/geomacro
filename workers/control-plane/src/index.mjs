@@ -1313,7 +1313,22 @@ export default {
     if(url.pathname==="/v1/partner/predge/risk-gate")
       return predgeRiskGateD1(request,env);
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
-      return publicReadCache(()=>renderDerivedStoriesHtml(env));
+      // Reuse the SAME source-neutral page-0 cache as immediate JSON. An HTML
+      // cache miss must not force a second 250+ row D1 read when JSON is hot.
+      // Preserve the original headers: auth/no-cache readbacks must BYPASS
+      // both caches; failure falls back to actual D1, never synthetic news.
+      const pageUrl=new URL(request.url);
+      pageUrl.pathname="/v1/public/website-derived-news-immediate";
+      const pageRequest=new Request(pageUrl.toString(),{
+        method:"GET",headers:request.headers
+      });
+      return publicReadCache(()=>renderDerivedStoriesHtml(env,Date.now(),
+        ()=>readPublicFreeD1Cached(pageRequest,async()=>
+          await readPublicNewsR2Snapshot(pageRequest,env) ??
+          await readDerivedStories(env,Date.now(),0,0),{
+            cache:typeof caches!=="undefined"?caches.default:null,
+            waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
+          })));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/website-derived-news-bundle"&&!url.search)
       return publicReadCache(()=>readDerivedStoriesBundle(env));

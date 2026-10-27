@@ -121,7 +121,7 @@ export function attributeD1ReadInsights(input,{top=20}={}){
    shape.statement_kind==="DELETE"&&shape.has_not_in&&
    shape.has_nested_select&&shape.has_order_by&&shape.has_order_desc&&
    shape.has_limit&&!shape.has_count_star&&!shape.has_subquery_count;
-  const publicPaged=owner.query_id==="WEBSITE_DERIVED_JOURNAL"&&
+  const publicPaged=["WEBSITE_DERIVED_JOURNAL","PUBLIC_WEBSITE_DERIVED_PAGE_V1"].includes(owner.query_id)&&
    shape.statement_kind==="SELECT"&&shape.has_limit&&shape.has_offset&&
    shape.has_order_by&&!shape.has_nested_select;
   const candidate=legacyNotIn?{
