@@ -1,13 +1,17 @@
 /** Protected private-only durable handoff. No GitHub artifact, public API or raw publisher payloads. */
 export const PRIVATE_OSINT_DURABLE_SCHEMA="geomacro.private-osint-15m-durable.v1";
 export const PRIVATE_OSINT_D1_HEALTH_SNAPSHOT_SLOTS=3;
-const FIVE_MINUTES_MS=5*60_000;
+export const OSINT_SCHEDULE_SLOT_MS=15*60_000;
 /**
  * Every original RSS/API source is fetched and classified on every OSINT tick.
- * Only the D1 health-status snapshots are sharded into three fixed 5-minute
- * slots, so each source/category has a nominal 15-minute refresh cadence.
- * A missed GitHub Actions run is NOT a guaranteed deadline. Dated news items
- * remain in the full, unsampled durable write path.
+ * Only D1 health-status snapshots are sharded across three consecutive
+ * 15-minute scheduled ticks, so each source/category has a nominal 45-minute
+ * stored-health refresh cadence. Poll and persist ALL native-dated news items
+ * on EVERY scheduled 15-minute run. GitHub schedule is best effort.
+ *
+ * CRITICAL: sharding by 5-minute modulo slots while running every 15 minutes
+ * permanently starves two out of three partitions. Use the 15-minute
+ * schedule period for phase selection, including real-world jitter.
  *
  * This reduces repetitive D1 UPSERT/read work without representing a source
  * as healthy from its registration. No original titles or endpoints are
@@ -22,7 +26,7 @@ export function selectPrivateOsintD1HealthChecks({
     checks.some(check=>typeof check?.source_ref!=="string"||
       !/^[a-f0-9]{64}$/u.test(check.source_ref)))
   throw Error("PRIVATE_OSINT_HEALTH_SNAPSHOT_INPUT_INVALID");
- const slot=Math.floor(now/FIVE_MINUTES_MS)%slots;
+ const slot=Math.floor(now/OSINT_SCHEDULE_SLOT_MS)%slots;
  let selected=slots===1?[...checks]:checks.filter(check=>
    parseInt(check.source_ref.slice(0,8),16)%slots===slot);
  // A quiet, tiny feed set can otherwise produce an empty authenticated
@@ -173,7 +177,7 @@ export async function persistPrivateOsintBatch({
    source_checks_deferred_to_snapshot:snapshot.deferred,
    source_health_snapshot_slots:snapshot.slots,
    source_health_snapshot_slot:snapshot.slot,
-   source_health_snapshot_cadence_nominal_minutes:5*snapshot.slots,
+   source_health_snapshot_cadence_nominal_minutes:15*snapshot.slots,
    news_rows_verified_in_d1:saved,
    excluded_by_d1_capacity:excluded,
    native_feed_to_first_durable_write_within_15m:in15,

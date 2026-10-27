@@ -20,7 +20,7 @@ test("independent source gap lane leaves 511-source production collector untouch
  const legacy=privateUnverifiedOsintRegistry();
  assert.equal(legacy.length,25);
  const merged=privateUnverifiedOsintRegistry(undefined,{includeGapLane:true});
- assert.equal(merged.length,25+manifest.sources.length);
+ assert.equal(merged.length,25+manifest.sources.length+2);
  assert.ok(merged.length<=128);
  assert.equal(new Set(merged.map(x=>x.url)).size,merged.length);
  const gaps=merged.filter(x=>x.id.startsWith("private_gaplane_"));
@@ -30,6 +30,12 @@ test("independent source gap lane leaves 511-source production collector untouch
    s.publisher_country_iso3===s.publisher_countries[0]&&
    s.rights_verified===false&&s.publicly_deliverable===false));
  assert.equal(new Set(gaps.map(s=>s.publisher_country_iso3)).size,gaps.length-2);
+ const nonRss=merged.filter(s=>s.id.startsWith("private_official_nonrss_"));
+ assert.deepEqual(nonRss.map(s=>s.publisher_country_iso3).sort(),["NRU","PRK"]);
+ assert.ok(nonRss.every(s=>s.supported===false&&s.access==="bulk"&&
+   s.type==="html"&&s.native_news_emission_enabled===false&&
+   s.transport_verified_at_registration===false));
+
 });
 test("country-source candidate is never a country event; only real native clock counts",async()=>{
  const s=privateUnverifiedOsintRegistry(undefined,{includeGapLane:true})
@@ -51,4 +57,17 @@ test("country-source candidate is never a country event; only real native clock 
  });
  assert.equal(denied.items.length,0);
  assert.equal(denied.summary.source_states.DENIED,3);
+});
+
+test("Nauru and DPRK official non-RSS responses never count as dated news",async()=>{
+ const nonRss=privateUnverifiedOsintRegistry(undefined,{includeGapLane:true})
+  .filter(s=>s.id.startsWith("private_official_nonrss_"));
+ const result=await collectPrivateUnverifiedOsint({
+  now,registry:nonRss,normalize,resolveCountry:()=>null,
+  fetchImpl:async()=>new Response("<html><time datetime='2026-10-27'>fake news</time></html>",{status:200}),
+ });
+ assert.equal(result.items.length,0);
+ assert.equal(result.summary.source_checks,6);
+ assert.equal(result.summary.source_states.UNSUPPORTED_FORMAT,6);
+ assert.equal(result.summary.source_verified_active,false);
 });
