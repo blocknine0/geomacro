@@ -88,7 +88,7 @@ jobs:
               (.behind_by == 0) and
               (.ahead_by | type == "number" and . > 0) and
               (.base_commit.sha == $failed) and
-              (.commits[-1].sha == $head or .ahead_by > 250)
+              (.merge_base_commit.sha == $failed)
             ' "$compare_file" >/dev/null; then
               echo "::warning::D1_QUOTA_RECOVERY_DIVERGENT_MAIN_HOLD"
               echo "retry=false" >> "$GITHUB_OUTPUT"
