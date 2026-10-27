@@ -72,7 +72,7 @@ jobs:
         with:
           node-version: "24"
       - name: Run offline D1 recovery, caching and hashed-insights regression
-        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
+        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
 
   bootstrap-deploy-accept:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
@@ -129,7 +129,7 @@ jobs:
           node-version: "24"
 
       - name: Verify P0-1 D1 quota and public-only cache contracts offline
-        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
+        run: node --test scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
 
       - name: Test all-news signed publication integrity and source-proof boundaries offline
         run: node --test scripts/tests/public-signed-news.test.mjs
@@ -260,6 +260,7 @@ jobs:
           trap 'rm -f "$raw"' EXIT
           if npx -y "wrangler@${WRANGLER_VERSION}" d1 insights "$D1_DATABASE_NAME" --timePeriod=1d --sort-type=sum --sort-by=reads --limit=20 --json > "$raw" 2>/dev/null; then
             node ../../scripts/ops/summarize-d1-reads-insights.mjs "$raw"
+            node ../../scripts/ops/attribute-d1-query-insights.mjs "$raw"
           else
             echo "::warning::D1_READ_PRESSURE_INSIGHTS_PROVIDER_UNAVAILABLE"
           fi
