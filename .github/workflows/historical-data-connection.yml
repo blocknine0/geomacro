@@ -53,8 +53,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.probe_now == true)
     runs-on: ubuntu-latest
     timeout-minutes: 3
-    environment:
-      name: production
+    environment: production
     env:
       HISTORICAL_SUPABASE_URL: https://nqvpcbnnvjsrlvyxxevk.supabase.co
       HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}
