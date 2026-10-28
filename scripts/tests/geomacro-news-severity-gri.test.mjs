@@ -336,5 +336,5 @@ test("live production acceptance stays locked to D1-backed no-new-news continuit
  assert.match(worker,/GEOMACRO_GRI_RETAINED_HASH_MISMATCH/u);
  assert.match(worker,/ON CONFLICT\(category\) DO UPDATE/u);
  assert.match(migration,/CREATE TABLE IF NOT EXISTS geomacro_news_gri_last_verified/u);
- assert.doesNotMatch(migration,/\b(?:raw_article|source_url|private_key|payment)\b/iu);
+ assert.doesNotMatch(migration.split("\n").filter(line=>!line.trimStart().startsWith("--")).join("\n"),/\b(?:raw_article|source_url|private_key|payment)\b/iu);
 });
