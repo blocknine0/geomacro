@@ -13,6 +13,8 @@ on:
       - "scripts/tests/d1-launch-hourly-observer.test.mjs"
       - "scripts/ops/d1-launch-hourly-observer.mjs"
       - "scripts/ops/evaluate-d1-launch-72h.mjs"
+      - "scripts/ops/capture-d1-launch-insights.mjs"
+      - "scripts/tests/capture-d1-launch-insights.test.mjs"
   push:
     branches: [main]
     paths:
@@ -22,6 +24,8 @@ on:
       - "scripts/tests/d1-launch-hourly-observer.test.mjs"
       - "scripts/ops/d1-launch-hourly-observer.mjs"
       - "scripts/ops/evaluate-d1-launch-72h.mjs"
+      - "scripts/ops/capture-d1-launch-insights.mjs"
+      - "scripts/tests/capture-d1-launch-insights.test.mjs"
 
 permissions:
   contents: read
@@ -47,7 +51,7 @@ jobs:
         run: |
           node --check scripts/ops/d1-launch-hourly-observer.mjs
           node --check scripts/ops/evaluate-d1-launch-72h.mjs
-          node --test scripts/tests/d1-launch-window.test.mjs scripts/tests/d1-launch-hourly-observer.test.mjs
+          node --test scripts/tests/d1-launch-window.test.mjs scripts/tests/d1-launch-hourly-observer.test.mjs scripts/tests/capture-d1-launch-insights.test.mjs
 
   observe:
     if: >-
@@ -119,10 +123,25 @@ jobs:
       - name: Strictly evaluate observed 72h without manufactured green acceptance
         shell: bash
         run: node scripts/ops/evaluate-d1-launch-72h.mjs "$RUNNER_TEMP/d1-launch-receipts"
+      - name: Rank observed D1 read/write SQL hotspots without exporting SQL or consuming D1 rows
+        continue-on-error: true
+        working-directory: workers/control-plane
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          reads="$(mktemp)"
+          writes="$(mktemp)"
+          trap 'rm -f "$reads" "$writes"' EXIT
+          npx -y "wrangler@4.136.3" d1 insights geomacro-control-plane --timePeriod=1d --sort-type=sum --sort-by=reads --limit=100 --json > "$reads" 2>/dev/null
+          npx -y "wrangler@4.136.3" d1 insights geomacro-control-plane --timePeriod=1d --sort-type=sum --sort-by=writes --limit=100 --json > "$writes" 2>/dev/null
+          node ../../scripts/ops/capture-d1-launch-insights.mjs "$reads" "$writes"
       - name: Retain assessed report, including all PENDING blockers
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-d1-launch-72h-acceptance
-          path: artifacts/d1-launch-72h/acceptance.json
+          path: artifacts/d1-launch-72h/
           retention-days: 7
           if-no-files-found: error
