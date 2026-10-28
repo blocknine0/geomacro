@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import {DatabaseSync} from "node:sqlite";
 import {
   refreshMaterializedNewsPages,getMaterializedNewsPage,
-  getMaterializedNewsBundle,MATERIALIZED_PUBLIC_PAGES_TTL_MS
+  getMaterializedNewsBundle
 } from "../../workers/control-plane/src/materialized-public-news-pages.mjs";
 import {
   readDerivedStories,readDerivedStoriesBundle
@@ -69,7 +69,7 @@ function makeState(count=510){
     setBeforeBatch(fn){beforeBatch=fn}};
 }
 
-test("producer scans 510 canonical rows once; anonymous pages read 1+revision rows",async()=>{
+test("producer scans 510 canonical rows once; public pages read bounded indexed records",async()=>{
   const x=makeState();
   assert.equal(await getMaterializedNewsPage(x.env,0,clock),null);
   const receipt=await refreshMaterializedNewsPages(x.env,clock);
@@ -80,6 +80,11 @@ test("producer scans 510 canonical rows once; anonymous pages read 1+revision ro
   const heldTwentyMinutes=await refreshMaterializedNewsPages(x.env,clock+20*60_000);
   assert.equal(heldTwentyMinutes.status,"MATERIALIZED_ALREADY_CURRENT");
   assert.equal(x.originReads,1,"nonchanged version cannot trigger another source scan");
+  for(const minutes of [36,65,180,24*60]){
+    const quiet=await refreshMaterializedNewsPages(x.env,clock+minutes*60_000);
+    assert.equal(quiet.status,"MATERIALIZED_ALREADY_CURRENT");
+  }
+  assert.equal(x.originReads,1,"unchanged revisions do not rescan after old TTL or a missed backstop");
   assert.equal(x.originReads,1);
   const page=await getMaterializedNewsPage(x.env,0,clock);
   assert.equal(page.length,251);
@@ -111,6 +116,48 @@ test("producer scans 510 canonical rows once; anonymous pages read 1+revision ro
   x.sqlite.close();
 });
 
+test('72h expiry happens before pagination and exactly matches canonical page metadata',async()=>{
+ const x=makeState(600);
+ const update=x.sqlite.prepare('UPDATE website_derived_intelligence SET published_at=?,story_json=?,first_seen_at=? WHERE id=?');
+ for(let i=50;i<600;i++){
+  const s=signal(i);
+  const native=clock-72*60*60_000+60_000+(i-50)*1000;
+  s.published_at=new Date(native).toISOString();
+  update.run(s.published_at,JSON.stringify(s),new Date(i%2===0?native+1:clock-500).toISOString(),s.id);
+ }
+ await refreshMaterializedNewsPages(x.env,clock);
+ const later=clock+15*60_000;
+ const before=x.originReads;
+ const rows=await getMaterializedNewsBundle(x.env,later);
+ assert.equal(rows.length,325,'remove first-ingest expirations from the complete revision, before slicing');
+ assert.equal(x.originReads,before);
+ for(const offset of [0,250,500]){
+  const cached=await (await readDerivedStories(x.env,later,offset,0,true)).json();
+  const origin=await (await readDerivedStories(x.env,later,offset,0,false)).json();
+  assert.deepEqual(cached,origin,'public page including has_more and original clocks matches canonical SQL');
+ }
+ const cached=await (await readDerivedStoriesBundle(x.env,later,true)).json();
+ const origin=await (await readDerivedStoriesBundle(x.env,later,false)).json();
+ assert.deepEqual(cached,origin);
+ assert.equal(cached.signals.length,50,'native-expired releases cannot survive merely because the revision is unchanged');
+ x.sqlite.close();
+});
+
+test('corrupt or future-dated matching snapshot is rejected and repaired by the owner refresh',async()=>{
+ for(const corrupt of ["UPDATE website_derived_materialized_pages_v1 SET rows_json='broken' WHERE page_offset=0",
+  "UPDATE website_derived_materialized_pages_v1 SET generated_at='2030-01-01T00:00:00.000Z'"]){
+  const x=makeState(20);
+  await refreshMaterializedNewsPages(x.env,clock);
+  x.sqlite.exec(corrupt);
+  assert.equal(await getMaterializedNewsBundle(x.env,clock+3600000),null);
+  const receipt=await refreshMaterializedNewsPages(x.env,clock+3600000);
+  assert.equal(receipt.status,'MATERIALIZED_COMMIT_VERIFIED');
+  assert.equal(x.originReads,2,'only invalid snapshots cause an unchanged-revision repair scan');
+  assert.equal((await getMaterializedNewsBundle(x.env,clock+3600000)).length,20);
+  x.sqlite.close();
+ }
+});
+
 test("every real insert/update/delete instantly invalidates snapshot with SQL triggers",async()=>{
   const x=makeState(15);
   await refreshMaterializedNewsPages(x.env,clock);
@@ -136,7 +183,7 @@ test("every real insert/update/delete instantly invalidates snapshot with SQL tr
   assert.ok(x.originReads>=2);
   await refreshMaterializedNewsPages(x.env,clock);
   assert.equal((await getMaterializedNewsPage(x.env,0,clock)).length,15);
-  assert.equal(await getMaterializedNewsPage(x.env,0,clock+MATERIALIZED_PUBLIC_PAGES_TTL_MS+1),null);
+  assert.notEqual(await getMaterializedNewsPage(x.env,0,clock+36*60_000),null);
   x.sqlite.close();
 });
 
@@ -166,7 +213,7 @@ test("601-row untrimmed journal refuses cache publication instead of hiding over
   x.sqlite.close();
 });
 
-test("one-query materialized bundle fails closed after revision or TTL expiry",async()=>{
+test("one-query materialized bundle rejects revision changes but ages out native rows without a scan",async()=>{
   const x=makeState(510);
   await refreshMaterializedNewsPages(x.env,clock);
   assert.equal((await getMaterializedNewsBundle(x.env,clock)).length,510);
@@ -180,8 +227,7 @@ test("one-query materialized bundle fails closed after revision or TTL expiry",a
   assert.equal(x.materializedBundleReads,reads+1);
   await refreshMaterializedNewsPages(x.env,clock);
   assert.equal((await getMaterializedNewsBundle(x.env,clock)).length,511);
-  assert.equal(await getMaterializedNewsBundle(x.env,
-    clock+MATERIALIZED_PUBLIC_PAGES_TTL_MS+1),null,
-    "an expired materialization cannot masquerade as current source data");
+  assert.deepEqual(await getMaterializedNewsBundle(x.env,clock+73*60*60_000),[],
+    "unchanged materialization expires all original rows without pretending they are fresh");
   x.sqlite.close();
 });
