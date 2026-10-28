@@ -242,6 +242,19 @@ export function assertGeomacroIntelligenceResponseContract(payload: unknown): as
     if (!Array.isArray(row.geomacro_detected) || !Array.isArray(row.watch_next)) {
       throw new Error("INTELLIGENCE_RESPONSE_DECISION_INTELLIGENCE_SIGNALS_INVALID");
     }
+    const selectedLocale=isRecord(payload.question_interpretation)
+      ? payload.question_interpretation.response_locale : undefined;
+    if(selectedLocale!==undefined && !["en","bn","hi"].includes(String(selectedLocale)))
+      throw Error("INTELLIGENCE_RESPONSE_LOCALE_INVALID");
+    if(row.localized!==undefined || selectedLocale==="bn" || selectedLocale==="hi"){
+      const local=row.localized;
+      if(!isRecord(local) || (selectedLocale!=="bn"&&selectedLocale!=="hi") ||
+         local.language!==selectedLocale ||
+         typeof local.headline!=="string"||local.headline.length<3 ||
+         typeof local.decision_context!=="string"||local.decision_context.length<3 ||
+         local.scope!=="BOUNDED_FACTUAL_SUMMARY_ONLY" ||local.execution_authorized!==false)
+        throw Error("INTELLIGENCE_RESPONSE_LOCALIZED_DECISION_INVALID");
+    }
     // Older frozen paid receipts remain replay-compatible. All newly
     // assembled nine launch-scope SKU responses include market_watch;
     // validate it whenever present, without assigning a price prediction.
@@ -250,6 +263,8 @@ export function assertGeomacroIntelligenceResponseContract(payload: unknown): as
       if (!isRecord(watch) || watch.schema_version!=="geomacro.paid-market-watch.v1" ||
           !["CONDITIONAL_MARKET_WATCH","NO_QUALIFIED_MARKET_LINKAGE"].includes(String(watch.status)) ||
           !Array.isArray(watch.items) || watch.items.length>5 ||
+          (watch.status==="CONDITIONAL_MARKET_WATCH"&&watch.items.length===0) ||
+          (watch.status==="NO_QUALIFIED_MARKET_LINKAGE"&&watch.items.length!==0) ||
           !isRecord(watch.monitoring) || !isRecord(watch.limitations) ||
           watch.limitations.actual_market_prices_included!==false ||
           watch.limitations.market_direction_verified!==false ||
@@ -264,6 +279,11 @@ export function assertGeomacroIntelligenceResponseContract(payload: unknown): as
         item.current_market_price!==null ||
         item.estimated_price_change_pct!==null ||
         typeof item.market!=="string" || typeof item.evidence_dimension!=="string" ||
+        (item.evidence_class!==undefined&&item.evidence_class!==({
+          VERIFIED_STRUCTURAL_MODULE:"STRUCTURAL_CONTEXT",
+          VERIFIED_SIGNED_GRO_DRIVER:"SIGNED_RISK_DRIVER",
+          QUALIFIED_CURRENT_DERIVED_EVENT:"QUALIFIED_EVENT",
+        } as Record<string,string>)[String(item.evidence_basis)]) ||
         !["VERIFIED_STRUCTURAL_MODULE","VERIFIED_SIGNED_GRO_DRIVER","QUALIFIED_CURRENT_DERIVED_EVENT"]
            .includes(String(item.evidence_basis))))
         throw Error("INTELLIGENCE_RESPONSE_MARKET_WATCH_PRICE_CLAIM_FORBIDDEN");
@@ -273,6 +293,15 @@ export function assertGeomacroIntelligenceResponseContract(payload: unknown): as
     }
   }
 
+  const responseLocale=isRecord(payload.question_interpretation)?payload.question_interpretation.response_locale:undefined;
+  if(responseLocale==="bn"||responseLocale==="hi"){
+    const localized=isRecord(payload.answer)?payload.answer.localized:null;
+    if(!isRecord(localized)||localized.language!==responseLocale||
+       localized.scope!=="BOUNDED_FACTUAL_SUMMARY_ONLY"||
+       !Array.isArray(localized.subject_summaries)||
+       localized.subject_summaries.length!==payload.subjects.length)
+      throw Error("INTELLIGENCE_RESPONSE_LOCALIZED_ANSWER_INVALID");
+  }
   if (payload.execution_authorized !== false) {
     throw new Error("INTELLIGENCE_RESPONSE_EXECUTION_BOUNDARY_VIOLATION");
   }
