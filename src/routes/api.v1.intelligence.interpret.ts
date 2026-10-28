@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
 import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
+import {publicQueryResolution} from "../lib/universal-query-resolution";
 import {
   MULTILINGUAL_QUERY_SCHEMA,
   interpretMultilingualIntelligenceQuery,
@@ -17,10 +18,11 @@ const HEADERS = {
 };
 const reply = (body: unknown, status = 200) =>
   Response.json(body, {status, headers: HEADERS});
-const noChargeError = (code: string, status = 400) =>
+const noChargeError = (code: string, status = 400,resolution?:ReturnType<typeof publicQueryResolution>) =>
   reply({ok:false, schema_version:MULTILINGUAL_QUERY_SCHEMA,
     error:{code}, chargeable:false, payment_required_now:false,
-    charged_now:false, execution_authorized:false},status);
+    charged_now:false, execution_authorized:false,
+    ...(resolution?{resolution}:{})},status);
 
 /**
  * Pure interpretation/discovery, never a paywall or preflight shortcut.
@@ -47,8 +49,10 @@ export async function interpretIntelligenceHttp(request:Request):Promise<Respons
   }
   if (new TextEncoder().encode(raw).byteLength>MAX_BYTES)
     return noChargeError("INTERPRET_REQUEST_TOO_LARGE",413);
+  let parsed:unknown;
   try {
-    return reply(interpretMultilingualIntelligenceQuery(JSON.parse(raw)));
+    parsed=JSON.parse(raw);
+    return reply(interpretMultilingualIntelligenceQuery(parsed));
   } catch(error) {
     if (error instanceof SyntaxError || error instanceof ZodError)
       return noChargeError("INTERPRET_INVALID_REQUEST");
@@ -74,7 +78,7 @@ export async function interpretIntelligenceHttp(request:Request):Promise<Respons
     ]);
     const code = error instanceof Error && known.has(error.message)
       ? error.message : "INTERPRET_UNSUPPORTED_OR_AMBIGUOUS";
-    return noChargeError(code);
+    return noChargeError(code,400,publicQueryResolution(parsed,error));
   }
 }
 export const Route = createFileRoute("/api/v1/intelligence/interpret")({
