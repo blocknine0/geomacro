@@ -93,3 +93,17 @@ test("existing no-funds recovery workflow runs watcher without adding another cr
  assert.match(wf,/scripts\/lib\/risk-indices-continuity-watchdog\.test\.mjs/u);
  assert.doesNotMatch(wf,/COINBASE_API_KEY|PREDGE_RISK_GATE_TOKEN|src\/routes\/risk-indices\.tsx/u);
 });
+
+test("main push read-only acceptance is separate from protected review and does not request publication",()=>{
+ const workflow=readFileSync(new URL("../../.github/workflows/risk-indices-verified-parent-backstop.yml",import.meta.url),"utf8");
+ const job=workflow.split("  read-only-acceptance-on-main-update:")[1]?.split("  dispatch-only-after-verified-parent:")[0]??"";
+ assert.ok(job.includes("github.event_name == 'push'"));
+ assert.ok(job.includes("github.ref == 'refs/heads/main'"));
+ assert.ok(job.includes("node scripts/ops/observe-risk-indices-continuity.mjs"));
+ assert.ok(job.includes("persist-credentials: false"));
+ assert.ok(job.includes("test \"$EXPECTED_CANONICAL_MAIN_SHA\" = \"$(git rev-parse HEAD)\""));
+ assert.ok(job.includes("contents: read"));
+ for(const forbidden of ["secrets.", "actions: write", "dispatch-gri-", "publish-supabase-free-global-risk",
+  "RISK_OBJECT_SIGNING_PRIVATE_KEY", "PREDGE", "COINBASE"])
+  assert.equal(job.includes(forbidden),false);
+});
