@@ -21,6 +21,9 @@ on:
       - ".github/workflows/deploy-d1-control-plane.yml"
       - ".github/workflows/recover-d1-quota-deployment-after-reset.yml"
       - "workers/control-plane/src/index.mjs"
+      - "workers/control-plane/src/geomacro-news-severity-gri.mjs"
+      - "scripts/tests/geomacro-news-severity-gri.test.mjs"
+      - "scripts/ops/verify-live-geomacro-news-gri.mjs"
       - "workers/control-plane/src/public-free-d1-cache.mjs"
       - "scripts/ops/summarize-d1-reads-insights.mjs"
       - "scripts/tests/d1-quota-reset-recovery-workflow.test.mjs"
@@ -106,6 +109,8 @@ jobs:
       - name: Run offline D1 recovery, caching and hashed-insights regression
         run: node --test scripts/tests/news-product-factory.test.mjs scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/materialized-public-news-pages.test.mjs scripts/tests/website-derived-cap-compaction.test.mjs scripts/tests/refresh-public-news-pages-under-quota.test.mjs scripts/tests/public-materialized-worker-import.test.mjs scripts/tests/verify-public-d1-materialization-live.test.mjs scripts/tests/materialized-origin-owner-route.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs
           node --test scripts/tests/private-news-proof-boundary.test.mjs scripts/tests/public-signed-news.test.mjs
+          node --test scripts/tests/geomacro-news-severity-gri.test.mjs
+          node --check scripts/ops/verify-live-geomacro-news-gri.mjs
 
   bootstrap-deploy-accept:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
@@ -467,6 +472,14 @@ jobs:
           test "$CODE" = "200" || { echo "Authenticated control-plane write failed: HTTP $CODE"; cat /tmp/auth.json; exit 9; }
           grep -q '"ok":true' /tmp/auth.json || { echo "Authenticated response missing ok=true"; exit 9; }
 
+      - name: Prove GeoMacro-certified news severity HMAC and 3 category readback after deploy
+        # Existing canonical main deployment; no added cron, payments or D1 writes.
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-live-geomacro-news-gri.mjs
       - name: Independently verify private handoff D1 reads and restricted capabilities
         env:
           CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
