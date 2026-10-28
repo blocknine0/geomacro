@@ -1,7 +1,7 @@
 // Deployment marker: keep this source aligned with the current production corroboration implementation.
 import { loadCountryCorroborationWindow, COUNTRY_WINDOW_LIMIT, COUNTRY_BATCH_SIZE } from "./country-window.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { createRemoteJWKSet, jwtVerify } from "npm:jose@6.2.3"
+import { createRemoteJWKSet, jwtVerify } from "jose"
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? ""
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
