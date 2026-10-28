@@ -53,22 +53,65 @@ test("GeoMacro HMAC signs exact three-domain 0–100 news-severity calculation",
  assert.equal(r.data.indices.find(x=>x.key==="geopolitics").sourceCount,1);
  assert.equal(r.data.indices.find(x=>x.key==="geopolitics").series["30D"].buckets,null);
  assert.equal(r.data.indices.find(x=>x.key==="macro").series["7D"].buckets,null);
+ assert.equal(r.observed_osint_input_count,0);
+ assert.equal(r.observed_official_release_input_count,4);
 });
-test("publisher candidates and unverified OSINT do not create certified indices",async()=>{
+test("public official releases AND observed OSINT contribute independently with provenance weights",async()=>{
  const official=SOURCE[0];
- const unverified={...example("macro","00000077","monetary policy"),
-  status:"osint_feed_observed_unverified",topic:"macro publisher candidate",
+ const osint={...example("macro","00000077","monetary policy"),
+  status:"osint_feed_observed_unverified",
   development_type:"unverified OSINT feed observation",geography:null,
   sources_credited:["Monitored feed: research.example"]};
- const r=await certifiedNewsSeverityGriFromSignals([official,unverified,
+ const r=await certifiedNewsSeverityGriFromSignals([official,osint,
   {...example("rare_earth","00000078","critical-minerals policy"),
    status:"official_feed_candidate_unscored",topic:"minerals publisher candidate",
    development_type:"unclassified publisher update",geography:null}],
   {now:NOW,secret:SECRET});
  assert.equal(r.observed_official_release_input_count,1);
+ assert.equal(r.observed_osint_input_count,1);
+ assert.equal(r.osint_event_facts_verified,false);
+ assert.equal(r.data.candidateEventCount,2);
  assert.equal(r.data.indices[0].status,"available");
- assert.deepEqual(r.data.indices.slice(1).map(x=>[x.status,x.score]),
-   [["unavailable",null],["unavailable",null]]);
+ assert.equal(r.data.indices[1].status,"available");
+ assert.equal(r.data.indices[1].sourceMix.osint,1);
+ assert.equal(r.data.indices[1].sourceMix.public_news,0);
+ assert.ok(r.data.indices[1].score>=12&&r.data.indices[1].score<=45);
+ assert.ok(r.data.indices[1].confidence<=18);
+ assert.equal(r.data.indices[1].independentStoryCount,0);
+ assert.equal(r.data.indices[2].status,"unavailable");
+ assert.equal(r.data.indices[2].score,null);
+});
+test("a matching official release takes priority over uncorroborated OSINT in one bucket",async()=>{
+ const osint={...SOURCE[0],
+  id:"geopolitics-00000099",status:"osint_feed_observed_unverified",
+  development_type:"unverified OSINT feed observation",geography:null,
+  sources_credited:["Monitored feed: research.example"]};
+ const official={...SOURCE[0],geography:null};
+ const r=await certifiedNewsSeverityGriFromSignals([osint,official],
+  {now:NOW,secret:SECRET});
+ assert.equal(r.observed_osint_input_count,1);
+ assert.equal(r.data.indices[0].eventCount,1);
+ assert.equal(r.data.indices[0].sourceMix.public_news,1);
+ assert.equal(r.data.indices[0].sourceMix.osint,0);
+ assert.ok(r.data.indices[0].confidence>18);
+});
+test("public news and OSINT across all three categories are both counted without source URL disclosure",async()=>{
+ const osintRows=[
+  ["geopolitics","geopolitical security","000000a1"],
+  ["macro","monetary policy","000000a2"],
+  ["rare_earth","critical-mineral inputs","000000a3"],
+ ].map(([category,topic,id])=>({...example(category,id,topic,90),
+  status:"osint_feed_observed_unverified",
+  development_type:"unverified OSINT feed observation",geography:null,
+  sources_credited:["Monitored feed: international.example"]}));
+ const r=await certifiedNewsSeverityGriFromSignals([...SOURCE,...osintRows],
+  {now:NOW,secret:SECRET});
+ assert.equal(r.observed_osint_input_count,3);
+ assert.equal(r.observed_official_release_input_count,4);
+ assert.deepEqual(r.data.indices.map(x=>x.sourceMix.osint),[1,1,1]);
+ assert.deepEqual(r.data.indices.map(x=>x.status),["available","available","available"]);
+ assert.ok(r.data.indices.every(x=>x.score!==null&&x.score<=100));
+ assert.doesNotMatch(JSON.stringify(r),/international\\.example|raw_upstream|source_url/);
 });
 test("no qualifying news means unavailable, not synthetic zero/unchanged score",async()=>{
  const r=await certifiedNewsSeverityGriFromSignals([],{now:NOW,secret:SECRET});
