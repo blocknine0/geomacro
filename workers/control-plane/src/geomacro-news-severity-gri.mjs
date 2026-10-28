@@ -1,7 +1,7 @@
 /**
  * GeoMacro SELF-CERTIFIED, news-severity methodology v1.
- * An observed, official publisher release is scored as an explicitly
- * heuristic *potential severity*; never as independently verified event
+ * Official public news and monitored OSINT are both inputs, with explicitly
+ * provenance-weighted potential severity; unverified OSINT is never confirmed event
  * magnitude, externally certified GRI v1.2 or market-probability.
  *
  * No source URLs, raw upstream content, PREDGE, payment or new D1 storage.
@@ -10,9 +10,10 @@
 import {readDerivedStoriesBundle,verifyDerivedStory} from "./website-derived-intelligence.mjs";
 
 export const NEWS_GRI_SCHEMA="geomacro.self-certified-news-severity-gri.v1";
-export const NEWS_GRI_METHOD="geomacro-news-severity-v1.0.0";
+export const NEWS_GRI_METHOD="geomacro-news-severity-v1.1.0";
 export const NEWS_GRI_WINDOW_MS=72*60*60_000;
-const PROJECT="ldpwajisioljyjtojvfx";
+const STATUS_OFFICIAL="official_release_observed_unscored";
+const STATUS_OSINT="osint_feed_observed_unverified";
 const encoder=new TextEncoder();
 const DOMAINS=[
  {key:"geopolitics",sourceCategory:"geopolitics",name:"Geopolitical Risk Index"},
@@ -48,7 +49,7 @@ async function seal(payloadJson,secret){
    encoder.encode("GEOMACRO/SELF-CERTIFIED/NEWS-SEVERITY-GRI/v1\\n"+payloadJson))));
 }
 function qualified(row,now){
- if(!row||row.status!=="official_release_observed_unscored"||
+ if(!row||!["official_release_observed_unscored","osint_feed_observed_unverified"].includes(row.status)||
     !["geopolitics","macro","rare_earth"].includes(row.category)||
     !verifyDerivedStory(row,now)||row.severity!==null||
     row.same_event_corrob_verified!==false)return false;
@@ -58,6 +59,8 @@ function qualified(row,now){
 function severity(row){
  const base=rubric[row.category]?.[row.topic]??48;
  const extra=weights[String(row.development_type).toLowerCase()]??0;
+ // Monitored feed observations do NOT verify that a reported event occurred.
+ if(row.status===STATUS_OSINT)return bound(Math.round((base+extra)*0.46),12,42);
  return bound(base+extra,10,95);
 }
 function blankSeries(frame){return {timeframe:frame,buckets:null,low:null,high:null}}
@@ -87,22 +90,31 @@ function buildIndex(spec,raw,now){
     Math.floor(at/(6*3600000))].join("|");
   const point={at,severity:severity(row),row};
   const previous=chosen.get(dedup);
-  if(!previous||point.severity>previous.severity||
-    (point.severity===previous.severity&&at>previous.at))chosen.set(dedup,point);
+  const rank=x=>x.row.status===STATUS_OFFICIAL?2:1;
+  // Never displace an official release by an unverified feed observation.
+  if(!previous||rank(point)>rank(previous)||
+    (rank(point)===rank(previous)&&(point.severity>previous.severity||
+      point.severity===previous.severity&&at>previous.at)))
+   chosen.set(dedup,point);
  }
  const news=[...chosen.values()].sort((a,b)=>b.at-a.at||
   b.severity-a.severity||a.row.id.localeCompare(b.row.id));
  const latest=news[0];
- const entries=news.map(x=>({...x,weight:Math.pow(0.5,(now-x.at)/(18*3600000))}));
+ const entries=news.map(x=>({...x,weight:
+  Math.pow(0.5,(now-x.at)/(18*3600000))*
+  (x.row.status===STATUS_OSINT?0.22:1)}));
+ const officialEntries=entries.filter(x=>x.row.status===STATUS_OFFICIAL);
+ const osintEntries=entries.filter(x=>x.row.status===STATUS_OSINT);
  const total=entries.reduce((s,e)=>s+e.weight,0);
  const weighted=total?entries.reduce((s,e)=>s+e.severity*e.weight,0)/total:0;
  const top=entries.reduce((m,e)=>Math.max(m,e.severity),0);
- const freshness=total?total/entries.length:0;
+ const freshness=total?total/(officialEntries.length+osintEntries.length*0.22):0;
  const score=entries.length?bound(Math.round(
   (0.65*top+0.35*weighted)*Math.pow(freshness,0.45)+
-  Math.min(8,Math.log2(entries.length+1)*3)),0,100):null;
+  Math.min(8,Math.log2(officialEntries.length+1)*3)+
+  Math.min(2,Math.log2(osintEntries.length+1))),0,100):null;
  const credits=new Set(news.flatMap(x=>x.row.sources_credited??[])
-  .filter(x=>typeof x==="string"&&!x.startsWith("Monitored feed: ")));
+  .filter(x=>typeof x==="string"));
  const newestAt=latest?.at??null;
  const readingAt=newestAt===null?null:new Date(newestAt).toISOString();
  const available=score!==null;
@@ -113,8 +125,14 @@ function buildIndex(spec,raw,now){
   readingSnapshotId:available?null:null,readingAsOf:readingAt,
   readingAgeHours:newestAt===null?null:Math.round((now-newestAt)/3600000*100)/100,
   score,rawScore:score,previousScore:null,changePoints:null,
-  confidence:available?Math.min(55,30+news.length*2):null,
-  eventCount:news.length,sourceCount:credits.size,independentStoryCount:news.length,
+  confidence:available?Math.round(Math.min(55,
+    officialEntries.length*2+osintEntries.length+
+    entries.reduce((sum,x)=>sum+(x.row.status===STATUS_OFFICIAL?48:10)*x.weight,0)/
+    Math.max(0.001,total))):null,
+  eventCount:news.length,sourceCount:credits.size,
+  independentStoryCount:officialEntries.length,
+  sourceMix:{public_news:officialEntries.length,osint:osintEntries.length,
+    osint_event_facts_verified:false},
   series:{"24H":series(news,now,"24H"),"7D":blankSeries("7D"),"30D":blankSeries("30D")},
   topEvent:latest?{title:latest.row.title,summary:null,severity:latest.severity}:null,
  };
@@ -130,13 +148,16 @@ export async function certifiedNewsSeverityGriFromSignals(signals,{
  const stable=selected.slice().sort((a,b)=>a.id.localeCompare(b.id));
  const inputHash=await digest(JSON.stringify(stable.map(x=>({
   id:x.id,category:x.category,topic:x.topic,geography:x.geography,
+  title:x.title,what_changed:x.what_changed,why_it_matters:x.why_it_matters,
   development_type:x.development_type,published_at:x.published_at,
   date_precision:x.date_precision,status:x.status
  }))));
  const methodologyHash=await digest(JSON.stringify({
   version:NEWS_GRI_METHOD,window_hours:72,half_life_hours:18,
-  rubric,weights,dedup:"topic-geography-six-hour",
-  scope:"observed-qualified-official-releases-not-independent-event-verification"
+  rubric,weights,dedup:"topic-geography-six-hour-prioritize-official",
+  osint_severity_factor:0.46,osint_weight:0.22,osint_score_cap:42,
+  osint_event_facts_verified:false,
+  scope:"observed-official-public-news-and-unverified-osint-no-independent-event-verification"
  }));
  const timestamp=new Date(now).toISOString();
  const indices=DOMAINS.map(spec=>buildIndex(spec,stable,now));
@@ -161,7 +182,9 @@ export async function certifiedNewsSeverityGriFromSignals(signals,{
   schema:NEWS_GRI_SCHEMA,issuer:"GeoMacro",scope:"GEOMACRO_SELF_CERTIFIED_NEWS_SEVERITY_CALCULATION_ONLY",
   independent_third_party_certified:false,
   source_event_facts_independently_verified:false,
-  observed_official_release_input_count:stable.length,
+  observed_official_release_input_count:stable.filter(x=>x.status===STATUS_OFFICIAL).length,
+  observed_osint_input_count:stable.filter(x=>x.status===STATUS_OSINT).length,
+  osint_event_facts_verified:false,
   generated_at:timestamp,methodology_version:NEWS_GRI_METHOD,data
  });
  const signature=await seal(signedPayloadJson,secret);
