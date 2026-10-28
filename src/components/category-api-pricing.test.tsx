@@ -5,8 +5,14 @@ import { CategoryApiPricing } from "./category-api-pricing";
 import { GEOMACRO_CAPABILITY_PRICES } from "@/lib/capability-pricing-catalog";
 
 describe("three-category API pricing presentation", () => {
+  it("defaults to endpoint discovery with a link to the single Store schedule",()=>{
+    const html=renderToStaticMarkup(createElement(CategoryApiPricing));
+    expect((html.match(/data-api-id=/g)??[])).toHaveLength(3);
+    expect(html).not.toContain('data-price-usdc=');
+    expect(html).toContain('href="#product-catalog"');
+  });
   it("shows all three canonical category endpoints with the same approved intelligence-query prices", () => {
-    const html = renderToStaticMarkup(createElement(CategoryApiPricing));
+    const html = renderToStaticMarkup(createElement(CategoryApiPricing, {showPrices:true}));
     expect((html.match(/data-api-id=/g) ?? [])).toHaveLength(3);
     expect(html).toContain('data-api-id="geopolitics"');
     expect(html).toContain("POST /api/v1/intelligence/geopolitics");

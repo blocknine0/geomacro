@@ -23,7 +23,7 @@ const CATEGORY_APIS = CATEGORY_API_LABELS.map((category) => {
 });
 
 /** Public price display only. Category aliases share the canonical query engine and payment resource. */
-export function CategoryApiPricing() {
+export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) {
   const prices = GEOMACRO_CAPABILITY_PRICES.intelligence_query;
   return (
     <section
@@ -39,15 +39,16 @@ export function CategoryApiPricing() {
         Each category uses the same canonical intelligence engine. Pricing follows the verified
         query complexity, not the category. There is no category surcharge.
       </p>
+      {!showPrices && <a href="#product-catalog" className="gm-text-link mt-4">See the single price schedule below</a>}
       <div className="mt-5 overflow-x-auto rounded-xl border border-border">
-        <table className="w-full min-w-[680px] text-left text-sm">
+        <table className="w-full min-w-[300px] text-left text-sm">
           <caption className="sr-only">
-            Canonical per-call USDC prices for Geopolitics, Macro / FX and Critical Minerals APIs
+            Canonical endpoints for Geopolitics, Macro / FX and Critical Minerals APIs
           </caption>
           <thead className="bg-muted/40">
             <tr>
               <th scope="col" className="p-4">Category API</th>
-              {VARIANTS.map((variant) => (
+              {showPrices && VARIANTS.map((variant) => (
                 <th key={variant.id} scope="col" className="p-4">
                   {variant.label}
                 </th>
@@ -63,7 +64,7 @@ export function CategoryApiPricing() {
                     {api.method} {api.path}
                   </code>
                 </th>
-                {VARIANTS.map((variant) => (
+                {showPrices && VARIANTS.map((variant) => (
                   <td
                     key={variant.id}
                     data-capability="intelligence_query"

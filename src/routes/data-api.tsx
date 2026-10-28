@@ -30,10 +30,10 @@ function DataApiPage() {
     <main className="gm-container py-12 sm:py-16">
       <header className="max-w-3xl">
         <p className="gm-eyebrow">API & Agents</p>
-        <h1 className="gm-page-title">Structured intelligence. Clear pricing.</h1>
+        <h1 className="gm-page-title">Structured intelligence for applications and agents.</h1>
         <p className="gm-intro">
           Geopolitics, Macro / FX and Critical Minerals for your applications and agents.
-          Choose a product below to see what you receive and its price per delivery.
+          Explore product outputs below. Compare every per-delivery price in the Store.
         </p>
       </header>
       <div className="mt-8"><ApiKeysNotice /></div>

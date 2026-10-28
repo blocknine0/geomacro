@@ -1,3 +1,4 @@
+import {LAUNCH_NEWS_TOPIC_PATTERNS} from "../../src/lib/launch-news-coverage.ts";
 /** Private discovery only. Country of publisher is inventory metadata, never event attribution. */
 import {readFileSync} from "node:fs";
 import {registeredReusableNewsSources} from "./registered-reusable-news-source-collector.mjs";
@@ -18,11 +19,18 @@ function isRegionalOsintFallback(source,continent){
 
 // These expressions detect provisional topics in native-language feed titles.
 // They do not translate, corroborate, score, or grant publication authority.
-export const PRIVATE_OSINT_TOPICS=Object.freeze({
+const LEGACY_PRIVATE_OSINT_TOPICS=Object.freeze({
  geopolitics:/(?:\b(?:wars?|conflicts?|sanctions?|ceasefire|treaty|military|security|diploma\w*|peace|refugees?|elections?|embargo|attacks?|missiles?|border|coup|guerra|conflit\w*|conflito|sanciones|sanções|cessez.le.feu|seguridad|sécurité|elecciones|eleições|militar\w*|diplomaci\w*|frontera|fronteira|paix|krieg|sicherheit|konflikt|angriff)\b|战争|冲突|制裁|停火|軍事|選挙|전쟁|분쟁|제재|حرب|عسكري|عقوبات|انتخابات|войн|конфликт|санкци|যুদ্ধ|নিরাপত্তা|নির্বাচন|संघर्ष|चुनाव|युद्ध|מלחמה|צבאי|סנקציות|הפסקת אש|בחירות|גושפנקה|جنگ|تحریم|воєн|війна|wojna|háború)/iu,
  macro:/(?:\b(?:inflation|monetary|central banks?|interest rates?|fx|forex|foreign exchange|exchange rates?|currency pairs?|currency|devaluation|revaluation|depreciation|appreciation|capital flows?|foreign reserves?|reserves|gdp|gross domestic product|cpi|ppi|pmi|payrolls?|jobs report|employment|wages?|consumer prices?|producer prices?|bond yields?|treasury yields?|sovereign debt|public debt|fiscal deficit|budget deficit|recession|growth forecast|economic outlook|trade balance|current account|balance of payments|tariffs?|economic|economy|fiscal|tax(?:ation)?|revenue|customs|duties?|unemployment|trade|shipping|freight|port congestion|canal transit|cargo|container terminal|cross-border transport|rail corridor|logistics|pipeline flows?|customs clearance|border crossings?|inflación|inflação|inflazione|inflasi|banque centrale|banco central|banca centrale|taux|taxa de juros|tasas? de interés|econom[ií]a|économi\w*|econ[oô]mi\w*|comercio|comércio|desemprego|chômage|pib|devises|währung|zentralbank|zinsen|wirtschaft)\b|经济|通胀|央行|利率|汇率|経済|金融|금리|경제|تضخم|اقتصاد|فائدة|инфляц|эконом|ставк|অর্থনীতি|মূল্যস্ফীতি|সুদের|मुद्रास्फीति|अर्थव्यवस्था|ब्याज|אינפלציה|ריבית|בנק מרכזי|כלכל|שער חליפין|تورم|اقتصادی|بهره|інфляц|inflacja|inflace|infláció|bank centralny)/iu,
  rare_earth:/(?:\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|rare earth elements?|strategic minerals?|mineral supply chains?|mine closures?|mining royalties|mineral exports?|mineral imports?|ore processing|smelting|refining|separation plants?|magnet materials?|permanent magnets?|battery supply chains?|battery minerals?|mineral reserves?|mineral deposits?|mine permits?|mine production|mining output|mineral processing|tailings|concentrates?|lithium brine|spodumene|bauxite|manganese|vanadium|antimony|indium|scandium|tantalum|niobium|platinum group metals?|cobalt|lithium|nickel|graphite|copper|gallium|germanium|neodymium|dysprosium|terbium|yttrium|praseodymium|samarium|tungsten|tin|chromium|molybdenum|mineral supply|refinery|minerais? cr[ií]ticos?|minerales? cr[ií]ticos?|terras? raras?|tierras? raras?|terres? rares?|min[eé]raux critiques?|min[eé]raux strat[eé]giques?|minería|mineração|minier\w*|litio|l[ií]tio|cobalto|cobre|cuivre|gali[ou]m|germ[aâ]nio|seltene erden|bergbau|kupfer)\b|关键矿产|稀土|锂|钴|稀土類|希土類|鉱山|희토류|리튬|معادن|редкозем|литий|кобальт|খনিজ|लिथियम|खनिज|מינרלים|ליתיום|קובלט|נחושת|יסודות נדירים|معادن کمیاب|مواد معدنية|літій|рідкозем|górnictwo|bányászat)/iu,
 });
+
+// Preserve all reviewed native-language patterns while closing taxonomy gaps.
+export const PRIVATE_OSINT_TOPICS=Object.freeze(Object.fromEntries(
+ Object.entries(LEGACY_PRIVATE_OSINT_TOPICS).map(([category,pattern])=>[
+  category,new RegExp('(?:'+pattern.source+')|(?:'+LAUNCH_NEWS_TOPIC_PATTERNS[category].source+')','iu')
+ ])
+));
 
 export function privateOsintGlobalSources(){
  const manifest=JSON.parse(readFileSync(new URL("../../config/private-osint-working-sources.v1.json",import.meta.url),"utf8"));

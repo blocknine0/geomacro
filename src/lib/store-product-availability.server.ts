@@ -1,3 +1,4 @@
+import {launchNewsCoveragePolicy} from "./launch-news-coverage";
 import { ZodError } from "zod";
 import { agentAdaptiveQuerySchema, buildAgentQueryPlan } from "./agent-query-plan";
 import {
@@ -48,6 +49,7 @@ export function storeProductAvailabilityDiscovery() {
     preflight_is_not_payment_authorization: true,
     payment_rail_independence: "DATA_ONLY_CHECK_WHILE_RAIL_MAY_BE_LOCKED",
     charged_now: false,
+    news_coverage_policy: launchNewsCoveragePolicy(),
     supported_products: publicCapabilityPricingCatalog().map(row => ({
       capability: row.capability,
       variants: row.variants.map(price => ({

@@ -3,9 +3,25 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { CapabilityPriceSchedule } from "./capability-price-schedule";
 import { ApiKeysNotice } from "./api-keys-notice";
+import { CategoryApiPricing } from "./category-api-pricing";
+import { StructuredProductSetup } from "./structured-product-setup";
 import { publicCapabilityPricingCatalog } from "@/lib/capability-pricing-catalog";
 
 describe("store catalog and launch availability", () => {
+  it("renders exactly one price inventory across the complete Store content",()=>{
+    const html=renderToStaticMarkup(createElement('main',null,
+      createElement(CategoryApiPricing),createElement(CapabilityPriceSchedule),createElement(StructuredProductSetup)));
+    expect((html.match(/data-price-usdc=/g)??[])).toHaveLength(12);
+    expect((html.match(/data-capability="intelligence_query"/g)??[])).toHaveLength(1);
+    expect(html).not.toMatch(/<option[^>]*>[^<]*USDC/);
+  });
+  it("shows API outputs without repeating the Store price schedule", () => {
+    const html=renderToStaticMarkup(createElement(CapabilityPriceSchedule,{compact:true}));
+    expect((html.match(/<article /g)??[])).toHaveLength(7);
+    expect(html).not.toContain("data-price-usdc=");
+    expect(html).toContain('/pricing#product-catalog');
+    expect(html).toContain("What you receive");
+  });
   it("renders every approved capability and exact variant price from the canonical schedule", () => {
     const html = renderToStaticMarkup(createElement(CapabilityPriceSchedule));
     expect((html.match(/<article /g) ?? [])).toHaveLength(7);

@@ -41,7 +41,7 @@ function PricingPage() {
       <div className="mt-10">
         <CategoryApiPricing />
       </div>
-      <div className="mt-10">
+      <div id="product-catalog" className="mt-10 scroll-mt-24">
         <CapabilityPriceSchedule />
       </div>
       <StructuredProductSetup />
