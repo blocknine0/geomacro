@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-28T11:20:33.174Z",
+  "updated_at": "2026-10-28T11:58:58.662Z",
   "signals": [
+    {
+      "id": "macro-73c7336f",
+      "category": "macro",
+      "title": "Geomacro finds Kazakhstan Records Sharp increased in Transit Freight as Volumes Reach 36.3 Million Tons",
+      "what_changed": "A monitored source feed reports: Kazakhstan Records Sharp increased in Transit Freight as Volumes Reach 36.3 Million Tons. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T11:19:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: astanatimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-6908e1b7",
+      "category": "macro",
+      "title": "Geomacro finds Sánchez proposed tax incentives to limit rents to the CPI or freeze rents - Demócrata",
+      "what_changed": "A monitored source feed reports: Sánchez proposed tax incentives to limit rents to the CPI or freeze rents - Demócrata. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T11:08:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-09b3a838",
       "category": "macro",
@@ -14,6 +52,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T11:03:45.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-342bb48c",
+      "category": "macro",
+      "title": "Geomacro finds China's Envision Energy unveiled new AI-powered energy system for remote mine sites - Mining Weekly",
+      "what_changed": "A monitored source feed reports: China's Envision Energy unveiled new AI-powered energy system for remote mine sites - Mining Weekly. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:40:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -170,6 +227,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-504f3267",
+      "category": "macro",
+      "title": "Geomacro finds Sheikh Khaled held talks with Canadian Prime Minister Mark Carney as economic partnership confirmed",
+      "what_changed": "A monitored source feed reports: Sheikh Khaled held talks with Canadian Prime Minister Mark Carney as economic partnership confirmed. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T08:36:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thenationalnews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

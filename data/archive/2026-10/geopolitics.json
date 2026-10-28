@@ -2,8 +2,84 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-28T11:20:33.174Z",
+  "updated_at": "2026-10-28T11:58:58.662Z",
   "signals": [
+    {
+      "id": "geopolitics-a6922ce1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Oleshky Truce held for 30 Hours as Kherson Falls Quiet",
+      "what_changed": "A monitored source feed reports: Oleshky Truce held for 30 Hours as Kherson Falls Quiet. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T11:09:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-52ebba00",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran rejected Qatari peace ideas as Trump leaves door open to new strikes - Iran International",
+      "what_changed": "A monitored source feed reports: Iran rejected Qatari peace ideas as Trump leaves door open to new strikes - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:38:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-b37465fc",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ozon estimated losses from drone attacks at $373.1 million, The Moscow Times - UA.NEWS",
+      "what_changed": "A monitored source feed reports: Ozon estimated losses from drone attacks at $373.1 million, The Moscow Times - UA.NEWS. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:31:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-64c411e9",
+      "category": "geopolitics",
+      "title": "Geomacro finds UAE's Gargash said 'wars only lead to further crises' amid concerns of Iran escalation",
+      "what_changed": "A monitored source feed reports: UAE's Gargash said 'wars only lead to further crises' amid concerns of Iran escalation. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:30:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thenationalnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-416a66cc",
       "category": "geopolitics",

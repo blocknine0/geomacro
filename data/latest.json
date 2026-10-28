@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-28T11:20:33.174Z",
+  "checked_at": "2026-10-28T11:58:58.662Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,63 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-73c7336f",
+      "category": "macro",
+      "title": "Geomacro finds Kazakhstan Records Sharp increased in Transit Freight as Volumes Reach 36.3 Million Tons",
+      "what_changed": "A monitored source feed reports: Kazakhstan Records Sharp increased in Transit Freight as Volumes Reach 36.3 Million Tons. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T11:19:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: astanatimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a6922ce1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Oleshky Truce held for 30 Hours as Kherson Falls Quiet",
+      "what_changed": "A monitored source feed reports: Oleshky Truce held for 30 Hours as Kherson Falls Quiet. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T11:09:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-6908e1b7",
+      "category": "macro",
+      "title": "Geomacro finds Sánchez proposed tax incentives to limit rents to the CPI or freeze rents - Demócrata",
+      "what_changed": "A monitored source feed reports: Sánchez proposed tax incentives to limit rents to the CPI or freeze rents - Demócrata. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T11:08:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-09b3a838",
       "category": "macro",
@@ -43,6 +100,82 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-342bb48c",
+      "category": "macro",
+      "title": "Geomacro finds China's Envision Energy unveiled new AI-powered energy system for remote mine sites - Mining Weekly",
+      "what_changed": "A monitored source feed reports: China's Envision Energy unveiled new AI-powered energy system for remote mine sites - Mining Weekly. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:40:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-52ebba00",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran rejected Qatari peace ideas as Trump leaves door open to new strikes - Iran International",
+      "what_changed": "A monitored source feed reports: Iran rejected Qatari peace ideas as Trump leaves door open to new strikes - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:38:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-b37465fc",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ozon estimated losses from drone attacks at $373.1 million, The Moscow Times - UA.NEWS",
+      "what_changed": "A monitored source feed reports: Ozon estimated losses from drone attacks at $373.1 million, The Moscow Times - UA.NEWS. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:31:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-64c411e9",
+      "category": "geopolitics",
+      "title": "Geomacro finds UAE's Gargash said 'wars only lead to further crises' amid concerns of Iran escalation",
+      "what_changed": "A monitored source feed reports: UAE's Gargash said 'wars only lead to further crises' amid concerns of Iran escalation. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:30:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thenationalnews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -328,6 +461,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.pravda.com.ua"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-504f3267",
+      "category": "macro",
+      "title": "Geomacro finds Sheikh Khaled held talks with Canadian Prime Minister Mark Carney as economic partnership confirmed",
+      "what_changed": "A monitored source feed reports: Sheikh Khaled held talks with Canadian Prime Minister Mark Carney as economic partnership confirmed. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T08:36:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thenationalnews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4451,63 +4603,6 @@
       "severity": null
     },
     {
-      "id": "geopolitics-f5f9f968",
-      "category": "geopolitics",
-      "title": "Geomacro finds Jordan said three family members behind church attack - Al Arabiya English",
-      "what_changed": "A monitored source feed reports: Jordan said three family members behind church attack - Al Arabiya English. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T05:20:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-3583d263",
-      "category": "geopolitics",
-      "title": "Geomacro finds Indonesia condemned deadly attack on Jordanian church",
-      "what_changed": "A monitored source feed reports: Indonesia condemned deadly attack on Jordanian church. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T04:37:53.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.antaranews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-51bbe395",
-      "category": "geopolitics",
-      "title": "Geomacro finds Bolsonaro called for Brazil election result to be annulled",
-      "what_changed": "A monitored source feed reports: Bolsonaro called for Brazil election result to be annulled. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T04:36:46.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.aljazeera.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "macro-26f48304",
       "category": "macro",
       "title": "Geomacro finds EAEU raised import duties on light industry goods until September 2027",
@@ -4527,63 +4622,6 @@
       "severity": null
     },
     {
-      "id": "geopolitics-23146ab3",
-      "category": "geopolitics",
-      "title": "Geomacro finds Yemen said missile strikes hit Saudi mercenaries",
-      "what_changed": "A monitored source feed reports: Yemen said missile strikes hit Saudi mercenaries. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T04:02:33.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.mehrnews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-288175c5",
-      "category": "geopolitics",
-      "title": "Geomacro finds Bolsonaro called for Brazil election results to be 'annulled' after loss to Lula - The Hindu",
-      "what_changed": "A monitored source feed reports: Bolsonaro called for Brazil election results to be 'annulled' after loss to Lula - The Hindu. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T03:13:04.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-8d42bfae",
-      "category": "geopolitics",
-      "title": "Geomacro finds Pipeline Security Claims raised Bigger Questions",
-      "what_changed": "A monitored source feed reports: Pipeline Security Claims raised Bigger Questions. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T03:06:30.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thisdaylive.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "macro-c1600258",
       "category": "macro",
       "title": "Geomacro finds GB launched subsidised wheat seeds scheme - Dawn",
@@ -4597,44 +4635,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-808d160c",
-      "category": "geopolitics",
-      "title": "Geomacro finds Perikatan confirmed using own logo for Melaka election as tensions with Bersatu mount",
-      "what_changed": "A monitored source feed reports: Perikatan confirmed using own logo for Melaka election as tensions with Bersatu mount. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T01:04:46.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.malaymail.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-a21fe503",
-      "category": "geopolitics",
-      "title": "Geomacro finds Lula held off far right with victory in Brazil presidential election",
-      "what_changed": "A monitored source feed reports: Lula held off far right with victory in Brazil presidential election. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T00:16:29.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.aljazeera.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
