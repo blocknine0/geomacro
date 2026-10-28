@@ -1,3 +1,5 @@
+import {pinnedDerivedOriginalReference} from "./derived-original-reference-pins.mjs";
+
 /**
  * One free per-run issuer-original readback bundle shared by all 3 categories.
  *
@@ -82,13 +84,20 @@ export function bundleRoundRobinNews(signals,{priorityById,nowMs,originalRefs}={
    remaining.push(item);
   else groups.get(item.category).push(item);
  }
- const freshPinned=item=>{
-  if(nowMs===undefined||originalRefs===undefined||
-     !originalRefs.has(item?.id)||item?.status!=="official_release_observed_unscored"||
-     item?.date_precision!=="exact")return false;
-  const age=nowMs-Date.parse(item.published_at??"");
-  return Number.isFinite(age)&&age>=0&&age<=60*60_000;
- };
+ const freshIds=new Set();
+ if(nowMs!==undefined&&originalRefs!==undefined){
+  for(const item of signals){
+   const ref=originalRefs.get(item?.id);
+   if(!ref||item?.status!=="official_release_observed_unscored"||
+      item?.date_precision!=="exact"||ref.category!==item.category||
+      ref.publishedAt!==item.published_at)continue;
+   const age=nowMs-Date.parse(item.published_at??"");
+   if(!Number.isFinite(age)||age<0||age>60*60_000)continue;
+   // No queue-priority credit for a bare/private/unpinned article URL.
+   if(pinnedDerivedOriginalReference(ref))freshIds.add(item.id);
+  }
+ }
+ const freshPinned=item=>freshIds.has(item?.id);
  const priority=item=>priorityById?.get(item?.id)??Infinity;
  const normalOrder=(a,b)=>(priority(a)-priority(b)||0)||
    String(b?.published_at??"").localeCompare(String(a?.published_at??""))||
