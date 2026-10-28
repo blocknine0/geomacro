@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {PINNED_ASSETS} from './materialize-web-candidate-assets.mjs';
 import {waitForCandidateMarker} from './web-candidate-propagation.mjs';
 import {inspectWebCandidateThreeCategoryHealth} from "./web-candidate-three-category-health-gate.mjs";
-const base="https://geomacro-web-candidate.daspallab202391.workers.dev";
+const base="https://geomacro-web-candidate-isolated.daspallab202391.workers.dev";
 const expected=process.env.EXPECTED_CANONICAL_MAIN_SHA;
 if(!/^[a-f0-9]{40}$/.test(expected??""))throw Error("CANDIDATE_EXPECTED_SHA_REQUIRED");
 async function get(path) {

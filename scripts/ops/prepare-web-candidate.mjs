@@ -13,7 +13,7 @@ export function prepareWebCandidate({root=process.cwd(),sha=process.env.GITHUB_S
     throw Error("CANDIDATE_BUILD_LAYOUT_UNVERIFIED");
   // Keep the existing generated app/assets, but reconstruct the deployment
   // settings from an allowlist: never inherit routes, domains or paid bindings.
-  const safe={name:"geomacro-web-candidate",main:"candidate.mjs",
+  const safe={name:"geomacro-web-candidate-isolated",main:"candidate.mjs",
     compatibility_date:config.compatibility_date,
     compatibility_flags:["nodejs_compat","global_fetch_strictly_public"],
     no_bundle:true,rules:[{type:"ESModule",globs:["**/*.mjs","**/*.js"]}],
