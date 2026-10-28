@@ -880,14 +880,15 @@ export async function buildCountryRiskObject(
         evidence_age_hours:
           round(age_hours, 2),
 
-        freshness_status:
+        freshness_status: (
           age_hours <=
           FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS
             ? "FRESH"
             : age_hours <=
                 FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS
               ? "AGING"
-              : "STALE" as const,
+              : "STALE"
+        ) as "FRESH" | "AGING" | "STALE",
 
         corroboration_status:
           event.corroboration_status ??
