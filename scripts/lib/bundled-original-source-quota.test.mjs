@@ -64,3 +64,34 @@ test("non-publisher input fails rather than shifting category request budget",()
  for(const host of ["127.0.0.1","local","www.gov.uk:443","evil/cross","CAPS.EXAMPLE"])
   assert.throws(()=>b.admit(host),/ORIGINAL_BUNDLE_UNTRUSTED_HOST/);
 });
+
+test("a legitimate pinned current original outranks stale pending audit within EACH category",()=>{
+ const now=Date.parse("2026-10-28T09:35:00Z");
+ const rows=[
+  {id:"macro-old",category:"macro",status:"official_release_observed_unscored",date_precision:"exact",published_at:new Date(now-3*3600000).toISOString()},
+  {id:"macro-new",category:"macro",status:"official_release_observed_unscored",date_precision:"exact",published_at:new Date(now-12*60000).toISOString()},
+  {id:"rare-old",category:"rare_earth",status:"official_release_observed_unscored",date_precision:"exact",published_at:new Date(now-2*3600000).toISOString()},
+  {id:"rare-new",category:"rare_earth",status:"official_release_observed_unscored",date_precision:"exact",published_at:new Date(now-15*60000).toISOString()},
+  {id:"geopolitics-old",category:"geopolitics",status:"official_release_observed_unscored",date_precision:"exact",published_at:new Date(now-90*60000).toISOString()},
+  {id:"geopolitics-new",category:"geopolitics",status:"official_release_observed_unscored",date_precision:"exact",published_at:new Date(now-25*60000).toISOString()},
+ ];
+ const priorityById=new Map(rows.map((r,i)=>[r.id,i]));
+ const originalRefs=new Map(rows.map(r=>[r.id,{}]));
+ const order=bundleRoundRobinNews(rows,{priorityById,originalRefs,nowMs:now}).map(x=>x.id);
+ assert.deepEqual(order.slice(0,3),["geopolitics-new","macro-new","rare-new"]);
+ assert.equal(new Set(order).size,6);
+ assert.deepEqual(order.slice(3),["geopolitics-old","macro-old","rare-old"]);
+});
+test("no promotion of feed-only, unpinned, future or 61-minute-old input",()=>{
+ const now=Date.parse("2026-10-28T09:35:00Z");
+ const row=(id,age,status="official_release_observed_unscored")=>({
+  id:"macro-"+id,category:"macro",status,date_precision:"exact",
+  published_at:new Date(now-age*60000).toISOString()});
+ const rows=[row("old",120),row("fresh",20),row("unpinned",10),
+  row("feed",8,"official_feed_candidate_unscored"),row("future",-1),row("expired",61)];
+ const priorityById=new Map(rows.map((r,i)=>[r.id,i]));
+ const originalRefs=new Map(rows.filter(r=>r.id!=="macro-unpinned").map(r=>[r.id,{}]));
+ const order=bundleRoundRobinNews(rows,{priorityById,originalRefs,nowMs:now}).map(x=>x.id);
+ assert.equal(order[0],"macro-fresh");
+ assert.deepEqual(order.slice(1),["macro-old","macro-unpinned","macro-feed","macro-future","macro-expired"]);
+});
