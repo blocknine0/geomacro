@@ -55,6 +55,16 @@ describe("paid machine/user market watch from qualified existing data",()=>{
     expect(JSON.stringify(a)).not.toContain("secret.invalid");
     expect(JSON.stringify(a)).not.toContain(driver);
   });
+  it("prioritizes qualified current developments ahead of old structural channels under a one-item digest",()=>{
+    const a=buildPaidMarketWatch({...base,verified_dimensions:["external_fx"],
+      verified_signed_drivers:["inflation"],qualified_event_types:["critical_minerals"]});
+    expect(a.items).toHaveLength(1);
+    expect(a.items[0].market).toBe("Critical-minerals price benchmarks");
+    expect(a.items[0].evidence_basis).toBe("QUALIFIED_CURRENT_DERIVED_EVENT");
+    expect(a.items[0].evidence_class).toBe("QUALIFIED_EVENT");
+    expect(a.items[0].predicted_direction).toBe("NOT_ESTABLISHED");
+    expect(JSON.stringify(a)).not.toContain("source_url");
+  });
   it("all nine launch contracts require a market watch; Risk Gate remains Coming Soon",()=>{
     const products=publicGeomacroStructuredOutputCatalog();
     const launch=products.filter(p=>p.capability!=="risk_gate_bundle");
