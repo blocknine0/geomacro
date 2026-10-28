@@ -155,6 +155,119 @@ function buildIndex(spec,raw,now){
   topEvent:latest?{title:latest.row.title,summary:null,severity:latest.severity}:null,
  };
 }
+
+// D1 is the durable authority for the LAST QUALIFIED calculation, not the
+// moving 72-hour journal. This preserves the prior signed domain score if no
+// new source-native qualified observation arrives (or old rows age out).
+const RETAINED_GRI_DOMAINS=new Set(DOMAINS.map(x=>x.key));
+const GRI_FINGERPRINT=/^[a-f0-9]{64}$/u;
+function retainedGriRecordValid(row,now){
+ if(!RETAINED_GRI_DOMAINS.has(row.category)||
+    row.methodology_version!==NEWS_GRI_METHOD||
+    !GRI_FINGERPRINT.test(String(row.index_sha256??""))||
+    !GRI_FINGERPRINT.test(String(row.evidence_sha256??""))||
+    typeof row.index_json!=="string"||row.index_json.length>16384||
+    typeof row.fingerprints_json!=="string"||row.fingerprints_json.length>50000||
+    !Number.isSafeInteger(row.revision)||row.revision<1)
+  throw Error("GEOMACRO_GRI_RETAINED_RECORD_INVALID");
+ const idx=JSON.parse(row.index_json),keys=JSON.parse(row.fingerprints_json);
+ if(!Array.isArray(keys)||keys.length>600||
+    keys.some(k=>!GRI_FINGERPRINT.test(k))||
+    new Set(keys).size!==keys.length||
+    idx.key!==row.category||idx.status!=="available"||
+    !Number.isFinite(idx.score)||idx.score<0||idx.score>100||
+    typeof idx.readingAsOf!=="string"||
+    !Number.isFinite(Date.parse(idx.readingAsOf))||
+    Date.parse(idx.readingAsOf)>now+60_000||
+    !GRI_FINGERPRINT.test(idx.readingSnapshotId))
+  throw Error("GEOMACRO_GRI_RETAINED_RECORD_INVALID");
+ return {index:idx,fingerprints:keys};
+}
+async function storedGriIndexHash(row){
+ return digest(row.index_json);
+}
+function observationIdentity(row){
+ // Only content influencing score, source count or dedup may trigger a new
+ // calculation. No raw source text, URL, private key or provider ID is stored.
+ return [row.id,row.category,row.topic,row.geography,row.published_at,
+  row.date_precision,row.development_type,row.status,row.sources_credited];
+}
+export async function retainLastQualifiedGriByDomain({db,signals,fresh,now=Date.now()}={}){
+ if(!db?.prepare||!Array.isArray(signals)||!Array.isArray(fresh?.data?.indices)||
+    !Number.isFinite(now))throw Error("GEOMACRO_GRI_DURABLE_AUTHORITY_REQUIRED");
+ const read=await db.prepare(
+  "SELECT category,methodology_version,index_json,index_sha256,evidence_sha256,fingerprints_json,revision FROM geomacro_news_gri_last_verified"
+ ).all();
+ if(!Array.isArray(read?.results)||read.results.length>3)throw Error("GEOMACRO_GRI_DURABLE_READ_INVALID");
+ const previous=new Map();
+ for(const row of read.results){
+  if(previous.has(row.category))throw Error("GEOMACRO_GRI_DURABLE_DUPLICATE");
+  const parsed=retainedGriRecordValid(row,now);
+  if(await storedGriIndexHash(row)!==row.index_sha256)
+   throw Error("GEOMACRO_GRI_RETAINED_HASH_MISMATCH");
+  previous.set(row.category,{...parsed,revision:row.revision,
+   evidence_sha256:row.evidence_sha256});
+ }
+ const qualifiedSignals=signals.filter(row=>qualified(row,now));
+ const keyed=await Promise.all(qualifiedSignals.map(async row=>({
+  category:row.category,fingerprint:await digest(JSON.stringify(observationIdentity(row)))
+ })));
+ const selected=DOMAINS.map(spec=>{
+  const current=fresh.data.indices.find(index=>index.key===spec.key);
+  if(!current)throw Error("GEOMACRO_GRI_CATEGORY_MISSING");
+  const fingerprints=[...new Set(keyed.filter(x=>x.category===spec.sourceCategory)
+   .map(x=>x.fingerprint))].sort();
+  const old=previous.get(spec.key);
+  const unseen=fingerprints.filter(key=>!old?.fingerprints.includes(key));
+  return {spec,current,fingerprints,old,unseen};
+ });
+ const resolved=[],evidence=[],updates=[],retainedCategories=[],updatedCategories=[];
+ for(const {spec,current,fingerprints,old,unseen} of selected){
+  // A shrinking input set from rolling expiry must NEVER reduce the last
+  // qualified score. Only actual added/revised verified journal entries may
+  // advance this category.
+  const advance=current.status==="available" &&(!old||unseen.length>0);
+  if(advance){
+   const index={...current,
+    previousScore:old?old.index.score:null,
+    changePoints:old?Math.round((current.score-old.index.score)*100)/100:null};
+   const merged=[...new Set([...fingerprints,
+     ...(old?.fingerprints??[]).filter(x=>!fingerprints.includes(x))])].slice(0,600);
+   const proof=await digest(JSON.stringify(merged));
+   const json=JSON.stringify(index);
+   const hash=await digest(json);
+   // One idempotent per-domain write ONLY after observing genuinely new
+   // material. Protect concurrent writers with an optimistic revision check.
+   const result=await db.prepare(
+    "INSERT INTO geomacro_news_gri_last_verified(category,methodology_version,index_json,index_sha256,evidence_sha256,fingerprints_json,revision) VALUES(?,?,?,?,?,?,1) "+
+    "ON CONFLICT(category) DO UPDATE SET methodology_version=excluded.methodology_version,index_json=excluded.index_json,index_sha256=excluded.index_sha256,evidence_sha256=excluded.evidence_sha256,fingerprints_json=excluded.fingerprints_json,revision=revision+1 WHERE revision=?"
+   ).bind(spec.key,NEWS_GRI_METHOD,json,hash,proof,JSON.stringify(merged),old?.revision??0).run();
+   if(result?.success!==true||result.meta?.changes!==1)
+    throw Error("GEOMACRO_GRI_CONCURRENT_RETRY_REQUIRED");
+   resolved.push(index);evidence.push([spec.key,proof]);
+   updates.push(spec.key);updatedCategories.push(spec.key);
+  }else if(old){
+   const original=old.index;
+   const at=Date.parse(original.readingAsOf);
+   // Last score and original source clock stay immutable. Only the display
+   // age/status and genuinely rolling source-native charts progress with time.
+   resolved.push({...original,
+    readingStatus:now-at<=60*60_000?"current":"last_verified",
+    readingAgeHours:Math.round((now-at)/3600000*100)/100,
+    observedSeverity:current.observedSeverity,
+    series:current.series,
+   });
+   evidence.push([spec.key,old.evidence_sha256]);
+   retainedCategories.push(spec.key);
+  }else{
+   resolved.push(current);
+   evidence.push([spec.key,null]);
+  }
+ }
+ return {indices:resolved,evidenceFingerprint:await digest(JSON.stringify(evidence)),
+   updatedCategories,retainedCategories,d1_writes:updates.length};
+}
+
 export async function certifiedNewsSeverityGriFromSignals(signals,{
  now=Date.now(),secret
 }={}){
@@ -164,7 +277,7 @@ export async function certifiedNewsSeverityGriFromSignals(signals,{
  if(new Set(selected.map(x=>x.id)).size!==selected.length)
   throw Error("GEOMACRO_NEWS_GRI_DUPLICATE_INPUT");
  const stable=selected.slice().sort((a,b)=>a.id.localeCompare(b.id));
- const inputHash=await digest(JSON.stringify(stable.map(x=>({
+ const inputHash=retained?.evidenceFingerprint??await digest(JSON.stringify(stable.map(x=>({
   id:x.id,category:x.category,topic:x.topic,geography:x.geography,
   title:x.title,what_changed:x.what_changed,why_it_matters:x.why_it_matters,
   development_type:x.development_type,published_at:x.published_at,
@@ -178,13 +291,13 @@ export async function certifiedNewsSeverityGriFromSignals(signals,{
   scope:"observed-official-public-news-and-unverified-osint-no-independent-event-verification"
  }));
  const timestamp=new Date(now).toISOString();
- const indices=DOMAINS.map(spec=>buildIndex(spec,stable,now));
+ const indices=retained?.indices??DOMAINS.map(spec=>buildIndex(spec,stable,now));
  const calculationHash=await digest(JSON.stringify(indices.map(x=>({
   category:x.key,score:x.score,eventCount:x.eventCount,
   readingAsOf:x.readingAsOf}))));
  const proofHash=await digest("GeoMacroNewsGRI/v1\\n"+inputHash+"\\n"+
    methodologyHash+"\\n"+calculationHash);
- for(const index of indices)if(index.status==="available")index.readingSnapshotId=proofHash;
+ for(const index of indices)if(index.status==="available"&&!index.readingSnapshotId)index.readingSnapshotId=proofHash;
  const data={
   contractVersion:"risk-indices-v1.1.0",
   parentMethodologyVersion:NEWS_GRI_METHOD,
@@ -203,6 +316,10 @@ export async function certifiedNewsSeverityGriFromSignals(signals,{
   observed_official_release_input_count:stable.filter(x=>x.status===STATUS_OFFICIAL).length,
   observed_osint_input_count:stable.filter(x=>x.status===STATUS_OSINT).length,
   osint_event_facts_verified:false,
+  continuity:retained?{policy:"hold-last-qualified-until-new-input-v1",
+   updated_categories:retained.updatedCategories,
+   retained_categories:retained.retainedCategories,
+   historical_score_clock_preserved:true}:undefined,
   generated_at:timestamp,methodology_version:NEWS_GRI_METHOD,data
  });
  const signature=await seal(signedPayloadJson,secret);
@@ -231,8 +348,13 @@ export async function serveSelfCertifiedNewsSeverityGri(env,{
     doc.returned_rows!==doc.signals?.length||
     !Array.isArray(doc.signals)||doc.signals.length>600)
    return bad("QUALIFIED_NEWS_SOURCE_INVALID");
-  const report=await certifiedNewsSeverityGriFromSignals(doc.signals,{
+  // Verify issuer capability before modifying any durable state.
+  const fresh=await certifiedNewsSeverityGriFromSignals(doc.signals,{
    now,secret:env.CONTROL_PLANE_TOKEN});
+  const retained=await retainLastQualifiedGriByDomain({
+   db:env.DB,signals:doc.signals,fresh,now});
+  const report=await certifiedNewsSeverityGriFromSignals(doc.signals,{
+   now,secret:env.CONTROL_PLANE_TOKEN,retained});
   return Response.json(report,{status:200,headers:{
    "Content-Type":"application/json; charset=utf-8",
    "Cache-Control":"public, max-age=60, stale-while-revalidate=180",
