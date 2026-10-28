@@ -56,6 +56,37 @@ jobs:
           node --test scripts/lib/risk-indices-verified-parent-backstop.test.mjs
           node --test scripts/lib/risk-indices-continuity-watchdog.test.mjs
 
+  read-only-acceptance-on-main-update:
+    needs: source-and-negative-tests
+    # A canonical deployment changes code, not certification. Check the
+    # public signed state once immediately; never dispatch, sign or rewrite.
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
+      GRI_READY_REVIEWED_SHA256: ${{ vars.GRI_READY_REVIEWED_SHA256 }}
+      GRI_READY_CERTIFICATES_SHA256: ${{ vars.GRI_READY_CERTIFICATES_SHA256 }}
+      GRI_READY_APPROVED_AT: ${{ vars.GRI_READY_APPROVED_AT }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Read-only exact main acceptance without source signer or payments
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_CANONICAL_MAIN_SHA" = "$(git rev-parse HEAD)"
+          node scripts/ops/observe-risk-indices-continuity.mjs
+
   dispatch-only-after-verified-parent:
     needs: source-and-negative-tests
     if: >-
