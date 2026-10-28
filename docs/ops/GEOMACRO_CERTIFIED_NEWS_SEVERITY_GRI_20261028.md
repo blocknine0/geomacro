@@ -1,4 +1,4 @@
-# GeoMacro Certified GRI — News Severity v1 (self-issued)
+# GeoMacro Certified GRI — Public News + OSINT Severity v1.1 (self-issued)
 
 ## Product change
 The existing `/risk-indices` three-panel layout is preserved. This public page now consumes `GET /v1/public/geomacro-certified-news-severity-gri` on the canonical GeoMacro D1 Control Plane, instead of requiring the old independently signed GRI v1.2 parent. The homepage preview uses the same hook. `/global-risk` and PREDGE remain completely separate and unchanged.
@@ -10,9 +10,11 @@ GeoMacro **self-certifies its own calculation**: it collects eligible original-d
 
 ## Eligible data
 - Existing `website-derived-news-bundle.v1`, capped at 600 rows in the existing 72-hour journal. No additional source scraping or producer.
-- Only `official_release_observed_unscored` with valid native release clock and original-source-safe *derived* prose; `official_feed_candidate_unscored` and `osint_feed_observed_unverified` NEVER contribute.
-- Distinct development categories (geopolitics, macro/FX, critical minerals), with explicit source-qualified event-severity **heuristic**, not a claim that an unscored article contained verified severity.
-- No eligible data for a category = `status:unavailable, score:null`, not zero or a previous score promoted to current.
+- `official_release_observed_unscored`: public original-release news, valid native source clock and source-safe GeoMacro-derived text; full rubric potential-severity baseline, normal weight.
+- `osint_feed_observed_unverified`: monitored OSINT source-feed observations, valid native clock and source-private safe derived text. **Included in all three domain scores at 0.22 event weight** and a bounded **12–42 potential-severity** signal (0.46 × topic rubric); no inferred independent factual corroboration. OSINT-only indices are low-confidence; an official release takes priority for the same topic/geography/six-hour window.
+- `official_feed_candidate_unscored`: publisher candidate with unclassified item, excluded from numerical risk until meaningful evidence exists. Observed OSINT is not silently relabeled as official news.
+- Separate domain scores for Geopolitics, Macro/FX and Critical Minerals, with a **provenance-weighted heuristic**. Inputs and source-type counts are SHA-bound; the public certificate explicitly reports independent event verification as **false**.
+- No eligible public news or monitored OSINT for a category = `status:unavailable, score:null`, not zero or a previous score promoted to current.
 - `readingAsOf` retains the last actual release time and `last_verified` status if the latest source is older than one hour. `snapshotAsOf` is calculation time, not the native source timestamp.
 - The existing 72h journal cannot prove 7D/30D comparable historical time series. Charts remain unavailable for those frames until a separately persisted history is actually established; no synthetic backfill.
 
