@@ -68,6 +68,8 @@ on:
       - "scripts/lib/derived-news-readback-policy.mjs"
       - "scripts/ops/verify-all-news-signed-publications.mjs"
       - "scripts/tests/public-signed-news.test.mjs"
+      - "scripts/ops/verify-private-news-boundary-live.mjs"
+      - "scripts/tests/private-news-proof-boundary.test.mjs"
       - "src/lib/automated-intelligence-input.ts"
       - "src/lib/low-authority-source-review.ts"
       - "scripts/ops/verify-predge-auth-research-delivery.mjs"
@@ -804,8 +806,13 @@ jobs:
           set -euo pipefail
           npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "DELETE FROM control_state WHERE key='bootstrap_smoke';"
 
-      - name: Verify every retained Intelligence news signature from the deployed public readback
-        # Uses public registered verification keys only; no private signer or payment.
+      - name: Prove public and machine anonymous original-verification access is denied
+        # Zero D1 SQL: both old public proof URL and private scoped path
+        # must return generic 404 before owner-only signed readback proceeds.
+        run: node scripts/ops/verify-private-news-boundary-live.mjs
+
+      - name: Verify retained signed inputs through GeoMacro-only scoped proof
+        # Owner-only verification, no original/source status in public Actions logs.
         run: node scripts/ops/verify-all-news-signed-publications.mjs
 
       - name: Confirm no paid or destructive activation occurred
