@@ -59,6 +59,11 @@ jobs:
         # burst concurrency; do not relax integrity, versions or scripts.
         run: bun install --frozen-lockfile --registry=https://registry.npmjs.org/ --network-concurrency=8
 
+      - name: Lovable mirror TypeScript source check (strict, GitHub authoritative)
+        # Regression guard: app-only exclusions do NOT skip the separate Vitest suite.
+        # Compilation does not emit JS, edit secrets, publish or contact payment endpoints.
+        run: bunx --no-install tsc --noEmit --pretty false
+
       - name: App tests
         shell: bash
         run: |
