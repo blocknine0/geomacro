@@ -15,6 +15,12 @@ async function get(path) {
   // be retried; no request is considered successful without this fence.
   if(path==="/.well-known/geomacro-build.json"&&res.status===404)
    return {res,json:null};
+  // Only categorical route state; never expose headers, URLs, body, secrets
+  // or worker configuration to the public job log.
+  console.error(JSON.stringify({schema:"geomacro.web-candidate-fence-diagnostic.v1",
+   http_status:res.status,
+   content_type_json:(res.headers.get("content-type")??"").includes("application/json"),
+   fence_present:false,raw_response_logged:false}));
   throw Error("CANDIDATE_READ_ONLY_FENCE_NOT_VERIFIED");
  }
  const json=await res.json();
