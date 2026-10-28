@@ -1,6 +1,6 @@
 import type { AskAnswer } from "@/lib/ask-geomacro.functions";
 
-const MAX_LEN = 300;
+const MAX_LEN = 1200;
 
 type PublicAskResponse =
   | { ok: true; data: AskAnswer; context?: { mode?: string; resolved_question?: string } }
