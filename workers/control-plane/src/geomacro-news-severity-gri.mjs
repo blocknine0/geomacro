@@ -269,7 +269,7 @@ export async function retainLastQualifiedGriByDomain({db,signals,fresh,now=Date.
 }
 
 export async function certifiedNewsSeverityGriFromSignals(signals,{
- now=Date.now(),secret
+ now=Date.now(),secret,retained=null
 }={}){
  if(!Number.isFinite(now)||!Array.isArray(signals)||signals.length>600)
   throw Error("GEOMACRO_NEWS_GRI_INPUT_INVALID");
