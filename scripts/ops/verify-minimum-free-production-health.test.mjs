@@ -175,6 +175,7 @@ test("network-bounded GitHub comparison refuses invalid, unavailable and noncano
 test("72h expiry between three-hour static snapshots does not invalidate current native officials",()=>{
  const expired="2026-10-17T23:30:00.000Z";
  const osint={...goodStory(),id:"macro-abcd1234",category:"macro",
+   title:"Geomacro finds a distinct unverified macro feed notice",
    published_at:expired,
    status:"osint_feed_observed_unverified",
    development_type:"unverified OSINT feed observation",geography:null,
