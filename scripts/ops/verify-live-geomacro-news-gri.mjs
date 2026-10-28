@@ -56,7 +56,13 @@ try{
   if(!domains.delete(index.key)||
     !(index.status==="unavailable"&&index.score===null||
       index.status==="available"&&typeof index.score==="number"&&
-      Number.isFinite(index.score)&&index.score>=0&&index.score<=100))
+      Number.isFinite(index.score)&&index.score>=0&&index.score<=100)||
+    !index.sourceMix||
+    !Number.isSafeInteger(index.sourceMix.public_news)||
+    !Number.isSafeInteger(index.sourceMix.osint)||
+    index.sourceMix.osint_event_facts_verified!==false||
+    index.sourceMix.public_news<0||index.sourceMix.osint<0||
+    index.sourceMix.public_news+index.sourceMix.osint!==index.eventCount)
    throw Error("PUBLIC_CERTIFIED_GRI_SEVERITY_INVALID");
  }
  if(domains.size)throw Error("PUBLIC_CERTIFIED_GRI_CATEGORY_MISSING");
@@ -66,6 +72,9 @@ try{
   issuer:"GeoMacro",methodology_version:expected,
   three_categories_present:true,issuer_hmac_verified:true,
   eligible_categories:data.data.indices.filter(x=>x.status==="available").length,
+  public_news_contributions:data.data.indices.reduce((n,x)=>n+x.sourceMix.public_news,0),
+  unverified_osint_contributions:data.data.indices.reduce((n,x)=>n+x.sourceMix.osint,0),
+  osint_independent_event_verification_claimed:false,
   independent_external_review_claimed:false,
   source_event_fact_verification_claimed:false,
   original_news_data_logged:false,payment_executed:false,
