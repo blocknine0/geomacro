@@ -263,6 +263,14 @@ function queryIntent(question: string): AgentQueryIntent | null {
 }
 export function interpretMultilingualIntelligenceQuery(raw: unknown) {
   const input = inputSchema.parse(raw);
+  const detected = detectLanguage(input.question,input.language);
+  const requestedLocale = detected.split("-")[0];
+  if(input.language && !["en","bn","hi"].includes(requestedLocale))
+    throw Error("PAID_LOCALIZED_OUTPUT_LOCALE_UNSUPPORTED");
+  // Original English remains the default. Explicit English/Bengali/Hindi and
+  // Bengali/Hindi script auto-detection opt in to a hash-bound paid locale.
+  const responseLocale = ["bn","hi"].includes(requestedLocale)
+    ? requestedLocale as "bn"|"hi" : input.language ? "en" as const : null;
   const q = norm(input.question);
   const inferredTopics = semanticTopics(input.question);
   const requestedTopics = input.topics ?? inferredTopics;
@@ -340,6 +348,7 @@ export function interpretMultilingualIntelligenceQuery(raw: unknown) {
       isCorridor ? "corridor" : subjects.length > 1 ? "comparison" : "single_subject");
   const canonical = agentAdaptiveQuerySchema.parse({
     question: input.question, subjects, topics, product, intent,
+    ...(responseLocale?{response_locale:responseLocale}:{}),
     fulfillment_mode: "published_only", delivery_tier, detail,
     ...(input.ranking ? {ranking:input.ranking} : {}),
     ...(input.change ? {change:input.change} : {}),
@@ -352,7 +361,9 @@ export function interpretMultilingualIntelligenceQuery(raw: unknown) {
   const price = resolveGeomacroCapabilityPrice(product.capability,product.variant);
   return {
     ok: true as const, schema_version: MULTILINGUAL_QUERY_SCHEMA,
-    detected_language: detectLanguage(input.question,input.language),
+    detected_language: detected,
+    output_locale:responseLocale??"en",
+    output_locale_scope:"BOUNDED_FACTUAL_SUMMARY_ONLY" as const,
     language_recognition: "OFFLINE_BOUNDED_LEXICON_WITH_GLOBAL_ISO3_FALLBACK" as const,
     interpretation_review: "DETERMINISTIC_NOT_LIVE_EVIDENCE_PROOF" as const,
     intent: plan.intent, subject_count: plan.subjects.length,
