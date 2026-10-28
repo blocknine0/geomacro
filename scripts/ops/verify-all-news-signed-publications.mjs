@@ -25,7 +25,7 @@ export function storePrivateNewsVerificationReceipt(result,path,env=process.env)
     !resolve(path).startsWith(resolve(base)+"/"))
   throw Error("PRIVATE_NEWS_PROOF_RECEIPT_PATH_NOT_PRIVATE");
  // GitHub runner already uses a private temp dir; enforce 0600 on output.
- writeFileSync(path,JSON.stringify(result)+"\\n",{encoding:"utf8",flag:"w",mode:0o600});
+ writeFileSync(path,JSON.stringify(result)+"\n",{encoding:"utf8",flag:"w",mode:0o600});
  const stat=lstatSync(path);
  if(!stat.isFile()||stat.isSymbolicLink()||
     process.platform!=="win32"&&(stat.mode&0o077)!==0)
