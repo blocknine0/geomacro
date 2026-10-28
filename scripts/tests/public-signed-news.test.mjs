@@ -4,7 +4,11 @@ import {generateKeyPairSync,sign,createHash} from 'node:crypto';
 import {publicSignedNews} from '../../workers/control-plane/src/public-signed-news.mjs';
 import {automatedInputSignable,automatedInputId,inputHash} from '../../src/lib/automated-intelligence-input.ts';
 import {lowSourceReviewBytes} from '../../src/lib/low-authority-source-review.ts';
-import {verifyAllNewsSignedPublications} from '../ops/verify-all-news-signed-publications.mjs';
+import {verifyAllNewsSignedPublications as verifyOriginal,
+ privateNewsProofBearer} from '../ops/verify-all-news-signed-publications.mjs';
+const TEST_PRIVATE_PROOF_TOKEN="a".repeat(64);
+const verifyAllNewsSignedPublications=args=>
+ verifyOriginal({...args,proofBearer:TEST_PRIVATE_PROOF_TOKEN});
 const now=Date.parse('2026-10-22T12:00:00.000Z');
 const issuer=generateKeyPairSync('ed25519'),reviewer=generateKeyPairSync('ed25519');
 const pub=issuer.publicKey.export({format:'der',type:'spki'}).toString('base64');
@@ -113,6 +117,7 @@ test('transient public signed-news 503 retries a bounded GET and still verifies 
   calls++;
   assert.equal(init.method,'GET');
   assert.equal(init.redirect,'manual');
+  assert.equal(init.headers.Authorization,"Bearer "+TEST_PRIVATE_PROOF_TOKEN);
   if(calls===1)return new Response('temporary',{status:503});
   return f.fetchImpl(url);
  };
@@ -246,4 +251,15 @@ test('22h source verification remains separate from 60-minute live release fresh
  const result=await verifyAllNewsSignedPublications({keys,now,fetchImpl:f.fetchImpl,readJournal:async()=>[s]});
  assert.equal(result.original_verification_window_hours,22);
  assert.equal(result.original_page_verified_reported,1);
+});
+
+test("owner-only proof token differs from administrator and low reviewer credentials",()=>{
+ const fromRoot=privateNewsProofBearer({GEOMACRO_COMMERCE_LEDGER_TOKEN:"r".repeat(40)});
+ const low="c".repeat(64);
+ const fromLow=privateNewsProofBearer({GEOMACRO_LOW_REVIEW_TOKEN:low});
+ assert.match(fromRoot,/^[a-f0-9]{64}$/);
+ assert.match(fromLow,/^[a-f0-9]{64}$/);
+ assert.notEqual(fromRoot,low);
+ assert.notEqual(fromRoot,fromLow);
+ assert.throws(()=>privateNewsProofBearer({}),/PRIVATE_NEWS_PROOF_TOKEN_MISSING/);
 });
