@@ -27,7 +27,7 @@ describe("paid machine/user market watch from qualified existing data",()=>{
     expect(a.monitoring.state_version).toBe("gstate_test_123");
     expect(a.monitoring.recommended_not_before_seconds).toBe(3600);
     expect(a.limitations.execution_authorized).toBe(false);
-    expect(a.limitations.source_or_raw_osint_included).toBe(false);
+    expect(a.limitations.private_inputs_exposed).toBe(false);
   });
   it("cannot grow a sparse digest into five watch items; higher tiers only add known channels",()=>{
     const more={...base,verified_dimensions:[
