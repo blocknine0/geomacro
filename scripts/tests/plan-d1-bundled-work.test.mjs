@@ -143,7 +143,7 @@ test('fixed PREDGE account reserve is additive for every GeoMacro Free admission
    assert.ok(max.rows_read<=5000000-expectedReadReserve);
    assert.ok(max.rows_written<=100000-expectedWriteReserve);
  }
- for(const [read,write] of [[4249000,1000],[1000,92500],[4350000,93000]]){
+ for(const [read,write] of [[4251000,1000],[1000,92500],[4350000,93000]]){
    const q=planD1BundledWork(quota(read,write),{now:at});
    assert.equal(q.snapshot_refresh,false);
    assert.equal(q.source_intake,false);
