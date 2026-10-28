@@ -4,7 +4,7 @@
  */
 import {createHash,createHmac,timingSafeEqual} from "node:crypto";
 const endpoint="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/geomacro-certified-news-severity-gri";
-const expected="geomacro-news-severity-v1.0.0";
+const expected="geomacro-news-severity-v1.1.0";
 const fail=()=>{console.error("GEOMACRO_CERTIFIED_NEWS_GRI_LIVE_ACCEPTANCE_FAILED");process.exitCode=2};
 try{
  const env=process.env;
