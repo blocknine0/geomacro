@@ -113,13 +113,20 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
    if(page.journal_fingerprint!==expectedFingerprint){
     journalChanged=true;break;
    }
-   if(page.unique_items!==expected.size)throw Error('SIGNED_NEWS_PAGE_COUNT_INVALID');
+   // A concurrent canonical INSERT/UPDATE can change the unique-item count
+   // after the independent first journal read. Never accept a mixed snapshot
+   // or mislabel the issuer key as invalid; restart with a fresh journal within
+   // the existing strictly bounded three attempts (and fail closed if busy).
+   if(page.unique_items!==expected.size){
+    journalChanged=true;break;
+   }
    for(const item of page.items){
     const id=await automatedInputId(item.signal);
     if(id!==item.input_id||!expected.has(id)||seen.has(id))throw Error('SIGNED_NEWS_IDENTITY_OR_COVERAGE');
     seen.add(id);
     if(item.signature_verified!==true||!item.proof)throw Error('SIGNED_NEWS_ITEM_NOT_SIGNED');
-    await verifyAutomatedInput(item.proof,keys,now);
+    try{await verifyAutomatedInput(item.proof,keys,now)}
+    catch{throw Error('SIGNED_NEWS_SIGNATURE_INVALID')}
     if(await automatedInputId(item.proof.payload.signal)!==id)throw Error('SIGNED_NEWS_PROOF_BINDING');
     const age=now-Date.parse(item.signal.published_at);
     const isCurrent=item.signal.date_precision==='exact'&&age>=0&&age<=60*60_000;
