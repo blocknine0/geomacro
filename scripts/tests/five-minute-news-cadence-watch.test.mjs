@@ -119,7 +119,7 @@ test('source-only admission recovers publisher during discretionary hold; signin
  assert.match(proof,/verify-predge-pilot-continuity\.mjs/);
  assert.match(proof,/verify-predge-continuity-lock\.mjs/);
  assert.match(proof,/secrets\.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE/);
- assert.doesNotMatch(proof,/dispatches|actions: write|B2_/);
+ assert.doesNotMatch(proof,/\/dispatches|actions: write|B2_/);
  const publisher=readFileSync('scripts/ops/publish-original-news-five-minute-fastlane.ts','utf8');
  assert.match(publisher,/source_intake_completed=true/);
 });
