@@ -106,8 +106,8 @@ jobs:
           const workers=await request(api);
           if(!Array.isArray(workers))throw Error('CANDIDATE_WORKER_LIST_INVALID');
           let pepperPresent=false;
-          if(workers.some(w=>w.id==='geomacro-web-candidate')){
-            const settings=await request(api+'/geomacro-web-candidate/settings');
+          if(workers.some(w=>w.id==='geomacro-web-candidate-isolated')){
+            const settings=await request(api+'/geomacro-web-candidate-isolated/settings');
             if(!Array.isArray(settings.bindings)||settings.bindings.some(b=>
               !(b.type==='assets'&&b.name==='ASSETS')&&
               !(b.type==='plain_text'&&b.name==='GEOMACRO_SUPABASE_RUNTIME_MODE'&&b.text==='standby')&&
