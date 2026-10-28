@@ -28,6 +28,10 @@ export function pinnedGovUkContentApiUrl(raw) {
   return "https://www.gov.uk/api/content"+u.pathname;
  }catch{return null;}
 }
+/**
+ * @param {{articleUrl?: string, html?: string, contentJson?: string,
+ *   articleTitle?: string|null, now?: Date, maxAgeMs?: number}} [options]
+ */
 export function verifiedGovUkContentFirstPublishedAt({
  articleUrl,html,contentJson,articleTitle=null,now=new Date(),maxAgeMs=22*3600_000
 }={}){
