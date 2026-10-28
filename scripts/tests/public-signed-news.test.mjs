@@ -263,3 +263,40 @@ test("owner-only proof token differs from administrator and low reviewer credent
  assert.notEqual(fromRoot,fromLow);
  assert.throws(()=>privateNewsProofBearer({}),/PRIVATE_NEWS_PROOF_TOKEN_MISSING/);
 });
+
+test('independent signed reader replays a changing canonical unique count only against fresh journal',async()=>{
+ const original=await fixture(),item=signal();
+ let pages=0,journals=0;
+ const fetchImpl=async url=>{
+  const response=await original.fetchImpl(url);
+  const doc=await response.json();pages++;
+  if(pages===1)doc.unique_items++;
+  return Response.json(doc);
+ };
+ const result=await verifyAllNewsSignedPublications({keys,now,fetchImpl,
+  readJournal:async()=>{journals++;return [item]}});
+ assert.equal(result.all_retained_unique_news_signature_verified,true);
+ assert.equal(result.journal_restart_attempts,1);
+ assert.deepEqual([pages,journals],[2,2]);
+});
+test('persistent canonical unique count drift must fail closed, never accept signed publication',async()=>{
+ const original=await fixture();let pages=0,journals=0;
+ await assert.rejects(verifyAllNewsSignedPublications({keys,now,
+  readJournal:async()=>{journals++;return [signal()]},
+  fetchImpl:async url=>{
+   const response=await original.fetchImpl(url),doc=await response.json();
+   doc.unique_items++;pages++;return Response.json(doc);
+  }}),/SIGNED_NEWS_JOURNAL_CHANGED_REPEATEDLY/);
+ assert.deepEqual([pages,journals],[3,3]);
+});
+test('tampered issuer envelope is rejected with an exact sanitized signature failure',async()=>{
+ const original=await fixture();let calls=0;
+ await assert.rejects(verifyAllNewsSignedPublications({keys,now,
+  readJournal:async()=>[signal()],
+  fetchImpl:async url=>{
+   const response=await original.fetchImpl(url),doc=await response.json();
+   doc.items[0].proof.integrity.signature='X'.repeat(88);calls++;
+   return Response.json(doc);
+  }}),/SIGNED_NEWS_SIGNATURE_INVALID/);
+ assert.equal(calls,1,'never retry an actual tampered issuer signature as a transport race');
+});
