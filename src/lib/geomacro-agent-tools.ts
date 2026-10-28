@@ -175,6 +175,9 @@ function commonQuery(input: {
     intent: input.intent,
     evidence: "required",
     detail: input.detail,
+    // Match canonical Zod defaults for legacy paid signed-risk tool calls.
+    fulfillment_mode: "published_only",
+    delivery_tier: "signed_risk_intelligence",
     ...(input.max_age_seconds ? { max_age_seconds: input.max_age_seconds } : {}),
     ...(input.client_request_id ? { client_request_id: input.client_request_id } : {}),
     ...(input.change ? { change: input.change } : {}),
