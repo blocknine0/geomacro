@@ -26,8 +26,19 @@ export const COUNTRY_MACRO_DISCOVERY_TERMS=Object.freeze([
  '"fiscal budget"','"sovereign debt"','"foreign reserves"','"exchange rate"',
  '"bank liquidity"','"bank deposits"','"financial stability"','trade','tariffs',
 ]);
+// Material anchors keep lifecycle searches out of unrelated industrial news.
+// Bullion remains in Macro; country queries are discovery, never event evidence.
+export const COUNTRY_MINERAL_DISCOVERY_TERMS=Object.freeze([
+ '"critical minerals"','"critical raw materials"','"rare earth"','mining',
+ 'lithium','copper','cobalt','nickel','graphite','gallium','germanium','antimony',
+ 'tungsten','manganese','vanadium','bauxite','"magnet materials"',
+ '"mine permit"','"mine closure"','"mineral processing"','"smelter outage"',
+ '"mineral export"','"mining royalties"','"mineral recycling"',
+ '"mineral reserves"','"mineral offtake"','"mining investment"',
+ '"mineral refining"','"rare earth separation"',
+]);
 const TERMS='('+['election','sanctions','security','conflict','border','war',
- ...COUNTRY_MACRO_DISCOVERY_TERMS,'currency','"critical minerals"','"rare earth"','mining','lithium','copper'].join(' OR ')+')';
+ ...COUNTRY_MACRO_DISCOVERY_TERMS,'currency',...COUNTRY_MINERAL_DISCOVERY_TERMS].join(' OR ')+')';
 const STEP_MS=15*60000;
 
 export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=COUNTRIES_195,perTick=COUNTRY_DISCOVERY_PER_TICK){

@@ -89,3 +89,24 @@ empty sweep after all nonempty chunks and before complete readback. An already
 601+ baseline repairs once only after the reader proves that exact condition;
 unknown outages/quota failures cannot trigger speculative cleanup. This prevents
 a healthy new source observation from leaving the shared journal unavailable.
+
+
+## Country critical-mineral development coverage
+All 195 existing country discovery queries explicitly include material and
+lifecycle anchors: critical raw materials, rare earths and magnet materials;
+lithium, copper, cobalt, nickel, graphite, gallium, germanium, antimony,
+tungsten, manganese, vanadium and bauxite; mine permits/closures, processing,
+smelter outages, mineral exports, royalties, recycling, reserves, offtake and
+investment. Existing multilingual publisher filters and global mineral priority
+watch continue alongside this country rotation. Gold/silver stay under Macro.
+
+This expands query content within the existing requests, not the source count,
+D1 allowance or paid contract. The 25 country slots per delivered 15-minute run
+cover 195 country routes in eight slots (nominal 120 minutes). Global priority
+and publisher discovery target 15-minute runs; delayed schedules, source failures
+and quota admission can lengthen actual intake. Every-country timely original
+publication coverage is not asserted. Index-only alternatives remain unverified
+discovery with native-date, rights and delivery gates unchanged. Query country
+never supplies event attribution. No development is invented for a country with
+no qualifying release. Shared-journal projection into the existing Predge feed
+retains the existing category and authentication contract.
