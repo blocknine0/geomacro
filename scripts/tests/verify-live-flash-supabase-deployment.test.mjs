@@ -8,7 +8,7 @@ function fake({updated="2026-10-28T18:15:00Z",route=405,health=200,meta=200}={})
  const calls=[];
  const fetchImpl=async(url,init)=>{
   calls.push({url,method:init.method,body:init.body??null});
-  if(url.includes("api.supabase.com")){
+  if(url==="https://api.supabase.com/v1/projects/"+PROJECT+"/functions"){
    return Response.json([{slug:SLUG,status:"ACTIVE",version:15,
      updated_at:updated}],{status:meta});
   }
