@@ -1,4 +1,7 @@
 import {describe,expect,it} from "vitest";
+import {readFileSync} from "node:fs";
+import {inflateSync} from "node:zlib";
+import {createHash} from "node:crypto";
 import {
   resolveGeomacroCapabilityPrice, publicCapabilityLaunchStatus,
   publicCapabilityNewSalesAllowed,
@@ -25,47 +28,45 @@ const SKUS=[
   {capability:"signed_risk_object",variant:"existing_valid_signed",price:"0.05",count:9},
   {capability:"signed_risk_object",variant:"newly_qualified_signed",price:"0.10",count:9},
 ] as const;
-const COUNTRIES=["USA","CAN","MEX","BRA","ARG","CHL","PER","GBR","DEU","FRA","POL","UKR",
-  "TUR","IND","CHN","JPN","KOR","AUS","IDN","SGP","VNM","ARE","SAU","IRN","ZAF",
-  "NGA","KEN","EGY","ZMB","COD","MAR","KAZ","MNG","BGD","NZL"] as const;
-const CORRIDORS=[
-  ["USA","CAN"],["MEX","USA"],["CHL","CHN"],["BRA","DEU"],["GBR","FRA"],
-  ["DEU","POL"],["TUR","DEU"],["UKR","POL"],["IND","ARE"],["CHN","AUS"],
-  ["JPN","KOR"],["IDN","SGP"],["VNM","CHN"],["SAU","IND"],["ZAF","ZMB"],
-  ["COD","CHN"],["KAZ","CHN"],["MAR","ESP"],["BGD","IND"],["EGY","TUR"],
-] as const;
-const TOPICS=[
-  ["conflict_geopolitics","sanctions_restrictions","trade_corridor"],
-  ["macro_risk","fx_external_risk","sovereign_risk"],
-  ["critical_minerals","energy_commodities","trade_corridor"],
-] as const;
-const DIMENSIONS=[
-  ["geopolitical_security","sanctions_restrictions","trade_corridor"],
-  ["macro_monetary","external_fx","sovereign_fiscal"],
-  ["critical_minerals","energy_commodities","trade_corridor"],
-] as const;
+const data=inflateSync(Buffer.from(
+  readFileSync("scripts/tests/data/launch-100-original-questions.zlib.b64","utf8").trim(),
+  "base64")).toString("utf8");
+expect(createHash("sha256").update(data).digest("hex"))
+  .toBe("27e28da3af26d36538d797b4802d1edad78c728a1bdf2801ab742a4bdf547dbc");
+const source=JSON.parse(data) as Array<[
+  string,string,"user"|"machine",string,
+  {capability:string;variant:string;issued_after?:string},
+  DecisionIntelligenceSubject[],string[],string,string,string,string
+]>;
 type Case={
   id:number;sku:typeof SKUS[number];category:number;actor:"user"|"machine";
   subject:DecisionIntelligenceSubject;topic:string;dimension:string;question:string;
+  issuedAfter:string|undefined;responseLocale:"bn"|"hi"|undefined;
 };
-const cases:Case[]=SKUS.flatMap(sku=>
-  Array.from({length:sku.count},()=>sku)).map((sku,index)=>{
-    const category=index%3, actor=index%2===0?"user":"machine";
-    const wantsCorridor=sku.capability.includes("corridor")||
-      (sku.capability==="intelligence_query"&&index%7===0);
-    const subject:DecisionIntelligenceSubject=wantsCorridor?{
-      type:"corridor",origin_country_iso3:CORRIDORS[index%CORRIDORS.length][0],
-      destination_country_iso3:CORRIDORS[index%CORRIDORS.length][1],
-    }:{type:"country",country_iso3:COUNTRIES[(index*7+Math.floor(index/9))%COUNTRIES.length]};
-    const topic=TOPICS[category][Math.floor(index/3)%3];
-    const dimension=DIMENSIONS[category][Math.floor(index/3)%3];
-    const label=subject.type==="country"?subject.country_iso3:
-      subject.origin_country_iso3+" > "+subject.destination_country_iso3;
-    const question=actor==="user"
-      ?"What could "+topic.replaceAll("_"," ")+" mean for "+label+", and what should I watch next?"
-      :"Return canonical source-private JSON for "+label+" and "+topic+" under my exact SKU.";
-    return {id:index+1,sku,category,actor,subject,topic,dimension,question};
-  });
+const categories:Record<string,number>={"Geopolitics":0,"Macro / FX":1,"Critical Minerals":2};
+const CASE_DIMENSIONS:Record<string,string>={
+  conflict_geopolitics:"geopolitical_security",sanctions_restrictions:"sanctions_restrictions",
+  trade_corridor:"trade_corridor",macro_risk:"macro_monetary",
+  fx_external_risk:"external_fx",sovereign_risk:"sovereign_fiscal",
+  critical_minerals:"critical_minerals",energy_commodities:"energy_commodities",
+};
+const cases:Case[]=source.map((row,index)=>{
+  const [id,question,actor,categoryLabel,product,subjects,topics,,,
+    ,price]=row;
+  const sku=SKUS.find(s=>s.capability===product.capability &&
+    s.variant===product.variant && s.price===price);
+  if(!sku||id!=="GM-"+String(index+1).padStart(3,"0")||
+    !(categoryLabel in categories)||subjects.length!==1||topics.length!==1)
+    throw Error("REAL_100_ORIGINAL_CASES_MISMATCH");
+  const n=(index+1)%10;
+  return {
+    id:index+1,sku,category:categories[categoryLabel],actor,
+    subject:subjects[0],topic:topics[0],
+    dimension:CASE_DIMENSIONS[topics[0]]??"geopolitical_security",
+    question,issuedAfter:product.issued_after,
+    responseLocale:n===5?"bn":n===8?"hi":undefined,
+  };
+});
 const mockObservedAt="2026-10-28T21:30:00.000Z";
 
 describe("100 global three-category, nine-price, human-and-machine MOCK contracts",()=>{
@@ -95,7 +96,7 @@ describe("100 global three-category, nine-price, human-and-machine MOCK contract
       expect(scope.raw_source_payload).toBe(false);
       expect(scope.execution_authorized).toBe(false);
       const product=sku.capability==="signed_risk_object"&&sku.variant==="newly_qualified_signed"?
-        {capability:sku.capability,variant:sku.variant,issued_after:"2026-10-28T21:28:00.000Z"}:
+        {capability:sku.capability,variant:sku.variant,issued_after:testCase.issuedAfter??"2026-10-28T21:28:00.000Z"}:
         {capability:sku.capability,variant:sku.variant};
       const parsed=agentAdaptiveQuerySchema.safeParse({
         schema_version:"geomacro.agent-query.v1",
@@ -104,7 +105,7 @@ describe("100 global three-category, nine-price, human-and-machine MOCK contract
         fulfillment_mode:"published_only",
         delivery_tier:sku.capability.startsWith("structural_")?
           "structural_baseline":"signed_risk_intelligence",
-        detail:"standard",client_request_id:"GM-MOCK100-"+String(testCase.id).padStart(3,"0"),
+        detail:"standard",...(testCase.responseLocale?{response_locale:testCase.responseLocale}:{}),client_request_id:"GM-MOCK100-"+String(testCase.id).padStart(3,"0"),
       });
       expect(parsed.success).toBe(true);
       // Runtime builder sees only a synthetic structural label; NO real risk,
