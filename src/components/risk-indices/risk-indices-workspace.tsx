@@ -61,7 +61,7 @@ export function RiskIndicesWorkspace() {
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">
             <ShieldCheck className="h-3.5 w-3.5" /> GeoMacro Certified GRI
           </div>
-          <h1 className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.06] tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 aria-label="Three risks. Three separate indices." className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.06] tracking-tight sm:text-5xl lg:text-6xl">
             Three risks.<span className="block text-muted-foreground">Three separate indices.</span>
           </h1>
           <p className="mt-5 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">

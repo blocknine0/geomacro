@@ -168,10 +168,10 @@ test("existing page layout stays but GeoMacro news severity replaces signed GRI 
 
 test("real 24H/48H/72H journal backfill stays source-native and never invents old GRI scores",async()=>{
  const history=[
-  example("geopolitics","history-01","geopolitical security",71*60),
-  example("geopolitics","history-02","foreign policy",43*60),
-  example("geopolitics","history-03","geopolitical security",18*60),
-  example("geopolitics","history-04","foreign policy",3*60),
+  example("geopolitics","000000a1","geopolitical security",71*60),
+  example("geopolitics","000000a2","foreign policy",43*60),
+  example("geopolitics","000000a3","geopolitical security",18*60),
+  example("geopolitics","000000a4","foreign policy",3*60),
  ];
  const out=await certifiedNewsSeverityGriFromSignals(history,{now:NOW,secret:SECRET});
  const index=out.data.indices[0];
@@ -193,8 +193,9 @@ test("real 24H/48H/72H journal backfill stays source-native and never invents ol
  assert.equal(out.data.indices[1].score,null);
 });
 test("GeoMacro OSINT stays low-weight and historical bins never increase source authority",async()=>{
- const osint={...example("macro","history-osint","monetary policy",50*60),
-  status:"osint_feed_observed_unverified",geography:null,development_type:"unverified OSINT feed observation"};
+ const osint={...example("macro","000000b5","monetary policy",50*60),
+  status:"osint_feed_observed_unverified",geography:null,development_type:"unverified OSINT feed observation",
+  sources_credited:["Monitored feed: research.example"]};
  const out=await certifiedNewsSeverityGriFromSignals([osint],{now:NOW,secret:SECRET});
  const index=out.data.indices[1];
  assert.equal(index.sourceMix.osint,1);
