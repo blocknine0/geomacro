@@ -32,7 +32,7 @@ describe("official Geomacro API and AI Agent v1",()=>{
   expect(d.endpoints.mcp).toBe("/api/mcp");
   expect(d.endpoints.a2a).toBe("/api/a2a");
   expect(d.tools).toHaveLength(GEOMACRO_AGENT_TOOLS.length);
-  expect(d.tools.filter(t=>t.access==="CANONICAL_X402_VERIFIED_ONLY")).toHaveLength(11);
+  expect(d.tools.filter(t=>t.access==="CANONICAL_X402_VERIFIED_ONLY")).toHaveLength(GEOMACRO_AGENT_TOOLS.filter(t=>t.paid).length);
   expect(d.tools.find(t=>t.name==="verify_risk_object")?.endpoint).toBe("/api/mcp");
   expect(d.pricing_version).toBe(GEOMACRO_CAPABILITY_PRICING_VERSION);
   expect(d.pricing.flatMap(x=>x.variants).find(p=>
