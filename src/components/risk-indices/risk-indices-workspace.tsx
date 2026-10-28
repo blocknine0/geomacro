@@ -1,4 +1,7 @@
 import { useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import { usePublicRiskResearchActivity } from "@/lib/use-public-risk-research-activity";
+import { PUBLIC_RESEARCH_INDEX_CATEGORIES } from "@/lib/risk-indices-public-research";
 import { AlertTriangle, CheckCircle2, Fingerprint, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RiskBadge, RiskTrend } from "@/components/foundation/risk";
@@ -23,12 +26,12 @@ export function RiskIndicesWorkspace() {
               Geomacro Risk Indices
             </p>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              {unavailable ? "Verified risk package temporarily unavailable" : "Refreshing verified readings"}
+              {unavailable ? "Current certified Risk Indices unavailable" : "Checking certified Risk Indices"}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
               {unavailable
-                ? "The latest verified readings are temporarily unavailable."
-                : "Checking for the latest verified readings."}
+                ? "No current independently certified numerical package can be displayed right now. Public research activity is shown separately below."
+                : "Checking the independently verified index package. Public research updates remain available below."}
             </p>
           </div>
           <Button type="button" variant="outline" onClick={risk.retry} className="gap-2">
@@ -43,18 +46,33 @@ export function RiskIndicesWorkspace() {
               <div>
                 <p className="font-medium text-foreground">No unverified fallback is being displayed.</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Try again shortly. The last verified dates remain the reference.
+                  Recent source-dated Finds and automated internal research scores do not become numerical Risk Indices without independently certified index proof. Try the verified index service again to check for an accepted package.
                 </p>
               </div>
             </div>
           </div>
         ) : (
-          <div className="mt-8 grid gap-4 lg:grid-cols-3" aria-label="Refreshing verified risk indices">
-            {[0, 1, 2].map((item) => (
-              <div key={item} className="h-56 animate-pulse rounded-2xl border border-border/60 bg-card/30" />
+          <div className="mt-8 grid gap-4 lg:grid-cols-3" aria-label="Checking three certified risk indices">
+            {PUBLIC_RESEARCH_INDEX_CATEGORIES.map((item) => (
+              <div key={item.key} className="h-56 animate-pulse rounded-2xl border border-border/60 bg-card/30 p-6">
+                <p className="font-mono text-xs text-muted-foreground">{item.name}</p>
+                <p className="mt-8 text-sm text-muted-foreground">Checking independently verified reading</p>
+              </div>
             ))}
           </div>
         )}
+        {unavailable ? (
+          <div className="mt-5 grid gap-4 lg:grid-cols-3" aria-label="Unavailable certified domain readings">
+            {PUBLIC_RESEARCH_INDEX_CATEGORIES.map((item) => (
+              <article key={item.key} className="rounded-2xl border border-border/70 bg-card/40 p-5">
+                <p className="text-sm font-semibold">{item.name}</p>
+                <p className="mt-3 text-sm text-muted-foreground">Certified numerical reading unavailable</p>
+                <p className="mt-1 text-xs text-muted-foreground">No zero-risk or estimated score substituted.</p>
+              </article>
+            ))}
+          </div>
+        ) : null}
+        <PublicResearchActivityPanel />
       </main>
     );
   }
@@ -63,6 +81,7 @@ export function RiskIndicesWorkspace() {
   const hasLastVerified = data.indices.some(
     (index) => index.status === "available" && index.readingStatus === "last_verified",
   );
+  const hasUnavailable = data.indices.some((index) => index.status === "unavailable");
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 pb-20 pt-10 sm:px-6 md:pt-14">
@@ -70,7 +89,7 @@ export function RiskIndicesWorkspace() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-              <ShieldCheck className="h-3.5 w-3.5" /> Verified public indices
+              <ShieldCheck className="h-3.5 w-3.5" /> Verified snapshot only
             </span>
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               {data.contractVersion}
@@ -93,9 +112,9 @@ export function RiskIndicesWorkspace() {
           <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
             Follow Geopolitical, Macroeconomic and Critical Minerals risk separately. Inspect the dates, drivers and confidence behind each reading.
           </p>
-          {hasLastVerified ? (
+          {(hasLastVerified || hasUnavailable || risk.error) ? (
             <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">
-              The newest verified continuity package is older than the current-reading window. Geomacro is showing it as last verified rather than presenting stale data as live.
+              Each domain is evaluated independently. Historical readings retain their original dates; a missing certificate or expired source does not become a current score. Automated signed research prioritization is not an independently reviewed risk index.
             </p>
           ) : null}
         </div>
@@ -107,6 +126,7 @@ export function RiskIndicesWorkspace() {
         </div>
       </section>
 
+      <PublicResearchActivityPanel />
       <Section
         eyebrow="History"
         title="Compare each risk domain on its own scale"
@@ -201,6 +221,53 @@ export function RiskIndicesWorkspace() {
         </p>
       </Section>
     </main>
+  );
+}
+
+function PublicResearchActivityPanel() {
+  const activity = usePublicRiskResearchActivity();
+  return (
+    <section className="border-b border-border/70 py-10 sm:py-12" aria-label="Public research activity, not risk scores">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Research activity</p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Recent developments by category</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
+            Live public Finds use source-native publication dates. They are separate from certified numerical Risk Indices.
+            Geomacro's signed internal prioritization does not certify factual impact, a current GRI score or payment eligibility.
+          </p>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={activity.retry} className="gap-2">
+          <RefreshCw className="h-4 w-4" /> Refresh activity
+        </Button>
+      </div>
+      <div className="mt-6 grid gap-4 md:grid-cols-3">
+        {PUBLIC_RESEARCH_INDEX_CATEGORIES.map((category) => {
+          const row = activity.rows?.find(item => item.category === category.key);
+          const ready = activity.status === "ready" && row !== undefined;
+          return (
+            <article key={category.key} className="rounded-2xl border border-border/70 bg-card/45 p-5">
+              <p className="text-sm font-semibold">{category.name}</p>
+              <p className="mt-3 text-2xl font-semibold tabular-nums">
+                {ready ? row.count : "—"}
+                {ready ? <span className="ml-2 text-xs font-normal text-muted-foreground">public Finds / 72h</span> : null}
+              </p>
+              <p className="mt-2 text-xs leading-6 text-muted-foreground">
+                {activity.status === "loading" ? "Checking published research archive" :
+                  !ready ? "Public research archive temporarily unavailable" :
+                  row.count === 0 ? "No recent qualifying public Finds; not a zero-risk reading" :
+                  row.lastNativePublishedAt ? `Latest original publication: ${formatDate(row.lastNativePublishedAt)}` :
+                    "Source publication time unavailable"}
+              </p>
+              <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">No estimated risk score</p>
+            </article>
+          );
+        })}
+      </div>
+      <Link to="/intelligence" className="mt-5 inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">
+        Explore published Intelligence
+      </Link>
+    </section>
   );
 }
 
