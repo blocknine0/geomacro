@@ -110,6 +110,11 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 22
+      - name: Verify shared Website archive and PREDGE journal recovery contracts
+        run: |
+          node --check scripts/lib/website-news-canonical-reconciliation.mjs
+          node --test scripts/tests/website-news-canonical-reconciliation.test.mjs
+          node --check scripts/ops/publish-permanent-derived-news-archive.mjs
       - name: Verify permanent archive append-only behavior without production credentials
         run: |
           node --check scripts/ops/publish-permanent-derived-news-archive.mjs
