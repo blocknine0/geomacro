@@ -175,9 +175,39 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
  }
  throw Error('SIGNED_NEWS_JOURNAL_CHANGED_REPEATEDLY');
 }
+// One owner-only recovery for an issuer/publication race. This NEVER
+// changes original-page evidence, review verdicts, scored products, PREDGE,
+// machine delivery or payment admission. A missing/invalid issuer envelope
+// is a failure until the independently verified post-reconciliation read
+// actually passes. Every other failure remains a hard failure.
+export async function verifySignedNewsWithOwnerReconciliation({
+  verify=()=>verifyAllNewsSignedPublications(),
+  reconcile=async()=>{
+    const {publishAutomatedIntelligenceInputs}=
+      await import('./publish-automated-intelligence-inputs.ts');
+    return publishAutomatedIntelligenceInputs();
+  },
+  env=process.env,
+}={}){
+  try{return await verify()}
+  catch(error){
+    if(error?.message!=='SIGNED_NEWS_ITEM_NOT_SIGNED'||
+       env.GEOMACRO_ALLOW_SIGNED_NEWS_RACE_RECONCILE!=='1'||
+       String(env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64??'').length<32||
+       String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??'').length<32||
+       !/^[a-f0-9]{40}$/u.test(String(env.GITHUB_SHA??''))||
+       !/^\\d{1,20}$/u.test(String(env.GITHUB_RUN_ID??'')))
+      throw error;
+    // Existing publisher already signs derived-only with the registered
+    // issuer and exact canonical journal. Do not independently mint a
+    // review signature or convert unsigned inputs into verified sources.
+    await reconcile();
+    return await verify();
+  }
+}
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{
-  const report=await verifyAllNewsSignedPublications();
+  const report=await verifySignedNewsWithOwnerReconciliation();
   if(process.env.GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH)
    storePrivateNewsVerificationReceipt(report,process.env.GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH);
   // Public GitHub Actions logs are NOT owner-only. Never print any count,
