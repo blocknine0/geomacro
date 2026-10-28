@@ -621,7 +621,7 @@ export async function sendA2AMessage(input: {
 
     try {
       await recordCommercialUsageEvent({
-        environment: "production_commercial",
+        environment: "mainnet",
         access_surface: "agent_payment",
         principal_id: input.principal.principal_id,
         principal_type: input.principal.principal_type,
