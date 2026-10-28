@@ -173,7 +173,7 @@ async function configuredCircleRequirement(request: Request) {
   }
 }
 
-export const Route = createFileRoute("/api/x402/circle/intelligence")({
+export const Route = createFileRoute("/api/x402/circle_/intelligence")({
   server: {
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
