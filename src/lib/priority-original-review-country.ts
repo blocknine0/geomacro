@@ -50,7 +50,7 @@ export function selectPriorityOriginalReviewCountry(
       record.same_event_corrob_verified!==false||
       record.severity!==null||!Array.isArray(record.sources_credited)||
       record.sources_credited.length>2||
-      record.sources_credited.some(c=>typeof c!=="string"||c.length>250))
+      record.sources_credited.some((c:unknown)=>typeof c!=="string"||c.length>250))
      continue;
    seen.add(record.id);
    // Required attribution does not make a PRIVATE review lead unusable.
