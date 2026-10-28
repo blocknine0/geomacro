@@ -183,7 +183,10 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
     existing_proof_preflight:{
       subject_scope:"country_or_corridor",response_kind:"risk_gate_evaluation",
       customer_receives:["risk_gate[*].subject","risk_gate[*].result",
-        "signed_risk_objects[*].object.integrity","methodology","limitations","delivered_product_hash"],
+        "signed_risk_objects[*].object.integrity",
+  // Available in all NEW signed deliveries; not added to historical receipt
+  // mandatory fields so old already-settled frozen JSON replays byte-identically.
+"methodology","limitations","delivered_product_hash"],
       only_when_verified:["signed_risk_objects[*].object.risk"],
       description:"Decision-readiness/preflight for one qualified country/corridor using an existing valid signed proof; no transaction execution.",
       prerequisites:["EXISTING_SIGNED_GRO_AND_POLICY_PREFLIGHT_VERIFIED"],
