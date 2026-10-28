@@ -627,6 +627,13 @@ export const mainnetIntelligenceHandlers = {
           }
         }
 
+        // Preserve authenticated already-settled replay above. New Risk Gate
+        // quotes, verification and settlement are held for a future launch.
+        // This is GeoMacro public commerce only, never the PREDGE route.
+        if(plan.product?.capability==="risk_gate_bundle" || plan.topics.includes("risk_gate"))
+          return json({ok:false,chargeable:false,payment_required_now:false,
+            error:{code:"RISK_GATE_COMING_SOON_NO_CHARGE"},execution_authorized:false},422);
+
         if (!config.apiKeyId || !config.apiKeySecret) {
           return json({ok:false,chargeable:false,error:{code:"CDP_API_CREDENTIALS_MISSING"},execution_authorized:false},503);
         }
