@@ -6,6 +6,13 @@ name: Website Derived News Continuity
 on:
   pull_request:
     paths:
+      # Re-run recovery smoke for each changed canonical archive/catch-up contract.
+      - "scripts/lib/website-news-canonical-reconciliation.mjs"
+      - "scripts/ops/reconcile-website-news-to-d1.ts"
+      - "scripts/tests/website-news-canonical-reconciliation.test.mjs"
+      - "scripts/ops/publish-website-derived-news.ts"
+      - "scripts/ops/publish-permanent-derived-news-archive.mjs"
+      - "scripts/ops/publish-permanent-derived-news-archive.test.mjs"
       - "scripts/lib/derived-news-b2-readwrite-backup.mjs"
       - "scripts/ops/archive-live-derived-news-to-b2.mjs"
       - "scripts/tests/derived-news-b2-readwrite-backup.test.mjs"
