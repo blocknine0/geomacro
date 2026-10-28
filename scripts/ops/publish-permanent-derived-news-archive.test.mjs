@@ -5,7 +5,7 @@ import {afterEach,describe,it} from "node:test";
 import assert from "node:assert/strict";
 import {
  ARCHIVE_INDEX_SCHEMA,ARCHIVE_MONTH_SCHEMA,isPermanentArchiveSignal,
- publishPermanentDerivedNewsArchive,selectCurrentArchiveSignals,
+ publishPermanentDerivedNewsArchive,selectCurrentArchiveSignals,buildCurrentArchiveEligibility,
 } from "./publish-permanent-derived-news-archive.mjs";
 
 const NOW=Date.parse("2026-10-26T00:00:00.000Z");
@@ -62,6 +62,31 @@ describe("permanent derived-only website archive",()=>{
   assert.equal(new Set(selected.map(row=>row.id)).size,250);
   assert.deepEqual(selected,selected.slice().sort((a,b)=>
    b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id)));
+ });
+ it("counts all current concrete official stories beyond 250 while separating OSINT and stale records",()=>{
+  const originals=Array.from({length:280},(_,i)=>({
+    ...signal(i.toString(16).padStart(8,"0"),"2026-10","macro"),
+    title:"Geomacro finds central bank policy measure number "+i,
+  }));
+  const osint={...signal("ffffffff","2026-10","rare_earth"),
+    title:"Geomacro finds Chile copper supply report example",
+    status:"osint_feed_observed_unverified",
+    development_type:"unverified OSINT feed observation",
+    sources_credited:["Monitored feed: example.org"]};
+  const old={...signal("ffffeeee","2026-09","geopolitics"),
+    title:"Geomacro finds historical geopolitics report example"};
+  const current=[...originals,osint];
+  const preview=selectCurrentArchiveSignals(current,250);
+  const stats=buildCurrentArchiveEligibility([...current,old],NOW,preview);
+  assert.equal(preview.length,250);
+  assert.equal(stats.original_release_eligible_total,280);
+  assert.deepEqual(stats.original_release_by_category,{geopolitics:0,macro:280,rare_earth:0});
+  assert.equal(stats.pending_osint_total,1);
+  assert.equal(stats.eligible_outside_latest_preview,30);
+  assert.equal(stats.unique_current_findings,281);
+  assert.equal(stats.unverified_promoted,false);
+  assert.equal(stats.paid_customer_eligible,false);
+  assert.equal(stats.d1_reads,0);
  });
  it("drops generic OSINT placeholders from public latest but does not rewrite the archive",()=>{
   const real=signal("1111aaaa","2026-10","geopolitics");
@@ -123,6 +148,10 @@ describe("permanent derived-only website archive",()=>{
   assert.equal(month.signals.length,1);
   const latest=JSON.parse(readFileSync(join(p.assetsDir,"latest.json"),"utf8"));
   assert.equal(latest.signals.length,1);
+  const coverage=JSON.parse(readFileSync(join(p.assetsDir,"coverage-72h.json"),"utf8"));
+  assert.equal(coverage.original_release_eligible_total,1);
+  assert.equal(coverage.latest_preview_rows,1);
+  assert.equal(coverage.paid_customer_eligible,false);
  });
  it("does not expire historical archive items when a later daily batch arrives",async()=>{
   const p=temp();
