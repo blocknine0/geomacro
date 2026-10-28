@@ -57,6 +57,7 @@ test("authenticated job logs never return private source bytes",async()=>{
   fetchImpl,now});
  assert.equal(x.critical.independent_d1_readback_verified,true);
  assert.equal(x.recovery.verified_replayed_items,11);
+ assert.equal(x.recovery.source_run_id,42);
  assert.equal(requests,4);
  assert.equal(JSON.stringify(x).includes("DO_NOT_LOG_OR_EXPORT"),false);
 });
