@@ -131,7 +131,7 @@
         "market_direction_verified",
         "quantitative_forecast_included",
         "asset_specificity_may_require_further_evidence",
-        "source_or_raw_osint_included",
+        "private_inputs_exposed",
         "execution_authorized"
       ],
       "properties": {
@@ -147,7 +147,7 @@
         "asset_specificity_may_require_further_evidence": {
           "const": true
         },
-        "source_or_raw_osint_included": {
+        "private_inputs_exposed": {
           "const": false
         },
         "execution_authorized": {
