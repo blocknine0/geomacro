@@ -1,4 +1,5 @@
 import {createHash} from "node:crypto";
+import {readIntakeBaseline} from "./budgeted-news-intake.mjs";
 /**
  * Narrow website editorial bridge for pinned FIRST-PARTY OSINT observations.
  * Original titles and permalinks exist only in the collector's process memory.
@@ -170,7 +171,21 @@ export async function publishPrivateOsintWebsiteSignals({
    throw Error("PRIVATE_OSINT_WEBSITE_BRIDGE_SIGNAL_UNSAFE");
  if(signals.length===0)return {candidates:0,new_derived_stories:0,
    journal_readback_verified:true,private_raw_published:false};
- const existing=await readAll(fetchImpl,now);
+ const sweep=async()=>{
+  const res=await fetchImpl(controlPlaneRoot+JOURNAL,{
+   method:'PUT',redirect:'error',cache:'no-store',
+   headers:{'Content-Type':'application/json',Accept:'application/json',Authorization:'Bearer '+controlToken},
+   body:JSON.stringify({schema:'geomacro.website-derived-news-batch.v1',signals:[]}),
+   signal:AbortSignal.timeout(16000),
+  });
+  if(res.status!==200)throw Error('PRIVATE_OSINT_WEBSITE_RETENTION_UNAVAILABLE');
+  const receipt=await res.json();
+  if(receipt?.ok!==true||receipt.schema!=='geomacro.website-derived-news-write-receipt.v1'||
+     receipt.accepted!==0||receipt.persistent_derived_only!==true||receipt.chargeable!==false)
+   throw Error('PRIVATE_OSINT_WEBSITE_RETENTION_ACK_INVALID');
+ };
+ // Repair only a proven 601+ journal, never an arbitrary outage or quota hold.
+ const existing=await readIntakeBaseline({fetchImpl,readAll,repair:sweep,now});
  if(!Array.isArray(existing))throw Error("PRIVATE_OSINT_WEBSITE_BASELINE_INVALID");
  const ids=new Set(existing.map(s=>s.id));
  // Dedup the incoming run AGAINST the entire currently retained D1 journal.
@@ -215,6 +230,9 @@ export async function publishPrivateOsintWebsiteSignals({
  }
  let visible=0,naturallyEvicted=0;
  if(pending.length){
+   // One sweep after all bounded chunks. A full 600-row journal plus one
+   // real new story must not strand all readers behind an over-cap 503.
+   await sweep();
    const after=await readAll(fetchImpl,Date.now());
    if(!Array.isArray(after))throw Error("PRIVATE_OSINT_WEBSITE_READBACK_MISSING");
    const confirmed=new Set(after.map(s=>s.id));

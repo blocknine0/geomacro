@@ -83,3 +83,9 @@ polled publisher sources. This is a rotation target, not fresh-event coverage
 for every country. Country queries never assign an event country, create a
 national central bank for currency-union members, or fabricate absent data
 (such as the already recorded missing Vatican statistics source).
+
+Production retention repair: every OSINT website write run performs one admitted
+empty sweep after all nonempty chunks and before complete readback. An already
+601+ baseline repairs once only after the reader proves that exact condition;
+unknown outages/quota failures cannot trigger speculative cleanup. This prevents
+a healthy new source observation from leaving the shared journal unavailable.

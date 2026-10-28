@@ -48,7 +48,7 @@ test("only new derived source-credited unscored stories are written and read bac
   assert.equal(options.headers.Authorization,"Bearer "+"a".repeat(64));
   const body=JSON.parse(options.body);
   assert.equal(body.schema,"geomacro.website-derived-news-batch.v1");
-  assert.equal(body.signals.length,1);
+  assert.ok([0,1].includes(body.signals.length));
   records=[...records,...body.signals];calls++;
   return new Response(JSON.stringify({ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",accepted:body.signals.length,persistent_derived_only:true,chargeable:false}),{status:200});
  };
@@ -56,9 +56,9 @@ test("only new derived source-credited unscored stories are written and read bac
    controlToken:"a".repeat(64),readAll,fetchImpl,now};
  const published=await publishPrivateOsintWebsiteSignals(config);
  assert.equal(published.new_derived_stories,1);
- assert.equal(published.journal_readback_verified,true);assert.equal(calls,1);
+ assert.equal(published.journal_readback_verified,true);assert.equal(calls,2);
  const second=await publishPrivateOsintWebsiteSignals(config);
- assert.equal(second.new_derived_stories,0);assert.equal(calls,1);
+ assert.equal(second.new_derived_stories,0);assert.equal(calls,2);
  const sourcePrivate={...signal,id:"geopolitics-87654321",sources_credited:[]};
  const federal=await publishPrivateOsintWebsiteSignals({...config,signals:[sourcePrivate]});
  assert.equal(federal.new_derived_stories,1);
@@ -116,14 +116,15 @@ test("concurrent writer newest-600 eviction counts as nonvisible, not false D1 f
   controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
   controlToken:"a".repeat(64),now:nowMs,
   readAll:async()=>calls?retained:[],
-  fetchImpl:async()=>{
+  fetchImpl:async(_url,options)=>{
+    const count=JSON.parse(options.body).signals.length;
     calls++;
     return new Response(JSON.stringify({
       ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",
-      accepted:1,persistent_derived_only:true,chargeable:false}),{status:200});
+      accepted:count,persistent_derived_only:true,chargeable:false}),{status:200});
   },
  });
- assert.equal(calls,1);
+ assert.equal(calls,2);
  assert.equal(result.new_derived_stories,0);
  assert.equal(result.d1_quota_evictions,1);
  assert.equal(result.journal_readback_verified,true);
@@ -139,9 +140,9 @@ test("a claimed write without exact public readback fails closed",async()=>{
  await assert.rejects(publishPrivateOsintWebsiteSignals({
    signals:[signal],controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
    controlToken:"a".repeat(64),now,readAll:async()=>[],
-   fetchImpl:async()=>new Response(JSON.stringify({
+   fetchImpl:async(_url,options)=>new Response(JSON.stringify({
      ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",
-     accepted:1,persistent_derived_only:true,chargeable:false}),{status:200}),
+     accepted:JSON.parse(options.body).signals.length,persistent_derived_only:true,chargeable:false}),{status:200}),
  }),/EXACT_READBACK_FAILED/u);
 });
 
@@ -316,10 +317,10 @@ test("concrete OSINT displaces generic feed candidates without growing the 600-r
     records=[...records,...JSON.parse(options.body).signals]
       .sort(privateWebsiteRetentionNewestFirst).slice(0,600);
     return new Response(JSON.stringify({ok:true,schema:"geomacro.website-derived-news-write-receipt.v1",
-      accepted:1,persistent_derived_only:true,chargeable:false}),{status:200});
+      accepted:JSON.parse(options.body).signals.length,persistent_derived_only:true,chargeable:false}),{status:200});
   },
  });
- assert.equal(posted,1);
+ assert.equal(posted,2);
  assert.equal(result.new_derived_stories,1);
  assert.equal(result.deferred_unpublished,0);
  assert.equal(records.length,600);
@@ -334,4 +335,46 @@ test("generic OSINT record cannot gain priority over a concrete event",()=>{
  assert.equal(privateWebsiteRetentionPriority({...actor,what_changed:"Dated item about minerals"}),0);
  assert.equal(privateWebsiteRetentionPriority(actor),1);
  assert.equal(privateWebsiteRetentionPriority({status:"official_feed_candidate_unscored"}),0);
+});
+
+test('proven over-cap baseline repairs once and new writes sweep before complete readback',async()=>{
+ const root='https://geomacro-control-plane.daspallab202391.workers.dev';
+ const candidate={id:'macro-1234abcd',category:'macro',title:'Geomacro finds official monetary policy developments',
+  what_changed:'An official publisher issued a dated monetary policy update. Effects require separate evidence.',
+  why_it_matters:'This publication may inform financing conditions without proving any market outcome.',
+  topic:'monetary policy',geography:null,development_type:'policy update',published_at:new Date(now).toISOString(),
+  date_precision:'exact',observed_release_count:1,status:'official_release_observed_unscored',
+  same_event_corrob_verified:false,severity:null,sources_credited:['Federal Reserve Board']};
+ let records=Array.from({length:601},(_,i)=>({id:'geopolitics-'+i.toString(16).padStart(8,'0'),
+  status:'official_release_observed_unscored',published_at:new Date(now-60000-i*1000).toISOString()}));
+ const calls=[];
+ const fetchImpl=async(url,options)=>{
+  if(options.method==='GET'){
+   calls.push('read');
+   return records.length>600?Response.json({error:'DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED'},{status:503}):Response.json({signals:records});
+  }
+  const body=JSON.parse(options.body);calls.push(body.signals.length?'write':'sweep');
+  records.push(...body.signals);
+  if(!body.signals.length)records.sort(privateWebsiteRetentionNewestFirst).splice(600);
+  return Response.json({ok:true,schema:'geomacro.website-derived-news-write-receipt.v1',
+   accepted:body.signals.length,persistent_derived_only:true,chargeable:false});
+ };
+ const readAll=async fetcher=>{
+  const response=await fetcher(root+'/v1/public/website-derived-news-bundle',{method:'GET'});
+  if(!response.ok)throw Error('BASELINE_UNAVAILABLE');
+  return (await response.json()).signals;
+ };
+ const receipt=await publishPrivateOsintWebsiteSignals({signals:[candidate],controlPlaneRoot:root,
+  controlToken:'a'.repeat(64),fetchImpl,readAll,now});
+ assert.deepEqual(calls,['read','sweep','read','write','sweep','read']);
+ assert.equal(records.length,600);assert.equal(receipt.new_derived_stories,1);
+ assert.equal(receipt.journal_readback_verified,true);
+ // Unknown storage outages must never spend a speculative cleanup write.
+ let writes=0;
+ await assert.rejects(publishPrivateOsintWebsiteSignals({signals:[candidate],controlPlaneRoot:root,
+  controlToken:'a'.repeat(64),now,readAll,fetchImpl:async(_url,init)=>{
+   if(init.method!=='GET')writes++;
+   return Response.json({error:'D1_UNAVAILABLE'},{status:503});
+  }}),/BASELINE_UNAVAILABLE/);
+ assert.equal(writes,0);
 });
