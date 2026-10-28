@@ -114,6 +114,7 @@ test('source-only admission recovers publisher during discretionary hold; signin
  assert.match(wf,/Global OSINT to Website Intelligence \(15-Minute Discovery\)/);
  const writer=readFileSync('.github/workflows/five-minute-original-news-fastlane.yml','utf8');
  const proof=writer.split('  post-intake-authenticated-partner-proof:')[1].split('  continue-private-source-review:')[0];
+ assert.match(proof,/github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'/);
  assert.match(proof,/outputs\.source_intake_completed == 'true'/);
  assert.match(proof,/verify-predge-pilot-continuity\.mjs/);
  assert.match(proof,/verify-predge-continuity-lock\.mjs/);

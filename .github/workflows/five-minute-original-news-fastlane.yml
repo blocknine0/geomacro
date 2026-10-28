@@ -170,11 +170,14 @@ concurrency:
 jobs:
   post-intake-authenticated-partner-proof:
     # Independent protected readback after a genuine receipt, including small
-    # source-only batches. The frozen partner workflow and contract are intact.
+    # source-only batches, on reviewed pushes and watchdog recovery dispatches.
+    # Routine ticks retain the frozen hourly monitor: do not spend 288/day
+    # of the partner's shared 500-request pilot allowance on internal probes.
     needs: original-five-minute-derived-news
     if: >-
       !cancelled() &&
       needs.original-five-minute-derived-news.outputs.source_intake_completed == 'true' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
