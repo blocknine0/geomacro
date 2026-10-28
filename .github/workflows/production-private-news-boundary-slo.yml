@@ -3,6 +3,11 @@
 # and every six hours even when no source release occurs.
 name: Production Private News Boundary SLO (No Funds)
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/production-private-news-boundary-slo.yml'
+      - 'scripts/ops/verify-private-news-production-guard.mjs'
+      - 'scripts/tests/verify-private-news-production-guard.test.mjs'
   workflow_dispatch:
   workflow_run:
     workflows: ["Deploy D1 Control Plane"]
@@ -23,10 +28,26 @@ concurrency:
   group: geomacro-production-private-news-slo
   cancel-in-progress: false
 jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Check negative security acceptance without network or secrets
+        run: |
+          node --check scripts/ops/verify-private-news-production-guard.mjs
+          node --test scripts/tests/verify-private-news-production-guard.test.mjs
   private-news-outside-in:
+    needs: contract
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
       (github.event_name != 'workflow_run' ||
        (github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
