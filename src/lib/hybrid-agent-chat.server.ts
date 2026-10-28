@@ -148,7 +148,7 @@ export async function executeHybridChatTurn(
   }
   // Optional semantic interpretation never substitutes for verified retrieval,
   // canonical input validation, or the existing rate-limit/commerce boundaries.
-  const interpretation = await planConversationalAsk(rawQuestion, parsed.history, ambiguous);
+  const interpretation = await planConversationalAsk(rawQuestion, parsed.history, ambiguous, clientKey);
   if (ambiguous && !interpretation) throw new Error("AMBIGUOUS_FOLLOW_UP");
   if (interpretation) {
     parseAskGeomacroInput({ question: interpretation.question });
