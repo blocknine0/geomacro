@@ -22,7 +22,7 @@ const groups=[
  [{nrcan_science:"rare_earth"},["natural-resources.canada.ca","www.natural-resources.canada.ca"],/^\/simply-science\/[a-z0-9][a-z0-9/-]{4,230}$/u],
  [{au_geoscience:"rare_earth"},["www.ga.gov.au"],/^\/news\/[a-z0-9][a-z0-9/-]{4,230}$/u],
  [{au_industry_minister:"rare_earth",au_resources_macro_index:"macro",au_resources_minerals_index:"rare_earth",au_resources_geopolitics_index:"geopolitics"},["www.minister.industry.gov.au"],/^\/(?:t-ayres|king)\/media\/[a-z0-9][a-z0-9-]{4,230}$/u],
- [{us_doe_news_minerals:"rare_earth"},["www.energy.gov"],/^\/(?:[a-z0-9-]+\/)?articles\/[a-z0-9][a-z0-9-]{4,230}$/u],
+ [{us_doe_news_minerals:"rare_earth",us_doe_cmei_minerals_index:"rare_earth"},["www.energy.gov"],/^\/(?:[a-z0-9-]+\/)?articles\/[a-z0-9][a-z0-9-]{4,230}$/u],
  [{eu_representation_news:"rare_earth"},["luxembourg.representation.ec.europa.eu"],/^\/(?:news|news-and-events)\/[a-z0-9][a-z0-9/-]{4,230}(?:_en)?$/u],
  [{eu_top_news:"rare_earth"},["single-market-economy.ec.europa.eu"],/^\/news\/[a-z0-9][a-z0-9-]{4,230}(?:_en)?$/u],
  [{eurostat_economy_release:"macro"},["ec.europa.eu"],/^\/eurostat\/(?:web\/products-euro-indicators\/w\/|en\/web\/products-euro-indicators\/w\/)[a-z0-9-]+$/u],

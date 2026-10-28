@@ -15,6 +15,7 @@ import { euCommissionTopOriginalCandidates } from "./stateless-eu-original-index
 import { australianNewsIndexCandidates, australianArticleMatchesOriginal } from "./stateless-australian-geoscience-original.server";
 import { australianResourcesIndexCandidates, verifyAustralianResourcesOriginalArticle } from "./stateless-au-resources-original.server";
 import { readPibMinesOriginalCandidates } from "./stateless-pib-mines-original.server";
+import {doeMineralsIndexCandidates,doeMineralsOriginalArticleMatches} from "./stateless-us-doe-minerals-original.server";
 import { canadaOriginalPublicationDay, canadaOriginalMineralsTopic, canadaOriginalPrecisePublicationTime } from "./stateless-canada-original.server";
 import { verifiedStatcanOriginalReleaseDay } from "./stateless-statcan-original.server";
 
@@ -182,6 +183,11 @@ const SOURCES: readonly StatelessSourceSpec[] = Object.freeze([
   // is admitted only when native article publication and mineral topic match.
   { id: "us_doe_news_minerals", category: "rare_earth", media: "rss",
     url: "https://www.energy.gov/rss/energygov/2193718",
+    allowedHosts: ["www.energy.gov"], credit: "U.S. Department of Energy" },
+  // First-party fixed DOE HTML fallback. Never use page-crawl clock, never
+  // add rights/independent corroboration or extra primary publisher traffic.
+  { id: "us_doe_cmei_minerals_index", category: "rare_earth", media: "html_index",
+    url: "https://www.energy.gov/cmm/critical-minerals-and-materials-program",
     allowedHosts: ["www.energy.gov"], credit: "U.S. Department of Energy" },
   // Actual publisher-issued RSS publication clocks; independent of the
   // EU DG GROW landing-page index and previous HTTP-403 mineral feed.
@@ -523,6 +529,41 @@ async function readSource(source: StatelessSourceSpec, now: number,
       return failed(e?.name==="TimeoutError"||e?.name==="AbortError"?"timeout":"network");
     }
   }
+  if(source.id==="us_doe_cmei_minerals_index"&&source.media==="html_index"){
+    try{
+      const response=await fetchWithoutRedirect(source.url,{
+        method:"GET",redirect:"error",cache:"no-store",
+        headers:{Accept:"text/html"},signal:AbortSignal.timeout(TIMEOUT_MS)});
+      if(!response.ok)return failed(response.status>=500?"http_5xx":"http_4xx");
+      if(!/^text\/html(?:;|$)/iu.test(response.headers.get("content-type")??""))
+        return failed("mime");
+      const html=await boundedText(response,512*1024);
+      if(!html)return failed("body");
+      const indexed=doeMineralsIndexCandidates(html,now);
+      const checks=await Promise.all(indexed.slice(0,2).map(async original=>{
+        try{
+          const r=await fetchWithoutRedirect(original.articleUrl,{
+            method:"GET",redirect:"error",cache:"no-store",
+            headers:{Accept:"text/html"},signal:AbortSignal.timeout(TIMEOUT_MS)});
+          if(!r.ok||!/^text\/html(?:;|$)/iu.test(r.headers.get("content-type")??""))
+            return null;
+          const article=await boundedText(r,256*1024);
+          return article&&doeMineralsOriginalArticleMatches(article,original)?
+            original:null;
+        }catch{return null}
+      }));
+      const verified=checks.filter((x):x is StatelessSourceCandidate=>x!==null);
+      return {healthy:true,candidates:verified,metrics:{
+        seen:indexed.length,relevant:indexed.length,
+        original_link_valid:indexed.length,native_clock_valid:verified.length,
+        undated_original:0,recovered_original_page:verified.length,
+        transport_ok:true,
+      }};
+    }catch(error){
+      const e=error instanceof Error?error:null;
+      return failed(e?.name==="TimeoutError"||e?.name==="AbortError"?"timeout":"network");
+    }
+  }
   if(source.id === "in_pib_mines" && source.media === "html_index"){
     const release=await readPibMinesOriginalCandidates(now);
     return {healthy:release.healthy,candidates:release.candidates,
@@ -837,7 +878,7 @@ export const FIVE_MINUTE_NEWS_FALLBACK_ROTATION=Object.freeze({
  // primary in its own category. Do not double-poll newly promoted primaries.
  geopolitics:["ungeneva_press_global","uk_ofsi_sanctions"],
  macro:["boj_press_global","un_news_economy"],
- rare_earth:["iea_minerals_global","un_news_minerals","au_geoscience"],
+ rare_earth:["iea_minerals_global","un_news_minerals","au_geoscience","us_doe_cmei_minerals_index"],
 } as const);
 export function selectFiveMinuteFallback(category:keyof typeof FIVE_MINUTE_NEWS_FALLBACK_ROTATION,now:number){
  if(!Number.isFinite(now)||!Object.hasOwn(FIVE_MINUTE_NEWS_FALLBACK_ROTATION,category))
