@@ -399,7 +399,7 @@ async function gdelt(
         (!originalHeadlineMentionsCountry(row.title,countryIso3,countryNameValue) ||
          !matchesRequestedTopic(row.title,category,topics) ||
          (category==="rare_earth"&&mineral&&
-           !MINERAL_TERMS.some(term=>term.value===mineral&&term.pattern.test(row.title)))))
+           !MINERAL_TERMS.some(term=>term.value===mineral&&term.pattern.test(row.title as string)))))
         continue;
       uniqueUrls.add(uri.href);
       // Reuse pinned issuer paths; third-party reports remain discovery counts.
@@ -503,8 +503,7 @@ async function worldBank(
       },
     };
   }
-  const isData=Array.isArray(json) && Array.isArray(json[1]);
-  const rows: unknown[] = isData ? json[1] : [];
+  const rows: unknown[] = Array.isArray(json) && Array.isArray(json[1]) ? json[1] : [];
   const currentYear=now.getUTCFullYear();
   const valid=rows.filter((x): x is {date:string;value:number;countryiso3code:string} => {
     if(!x || typeof x!=="object")return false;
@@ -598,8 +597,8 @@ const GOVUK_SEARCH_FALLBACKS:readonly OriginalFeed[]=[
   },
 ];
 const INTERNATIONAL_ORIGINAL_FEEDS:readonly OriginalFeed[]=GLOBAL_OFFICIAL_RELEASE_FEEDS.filter((s:{format:string})=>s.format!=='json').map(
-  (s:{category:OnDemandCategory;family:string;url:string;format:string;host:string;path:RegExp;topic:RegExp})=>({
-    domain:s.category,family:s.family,url:s.url,media:s.format==='rss'?'rss' as const:'search' as const,
+  s=>({
+    domain:s.category as OnDemandCategory,family:s.family,url:s.url,media:s.format==='rss'?'rss' as const:'search' as const,
     originalHost:s.host,originalPath:s.path,topic:s.topic,
   }));
 const ORIGINAL_FALLBACK_FEEDS: readonly OriginalFeed[] = [
@@ -1804,7 +1803,8 @@ export async function verifyOnDemandOriginalArticlePages(
   const successfulFamilies=new Set<string>();
   const seenIds=new Set(chosen.map(x=>x.article_identity_sha256));
   for(let i=0;i<chosen.length;i++){
-    if(!first[i].verified && first[i].reason) rejected.push(first[i].reason);
+    const receipt=first[i];
+    if(!receipt.verified && receipt.reason) rejected.push(receipt.reason);
     if(first[i].verified){
       verified_candidates.push(first[i].verified!);
       successfulFamilies.add(chosen[i].publisher_family);
