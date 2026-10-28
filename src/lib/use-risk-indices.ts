@@ -167,7 +167,14 @@ export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices
         typeof index.score!=="number"||!Number.isFinite(index.score)||
         index.score<0||index.score>100||
         !index.readingAsOf||!Number.isFinite(Date.parse(index.readingAsOf))))||
-       (index.status==="unavailable"&&index.score!==null))
+       (index.status==="unavailable"&&index.score!==null)||
+     !index.sourceMix||
+     index.sourceMix.osint_event_facts_verified!==false||
+     !Number.isSafeInteger(index.sourceMix.public_news)||
+     !Number.isSafeInteger(index.sourceMix.osint)||
+     index.sourceMix.public_news<0||index.sourceMix.osint<0||
+     index.sourceMix.public_news+index.sourceMix.osint!==index.eventCount||
+     index.independentStoryCount!==index.sourceMix.public_news)
       throw Error("GEOMACRO_NEWS_GRI_INDEX_INVALID");
   }
   if(domain.size!==0)throw Error("GEOMACRO_NEWS_GRI_CATEGORY_MISSING");
