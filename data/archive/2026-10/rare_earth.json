@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-28T14:06:26.638Z",
+  "updated_at": "2026-10-28T17:27:51.844Z",
   "signals": [
+    {
+      "id": "rare_earth-932e6d47",
+      "category": "rare_earth",
+      "title": "Geomacro finds PLS signed 20-year power deal with Fortescue unit for Pilgangoora lithium mine - Kitco",
+      "what_changed": "A monitored source feed reports: PLS signed 20-year power deal with Fortescue unit for Pilgangoora lithium mine - Kitco. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T15:12:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-d910e82c",
       "category": "rare_earth",

@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-28T14:06:26.638Z",
+  "checked_at": "2026-10-28T17:27:51.844Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "rare_earth-932e6d47",
+      "category": "rare_earth",
+      "title": "Geomacro finds PLS signed 20-year power deal with Fortescue unit for Pilgangoora lithium mine - Kitco",
+      "what_changed": "A monitored source feed reports: PLS signed 20-year power deal with Fortescue unit for Pilgangoora lithium mine - Kitco. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T15:12:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-d910e82c",
       "category": "rare_earth",
@@ -4527,6 +4546,44 @@
       "severity": null
     },
     {
+      "id": "geopolitics-3508f539",
+      "category": "geopolitics",
+      "title": "Geomacro finds Bolsonaro rejected results of presidential election - CNN",
+      "what_changed": "A monitored source feed reports: Bolsonaro rejected results of presidential election - CNN. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T07:45:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9f26b10f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Jordan said 3 arrested in deadly attack on Greek Orthodox church",
+      "what_changed": "A monitored source feed reports: Jordan said 3 arrested in deadly attack on Greek Orthodox church. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T07:10:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.cbsnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-6203b895",
       "category": "macro",
       "title": "Geomacro finds Trump said Canada trade deal coming ‘soon’",
@@ -4692,63 +4749,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: gcaptain.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-992393ae",
-      "category": "macro",
-      "title": "Geomacro finds UAE and Benin agreed to trade deal in Abu Dhabi - The National",
-      "what_changed": "A monitored source feed reports: UAE and Benin agreed to trade deal in Abu Dhabi - The National. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-25T15:56:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-51ff2911",
-      "category": "macro",
-      "title": "Geomacro finds Saudi Arabia announced support measures as electricity and water tariffs rise - The National",
-      "what_changed": "A monitored source feed reports: Saudi Arabia announced support measures as electricity and water tariffs rise - The National. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-25T14:47:03.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-857ea392",
-      "category": "macro",
-      "title": "Geomacro finds Saudi Arabia announced support measures as electricity and water tariffs rise",
-      "what_changed": "A monitored source feed reports: Saudi Arabia announced support measures as electricity and water tariffs rise. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-25T14:06:38.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thenationalnews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
