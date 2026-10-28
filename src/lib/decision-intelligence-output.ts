@@ -1,3 +1,5 @@
+import { buildPaidMarketWatch } from "./paid-market-watch";
+
 export const GEOMACRO_DECISION_INTELLIGENCE_SCHEMA =
   "geomacro.decision-intelligence.v1" as const;
 
@@ -52,6 +54,8 @@ export type DecisionIntelligenceInput = {
   } | null;
   risk_gate_decision?: string | null;
   as_of: string;
+  product?: { capability:string; variant:string } | null;
+  refresh_not_before_seconds?:number|null;
 };
 
 function finite(value: unknown): value is number {
@@ -192,6 +196,17 @@ export function buildDecisionIntelligence(
       primary_cause: detected[0] ?? null,
     },
     watch_next: drivers.map((row) => row.driver),
+    market_watch: buildPaidMarketWatch({
+      capability:input.product?.capability??null,
+      variant:input.product?.variant??null,
+      state_version:input.state_version,
+      verified_dimensions:input.structural?.available_dimensions??[],
+      verified_signed_drivers:input.risk?(input.attribution??[]).map(row=>row.driver):[],
+      qualified_event_types:input.live?.current_event_signal
+        ? (input.developments??[]).map(row=>row.event_type??"") : [],
+      latest_evidence_at:input.structural?.latest_observed_at??input.observed_at,
+      refresh_not_before_seconds:input.refresh_not_before_seconds??null,
+    }),
     evidence_quality: {
       confidence: input.confidence,
       current_event_signal: input.live?.current_event_signal ?? false,
