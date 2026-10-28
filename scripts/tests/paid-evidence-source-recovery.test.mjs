@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {planPaidEvidenceRecovery,verifyRoutingCatalog} from "../ops/plan-paid-evidence-source-recovery.mjs";
+import {planPaidEvidenceRecovery,planPaidEvidenceFromAvailability,verifyRoutingCatalog} from "../ops/plan-paid-evidence-source-recovery.mjs";
 const data=JSON.parse(readFileSync("config/paid-evidence-recovery-routes.v1.json","utf8"));
 const now=new Date("2026-10-29T00:00:00.000Z");
 test("all commercial module names map to EXISTING verified producer filenames; no new writer",()=>{
@@ -60,4 +60,27 @@ test("no fake publisher, missing proof or unbounded read can make an automatic s
  assert.throws(()=>verifyRoutingCatalog({...data,new_d1_writers_authorized:true}),/CATALOG_POLICY/);
  assert.throws(()=>verifyRoutingCatalog({...data,modules:{...data.modules,
   macro_monetary:{...data.modules.macro_monetary,producer_workflow:"predge-research-continuity.yml"}}}),/SOURCE_ROUTE_NOT_VERIFIED/);
+});
+
+test("same current missing modules from real future agent/user availability route dynamically; no paid status",()=>{
+ const checkedAt="2026-10-28T23:41:00.000Z";
+ const rows=[
+  {availability:{deliverable:false,checked_at:checkedAt,
+    missing_modules:["macro_monetary","geopolitical_security"],stale_modules:[],
+    subjects:[{subject:{type:"country",country_iso3:"USA"}}]}},
+  {availability:{deliverable:false,checked_at:checkedAt,
+    missing_modules:["critical_minerals"],stale_modules:["macro_monetary"],
+    subjects:[{subject:{type:"corridor",origin_country_iso3:"CHN",
+      destination_country_iso3:"AUS"}}]}},
+  {availability:{deliverable:true,checked_at:checkedAt,
+    missing_modules:[],stale_modules:[],subjects:[]}},
+ ];
+ const q=planPaidEvidenceFromAvailability(rows,{catalog:data,now});
+ assert.equal(q.candidate_gap_count,6);
+ assert.equal(q.ignored.non_missing,1);
+ assert.ok(q.candidate_gaps.every(v=>v.qualified_commercial_evidence===false));
+ assert.ok(q.candidate_gaps.some(v=>v.country_iso3==="AUS"&&v.module==="macro_monetary"&&
+   v.reason==="STALE_SOURCE_PROOF"));
+ assert.ok(q.candidate_gaps.some(v=>v.country_iso3==="USA"&&v.module==="geopolitical_security"));
+ assert.equal(q.d1_reads,0);assert.equal(q.payments,0);
 });
