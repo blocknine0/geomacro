@@ -43,11 +43,12 @@ export function isApprovedWdiAttribution(value:unknown):value is WorldBankWdiAtt
   if(Object.keys(x).sort().join("|")!==required.join("|"))return false;
   for(const [key,expected] of Object.entries(FIXED))
     if(x[key]!==expected)return false;
-  if(!Array.isArray(x.material_uris)||x.material_uris.length<1||
+  const uris=x.material_uris;
+  if(!Array.isArray(uris)||uris.length<1||
      x.material_uris.length>2)return false;
   const expected=Object.values(INDICATOR_URI);
-  if(!x.material_uris.every((uri:unknown)=>typeof uri==="string"&&expected.includes(uri)))return false;
-  return new Set(x.material_uris).size===x.material_uris.length &&
-    x.material_uris.every((uri:string,index:number)=>
-      index===0 || x.material_uris[index-1]<uri);
+  if(!uris.every((uri:unknown)=>typeof uri==="string"&&expected.includes(uri)))return false;
+  return new Set(uris).size===uris.length &&
+    uris.every((uri:string,index:number)=>
+      index===0 || uris[index-1]<uri);
 }
