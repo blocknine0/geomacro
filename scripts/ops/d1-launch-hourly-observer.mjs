@@ -10,6 +10,7 @@ import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {readCloudflareD1AccountQuota} from "./audit-d1-account-daily-quota-readonly.mjs";
 import {verifyPrivateD1RunReceipts} from "./d1-launch-github-verification.mjs";
+import {verifyDeployedRuntimeEquivalence} from "./verify-deployed-runtime-equivalence.mjs";
 
 export const SCHEMA="geomacro.d1-launch-hourly-receipt.v1";
 const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev";
@@ -112,9 +113,17 @@ export async function observeD1LaunchHour({env=process.env,fetchImpl=fetch,
   backlogProbe(fetchImpl,env,now.getTime()),
   verifyPrivateD1RunReceipts({fetchImpl,env,now})
  ]);
+ const equivalence=deploy.exact_main_sha_verified?
+   {verified:true,provider:"EXACT_DEPLOYED_SHA"}:
+   await verifyDeployedRuntimeEquivalence({fetchImpl,env,
+     deployedSha:deploy.observed_deploy_sha});
+ const deployReceipt={...deploy,
+   runtime_code_equivalence_verified:equivalence.verified===true,
+   runtime_code_equivalence_proof:equivalence.provider??equivalence.reason,
+   runtime_code_diff_checked_without_worker_redeploy:true};
  return Object.freeze({
   schema:SCHEMA,observed_at_utc:now.toISOString(),provider,
-  public:publicStatus,deploy,backlog,
+  public:publicStatus,deploy:deployReceipt,backlog,
   critical:privateReceipt.critical,
   recovery:privateReceipt.recovery,
   r2_snapshot_activated_by_observer:false,

@@ -51,7 +51,8 @@ export function evaluateD1LaunchWindow(receipts,{hours=72,maxGapMinutes=90}={}){
     reasons.add("PUBLIC_DELIVERY_NOT_VERIFIED");
   if(r.critical?.independent_d1_readback_verified!==true)
     reasons.add("CRITICAL_INGESTION_READBACK_NOT_VERIFIED");
-  if(r.deploy?.exact_main_sha_verified!==true)
+  if(r.deploy?.exact_main_sha_verified!==true&&
+     r.deploy?.runtime_code_equivalence_verified!==true)
     reasons.add("PRODUCTION_SHA_NOT_VERIFIED");
   if(r.backlog?.verified!==true||!integer(r.backlog.pending_artifacts)||
      !integer(r.backlog.aged_out_artifacts))

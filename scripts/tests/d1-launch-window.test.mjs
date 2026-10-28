@@ -63,3 +63,12 @@ test("same successful replay run across hourly receipts is counted once",()=>{
  assert.equal(assessed.status,"ACCEPTED");
  assert.equal(assessed.verified_replayed_items,4);
 });
+
+test("only independently validated runtime-equivalence permits a main SHA mismatch",()=>{
+ const rows=good();
+ rows[15].deploy.exact_main_sha_verified=false;
+ rows[15].deploy.runtime_code_equivalence_verified=true;
+ assert.equal(evaluateD1LaunchWindow(rows).status,"ACCEPTED");
+ rows[15].deploy.runtime_code_equivalence_verified=false;
+ assert.ok(evaluateD1LaunchWindow(rows).reasons.includes("PRODUCTION_SHA_NOT_VERIFIED"));
+});
