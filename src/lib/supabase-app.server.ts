@@ -226,7 +226,6 @@ export function getAppSupabase(): SupabaseClient | null {
 
   cachedClient = createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    db: { retry: false },
     global: { fetch: resilientAppSupabaseFetch },
   });
   cachedIdentity = identity;
