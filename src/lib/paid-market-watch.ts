@@ -172,7 +172,7 @@ export function buildPaidMarketWatch(input:MarketWatchInput) {
       market_direction_verified:false,
       quantitative_forecast_included:false,
       asset_specificity_may_require_further_evidence:true,
-      source_or_raw_osint_included:false,
+      private_inputs_exposed:false,
       execution_authorized:false,
     },
   } as const;
