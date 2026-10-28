@@ -1,4 +1,5 @@
 import {resolveGeomacroCapabilityPrice} from "./capability-pricing-catalog";
+import {paidMarketWatchLimitFor} from "./paid-market-watch";
 
 const isRecord=(value:unknown):value is Record<string,unknown> =>
   value!==null&&typeof value==="object"&&!Array.isArray(value);
@@ -28,6 +29,17 @@ export function assertLockedCapabilityDataBoundary(
   // separately priced Risk Gate decision as an incidental extra.
   if(capability!=="risk_gate_bundle"&&populated("risk_gate"))
     throw Error("CAPABILITY_PRICE_RISK_GATE_UPSELL_FORBIDDEN");
+
+  // A cheaper product cannot silently receive a higher tier's market watch.
+  // Historical frozen receipts may have no watch and remain replay-compatible.
+  const decisions=payload.decision_intelligence;
+  if(Array.isArray(decisions))for(const row of decisions){
+    if(!isRecord(row)||row.market_watch===undefined)continue;
+    const watch=row.market_watch;
+    if(!isRecord(watch)||!Array.isArray(watch.items)||
+       watch.items.length>paidMarketWatchLimitFor(capability,variant))
+      throw Error("CAPABILITY_PRICE_MARKET_WATCH_TIER_EXCEEDED");
+  }
 
   if(!capability.startsWith("structural_"))return;
 

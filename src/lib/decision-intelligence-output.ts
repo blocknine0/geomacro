@@ -55,6 +55,7 @@ export type DecisionIntelligenceInput = {
   risk_gate_decision?: string | null;
   as_of: string;
   product?: { capability:string; variant:string } | null;
+  locale?: "en"|"bn"|"hi";
   refresh_not_before_seconds?:number|null;
 };
 
@@ -130,6 +131,42 @@ function guardrail(action: DecisionAction) {
   }
 }
 
+function localizeBoundedDecision(input:DecisionIntelligenceInput,action:DecisionAction,subject:string){
+  const locale=input.locale;
+  if(locale!=="bn"&&locale!=="hi")return null;
+  const score=input.risk?.score;
+  const risk=input.risk?.label ?? "UNAVAILABLE";
+  const formatted=typeof score==="number"&&Number.isFinite(score)?score.toFixed(2):null;
+  const actionsBn:Record<DecisionAction,string>={
+    PROCEED:"স্বাভাবিক নিয়ন্ত্রণ বজায় রেখে এগোনোর শর্ত মূল্যায়ন করুন",
+    PROCEED_WITH_GUARDRAILS:"অতিরিক্ত ঝুঁকি-নিয়ন্ত্রণ ও পর্যালোচনা প্রয়োজন",
+    REVIEW:"মানবিক বা নীতিগত পর্যালোচনা প্রয়োজন",
+    PAUSE:"সিদ্ধান্ত কার্যকর করার আগে পুনরায় যাচাই প্রয়োজন",
+    INSUFFICIENT_EVIDENCE:"যাচাইকৃত প্রমাণ অপর্যাপ্ত",
+  };
+  const actionsHi:Record<DecisionAction,string>={
+    PROCEED:"सामान्य नियंत्रणों के साथ आगे बढ़ने की शर्तों की समीक्षा करें",
+    PROCEED_WITH_GUARDRAILS:"अतिरिक्त जोखिम नियंत्रण और समीक्षा आवश्यक है",
+    REVIEW:"मानवीय या नीतिगत समीक्षा आवश्यक है",
+    PAUSE:"निर्णय लागू करने से पहले पुनः सत्यापन आवश्यक है",
+    INSUFFICIENT_EVIDENCE:"सत्यापित प्रमाण पर्याप्त नहीं हैं",
+  };
+  const bn=locale==="bn";
+  return {
+    language:locale,
+    headline:formatted===null
+      ? bn?`${subject}: সিদ্ধান্ত-যোগ্য বর্তমান ঝুঁকি নির্ধারণের জন্য পর্যাপ্ত যাচাইকৃত তথ্য নেই।`
+          :`${subject}: निर्णय योग्य मौजूदा जोखिम तय करने के लिए पर्याप्त सत्यापित जानकारी नहीं है।`
+      : bn?`${subject}: যাচাইকৃত ঝুঁকির স্তর ${risk}; স্কোর ${formatted}/100।`
+          :`${subject}: सत्यापित जोखिम स्तर ${risk}; स्कोर ${formatted}/100।`,
+    decision_context:bn?actionsBn[action]:actionsHi[action],
+    caveat:bn?"এটি মূল যাচাইকৃত structured data-এর সীমিত ভাষান্তর; স্বয়ংক্রিয় লেনদেনের অনুমতি নয়।"
+      :"यह मूल सत्यापित संरचित डेटा का सीमित भाषायी सार है; स्वचालित लेनदेन की अनुमति नहीं है।",
+    scope:"BOUNDED_FACTUAL_SUMMARY_ONLY" as const,
+    execution_authorized:false as const,
+  } as const;
+}
+
 export function buildDecisionIntelligence(
   input: DecisionIntelligenceInput,
 ) {
@@ -196,6 +233,7 @@ export function buildDecisionIntelligence(
       primary_cause: detected[0] ?? null,
     },
     watch_next: drivers.map((row) => row.driver),
+    ...(localizeBoundedDecision(input,action,subject)?{localized:localizeBoundedDecision(input,action,subject)!}:{}),
     market_watch: buildPaidMarketWatch({
       capability:input.product?.capability??null,
       variant:input.product?.variant??null,

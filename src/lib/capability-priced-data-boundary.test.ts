@@ -53,6 +53,21 @@ describe("x402 delivered-data ceiling for exact founder-locked prices",()=>{
       .toThrow("RISK_GATE_UPSELL_FORBIDDEN");
     expect(()=>assertLockedCapabilityDataBoundary(gate,"risk_gate_bundle","standard")).not.toThrow();
   });
+  it("enforces exact purchased market-watch item ceiling without retroactively changing legacy receipts",()=>{
+    const watch=(count:number)=>({items:Array.from({length:count},(_,i)=>({watch_id:String(i)}))});
+    expect(()=>assertLockedCapabilityDataBoundary({...payload(),decision_intelligence:[{market_watch:watch(1)}]},
+      "structural_country_digest","standard")).not.toThrow();
+    expect(()=>assertLockedCapabilityDataBoundary({...payload(),decision_intelligence:[{market_watch:watch(2)}]},
+      "structural_country_digest","standard")).toThrow("MARKET_WATCH_TIER_EXCEEDED");
+    expect(()=>assertLockedCapabilityDataBoundary({execution_authorized:false,risk_gate:[],
+      decision_intelligence:[{market_watch:watch(3)}]},
+      "signed_risk_object","existing_valid_signed")).toThrow("MARKET_WATCH_TIER_EXCEEDED");
+    expect(()=>assertLockedCapabilityDataBoundary({execution_authorized:false,risk_gate:[],
+      decision_intelligence:[{market_watch:watch(5)}]},
+      "intelligence_query","complex_multi_source")).not.toThrow();
+    expect(()=>assertLockedCapabilityDataBoundary({...payload()},
+      "structural_country_digest","standard")).not.toThrow();
+  });
   it("refuses fabricated variants and execution privileges",()=>{
     expect(()=>assertLockedCapabilityDataBoundary(payload(),"structural_country_digest","premium"))
       .toThrow("CAPABILITY_PRICE_VARIANT_NOT_APPROVED");

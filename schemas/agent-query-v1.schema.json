@@ -357,6 +357,15 @@
         "live_on_demand"
       ],
       "default": "published_only"
+    },
+    "response_locale": {
+      "type": "string",
+      "enum": [
+        "en",
+        "bn",
+        "hi"
+      ],
+      "description": "Optional buyer-selected paid output locale; changes the canonical payment request hash only if present."
     }
   },
   "anyOf": [

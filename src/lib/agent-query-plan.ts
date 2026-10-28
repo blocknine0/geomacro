@@ -55,6 +55,9 @@ export const agentAdaptiveQuerySchema = z.object({
   product: storeProductSelectionSchema.optional(),
   schema_version: z.literal(AGENT_QUERY_SCHEMA_VERSION).default(AGENT_QUERY_SCHEMA_VERSION),
   question: z.string().trim().min(3).max(2_000).optional(),
+  // Optional language is included in a NEW request hash only when explicitly
+  // selected; all historical x402 query fingerprints remain unchanged.
+  response_locale: z.enum(["en","bn","hi"]).optional(),
   subjects: z.array(z.union([country, corridor])).min(1).max(25),
   topics: z.array(z.enum(AGENT_QUERY_TOPICS)).max(16).default([]),
   intent: z.enum(AGENT_QUERY_INTENTS).optional(),
@@ -331,6 +334,7 @@ export type AgentQueryPlan = {
   product?: StoreProductSelection;
   schema_version: typeof AGENT_QUERY_SCHEMA_VERSION;
   question_key: string | null;
+  response_locale?: AgentAdaptiveQuery["response_locale"];
   intent: AgentQueryIntent;
   subjects: AgentAdaptiveQuery["subjects"];
   topics: AgentQueryTopic[];
@@ -413,6 +417,7 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
     ...(parsed.product ? { product: parsed.product } : {}),
     schema_version: AGENT_QUERY_SCHEMA_VERSION,
     question_key: normalizeQuestion(parsed.question),
+    ...(parsed.response_locale ? {response_locale:parsed.response_locale} : {}),
     intent,
     subjects,
     topics,

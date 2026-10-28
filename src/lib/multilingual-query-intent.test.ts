@@ -25,6 +25,25 @@ describe("multilingual no-funds query interpreter", () => {
     expect(actual.execution_authorized).toBe(false);
   });
 
+  it("binds native Bengali/Hindi output to new quote hashes while retaining global input fallback",()=>{
+    const q="ভারতের মুদ্রাস্ফীতি";
+    const legacy=interpret({question:q});
+    expect(legacy.canonical_request.response_locale).toBeUndefined();
+    const native=interpret({question:q,language:"bn"});
+    expect(native.canonical_request.response_locale).toBe("bn");
+    expect(legacy.query_plan_hash).not.toBe(native.query_plan_hash);
+    expect(native.output_locale).toBe("bn");
+    expect(native.native_output_available).toBe(true);
+    const english=interpret({question:q,language:"en"});
+    expect(english.canonical_request.response_locale).toBe("en");
+    expect(english.query_plan_hash).not.toBe(native.query_plan_hash);
+    const hindi=interpret({question:"भारत की मुद्रास्फीति",language:"hi"});
+    expect(hindi.canonical_request.response_locale).toBe("hi");
+    const arabic=interpret({question:"التضخم في الهند",language:"ar"});
+    expect(arabic.output_locale).toBe("en");
+    expect(arabic.output_fallback_to_english).toBe(true);
+    expect(arabic.canonical_request.response_locale).toBeUndefined();
+  });
   it("preserves the exact same priced request and hash for repeated interpretation", () => {
     const input = {question:"ভারতের মুদ্রাস্ফীতি ও বৈদেশিক মুদ্রার রিজার্ভ"};
     const a = interpret(input);

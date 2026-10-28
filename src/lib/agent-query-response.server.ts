@@ -947,6 +947,7 @@ export async function assembleAgentQueryResponse(input: {
       // Same governed evidence and cadence as the paid state: no additional
       // OSINT fetch, new D1 read, price feed or fabricated directional score.
       product: plan.product ?? null,
+      locale:plan.response_locale??"en",
       refresh_not_before_seconds:changeIntelligence[index]?.refresh_hint.recommended_not_before_seconds??null,
       as_of: responseAsOf,
     });
@@ -960,6 +961,7 @@ export async function assembleAgentQueryResponse(input: {
     query_plan_hash: plan.query_plan_hash,
     question_interpretation: {
       ...(plan.product ? { product: plan.product } : {}),
+      ...(plan.response_locale ? {response_locale:plan.response_locale} : {}),
       normalized_question: plan.question_key,
       ...(plan.delivery_tier === "structural_baseline"
         ? { delivery_tier: "structural_baseline" as const } : {}),
@@ -980,10 +982,16 @@ export async function assembleAgentQueryResponse(input: {
     current_state: currentStates,
     change_intelligence: changeIntelligence,
     decision_intelligence: decisionIntelligence,
-    answer: buildDirectAnswer(
-      plan,
-      currentStates,
-    ),
+    answer: {
+      ...buildDirectAnswer(plan,currentStates),
+      ...(plan.response_locale && plan.response_locale!=="en"?{
+        localized:{
+          language:plan.response_locale,
+          subject_summaries:decisionIntelligence.flatMap(row=>row.localized?[row.localized]:[]),
+          scope:"BOUNDED_FACTUAL_SUMMARY_ONLY" as const,
+        },
+      }:{}),
+    },
     methodology: {
       query_schema_version: plan.schema_version,
       response_schema_version: GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
