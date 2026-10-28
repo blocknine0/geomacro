@@ -31,6 +31,7 @@ export function evaluateD1LaunchWindow(receipts,{hours=72,maxGapMinutes=90}={}){
  const daily=new Map();
  let lastByDay=new Map();
  let deferredSeen=false,recoveryVerified=0;
+ const countedRecoveryRuns=new Set();
  for(const r of window){
   const p=r.provider,day=r.observed_at_utc.slice(0,10);
   if(p?.verified!==true||p.day_utc!==day||
@@ -61,7 +62,14 @@ export function evaluateD1LaunchWindow(receipts,{hours=72,maxGapMinutes=90}={}){
   }
   if(!integer(r.recovery?.verified_replayed_items))
     reasons.add("REPLAY_SUCCESS_COUNTER_UNVERIFIED");
-  else recoveryVerified+=r.recovery.verified_replayed_items;
+  else if(r.recovery.verified_replayed_items>0){
+    if(!integer(r.recovery.source_run_id)||r.recovery.source_run_id<1)
+      reasons.add("REPLAY_UNIQUE_RUN_ID_UNVERIFIED");
+    else if(!countedRecoveryRuns.has(r.recovery.source_run_id)){
+      countedRecoveryRuns.add(r.recovery.source_run_id);
+      recoveryVerified+=r.recovery.verified_replayed_items;
+    }
+  }
  }
  if(deferredSeen&&recoveryVerified===0)
   reasons.add("DEFERRED_REPLAY_NOT_OBSERVED");
