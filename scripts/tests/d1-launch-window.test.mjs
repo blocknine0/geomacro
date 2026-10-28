@@ -14,6 +14,27 @@ function sample(i){
   recovery:{verified_replayed_items:0}};
 }
 const good=()=>Array.from({length:74},(_,i)=>sample(i));
+test("71 hours cannot satisfy a 72-hour acceptance window",()=>{
+ const result=evaluateD1LaunchWindow(Array.from({length:72},(_,i)=>sample(i)));
+ assert.equal(result.status,"PENDING");
+ assert.ok(result.reasons.includes("OBSERVATION_WINDOW_TOO_SHORT"));
+ assert.ok(result.reasons.includes("WINDOW_START_UNOBSERVED"));
+});
+test("scheduler jitter retains and verifies the preceding boundary receipt",()=>{
+ const rows=good();
+ rows.at(-1).observed_at_utc=new Date(T+73*3_600_000+60_000).toISOString();
+ const result=evaluateD1LaunchWindow(rows);
+ assert.equal(result.status,"ACCEPTED");
+ assert.equal(result.samples,73);
+ assert.ok(result.hours_observed>=72);
+ rows[1].critical.independent_d1_readback_verified=false;
+ assert.equal(evaluateD1LaunchWindow(rows).status,"PENDING");
+});
+test("a distant boundary anchor cannot hide an observation gap",()=>{
+ const rows=good().filter((_,i)=>i!==1&&i!==2);
+ rows.at(-1).observed_at_utc=new Date(T+73*3_600_000+60_000).toISOString();
+ assert.ok(evaluateD1LaunchWindow(rows).reasons.includes("MISSING_HOURLY_RECEIPTS"));
+});
 test("strict 72h accepts genuine hourly provider/critical/public receipts",()=>{
  const result=evaluateD1LaunchWindow(good());
  assert.equal(result.status,"ACCEPTED");
