@@ -17,24 +17,36 @@ const MAX_BODY=1_000_000;
 const asError=e=>typeof e?.message==="string"&&/^[A-Z0-9_]+$/.test(e.message)?
   e.message:"UNKNOWN_PROVIDER_OR_NETWORK_FAILURE";
 async function publicProbe(fetchImpl){
+ let status=null,offload="none";
  try{
+  // A single no-auth live GET: do not retry D1 during quota pressure.
   const r=await fetchImpl(ROOT+"/v1/public/derived-structural-72h",{
    method:"GET",redirect:"error",
    headers:{"Accept":"application/json"},
    signal:AbortSignal.timeout(12_000),
   });
+  status=r.status;
+  offload=r.headers.get("X-GeoMacro-Public-Offload")??"none";
+  if(r.redirected)return {verified:false,http_status:status,error:"PUBLIC_BUNDLE_REDIRECT_REJECTED"};
   if(Number(r.headers.get("content-length")??0)>MAX_BODY)
-   throw Error("PUBLIC_BUNDLE_OVERSIZE");
+   return {verified:false,http_status:status,error:"PUBLIC_BUNDLE_OVERSIZE"};
   const body=await r.text();
-  if(body.length>MAX_BODY)throw Error("PUBLIC_BUNDLE_OVERSIZE");
-  const doc=JSON.parse(body);
-  const verified=r.status===200&&!r.redirected&&
+  if(body.length>MAX_BODY)
+   return {verified:false,http_status:status,error:"PUBLIC_BUNDLE_OVERSIZE"};
+  let doc;
+  try{doc=JSON.parse(body)}catch{
+   return {verified:false,http_status:status,error:"PUBLIC_BUNDLE_RESPONSE_NOT_JSON"};
+  }
+  const verified=r.status===200&&
     doc?.ok===true&&doc.schema==="geomacro.derived-news-structural-feed.v1"&&
     doc.projection==="source_neutral"&&doc.chargeable===false;
-  return {verified,http_status:r.status,
-    offload:r.headers.get("X-GeoMacro-Public-Offload")??"none",
-    source_neutral_contract_verified:verified};
- }catch(e){return {verified:false,http_status:null,error:asError(e)}}
+  // Whitelist only generic machine-safe diagnostic codes; no source material.
+  const code=typeof doc?.error==="string"&&/^[A-Z][A-Z0-9_]{3,90}$/.test(doc.error)?
+    doc.error:null;
+  return {verified,http_status:status,offload,
+    source_neutral_contract_verified:verified,
+    ...(!verified?{error:code??"PUBLIC_BUNDLE_SCHEMA_OR_HTTP_MISMATCH"}:{})};
+ }catch(e){return {verified:false,http_status:status,offload,error:asError(e)}}
 }
 async function deployedShaProbe(fetchImpl,expected){
  try{
@@ -44,8 +56,12 @@ async function deployedShaProbe(fetchImpl,expected){
   const text=await r.text();
   if(text.length>20_000)throw Error("PRODUCTION_HEALTH_OVERSIZE");
   const doc=JSON.parse(text);
+  const observed=typeof doc?.deployed_source_sha==="string"&&
+   /^[a-f0-9]{40}$/.test(doc.deployed_source_sha)?
+   doc.deployed_source_sha:null;
   return {exact_main_sha_verified:/^[a-f0-9]{40}$/.test(expected)&&
-    doc.deployed_source_sha===expected,health_http_status:r.status};
+    observed===expected,health_http_status:r.status,
+    observed_deploy_sha:observed};
  }catch(e){return {exact_main_sha_verified:false,error:asError(e)}}
 }
 async function backlogProbe(fetchImpl,env,now){

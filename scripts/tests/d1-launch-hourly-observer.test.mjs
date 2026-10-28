@@ -52,6 +52,8 @@ test("failed public and SHA proof never become green",async()=>{
  assert.equal(r.public.verified,false);
  assert.equal(r.public.http_status,503);
  assert.equal(r.deploy.exact_main_sha_verified,false);
+ assert.equal(r.deploy.observed_deploy_sha,"b".repeat(40));
+ assert.equal(r.public.error,"PUBLIC_BUNDLE_SCHEMA_OR_HTTP_MISMATCH");
 });
 test("missing credentials and inventory do not fabricate account quota or recovery",async()=>{
  const x=mock();
@@ -59,4 +61,16 @@ test("missing credentials and inventory do not fabricate account quota or recove
  assert.equal(r.provider.verified,false);
  assert.equal(r.backlog.verified,false);
  assert.equal(r.critical.independent_d1_readback_verified,false);
+});
+
+test("HTML D1 quota errors retain exact HTTP status without leaking body",async()=>{
+ const original=mock(true).fetchImpl;
+ const fetchImpl=(url,options)=>url.includes("/v1/public/derived-structural-72h")?
+   Promise.resolve(new Response("<html>provider transient failure</html>",{status:503,
+    headers:{"Content-Type":"text/html"}})):original(url,options);
+ const r=await observeD1LaunchHour({env,fetchImpl,now});
+ assert.equal(r.public.verified,false);
+ assert.equal(r.public.http_status,503);
+ assert.equal(r.public.error,"PUBLIC_BUNDLE_RESPONSE_NOT_JSON");
+ assert.equal(JSON.stringify(r).includes("provider transient failure"),false);
 });
