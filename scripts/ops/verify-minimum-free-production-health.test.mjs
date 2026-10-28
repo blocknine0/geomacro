@@ -171,3 +171,39 @@ test("network-bounded GitHub comparison refuses invalid, unavailable and noncano
    fetcher:async()=>{throw Error("network");},
  }),false);
 });
+
+test("72h expiry between three-hour static snapshots does not invalidate current native officials",()=>{
+ const expired="2026-10-17T23:30:00.000Z";
+ const osint={...goodStory(),id:"macro-abcd1234",category:"macro",
+   published_at:expired,
+   status:"osint_feed_observed_unverified",
+   development_type:"unverified OSINT feed observation",geography:null,
+   sources_credited:["Monitored feed: example.org"]};
+ const r=classifyMinimumFreeProduction(fixture([goodStory(),osint]));
+ assert.equal(r.ok,true);
+ assert.equal(r.derived_rows,1);
+ assert.deepEqual(r.categories,{geopolitics:1,macro:0,rare_earth:0});
+ assert.equal(r.paid_delivery_authorized,false);
+ const expiredOfficial={...goodStory(),published_at:expired};
+ assert.equal(classifyMinimumFreeProduction(fixture([expiredOfficial])).ok,false);
+ // Original must be displayed in FIRST HTML, not the expired card.
+ const noFreshSSR=fixture([goodStory(),osint]);
+ noFreshSSR.siteHtml="What changed in the world GEOMACRO FINDS "+osint.title;
+ assert.equal(classifyMinimumFreeProduction(noFreshSSR).ok,false);
+});
+test("rolling archive still fails closed for old-at-build rows, exposed private metadata and abandoned refresh",()=>{
+ const f=fixture([goodStory(),{
+   ...goodStory(),id:"macro-abcd1234",category:"macro",
+   published_at:"2026-10-17T22:00:00.000Z",
+ }]);
+ assert.equal(classifyMinimumFreeProduction(f).ok,false);
+ const leak=fixture([goodStory(),{
+   ...goodStory(),id:"macro-abcd1234",category:"macro",
+   published_at:"2026-10-17T23:30:00.000Z",
+   upstream_url:"https://source.example/private",
+ }]);
+ assert.equal(classifyMinimumFreeProduction(leak).ok,false);
+ const stale=fixture();
+ stale.journal.checked_at="2026-10-20T17:00:00.000Z";
+ assert.equal(classifyMinimumFreeProduction(stale).ok,false);
+});
