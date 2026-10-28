@@ -83,7 +83,7 @@ export function observedPublicFinds195x3Coverage(
      !["exact","day"].includes(row.date_precision)||
      row.severity!==null||row.same_event_corrob_verified!==false||
      !Array.isArray(row.sources_credited)||row.sources_credited.length>2||
-     row.sources_credited.some(credit=>typeof credit!=="string"||credit.length>230))
+     row.sources_credited.some((credit:unknown)=>typeof credit!=="string"||credit.length>230))
    throw Error("COUNTRY_NEWS_195X3_PUBLIC_FIND_INVALID");
   seen.add(row.id);
   const at=Date.parse(row.published_at);
