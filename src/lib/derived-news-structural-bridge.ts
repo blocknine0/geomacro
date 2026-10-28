@@ -90,7 +90,7 @@ export function buildDerivedNewsStructural(
     // authenticated research projection carries known source notices visibly.
     if(signal.sources_credited.length!==0 &&
        (projection!=="attributed_research" ||
-        !signal.sources_credited.every(c=>RESEARCH_SOURCE_CREDITS.has(c)||(signal.status==="osint_feed_observed_unverified"&&isSafeMonitoredFeedCredit(c)))))continue;
+        !signal.sources_credited.every((c:string)=>RESEARCH_SOURCE_CREDITS.has(c)||(signal.status==="osint_feed_observed_unverified"&&isSafeMonitoredFeedCredit(c)))))continue;
     const canonical=JSON.stringify(signal);
     const previous=seen.get(signal.id);
     if(previous!==undefined){
@@ -104,14 +104,14 @@ export function buildDerivedNewsStructural(
       schema:NEWS_STRUCTURAL_SCHEMA,id:signal.id,category:signal.category,
       ...(signal.sources_credited.length?{
         sources_credited:Object.freeze([...signal.sources_credited]),attribution_required:true as const,
-        attribution_notices:Object.freeze(signal.sources_credited.map(c=>c==="Statistics Canada"?
+        attribution_notices:Object.freeze(signal.sources_credited.map((c:string)=>c==="Statistics Canada"?
           "Adapted from Statistics Canada, The Daily, "+signal.published_at.slice(0,10)+
           ". This does not constitute an endorsement by Statistics Canada of this product.":
           c==="Contains public sector information licensed under the Open Government Licence v3.0."?
           c+" https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/":c)),
       }:{}),
       ...(projection==="attributed_research"&&macroEventContext(signal)?{macro_context:macroEventContext(signal)}:{}),
-      event_family:EVENT_FAMILIES[signal.category],
+      event_family:EVENT_FAMILIES[signal.category as StatelessCategory],
       development_type:signal.development_type,topic:signal.topic,
       original_published_at:signal.published_at,date_precision:signal.date_precision,
       geography_mentioned:signal.geography,
