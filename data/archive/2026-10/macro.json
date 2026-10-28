@@ -2,8 +2,160 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-28T09:42:06.266Z",
+  "updated_at": "2026-10-28T10:41:40.464Z",
   "signals": [
+    {
+      "id": "macro-a594b554",
+      "category": "macro",
+      "title": "Geomacro finds Intertek reported 7% revenue growth in third quarter By Investing.com - Investing.com South Africa",
+      "what_changed": "A monitored source feed reports: Intertek reported 7% revenue growth in third quarter By Investing.com - Investing.com South Africa. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:21:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-9a43c24a",
+      "category": "macro",
+      "title": "Geomacro finds OGE Energy raised 2026 earnings outlook after Q3 profit climbs",
+      "what_changed": "A monitored source feed reports: OGE Energy raised 2026 earnings outlook after Q3 profit climbs. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:17:14.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-acc6a79f",
+      "category": "macro",
+      "title": "Geomacro finds Stifel raised OrthoPediatrics stock price target on revenue beat - Investing.com",
+      "what_changed": "A monitored source feed reports: Stifel raised OrthoPediatrics stock price target on revenue beat - Investing.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T09:39:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f4155d6b",
+      "category": "macro",
+      "title": "Geomacro finds Baird raised Seagate stock price target on storage growth outlook - Investing.com",
+      "what_changed": "A monitored source feed reports: Baird raised Seagate stock price target on storage growth outlook - Investing.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T09:33:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ff949e2b",
+      "category": "macro",
+      "title": "Geomacro finds Tokayev called for AI-Driven Digital Economy, Technology Push Across Industry",
+      "what_changed": "A monitored source feed reports: Tokayev called for AI-Driven Digital Economy, Technology Push Across Industry. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T09:10:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: astanatimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f14f91f0",
+      "category": "macro",
+      "title": "Geomacro finds Canada signed trade deal with UAE in push for non-US markets",
+      "what_changed": "A monitored source feed reports: Canada signed trade deal with UAE in push for non-US markets. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T08:50:55.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.aljazeera.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3adb46a7",
+      "category": "macro",
+      "title": "Geomacro finds Tokayev called for coordinated action to curb inflation and boost investment - Qazinform",
+      "what_changed": "A monitored source feed reports: Tokayev called for coordinated action to curb inflation and boost investment - Qazinform. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T08:44:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-63d0a41a",
+      "category": "macro",
+      "title": "Geomacro finds Zelensky warned about Russia’s ‘Economic Marriage’ With US as Ukraine Feels ‘Home Alone’ Without Patriots",
+      "what_changed": "A monitored source feed reports: Zelensky warned about Russia’s ‘Economic Marriage’ With US as Ukraine Feels ‘Home Alone’ Without Patriots. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T08:08:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-f3ef43c1",
       "category": "macro",
@@ -43,6 +195,25 @@
       "severity": null
     },
     {
+      "id": "macro-1183d770",
+      "category": "macro",
+      "title": "Geomacro finds Gold held the Bounce: Testing Weekly VC PMI as Daily Resistance Looms - Investing.com",
+      "what_changed": "A monitored source feed reports: Gold held the Bounce: Testing Weekly VC PMI as Daily Resistance Looms - Investing.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T06:43:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-28af8737",
       "category": "macro",
       "title": "Geomacro finds Trump said he's ending restrictions on climate-warming methane from oil drilling",
@@ -56,6 +227,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: feeds.npr.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-10911db3",
+      "category": "macro",
+      "title": "Geomacro finds Greek PM said Tax Fraud Busts Prove Government Is Going After 'Big Fish'",
+      "what_changed": "A monitored source feed reports: Greek PM said Tax Fraud Busts Prove Government Is Going After 'Big Fish'. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T05:57:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.iefimerida.gr"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

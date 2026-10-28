@@ -2,8 +2,141 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-28T09:42:06.266Z",
+  "updated_at": "2026-10-28T10:41:40.464Z",
   "signals": [
+    {
+      "id": "geopolitics-416a66cc",
+      "category": "geopolitics",
+      "title": "Geomacro finds Netherlands confirmed $1.3 billion in non-military aid for Ukraine through 2029",
+      "what_changed": "A monitored source feed reports: Netherlands confirmed $1.3 billion in non-military aid for Ukraine through 2029. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:03:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: kyivindependent.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-3279141f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran said ready to help draft global treaty on plastic pollution",
+      "what_changed": "A monitored source feed reports: Iran said ready to help draft global treaty on plastic pollution. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:02:28.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.irna.ir"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-af14b4ac",
+      "category": "geopolitics",
+      "title": "Geomacro finds Serbia raised Terror Alert After Attack on Israeli Embassy",
+      "what_changed": "A monitored source feed reports: Serbia raised Terror Alert After Attack on Israeli Embassy. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T09:58:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: balkaninsight.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-12fa7fe3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Netanyahu held on as Israel election ends in deadlock",
+      "what_changed": "A monitored source feed reports: Netanyahu held on as Israel election ends in deadlock. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T09:50:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: cyprus-mail.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-8ef28d81",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zelenskyy urged Hegseth to Speed Up Release of Patriot Missiles - Bloomberg.com",
+      "what_changed": "A monitored source feed reports: Zelenskyy urged Hegseth to Speed Up Release of Patriot Missiles - Bloomberg.com. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T09:40:13.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-08dcdbae",
+      "category": "geopolitics",
+      "title": "Geomacro finds China denied Taiwan’s claim it orchestrated attack on comedian who mocked Xi Jinping - NBC News",
+      "what_changed": "A monitored source feed reports: China denied Taiwan’s claim it orchestrated attack on comedian who mocked Xi Jinping - NBC News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T09:36:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-189cea6d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zelenskyy said he has no alternative to peace negotiating group, but is open to proposals",
+      "what_changed": "A monitored source feed reports: Zelenskyy said he has no alternative to peace negotiating group, but is open to proposals. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T08:44:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.pravda.com.ua"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-71dd5ab4",
       "category": "geopolitics",
