@@ -1,4 +1,5 @@
 import {readNewsProductFactory} from './news-product-factory.mjs';
+import {serveSelfCertifiedNewsSeverityGri} from "./geomacro-news-severity-gri.mjs";
 import {readPublicMacro,loadMacroState,storeMacroState,runMacroReleaseTick} from "./macro-fastlane.mjs";
 import {publicSignedNews} from './public-signed-news.mjs';
 import {authorizePrivateNewsProof} from './private-news-proof-auth.mjs';
@@ -1354,6 +1355,8 @@ export default {
             waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
           })));
     }
+    if(request.method==="GET"&&url.pathname==="/v1/public/geomacro-certified-news-severity-gri"&&!url.search)
+      return publicReadCache(()=>serveSelfCertifiedNewsSeverityGri(env,{now:Date.now()}));
     if(request.method==="GET"&&url.pathname==="/v1/public/website-derived-news-bundle"&&!url.search)
       return publicReadCache(async()=>await readPublicNewsR2Snapshot(request,env) ??
         await readDerivedStoriesBundle(env,Date.now(),
