@@ -9,6 +9,7 @@ import {fileURLToPath} from "node:url";
 const ROOT="https://geomacro.live";
 const ARCHIVE_FEED="https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json";
 const RETENTION_MS=72*60*60_000;
+const MAX_STATIC_REFRESH_LAG_MS=6*60*60_000;
 const DELAY_MS=0;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const validSha=(s)=>typeof s==="string"&&/^[a-f0-9]{40}$/u.test(s);
@@ -117,14 +118,17 @@ export function classifyMinimumFreeProduction({
     return invalid("FREE_ARCHIVE_CONTRACT_INVALID");
   const counts={geopolitics:0,macro:0,rare_earth:0};
   const checkedAt=Date.parse(String(journal.checked_at??""));
-  if(!Number.isFinite(checkedAt)||checkedAt>nowMs+60_000)
+  if(!Number.isFinite(checkedAt)||checkedAt>nowMs+60_000||
+     nowMs-checkedAt>MAX_STATIC_REFRESH_LAG_MS)
     return invalid("FREE_ARCHIVE_CLOCK_INVALID",counts);
   const titles=[];
   for(const row of journal.signals){
     const common=typeof row?.title==="string"&&row.title.startsWith("Geomacro finds ")&&
       CATEGORIES.includes(row.category)&&
       row.severity===null&&row.same_event_corrob_verified===false&&
-      originalPublication(row,nowMs)!==null&&
+      // A row must have been valid at static snapshot creation. A harmless
+      // subsequent 72h expiry does not invalidate other current rows.
+      originalPublication(row,checkedAt)!==null&&
       !/(?:https?:\/\/|www\.)/iu.test(JSON.stringify({...row,sources_credited:[]}));
     if(row?.status==="osint_feed_observed_unverified"){
       const credits=Array.isArray(row.sources_credited)?row.sources_credited:[];
@@ -141,6 +145,7 @@ export function classifyMinimumFreeProduction({
       (row.status==="official_release_observed_unscored"||
        row.status==="official_feed_candidate_unscored");
     if(!valid)return invalid("FREE_ARCHIVE_ORIGINAL_TIME_OR_RIGHTS_SHAPE_INVALID",counts);
+    if(originalPublication(row,nowMs)===null)continue;
     counts[row.category]++;
     titles.push(row.title);
   }
