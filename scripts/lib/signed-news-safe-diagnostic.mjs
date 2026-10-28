@@ -16,6 +16,10 @@ const SAFE=new Set([
  "SIGNED_NEWS_CURSOR","SIGNED_NEWS_PAGE_LIMIT",
  "SIGNED_NEWS_JOURNAL_CHANGED_REPEATEDLY",
  "SIGNED_NEWS_RESPONSE_JSON_INVALID","PRIVATE_NEWS_PROOF_TOKEN_MISSING",
+ "SIGNED_NEWS_KEY_REGISTRY_INVALID",
+ "SIGNED_NEWS_CANONICAL_JOURNAL_READ_UNCLASSIFIED",
+ "SIGNED_NEWS_INPUT_CANONICALIZATION_UNAVAILABLE",
+ "SIGNED_NEWS_PROOF_BODY_UNAVAILABLE",
  // Owner-only canonical newsroom readback can fail before the private proof
  // endpoint is reached. Name ONLY stable D1/transport classes, not URL,
  // response text, article contents, SQL or dynamic provider exceptions.
