@@ -2,7 +2,7 @@
 /**
  * Website public Finds -> SAME canonical D1 journal catch-up.
  *
- * Only already public, publisher-qualified Geomacro-owned derived cards from
+ * Only already public, schema-admissible Geomacro-owned derived cards from
  * the existing static latest.json; no raw article, extra source poll, new DB,
  * Supabase/B2, PREDGE-specific store, credential, payment, or API contract.
  *
@@ -10,6 +10,7 @@
  * 72-hour research projection and keeps its own auth / quota / attribution.
  * This writes missing immutable IDs through the SAME approved Geomacro
  * publisher ingress used by the hourly original-source collector.
+ * Never elevate unverified OSINT/candidates to qualified releases.
  */
 import {createHmac} from "node:crypto";
 import {resolve} from "node:path";
@@ -30,25 +31,44 @@ const fail=code=>{throw Error("WEBSITE_D1_RECONCILE_"+code)};
 const normalized=s=>JSON.stringify(s);
 const allowedNow=now=>now instanceof Date&&Number.isFinite(now.getTime())&&now.getTime()>=START;
 const bytes=s=>new TextEncoder().encode(s).length;
+const GET_TRANSIENT_HTTP=new Set([502,504,520,522,523,524]);
+const GET_RETRY_DELAYS=[400,1200];
+const pause=ms=>new Promise(done=>setTimeout(done,ms));
 async function readJson(fetchImpl,url,{method="GET",authorization,body}={}){
- let response;
- try{
-  response=await fetchImpl(url,{
-   method,redirect:"error",cache:"no-store",
-   headers:{"Accept":"application/json","Cache-Control":"no-cache",
-    ...(authorization?{"Authorization":"Bearer "+authorization}:{ }),
-    ...(method==="PUT"?{"Content-Type":"application/json"}:{})},
-   ...(body?{body:JSON.stringify(body)}:{}),
-   signal:AbortSignal.timeout(12_000),
-  });
- }catch{fail("UPSTREAM_UNAVAILABLE")}
- if(response.redirected||response.status!==200||
-    Number(response.headers.get("content-length")||0)>MAX_BYTES)
-  fail(method==="PUT"?"WRITE_UNAVAILABLE":"READ_UNAVAILABLE");
- let raw;
- try{raw=await response.text()}catch{fail("READ_UNAVAILABLE")}
- if(bytes(raw)>MAX_BYTES)fail("BODY_TOO_LARGE");
- try{return JSON.parse(raw)}catch{fail("INVALID_JSON")}
+  const isRead=method==="GET";
+  let response;
+  for(let attempt=0;;attempt++){
+    try{
+      response=await fetchImpl(url,{
+        method,redirect:"error",cache:"no-store",
+        headers:{"Accept":"application/json","Cache-Control":"no-cache",
+          ...(authorization?{"Authorization":"Bearer "+authorization}:{}),
+          ...(method==="PUT"?{"Content-Type":"application/json"}:{})},
+        ...(body?{body:JSON.stringify(body)}:{}),
+        signal:AbortSignal.timeout(12_000),
+      });
+    }catch{
+      // Never blindly retry a PUT whose outcome could have committed.
+      // Cloudflare D1 429/503 are not an edge-transient admission.
+      if(isRead&&attempt<GET_RETRY_DELAYS.length){
+        await pause(GET_RETRY_DELAYS[attempt]);continue;
+      }
+      fail(isRead?"UPSTREAM_UNAVAILABLE":"WRITE_OUTCOME_UNCERTAIN");
+    }
+    if(response.redirected)fail("UPSTREAM_REDIRECT_DENIED");
+    if(isRead&&GET_TRANSIENT_HTTP.has(response.status)&&
+       attempt<GET_RETRY_DELAYS.length){
+      await pause(GET_RETRY_DELAYS[attempt]);continue;
+    }
+    break;
+  }
+  if(response.status!==200||
+     Number(response.headers.get("content-length")||0)>MAX_BYTES)
+    fail(method==="PUT"?"WRITE_UNAVAILABLE":"READ_UNAVAILABLE");
+  let raw;
+  try{raw=await response.text()}catch{fail("READ_UNAVAILABLE")}
+  if(bytes(raw)>MAX_BYTES)fail("BODY_TOO_LARGE");
+  try{return JSON.parse(raw)}catch{fail("INVALID_JSON")}
 }
 function checkedLatest(doc,now){
  if(doc?.ok!==true||doc.schema!=="geomacro.website-derived-news-feed.v1"||
@@ -63,14 +83,32 @@ function checkedLatest(doc,now){
  if(!Number.isFinite(checked)||checked>now+60_000||
     now-checked>24*60*60_000)
    fail("WEBSITE_LATEST_STALE");
- const seen=new Set();
+ const seen=new Set(),eligible=[];
+ let naturallyExpired=0;
  for(const signal of doc.signals){
-  if(!isPermanentArchiveSignal(signal,now,{allowHistorical:false})||
-     !verifyDerivedStory(signal,now)||
+  // Verify each immutable record at the snapshot's own production clock.
+  // An expired record cannot conceal a corrupt or future-at-build record.
+  if(!isPermanentArchiveSignal(signal,checked,{allowHistorical:false})||
+     !verifyDerivedStory(signal,checked)||
      seen.has(signal.id))fail("WEBSITE_SIGNAL_NOT_CANONICAL_ELIGIBLE");
   seen.add(signal.id);
+  // The static site refreshes periodically, while the 72h sliding edge
+  // advances continuously. Skip only correctly expired records; never
+  // replay them to D1 or recertify their native published_at timestamp.
+  if(!isPermanentArchiveSignal(signal,now,{allowHistorical:false})||
+     !verifyDerivedStory(signal,now)){
+    const published=Date.parse(signal.published_at);
+    if(!Number.isFinite(published)||published>=now-WINDOW)
+      fail("WEBSITE_SIGNAL_LIVE_CLOCK_INVALID");
+    naturallyExpired++;
+    continue;
+  }
+  eligible.push(signal);
  }
- return doc.signals;
+ return Object.freeze({
+  signals:eligible,at_build_rows:doc.signals.length,
+  naturally_expired_since_snapshot:naturallyExpired,
+ });
 }
 function checkedJournal(doc,now){
  const checked=Date.parse(doc?.checked_at??"");
@@ -107,7 +145,8 @@ export async function reconcileWebsiteFindsToCanonicalD1({
  }catch{fail("CANONICAL_WORKER_POLICY_UNAVAILABLE")}
  // Read the independently published public free website snapshot; never its
  // private archive, source feed or historical pre-72h partitions.
- const website=checkedLatest(await readJson(fetchImpl,WEBSITE_LATEST),at);
+ const snapshot=checkedLatest(await readJson(fetchImpl,WEBSITE_LATEST),at);
+ const website=snapshot.signals;
  // One protected-edge-bypassing bounded D1 journal read; unknown/503 holds.
  const journalUrl=ORIGIN+"/v1/public/website-derived-news-bundle";
  const before=checkedJournal(await readJson(fetchImpl,journalUrl),at);
@@ -124,6 +163,8 @@ export async function reconcileWebsiteFindsToCanonicalD1({
  if(!missing.length)return Object.freeze({
   schema:"geomacro.website-d1-parity-reconcile.v1",
   same_canonical_derived_ids_verified:true,website_latest_eligible:website.length,
+  website_snapshot_rows:snapshot.at_build_rows,
+  expired_since_snapshot:snapshot.naturally_expired_since_snapshot,
   missing_before:0,inserted:0,exact_d1_readback_verified:true,
   recovered_category_counts:counts,source_fetches:0,extra_source_scraping:false,
   b2_requests:0,payments:0,predge_authenticated_readback_verified:false,
@@ -151,7 +192,10 @@ export async function reconcileWebsiteFindsToCanonicalD1({
  return Object.freeze({
   schema:"geomacro.website-d1-parity-reconcile.v1",
   same_canonical_derived_ids_verified:true,
-  website_latest_eligible:website.length,missing_before:missing.length,
+  website_latest_eligible:website.length,
+  website_snapshot_rows:snapshot.at_build_rows,
+  expired_since_snapshot:snapshot.naturally_expired_since_snapshot,
+  missing_before:missing.length,
   inserted:missing.length,exact_d1_readback_verified:true,
   recovered_category_counts:counts,source_fetches:0,
   b2_requests:0,payments:0,
