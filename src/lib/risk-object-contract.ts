@@ -149,7 +149,7 @@ export type RiskEvidenceReference = {
   transmission_channel?: string | null;
   relevance_weight?: number;
   subject_is_primary?: boolean;
-  subject_attribution_confidence?: number;
+  subject_attribution_confidence?: number | null;
   subject_attribution_method?: string;
   material_evidence_at?: string;
   evidence_age_hours?: number;
@@ -209,6 +209,9 @@ export type GeomacroRiskObject = {
   risk: {
     score: number;
     label: RiskLabel;
+    /** Optional bounded uncertainty from the real country risk calculation. */
+    score_band?: string;
+    uncertainty_interval?: { low: number; high: number };
 
     previous_score: number | null;
     delta: number | null;
@@ -307,9 +310,9 @@ export type GeomacroRiskObject = {
         rounded_score: number;
         aggregate_confidence: number;
       };
-      hash_inputs: {
-        data_projection: unknown;
-      };
+      hash_inputs:
+        | { data_projection: unknown; data_projection_version?: never; data_projection_sha256?: never }
+        | { data_projection_version: string; data_projection_sha256: string; data_projection?: never };
     };
   };
 };
