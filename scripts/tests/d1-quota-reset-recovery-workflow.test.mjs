@@ -1,9 +1,38 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
+import {readFileSync,mkdtempSync,writeFileSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {spawnSync} from "node:child_process";
 
 const recovery=readFileSync(new URL("../../.github/workflows/recover-d1-quota-deployment-after-reset.yml",import.meta.url),"utf8");
 const deploy=readFileSync(new URL("../../.github/workflows/deploy-d1-control-plane.yml",import.meta.url),"utf8");
+
+test('real timestamped Wrangler quota output recovers without a GitHub display name',()=>{
+ const start=recovery.indexOf('          log_bytes=');
+ const end=recovery.indexOf('\n      - name:',start);
+ assert.ok(start>0 && end>start);
+ const script=recovery.slice(start,end).replace(/^          /gm,'');
+ const dir=mkdtempSync(join(tmpdir(),'quota-recovery-'));
+ try {
+  const quota="Your account has exceeded D1's free tier daily row read limit";
+  const cases=[
+   [`2026-10-27T22:55:38.8486999Z npx -y wrangler d1 migrations apply DB --remote\n2026-10-27T22:55:40.8305008Z ${quota}. [code: 7500]\n`,true],
+   [`2026-10-27T22:55:38.8486999Z npx -y wrangler d1 execute DB --remote\n2026-10-27T22:55:40.8305008Z ${quota}. [code: 7500]\n`,true],
+   [`<html>${quota} [code: 7500] ${'x'.repeat(100)}</html>`,false],
+   [`2026-10-27T22:55:40.8305008Z ${quota}. [code: 9999]\n`,false],
+   [`2026-10-27T22:55:40.8305008Z ${'unrelated failure '.repeat(10)} [code: 7500]\n`,false],
+   ['',false],
+  ];
+  for(const [content,expected] of cases){
+   const log=join(dir,'job.log'),output=join(dir,'output');
+   writeFileSync(log,content);writeFileSync(output,'');
+   const result=spawnSync('bash',['-euo','pipefail','-c',script],{encoding:'utf8',env:{...process.env,log_text:log,GITHUB_OUTPUT:output}});
+   assert.equal(result.status,0,result.stderr);
+   assert.equal(readFileSync(output,'utf8').trim(),`retry=${expected}`);
+  }
+ } finally {rmSync(dir,{recursive:true,force:true});}
+});
 
 test("quota reset recovery sends the exact protected deployment confirmation",()=>{
   assert.match(deploy,/DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS/);
