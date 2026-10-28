@@ -53,6 +53,12 @@ const signed=[
   "signed_risk_objects[*].object.expires_at",
   "signed_risk_objects[*].object.integrity",
 ] as const;
+const marketWatch=[
+  "decision_intelligence[*].market_watch.schema_version",
+  "decision_intelligence[*].market_watch.status",
+  "decision_intelligence[*].market_watch.monitoring",
+  "decision_intelligence[*].market_watch.limitations",
+] as const;
 const preconditions=[
   "EXACT_REQUEST_AND_VARIANT_ELIGIBLE",
   "LAWFUL_SOURCE_USE_AND_ORIGINAL_FRESHNESS_VERIFIED",
@@ -88,7 +94,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
   structural_country_digest:{
     standard:{
       subject_scope:"country",response_kind:"adaptive_intelligence",
-      customer_receives:[...digest,"as_of","methodology","limitations","delivered_product_hash"],
+      customer_receives:[...digest,...marketWatch,"as_of","methodology","limitations","delivered_product_hash"],
       only_when_verified:["structural[*].evidence_summary.observation_count"],
       description:"One ISO3 country's compact governed structural dimensions, derived metrics, observation coverage and source-native date; not a current risk score.",
       prerequisites:["ONE_COUNTRY_STRUCTURAL_MODULE_VERIFIED"],
@@ -97,7 +103,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
   structural_corridor_digest:{
     standard:{
       subject_scope:"directional_corridor",response_kind:"adaptive_intelligence",
-      customer_receives:[...digest,"structural[*].serving.composition_method","as_of","methodology",
+      customer_receives:[...digest,...marketWatch,"structural[*].serving.composition_method","as_of","methodology",
         "limitations","delivered_product_hash"],
       only_when_verified:["structural[*].serving.route_modeling_status"],
       description:"One ordered origin→destination corridor's verified structural relationship and direct/composed evidence status; never invents physical routing.",
@@ -107,7 +113,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
   structural_country_profile:{
     standard:{
       subject_scope:"country",response_kind:"adaptive_intelligence",
-      customer_receives:[...digest,"structural[*].serving",
+      customer_receives:[...digest,...marketWatch,"structural[*].serving",
         "current_state[*].structural","as_of","methodology","limitations","delivered_product_hash"],
       only_when_verified:["current_state[*].historical_context",
         "current_state[*].developments"],
@@ -118,7 +124,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
   structural_corridor_profile:{
     standard:{
       subject_scope:"directional_corridor",response_kind:"adaptive_intelligence",
-      customer_receives:[...digest,"structural[*].serving",
+      customer_receives:[...digest,...marketWatch,"structural[*].serving",
         "current_state[*].subject","as_of","methodology","limitations","delivered_product_hash"],
       only_when_verified:["current_state[*].historical_context",
         "current_state[*].developments","change_intelligence[*].corridor_effects"],
@@ -129,7 +135,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
   intelligence_query:{
     focused:{
       subject_scope:"query_scope",response_kind:"adaptive_intelligence",
-      customer_receives:[...answer,...core,"query_plan_hash","as_of","limitations","delivered_product_hash"],
+      customer_receives:[...answer,...marketWatch,...core,"query_plan_hash","as_of","limitations","delivered_product_hash"],
       only_when_verified:["current_state[*].risk","current_state[*].live",
         "structural[*].intelligence"],
       description:"One focused subject/topic: direct derived answer, versioned governed state and freshness; only actually qualified requested modules.",
@@ -137,7 +143,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
     },
     standard:{
       subject_scope:"query_scope",response_kind:"adaptive_intelligence",
-      customer_receives:[...answer,...core,"analysis","query_plan_hash","as_of",
+      customer_receives:[...answer,...marketWatch,...core,"analysis","query_plan_hash","as_of",
         "methodology","limitations","delivered_product_hash"],
       only_when_verified:["structural[*].intelligence",
         "current_state[*].developments","change_intelligence[*].drivers"],
@@ -146,7 +152,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
     },
     complex_multi_source:{
       subject_scope:"query_scope",response_kind:"adaptive_intelligence",
-      customer_receives:[...answer,...core,"analysis","question_interpretation",
+      customer_receives:[...answer,...marketWatch,...core,"analysis","question_interpretation",
         "query_plan_hash","as_of","methodology","limitations","delivered_product_hash"],
       only_when_verified:["current_state[*].developments",
         "change_intelligence[*].cross_domain_effects",
@@ -158,7 +164,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
   signed_risk_object:{
     existing_valid_signed:{
       subject_scope:"country_or_corridor",response_kind:"signed_risk_object",
-      customer_receives:[...signed],
+      customer_receives:[...signed,...marketWatch],
       only_when_verified:["signed_risk_objects[*].object.risk.previous_score",
         "signed_risk_objects[*].object.risk.delta"],
       description:"Previously issued, still-valid signed country/corridor GRO attestation with risk, confidence, source-free attribution, expiry and integrity metadata; exact signature verification remains a separate proof gate.",
@@ -166,7 +172,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
     },
     newly_qualified_signed:{
       subject_scope:"country_or_corridor",response_kind:"signed_risk_object",
-      customer_receives:[...signed],
+      customer_receives:[...signed,...marketWatch],
       only_when_verified:["signed_risk_objects[*].object.risk.previous_score",
         "signed_risk_objects[*].object.risk.delta"],
       description:"Newly qualified signed GRO attestation with canonical risk/integrity metadata; genuine new evidence, authorized signature and exact readback must be proved separately.",
