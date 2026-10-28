@@ -102,7 +102,8 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
   for(let offset=0;offset<600;offset+=40){
    const response=await fetchSignedNewsPage(URL+'?offset='+offset,fetchImpl,proofBearer);
    const text=await response.text();if(text.length>500000)throw Error('SIGNED_NEWS_RESPONSE_OVERSIZE');
-   const page=JSON.parse(text);
+   let page;
+   try{page=JSON.parse(text)}catch{throw Error('SIGNED_NEWS_RESPONSE_JSON_INVALID')}
    if(page.ok!==true||page.schema!=='geomacro.public-signed-derived-news.v1'||
     page.profile!=='GEOMACRO_AUTOMATED_DERIVED_INPUT_V1'||page.page_offset!==offset||page.page_size!==40||
     typeof page.journal_fingerprint!=='string'||!/^[a-f0-9]{64}$/u.test(page.journal_fingerprint)||

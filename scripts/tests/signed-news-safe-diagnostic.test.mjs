@@ -31,3 +31,16 @@ test("whitelisted native error cannot indicate publication or commercial rights"
   assert.equal(receipt.scored_gri_updated,false);
  }
 });
+test("live signed-news failures distinguish journal churn and malformed JSON without leaking details",()=>{
+ for(const code of ["SIGNED_NEWS_JOURNAL_CHANGED_REPEATEDLY",
+  "SIGNED_NEWS_RESPONSE_JSON_INVALID","PRIVATE_NEWS_PROOF_TOKEN_MISSING"]){
+  const result=safeSignedNewsFailureReceipt(new Error(code));
+  assert.equal(result.reason,code);
+  assert.equal(result.valid_signed_derived_receipt_available,false);
+  assert.equal(result.source_material_logged,false);
+  assert.equal(result.paid_delivery_authorized,false);
+ }
+ assert.equal(safeSignedNewsReason(new Error(
+  "SIGNED_NEWS_RESPONSE_JSON_INVALID raw=https://internal.example")), 
+  "SIGNED_NEWS_UNCLASSIFIED_OR_NETWORK_FAILURE");
+});
