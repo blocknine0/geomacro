@@ -33,6 +33,8 @@ describe("exact founder prices in one API + AI Agent on Base/Arc/Polygon (NO FUN
     expect(manifest.pricing_version).toBe(GEOMACRO_CAPABILITY_PRICING_VERSION);
     expect(manifest.capability_count).toBe(7);
     expect(manifest.price_variant_count).toBe(12);
+    expect(manifest.capabilities.filter(p=>p.launch_status==="COMING_SOON")).toHaveLength(1);
+    expect(manifest.capabilities.filter(p=>p.new_sales_allowed)).toHaveLength(6);
     expect(Object.keys(GEOMACRO_CAPABILITY_PRICES).length).toBe(8);
     const table=manifest.capabilities.flatMap(c=>c.variants.map(v=>
       [c.capability,v.variant,v.price_usdc,v.amount_atomic]));
