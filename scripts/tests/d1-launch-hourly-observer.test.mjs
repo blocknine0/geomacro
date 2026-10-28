@@ -1,6 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {observeD1LaunchHour} from "../ops/d1-launch-hourly-observer.mjs";
+
+test("post-deploy observation uses protected main, read-only permissions and no deploy loop",()=>{
+ const yaml=readFileSync(new URL('../../.github/workflows/d1-launch-72h-observatory.yml',import.meta.url),'utf8');
+ assert.match(yaml,/workflows: \["Deploy D1 Control Plane"\]/);
+ assert.match(yaml,/types: \[completed\]/);
+ assert.match(yaml,/github.event.workflow_run.head_repository.full_name == github.repository/);
+ assert.match(yaml,/github.event.workflow_run.head_branch == 'main'/);
+ assert.match(yaml,/ref: \$\{\{ github.sha \}\}/);
+ assert.doesNotMatch(yaml,/ref: .*workflow_run|actions: write|workflow run|\/dispatches/);
+ assert.match(yaml,/contents: read\n  actions: read/);
+});
 
 const now=new Date("2026-10-28T08:30:00.000Z");
 const sha="a".repeat(40);
