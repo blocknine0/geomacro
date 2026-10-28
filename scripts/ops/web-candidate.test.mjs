@@ -127,3 +127,20 @@ test('propagation wait never retries malformed, activated, unsafe or failed mark
  }
  await assert.rejects(waitForCandidateMarker(async()=>{throw Error('transport failed')},'b'.repeat(40)),/transport failed/);
 });
+
+test("isolated identity preserves the strict remote binding allowlist without migrating old secrets",()=>{
+ const workflow=readFileSync(".github/workflows/deploy-web-candidate.yml","utf8");
+ const prep=readFileSync("scripts/ops/prepare-web-candidate.mjs","utf8");
+ const check=readFileSync("scripts/ops/verify-web-candidate.mjs","utf8");
+ assert.ok(workflow.includes("w.id==='geomacro-web-candidate-isolated'"));
+ assert.ok(workflow.includes("api+'/geomacro-web-candidate-isolated/settings'"));
+ assert.ok(workflow.includes("CANDIDATE_PRIVATE_OR_UNKNOWN_BINDING_PRESENT"));
+ assert.ok(workflow.includes("b.type==='assets'&&b.name==='ASSETS'"));
+ assert.ok(workflow.includes("b.type==='plain_text'&&b.name==='GEOMACRO_SUPABASE_RUNTIME_MODE'&&b.text==='standby'"));
+ assert.ok(workflow.includes("b.type==='secret_text'&&b.name==='GEOMACRO_SECURITY_FINGERPRINT_PEPPER'"));
+ assert.ok(workflow.includes("npx -y wrangler@4.136.3 deploy --config .output/server/candidate-wrangler.json --keep-vars"));
+ assert.ok(prep.includes('name:"geomacro-web-candidate-isolated"'));
+ assert.ok(check.includes('https://geomacro-web-candidate-isolated.daspallab202391.workers.dev'));
+ assert.ok(!workflow.includes("wrangler delete"));
+ assert.ok(!workflow.includes("workers/scripts/geomacro-web-candidate-isolated/bindings"));
+});
