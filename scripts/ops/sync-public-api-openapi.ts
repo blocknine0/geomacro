@@ -48,11 +48,16 @@ response.properties.limitations.properties.wgi_upstream_perception_source_materi
 response.properties.limitations.required = response.properties.limitations.required.filter((field: string) =>
   field !== "current_event_raw_source_material_redistributed");
 response.properties.payment.properties.provider = { enum: ["coinbase_cdp_x402", "coinbase_x402", "circle_gateway_x402"] };
+// Retain already-published additive child contracts (market_watch and native
+// locale) when rebuilding the generic decision shell. Old frozen receipts
+// remain compatible; deterministic generator output must not erase them.
+const existingDecisionProperties={...response.properties.decision_intelligence?.items?.properties};
 for (const [field, version] of [["change_intelligence", "geomacro.change-intelligence.v1"], ["decision_intelligence", "geomacro.decision-intelligence.v1"]]) {
   response.properties[field] = { type: "array", items: { type: "object", required: ["schema_version", "execution_authorized", "raw_data_delivered"], properties: {
     schema_version: { const: version }, execution_authorized: { const: false }, raw_data_delivered: { const: false },
   }, additionalProperties: true } };
 }
+Object.assign(response.properties.decision_intelligence.items.properties,existingDecisionProperties);
 response.properties.availability = { type: "object", description: "Source-private admission summary; never a payment receipt." };
 response.properties.data_attribution = { type: "object", description: "Only separately approved fixed derived-data attribution; does not grant source rights." };
 writeFileSync(responsePath, JSON.stringify(response, null, 2) + "\n");
