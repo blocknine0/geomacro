@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: "11,41 * * * *"
   workflow_dispatch: {}
+  # A second narrowly checked wake-up complements the existing direct
+  # downstream trigger; it never creates a numerical index itself.
+  workflow_run:
+    workflows: ["GRI v1.2 Supabase-Free Current Promotion"]
+    types: [completed]
   pull_request:
     paths:
       - ".github/workflows/risk-indices-verified-parent-backstop.yml"
@@ -50,7 +55,18 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      (
+        github.event_name == 'schedule' ||
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+          (github.event.workflow_run.event == 'repository_dispatch' ||
+           github.event.workflow_run.event == 'workflow_dispatch')
+        )
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
