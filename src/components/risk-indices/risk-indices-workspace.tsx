@@ -211,7 +211,7 @@ function ObservedBars({index,window,snapshotAsOf}:{index:PublicRiskIndex;window:
  return <div className="mt-6">
   <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
    <span className="text-xs text-muted-foreground">{buckets.reduce((n,b)=>n+b.count,0)} observations in {buckets.length} active bins</span>
-   <span className="text-xs font-medium tabular-nums">{frame.low?.toFixed(0)}–{frame.high?.toFixed(0)} observed</span>
+   <span className="text-xs font-medium tabular-nums">{frame?.low?.toFixed(0)}–{frame?.high?.toFixed(0)} observed</span>
   </div>
   <div className="relative flex h-40 items-end gap-1 border-b border-border/80 pb-1" role="img" aria-label={index.name+", "+window+": "+buckets.length+" observed six-hour severity buckets, empty bins indicate no observations"}>
    {ticks.map(t=>{
