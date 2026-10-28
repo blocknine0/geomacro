@@ -271,7 +271,7 @@ export function interpretMultilingualIntelligenceQuery(raw: unknown) {
   // Original English remains the default. Explicit English/Bengali/Hindi and
   // Bengali/Hindi script auto-detection opt in to a hash-bound paid locale.
   const responseLocale = ["bn","hi"].includes(requestedLocale)
-    ? requestedLocale as "bn"|"hi" : input.language ? "en" as const : null;
+    ? requestedLocale as "bn"|"hi" : (requestedLocale==="en"&&input.language) ? "en" as const : null;
   const q = norm(input.question);
   const inferredTopics = semanticTopics(input.question);
   const requestedTopics = input.topics ?? inferredTopics;
