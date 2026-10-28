@@ -50,13 +50,13 @@ function publicationState(story:FreeStory,now:number):"CURRENT"|"EXPIRED"|"INVAL
   if(typeof story.published_at!=="string")return "INVALID";
   let at:number;
   if(story.date_precision==="exact"){
-    if(!/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d+)?Z$/u.test(story.published_at))
+    if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/u.test(story.published_at))
       return "INVALID";
     at=Date.parse(story.published_at);
     if(!Number.isFinite(at)||new Date(at).toISOString().slice(0,19)!==
        story.published_at.slice(0,19)||at>now-MIN_DELAY)return "INVALID";
   }else if(story.date_precision==="day"){
-    if(!/^\\d{4}-\\d\\d-\\d\\d$/u.test(story.published_at))
+    if(!/^\d{4}-\d\d-\d\d$/u.test(story.published_at))
       return "INVALID";
     at=Date.parse(story.published_at+"T00:00:00.000Z");
     if(!Number.isFinite(at)||new Date(at).toISOString().slice(0,10)!==
