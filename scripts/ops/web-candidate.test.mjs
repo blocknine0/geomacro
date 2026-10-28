@@ -144,3 +144,32 @@ test("isolated identity preserves the strict remote binding allowlist without mi
  assert.ok(!workflow.includes("wrangler delete"));
  assert.ok(!workflow.includes("workers/scripts/geomacro-web-candidate-isolated/bindings"));
 });
+
+test("new isolated edge may transiently return 404 but only real fenced marker passes",async()=>{
+ let calls=0,pauses=0;
+ const good={res:{status:200},json:{
+   schema_version:"geomacro.deployment-build.v1",
+   canonical_main_sha:"b".repeat(40),
+   candidate_mode:"read-only-no-funds",
+   production_activation_performed:false}};
+ const receipt=await waitForCandidateMarker(async()=>{
+   calls++;return calls<=2?{res:{status:404},json:null}:good;
+ },"b".repeat(40),{pause:async()=>{pauses++},allowInitial404:true});
+ assert.equal(receipt,good);assert.equal(calls,3);assert.equal(pauses,2);
+ await assert.rejects(waitForCandidateMarker(async()=>({res:{status:404},json:null}),
+  "b".repeat(40),{pause:async()=>{},allowInitial404:true}),
+  /FIRST_EDGE_ROUTE_UNAVAILABLE/);
+ for(const marker of [
+   {res:{status:200},json:null},
+   {res:{status:503},json:null},
+   {res:{status:404},json:good.json},
+ ])await assert.rejects(waitForCandidateMarker(async()=>marker,
+  "b".repeat(40),{pause:async()=>{throw Error("should not retry")},allowInitial404:true}),
+  /UNSAFE_OR_INVALID/);
+});
+test("only exact marker path can bypass initial unpropagated route response",()=>{
+ const source=readFileSync("scripts/ops/verify-web-candidate.mjs","utf8");
+ assert.ok(source.includes('if(path==="/.well-known/geomacro-build.json"&&res.status===404)'));
+ assert.ok(source.includes('throw Error("CANDIDATE_READ_ONLY_FENCE_NOT_VERIFIED")'));
+ assert.ok(source.includes('{allowInitial404:true}'));
+});
