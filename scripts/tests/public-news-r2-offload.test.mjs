@@ -172,7 +172,7 @@ test("GitHub batch reads the real D1-origin contracts with no-cache and publishe
   assert.equal(receipt.d1_writes,0);assert.equal(receipt.b2_requests,0);
   assert.equal(receipt.new_upstream_reads,0);
   assert.equal(receipt.sha256,"f".repeat(64));
-  assert.equal(published,1);assert.equal(requests,5,
+  assert.equal(published,1);assert.equal(requests,7,
     "two independent build runs each use health + one bundle + machine; publisher PUT adds one");
 });
 
