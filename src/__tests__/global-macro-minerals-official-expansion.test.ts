@@ -27,7 +27,7 @@ describe("Official Macro/FX and critical-minerals global source expansion",()=>{
       const macro=await readStatelessWebsiteIntelligence("macro",at);
       const minerals=await readStatelessWebsiteIntelligence("rare_earth",at);
       expect(macro.feed_count).toBe(23);
-      expect(minerals.feed_count).toBe(17);
+      expect(minerals.feed_count).toBe(18); // +one first-party DOE HTML fallback; fixed read-only budget
       expect(macro.healthy_feed_count).toBe(1);
       expect(minerals.healthy_feed_count).toBe(2);
       expect(called.some(s=>s.includes("q=international%20trade&"))).toBe(true);
