@@ -3,7 +3,7 @@ import { RiskIndicesWorkspace } from "@/components/risk-indices/risk-indices-wor
 
 const TITLE = "Risk Indices | Geopolitical, Macro & Critical Minerals | Geomacro";
 const DESCRIPTION =
-  "Inspect Geomacro's separate verified Geopolitical Risk Index, Macroeconomic Risk Index and Critical Minerals Risk Index.";
+  "Explore separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices with certified reading dates, historical availability and recent public research activity. Missing scores are never estimated.";
 const URL = "https://geomacro.live/risk-indices";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
