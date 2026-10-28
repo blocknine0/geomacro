@@ -254,7 +254,7 @@ export function assertGeomacroIntelligenceResponseContract(payload: unknown): as
           watch.limitations.actual_market_prices_included!==false ||
           watch.limitations.market_direction_verified!==false ||
           watch.limitations.quantitative_forecast_included!==false ||
-          watch.limitations.source_or_raw_osint_included!==false ||
+          watch.limitations.private_inputs_exposed!==false ||
           watch.limitations.execution_authorized!==false) {
         throw Error("INTELLIGENCE_RESPONSE_MARKET_WATCH_BOUNDARY_INVALID");
       }
