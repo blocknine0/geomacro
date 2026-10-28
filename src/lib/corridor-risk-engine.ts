@@ -590,7 +590,7 @@ buildCorridorRiskObject(
     uniqueSorted(
       evidence.flatMap(
         (item) =>
-          item.source_families,
+          item.source_families ?? [],
       ),
     );
 
