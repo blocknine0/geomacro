@@ -143,7 +143,6 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
       >
         {ids.map((capability) => {
           const product = PRODUCTS[capability];
-          const comingSoon = capability === "risk_gate_bundle";
           return (
             <article
               key={capability}
@@ -152,7 +151,7 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="gm-eyebrow text-[10px]">
-                  {comingSoon ? "Coming Soon" : product.pilot ? "Private pilot" : "Structured intelligence"}
+                  {product.pilot ? "Private pilot" : "Structured intelligence"}
                 </p>
                 <ArrowUpRight className="h-4 w-4 text-muted-foreground" aria-hidden />
               </div>
@@ -205,19 +204,15 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
               </details>
               )}
               <div className="mt-auto pt-6">
-                {comingSoon ? (
-                  <div role="status" className="flex min-h-11 items-center justify-center rounded-lg border border-border px-3 text-sm font-medium text-muted-foreground">
-                    Coming Soon · Not available for purchase
-                  </div>
-                ) : <a
+                <a
                   href={`mailto:contact@geomacro.live?subject=${encodeURIComponent(`Geomacro launch access: ${product.title}`)}`}
                   className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border px-3 text-sm font-medium transition hover:border-primary hover:text-primary"
                 >
                   Enquire about this product <ArrowUpRight className="h-3.5 w-3.5" />
-                </a>}
+                </a>
                 <p className="mt-3 text-center text-[11px] text-muted-foreground">
-                  {comingSoon ? "Risk Gate is planned for a later launch; shown for reference only."
-                    : product.pilot ? "Pilot access by agreement"
+                  {product.pilot
+                    ? "Pilot access by agreement"
                     : "Self-service checkout coming soon"}
                 </p>
               </div>
