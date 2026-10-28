@@ -77,7 +77,7 @@ export async function streamPublicAsk(
          !Array.isArray(answer.evidence))throw Error("ASK_STREAM_ANSWER_INVALID");
       const context=payload.context as Record<string,unknown>|undefined;
       completed={answer,resolvedQuestion:typeof context?.resolved_question==="string"&&
-       context.resolved_question.length<=300?context.resolved_question:question};
+       context.resolved_question.length<=1200?context.resolved_question:question};
     }
     boundary=buffer.indexOf("\n\n");
    }
