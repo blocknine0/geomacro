@@ -10,12 +10,18 @@ if(!/^[a-f0-9]{40}$/.test(expected??""))throw Error("CANDIDATE_EXPECTED_SHA_REQU
 async function get(path) {
  const res=await fetch(base+path,{redirect:"error",signal:AbortSignal.timeout(25000),
   headers:{Accept:"application/json","Cache-Control":"no-cache"}});
- if(res.headers.get("X-Geomacro-Candidate-Mode")!=="read-only-no-funds")
+ if(res.headers.get("X-Geomacro-Candidate-Mode")!=="read-only-no-funds"){
+  // Only an initial 404 for the exact, unpublicized candidate marker may
+  // be retried; no request is considered successful without this fence.
+  if(path==="/.well-known/geomacro-build.json"&&res.status===404)
+   return {res,json:null};
   throw Error("CANDIDATE_READ_ONLY_FENCE_NOT_VERIFIED");
+ }
  const json=await res.json();
  return {res,json};
 }
-const marker=await waitForCandidateMarker(()=>get("/.well-known/geomacro-build.json"),expected);
+const marker=await waitForCandidateMarker(()=>get("/.well-known/geomacro-build.json"),
+ expected,{allowInitial404:true});
 if(marker.res.status!==200||marker.json.schema_version!=="geomacro.deployment-build.v1"||
  marker.json.canonical_main_sha!==expected||marker.json.production_activation_performed!==false||
  marker.json.candidate_mode!=="read-only-no-funds")throw Error("CANDIDATE_EXACT_SHA_MISMATCH");
