@@ -1,9 +1,7 @@
 import { withPublicRuntimeTimeout } from "./public-runtime-timeout";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  PUBLIC_RISK_INDICES_CONTRACT_VERSION,
-  type PublicRiskIndices,
-} from "./risk-indices.types";
+import type { PublicRiskIndices } from "./risk-indices.types";
+import {ageVerifiedRiskIndices,verifiedRiskIndicesShape} from "./risk-indices-public-validation";
 import { reportError, type UserError } from "./user-errors";
 import {getWebsiteLaggedGlobalRisk} from "./website-lagged-global-risk.functions";
 import {riskIndicesFromGlobalRisk} from "./risk-indices-from-global-risk";
@@ -44,30 +42,6 @@ const READ_TARGETS: RiskIndicesReadTarget[] = [
   { kind: "app", url: RISK_INDICES_APP_URL },
 ];
 
-function validIndices(data: PublicRiskIndices | null | undefined): data is PublicRiskIndices {
-  if (
-    !data ||
-    data.contractVersion !== PUBLIC_RISK_INDICES_CONTRACT_VERSION ||
-    data.parentMethodologyVersion !== METHODOLOGY ||
-    data.verificationStatus !== "verified" ||
-    !Array.isArray(data.indices) ||
-    data.indices.length !== 3
-  ) return false;
-
-  const expected = new Set(["geopolitics", "macro", "critical_minerals"]);
-  for (const index of data.indices) {
-    if (!expected.delete(index.key)) return false;
-    if (
-      index.status !== "available" ||
-      !Number.isFinite(Number(index.score)) ||
-      !Array.isArray(index.series?.["7D"]?.buckets) ||
-      index.series["7D"].buckets.length < 2 ||
-      !Array.isArray(index.series?.["30D"]?.buckets) ||
-      index.series["30D"].buckets.length < index.series["7D"].buckets.length
-    ) return false;
-  }
-  return expected.size === 0;
-}
 
 async function readVerifiedRiskIndices(target: RiskIndicesReadTarget): Promise<PublicRiskIndices> {
   const response = await fetch(target.url, {
@@ -100,7 +74,7 @@ async function readVerifiedRiskIndices(target: RiskIndicesReadTarget): Promise<P
     data = body.data;
   }
 
-  if (!validIndices(data)) throw new Error("Risk Indices verified contract validation failed");
+  if (!verifiedRiskIndicesShape(data)) throw new Error("Risk Indices verified contract validation failed");
   return data;
 }
 
@@ -135,7 +109,7 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
         try{
           const lagged=await withPublicRuntimeTimeout(getWebsiteLaggedGlobalRisk({data:{}}),10_000,"WEBSITE_RISK_INDICES_LAGGED_READ_TIMEOUT");
           response=riskIndicesFromGlobalRisk(lagged.data);
-          if(!validIndices(response))throw new Error("WEBSITE_LAGGED_RISK_INDICES_INVALID");
+          if(!verifiedRiskIndicesShape(response))throw new Error("WEBSITE_LAGGED_RISK_INDICES_INVALID");
         }catch{
           // Distinct read-only edge fallback may serve only an already
           // one-hour-old independently verified index snapshot. Never
@@ -150,7 +124,7 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
         if (cancelled) return;
 
         hasData.current = true;
-        setData(response);
+        setData(ageVerifiedRiskIndices(response));
         setError(null);
         setStatus("ready");
       } catch (caught) {
@@ -161,6 +135,9 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
           "refreshing the verified public risk indices",
         );
         setError(userError);
+        // A once-current cached signed reading must age even when every
+        // independent edge is down; never keep a frozen LIVE label forever.
+        setData((prior)=>prior?ageVerifiedRiskIndices(prior):null);
         setStatus(hasData.current ? "ready" : "error");
       }
     }
