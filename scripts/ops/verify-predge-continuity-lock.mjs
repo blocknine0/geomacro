@@ -47,7 +47,7 @@ export function assertContinuityLock({policy,workflows}){
   'website-derived-news-cadence-backstop.yml':['catch-up-derived-only:','node scripts/ops/check-website-derived-news-cadence.mjs'],
  }))if(required.some(token=>!workflows[name].includes(token)))fail('PRODUCER_DRIFT');
  const watch=workflows['predge-research-continuity.yml'];
- for(const required of ['workflows: ["Website Derived News Continuity"]','recover-missed-publication:',
+ for(const required of ['workflows: ["Website Derived News Continuity", "Five-Minute Original News Fastlane"]','recover-missed-publication:',
   'node scripts/ops/check-website-derived-news-cadence.mjs','steps.decide.outputs.should_run == \'true\'',
   'workflow_run.head_repository.full_name == github.repository',
   'node scripts/ops/verify-predge-continuity-lock.mjs',

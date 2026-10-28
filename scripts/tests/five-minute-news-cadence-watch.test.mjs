@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {
- FASTLANE_WORKFLOW,actualFiveMinutePublisherCompletion,
+ FASTLANE_WORKFLOW,actualFiveMinutePublisherCompletion,actualSourceIntakeReceipt,
  decideFiveMinuteNewsRecovery,
 } from "../lib/five-minute-news-cadence-watch.mjs";
 
@@ -13,6 +13,10 @@ const run=(id,{mins=4,event="schedule",status="completed",
  id,head_branch:branch,event,status,conclusion,
  created_at:iso(mins),updated_at:iso(mins-1),
 });
+const intakeLog=(minutes=3)=>iso(minutes)+' '+JSON.stringify({schema:'geomacro.fastlane-source-checkpoint-receipt.v1',
+ categories:['geopolitics','macro','rare_earth'],checkpoint_writes:3,raw_upstream_stored:false,partner_client_receipt_asserted:false})+'\n'+
+ iso(minutes)+' '+JSON.stringify({schema:'geomacro.source-intake-completed.v1',interval_minutes:5,max_new_rows:5,
+ retained_new_rows:0,source_checkpoint_acknowledged:true});
 const jobs=(minutes=2,stepStatus="success")=>[
  {name:"fastlane-contract",status:"completed",conclusion:"success",
   completed_at:iso(minutes),steps:[]},
@@ -25,7 +29,7 @@ const jobs=(minutes=2,stepStatus="success")=>[
 
 test("verified same-main completed D1 job and exact successful publication suppress redundant dispatch",()=>{
  const r=run(141,{mins:6});
- const proof=actualFiveMinutePublisherCompletion(r,jobs(3),now);
+ const proof=actualFiveMinutePublisherCompletion(r,jobs(3),now,intakeLog(3));
  assert.equal(proof,Date.parse(iso(3)));
  const decision=decideFiveMinuteNewsRecovery([r],{[r.id]:proof},now);
  assert.equal(decision.reason,"RECENT_GENUINE_D1_PUBLISHER_RUN");
@@ -84,4 +88,31 @@ test("uses pre-existing backstop wakeups and ephemeral GitHub Actions dispatch; 
  for(const txt of [cli,isolated]){
   assert.doesNotMatch(txt,/COINBASE_X402_MAINNET_ACK|SUPABASE_SERVICE_ROLE_KEY|TELEGRAM_SESSION|B2_APPLICATION_KEY\s*:/);
  }
+});
+
+
+test('plain timestamped completion and all-category checkpoint receipts are mandatory',()=>{
+ const r=run(151,{mins:6}),valid=intakeLog(3),start=Date.parse(r.created_at),end=Date.parse(iso(2));
+ assert.equal(actualSourceIntakeReceipt(valid,start,end),Date.parse(iso(3)));
+ for(const log of [null,'',valid.split('\n')[0],valid.split('\n')[1],
+  valid+'\n'+valid,valid.replace('"checkpoint_writes":3','"checkpoint_writes":2'),
+  valid.replace('"source_checkpoint_acknowledged":true','"source_checkpoint_acknowledged":false'),
+  valid.replace('"rare_earth"','"macro"'),valid.replace('"retained_new_rows":0','"retained_new_rows":6'),
+  valid.replaceAll(iso(3),iso(8)),valid.replaceAll(iso(3),iso(-1)),
+  valid.replaceAll('Z {','Z echo {'),
+  valid+'\n'+iso(3)+' '+JSON.stringify({schema:'geomacro.source-intake-deferred.v1'})]){
+  assert.equal(actualFiveMinutePublisherCompletion(r,jobs(2),now,log),null);
+ }
+ assert.equal(actualFiveMinutePublisherCompletion(r,jobs(2),now),null,'green publication step alone is not intake evidence');
+});
+test('source-only admission recovers publisher during discretionary hold; signing stays gated',()=>{
+ const wf=readFileSync('.github/workflows/website-derived-news-cadence-backstop.yml','utf8');
+ const watch=wf.split('  fastlane-actual-publisher-cadence-watch:')[1].split('  catch-up-derived-only:')[0];
+ assert.match(wf,/source_intake: \$\{\{ steps\.budget\.outputs\.source_intake \}\}/);
+ assert.match(watch,/needs\.quota-admission\.outputs\.source_intake == 'true'/);
+ assert.doesNotMatch(watch,/outputs\.critical == 'true'/);
+ assert.match(wf,/Global OSINT to Website Intelligence \(15-Minute Discovery\)/);
+ const protectedWatch=readFileSync('.github/workflows/predge-research-continuity.yml','utf8');
+ assert.match(protectedWatch,/workflows: \["Website Derived News Continuity", "Five-Minute Original News Fastlane"\]/);
+ assert.match(protectedWatch,/workflow_run\.name != 'Five-Minute Original News Fastlane'/,'post-intake proof must not redispatch ingestion recursively');
 });

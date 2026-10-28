@@ -110,3 +110,21 @@ discovery with native-date, rights and delivery gates unchanged. Query country
 never supplies event attribution. No development is invented for a country with
 no qualifying release. Shared-journal projection into the existing Predge feed
 retains the existing category and authentication contract.
+
+
+## Quota-held source recovery and post-intake partner proof
+The existing cadence backstop keys source recovery to `source_intake`, not
+`critical`: a discretionary hold cannot disable an independently admitted small
+source batch. Completed global OSINT runs also wake that existing backstop; no
+new schedule or publisher loop is added. The writer rechecks its own account
+budget and authenticated due clock before polling.
+
+Watchdog success requires the actual publication step plus one timestamped
+source-intake completion and all three category checkpoint receipts within the
+same successful main job. Green not-due/held work and duplicate/missing receipts
+cannot suppress recovery. Quiet sources can complete a real poll with zero new
+rows; that is not evidence of a new release. Authenticated Predge continuity is
+checked after fastlane completion as well as hourly, without recursively
+triggering recovery from that post-intake event. The existing 500/UTC-day atomic
+cap, expiry, attribution, 72h window and protected credentials remain unchanged.
+GitHub delays and publisher outages are still observable failures, not an SLA.
