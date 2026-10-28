@@ -27,8 +27,11 @@ describe("multilingual no-funds query interpreter", () => {
 
   it("binds native Bengali/Hindi output to new quote hashes while retaining global input fallback",()=>{
     const q="ভারতের মুদ্রাস্ফীতি";
-    const native=interpret({question:q});
+    const legacy=interpret({question:q});
+    expect(legacy.canonical_request.response_locale).toBeUndefined();
+    const native=interpret({question:q,language:"bn"});
     expect(native.canonical_request.response_locale).toBe("bn");
+    expect(legacy.query_plan_hash).not.toBe(native.query_plan_hash);
     expect(native.output_locale).toBe("bn");
     expect(native.native_output_available).toBe(true);
     const english=interpret({question:q,language:"en"});
