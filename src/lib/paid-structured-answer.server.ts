@@ -3,6 +3,7 @@ import { interpretMultilingualIntelligenceQuery } from "./multilingual-query-int
 import { mainnetIntelligenceHandlers } from "./mainnet-intelligence-endpoint.server";
 import { publicCapabilityNewSalesAllowed } from "./capability-pricing-catalog";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
+import {publicQueryResolution} from "./universal-query-resolution";
 
 export const GEOMACRO_PAID_STRUCTURED_TOOL = "geomacro.paid-structured-answer.v1" as const;
 const TARGET = "/api/v1/intelligence/query";
@@ -15,9 +16,10 @@ const HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, PAYMENT-SIGNATURE, payment-signature",
   "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, X-Geomacro-Delivery-SHA256, X-Geomacro-Quote-ID",
 } as const;
-const noCharge = (code:string,status=422) => Response.json({
+const noCharge = (code:string,status=422,resolution?:ReturnType<typeof publicQueryResolution>) => Response.json({
   ok:false, chargeable:false, payment_required_now:false, payment_authorized:false,
   execution_authorized:false, error:{code},
+  ...(resolution?{resolution}:{}),
 },{status,headers:HEADERS});
 
 type CanonicalPost=(args:{request:Request})=>Promise<Response>;
@@ -54,15 +56,19 @@ export async function paidStructuredAnswer(
     windowMs:60_000,maxPerClient:12,maxGlobal:120,
   })))return noCharge("PAID_STRUCTURED_RATE_LIMITED",429);
   let interpreted:ReturnType<typeof interpretMultilingualIntelligenceQuery>;
+  let input:unknown;
   try{
     const raw=await request.text();
     if(new TextEncoder().encode(raw).byteLength>MAX_BYTES)
       return noCharge("PAID_STRUCTURED_BODY_TOO_LARGE",413);
-    interpreted=interpretMultilingualIntelligenceQuery(JSON.parse(raw));
+    input=JSON.parse(raw);
+    interpreted=interpretMultilingualIntelligenceQuery(input);
   }catch(error){
     return noCharge(error instanceof ZodError?"PAID_STRUCTURED_INVALID_ARGUMENTS":
       error instanceof SyntaxError?"PAID_STRUCTURED_INVALID_JSON":
-      "PAID_STRUCTURED_UNSUPPORTED_SCOPE",400);
+      "PAID_STRUCTURED_UNSUPPORTED_SCOPE",400,
+      error instanceof ZodError||error instanceof SyntaxError?undefined:
+        publicQueryResolution(input,error));
   }
   if(!publicCapabilityNewSalesAllowed(interpreted.selected_product.capability))
     return noCharge("PAID_STRUCTURED_PRODUCT_COMING_SOON",422);
