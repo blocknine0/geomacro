@@ -86,7 +86,7 @@ export async function planConversationalAsk(
     });
     if (response.in_scope !== true || typeof response.english_question !== "string") return null;
     const canonical = response.english_question.trim().replace(/\s+/g, " ");
-    if (canonical.length < 2 || canonical.length > 300 ||
+    if (canonical.length < 2 || canonical.length > 1200 ||
         /(?:ignore (?:all|previous)|system prompt|jailbreak|<\|)/i.test(canonical)) return null;
     if (!askDomains(canonical).length && !/\bgeomacro\b/i.test(canonical)) return null;
     // A native-script country/indicator must not be silently dropped on
