@@ -27,8 +27,11 @@ test('failed signing cannot become a successful delegated audit; fresh readback 
  assert.match(delegated,/needs: \[contract, approve-retained-derived-inputs\]/u);
  assert.equal(delegated.slice(0,delegated.indexOf('runs-on:')).includes('always()'),false);
  assert.match(producer,/bun scripts\/ops\/verify-all-news-signed-publications.mjs/u);
- assert.match(delegated,/verify-all-news-signed-publications.mjs > /u);
- assert.ok(delegated.indexOf('verify-all-news-signed-publications.mjs >')<delegated.indexOf('--sign-verified-derived'));
+ // The detailed proof is now GeoMacro-owner-only: existing delegated
+ // signer is explicitly held rather than receiving owner/root credentials.
+ assert.match(delegated,/if: >-\\s+false &&/u);
+ assert.equal(delegated.includes('GEOMACRO_COMMERCE_LEDGER_TOKEN'),false);
+ assert.equal(delegated.includes('verify-all-news-signed-publications.mjs > '),false);
  assert.match(delegated,/GEOMACRO_STANDING_DELEGATION_REVOKED/u);
 });
 test('automatic ingestion does not silently expand the signed human delegation',()=>{
@@ -44,8 +47,10 @@ test('signed derived audit must be owner-only before the one-time machine-policy
  const step=workflow.slice(workflow.indexOf('- name: Independently read back all current derived input signatures'));
  const before=step.split('- name: Sign only derived-readback audit aggregate')[0];
  assert.match(before,/umask 077/u);
- assert.match(before,/verify-all-news-signed-publications\.mjs > "\$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH"/u);
- assert.ok(before.indexOf('umask 077')<before.indexOf('verify-all-news-signed-publications.mjs >'));
+ assert.match(delegated,/if: >-\\s+false &&/u);
+ assert.match(before,/verify-all-news-signed-publications\.mjs/u);
+ assert.equal(before.includes('GEOMACRO_COMMERCE_LEDGER_TOKEN'),false);
+ assert.ok(before.indexOf('umask 077')<before.indexOf('verify-all-news-signed-publications.mjs'));
  assert.match(step,/GEOMACRO_GRI_AUTO_DERIVED_APPROVAL_PATH/u);
 });
 
