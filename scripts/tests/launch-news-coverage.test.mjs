@@ -7,7 +7,7 @@ import {HOT_TOPIC_FAMILIES} from '../../src/lib/hot-topic-taxonomy.ts';
 import {LAUNCH_NEWS_FAMILY_CATEGORIES,launchNewsCoveragePolicy} from '../../src/lib/launch-news-coverage.ts';
 import {PRIVATE_OSINT_TOPICS,privateOsintGlobalSources} from '../lib/private-osint-global-sources.mjs';
 import {COUNTRIES_195} from '../../src/lib/canonical-country-registry-195.ts';
-import {rotatingPrivateCountryDiscoverySources,COUNTRY_MACRO_DISCOVERY_TERMS,privateOsintRuntimeSources} from '../lib/private-osint-country-rotation.mjs';
+import {rotatingPrivateCountryDiscoverySources,COUNTRY_MACRO_DISCOVERY_TERMS,COUNTRY_MINERAL_DISCOVERY_TERMS,privateOsintRuntimeSources} from '../lib/private-osint-country-rotation.mjs';
 import {LAUNCH_PRIORITY_WATCHES} from '../lib/launch-priority-watch-sources.mjs';
 import {collectPrivateOsint15m} from '../lib/private-osint-15m-collector.mjs';
 import {normalizeReusableNewsJson} from '../../src/lib/reusable-news-json.ts';
@@ -130,4 +130,38 @@ test('all 195 countries receive explicit macro search coverage within the unchan
  const policy=launchNewsCoveragePolicy().country_macro_routing;
  assert.equal(policy.countries,seen.size);assert.equal(policy.nominal_cycle_minutes,120);
  assert.equal(policy.full_current_coverage_asserted,false);
+});
+
+
+test('195-country mineral lifecycle discovery preserves attribution, macro coverage and bounded rotation',()=>{
+ const at=Date.parse('2026-10-28T07:00:00Z'),seen=new Set();
+ for(let slot=0;slot<8;slot++){
+  const sources=privateOsintRuntimeSources(new Date(at+slot*15*60000),undefined,undefined,{includeLocalGapLane:true});
+  assert.ok(sources.length<=512);
+  const countries=sources.filter(s=>s.id.startsWith('private_country_index_'));
+  assert.ok(countries.length<=25);
+  for(const source of countries){
+   const q=new URL(source.url).searchParams.get('q');
+   for(const term of [...COUNTRY_MACRO_DISCOVERY_TERMS,...COUNTRY_MINERAL_DISCOVERY_TERMS])assert.ok(q.includes(term),term);
+   assert.ok(source.url.length<2000,'bounded single source request');
+   assert.ok(source.categories.includes('rare_earth'));
+   assert.equal(source.publisher_country_iso3,null);
+   assert.equal(source.commercial_eligible,false);
+   assert.equal(source.publicly_deliverable,false);
+   seen.add(source.discovery_country_iso3);
+  }
+ }
+ assert.deepEqual(seen,new Set(COUNTRIES_195.map(c=>c.iso3)));
+ const policy=launchNewsCoveragePolicy().country_minerals_routing;
+ assert.equal(policy.countries,seen.size);
+ assert.equal(policy.nominal_cycle_minutes,120);
+ assert.equal(policy.full_current_coverage_asserted,false);
+ assert.equal(policy.bullion_category,'macro');
+ for(const title of [
+  'Ministry approves lithium mine permit and processing plant investment',
+  'Government changes mining royalties for copper production',
+  'Company announces graphite mineral recycling and offtake agreement',
+  'Antimony smelter outage disrupts export supply',
+  'Survey revises rare earth mineral reserves',
+ ])assert.ok(PRIVATE_OSINT_TOPICS.rare_earth.test(title),title);
 });
