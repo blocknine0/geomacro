@@ -322,7 +322,9 @@ export async function fetchAllDerivedNews(
     throw Error("DERIVED_NEWS_BUNDLE_UNAVAILABLE");
   const body=await response.text();
   if(body.length>4_000_000)throw Error("DERIVED_NEWS_BUNDLE_TOO_LARGE");
-  const doc=JSON.parse(body) as Record<string,unknown>;
+  let doc:Record<string,unknown>;
+  try{doc=JSON.parse(body) as Record<string,unknown>}
+  catch{throw Error("DERIVED_NEWS_BUNDLE_JSON_INVALID")}
   // Older Worker revisions route an unrecognised public path through the
   // default protected handler (401) or return 404/405. Only these route-absence
   // statuses and the explicit old feed schema get a legacy fallback; 429/5xx
