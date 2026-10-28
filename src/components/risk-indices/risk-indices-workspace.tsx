@@ -22,7 +22,7 @@ export function RiskIndicesWorkspace() {
         <Eyebrow>GEOMACRO / RISK INTELLIGENCE</Eyebrow>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">Three risks. Three separate indices.</h1>
         <p className="mt-4 text-sm leading-7 text-muted-foreground">
-          {risk.status === "error" ? "The latest GeoMacro news-severity calculation is temporarily unavailable." : "Verifying current news-severity readings from GeoMacro."}
+          {risk.status === "error" ? "GeoMacro-certified news indices temporarily unavailable" : "Refreshing GeoMacro-certified news readings"}
         </p>
       </div>
       <Button variant="outline" onClick={risk.retry}><RefreshCw className="mr-2 h-4 w-4" />Retry</Button>
@@ -45,7 +45,7 @@ export function RiskIndicesWorkspace() {
     <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[680px] bg-[radial-gradient(ellipse_at_18%_8%,hsl(var(--primary)/0.13),transparent_55%)]" />
     <div className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 lg:pt-12">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-        <Eyebrow>GEOMACRO / INTELLIGENCE MONITOR / 01</Eyebrow>
+        <Eyebrow>Geomacro Risk Indices</Eyebrow>
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {qualified}/3 indexed

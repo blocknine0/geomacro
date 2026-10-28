@@ -50,7 +50,7 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-lovable-github-source-type-repair-20261028");
+    expect(config.lock_revision).toBe("founder-approved-risk-indices-72h-dashboard-20261029");
     const typeRepairApproval=config.approved_lovable_types_github_20261028;
     expect(typeRepairApproval.type_only).toBe(true);
     expect(typeRepairApproval.visual_layout_unchanged).toBe(true);
@@ -62,7 +62,17 @@ describe("website lock governance", () => {
     expect(typeRepairApproval.published_source_sha_unchanged).toBe(true);
     expect(typeRepairApproval.payment_authorized).toBe(false);
     expect(typeRepairApproval.previous_baseline_sha).toBe(config.approved_geomacro_self_certified_news_severity_20261028.approved_source_commit);
-    expect(config.baseline_sha).toBe(typeRepairApproval.approved_ui_commit);
+    const dashboardApproval=config.approved_risk_indices_72h_dashboard_20261029;
+    expect(dashboardApproval.previous_baseline_sha).toBe(typeRepairApproval.approved_ui_commit);
+    expect(config.baseline_sha).toBe(dashboardApproval.approved_ui_commit);
+    expect(dashboardApproval.scope).toEqual(["src/components/risk-indices/risk-indices-workspace.tsx"]);
+    expect(dashboardApproval.website_lock_remains_active).toBe(true);
+    expect(dashboardApproval.global_risk_final_lock_unmodified).toBe(true);
+    expect(dashboardApproval.predge_unchanged).toBe(true);
+    expect(dashboardApproval.ask_unchanged).toBe(true);
+    expect(dashboardApproval.pricing_and_payments_unchanged).toBe(true);
+    expect(dashboardApproval.historical_repository_unchanged).toBe(true);
+    expect(dashboardApproval.published_source_sha_unchanged_until_live_acceptance).toBe(true);
     const newsGriApproval=config.approved_geomacro_self_certified_news_severity_20261028;
     expect(newsGriApproval).toBeTruthy();
     expect(newsGriApproval.approved_source_commit).toMatch(/^[a-f0-9]{40}$/);
