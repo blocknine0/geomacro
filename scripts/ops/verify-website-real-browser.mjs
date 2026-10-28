@@ -57,19 +57,24 @@ const testBrowser=async({chromium,expected=EXPECTED,githubToken=process.env.GITH
       "BROWSER_INTELLIGENCE_NAV_LINK_MISSING");
     assert(failures.length===0,"BROWSER_HOMEPAGE_JS_EXCEPTION");
 
-    // Exercise a real click where the navigation item is visible. Mobile
-    // menu can be collapsed; navigate directly on mobile rather than
-    // fabricating a menu-control acceptance.
+    // Exercise a real click in both layouts. Direct mobile URL navigation
+    // verifies only routing, not the collapsed menu button or its links.
+    // Do not report mobile navigation acceptance without opening the Sheet.
     if(viewport.width===1440){
       const links=page.locator('a[href^="/intelligence"]:visible');
       assert(await links.count()>0,"BROWSER_DESKTOP_NAV_LINK_HIDDEN");
       await links.first().click({timeout:10_000});
-      await page.waitForURL(url=>url.pathname==="/intelligence",{timeout:15_000});
     } else {
-      const r=await page.goto(ROOT+"/intelligence",
-        {waitUntil:"domcontentloaded",timeout:30_000});
-      assert(r?.status()===200,"BROWSER_INTELLIGENCE_HTTP_UNAVAILABLE");
+      const trigger=page.getByRole("button",{name:"Open navigation menu"});
+      assert(await trigger.isVisible(),"BROWSER_MOBILE_MENU_TRIGGER_HIDDEN");
+      await trigger.click({timeout:10_000});
+      const nav=page.getByRole("navigation",{name:"Mobile navigation"});
+      await nav.waitFor({state:"visible",timeout:10_000});
+      const links=nav.locator('a[href^="/intelligence"]:visible');
+      assert(await links.count()>0,"BROWSER_MOBILE_INTELLIGENCE_LINK_HIDDEN");
+      await links.first().click({timeout:10_000});
     }
+    await page.waitForURL(url=>url.pathname==="/intelligence",{timeout:15_000});
     await page.locator("main").first().waitFor({state:"visible",timeout:15_000});
     await timed(1000);
     const intelligence=await page.evaluate(()=>({
@@ -119,7 +124,7 @@ const testBrowser=async({chromium,expected=EXPECTED,githubToken=process.env.GITH
       home_http_200:true,intelligence_http_200:true,
       ask_http_200:true,public_surfaces_http_200:publicPages.length,
       public_surfaces:publicPages.map(x=>x.path),
-      nav_clicked:viewport.width===1440,
+      nav_clicked:true,
       js_page_errors:0,marker_parity:exact?"EXACT_MAIN":"PROVEN_NON_WEBSITE_ONLY"});
    }finally{await page.close()}
   }

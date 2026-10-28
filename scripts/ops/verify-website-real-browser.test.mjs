@@ -9,7 +9,14 @@ test("real browser QA is outside-in and cannot use payment or private APIs",()=>
  assert.ok(s.includes("verifyPublishedSourceEquivalence"));
  assert.ok(s.includes("EXACT_MAIN"));
  assert.ok(s.includes('page.goto(ROOT+"/"'));
- assert.ok(s.includes('page.goto(ROOT+"/intelligence"'));
+ assert.ok(s.includes('page.getByRole("button",{name:"Open navigation menu"})'));
+ assert.ok(s.includes('page.getByRole("navigation",{name:"Mobile navigation"})'));
+ assert.ok(s.includes('nav.locator(\'a[href^="/intelligence"]:visible\')'));
+ assert.ok(s.includes('await trigger.click({timeout:10_000})'));
+ assert.ok(s.includes('await links.first().click({timeout:10_000})'));
+ assert.ok(s.includes('await page.waitForURL(url=>url.pathname==="/intelligence"'));
+ assert.ok(s.includes("nav_clicked:true"));
+ assert.equal(s.includes('page.goto(ROOT+"/intelligence"'),false);
  assert.ok(s.includes('page.goto(ROOT+"/ask-geomacro"'));
  for(const route of ["/pricing","/data-api","/docs","/risk-indices"])
   assert.ok(s.includes(`path:"${route}"`),route);
