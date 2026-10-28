@@ -41,8 +41,10 @@ function matchesVerifiedParent(child,parent,nowMs){
      !HASH.test(child.b2_sha256??"")||!HASH.test(child.payload_sha256??"")||
      child.full_b2_readback_verified!==true||
      child.current_b2_readback_verified!==true||
+     child.current_b2_readback_verified!==true||
      child.exact_gzip_restore_verified!==true||
      child.source_as_of!==parent.sourceAsOf||
+     child.generated_at===undefined||
      !Number.isFinite(Date.parse(child.expires_at??""))||
      Date.parse(child.expires_at)<=nowMs||
      typeof child.payload_json!=="string"||child.payload_json.length>768*1024||
@@ -50,11 +52,47 @@ function matchesVerifiedParent(child,parent,nowMs){
     return false;
   try{
     const value=JSON.parse(child.payload_json);
-    return value.schema===child.schema &&
-      value.data?.parentMethodologyVersion==="gri-v1.2.0" &&
-      value.data?.snapshotAsOf===parent.sourceAsOf &&
-      value.parent_global_risk_b2_sha256===parent.parentB2Sha256 &&
-      value.parent_global_risk_payload_sha256===parent.parentPayloadSha256;
+    const data=value?.data;
+    if(value.schema!==child.schema ||
+      value.source_project!=="ldpwajisioljyjtojvfx" ||
+      value.generated_at!==child.generated_at ||
+      data?.contractVersion!=="risk-indices-v1.1.0" ||
+      data?.verificationStatus!=="verified" ||
+      data?.proofScope!=="verified-category-projection" ||
+      data?.parentMethodologyVersion!=="gri-v1.2.0" ||
+      data?.snapshotAsOf!==parent.sourceAsOf ||
+      data?.proofHash!==parent.risk.proofHash ||
+      (parent.risk.snapshotId && data?.snapshotId!==parent.risk.snapshotId) ||
+      value.parent_global_risk_b2_sha256!==parent.parentB2Sha256 ||
+      value.parent_global_risk_payload_sha256!==parent.parentPayloadSha256 ||
+      !Array.isArray(data?.indices) || data.indices.length!==3)
+      return false;
+    const categories=new Map([
+      ["geopolitics","geopolitics"],
+      ["macro","macro"],
+      ["critical_minerals","rare_earth"],
+    ]);
+    for(const index of data.indices){
+      const source=categories.get(index?.key);
+      if(!source || source!==index.sourceCategory)return false;
+      categories.delete(index.key);
+      const readingTime=Date.parse(index.readingAsOf??"");
+      if(index.status!=="available" ||
+        index.readingStatus!=="current" ||
+        !Number.isFinite(readingTime) ||
+        readingTime>nowMs+5*60_000 ||
+        nowMs-readingTime>60*60_000 ||
+        readingTime>Date.parse(parent.sourceAsOf)+5*60_000 ||
+        !Number.isFinite(index.score) || index.score<0 || index.score>100 ||
+        !Number.isFinite(index.rawScore) || index.rawScore<0 || index.rawScore>100 ||
+        !index.readingSnapshotId ||
+        !Array.isArray(index.series?.["7D"]?.buckets) ||
+        index.series["7D"].buckets.length<2 ||
+        !Array.isArray(index.series?.["30D"]?.buckets) ||
+        index.series["30D"].buckets.length<2)
+        return false;
+    }
+    return categories.size===0;
   }catch{return false;}
 }
 
@@ -117,7 +155,7 @@ export async function runRiskIndicesVerifiedParentBackstop({
   env=process.env,fetchImpl=fetch,now=new Date(),
 }={}){
   if(env.GITHUB_REPOSITORY!==REPO||env.GITHUB_REF!=="refs/heads/main"||
-     !["schedule","workflow_dispatch"].includes(env.GITHUB_EVENT_NAME)||
+     !["schedule","workflow_dispatch","workflow_run"].includes(env.GITHUB_EVENT_NAME)||
      !SHA.test(env.GITHUB_SHA??"")||
      env.GITHUB_SHA!==env.EXPECTED_CANONICAL_MAIN_SHA)
     throw Error("INDICES_REPAIR_PROTECTED_CANONICAL_MAIN_REQUIRED");
