@@ -42,6 +42,16 @@ try{
     certification?.issuer!=="GeoMacro"||certification.scheme!=="HMAC-SHA256"||
     certification.independent_external_audit!==false)
   throw Error("PUBLIC_CERTIFIED_GRI_SCOPE_INVALID");
+ const continuity=data.continuity;
+ if(continuity?.policy!=="hold-last-qualified-until-new-input-v1"||
+    continuity.historical_score_clock_preserved!==true||
+    !Array.isArray(continuity.updated_categories)||
+    !Array.isArray(continuity.retained_categories)||
+    [...continuity.updated_categories,...continuity.retained_categories].some(
+     k=>!["geopolitics","macro","critical_minerals"].includes(k))||
+    new Set([...continuity.updated_categories,...continuity.retained_categories]).size!==
+    continuity.updated_categories.length+continuity.retained_categories.length)
+  throw Error("PUBLIC_CERTIFIED_GRI_DURABLE_CONTINUITY_INVALID");
  const signed=JSON.stringify(payload);
  const hash=createHash("sha256").update(signed).digest("hex");
  const sig=createHmac("sha256",env.CONTROL_PLANE_TOKEN).update(
@@ -71,6 +81,9 @@ try{
   status:"GEOMACRO_SELF_CERTIFIED_NEWS_SEVERITY_VERIFIED",
   issuer:"GeoMacro",methodology_version:expected,
   three_categories_present:true,issuer_hmac_verified:true,
+  durable_last_qualified_per_domain_verified:true,
+  updated_categories:continuity.updated_categories,
+  retained_categories:continuity.retained_categories,
   eligible_categories:data.data.indices.filter(x=>x.status==="available").length,
   public_news_contributions:data.data.indices.reduce((n,x)=>n+x.sourceMix.public_news,0),
   unverified_osint_contributions:data.data.indices.reduce((n,x)=>n+x.sourceMix.osint,0),
