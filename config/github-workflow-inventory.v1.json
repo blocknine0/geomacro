@@ -254,6 +254,7 @@
     "production-b2-d1-runtime-readwrite-acceptance.yml",
     "production-canary-cohort-acceptance.yml",
     "production-intelligence-readiness.yml",
+    "production-private-news-boundary-slo.yml",
     "production-provider-canary.yml",
     "production-website-health.yml",
     "propose-v2-upgrade.yml",
