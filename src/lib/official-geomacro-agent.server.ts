@@ -272,7 +272,7 @@ export function planOfficialGeomacroToolCall(raw:unknown){
  const tool=geomacroAgentTool(raw.tool);
  // Public risk-object verification is already the existing MCP path; do not
  // create a second key lifecycle verifier or accidentally charge for it.
- if(!tool||!tool.paid||tool.name==="verify_risk_object")return null;
+ if(!tool||!tool.paid)return null;
  try{
   return {tool:tool.name,query:geomacroAgentToolToCanonicalQuery(tool.name,raw.arguments)};
  }catch(e){
