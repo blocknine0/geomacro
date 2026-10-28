@@ -10,6 +10,7 @@ on:
       - "scripts/lib/website-news-canonical-reconciliation.mjs"
       - "scripts/ops/reconcile-website-news-to-d1.ts"
       - "scripts/tests/website-news-canonical-reconciliation.test.mjs"
+      - "scripts/tests/website-news-archive-admission.test.mjs"
       - "scripts/ops/publish-website-derived-news.ts"
       - "scripts/ops/publish-permanent-derived-news-archive.mjs"
       - "scripts/ops/publish-permanent-derived-news-archive.test.mjs"
@@ -120,7 +121,7 @@ jobs:
       - name: Verify shared Website archive and PREDGE journal recovery contracts
         run: |
           node --check scripts/lib/website-news-canonical-reconciliation.mjs
-          node --test scripts/tests/website-news-canonical-reconciliation.test.mjs
+          node --test scripts/tests/website-news-canonical-reconciliation.test.mjs scripts/tests/website-news-archive-admission.test.mjs
           node --check scripts/ops/publish-permanent-derived-news-archive.mjs
       - name: Verify permanent archive append-only behavior without production credentials
         run: |
@@ -169,12 +170,21 @@ jobs:
 
   archive-only-when-d1-held:
     needs: quota-admission
-    # Same hourly publisher, but protect scarce D1 source-intake reserve.
-    # No paid/provider/PREDGE mutations and no second ingestion schedule.
+    # Same hourly publisher; an existing successful production-archive deploy
+    # can also wake archive-only collection while the protected D1 lane is HELD.
+    # Never bypass the quota governor or run from an untrusted PR/branch.
+    # No paid/provider/PREDGE mutations and no additional cron.
     if: >-
-      needs.quota-admission.outputs.research != 'true' &&
-      github.event_name == 'schedule' &&
-      github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+      needs.quota-admission.result == 'success' &&
+      needs.quota-admission.outputs.research == 'false' &&
+      github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.path == '.github/workflows/deploy-permanent-public-finds-archive.yml' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+        github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
     timeout-minutes: 12
     environment: production
