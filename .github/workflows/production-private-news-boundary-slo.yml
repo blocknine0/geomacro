@@ -1,0 +1,49 @@
+# No credentials, D1 SQL, source polling or PREDGE access.
+# Independent outside-in regression after real control-plane deployment
+# and every six hours even when no source release occurs.
+name: Production Private News Boundary SLO (No Funds)
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy D1 Control Plane"]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: "13 */6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/production-private-news-boundary-slo.yml"
+      - "scripts/ops/verify-private-news-boundary-live.mjs"
+      - "scripts/ops/verify-private-news-production-guard.mjs"
+      - "scripts/tests/verify-private-news-production-guard.test.mjs"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-production-private-news-slo
+  cancel-in-progress: false
+jobs:
+  private-news-outside-in:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+        github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Enforce offline negative security contract
+        run: |
+          node --check scripts/ops/verify-private-news-production-guard.mjs
+          node --test scripts/tests/verify-private-news-production-guard.test.mjs
+      - name: Prove production privacy 404 / invalid bearer / non-GET denied
+        run: node scripts/ops/verify-private-news-production-guard.mjs
