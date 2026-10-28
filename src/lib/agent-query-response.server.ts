@@ -398,6 +398,10 @@ function publicRiskObjectAttestation(
         payload_hash: object.integrity.payload_hash,
         signature_scheme: object.integrity.signature_scheme,
         signing_key_id: object.integrity.signing_key_id,
+        // Exact signature from the already verified canonical GeoMacro GRO.
+        // Market-watch commentary is separate and never falsely covered by it.
+        canonicalization: object.integrity.canonicalization,
+        signature: object.integrity.signature,
       },
       delivery_boundary: "SIGNED_RISK_OBJECT_ATTESTATION_ONLY",
     },
