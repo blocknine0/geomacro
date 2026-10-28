@@ -165,3 +165,41 @@ test("existing page layout stays but GeoMacro news severity replaces signed GRI 
  assert.match(view,/GeoMacro self-certified/u);
  assert.doesNotMatch(view,/independent third-party certification or verification of every reported event is present/u);
 });
+
+test("real 24H/48H/72H journal backfill stays source-native and never invents old GRI scores",async()=>{
+ const history=[
+  example("geopolitics","history-01","geopolitical security",71*60),
+  example("geopolitics","history-02","foreign policy",43*60),
+  example("geopolitics","history-03","geopolitical security",18*60),
+  example("geopolitics","history-04","foreign policy",3*60),
+ ];
+ const out=await certifiedNewsSeverityGriFromSignals(history,{now:NOW,secret:SECRET});
+ const index=out.data.indices[0];
+ assert.deepEqual(Object.keys(index.observedSeverity),["24H","48H","72H"]);
+ assert.equal(index.observedSeverity["24H"].buckets.reduce((s,x)=>s+x.count,0),2);
+ assert.equal(index.observedSeverity["48H"].buckets.reduce((s,x)=>s+x.count,0),3);
+ assert.equal(index.observedSeverity["72H"].buckets.reduce((s,x)=>s+x.count,0),4);
+ assert.equal(index.series["7D"].buckets,null);
+ assert.equal(index.series["30D"].buckets,null);
+ for(const window of ["24H","48H","72H"]){
+  const bins=index.observedSeverity[window].buckets;
+  assert.ok(bins.length<=13);
+  assert.ok(bins.every(b=>b.t%(6*3600000)===0&&b.avg>=0&&b.avg<=100&&b.count>=1));
+ }
+ const empty=out.data.indices[1].observedSeverity["72H"];
+ assert.equal(empty.buckets,null);
+ assert.equal(empty.low,null);
+ assert.equal(empty.high,null);
+ assert.equal(out.data.indices[1].score,null);
+});
+test("GeoMacro OSINT stays low-weight and historical bins never increase source authority",async()=>{
+ const osint={...example("macro","history-osint","monetary policy",50*60),
+  status:"osint_feed_observed_unverified",geography:null,development_type:"unverified OSINT feed observation"};
+ const out=await certifiedNewsSeverityGriFromSignals([osint],{now:NOW,secret:SECRET});
+ const index=out.data.indices[1];
+ assert.equal(index.sourceMix.osint,1);
+ assert.equal(index.sourceMix.osint_event_facts_verified,false);
+ assert.equal(index.observedSeverity["72H"].buckets.reduce((s,b)=>s+b.count,0),1);
+ assert.equal(index.observedSeverity["24H"].buckets,null);
+ assert.equal(out.independent_third_party_certified,false);
+});

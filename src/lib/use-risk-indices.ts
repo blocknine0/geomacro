@@ -178,6 +178,38 @@ export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices
       throw Error("GEOMACRO_NEWS_GRI_INDEX_INVALID");
   }
   if(domain.size!==0)throw Error("GEOMACRO_NEWS_GRI_CATEGORY_MISSING");
+  // Only canonical 72-hour source-native series are accepted. The 7D/30D
+  // legacy fields are not used as substitutes for news-severity history.
+  for (const index of indices) {
+    for (const window of ["24H", "48H", "72H"] as const) {
+      const series=index.observedSeverity?.[window];
+      if(!series||series.timeframe!==window)throw Error("GEOMACRO_NEWS_GRI_HISTORY_UNAVAILABLE");
+      const buckets=series.buckets;
+      if(buckets===null){
+        if(series.low!==null||series.high!==null)throw Error("GEOMACRO_NEWS_GRI_EMPTY_HISTORY_INVALID");
+        continue;
+      }
+      if(!Array.isArray(buckets)||buckets.length===0||buckets.length>13||
+        typeof series.low!=="number"||typeof series.high!=="number"||
+        !Number.isFinite(series.low)||!Number.isFinite(series.high))
+        throw Error("GEOMACRO_NEWS_GRI_HISTORY_INVALID");
+      let previous=-Infinity;
+      const start=stamp-Number.parseInt(window,10)*3600000;
+      for (const bucket of buckets) {
+        if(!Number.isSafeInteger(bucket.t)||bucket.t<=previous||
+          bucket.t>stamp||bucket.t+6*3600000<=start||
+          bucket.t%(6*3600000)!==0||
+          !Number.isFinite(bucket.avg)||bucket.avg<0||bucket.avg>100||
+          !Number.isSafeInteger(bucket.count)||bucket.count<1)
+          throw Error("GEOMACRO_NEWS_GRI_HISTORY_BUCKET_INVALID");
+        previous=bucket.t;
+      }
+      if(Math.abs(series.low-Math.min(...buckets.map(b=>b.avg)))>1e-9||
+        Math.abs(series.high-Math.max(...buckets.map(b=>b.avg)))>1e-9)
+        throw Error("GEOMACRO_NEWS_GRI_HISTORY_RANGE_INVALID");
+    }
+  }
+
   const {certification:_,...signed}=doc;
   const signedBytes=new TextEncoder().encode(JSON.stringify(signed));
   const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",signedBytes));

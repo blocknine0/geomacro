@@ -1,7 +1,7 @@
-# GeoMacro Certified GRI — Public News + OSINT Severity v1.1 (self-issued)
+# GeoMacro Certified GRI — Public News + GeoMacro OSINT Severity v1.1 (self-issued)
 
 ## Product change
-The existing `/risk-indices` three-panel layout is preserved. This public page now consumes `GET /v1/public/geomacro-certified-news-severity-gri` on the canonical GeoMacro D1 Control Plane, instead of requiring the old independently signed GRI v1.2 parent. The homepage preview uses the same hook. `/global-risk` and PREDGE remain completely separate and unchanged.
+The founder-approved 29 October 2026 redesign retains three independent domain cards but replaces the old layout with an editorial responsive risk dashboard, 24H/48H/72H observed-history panels and compact integrity disclosure. This public page now consumes `GET /v1/public/geomacro-certified-news-severity-gri` on the canonical GeoMacro D1 Control Plane, instead of requiring the old independently signed GRI v1.2 parent. The homepage preview uses the same hook. `/global-risk` and PREDGE remain completely separate and unchanged.
 
 ## What GeoMacro certifies
 GeoMacro **self-certifies its own calculation**: it collects eligible original-date public *derived* release observations (canonical 72-hour journal, source-neutral text), applies a frozen deterministic category severity rubric, de-duplicates by topic/geography/six-hour window, discounts older releases (18-hour half-life), calculates three 0–100 category values, binds input/methodology/calculation SHA256 fingerprints, and HMAC-SHA256 signs the exact public payload using the protected GeoMacro issuer secret already deployed in the worker. The public HTTPS origin authenticates the issuing service; only the GeoMacro server holding the symmetric HMAC key can independently verify this signature. The production deployment verifies the HMAC by recomputing it securely.
@@ -16,7 +16,7 @@ GeoMacro **self-certifies its own calculation**: it collects eligible original-d
 - Separate domain scores for Geopolitics, Macro/FX and Critical Minerals, with a **provenance-weighted heuristic**. Inputs and source-type counts are SHA-bound; the public certificate explicitly reports independent event verification as **false**.
 - No eligible public news or monitored OSINT for a category = `status:unavailable, score:null`, not zero or a previous score promoted to current.
 - `readingAsOf` retains the last actual release time and `last_verified` status if the latest source is older than one hour. `snapshotAsOf` is calculation time, not the native source timestamp.
-- The existing 72h journal cannot prove 7D/30D comparable historical time series. Charts remain unavailable for those frames until a separately persisted history is actually established; no synthetic backfill.
+- The published dashboard displays **24H / 48H / 72H source-native observed-severity history**, backfilled from the existing deduplicated 72-hour canonical journal using original publication timestamps and six-hour nonempty buckets. Charts are **observed release severity, not reconstructed historical GRI index levels**. Missing intervals remain empty; older immutable GRI v1.2 snapshots are not mixed in. 7D/30D history is not claimed.
 
 ## Running continuously without reviewer bottleneck
 - Native website ingestion continues as before; GET requests reuse already materialized journal read and existing Worker Cache; no new cron, B2 GET, SQL migration, PREDGE access or funds.

@@ -7,6 +7,15 @@ export type PublicRiskIndexKey =
   | "macro"
   | "critical_minerals";
 
+/** Source-native observation windows; distinct from legacy 7D/30D GRI history. */
+export type NewsSeverityWindow = "24H" | "48H" | "72H";
+export type ObservedSeveritySeries = {
+  timeframe: NewsSeverityWindow;
+  buckets: import("./global-risk.types").Bucket[] | null;
+  low: number | null;
+  high: number | null;
+};
+
 export type PublicRiskIndexStatus = "available" | "unavailable";
 export type PublicRiskIndexReadingStatus = "current" | "last_verified";
 
@@ -30,6 +39,8 @@ export type PublicRiskIndex = {
   /** GeoMacro news-severity v1.1 source mix; no OSINT factual confirmation implied. */
   sourceMix?: { public_news: number; osint: number; osint_event_facts_verified: false };
   series: Record<Timeframe, TimeframeSeries>;
+  /** Historic observations only, not retroactively scored certified indices. */
+  observedSeverity?: Record<NewsSeverityWindow, ObservedSeveritySeries>;
   topEvent: {
     title: string;
     summary: string | null;
