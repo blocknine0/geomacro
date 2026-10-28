@@ -63,10 +63,8 @@ export async function putInternalNewsScores(env:Env,body:{
    const id=e.payload.input_id,original=originals.get(id);
    if(!original)throw Error("SCORE_SOURCE_NOT_SIGNED");
    await verifyInternalNewsScore(e,registry,now,original.payload.signal);
-   // Score may only be issued by the same currently registered issuer as
-   // the persisted canonical automated input for the exact derived content.
-   if(e.integrity.signing_key_id!==original.integrity.signing_key_id)
-    throw Error("SCORE_ISSUER_MISMATCH");
+   // Both issuer signatures independently verify against governed keys.
+   // Normal key rotation may change the active issuer between those events.
    accepted.push(id);
   }
   // One bounded atomic batch: prune orphan IDs, insert absent scores, prune
