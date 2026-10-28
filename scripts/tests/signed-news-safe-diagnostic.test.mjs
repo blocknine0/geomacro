@@ -56,3 +56,34 @@ test("journal count, issuer tamper and category errors are diagnostic-only, neve
   assert.equal(receipt.private_keys_logged,false);
  }
 });
+
+test('canonical D1 bundle and quota failures are exact, redacted and never commercial approval',()=>{
+ for(const code of [
+  'DERIVED_NEWS_BUNDLE_STALE_READBACK',
+  'DERIVED_NEWS_BUNDLE_UNAVAILABLE',
+  'DERIVED_NEWS_BUNDLE_TOO_LARGE',
+  'DERIVED_NEWS_BUNDLE_JSON_INVALID',
+  'DERIVED_NEWS_BUNDLE_CONTRACT_INVALID',
+  'DERIVED_NEWS_BUNDLE_DUPLICATE_ID',
+  'DERIVED_NEWS_PUBLIC_FETCH_UNAVAILABLE',
+  'DERIVED_NEWS_PUBLIC_FETCH_D1_DAILY_ROW_READ_LIMIT',
+  'DERIVED_NEWS_PUBLIC_FETCH_D1_DAILY_ROW_WRITE_LIMIT',
+  'DERIVED_NEWS_PUBLIC_FETCH_D1_STORAGE_LIMIT',
+  'DERIVED_NEWS_PUBLIC_FETCH_D1_OVERLOADED',
+  'DERIVED_NEWS_PUBLIC_FETCH_D1_TRANSIENT',
+  'DERIVED_NEWS_PUBLIC_FETCH_D1_SCHEMA_OR_SQL',
+  'DERIVED_NEWS_PUBLIC_FETCH_D1_UNCLASSIFIED',
+  'DERIVED_NEWS_PAGE_STALE_READBACK',
+ ]){
+  const receipt=safeSignedNewsFailureReceipt(new Error(code));
+  assert.equal(receipt.reason,code);
+  assert.equal(receipt.valid_signed_derived_receipt_available,false);
+  assert.equal(receipt.machine_signature_authorized_by_this_result,false);
+  assert.equal(receipt.paid_delivery_authorized,false);
+  assert.equal(receipt.private_keys_logged,false);
+ }
+ const unknown=safeSignedNewsFailureReceipt(new Error(
+  'DERIVED_NEWS_PUBLIC_FETCH_D1_PRIVATE_SQL_https://example.com/source'));
+ assert.equal(unknown.reason,'SIGNED_NEWS_UNCLASSIFIED_OR_NETWORK_FAILURE');
+ assert.doesNotMatch(JSON.stringify(unknown),/PRIVATE_SQL|example.com/u);
+});
