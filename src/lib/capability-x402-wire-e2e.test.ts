@@ -5,6 +5,7 @@ import type {AgentQueryDeliverability} from "./agent-query-deliverability.server
 import {commerceFingerprint,commerceSha256} from "./agent-commerce-delivery.server";
 import {computeGeomacroIntelligenceProductHash,GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA as SCHEMA} from "./geomacro-intelligence-contract";
 import {prepareVerifiedCapabilityOffer,assertFrozenCapabilityCurrentForSettlement} from "./capability-x402-offer.server";
+import {buildPaidMarketWatch} from "./paid-market-watch";
 import {buildAgentQueryPlan} from "./agent-query-plan";
 import {mainnetIntelligenceHandlers} from "./mainnet-intelligence-endpoint.server";
 import {Route} from "../routes/api.x402.circle_.intelligence";
@@ -56,7 +57,7 @@ function prepared({plan,requestId,clientRequestId,priceUsdc}:any) {
         latest_observed_at:"2025-12-31T23:59:59.000Z"}
     })),hot_topics:[],risk_gate:[],signed_risk_objects:[],gri_context:null,current_state:plan.product?plan.subjects.map((subject:any)=>({subject,structural:{observation_count:plan.required_modules.length,latest_observed_at:"2025-12-31T23:59:59.000Z"}})):[],
     change_intelligence:[{schema_version:"geomacro.change-intelligence.v1",delivery_boundary:"STRUCTURED_DERIVED_CHANGE_INTELLIGENCE_ONLY",raw_data_delivered:false,execution_authorized:false,refresh_hint:{strategy:"SOURCE_NATIVE_CADENCE_OR_STATE_CHANGE",recommended_not_before_seconds:900},state_version:"gstate_test"}],
-    decision_intelligence:[{schema_version:"geomacro.decision-intelligence.v1",delivery_boundary:"DERIVED_DECISION_INTELLIGENCE_ONLY",raw_data_delivered:false,execution_authorized:false,cause:"Geomacro detects this because comparable annual estimates differ.",geomacro_detected:[],watch_next:[],decision:{execution_authorized:false}}],
+    decision_intelligence:[{schema_version:"geomacro.decision-intelligence.v1",delivery_boundary:"DERIVED_DECISION_INTELLIGENCE_ONLY",raw_data_delivered:false,execution_authorized:false,cause:"Geomacro detects this because comparable annual estimates differ.",geomacro_detected:[],watch_next:[],decision:{execution_authorized:false},market_watch:buildPaidMarketWatch({capability:plan.product?.capability??null,variant:plan.product?.variant??null,state_version:"gstate_test",verified_dimensions:plan.required_modules,verified_signed_drivers:[],qualified_event_types:[],latest_evidence_at:"2025-12-31T23:59:59.000Z",refresh_not_before_seconds:900})}],
     answer:{summary:"Synthetic test-only annual structured output; never production evidence."},methodology:{response_schema_version:SCHEMA,customer_facing_output:"decision_intelligence_v1",price_usdc:priceUsdc,signed_current_risk_object_included:false},limitations:{execution_authorized:false},execution_authorized:false};
   return {...core,delivered_product_hash:computeGeomacroIntelligenceProductHash(core)};
 }
