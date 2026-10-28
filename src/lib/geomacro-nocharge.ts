@@ -64,7 +64,7 @@ export function makeGeomacroNoChargeResponse(
   input:BaseInput&Readonly<{reason:Exclude<NoChargeReason,"UNCHANGED_NO_CHARGE">}>,
 ):GeomacroNoChargeResponse{
   assertSafeBase(input);
-  if(!ALLOWED_REASONS.has(input.reason)||input.reason==="UNCHANGED_NO_CHARGE")
+  if(!ALLOWED_REASONS.has(input.reason))
     throw Error("NOCHARGE_REASON_NOT_PERMITTED");
   const response:GeomacroNoChargeResponse={
     schema:GEOMACRO_NOCHARGE_SCHEMA,request_id:input.request_id,
