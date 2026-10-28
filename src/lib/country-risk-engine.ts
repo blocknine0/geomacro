@@ -887,7 +887,7 @@ export async function buildCountryRiskObject(
             : age_hours <=
                 FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS
               ? "AGING"
-              : "STALE",
+              : "STALE" as const,
 
         corroboration_status:
           event.corroboration_status ??
