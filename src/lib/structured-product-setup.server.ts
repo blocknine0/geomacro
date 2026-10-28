@@ -70,6 +70,8 @@ export async function checkStructuredProductSetup(
   } catch {
     return response({ ok: false, error: "SETUP_REQUEST_INVALID" }, 400);
   }
+  if (plan.product?.capability === "risk_gate_bundle" || plan.topics.includes("risk_gate"))
+    return response({ ok: false, status: "COMING_SOON", error: "RISK_GATE_COMING_SOON_NO_CHARGE" }, 422);
   let availability;
   try {
     availability = await (options.check ?? checkAgentQueryDeliverability)(plan, {
