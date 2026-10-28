@@ -63,6 +63,11 @@ const LICENSE_PRELIMINARY = new Set([
   "STATCAN_OPEN_LICENCE_PUBLISHER_ONLY",
   "CANADA_OPEN_GOVERNMENT_LICENCE_PUBLISHER_ONLY",
 ]);
+/**
+ * @param {{sourceId?: string, originalPublisherOwned?: boolean,
+ * thirdPartyContentExcluded?: boolean, attributionRecorded?: boolean,
+ * noticeSentToPublisher?: boolean}} [options]
+ */
 export function issuerRightsDisposition({sourceId,originalPublisherOwned=false,
   thirdPartyContentExcluded=false,attributionRecorded=false,
   noticeSentToPublisher=false}={}) {
