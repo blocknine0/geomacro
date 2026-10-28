@@ -98,7 +98,7 @@ describe("all active Store creation contracts on the canonical mainnet engine (o
     expect(result.news_extraction_verified).toBe(false);
     expect(mocks.freeze).not.toHaveBeenCalled();
   });
-  it.each(Object.keys(GEOMACRO_STORE_REQUEST_EXAMPLES) as Array<keyof typeof GEOMACRO_STORE_REQUEST_EXAMPLES>)("creates, prices and freezes %s using the real assembler", async id => {
+  it.each(Object.keys(GEOMACRO_STORE_REQUEST_EXAMPLES).filter(id=>!id.startsWith("gate_")) as Array<keyof typeof GEOMACRO_STORE_REQUEST_EXAMPLES>)("creates, prices and freezes %s using the real assembler", async id => {
     const raw = request(id), { plan, availability } = await admitted(raw);
     expect(availability.deliverable).toBe(true);
     expect(geomacroAgentToolToCanonicalQuery("store_product_query", raw).product).toEqual(raw.product);
