@@ -27,6 +27,8 @@ export type PublicRiskIndex = {
   eventCount: number;
   sourceCount: number;
   independentStoryCount: number;
+  /** GeoMacro news-severity v1.1 source mix; no OSINT factual confirmation implied. */
+  sourceMix?: { public_news: number; osint: number; osint_event_facts_verified: false };
   series: Record<Timeframe, TimeframeSeries>;
   topEvent: {
     title: string;
