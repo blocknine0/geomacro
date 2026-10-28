@@ -60,11 +60,11 @@ describe("paid machine/user market watch from qualified existing data",()=>{
     const launch=products.filter(p=>p.capability!=="risk_gate_bundle");
     expect(launch).toHaveLength(9);
     for(const product of launch){
-      expect(product.customer_receives).toContain("decision_intelligence[*].market_watch.status");
-      expect(product.customer_receives).toContain("decision_intelligence[*].market_watch.monitoring");
+      expect(product.only_when_verified).toContain("decision_intelligence[*].market_watch.status");
+      expect(product.only_when_verified).toContain("decision_intelligence[*].market_watch.monitoring");
     }
     for(const product of products.filter(p=>p.capability==="risk_gate_bundle")){
-      expect(product.customer_receives).not.toContain("decision_intelligence[*].market_watch.status");
+      expect(product.only_when_verified).not.toContain("decision_intelligence[*].market_watch.status");
     }
   });
   it("has no ingestion, OSINT or DB fetch inside the paid market mapper",()=>{
