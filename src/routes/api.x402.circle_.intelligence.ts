@@ -305,6 +305,12 @@ export const Route = createFileRoute("/api/x402/circle_/intelligence")({
           }
         }
 
+        // Existing settled replays above remain available; no new paid
+        // Risk Gate request is accepted through Circle during Coming Soon.
+        if(plan.product?.capability==="risk_gate_bundle" || plan.topics.includes("risk_gate"))
+          return json({ok:false,chargeable:false,payment_required_now:false,
+            error:{code:"RISK_GATE_COMING_SOON_NO_CHARGE"},execution_authorized:false},422);
+
         let availability;
         try {
           availability = await checkAgentQueryDeliverability(plan, {

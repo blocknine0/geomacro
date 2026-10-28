@@ -109,6 +109,16 @@ it("a quote cannot extend a signed object's earlier expiry",()=>{
 });
 
 for(const rail of ["coinbase","circle"] as const)describe(`${rail}: actual handlers + Worker, synthetic source/provider fixtures, no funds`,()=>{
+ it.each(["gate_existing","gate_standard","gate_complex"] as const)("keeps %s Risk Gate Coming Soon without quote or settlement",async id=>{
+   const res=await call(rail,undefined,GEOMACRO_STORE_REQUEST_EXAMPLES[id]);
+   expect(res.status).toBe(422);
+   const body=await res.json();
+   expect(body.error.code).toBe("RISK_GATE_COMING_SOON_NO_CHARGE");
+   expect(body.chargeable).toBe(false);
+   expect(mock.availability).not.toHaveBeenCalled();
+   expect(mock.coinbaseSettle).not.toHaveBeenCalled();
+   expect(mock.circleSettle).not.toHaveBeenCalled();
+ });
  it.each(["country_digest","corridor_digest","country_profile","corridor_profile"] as const)("delivers and replays exact %s Store bytes with one settlement",async id=>{
    const body=GEOMACRO_STORE_REQUEST_EXAMPLES[id],{quote,payment}=await offer(rail,body);
    expect(quote.capability).toBe(body.product.capability);

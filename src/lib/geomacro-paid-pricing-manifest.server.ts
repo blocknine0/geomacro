@@ -20,7 +20,8 @@ export const GEOMACRO_PAID_PRICING_SCHEMA="geomacro.public-capability-price-cata
 export function publicGeomacroPaidPricingManifest(){
   const rails=Object.values(GEOMACRO_USDC_NETWORKS);
   const catalog=publicCapabilityPricingCatalog();
-  const capabilities=catalog.map(({capability,variants})=>({
+  const capabilities=catalog.map(({capability,variants,launch_status,new_sales_allowed})=>({
+    launch_status,new_sales_allowed,
     capability,
     variants:variants.map(price=>({
       variant:price.variant,

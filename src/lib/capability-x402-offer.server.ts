@@ -53,6 +53,10 @@ export async function prepareVerifiedCapabilityOffer(input:{
   rail:"coinbase_x402"|"circle_gateway_x402";
   network:string;asset:string;recipient:string;
 }) {
+  // New public Risk Gate sales are on hold; existing paid frozen replays are
+  // handled by the route before calling this function. No PREDGE change.
+  if(input.plan.product?.capability==="risk_gate_bundle" || input.plan.topics.includes("risk_gate"))
+    throw Error("RISK_GATE_COMING_SOON_NO_CHARGE");
   const {price,prepared}=await assembleVerifiedCapabilityProduct(input);
   const response=sanitizeAndRehashPaidPreparedResponse({...prepared,
     availability:publicAgentQueryAvailability(input.availability),

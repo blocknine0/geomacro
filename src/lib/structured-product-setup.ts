@@ -41,7 +41,9 @@ export function structuredProductSetup() {
           : null,
       shared_data_policy: "REUSE_EXISTING_QUALIFIED_EVIDENCE_IN_EXACT_REQUEST_SCOPE",
       signed_object_fee: price.included_signed_object_charge,
-      preparation_status: "CHECK_EXACT_REQUEST",
+      launch_status: contract.capability === "risk_gate_bundle" ? "COMING_SOON" : "ELIGIBILITY_GATED",
+      new_sales_allowed: contract.capability !== "risk_gate_bundle",
+      preparation_status: contract.capability === "risk_gate_bundle" ? "COMING_SOON" : "CHECK_EXACT_REQUEST",
       payment_authorized: false,
     };
   });

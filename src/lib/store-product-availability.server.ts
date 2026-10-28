@@ -7,7 +7,7 @@ import {
 } from "./agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "./agent-query-external-modules.server";
 import { resolveEligiblePublishedCapabilityPrice } from "./verified-capability-coinbase-binding.server";
-import { resolveGeomacroCapabilityPrice, publicCapabilityPricingCatalog } from "./capability-pricing-catalog";
+import { resolveGeomacroCapabilityPrice, publicCapabilityPricingCatalog, publicCapabilityLaunchStatus, publicCapabilityNewSalesAllowed } from "./capability-pricing-catalog";
 import { GEOMACRO_STORE_REQUEST_EXAMPLES } from "./store-product-examples";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 
@@ -52,6 +52,8 @@ export function storeProductAvailabilityDiscovery() {
     news_coverage_policy: launchNewsCoveragePolicy(),
     supported_products: publicCapabilityPricingCatalog().map(row => ({
       capability: row.capability,
+      launch_status: publicCapabilityLaunchStatus(row.capability),
+      new_sales_allowed: publicCapabilityNewSalesAllowed(row.capability),
       variants: row.variants.map(price => ({
         variant: price.variant,
         amount_usdc: price.amount_usdc,
@@ -111,6 +113,11 @@ export async function preflightStoreProductData(
       ? "STORE_PREFLIGHT_INVALID_PRODUCT_PLAN"
       : "STORE_PREFLIGHT_INVALID_REQUEST", 400);
   }
+
+  // A published indicative price is not a currently purchasable Risk Gate.
+  // Stop before any D1/B2/source proof reads; partner paths remain unchanged.
+  if (plan.product?.capability === "risk_gate_bundle" || plan.topics.includes("risk_gate"))
+    return denied("RISK_GATE_COMING_SOON_NO_CHARGE", 422);
 
   let availability: AgentQueryDeliverability;
   try {

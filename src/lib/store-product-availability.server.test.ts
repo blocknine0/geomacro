@@ -51,6 +51,20 @@ describe("no-funds buyer and agent product data preflight", () => {
     expect(catalog.preflight_is_not_an_x402_quote).toBe(true);
     expect(catalog.preflight_is_not_payment_authorization).toBe(true);
   });
+  it("keeps three Risk Gate prices discoverable as Coming Soon without buyer preflight",async()=>{
+    const listing=storeProductAvailabilityDiscovery();
+    const held=listing.supported_products.find(p=>p.capability==="risk_gate_bundle");
+    expect(held?.launch_status).toBe("COMING_SOON");
+    expect(held?.new_sales_allowed).toBe(false);
+    expect(held?.variants).toHaveLength(3);
+    let checked=false;
+    const res=await preflightStoreProductData(request(GEOMACRO_STORE_REQUEST_EXAMPLES.gate_standard),{
+      ...qualify,check:async(plan)=>{checked=true;return check(plan);},
+    });
+    expect(res.status).toBe(422);
+    expect((await res.json()).error.code).toBe("RISK_GATE_COMING_SOON_NO_CHARGE");
+    expect(checked).toBe(false);
+  });
   it("returns data readiness and exact locked catalog price without any charge", async () => {
     const response = await preflightStoreProductData(request(body), qualify);
     expect(response.status).toBe(200);
