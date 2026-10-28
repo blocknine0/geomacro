@@ -45,7 +45,8 @@ describe("#1414 directional corridor x402 contract", () => {
     expect(response).toContain('`${state.subject.origin_country_iso3} → ${state.subject.destination_country_iso3}`');
     expect(response).toContain("current_state: currentStates");
     expect(response).toContain("decision_intelligence: decisionIntelligence");
-    expect(response).toContain("answer: buildDirectAnswer(");
+    expect(response).toContain("...buildDirectAnswer(plan,currentStates)");
+    expect(response).toContain("subject_summaries:decisionIntelligence.flatMap");
 
     expect(prelaunch).toContain('id: "usa-china-corridor"');
     expect(prelaunch).toContain('type: "corridor"');
