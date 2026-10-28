@@ -41,6 +41,7 @@ test("held backlog requires independently verified replay counters",()=>{
  const result=evaluateD1LaunchWindow(rows);
  assert.ok(result.reasons.includes("DEFERRED_REPLAY_NOT_OBSERVED"));
  rows[18].recovery.verified_replayed_items=4;
+ rows[18].recovery.source_run_id=109;
  assert.equal(evaluateD1LaunchWindow(rows).status,"ACCEPTED");
 });
 test("unknown counters, counter resets within UTC day or aged queue never pass",()=>{
@@ -51,4 +52,14 @@ test("unknown counters, counter resets within UTC day or aged queue never pass",
  assert.equal(evaluateD1LaunchWindow(rows).status,"PENDING");
  assert.ok(evaluateD1LaunchWindow(rows).reasons.includes("UNRECOVERABLE_BACKLOG_AGE"));
  assert.throws(()=>evaluateD1LaunchWindow([{}]),/SCHEMA_INVALID/);
+});
+
+test("same successful replay run across hourly receipts is counted once",()=>{
+ const rows=good();
+ rows[15].backlog.pending_artifacts=4;
+ rows[18].recovery={verified_replayed_items:4,source_run_id:109};
+ rows[19].recovery={verified_replayed_items:4,source_run_id:109};
+ const assessed=evaluateD1LaunchWindow(rows);
+ assert.equal(assessed.status,"ACCEPTED");
+ assert.equal(assessed.verified_replayed_items,4);
 });
