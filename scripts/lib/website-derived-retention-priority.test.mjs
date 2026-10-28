@@ -28,7 +28,8 @@ test("actual SQLite D1 pruning retains older actor/action OSINT over 600 newer g
   const wrapper={DB:{prepare(sql){
    const statement=db.prepare(sql);
    return {bind(...values){return {run:async()=>statement.run(...values)}} ,
-     run:async()=>statement.run()};
+     run:async()=>statement.run(),
+     first:async()=>statement.get()??null};
   },batch:async()=>{throw Error("UNNEEDED_BATCH")}}};
   const r=await publishDerivedStories(wrapper,{
    schema:"geomacro.website-derived-news-batch.v1",signals:[]},now);
@@ -50,7 +51,8 @@ test("actual SQLite priority does not alter original publication clocks or TTL",
   const env={DB:{prepare(sql){
    const statement=db.prepare(sql);
    return {bind(...values){return {run:async()=>statement.run(...values)}} ,
-     run:async()=>statement.run()};
+     run:async()=>statement.run(),
+     first:async()=>statement.get()??null};
   },batch:async()=>{throw Error("UNNEEDED_BATCH")}}};
   const r=await publishDerivedStories(env,{
     schema:"geomacro.website-derived-news-batch.v1",signals:[]},now);

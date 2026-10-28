@@ -28,8 +28,15 @@ const sample=(category="macro",published="2026-10-12T19:00:00.000Z")=>({
 });
 function db() {
   const data=new Map();
-  const counters={upsertUpdateAttempts:0,storyJsonUpdates:0,retentionSweepQueries:0};
+  const counters={upsertUpdateAttempts:0,storyJsonUpdates:0,retentionSweepQueries:0,capCountPreflights:0};
   const statement=sql=>({
+    async first(){
+      if(sql==="SELECT COUNT(*) AS journal_rows FROM website_derived_intelligence"){
+        counters.capCountPreflights++;
+        return {journal_rows:data.size};
+      }
+      throw Error("UNEXPECTED_D1_FIRST_SQL");
+    },
     async run(){
       if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE id IN"))
         counters.retentionSweepQueries++;
@@ -164,7 +171,8 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(counters.storyJsonUpdates).toBe(1);
     expect(counters.retentionSweepQueries).toBe(0);
     expect((await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[]},NOW)).status).toBe(200);
-    expect(counters.retentionSweepQueries).toBe(2);
+    expect(counters.retentionSweepQueries).toBe(1);
+    expect(counters.capCountPreflights).toBe(1); // no unnecessary JSON-ranked DELETE
   });
 
   it("classifies the known D1 failure classes without exposing exception text",()=>{
