@@ -144,7 +144,11 @@ jobs:
 
   cloud-derived-only:
     needs: [contract, approve-retained-derived-inputs]
+    # Privacy lock: delegated machine must never consume GeoMacro-only
+    # original/source verdict proof. Re-enable only after a new vetted,
+    # content-redacted owner attestation contract is independently accepted.
     if: >-
+      false &&
       github.repository == 'blocknine0/geomacro' &&
       github.event_name != 'pull_request' &&
       github.ref == 'refs/heads/main' &&
@@ -205,11 +209,9 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Independently read back all current derived input signatures
         if: steps.optin.outputs.active == 'true'
-        env:
-          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: |
-          # Full signed evidence goes ONLY to the existing locked-down
-          # runner-temp receipt, never stdout/public Actions logs or PREDGE.
+          # DISABLED by enclosing job privacy gate. Delegated machine has
+          # no issuer/root credentials and cannot fetch owner-only news proof.
           umask 077
           bun scripts/ops/verify-all-news-signed-publications.mjs
       - name: Route EVERY retained three-domain website news card to bounded private GRI materiality review
