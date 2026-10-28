@@ -244,6 +244,8 @@ export function buildCurrentArchiveEligibility(signals,now=Date.now(),latest=[])
   }
   const sum=counts=>Object.values(counts).reduce((a,b)=>a+b,0);
   const uniqueCount=distinct.length;
+  const displayableByCategory=totalCounts();
+  for(const row of distinct)displayableByCategory[row.category]++;
   const latestIds=new Set(latest.map(row=>row.id));
   if(latestIds.size!==latest.length||latest.some(row=>!distinct.some(s=>s.id===row.id)))
     throw Error("PERMANENT_ARCHIVE_ELIGIBILITY_LATEST_MISMATCH");
@@ -261,6 +263,10 @@ export function buildCurrentArchiveEligibility(signals,now=Date.now(),latest=[])
     pending_osint_total:sum(unverified),
     pending_osint_by_category:unverified,
     unique_current_findings:uniqueCount,
+    free_displayable_findings_total:uniqueCount,
+    free_displayable_by_category:displayableByCategory,
+    free_displayable_outside_latest_preview:distinct.filter(row=>!latestIds.has(row.id)).length,
+    free_displayable_status:"MIXED_OFFICIAL_AND_EXPLICITLY_UNVERIFIED",
     duplicate_or_template_excluded:current.length-uniqueCount,
     latest_preview_rows:latest.length,
     latest_preview_official_rows:latestEligible.length,

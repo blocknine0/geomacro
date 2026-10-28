@@ -85,6 +85,9 @@ function result(ok:boolean,reason:string,counts=empty()){
     b2_read_performed:false,supabase_access_performed:false,
     archive_72h_census_attested:false,
     archive_72h_eligible_originals:null as number|null,
+    archive_72h_free_displayable_findings:null as number|null,
+    archive_72h_free_displayable_by_category:null as Record<Category,number>|null,
+    archive_72h_free_displayable_outside_latest_preview:null as number|null,
     archive_72h_originals_by_category:null as Record<Category,number>|null,
     archive_72h_pending_publisher_candidates:null as number|null,
     archive_72h_pending_unverified_osint:null as number|null,
@@ -167,6 +170,7 @@ export function attachArchiveEligibilityCensus(
   const original=doc.original_release_by_category;
   const publisher=doc.pending_publisher_by_category;
   const osint=doc.pending_osint_by_category;
+  const displayable=doc.free_displayable_by_category;
   const cats=(v:unknown):v is Record<Category,number>=>{
     if(!v||typeof v!=="object"||Array.isArray(v))return false;
     const o=v as Record<string,unknown>;
@@ -186,13 +190,26 @@ export function attachArchiveEligibilityCensus(
   if(doc.schema!=="geomacro.free-derived-archive-eligibility.v1"||
      doc.retention_hours!==72||doc.eligibility_policy!=="CONCRETE_ORIGINAL_RELEASE_UNSCORED_ONLY"||
      !Number.isFinite(at)||at>now+60_000||now-at>MAX_STATIC_REFRESH_LAG||
-     at!==latestAt||!cats(original)||!cats(publisher)||!cats(osint)||
+     at!==latestAt||!cats(original)||!cats(publisher)||!cats(osint)||!cats(displayable)||
      !Number.isSafeInteger(doc.original_release_eligible_total)||
      doc.original_release_eligible_total!==sum(original)||
      !Number.isSafeInteger(doc.pending_publisher_candidate_total)||
      doc.pending_publisher_candidate_total!==sum(publisher)||
      !Number.isSafeInteger(doc.pending_osint_total)||
      doc.pending_osint_total!==sum(osint)||
+     doc.free_displayable_findings_total!==sum(displayable)||
+     doc.free_displayable_findings_total!==doc.unique_current_findings||
+     doc.free_displayable_findings_total!==
+       (doc.original_release_eligible_total as number)+
+       (doc.pending_publisher_candidate_total as number)+
+       (doc.pending_osint_total as number)||
+     doc.free_displayable_status!=="MIXED_OFFICIAL_AND_EXPLICITLY_UNVERIFIED"||
+     !Number.isSafeInteger(doc.free_displayable_outside_latest_preview)||
+     (doc.free_displayable_outside_latest_preview as number)<0||
+     (doc.free_displayable_outside_latest_preview as number)>
+       (doc.free_displayable_findings_total as number)||
+     (doc.free_displayable_findings_total as number)<
+       (latest.signals as unknown[]).length||
      !Number.isSafeInteger(doc.latest_preview_rows)||
      doc.latest_preview_rows!==(latest.signals as unknown[]).length||
      !Number.isSafeInteger(doc.latest_preview_official_rows)||
@@ -209,6 +226,9 @@ export function attachArchiveEligibilityCensus(
   return {...health,body:{...health.body,
     archive_72h_census_attested:true,
     archive_72h_eligible_originals:doc.original_release_eligible_total as number,
+    archive_72h_free_displayable_findings:doc.free_displayable_findings_total as number,
+    archive_72h_free_displayable_by_category:displayable,
+    archive_72h_free_displayable_outside_latest_preview:doc.free_displayable_outside_latest_preview as number,
     archive_72h_originals_by_category:original,
     archive_72h_pending_publisher_candidates:doc.pending_publisher_candidate_total as number,
     archive_72h_pending_unverified_osint:doc.pending_osint_total as number,

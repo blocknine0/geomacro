@@ -80,6 +80,10 @@ describe("permanent derived-only website archive",()=>{
   const stats=buildCurrentArchiveEligibility([...current,old],NOW,preview);
   assert.equal(preview.length,250);
   assert.equal(stats.original_release_eligible_total,280);
+  assert.equal(stats.free_displayable_findings_total,281);
+  assert.equal(stats.free_displayable_outside_latest_preview,31);
+  assert.equal(stats.free_displayable_by_category.rare_earth,1);
+  assert.equal(stats.free_displayable_status,"MIXED_OFFICIAL_AND_EXPLICITLY_UNVERIFIED");
   assert.deepEqual(stats.original_release_by_category,{geopolitics:0,macro:280,rare_earth:0});
   assert.equal(stats.pending_osint_total,1);
   assert.equal(stats.eligible_outside_latest_preview,31);

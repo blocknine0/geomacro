@@ -47,6 +47,11 @@ describe("authentic free-derived static archive deep-health",()=>{
       eligibility_policy:"CONCRETE_ORIGINAL_RELEASE_UNSCORED_ONLY",
       original_release_eligible_total:3,
       original_release_by_category:{geopolitics:1,macro:1,rare_earth:1},
+      free_displayable_findings_total:9,
+      unique_current_findings:9,
+      free_displayable_by_category:{geopolitics:3,macro:5,rare_earth:1},
+      free_displayable_outside_latest_preview:8,
+      free_displayable_status:"MIXED_OFFICIAL_AND_EXPLICITLY_UNVERIFIED",
       pending_publisher_candidate_total:2,
       pending_publisher_by_category:{geopolitics:2,macro:0,rare_earth:0},
       pending_osint_total:4,
@@ -60,6 +65,8 @@ describe("authentic free-derived static archive deep-health",()=>{
     const out=attachArchiveEligibilityCensus(health,latest,census,time);
     expect(out.statusCode).toBe(200);
     expect(out.body.archive_72h_census_attested).toBe(true);
+    expect(out.body.archive_72h_free_displayable_findings).toBe(9);
+    expect(out.body.archive_72h_free_displayable_outside_latest_preview).toBe(8);
     expect(out.body.archive_72h_eligible_originals).toBe(3);
     expect(out.body.archive_72h_eligible_outside_latest_preview).toBe(2);
     expect(out.body.archive_72h_pending_unverified_osint).toBe(4);
@@ -70,6 +77,7 @@ describe("authentic free-derived static archive deep-health",()=>{
       {...census,paid_customer_eligible:true},
       {...census,checked_at:"2026-10-19T00:00:00.000Z"},
       {...census,eligible_ids_sha256:"invalid"},
+      {...census,free_displayable_findings_total:999},
     ]){
       const rejected=attachArchiveEligibilityCensus(health,latest,forged,time);
       expect(rejected.body.archive_72h_census_attested).toBe(false);
