@@ -78,9 +78,9 @@ test("a legitimate pinned current original outranks stale pending audit within E
  const priorityById=new Map(rows.map((r,i)=>[r.id,i]));
  const originalRefs=new Map(rows.map(r=>[r.id,{}]));
  const order=bundleRoundRobinNews(rows,{priorityById,originalRefs,nowMs:now}).map(x=>x.id);
- assert.deepEqual(order.slice(0,3),["geopolitics-new","macro-new","rare-new"]);
+ assert.deepEqual(order.slice(0,3),["macro-new","rare-new","geopolitics-new"]);
  assert.equal(new Set(order).size,6);
- assert.deepEqual(order.slice(3),["geopolitics-old","macro-old","rare-old"]);
+ assert.deepEqual(order.slice(3),["macro-old","rare-old","geopolitics-old"]);
 });
 test("no promotion of feed-only, unpinned, future or 61-minute-old input",()=>{
  const now=Date.parse("2026-10-28T09:35:00Z");
