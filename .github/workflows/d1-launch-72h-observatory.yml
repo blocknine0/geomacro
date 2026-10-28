@@ -10,6 +10,7 @@ on:
       - ".github/workflows/d1-launch-72h-observatory.yml"
       - "scripts/lib/d1-launch-window.mjs"
       - "scripts/tests/d1-launch-window.test.mjs"
+      - "scripts/tests/d1-launch-hourly-observer.test.mjs"
       - "scripts/ops/d1-launch-hourly-observer.mjs"
       - "scripts/ops/evaluate-d1-launch-72h.mjs"
   push:
@@ -18,6 +19,7 @@ on:
       - ".github/workflows/d1-launch-72h-observatory.yml"
       - "scripts/lib/d1-launch-window.mjs"
       - "scripts/tests/d1-launch-window.test.mjs"
+      - "scripts/tests/d1-launch-hourly-observer.test.mjs"
       - "scripts/ops/d1-launch-hourly-observer.mjs"
       - "scripts/ops/evaluate-d1-launch-72h.mjs"
 
@@ -45,7 +47,7 @@ jobs:
         run: |
           node --check scripts/ops/d1-launch-hourly-observer.mjs
           node --check scripts/ops/evaluate-d1-launch-72h.mjs
-          node --test scripts/tests/d1-launch-window.test.mjs
+          node --test scripts/tests/d1-launch-window.test.mjs scripts/tests/d1-launch-hourly-observer.test.mjs
 
   observe:
     if: >-
