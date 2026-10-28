@@ -503,7 +503,8 @@ async function worldBank(
       },
     };
   }
-  const rows: unknown[] = Array.isArray(json) && Array.isArray(json[1]) ? json[1] : [];
+  const isData=Array.isArray(json) && Array.isArray(json[1]);
+  const rows: unknown[] = isData ? json[1] : [];
   const currentYear=now.getUTCFullYear();
   const valid=rows.filter((x): x is {date:string;value:number;countryiso3code:string} => {
     if(!x || typeof x!=="object")return false;
