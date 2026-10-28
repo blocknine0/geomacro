@@ -19,7 +19,12 @@ export function needsConversationInterpretation(question: string, ambiguous = fa
   if (ambiguous) return true;
   if (/[^\x00-\x7f]/u.test(question)) return true;
   // Code-mixed romanized Bengali/Hindi questions can lack every English keyword.
-  if (/\b(?:keno|kemon|kivabe|ki\s+hochhe|batao|kaise|kyun|kya\s+hai|samjhao)\b/i.test(question))
+  if (/\b(?:keno|kemon|kivabe|ki\s+(?:hochhe|ache|achhe)|batao|kaise|kyun|kya\s+(?:hai|asar)|samjhao|ekhon|somporke|niyontron|niyantran|probhab|prabhab|bolo|bolun|hocche|kothay|kotota|kaisa|kitna|ke\s+baare)\b/i.test(question) ||
+      /\bki\s*[?!।]*$/iu.test(question))
+    return true;
+  // An English language-switch request can still need a non-English topic
+  // from history. Do not send the pronoun itself to the domain router.
+  if (/^(?:please\s+)?(?:explain|say|translate|rephrase|summari[sz]e)\s+(?:that|it|this|the (?:answer|explanation))\s+(?:in|into)\s+[a-z][a-z -]*[.!?]*$/i.test(question))
     return true;
   if (/^(?:and|also|so|then|but|what about|how about|can you|could you|please|why|how come|what next|in that case)\b/i.test(question)
       && !askDomains(question).length) return true;
@@ -75,7 +80,9 @@ export async function planConversationalAsk(
         "Do not invent a missing country, metric or factual event. " +
         "A genuinely ambiguous question must return in_scope=false. " +
         "Unrelated tasks are out of scope; never relabel an unrelated question as a geopolitical one. " +
-        "Detect the language of the latest message, including romanized Bengali/Hindi. " +
+        "Use an explicitly requested response language (for example 'Explain that in English'); " +
+        "otherwise detect the language of the latest message, including romanized Bengali/Hindi. " +
+        "A language-switch request preserves the previous user's topic and conceptual versus current-data intent. " +
         "Reply ONLY in JSON with english_question, language (BCP-47), in_scope (boolean).",
       user: JSON.stringify({
         question,
