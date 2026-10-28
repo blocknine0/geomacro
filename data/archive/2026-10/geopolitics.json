@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-28T21:16:35.513Z",
+  "updated_at": "2026-10-28T22:26:05.855Z",
   "signals": [
+    {
+      "id": "geopolitics-94193ad2",
+      "category": "geopolitics",
+      "title": "Geomacro finds General Assembly: adopted Resolution to Lift United States Embargo of Cuba · United States",
+      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
+      "what_changed": "General Assembly adopted Resolution to Lift United States Embargo of Cuba. Country or region mentioned: United States.",
+      "geography": "United States",
+      "development_type": "trade restriction",
+      "topic": "sanctions and trade restrictions",
+      "published_at": "2026-10-28T18:15:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-1c451683",
       "category": "geopolitics",
@@ -19,6 +38,23 @@
       "sources_credited": [
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-91dd0a56",
+      "category": "geopolitics",
+      "title": "Geomacro finds UN General Assembly on Wednesday: called for the 34th time for an end to the US economic, commercial and financial embargo on Cuba, but with the weakest backing for the resolution in two decades · Cuba",
+      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
+      "what_changed": "UN General Assembly on Wednesday called for the 34th time for an end to the US economic, commercial and financial embargo on Cuba, but with the weakest backing for the resolution in two decades. Country or region mentioned: Cuba.",
+      "geography": "Cuba",
+      "development_type": "trade restriction",
+      "topic": "sanctions and trade restrictions",
+      "published_at": "2026-10-28T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null

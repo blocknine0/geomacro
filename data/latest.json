@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-28T21:16:35.513Z",
+  "checked_at": "2026-10-28T22:26:05.855Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-94193ad2",
+      "category": "geopolitics",
+      "title": "Geomacro finds General Assembly: adopted Resolution to Lift United States Embargo of Cuba · United States",
+      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
+      "what_changed": "General Assembly adopted Resolution to Lift United States Embargo of Cuba. Country or region mentioned: United States.",
+      "geography": "United States",
+      "development_type": "trade restriction",
+      "topic": "sanctions and trade restrictions",
+      "published_at": "2026-10-28T18:15:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-18e81505",
       "category": "macro",
@@ -82,6 +101,23 @@
       "sources_credited": [
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-91dd0a56",
+      "category": "geopolitics",
+      "title": "Geomacro finds UN General Assembly on Wednesday: called for the 34th time for an end to the US economic, commercial and financial embargo on Cuba, but with the weakest backing for the resolution in two decades · Cuba",
+      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
+      "what_changed": "UN General Assembly on Wednesday called for the 34th time for an end to the US economic, commercial and financial embargo on Cuba, but with the weakest backing for the resolution in two decades. Country or region mentioned: Cuba.",
+      "geography": "Cuba",
+      "development_type": "trade restriction",
+      "topic": "sanctions and trade restrictions",
+      "published_at": "2026-10-28T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
@@ -4584,25 +4620,6 @@
       "severity": null
     },
     {
-      "id": "geopolitics-9f26b10f",
-      "category": "geopolitics",
-      "title": "Geomacro finds Jordan said 3 arrested in deadly attack on Greek Orthodox church",
-      "what_changed": "A monitored source feed reports: Jordan said 3 arrested in deadly attack on Greek Orthodox church. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T07:10:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.cbsnews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "macro-6203b895",
       "category": "macro",
       "title": "Geomacro finds Trump said Canada trade deal coming ‘soon’",
@@ -4635,25 +4652,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-369c5064",
-      "category": "geopolitics",
-      "title": "Geomacro finds Netanyahu denied reports of clash with Israeli army chief over Iran-linked operation ahead of election",
-      "what_changed": "A monitored source feed reports: Netanyahu denied reports of clash with Israeli army chief over Iran-linked operation ahead of election. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T06:08:09.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.dawn.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
