@@ -1,7 +1,7 @@
 import {describe,expect,it,vi} from "vitest";
 import {readFileSync} from "node:fs";
 import {
-  classifyFreeDerivedFeed,probeFreeDerivedDeepHealth,
+  classifyFreeDerivedFeed,probeFreeDerivedDeepHealth,attachArchiveEligibilityCensus,
 } from "./free-derived-deep-health.server";
 
 const time=Date.parse("2026-10-21T00:00:00.000Z");
@@ -37,6 +37,44 @@ describe("authentic free-derived static archive deep-health",()=>{
     expect(v.body.d1_reads_performed).toBe(false);
     expect(v.body.b2_read_performed).toBe(false);
     expect(v.body.supabase_access_performed).toBe(false);
+  });
+  it("attests complete current original archive counts without converting pending OSINT into eligible news",()=>{
+    const latest=feed();
+    const health=classifyFreeDerivedFeed(latest,time);
+    const census={
+      schema:"geomacro.free-derived-archive-eligibility.v1",
+      checked_at:latest.checked_at,retention_hours:72,
+      eligibility_policy:"CONCRETE_ORIGINAL_RELEASE_UNSCORED_ONLY",
+      original_release_eligible_total:3,
+      original_release_by_category:{geopolitics:1,macro:1,rare_earth:1},
+      pending_publisher_candidate_total:2,
+      pending_publisher_by_category:{geopolitics:2,macro:0,rare_earth:0},
+      pending_osint_total:4,
+      pending_osint_by_category:{geopolitics:0,macro:4,rare_earth:0},
+      latest_preview_rows:1,latest_preview_official_rows:1,
+      eligible_outside_latest_preview:2,eligible_ids_sha256:"a".repeat(64),
+      automatic_on_static_archive_refresh:true,unverified_promoted:false,
+      signed_or_scored:false,paid_customer_eligible:false,
+      live_payment_authorized:false,d1_reads:0,b2_reads:0,payments:0,
+    };
+    const out=attachArchiveEligibilityCensus(health,latest,census,time);
+    expect(out.statusCode).toBe(200);
+    expect(out.body.archive_72h_census_attested).toBe(true);
+    expect(out.body.archive_72h_eligible_originals).toBe(3);
+    expect(out.body.archive_72h_eligible_outside_latest_preview).toBe(2);
+    expect(out.body.archive_72h_pending_unverified_osint).toBe(4);
+    expect(out.body.x402_payment_authorized).toBe(false);
+    for(const forged of [
+      {...census,original_release_eligible_total:99},
+      {...census,unverified_promoted:true},
+      {...census,paid_customer_eligible:true},
+      {...census,checked_at:"2026-10-19T00:00:00.000Z"},
+      {...census,eligible_ids_sha256:"invalid"},
+    ]){
+      const rejected=attachArchiveEligibilityCensus(health,latest,forged,time);
+      expect(rejected.body.archive_72h_census_attested).toBe(false);
+      expect(rejected.body.archive_72h_eligible_originals).toBeNull();
+    }
   });
   it("does not treat feed-only OSINT as official-source health proof",()=>{
     const osint=story("macro",{
