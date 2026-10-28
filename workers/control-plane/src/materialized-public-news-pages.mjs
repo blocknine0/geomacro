@@ -9,12 +9,10 @@
  * Protected origin/readback NEVER consults this cache.
  */
 export const MATERIALIZED_PUBLIC_PAGES_SCHEMA="geomacro.public-derived-page-materialized.v1";
-// Existing backstop refreshes twice hourly. Source INSERT/UPDATE/DELETE
-// trigger revisions make stale caches unreadable immediately; a longer
-// no-change TTL prevents 20-minute gaps of costly canonical D1 page scans
-// between accepted :22/:52 refreshes when upstream ingestion is quota-held.
-export const MATERIALIZED_PUBLIC_PAGES_TTL_MS=35*60_000;
-export const MATERIALIZED_REFRESH_MIN_AGE_MS=25*60_000;
+// A matching canonical revision proves unchanged data, independently of the
+// publisher's polling clock. Reapply the canonical 72h SQL predicates before
+// pagination; never renew news clocks or accept a revision mismatch.
+const RETENTION_MS=72*60*60_000;
 const OFFSETS=[0,250,500];
 const PAGE_SIZE=250;
 const MAX_PAGE_BYTES=1_650_000;
@@ -37,9 +35,10 @@ export async function refreshMaterializedNewsPages(env,now=Date.now()){
     throw Error("MATERIALIZED_REVISION_MISSING");
   const snapshotAge=now-Date.parse(metadata.latest_snapshot_at??"");
   if(metadata.snapshot_revision===metadata.data_revision&&
-     Number.isFinite(snapshotAge)&&snapshotAge>=0&&snapshotAge<MATERIALIZED_REFRESH_MIN_AGE_MS)
+     Number.isFinite(snapshotAge)&&snapshotAge>=0&&
+     await getMaterializedNewsBundle(env,now)!==null)
     return {status:"MATERIALIZED_ALREADY_CURRENT",pages:3,
-      canonical_rows:null,producer_read_queries:1,snapshot_is_disposable:true};
+      canonical_rows:null,producer_read_queries:2,snapshot_is_disposable:true};
   const {results}=await env.DB.prepare(
     "SELECT story_json,first_seen_at FROM website_derived_intelligence "+
     "WHERE published_at>=? AND first_seen_at>=? "+
@@ -93,24 +92,11 @@ export async function refreshMaterializedNewsPages(env,now=Date.now()){
 }
 
 export async function getMaterializedNewsPage(env,offset,now=Date.now()){
-  if(!env?.DB||!OFFSETS.includes(offset)||!Number.isFinite(now))return null;
-  try{
-    const row=await env.DB.prepare(
-      "SELECT p.rows_json,p.generated_at FROM website_derived_materialized_pages_v1 p "+
-      "JOIN website_derived_materialized_meta_v1 m ON m.id=1 "+
-      "WHERE p.page_offset=? AND p.data_revision=m.data_revision "+
-      "AND m.snapshot_revision=m.data_revision"
-    ).bind(offset).first();
-    if(!row)return null;
-    const age=now-Date.parse(row.generated_at);
-    if(!Number.isFinite(age)||age< -15_000||age>MATERIALIZED_PUBLIC_PAGES_TTL_MS||
-       typeof row.rows_json!=="string"||
-       UTF8.encode(row.rows_json).byteLength>MAX_PAGE_BYTES)return null;
-    const rows=JSON.parse(row.rows_json);
-    if(!Array.isArray(rows)||rows.length>PAGE_SIZE+1||
-       rows.some(r=>!rowShape(r)))return null;
-    return rows;
-  }catch{ return null; } // missing migration or invalid record -> honest D1 origin
+  if(!OFFSETS.includes(offset))return null;
+  // Read the three tiny indexed records once, expire rows, THEN paginate.
+  // Slicing the old page first would create holes and incorrect has_more.
+  const rows=await getMaterializedNewsBundle(env,now);
+  return rows===null?null:rows.slice(offset,offset+PAGE_SIZE+1);
 }
 export async function getMaterializedNewsBundle(env,now=Date.now()){
   // A single revision-fenced D1 statement reads the 3 indexed materialized
@@ -140,8 +126,7 @@ export async function getMaterializedNewsBundle(env,now=Date.now()){
       if(!entry||typeof entry.rows_json!=="string"||
          UTF8.encode(entry.rows_json).byteLength>MAX_PAGE_BYTES)return null;
       const age=now-Date.parse(entry.generated_at);
-      if(!Number.isFinite(age)||age< -15_000||
-         age>MATERIALIZED_PUBLIC_PAGES_TTL_MS)return null;
+      if(!Number.isFinite(age)||age<0)return null;
       if(generatedAt!==null&&generatedAt!==entry.generated_at)return null;
       generatedAt=entry.generated_at;
       const page=JSON.parse(entry.rows_json);
@@ -150,6 +135,19 @@ export async function getMaterializedNewsBundle(env,now=Date.now()){
       rows.push(...page.slice(0,PAGE_SIZE));
       if(page.length<=PAGE_SIZE)break;
     }
-    return rows.length<=MAX_JOURNAL_ROWS?rows:null;
+    if(rows.length>MAX_JOURNAL_ROWS)return null;
+    const firstSeenCutoff=new Date(now-RETENTION_MS).toISOString();
+    const publicationCutoff=firstSeenCutoff.slice(0,10);
+    const eligible=[];
+    for(const row of rows){
+      // Exactly mirror the canonical SQL WHERE before the existing response
+      // projector applies original-time/rights checks. Preserve row order,
+      // immutable first_seen_at and prose; this is never an intake success.
+      const story=JSON.parse(row.story_json);
+      if(typeof story?.published_at!=="string")return null;
+      if(story.published_at>=publicationCutoff&&row.first_seen_at>=firstSeenCutoff)
+        eligible.push(row);
+    }
+    return eligible;
   }catch{return null} // stale/failed materialization -> canonical D1 fallback
 }

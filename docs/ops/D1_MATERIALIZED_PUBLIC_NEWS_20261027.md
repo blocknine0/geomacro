@@ -26,11 +26,13 @@ account-wide reads.
 - Anonymous public Website immediate/legacy HTML and native page 0/250/500,
   source-neutral machine journal and public bundle may use the materialized
   records **only if** R2 is unavailable/disabled and URL+headers are eligible.
-  Materializations expire after 35 minutes with no source revision, matching
-  the existing 30-minute quota-held backstop. Canonical news changes trigger
-  immediate transactionally fenced invalidation, regardless of TTL. Missing,
-  oversize, stale, failed-migration or revision-mismatched data always falls
-  back to canonical D1. Source-native original dates, rights, 72h retention,
+  An unchanged canonical revision can reuse its snapshot across missed
+  backstops. Every read reapplies the exact canonical publication-day and
+  first-ingest 72h predicates to the complete bounded snapshot **before**
+  pagination; the original projector still rejects native-expired news.
+  Canonical news changes trigger immediate transactionally fenced invalidation.
+  Missing, oversize, corrupt, future-dated, failed-migration or
+  revision-mismatched data always falls back to canonical D1. Source-native original dates, rights, 72h retention,
   dedupe and publication qualification are checked again by the original
   response projector.
 - Protected authenticated Predge and all `Cache-Control:no-cache` origin
@@ -38,12 +40,15 @@ account-wide reads.
   Existing R2/KV opt-in remains unchanged; **no new credentials** are required.
 
 ## Capacity and correctness caveats
-- Each hot anonymous page fetch becomes a bounded primary-key page lookup +
-  one metadata revision JOIN instead of fetching up to 251 canonical rows.
-  A full machine bundle needs up to three such snapshots instead of one
-  up-to-601-row canonical journal read, if the snapshot is current.
+- Each anonymous page or bundle cache miss reads at most three indexed
+  materialized page records plus their revision JOIN in one D1 statement,
+  instead of scanning up to 601 canonical journal rows. Filtering the full
+  snapshot first preserves page boundaries and `has_more` as first-ingest
+  records expire. No new vendor or paid storage binding is required.
 - Materialization costs approximately one <=601-row canonical SELECT, three
-  page writes, one revision-fence UPDATE per admitted empty sweep, plus one
+  page writes, one revision-fence UPDATE per changed or repaired revision.
+  Unchanged owner refreshes validate the indexed pages and skip the scan and
+  writes, regardless of snapshot age. The existing triggers still add one
   trigger-driven metadata UPDATE per actual canonical row change. It shifts
   resource use from **reads** to some **writes**. Neither provider daily
   quota nor safe savings ratio is guaranteed until measured. Existing
@@ -66,3 +71,14 @@ verified. A fresh anonymous public immediate-news cache miss should return
 current IDs from materialized D1 without an original page SELECT; a parallel
 no-cache request must return identical IDs via the canonical journal.
 Do not close P0 1827 without exact native-event and quota evidence.
+
+## 2026-10-28 read-budget repair
+The earlier 35-minute disposable-snapshot expiry could restart repeated
+canonical scans after a delayed backstop even when D1 proved no news changed.
+Revision reuse now removes that read amplification without extending any news
+validity or renewing any source-success clock. SQLite integration tests compare
+all page envelopes, pagination and the full bundle against direct canonical SQL
+while 72h rows expire; revision races, corruption and future clocks remain
+fail-closed. Predge, no-cache authenticated acceptance, 500/day cap and billing
+are unchanged. Provider usage remains account-wide and observational: arbitrary
+external traffic/other databases cannot be guaranteed never to exhaust it.
