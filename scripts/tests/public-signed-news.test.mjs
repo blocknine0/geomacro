@@ -86,7 +86,7 @@ test('600-row production proof page uses one canonical bundle scan and one selec
   queries.length=0;
   const response=await publicSignedNews(env,new URLSearchParams('offset='+offset),now);
   assert.equal(response.status,200);
-  assert.equal(response.headers.get('Cache-Control'),'no-store');
+  assert.equal(response.headers.get('Cache-Control'),'private, no-store');
   const doc=await response.json();
   assert.equal(doc.journal_rows,600);assert.equal(doc.unique_items,600);
   assert.equal(doc.items.length,40);
