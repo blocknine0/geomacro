@@ -13,13 +13,25 @@ const ROOT="https://geomacro.live";
 const EXPECTED=process.env.GITHUB_SHA??"";
 const assert=(ok,code)=>{if(!ok)throw Error(code)};
 const timed=ms=>new Promise(r=>setTimeout(r,ms));
+// BrowserContext.newPage does not accept viewport options. Explicitly apply
+// and assert the actual viewport, or a desktop-sized context can falsely pass
+// desktop checks and fail the mobile Sheet visibility gate.
+export async function newViewportPage(context, viewport){
+ const page=await context.newPage();
+ await page.setViewportSize(viewport);
+ const actual=page.viewportSize();
+ assert(actual?.width===viewport.width&&actual.height===viewport.height,
+   "BROWSER_VIEWPORT_NOT_APPLIED");
+ return page;
+}
+
 const testBrowser=async({chromium,expected=EXPECTED,githubToken=process.env.GITHUB_TOKEN??""}={})=>{
  assert(/^[a-f0-9]{40}$/.test(expected),"BROWSER_EXPECTED_MAIN_SHA_INVALID");
  const browser=await chromium.launch({headless:true,
    args:["--disable-dev-shm-usage","--no-sandbox"]});
  const results=[];
  try{
-  const api=await browser.newContext({ignoreHTTPSErrors:false});
+  const api=await browser.newContext({ignoreHTTPSErrors:false,locale:"en-US"});
   const markerRes=await api.request.get(ROOT+"/.well-known/geomacro-build.json",
    {timeout:20_000,failOnStatusCode:false,headers:{"Cache-Control":"no-cache"}});
   assert(markerRes.status()===200,"BROWSER_BUILD_MARKER_HTTP_UNAVAILABLE");
@@ -33,7 +45,7 @@ const testBrowser=async({chromium,expected=EXPECTED,githubToken=process.env.GITH
     doc.canonical_main_sha,expected,{token:githubToken});
   assert(exact||equivalent,"BROWSER_BUILD_SOURCE_PARITY_UNVERIFIED");
   for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
-   const page=await api.newPage({viewport,locale:"en-US"});
+   const page=await newViewportPage(api,viewport);
    const failures=[];
    page.on("pageerror",e=>{if(failures.length<6)failures.push("JS_PAGEERROR")});
    let home;

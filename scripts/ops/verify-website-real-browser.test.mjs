@@ -37,3 +37,31 @@ test("browser QA executes only after public free-site proof and only for approve
  assert.ok(y.includes("GEOMACRO_PLAYWRIGHT_MODULE: /tmp/geomacro-browser-qa/node_modules/playwright/index.mjs"));
  assert.equal(y.includes("skip-browser-security"),false);
 });
+
+test("browser QA actually applies mobile and desktop viewport dimensions",async()=>{
+ const {newViewportPage}=await import("./verify-website-real-browser.mjs");
+ for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
+  let current={width:1280,height:720};
+  const page={
+   setViewportSize:async size=>{current={...size}},
+   viewportSize:()=>current,
+  };
+  const context={newPage:async(...options)=>{
+   assert.deepEqual(options,[],"newPage must not be given ignored options");
+   return page;
+  }};
+  assert.equal(await newViewportPage(context,viewport),page);
+  assert.deepEqual(current,viewport);
+ }
+});
+test("browser QA fails closed when requested mobile width was not applied",async()=>{
+ const {newViewportPage}=await import("./verify-website-real-browser.mjs");
+ const page={
+  setViewportSize:async()=>{},
+  viewportSize:()=>({width:1280,height:720}),
+ };
+ await assert.rejects(
+  newViewportPage({newPage:async()=>page},{width:390,height:844}),
+  /BROWSER_VIEWPORT_NOT_APPLIED/
+ );
+});
