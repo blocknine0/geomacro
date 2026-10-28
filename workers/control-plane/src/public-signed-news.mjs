@@ -2,7 +2,7 @@ import {ORIGINAL_VERIFICATION_WINDOW_HOURS} from '../../../src/lib/original-veri
 // Public proofs for the SAME derived-only newsroom rows. Existing issuer
 // signatures remain ingestion proofs; original-page review is a separate
 // narrow authority. Neither is silently upgraded to the legacy GRO/GRI proof.
-import {readDerivedStories} from './website-derived-intelligence.mjs';
+import {readDerivedStoriesBundle} from './website-derived-intelligence.mjs';
 import {checkedDerivedNews} from '../../../src/lib/public-derived-news-client.ts';
 import {automatedInputContent,automatedInputId,inputHash,verifyAutomatedInput} from '../../../src/lib/automated-intelligence-input.ts';
 import {verifyLowSourceReview} from '../../../src/lib/low-authority-source-review.ts';
@@ -17,26 +17,35 @@ const counts=items=>({total:items.length,
  current_source_verified_signed:items.filter(x=>x.current_source_verified_signed).length,
  pending_signature:items.filter(x=>!x.signature_verified).length,
 });
-export async function publicSignedNews(env,query=new URLSearchParams(),now=Date.now(),{readStories=readDerivedStories}={}){
+export async function publicSignedNews(env,query=new URLSearchParams(),now=Date.now(),{readBundle=readDerivedStoriesBundle}={}){
  const raw=query.get('offset')??'0',offset=Number(raw);
  if([...query.keys()].some(k=>k!=='offset')||query.getAll('offset').length>1||
     !/^(?:0|[1-9][0-9]{0,2})$/.test(raw)||offset%SIZE||offset>=600)
   return reply({ok:false,error:'SIGNED_NEWS_QUERY_INVALID'},400);
  if(!env?.DB||!Number.isFinite(now))return reply({ok:false,error:'SIGNED_NEWS_UNAVAILABLE'},503);
  try{
+  // Every proof page still reads canonical D1 and verifies fresh signatures.
+  // A complete <=600-row bundle avoids repeating three OFFSET scans of the
+  // same journal for every 40-item signed page. No cached proof is accepted.
+  const response=await readBundle(env,now,false);
+  if(response.status!==200)throw Error('JOURNAL');
+  const bundle=await response.json();
+  if(bundle.ok!==true||bundle.schema!=='geomacro.website-derived-news-bundle.v1'||
+     bundle.complete!==true||bundle.item_cap!==600||
+     bundle.original_release_delay_minutes!==0||bundle.retention_hours!==72||
+     bundle.retention_days!==3||bundle.delivery_scope!=='free_website_only'||
+     !Array.isArray(bundle.signals)||bundle.signals.length>600||
+     bundle.returned_rows!==bundle.signals.length)throw Error('JOURNAL');
   const journal=[],seen=new Set();
-  for(const start of [0,250,500]){
-   const response=await readStories(env,now,start);
-   if(response.status!==200)throw Error('JOURNAL');
-   const page=await response.json();
-   if(page.page_offset!==start||page.page_size!==250||typeof page.has_more!=='boolean')throw Error('PAGE');
+  // Reuse the original strict signal validator in bounded in-memory chunks.
+  // No per-chunk D1 reads or rolling-deployment fallback.
+  for(let start=0;start<bundle.signals.length;start+=250){
+   const page={...bundle,schema:'geomacro.website-derived-news-feed.v1',
+    signals:bundle.signals.slice(start,start+250)};
    for(const signal of checkedDerivedNews(page,now)){
     if(seen.has(signal.id))throw Error('DUPLICATE');
     seen.add(signal.id);journal.push(signal);
    }
-   if(journal.length>600)throw Error('CAPACITY');
-   if(!page.has_more){if(page.next_offset!==null)throw Error('CURSOR');break;}
-   if(start===500||page.next_offset!==start+250)throw Error('CURSOR');
   }
   // One exact canonical identity per unique derived item, including revisions.
   // Alternate journal IDs are aliases, never duplicate signed publications.

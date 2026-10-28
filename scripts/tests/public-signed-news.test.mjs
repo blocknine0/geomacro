@@ -40,11 +40,10 @@ async function fixture(signals=[signal()]){
   GEOMACRO_LOW_REVIEW_PUBLIC_SHA256:createHash('sha256').update(reviewPub).digest('hex'),
   DB:{prepare:sql=>({bind:(...ids)=>({all:async()=>{queries.push(ids);return {success:true,
    results:ids.filter(id=>rows.has(id)).map(key=>({key,value_json:rows.get(key)}))};}})})}};
- const readStories=async(_env,_now,offset)=>Response.json({ok:true,schema:'geomacro.website-derived-news-feed.v1',
+ const readBundle=async()=>Response.json({ok:true,schema:'geomacro.website-derived-news-bundle.v1',
   delivery_scope:'free_website_only',retention_hours:72,retention_days:3,original_release_delay_minutes:0,
-  page_offset:offset,page_size:250,has_more:offset+250<signals.length,
-  next_offset:offset+250<signals.length?offset+250:null,signals:signals.slice(offset,offset+250)});
- const get=(query='')=>publicSignedNews(env,new URLSearchParams(query),now,{readStories});
+  complete:true,item_cap:600,returned_rows:signals.length,signals});
+ const get=(query='')=>publicSignedNews(env,new URLSearchParams(query),now,{readBundle});
  const fetchImpl=async url=>get(new URL(url).search.slice(1));
  return {rows,env,get,queries,fetchImpl};
 }
@@ -59,6 +58,48 @@ test('each current signed item has a real registered signature and narrow origin
  assert.equal(result.all_retained_unique_news_signature_verified,true);
  assert.equal(result.all_current_qualified_news_source_verified_signed,true);
  assert.equal(result.legacy_signed_hot_3_of_3_verified,false);
+});
+test('600-row production proof page uses one canonical bundle scan and one selected-state query',async()=>{
+ const signals=Array.from({length:600},(_,i)=>signal(i+1));
+ const f=await fixture(signals),queries=[],stateDB=f.env.DB;
+ const env={...f.env,DB:{prepare(sql){
+  queries.push(sql);
+  if(sql.includes('FROM website_derived_intelligence')){
+   assert.match(sql,/LIMIT 601/);assert.doesNotMatch(sql,/OFFSET/);
+   return {bind(){return {async all(){return {results:signals.map(s=>({
+    story_json:JSON.stringify(s),first_seen_at:new Date(now-500).toISOString()}))}}}}};
+  }
+  assert.match(sql,/SELECT key,value_json FROM control_state/);
+  return stateDB.prepare(sql);
+ }}};
+ for(const offset of [0,280,560]){
+  queries.length=0;
+  const response=await publicSignedNews(env,new URLSearchParams('offset='+offset),now);
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('Cache-Control'),'no-store');
+  const doc=await response.json();
+  assert.equal(doc.journal_rows,600);assert.equal(doc.unique_items,600);
+  assert.equal(doc.items.length,40);
+  assert.ok(doc.items.every(x=>x.signature_verified));
+  assert.equal(queries.length,2,'one bounded journal query + one batch key lookup per proof page');
+  assert.ok(queries.every(sql=>!sql.includes('materialized')),'proof origin remains direct canonical D1');
+ }
+});
+test('signed proof bundle failures and incomplete/duplicate inventory never fall back to page scans',async()=>{
+ const f=await fixture();
+ const good={ok:true,schema:'geomacro.website-derived-news-bundle.v1',complete:true,
+  item_cap:600,original_release_delay_minutes:0,retention_hours:72,retention_days:3,
+  delivery_scope:'free_website_only',returned_rows:1,signals:[signal()]};
+ for(const [body,status] of [[{private:'NEVER_DISCLOSE'},503],
+  [{...good,complete:false},200],[{...good,returned_rows:2},200],
+  [{...good,signals:[signal(),signal()],returned_rows:2},200]]){
+  let reads=0;
+  const r=await publicSignedNews(f.env,new URLSearchParams(),now,{readBundle:async(_env,_now,allowMaterialized)=>{
+   reads++;assert.equal(allowMaterialized,false);return Response.json(body,{status});
+  }});
+  assert.equal(r.status,503);assert.equal(reads,1);
+  assert.deepEqual(await r.json(),{ok:false,error:'SIGNED_NEWS_READBACK_UNVERIFIED'});
+ }
 });
 test('transient public signed-news 503 retries a bounded GET and still verifies the signed journal',async()=>{
  const f=await fixture();let calls=0;
