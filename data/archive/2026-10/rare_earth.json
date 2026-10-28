@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-28T07:49:46.405Z",
+  "updated_at": "2026-10-28T09:42:06.266Z",
   "signals": [
     {
       "id": "rare_earth-1c5ca1c4",
@@ -18,6 +18,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-03fb50ef",
+      "category": "rare_earth",
+      "title": "Geomacro finds PLS signed 20-year power deal with Fortescue unit for Pilgangoora - Mining.com.au",
+      "what_changed": "A monitored source feed reports: PLS signed 20-year power deal with Fortescue unit for Pilgangoora - Mining.com.au. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T00:49:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
