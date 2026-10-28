@@ -110,7 +110,9 @@ describe('automatic approval of all retained derived inputs',()=>{
    ?putAutomatedInputs(db.env,JSON.parse(options.body),NOW)
    :getAutomatedInputs(db.env,new URL(String(url)).searchParams,NOW));
   const options={fetchImpl,env:{GEOMACRO_COMMERCE_LEDGER_TOKEN:'x'.repeat(32),GITHUB_SHA:'a'.repeat(40),GITHUB_RUN_ID:'1234'},
-   now:new Date(NOW),readJournal:async()=>retained,sign,keys};
+   now:new Date(NOW),readJournal:async()=>retained,sign,keys,
+   publishScores:async({signals}:any)=>({all_retained_inputs_signed_scored:true,
+    unique_source_inputs:signals.length})};
   const first=await publishAutomatedIntelligenceInputs(options);
   expect(first.new_signed_inputs).toBe(600);expect(first.all_retained_unique_inputs_present).toBe(true);
   expect(db.rows.size).toBe(600);fetchImpl.mockClear();

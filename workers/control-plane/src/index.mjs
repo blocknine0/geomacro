@@ -19,6 +19,7 @@ import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs"
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
+import {getInternalNewsScores,putInternalNewsScores} from './internal-signed-news-scores.ts';
 import {handleLowSourceReviews} from './low-source-reviews.ts';
 import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
@@ -1448,6 +1449,12 @@ export default {
       if(url.pathname==='/v1/intelligence-inputs/automated'){
         if(request.method==='GET')return getAutomatedInputs(env,url.searchParams);
         if(request.method==='PUT'&&!url.search)return putAutomatedInputs(env,await readJson(request,300_000));
+      }
+      // Private, strong control-plane bearer only: signed automated research
+      // triage scores never appear on public, x402, PREDGE or website routes.
+      if(url.pathname==='/v1/internal/signed-news-scores'){
+        if(request.method==='GET')return getInternalNewsScores(env,url.searchParams);
+        if(request.method==='PUT'&&!url.search)return putInternalNewsScores(env,await readJson(request,300_000));
       }
       // Inherits existing strong CONTROL_PLANE_TOKEN auth; deliberately
       // excluded from all public and partner routes.
