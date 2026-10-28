@@ -24,7 +24,7 @@ test('wrong or absent approved pin and a different public identity fail closed',
 test('private keys, injected PEM content, non-Ed25519 or escaped newlines are refused',()=>{
  const x=key();
  for(const pem of [
-  x.privatePem,x.pem.replaceAll('\n','\\n'),x.pem+'-----BEGIN"+" PRIVATE KEY-----',x.pem+'\nEXTRA',
+  x.privatePem,x.pem.replaceAll('\n','\\n'),x.pem+('-----BEGIN'+' PRIVATE KEY-----'),x.pem+'\nEXTRA',
   '',null
  ]) assert.throws(()=>prepareFactsPublicPemRepair({pem,approvedPin:x.pin}),
   /APPROVED_FACTS_PUBLIC_PEM_REPAIR_REFUSED/);
