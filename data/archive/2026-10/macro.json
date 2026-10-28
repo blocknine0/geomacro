@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-28T06:25:05.599Z",
+  "updated_at": "2026-10-28T06:31:23.575Z",
   "signals": [
     {
       "id": "macro-68f6539f",
@@ -14,6 +14,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T05:48:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2cd93e22",
+      "category": "macro",
+      "title": "Geomacro finds World Bank urged Fiji to rebuild fiscal buffers amid economic risks-Xinhua - 新华网",
+      "what_changed": "A monitored source feed reports: World Bank urged Fiji to rebuild fiscal buffers amid economic risks-Xinhua - 新华网. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T04:24:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -147,6 +166,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-27T18:42:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-54a74b3c",
+      "category": "macro",
+      "title": "Geomacro finds Gold forecast Split by Horizon as Fed, Oil and Chinese Demand Set the Near-Term Test - ad-hoc-news.de",
+      "what_changed": "A monitored source feed reports: Gold forecast Split by Horizon as Fed, Oil and Chinese Demand Set the Near-Term Test - ad-hoc-news.de. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T18:41:04.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
