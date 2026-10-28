@@ -145,7 +145,10 @@ test("natural expiry during static refresh never poisons current D1 replay",asyn
   published_at:"2026-10-28T23:30:00.000Z"};
  assert.equal(isPermanentArchiveSignal(expired,Date.parse(earlier),{allowHistorical:false}),true);
  assert.equal(verifyDerivedStory(expired,Date.parse(earlier)),true);
- assert.equal(verifyDerivedStory(expired,NOW.getTime()),false);
+ // Historical verifier accepts a broader 30-day signed readback; it is
+ // the permanent archive 72h policy that must exclude this from live D1.
+ assert.equal(verifyDerivedStory(expired,NOW.getTime()),true);
+ assert.equal(isPermanentArchiveSignal(expired,NOW.getTime(),{allowHistorical:false}),false);
  const f=fake({website:[expired,current],snapshotCheckedAt:earlier});
  const result=await reconcileWebsiteFindsToCanonicalD1({
    now:NOW,env:{GEOMACRO_COMMERCE_LEDGER_TOKEN:"private-owner-token-".repeat(3)},
