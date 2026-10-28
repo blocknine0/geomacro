@@ -1,5 +1,5 @@
 import {ORIGINAL_VERIFICATION_WINDOW_HOURS} from '../../../src/lib/original-verification-policy.ts';
-// Public proofs for the SAME derived-only newsroom rows. Existing issuer
+// INTERNAL-ONLY proofs for the SAME derived-only newsroom rows. Existing issuer
 // signatures remain ingestion proofs; original-page review is a separate
 // narrow authority. Neither is silently upgraded to the legacy GRO/GRI proof.
 import {readDerivedStoriesBundle} from './website-derived-intelligence.mjs';
@@ -8,7 +8,7 @@ import {automatedInputContent,automatedInputId,inputHash,verifyAutomatedInput} f
 import {verifyLowSourceReview} from '../../../src/lib/low-authority-source-review.ts';
 const SIZE=40;
 const reply=(body,status=200)=>Response.json(body,{status,headers:{
- 'Cache-Control':'no-store','Access-Control-Allow-Origin':'*',
+ 'Cache-Control':'private, no-store',
  'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
 }});
 const counts=items=>({total:items.length,
