@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-28T07:43:39.656Z",
+  "updated_at": "2026-10-28T07:49:46.405Z",
   "signals": [
     {
       "id": "macro-f3ef43c1",
@@ -138,6 +138,25 @@
       "severity": null
     },
     {
+      "id": "macro-a7d1e1c0",
+      "category": "macro",
+      "title": "Geomacro finds EU urged G7 allies to cover Ukraine's budget deficit, FT",
+      "what_changed": "A monitored source feed reports: EU urged G7 allies to cover Ukraine's budget deficit, FT. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T03:58:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.pravda.com.ua"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-ce140193",
       "category": "macro",
       "title": "Geomacro finds Silver Automation Instruments released High-Viscosity Oil Flow Meter Selection Guide as Heavy-Oil Metering Demand Grows - Asia News Network",
@@ -208,6 +227,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-33e2b68b",
+      "category": "macro",
+      "title": "Geomacro finds Fed said it ignores politics. Its rate moves tell a more complicated story - CNN",
+      "what_changed": "A monitored source feed reports: Fed said it ignores politics. Its rate moves tell a more complicated story - CNN. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T21:26:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -398,6 +436,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b06a27b4",
+      "category": "macro",
+      "title": "Geomacro finds Iran said It Will Take Action Against Sinokor Ships in Hormuz",
+      "what_changed": "A monitored source feed reports: Iran said It Will Take Action Against Sinokor Ships in Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T14:12:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: gcaptain.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -936,6 +993,25 @@
       "severity": null
     },
     {
+      "id": "macro-314e6d22",
+      "category": "macro",
+      "title": "Geomacro finds Late reported of Hormuz attacks as Iran blacklist expands",
+      "what_changed": "A monitored source feed reports: Late reported of Hormuz attacks as Iran blacklist expands. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T16:12:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.seatrade-maritime.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-43bc6bfd",
       "category": "macro",
       "title": "Geomacro finds Bones Coffee released new Bones After Dark - Tea & Coffee Trade Journal",
@@ -1154,6 +1230,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-25T23:48:45.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-924d7403",
+      "category": "macro",
+      "title": "Geomacro finds United States said helped Gulf nations export 1.5 billion barrels of oil through Hormuz - Arab News",
+      "what_changed": "A monitored source feed reports: United States said helped Gulf nations export 1.5 billion barrels of oil through Hormuz - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-25T20:44:39.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

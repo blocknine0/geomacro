@@ -2,8 +2,65 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-28T07:43:39.656Z",
+  "updated_at": "2026-10-28T07:49:46.405Z",
   "signals": [
+    {
+      "id": "geopolitics-71dd5ab4",
+      "category": "geopolitics",
+      "title": "Geomacro finds Secretary-General of ASEAN held a Pull-Aside Meeting with the Secretary of War of the United States - ASEAN Main Portal",
+      "what_changed": "A monitored source feed reports: Secretary-General of ASEAN held a Pull-Aside Meeting with the Secretary of War of the United States - ASEAN Main Portal. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T07:46:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-cc6c7b38",
+      "category": "geopolitics",
+      "title": "Geomacro finds Researchers proposed New Irrigation to Balance Water Conservation, Food security in China - Chinese Academy of Sciences (CAS)",
+      "what_changed": "A monitored source feed reports: Researchers proposed New Irrigation to Balance Water Conservation, Food security in China - Chinese Academy of Sciences (CAS). This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T07:42:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-7e2d8a4c",
+      "category": "geopolitics",
+      "title": "Geomacro finds China confirmed identities of 8 more volunteer soldiers killed in Korean War - Xinhua",
+      "what_changed": "A monitored source feed reports: China confirmed identities of 8 more volunteer soldiers killed in Korean War - Xinhua. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T07:37:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-b17a7d55",
       "category": "geopolitics",
