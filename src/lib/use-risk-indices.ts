@@ -174,7 +174,7 @@ export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices
      !Number.isSafeInteger(index.sourceMix.osint)||
      index.sourceMix.public_news<0||index.sourceMix.osint<0||
      index.sourceMix.public_news+index.sourceMix.osint!==index.eventCount||
-     index.independentStoryCount!==index.sourceMix.public_news)
+     index.independentStoryCount!==0)
       throw Error("GEOMACRO_NEWS_GRI_INDEX_INVALID");
   }
   if(domain.size!==0)throw Error("GEOMACRO_NEWS_GRI_CATEGORY_MISSING");
