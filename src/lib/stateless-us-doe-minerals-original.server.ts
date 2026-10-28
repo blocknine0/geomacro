@@ -16,7 +16,6 @@ const ANCHOR=/<a\b[^>]{0,800}href\s*=\s*["']([^"'<>]{1,450})["'][^>]{0,800}>([\s
 const DATE=/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+([1-9]|[12]\d|3[01]),?\s+(20\d{2})\b/iu;
 const MONTHS=["january","february","march","april","may","june","july",
   "august","september","october","november","december"];
-const DAY_MS=86_400_000;
 const clean=(s:string)=>s.replace(/<[^>]*>/gu," ").replace(
   /&(?:amp|quot|apos|#39|nbsp);/giu,m=>({
     "&amp;":"&","&quot;":'"',"&apos;":"'","&#39;":"'","&nbsp;":" "
