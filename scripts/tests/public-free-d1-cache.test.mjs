@@ -12,6 +12,31 @@ const request=(url=base,headers={})=>new Request(url,{headers});
 const result=(status=200)=>Response.json({ok:status===200},{status,
   headers:{"Cache-Control":"no-store"}});
 
+test('public runtime and pulse polling share bounded 45s reads without renewing source clocks',async()=>{
+ const root='https://geomacro-control-plane.example/v1/public/';
+ const paths=['source-runtime','source-runtime-context?category=geopolitics',
+  'source-runtime-context?category=macro-fx','source-runtime-context?category=critical-minerals',
+  'source-pulse-30m','intelligence-overlay'];
+ let reads=0;const stored=new Map();
+ const cache={async match(k){return stored.get(k.url)?.clone()??null},async put(k,r){stored.set(k.url,r.clone())}};
+ const run=()=>{reads++;return Response.json({checked_at:'2026-10-28T06:00:00.000Z',status:'SOURCE_LANES_DEGRADED'})};
+ for(const path of paths){
+  for(let i=0;i<3;i++){
+   const r=await readPublicFreeD1Cached(request(root+path),run,{cache});
+   assert.equal(r.headers.get('Cache-Control'),'public, max-age=45');
+   assert.equal((await r.json()).checked_at,'2026-10-28T06:00:00.000Z');
+  }
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(root+path,{'Authorization':'Bearer owner'})),false);
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(root+path,{'Cache-Control':'no-cache'})),false);
+ }
+ assert.equal(reads,paths.length);
+ for(const query of ['category=unknown','category=macro-fx&category=geopolitics','category=%6dacro-fx','category=macro-fx&extra=1'])
+  assert.equal(eligiblePublicFreeD1CacheRequest(request(root+'source-runtime-context?'+query)),false);
+ const worker=readFileSync(new URL('../../workers/control-plane/src/index.mjs',import.meta.url),'utf8');
+ for(const name of ['getSourceRuntimeStatus','getSourceRuntimeContext','getPublicThreeDomain30MinSourcePulse','getPublicIntelligenceOverlay'])
+  assert.ok(worker.includes('return publicReadCache(()=>'+name+'('));
+});
+
 test("bounded public identical reads reuse only a 200 response",async()=>{
   let reads=0;const stored=new Map(),pending=[];
   const cache={async match(key){return stored.get(key.url)?.clone()??null},

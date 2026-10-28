@@ -1288,7 +1288,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/health") return health(env);
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
     if(request.method==="GET"&&url.pathname==="/v1/public/macro-fastlane"&&!url.search)return publicReadCache(()=>readPublicMacro(env));
-    if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime"&&!url.search)return getSourceRuntimeStatus(env);
+    if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime"&&!url.search)return publicReadCache(()=>getSourceRuntimeStatus(env));
     if(request.method==="GET"&&url.pathname==="/v1/public/reusable-source-news")
       return publicReadCache(()=>publicReusableSourceNews(env,url.searchParams));
     if(request.method==="GET"&&url.pathname==="/v1/public/three-domain-continuity"&&!url.search)
@@ -1296,7 +1296,7 @@ export default {
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime-context"){
       if([...url.searchParams.keys()].some(k=>k!=="category")||url.searchParams.getAll("category").length!==1)
         return json({ok:false,error:"SOURCE_RUNTIME_QUERY_INVALID"},400);
-      return getSourceRuntimeContext(env,url.searchParams.get("category"));
+      return publicReadCache(()=>getSourceRuntimeContext(env,url.searchParams.get("category")));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/automated-finds"){
       if([...url.searchParams.keys()].some(k=>k!=="category")||url.searchParams.getAll("category").length>1)
@@ -1378,10 +1378,10 @@ export default {
           eligiblePublicFreeD1CacheRequest(request)));
     }
     if (request.method === "GET" && url.pathname === "/v1/public/source-pulse-30m") {
-      return getPublicThreeDomain30MinSourcePulse(env);
+      return publicReadCache(()=>getPublicThreeDomain30MinSourcePulse(env));
     }
     if (request.method === "GET" && url.pathname === "/v1/public/intelligence-overlay") {
-      return getPublicIntelligenceOverlay(env);
+      return publicReadCache(()=>getPublicIntelligenceOverlay(env));
     }
     if(request.method==="GET" &&
        url.pathname==="/v1/public/website-lagged-global-risk" && !url.search){

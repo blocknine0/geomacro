@@ -23,12 +23,17 @@ const PATHS = new Set([
   "/v1/public/website-derived-news-html",
   "/v1/public/reusable-source-news",
   "/v1/public/derived-structural-72h",
+  "/v1/public/source-runtime",
+  "/v1/public/source-runtime-context",
+  "/v1/public/source-pulse-30m",
+  "/v1/public/intelligence-overlay",
 ]);
 const PAGED_NEWS_PATHS = new Set([
   "/v1/public/website-derived-news",
   "/v1/public/website-derived-news-immediate",
 ]);
 const DOMAINS = new Set(["macro","geopolitics","rare_earth"]);
+const CONTEXT_QUERIES=new Set(["category=geopolitics","category=macro-fx","category=critical-minerals"]);
 const CANONICAL_OFFSETS = new Set(["offset=250","offset=500"]);
 // Query string must be *literally canonical*: no duplicate, encoded, nested
 // or arbitrary filtering that can poison a shared public cache key.
@@ -63,6 +68,8 @@ export function eligiblePublicFreeD1CacheRequest(request){
        url.pathname==="/v1/public/derived-structural-72h" ||
        url.pathname==="/v1/public/fastlane-intelligence"){
       if(!categoryQuery(raw))return false;
+    }else if(url.pathname==="/v1/public/source-runtime-context"){
+      if(!CONTEXT_QUERIES.has(raw))return false;
     }else if(PAGED_NEWS_PATHS.has(url.pathname)){
       if(!CANONICAL_OFFSETS.has(raw))return false;
     }else return false;
