@@ -30,3 +30,35 @@ test("refuses malformed, duplicate or over-cap inputs",()=>{
   const a=row("same","2026-10-29T09:00:00.000Z");
   assert.throws(()=>planWebsiteNewsCatchup([],[a,a],now,valid),/CANONICAL_INVALID/);
 });
+
+import {verifyWebsiteNewsCatchupReadback} from "../lib/website-news-canonical-reconciliation.mjs";
+
+test("post-write readback proves all source-native 72h fields, not only IDs",()=>{
+  const macro={...row("macro-abcdef04","2026-10-29T08:00:00.000Z"),date_precision:"exact",
+    sources_credited:["Official research"],status:"official_release_observed_unscored"};
+  const mineral={...row("rare_earth-abcdef05","2026-10-29T07:00:00.000Z"),
+    category:"rare_earth",date_precision:"exact",sources_credited:[]};
+  const receipt=verifyWebsiteNewsCatchupReadback([macro,mineral],[mineral,macro],now,valid);
+  assert.equal(receipt.matched_eligible_ids,2);
+  assert.equal(receipt.missing_eligible_ids,0);
+  assert.equal(receipt.exact_derived_payloads_and_source_clocks_verified,true);
+  assert.deepEqual(receipt.counts_by_category,{geopolitics:0,macro:1,rare_earth:1});
+  assert.throws(()=>verifyWebsiteNewsCatchupReadback([macro],[{...macro,published_at:"2026-10-29T08:00:01.000Z"}],now,valid),
+    /PAYLOAD_OR_NATIVE_CLOCK_DIVERGENT/);
+  assert.throws(()=>verifyWebsiteNewsCatchupReadback([macro],[{...macro,sources_credited:[]}],now,valid),
+    /PAYLOAD_OR_NATIVE_CLOCK_DIVERGENT/);
+});
+test("post-write readback fails closed for missing, duplicated or conflicting records",()=>{
+  const a=row("macro-abcdef06","2026-10-29T09:00:00.000Z");
+  assert.throws(()=>verifyWebsiteNewsCatchupReadback([a],[],now,valid),/READBACK_INCOMPLETE/);
+  assert.throws(()=>verifyWebsiteNewsCatchupReadback([a],[a,a],now,valid),/CANONICAL_INVALID/);
+  assert.throws(()=>verifyWebsiteNewsCatchupReadback([a,{...a,body:"changed"}],[a],now,valid),
+    /ARCHIVE_ID_CONFLICT/);
+});
+test("post-write readback never re-dates old records or promotes absent news",()=>{
+  const old=row("macro-abcdef07","2026-10-20T09:00:00.000Z");
+  const receipt=verifyWebsiteNewsCatchupReadback([old],[],now,valid);
+  assert.equal(receipt.eligible_archive_ids,0);
+  assert.deepEqual(receipt.counts_by_category,{geopolitics:0,macro:0,rare_earth:0});
+  assert.equal(Object.isFrozen(receipt),true);
+});
