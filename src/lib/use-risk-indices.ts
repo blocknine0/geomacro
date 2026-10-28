@@ -37,6 +37,8 @@ const EDGE_PROJECT = "ldpwajisioljyjtojvfx";
 const METHODOLOGY = "gri-v1.2.0";
 export const RISK_INDICES_EDGE_URL =
   "https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices";
+export const GEOMACRO_CERTIFIED_NEWS_GRI_URL =
+  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/geomacro-certified-news-severity-gri";
 const RISK_INDICES_APP_URL = "/api/public/risk-indices";
 
 const READ_TARGETS: RiskIndicesReadTarget[] = [
@@ -116,6 +118,75 @@ async function readWithFailover(): Promise<PublicRiskIndices> {
   throw lastError;
 }
 
+
+/**
+ * Dedicated GeoMacro-issued (NOT independently reviewed) news severity GRI.
+ * Browser relies on the pinned GeoMacro HTTPS authority and checks the exact
+ * public payload hash, issuer metadata and self-certification scope.
+ * The HMAC signature itself is verifiable only by the issuer holding its key.
+ */
+export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices> {
+  const response = await fetch(GEOMACRO_CERTIFIED_NEWS_GRI_URL, {
+    method:"GET",redirect:"error",cache:"no-store",credentials:"omit",
+    headers:{Accept:"application/json"},
+    signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if(!response.ok||response.redirected ||
+     response.headers.get("x-geomacro-certification")!=="geomacro-self-certified-news-severity-v1"||
+     response.headers.get("x-geomacro-methodology")!=="geomacro-news-severity-v1.1.0")
+    throw Error("GEOMACRO_NEWS_GRI_AUTHORITY_UNAVAILABLE");
+  const doc=await response.json() as {
+    schema?:string;issuer?:string;scope?:string;independent_third_party_certified?:boolean;
+    generated_at?:string;data?:PublicRiskIndices;
+    certification?:{issuer?:string;scheme?:string;signed_payload_sha256?:string;
+      signature_hex?:string;independent_external_audit?:boolean};
+  };
+  const cert=doc.certification;
+  const indices=doc.data?.indices;
+  const stamp=Date.parse(doc.generated_at??"");
+  if(doc.schema!=="geomacro.self-certified-news-severity-gri.v1"||
+     doc.issuer!=="GeoMacro"||
+     doc.scope!=="GEOMACRO_SELF_CERTIFIED_NEWS_SEVERITY_CALCULATION_ONLY"||
+     doc.independent_third_party_certified!==false||
+     cert?.issuer!=="GeoMacro"||cert.scheme!=="HMAC-SHA256"||
+     cert.independent_external_audit!==false||
+     !/^[a-f0-9]{64}$/u.test(cert.signature_hex??"")||
+     !/^[a-f0-9]{64}$/u.test(cert.signed_payload_sha256??"")||
+     !Number.isFinite(stamp)||stamp>Date.now()+60_000||Date.now()-stamp>5*60_000||
+     doc.data?.snapshotAsOf!==doc.generated_at||
+     doc.data?.parentMethodologyVersion!=="geomacro-news-severity-v1.1.0"||
+     doc.data.proofScope!=="geomacro-news-severity"||
+     doc.data.verificationStatus!=="verified"||
+     doc.data.contractVersion!==PUBLIC_RISK_INDICES_CONTRACT_VERSION||
+     !Array.isArray(indices)||indices.length!==3)
+   throw Error("GEOMACRO_NEWS_GRI_CERTIFICATION_INVALID");
+  const domain=new Set(["geopolitics","macro","critical_minerals"]);
+  for(const index of indices){
+    if(!domain.delete(index.key)||!["available","unavailable"].includes(index.status)||
+       (index.status==="available"&&(
+        typeof index.score!=="number"||!Number.isFinite(index.score)||
+        index.score<0||index.score>100||
+        !index.readingAsOf||!Number.isFinite(Date.parse(index.readingAsOf))))||
+       (index.status==="unavailable"&&index.score!==null)||
+     !index.sourceMix||
+     index.sourceMix.osint_event_facts_verified!==false||
+     !Number.isSafeInteger(index.sourceMix.public_news)||
+     !Number.isSafeInteger(index.sourceMix.osint)||
+     index.sourceMix.public_news<0||index.sourceMix.osint<0||
+     index.sourceMix.public_news+index.sourceMix.osint!==index.eventCount||
+     index.independentStoryCount!==0)
+      throw Error("GEOMACRO_NEWS_GRI_INDEX_INVALID");
+  }
+  if(domain.size!==0)throw Error("GEOMACRO_NEWS_GRI_CATEGORY_MISSING");
+  const {certification:_,...signed}=doc;
+  const signedBytes=new TextEncoder().encode(JSON.stringify(signed));
+  const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",signedBytes));
+  const hash=Array.from(digest,b=>b.toString(16).padStart(2,"0")).join("");
+  if(hash!==cert.signed_payload_sha256)
+    throw Error("GEOMACRO_NEWS_GRI_SIGNED_PAYLOAD_MISMATCH");
+  return doc.data;
+}
+
 export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
   const [data, setData] = useState<PublicRiskIndices | null>(null);
   const [status, setStatus] = useState<RiskIndicesStatus>("loading");
@@ -131,22 +202,7 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
     async function load() {
       setStatus(hasData.current ? "updating" : "loading");
       try {
-        let response:PublicRiskIndices;
-        try{
-          const lagged=await withPublicRuntimeTimeout(getWebsiteLaggedGlobalRisk({data:{}}),10_000,"WEBSITE_RISK_INDICES_LAGGED_READ_TIMEOUT");
-          response=riskIndicesFromGlobalRisk(lagged.data);
-          if(!validIndices(response))throw new Error("WEBSITE_LAGGED_RISK_INDICES_INVALID");
-        }catch{
-          // Distinct read-only edge fallback may serve only an already
-          // one-hour-old independently verified index snapshot. Never
-          // replace a true archived snapshot with a fresh live index score.
-          const edge=await readWithFailover();
-          const snapshotAt=Date.parse(edge.snapshotAsOf);
-          if(!Number.isFinite(snapshotAt)||snapshotAt>websitePublicCutoff()||
-            edge.indices.some(x=>x.readingAsOf&&Date.parse(x.readingAsOf)>websitePublicCutoff()))
-            throw new Error("WEBSITE_RISK_INDICES_60MIN_PROOF_HOLD");
-          response={...edge,indices:edge.indices.map(x=>({...x,topEvent:null}))};
-        }
+        const response=await readGeoMacroCertifiedNewsRisk();
         if (cancelled) return;
 
         hasData.current = true;

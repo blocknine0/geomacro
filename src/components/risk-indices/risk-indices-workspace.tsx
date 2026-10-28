@@ -23,12 +23,12 @@ export function RiskIndicesWorkspace() {
               Geomacro Risk Indices
             </p>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              {unavailable ? "Verified risk package temporarily unavailable" : "Refreshing verified readings"}
+              {unavailable ? "GeoMacro-certified news indices temporarily unavailable" : "Refreshing GeoMacro-certified news readings"}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
               {unavailable
-                ? "The latest verified readings are temporarily unavailable."
-                : "Checking for the latest verified readings."}
+                ? "The latest GeoMacro news-severity calculation is temporarily unavailable."
+                : "Checking the latest GeoMacro-certified news severity readings."}
             </p>
           </div>
           <Button type="button" variant="outline" onClick={risk.retry} className="gap-2">
@@ -41,9 +41,9 @@ export function RiskIndicesWorkspace() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
               <div>
-                <p className="font-medium text-foreground">No unverified fallback is being displayed.</p>
+                <p className="font-medium text-foreground">No unrelated GRI or invented severity fallback is being displayed.</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Try again shortly. The last verified dates remain the reference.
+                  Try again shortly. Only news-backed readings will be shown.
                 </p>
               </div>
             </div>
@@ -70,14 +70,14 @@ export function RiskIndicesWorkspace() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-              <ShieldCheck className="h-3.5 w-3.5" /> Verified public indices
+              <ShieldCheck className="h-3.5 w-3.5" /> GeoMacro Certified GRI
             </span>
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               {data.contractVersion}
             </span>
             {hasLastVerified ? (
               <span className="rounded-full border border-border/70 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                Last verified continuity
+                Last qualified release
               </span>
             ) : null}
           </div>
@@ -95,7 +95,7 @@ export function RiskIndicesWorkspace() {
           </p>
           {hasLastVerified ? (
             <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">
-              The newest verified continuity package is older than the current-reading window. Geomacro is showing it as last verified rather than presenting stale data as live.
+              The latest observed release in at least one category is older than one hour; its reading is labelled last observed, not new live severity.
             </p>
           ) : null}
         </div>
@@ -110,7 +110,7 @@ export function RiskIndicesWorkspace() {
       <Section
         eyebrow="History"
         title="Compare each risk domain on its own scale"
-        copy="Each chart uses stored comparable category scores when they are present in the verified public package. Missing history is left unavailable rather than reconstructed from the old combined index."
+        copy="Each chart shows only actual news-severity samples available in GeoMacro's rolling source window. Longer historical series remain unavailable until collected."
       >
         <div className="mb-5 flex w-fit gap-1 rounded-lg border border-border/70 p-1">
           {TIMEFRAMES.map((item) => (
@@ -160,23 +160,23 @@ export function RiskIndicesWorkspace() {
 
       <Section
         eyebrow="Methodology boundary"
-        title="Separated presentation, preserved proof"
-        copy="This public split is a verified category projection of the existing v1.2 versioned proof package. It does not rewrite historical snapshots or invent a second calculation path."
+        title="News severity, GeoMacro certification"
+        copy="GeoMacro applies a documented, versioned severity rubric to observed official releases and certifies the resulting calculation. It is not independent third-party certification or verification of every reported event."
       >
         <div className="grid gap-4 md:grid-cols-3">
-          <MethodCard title="Independent domain score" body="Each domain score is calculated inside its own evidence pool after confidence, recency, source-cap and story-cap controls." />
-          <MethodCard title="No combined headline" body="The public workspace no longer asks users to interpret one blended geopolitical, macro and critical-mineral number." />
-          <MethodCard title="No zero fallback" body="If a domain has no current verified reading, Geomacro does not manufacture a zero or synthetic estimate." />
+          <MethodCard title="Separate category severity" body="Each category receives an independent 0–100 heuristic severity score weighted by event type, recency and de-duplication; publisher candidates and unverified OSINT are excluded." />
+          <MethodCard title="Source-native category separation" body="Geopolitics, Macro/FX and Critical Minerals keep separate scores. One category cannot silently substitute for another." />
+          <MethodCard title="No fabricated risk level" body="If a category has no eligible recent official release, its reading stays unavailable rather than showing an invented zero." />
         </div>
         <div className="mt-5 rounded-2xl border border-border/70 bg-muted/15 p-5 text-sm leading-7 text-muted-foreground">
-          Parent versioned methodology: <span className="font-mono text-foreground">{data.parentMethodologyVersion}</span>. Proof scope: <span className="font-mono text-foreground">{data.proofScope}</span>. The next methodology generation can persist fully independent per-index proof objects without mutating the historical GRI v1.2 record.
+          GeoMacro news severity methodology: <span className="font-mono text-foreground">{data.parentMethodologyVersion}</span>. Certification scope: <span className="font-mono text-foreground">{data.proofScope}</span>. GeoMacro self-certifies the calculation, not independent external fact-checking or investment outcomes.
         </div>
       </Section>
 
       <Section
         eyebrow="Integrity"
-        title="One verified package, traceable to the exact source snapshot"
-        copy="The three public indices retain the parent snapshot fingerprints so the projection remains reproducible and traceable during the migration from the historical combined GRI surface."
+        title="One GeoMacro-certified calculation, traceable to its news inputs"
+        copy="Hashes bind the eligible input selection, versioned severity methodology and the three calculated scores. GeoMacro attests the package with its private issuer credential; this is not a third-party audit."
       >
         <div className="grid gap-4 md:grid-cols-2">
           <HashCard label="Proof hash" value={data.proofHash} />
@@ -190,14 +190,14 @@ export function RiskIndicesWorkspace() {
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <IntegrityCheck label="Verification" value={data.verificationStatus} />
+          <IntegrityCheck label="Certification" value="GeoMacro self-certified" />
           <IntegrityCheck label="As of" value={formatDate(data.snapshotAsOf)} />
           <IntegrityCheck label="Score residual" value={data.reconciliationResidual === null ? "Not stored" : fmt(data.reconciliationResidual, 12)} />
           <IntegrityCheck label="Change residual" value={data.changeResidual === null ? "Not stored" : fmt(data.changeResidual, 12)} />
         </div>
 
         <p className="mt-6 max-w-4xl text-xs leading-6 text-muted-foreground">
-          These indices are risk-intelligence signals. They are not market probabilities, investment recommendations or autonomous execution instructions.
+          These are GeoMacro self-certified news-severity indicators, not independently certified event facts, probabilities, investment recommendations or execution instructions.
         </p>
       </Section>
     </main>
@@ -209,9 +209,9 @@ function IndexCard({ index }: { index: PublicRiskIndex }) {
     return (
       <article className="rounded-2xl border border-border/70 bg-card/45 p-6">
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{index.name}</p>
-        <p className="mt-5 text-2xl font-semibold">Verified reading unavailable</p>
+        <p className="mt-5 text-2xl font-semibold">Qualified news-severity reading unavailable</p>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          A verified domain score is not present in this package. Geomacro does not substitute zero or a synthetic estimate.
+          There is no eligible official-release severity signal for this category in the rolling 72-hour window. No zero-risk estimate is inferred.
         </p>
       </article>
     );
@@ -238,26 +238,26 @@ function IndexCard({ index }: { index: PublicRiskIndex }) {
         <RiskBadge score={index.score} />
         <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
           {index.readingStatus === "current"
-            ? "Current verified"
-            : `Last verified${readingAge === null ? "" : ` · ${readingAge}h old`}`}
+            ? "Recent observed news"
+            : `Last observed${readingAge === null ? "" : ` · ${readingAge}h old`}`}
         </span>
       </div>
       <dl className="mt-6 grid grid-cols-2 gap-4">
         <Metric label="Exact raw" value={index.rawScore === null ? "—" : fmt(index.rawScore, 6)} />
         <Metric label="Previous" value={index.previousScore === null ? "—" : fmt(index.previousScore, 1)} />
-        <Metric label="Evidence" value={countsAvailable ? String(index.eventCount) : "—"} />
-        <Metric label="Stories" value={countsAvailable ? String(index.independentStoryCount) : "—"} />
+        <Metric label="Public news" value={index.sourceMix ? String(index.sourceMix.public_news) : "—"} />
+        <Metric label="OSINT" value={index.sourceMix ? String(index.sourceMix.osint) : "—"} />
         <Metric label="Sources" value={countsAvailable ? String(index.sourceCount) : "—"} />
         <Metric label="Confidence" value={index.confidence === null ? "—" : `${Math.round(index.confidence)}%`} />
       </dl>
       {!countsAvailable ? (
         <p className="mt-4 text-xs leading-5 text-muted-foreground">
-          Per-domain evidence counts are not present in this continuity package; no zero count is inferred.
+          No public news or OSINT observations qualified in this reporting window.
         </p>
       ) : null}
       {index.topEvent ? (
         <div className="mt-5 border-t border-border/60 pt-4">
-          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">Leading verified event</p>
+          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">Latest scored news signal</p>
           <p className="mt-2 text-sm font-medium leading-relaxed">{index.topEvent.title}</p>
         </div>
       ) : null}

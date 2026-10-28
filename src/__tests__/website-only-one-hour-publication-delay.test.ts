@@ -70,8 +70,13 @@ describe("website-only 60min publication embargo (machine / x402 unaffected)",()
   expect(historical).toContain("WEBSITE_GRI_ONE_HOUR_VERIFIED_SNAPSHOT_UNAVAILABLE");
   expect(websiteFn).toContain('createServerFn({method:"GET"})');
   expect(websiteFn).toContain("readWebsiteLaggedGlobalRisk");
-  expect(index).toContain("riskIndicesFromGlobalRisk(lagged.data)");
-  expect(index).toContain("WEBSITE_RISK_INDICES_60MIN_PROOF_HOLD");
+  // Risk Indices has founder-approved separate GeoMacro-issued news-severity
+  // methodology, not a republishing of frozen combined GRI v1.2. The
+  // historical Global Risk embargo remains enforced above unchanged.
+  expect(index).toContain("readGeoMacroCertifiedNewsRisk()");
+  expect(index).toContain("geomacro-certified-news-severity-gri");
+  expect(index).not.toContain('const response=riskIndicesFromGlobalRisk(lagged.data)');
+  expect(index).not.toContain("WEBSITE_RISK_INDICES_60MIN_PROOF_HOLD");
   expect(machine).toContain("readB2PublicRisk()");
   expect(machine).not.toContain("websitePublicCutoff");
   expect(machine).not.toContain("WEBSITE_RELEASE_DELAY_MS");

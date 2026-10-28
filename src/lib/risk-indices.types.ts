@@ -27,6 +27,8 @@ export type PublicRiskIndex = {
   eventCount: number;
   sourceCount: number;
   independentStoryCount: number;
+  /** GeoMacro news-severity v1.1 source mix; no OSINT factual confirmation implied. */
+  sourceMix?: { public_news: number; osint: number; osint_event_facts_verified: false };
   series: Record<Timeframe, TimeframeSeries>;
   topEvent: {
     title: string;
@@ -39,7 +41,7 @@ export type PublicRiskIndices = {
   contractVersion: typeof PUBLIC_RISK_INDICES_CONTRACT_VERSION;
   parentMethodologyVersion: string;
   proofVersion: string;
-  proofScope: "verified-category-projection";
+  proofScope: "verified-category-projection" | "geomacro-news-severity";
   snapshotId: string;
   snapshotAsOf: string;
   verificationStatus: "verified";

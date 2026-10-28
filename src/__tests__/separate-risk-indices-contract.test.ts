@@ -23,7 +23,7 @@ describe("separate public risk indices contract", () => {
     expect(projection).toContain('sourceCategory: "rare_earth"');
   });
 
-  it("keeps the v1.2 proof lineage instead of inventing a new historical calculation", () => {
+  it("keeps the legacy v1.2 proof lineage for separate frozen GRI while new public severity path is explicitly versioned", () => {
     const edge = read("supabase/functions/public-risk-indices/index.ts");
     const types = read("src/lib/risk-indices.types.ts");
     const projection = read("src/lib/risk-indices-from-global-risk.ts");
@@ -61,8 +61,8 @@ describe("separate public risk indices contract", () => {
     expect(edge).toContain('status: rawScore === null ? "unavailable" : "available"');
     expect(projection).toContain('status: "unavailable"');
     expect(projection).toContain("score: null");
-    expect(workspace).toContain("does not substitute zero or a synthetic estimate");
-    expect(workspace).toContain("No unverified fallback is being displayed.");
+    expect(workspace).toContain("No zero-risk estimate is inferred.");
+    expect(workspace).toContain("No unrelated GRI or invented severity fallback is being displayed.");
   });
 
   it("keeps the legacy Supabase Edge Function read-only and bounded for explicit recovery only", () => {
@@ -133,6 +133,19 @@ describe("separate public risk indices contract", () => {
     expect(riskIndicesWorkspace).toContain("Three risks. Three separate indices.");
     expect(continuity).toContain("RISK_DOMAIN_HISTORY_CONTAINER_MISSING");
     expect(continuity).toContain("RISK_DOMAIN_${domain.toUpperCase()}_HISTORY_MISSING");
+  });
+
+  it("routes public Risk Indices through GeoMacro-issued news severity without treating its signature as independent GRI", () => {
+    const hook=read("src/lib/use-risk-indices.ts");
+    const worker=read("workers/control-plane/src/geomacro-news-severity-gri.mjs");
+    const view=read("src/components/risk-indices/risk-indices-workspace.tsx");
+    expect(hook).toContain("const response=await readGeoMacroCertifiedNewsRisk()");
+    expect(hook).toContain("GEOMACRO_CERTIFIED_NEWS_GRI_URL");
+    expect(worker).toContain('NEWS_GRI_METHOD="geomacro-news-severity-v1.1.0"');
+    expect(worker).toContain("source_event_facts_independently_verified:false");
+    expect(worker).toContain("independent_third_party_certified:false");
+    expect(view).toContain("GeoMacro Certified GRI");
+    expect(view).toContain("not independently certified event facts");
   });
 
   it("keeps public surfaces fail-closed without synthetic risk values", () => {
