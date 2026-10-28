@@ -346,6 +346,13 @@
         },
         "delivery_tier": {
           "const": "structural_baseline"
+        },
+        "response_locale": {
+          "enum": [
+            "en",
+            "bn",
+            "hi"
+          ]
         }
       }
     },
@@ -759,6 +766,68 @@
         },
         "why_it_matters": {
           "type": "string"
+        },
+        "localized": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "language",
+            "subject_summaries",
+            "scope"
+          ],
+          "properties": {
+            "language": {
+              "enum": [
+                "bn",
+                "hi"
+              ]
+            },
+            "subject_summaries": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": [
+                  "language",
+                  "headline",
+                  "decision_context",
+                  "caveat",
+                  "scope",
+                  "execution_authorized"
+                ],
+                "properties": {
+                  "language": {
+                    "enum": [
+                      "bn",
+                      "hi"
+                    ]
+                  },
+                  "headline": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "decision_context": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "caveat": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "scope": {
+                    "const": "BOUNDED_FACTUAL_SUMMARY_ONLY"
+                  },
+                  "execution_authorized": {
+                    "const": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "scope": {
+              "const": "BOUNDED_FACTUAL_SUMMARY_ONLY"
+            }
+          }
         }
       },
       "additionalProperties": true
@@ -807,6 +876,44 @@
           },
           "market_watch": {
             "$ref": "#/$defs/paidMarketWatch"
+          },
+          "localized": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "language",
+              "headline",
+              "decision_context",
+              "caveat",
+              "scope",
+              "execution_authorized"
+            ],
+            "properties": {
+              "language": {
+                "enum": [
+                  "bn",
+                  "hi"
+                ]
+              },
+              "headline": {
+                "type": "string",
+                "minLength": 3
+              },
+              "decision_context": {
+                "type": "string",
+                "minLength": 3
+              },
+              "caveat": {
+                "type": "string",
+                "minLength": 3
+              },
+              "scope": {
+                "const": "BOUNDED_FACTUAL_SUMMARY_ONLY"
+              },
+              "execution_authorized": {
+                "const": false
+              }
+            }
           }
         },
         "additionalProperties": true
