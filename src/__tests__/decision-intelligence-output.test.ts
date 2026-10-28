@@ -69,6 +69,22 @@ describe("Geomacro decision intelligence output", () => {
     expect(result.raw_data_delivered).toBe(false);
   });
 
+  it("supports hash-bound native Bengali/Hindi factual decision summaries without translating private source text",()=>{
+    const core={subject:{type:"country" as const,country_iso3:"IND"},state_version:"gstate_locale",
+      risk:{score:62,label:"HIGH"},confidence:0.85,observed_at:"2026-10-28T10:00:00.000Z",
+      attribution:[],structural:{available_dimensions:["macro_monetary"],latest_observed_at:"2026-10-28T10:00:00.000Z"},
+      live:null,risk_gate_decision:null,as_of:"2026-10-28T12:00:00.000Z"};
+    const bn=buildDecisionIntelligence({...core,locale:"bn"});
+    const hi=buildDecisionIntelligence({...core,locale:"hi"});
+    expect(bn.localized?.language).toBe("bn");
+    expect(bn.localized?.headline).toContain("যাচাইকৃত ঝুঁকির স্তর");
+    expect(hi.localized?.language).toBe("hi");
+    expect(hi.localized?.headline).toContain("सत्यापित जोखिम");
+    expect(bn.decision.execution_authorized).toBe(false);
+    expect(JSON.stringify(bn.localized)).not.toContain("http");
+    const legacy=buildDecisionIntelligence(core);
+    expect("localized" in legacy).toBe(false);
+  });
   it("maps low risk to proceed and high risk to review", () => {
     const low = buildDecisionIntelligence({
       subject: { type: "country", country_iso3: "SGP" },
