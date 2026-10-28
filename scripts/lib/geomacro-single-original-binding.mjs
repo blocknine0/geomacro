@@ -34,6 +34,7 @@ function denied(code){
   b2_requests:0,d1_writes:0,supabase_requests:0,payments:0,
  });
 }
+/** @param {{candidate?: unknown, now?: Date, fetchImpl?: typeof fetch}} [options] */
 export async function verifyGeomacroSingleOriginalBinding({
  candidate,now=new Date(),fetchImpl=fetch,
 }={}){
