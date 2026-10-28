@@ -6,6 +6,9 @@
  */
 const FEED_URL="https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json";
 const RETENTION=72*60*60_000;
+// Three-hour static rebuilds can cross the 72h boundary between publishes.
+// Allow a single missed refresh, but never certify an abandoned archive.
+const MAX_STATIC_REFRESH_LAG=6*60*60_000;
 const MIN_DELAY=0;
 const CAT=["geopolitics","macro","rare_earth"] as const;
 type Category=typeof CAT[number];
@@ -41,20 +44,25 @@ function safeOsintMonitoredHostCredit(value:unknown):value is string{
    /^[a-z]{2,63}$/u.test(labels.at(-1)??"");
 }
 const empty=()=>({geopolitics:0,macro:0,rare_earth:0});
-function validPublication(story:FreeStory,now:number){
-  if(typeof story.published_at!=="string")return false;
+/** At-build validation prevents backfilled/stale/future rows being hidden.
+ * At-read expiration never promotes an expired record to current. */
+function publicationState(story:FreeStory,now:number):"CURRENT"|"EXPIRED"|"INVALID"{
+  if(typeof story.published_at!=="string")return "INVALID";
+  let at:number;
   if(story.date_precision==="exact"){
-    if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/u.test(story.published_at))return false;
-    const t=Date.parse(story.published_at);
-    return Number.isFinite(t)&&t>=now-RETENTION&&t<=now-MIN_DELAY;
-  }
-  if(story.date_precision==="day"){
-    if(!/^\d{4}-\d\d-\d\d$/u.test(story.published_at))return false;
-    const t=Date.parse(story.published_at+"T00:00:00.000Z");
-    return Number.isFinite(t)&&new Date(t).toISOString().slice(0,10)===story.published_at&&
-      t>=now-RETENTION&&t+36*60*60_000+MIN_DELAY<=now;
-  }
-  return false;
+    if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/u.test(story.published_at))
+      return "INVALID";
+    at=Date.parse(story.published_at);
+    if(!Number.isFinite(at)||new Date(at).toISOString().slice(0,19)!==
+       story.published_at.slice(0,19)||at>now-MIN_DELAY)return "INVALID";
+  }else if(story.date_precision==="day"){
+    if(!/^\d{4}-\d\d-\d\d$/u.test(story.published_at))
+      return "INVALID";
+    at=Date.parse(story.published_at+"T00:00:00.000Z");
+    if(!Number.isFinite(at)||new Date(at).toISOString().slice(0,10)!==
+       story.published_at||at+36*60*60_000+MIN_DELAY>now)return "INVALID";
+  }else return "INVALID";
+  return at<now-RETENTION?"EXPIRED":"CURRENT";
 }
 function result(ok:boolean,reason:string,counts=empty()){
   const rows=Object.values(counts).reduce((a,b)=>a+b,0);
@@ -93,7 +101,8 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
   // The archive's generated_at clock can be cached; it never makes an old
   // story current. The actual event/feed timestamps below are the freshness gate.
   const checked=Date.parse(String(input.checked_at??""));
-  if(!Number.isFinite(checked)||checked>now+60_000)
+  if(!Number.isFinite(checked)||checked>now+60_000||
+     now-checked>MAX_STATIC_REFRESH_LAG)
     return result(false,"FREE_ARCHIVE_CLOCK_INVALID");
   const counts=empty();
   const ids=new Set<string>();
@@ -107,7 +116,8 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
       !row.title.startsWith("Geomacro finds ")||
       row.title.length>240||
       row.severity!==null||row.same_event_corrob_verified!==false||
-      !validPublication(row,now)||
+      publicationState(row,checked)!=="CURRENT"||
+      publicationState(row,now)==="INVALID"||
       /https?:\/\/|www\.|<script/iu.test(JSON.stringify(
         row.status==="osint_feed_observed_unverified"?
           {...row,sources_credited:[]} : row
@@ -121,11 +131,14 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
          row.geography!==null||credits.length!==1||
          !safeOsintMonitoredHostCredit(credits[0]))
         return result(false,"FREE_ARCHIVE_OSINT_ROW_INVALID");
-      // Count no unverified feed-only observation as an original-source Find.
+      // Never count unverified feeds, regardless of expiry.
       continue;
     }
     if(!["official_release_observed_unscored","official_feed_candidate_unscored"].includes(String(row.status)))
       return result(false,"FREE_ARCHIVE_ROW_ORIGINAL_RIGHTS_BOUNDARY_INVALID");
+    // Browser public-derived-news-client already filters expired rows at read time.
+    // Match its behavior, without relaxing the source/rights/at-build checks.
+    if(publicationState(row,now)==="EXPIRED")continue;
     counts[row.category as Category]++;
   }
   if(Object.values(counts).reduce((sum,value)=>sum+value,0)===0)
