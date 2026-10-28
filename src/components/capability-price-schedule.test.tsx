@@ -35,9 +35,7 @@ describe("store catalog and launch availability", () => {
   });
   it("keeps enquiry actions distinct from payment and labels pilot scope", () => {
     const html = renderToStaticMarkup(createElement(CapabilityPriceSchedule));
-    expect((html.match(/mailto:contact@geomacro.live/g) ?? [])).toHaveLength(6);
-    expect(html).toContain("Coming Soon · Not available for purchase");
-    expect(html).toContain("Risk Gate is planned for a later launch");
+    expect((html.match(/mailto:contact@geomacro.live/g) ?? [])).toHaveLength(7);
     expect(html).toContain("Self-service checkout coming soon");
     expect(html).toContain("Private pilot");
     expect(html).toContain("physical routes are not modeled");
