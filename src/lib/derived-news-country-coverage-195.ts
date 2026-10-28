@@ -206,7 +206,7 @@ export function observed195x3Coverage(
   if(seen.has(row.id))throw Error("COUNTRY_NEWS_195X3_DUPLICATE_ID");
   seen.add(row.id);
   if(!COUNTRY_NEWS_DOMAINS.includes(row.category))throw Error("COUNTRY_NEWS_195X3_DOMAIN_INVALID");
-  categoryTotals[row.category]++;
+  categoryTotals[row.category as NewsDomain]++;
   const iso=countryFromDerivedGeography(row.geography_mentioned);
   if(!iso){unassigned++;continue;}
   const key=iso+":"+row.category;
