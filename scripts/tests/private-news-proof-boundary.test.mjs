@@ -5,6 +5,7 @@ import {readFileSync,mkdtempSync,rmSync,writeFileSync,lstatSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {authorizePrivateNewsProof} from "../../workers/control-plane/src/private-news-proof-auth.mjs";
+import {verifyPrivateNewsBoundaryLive} from "../ops/verify-private-news-boundary-live.mjs";
 import {privateNewsProofBearer,storePrivateNewsVerificationReceipt} from "../ops/verify-all-news-signed-publications.mjs";
 const root="R".repeat(48);
 const h=(key,purpose)=>createHmac("sha256",key).update(purpose).digest("hex");
@@ -68,4 +69,22 @@ test("standing signed verification private receipt is never piped through stdout
  assert.ok(!y.includes('verify-all-news-signed-publications.mjs > "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH"'));
  const producer=readFileSync(".github/workflows/five-minute-original-news-fastlane.yml","utf8");
  assert.ok(producer.includes("run: bun scripts/ops/publish-original-news-five-minute-fastlane.ts"));
+});
+
+test("live public denial requires exactly two real generic 404s without any D1/auth",async()=>{
+ let gets=0;
+ const fetchImpl=async(_url,opts)=>{
+  gets++;assert.equal(opts.headers.Authorization,undefined);
+  assert.equal(opts.method,"GET");
+  return Response.json({ok:false,error:"NOT_FOUND"},{status:404});
+ };
+ assert.equal((await verifyPrivateNewsBoundaryLive({fetchImpl})).verified,true);
+ assert.equal(gets,2);
+ for(const response of [
+  Response.json({ok:true,items:[{source_status:"VERIFIED"}]},{status:200}),
+  Response.json({ok:false,error:"AUTH_FAILED"},{status:404}),
+  Response.json({ok:false,error:"NOT_FOUND",private:true},{status:404}),
+ ])await assert.rejects(()=>verifyPrivateNewsBoundaryLive({
+  fetchImpl:async()=>response.clone()
+ }),/PRIVATE_NEWS_PUBLIC_ACCESS_NOT_DENIED|PRIVATE_NEWS_DENIAL_INVALID/);
 });
