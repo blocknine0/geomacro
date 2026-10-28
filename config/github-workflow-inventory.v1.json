@@ -333,6 +333,7 @@
     "ucdp-quality-reason-diagnostics.yml",
     "usgs-earthquake-hazards-sync.yml",
     "usgs-mcs-deterministic-ingest-proof.yml",
+    "verify-live-flash-supabase.yml",
     "wdi-b2-rights-one-shot-attestation.yml",
     "wdi-commercial-signal-self-heal.yml",
     "wdi-registered-signer-preflight-no-funds.yml",
