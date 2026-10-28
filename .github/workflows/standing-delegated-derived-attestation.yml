@@ -134,6 +134,7 @@ jobs:
       - name: Independently verify all retained signed inputs before delegated attestation
         if: steps.optin.outputs.active == 'true'
         env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
           RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
           RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
@@ -204,11 +205,13 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Independently read back all current derived input signatures
         if: steps.optin.outputs.active == 'true'
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: |
-          # The once-consented machine policy refuses group/world-readable
-          # audit files. Preserve existing receipt content and safe pathname.
+          # Full signed evidence goes ONLY to the existing locked-down
+          # runner-temp receipt, never stdout/public Actions logs or PREDGE.
           umask 077
-          bun scripts/ops/verify-all-news-signed-publications.mjs > "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH"
+          bun scripts/ops/verify-all-news-signed-publications.mjs
       - name: Route EVERY retained three-domain website news card to bounded private GRI materiality review
         if: steps.optin.outputs.active == 'true'
         env:
