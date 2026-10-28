@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {verifySignedNewsWithOwnerReconciliation} from '../ops/verify-all-news-signed-publications.mjs';
 
 const authorized={
@@ -9,6 +10,18 @@ const authorized={
  GITHUB_SHA:'a'.repeat(40),
  GITHUB_RUN_ID:'40670000000',
 };
+test('deployment reconciliation requires standing consent and keeps the private key step-scoped',()=>{
+ const yaml=readFileSync(new URL('../../.github/workflows/deploy-d1-control-plane.yml',import.meta.url),'utf8');
+ const start=yaml.indexOf('      - name: Verify retained signed inputs through GeoMacro-only scoped proof');
+ const step=yaml.slice(start,yaml.indexOf('\n      - name:',start+1));
+ assert.match(step,/GEOMACRO_STANDING_DELEGATION_ENABLED == 'YES_DELEGATED_DERIVED_ONLY'/);
+ assert.match(step,/GEOMACRO_STANDING_DELEGATION_REVOKED != 'YES'/);
+ assert.match(step,/RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64:/);
+ assert.match(step,/run: bun scripts\/ops\/verify-all-news-signed-publications.mjs/);
+ assert.doesNotMatch(step,/continue-on-error/);
+ assert.equal((yaml.match(/RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64:/g)||[]).length,1);
+ assert.ok(yaml.indexOf('bun install --frozen-lockfile --ignore-scripts')<start);
+});
 test('one legitimate missing issuer envelope is reconciled and reverified by independent verifier',async()=>{
  let reads=0,signs=0;
  const result=await verifySignedNewsWithOwnerReconciliation({

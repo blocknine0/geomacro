@@ -165,7 +165,7 @@ jobs:
         run: node --test scripts/tests/news-product-factory.test.mjs scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/materialized-public-news-pages.test.mjs scripts/tests/website-derived-cap-compaction.test.mjs scripts/tests/refresh-public-news-pages-under-quota.test.mjs scripts/tests/public-materialized-worker-import.test.mjs scripts/tests/verify-public-d1-materialization-live.test.mjs scripts/tests/materialized-origin-owner-route.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs
 
       - name: Test all-news signed publication integrity and source-proof boundaries offline
-        run: node --test scripts/tests/public-signed-news.test.mjs
+        run: node --test scripts/tests/public-signed-news.test.mjs scripts/tests/signed-news-owner-race-reconcile.test.mjs
 
       - name: Test private source-handoff acceptance contracts without network
         run: node --test scripts/tests/verify-private-handoff-production.test.mjs
@@ -785,9 +785,23 @@ jobs:
         # must return generic 404 before owner-only signed readback proceeds.
         run: node scripts/ops/verify-private-news-boundary-live.mjs
 
+      - name: Set up pinned Bun for the existing derived-input issuer
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+
+      - name: Install locked signing dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
       - name: Verify retained signed inputs through GeoMacro-only scoped proof
-        # Owner-only verification, no original/source status in public Actions logs.
-        run: node scripts/ops/verify-all-news-signed-publications.mjs
+        # Use the existing issuer only when standing derived-only consent is
+        # active. One missing-envelope reconciliation, then independent readback.
+        # Invalid signatures, revoked consent and quota failures stay fatal.
+        env:
+          GEOMACRO_ALLOW_SIGNED_NEWS_RACE_RECONCILE: ${{ vars.GEOMACRO_STANDING_DELEGATION_ENABLED == 'YES_DELEGATED_DERIVED_ONLY' && vars.GEOMACRO_STANDING_DELEGATION_REVOKED != 'YES' && '1' || '0' }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+        run: bun scripts/ops/verify-all-news-signed-publications.mjs
 
       - name: Confirm no paid or destructive activation occurred
         shell: bash
