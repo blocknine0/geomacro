@@ -55,7 +55,7 @@ export function publicQueryResolution(input:unknown,error:unknown) {
   available_evidence_checked:false as const,
   reviewer_must_explicitly_submit_suggested_request:true as const,
  };
- if(!object(input)||!bounded(input.question,2000)||input.question.length<3 ||
+ if(!object(input)||typeof input.question!=="string"||input.question.length<3||input.question.length>2000 ||
     !SCOPE_CODES.has(code))return base;
  // Never guess a current signed GRO from a general topic: without an explicit
  // signed-risk request a normal intelligence question stays a plain query.
