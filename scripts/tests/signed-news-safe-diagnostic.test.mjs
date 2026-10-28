@@ -44,3 +44,15 @@ test("live signed-news failures distinguish journal churn and malformed JSON wit
   "SIGNED_NEWS_RESPONSE_JSON_INVALID raw=https://internal.example")), 
   "SIGNED_NEWS_UNCLASSIFIED_OR_NETWORK_FAILURE");
 });
+
+test("journal count, issuer tamper and category errors are diagnostic-only, never authorize delivery",()=>{
+ for(const code of ["SIGNED_NEWS_PAGE_COUNT_INVALID",
+  "SIGNED_NEWS_SIGNATURE_INVALID","SIGNED_NEWS_CATEGORY_UNTRUSTED"]){
+  const receipt=safeSignedNewsFailureReceipt(new Error(code));
+  assert.equal(receipt.reason,code);
+  assert.equal(receipt.valid_signed_derived_receipt_available,false);
+  assert.equal(receipt.machine_signature_authorized_by_this_result,false);
+  assert.equal(receipt.paid_delivery_authorized,false);
+  assert.equal(receipt.private_keys_logged,false);
+ }
+});
