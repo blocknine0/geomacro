@@ -466,7 +466,103 @@
             "$ref": "#/$defs/subject"
           },
           "object": {
-            "type": "object"
+            "type": "object",
+            "required": [
+              "risk_object_id",
+              "verification",
+              "integrity",
+              "delivery_boundary"
+            ],
+            "properties": {
+              "risk_object_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "schema_version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "generated_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "expires_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "risk": {
+                "type": "object"
+              },
+              "confidence": {
+                "type": [
+                  "number",
+                  "object",
+                  "null"
+                ]
+              },
+              "attribution": {
+                "type": "array"
+              },
+              "verification": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "const": "VERIFIED"
+                  },
+                  "last_verified_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "additionalProperties": true
+              },
+              "integrity": {
+                "type": "object",
+                "required": [
+                  "payload_hash"
+                ],
+                "properties": {
+                  "payload_hash": {
+                    "$ref": "#/$defs/sha256"
+                  },
+                  "input_hash": {
+                    "$ref": "#/$defs/sha256"
+                  },
+                  "data_hash": {
+                    "$ref": "#/$defs/sha256"
+                  },
+                  "calculation_hash": {
+                    "$ref": "#/$defs/sha256"
+                  },
+                  "signature_scheme": {
+                    "const": "Ed25519"
+                  },
+                  "signing_key_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "canonicalization": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "signature": {
+                    "type": "string",
+                    "minLength": 64,
+                    "contentEncoding": "base64",
+                    "description": "Base64 Ed25519 signature on the verified canonical risk object; not a signature of market-watch commentary."
+                  }
+                },
+                "additionalProperties": true
+              },
+              "delivery_boundary": {
+                "const": "SIGNED_RISK_OBJECT_ATTESTATION_ONLY"
+              }
+            },
+            "additionalProperties": true,
+            "description": "Verified signed-object attestation. Historical frozen receipts may omit newer optional signature bytes; new signed quotes require them at prequote, without rewriting settled receipts."
           }
         },
         "additionalProperties": false
@@ -708,6 +804,9 @@
           },
           "raw_data_delivered": {
             "const": false
+          },
+          "market_watch": {
+            "$ref": "#/$defs/paidMarketWatch"
           }
         },
         "additionalProperties": true
@@ -1064,6 +1163,161 @@
           }
         }
       ]
+    },
+    "paidMarketWatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "items",
+        "monitoring",
+        "limitations"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "geomacro.paid-market-watch.v1"
+        },
+        "status": {
+          "enum": [
+            "CONDITIONAL_MARKET_WATCH",
+            "NO_QUALIFIED_MARKET_LINKAGE"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "watch_id",
+              "market",
+              "indicator_to_watch",
+              "transmission_channel",
+              "scenario_if_disruption_intensifies",
+              "scenario_if_pressure_eases",
+              "evidence_dimension",
+              "evidence_basis",
+              "evidence_as_of",
+              "current_market_price",
+              "estimated_price_change_pct",
+              "predicted_direction",
+              "scenario_only"
+            ],
+            "properties": {
+              "watch_id": {
+                "type": "string"
+              },
+              "market": {
+                "type": "string"
+              },
+              "indicator_to_watch": {
+                "type": "string"
+              },
+              "transmission_channel": {
+                "type": "string"
+              },
+              "scenario_if_disruption_intensifies": {
+                "type": "string"
+              },
+              "scenario_if_pressure_eases": {
+                "type": "string"
+              },
+              "evidence_dimension": {
+                "type": "string"
+              },
+              "evidence_basis": {
+                "enum": [
+                  "VERIFIED_STRUCTURAL_MODULE",
+                  "VERIFIED_SIGNED_GRO_DRIVER",
+                  "QUALIFIED_CURRENT_DERIVED_EVENT"
+                ]
+              },
+              "evidence_as_of": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "current_market_price": {
+                "type": "null"
+              },
+              "estimated_price_change_pct": {
+                "type": "null"
+              },
+              "predicted_direction": {
+                "const": "NOT_ESTABLISHED"
+              },
+              "scenario_only": {
+                "const": true
+              }
+            }
+          }
+        },
+        "monitoring": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state_version",
+            "recommended_not_before_seconds",
+            "requery_when",
+            "do_not_assume_a_new_paid_delivery_when_unchanged"
+          ],
+          "properties": {
+            "state_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "recommended_not_before_seconds": {
+              "type": "integer",
+              "minimum": 900,
+              "maximum": 86400
+            },
+            "requery_when": {
+              "const": "NEW_QUALIFIED_EVIDENCE_OR_STATE_VERSION_CHANGE"
+            },
+            "do_not_assume_a_new_paid_delivery_when_unchanged": {
+              "const": true
+            }
+          }
+        },
+        "limitations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "actual_market_prices_included",
+            "market_direction_verified",
+            "quantitative_forecast_included",
+            "asset_specificity_may_require_further_evidence",
+            "private_inputs_exposed",
+            "execution_authorized"
+          ],
+          "properties": {
+            "actual_market_prices_included": {
+              "const": false
+            },
+            "market_direction_verified": {
+              "const": false
+            },
+            "quantitative_forecast_included": {
+              "const": false
+            },
+            "asset_specificity_may_require_further_evidence": {
+              "const": true
+            },
+            "private_inputs_exposed": {
+              "const": false
+            },
+            "execution_authorized": {
+              "const": false
+            }
+          }
+        }
+      }
     }
   }
 }
