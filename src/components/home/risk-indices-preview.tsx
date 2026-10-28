@@ -17,13 +17,13 @@ export function RiskIndicesPreview({
       <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:py-12 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">
-            Current verified risk indices
+            GeoMacro Certified GRI
           </p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
             Three risks. Three separate readings.
           </h2>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-            Geopolitical, macroeconomic and critical-mineral risk are shown independently so one domain does not hide movement in another. Each reading stays tied to the verified evidence and proof package behind it.
+            Geopolitical, macroeconomic and critical-mineral risk are shown independently so one domain does not hide movement in another. Each severity reading follows GeoMacro's signed, versioned news-scoring methodology; this is GeoMacro certification, not independent event verification.
           </p>
           <Button asChild className="mt-6 gap-2">
             <Link to="/risk-indices">
@@ -62,12 +62,12 @@ export function RiskIndicesPreview({
                     </div>
                     <div className="mt-3"><RiskBadge score={index.score} /></div>
                     <p className="mt-5 text-xs leading-5 text-muted-foreground">
-                      {index.eventCount} evidence rows · {index.independentStoryCount} independent stories
+                      {index.eventCount} evidence rows · {index.independentStoryCount} grouped release observations
                     </p>
                   </>
                 ) : (
                   <div className="mt-5">
-                    <p className="text-sm font-medium text-foreground">Refreshing verified reading</p>
+                    <p className="text-sm font-medium text-foreground">Waiting for eligible official-release news</p>
                     <p className="mt-2 text-xs leading-5 text-muted-foreground">
                       No synthetic or zero-risk substitute is shown.
                     </p>
@@ -79,9 +79,9 @@ export function RiskIndicesPreview({
             ["Geopolitical Risk Index", "Macroeconomic Risk Index", "Critical Minerals Risk Index"].map((name) => (
               <article key={name} className="rounded-2xl border border-border/70 bg-card/55 p-5">
                 <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">{name}</p>
-                <p className="mt-5 text-sm font-medium text-foreground">Refreshing verified reading</p>
+                <p className="mt-5 text-sm font-medium text-foreground">Waiting for eligible official-release news</p>
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  Geomacro is retrying the verified data path automatically.
+                  GeoMacro retries its news-severity calculation automatically.
                 </p>
               </article>
             ))
