@@ -85,7 +85,7 @@ const hex = (bytes: Uint8Array) =>
 
 async function sha256(value: Uint8Array | string): Promise<string> {
   const bytes = typeof value === "string" ? encoder.encode(value) : value;
-  return hex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)));
+  return hex(new Uint8Array(await crypto.subtle.digest("SHA-256", Uint8Array.from(bytes))));
 }
 
 function circuitOpen(now = Date.now()) {
@@ -129,7 +129,7 @@ async function signedGet(key: string): Promise<Uint8Array | null> {
 }
 
 async function gunzip(bytes: Uint8Array) {
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  const stream = new Blob([Uint8Array.from(bytes)]).stream().pipeThrough(new DecompressionStream("gzip"));
   const raw = new Uint8Array(await new Response(stream).arrayBuffer());
   if (!raw.length || raw.length > MAX_DECOMPRESSED_BYTES) {
     throw new Error("B2_AGENT_MODULES_DECOMPRESSED_SIZE_INVALID");
