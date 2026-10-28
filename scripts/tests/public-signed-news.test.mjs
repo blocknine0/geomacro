@@ -5,7 +5,7 @@ import {publicSignedNews} from '../../workers/control-plane/src/public-signed-ne
 import {automatedInputSignable,automatedInputId,inputHash} from '../../src/lib/automated-intelligence-input.ts';
 import {lowSourceReviewBytes} from '../../src/lib/low-authority-source-review.ts';
 import {verifyAllNewsSignedPublications as verifyOriginal,
- privateNewsProofBearer} from '../ops/verify-all-news-signed-publications.mjs';
+ privateNewsProofBearer,publicationVerificationKeys} from '../ops/verify-all-news-signed-publications.mjs';
 const TEST_PRIVATE_PROOF_TOKEN="a".repeat(64);
 const verifyAllNewsSignedPublications=args=>
  verifyOriginal({...args,proofBearer:TEST_PRIVATE_PROOF_TOKEN});
@@ -331,5 +331,29 @@ test('D1 quota exhaustion and malformed bundle never get replayed or reported si
    fetchImpl:async()=>{throw Error('MUST_NOT_ACCESS_PRIVATE_PROOFS')},
   }),e=>e.message===code);
   assert.equal(calls,1);
+ }
+});
+
+test('unknown canonical journal exception is classified by stage, not reflected or retried',async()=>{
+ let reads=0;
+ await assert.rejects(verifyAllNewsSignedPublications({keys,now,
+  readJournal:async()=>{reads++;throw Error('private https://publisher.example/secret')},
+  fetchImpl:async()=>{throw Error('PRIVATE_PROOF_SHOULD_NOT_BE_READ')},
+ }),/SIGNED_NEWS_CANONICAL_JOURNAL_READ_UNCLASSIFIED/);
+ assert.equal(reads,1);
+});
+test('unexpected proof body transport failure is a stable source-neutral hard hold',async()=>{
+ const f=await fixture();let calls=0;
+ await assert.rejects(verifyAllNewsSignedPublications({keys,now,
+  readJournal:async()=>[signal()],
+  fetchImpl:async()=>{calls++;return {status:200,redirected:false,
+   text:async()=>{throw Error('private streamed D1 content')}}},
+ }),/SIGNED_NEWS_PROOF_BODY_UNAVAILABLE/);
+ assert.equal(calls,1);
+});
+test('malformed owner issuer registry is rejected before any producer access',()=>{
+ for(const bad of ['{not-json','null','[]']){
+  assert.throws(()=>publicationVerificationKeys({RISK_OBJECT_VERIFY_KEYS_JSON:bad}),
+   /SIGNED_NEWS_KEY_REGISTRY_INVALID/);
  }
 });
