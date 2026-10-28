@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-28T10:41:40.464Z",
+  "updated_at": "2026-10-28T10:59:32.499Z",
   "signals": [
     {
       "id": "macro-a594b554",
@@ -94,6 +94,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: astanatimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d6c4832d",
+      "category": "macro",
+      "title": "Geomacro finds Federal Reserve Will released Its Interest Rate Decision Today. Here’s What to Watch. - The New York Times",
+      "what_changed": "A monitored source feed reports: Federal Reserve Will released Its Interest Rate Decision Today. Here’s What to Watch. - The New York Times. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T09:05:48.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
