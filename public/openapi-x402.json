@@ -837,6 +837,15 @@
                             "minLength": 3,
                             "maxLength": 2000
                           },
+                          "response_locale": {
+                            "type": "string",
+                            "enum": [
+                              "en",
+                              "bn",
+                              "hi"
+                            ],
+                            "description": "Optional paid response language; changes query and frozen payment hash only when set. Default English."
+                          },
                           "topics": {
                             "type": "array",
                             "maxItems": 16,
@@ -2399,6 +2408,15 @@
                     "minLength": 3,
                     "maxLength": 2000
                   },
+                  "response_locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "bn",
+                      "hi"
+                    ],
+                    "description": "Optional paid response language; changes query and frozen payment hash only when set. Default English."
+                  },
                   "topics": {
                     "type": "array",
                     "maxItems": 16,
@@ -2881,6 +2899,15 @@
                     "minLength": 3,
                     "maxLength": 2000
                   },
+                  "response_locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "bn",
+                      "hi"
+                    ],
+                    "description": "Optional paid response language; changes query and frozen payment hash only when set. Default English."
+                  },
                   "topics": {
                     "type": "array",
                     "minItems": 1,
@@ -3336,6 +3363,15 @@
                     "type": "string",
                     "minLength": 3,
                     "maxLength": 2000
+                  },
+                  "response_locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "bn",
+                      "hi"
+                    ],
+                    "description": "Optional paid response language; changes query and frozen payment hash only when set. Default English."
                   },
                   "topics": {
                     "type": "array",
@@ -3793,6 +3829,15 @@
                     "type": "string",
                     "minLength": 3,
                     "maxLength": 2000
+                  },
+                  "response_locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "bn",
+                      "hi"
+                    ],
+                    "description": "Optional paid response language; changes query and frozen payment hash only when set. Default English."
                   },
                   "topics": {
                     "type": "array",
@@ -4262,6 +4307,15 @@
                     "type": "string",
                     "minLength": 3,
                     "maxLength": 2000
+                  },
+                  "response_locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "bn",
+                      "hi"
+                    ],
+                    "description": "Optional paid response language; changes query and frozen payment hash only when set. Default English."
                   },
                   "topics": {
                     "type": "array",
@@ -5197,6 +5251,15 @@
               "live_on_demand"
             ],
             "default": "published_only"
+          },
+          "response_locale": {
+            "type": "string",
+            "enum": [
+              "en",
+              "bn",
+              "hi"
+            ],
+            "description": "Optional paid response language; changes query and frozen payment hash only when set. Default English."
           }
         }
       },
