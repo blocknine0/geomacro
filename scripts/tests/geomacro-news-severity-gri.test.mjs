@@ -51,6 +51,7 @@ test("GeoMacro HMAC signs exact three-domain 0–100 news-severity calculation",
    "GEOMACRO/SELF-CERTIFIED/NEWS-SEVERITY-GRI/v1\\n"+serialized).digest("hex"));
  assert.equal(r.data.indices.find(x=>x.key==="geopolitics").eventCount,2);
  assert.equal(r.data.indices.find(x=>x.key==="geopolitics").sourceCount,1);
+ assert.equal(r.data.indices.find(x=>x.key==="geopolitics").independentStoryCount,0);
  assert.equal(r.data.indices.find(x=>x.key==="geopolitics").series["30D"].buckets,null);
  assert.equal(r.data.indices.find(x=>x.key==="macro").series["7D"].buckets,null);
  assert.equal(r.observed_osint_input_count,0);
