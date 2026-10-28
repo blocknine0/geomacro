@@ -1,6 +1,6 @@
 import { z } from "zod";
 import {
-  AGENT_QUERY_SCHEMA_VERSION,
+  AGENT_QUERY_SCHEMA_VERSION, AGENT_QUERY_TOPICS,
   agentAdaptiveQuerySchema, buildAgentQueryPlan,
   type AgentAdaptiveQuery,
   type AgentQueryTopic,
