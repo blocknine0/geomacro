@@ -196,7 +196,7 @@ export async function verifySignedNewsWithOwnerReconciliation({
        String(env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64??'').length<32||
        String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??'').length<32||
        !/^[a-f0-9]{40}$/u.test(String(env.GITHUB_SHA??''))||
-       !/^\\d{1,20}$/u.test(String(env.GITHUB_RUN_ID??'')))
+       !/^\d{1,20}$/u.test(String(env.GITHUB_RUN_ID??'')))
       throw error;
     // Existing publisher already signs derived-only with the registered
     // issuer and exact canonical journal. Do not independently mint a
