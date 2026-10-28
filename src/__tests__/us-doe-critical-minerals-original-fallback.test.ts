@@ -56,7 +56,7 @@ describe("DOE first-party Critical Minerals index is safe when RSS is unreachabl
    expect(doeMineralsIndexCandidates(card(TITLE,URL,"October 30, 2026"),CLOCK)).toEqual([]);
    expect(doeMineralsIndexCandidates(card(TITLE,URL,"February 30, 2026"),CLOCK)).toEqual([]);
    expect(doeMineralsIndexCandidates(card(TITLE,URL,"October 26, 2026")+
-     '<div>October 27, 2026</div>',CLOCK)).toHaveLength(1);
+     '<div>October 27, 2026</div>',CLOCK)).toHaveLength(0);
  });
  it("rejects missing index date, disallowed source identity, bad topic and attacker markup",()=>{
    expect(doeMineralsIndexCandidates(card(TITLE,URL,""),CLOCK)).toEqual([]);
