@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-28T06:31:23.575Z",
+  "updated_at": "2026-10-28T06:54:21.886Z",
   "signals": [
+    {
+      "id": "rare_earth-1c5ca1c4",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rio Tinto proposed 56% pay jump for CEO as mining sector fights for talent",
+      "what_changed": "A monitored source feed reports: Rio Tinto proposed 56% pay jump for CEO as mining sector fights for talent. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T06:31:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-545ad639",
       "category": "rare_earth",
@@ -33,6 +52,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-27T21:45:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-fcf57a2a",
+      "category": "rare_earth",
+      "title": "Geomacro finds Hall Chadwick Acquisition Corp. and REEcycle unveiled Proposed Board Featuring Former Senior U.S. Intelligence and Energy Officials to Advance America’s Rare Earth Supply Chain - The Manila Times",
+      "what_changed": "A monitored source feed reports: Hall Chadwick Acquisition Corp. and REEcycle unveiled Proposed Board Featuring Former Senior U.S. Intelligence and Energy Officials to Advance America’s Rare Earth Supply Chain - The Manila Times. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T20:21:17.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -75,6 +113,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-8e6c747a",
+      "category": "rare_earth",
+      "title": "Geomacro finds Congo suspended artisanal mining agency head for failing to prevent illegal activities",
+      "what_changed": "A monitored source feed reports: Congo suspended artisanal mining agency head for failing to prevent illegal activities. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T13:44:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

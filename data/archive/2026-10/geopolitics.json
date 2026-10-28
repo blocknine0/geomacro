@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-28T06:31:23.575Z",
+  "updated_at": "2026-10-28T06:54:21.886Z",
   "signals": [
     {
       "id": "geopolitics-6a872b5a",
@@ -945,6 +945,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: clubofmozambique.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1ba4f43f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine launched major drone attack again on Russia - ABC News - Breaking News, Latest News and Videos",
+      "what_changed": "A monitored source feed reports: Ukraine launched major drone attack again on Russia - ABC News - Breaking News, Latest News and Videos. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T01:19:37.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -2868,6 +2887,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-bec6abf8",
+      "category": "geopolitics",
+      "title": "Geomacro finds Yemen condemned Houthi missile attack on Aden airport",
+      "what_changed": "A monitored source feed reports: Yemen condemned Houthi missile attack on Aden airport. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-25T12:32:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.vaticannews.va"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-01e23ecf",
       "category": "geopolitics",
       "title": "Geomacro finds geopolitical security source-feed observation",
@@ -3508,6 +3546,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.premiumtimesng.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e23891b8",
+      "category": "geopolitics",
+      "title": "Geomacro finds Pope appealed for end to hostilities in Yemen and prays for Jordan attack victims",
+      "what_changed": "A monitored source feed reports: Pope appealed for end to hostilities in Yemen and prays for Jordan attack victims. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-25T11:19:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.vaticannews.va"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
