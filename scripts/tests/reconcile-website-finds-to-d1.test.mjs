@@ -187,25 +187,22 @@ test("expired row malformed even at snapshot creation fails closed without D1 wr
   assert.equal(f.requests.some(x=>x.method==="PUT"),false);
  }
 });
-test("exact source state is carried unchanged; do not promote unverified OSINT",async()=>{
+test("unverified OSINT status remains unverified on canonical replay",async()=>{
  const unverified={...story,id:"macro-aabbccdd",
-   topic:"unverified original-source feed",
    development_type:"unverified OSINT feed observation",
    status:"osint_feed_observed_unverified",geography:null,
    sources_credited:["Monitored feed: example.org"],
    published_at:"2026-10-29T01:20:00.000Z"};
- // The topic must match the existing Worker policy; this may be
- // rejected rather than remapped or falsely qualified.
+ assert.equal(isPermanentArchiveSignal(unverified,NOW.getTime(),{allowHistorical:false}),true);
+ assert.equal(verifyDerivedStory(unverified,NOW.getTime()),true);
  const f=fake({website:[unverified]});
- try {
-   await reconcileWebsiteFindsToCanonicalD1({
-     now:NOW,env:{GEOMACRO_COMMERCE_LEDGER_TOKEN:"private-owner-token-".repeat(3)},
-     fetchImpl:f.fetchImpl});
-   assert.equal(f.inserted[0].status,"osint_feed_observed_unverified");
- }catch(e){
-   assert.match(e.message,/WEBSITE_D1_RECONCILE_/u);
-   assert.equal(f.inserted.length,0);
- }
+ const result=await reconcileWebsiteFindsToCanonicalD1({
+   now:NOW,env:{GEOMACRO_COMMERCE_LEDGER_TOKEN:"private-owner-token-".repeat(3)},
+   fetchImpl:f.fetchImpl});
+ assert.equal(result.inserted,1);
+ assert.equal(f.inserted[0].status,"osint_feed_observed_unverified");
+ assert.equal(f.inserted[0].same_event_corrob_verified,false);
+ assert.equal(result.predge_authenticated_readback_verified,false);
 });
 test("transient GET loss is bounded and does not trigger a new publisher write",async()=>{
  const f=fake({existing:[story],transientGetPath:URLS.bundle});
