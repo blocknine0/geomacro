@@ -45,7 +45,7 @@ export function isApprovedWdiAttribution(value:unknown):value is WorldBankWdiAtt
     if(x[key]!==expected)return false;
   const uris=x.material_uris;
   if(!Array.isArray(uris)||uris.length<1||
-     x.material_uris.length>2)return false;
+     uris.length>2)return false;
   const expected=Object.values(INDICATOR_URI);
   if(!uris.every((uri:unknown)=>typeof uri==="string"&&expected.includes(uri)))return false;
   return new Set(uris).size===uris.length &&
