@@ -17,6 +17,7 @@ on:
       - 'scripts/tests/automated-approval-continuation.test.mjs'
       - 'scripts/lib/signed-news-safe-diagnostic.mjs'
       - 'scripts/tests/signed-news-safe-diagnostic.test.mjs'
+      - 'scripts/tests/signed-news-owner-race-reconcile.test.mjs'
       - 'scripts/ops/sign-verified-derived-readback.mjs'
       - 'scripts/lib/standing-delegated-cloud-safe-reasons.mjs'
       - 'scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs'
@@ -72,7 +73,7 @@ jobs:
           node --test scripts/lib/complete-intelligence-gri-review.test.mjs
           node --test scripts/tests/standing-derived-cleanup-contract.test.mjs
           node --check scripts/ops/enroll-standing-derived-cloud.mjs
-          node --test scripts/tests/automated-approval-continuation.test.mjs scripts/tests/gri-news-wakeup.test.mjs scripts/tests/standing-derived-delegation.test.mjs scripts/tests/standing-derived-cloud-enrollment.test.mjs scripts/tests/signed-news-safe-diagnostic.test.mjs scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs scripts/tests/standing-delegation-role-separation.test.mjs
+          node --test scripts/tests/automated-approval-continuation.test.mjs scripts/tests/gri-news-wakeup.test.mjs scripts/tests/standing-derived-delegation.test.mjs scripts/tests/standing-derived-cloud-enrollment.test.mjs scripts/tests/signed-news-safe-diagnostic.test.mjs scripts/tests/signed-news-owner-race-reconcile.test.mjs scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs scripts/tests/standing-delegation-role-separation.test.mjs
 
   approve-retained-derived-inputs:
     needs: contract
@@ -134,6 +135,11 @@ jobs:
       - name: Independently verify all retained signed inputs before delegated attestation
         if: steps.optin.outputs.active == 'true'
         env:
+          # Retry once ONLY for a real missing issuer envelope during a
+          # concurrent journal writer; still require independent post-reissue
+          # signature readback. Never grant this key to delegated machine.
+          GEOMACRO_ALLOW_SIGNED_NEWS_RACE_RECONCILE: '1'
+          RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
           RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
