@@ -37,7 +37,7 @@ beforeEach(() => {
   }));
 });
 describe("no-charge actual product preparation checks", () => {
-  it.each(structuredProductSetup().products)(
+  it.each(structuredProductSetup().products.filter(p => p.capability !== "risk_gate_bundle"))(
     "checks $id without returning paid content",
     async (product) => {
       const response = await checkStructuredProductSetup(request(product.example_request), options);
@@ -63,6 +63,17 @@ describe("no-charge actual product preparation checks", () => {
         expect(body[flag]).toBe(false);
     },
   );
+  it.each(structuredProductSetup().products.filter(p=>p.capability==="risk_gate_bundle"))(
+    "returns Coming Soon and never checks or quotes $id",async(product)=>{
+      const res=await checkStructuredProductSetup(request(product.example_request),options);
+      expect(res.status).toBe(422);
+      const body=await res.json();
+      expect(body.status).toBe("COMING_SOON");
+      expect(body.error).toBe("RISK_GATE_COMING_SOON_NO_CHARGE");
+      expect(body.chargeable).toBe(false);
+      expect(mocks.check).not.toHaveBeenCalled();
+      expect(mocks.assemble).not.toHaveBeenCalled();
+    });
   it("does not assemble when data is missing", async () => {
     mocks.check.mockResolvedValue({ deliverable: false, code: "STALE_REQUIRED_DATA" });
     const response = await checkStructuredProductSetup(
