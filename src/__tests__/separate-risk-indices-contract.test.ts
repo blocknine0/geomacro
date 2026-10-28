@@ -6,6 +6,20 @@ const ROOT = process.cwd();
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
 describe("separate public risk indices contract", () => {
+
+  it("uses 24H/48H/72H observed series without claiming 7D/30D backfill", () => {
+    const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
+    const worker = read("workers/control-plane/src/geomacro-news-severity-gri.mjs");
+    const hook = read("src/lib/use-risk-indices.ts");
+    expect(workspace).toContain('["24H", "48H", "72H"]');
+    expect(workspace).toContain('GeoMacro OSINT');
+    expect(workspace).not.toContain('label="OSINT"');
+    expect(workspace).toContain('index.observedSeverity?.[window]');
+    expect(worker).toContain('observedSeveritySeries(news,now,"72H")');
+    expect(worker).toContain('observedSeveritySeries(news,now,"48H")');
+    expect(hook).toContain('GEOMACRO_NEWS_GRI_HISTORY_BUCKET_INVALID');
+  });
+
   it("publishes exactly three stable public index identities", () => {
     const types = read("src/lib/risk-indices.types.ts");
     const edge = read("supabase/functions/public-risk-indices/index.ts");

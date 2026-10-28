@@ -79,6 +79,21 @@ function series(rows,now,frame){
  return {timeframe:frame,buckets,low:Math.min(...buckets.map(b=>b.avg)),
   high:Math.max(...buckets.map(b=>b.avg))};
 }
+// Genuine deduplicated source observations from the bounded 72h journal.
+// Empty six-hour bins are omitted, never filled with zero or interpolated.
+function observedSeveritySeries(rows,now,frame){
+ const hours=Number.parseInt(frame,10),span=hours*3600000,step=6*3600000;
+ const start=now-span,buckets=[];
+ for(let t=Math.floor(start/step)*step;t<now;t+=step){
+  const group=rows.filter(x=>x.at>=Math.max(start,t)&&x.at<t+step&&x.at<=now);
+  if(!group.length)continue;
+  buckets.push({t,avg:Math.round(group.reduce((sum,x)=>sum+x.severity,0)/group.length*10)/10,count:group.length});
+ }
+ if(!buckets.length)return {timeframe:frame,buckets:null,low:null,high:null};
+ return {timeframe:frame,buckets,low:Math.min(...buckets.map(x=>x.avg)),
+  high:Math.max(...buckets.map(x=>x.avg))};
+}
+
 function buildIndex(spec,raw,now){
  const chosen=new Map();
  for(const row of raw){
@@ -134,6 +149,9 @@ function buildIndex(spec,raw,now){
   sourceMix:{public_news:officialEntries.length,osint:osintEntries.length,
     osint_event_facts_verified:false},
   series:{"24H":series(news,now,"24H"),"7D":blankSeries("7D"),"30D":blankSeries("30D")},
+  observedSeverity:{"24H":observedSeveritySeries(news,now,"24H"),
+   "48H":observedSeveritySeries(news,now,"48H"),
+   "72H":observedSeveritySeries(news,now,"72H")},
   topEvent:latest?{title:latest.row.title,summary:null,severity:latest.severity}:null,
  };
 }
