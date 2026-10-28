@@ -1,0 +1,151 @@
+name: D1 Launch 72h Quota Observatory (No Funds)
+
+on:
+  schedule:
+    - cron: "27 * * * *"
+    - cron: "17 1 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/d1-launch-72h-observatory.yml"
+      - "scripts/lib/d1-launch-window.mjs"
+      - "scripts/tests/d1-launch-window.test.mjs"
+      - "scripts/tests/d1-launch-hourly-observer.test.mjs"
+      - "scripts/ops/d1-launch-github-verification.mjs"
+      - "scripts/tests/d1-launch-github-verification.test.mjs"
+      - "scripts/ops/d1-launch-hourly-observer.mjs"
+      - "scripts/ops/evaluate-d1-launch-72h.mjs"
+      - "scripts/ops/capture-d1-launch-insights.mjs"
+      - "scripts/tests/capture-d1-launch-insights.test.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/d1-launch-72h-observatory.yml"
+      - "scripts/lib/d1-launch-window.mjs"
+      - "scripts/tests/d1-launch-window.test.mjs"
+      - "scripts/tests/d1-launch-hourly-observer.test.mjs"
+      - "scripts/ops/d1-launch-github-verification.mjs"
+      - "scripts/tests/d1-launch-github-verification.test.mjs"
+      - "scripts/ops/d1-launch-hourly-observer.mjs"
+      - "scripts/ops/evaluate-d1-launch-72h.mjs"
+      - "scripts/ops/capture-d1-launch-insights.mjs"
+      - "scripts/tests/capture-d1-launch-insights.test.mjs"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: geomacro-d1-launch-72h-observatory-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-regression:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Reject missing provider/ingestion, unsafe resets, lost backlog and non-72h claims
+        run: |
+          node --check scripts/ops/d1-launch-hourly-observer.mjs
+          node --check scripts/ops/evaluate-d1-launch-72h.mjs
+          node --test scripts/tests/d1-launch-window.test.mjs scripts/tests/d1-launch-hourly-observer.test.mjs scripts/tests/capture-d1-launch-insights.test.mjs scripts/tests/d1-launch-github-verification.test.mjs
+
+  observe:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       github.event_name == 'push' ||
+       github.event.schedule == '27 * * * *')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Observe account-wide Cloudflare GraphQL quotas, public delivery and held ciphertext only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ops/d1-launch-hourly-observer.mjs
+      - name: Retain privacy-safe hourly receipt for rolling 72h independent review
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-d1-launch-hourly
+          path: artifacts/d1-launch-hourly/receipt.json
+          retention-days: 7
+          if-no-files-found: error
+
+  assess:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       github.event.schedule == '17 1 * * *')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Fetch last 100 bounded metadata-only hourly receipts (not private OSINT artifacts)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/d1-launch-receipts"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100&name=geomacro-d1-launch-hourly" > "$RUNNER_TEMP/d1-artifacts.json"
+          jq -r '.artifacts[] | select(.expired == false) | .id' "$RUNNER_TEMP/d1-artifacts.json" | while read -r id; do
+            if [[ ! "$id" =~ ^[0-9]+$ ]]; then
+              echo "::warning::INVALID_D1_RECEIPT_ARTIFACT_ID"
+              continue
+            fi
+            if gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$RUNNER_TEMP/d1-receipt.zip"; then
+              unzip -p "$RUNNER_TEMP/d1-receipt.zip" receipt.json > "$RUNNER_TEMP/d1-launch-receipts/$id.json" || rm -f "$RUNNER_TEMP/d1-launch-receipts/$id.json"
+            fi
+          done
+      - name: Strictly evaluate observed 72h without manufactured green acceptance
+        shell: bash
+        run: node scripts/ops/evaluate-d1-launch-72h.mjs "$RUNNER_TEMP/d1-launch-receipts"
+      - name: Rank observed D1 read/write SQL hotspots without exporting SQL or consuming D1 rows
+        continue-on-error: true
+        working-directory: workers/control-plane
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          reads="$(mktemp)"
+          writes="$(mktemp)"
+          trap 'rm -f "$reads" "$writes"' EXIT
+          npx -y "wrangler@4.136.3" d1 insights geomacro-control-plane --timePeriod=1d --sort-type=sum --sort-by=reads --limit=100 --json > "$reads" 2>/dev/null
+          npx -y "wrangler@4.136.3" d1 insights geomacro-control-plane --timePeriod=1d --sort-type=sum --sort-by=writes --limit=100 --json > "$writes" 2>/dev/null
+          node ../../scripts/ops/capture-d1-launch-insights.mjs "$reads" "$writes"
+      - name: Retain assessed report, including all PENDING blockers
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-d1-launch-72h-acceptance
+          path: artifacts/d1-launch-72h/
+          retention-days: 7
+          if-no-files-found: error
