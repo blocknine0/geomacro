@@ -196,7 +196,7 @@ export function attachArchiveEligibilityCensus(
      !Number.isSafeInteger(doc.latest_preview_rows)||
      doc.latest_preview_rows!==(latest.signals as unknown[]).length||
      !Number.isSafeInteger(doc.latest_preview_official_rows)||
-     doc.latest_preview_official_rows<currentOfficial.length||
+     (doc.latest_preview_official_rows as number)<currentOfficial.length||
      !Number.isSafeInteger(doc.eligible_outside_latest_preview)||
      (doc.eligible_outside_latest_preview as number)>doc.original_release_eligible_total||
      CAT.some(c=>original[c]<includedByCategory[c])||
