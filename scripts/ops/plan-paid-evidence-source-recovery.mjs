@@ -170,7 +170,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
       Array.isArray(realReceipts.results)?realReceipts.results:null;
     const queue=planPaidEvidenceFromAvailability(receipts);
     writeFileSync(resolve(ROOT,"artifacts/news-hub/paid-source-recovery-queue.json"),
-      JSON.stringify(queue,null,2)+"\\n".replace("\\\\n","\\n"),{mode:0o600});
+      JSON.stringify(queue,null,2)+String.fromCharCode(10),{mode:0o600});
   }
   console.log(JSON.stringify({schema:plan.schema,selected_gaps:plan.selected_gaps,
     existing_routed_source_count:plan.guardrails.verified_module_routes,
