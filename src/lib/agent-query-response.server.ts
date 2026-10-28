@@ -398,6 +398,10 @@ function publicRiskObjectAttestation(
         payload_hash: object.integrity.payload_hash,
         signature_scheme: object.integrity.signature_scheme,
         signing_key_id: object.integrity.signing_key_id,
+        // Exact signature from the already verified canonical GeoMacro GRO.
+        // Market-watch commentary is separate and never falsely covered by it.
+        canonicalization: object.integrity.canonicalization,
+        signature: object.integrity.signature,
       },
       delivery_boundary: "SIGNED_RISK_OBJECT_ATTESTATION_ONLY",
     },
@@ -918,7 +922,7 @@ export async function assembleAgentQueryResponse(input: {
   const adaptiveAnalysis = intentAnalysis(plan, riskObjects);
   const responseAsOf = plan.as_of ?? new Date().toISOString();
   const changeIntelligence = buildChangeIntelligence(currentStates, responseAsOf);
-  const decisionIntelligence = currentStates.map((state) => {
+  const decisionIntelligence = currentStates.map((state, index) => {
     const risk = state.risk;
     return buildDecisionIntelligence({
       subject: state.subject,
@@ -940,6 +944,10 @@ export async function assembleAgentQueryResponse(input: {
       structural: state.structural,
       live: state.live,
       risk_gate_decision: null,
+      // Same governed evidence and cadence as the paid state: no additional
+      // OSINT fetch, new D1 read, price feed or fabricated directional score.
+      product: plan.product ?? null,
+      refresh_not_before_seconds:changeIntelligence[index]?.refresh_hint.recommended_not_before_seconds??null,
       as_of: responseAsOf,
     });
   });

@@ -1,0 +1,30 @@
+{
+  "schema_version": "geomacro.private-source-derivation-policy.v1",
+  "locked_by_owner": "2026-10-29",
+  "ingestion": {
+    "allow_any_source_as_private_research_candidate": true,
+    "commercial_license_preclearance_required_to_collect": false,
+    "accepts_osint_and_news_all_categories": true,
+    "preservation": "OWNER_PRIVATE_ONLY",
+    "observed_facts_must_not_be_treated_as_independently_corrobated_by_origin_alone": true
+  },
+  "transformation": {
+    "output_owner": "GEOMACRO",
+    "style": "ORIGINAL_DERIVED_STRUCTURED_ANALYSIS",
+    "include": "QUALIFIED_FACTS_MARKET_WATCH_REFRESH_SIGNED_GRO_WHEN_VERIFIED",
+    "upstream_raw_article_redistribution": false,
+    "private_original_urls_or_source_identifiers_to_customer": false,
+    "external_provider_claim_of_signing": false
+  },
+  "paid_publication": {
+    "unrelated_raw_ingest_rows_never_automatically_grant_sale": true,
+    "current_canonical_output_eligibility_checks_remain": true,
+    "do_not_sell_explicitly_restricted_derived_reuse": true,
+    "signed_risk_object_requires_real_cryptographic_signature": true,
+    "no_risk_gate_sale_until_later_release": true,
+    "payment_requires_existing_verified_x402_settlement": true
+  },
+  "partner_lock": {
+    "predge_code_workflows_auth_quotas_contracts_untouched": true
+  }
+}

@@ -545,6 +545,7 @@
                     "type": "string",
                     "enum": [
                       "store_product_query",
+                      "paid_structured_answer",
                       "answer_question",
                       "geopolitics_query",
                       "macro_fx_query",
@@ -982,6 +983,139 @@
                             "maxLength": 128
                           }
                         }
+                      }
+                    },
+                    "required": [
+                      "tool",
+                      "arguments"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "tool": {
+                        "const": "paid_structured_answer"
+                      },
+                      "arguments": {
+                        "type": "object",
+                        "properties": {
+                          "question": {
+                            "type": "string",
+                            "minLength": 3,
+                            "maxLength": 2000
+                          },
+                          "language": {
+                            "type": "string",
+                            "description": "Optional response query language BCP47 code."
+                          },
+                          "subjects": {
+                            "type": "array",
+                            "items": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "const": "country"
+                                    },
+                                    "country_iso3": {
+                                      "type": "string",
+                                      "pattern": "^[A-Z]{3}$",
+                                      "description": "ISO 3166-1 alpha-3 country code."
+                                    }
+                                  },
+                                  "required": [
+                                    "type",
+                                    "country_iso3"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "const": "corridor"
+                                    },
+                                    "origin_country_iso3": {
+                                      "type": "string",
+                                      "pattern": "^[A-Z]{3}$",
+                                      "description": "ISO 3166-1 alpha-3 country code."
+                                    },
+                                    "destination_country_iso3": {
+                                      "type": "string",
+                                      "pattern": "^[A-Z]{3}$",
+                                      "description": "ISO 3166-1 alpha-3 country code."
+                                    }
+                                  },
+                                  "required": [
+                                    "type",
+                                    "origin_country_iso3",
+                                    "destination_country_iso3"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          },
+                          "topics": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "sovereign_risk",
+                                "macro_risk",
+                                "fx_external_risk",
+                                "sanctions_restrictions",
+                                "conflict_geopolitics",
+                                "trade_corridor",
+                                "energy_commodities",
+                                "critical_minerals",
+                                "political_governance",
+                                "banking_financial_system",
+                                "food_agriculture",
+                                "natural_hazards",
+                                "hot_topics",
+                                "risk_gate",
+                                "risk_object",
+                                "gri_context"
+                              ]
+                            }
+                          },
+                          "product": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "description": "Optional exact chosen Store SKU; otherwise infer from question.",
+                            "properties": {
+                              "capability": {
+                                "type": "string"
+                              },
+                              "variant": {
+                                "type": "string"
+                              },
+                              "issued_after": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "capability",
+                              "variant"
+                            ]
+                          },
+                          "client_request_id": {
+                            "type": "string",
+                            "minLength": 4,
+                            "maxLength": 128
+                          },
+                          "max_age_seconds": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 94608000
+                          }
+                        },
+                        "required": [
+                          "question"
+                        ],
+                        "additionalProperties": false
                       }
                     },
                     "required": [
@@ -1794,6 +1928,15 @@
                         "critical_minerals"
                       ],
                       "detail": "compact"
+                    }
+                  }
+                },
+                "paid_structured_answer": {
+                  "summary": "One question to a founder-priced GeoMacro structured intelligence product: deterministic multilingual SKU selection, qualified OSINT/news-derived market watch, canonical USDC x402 payment challenge and exact immutable JSON delivery. Signed Risk Objects require authentic GeoMacro Ed25519 proof. Risk Gate is Coming Soon; no raw news, direct execution or unsupported paid charge.",
+                  "value": {
+                    "tool": "paid_structured_answer",
+                    "arguments": {
+                      "question": "What is the potential market impact of critical minerals supply in India?"
                     }
                   }
                 },

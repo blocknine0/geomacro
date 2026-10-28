@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geomacro.live/schemas/paid-market-watch-v1.schema.json",
+  "title": "GeoMacro Paid Market Watch v1",
+  "description": "Reusable machine schema of decision_intelligence[*].market_watch. A conditional scenario reference derived solely from already qualified Geomacro intelligence; never real-time price data or a forecast.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "items",
+    "monitoring",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "geomacro.paid-market-watch.v1"
+    },
+    "status": {
+      "enum": [
+        "CONDITIONAL_MARKET_WATCH",
+        "NO_QUALIFIED_MARKET_LINKAGE"
+      ]
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "watch_id",
+          "market",
+          "indicator_to_watch",
+          "transmission_channel",
+          "scenario_if_disruption_intensifies",
+          "scenario_if_pressure_eases",
+          "evidence_dimension",
+          "evidence_basis",
+          "evidence_as_of",
+          "current_market_price",
+          "estimated_price_change_pct",
+          "predicted_direction",
+          "scenario_only"
+        ],
+        "properties": {
+          "watch_id": {
+            "type": "string"
+          },
+          "market": {
+            "type": "string"
+          },
+          "indicator_to_watch": {
+            "type": "string"
+          },
+          "transmission_channel": {
+            "type": "string"
+          },
+          "scenario_if_disruption_intensifies": {
+            "type": "string"
+          },
+          "scenario_if_pressure_eases": {
+            "type": "string"
+          },
+          "evidence_dimension": {
+            "type": "string"
+          },
+          "evidence_basis": {
+            "enum": [
+              "VERIFIED_STRUCTURAL_MODULE",
+              "VERIFIED_SIGNED_GRO_DRIVER",
+              "QUALIFIED_CURRENT_DERIVED_EVENT"
+            ]
+          },
+          "evidence_as_of": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "current_market_price": {
+            "type": "null"
+          },
+          "estimated_price_change_pct": {
+            "type": "null"
+          },
+          "predicted_direction": {
+            "const": "NOT_ESTABLISHED"
+          },
+          "scenario_only": {
+            "const": true
+          }
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state_version",
+        "recommended_not_before_seconds",
+        "requery_when",
+        "do_not_assume_a_new_paid_delivery_when_unchanged"
+      ],
+      "properties": {
+        "state_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recommended_not_before_seconds": {
+          "type": "integer",
+          "minimum": 900,
+          "maximum": 86400
+        },
+        "requery_when": {
+          "const": "NEW_QUALIFIED_EVIDENCE_OR_STATE_VERSION_CHANGE"
+        },
+        "do_not_assume_a_new_paid_delivery_when_unchanged": {
+          "const": true
+        }
+      }
+    },
+    "limitations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actual_market_prices_included",
+        "market_direction_verified",
+        "quantitative_forecast_included",
+        "asset_specificity_may_require_further_evidence",
+        "private_inputs_exposed",
+        "execution_authorized"
+      ],
+      "properties": {
+        "actual_market_prices_included": {
+          "const": false
+        },
+        "market_direction_verified": {
+          "const": false
+        },
+        "quantitative_forecast_included": {
+          "const": false
+        },
+        "asset_specificity_may_require_further_evidence": {
+          "const": true
+        },
+        "private_inputs_exposed": {
+          "const": false
+        },
+        "execution_authorized": {
+          "const": false
+        }
+      }
+    }
+  }
+}

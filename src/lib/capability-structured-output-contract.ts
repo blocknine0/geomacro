@@ -53,6 +53,12 @@ const signed=[
   "signed_risk_objects[*].object.expires_at",
   "signed_risk_objects[*].object.integrity",
 ] as const;
+const marketWatch=[
+  "decision_intelligence[*].market_watch.schema_version",
+  "decision_intelligence[*].market_watch.status",
+  "decision_intelligence[*].market_watch.monitoring",
+  "decision_intelligence[*].market_watch.limitations",
+] as const;
 const preconditions=[
   "EXACT_REQUEST_AND_VARIANT_ELIGIBLE",
   "LAWFUL_SOURCE_USE_AND_ORIGINAL_FRESHNESS_VERIFIED",
@@ -60,6 +66,8 @@ const preconditions=[
   "CANONICAL_X402_SETTLEMENT_AND_IDEMPOTENT_DELIVERY",
 ] as const;
 
+// New paid quotes always include this suite (enforced by the pre-quote
+// assembler). Historical frozen settlements can still replay unchanged.
 export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
   gri_read:{
     verified_cached:{
@@ -89,7 +97,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
     standard:{
       subject_scope:"country",response_kind:"adaptive_intelligence",
       customer_receives:[...digest,"as_of","methodology","limitations","delivered_product_hash"],
-      only_when_verified:["structural[*].evidence_summary.observation_count"],
+      only_when_verified:[...marketWatch,"structural[*].evidence_summary.observation_count"],
       description:"One ISO3 country's compact governed structural dimensions, derived metrics, observation coverage and source-native date; not a current risk score.",
       prerequisites:["ONE_COUNTRY_STRUCTURAL_MODULE_VERIFIED"],
     },
@@ -99,7 +107,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
       subject_scope:"directional_corridor",response_kind:"adaptive_intelligence",
       customer_receives:[...digest,"structural[*].serving.composition_method","as_of","methodology",
         "limitations","delivered_product_hash"],
-      only_when_verified:["structural[*].serving.route_modeling_status"],
+      only_when_verified:[...marketWatch,"structural[*].serving.route_modeling_status"],
       description:"One ordered origin→destination corridor's verified structural relationship and direct/composed evidence status; never invents physical routing.",
       prerequisites:["DIRECTIONAL_CORRIDOR_EVIDENCE_AND_COMPOSITION_VERIFIED"],
     },
@@ -109,7 +117,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
       subject_scope:"country",response_kind:"adaptive_intelligence",
       customer_receives:[...digest,"structural[*].serving",
         "current_state[*].structural","as_of","methodology","limitations","delivered_product_hash"],
-      only_when_verified:["current_state[*].historical_context",
+      only_when_verified:[...marketWatch,"current_state[*].historical_context",
         "current_state[*].developments"],
       description:"One country's fuller cross-dimension structural profile, methodology, coverage, source-native recency and bounded existing context; no forced signed GRO.",
       prerequisites:["ONE_COUNTRY_MULTIDIMENSION_STRUCTURAL_PROFILE_VERIFIED"],
@@ -120,7 +128,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
       subject_scope:"directional_corridor",response_kind:"adaptive_intelligence",
       customer_receives:[...digest,"structural[*].serving",
         "current_state[*].subject","as_of","methodology","limitations","delivered_product_hash"],
-      only_when_verified:["current_state[*].historical_context",
+      only_when_verified:[...marketWatch,"current_state[*].historical_context",
         "current_state[*].developments","change_intelligence[*].corridor_effects"],
       description:"Directional corridor profile with qualified cross-border dimensions, composition method, bounded existing context and explicit evidence gaps.",
       prerequisites:["DIRECTIONAL_CORRIDOR_MULTIDIMENSION_PROFILE_VERIFIED"],
@@ -130,7 +138,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
     focused:{
       subject_scope:"query_scope",response_kind:"adaptive_intelligence",
       customer_receives:[...answer,...core,"query_plan_hash","as_of","limitations","delivered_product_hash"],
-      only_when_verified:["current_state[*].risk","current_state[*].live",
+      only_when_verified:[...marketWatch,"current_state[*].risk","current_state[*].live",
         "structural[*].intelligence"],
       description:"One focused subject/topic: direct derived answer, versioned governed state and freshness; only actually qualified requested modules.",
       prerequisites:["ONE_SUBJECT_ONE_TOPIC_FOCUSED_PLAN_VERIFIED"],
@@ -139,7 +147,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
       subject_scope:"query_scope",response_kind:"adaptive_intelligence",
       customer_receives:[...answer,...core,"analysis","query_plan_hash","as_of",
         "methodology","limitations","delivered_product_hash"],
-      only_when_verified:["structural[*].intelligence",
+      only_when_verified:[...marketWatch,"structural[*].intelligence",
         "current_state[*].developments","change_intelligence[*].drivers"],
       description:"One subject with up to three approved topics: synthesized derived answer, state, coverage, modules and material developments when independently verified.",
       prerequisites:["STANDARD_PLAN_AND_REQUIRED_MODULES_VERIFIED"],
@@ -148,7 +156,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
       subject_scope:"query_scope",response_kind:"adaptive_intelligence",
       customer_receives:[...answer,...core,"analysis","question_interpretation",
         "query_plan_hash","as_of","methodology","limitations","delivered_product_hash"],
-      only_when_verified:["current_state[*].developments",
+      only_when_verified:[...marketWatch,"current_state[*].developments",
         "change_intelligence[*].cross_domain_effects",
         "structural[*].intelligence","analysis"],
       description:"Verified multi-topic/multi-subject or cross-domain derived synthesis, comparable versioned states and uncertainty; does NOT bundle a separately priced Risk Gate.",
@@ -159,7 +167,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
     existing_valid_signed:{
       subject_scope:"country_or_corridor",response_kind:"signed_risk_object",
       customer_receives:[...signed],
-      only_when_verified:["signed_risk_objects[*].object.risk.previous_score",
+      only_when_verified:[...marketWatch,"signed_risk_objects[*].object.risk.previous_score",
         "signed_risk_objects[*].object.risk.delta"],
       description:"Previously issued, still-valid signed country/corridor GRO attestation with risk, confidence, source-free attribution, expiry and integrity metadata; exact signature verification remains a separate proof gate.",
       prerequisites:["EXISTING_VERIFIED_UNEXPIRED_SIGNED_GRO"],
@@ -167,7 +175,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
     newly_qualified_signed:{
       subject_scope:"country_or_corridor",response_kind:"signed_risk_object",
       customer_receives:[...signed],
-      only_when_verified:["signed_risk_objects[*].object.risk.previous_score",
+      only_when_verified:[...marketWatch,"signed_risk_objects[*].object.risk.previous_score",
         "signed_risk_objects[*].object.risk.delta"],
       description:"Newly qualified signed GRO attestation with canonical risk/integrity metadata; genuine new evidence, authorized signature and exact readback must be proved separately.",
       prerequisites:["NEWLY_QUALIFIED_CURRENT_SIGNED_GRO_AND_READBACK"],
@@ -177,7 +185,10 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
     existing_proof_preflight:{
       subject_scope:"country_or_corridor",response_kind:"risk_gate_evaluation",
       customer_receives:["risk_gate[*].subject","risk_gate[*].result",
-        "signed_risk_objects[*].object.integrity","methodology","limitations","delivered_product_hash"],
+        "signed_risk_objects[*].object.integrity",
+  // Available in all NEW signed deliveries; not added to historical receipt
+  // mandatory fields so old already-settled frozen JSON replays byte-identically.
+"methodology","limitations","delivered_product_hash"],
       only_when_verified:["signed_risk_objects[*].object.risk"],
       description:"Decision-readiness/preflight for one qualified country/corridor using an existing valid signed proof; no transaction execution.",
       prerequisites:["EXISTING_SIGNED_GRO_AND_POLICY_PREFLIGHT_VERIFIED"],

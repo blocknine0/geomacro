@@ -34,6 +34,32 @@ export async function assembleVerifiedCapabilityProduct(input:{
   assertPreparedCapabilityBuyerValue(
     input.plan,input.availability,assembled,price.amount_usdc,
   );
+  if(price.capability!=="gri_read" && price.capability!=="risk_gate_bundle"){
+    const decisions=assembled.decision_intelligence;
+    if(!Array.isArray(decisions) || decisions.length!==input.plan.subjects.length ||
+      decisions.some((row:unknown)=>{
+        const value=row as {market_watch?:{schema_version?:unknown;items?:unknown}}|null;
+        return value?.market_watch?.schema_version!=="geomacro.paid-market-watch.v1" ||
+          !Array.isArray(value.market_watch.items);
+      }))
+      throw Error("PAID_MARKET_WATCH_NOT_PREPARED_NO_CHARGE");
+  }
+  // Fresh signed SKUs must actually carry a replay-verifiable GeoMacro
+  // signature in customer bytes, not only its name/hash/issuer label.
+  // Legacy already-settled frozen receipts continue their old replay contract.
+  if(price.capability==="signed_risk_object" &&
+     (!Array.isArray(assembled.signed_risk_objects) ||
+      assembled.signed_risk_objects.length!==input.plan.subjects.length ||
+      assembled.signed_risk_objects.some((row:unknown)=>{
+        const signed=row as {object?:{integrity?:{signature?:unknown;signature_scheme?:unknown;signing_key_id?:unknown}}};
+        const integrity=signed?.object?.integrity;
+        return typeof integrity?.signature!=="string" ||
+          integrity.signature.length<64 ||
+          integrity.signature_scheme!=="Ed25519" ||
+          typeof integrity.signing_key_id!=="string" ||
+          integrity.signing_key_id.length<1;
+      })))
+    throw Error("SIGNED_GRO_CRYPTOGRAPHIC_SIGNATURE_NOT_DELIVERABLE");
   const prepared=sanitizeAndRehashPaidPreparedResponse(assembled,{rejectEmbeddedLinks:true});
   assertGeomacroIntelligenceResponseContract(prepared);
   assertPublicPaidOutputBoundary(prepared);

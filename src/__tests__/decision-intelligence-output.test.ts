@@ -38,6 +38,10 @@ describe("Geomacro decision intelligence output", () => {
     expect(result.geomacro_detected[0]).toContain("FX pressure");
     expect(result.change.material_change).toBe(true);
     expect(result.watch_next).toEqual(["FX pressure", "energy import exposure"]);
+    expect(result.market_watch.schema_version).toBe("geomacro.paid-market-watch.v1");
+    expect(result.market_watch.items.some(x=>x.market==="Foreign-exchange rates")).toBe(true);
+    expect(result.market_watch.items.every(x=>x.current_market_price===null && x.predicted_direction==="NOT_ESTABLISHED")).toBe(true);
+    expect(result.market_watch.monitoring.requery_when).toBe("NEW_QUALIFIED_EVIDENCE_OR_STATE_VERSION_CHANGE");
     expect(result.raw_data_delivered).toBe(false);
     expect(result.execution_authorized).toBe(false);
     expect(result.delivery_boundary).toBe("DERIVED_DECISION_INTELLIGENCE_ONLY");
@@ -58,6 +62,8 @@ describe("Geomacro decision intelligence output", () => {
     });
 
     expect(result.status).toBe("INSUFFICIENT_EVIDENCE");
+    expect(result.market_watch.status).toBe("NO_QUALIFIED_MARKET_LINKAGE");
+    expect(result.market_watch.items).toEqual([]);
     expect(result.decision.action).toBe("INSUFFICIENT_EVIDENCE");
     expect(result.decision.guardrail).toContain("Do not charge or act");
     expect(result.raw_data_delivered).toBe(false);

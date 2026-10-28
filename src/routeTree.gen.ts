@@ -71,6 +71,7 @@ import { Route as ApiV1IntelligenceLiveStructuredRouteImport } from './routes/ap
 import { Route as ApiV1IntelligenceMacroFxRouteImport } from './routes/api.v1.intelligence.macro-fx'
 import { Route as ApiV1IntelligenceProductsAvailabilityRouteImport } from './routes/api.v1.intelligence.products-availability'
 import { Route as ApiV1IntelligenceQueryRouteImport } from './routes/api.v1.intelligence.query'
+import { Route as ApiV1IntelligenceStructuredAnswerRouteImport } from './routes/api.v1.intelligence.structured-answer'
 import { Route as ApiV1PaymentsNetworksRouteImport } from './routes/api.v1.payments.networks'
 import { Route as ApiV1PaymentsPreflightRouteImport } from './routes/api.v1.payments.preflight'
 import { Route as ApiX402CircleIntelligenceRouteImport } from './routes/api.x402.circle_.intelligence'
@@ -395,6 +396,12 @@ const ApiV1IntelligenceQueryRoute = ApiV1IntelligenceQueryRouteImport.update({
   path: '/api/v1/intelligence/query',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1IntelligenceStructuredAnswerRoute =
+  ApiV1IntelligenceStructuredAnswerRouteImport.update({
+    id: '/api/v1/intelligence/structured-answer',
+    path: '/api/v1/intelligence/structured-answer',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV1PaymentsNetworksRoute = ApiV1PaymentsNetworksRouteImport.update({
   id: '/api/v1/payments/networks',
   path: '/api/v1/payments/networks',
@@ -486,6 +493,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
   '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
+  '/api/v1/intelligence/structured-answer': typeof ApiV1IntelligenceStructuredAnswerRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
@@ -555,6 +563,7 @@ export interface FileRoutesByTo {
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
   '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
+  '/api/v1/intelligence/structured-answer': typeof ApiV1IntelligenceStructuredAnswerRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
@@ -625,6 +634,7 @@ export interface FileRoutesById {
   '/api/v1/intelligence/macro-fx': typeof ApiV1IntelligenceMacroFxRoute
   '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
+  '/api/v1/intelligence/structured-answer': typeof ApiV1IntelligenceStructuredAnswerRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
   '/api/x402/circle_/intelligence': typeof ApiX402CircleIntelligenceRoute
@@ -696,6 +706,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/macro-fx'
     | '/api/v1/intelligence/products-availability'
     | '/api/v1/intelligence/query'
+    | '/api/v1/intelligence/structured-answer'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/preflight'
     | '/api/x402/circle/intelligence'
@@ -765,6 +776,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/macro-fx'
     | '/api/v1/intelligence/products-availability'
     | '/api/v1/intelligence/query'
+    | '/api/v1/intelligence/structured-answer'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/preflight'
     | '/api/x402/circle/intelligence'
@@ -834,6 +846,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/macro-fx'
     | '/api/v1/intelligence/products-availability'
     | '/api/v1/intelligence/query'
+    | '/api/v1/intelligence/structured-answer'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/preflight'
     | '/api/x402/circle_/intelligence'
@@ -904,6 +917,7 @@ export interface RootRouteChildren {
   ApiV1IntelligenceMacroFxRoute: typeof ApiV1IntelligenceMacroFxRoute
   ApiV1IntelligenceProductsAvailabilityRoute: typeof ApiV1IntelligenceProductsAvailabilityRoute
   ApiV1IntelligenceQueryRoute: typeof ApiV1IntelligenceQueryRoute
+  ApiV1IntelligenceStructuredAnswerRoute: typeof ApiV1IntelligenceStructuredAnswerRoute
   ApiV1PaymentsNetworksRoute: typeof ApiV1PaymentsNetworksRoute
   ApiV1PaymentsPreflightRoute: typeof ApiV1PaymentsPreflightRoute
   ApiX402CircleIntelligenceRoute: typeof ApiX402CircleIntelligenceRoute
@@ -1347,6 +1361,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1IntelligenceQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/intelligence/structured-answer': {
+      id: '/api/v1/intelligence/structured-answer'
+      path: '/api/v1/intelligence/structured-answer'
+      fullPath: '/api/v1/intelligence/structured-answer'
+      preLoaderRoute: typeof ApiV1IntelligenceStructuredAnswerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/payments/networks': {
       id: '/api/v1/payments/networks'
       path: '/api/v1/payments/networks'
@@ -1450,6 +1471,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1IntelligenceProductsAvailabilityRoute:
     ApiV1IntelligenceProductsAvailabilityRoute,
   ApiV1IntelligenceQueryRoute: ApiV1IntelligenceQueryRoute,
+  ApiV1IntelligenceStructuredAnswerRoute:
+    ApiV1IntelligenceStructuredAnswerRoute,
   ApiV1PaymentsNetworksRoute: ApiV1PaymentsNetworksRoute,
   ApiV1PaymentsPreflightRoute: ApiV1PaymentsPreflightRoute,
   ApiX402CircleIntelligenceRoute: ApiX402CircleIntelligenceRoute,

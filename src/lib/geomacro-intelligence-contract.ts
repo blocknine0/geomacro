@@ -242,6 +242,32 @@ export function assertGeomacroIntelligenceResponseContract(payload: unknown): as
     if (!Array.isArray(row.geomacro_detected) || !Array.isArray(row.watch_next)) {
       throw new Error("INTELLIGENCE_RESPONSE_DECISION_INTELLIGENCE_SIGNALS_INVALID");
     }
+    // Older frozen paid receipts remain replay-compatible. All newly
+    // assembled nine launch-scope SKU responses include market_watch;
+    // validate it whenever present, without assigning a price prediction.
+    if (row.market_watch !== undefined) {
+      const watch=row.market_watch;
+      if (!isRecord(watch) || watch.schema_version!=="geomacro.paid-market-watch.v1" ||
+          !["CONDITIONAL_MARKET_WATCH","NO_QUALIFIED_MARKET_LINKAGE"].includes(String(watch.status)) ||
+          !Array.isArray(watch.items) || watch.items.length>5 ||
+          !isRecord(watch.monitoring) || !isRecord(watch.limitations) ||
+          watch.limitations.actual_market_prices_included!==false ||
+          watch.limitations.market_direction_verified!==false ||
+          watch.limitations.quantitative_forecast_included!==false ||
+          watch.limitations.private_inputs_exposed!==false ||
+          watch.limitations.execution_authorized!==false) {
+        throw Error("INTELLIGENCE_RESPONSE_MARKET_WATCH_BOUNDARY_INVALID");
+      }
+      if(watch.items.some((item:unknown)=>!isRecord(item) ||
+        item.predicted_direction!=="NOT_ESTABLISHED" ||
+        item.scenario_only!==true ||
+        item.current_market_price!==null ||
+        item.estimated_price_change_pct!==null ||
+        typeof item.market!=="string" || typeof item.evidence_dimension!=="string" ||
+        !["VERIFIED_STRUCTURAL_MODULE","VERIFIED_SIGNED_GRO_DRIVER","QUALIFIED_CURRENT_DERIVED_EVENT"]
+           .includes(String(item.evidence_basis))))
+        throw Error("INTELLIGENCE_RESPONSE_MARKET_WATCH_PRICE_CLAIM_FORBIDDEN");
+    }
     if (!isRecord(row.decision) || row.decision.execution_authorized !== false) {
       throw new Error("INTELLIGENCE_RESPONSE_DECISION_INTELLIGENCE_DECISION_BOUNDARY_INVALID");
     }
