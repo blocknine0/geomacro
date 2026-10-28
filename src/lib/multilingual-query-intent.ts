@@ -268,9 +268,10 @@ export function interpretMultilingualIntelligenceQuery(raw: unknown) {
   // Non-English input classification remains available globally. When a
   // native output template is not implemented, return transparent English
   // fallback metadata rather than fabricating a translation.
-  // Original English remains the default. Explicit English/Bengali/Hindi and
-  // Bengali/Hindi script auto-detection opt in to a hash-bound paid locale.
-  const responseLocale = ["bn","hi"].includes(requestedLocale)
+  // Opt in ONLY when buyer explicitly selects language. Script auto-detection
+  // remains metadata: silently adding a locale would break previously frozen
+  // paid request fingerprints and could prevent an old receipt from replaying.
+  const responseLocale = input.language && ["bn","hi"].includes(requestedLocale)
     ? requestedLocale as "bn"|"hi" : (requestedLocale==="en"&&input.language) ? "en" as const : null;
   const q = norm(input.question);
   const inferredTopics = semanticTopics(input.question);
