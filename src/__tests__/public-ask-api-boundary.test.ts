@@ -40,7 +40,7 @@ describe("Ask Geomacro public API boundary", () => {
     expect(api).not.toContain("readBody");
 
     expect(core).toContain("INJECTION_RE");
-    expect(core).toContain("ASK_GEOMACRO_MAX_LENGTH = 300");
+    expect(core).toContain("ASK_GEOMACRO_MAX_LENGTH = 1200");
     expect(core).toContain("checkAskRateLimit(clientKey)");
     expect(core).toContain("toCommercialAskBrief");
   });

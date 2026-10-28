@@ -20,7 +20,7 @@ const SUGGESTIONS = [
   "What are rare earths?",
 ] as const;
 
-const MAX_LEN = 300;
+const MAX_LEN = 1200;
 const MAX_VISIBLE_TURNS = 12;
 const MAX_SESSIONS = 10;
 
@@ -116,9 +116,14 @@ export function AskWorkspace() {
       setCopiedId(null);
 
       try {
-        const history = active.turns.slice(-8).map(turn => ({
-          role: "user" as const, content: turn.resolvedQuestion,
-        }));
+        // Use recent user/assistant exchanges as *untrusted dialogue context*.
+        // Only the canonical research engine supplies actual evidence.
+        const history = active.turns.slice(-4).flatMap(turn => ([
+          { role: "user" as const, content: turn.resolvedQuestion.slice(0, 1200) },
+          { role: "assistant" as const, content: turn.answer.summary.slice(0, 480) },
+        ])).filter(turn => turn.content.trim().length > 0);
+        while (history.reduce((sum, turn) => sum + turn.content.length, 0) > 4800)
+          history.shift();
         const result = await withPublicRuntimeTimeout(
           withAskCancellation(streamPublicAsk(question, history, setResearchStage, controller.signal).catch(error => {
             // Old Lovable deploys can temporarily lack the new POST stream;

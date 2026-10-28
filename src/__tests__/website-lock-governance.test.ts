@@ -91,7 +91,14 @@ describe("website lock governance", () => {
     expect(askChatApproval.approved_ui_commit).toBe(publicAskApproval.previous_baseline_sha);
     const priceDedup=config.approved_store_price_dedup_news_coverage_20261028;
     expect(publicAskApproval.approved_ui_commit).toBe(priceDedup.previous_baseline_sha);
-    expect(priceDedup.approved_ui_commit).toBe(config.baseline_sha);
+    const askConversationApproval = config.approved_ask_conversational_intelligence_20261028;
+    expect(priceDedup.approved_ui_commit).toBe(askConversationApproval.previous_baseline_sha);
+    expect(askConversationApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(askConversationApproval.scope).toEqual(["src/components/ask/ask-workspace.tsx"]);
+    expect(askConversationApproval.predge_unmodified).toBe(true);
+    expect(askConversationApproval.global_risk_final_lock_unmodified).toBe(true);
+    expect(askConversationApproval.published_source_sha_unchanged).toBe(true);
+    expect(askConversationApproval.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(priceDedup.paid_pricing_unmodified).toBe(true);
     expect(priceDedup.payment_authorized).toBe(false);
     expect(publicAskApproval.public_information_only).toBe(true);

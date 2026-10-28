@@ -2,7 +2,7 @@ import {createHash} from "node:crypto";
 import {defineEventHandler,getRequestHeader,getRequestHost,readBody} from "h3";
 import {executeHybridChatTurn} from "../../../../src/lib/hybrid-agent-chat.server";
 import {prepareHybridAgentContext} from "../../../../src/lib/hybrid-agent-context";
-import {AskGeomacroRateLimitError} from "../../../../src/lib/ask-geomacro-core.server";
+import {ASK_GEOMACRO_MAX_LENGTH,AskGeomacroRateLimitError} from "../../../../src/lib/ask-geomacro-core.server";
 
 /** POST-only, same-origin browser stream. The user's question lives in a
  * bounded JSON body, never a query string or upstream publisher request. */
@@ -43,7 +43,7 @@ export default defineEventHandler(async event=>{
  if(Object.keys(body).some(k=>k!=="question"&&k!=="history"))
    return reject(400,"ASK_CONTEXT_INVALID");
  const context=prepareHybridAgentContext(body.question,body.history);
- if(!context.ok||context.question.length>300)return reject(400,"ASK_CONTEXT_INVALID");
+ if(!context.ok||context.question.length>ASK_GEOMACRO_MAX_LENGTH)return reject(400,"ASK_CONTEXT_INVALID");
  const client=clientHash(String(getRequestHeader(event,"cf-connecting-ip")??"unknown"));
  // SSE exposes stages and the *completed* governed answer only. Token text
  // must never leave the server before verification; do not claim model tokens.

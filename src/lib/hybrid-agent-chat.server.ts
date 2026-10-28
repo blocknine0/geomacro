@@ -1,4 +1,5 @@
 import { askDomains } from "./ask-domain-guide";
+import { planConversationalAsk, localizeStaticAskAnswer } from "./ask-conversation-understanding.server";
 import {
   ASK_GEOMACRO_MAX_LENGTH,
   executeAskGeomacro,
@@ -136,11 +137,34 @@ export async function executeHybridChatTurn(
   }
   // Validate the user's original text before any deterministic rewrite.
   const rawQuestion = parseAskGeomacroInput({ question: parsed.question }).question;
-  const resolved = resolveGroundedFollowUp(rawQuestion, parsed.history);
+  let resolved: { question: string; mode: HybridChatMode };
+  let ambiguous = false;
+  try {
+    resolved = resolveGroundedFollowUp(rawQuestion, parsed.history);
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "AMBIGUOUS_FOLLOW_UP") throw error;
+    ambiguous = true;
+    resolved = { question: rawQuestion, mode: "grounded_ask" };
+  }
+  // Optional semantic interpretation never substitutes for verified retrieval,
+  // canonical input validation, or the existing rate-limit/commerce boundaries.
+  // A safely resolved English follow-up must not be second-guessed by a
+  // probabilistic model or incur a redundant provider call.
+  const interpretation = resolved.mode === "bounded_follow_up" && !ambiguous &&
+    !/[^\x00-\x7f]/u.test(rawQuestion)
+      ? null : await planConversationalAsk(rawQuestion, parsed.history, ambiguous, clientKey);
+  if (ambiguous && !interpretation) throw new Error("AMBIGUOUS_FOLLOW_UP");
+  if (interpretation) {
+    parseAskGeomacroInput({ question: interpretation.question });
+    resolved = { question: interpretation.question, mode: "bounded_follow_up" };
+  }
   const answer = await executeAskGeomacro({ question: resolved.question }, clientKey);
+  const localized = interpretation
+    ? await localizeStaticAskAnswer(answer, interpretation.language)
+    : answer;
   return {
     answer: /^(?:please\s+)?(?:(?:make it |be )?(?:shorter)|summari[sz]e(?: that| it)?)[.!?]*$/i.test(rawQuestion)
-      ? {...answer, what_changed:"", why_it_matters:"", geomacro_view:""} : answer,
+      ? {...localized, what_changed:"", why_it_matters:"", geomacro_view:""} : localized,
     context_turns: parsed.history.length,
     mode: resolved.mode,
     resolved_question: resolved.question,

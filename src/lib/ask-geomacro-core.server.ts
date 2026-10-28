@@ -7,7 +7,7 @@ import { checkAskRateLimit, checkAskOriginalBudget } from "./ask-rate-limit.serv
 import { planAskOriginalQuestion } from "./ask-on-demand-original.server";
 import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
 
-export const ASK_GEOMACRO_MAX_LENGTH = 300;
+export const ASK_GEOMACRO_MAX_LENGTH = 1200;
 
 const INJECTION_RE =
   /(ignore (all|previous|prior)|disregard (all|previous)|system prompt|you are now|act as|jailbreak|<\|.*\|>)/i;
