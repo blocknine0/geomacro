@@ -140,7 +140,7 @@ test("isolated identity preserves the strict remote binding allowlist without mi
  assert.ok(workflow.includes("b.type==='secret_text'&&b.name==='GEOMACRO_SECURITY_FINGERPRINT_PEPPER'"));
  assert.ok(workflow.includes("npx -y wrangler@4.136.3 deploy --config .output/server/candidate-wrangler.json --keep-vars"));
  assert.ok(prep.includes('name:"geomacro-web-candidate-isolated"'));
- assert.ok(check.includes('https://geomacro-web-candidate-isolated.daspallab202391.workers.dev'));
+ assert.match(check,/^const base="https:\/\/geomacro-web-candidate-isolated\.daspallab202391\.workers\.dev";$/mu);
  assert.ok(!workflow.includes("wrangler delete"));
  assert.ok(!workflow.includes("workers/scripts/geomacro-web-candidate-isolated/bindings"));
 });
