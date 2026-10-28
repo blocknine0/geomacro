@@ -65,9 +65,9 @@ export async function verifyDeployedRuntimeEquivalence({
    signal:AbortSignal.timeout(12000)});
   if(response?.status!==200)return reason("RUNTIME_COMPARE_PROVIDER_UNAVAILABLE");
   const declared=Number(response.headers?.get("content-length")??0);
-  if(declared>200_000)return reason("RUNTIME_COMPARE_RESPONSE_OVERSIZE");
+  if(declared>1_000_000)return reason("RUNTIME_COMPARE_RESPONSE_OVERSIZE");
   const raw=await response.text();
-  if(raw.length>200_000)return reason("RUNTIME_COMPARE_RESPONSE_OVERSIZE");
+  if(raw.length>1_000_000)return reason("RUNTIME_COMPARE_RESPONSE_OVERSIZE");
   return assessDeployedRuntimeCompare(JSON.parse(raw),deployedSha,mainSha);
  }catch{return reason("RUNTIME_COMPARE_PROVIDER_UNAVAILABLE")}
 }
