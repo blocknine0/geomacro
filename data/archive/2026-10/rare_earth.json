@@ -2,8 +2,84 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-28T05:25:49.221Z",
+  "updated_at": "2026-10-28T06:25:05.599Z",
   "signals": [
+    {
+      "id": "rare_earth-545ad639",
+      "category": "rare_earth",
+      "title": "Geomacro finds Talga signed binding graphite deal with Dainen Materials - grafa.com",
+      "what_changed": "A monitored source feed reports: Talga signed binding graphite deal with Dainen Materials - grafa.com. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T00:15:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-16fb7452",
+      "category": "rare_earth",
+      "title": "Geomacro finds Copper Explorer launched 10000-Foot Nevada Drill Program as Global Supply Shortage Fears Grow - Streetwise Reports",
+      "what_changed": "A monitored source feed reports: Copper Explorer launched 10000-Foot Nevada Drill Program as Global Supply Shortage Fears Grow - Streetwise Reports. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T21:45:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-e4375535",
+      "category": "rare_earth",
+      "title": "Geomacro finds Hall Chadwick Acquisition Corp. and REEcycle unveiled Proposed Board Featuring Former Senior U.S. Intelligence and Energy Officials to Advance America’s Rare Earth Supply Chain - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: Hall Chadwick Acquisition Corp. and REEcycle unveiled Proposed Board Featuring Former Senior U.S. Intelligence and Energy Officials to Advance America’s Rare Earth Supply Chain - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T20:01:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-9e53a1dd",
+      "category": "rare_earth",
+      "title": "Geomacro finds Oman announced new mining concession as part of critical minerals drive - The National",
+      "what_changed": "A monitored source feed reports: Oman announced new mining concession as part of critical minerals drive - The National. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T15:33:17.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-ffed85d3",
       "category": "rare_earth",
@@ -33,6 +109,63 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-27T08:44:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-19018bed",
+      "category": "rare_earth",
+      "title": "Geomacro finds BHP kept copper guidance at 1.65 million tonnes. BHP stock costs EUR 71.75 - ad-hoc-news.de",
+      "what_changed": "A monitored source feed reports: BHP kept copper guidance at 1.65 million tonnes. BHP stock costs EUR 71.75 - ad-hoc-news.de. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T08:31:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-5adb8789",
+      "category": "rare_earth",
+      "title": "Geomacro finds Inalum said bauxite processing can boost value and jobs",
+      "what_changed": "A monitored source feed reports: Inalum said bauxite processing can boost value and jobs. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T08:18:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.antaranews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-061001a5",
+      "category": "rare_earth",
+      "title": "Geomacro finds Canada's Capstone Copper announced $3bn investment plan in Chile - Mining Weekly",
+      "what_changed": "A monitored source feed reports: Canada's Capstone Copper announced $3bn investment plan in Chile - Mining Weekly. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T07:06:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
