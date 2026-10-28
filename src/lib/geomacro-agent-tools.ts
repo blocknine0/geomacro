@@ -9,6 +9,8 @@ import {
 import { publicQueryOpenApiSchema } from "./public-api-openapi.server";
 import { GEOMACRO_STORE_REQUEST_EXAMPLES } from "./store-product-examples";
 import { normalizeAnswerQuestionRequest } from "./geomacro-answer-request.server";
+import {interpretMultilingualIntelligenceQuery} from "./multilingual-query-intent";
+import {publicCapabilityNewSalesAllowed} from "./capability-pricing-catalog";
 
 export const GEOMACRO_MCP_PROTOCOL_VERSION = "2026-07-28" as const;
 export const GEOMACRO_MCP_SERVER_VERSION = "geomacro-mcp-v1" as const;
@@ -16,6 +18,7 @@ export const GEOMACRO_MCP_PATH = "/api/mcp" as const;
 
 export const GEOMACRO_AGENT_TOOL_NAMES = [
   "store_product_query",
+  "paid_structured_answer",
   "answer_question",
   "geopolitics_query",
   "macro_fx_query",
@@ -206,6 +209,12 @@ export function geomacroAgentToolToCanonicalQuery(
     const query = agentAdaptiveQuerySchema.parse(normalized.value);
     buildAgentQueryPlan(query);
     return query;
+  }
+  if (toolName === "paid_structured_answer") {
+    const selected=interpretMultilingualIntelligenceQuery(rawArguments);
+    if(!publicCapabilityNewSalesAllowed(selected.selected_product.capability))
+      throw Error("PAID_STRUCTURED_PRODUCT_COMING_SOON");
+    return selected.canonical_request;
   }
   if (toolName === "store_product_query") {
     const input = agentAdaptiveQuerySchema.parse(rawArguments);
@@ -401,6 +410,28 @@ export const GEOMACRO_AGENT_TOOLS = [
     inputSchema: { ...publicQueryOpenApiSchema(), required: ["subjects", "product"] },
     outputSchema: intelligenceOutputSchema,
     example: GEOMACRO_STORE_REQUEST_EXAMPLES.country_digest,
+  },
+  {
+    name: "paid_structured_answer",
+    description: "One question to a founder-priced GeoMacro structured intelligence product: deterministic multilingual SKU selection, qualified OSINT/news-derived market watch, canonical USDC x402 payment challenge and exact immutable JSON delivery. Signed Risk Objects require authentic GeoMacro Ed25519 proof. Risk Gate is Coming Soon; no raw news, direct execution or unsupported paid charge.",
+    paid:true,
+    inputSchema:objectSchema({
+      question:{type:"string",minLength:3,maxLength:2000},
+      language:{type:"string",description:"Optional response query language BCP47 code."},
+      subjects:{type:"array",items:{oneOf:[
+        objectSchema({type:{const:"country"},country_iso3:iso3Json},["type","country_iso3"]),
+        objectSchema({type:{const:"corridor"},origin_country_iso3:iso3Json,destination_country_iso3:iso3Json},["type","origin_country_iso3","destination_country_iso3"]),
+      ]}},
+      topics:{type:"array",items:{type:"string",enum:[...AGENT_QUERY_TOPICS]}},
+      product:{type:"object",additionalProperties:false,description:"Optional exact chosen Store SKU; otherwise infer from question.",properties:{
+        capability:{type:"string"},variant:{type:"string"},
+        issued_after:{type:"string",format:"date-time"},
+      },required:["capability","variant"]},
+      client_request_id:commonProperties.client_request_id,
+      max_age_seconds:commonProperties.max_age_seconds,
+    },["question"]),
+    outputSchema:intelligenceOutputSchema,
+    example:{question:"What is the potential market impact of critical minerals supply in India?"},
   },
   {
     name: "answer_question",
