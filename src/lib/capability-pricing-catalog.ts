@@ -23,6 +23,16 @@ export const GEOMACRO_CAPABILITY_PRICES={
 } as const satisfies Record<GeomacroCreditCapability,Record<string,string>>;
 
 export type PricedCapability=keyof typeof GEOMACRO_CAPABILITY_PRICES;
+/** Risk Gate remains visible at its locked prices, but is NOT a launch sale. */
+export function publicCapabilityLaunchStatus(capability:string):"COMING_SOON"|"ELIGIBILITY_GATED"|"RETIRED"{
+  if(capability==="risk_gate_bundle")return "COMING_SOON";
+  if(capability==="gri_read")return "RETIRED";
+  return "ELIGIBILITY_GATED";
+}
+export function publicCapabilityNewSalesAllowed(capability:string):boolean{
+  return isPublicStoreCapability(capability) && publicCapabilityLaunchStatus(capability)!=="COMING_SOON";
+}
+
 /** Public GRI sales retired by founder; existing signed historical ledger prices stay immutable. */
 export function isPublicStoreCapability(capability:string):boolean {
   return capability !== "gri_read" && Object.hasOwn(GEOMACRO_CAPABILITY_PRICES,capability);
@@ -82,6 +92,8 @@ export function capabilityPricingCatalog(){
         resolveGeomacroCapabilityPrice(capability,variant)),
       // A published price schedule alone does not verify an available product.
       availability:"CHECK_LIVE_PROOF_BEFORE_PAYMENT" as const,
+      launch_status:publicCapabilityLaunchStatus(capability),
+      new_sales_allowed:publicCapabilityNewSalesAllowed(capability),
     }));
 }
 
