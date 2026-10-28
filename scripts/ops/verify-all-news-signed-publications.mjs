@@ -80,8 +80,24 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
  // continue. Pin every page to a deterministic hash of the exact current
  // derived journal; if the journal changes mid-read, restart from a fresh
  // journal at most twice rather than misclassifying valid signatures as bad.
+ // A stale canonical bundle envelope can arrive during an edge revision.
+ // Permit exactly ONE source-neutral no-cache replay across the entire audit.
+ // Quota exhaustion, bad JSON, invalid schemas, expired clocks and forged
+ // signatures NEVER receive a successful fallback or unlimited requests.
+ let staleJournalRetriesLeft=1;
  attempts: for(let attempt=0;attempt<3;attempt++) {
-  const journal=await readJournal(fetchImpl,now),expected=new Set(),contentOrder=new Map();
+  let journal;
+  try{journal=await readJournal(fetchImpl,now)}
+  catch(error){
+   if(staleJournalRetriesLeft===0||
+      !['DERIVED_NEWS_BUNDLE_STALE_READBACK',
+        'DERIVED_NEWS_PAGE_STALE_READBACK'].includes(error?.message))
+     throw error;
+   staleJournalRetriesLeft--;
+   await waitBeforeRetry(1);
+   journal=await readJournal(fetchImpl,now);
+  }
+  const expected=new Set(),contentOrder=new Map();
   for(const signal of journal){
    expected.add(await automatedInputId(signal));
    const content=automatedInputContent(signal);
