@@ -1252,6 +1252,14 @@
               },
               "scenario_only": {
                 "const": true
+              },
+              "evidence_class": {
+                "enum": [
+                  "QUALIFIED_EVENT",
+                  "SIGNED_RISK_DRIVER",
+                  "STRUCTURAL_CONTEXT"
+                ],
+                "description": "Evidence priority in this paid watch; qualified event is first, then signed risk, then structural baseline."
               }
             }
           }
@@ -1317,7 +1325,47 @@
             }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "CONDITIONAL_MARKET_WATCH"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "NO_QUALIFIED_MARKET_LINKAGE"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }
