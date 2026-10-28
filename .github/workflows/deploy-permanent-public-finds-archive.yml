@@ -85,7 +85,7 @@ jobs:
           import assert from "node:assert/strict";
           import { existsSync, readFileSync, writeFileSync } from "node:fs";
           import { join } from "node:path";
-          import { isPermanentArchiveSignal, selectCurrentArchiveSignals } from "./scripts/ops/publish-permanent-derived-news-archive.mjs";
+          import { isPermanentArchiveSignal, selectCurrentArchiveSignals, buildCurrentArchiveEligibility } from "./scripts/ops/publish-permanent-derived-news-archive.mjs";
           const dataDir=join(process.env.RUNNER_TEMP,"geomacro-public-archive","data");
           const assetsDir="workers/public-finds-archive/assets";
           const categories=["geopolitics","macro","rare_earth"];
@@ -127,6 +127,8 @@ jobs:
             scored:false,chargeable:false,supabase_dependency:false,signals:selectCurrentArchiveSignals(recent,250),
           };
           writeFileSync(join(assetsDir,"latest.json"),JSON.stringify(latest,null,2)+"\n",{mode:0o644});
+          const coverage=buildCurrentArchiveEligibility(recent,now,latest.signals);
+          writeFileSync(join(assetsDir,"coverage-72h.json"),JSON.stringify(coverage,null,2)+"\n",{mode:0o644});
           // The archive index, rather than the rolling latest feed, is the permanent source of truth.
           writeFileSync(join(assetsDir,"index.json"),JSON.stringify(index,null,2)+"\n",{mode:0o644});
           const latest_category_counts={geopolitics:0,macro:0,rare_earth:0};
@@ -134,7 +136,9 @@ jobs:
           console.log(JSON.stringify({schema:"geomacro.permanent-public-finds-static-bundle.v1",
             archive_signals:rows.length,archive_months:index.months.length,
             validated_current_archive_rows:recent.length,latest_signals:latest.signals.length,
-            latest_category_counts,seed_complete:index.seed_complete,
+            latest_category_counts,full_original_eligible:coverage.original_release_eligible_total,
+            eligible_outside_latest_preview:coverage.eligible_outside_latest_preview,
+            pending_unverified_osint:coverage.pending_osint_total,seed_complete:index.seed_complete,
             d1_reads:0,d1_writes:0,supabase_writes:0,payments:0}));
           NODE
 
@@ -171,6 +175,7 @@ jobs:
           const base="https://geomacro-public-finds-archive.daspallab202391.workers.dev";
           const expectedIndex=JSON.parse(readFileSync("workers/public-finds-archive/assets/index.json","utf8"));
           const expectedLatest=JSON.parse(readFileSync("workers/public-finds-archive/assets/latest.json","utf8"));
+          const expectedCoverage=JSON.parse(readFileSync("workers/public-finds-archive/assets/coverage-72h.json","utf8"));
           async function get(path){
             let last;
             for(let attempt=0;attempt<5;attempt++){
@@ -191,6 +196,7 @@ jobs:
           }
           const liveIndex=await get("/index.json");
           const liveLatest=await get("/latest.json");
+          const liveCoverage=await get("/coverage-72h.json");
           assert.equal(liveIndex.schema,expectedIndex.schema);
           assert.equal(liveIndex.updated_at,expectedIndex.updated_at);
           assert.equal(liveIndex.total_signals,expectedIndex.total_signals);
@@ -202,8 +208,17 @@ jobs:
           assert.equal(liveLatest.signals.length,expectedLatest.signals.length);
           assert.equal(liveLatest.chargeable,false);
           assert.equal(liveLatest.scored,false);
+          assert.equal(liveCoverage.schema,"geomacro.free-derived-archive-eligibility.v1");
+          assert.equal(liveCoverage.checked_at,expectedCoverage.checked_at);
+          assert.deepEqual(liveCoverage.original_release_by_category,expectedCoverage.original_release_by_category);
+          assert.equal(liveCoverage.original_release_eligible_total,expectedCoverage.original_release_eligible_total);
+          assert.equal(liveCoverage.eligible_ids_sha256,expectedCoverage.eligible_ids_sha256);
+          assert.equal(liveCoverage.unverified_promoted,false);
+          assert.equal(liveCoverage.paid_customer_eligible,false);
+          assert.equal(liveCoverage.d1_reads,0);
           console.log(JSON.stringify({schema:"geomacro.permanent-public-finds-static-readback.v1",
             public_index_readback_verified:true,public_latest_readback_verified:true,
             archive_signals:liveIndex.total_signals,latest_signals:liveLatest.signals.length,
+            full_72h_original_eligible:liveCoverage.original_release_eligible_total,
             d1_reads:0,d1_writes:0,payments:0}));
           NODE

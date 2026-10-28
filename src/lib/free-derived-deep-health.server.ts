@@ -5,6 +5,7 @@
  * unscored official observations count toward availability.
  */
 const FEED_URL="https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json";
+const COVERAGE_URL="https://geomacro-public-finds-archive.daspallab202391.workers.dev/coverage-72h.json";
 const RETENTION=72*60*60_000;
 // Three-hour static rebuilds can cross the 72h boundary between publishes.
 // Allow a single missed refresh, but never certify an abandoned archive.
@@ -82,6 +83,12 @@ function result(ok:boolean,reason:string,counts=empty()){
     consumer_commercial_rights_verified:false,
     x402_payment_authorized:false,chargeable:false,settlement_performed:false,
     b2_read_performed:false,supabase_access_performed:false,
+    archive_72h_census_attested:false,
+    archive_72h_eligible_originals:null as number|null,
+    archive_72h_originals_by_category:null as Record<Category,number>|null,
+    archive_72h_pending_publisher_candidates:null as number|null,
+    archive_72h_pending_unverified_osint:null as number|null,
+    archive_72h_eligible_outside_latest_preview:null as number|null,
   }};
 }
 export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
@@ -145,6 +152,70 @@ export function classifyFreeDerivedFeed(input:FreeFeed,now=Date.now()){
     return result(false,"NO_CURRENT_FREE_OFFICIAL_ORIGINAL",counts);
   return result(true,"FREE_ARCHIVE_READBACK_OK",counts);
 }
+/**
+ * Independent, same-origin static census of ALL 72h archived records,
+ * including qualifying originals beyond the 250-row latest.json preview.
+ * This is FREE only. It does not grant signed, scored or paid eligibility.
+ */
+export function attachArchiveEligibilityCensus(
+  health:ReturnType<typeof classifyFreeDerivedFeed>,latest:FreeFeed,
+  unknown:unknown,now=Date.now(),
+) {
+  if(health.statusCode!==200||!unknown||typeof unknown!=="object"||
+     Array.isArray(unknown))return health;
+  const doc=unknown as Record<string,unknown>;
+  const original=doc.original_release_by_category;
+  const publisher=doc.pending_publisher_by_category;
+  const osint=doc.pending_osint_by_category;
+  const cats=(v:unknown):v is Record<Category,number>=>{
+    if(!v||typeof v!=="object"||Array.isArray(v))return false;
+    const o=v as Record<string,unknown>;
+    return Object.keys(o).length===3&&CAT.every(c=>
+      Number.isSafeInteger(o[c])&&(o[c] as number)>=0);
+  };
+  const sum=(v:Record<Category,number>)=>CAT.reduce((n,c)=>n+v[c],0);
+  const at=Date.parse(String(doc.checked_at??""));
+  const latestAt=Date.parse(String(latest.checked_at??""));
+  const currentOfficial=(latest.signals as FreeStory[]).filter(s=>
+    s?.status==="official_release_observed_unscored");
+  const includedByCategory=empty();
+  for(const story of currentOfficial){
+    if(CAT.includes(story.category as Category))
+      includedByCategory[story.category as Category]++;
+  }
+  if(doc.schema!=="geomacro.free-derived-archive-eligibility.v1"||
+     doc.retention_hours!==72||doc.eligibility_policy!=="CONCRETE_ORIGINAL_RELEASE_UNSCORED_ONLY"||
+     !Number.isFinite(at)||at>now+60_000||now-at>MAX_STATIC_REFRESH_LAG||
+     at!==latestAt||!cats(original)||!cats(publisher)||!cats(osint)||
+     !Number.isSafeInteger(doc.original_release_eligible_total)||
+     doc.original_release_eligible_total!==sum(original)||
+     !Number.isSafeInteger(doc.pending_publisher_candidate_total)||
+     doc.pending_publisher_candidate_total!==sum(publisher)||
+     !Number.isSafeInteger(doc.pending_osint_total)||
+     doc.pending_osint_total!==sum(osint)||
+     !Number.isSafeInteger(doc.latest_preview_rows)||
+     doc.latest_preview_rows!==(latest.signals as unknown[]).length||
+     !Number.isSafeInteger(doc.latest_preview_official_rows)||
+     (doc.latest_preview_official_rows as number)<currentOfficial.length||
+     !Number.isSafeInteger(doc.eligible_outside_latest_preview)||
+     (doc.eligible_outside_latest_preview as number)>doc.original_release_eligible_total||
+     CAT.some(c=>original[c]<includedByCategory[c])||
+     typeof doc.eligible_ids_sha256!=="string"||
+     !/^[a-f0-9]{64}$/u.test(doc.eligible_ids_sha256)||
+     doc.automatic_on_static_archive_refresh!==true||
+     doc.unverified_promoted!==false||doc.signed_or_scored!==false||
+     doc.paid_customer_eligible!==false||doc.live_payment_authorized!==false||
+     doc.d1_reads!==0||doc.b2_reads!==0||doc.payments!==0)return health;
+  return {...health,body:{...health.body,
+    archive_72h_census_attested:true,
+    archive_72h_eligible_originals:doc.original_release_eligible_total as number,
+    archive_72h_originals_by_category:original,
+    archive_72h_pending_publisher_candidates:doc.pending_publisher_candidate_total as number,
+    archive_72h_pending_unverified_osint:doc.pending_osint_total as number,
+    archive_72h_eligible_outside_latest_preview:doc.eligible_outside_latest_preview as number,
+    archive_72h_as_of:doc.checked_at as string,
+  }};
+}
 export async function probeFreeDerivedDeepHealth({
   fetcher=fetch,now=()=>Date.now(),
 }:{
@@ -170,7 +241,25 @@ export async function probeFreeDerivedDeepHealth({
       return result(false,"FREE_ARCHIVE_TRANSPORT_UNAVAILABLE");
     const text=await response.text();
     if(text.length>1_000_000)return result(false,"FREE_ARCHIVE_RESPONSE_OVERSIZE");
-    return classifyFreeDerivedFeed(JSON.parse(text) as FreeFeed,now());
+    const feed=JSON.parse(text) as FreeFeed;
+    const health=classifyFreeDerivedFeed(feed,now());
+    if(health.statusCode!==200)return health;
+    // Missing/malformed companion summary never changes existing free health;
+    // it simply leaves the wider coverage claim unattested.
+    try{
+      const coverageResponse=await fetcher(COVERAGE_URL,{
+        method:"GET",redirect:"follow",
+        headers:{Accept:"application/json","Cache-Control":"no-cache"},
+        signal:AbortSignal.timeout(5_000),
+      });
+      if(coverageResponse.status!==200||
+         (coverageResponse.url&&new URL(coverageResponse.url).origin!==new URL(FEED_URL).origin)||
+         !(coverageResponse.headers.get("content-type")??"").includes("application/json"))
+        return health;
+      const census=await coverageResponse.text();
+      if(census.length>16_384)return health;
+      return attachArchiveEligibilityCensus(health,feed,JSON.parse(census),now());
+    }catch{return health;}
   }catch{
     return result(false,"FREE_ARCHIVE_TRANSPORT_UNAVAILABLE");
   }

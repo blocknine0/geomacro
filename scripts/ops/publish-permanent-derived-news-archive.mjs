@@ -11,6 +11,7 @@ import {
   cpSync, existsSync, mkdirSync, readFileSync, writeFileSync,
 } from "node:fs";
 import {dirname, join, resolve} from "node:path";
+import {createHash} from "node:crypto";
 import {isSafeDerivedNewsReadbackSignal} from "../lib/derived-news-readback-policy.mjs";
 
 export const ARCHIVE_INDEX_SCHEMA="geomacro.permanent-derived-news-archive-index.v1";
@@ -28,6 +29,7 @@ const D1_FEED_URL="https://geomacro-control-plane.daspallab202391.workers.dev/v1
 const MAX_SIGNAL_BYTES=5_000;
 const MAX_MONTH_SHARD_BYTES=20*1024*1024;
 const MAX_ARCHIVE_AGE_MS=72*60*60_000;
+export const ARCHIVE_CURRENT_COVERAGE_SCHEMA="geomacro.free-derived-archive-eligibility.v1";
 
 function parseObject(text,code){
   try{
@@ -175,9 +177,9 @@ function preferDuplicateCandidate(candidate,current){
  * then round-robin real current rows so one high-volume domain cannot starve
  * macro or critical minerals. Permanent historical shards remain untouched.
  */
-export function selectCurrentArchiveSignals(signals,limit=250){
-  if(!Array.isArray(signals)||!Number.isSafeInteger(limit)||limit<1||limit>250)
-    throw Error("PERMANENT_ARCHIVE_LATEST_SELECTION_INVALID");
+function distinctHeadlineArchiveRows(signals){
+  if(!Array.isArray(signals))
+    throw Error("PERMANENT_ARCHIVE_LATEST_INPUT_INVALID");
   const ids=new Set();
   for(const signal of signals){
     if(!signal||typeof signal!=="object"||Array.isArray(signal)||
@@ -195,7 +197,13 @@ export function selectCurrentArchiveSignals(signals,limit=250){
     const current=uniqueByHeadline.get(key);
     if(!current||preferDuplicateCandidate(signal,current))uniqueByHeadline.set(key,signal);
   }
-  const unique=[...uniqueByHeadline.values()];
+  return sortSignals([...uniqueByHeadline.values()]);
+}
+/** The rolling 250-row latest feed is a preview, not the full immutable archive. */
+export function selectCurrentArchiveSignals(signals,limit=250){
+  if(!Number.isSafeInteger(limit)||limit<1||limit>250)
+    throw Error("PERMANENT_ARCHIVE_LATEST_SELECTION_INVALID");
+  const unique=distinctHeadlineArchiveRows(signals);
   const groups=new Map(CATEGORIES.map(category=>[
     category,sortSignals(unique.filter(signal=>signal.category===category)),
   ]));
@@ -210,6 +218,64 @@ export function selectCurrentArchiveSignals(signals,limit=250){
   }
   return sortSignals(selected);
 }
+/**
+ * Zero-D1, automatic FREE coverage census over ALL current archive shards.
+ * Only concrete official original releases qualify. Candidate publisher
+ * entries and OSINT monitoring remain visible in distinct pending buckets;
+ * no item is converted into paid eligibility, a signature or a risk score.
+ * Unlike latest.json, this census is not truncated at 250 rows.
+ */
+export function buildCurrentArchiveEligibility(signals,now=Date.now(),latest=[]){
+  if(!Array.isArray(signals)||!Number.isFinite(now)||!Array.isArray(latest))
+    throw Error("PERMANENT_ARCHIVE_ELIGIBILITY_INPUT_INVALID");
+  const current=signals.filter(s=>isPermanentArchiveSignal(s,now,{allowHistorical:false}));
+  const distinct=distinctHeadlineArchiveRows(current);
+  const totalCounts=()=>({geopolitics:0,macro:0,rare_earth:0});
+  const eligible=totalCounts(),candidates=totalCounts(),unverified=totalCounts();
+  const eligibleIds=[];
+  for(const row of distinct){
+    if(row.status==="official_release_observed_unscored"){
+      eligible[row.category]++;eligibleIds.push(row.id);
+    }else if(row.status==="official_feed_candidate_unscored"){
+      candidates[row.category]++;
+    }else if(row.status==="osint_feed_observed_unverified"){
+      unverified[row.category]++;
+    }
+  }
+  const sum=counts=>Object.values(counts).reduce((a,b)=>a+b,0);
+  const uniqueCount=distinct.length;
+  const latestIds=new Set(latest.map(row=>row.id));
+  if(latestIds.size!==latest.length||latest.some(row=>!distinct.some(s=>s.id===row.id)))
+    throw Error("PERMANENT_ARCHIVE_ELIGIBILITY_LATEST_MISMATCH");
+  const latestEligible=latest.filter(row=>row.status==="official_release_observed_unscored");
+  const countAll=eligibleIds.length;
+  return Object.freeze({
+    schema:ARCHIVE_CURRENT_COVERAGE_SCHEMA,
+    checked_at:new Date(now).toISOString(),
+    retention_hours:72,
+    eligibility_policy:"CONCRETE_ORIGINAL_RELEASE_UNSCORED_ONLY",
+    original_release_eligible_total:countAll,
+    original_release_by_category:eligible,
+    pending_publisher_candidate_total:sum(candidates),
+    pending_publisher_by_category:candidates,
+    pending_osint_total:sum(unverified),
+    pending_osint_by_category:unverified,
+    unique_current_findings:uniqueCount,
+    duplicate_or_template_excluded:current.length-uniqueCount,
+    latest_preview_rows:latest.length,
+    latest_preview_official_rows:latestEligible.length,
+    eligible_outside_latest_preview:eligibleIds.filter(id=>!latestIds.has(id)).length,
+    eligible_ids_sha256:createHash("sha256").update(eligibleIds.sort().join("\n")).digest("hex"),
+    automatic_on_static_archive_refresh:true,
+    free_website_only:true,
+    unverified_promoted:false,
+    signed_or_scored:false,
+    paid_customer_eligible:false,
+    live_payment_authorized:false,
+    d1_reads:0,b2_reads:0,payments:0,
+  });
+}
+
 function readIndex(dataDir){
   const path=join(dataDir,"index.json");
   if(!existsSync(path))return {
@@ -376,6 +442,8 @@ export async function publishPermanentDerivedNewsArchive({
       supabase_dependency:false,signals:selectCurrentArchiveSignals(recent,250),
     };
     writeFileSync(dataLatest,JSON.stringify(latest,null,2)+"\n",{encoding:"utf8",mode:0o644});
+    const coverage=buildCurrentArchiveEligibility(recent,now,latest.signals);
+    writeFileSync(join(dataDir,"coverage-72h.json"),JSON.stringify(coverage,null,2)+"\n",{encoding:"utf8",mode:0o644});
   }
 
   const indexChanged=added>0||seedCompleteThisRun||index.total_signals!==totalSignals;
