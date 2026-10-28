@@ -16,6 +16,7 @@ on:
       - "src/lib/canonical-country-registry-195.ts"
       - "scripts/tests/news-product-factory.test.mjs"
       - "scripts/lib/macro-*.mjs"
+      - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
       - ".github/workflows/deploy-d1-control-plane.yml"
       - ".github/workflows/recover-d1-quota-deployment-after-reset.yml"
@@ -41,6 +42,7 @@ on:
       - "src/lib/canonical-country-registry-195.ts"
       - "scripts/tests/news-product-factory.test.mjs"
       - "scripts/lib/macro-*.mjs"
+      - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
       # Keep the guarded automatic deployment reachable when the recovery
       # workflow or deploy workflow itself is repaired on canonical main.

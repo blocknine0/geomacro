@@ -1,3 +1,4 @@
+import {GLOBAL_MACRO_TOPIC_PATTERN} from "./global-macro-news-policy.ts";
 import {HOT_TOPIC_FAMILIES,hotTopicIntakePattern,type HotTopicFamily} from './hot-topic-taxonomy.ts';
 export const LAUNCH_NEWS_POLICY_VERSION='geomacro.launch-news-coverage.v1';
 const MACRO_FAMILIES:readonly HotTopicFamily[]=[
@@ -20,7 +21,7 @@ const PRECIOUS=/\b(?:gold|silver|bullion)\b.{0,100}\b(?:demand|supply|prices?|re
 export const LAUNCH_NEWS_TOPIC_PATTERNS=Object.freeze(Object.fromEntries(
  Object.entries(LAUNCH_NEWS_FAMILY_CATEGORIES).map(([category,families])=>{
   const pattern=hotTopicIntakePattern(families);
-  return [category,category==='macro'?new RegExp('(?:'+pattern.source+')|(?:'+PRECIOUS.source+')','iu'):pattern];
+  return [category,category==='macro'?new RegExp('(?:'+pattern.source+')|(?:'+PRECIOUS.source+')|(?:'+GLOBAL_MACRO_TOPIC_PATTERN.source+')','iu'):pattern];
  })
 ) as Record<'geopolitics'|'macro'|'rare_earth',RegExp>);
 
@@ -29,6 +30,8 @@ export function launchNewsCoveragePolicy(){
  return {version:LAUNCH_NEWS_POLICY_VERSION,families:HOT_TOPIC_FAMILIES.length,
   category_families:LAUNCH_NEWS_FAMILY_CATEGORIES,
   fastlane_target_minutes:5,discovery_target_minutes:15,guaranteed_latency:false,
+  macro_extension_targets:['official_leader_communications','global_cpi_jobs_growth','banking_liquidity_and_stability','global_trade_tariffs','hormuz_shipping_and_freight'],
+  observed_market_reaction_requires_separate_price_evidence:true,
   original_native_time_required:true,index_time_is_original_time:false,
   paid_delivery_requires_request_scoped_evidence_rights_and_signature:true,
   source_registration_is_live_coverage:false,raw_redistribution_authorized:false};

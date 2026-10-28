@@ -1,16 +1,17 @@
+import {GLOBAL_MACRO_TOPIC_PATTERN} from "../../src/lib/global-macro-news-policy.ts";
 import {MACRO_NEWS_SOURCES,planMacroSources,pinnedMacroArticle,boundedMacroGet,normalizeMetalQuote,macroPreciousTopic} from './macro-fx-metals.mjs';
 import {MACRO_CALENDARS,parseMacroCalendar} from './macro-release-calendar.mjs';
 import {verifiedPublisherPageDate} from './official-original-article-date.mjs';
 const clean=s=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]*>/g,' ').replace(/&(?:amp|quot|apos|#39);/g,e=>({'&amp;':'&','&quot;':'"','&apos;':"'",'&#39;':"'"})[e]).replace(/\s+/g,' ').trim();
 const tag=(s,name)=>new RegExp('<(?:atom:)?'+name+'(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:atom:)?'+name+'>','i').exec(s)?.[1]??'';
-const relevant=t=>macroPreciousTopic(t)||/\b(?:monetary|interest rates?|policy rates?|federal funds|FOMC|repo|inflation|consumer price|producer price|employment|payroll|foreign exchange|currency|exchange rate|financial stability|liquidity|balance of payments|reserve assets?|gold reserves?|manufacturing|industrial demand|solar demand|positioning|commitments of traders)\b/i.test(t);
+const relevant=t=>macroPreciousTopic(t)||GLOBAL_MACRO_TOPIC_PATTERN.test(t)||/\b(?:monetary|interest rates?|policy rates?|federal funds|FOMC|repo|inflation|consumer price|producer price|employment|payroll|foreign exchange|currency|exchange rate|financial stability|liquidity|balance of payments|reserve assets?|gold reserves?|manufacturing|industrial demand|solar demand|positioning|commitments of traders)\b/i.test(t);
 export function parseMacroFeed(xml,spec,now){
  if(typeof xml!=='string'||xml.length>384*1024||/<!DOCTYPE|<!ENTITY/i.test(xml))throw Error('FEED_SHAPE_INVALID');
  if(spec.media==='atom'?!/<(?:atom:)?feed(?:\s|>)/i.test(xml):!/<rss(?:\s|>)/i.test(xml))throw Error('FEED_SHAPE_INVALID');
  const pattern=spec.media==='atom'?/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/gi:/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi;
  const rows=[],seen=new Set();
  for(const [,item]of [...xml.matchAll(pattern)].slice(0,75)){
-  const title=clean(tag(item,'title'));if(title.length<12||title.length>300||!relevant(title))continue;
+  const title=clean(tag(item,'title'));if(title.length<12||title.length>300||!(spec.official_communication===true||relevant(title)))continue;
   const rawLink=spec.media==='atom'?/<(?:atom:)?link\b[^>]*href=["']([^"']+)["']/i.exec(item)?.[1]:clean(tag(item,'link'));
   const articleUrl=pinnedMacroArticle(rawLink,spec);if(!articleUrl||seen.has(articleUrl))continue;
   const clock=clean(spec.id==='snb_monetary'?tag(item,'dc:date'):tag(item,spec.media==='atom'?'published':'pubDate'));
@@ -25,7 +26,7 @@ export function macroIndexLeads(html,spec){
  const leads=[],seen=new Set();
  for(const [,link,title]of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)){
   const articleUrl=pinnedMacroArticle(link,spec),name=clean(title);
-  if(!articleUrl||seen.has(articleUrl)||name.length<12||name.length>300||!relevant(name))continue;
+  if(!articleUrl||seen.has(articleUrl)||name.length<12||name.length>300||!(spec.official_communication===true||relevant(name)))continue;
   seen.add(articleUrl);leads.push({articleUrl,title:name});if(leads.length===2)break;
  }
  return leads;

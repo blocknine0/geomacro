@@ -1,3 +1,4 @@
+import {GLOBAL_MACRO_RELEASE_PATTERN,marketRelevantOfficialCommunication} from "./global-macro-news-policy.ts";
 import {classifyHotTopicEvent} from "./hot-topic-taxonomy.ts";
 import {LAUNCH_NEWS_FAMILY_CATEGORIES} from "./launch-news-coverage.ts";
 /**
@@ -121,7 +122,10 @@ export function normalizeReusableNewsJson(input:unknown){
     LAUNCH_NEWS_FAMILY_CATEGORIES[category].includes(f));
   // Finite reviewed tags only; no title text or rights promotion. Keep the
   // existing 12-tag D1 contract and all original legacy event tags first.
-  const eventTypes=[...new Set([...legacyTypes,...families])].slice(0,12);
+  const eventTypes=[...new Set([...legacyTypes,...families,
+    ...(category==='macro'&&GLOBAL_MACRO_RELEASE_PATTERN.test(prose)?['global_macro_release']:[]),
+    ...(category==='macro'&&marketRelevantOfficialCommunication(prose)?['official_communication']:[]),
+  ])].slice(0,12);
   const actions=ACTIONS.filter(([,re])=>re.test(prose)).map(([tag])=>tag);
   const entities=ACTORS.filter(([,re])=>re.test(prose)).map(([tag])=>tag);
   const sourceName=d.source_name?normalizedText(d.source_name as string):null;
