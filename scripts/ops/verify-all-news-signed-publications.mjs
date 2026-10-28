@@ -3,7 +3,7 @@ import {ORIGINAL_VERIFICATION_WINDOW_MS,ORIGINAL_VERIFICATION_WINDOW_HOURS} from
 import {createHmac} from 'node:crypto';
 import {writeFileSync,lstatSync} from 'node:fs';
 import {resolve,isAbsolute} from 'node:path';
-import {safeSignedNewsFailureReceipt} from '../lib/signed-news-safe-diagnostic.mjs';
+import {safeSignedNewsFailureReceipt,safeSignedNewsReason} from '../lib/signed-news-safe-diagnostic.mjs';
 import {pathToFileURL} from 'node:url';
 import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client.ts';
 import {automatedInputContent,automatedInputId,inputHash,verifyAutomatedInput} from '../../src/lib/automated-intelligence-input.ts';
@@ -64,7 +64,11 @@ async function fetchSignedNewsPage(url,fetchImpl,proofBearer){
  throw Error('SIGNED_NEWS_HTTP_UNAVAILABLE');
 }
 export function publicationVerificationKeys(env=process.env){
- const keys=JSON.parse(env.RISK_OBJECT_VERIFY_KEYS_JSON||'{}');
+ let keys;
+ try{keys=JSON.parse(env.RISK_OBJECT_VERIFY_KEYS_JSON||'{}')}
+ catch{throw Error('SIGNED_NEWS_KEY_REGISTRY_INVALID')}
+ if(!keys||typeof keys!=='object'||Array.isArray(keys))
+  throw Error('SIGNED_NEWS_KEY_REGISTRY_INVALID');
  const id=env.RISK_OBJECT_SIGNING_KEY_ID,pub=env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64;
  if(id&&pub){
   const old=keys[id];
@@ -85,9 +89,19 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
  // Quota exhaustion, bad JSON, invalid schemas, expired clocks and forged
  // signatures NEVER receive a successful fallback or unlimited requests.
  let staleJournalRetriesLeft=1;
+ // Keep source and SQL contents out of GitHub logs even when an unexpected
+ // exception originates BEFORE the private proof endpoint is accessed.
+ const readCanonicalJournal=async()=>{
+  try{return await readJournal(fetchImpl,now)}
+  catch(error){
+   if(safeSignedNewsReason(error)==='SIGNED_NEWS_UNCLASSIFIED_OR_NETWORK_FAILURE')
+    throw Error('SIGNED_NEWS_CANONICAL_JOURNAL_READ_UNCLASSIFIED');
+   throw error;
+  }
+ };
  attempts: for(let attempt=0;attempt<3;attempt++) {
   let journal;
-  try{journal=await readJournal(fetchImpl,now)}
+  try{journal=await readCanonicalJournal()}
   catch(error){
    if(staleJournalRetriesLeft===0||
       !['DERIVED_NEWS_BUNDLE_STALE_READBACK',
@@ -95,16 +109,20 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
      throw error;
    staleJournalRetriesLeft--;
    await waitBeforeRetry(1);
-   journal=await readJournal(fetchImpl,now);
+   journal=await readCanonicalJournal();
   }
   const expected=new Set(),contentOrder=new Map();
-  for(const signal of journal){
-   expected.add(await automatedInputId(signal));
-   const content=automatedInputContent(signal);
-   if(!contentOrder.has(content))contentOrder.set(content,signal);
-  }
+  try{
+   for(const signal of journal){
+    expected.add(await automatedInputId(signal));
+    const content=automatedInputContent(signal);
+    if(!contentOrder.has(content))contentOrder.set(content,signal);
+   }
+  }catch{throw Error('SIGNED_NEWS_INPUT_CANONICALIZATION_UNAVAILABLE')}
   if(expected.size===0||expected.size>600)throw Error('SIGNED_NEWS_NO_RETAINED_INPUT');
-  const expectedFingerprint=await inputHash(JSON.stringify([...contentOrder.keys()]));
+  let expectedFingerprint;
+  try{expectedFingerprint=await inputHash(JSON.stringify([...contentOrder.keys()]))}
+  catch{throw Error('SIGNED_NEWS_INPUT_CANONICALIZATION_UNAVAILABLE')}
   const seen=new Set();let signed=0,original=0,current=0,currentEligible=0;
   // Same signed canonical proof page, NO extra D1/HTTP requests. Keep the
   // published release clock separate from the issuer signature and native
@@ -117,7 +135,10 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
   let journalChanged=false;
   for(let offset=0;offset<600;offset+=40){
    const response=await fetchSignedNewsPage(URL+'?offset='+offset,fetchImpl,proofBearer);
-   const text=await response.text();if(text.length>500000)throw Error('SIGNED_NEWS_RESPONSE_OVERSIZE');
+   let text;
+   try{text=await response.text()}
+   catch{throw Error('SIGNED_NEWS_PROOF_BODY_UNAVAILABLE')}
+   if(text.length>500000)throw Error('SIGNED_NEWS_RESPONSE_OVERSIZE');
    let page;
    try{page=JSON.parse(text)}catch{throw Error('SIGNED_NEWS_RESPONSE_JSON_INVALID')}
    if(page.ok!==true||page.schema!=='geomacro.public-signed-derived-news.v1'||
@@ -137,13 +158,18 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
     journalChanged=true;break;
    }
    for(const item of page.items){
-    const id=await automatedInputId(item.signal);
+    let id;
+    try{id=await automatedInputId(item.signal)}
+    catch{throw Error('SIGNED_NEWS_INPUT_CANONICALIZATION_UNAVAILABLE')}
     if(id!==item.input_id||!expected.has(id)||seen.has(id))throw Error('SIGNED_NEWS_IDENTITY_OR_COVERAGE');
     seen.add(id);
     if(item.signature_verified!==true||!item.proof)throw Error('SIGNED_NEWS_ITEM_NOT_SIGNED');
     try{await verifyAutomatedInput(item.proof,keys,now)}
     catch{throw Error('SIGNED_NEWS_SIGNATURE_INVALID')}
-    if(await automatedInputId(item.proof.payload.signal)!==id)throw Error('SIGNED_NEWS_PROOF_BINDING');
+    let proofId;
+    try{proofId=await automatedInputId(item.proof.payload.signal)}
+    catch{throw Error('SIGNED_NEWS_PROOF_BINDING')}
+    if(proofId!==id)throw Error('SIGNED_NEWS_PROOF_BINDING');
     const age=now-Date.parse(item.signal.published_at);
     const isCurrent=item.signal.date_precision==='exact'&&age>=0&&age<=60*60_000;
     const qualified=item.signal.status==='official_release_observed_unscored';

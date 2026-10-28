@@ -87,3 +87,20 @@ test('canonical D1 bundle and quota failures are exact, redacted and never comme
  assert.equal(unknown.reason,'SIGNED_NEWS_UNCLASSIFIED_OR_NETWORK_FAILURE');
  assert.doesNotMatch(JSON.stringify(unknown),/PRIVATE_SQL|example.com/u);
 });
+
+test('four independent owner-only diagnostic stages fail closed without private details',()=>{
+ for(const stage of ['SIGNED_NEWS_KEY_REGISTRY_INVALID',
+  'SIGNED_NEWS_CANONICAL_JOURNAL_READ_UNCLASSIFIED',
+  'SIGNED_NEWS_INPUT_CANONICALIZATION_UNAVAILABLE',
+  'SIGNED_NEWS_PROOF_BODY_UNAVAILABLE']){
+  const result=safeSignedNewsFailureReceipt(new Error(stage));
+  assert.equal(result.reason,stage);
+  assert.equal(result.machine_signature_authorized_by_this_result,false);
+  assert.equal(result.paid_delivery_authorized,false);
+  assert.equal(result.source_material_logged,false);
+  assert.equal(result.private_keys_logged,false);
+ }
+ assert.equal(safeSignedNewsReason(new Error(
+  'SIGNED_NEWS_PROOF_BODY_UNAVAILABLE=https://secret.example')),
+  'SIGNED_NEWS_UNCLASSIFIED_OR_NETWORK_FAILURE');
+});
