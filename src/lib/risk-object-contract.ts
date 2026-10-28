@@ -189,6 +189,10 @@ export type RiskIntegrity = {
     | null;
 
   signing_key_id: string | null;
+  /** Optional public registry metadata already emitted by the signer. */
+  trust_registry_url?: string;
+  canonicalization_url?: string;
+  public_key_spki_b64?: string;
 };
 
 export type GeomacroRiskObject = {
