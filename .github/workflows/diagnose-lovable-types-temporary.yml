@@ -1,11 +1,8 @@
-name: Temporary TypeScript mirror diagnostics (no secrets)
+name: Lovable Source Typecheck Diagnostics (On Demand)
+# On-demand only; the main Product CI is the sole required strict type gate.
+# Kept as a bounded no-secrets diagnostic in the protected workflow inventory.
 on:
-  pull_request:
-    paths:
-      - "tsconfig.json"
-      - "src/**/*.ts"
-      - "src/**/*.tsx"
-      - ".github/workflows/diagnose-lovable-types-temporary.yml"
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
