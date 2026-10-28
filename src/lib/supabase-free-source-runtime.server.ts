@@ -70,7 +70,7 @@ export async function runSupabaseFreeSourceRuntime({state,fetchImpl=fetch,now=ne
     b2_requests:0,payments:0,scored:false,independent_reviewed:false,chargeable:false};
   if(supabaseAttempts!==0||JSON.stringify(report).length>64_000||/https?:\/\/|www\./iu.test(JSON.stringify(report)))
     throw Error("SOURCE_RUNTIME_BOUNDARY_FAILED");
-  const healthy=contexts.every(x=>x.context.source_families_readable>0)&&!!event&&typeof event==="object"&&"archive_integrity_verified" in event&&event.archive_integrity_verified===true&&gkg?.archive_integrity_verified===true;
+  const healthy=contexts.every(x=>x.context.source_families_readable>0)&&!!event&&typeof event==="object"&&"archive_integrity_verified" in event&&(event as {archive_integrity_verified?:unknown}).archive_integrity_verified===true&&gkg?.archive_integrity_verified===true;
   await state.persist("summary",{report},{cursor:{status:healthy?"healthy":"degraded"},
     last_attempt_at:now.toISOString(),last_success_at:healthy?now.toISOString():previous.get("summary")?.last_success_at??null});
   const readback=await state.loadRows();
