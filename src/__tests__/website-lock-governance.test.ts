@@ -91,7 +91,20 @@ describe("website lock governance", () => {
     expect(askChatApproval.approved_ui_commit).toBe(publicAskApproval.previous_baseline_sha);
     const priceDedup=config.approved_store_price_dedup_news_coverage_20261028;
     expect(publicAskApproval.approved_ui_commit).toBe(priceDedup.previous_baseline_sha);
-    expect(priceDedup.approved_ui_commit).toBe(config.baseline_sha);
+    const riskIndicesApproval=config.approved_risk_indices_public_research_20261028;
+    expect(priceDedup.approved_ui_commit).toBe(riskIndicesApproval.previous_baseline_sha);
+    expect(riskIndicesApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(riskIndicesApproval.scope).toEqual([
+      "src/components/risk-indices/risk-indices-workspace.tsx",
+      "src/routes/risk-indices.tsx",
+    ]);
+    expect(riskIndicesApproval.global_risk_final_lock_unmodified).toBe(true);
+    expect(riskIndicesApproval.predge_unmodified).toBe(true);
+    expect(riskIndicesApproval.internal_signed_news_scores_not_exposed).toBe(true);
+    expect(riskIndicesApproval.independent_numerical_gri_forgery_prohibited).toBe(true);
+    expect(riskIndicesApproval.payment_authorized).toBe(false);
+    expect(riskIndicesApproval.lovable_publish_required).toBe(true);
+    expect(riskIndicesApproval.pending_exact_sha_live_deployment_acceptance).toBe(true);
     expect(priceDedup.paid_pricing_unmodified).toBe(true);
     expect(priceDedup.payment_authorized).toBe(false);
     expect(publicAskApproval.public_information_only).toBe(true);
