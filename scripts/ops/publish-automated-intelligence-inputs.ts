@@ -2,10 +2,12 @@ import {createHmac} from 'node:crypto';
 import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client';
 import {automatedInputId,verifyAutomatedInput,type AutomatedInputEnvelope} from '../../src/lib/automated-intelligence-input';
 import {signAutomatedIntelligenceInput,loadRiskObjectVerificationKeysFromEnv} from '../../src/lib/risk-object-signing.server';
+import {publishInternalSignedNewsScores} from './publish-internal-signed-news-scores';
 
 const ENDPOINT='https://geomacro-control-plane.daspallab202391.workers.dev/v1/intelligence-inputs/automated';
 export async function publishAutomatedIntelligenceInputs({fetchImpl=fetch,env=process.env,now=new Date(),
  readJournal=fetchAllDerivedNews,sign=signAutomatedIntelligenceInput,keys=loadRiskObjectVerificationKeysFromEnv(),
+ publishScores=publishInternalSignedNewsScores,
 }={}){
  const root=env.GEOMACRO_COMMERCE_LEDGER_TOKEN??'';
  if(root.trim().length<32||!/^\d{1,20}$/.test(env.GITHUB_RUN_ID??'')||!/^[a-f0-9]{40}$/.test(env.GITHUB_SHA??''))
@@ -69,7 +71,15 @@ export async function publishAutomatedIntelligenceInputs({fetchImpl=fetch,env=pr
  const after=await call(ENDPOINT+'?view=ids');
  if(after.schema!=='geomacro.automated-intelligence-input-feed.v1'||!Array.isArray(after.ids)||
   [...unique.keys()].some(id=>!after.ids.includes(id)))throw Error('AUTOMATED_INPUT_PERSISTENCE_INCOMPLETE');
- return {schema:'geomacro.automated-intelligence-input-run.v1',retained_items:retained.length,
+ // Reuse this exact validated 72-hour journal, the existing producer signer
+ // and the same protected D1. No second public/D1 read and no new cron.
+ // Every input gets an independent domain-separated internal score signature.
+ const scored=await publishScores({signals:retained,fetchImpl,env,now,keys});
+ if(scored.all_retained_inputs_signed_scored!==true||
+  scored.unique_source_inputs!==unique.size)
+  throw Error('AUTOMATED_INPUT_SCORE_COVERAGE_MISMATCH');
+ return {schema:'geomacro.automated-intelligence-input-run.v1',
+  internal_scored_news:scored,retained_items:retained.length,
   unique_items:unique.size,duplicates_excluded:retained.length-unique.size,
   already_signed:unique.size-pending.length,new_signed_inputs:signed,
   all_retained_unique_inputs_present:true,manual_approval_required:false,
