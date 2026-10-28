@@ -16,6 +16,8 @@ on:
       - "scripts/lib/risk-indices-verified-d1-parent.mjs"
       - "scripts/lib/risk-indices-verified-d1-parent.test.mjs"
       - "scripts/ops/publish-risk-indices-from-verified-global-risk.mjs"
+      - "scripts/ops/verify-risk-indices-live-continuity.mjs"
+      - "scripts/lib/risk-indices-live-continuity.test.mjs"
       - "scripts/ops/assert-gri-continuation-ancestry.mjs"
       - "scripts/ops/assert-gri-continuation-ancestry.test.mjs"
   push:
@@ -45,6 +47,7 @@ jobs:
           node --check scripts/lib/risk-indices-verified-d1-parent.test.mjs
           node --check scripts/ops/publish-risk-indices-from-verified-global-risk.mjs
           node --test scripts/lib/risk-indices-verified-d1-parent.test.mjs
+          node --test scripts/lib/risk-indices-live-continuity.test.mjs
           node --test scripts/ops/assert-gri-continuation-ancestry.test.mjs
   publish:
     needs: source-contract-tests
@@ -119,6 +122,10 @@ jobs:
           echo "D1_DATABASE_ID=$id" >> "$GITHUB_ENV"
       - name: Promote only genuinely current verified parent with B2 readbacks
         run: bun scripts/ops/publish-risk-indices-from-verified-global-risk.mjs --verified-d1-parent-only
+      - name: Verify live Risk Indices edge exact D1 readback (no funds)
+        # After independent signed parent promotion; never executed on
+        # contract-only, pull-request or missing-reviewed-input runs.
+        run: node scripts/ops/verify-risk-indices-live-continuity.mjs
       - name: Verify live product (no funds)
         run: |
           set -euo pipefail
