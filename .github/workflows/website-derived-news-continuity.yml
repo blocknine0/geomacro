@@ -110,6 +110,11 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 22
+      - name: Verify shared Website archive and PREDGE journal recovery contracts
+        run: |
+          node --check scripts/lib/website-news-canonical-reconciliation.mjs
+          node --test scripts/tests/website-news-canonical-reconciliation.test.mjs
+          node --check scripts/ops/publish-permanent-derived-news-archive.mjs
       - name: Verify permanent archive append-only behavior without production credentials
         run: |
           node --check scripts/ops/publish-permanent-derived-news-archive.mjs
@@ -155,6 +160,72 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/ops/plan-d1-bundled-work.mjs
 
+  archive-only-when-d1-held:
+    needs: quota-admission
+    # Same hourly publisher, but protect scarce D1 source-intake reserve.
+    # No paid/provider/PREDGE mutations and no second ingestion schedule.
+    if: >-
+      needs.quota-admission.outputs.research != 'true' &&
+      github.event_name == 'schedule' &&
+      github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: production
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Collect derived originals and archive candidate only (zero D1)
+        env:
+          GEOMACRO_DERIVED_ARCHIVE_ONLY: "1"
+        run: bun scripts/ops/publish-website-derived-news.ts
+      - name: Publish append-only permanent Finds archive without D1 dependency
+        id: permanent-archive
+        if: always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::PERMANENT_ARCHIVE_CLOUDFLARE_TOKEN_MISSING"; exit 2; }
+          test "${#CLOUDFLARE_ACCOUNT_ID}" -eq 32 || { echo "::error::PERMANENT_ARCHIVE_CLOUDFLARE_ACCOUNT_MISSING"; exit 2; }
+          auth_header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+          archive_ref="refs/remotes/origin/geomacro-permanent-finds-archive"
+          git -c http.extraheader="$auth_header" fetch origin "refs/heads/geomacro-permanent-finds-archive:$archive_ref"
+          archive_dir="$RUNNER_TEMP/geomacro-permanent-finds-archive"
+          git worktree add --detach "$archive_dir" "$archive_ref"
+          assets_dir="$GITHUB_WORKSPACE/workers/public-finds-archive/assets"
+          node scripts/ops/publish-permanent-derived-news-archive.mjs \
+            "$archive_dir" "$assets_dir" artifacts/derived-news/permanent-archive-candidates.json
+          result_file="$RUNNER_TEMP/permanent-derived-news-archive-result.json"
+          test -s "$result_file" || { echo "::error::PERMANENT_ARCHIVE_RESULT_MISSING"; exit 2; }
+          deploy_needed="$(jq -r '.deploy_needed == true' "$result_file")"
+          git -C "$archive_dir" add data
+          if ! git -C "$archive_dir" diff --cached --quiet; then
+            git -C "$archive_dir" config user.name "github-actions[bot]"
+            git -C "$archive_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$archive_dir" commit -m "Append permanent Geomacro Finds archive"
+            git -C "$archive_dir" -c http.extraheader="$auth_header" push origin HEAD:refs/heads/geomacro-permanent-finds-archive
+          fi
+          echo "deploy_needed=$deploy_needed" >> "$GITHUB_OUTPUT"
+          if [[ "$deploy_needed" != "true" ]]; then
+            echo "Permanent static archive has no new state to deploy."
+            exit 0
+          fi
+          cd workers/public-finds-archive
+          npx -y wrangler@4.136.3 deploy --config wrangler.jsonc
+
   refresh-derived-news:
     concurrency:
       group: geomacro-permanent-news-publication
@@ -198,6 +269,10 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
+      - name: Verify canonical Website-to-partner archive catch-up contract
+        run: | 
+          node --check scripts/lib/website-news-canonical-reconciliation.mjs
+          node --test scripts/tests/website-news-canonical-reconciliation.test.mjs
       - name: Verify append-only permanent archive retains old items and tolerates D1 outage
         run: |
           node --check scripts/ops/publish-permanent-derived-news-archive.mjs
@@ -288,6 +363,14 @@ jobs:
           fi
           cd workers/public-finds-archive
           npx -y wrangler@4.136.3 deploy --config wrangler.jsonc
+      - name: Catch up 72h archived Website IDs to the common D1 partner journal
+        if: ${{ steps.permanent-archive.outcome == 'success' && success() }}
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: bun scripts/ops/reconcile-website-news-to-d1.ts
+      - name: Verify all eligible Website archive IDs have canonical D1 readback
+        if: ${{ success() }}
+        run: node --test scripts/tests/website-news-canonical-reconciliation.test.mjs
       - name: Refresh retained actor-action news from existing private originals without changing clocks
         if: always()
         env:
