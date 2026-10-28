@@ -141,7 +141,7 @@ describe("separate public risk indices contract", () => {
     const view=read("src/components/risk-indices/risk-indices-workspace.tsx");
     expect(hook).toContain("const response=await readGeoMacroCertifiedNewsRisk()");
     expect(hook).toContain("GEOMACRO_CERTIFIED_NEWS_GRI_URL");
-    expect(worker).toContain('NEWS_GRI_METHOD="geomacro-news-severity-v1.0.0"');
+    expect(worker).toContain('NEWS_GRI_METHOD="geomacro-news-severity-v1.1.0"');
     expect(worker).toContain("source_event_facts_independently_verified:false");
     expect(worker).toContain("independent_third_party_certified:false");
     expect(view).toContain("GeoMacro Certified GRI");
