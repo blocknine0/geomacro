@@ -212,7 +212,7 @@ const GLOBAL_SOURCES:readonly StatelessSourceSpec[]=GLOBAL_OFFICIAL_RELEASE_FEED
     !SOURCES.some(old=>old.id===s.websiteId ||
       (old.url===s.url && old.category===s.category)))
   .map(s=>({
-    id:s.id,category:s.category,media:s.format==='rss'?'rss' as const:'html_index' as const,
+    id:s.id,category:s.category as StatelessCategory,media:s.format==='rss'?'rss' as const:'html_index' as const,
     url:s.url,allowedHosts:[s.host],credit:s.credit,...(s.format==='json'?{govContentApi:true}:{}),
   }));
 
