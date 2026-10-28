@@ -19,10 +19,15 @@ export function evaluateD1LaunchWindow(receipts,{hours=72,maxGapMinutes=90}={}){
  const reasons=new Set();
  if(!sorted.length)return Object.freeze({status:"PENDING",hours_observed:0,samples:0,reasons:["NO_RECEIPTS"],daily:[]});
  const end=Date.parse(sorted.at(-1).observed_at_utc),start=end-hours*HOUR;
- const window=sorted.filter(x=>Date.parse(x.observed_at_utc)>=start);
+ // Keep the nearest observation at/before the boundary. Scheduled jobs
+ // have jitter; dropping that anchor either shortens the proof or makes
+ // a genuine 72-hour window impossible to establish.
+ const anchor=sorted.findLastIndex(x=>Date.parse(x.observed_at_utc)<=start);
+ const window=anchor>=0?sorted.slice(anchor):sorted;
  if(window.length<Math.floor(hours*60/maxGapMinutes))
   reasons.add("SAMPLING_DENSITY_INSUFFICIENT");
- if(Date.parse(window[0].observed_at_utc)>start+maxGapMinutes*60_000)
+ if(Date.parse(window[0].observed_at_utc)>start||
+    start-Date.parse(window[0].observed_at_utc)>maxGapMinutes*60_000)
   reasons.add("WINDOW_START_UNOBSERVED");
  for(let i=1;i<window.length;i++){
   const diff=Date.parse(window[i].observed_at_utc)-Date.parse(window[i-1].observed_at_utc);
@@ -74,7 +79,7 @@ export function evaluateD1LaunchWindow(receipts,{hours=72,maxGapMinutes=90}={}){
  }
  if(deferredSeen&&recoveryVerified===0)
   reasons.add("DEFERRED_REPLAY_NOT_OBSERVED");
- if(window.length&&end-Date.parse(window[0].observed_at_utc)<(hours*HOUR-maxGapMinutes*60_000))
+ if(window.length&&end-Date.parse(window[0].observed_at_utc)<hours*HOUR)
   reasons.add("OBSERVATION_WINDOW_TOO_SHORT");
  return Object.freeze({
   schema:"geomacro.d1-launch-72h-acceptance.v1",
