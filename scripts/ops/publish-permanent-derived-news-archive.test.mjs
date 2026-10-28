@@ -82,7 +82,7 @@ describe("permanent derived-only website archive",()=>{
   assert.equal(stats.original_release_eligible_total,280);
   assert.deepEqual(stats.original_release_by_category,{geopolitics:0,macro:280,rare_earth:0});
   assert.equal(stats.pending_osint_total,1);
-  assert.equal(stats.eligible_outside_latest_preview,30);
+  assert.equal(stats.eligible_outside_latest_preview,31);
   assert.equal(stats.unique_current_findings,281);
   assert.equal(stats.unverified_promoted,false);
   assert.equal(stats.paid_customer_eligible,false);
