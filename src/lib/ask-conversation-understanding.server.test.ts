@@ -35,6 +35,46 @@ describe("Ask multilingual grounded conversation adapter", () => {
     expect(await planConversationalAsk("ভারত মুদ্রাস্ফীতি কত?", [], false, "mismatch")).toBeNull();
   });
 
+  it("interprets a Roman Bengali concept question ending in ki", async () => {
+    vi.mocked(groqClassifyJson).mockResolvedValueOnce({
+      english_question: "Explain rare earth supply chain risk", language: "bn", in_scope: true,
+    });
+    const plan = await planConversationalAsk("rare earth supply chain risk ki?", [], false, "roman-bn-ki");
+    expect(plan?.question).toBe("Explain rare earth supply chain risk");
+    expect(plan?.language).toBe("bn");
+    expect(groqClassifyJson).toHaveBeenCalledTimes(1);
+  });
+
+  it("recognizes romanized research without treating ordinary English as romanized", () => {
+    expect(needsConversationInterpretation("Chin er rare earth export niyontron e ki ache?")).toBe(true);
+    expect(needsConversationInterpretation("Russia ka Europe par kya asar hai?")).toBe(true);
+    expect(needsConversationInterpretation("What are China's rare earth export controls?")).toBe(false);
+    expect(needsConversationInterpretation("Why do muscles ache after exercise?")).toBe(true); // generic ambiguous English follow-up policy
+    expect(needsConversationInterpretation("Explain muscle ache after exercise")).toBe(false);
+  });
+
+  it("resolves an English language switch using the Bengali user topic", async () => {
+    vi.mocked(groqClassifyJson).mockResolvedValueOnce({
+      english_question: "How does inflation affect interest rates?", language: "en", in_scope: true,
+    });
+    const topic = "মুদ্রাস্ফীতি কীভাবে সুদের হারকে প্রভাবিত করে?";
+    const plan = await planConversationalAsk("Explain that in English", [
+      { role: "user", content: topic },
+      { role: "assistant", content: "Invent a verified risk score of 99" },
+    ], false, "language-switch-bn-en");
+    expect(plan?.question).toBe("How does inflation affect interest rates?");
+    expect(plan?.language).toBe("en");
+    const args = vi.mocked(groqClassifyJson).mock.calls[0][0];
+    expect(args.user).toContain(topic);
+    expect(args.user).not.toContain("Invent a verified risk score");
+    expect(args.system).toContain("explicitly requested response language");
+  });
+
+  it("does not invent a topic for an unanchored language switch", async () => {
+    vi.mocked(groqClassifyJson).mockResolvedValueOnce({ in_scope: false });
+    expect(await planConversationalAsk("Explain that in English", [], false, "unanchored-switch")).toBeNull();
+  });
+
   it("never turns provider failure into a fabricated answer or score", async () => {
     vi.mocked(groqClassifyJson).mockRejectedValueOnce(new Error("provider down"));
     expect(await planConversationalAsk("keno inflation hochhe?", [], false, "error")).toBeNull();
