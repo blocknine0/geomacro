@@ -33,7 +33,7 @@ on:
       - "scripts/tests/public-materialized-worker-import.test.mjs"
       - "scripts/tests/verify-public-d1-materialization-live.test.mjs"
       - "scripts/tests/materialized-origin-owner-route.test.mjs"
-      - "scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs"
+      - "scripts/tests/summarize-d1-reads-insights.test.mjs"
   push:
     branches:
       - main
@@ -62,7 +62,7 @@ on:
       - "scripts/tests/verify-public-d1-materialization-live.test.mjs"
       - "scripts/tests/materialized-origin-owner-route.test.mjs"
       - "scripts/ops/summarize-d1-reads-insights.mjs"
-      - "scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs"
+      - "scripts/tests/summarize-d1-reads-insights.test.mjs"
       - "src/lib/original-verification-policy.ts"
       - "src/lib/release-news-observation.ts"
       - "src/lib/private-source-handoff.ts"
