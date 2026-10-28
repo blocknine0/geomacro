@@ -2,8 +2,65 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-28T06:54:21.886Z",
+  "updated_at": "2026-10-28T07:43:39.656Z",
   "signals": [
+    {
+      "id": "macro-f3ef43c1",
+      "category": "macro",
+      "title": "Geomacro finds Dormakaba reported 4% organic sales growth in first quarter By Investing.com - Investing.com South Africa",
+      "what_changed": "A monitored source feed reports: Dormakaba reported 4% organic sales growth in first quarter By Investing.com - Investing.com South Africa. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T07:06:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b25cbfd1",
+      "category": "macro",
+      "title": "Geomacro finds China Central Bank Marginally lowered Daily Yuan Fix - TradingPedia",
+      "what_changed": "A monitored source feed reports: China Central Bank Marginally lowered Daily Yuan Fix - TradingPedia. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T06:55:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-28af8737",
+      "category": "macro",
+      "title": "Geomacro finds Trump said he's ending restrictions on climate-warming methane from oil drilling",
+      "what_changed": "A monitored source feed reports: Trump said he's ending restrictions on climate-warming methane from oil drilling. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T06:15:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: feeds.npr.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-68f6539f",
       "category": "macro",
@@ -14,6 +71,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T05:48:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2c81c85a",
+      "category": "macro",
+      "title": "Geomacro finds Gold and Silver Prices increased in Nepali Market - Ratopati",
+      "what_changed": "A monitored source feed reports: Gold and Silver Prices increased in Nepali Market - Ratopati. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T05:32:13.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -43,6 +119,25 @@
       "severity": null
     },
     {
+      "id": "macro-42bfff7c",
+      "category": "macro",
+      "title": "Geomacro finds Jewellers held back gold purchases betting on further price drops - Business Standard",
+      "what_changed": "A monitored source feed reports: Jewellers held back gold purchases betting on further price drops - Business Standard. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T04:13:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-ce140193",
       "category": "macro",
       "title": "Geomacro finds Silver Automation Instruments released High-Viscosity Oil Flow Meter Selection Guide as Heavy-Oil Metering Demand Grows - Asia News Network",
@@ -56,6 +151,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-738002ec",
+      "category": "macro",
+      "title": "Geomacro finds Trump said he’ll roll back Biden-era methane rules for oil and gas companies",
+      "what_changed": "A monitored source feed reports: Trump said he’ll roll back Biden-era methane rules for oil and gas companies. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T01:37:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: feeds.nbcnews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -309,6 +423,44 @@
       "severity": null
     },
     {
+      "id": "macro-c31ba9e5",
+      "category": "macro",
+      "title": "Geomacro finds Govt proposed Rs4,500 wheat price for 2027, up Rs1,000 - Investify",
+      "what_changed": "A monitored source feed reports: Govt proposed Rs4,500 wheat price for 2027, up Rs1,000 - Investify. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T11:54:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-6d9d7737",
+      "category": "macro",
+      "title": "Geomacro finds Oman Crude Oil Price increased by USD 0.10 - وكالة الأنباء العمانية (العمانية)",
+      "what_changed": "A monitored source feed reports: Oman Crude Oil Price increased by USD 0.10 - وكالة الأنباء العمانية (العمانية). This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T11:12:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-305398fe",
       "category": "macro",
       "title": "Geomacro finds Gold held above $4,000 as silver struggles ahead of Fed decision - Economies.com",
@@ -318,6 +470,44 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-27T10:51:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c1b4212b",
+      "category": "macro",
+      "title": "Geomacro finds Ministry cut police and ISS access to bank data register over tracker",
+      "what_changed": "A monitored source feed reports: Ministry cut police and ISS access to bank data register over tracker. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T10:31:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.err.ee"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f5389b44",
+      "category": "macro",
+      "title": "Geomacro finds India rejected Claims of U.S. Pressure Over Russian Oil Purchases - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: India rejected Claims of U.S. Pressure Over Russian Oil Purchases - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T10:30:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -366,6 +556,44 @@
       "severity": null
     },
     {
+      "id": "macro-a9cdbfc3",
+      "category": "macro",
+      "title": "Geomacro finds IEA warned about Dangerous Concentration in Global Clean Energy Supply Chains - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: IEA warned about Dangerous Concentration in Global Clean Energy Supply Chains - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T08:30:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-4de4290f",
+      "category": "macro",
+      "title": "Geomacro finds Singapore launched first LNG term supply tender, weighs third import terminal - Mining Weekly",
+      "what_changed": "A monitored source feed reports: Singapore launched first LNG term supply tender, weighs third import terminal - Mining Weekly. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T06:55:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-1fe08254",
       "category": "macro",
       "title": "Geomacro finds Platts published daily dry bulk freight assessment Rationale & Exclusions, BOTs for multiple routes from Oct. 26 - S&P Global",
@@ -379,6 +607,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f9347e5b",
+      "category": "macro",
+      "title": "Geomacro finds National Bank of Kyrgyzstan kept discount rate at 12 percent",
+      "what_changed": "A monitored source feed reports: National Bank of Kyrgyzstan kept discount rate at 12 percent. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T06:21:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: 24.kg"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -499,6 +746,25 @@
       "severity": null
     },
     {
+      "id": "macro-fa684b65",
+      "category": "macro",
+      "title": "Geomacro finds Corn Holds lowered on Monday, with Spillover Pressure - TradingView",
+      "what_changed": "A monitored source feed reports: Corn Holds lowered on Monday, with Spillover Pressure - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T22:14:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-090a986e",
       "category": "macro",
       "title": "Geomacro finds Big Tree Cloud Holdings Limited announced Filing of Annual Report on Form 20-F for Fiscal Year 2026",
@@ -546,6 +812,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-26T21:49:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f754cea9",
+      "category": "macro",
+      "title": "Geomacro finds USDA revised September Corn Yield as Analysts Weigh Impact - Successful Farming",
+      "what_changed": "A monitored source feed reports: USDA revised September Corn Yield as Analysts Weigh Impact - Successful Farming. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T21:41:43.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -835,6 +1120,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: 24.kg"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c1600258",
+      "category": "macro",
+      "title": "Geomacro finds GB launched subsidised wheat seeds scheme - Dawn",
+      "what_changed": "A monitored source feed reports: GB launched subsidised wheat seeds scheme - Dawn. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T01:06:13.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -1382,6 +1686,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-25T08:30:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-7ceef6a5",
+      "category": "macro",
+      "title": "Geomacro finds AgriGuru launched AI-powered market intelligence platform for rice, sugar and pulses - AgroSpectrum India",
+      "what_changed": "A monitored source feed reports: AgriGuru launched AI-powered market intelligence platform for rice, sugar and pulses - AgroSpectrum India. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-25T08:04:08.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

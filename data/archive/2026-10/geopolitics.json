@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-28T06:54:21.886Z",
+  "updated_at": "2026-10-28T07:43:39.656Z",
   "signals": [
+    {
+      "id": "geopolitics-b17a7d55",
+      "category": "geopolitics",
+      "title": "Geomacro finds China confirmed identities of 8 more volunteer soldiers killed in Korean War - China Daily",
+      "what_changed": "A monitored source feed reports: China confirmed identities of 8 more volunteer soldiers killed in Korean War - China Daily. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T07:08:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-d7c6bfda",
+      "category": "geopolitics",
+      "title": "Geomacro finds Tamil Nadu launched Security Audit Of Jails After 2 Escape Incidents",
+      "what_changed": "A monitored source feed reports: Tamil Nadu launched Security Audit Of Jails After 2 Escape Incidents. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T06:17:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: feeds.feedburner.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-6a872b5a",
       "category": "geopolitics",
@@ -75,6 +113,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-05cf0670",
+      "category": "geopolitics",
+      "title": "Geomacro finds Experts urged 'global health emergency' as climate harms accelerate",
+      "what_changed": "A monitored source feed reports: Experts urged 'global health emergency' as climate harms accelerate. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T00:05:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: rss.dw.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -385,6 +442,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-91ee12b2",
+      "category": "geopolitics",
+      "title": "Geomacro finds Qatar urged Iran to 'show goodwill' by ending threats to the region and reopening the Strait of Hormuz",
+      "what_changed": "A monitored source feed reports: Qatar urged Iran to 'show goodwill' by ending threats to the region and reopening the Strait of Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T17:04:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.euronews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-d7066d5b",
       "category": "geopolitics",
       "title": "Geomacro finds Netanyahu said Arab parties ‘trying to steal election’ - Arab News",
@@ -398,6 +474,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-d226ac27",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zim launched US$16m pandemic fund projects",
+      "what_changed": "A monitored source feed reports: Zim launched US$16m pandemic fund projects. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T16:10:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.newsday.co.zw"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -723,6 +818,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-c20571d5",
+      "category": "geopolitics",
+      "title": "Geomacro finds DR Congo reported over 10,000 Ebola cases as the outbreak spreads abroad, with no approved vaccine or specific treatment for the Bundibugyo virus",
+      "what_changed": "A monitored source feed reports: DR Congo reported over 10,000 Ebola cases as the outbreak spreads abroad, with no approved vaccine or specific treatment for the Bundibugyo virus. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T11:15:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: rss.dw.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-a9963430",
       "category": "geopolitics",
       "title": "Geomacro finds Syria condemned Jordan strikes as sovereignty violation, seeks joint security committee - Rudaw",
@@ -970,6 +1084,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-fc51fa0c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine confirmed Honoring US-Brokered Truce in Russian-Occupied Oleshky",
+      "what_changed": "A monitored source feed reports: Ukraine confirmed Honoring US-Brokered Truce in Russian-Occupied Oleshky. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T00:48:49.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-225bf928",
       "category": "geopolitics",
       "title": "Geomacro finds Bolsonaro said police demand passports after Brazil election defeat",
@@ -1097,6 +1230,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: rt-english.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-698e21e3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Syria said civilians killed in Jordanian airstrikes as Amman links targets to ‘terrorist group’ - Rudaw",
+      "what_changed": "A monitored source feed reports: Syria said civilians killed in Jordanian airstrikes as Amman links targets to ‘terrorist group’ - Rudaw. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T21:20:48.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -1255,6 +1407,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-8ec4ef7f",
+      "category": "geopolitics",
+      "title": "Geomacro finds UKMTO reported vessel on fire off Iraq’s coast - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: UKMTO reported vessel on fire off Iraq’s coast - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T17:46:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-60b1f68a",
       "category": "geopolitics",
       "title": "Geomacro finds PHP issued Second Windows Security Update in Five Days to Fix Brotli Code Execution Flaw",
@@ -1340,6 +1511,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-26T17:22:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-296ffc6a",
+      "category": "geopolitics",
+      "title": "Geomacro finds Saudi Arabia launched second Al-Sarawat combat vessel in Spain - Arab News",
+      "what_changed": "A monitored source feed reports: Saudi Arabia launched second Al-Sarawat combat vessel in Spain - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T16:47:55.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -2159,6 +2349,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-b114b287",
+      "category": "geopolitics",
+      "title": "Geomacro finds PM said fight against terrorism and extremism will continue",
+      "what_changed": "A monitored source feed reports: PM said fight against terrorism and extremism will continue. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-26T09:24:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.ammonnews.net"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
