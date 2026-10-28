@@ -30,13 +30,13 @@ const hex = (bytes: Uint8Array) =>
 
 async function sha256(value: Uint8Array | string): Promise<string> {
   const bytes = typeof value === "string" ? encoder.encode(value) : value;
-  return hex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)));
+  return hex(new Uint8Array(await crypto.subtle.digest("SHA-256", Uint8Array.from(bytes))));
 }
 
 async function hmac(key: Uint8Array | string, value: string): Promise<Uint8Array> {
   const imported = await crypto.subtle.importKey(
     "raw",
-    typeof key === "string" ? encoder.encode(key) : key,
+    typeof key === "string" ? encoder.encode(key) : Uint8Array.from(key),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
@@ -140,7 +140,7 @@ async function readEnvelope(key: string): Promise<CountryGroEnvelope | null> {
   const compressed = await signedGet(key);
   if (!compressed) return null;
   try {
-    const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream("gzip"));
+    const stream = new Blob([Uint8Array.from(compressed)]).stream().pipeThrough(new DecompressionStream("gzip"));
     const raw = new Uint8Array(await new Response(stream).arrayBuffer());
     if (!raw.length || raw.length > MAX_DECOMPRESSED_BYTES) return null;
     const payload = JSON.parse(decoder.decode(raw)) as Partial<CountryGroEnvelope>;
