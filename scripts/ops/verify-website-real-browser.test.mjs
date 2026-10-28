@@ -11,6 +11,8 @@ test("real browser QA is outside-in and cannot use payment or private APIs",()=>
  assert.ok(s.includes('page.goto(ROOT+"/"'));
  assert.ok(s.includes('page.goto(ROOT+"/intelligence"'));
  assert.ok(s.includes('page.goto(ROOT+"/ask-geomacro"'));
+ for(const route of ["/pricing","/data-api","/docs","/risk-indices"])
+  assert.ok(s.includes(`path:"${route}"`),route);
  assert.ok(s.includes('a[href^="/intelligence"]:visible'));
  assert.ok(s.includes("js_page_errors:0"));
  assert.ok(s.includes("payment_attempts:0"));
