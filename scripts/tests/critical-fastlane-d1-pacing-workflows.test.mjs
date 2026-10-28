@@ -42,6 +42,9 @@ test("graphQL metering never becomes billed SQL admission and day-shaping is exp
  assert.match(s,/readCloudflareD1AccountQuota/);
  assert.match(s,/d1LanePacedCeiling/);
  assert.match(s,/admission_paced_to_utc_day:true/);
- assert.match(s,/read_reserve:750_000,write_reserve:15_000/);
+ assert.match(s,/read_reserve:750_000\+PREDGE_D1_FREE_HEADROOM\.rows_read/);
+ assert.match(s,/write_reserve:15_000\+PREDGE_D1_FREE_HEADROOM\.rows_written/);
+ assert.match(s,/rows_read:500_000,rows_written:8_000/);
+ assert.match(s,/predge_account_headroom_is_hard_partition:false/);
  assert.match(s,/read_opening_burst:1_000_000,write_opening_burst:10_000/);
 });

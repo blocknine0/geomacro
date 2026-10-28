@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {planD1BundledWork,checkD1BundledWork,d1LanePacedCeiling} from "../ops/plan-d1-bundled-work.mjs";
+import {planD1BundledWork,checkD1BundledWork,d1LanePacedCeiling,PREDGE_D1_FREE_HEADROOM} from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
 
 const now=new Date("2026-10-27T12:00:00.000Z");
@@ -66,14 +66,14 @@ test("UTC paced watermarks bound early-day spikes without paying or minting new 
  const finish=d1LanePacedCeiling("critical",new Date("2026-10-27T23:59:59.999Z"));
  assert.equal(start.rows_read,1_000_000);
  assert.equal(start.rows_written,10_000);
- assert.ok(finish.rows_read<4_250_000 && finish.rows_read>4_249_900);
- assert.ok(finish.rows_written<85_000 && finish.rows_written>84_990);
+ assert.ok(finish.rows_read<3_750_000 && finish.rows_read>3_749_900);
+ assert.ok(finish.rows_written<77_000 && finish.rows_written>76_990);
  assert.ok(d1LanePacedCeiling("maintenance",morning).rows_read<
    d1LanePacedCeiling("research",morning).rows_read);
 });
 
 test("disposable read-saver continues only with 250k/5k account safety reserve",()=>{
- const q=planD1BundledWork(quota(4_345_068,23_531),{now});
+ const q=planD1BundledWork(quota(4_145_068,23_531),{now});
  assert.equal(q.critical,false);
  assert.equal(q.source_intake,false);
  assert.equal(q.snapshot_refresh,true);
@@ -82,7 +82,7 @@ test("disposable read-saver continues only with 250k/5k account safety reserve",
  assert.equal(q.structural_snapshot_requires_atomic_b2_account_reservation,true);
  assert.equal(q.snapshot_refresh_does_not_admit_ingestion,true);
  assert.equal(q.snapshot_refresh_max_source_rows_per_run,601);
- for(const [r,w] of [[4_750_001,23_531],[4_700_000,95_001],
+ for(const [r,w] of [[4_345_068,23_531],[4_750_001,23_531],[4_700_000,95_001],
                      [5_000_000,0],[1_000,99_999]]){
   assert.equal(planD1BundledWork(quota(r,w),{now}).snapshot_refresh,false);
  }
@@ -108,22 +108,52 @@ test('observed production pacing hold still admits only a full-day budgeted smal
  assert.equal(result.source_intake,true);
  const budget=result.source_intake_budget_to_utc_reset;
  assert.ok(budget.rows_read<=3200*288+100000);assert.ok(budget.rows_written<result.remaining_rows_written-15000);
- assert.ok(result.remaining_rows_read-budget.rows_read>750000);
- assert.ok(result.remaining_rows_written-budget.rows_written>15000);
+ assert.ok(result.remaining_rows_read-budget.rows_read>750000+PREDGE_D1_FREE_HEADROOM.rows_read);
+ assert.ok(result.remaining_rows_written-budget.rows_written>15000+PREDGE_D1_FREE_HEADROOM.rows_written);
  assert.equal(result.source_intake_does_not_admit_signing_or_audits,true);
 });
-test('actual 3.87m-read incident degrades cadence and batch size instead of holding usable source quota',()=>{
- const p=planD1BundledWork(quota(3871312,22960),{now:new Date('2026-10-27T10:18:57Z')});
- assert.equal(p.critical,false);assert.equal(p.source_intake,true);
- assert.equal(p.source_intake_interval_minutes,10);assert.equal(p.source_intake_max_new_rows,25);
- const b=p.source_intake_budget_to_utc_reset;
- assert.ok(p.remaining_rows_read-b.rows_read>750000);
- assert.ok(p.remaining_rows_written-b.rows_written>15000);
- for(const read of [1000000,2800000,3871312,4000000,4100000]){
-  const r=planD1BundledWork(quota(read,22960),{now});
-  assert.equal(r.source_intake,true);
-  assert.ok(r.remaining_rows_read-r.source_intake_budget_to_utc_reset.rows_read>750000);
+test('PREDGE protected pool wins over late-day source intake on Free D1',()=>{
+ const at=new Date('2026-10-27T10:18:57Z');
+ const incident=planD1BundledWork(quota(3871312,22960),{now:at});
+ assert.equal(incident.source_intake,false);
+ assert.equal(incident.critical,false);
+ assert.equal(incident.predge_account_headroom_guard_enabled,true);
+ assert.equal(incident.predge_request_governor_is_separate_and_unchanged,true);
+ assert.deepEqual(incident.predge_account_headroom_planning_reserve,
+   PREDGE_D1_FREE_HEADROOM);
+ assert.equal(incident.predge_account_headroom_is_hard_partition,false);
+ const safe=planD1BundledWork(quota(2800000,22960),{now:at});
+ assert.equal(safe.source_intake,true);
+ const b=safe.source_intake_budget_to_utc_reset;
+ assert.ok(safe.remaining_rows_read-b.rows_read>
+   750000+PREDGE_D1_FREE_HEADROOM.rows_read);
+ assert.ok(safe.remaining_rows_written-b.rows_written>
+   15000+PREDGE_D1_FREE_HEADROOM.rows_written);
+});
+test('fixed PREDGE account reserve is additive for every GeoMacro Free admission lane',()=>{
+ assert.equal(PREDGE_D1_FREE_HEADROOM.rows_read,500000);
+ assert.equal(PREDGE_D1_FREE_HEADROOM.rows_written,8000);
+ assert.equal(PREDGE_D1_FREE_HEADROOM.pilot_request_cap_per_utc_day,500);
+ const at=new Date('2026-10-27T23:59:59Z');
+ for(const [lane,expectedReadReserve,expectedWriteReserve] of [
+   ['critical',1250000,23000],['research',2000000,38000],
+   ['maintenance',3000000,58000]]){
+   const max=d1LanePacedCeiling(lane,at);
+   assert.ok(max.rows_read>5000000-expectedReadReserve-100);
+   assert.ok(max.rows_read<=5000000-expectedReadReserve);
+   assert.ok(max.rows_written<=100000-expectedWriteReserve);
  }
+ for(const [read,write] of [[4251000,1000],[1000,92500],[4350000,93000]]){
+   const q=planD1BundledWork(quota(read,write),{now:at});
+   assert.equal(q.snapshot_refresh,false);
+   assert.equal(q.source_intake,false);
+ }
+ const q=planD1BundledWork(quota(100,100),{now:at});
+ assert.equal(q.predge_account_headroom_is_hard_partition,false);
+ assert.equal(q.predge_account_headroom_guard_enabled,true);
+ assert.equal(q.predge_request_governor_is_separate_and_unchanged,true);
+ assert.equal(q.d1_queries,0);
+ assert.equal(q.paid_calls,0);
 });
 test('bounded source intake cannot consume the protected reserve or use unknown quota counters',()=>{
  for(const [read,written]of [[4300000,10000],[1000,86000],[5000000,100000]])assert.equal(planD1BundledWork(quota(read,written),{now}).source_intake,false);
