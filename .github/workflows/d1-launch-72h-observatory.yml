@@ -12,6 +12,8 @@ on:
       - "scripts/tests/d1-launch-window.test.mjs"
       - "scripts/tests/d1-launch-hourly-observer.test.mjs"
       - "scripts/ops/d1-launch-github-verification.mjs"
+      - "scripts/ops/verify-deployed-runtime-equivalence.mjs"
+      - "scripts/tests/verify-deployed-runtime-equivalence.test.mjs"
       - "scripts/tests/d1-launch-github-verification.test.mjs"
       - "scripts/ops/d1-launch-hourly-observer.mjs"
       - "scripts/ops/evaluate-d1-launch-72h.mjs"
@@ -25,6 +27,8 @@ on:
       - "scripts/tests/d1-launch-window.test.mjs"
       - "scripts/tests/d1-launch-hourly-observer.test.mjs"
       - "scripts/ops/d1-launch-github-verification.mjs"
+      - "scripts/ops/verify-deployed-runtime-equivalence.mjs"
+      - "scripts/tests/verify-deployed-runtime-equivalence.test.mjs"
       - "scripts/tests/d1-launch-github-verification.test.mjs"
       - "scripts/ops/d1-launch-hourly-observer.mjs"
       - "scripts/ops/evaluate-d1-launch-72h.mjs"
@@ -55,7 +59,7 @@ jobs:
         run: |
           node --check scripts/ops/d1-launch-hourly-observer.mjs
           node --check scripts/ops/evaluate-d1-launch-72h.mjs
-          node --test scripts/tests/d1-launch-window.test.mjs scripts/tests/d1-launch-hourly-observer.test.mjs scripts/tests/capture-d1-launch-insights.test.mjs scripts/tests/d1-launch-github-verification.test.mjs
+          node --test scripts/tests/d1-launch-window.test.mjs scripts/tests/d1-launch-hourly-observer.test.mjs scripts/tests/capture-d1-launch-insights.test.mjs scripts/tests/d1-launch-github-verification.test.mjs scripts/tests/verify-deployed-runtime-equivalence.test.mjs
 
   observe:
     if: >-
