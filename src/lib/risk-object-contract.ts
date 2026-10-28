@@ -158,14 +158,14 @@ export type RiskEvidenceReference = {
 
   direction: RiskDirection;
 
-  last_seen_at: string;
-
   evidence_count: number;
   independent_source_count: number;
-
-  evidence_refs: string[];
-  source_families: string[];
-};
+} & (
+  /** Legacy GRO evidence has these three fields together. */
+  | { last_seen_at: string; evidence_refs: string[]; source_families: string[] }
+  /** Strict Federico evidence deliberately omits all three together. */
+  | { last_seen_at?: never; evidence_refs?: never; source_families?: never }
+);
 
 export type RiskIntegrity = {
   input_hash: string;
