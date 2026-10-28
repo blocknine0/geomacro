@@ -7,6 +7,8 @@ describe("all twelve structured product setups", () => {
   it("binds each executable request to its exact canonical price and fields", () => {
     const setup = structuredProductSetup();
     expect(setup.variant_count).toBe(12);
+    expect(setup.products.filter(p=>p.launch_status==="COMING_SOON")).toHaveLength(3);
+    expect(setup.products.filter(p=>p.new_sales_allowed)).toHaveLength(9);
     expect(setup.capability_count).toBe(7);
     expect(new Set(setup.products.map((p) => p.capability + "/" + p.variant)).size).toBe(12);
     for (const row of setup.products) {
