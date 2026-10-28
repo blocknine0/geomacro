@@ -300,3 +300,36 @@ test('tampered issuer envelope is rejected with an exact sanitized signature fai
   }}),/SIGNED_NEWS_SIGNATURE_INVALID/);
  assert.equal(calls,1,'never retry an actual tampered issuer signature as a transport race');
 });
+
+test('one stale canonical bundle clock is retried with a fresh no-cache journal before real issuer audit',async()=>{
+ const f=await fixture();let reads=0,pages=0;
+ const result=await verifyAllNewsSignedPublications({keys,now,
+  readJournal:async()=>{
+   reads++;
+   if(reads===1)throw Error('DERIVED_NEWS_BUNDLE_STALE_READBACK');
+   return [signal()];
+  },
+  fetchImpl:async url=>{pages++;return f.fetchImpl(url)},
+ });
+ assert.equal(result.all_retained_unique_news_signature_verified,true);
+ assert.deepEqual([reads,pages],[2,1]);
+});
+test('persistent stale canonical envelope is a hard hold after exactly one additional read',async()=>{
+ let reads=0;
+ await assert.rejects(verifyAllNewsSignedPublications({keys,now,
+  readJournal:async()=>{reads++;throw Error('DERIVED_NEWS_BUNDLE_STALE_READBACK')},
+  fetchImpl:async()=>{throw Error('MUST_NOT_READ_PRIVATE_PROOFS');},
+ }),/DERIVED_NEWS_BUNDLE_STALE_READBACK/);
+ assert.equal(reads,2);
+});
+test('D1 quota exhaustion and malformed bundle never get replayed or reported signed',async()=>{
+ for(const code of ['DERIVED_NEWS_PUBLIC_FETCH_D1_DAILY_ROW_READ_LIMIT',
+  'DERIVED_NEWS_BUNDLE_JSON_INVALID','DERIVED_NEWS_BUNDLE_CONTRACT_INVALID']){
+  let calls=0;
+  await assert.rejects(verifyAllNewsSignedPublications({keys,now,
+   readJournal:async()=>{calls++;throw Error(code)},
+   fetchImpl:async()=>{throw Error('MUST_NOT_ACCESS_PRIVATE_PROOFS')},
+  }),e=>e.message===code);
+  assert.equal(calls,1);
+ }
+});
