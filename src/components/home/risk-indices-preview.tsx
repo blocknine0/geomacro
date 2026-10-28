@@ -9,8 +9,8 @@ export function RiskIndicesPreview({
   data,
   status,
 }: {
-  data: PublicRiskIndices | null;
-  status: RiskIndicesStatus;
+  data?: PublicRiskIndices | null;
+  status?: RiskIndicesStatus;
 }) {
   return (
     <section className="border-y border-border/60 bg-card/20">
