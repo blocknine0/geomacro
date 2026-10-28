@@ -32,6 +32,7 @@ export function publicQueryOpenApiSchema(topics?: readonly string[]) {
       subjects: { type: "array", minItems: 1, maxItems: topics ? 1 : 25,
         items: topics ? country : { oneOf: [country, corridor] } },
       question: { type: "string", minLength: 3, maxLength: 2000 },
+      response_locale: { type:"string",enum:["en","bn","hi"],description:"Optional paid response language; changes query and frozen payment hash only when set. Default English." },
       topics: topics ? { type: "array", minItems: topics.length, maxItems: topics.length, uniqueItems: true, items: { enum: [...topics] } }
         : { type: "array", maxItems: 16, items: { enum: [...AGENT_QUERY_TOPICS] } },
       intent: topics ? { const: "single_subject" } : { enum: [...AGENT_QUERY_INTENTS] },
