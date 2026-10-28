@@ -133,7 +133,7 @@ export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices
   });
   if(!response.ok||response.redirected ||
      response.headers.get("x-geomacro-certification")!=="geomacro-self-certified-news-severity-v1"||
-     response.headers.get("x-geomacro-methodology")!=="geomacro-news-severity-v1.0.0")
+     response.headers.get("x-geomacro-methodology")!=="geomacro-news-severity-v1.1.0")
     throw Error("GEOMACRO_NEWS_GRI_AUTHORITY_UNAVAILABLE");
   const doc=await response.json() as {
     schema?:string;issuer?:string;scope?:string;independent_third_party_certified?:boolean;
@@ -154,7 +154,7 @@ export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices
      !/^[a-f0-9]{64}$/u.test(cert.signed_payload_sha256??"")||
      !Number.isFinite(stamp)||stamp>Date.now()+60_000||Date.now()-stamp>5*60_000||
      doc.data?.snapshotAsOf!==doc.generated_at||
-     doc.data?.parentMethodologyVersion!=="geomacro-news-severity-v1.0.0"||
+     doc.data?.parentMethodologyVersion!=="geomacro-news-severity-v1.1.0"||
      doc.data.proofScope!=="geomacro-news-severity"||
      doc.data.verificationStatus!=="verified"||
      doc.data.contractVersion!==PUBLIC_RISK_INDICES_CONTRACT_VERSION||
