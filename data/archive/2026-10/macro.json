@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-28T17:27:51.844Z",
+  "updated_at": "2026-10-28T21:16:35.513Z",
   "signals": [
+    {
+      "id": "macro-18e81505",
+      "category": "macro",
+      "title": "Geomacro finds Federal Reserve issued FOMC statement",
+      "why_it_matters": "A monetary-policy release can influence financing conditions and FX expectations; no specific rate direction or market outcome is inferred from this signal.",
+      "what_changed": "Federal Reserve issued FOMC statement.",
+      "geography": null,
+      "development_type": "announcement",
+      "topic": "monetary policy",
+      "published_at": "2026-10-28T18:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Federal Reserve Board"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-73c7336f",
       "category": "macro",
