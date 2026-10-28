@@ -15,7 +15,13 @@ const atom=(title,url,clock=at)=>`<feed><entry><title>${title}</title><link href
 const freshState=()=>({schema:'geomacro.macro-fastlane-state.v1',checked_at:new Date(now).toISOString(),quota_lease_until:new Date(now+12*60000).toISOString(),cursors:{},events:[],quotes:[],source_checks:[],price_checks:[],calendar_checks:[],calendar_checked_at:now});
 class DB{
  constructor(state={}){this.state=state;this.news=new Map();this.operations=[];}
- prepare(sql){const db=this;return {async run(){db.operations.push('retention');return {success:true};},bind(...args){return {async first(){db.operations.push('read_state');return Object.keys(db.state).length?{value_json:JSON.stringify(db.state)}:null;},async run(){if(sql.startsWith('INSERT INTO control_state')){db.state=JSON.parse(args[1]);db.operations.push('write_state');}else if(sql.startsWith('INSERT INTO website_derived_intelligence')){db.news.set(args[0],JSON.parse(args[4]));db.operations.push('write_news');}return {success:true};},sql,args};}};}
+ prepare(sql){const db=this;return {async first(){
+  if(sql==='SELECT COUNT(*) AS journal_rows FROM website_derived_intelligence'){
+   db.operations.push('read_journal_count');
+   return {journal_rows:db.news.size};
+  }
+  throw Error('UNEXPECTED_D1_FIRST_SQL');
+ },async run(){db.operations.push('retention');return {success:true};},bind(...args){return {async first(){db.operations.push('read_state');return Object.keys(db.state).length?{value_json:JSON.stringify(db.state)}:null;},async run(){if(sql.startsWith('INSERT INTO control_state')){db.state=JSON.parse(args[1]);db.operations.push('write_state');}else if(sql.startsWith('INSERT INTO website_derived_intelligence')){db.news.set(args[0],JSON.parse(args[4]));db.operations.push('write_news');}return {success:true};},sql,args};}};}
  async batch(statements){for(const s of statements){this.news.set(s.args[0],JSON.parse(s.args[4]));this.operations.push('write_news');}return statements.map(()=>({success:true}));}
 }
 test('Macro lanes cover all pinned issuers and never double-fetch shared Fed/ECB',()=>{
