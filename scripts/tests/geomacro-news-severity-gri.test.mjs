@@ -324,3 +324,17 @@ test("durable GRI: a genuine source revision triggers update; a failed optimisti
   {now:later+120000,source:NEWS_BUNDLE([...revised,newest])});
  assert.equal(result.status,503);
 });
+
+test("live production acceptance stays locked to D1-backed no-new-news continuity",()=>{
+ const verifier=readFileSync("scripts/ops/verify-live-geomacro-news-gri.mjs","utf8");
+ const worker=readFileSync("workers/control-plane/src/geomacro-news-severity-gri.mjs","utf8");
+ const migration=readFileSync("workers/control-plane/migrations/0034_news_gri_last_verified.sql","utf8");
+ assert.match(verifier,/hold-last-qualified-until-new-input-v1/u);
+ assert.match(verifier,/PUBLIC_CERTIFIED_GRI_DURABLE_CONTINUITY_INVALID/u);
+ assert.match(verifier,/durable_last_qualified_per_domain_verified:true/u);
+ assert.match(worker,/retainLastQualifiedGriByDomain/u);
+ assert.match(worker,/GEOMACRO_GRI_RETAINED_HASH_MISMATCH/u);
+ assert.match(worker,/ON CONFLICT\(category\) DO UPDATE/u);
+ assert.match(migration,/CREATE TABLE IF NOT EXISTS geomacro_news_gri_last_verified/u);
+ assert.doesNotMatch(migration,/\b(?:raw_article|source_url|private_key|payment)\b/iu);
+});
