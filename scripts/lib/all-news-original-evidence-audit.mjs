@@ -77,7 +77,10 @@ export async function auditEveryDerivedNewsOriginal({
    hardCeiling:maxReadbacks,reserved:maxReadbacks===6?2:0,perHostMax:1,
  });
  const proofCache=new Map();
- const ordered=bundleRoundRobinNews(signals,{priorityById});
+ // Prioritize only real, original-dated, pinned <=60m publisher references;
+ // then drain older queued reviews in their existing fair order.
+ const ordered=bundleRoundRobinNews(signals,{priorityById,
+   nowMs:now.getTime(),originalRefs});
  let rereads=0;
  for(const signal of ordered){
   if(!signal||typeof signal!=="object"||Array.isArray(signal)||

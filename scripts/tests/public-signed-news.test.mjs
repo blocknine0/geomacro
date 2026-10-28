@@ -57,6 +57,12 @@ test('each current signed item has a real registered signature and narrow origin
  const result=await verifyAllNewsSignedPublications({keys,now,fetchImpl:f.fetchImpl,readJournal:async()=>[signal()]});
  assert.equal(result.all_retained_unique_news_signature_verified,true);
  assert.equal(result.all_current_qualified_news_source_verified_signed,true);
+ assert.equal(result.category_original_freshness.macro.current_source_verified_signed,1);
+ assert.equal(result.category_original_freshness.macro.status,"CURRENT_ORIGINAL_SOURCE_PROOF_VERIFIED");
+ assert.equal(result.category_original_freshness.rare_earth.status,"NO_QUALIFIED_CURRENT_ORIGINAL_RELEASE");
+ assert.equal(result.category_original_freshness.geopolitics.status,"NO_QUALIFIED_CURRENT_ORIGINAL_RELEASE");
+ assert.equal(result.all_three_categories_current_original_verified,false);
+ assert.equal(result.signed_input_is_not_scored_news,true);
  assert.equal(result.legacy_signed_hot_3_of_3_verified,false);
 });
 test('600-row production proof page uses one canonical bundle scan and one selected-state query',async()=>{

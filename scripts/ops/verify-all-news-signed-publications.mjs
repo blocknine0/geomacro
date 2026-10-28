@@ -63,6 +63,14 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
   if(expected.size===0||expected.size>600)throw Error('SIGNED_NEWS_NO_RETAINED_INPUT');
   const expectedFingerprint=await inputHash(JSON.stringify([...contentOrder.keys()]));
   const seen=new Set();let signed=0,original=0,current=0,currentEligible=0;
+  // Same signed canonical proof page, NO extra D1/HTTP requests. Keep the
+  // published release clock separate from the issuer signature and native
+  // original-page evidence; these are distinct requirements.
+  const byCategory=Object.fromEntries(['geopolitics','macro','rare_earth'].map(
+   cat=>[cat,{signed_inputs:0,original_pages_verified:0,
+    native_releases_within_60m:0,current_qualified_release_candidates:0,
+    current_source_verified_signed:0}]));
+
   let journalChanged=false;
   for(let offset=0;offset<600;offset+=40){
    const response=await fetchSignedNewsPage(URL+'?offset='+offset,fetchImpl);
@@ -94,6 +102,13 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
      item.current_source_verified_signed!==(isCurrent&&qualified&&item.original_page_verified)||
      item.commercial_rights_attested!==false||item.independent_reviewed!==false||item.scored!==false||item.chargeable!==false)
      throw Error('SIGNED_NEWS_AUTHORITY_OR_CLOCK');
+    const lane=byCategory[item.signal.category];
+    if(!lane)throw Error('SIGNED_NEWS_CATEGORY_UNTRUSTED');
+    lane.signed_inputs++;
+    if(isCurrent)lane.native_releases_within_60m++;
+    if(isCurrent&&qualified)lane.current_qualified_release_candidates++;
+    if(item.original_page_verified)lane.original_pages_verified++;
+    if(item.current_source_verified_signed)lane.current_source_verified_signed++;
     if(item.original_page_verified){
      const at=Date.parse(item.source_reviewed_at??'');
      if(item.source_status!=='ORIGINAL_PAGE_BYTES_AND_NATIVE_TIME_VERIFIED'||
@@ -110,6 +125,16 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
      all_retained_unique_news_signature_verified:true,original_page_verified_reported:original,
      current_qualified_news:currentEligible,current_source_verified_signed_reported:current,
      all_current_qualified_news_source_verified_signed:currentEligible>0&&current===currentEligible,
+     // Explicit release freshness for EACH category. A valid issuer signature
+     // does not satisfy native original verification or GRI/paid admission.
+     category_original_freshness:Object.fromEntries(Object.entries(byCategory)
+      .map(([category,c])=>[category,{...c,
+       status:c.current_source_verified_signed>0?'CURRENT_ORIGINAL_SOURCE_PROOF_VERIFIED':
+        c.current_qualified_release_candidates>0?'CURRENT_RELEASE_SOURCE_PROOF_PENDING':
+        'NO_QUALIFIED_CURRENT_ORIGINAL_RELEASE'}])),
+     all_three_categories_current_original_verified:Object.values(byCategory)
+       .every(c=>c.current_source_verified_signed>0),
+     signed_input_is_not_scored_news:true,
      journal_fingerprint_verified:true,publication_pages_bound_to_same_journal:true,
      journal_restart_attempts:attempt,legacy_signed_hot_3_of_3_verified:false,commercial_rights_attested:false,
      paid_delivery_enabled:false,payments:0};

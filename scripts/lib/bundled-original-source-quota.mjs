@@ -1,3 +1,5 @@
+import {pinnedDerivedOriginalReference} from "./derived-original-reference-pins.mjs";
+
 /**
  * One free per-run issuer-original readback bundle shared by all 3 categories.
  *
@@ -61,12 +63,19 @@ export function createBundledOriginalReadbackBudget({
  });
 }
 
-/** Equal opportunity before recency competition: each publisher category gets
- * one turn per round, using the newest news FIRST inside each category.
- * No extra GET, and unclassified or stale cards remain in the audit output.
+/** Category-first, 60-minute qualifying ORIGINAL review scheduling.
+ * Previously, a 30-day old pending reviewer could outrank a valid 20-minute
+ * official release in the SAME category, consuming the 4 available readbacks.
+ * One fresh pinned release/category gets the first round; older outstanding
+ * reviews retain their existing retry priority on all subsequent turns.
+ * This is ONLY readback ordering. No freshness, issuer, rights or admission
+ * criteria change and the physical 4/6 quota remains exactly the same.
  */
-export function bundleRoundRobinNews(signals,{priorityById}={}){
- if(!Array.isArray(signals))throw Error("ORIGINAL_BUNDLE_NEWS_INVALID");
+export function bundleRoundRobinNews(signals,{priorityById,nowMs,originalRefs}={}){
+ if(!Array.isArray(signals)||priorityById!==undefined&&!(priorityById instanceof Map)||
+    originalRefs!==undefined&&!(originalRefs instanceof Map)||
+    nowMs!==undefined&&(!Number.isFinite(nowMs)||nowMs<0))
+  throw Error("ORIGINAL_BUNDLE_NEWS_INVALID");
  const domains=["geopolitics","macro","rare_earth"];
  const groups=new Map(domains.map(c=>[c,[]]));
  const remaining=[];
@@ -75,12 +84,29 @@ export function bundleRoundRobinNews(signals,{priorityById}={}){
    remaining.push(item);
   else groups.get(item.category).push(item);
  }
+ const freshIds=new Set();
+ if(nowMs!==undefined&&originalRefs!==undefined){
+  for(const item of signals){
+   const ref=originalRefs.get(item?.id);
+   if(!ref||item?.status!=="official_release_observed_unscored"||
+      item?.date_precision!=="exact"||ref.category!==item.category||
+      ref.publishedAt!==item.published_at)continue;
+   const age=nowMs-Date.parse(item.published_at??"");
+   if(!Number.isFinite(age)||age<0||age>60*60_000)continue;
+   // No queue-priority credit for a bare/private/unpinned article URL.
+   if(pinnedDerivedOriginalReference(ref))freshIds.add(item.id);
+  }
+ }
+ const freshPinned=item=>freshIds.has(item?.id);
  const priority=item=>priorityById?.get(item?.id)??Infinity;
- const sort=(a,b)=>(priority(a)-priority(b)||0)||String(b?.published_at??"").localeCompare(
-   String(a?.published_at??""))||
+ const normalOrder=(a,b)=>(priority(a)-priority(b)||0)||
+   String(b?.published_at??"").localeCompare(String(a?.published_at??""))||
    String(a?.id??"").localeCompare(String(b?.id??""));
- for(const group of groups.values())group.sort(sort);
- const categoryOrder=[...domains].sort((a,b)=>(priority(groups.get(a)[0])-priority(groups.get(b)[0])||0));
+ for(const group of groups.values())group.sort((a,b)=>
+  Number(freshPinned(b))-Number(freshPinned(a))||normalOrder(a,b));
+ const categoryOrder=[...domains].sort((a,b)=>
+  Number(freshPinned(groups.get(b)[0]))-Number(freshPinned(groups.get(a)[0]))||
+  (priority(groups.get(a)[0])-priority(groups.get(b)[0])||0));
  const rows=[];
  let index=0;
  while([...groups.values()].some(x=>x.length>index)){
