@@ -793,12 +793,16 @@ jobs:
       - name: Install locked signing dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Admit optional issuer reconciliation under existing account pacing
+        id: signing_budget
+        run: node scripts/ops/plan-d1-bundled-work.mjs
+
       - name: Verify retained signed inputs through GeoMacro-only scoped proof
         # Use the existing issuer only when standing derived-only consent is
         # active. One missing-envelope reconciliation, then independent readback.
         # Invalid signatures, revoked consent and quota failures stay fatal.
         env:
-          GEOMACRO_ALLOW_SIGNED_NEWS_RACE_RECONCILE: ${{ vars.GEOMACRO_STANDING_DELEGATION_ENABLED == 'YES_DELEGATED_DERIVED_ONLY' && vars.GEOMACRO_STANDING_DELEGATION_REVOKED != 'YES' && '1' || '0' }}
+          GEOMACRO_ALLOW_SIGNED_NEWS_RACE_RECONCILE: ${{ steps.signing_budget.outputs.critical == 'true' && vars.GEOMACRO_STANDING_DELEGATION_ENABLED == 'YES_DELEGATED_DERIVED_ONLY' && vars.GEOMACRO_STANDING_DELEGATION_REVOKED != 'YES' && '1' || '0' }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
         run: bun scripts/ops/verify-all-news-signed-publications.mjs

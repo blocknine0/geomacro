@@ -16,6 +16,8 @@ test('deployment reconciliation requires standing consent and keeps the private 
  const step=yaml.slice(start,yaml.indexOf('\n      - name:',start+1));
  assert.match(step,/GEOMACRO_STANDING_DELEGATION_ENABLED == 'YES_DELEGATED_DERIVED_ONLY'/);
  assert.match(step,/GEOMACRO_STANDING_DELEGATION_REVOKED != 'YES'/);
+ assert.match(step,/steps.signing_budget.outputs.critical == 'true'/);
+ assert.ok(yaml.indexOf('run: node scripts/ops/plan-d1-bundled-work.mjs')<start);
  assert.match(step,/RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64:/);
  assert.match(step,/run: bun scripts\/ops\/verify-all-news-signed-publications.mjs/);
  assert.doesNotMatch(step,/continue-on-error/);
