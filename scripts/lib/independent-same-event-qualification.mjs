@@ -235,6 +235,10 @@ export function qualificationReviewSigningBytes(value){
   const {review_signature_base64:signature,...signed}=value;
   return Buffer.from(JSON.stringify(signed),"utf8");
 }
+/**
+ * @param {{rows?: unknown[], eventPackages?: unknown[], now?: Date,
+ *   trustedReviewerPublicKeyPem?: string, griRetainedPortfolio?: boolean}} [options]
+ */
 export function qualifyIndependentSameEvent({
   rows,eventPackages,now=new Date(),trustedReviewerPublicKeyPem,
   griRetainedPortfolio=false,
