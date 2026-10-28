@@ -39,7 +39,7 @@ export type PublicRiskIndices = {
   contractVersion: typeof PUBLIC_RISK_INDICES_CONTRACT_VERSION;
   parentMethodologyVersion: string;
   proofVersion: string;
-  proofScope: "verified-category-projection";
+  proofScope: "verified-category-projection" | "geomacro-news-severity";
   snapshotId: string;
   snapshotAsOf: string;
   verificationStatus: "verified";
