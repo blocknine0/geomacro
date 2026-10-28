@@ -125,7 +125,7 @@ export async function assertA2APublicHttpsUrl(raw: string): Promise<URL> {
 
   if (ipVersion(hostname) > 0) return url;
 
-  let addresses: Awaited<ReturnType<typeof lookup>>;
+  let addresses: Array<{ address: string; family: number }>;
   try {
     addresses = await lookup(hostname, { all: true, verbatim: true });
   } catch {
