@@ -60,7 +60,7 @@ async function buildHandler() {
   );
   source = replaceExactlyOnce(
     source,
-    'import { createRemoteJWKSet, jwtVerify } from "npm:jose@6.2.3"',
+    'import { createRemoteJWKSet, jwtVerify } from "jose"',
     'import { createRemoteJWKSet, jwtVerify } from "jose"',
     "JOSE_IMPORT",
   );

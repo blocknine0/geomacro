@@ -10,6 +10,24 @@ describe("permanent RSS direct-Postgres transport", () => {
     const corroborate = read("scripts/run-live-flash-corroborate-local.ts");
     const canonicalCorroborate = read("supabase/functions/live-flash-corroborate/index.ts");
 
+    const canonicalIngest = read("supabase/functions/live-flash-ingest/index.ts");
+    const ingestImportMap = JSON.parse(read("supabase/functions/live-flash-ingest/deno.json"));
+    const corroborateImportMap = JSON.parse(read("supabase/functions/live-flash-corroborate/deno.json"));
+    const canonicalJose = 'import { createRemoteJWKSet, jwtVerify } from "jose"';
+
+    for (const canonical of [canonicalIngest, canonicalCorroborate]) {
+      expect(canonical).toContain(canonicalJose);
+      expect(canonical).not.toContain('from "npm:jose@6.2.3"');
+    }
+    for (const runner of [ingest, corroborate]) {
+      expect(runner).toContain(canonicalJose);
+      expect(runner).not.toContain('npm:jose@6.2.3');
+      expect(runner).toContain('"JOSE_IMPORT"');
+    }
+    for (const importMap of [ingestImportMap, corroborateImportMap]) {
+      expect(importMap.imports.jose).toBe("npm:jose@6.2.13");
+    }
+
     expect(cycle).toContain('RSS_LIVE_CYCLE_REQUIRES_DIRECT_POSTGRES');
     expect(cycle).toContain('"scripts/run-live-flash-ingest-local.ts"');
     expect(cycle).toContain('"scripts/run-live-flash-corroborate-local.ts"');
@@ -18,7 +36,7 @@ describe("permanent RSS direct-Postgres transport", () => {
 
     expect(ingest).toContain("--payload-dir");
     expect(ingest).toContain("createGriDbClient");
-    expect(ingest).toContain('import { createRemoteJWKSet, jwtVerify } from "npm:jose@6.2.3"');
+    expect(ingest).not.toContain("npm:jose@6.2.3");
     expect(ingest).toContain('import { createRemoteJWKSet, jwtVerify } from "jose"');
     expect(ingest).toContain('"JOSE_IMPORT"');
     expect(ingest).toContain('execution_mode: "local_canonical_source_direct_postgres"');

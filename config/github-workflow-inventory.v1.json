@@ -109,7 +109,6 @@
     "deploy-telegram-signal-supabase.yml",
     "deploy-web-candidate.yml",
     "derive-risk-object-public-key.yml",
-    "diagnose-lovable-types-temporary.yml",
     "direct-publisher-intelligence-acceptance.yml",
     "distributed-40k-evidence-closure.yml",
     "early-warning-governance.yml",
@@ -416,8 +415,7 @@
     "permanent-runtime-health.yml": "Permanent Runtime Health",
     "open-realtime-source-mesh.yml": "Geomacro Open Realtime Source Mesh",
     "predge-token-only-sealed-handoff.yml": "Predge Token-Only Encrypted Handoff (No Funds)",
-    "news-intelligence-hub-continuity.yml": "GeoMacro Central News Intelligence Hub",
-    "diagnose-lovable-types-temporary.yml": "Lovable Source Typecheck Diagnostics (On Demand)"
+    "news-intelligence-hub-continuity.yml": "GeoMacro Central News Intelligence Hub"
   },
   "lockedTriggerStrings": {
     "private-global-osint-15m.yml": [
@@ -448,9 +446,6 @@
       "node scripts/ops/verify-news-hub-live-bundle.mjs",
       "if: steps.budget.outputs.research == 'true'",
       "cancel-in-progress: false"
-    ],
-    "diagnose-lovable-types-temporary.yml": [
-      "workflow_dispatch:"
     ]
   },
   "predgeBlobSha1": {
