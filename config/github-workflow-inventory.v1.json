@@ -248,6 +248,7 @@
     "private-independent-review-package.yml",
     "private-osint-d1-quota-held-spool.yml",
     "private-revenue-ledger-readiness.yml",
+    "private-source-directory-production-slo.yml",
     "private-supabase-runtime-audit.yml",
     "product-canonical-alignment.yml",
     "product-ci.yml",
