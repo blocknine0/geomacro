@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-27T09:41:10.198Z",
+  "checked_at": "2026-10-28T05:25:49.221Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,116 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-ac9ded5e",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Peace cannot be sustainable while half the population is shut out of shaping it · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Peace cannot be sustainable while half the population is shut out of shaping it. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-27T20:32:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-50666bcd",
+      "category": "geopolitics",
+      "title": "Geomacro finds Holding: debated over Iran Sanctions, Security Council Contests Expiry Status, Continuing Nuclear Programme · Iran",
+      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
+      "what_changed": "Holding debated over Iran Sanctions, Security Council Contests Expiry Status, Continuing Nuclear Programme. Country or region mentioned: Iran.",
+      "geography": "Iran",
+      "development_type": "trade restriction",
+      "topic": "sanctions and trade restrictions",
+      "published_at": "2026-10-27T20:19:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6442566d",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States-Cuba Clash Pauses General Assembly: debated as Member States Press for End to Embargo · United States",
+      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
+      "what_changed": "United States-Cuba Clash Pauses General Assembly debated as Member States Press for End to Embargo. Country or region mentioned: United States.",
+      "geography": "United States",
+      "development_type": "trade restriction",
+      "topic": "sanctions and trade restrictions",
+      "published_at": "2026-10-27T19:50:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9c3a2a75",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Iran must allow the return of IAEA inspectors to all nuclear sites · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Iran must allow the return of IAEA inspectors to all nuclear sites. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-27T15:51:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9fdf5ef7",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: met Tuesday to debate the best way to improve security for women caught up in conflict",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council met Tuesday to debate the best way to improve security for women caught up in conflict.",
+      "geography": null,
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-27T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a1df621d",
+      "category": "geopolitics",
+      "title": "Geomacro finds General Assembly: opened its annual debate on the US economic embargo against Cuba on Tuesday · United States",
+      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
+      "what_changed": "General Assembly opened its annual debate on the US economic embargo against Cuba on Tuesday. Country or region mentioned: United States.",
+      "geography": "United States",
+      "development_type": "trade restriction",
+      "topic": "sanctions and trade restrictions",
+      "published_at": "2026-10-27T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-ffed85d3",
       "category": "rare_earth",
@@ -2777,348 +2887,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.ukrinform.net"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-4420db2a",
-      "category": "geopolitics",
-      "title": "Geomacro finds Kyiv said Starlink restored as attacks in Ukraine and Russia continue - Al Jazeera",
-      "what_changed": "A monitored source feed reports: Kyiv said Starlink restored as attacks in Ukraine and Russia continue - Al Jazeera. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-25T02:36:30.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-48f1097b",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran urged France, Germany, UK to examine root cause of military conflict - Middle East Eye",
-      "what_changed": "A monitored source feed reports: Iran urged France, Germany, UK to examine root cause of military conflict - Middle East Eye. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-25T01:39:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-c8c3bba7",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Iran war won’t end until nuclear threat gone; no strike today - Investing.com",
-      "what_changed": "A monitored source feed reports: Trump said Iran war won’t end until nuclear threat gone; no strike today - Investing.com. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-25T00:45:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-475b7446",
-      "category": "geopolitics",
-      "title": "Geomacro finds Kim Jong Un said North Korea ‘inspired’ by China’s success in border city visit - NK News",
-      "what_changed": "A monitored source feed reports: Kim Jong Un said North Korea ‘inspired’ by China’s success in border city visit - NK News. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-25T00:32:31.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-1209a3bd",
-      "category": "rare_earth",
-      "title": "Geomacro finds Taiwan announced plans to build rare earths plant",
-      "what_changed": "A monitored source feed reports: Taiwan announced plans to build rare earths plant. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-25T00:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.taipeitimes.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-7dd60068",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said US will do business with both Ukraine and Russia after war",
-      "what_changed": "A monitored source feed reports: Trump said US will do business with both Ukraine and Russia after war. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T23:49:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.pravda.com.ua"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-dfc24283",
-      "category": "macro",
-      "title": "Geomacro finds Gender Minister called for stronger Canada, Africa ties to boost women’s economic opportunities",
-      "what_changed": "A monitored source feed reports: Gender Minister called for stronger Canada, Africa ties to boost women’s economic opportunities. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T21:11:56.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.myjoyonline.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-bdb7cae7",
-      "category": "geopolitics",
-      "title": "Geomacro finds Musk said Ukrainian military violated Starlink terms of use, loophole has been closed - Українська правда",
-      "what_changed": "A monitored source feed reports: Musk said Ukrainian military violated Starlink terms of use, loophole has been closed - Українська правда. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T19:35:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-d138d2d1",
-      "category": "geopolitics",
-      "title": "Geomacro finds Musk said Ukrainian military violated Starlink terms of use, loophole has been closed",
-      "what_changed": "A monitored source feed reports: Musk said Ukrainian military violated Starlink terms of use, loophole has been closed. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T19:35:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.pravda.com.ua"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-6fb969cb",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom announced £600 Million AI Security Package Covering Cyber and Bio Threats - The420.in",
-      "what_changed": "A monitored source feed reports: United Kingdom announced £600 Million AI Security Package Covering Cyber and Bio Threats - The420.in. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T18:22:30.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-444c2965",
-      "category": "rare_earth",
-      "title": "Geomacro finds GoldBod rejected claims Sammy Gyamfi endorsed illegal mining, announces new support programme for miners",
-      "what_changed": "A monitored source feed reports: GoldBod rejected claims Sammy Gyamfi endorsed illegal mining, announces new support programme for miners. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T16:38:45.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.myjoyonline.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-ac742089",
-      "category": "geopolitics",
-      "title": "Geomacro finds Mahama urged Africa to finance its own peace operations, curb illicit financial flows",
-      "what_changed": "A monitored source feed reports: Mahama urged Africa to finance its own peace operations, curb illicit financial flows. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T16:24:35.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.myjoyonline.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-f3d5684a",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran said won’t allow US warships to get close as Trump ponders new attacks - Al Jazeera",
-      "what_changed": "A monitored source feed reports: Iran said won’t allow US warships to get close as Trump ponders new attacks - Al Jazeera. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T13:15:07.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-4ed38dca",
-      "category": "geopolitics",
-      "title": "Geomacro finds Zelenskyy imposed sanctions on Russian ballistic missile manufacturers and military suppliers",
-      "what_changed": "A monitored source feed reports: Zelenskyy imposed sanctions on Russian ballistic missile manufacturers and military suppliers. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "sanctions and trade restrictions",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T12:18:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: english.nv.ua"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-20999f97",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia said Drone Attack Damages Tolyatti Facilities, Ukraine Says Petrochemical Plant Hit - The Moscow Times",
-      "what_changed": "A monitored source feed reports: Russia said Drone Attack Damages Tolyatti Facilities, Ukraine Says Petrochemical Plant Hit - The Moscow Times. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T11:59:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-aa8a5a71",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia said Drone Attack Damages Tolyatti Facilities, Ukraine Says Petrochemical Plant Hit",
-      "what_changed": "A monitored source feed reports: Russia said Drone Attack Damages Tolyatti Facilities, Ukraine Says Petrochemical Plant Hit. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T11:59:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.themoscowtimes.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-24ccb70f",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia said drone attack damages facilities, Ukraine says petrochemical plant hit - Al Arabiya English",
-      "what_changed": "A monitored source feed reports: Russia said drone attack damages facilities, Ukraine says petrochemical plant hit - Al Arabiya English. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T11:20:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-80df3348",
-      "category": "geopolitics",
-      "title": "Geomacro finds Zelenskyy said Ukraine's Starlink Speed Restored As Moscow And Kyiv Exchange Attacks - Radio Free Europe/Radio Liberty",
-      "what_changed": "A monitored source feed reports: Zelenskyy said Ukraine's Starlink Speed Restored As Moscow And Kyiv Exchange Attacks - Radio Free Europe/Radio Liberty. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-24T11:04:40.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
