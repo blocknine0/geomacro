@@ -151,7 +151,7 @@ export async function executeHybridChatTurn(
   // A safely resolved English follow-up must not be second-guessed by a
   // probabilistic model or incur a redundant provider call.
   const interpretation = resolved.mode === "bounded_follow_up" && !ambiguous &&
-    !/[^\\x00-\\x7f]/u.test(rawQuestion)
+    !/[^\x00-\x7f]/u.test(rawQuestion)
       ? null : await planConversationalAsk(rawQuestion, parsed.history, ambiguous, clientKey);
   if (ambiguous && !interpretation) throw new Error("AMBIGUOUS_FOLLOW_UP");
   if (interpretation) {
