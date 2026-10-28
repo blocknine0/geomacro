@@ -182,4 +182,44 @@ describe("authentic free-derived static archive deep-health",()=>{
     expect(route).toContain("status: deepReady ? 200 : 503");
     expect(route).toContain("chargeable:false");
   });
+  it("keeps a genuine current official story when static OSINT crosses the rolling 72h edge",()=>{
+    const expired="2026-10-17T23:30:00.000Z";
+    const monitored=story("macro",{
+      published_at:expired,status:"osint_feed_observed_unverified",
+      development_type:"unverified OSINT feed observation",geography:null,
+      sources_credited:["Monitored feed: example.org"],
+    });
+    const observed=classifyFreeDerivedFeed(feed([story(),monitored],{
+      checked_at:"2026-10-20T23:00:00.000Z",
+    }),time);
+    expect(observed.statusCode).toBe(200);
+    expect(observed.body.current_72h_derived_rows).toBe(1);
+    expect(observed.body.categories).toEqual({geopolitics:1,macro:0,rare_earth:0});
+    expect(observed.body.current_signed_hot_snapshots_attested).toBe(false);
+    // Even an expired official original is never counted as current.
+    const onlyExpired=classifyFreeDerivedFeed(feed([
+      story("macro",{published_at:expired}),
+    ],{checked_at:"2026-10-20T23:00:00.000Z"}),time);
+    expect(onlyExpired.statusCode).toBe(503);
+    expect(onlyExpired.body.current_72h_derived_rows).toBe(0);
+  });
+  it("rejects invalid-at-build expiry, expired private URLs and abandoned static snapshots",()=>{
+    const earlier="2026-10-17T22:00:00.000Z";
+    const checked="2026-10-20T23:00:00.000Z";
+    const alreadyExpired=classifyFreeDerivedFeed(feed([story(),story("macro",{
+      published_at:earlier,
+    })],{checked_at:checked}),time);
+    expect(alreadyExpired.statusCode).toBe(503);
+    const staleWithRaw=classifyFreeDerivedFeed(feed([story(),story("macro",{
+      published_at:"2026-10-17T23:30:00.000Z",
+      upstream_url:"https://source.example/article",
+    })],{checked_at:checked}),time);
+    expect(staleWithRaw.statusCode).toBe(503);
+    const abandoned=classifyFreeDerivedFeed(feed([story()],{
+      checked_at:"2026-10-20T17:00:00.000Z",
+    }),time);
+    expect(abandoned.statusCode).toBe(503);
+    expect(abandoned.body.reason).toBe("FREE_ARCHIVE_CLOCK_INVALID");
+  });
+
 });
