@@ -1,3 +1,5 @@
+import {classifyHotTopicEvent} from "./hot-topic-taxonomy.ts";
+import {LAUNCH_NEWS_FAMILY_CATEGORIES} from "./launch-news-coverage.ts";
 /**
  * One bounded, deterministic factual JSON projection for pasted and
  * already-derived news across all three Geomacro categories.
@@ -114,7 +116,12 @@ export function normalizeReusableNewsJson(input:unknown){
   const category=CATEGORY_ALIASES[d.category as string] as Category;
   const license=(d.license??"unknown") as License;
   const prose=normalizedText((d.headline?d.headline+" ":"")+(d.text as string));
-  const eventTypes=EVENT_RULES.filter(([,re])=>re.test(prose)).map(([tag])=>tag);
+  const legacyTypes=EVENT_RULES.filter(([,re])=>re.test(prose)).map(([tag])=>tag);
+  const families=classifyHotTopicEvent({title:prose}).filter(f=>
+    LAUNCH_NEWS_FAMILY_CATEGORIES[category].includes(f));
+  // Finite reviewed tags only; no title text or rights promotion. Keep the
+  // existing 12-tag D1 contract and all original legacy event tags first.
+  const eventTypes=[...new Set([...legacyTypes,...families])].slice(0,12);
   const actions=ACTIONS.filter(([,re])=>re.test(prose)).map(([tag])=>tag);
   const entities=ACTORS.filter(([,re])=>re.test(prose)).map(([tag])=>tag);
   const sourceName=d.source_name?normalizedText(d.source_name as string):null;

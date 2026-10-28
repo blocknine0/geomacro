@@ -1,3 +1,4 @@
+import {launchPriorityWatchSources} from "./launch-priority-watch-sources.mjs";
 /**
  * Private-only 195-country topical discovery over one pinned public news-index
  * host. An index query is NOT an original publisher, event location, native
@@ -77,5 +78,5 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  if(base.length+fresh.length>512||
     (includeLocalGapLane&&fresh.length>PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
- return [...base,...fresh];
+ return launchPriorityWatchSources([...base,...fresh]);
 }

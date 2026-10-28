@@ -99,18 +99,19 @@ const VARIANTS: Record<string, string> = {
 
 /** Display the canonical catalog; a catalog view never starts a payment. */
 export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean }) {
+  const showPrices = !compact;
   const [group, setGroup] = useState("All products");
   const groups = GEOMACRO_PUBLIC_PRICING_GROUPS;
   const ids = groups
     .filter((g) => group === "All products" || group === g.label)
     .flatMap((g) => [...g.ids]);
   return (
-    <section aria-label="Exact USDC price by capability">
+    <section aria-label={showPrices ? "Exact USDC price by capability" : "API product outputs"}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-2xl font-semibold tracking-tight">
           {compact ? "Product catalog" : "Find your intelligence"}
         </h2>
-        <span className="text-xs text-muted-foreground">USDC · per eligible delivery</span>
+        <span className="text-xs text-muted-foreground">{showPrices ? "USDC · per eligible delivery" : "Structured JSON outputs"}</span>
       </div>
       {!compact && (
       <div role="group" aria-label="Filter store products" className="mt-5 flex flex-wrap gap-2">
@@ -132,6 +133,7 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
         ))}
       </div>
       )}
+      {!showPrices && <a href="/pricing#product-catalog" className="gm-text-link mt-4">Compare prices in the Store <ArrowUpRight className="h-4 w-4" /></a>}
       <div
         className={
           compact
@@ -157,7 +159,7 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
               <p className="mt-2 min-h-12 text-sm leading-6 text-muted-foreground">
                 {product.description}
               </p>
-              <dl className="mt-5 divide-y divide-border border-y border-border">
+              {showPrices && <dl className="mt-5 divide-y divide-border border-y border-border">
                 {Object.entries(GEOMACRO_CAPABILITY_PRICES[capability]).map(([variant, amount]) => (
                   <div
                     key={variant}
@@ -173,7 +175,7 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
                     </dd>
                   </div>
                 ))}
-              </dl>
+              </dl>}
               {compact ? (
                 <div className="mt-5">
                   <p className="text-sm font-medium">What you receive</p>

@@ -109,6 +109,9 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Launch news taxonomy and bounded discovery (offline)
+        run: node --test scripts/tests/launch-news-coverage.test.mjs
+
       - name: P0 public hot recovery handoff tests (offline, no funds)
         run: node --test scripts/ops/reconcile-public-hot-recovery.test.mjs
 

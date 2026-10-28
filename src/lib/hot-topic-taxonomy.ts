@@ -651,3 +651,10 @@ export function classifyHotTopicEvent(input: {
 export function hotTopicFamilyMaxAgeSeconds(family: HotTopicFamily) {
   return HOT_TOPIC_FAMILY_DEFINITIONS[family].default_max_age_seconds;
 }
+
+/** Share discovery matchers with ingestion, without granting event verification. */
+export function hotTopicIntakePattern(families: readonly HotTopicFamily[]): RegExp {
+  if (!families.length || families.some(f => !HOT_TOPIC_FAMILIES.includes(f)))
+    throw Error("HOT_TOPIC_INTAKE_FAMILY_INVALID");
+  return new RegExp(families.flatMap(f => FAMILY_POLICY[f].patterns.map(p => `(?:${p.source})`)).join("|"), "iu");
+}

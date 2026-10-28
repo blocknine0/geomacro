@@ -44,7 +44,7 @@ export function StructuredProductSetup() {
         again at purchase.
       </p>
       <label className="mt-5 block text-sm font-medium" htmlFor="structured-product">
-        Product and price
+        Select a product to check
       </label>
       <select
         id="structured-product"
@@ -60,7 +60,7 @@ export function StructuredProductSetup() {
       >
         {setup.products.map((row) => (
           <option key={row.id} value={row.id}>
-            {row.id.replaceAll("_", " ")} · {row.price_usdc} USDC
+            {row.id.replaceAll("_", " ")}
           </option>
         ))}
       </select>
