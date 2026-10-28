@@ -9,6 +9,7 @@ import {mkdirSync,writeFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {readCloudflareD1AccountQuota} from "./audit-d1-account-daily-quota-readonly.mjs";
+import {verifyPrivateD1RunReceipts} from "./d1-launch-github-verification.mjs";
 
 export const SCHEMA="geomacro.d1-launch-hourly-receipt.v1";
 const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev";
@@ -89,18 +90,17 @@ export async function observeD1LaunchHour({env=process.env,fetchImpl=fetch,
     rows_written:x.observed_rows_written,remaining_rows_read:x.remaining_rows_read,
     remaining_rows_written:x.remaining_rows_written};
  }catch(e){provider={verified:false,error:asError(e)}}
- const [publicStatus,deploy,backlog]=await Promise.all([
+ const [publicStatus,deploy,backlog,privateReceipt]=await Promise.all([
   publicProbe(fetchImpl),
   deployedShaProbe(fetchImpl,String(env.GITHUB_SHA??"")),
-  backlogProbe(fetchImpl,env,now.getTime())
+  backlogProbe(fetchImpl,env,now.getTime()),
+  verifyPrivateD1RunReceipts({fetchImpl,env,now})
  ]);
  return Object.freeze({
   schema:SCHEMA,observed_at_utc:now.toISOString(),provider,
   public:publicStatus,deploy,backlog,
-  critical:{independent_d1_readback_verified:false,
-    reason:"AUTHENTICATED_SOURCE_RECEIPT_REQUIRED_NOT_GITHUB_GREEN"},
-  recovery:{verified_replayed_items:null,
-    reason:"VERIFIED_REPLAY_RECEIPT_NOT_AVAILABLE"},
+  critical:privateReceipt.critical,
+  recovery:privateReceipt.recovery,
   r2_snapshot_activated_by_observer:false,
   predge_modified:false,customer_paid_calls:0,
   d1_sql_queries_by_observer:0,github_actions_proof_not_ingestion_proof:true
@@ -115,7 +115,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   // Output only sanitized numeric/provider states; never a source payload.
   console.log(JSON.stringify({schema:receipt.schema,observed_at_utc:receipt.observed_at_utc,
    provider:receipt.provider,public:receipt.public,deploy:receipt.deploy,
-   backlog:receipt.backlog,acceptance:"PENDING_AUTHENTICATED_CRITICAL_AND_REPLAY_PROOF"}));
+   backlog:receipt.backlog,acceptance:"PENDING_UNTIL_72H_REPRESENTATIVE_LIVE_EVIDENCE"}));
  }catch{
   console.error("D1_LAUNCH_OBSERVER_UNVERIFIED");process.exitCode=2;
  }
