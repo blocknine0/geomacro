@@ -12,6 +12,11 @@ on:
       - 'src/lib/public-derived-news-client.ts'
       - 'src/__tests__/public-derived-news-client.test.ts'
       - 'scripts/ops/publish-automated-intelligence-inputs.ts'
+      - 'scripts/ops/publish-internal-signed-news-scores.ts'
+      - 'src/lib/internal-news-scoring.ts'
+      - 'workers/control-plane/src/internal-signed-news-scores.ts'
+      - 'workers/control-plane/src/index.mjs'
+      - 'scripts/tests/internal-news-score-sqlite.test.ts'
       - 'scripts/ops/verify-gri-news-wakeup.mjs'
       - 'scripts/tests/gri-news-wakeup.test.mjs'
       - 'scripts/tests/automated-approval-continuation.test.mjs'
@@ -74,6 +79,13 @@ jobs:
           node --test scripts/tests/standing-derived-cleanup-contract.test.mjs
           node --check scripts/ops/enroll-standing-derived-cloud.mjs
           node --test scripts/tests/automated-approval-continuation.test.mjs scripts/tests/gri-news-wakeup.test.mjs scripts/tests/standing-derived-delegation.test.mjs scripts/tests/standing-derived-cloud-enrollment.test.mjs scripts/tests/signed-news-safe-diagnostic.test.mjs scripts/tests/signed-news-owner-race-reconcile.test.mjs scripts/tests/standing-delegated-cloud-safe-reasons.test.mjs scripts/tests/standing-delegation-role-separation.test.mjs
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+      - name: Verify all-news signed scoring against real D1-shaped SQLite
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun test scripts/tests/internal-news-score-sqlite.test.ts
 
   approve-retained-derived-inputs:
     needs: contract
