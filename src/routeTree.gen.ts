@@ -1471,7 +1471,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1IntelligenceProductsAvailabilityRoute:
     ApiV1IntelligenceProductsAvailabilityRoute,
   ApiV1IntelligenceQueryRoute: ApiV1IntelligenceQueryRoute,
-  ApiV1IntelligenceStructuredAnswerRoute: ApiV1IntelligenceStructuredAnswerRoute,
+  ApiV1IntelligenceStructuredAnswerRoute:
+    ApiV1IntelligenceStructuredAnswerRoute,
   ApiV1PaymentsNetworksRoute: ApiV1PaymentsNetworksRoute,
   ApiV1PaymentsPreflightRoute: ApiV1PaymentsPreflightRoute,
   ApiX402CircleIntelligenceRoute: ApiX402CircleIntelligenceRoute,
