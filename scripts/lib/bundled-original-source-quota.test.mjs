@@ -76,7 +76,13 @@ test("a legitimate pinned current original outranks stale pending audit within E
   {id:"geopolitics-new",category:"geopolitics",status:"official_release_observed_unscored",date_precision:"exact",published_at:new Date(now-25*60000).toISOString()},
  ];
  const priorityById=new Map(rows.map((r,i)=>[r.id,i]));
- const originalRefs=new Map(rows.map(r=>[r.id,{}]));
+ const refs={
+  geopolitics:{sourceId:"uk_fcdo",articleUrl:"https://www.gov.uk/government/news/synthetic-publisher-release-20261028"},
+  macro:{sourceId:"fed_press",articleUrl:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261028a.htm"},
+  rare_earth:{sourceId:"us_doe_news_minerals",articleUrl:"https://www.energy.gov/articles/synthetic-mineral-release-20261028"},
+ };
+ const originalRefs=new Map(rows.map(r=>[r.id,{category:r.category,
+  publishedAt:r.published_at,...refs[r.category]}]));
  const order=bundleRoundRobinNews(rows,{priorityById,originalRefs,nowMs:now}).map(x=>x.id);
  assert.deepEqual(order.slice(0,3),["macro-new","rare-new","geopolitics-new"]);
  assert.equal(new Set(order).size,6);
@@ -90,8 +96,22 @@ test("no promotion of feed-only, unpinned, future or 61-minute-old input",()=>{
  const rows=[row("old",120),row("fresh",20),row("unpinned",10),
   row("feed",8,"official_feed_candidate_unscored"),row("future",-1),row("expired",61)];
  const priorityById=new Map(rows.map((r,i)=>[r.id,i]));
- const originalRefs=new Map(rows.filter(r=>r.id!=="macro-unpinned").map(r=>[r.id,{}]));
+ const originalRefs=new Map(rows.filter(r=>r.id!=="macro-unpinned").map(r=>[
+  r.id,{category:r.category,sourceId:"fed_press",publishedAt:r.published_at,
+   articleUrl:"https://www.federalreserve.gov/newsevents/pressreleases/monetary20261028a.htm"}]));
  const order=bundleRoundRobinNews(rows,{priorityById,originalRefs,nowMs:now}).map(x=>x.id);
  assert.equal(order[0],"macro-fresh");
  assert.deepEqual(order.slice(1),["macro-old","macro-unpinned","macro-feed","macro-future","macro-expired"]);
+});
+
+test("a forged/unregistered reference cannot win urgent original review priority",()=>{
+ const now=Date.parse("2026-10-28T09:35:00Z");
+ const old={id:"macro-old",category:"macro",date_precision:"exact",
+  status:"official_release_observed_unscored",published_at:new Date(now-90*60000).toISOString()};
+ const forged={...old,id:"macro-forged",published_at:new Date(now-10*60000).toISOString()};
+ const originalRefs=new Map([[forged.id,{category:"macro",publishedAt:forged.published_at,
+  sourceId:"fed_press",articleUrl:"https://www.federalreserve.gov.attacker.invalid/newsevents/pressreleases/monetary20261028a.htm"}]]);
+ assert.deepEqual(bundleRoundRobinNews([old,forged],{
+  nowMs:now,originalRefs,priorityById:new Map([[old.id,1],[forged.id,2]])
+ }).map(x=>x.id),["macro-old","macro-forged"]);
 });
