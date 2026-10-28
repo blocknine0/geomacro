@@ -28,7 +28,7 @@ export function verifyRoutingCatalog(catalog,{exists=existsSync}={}){
  const workflows=new Set();
  for(const [name,row] of Object.entries(catalog.modules)){
   if(!known.has(name)||!row||typeof row!=="object"||
-    !/^[a-z0-9_]+$/u.test(row.source_route)||
+    !/^[A-Z0-9_]+$/u.test(row.source_route)||
     !/^[a-z0-9_]+$/u.test(row.internal_source_id)||
     !/^[a-z0-9_-]+\.yml$/u.test(row.producer_workflow)||
     /predge|partner|payment|settlement/iu.test(row.producer_workflow)||
