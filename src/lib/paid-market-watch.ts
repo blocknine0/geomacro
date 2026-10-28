@@ -104,7 +104,7 @@ function normalizeDimension(value: string): string | null {
   }
   return null;
 }
-function limitFor(capability: string | null,variant: string | null):number {
+export function paidMarketWatchLimitFor(capability: string | null,variant: string | null):number {
   if(capability==="structural_country_digest"||capability==="structural_corridor_digest")return 1;
   if(capability==="signed_risk_object")return 2;
   if(capability==="intelligence_query")return variant==="complex_multi_source"?5:variant==="standard"?3:2;
@@ -130,18 +130,26 @@ export function buildPaidMarketWatch(input:MarketWatchInput) {
   }
   for(const driver of input.verified_signed_drivers){
     const dimension=normalizeDimension(driver);
-    if(dimension&&!basisByDimension.has(dimension))
-      basisByDimension.set(dimension,"VERIFIED_SIGNED_GRO_DRIVER");
+    if(dimension)basisByDimension.set(dimension,"VERIFIED_SIGNED_GRO_DRIVER");
   }
   // Only events already independently accepted on the paid hot-topic path.
   for(const eventType of input.qualified_event_types){
     const dimension=normalizeDimension(eventType);
-    if(dimension&&!basisByDimension.has(dimension))
-      basisByDimension.set(dimension,"QUALIFIED_CURRENT_DERIVED_EVENT");
+    if(dimension)basisByDimension.set(dimension,"QUALIFIED_CURRENT_DERIVED_EVENT");
   }
 
+  // Under a small paid SKU cap, genuinely qualified current events take
+  // precedence over signed risk drivers, then slower structural context.
+  // Order within each proof class is stable; no market price or impact score
+  // is inferred from a topic label.
+  const priority:Record<Basis,number>={
+    QUALIFIED_CURRENT_DERIVED_EVENT:0,
+    VERIFIED_SIGNED_GRO_DRIVER:1,
+    VERIFIED_STRUCTURAL_MODULE:2,
+  };
   const items=CHANNELS.filter(channel=>basisByDimension.has(channel.dimension))
-    .slice(0,limitFor(input.capability,input.variant)).map(channel=>({
+    .sort((a,b)=>priority[basisByDimension.get(a.dimension)!]-priority[basisByDimension.get(b.dimension)!])
+    .slice(0,paidMarketWatchLimitFor(input.capability,input.variant)).map(channel=>({
       watch_id:channel.key,
       market:channel.market,
       indicator_to_watch:channel.indicator,
@@ -150,6 +158,9 @@ export function buildPaidMarketWatch(input:MarketWatchInput) {
       scenario_if_pressure_eases:channel.eases,
       evidence_dimension:channel.dimension,
       evidence_basis:basisByDimension.get(channel.dimension)!,
+      evidence_class:basisByDimension.get(channel.dimension)==="QUALIFIED_CURRENT_DERIVED_EVENT"
+        ? "QUALIFIED_EVENT" as const : basisByDimension.get(channel.dimension)==="VERIFIED_SIGNED_GRO_DRIVER"
+          ? "SIGNED_RISK_DRIVER" as const : "STRUCTURAL_CONTEXT" as const,
       evidence_as_of:input.latest_evidence_at,
       current_market_price:null,
       estimated_price_change_pct:null,
