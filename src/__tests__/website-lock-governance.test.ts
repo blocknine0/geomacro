@@ -50,7 +50,16 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-language-pack-redirect-fallback-20261026");
+    expect(config.lock_revision).toBe("founder-approved-geomacro-self-certified-news-severity-gri-20261028");
+    const newsGriApproval=config.approved_geomacro_self_certified_news_severity_20261028;
+    expect(newsGriApproval).toBeTruthy();
+    expect(newsGriApproval.approved_source_commit).toMatch(/^[a-f0-9]{40}$/);
+    expect(newsGriApproval.scope).toContain("Risk Indices");
+    expect(newsGriApproval.classification).toContain("OSINT");
+    expect(newsGriApproval.classification).toContain("Neither source is independently event-fact-certified");
+    expect(newsGriApproval.unchanged).toContain("PREDGE");
+    expect(newsGriApproval.unchanged).toContain("/global-risk");
+    expect(newsGriApproval.publication).toContain("pending");
     const categoryPricing=config.approved_three_category_api_pricing_20261025;
     expect(categoryPricing.previous_baseline_sha).toBe("8c9ecc7df74ac45d69dc56bbd2f6e568fd590ce6");
     const permanentArchiveApproval=config.approved_permanent_finds_archive_d1_free_reads_20261026;
@@ -93,7 +102,10 @@ describe("website lock governance", () => {
     expect(publicAskApproval.approved_ui_commit).toBe(priceDedup.previous_baseline_sha);
     const askConversationApproval = config.approved_ask_conversational_intelligence_20261028;
     expect(priceDedup.approved_ui_commit).toBe(askConversationApproval.previous_baseline_sha);
-    expect(askConversationApproval.approved_ui_commit).toBe(config.baseline_sha);
+    expect(askConversationApproval.approved_ui_commit).not.toBe(config.baseline_sha);
+    // Historical approval chain is retained; the independent founder-approved
+    // GeoMacro news+OSINT Risk Indices copy now has its own active baseline.
+    expect(config.baseline_sha).toBe(newsGriApproval.approved_source_commit);
     expect(askConversationApproval.scope).toEqual(["src/components/ask/ask-workspace.tsx"]);
     expect(askConversationApproval.predge_unmodified).toBe(true);
     expect(askConversationApproval.global_risk_final_lock_unmodified).toBe(true);
