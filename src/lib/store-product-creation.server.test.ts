@@ -59,7 +59,7 @@ function object(subject: any, asOf: string): any {
     methodology_version: "country-risk-v0.1.0-pilot", observed_at: generated, generated_at: generated,
     expires_at: "2026-10-24T14:00:00.000Z", verification: { status: "VERIFIED", reason_codes: [], last_verified_at: generated },
     commercial_eligibility: { status: "VERIFIED", reason_codes: [] },
-    integrity: { input_hash: "a".repeat(64), data_hash: "b".repeat(64), calculation_hash: "c".repeat(64), payload_hash: "d".repeat(64), signature_scheme: "Ed25519", signing_key_id: "synthetic-unit-key-not-production" } };
+    integrity: { input_hash: "a".repeat(64), data_hash: "b".repeat(64), calculation_hash: "c".repeat(64), payload_hash: "d".repeat(64), signature_scheme: "Ed25519", signature: Buffer.from("synthetic-fixture-only-signature").toString("base64").repeat(3), canonicalization:"geomacro-canonical-json-v1", signing_key_id: "synthetic-unit-key-not-production" } };
 }
 const rights = async (ids: string[]) => ({ eligible: true, ineligible_source_ids: [], results: ids.map(source_id => ({
   source_id, eligible: true, commercial_usage_status: "DERIVED_ONLY", attribution_required: false, raw_redistribution_allowed: false, licence_name: "synthetic-test-only",
