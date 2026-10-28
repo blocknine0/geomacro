@@ -209,8 +209,8 @@ export async function fetchPermanentDerivedNews(
   if(index.schema!==PERMANENT_ARCHIVE_INDEX_SCHEMA||
      !Array.isArray(index.months)||index.months.length>600||
      index.months.some(month=>typeof month!=="string"||!/^[0-9]{4}-(?:0[1-9]|1[0-2])$/u.test(month))||
-     !Array.isArray(index.categories)||
-     PERMANENT_ARCHIVE_CATEGORIES.some(category=>!index.categories?.includes(category)))
+     !Array.isArray(categories)||
+     PERMANENT_ARCHIVE_CATEGORIES.some(category=>!categories.includes(category)))
     throw Error("DERIVED_NEWS_ARCHIVE_INDEX_INVALID");
   const months=[...new Set(index.months as string[])];
   const tasks=months.flatMap(month=>PERMANENT_ARCHIVE_CATEGORIES.map(category=>({month,category})));
