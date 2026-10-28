@@ -92,9 +92,34 @@ const testBrowser=async({chromium,expected=EXPECTED,githubToken=process.env.GITH
     assert(askScreen.path==="/ask-geomacro"&&
       /ask geomacro/i.test(askScreen.text),"BROWSER_ASK_NOT_RENDERED");
     assert(failures.length===0,"BROWSER_ASK_JS_EXCEPTION");
+    // Full public storefront and editorial navigation surface. These are
+    // presentation checks only, NOT proof of paid execution or signed data.
+    const publicPages=[
+      {path:"/pricing",title:/store|pricing/i},
+      {path:"/data-api",title:/api.*agents/i},
+      {path:"/docs",title:/documentation/i},
+      {path:"/risk-indices",title:/risk indices/i},
+    ];
+    for(const item of publicPages){
+      const response=await page.goto(ROOT+item.path,
+        {waitUntil:"domcontentloaded",timeout:30_000});
+      assert(response?.status()===200,"BROWSER_PUBLIC_PAGE_HTTP_UNAVAILABLE");
+      await page.locator("main").first().waitFor({state:"visible",timeout:15_000});
+      await timed(500);
+      const state=await page.evaluate(()=>({
+        title:document.title,
+        path:location.pathname,
+        bodyLength:document.body?.innerText?.length??0,
+      }));
+      assert(state.path===item.path&&item.title.test(state.title)&&state.bodyLength>90,
+        "BROWSER_PUBLIC_PAGE_NOT_RENDERED");
+      assert(failures.length===0,"BROWSER_PUBLIC_PAGE_JS_EXCEPTION");
+    }
     results.push({viewport:viewport.width+"x"+viewport.height,
       home_http_200:true,intelligence_http_200:true,
-      ask_http_200:true,nav_clicked:viewport.width===1440,
+      ask_http_200:true,public_surfaces_http_200:publicPages.length,
+      public_surfaces:publicPages.map(x=>x.path),
+      nav_clicked:viewport.width===1440,
       js_page_errors:0,marker_parity:exact?"EXACT_MAIN":"PROVEN_NON_WEBSITE_ONLY"});
    }finally{await page.close()}
   }
