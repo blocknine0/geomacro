@@ -40,7 +40,7 @@ const source=JSON.parse(data) as Array<[
 ]>;
 type Case={
   id:number;sku:typeof SKUS[number];category:number;actor:"user"|"machine";
-  subject:DecisionIntelligenceSubject;topic:string;dimension:string;question:string;
+  subject:DecisionIntelligenceSubject;topic:string;topics:string[];dimension:string;question:string;
   issuedAfter:string|undefined;responseLocale:"bn"|"hi"|undefined;
 };
 const categories:Record<string,number>={"Geopolitics":0,"Macro / FX":1,"Critical Minerals":2};
@@ -56,12 +56,12 @@ const cases:Case[]=source.map((row,index)=>{
   const sku=SKUS.find(s=>s.capability===product.capability &&
     s.variant===product.variant && s.price===price);
   if(!sku||id!=="GM-"+String(index+1).padStart(3,"0")||
-    !(categoryLabel in categories)||subjects.length!==1||topics.length!==1)
+    !(categoryLabel in categories)||subjects.length!==1||topics.length<1||topics.length>3)
     throw Error("REAL_100_ORIGINAL_CASES_MISMATCH");
   const n=(index+1)%10;
   return {
     id:index+1,sku,category:categories[categoryLabel],actor,
-    subject:subjects[0],topic:topics[0],
+    subject:subjects[0],topic:topics[0],topics,
     dimension:CASE_DIMENSIONS[topics[0]]??"geopolitical_security",
     question,issuedAfter:product.issued_after,
     responseLocale:n===5?"bn":n===8?"hi":undefined,
@@ -100,7 +100,7 @@ describe("100 global three-category, nine-price, human-and-machine MOCK contract
         {capability:sku.capability,variant:sku.variant};
       const parsed=agentAdaptiveQuerySchema.safeParse({
         schema_version:"geomacro.agent-query.v1",
-        question,product,subjects:[subject],topics:[topic],
+        question,product,subjects:[subject],topics:testCase.topics,
         intent:subject.type==="corridor"?"corridor":"single_subject",
         fulfillment_mode:"published_only",
         delivery_tier:sku.capability.startsWith("structural_")?
