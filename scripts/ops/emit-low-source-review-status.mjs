@@ -199,8 +199,13 @@ export function readPrivateResult(path,env=process.env){
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{
   if(process.argv.length!==3)invalid();
-  process.stdout.write(JSON.stringify(aggregateLowSourceReview(
-   readPrivateResult(process.argv[2])))+"\n");
+  // Audit the complete GeoMacro-only result in memory; do not publish
+  // source verification counts, reasons or category-specific gaps into
+  // potentially public GitHub Actions logs, machine feeds or PREDGE.
+  aggregateLowSourceReview(readPrivateResult(process.argv[2]));
+  process.stdout.write(JSON.stringify({schema:"geomacro.private-original-review-gate.v1",
+   ok:true,details_redacted:true,source_references_logged:0,
+   original_verdicts_logged:0})+"\n");
  }catch{
   console.error("::error::LOW_SOURCE_REVIEW_AGGREGATE_NOT_VERIFIED");
   process.exitCode=2;

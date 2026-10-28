@@ -1,6 +1,7 @@
 import {readNewsProductFactory} from './news-product-factory.mjs';
 import {readPublicMacro,loadMacroState,storeMacroState,runMacroReleaseTick} from "./macro-fastlane.mjs";
 import {publicSignedNews} from './public-signed-news.mjs';
+import {authorizePrivateNewsProof} from './private-news-proof-auth.mjs';
 import {handlePrivateOsint15m} from './private-osint-15m.mjs';
 import {readPrivateTelegramResearchJson} from './telegram-research-json.mjs';
 import {readPrivateTelegramFreeLiveJson} from './telegram-free-live-research.mjs';
@@ -1356,8 +1357,17 @@ export default {
       return publicReadCache(async()=>await readPublicNewsR2Snapshot(request,env) ??
         await readDerivedStoriesBundle(env,Date.now(),
           eligiblePublicFreeD1CacheRequest(request)));
-    if(request.method==='GET'&&url.pathname==='/v1/public/intelligence-publications')
+    // Retired: this public URL exposed private original-page verdicts,
+    // source-review clocks and issuer envelopes. Neither browsers, agents
+    // nor PREDGE may read internal qualification state.
+    if(url.pathname==='/v1/public/intelligence-publications')
+      return json({ok:false,error:"NOT_FOUND"},404);
+    if(url.pathname==='/v1/internal/intelligence-publications'){
+      if(request.method!=='GET')return json({ok:false,error:"NOT_FOUND"},404);
+      const newsAuth=await authorizePrivateNewsProof(request,env);
+      if(!newsAuth.ok)return json({ok:false,error:newsAuth.error},newsAuth.status);
       return publicSignedNews(env,url.searchParams);
+    }
     if (request.method === "GET" && ["/v1/public/website-derived-news","/v1/public/website-derived-news-immediate"].includes(url.pathname)) {
       // Same D1 journal, no additional publisher/storage. Preserve the old
       // envelope and filter for already published browsers during rollout.

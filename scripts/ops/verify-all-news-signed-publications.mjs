@@ -1,21 +1,48 @@
 #!/usr/bin/env node
 import {ORIGINAL_VERIFICATION_WINDOW_MS,ORIGINAL_VERIFICATION_WINDOW_HOURS} from '../../src/lib/original-verification-policy.ts';
-import {resolve} from 'node:path';
+import {createHmac} from 'node:crypto';
+import {writeFileSync,lstatSync} from 'node:fs';
+import {resolve,isAbsolute} from 'node:path';
 import {safeSignedNewsFailureReceipt} from '../lib/signed-news-safe-diagnostic.mjs';
 import {pathToFileURL} from 'node:url';
 import {fetchAllDerivedNews} from '../../src/lib/public-derived-news-client.ts';
 import {automatedInputContent,automatedInputId,inputHash,verifyAutomatedInput} from '../../src/lib/automated-intelligence-input.ts';
-const URL='https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/intelligence-publications';
+const URL='https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/intelligence-publications';
+const HEX=/^[a-f0-9]{64}$/;
+export function privateNewsProofBearer(env=process.env){
+ let low=String(env.GEOMACRO_LOW_REVIEW_TOKEN??"").trim();
+ if(!HEX.test(low)){
+  const root=String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??env.ROOT_LEDGER_TOKEN??"").trim();
+  if(root.length<32)throw Error("PRIVATE_NEWS_PROOF_TOKEN_MISSING");
+  const control=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
+  low=createHmac("sha256",control).update("geomacro-low-source-review-v1").digest("hex");
+ }
+ return createHmac("sha256",low).update("geomacro-internal-news-proof-read-v1").digest("hex");
+}
+export function storePrivateNewsVerificationReceipt(result,path,env=process.env){
+ const base=String(env.RUNNER_TEMP??"");
+ if(!base||!isAbsolute(base)||!isAbsolute(path)||
+    !resolve(path).startsWith(resolve(base)+"/"))
+  throw Error("PRIVATE_NEWS_PROOF_RECEIPT_PATH_NOT_PRIVATE");
+ // GitHub runner already uses a private temp dir; enforce 0600 on output.
+ writeFileSync(path,JSON.stringify(result)+"\n",{encoding:"utf8",flag:"wx",mode:0o600});
+ const stat=lstatSync(path);
+ if(!stat.isFile()||stat.isSymbolicLink()||
+    process.platform!=="win32"&&(stat.mode&0o077)!==0)
+  throw Error("PRIVATE_NEWS_PROOF_RECEIPT_NOT_PRIVATE");
+}
+
 
 const TRANSIENT_READ_STATUSES=new Set([408,425,429,500,502,503,504]);
 const PUBLIC_READ_ATTEMPTS=3;
 const waitBeforeRetry=attempt=>new Promise(resolve=>setTimeout(resolve,100*attempt));
-async function fetchSignedNewsPage(url,fetchImpl){
+async function fetchSignedNewsPage(url,fetchImpl,proofBearer){
+ if(!HEX.test(proofBearer??""))throw Error('PRIVATE_NEWS_PROOF_TOKEN_MISSING');
  for(let attempt=1;attempt<=PUBLIC_READ_ATTEMPTS;attempt++){
   let response;
   try{
    response=await fetchImpl(url,{method:'GET',redirect:'manual',cache:'no-store',
-    headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
+    headers:{Accept:'application/json',Authorization:'Bearer '+proofBearer},signal:AbortSignal.timeout(15000)});
   }catch(error){
    // Redirects are policy failures, not transient transport errors.
    if(error instanceof TypeError&&/redirect/iu.test(error.message))
@@ -48,7 +75,7 @@ export function publicationVerificationKeys(env=process.env){
  if(!keys||typeof keys!=='object'||Array.isArray(keys)||!Object.keys(keys).length)throw Error('SIGNED_NEWS_REGISTERED_KEYS_REQUIRED');
  return keys;
 }
-export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publicationVerificationKeys(),now=Date.now(),readJournal=fetchAllDerivedNews}={}){
+export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publicationVerificationKeys(),now=Date.now(),readJournal=fetchAllDerivedNews,proofBearer=privateNewsProofBearer()}={}){
  // Public proof reads paginate 40 rows while original-news publication runs
  // continue. Pin every page to a deterministic hash of the exact current
  // derived journal; if the journal changes mid-read, restart from a fresh
@@ -73,7 +100,7 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
 
   let journalChanged=false;
   for(let offset=0;offset<600;offset+=40){
-   const response=await fetchSignedNewsPage(URL+'?offset='+offset,fetchImpl);
+   const response=await fetchSignedNewsPage(URL+'?offset='+offset,fetchImpl,proofBearer);
    const text=await response.text();if(text.length>500000)throw Error('SIGNED_NEWS_RESPONSE_OVERSIZE');
    const page=JSON.parse(text);
    if(page.ok!==true||page.schema!=='geomacro.public-signed-derived-news.v1'||
@@ -148,6 +175,13 @@ export async function verifyAllNewsSignedPublications({fetchImpl=fetch,keys=publ
  throw Error('SIGNED_NEWS_JOURNAL_CHANGED_REPEATEDLY');
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
- try{console.log(JSON.stringify(await verifyAllNewsSignedPublications()));}
- catch(error){console.error(JSON.stringify(safeSignedNewsFailureReceipt(error)));process.exitCode=2;}
+ try{
+  const report=await verifyAllNewsSignedPublications();
+  if(process.env.GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH)
+   storePrivateNewsVerificationReceipt(report,process.env.GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH);
+  // Public GitHub Actions logs are NOT owner-only. Never print any count,
+  // freshness, source-review verdict or publisher metadata to this channel.
+  console.log(JSON.stringify({schema:"geomacro.private-news-proof-gate.v1",
+   ok:true,details_redacted:true,logged_originals:0,logged_verdicts:0}));
+ }catch(error){console.error(JSON.stringify(safeSignedNewsFailureReceipt(error)));process.exitCode=2;}
 }

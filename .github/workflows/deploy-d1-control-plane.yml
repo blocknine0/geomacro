@@ -68,6 +68,8 @@ on:
       - "scripts/lib/derived-news-readback-policy.mjs"
       - "scripts/ops/verify-all-news-signed-publications.mjs"
       - "scripts/tests/public-signed-news.test.mjs"
+      - "scripts/ops/verify-private-news-boundary-live.mjs"
+      - "scripts/tests/private-news-proof-boundary.test.mjs"
       - "src/lib/automated-intelligence-input.ts"
       - "src/lib/low-authority-source-review.ts"
       - "scripts/ops/verify-predge-auth-research-delivery.mjs"
@@ -97,6 +99,7 @@ jobs:
           node-version: "24"
       - name: Run offline D1 recovery, caching and hashed-insights regression
         run: node --test scripts/tests/news-product-factory.test.mjs scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/materialized-public-news-pages.test.mjs scripts/tests/refresh-public-news-pages-under-quota.test.mjs scripts/tests/public-materialized-worker-import.test.mjs scripts/tests/verify-public-d1-materialization-live.test.mjs scripts/tests/materialized-origin-owner-route.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs
+          node --test scripts/tests/private-news-proof-boundary.test.mjs scripts/tests/public-signed-news.test.mjs
 
   bootstrap-deploy-accept:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
@@ -803,8 +806,13 @@ jobs:
           set -euo pipefail
           npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "DELETE FROM control_state WHERE key='bootstrap_smoke';"
 
-      - name: Verify every retained Intelligence news signature from the deployed public readback
-        # Uses public registered verification keys only; no private signer or payment.
+      - name: Prove public and machine anonymous original-verification access is denied
+        # Zero D1 SQL: both old public proof URL and private scoped path
+        # must return generic 404 before owner-only signed readback proceeds.
+        run: node scripts/ops/verify-private-news-boundary-live.mjs
+
+      - name: Verify retained signed inputs through GeoMacro-only scoped proof
+        # Owner-only verification, no original/source status in public Actions logs.
         run: node scripts/ops/verify-all-news-signed-publications.mjs
 
       - name: Confirm no paid or destructive activation occurred

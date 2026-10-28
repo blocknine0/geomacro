@@ -134,6 +134,7 @@ jobs:
       - name: Independently verify all retained signed inputs before delegated attestation
         if: steps.optin.outputs.active == 'true'
         env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
           RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
           RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
@@ -143,7 +144,11 @@ jobs:
 
   cloud-derived-only:
     needs: [contract, approve-retained-derived-inputs]
+    # Privacy lock: delegated machine must never consume GeoMacro-only
+    # original/source verdict proof. Re-enable only after a new vetted,
+    # content-redacted owner attestation contract is independently accepted.
     if: >-
+      false &&
       github.repository == 'blocknine0/geomacro' &&
       github.event_name != 'pull_request' &&
       github.ref == 'refs/heads/main' &&
@@ -205,10 +210,10 @@ jobs:
       - name: Independently read back all current derived input signatures
         if: steps.optin.outputs.active == 'true'
         run: |
-          # The once-consented machine policy refuses group/world-readable
-          # audit files. Preserve existing receipt content and safe pathname.
+          # DISABLED by enclosing job privacy gate. Delegated machine has
+          # no issuer/root credentials and cannot fetch owner-only news proof.
           umask 077
-          bun scripts/ops/verify-all-news-signed-publications.mjs > "$GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH"
+          bun scripts/ops/verify-all-news-signed-publications.mjs
       - name: Route EVERY retained three-domain website news card to bounded private GRI materiality review
         if: steps.optin.outputs.active == 'true'
         env:
