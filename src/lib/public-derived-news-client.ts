@@ -205,6 +205,7 @@ export async function fetchPermanentDerivedNews(
   const indexText=await indexResponse.text();
   if(indexText.length>256_000)throw Error("DERIVED_NEWS_ARCHIVE_INDEX_TOO_LARGE");
   const index=JSON.parse(indexText) as Record<string,unknown>;
+  const categories=index.categories;
   if(index.schema!==PERMANENT_ARCHIVE_INDEX_SCHEMA||
      !Array.isArray(index.months)||index.months.length>600||
      index.months.some(month=>typeof month!=="string"||!/^[0-9]{4}-(?:0[1-9]|1[0-2])$/u.test(month))||
