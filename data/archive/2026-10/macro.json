@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-28T11:58:58.662Z",
+  "updated_at": "2026-10-28T12:37:03.106Z",
   "signals": [
     {
       "id": "macro-73c7336f",
@@ -52,6 +52,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T11:03:45.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-08c391c0",
+      "category": "macro",
+      "title": "Geomacro finds Minerals Co. extended Tombstone Oxide Gold-Silver 190m West with 115.8m at 0.67 g/t AuEq - Streetwise Reports",
+      "what_changed": "A monitored source feed reports: Minerals Co. extended Tombstone Oxide Gold-Silver 190m West with 115.8m at 0.67 g/t AuEq - Streetwise Reports. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:41:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

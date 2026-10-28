@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-28T11:58:58.662Z",
+  "checked_at": "2026-10-28T12:37:03.106Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -77,6 +77,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T11:03:45.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-08c391c0",
+      "category": "macro",
+      "title": "Geomacro finds Minerals Co. extended Tombstone Oxide Gold-Silver 190m West with 115.8m at 0.67 g/t AuEq - Streetwise Reports",
+      "what_changed": "A monitored source feed reports: Minerals Co. extended Tombstone Oxide Gold-Silver 190m West with 115.8m at 0.67 g/t AuEq - Streetwise Reports. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T10:41:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4546,25 +4565,6 @@
       "severity": null
     },
     {
-      "id": "geopolitics-369c5064",
-      "category": "geopolitics",
-      "title": "Geomacro finds Netanyahu denied reports of clash with Israeli army chief over Iran-linked operation ahead of election",
-      "what_changed": "A monitored source feed reports: Netanyahu denied reports of clash with Israeli army chief over Iran-linked operation ahead of election. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T06:08:09.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.dawn.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "macro-4750ff97",
       "category": "macro",
       "title": "Geomacro finds South Korea's Lee said unlikely to join Pacific trade pact within his term - Reuters",
@@ -4578,25 +4578,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-508257c9",
-      "category": "geopolitics",
-      "title": "Geomacro finds Saudi Arabia said intercepted Houthi missile targeting Riyadh as airport flights resume",
-      "what_changed": "A monitored source feed reports: Saudi Arabia said intercepted Houthi missile targeting Riyadh as airport flights resume. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T05:40:57.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.channelnewsasia.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4637,6 +4618,25 @@
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-7da3d13a",
+      "category": "rare_earth",
+      "title": "Geomacro finds Energy Department: awarded $16 Million for University Initiatives that Rebuild America’s Critical Minerals Workforce",
+      "why_it_matters": "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast.",
+      "what_changed": "Energy Department awarded $16 Million for University Initiatives that Rebuild America’s Critical Minerals Workforce.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "critical-minerals policy",
+      "published_at": "2026-10-26",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "U.S. Department of Energy"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
