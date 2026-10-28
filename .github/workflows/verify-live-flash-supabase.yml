@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  checks: read
 
 jobs:
   no-funds-source-tests:
@@ -30,6 +31,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
+      - name: Retrieve previous CodeQL high alert annotation location without credentials in logs
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "/repos/blocknine0/geomacro/check-runs/123016735508/annotations?per_page=100" --jq '.[] | (.path + ":" + (.start_line|tostring) + " " + .annotation_level + " " + .title)' || true
       - name: Verify read-only management and health contract
         run: |
           node --check scripts/ops/verify-live-flash-supabase-deployment.mjs
