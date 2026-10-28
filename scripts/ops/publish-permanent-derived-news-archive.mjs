@@ -443,7 +443,7 @@ export async function publishPermanentDerivedNewsArchive({
     };
     writeFileSync(dataLatest,JSON.stringify(latest,null,2)+"\n",{encoding:"utf8",mode:0o644});
     const coverage=buildCurrentArchiveEligibility(recent,now,latest.signals);
-    writeFileSync(join(dataDir,"coverage-72h.json"),JSON.stringify(coverage,null,2)+"\\n".replace("\\\\n","\\n"),{encoding:"utf8",mode:0o644});
+    writeFileSync(join(dataDir,"coverage-72h.json"),JSON.stringify(coverage,null,2)+"\n",{encoding:"utf8",mode:0o644});
   }
 
   const indexChanged=added>0||seedCompleteThisRun||index.total_signals!==totalSignals;
