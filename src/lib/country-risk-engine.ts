@@ -773,7 +773,10 @@ export async function buildCountryRiskObject(
             3,
           );
 
-  const evidence =
+  // The strict and legacy evidence projections are mutually exclusive in
+  // the mapper below: either all three legacy fields exist together or
+  // none is emitted. Preserve this correlation in the published GRO type.
+  const evidence: GeomacroRiskObject["evidence"] =
     selectedWeighted.map(
       ({ event, age_hours }) => ({
         event_id:
@@ -928,7 +931,7 @@ export async function buildCountryRiskObject(
               0,
           ),
       }),
-    );
+    ) as GeomacroRiskObject["evidence"];
   const structureVersions =
     normalizeStringArray(
       selectedWeighted.map(
