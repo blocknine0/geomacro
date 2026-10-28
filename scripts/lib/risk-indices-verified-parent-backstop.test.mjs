@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {createHash} from "node:crypto";
 import {
   classifyRiskIndicesRepair,runRiskIndicesVerifiedParentBackstop,
@@ -45,7 +46,20 @@ function indices(gri=parent()){
     generated_at:new Date(AT.getTime()-2*60_000).toISOString(),
     parent_global_risk_b2_sha256:gri.b2_sha256,
     parent_global_risk_payload_sha256:gri.payload_sha256,
-    data:{parentMethodologyVersion:"gri-v1.2.0",snapshotAsOf:gri.source_as_of},
+    data:{contractVersion:"risk-indices-v1.1.0",
+      parentMethodologyVersion:"gri-v1.2.0",
+      verificationStatus:"verified",proofScope:"verified-category-projection",
+      snapshotId:"signed-parent-001",proofHash:pin,
+      snapshotAsOf:gri.source_as_of,
+      indices:[
+        ["geopolitics","geopolitics"],
+        ["macro","macro"],
+        ["critical_minerals","rare_earth"],
+      ].map(([key,sourceCategory])=>({
+        key,sourceCategory,status:"available",readingStatus:"current",
+        readingAsOf:gri.source_as_of,readingSnapshotId:"signed-parent-001",
+        score:61,rawScore:61,series:{"7D":{buckets:[{},{}]},"30D":{buckets:[{},{}]}}
+      }))},
   };
   const payload_json=JSON.stringify(v);
   return {
@@ -128,6 +142,51 @@ test("if genuinely verified signed GRI exists but indices expired, dispatch cano
   assert.match(f.calls.find(x=>x.method==="POST").url,/risk-indices-verified-d1-parent\.yml\/dispatches$/u);
   assert.equal(result.payments,0);
   assert.equal(result.b2_requests,0);
+});
+function requireFileSyncStub(){return readFileSync(new URL("../../.github/workflows/risk-indices-verified-parent-backstop.yml",import.meta.url),"utf8");}
+test("malformed, incomplete, old or unreviewed child cannot suppress verified parent repair",()=>{
+  for(const modify of [
+    v=>{v.data.indices.pop();},
+    v=>{v.data.indices[0].key="macro";},
+    v=>{v.data.indices[0].status="unavailable";v.data.indices[0].score=null;},
+    v=>{v.data.indices[0].score=0/0;},
+    v=>{v.data.indices[1].readingAsOf=new Date(AT.getTime()-70*60_000).toISOString();},
+    v=>{v.data.indices[2].series["7D"].buckets=[];},
+    v=>{v.data.verificationStatus="research-triage-only";},
+    v=>{v.data.proofHash="b".repeat(64);},
+    v=>{v.data.contractVersion="not-a-public-certified-index";},
+  ]){
+    const p=parent(),c=indices(p),v=JSON.parse(c.payload_json);
+    modify(v);c.payload_json=JSON.stringify(v);c.payload_sha256=sha(c.payload_json);
+    const verdict=classifyRiskIndicesRepair({griSnapshot:p,indicesSnapshot:c,now:AT.getTime()});
+    assert.equal(verdict.eligible,true);
+    assert.equal(verdict.status,"REPAIR_REQUIRES_PROTECTED_PUBLISHER");
+    assert.equal(verdict.payments,0);
+  }
+});
+test("genuine reviewed upstream workflow_run may wake recovery but never fabricate without current parent",async()=>{
+  const f=mock({childStatus:503});
+  const receipt=await runRiskIndicesVerifiedParentBackstop({
+    env:{...env,GITHUB_EVENT_NAME:"workflow_run"},now:AT,fetchImpl:f.fetchImpl
+  });
+  assert.equal(receipt.dispatch_requested,true);
+  assert.equal(f.calls.filter(x=>x.method==="POST").length,1);
+  const bad=mock({griStatus:503});
+  const noSource=await runRiskIndicesVerifiedParentBackstop({
+    env:{...env,GITHUB_EVENT_NAME:"workflow_run"},now:AT,fetchImpl:bad.fetchImpl
+  });
+  assert.equal(noSource.dispatch_requested,false);
+  assert.equal(bad.calls.some(x=>x.method==="POST"),false);
+});
+test("backup workflow keeps strict upstream production pedigree and never modifies page",()=>{
+  const fs=requireFileSyncStub();
+  assert.match(fs,/workflow_run:/u);
+  assert.match(fs,/GRI v1\.2 Supabase-Free Current Promotion/u);
+  assert.match(fs,/head_repository\.full_name == 'blocknine0\/geomacro'/u);
+  assert.match(fs,/head_branch == 'main'/u);
+  assert.match(fs,/github\.event\.workflow_run\.conclusion == 'success'/u);
+  assert.match(fs,/scripts\/ops\/risk-indices-verified-parent-backstop\.mjs/u);
+  assert.equal(fs.includes("src/components/risk-indices"),false);
 });
 test("source SHA mismatched indices request repair rather than declare current",()=>{
   const p=parent(),c=indices(p);
