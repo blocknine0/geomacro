@@ -45,6 +45,7 @@ describe("Geomacro MCP + thin agent contract", () => {
   it("publishes three category question tools alongside the seven existing bounded tools", async () => {
     expect(GEOMACRO_AGENT_TOOL_NAMES).toEqual([
       "store_product_query",
+      "paid_structured_answer",
       "answer_question",
       "geopolitics_query",
       "macro_fx_query",
@@ -180,6 +181,18 @@ describe("Geomacro MCP + thin agent contract", () => {
     });
   });
 
+  it("routes a natural-language paid machine question to the exact canonical SKU, not a second paywall", () => {
+    const query=geomacroAgentToolToCanonicalQuery("paid_structured_answer",{
+      question:"ভারতের মুদ্রাস্ফীতি ও বৈদেশিক মুদ্রার রিজার্ভ",
+    });
+    expect(query.product).toEqual({capability:"intelligence_query",variant:"standard"});
+    expect(query.fulfillment_mode).toBe("published_only");
+    expect(query.topics).toEqual(expect.arrayContaining(["macro_risk","fx_external_risk"]));
+    expect(()=>geomacroAgentToolToCanonicalQuery("paid_structured_answer",{
+      question:"Risk gate for India",
+      risk_gate_context:{action_type:"exposure_review",policy_preset:"balanced"},
+    })).toThrow("PAID_STRUCTURED_PRODUCT_COMING_SOON");
+  });
   it("adapts MCP paid calls to the exact canonical commercial handler", () => {
     expect(routeSource).toContain('createFileRoute("/api/mcp")');
     expect(routeSource).toContain("geomacroMcpHandlers");
