@@ -1,13 +1,11 @@
 name: Predge Research Continuity and Pilot Renewal (No Funds)
 on:
   schedule:
-    # Hourly independent watchdog plus post-fastlane authenticated acceptance.
-    # Existing five-minute source cadence adds <=288 normal reads/day; the
-    # unchanged atomic 500/day pilot cap remains the final authority.
+    # Hourly independent watchdog; normal post-ingest reads add about 24/day.
     - cron: "17 * * * *"
   workflow_dispatch: {}
   workflow_run:
-    workflows: ["Website Derived News Continuity", "Five-Minute Original News Fastlane"]
+    workflows: ["Website Derived News Continuity"]
     types: [completed]
     branches: [main]
   # One read-only acceptance immediately after first reviewed main merge.
@@ -47,7 +45,6 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&
-      (github.event_name != 'workflow_run' || github.event.workflow_run.name != 'Five-Minute Original News Fastlane') &&
       (github.event_name != 'workflow_run' ||
        (github.event.workflow_run.head_repository.full_name == github.repository &&
         github.event.workflow_run.head_branch == 'main'))

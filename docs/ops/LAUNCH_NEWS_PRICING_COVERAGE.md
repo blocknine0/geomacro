@@ -124,7 +124,8 @@ source-intake completion and all three category checkpoint receipts within the
 same successful main job. Green not-due/held work and duplicate/missing receipts
 cannot suppress recovery. Quiet sources can complete a real poll with zero new
 rows; that is not evidence of a new release. Authenticated Predge continuity is
-checked after fastlane completion as well as hourly, without recursively
-triggering recovery from that post-intake event. The existing 500/UTC-day atomic
+checked in an isolated read-only job after the publisher emits its successful
+intake output, as well as the existing hourly check. The frozen Predge workflow
+is unchanged; the new job cannot recursively dispatch recovery. The existing 500/UTC-day atomic
 cap, expiry, attribution, 72h window and protected credentials remain unchanged.
 GitHub delays and publisher outages are still observable failures, not an SLA.

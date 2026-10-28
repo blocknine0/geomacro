@@ -168,6 +168,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  post-intake-authenticated-partner-proof:
+    # Independent protected readback after a genuine receipt, including small
+    # source-only batches. The frozen partner workflow and contract are intact.
+    needs: original-five-minute-derived-news
+    if: >-
+      !cancelled() &&
+      needs.original-five-minute-derived-news.outputs.source_intake_completed == 'true' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify frozen contract then authenticated same-journal delivery
+        env:
+          PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
+        run: |
+          node scripts/ops/verify-predge-continuity-lock.mjs
+          node scripts/ops/verify-predge-pilot-continuity.mjs
+
   continue-private-source-review:
     needs: original-five-minute-derived-news
     if: >-
@@ -273,6 +302,7 @@ jobs:
       group: geomacro-permanent-news-publication
       cancel-in-progress: false
     outputs:
+      source_intake_completed: ${{ steps.intake.outputs.source_intake_completed }}
       quota_admitted: ${{ steps.budget.outputs.critical == 'true' && steps.intake-clock.outputs.due == 'true' }}
     if: >-
       github.repository == 'blocknine0/geomacro' &&
@@ -335,6 +365,7 @@ jobs:
           GEOMACRO_SOURCE_INTAKE_INTERVAL_MINUTES: ${{ steps.budget.outputs.source_intake_interval_minutes }}
         run: node scripts/ops/check-source-intake-cadence.mjs
       - name: Publish bounded current original-dated three-category derived news
+        id: intake
         if: steps.budget.outputs.source_intake == 'true' && steps.intake-clock.outputs.due == 'true'
         env:
           GEOMACRO_SOURCE_INTAKE_INTERVAL_MINUTES: ${{ steps.budget.outputs.source_intake_interval_minutes }}

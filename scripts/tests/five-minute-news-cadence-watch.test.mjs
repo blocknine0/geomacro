@@ -112,7 +112,13 @@ test('source-only admission recovers publisher during discretionary hold; signin
  assert.match(watch,/needs\.quota-admission\.outputs\.source_intake == 'true'/);
  assert.doesNotMatch(watch,/outputs\.critical == 'true'/);
  assert.match(wf,/Global OSINT to Website Intelligence \(15-Minute Discovery\)/);
- const protectedWatch=readFileSync('.github/workflows/predge-research-continuity.yml','utf8');
- assert.match(protectedWatch,/workflows: \["Website Derived News Continuity", "Five-Minute Original News Fastlane"\]/);
- assert.match(protectedWatch,/workflow_run\.name != 'Five-Minute Original News Fastlane'/,'post-intake proof must not redispatch ingestion recursively');
+ const writer=readFileSync('.github/workflows/five-minute-original-news-fastlane.yml','utf8');
+ const proof=writer.split('  post-intake-authenticated-partner-proof:')[1].split('  continue-private-source-review:')[0];
+ assert.match(proof,/outputs\.source_intake_completed == 'true'/);
+ assert.match(proof,/verify-predge-pilot-continuity\.mjs/);
+ assert.match(proof,/verify-predge-continuity-lock\.mjs/);
+ assert.match(proof,/secrets\.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE/);
+ assert.doesNotMatch(proof,/dispatches|actions: write|B2_/);
+ const publisher=readFileSync('scripts/ops/publish-original-news-five-minute-fastlane.ts','utf8');
+ assert.match(publisher,/source_intake_completed=true/);
 });
