@@ -23,9 +23,10 @@ import type {StatelessIntelligenceResult} from "../../src/lib/stateless-public-i
 import {DERIVED_NEWS_TOPIC_POLICY_REVISION,requireDerivedNewsWorkerPolicy} from "../lib/derived-news-readback-policy.mjs";
 import {safeDerivedNewsD1FailureClass} from "../lib/derived-news-d1-failure.mjs";
 
+const ARCHIVE_ONLY = process.env.GEOMACRO_DERIVED_ARCHIVE_ONLY === "1";
 const ROOT = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
-if (ROOT.length < 32) throw Error("DERIVED_NEWS_PUBLISH_TOKEN_MISSING");
-const TOKEN = createHmac("sha256",ROOT).update("geomacro-control-plane-v1").digest("hex");
+if (!ARCHIVE_ONLY && ROOT.length < 32) throw Error("DERIVED_NEWS_PUBLISH_TOKEN_MISSING");
+const TOKEN = ARCHIVE_ONLY ? "" : createHmac("sha256",ROOT).update("geomacro-control-plane-v1").digest("hex");
 const CONTROL_PLANE_ORIGIN="https://geomacro-control-plane.daspallab202391.workers.dev";
 const ENDPOINT=CONTROL_PLANE_ORIGIN+"/v1/website-derived-news";
 const categories=["geopolitics","macro","rare_earth"] as const;
@@ -57,7 +58,7 @@ const sharedOfficialDocuments=createRunScopedAustralianResourcesFetch();
 // live Worker policy handshake. Static archive candidates are still built
 // from validated original-publisher feeds and independently revalidated.
 let workerPolicyReady=false;
-try{
+if (!ARCHIVE_ONLY) try{
   const workerPolicy=await requireDerivedNewsWorkerPolicy({
     fetchImpl:globalThis.fetch,url:CONTROL_PLANE_ORIGIN+"/health",
     expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION,
@@ -202,6 +203,16 @@ try {
 }catch {
   success=false;
   console.error("::error::PERMANENT_DERIVED_NEWS_CANDIDATE_EXPORT_FAILED");
+}
+// Quota-held original collection must be useful without any D1 read, D1 write,
+// checkpoint, B2 signer or payment. The existing archive publisher consumes
+// the derived candidate artifact in the next workflow step.
+if (ARCHIVE_ONLY) {
+  console.log(JSON.stringify({schema:"geomacro.archive-only-collection.v1",
+    d1_reads:0,d1_writes:0,b2_requests:0,payments:0,
+    categories_collected:reports.length,derived_candidates:archiveCandidateSignals.length,
+    complete:success&&denied===0}));
+  process.exit(success&&denied===0?0:2);
 }
 
 // Physical TTL/600-row cleanup is an explicit, authenticated empty batch.
