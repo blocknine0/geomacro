@@ -95,12 +95,83 @@ export function planPaidEvidenceRecovery({
     no_signatures_invented:true,no_raw_osint_promotion:true},
  });
 }
+/**
+ * Adapt every future public no-charge availability receipt into the same
+ * owner-only route queue, without querying D1 or treating a retrieval miss as
+ * proof that every country is missing. One receipt may contain a corridor;
+ * both endpoints are targeted independently and no inferred direction is
+ * used to invoice customers.
+ */
+export function planPaidEvidenceFromAvailability(receipts,{catalog=manifest,now=new Date()}={}){
+  verifyRoutingCatalog(catalog);
+  if(!Array.isArray(receipts)||receipts.length>250||!Number.isFinite(now.getTime()))
+    fail("AVAILABILITY_RECEIPTS_INVALID");
+  const queue=new Map(),ignored={unparsed:0,non_missing:0};
+  for(const entry of receipts){
+    const row=entry?.availability??entry?.response_json?.availability??entry;
+    if(!row||typeof row!=="object"||Array.isArray(row)){
+      ignored.unparsed++;continue;
+    }
+    if(row.deliverable===true){ignored.non_missing++;continue;}
+    const modules=[...new Set([...(Array.isArray(row.missing_modules)?row.missing_modules:[]),
+      ...(Array.isArray(row.stale_modules)?row.stale_modules:[])])];
+    const subjects=Array.isArray(row.subjects)?row.subjects:[];
+    const date=Date.parse(row.checked_at??"");
+    if(!Number.isFinite(date)||date>now.getTime()+60_000||
+       !modules.length||modules.length>14||subjects.length>6){
+      ignored.unparsed++;continue;
+    }
+    for(const x of subjects){
+      const subject=x?.subject??x;
+      const countries=subject?.type==="country"?[subject.country_iso3]:
+        subject?.type==="corridor"?[subject.origin_country_iso3,subject.destination_country_iso3]:[];
+      if(!countries.length||countries.some(c=>typeof c!=="string"||!/^[A-Z]{3}$/u.test(c))){
+        ignored.unparsed++;continue;
+      }
+      for(const country of countries)for(const module of modules){
+        const route=moduleToSource(module,catalog);
+        if(!route){ignored.unparsed++;continue;}
+        const key=country+":"+module;
+        const hasExisting=queue.has(key);
+        if(hasExisting)continue;
+        queue.set(key,{
+          country_iso3:country,module,
+          reason:Array.isArray(row.stale_modules)&&row.stale_modules.includes(module)?"STALE_SOURCE_PROOF":"MISSING_SOURCE_PROOF",
+          observed_at:new Date(date).toISOString(),
+          existing_producer:route.producer_workflow,
+          upstream_route:route.source_route,
+          candidate_only:true,requires_verified_native_source:true,
+          qualified_commercial_evidence:false,
+          original_request_unchanged:true,
+          no_billing:true,
+        });
+      }
+    }
+  }
+  return Object.freeze({
+    schema:"geomacro.commercial-gap-candidate-queue.v1",
+    generated_at:now.toISOString(),receipt_count:receipts.length,
+    candidate_gap_count:queue.size,candidate_gaps:[...queue.values()].sort((a,b)=>
+      a.country_iso3.localeCompare(b.country_iso3)||a.module.localeCompare(b.module)),
+    ignored,automatic_source_fabrication:false,actual_source_fetch_count:0,
+    d1_reads:0,b2_reads:0,payments:0,predge_modified:false,
+  });
+}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  try{
+  const inputArg=process.argv[2];
+  const realReceipts=inputArg?JSON.parse(readFileSync(resolve(ROOT,inputArg),"utf8")):null;
   const plan=planPaidEvidenceRecovery();
   const path=resolve(ROOT,"artifacts/news-hub/paid-source-recovery-plan.json");
   mkdirSync(resolve(ROOT,"artifacts/news-hub"),{recursive:true});
   writeFileSync(path,JSON.stringify(plan,null,2)+"\n",{mode:0o600});
+  if(realReceipts){
+    const receipts=Array.isArray(realReceipts)?realReceipts:
+      Array.isArray(realReceipts.results)?realReceipts.results:null;
+    const queue=planPaidEvidenceFromAvailability(receipts);
+    writeFileSync(resolve(ROOT,"artifacts/news-hub/paid-source-recovery-queue.json"),
+      JSON.stringify(queue,null,2)+"\\n".replace("\\\\n","\\n"),{mode:0o600});
+  }
   console.log(JSON.stringify({schema:plan.schema,selected_gaps:plan.selected_gaps,
     existing_routed_source_count:plan.guardrails.verified_module_routes,
     confirmed_launch_ready:plan.initial_real_sale_possible,
