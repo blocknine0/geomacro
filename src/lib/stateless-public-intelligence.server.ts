@@ -211,7 +211,7 @@ const GLOBAL_SOURCES:readonly StatelessSourceSpec[]=GLOBAL_OFFICIAL_RELEASE_FEED
   .filter((s:{websiteId?:string;url?:string;category?:string})=>
     !SOURCES.some(old=>old.id===s.websiteId ||
       (old.url===s.url && old.category===s.category)))
-  .map((s:{id:string;category:StatelessCategory;format:string;url:string;host:string;credit:string})=>({
+  .map(s=>({
     id:s.id,category:s.category,media:s.format==='rss'?'rss' as const:'html_index' as const,
     url:s.url,allowedHosts:[s.host],credit:s.credit,...(s.format==='json'?{govContentApi:true}:{}),
   }));
@@ -494,7 +494,7 @@ async function readSource(source: StatelessSourceSpec, now: number,
       const spec=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((s:{id:string})=>s.id===source.id);
       const seen=new Set<string>();
       const leads=data.results.slice(0,10).flatMap((row:{title?:unknown;link?:unknown})=>{
-        if(typeof row.title!=='string'||typeof row.link!=='string'||row.title.length>300||/[<>]/u.test(row.title)||!spec.topic.test(row.title)||!row.link.startsWith('/government/'))return [];
+        if(!spec||typeof row.title!=='string'||typeof row.link!=='string'||row.title.length>300||/[<>]/u.test(row.title)||!spec.topic.test(row.title)||!row.link.startsWith('/government/'))return [];
         const articleUrl=globalOriginalArticleUrl('https://www.gov.uk'+row.link,spec);
         if(!articleUrl||seen.has(articleUrl))return [];seen.add(articleUrl);
         return [{title:row.title,articleUrl}];
