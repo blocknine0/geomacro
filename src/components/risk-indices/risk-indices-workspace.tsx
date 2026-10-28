@@ -245,19 +245,19 @@ function IndexCard({ index }: { index: PublicRiskIndex }) {
       <dl className="mt-6 grid grid-cols-2 gap-4">
         <Metric label="Exact raw" value={index.rawScore === null ? "—" : fmt(index.rawScore, 6)} />
         <Metric label="Previous" value={index.previousScore === null ? "—" : fmt(index.previousScore, 1)} />
-        <Metric label="Evidence" value={countsAvailable ? String(index.eventCount) : "—"} />
-        <Metric label="Stories" value={countsAvailable ? String(index.independentStoryCount) : "—"} />
+        <Metric label="Public news" value={index.sourceMix ? String(index.sourceMix.public_news) : "—"} />
+        <Metric label="OSINT" value={index.sourceMix ? String(index.sourceMix.osint) : "—"} />
         <Metric label="Sources" value={countsAvailable ? String(index.sourceCount) : "—"} />
         <Metric label="Confidence" value={index.confidence === null ? "—" : `${Math.round(index.confidence)}%`} />
       </dl>
       {!countsAvailable ? (
         <p className="mt-4 text-xs leading-5 text-muted-foreground">
-          Per-domain evidence counts are not present in this continuity package; no zero count is inferred.
+          No public news or OSINT observations qualified in this reporting window.
         </p>
       ) : null}
       {index.topEvent ? (
         <div className="mt-5 border-t border-border/60 pt-4">
-          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">Highest-severity classified release</p>
+          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">Latest scored news signal</p>
           <p className="mt-2 text-sm font-medium leading-relaxed">{index.topEvent.title}</p>
         </div>
       ) : null}
