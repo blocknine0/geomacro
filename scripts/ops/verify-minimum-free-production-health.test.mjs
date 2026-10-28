@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import {readFileSync} from "node:fs";
 import assert from "node:assert/strict";
-import {classifyMinimumFreeProduction,classifyPublishedSourceEquivalence,verifyPublishedSourceEquivalence} from "./verify-minimum-free-production-health.mjs";
+import {classifyMinimumFreeProduction,classifyPublishedSourceEquivalence,verifyPublishedSourceEquivalence,readPublicHealthResource} from "./verify-minimum-free-production-health.mjs";
 
 const now=Date.parse("2026-10-21T00:00:00.000Z");
 const sha="a".repeat(40);
@@ -207,4 +207,60 @@ test("rolling archive still fails closed for old-at-build rows, exposed private 
  const stale=fixture();
  stale.journal.checked_at="2026-10-20T17:00:00.000Z";
  assert.equal(classifyMinimumFreeProduction(stale).ok,false);
+});
+
+test("production public health retries bounded 503/429 and network timeout without changing SHA or content",async()=>{
+ let n=0,pauses=[];
+ const p=await readPublicHealthResource("https://geomacro.live/.well-known/geomacro-build.json",{
+  json:true,wait:async x=>{pauses.push(x)},
+  fetchImpl:async(_url,opts)=>{
+   assert.equal(opts.redirect,"error");
+   assert.equal(opts.headers["Cache-Control"],"no-cache");
+   n++;
+   return n===1?Response.json({error:"edge unavailable"},{status:503}):
+    n===2?Response.json({error:"rate limited"},{status:429}):
+    Response.json({schema_version:"geomacro.deployment-build.v1",canonical_main_sha:sha});
+  }
+ });
+ assert.equal(n,3);assert.deepEqual(pauses,[300,600]);
+ assert.equal(p.status,200);
+ assert.equal(p.body.canonical_main_sha,sha);
+});
+test("public health has a finite retry ceiling; provider outage is not a green receipt",async()=>{
+ let calls=0;
+ await assert.rejects(readPublicHealthResource("https://geomacro.live",{
+  fetchImpl:async()=>{calls++;throw new TypeError("fetch failed")},
+  wait:async()=>{},
+ }),/MINIMUM_PUBLIC_READBACK_NETWORK_UNAVAILABLE/);
+ assert.equal(calls,3);
+ calls=0;
+ await assert.rejects(readPublicHealthResource("https://geomacro.live",{
+  fetchImpl:async()=>{calls++;return Response.json({error:"unavailable"},{status:503})},
+  wait:async()=>{},
+ }),/MINIMUM_PUBLIC_READBACK_PROVIDER_UNAVAILABLE/);
+ assert.equal(calls,3);
+});
+test("malformed 200 JSON, redirects, forbidden 404 and oversized HTML never retry into success",async()=>{
+ let calls=0;
+ await assert.rejects(readPublicHealthResource("https://geomacro.live",{
+  json:true,fetchImpl:async()=>{calls++;return new Response("not JSON",{status:200})},
+  wait:async()=>{},
+ }),/MINIMUM_PUBLIC_READBACK_JSON_INVALID/);
+ assert.equal(calls,1);
+ calls=0;
+ await assert.rejects(readPublicHealthResource("https://geomacro.live",{
+  fetchImpl:async()=>{calls++;return new Response("",{status:302})},
+  wait:async()=>{},
+ }),/MINIMUM_PUBLIC_REDIRECT_FORBIDDEN/);
+ assert.equal(calls,1);
+ calls=0;
+ const missing=await readPublicHealthResource("https://geomacro.live",{
+  fetchImpl:async()=>{calls++;return new Response("missing",{status:404})},
+  wait:async()=>{},
+ });
+ assert.equal(missing.status,404);assert.equal(calls,1);
+ await assert.rejects(readPublicHealthResource("https://geomacro.live",{
+  fetchImpl:async()=>new Response("x".repeat(1_500_001)),
+  wait:async()=>{},
+ }),/MINIMUM_PUBLIC_READBACK_TOO_LARGE/);
 });
