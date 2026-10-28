@@ -20,6 +20,7 @@ query.properties.max_age_seconds.minimum = 1;
 query.properties.product = storeProductOpenApiSchema();
 query.properties.delivery_tier = publicQueryOpenApiSchema().properties.delivery_tier;
 query.properties.fulfillment_mode = publicQueryOpenApiSchema().properties.fulfillment_mode;
+query.properties.response_locale = publicQueryOpenApiSchema().properties.response_locale;
 writeFileSync(path, JSON.stringify(spec, null, 2) + "\n");
 const requestPath = "schemas/agent-query-v1.schema.json";
 const request = JSON.parse(readFileSync(requestPath, "utf8"));
