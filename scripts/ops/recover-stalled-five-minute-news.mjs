@@ -47,7 +47,19 @@ for(const run of data.workflow_runs.slice(0,6)){
    "ACTUAL_PUBLISHER_JOB_PROOF_UNAVAILABLE");
  if(!Array.isArray(doc.jobs))
   throw Error("FASTLANE_WATCH_PUBLISHER_JOB_RESPONSE_INVALID");
- const proof=actualFiveMinutePublisherCompletion(run,doc.jobs,now);
+ const actual=doc.jobs.find(j=>j.name==='original-five-minute-derived-news'&&j.conclusion==='success'&&
+  j.steps?.some(s=>s.name==='Publish bounded current original-dated three-category derived news'&&s.conclusion==='success'));
+ if(!actual||!Number.isSafeInteger(actual.id))continue;
+ // Fetch strips GitHub authorization on cross-origin Actions log redirects.
+ // The response is bounded and parsed privately; no raw logs are emitted.
+ const response=await fetch(new URL('jobs/'+actual.id+'/logs',base),{
+  headers,redirect:'follow',signal:AbortSignal.timeout(15_000),
+ });
+ if(!response.ok||Number(response.headers.get('content-length')??0)>3_000_000)
+  throw Error('FASTLANE_WATCH_INTAKE_LOG_UNAVAILABLE');
+ const log=await response.text();
+ if(log.length>3_000_000)throw Error('FASTLANE_WATCH_INTAKE_LOG_OVERSIZE');
+ const proof=actualFiveMinutePublisherCompletion(run,doc.jobs,now,log);
  if(proof!==null)proofs[run.id]=proof;
 }
 const verdict=decideFiveMinuteNewsRecovery(

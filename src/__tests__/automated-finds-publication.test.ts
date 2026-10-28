@@ -178,7 +178,7 @@ it("missed-tick recovery signs the same free Finds under shared writer serializa
   expect(source).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
   expect(source).toContain('B2_REQUEST_BUDGET: "12"');
   expect(source).toContain('group: geomacro-website-derived-news-continuity');
-  expect(source).toContain('workflows: ["Geomacro Intelligence Orchestrator", "Three-Domain 30-Minute Original Publisher Pulse", "Deploy D1 Control Plane"]');
+  expect(source).toContain('workflows: ["Geomacro Intelligence Orchestrator", "Three-Domain 30-Minute Original Publisher Pulse", "Deploy D1 Control Plane", "Global OSINT to Website Intelligence (15-Minute Discovery)"]');
   expect(source).toContain('github.event.workflow_run.head_repository.full_name == github.repository');
   expect(source).toContain(`contains(fromJSON('["success","failure","timed_out"]'), github.event.workflow_run.conclusion)`);
   expect(source.indexOf("Resolve existing D1 shared B2 quota ledger")).toBeLessThan(source.indexOf("bun scripts/ops/publish-website-derived-news.ts"));

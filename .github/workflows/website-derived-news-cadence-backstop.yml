@@ -9,7 +9,7 @@ on:
   workflow_call: {}
   workflow_dispatch: {}
   workflow_run:
-    workflows: ["Geomacro Intelligence Orchestrator", "Three-Domain 30-Minute Original Publisher Pulse", "Deploy D1 Control Plane"]
+    workflows: ["Geomacro Intelligence Orchestrator", "Three-Domain 30-Minute Original Publisher Pulse", "Deploy D1 Control Plane", "Global OSINT to Website Intelligence (15-Minute Discovery)"]
     branches: [main]
     types: [completed]
   schedule:
@@ -92,6 +92,7 @@ jobs:
     outputs:
       critical: ${{ steps.budget.outputs.critical }}
       research: ${{ steps.budget.outputs.research }}
+      source_intake: ${{ steps.budget.outputs.source_intake }}
       snapshot_refresh: ${{ steps.budget.outputs.snapshot_refresh }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -178,7 +179,7 @@ jobs:
     # and this workflow's main push, NOT a paid/new poll or unbounded extra cron.
     # An exact D1-publisher JOB success is required, not a green contract job.
     if: >-
-      needs.quota-admission.outputs.critical == 'true' &&
+      needs.quota-admission.outputs.source_intake == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&

@@ -11,7 +11,36 @@ const MAX_AGE=15*MIN;
 const DISPATCH_COOLDOWN=17*MIN;
 const EVENTS=new Set(["schedule","workflow_dispatch","push"]);
 const isDate=x=>typeof x==="string" && Number.isFinite(Date.parse(x));
-export function actualFiveMinutePublisherCompletion(run,jobs,now=Date.now()){
+// Parse only plain timestamped stdout JSON, never echoed shell source or a
+// named green step. Not-due/held runs cannot manufacture completion evidence.
+export function actualSourceIntakeReceipt(log,started,completed){
+ if(typeof log!=="string"||log.length>3_000_000||
+    !Number.isFinite(started)||!Number.isFinite(completed)||started>completed)return null;
+ const rows=[];
+ for(const line of log.split("\n")){
+  const match=line.match(/^(\d{4}-\d{2}-\d{2}T[\d:.]+Z) (\{.*\})\r?$/u);
+  if(!match)continue;
+  try{rows.push({at:Date.parse(match[1]),body:JSON.parse(match[2])});}catch{/* no evidence */}
+ }
+ const one=schema=>rows.filter(r=>r.body?.schema===schema);
+ if(one('geomacro.source-intake-deferred.v1').length)return null;
+ const checkpoints=one('geomacro.fastlane-source-checkpoint-receipt.v1');
+ const receipts=one('geomacro.source-intake-completed.v1');
+ if(checkpoints.length!==1||receipts.length!==1)return null;
+ const c=checkpoints[0],r=receipts[0];
+ if(!Number.isFinite(c.at)||!Number.isFinite(r.at)||c.at<started||
+    r.at<c.at||r.at>completed||c.body.checkpoint_writes!==3||
+    c.body.raw_upstream_stored!==false||c.body.partner_client_receipt_asserted!==false||
+    !Array.isArray(c.body.categories)||c.body.categories.length!==3||
+    [...c.body.categories].sort().join(',')!=='geopolitics,macro,rare_earth'||
+    r.body.source_checkpoint_acknowledged!==true||
+    ![5,10,15,30,60].includes(r.body.interval_minutes)||
+    ![3,5,10,25,50].includes(r.body.max_new_rows)||
+    !Number.isSafeInteger(r.body.retained_new_rows)||r.body.retained_new_rows<0||
+    r.body.retained_new_rows>r.body.max_new_rows)return null;
+ return r.at;
+}
+export function actualFiveMinutePublisherCompletion(run,jobs,now=Date.now(),log=null){
  if(!run||run.head_branch!=="main"||!EVENTS.has(run.event)||
     run.status!=="completed"||run.conclusion!=="success"||
     !Array.isArray(jobs))return null;
@@ -21,7 +50,8 @@ export function actualFiveMinutePublisherCompletion(run,jobs,now=Date.now()){
       step.name===WRITE_STEP&&step.conclusion==="success")||
    !isDate(actual.completed_at))return null;
  const completed=Date.parse(actual.completed_at);
- return completed<=now+MIN&&completed>=now-60*MIN?completed:null;
+ if(completed>now+MIN||completed<now-60*MIN||!isDate(run.created_at))return null;
+ return actualSourceIntakeReceipt(log,Date.parse(run.created_at),completed);
 }
 export function decideFiveMinuteNewsRecovery(runs,publisherProofs={},now=Date.now()){
  if(!Array.isArray(runs)||runs.length>30||!Number.isFinite(now))

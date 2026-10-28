@@ -15,7 +15,7 @@ import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model
  * no B2, no signing, no x402 settlement.
  */
 import {createHmac} from "node:crypto";
-import {writeFileSync,mkdirSync} from 'node:fs';
+import {writeFileSync,mkdirSync,appendFileSync} from 'node:fs';
 import {FIVE_MINUTE_NEWS_FASTLANE,readFiveMinuteNewsFastlane} from "../../src/lib/stateless-public-intelligence.server";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
 import {reconcilePrivateDerivedSourceRefs,selectBoundedRetainedOriginalTargets,type StatelessSourceCandidate,type StatelessIntelligenceSignal} from "../../src/lib/stateless-intelligence-model";
@@ -233,7 +233,10 @@ if(journalVerified&&!failure){
  const saved=await fetch(intakePolicyUrl,{method:'PUT',redirect:'error',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({schema:'geomacro.news-intake-admission.v1',last_success_at:new Date().toISOString(),interval_minutes:intakeInterval,max_new_rows:intakeMaxRows}),signal:AbortSignal.timeout(12000)});
  const ack=await saved.json() as {ok?:boolean;policy_saved?:boolean};
  if(!saved.ok||ack.ok!==true||ack.policy_saved!==true){failure=true;console.error('::error::SOURCE_INTAKE_SUCCESS_CLOCK_NOT_SAVED');}
- else console.log(JSON.stringify({schema:'geomacro.source-intake-completed.v1',interval_minutes:intakeInterval,max_new_rows:intakeMaxRows,retained_new_rows:allPublished.length,source_checkpoint_acknowledged:true}));
+ else {
+  console.log(JSON.stringify({schema:'geomacro.source-intake-completed.v1',interval_minutes:intakeInterval,max_new_rows:intakeMaxRows,retained_new_rows:allPublished.length,source_checkpoint_acknowledged:true}));
+  if(process.env.GITHUB_OUTPUT)appendFileSync(process.env.GITHUB_OUTPUT,'source_intake_completed=true\n');
+ }
 }
 console.log(JSON.stringify({
  schema:"geomacro.5min-three-domain-original-news-run.v1",
