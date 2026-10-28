@@ -1,5 +1,5 @@
 import {describe,it,expect} from "vitest";
-import {deriveStatelessSignals} from "../lib/stateless-intelligence-model";
+import {deriveStatelessSignals,selectOfficialTopic} from "../lib/stateless-intelligence-model";
 import {doeMineralsIndexCandidates,doeMineralsOriginalArticleMatches,
   pinnedDoeMineralsArticle} from "../lib/stateless-us-doe-minerals-original.server";
 import {pinnedDerivedOriginalReference}
@@ -30,6 +30,7 @@ describe("DOE first-party Critical Minerals index is safe when RSS is unreachabl
   ])expect(pinnedDoeMineralsArticle(url)).toBeNull();
  });
  it("admits a dated genuine issuer index lead only when original article independently matches",()=>{
+   expect(selectOfficialTopic(TITLE,"rare_earth")).toBeTruthy();
    const leads=doeMineralsIndexCandidates(card(),CLOCK);
    expect(leads).toHaveLength(1);
    expect(leads[0].publishedAt).toBe("2026-10-26");
