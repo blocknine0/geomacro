@@ -66,10 +66,9 @@ describe("single-pass paid user and machine structured answer",()=>{
  it("rejects invalid/unauthorized or oversized inputs before interpretation/payment",async()=>{
    const post=vi.fn(async()=>new Response(null,{status:200}));
    for(const req of [
-     request({question},"" as never),
      request({question},{authorization:"Bearer should-not-be-accepted"}),
      request({question},{},"https://geomacro.live/api/v1/intelligence/structured-answer?preview=1"),
-   ].slice(1)){
+   ]){
      const res=await paidStructuredAnswer(req,{rateLimit:()=>true,post});
      expect(res.status).toBe(400);
    }
