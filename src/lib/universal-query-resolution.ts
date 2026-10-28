@@ -46,7 +46,7 @@ export function publicQueryResolution(input:unknown,error:unknown) {
   same_original_request_preserved:true as const,
   suggested_product:null as null|{capability:string,variant:string},
   indicative_price_usdc:null as string|null,
-  suggested_canonical_request:null as Plain|null,
+  suggested_canonical_request:null as object|null,
   suggested_query_plan_hash:null as string|null,
   suggestion_status:"NO_VERIFIED_SAFE_SUGGESTION" as string,
   next_endpoint:"/api/v1/intelligence/interpret",
