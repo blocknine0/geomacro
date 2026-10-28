@@ -42,7 +42,7 @@ test("no SQL, no protected/PREDGE route, no invented ingestion and backlog proof
  assert.equal(r.critical.independent_d1_readback_verified,false);
  assert.equal(r.recovery.verified_replayed_items,null);
  assert.equal(r.d1_sql_queries_by_observer,0);
- assert.equal(x.calls.length,4);
+ assert.equal(x.calls.length,5);
  assert.ok(x.calls.every(c=>!c[0].includes("predge")&&!c[0].includes("d1/execute")));
  assert.equal(x.calls.filter(c=>c[1]==="POST").length,1);
 });
