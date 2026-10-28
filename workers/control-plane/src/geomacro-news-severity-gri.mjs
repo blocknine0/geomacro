@@ -130,7 +130,7 @@ function buildIndex(spec,raw,now){
     entries.reduce((sum,x)=>sum+(x.row.status===STATUS_OFFICIAL?48:10)*x.weight,0)/
     Math.max(0.001,total))):null,
   eventCount:news.length,sourceCount:credits.size,
-  independentStoryCount:officialEntries.length,
+  independentStoryCount:0, // No independent same-event corroboration exists in this journal.
   sourceMix:{public_news:officialEntries.length,osint:osintEntries.length,
     osint_event_facts_verified:false},
   series:{"24H":series(news,now,"24H"),"7D":blankSeries("7D"),"30D":blankSeries("30D")},
