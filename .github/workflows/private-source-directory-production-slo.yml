@@ -1,0 +1,65 @@
+name: Private Source Directory Production SLO (No Funds)
+
+# Independent recurring acceptance. Never queries public/partner PREDGE,
+# never exports private source metadata, never writes D1/B2/Supabase.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "37 */6 * * *"
+  workflow_run:
+    workflows: ["Deploy D1 Control Plane"]
+    types: [completed]
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/private-source-directory-production-slo.yml"
+      - "scripts/ops/verify-private-source-directory-production.mjs"
+      - "scripts/tests/verify-private-source-directory-production.test.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-private-source-directory-production-slo
+  cancel-in-progress: false
+
+jobs:
+  private-directory-readonly:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+        github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    env:
+      ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify four-step read-only acceptance policy without network
+        run: node --test scripts/tests/verify-private-source-directory-production.test.mjs
+      - name: Derive only the existing private control-plane admin credential in runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test "${#ROOT_LEDGER_TOKEN}" -lt 32; then
+            echo "::error::PRIVATE_SOURCE_DIRECTORY_ROOT_TOKEN_UNAVAILABLE"
+            exit 2
+          fi
+          CONTROL_PLANE_TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
+          test "${#CONTROL_PLANE_TOKEN}" -eq 64 || exit 2
+          echo "::add-mask::$CONTROL_PLANE_TOKEN"
+          echo "CONTROL_PLANE_TOKEN=$CONTROL_PLANE_TOKEN" >> "$GITHUB_ENV"
+      - name: Independently verify protected 779-row D1 shadow with bounded transport
+        shell: bash
+        run: node scripts/ops/verify-private-source-directory-production.mjs
