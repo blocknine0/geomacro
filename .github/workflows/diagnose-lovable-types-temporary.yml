@@ -1,0 +1,31 @@
+name: Temporary TypeScript mirror diagnostics (no secrets)
+on:
+  pull_request:
+    paths:
+      - "tsconfig.json"
+      - "src/**/*.ts"
+      - "src/**/*.tsx"
+      - ".github/workflows/diagnose-lovable-types-temporary.yml"
+permissions:
+  contents: read
+jobs:
+  read-only-types:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Install pinned dependencies with no writes to repository
+        run: bun install --frozen-lockfile --registry=https://registry.npmjs.org/ --network-concurrency=8
+      - name: Enumerate exact application type errors (diagnostic, not acceptance)
+        shell: bash
+        run: |
+          set -o pipefail
+          bunx --no-install tsc --noEmit --pretty false 2>&1 | tee /tmp/geomacro-typescript-diagnostics.txt || true
+          echo "### Application-only tsc diagnostics" >> "$GITHUB_STEP_SUMMARY"
+          echo "Diagnostic counts are not proof of a passing application type check." >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^src/.*error TS[0-9]+' /tmp/geomacro-typescript-diagnostics.txt | wc -l >> "$GITHUB_STEP_SUMMARY" || true
