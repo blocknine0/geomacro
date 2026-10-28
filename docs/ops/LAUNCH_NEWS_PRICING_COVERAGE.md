@@ -73,3 +73,13 @@ join the shared macro filters and existing priority discovery queries. Existing
 registration/search results cannot certify every country's live coverage. This
 extension does not add paid wires, live exchange quotes, assumed consensus or
 causal price-impact assertions.
+
+Every one of the 195 canonical country routes now explicitly searches the same
+macro release families (not merely a few economy keywords), while preserving
+war/mineral discovery terms. The existing 25 index-country slots plus 24 local
+publisher slots per tick are unchanged: all 195 country searches occur over
+eight delivered 15-minute slots, nominally 120 minutes, alongside continuously
+polled publisher sources. This is a rotation target, not fresh-event coverage
+for every country. Country queries never assign an event country, create a
+national central bank for currency-union members, or fabricate absent data
+(such as the already recorded missing Vatican statistics source).

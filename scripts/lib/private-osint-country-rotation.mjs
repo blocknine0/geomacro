@@ -20,7 +20,14 @@ export const COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK=25;
 export const COUNTRY_DISCOVERY_LOCAL_LANE_CYCLE_MINUTES=120;
 export const COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES=60;
 const CATEGORIES=Object.freeze(["geopolitics","macro","rare_earth"]);
-const TERMS='(election OR sanctions OR security OR conflict OR border OR war OR trade OR inflation OR currency OR "central bank" OR "critical minerals" OR "rare earth" OR mining OR lithium OR copper)';
+export const COUNTRY_MACRO_DISCOVERY_TERMS=Object.freeze([
+ '"central bank"','CPI','PPI','PMI','GDP','inflation','"interest rates"',
+ '"economic growth"','employment','payrolls','"retail sales"','"industrial production"',
+ '"fiscal budget"','"sovereign debt"','"foreign reserves"','"exchange rate"',
+ '"bank liquidity"','"bank deposits"','"financial stability"','trade','tariffs',
+]);
+const TERMS='('+['election','sanctions','security','conflict','border','war',
+ ...COUNTRY_MACRO_DISCOVERY_TERMS,'currency','"critical minerals"','"rare earth"','mining','lithium','copper'].join(' OR ')+')';
 const STEP_MS=15*60000;
 
 export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=COUNTRIES_195,perTick=COUNTRY_DISCOVERY_PER_TICK){

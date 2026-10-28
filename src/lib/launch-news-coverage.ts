@@ -30,6 +30,8 @@ export function launchNewsCoveragePolicy(){
  return {version:LAUNCH_NEWS_POLICY_VERSION,families:HOT_TOPIC_FAMILIES.length,
   category_families:LAUNCH_NEWS_FAMILY_CATEGORIES,
   fastlane_target_minutes:5,discovery_target_minutes:15,guaranteed_latency:false,
+  country_macro_routing:{countries:195,index_country_slots_per_tick:25,cycle_slots:8,nominal_cycle_minutes:120,
+   query_country_is_not_verified_event_country:true,full_current_coverage_asserted:false},
   macro_extension_targets:['official_leader_communications','global_cpi_jobs_growth','banking_liquidity_and_stability','global_trade_tariffs','hormuz_shipping_and_freight'],
   observed_market_reaction_requires_separate_price_evidence:true,
   original_native_time_required:true,index_time_is_original_time:false,

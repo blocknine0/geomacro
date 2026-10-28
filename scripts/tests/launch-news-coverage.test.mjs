@@ -6,7 +6,8 @@ import {parseMacroFeed} from '../lib/macro-fastlane-collector.mjs';
 import {HOT_TOPIC_FAMILIES} from '../../src/lib/hot-topic-taxonomy.ts';
 import {LAUNCH_NEWS_FAMILY_CATEGORIES,launchNewsCoveragePolicy} from '../../src/lib/launch-news-coverage.ts';
 import {PRIVATE_OSINT_TOPICS,privateOsintGlobalSources} from '../lib/private-osint-global-sources.mjs';
-import {privateOsintRuntimeSources} from '../lib/private-osint-country-rotation.mjs';
+import {COUNTRIES_195} from '../../src/lib/canonical-country-registry-195.ts';
+import {rotatingPrivateCountryDiscoverySources,COUNTRY_MACRO_DISCOVERY_TERMS,privateOsintRuntimeSources} from '../lib/private-osint-country-rotation.mjs';
 import {LAUNCH_PRIORITY_WATCHES} from '../lib/launch-priority-watch-sources.mjs';
 import {collectPrivateOsint15m} from '../lib/private-osint-15m-collector.mjs';
 import {normalizeReusableNewsJson} from '../../src/lib/reusable-news-json.ts';
@@ -108,4 +109,25 @@ test('official Fed speeches poll every admitted fastlane slot inside the origina
  assert.equal(parseMacroFeed(xml,spec,at).length,1);
  assert.equal(parseMacroFeed(xml.replace('www.federalreserve.gov','attacker.example'),spec,at).length,0);
  assert.equal(parseMacroFeed(xml.replace('06:55:00','07:55:00'),spec,at).length,0);
+});
+
+test('all 195 countries receive explicit macro search coverage within the unchanged eight-slot local-lane cycle',()=>{
+ const at=Date.parse('2026-10-28T07:00:00Z'),seen=new Set();
+ for(let slot=0;slot<8;slot++){
+  const sources=rotatingPrivateCountryDiscoverySources(new Date(at+slot*15*60000),COUNTRIES_195,25);
+  assert.ok(sources.length<=25);
+  for(const source of sources){
+   const q=new URL(source.url).searchParams.get('q');
+   for(const term of COUNTRY_MACRO_DISCOVERY_TERMS)assert.ok(q.includes(term));
+   assert.ok(source.categories.includes('macro'));
+   assert.equal(source.publisher_country_iso3,null);
+   assert.equal(source.index_timestamp_not_original_page_clock,true);
+   assert.equal(source.publicly_deliverable,false);
+   seen.add(source.discovery_country_iso3);
+  }
+ }
+ assert.deepEqual(seen,new Set(COUNTRIES_195.map(c=>c.iso3)));
+ const policy=launchNewsCoveragePolicy().country_macro_routing;
+ assert.equal(policy.countries,seen.size);assert.equal(policy.nominal_cycle_minutes,120);
+ assert.equal(policy.full_current_coverage_asserted,false);
 });
