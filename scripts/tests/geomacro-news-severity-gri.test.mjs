@@ -141,7 +141,8 @@ test("source failure and absent server-held issuer credential fail closed",async
  assert.equal(absent.status,503);
 });
 test("public endpoint returns only self-certified, source-neutral report, no raw providers",async()=>{
- const out=await serveSelfCertifiedNewsSeverityGri({CONTROL_PLANE_TOKEN:SECRET},{
+ const db=testLastQualifiedDb();
+ const out=await serveSelfCertifiedNewsSeverityGri({CONTROL_PLANE_TOKEN:SECRET,DB:db},{
   now:NOW,source:async()=>Response.json({
    ok:true,schema:"geomacro.website-derived-news-bundle.v1",complete:true,
    retention_hours:72,returned_rows:SOURCE.length,signals:SOURCE
@@ -203,4 +204,123 @@ test("GeoMacro OSINT stays low-weight and historical bins never increase source 
  assert.equal(index.observedSeverity["72H"].buckets.reduce((s,b)=>s+b.count,0),1);
  assert.equal(index.observedSeverity["24H"].buckets,null);
  assert.equal(out.independent_third_party_certified,false);
+});
+
+function testLastQualifiedDb(){
+ const rows=new Map();
+ const queries={reads:0,writes:0};
+ return {rows,queries,
+  prepare(sql){
+   let args=[];
+   return {
+    bind(...next){args=next;return this},
+    async all(){
+     assert.match(sql,/SELECT category,methodology_version,index_json/u);
+     queries.reads++;
+     return {results:[...rows.values()].map(x=>({...x}))};
+    },
+    async run(){
+     assert.match(sql,/INSERT INTO geomacro_news_gri_last_verified/u);
+     const [category,methodology_version,index_json,index_sha256,
+      evidence_sha256,fingerprints_json,expected]=args;
+     const old=rows.get(category);
+     if(old && old.revision!==expected)return {success:true,meta:{changes:0}};
+     if(!old&&expected!==0)return {success:true,meta:{changes:0}};
+     rows.set(category,{category,methodology_version,index_json,index_sha256,
+      evidence_sha256,fingerprints_json,revision:(old?.revision??0)+1});
+     queries.writes++;
+     return {success:true,meta:{changes:1}};
+    },
+   };
+  },
+ };
+}
+const NEWS_BUNDLE=signals=>async()=>Response.json({
+ ok:true,schema:"geomacro.website-derived-news-bundle.v1",complete:true,
+ retention_hours:72,returned_rows:signals.length,signals,
+});
+const served=async(db,signals,now=NOW)=>{
+ const response=await serveSelfCertifiedNewsSeverityGri(
+  {CONTROL_PLANE_TOKEN:SECRET,DB:db},{now,source:NEWS_BUNDLE(signals)});
+ assert.equal(response.status,200);
+ return response.json();
+};
+test("durable GRI: identical journal does NOT rewrite or recalculate score when five hours pass",async()=>{
+ const db=testLastQualifiedDb();
+ const original=await served(db,SOURCE,NOW);
+ const baseline=original.data.indices.map(x=>x.score);
+ const time=NOW+5*3600000;
+ const next=await served(db,SOURCE,time);
+ assert.deepEqual(next.data.indices.map(x=>x.score),baseline);
+ assert.deepEqual(next.data.indices.map(x=>x.readingAsOf),
+  original.data.indices.map(x=>x.readingAsOf));
+ assert.deepEqual(next.data.indices.map(x=>x.readingSnapshotId),
+  original.data.indices.map(x=>x.readingSnapshotId));
+ assert.equal(next.data.indices[0].readingStatus,"last_verified");
+ assert.deepEqual(next.continuity.retained_categories,
+  ["geopolitics","macro","critical_minerals"]);
+ assert.deepEqual(next.continuity.updated_categories,[]);
+ assert.equal(db.queries.writes,3);
+ assert.equal(next.data.proofHash,original.data.proofHash);
+});
+test("durable GRI: a new real macro signal updates ONLY macro; quiet geopolitics/minerals remain pinned",async()=>{
+ const db=testLastQualifiedDb();
+ const original=await served(db,SOURCE,NOW);
+ const later=NOW+7*60000;
+ const extra=example("macro","00abcdef","inflation and prices",2);
+ extra.published_at=new Date(later-60000).toISOString();
+ const changed=await served(db,[...SOURCE,extra],later);
+ assert.deepEqual(changed.continuity.updated_categories,["macro"]);
+ assert.deepEqual(changed.continuity.retained_categories,["geopolitics","critical_minerals"]);
+ assert.equal(changed.data.indices[0].score,original.data.indices[0].score);
+ assert.equal(changed.data.indices[2].score,original.data.indices[2].score);
+ assert.equal(changed.data.indices[0].readingAsOf,original.data.indices[0].readingAsOf);
+ assert.equal(changed.data.indices[2].readingAsOf,original.data.indices[2].readingAsOf);
+ assert.equal(db.queries.writes,4);
+ await served(db,[...SOURCE,extra],later+60000);
+ assert.equal(db.queries.writes,4,"unchanged source identities must not write D1");
+});
+test("durable GRI: rolling expiry and empty qualified journal NEVER erase last three signed readings",async()=>{
+ const db=testLastQualifiedDb();
+ const original=await served(db,SOURCE,NOW);
+ const noRows=await served(db,[],NOW+80*3600000);
+ assert.equal(db.queries.writes,3);
+ assert.deepEqual(noRows.data.indices.map(x=>x.score),
+  original.data.indices.map(x=>x.score));
+ assert.deepEqual(noRows.data.indices.map(x=>x.readingStatus),
+  ["last_verified","last_verified","last_verified"]);
+ assert.ok(noRows.data.indices.every(x=>x.observedSeverity["72H"].buckets===null));
+ assert.ok(noRows.data.indices.every(x=>x.readingAsOf!==null));
+ assert.equal(noRows.data.snapshotAsOf,new Date(NOW+80*3600000).toISOString());
+});
+test("durable GRI: D1 outage/corruption or missing durable binding FAIL CLOSED, never fabricate success",async()=>{
+ const db=testLastQualifiedDb();
+ const before=await served(db,SOURCE,NOW);
+ assert.equal(before.data.indices[0].status,"available");
+ db.rows.get("geopolitics").index_sha256="0".repeat(64);
+ let response=await serveSelfCertifiedNewsSeverityGri({
+  CONTROL_PLANE_TOKEN:SECRET,DB:db},{now:NOW+60000,source:NEWS_BUNDLE(SOURCE)});
+ assert.equal(response.status,503);
+ response=await serveSelfCertifiedNewsSeverityGri({
+  CONTROL_PLANE_TOKEN:SECRET},{now:NOW,source:NEWS_BUNDLE(SOURCE)});
+ assert.equal(response.status,503);
+});
+test("durable GRI: a genuine source revision triggers update; a failed optimistic write never greenwashes",async()=>{
+ const db=testLastQualifiedDb();
+ await served(db,SOURCE,NOW);
+ const revised=SOURCE.map(x=>x.id==="macro-00000003"?{...x,topic:"inflation and prices"}:x);
+ const later=NOW+60000;
+ const updated=await served(db,revised,later);
+ assert.deepEqual(updated.continuity.updated_categories,["macro"]);
+ assert.equal(db.queries.writes,4);
+ const broken={prepare(sql){
+  const prepared=db.prepare(sql);
+  if(sql.startsWith("INSERT"))prepared.run=async()=>({success:true,meta:{changes:0}});
+  return prepared;
+ }};
+ const newest=example("macro","0000badd","official economic statistics",1);
+ newest.published_at=new Date(later+60000).toISOString();
+ const result=await serveSelfCertifiedNewsSeverityGri({CONTROL_PLANE_TOKEN:SECRET,DB:broken},
+  {now:later+120000,source:NEWS_BUNDLE([...revised,newest])});
+ assert.equal(result.status,503);
 });
