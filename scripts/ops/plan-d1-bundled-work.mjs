@@ -11,15 +11,28 @@ import {pathToFileURL} from "node:url";
 import {D1_FREE_DAILY,readCloudflareD1AccountQuota} from "./audit-d1-account-daily-quota-readonly.mjs";
 import {readCloudflareWorkersPaidProof,WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
 
+// Safeguard shared Cloudflare Free account capacity for the existing PREDGE
+// authenticated research pilot (500 atomic requests/UTC day). This is a
+// non-atomic planning reserve, NOT a hard Cloudflare quota partition.
+// The existing separate D1 rate governor remains the partner request cap.
+// No partner token, payload, API behavior or SQL is changed here.
+export const PREDGE_D1_FREE_HEADROOM=Object.freeze({
+  rows_read:500_000,rows_written:8_000,
+  pilot_request_cap_per_utc_day:500,
+  basis:"CONSERVATIVE_NONATOMIC_ACCOUNT_WIDE_CAPACITY_RESERVE",
+});
 export const D1_BUNDLE_LANES=Object.freeze({
   // Strict end-of-day reserves + a finite opening burst. Without pacing,
   // 5-minute and 30-minute jobs can consume an entire day's account headroom
   // during the first hours after UTC reset.
-  critical:Object.freeze({read_reserve:750_000,write_reserve:15_000,
+  critical:Object.freeze({read_reserve:750_000+PREDGE_D1_FREE_HEADROOM.rows_read,
+    write_reserve:15_000+PREDGE_D1_FREE_HEADROOM.rows_written,
     read_opening_burst:1_000_000,write_opening_burst:10_000}),
-  research:Object.freeze({read_reserve:1_500_000,write_reserve:30_000,
+  research:Object.freeze({read_reserve:1_500_000+PREDGE_D1_FREE_HEADROOM.rows_read,
+    write_reserve:30_000+PREDGE_D1_FREE_HEADROOM.rows_written,
     read_opening_burst:500_000,write_opening_burst:5_000}),
-  maintenance:Object.freeze({read_reserve:2_500_000,write_reserve:50_000,
+  maintenance:Object.freeze({read_reserve:2_500_000+PREDGE_D1_FREE_HEADROOM.rows_read,
+    write_reserve:50_000+PREDGE_D1_FREE_HEADROOM.rows_written,
     read_opening_burst:250_000,write_opening_burst:2_500}),
 });
 const DAY_MS=86_400_000;
@@ -46,7 +59,7 @@ const safeInt=x=>Number.isSafeInteger(x)&&x>=0;
 export function planSourceIntake(snapshot,now){
  const remainingMs=DAY_MS-(now.getTime()%DAY_MS);
  // Bound the entire remaining day before admitting a smaller source bundle.
- // Preserve the same 750k/15k reserves and 100k/2k incident margins. Actual
+ // Preserve original 750k/15k and ADD dedicated 500k/8k PREDGE safety. Actual
  // cadence is enforced by an authenticated last-success clock, not cron time.
  for(const interval_minutes of [5,10,15,30,60]){
   const slots=Math.ceil(remainingMs/(interval_minutes*60000));
@@ -64,6 +77,10 @@ const held=(reason,now)=>Object.freeze({
   schema:"geomacro.d1-free-bundled-work-admission.v1",
   day_utc:now.toISOString().slice(0,10),state:"HELD",
   reason,critical:false,research:false,maintenance:false,source_intake:false,
+  predge_account_headroom_guard_enabled:true,
+  predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
+  predge_account_headroom_is_hard_partition:false,
+  predge_request_governor_is_separate_and_unchanged:true,
   snapshot_refresh:false,structural_snapshot:false,
   d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
   budget_is_nonatomic_provider_snapshot:true,
@@ -117,6 +134,12 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
       source_intake_does_not_admit_signing_or_audits:true,
       observed_rows_read:snapshot.observed_rows_read,
       observed_rows_written:snapshot.observed_rows_written,
+      // Provider-verified paid capacity is not subjected to the Free physical
+      // daily 5M cap; the existing conservative paid soft budget still applies.
+      predge_account_headroom_guard_enabled:false,
+      predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
+      predge_account_headroom_is_hard_partition:false,
+      predge_request_governor_is_separate_and_unchanged:true,
       paid_capacity_verified_by_provider:true,
       free_plan_5m_cap_not_applied_only_with_verified_subscription:true,
       daily_account_soft_limit_read:dailyReads,
@@ -145,11 +168,15 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // Bounded public-serving refresh, even if intake pacing is HELD. The
   // Worker checks the 8-minute revision fence *before* its <=601-row scan.
   // Separate from source intake/signing; reserve 250k read and 5k write rows
-  // on the delayed (non-atomic) account-wide provider counter.
-  const snapshotRefresh=snapshot.remaining_rows_read>250_000 &&
-    snapshot.remaining_rows_written>5_000 &&
-    snapshot.observed_rows_read<4_750_000 &&
-    snapshot.observed_rows_written<95_000;
+  // PLUS the non-atomic protected PREDGE pilot headroom on the account counter.
+  const snapshotRefresh=snapshot.remaining_rows_read>
+      250_000+PREDGE_D1_FREE_HEADROOM.rows_read &&
+    snapshot.remaining_rows_written>
+      5_000+PREDGE_D1_FREE_HEADROOM.rows_written &&
+    snapshot.observed_rows_read<
+      D1_FREE_DAILY.rows_read-250_000-PREDGE_D1_FREE_HEADROOM.rows_read &&
+    snapshot.observed_rows_written<
+      D1_FREE_DAILY.rows_written-5_000-PREDGE_D1_FREE_HEADROOM.rows_written;
   // The observed account budget is the shared physical constraint.
   // Do not declare an exhausted account healthy even if a second DB is idle.
   // Structural B2 snapshot is not a generic maintenance job: it spends at
@@ -157,7 +184,10 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // Admit it only within the EXISTING conservative snapshot refresh corridor;
   // B2 network attempts still require their own shared atomic reservations.
   const structuralSnapshot=snapshotRefresh &&
-    snapshot.remaining_rows_read>250_100 && snapshot.remaining_rows_written>5_100;
+      snapshot.remaining_rows_read>
+      250_100+PREDGE_D1_FREE_HEADROOM.rows_read &&
+    snapshot.remaining_rows_written>
+      5_100+PREDGE_D1_FREE_HEADROOM.rows_written;
   const state=grants.maintenance?"NORMAL":grants.research?"CONSERVE":
     grants.critical?"CRITICAL_ONLY":"HELD";
   return Object.freeze({
@@ -165,6 +195,14 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     day_utc:snapshot.day_utc,state,
     reason:state==="HELD"?(sourceIntake?"DISCRETIONARY_PACING_HELD_SOURCE_ADMITTED":"D1_FREE_RESERVE_REACHED"):"ACCOUNT_WIDE_HEADROOM_OBSERVED",
     ...grants,source_intake:sourceIntake,
+    predge_account_headroom_guard_enabled:true,
+    predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
+    predge_account_headroom_is_hard_partition:false,
+    predge_request_governor_is_separate_and_unchanged:true,
+    predge_protected_read_headroom_observed:
+      snapshot.remaining_rows_read>PREDGE_D1_FREE_HEADROOM.rows_read,
+    predge_protected_write_headroom_observed:
+      snapshot.remaining_rows_written>PREDGE_D1_FREE_HEADROOM.rows_written,
     source_intake_interval_minutes:intakeBudget?.interval_minutes??null,
     source_intake_max_new_rows:intakeBudget?.max_new_rows??0,
     snapshot_refresh:snapshotRefresh,
