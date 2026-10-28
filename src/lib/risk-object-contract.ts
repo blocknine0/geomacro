@@ -144,7 +144,6 @@ export type RiskEvidenceReference = {
   source_ids?: string[];
   source_record_ids?: string[];
   source_urls?: string[];
-  source_families?: string[];
   content_hashes?: string[];
   relevance_reason?: string;
   transmission_channel?: string | null;
