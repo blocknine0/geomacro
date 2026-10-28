@@ -31,13 +31,34 @@ function normalizeLocale(value: unknown): string {
   return /^[a-z]{2,3}(?:-[a-z0-9]{2,8})?$/.test(lang) ? lang : "en";
 }
 
+const modelClients = new Map<string, { count: number; reset: number }>();
+let globalModelBudget = { count: 0, reset: 0 };
+function admitConversationalModel(clientKey: string): boolean {
+  if (!clientKey) return false;
+  const now = Date.now();
+  if (globalModelBudget.reset <= now) globalModelBudget = {count: 0, reset: now + 60_000};
+  if (globalModelBudget.count >= 48) return false;
+  const existing = modelClients.get(clientKey);
+  const entry = !existing || existing.reset <= now ? {count: 0, reset: now + 60_000} : existing;
+  if (entry.count >= 5) return false;
+  entry.count++;
+  globalModelBudget.count++;
+  modelClients.set(clientKey, entry);
+  if (modelClients.size > 1024) {
+    for (const [key, item] of modelClients) if (item.reset <= now) modelClients.delete(key);
+    while (modelClients.size > 1024) modelClients.delete(modelClients.keys().next().value!);
+  }
+  return true;
+}
+
 export async function planConversationalAsk(
   question: string,
   history: readonly HybridAgentTurn[],
   ambiguous = false,
+  clientKey = "",
 ): Promise<ConversationalPlan | null> {
-  if (!needsConversationInterpretation(question, ambiguous) || !process.env.GROQ_API_KEY)
-    return null;
+  if (!needsConversationInterpretation(question, ambiguous) || !process.env.GROQ_API_KEY ||
+      !admitConversationalModel(clientKey)) return null;
   try {
     const response = await groqClassifyJson<{
       english_question?: unknown;
