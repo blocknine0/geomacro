@@ -54,7 +54,8 @@ describe("website lock governance", () => {
     const typeRepairApproval=config.approved_lovable_types_github_20261028;
     expect(typeRepairApproval.type_only).toBe(true);
     expect(typeRepairApproval.visual_layout_unchanged).toBe(true);
-    expect(typeRepairApproval.scope).toEqual(["src/components/home/risk-indices-preview.tsx", "src/routes/intelligence.tsx", "src/routes/__root.tsx"]);
+    expect(typeRepairApproval.scope).toEqual(["src/components/home/risk-indices-preview.tsx", "src/routes/intelligence.tsx", "src/routes/__root.tsx", "vite.config.ts"]);
+    expect(typeRepairApproval.vite_nitro_runtime_unchanged).toBe(true);
     expect(typeRepairApproval.seven_ask_ui_files_unmodified).toBe(true);
     expect(typeRepairApproval.global_risk_final_lock_unmodified).toBe(true);
     expect(typeRepairApproval.predge_unmodified).toBe(true);
