@@ -116,7 +116,8 @@ export async function verifyPrivateD1RunReceipts({
   const recovery=replay?
    validateReplayD1Log(await ghLog(fetchImpl,replay.id,token)):
    {verified_replayed_items:0,replay_proof:"REPLAY_JOB_NOT_EXECUTED"};
-  return Object.freeze({critical,recovery,
+  return Object.freeze({critical,
+   recovery:{...recovery,source_run_id:selected.id},
    private_run_authenticated_gitHub_api:true,
    run_sha:expected,run_id:selected.id});
  }catch{
