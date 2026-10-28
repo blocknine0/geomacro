@@ -15,6 +15,7 @@ const HASH=/^[a-f0-9]{64}$/u;
 const MAX=4;
 const fail=()=>{throw Error("GEOMACRO_MACHINE_ORIGINAL_BINDING_REJECTED")};
 const digest=v=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
+/** @param {{candidates?: unknown[], now?: Date, fetchImpl?: typeof fetch}} [options] */
 export async function verifyGeomacroTwoOriginalMachineBinding({
   candidates,now=new Date(),fetchImpl=fetch,
 }={}){
