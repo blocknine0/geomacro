@@ -58,6 +58,7 @@ import {
 } from "./coinbase-x402-usage-guard.server";
 import { upsertCoinbaseX402ProductAudit } from "./coinbase-x402-product-audit.server";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
+import {publicQueryResolution} from "./universal-query-resolution";
 import { lookupTelegramFallback } from "./on-demand-telegram-fallback.server";
 import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
 import {readAllAutoIngest72hStructuredDrafts} from "./auto-ingest-72h-context.server";
@@ -312,7 +313,8 @@ export const mainnetIntelligenceHandlers = {
           if (error instanceof ZodError) {
             return json({ ok: false, chargeable: false, error: { code: "INVALID_ADAPTIVE_QUERY", issues: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })) }, execution_authorized: false }, 400);
           }
-          return json({ ok: false, chargeable: false, error: { code: "UNSUPPORTED_ADAPTIVE_QUERY", message: error instanceof Error ? error.message : "Query cannot be safely planned." }, execution_authorized: false }, 400);
+          return json({ ok: false, chargeable: false, error: { code: "UNSUPPORTED_ADAPTIVE_QUERY", message: error instanceof Error ? error.message : "Query cannot be safely planned." },
+            resolution:publicQueryResolution(raw,error),execution_authorized: false }, 400);
         }
 
         // Request-time global retrieval is separate from GRO publication and
@@ -642,7 +644,11 @@ export const mainnetIntelligenceHandlers = {
           availability = await checkAgentQueryDeliverability(plan, { externalModuleChecker: checkAgentQueryExternalModule });
         } catch (error) {
           console.error("[x402-adaptive] pre-payment deliverability failed", error);
-          return json({ ok: false, chargeable: false, error: { code: "AVAILABILITY_CHECK_UNAVAILABLE", message: "Deliverability could not be proven. Payment is disabled for this request." }, execution_authorized: false }, 503);
+          return json({ok:false,chargeable:false,payment_required_now:false,payment_authorized:false,
+            error:{code:"AVAILABILITY_CHECK_UNAVAILABLE",message:"Deliverability could not be proven. Payment is disabled for this request."},
+            recovery:{retryable:true,automatic_retry:false,retry_after_seconds:120,
+              next_availability_endpoint:"/api/v1/intelligence/products-availability",
+              evidence_generation_authorized:false},execution_authorized:false},503,{"Retry-After":"120"});
         }
         if (!availability.deliverable) {
           // Existing 422 status and availability contract remain unchanged. Add an
