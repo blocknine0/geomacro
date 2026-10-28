@@ -1,0 +1,59 @@
+name: Verify frozen Supabase flash Edge live revision (read only)
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/verify-live-flash-supabase.yml"
+      - "scripts/ops/verify-live-flash-supabase-deployment.mjs"
+      - "scripts/tests/verify-live-flash-supabase-deployment.test.mjs"
+      - "supabase/functions/live-flash-corroborate/**"
+      - "config/github-workflow-inventory.v1.json"
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/verify-live-flash-supabase.yml"
+      - "scripts/ops/verify-live-flash-supabase-deployment.mjs"
+      - "scripts/tests/verify-live-flash-supabase-deployment.test.mjs"
+      - "supabase/functions/live-flash-corroborate/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  no-funds-source-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify read-only management and health contract
+        run: |
+          node --check scripts/ops/verify-live-flash-supabase-deployment.mjs
+          node --test scripts/tests/verify-live-flash-supabase-deployment.test.mjs
+
+  prod-read-only-evidence:
+    needs: no-funds-source-tests
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Prove deployed Edge revision metadata and authenticated read-only health
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
+        run: node scripts/ops/verify-live-flash-supabase-deployment.mjs
