@@ -56,3 +56,36 @@ publisher content. A missing required proof remains unavailable, not chargeable.
   renders product descriptions and a pricing link with zero repeated price rows.
 - Existing commercial eligibility, immutable price classification, current-data
   proof, source rights, Predge contract and customer-control tests remain intact.
+
+## Global officials and economic-release extension
+Formal roles and stable institutions, rather than an unchecked current-leader
+name list, match market-relevant government and central-bank communications.
+Private statement tags remain extracted claims, never authenticated quotations
+or measured market reactions. The official Fed speech feed is now polled every
+admitted 5-minute slot (and existing release-window polling), still within the
+nine-source macro cap; its pinned host/path and native clocks remain mandatory.
+
+Global CPI/PPI/PMI/GDP/PCE, jobs, retail sales, industrial production, fiscal/debt,
+reserves/FX intervention, banking liquidity/deposits/credit/stability, trade
+agreements/tariffs/export controls and Hormuz/Red Sea/Suez shipping disruptions
+join the shared macro filters and existing priority discovery queries. Existing
+195-country official-source routing and first-party issuers supply confirmation;
+registration/search results cannot certify every country's live coverage. This
+extension does not add paid wires, live exchange quotes, assumed consensus or
+causal price-impact assertions.
+
+Every one of the 195 canonical country routes now explicitly searches the same
+macro release families (not merely a few economy keywords), while preserving
+war/mineral discovery terms. The existing 25 index-country slots plus 24 local
+publisher slots per tick are unchanged: all 195 country searches occur over
+eight delivered 15-minute slots, nominally 120 minutes, alongside continuously
+polled publisher sources. This is a rotation target, not fresh-event coverage
+for every country. Country queries never assign an event country, create a
+national central bank for currency-union members, or fabricate absent data
+(such as the already recorded missing Vatican statistics source).
+
+Production retention repair: every OSINT website write run performs one admitted
+empty sweep after all nonempty chunks and before complete readback. An already
+601+ baseline repairs once only after the reader proves that exact condition;
+unknown outages/quota failures cannot trigger speculative cleanup. This prevents
+a healthy new source observation from leaving the shared journal unavailable.

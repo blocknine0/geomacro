@@ -1,9 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {marketRelevantOfficialCommunication} from '../../src/lib/global-macro-news-policy.ts';
+import {MACRO_NEWS_SOURCES,planMacroSources} from '../lib/macro-fx-metals.mjs';
+import {parseMacroFeed} from '../lib/macro-fastlane-collector.mjs';
 import {HOT_TOPIC_FAMILIES} from '../../src/lib/hot-topic-taxonomy.ts';
 import {LAUNCH_NEWS_FAMILY_CATEGORIES,launchNewsCoveragePolicy} from '../../src/lib/launch-news-coverage.ts';
 import {PRIVATE_OSINT_TOPICS,privateOsintGlobalSources} from '../lib/private-osint-global-sources.mjs';
-import {privateOsintRuntimeSources} from '../lib/private-osint-country-rotation.mjs';
+import {COUNTRIES_195} from '../../src/lib/canonical-country-registry-195.ts';
+import {rotatingPrivateCountryDiscoverySources,COUNTRY_MACRO_DISCOVERY_TERMS,privateOsintRuntimeSources} from '../lib/private-osint-country-rotation.mjs';
 import {LAUNCH_PRIORITY_WATCHES} from '../lib/launch-priority-watch-sources.mjs';
 import {collectPrivateOsint15m} from '../lib/private-osint-15m-collector.mjs';
 import {normalizeReusableNewsJson} from '../../src/lib/reusable-news-json.ts';
@@ -70,4 +74,60 @@ test('new watch reports ingest only as private dated unverified observations, ne
  for(const item of result.items){assert.equal(item.usage_rights.commercial_reuse_authorized,false);assert.equal(item.country_iso3,null);}
  const text=JSON.stringify(result.items);
  assert.ok(titles.every(t=>!text.includes(t)),'no raw titles may be persisted');
+});
+
+
+test('global monetary, banking, trade and leader communications use Macro without invented price reaction',()=>{
+ for(const title of [
+  'Fed Chair delivers remarks at a conference',
+  'Bank of Canada governor speaks at a conference',
+  'ECB president delivers a statement on the economy',
+  'Prime minister announces new tariffs on imported goods',
+  'Finance minister announces borrowing plans',
+  'Statistics office reports CPI inflation data',
+  'Agency publishes retail sales and industrial production figures',
+  'Authority publishes bank liquidity and non-performing loans data',
+  'Officials announce shipping restrictions in the Strait of Hormuz',
+ ]){
+  assert.equal(PRIVATE_OSINT_TOPICS.macro.test(title),true,title);
+  const item=normalizeReusableNewsJson({category:'macro',text:title,published_at:'2026-10-28T06:55:00.000Z',license:'unknown'});
+  assert.equal(item.usage_rights.commercial_reuse_authorized,false);
+  assert.ok(item.facts.event_types.length>0,title);
+ }
+ assert.equal(marketRelevantOfficialCommunication('President gives birthday greetings'),false);
+ assert.equal(marketRelevantOfficialCommunication('A famous actor gives an interview'),false);
+ assert.equal(marketRelevantOfficialCommunication('Prime minister announces trade tariffs'),true);
+});
+test('official Fed speeches poll every admitted fastlane slot inside the original nine-source ceiling',()=>{
+ const at=Date.parse('2026-10-28T07:00:00Z');
+ for(let i=0;i<12;i++)for(const reusedIds of [[],['fed_press','ecb_press']]){
+  const plan=planMacroSources(at+i*300000,{reusedIds});
+  assert.ok(plan.length<=9);assert.ok(plan.some(s=>s.id==='fed_speeches'));
+ }
+ const spec=MACRO_NEWS_SOURCES.find(s=>s.id==='fed_speeches');
+ const xml='<rss><channel><item><title>Speech by Governor on the long term outlook</title><link>https://www.federalreserve.gov/newsevents/speech/governor20261028a.htm</link><pubDate>Wed, 28 Oct 2026 06:55:00 GMT</pubDate></item></channel></rss>';
+ assert.equal(parseMacroFeed(xml,spec,at).length,1);
+ assert.equal(parseMacroFeed(xml.replace('www.federalreserve.gov','attacker.example'),spec,at).length,0);
+ assert.equal(parseMacroFeed(xml.replace('06:55:00','07:55:00'),spec,at).length,0);
+});
+
+test('all 195 countries receive explicit macro search coverage within the unchanged eight-slot local-lane cycle',()=>{
+ const at=Date.parse('2026-10-28T07:00:00Z'),seen=new Set();
+ for(let slot=0;slot<8;slot++){
+  const sources=rotatingPrivateCountryDiscoverySources(new Date(at+slot*15*60000),COUNTRIES_195,25);
+  assert.ok(sources.length<=25);
+  for(const source of sources){
+   const q=new URL(source.url).searchParams.get('q');
+   for(const term of COUNTRY_MACRO_DISCOVERY_TERMS)assert.ok(q.includes(term));
+   assert.ok(source.categories.includes('macro'));
+   assert.equal(source.publisher_country_iso3,null);
+   assert.equal(source.index_timestamp_not_original_page_clock,true);
+   assert.equal(source.publicly_deliverable,false);
+   seen.add(source.discovery_country_iso3);
+  }
+ }
+ assert.deepEqual(seen,new Set(COUNTRIES_195.map(c=>c.iso3)));
+ const policy=launchNewsCoveragePolicy().country_macro_routing;
+ assert.equal(policy.countries,seen.size);assert.equal(policy.nominal_cycle_minutes,120);
+ assert.equal(policy.full_current_coverage_asserted,false);
 });

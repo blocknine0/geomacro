@@ -31,7 +31,7 @@ export const MACRO_NEWS_SOURCES=Object.freeze([
  s('bls_ppi','https://www.bls.gov/feed/ppi.rss','www.bls.gov',/^\/news\.release\/(?:archives\/ppi_\d{8}|ppi\.nr\d+)\.htm$/u,{media:'atom',critical:true}),
  s('fed_press','https://www.federalreserve.gov/feeds/press_all.xml','www.federalreserve.gov',/^\/newsevents\/pressreleases\/[a-z]+\d{8}[a-z]\.htm$/u,{critical:true,credit:'Federal Reserve Board',shared:true}),
  s('ecb_press','https://www.ecb.europa.eu/rss/press.html','www.ecb.europa.eu',/^\/press\/(?:pr|key|govcdec)\/[A-Za-z0-9_./~-]+\.en\.html$/u,{critical:true,credit:'European Central Bank',shared:true}),
- s('fed_speeches','https://www.federalreserve.gov/feeds/speeches.xml','www.federalreserve.gov',/^\/newsevents\/speech\/[a-z0-9]+\.htm$/u,{credit:'Federal Reserve Board'}),
+ s('fed_speeches','https://www.federalreserve.gov/feeds/speeches.xml','www.federalreserve.gov',/^\/newsevents\/speech\/[a-z0-9]+\.htm$/u,{credit:'Federal Reserve Board',critical:true,official_communication:true}),
  s('boe_press','https://www.bankofengland.co.uk/rss/news','www.bankofengland.co.uk',/^\/(?:news|monetary-policy-summary-and-minutes)\/20\d{2}\/[a-z0-9/-]+$/u,{credit:'Bank of England'}),
  s('boj_press_global','https://www.boj.or.jp/en/rss/whatsnew.xml','www.boj.or.jp',/^\/en\/(?:about|announcements|mopo|statistics|research)\/[A-Za-z0-9_./-]+\.htm$/u,{credit:'Bank of Japan'}),
  s('snb_monetary','https://www.snb.ch/public/rss/en/mopo','www.snb.ch',/^\/en\/[A-Za-z0-9_./-]+$/u,{credit:'Swiss National Bank'}),
@@ -51,7 +51,9 @@ export function planMacroSources(now,{release=false,reusedIds=[]}={}){
  if(release)return critical;
  const secondary=MACRO_NEWS_SOURCES.filter(x=>!x.critical);
  const slot=Math.floor(now/300000);
- const selected=Array.from({length:4},(_,i)=>secondary[(slot*4+i)%secondary.length]);
+ if(critical.length>9)throw Error('MACRO_SOURCE_BUDGET_EXCEEDED');
+ const width=Math.min(4,9-critical.length);
+ const selected=Array.from({length:width},(_,i)=>secondary[(slot*width+i)%secondary.length]);
  return [...critical,...selected.filter(x=>!reused.has(x.id))];
 }
 export function pinnedMacroArticle(raw,spec){
