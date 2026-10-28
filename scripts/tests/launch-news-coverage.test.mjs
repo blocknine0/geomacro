@@ -64,6 +64,9 @@ test('new watch reports ingest only as private dated unverified observations, ne
  });
  assert.equal(requests,3);assert.equal(originalCallbacks,0);
  assert.ok(result.items.length>0);
+ assert.ok(result.items.some(i=>i.facts.event_types.includes('telecom_internet_shutdown')));
+ assert.ok(result.items.some(i=>i.facts.event_types.includes('insurance_market_withdrawal_war_risk')));
+ assert.ok(result.items.every(i=>i.facts.event_types.length<=12));
  for(const item of result.items){assert.equal(item.usage_rights.commercial_reuse_authorized,false);assert.equal(item.country_iso3,null);}
  const text=JSON.stringify(result.items);
  assert.ok(titles.every(t=>!text.includes(t)),'no raw titles may be persisted');

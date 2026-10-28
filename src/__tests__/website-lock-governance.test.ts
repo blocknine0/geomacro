@@ -89,7 +89,11 @@ describe("website lock governance", () => {
     expect(findsApproval.approved_ui_commit).toBe(askChatApproval.previous_baseline_sha);
     const publicAskApproval = config.approved_ask_public_geomacro_info_20261028;
     expect(askChatApproval.approved_ui_commit).toBe(publicAskApproval.previous_baseline_sha);
-    expect(publicAskApproval.approved_ui_commit).toBe(config.baseline_sha);
+    const priceDedup=config.approved_store_price_dedup_news_coverage_20261028;
+    expect(publicAskApproval.approved_ui_commit).toBe(priceDedup.previous_baseline_sha);
+    expect(priceDedup.approved_ui_commit).toBe(config.baseline_sha);
+    expect(priceDedup.paid_pricing_unmodified).toBe(true);
+    expect(priceDedup.payment_authorized).toBe(false);
     expect(publicAskApproval.public_information_only).toBe(true);
     expect(publicAskApproval.private_retrieval_added).toBe(false);
     expect(publicAskApproval.payment_authorized).toBe(false);
