@@ -10,7 +10,7 @@ import {isPermanentArchiveSignal, ARCHIVE_INDEX_SCHEMA, ARCHIVE_MONTH_SCHEMA, CA
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
 import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {prepareDerivedNewsBatches} from "../lib/derived-news-d1-batches.mjs";
-import {planWebsiteNewsCatchup} from "../lib/website-news-canonical-reconciliation.mjs";
+import {planWebsiteNewsCatchup,verifyWebsiteNewsCatchupReadback} from "../lib/website-news-canonical-reconciliation.mjs";
 
 const ROOT=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(ROOT.length<32)throw Error("WEBSITE_SHARED_CATCHUP_AUTH_REQUIRED");
@@ -71,21 +71,27 @@ for(const chunk of chunks){
   if(receipt?.ok!==true||receipt.accepted!==chunk.length)
     throw Error("WEBSITE_SHARED_D1_CATCHUP_ACK_INVALID");
 }
-const result=await fetchAllDerivedNews(fetch,Date.now());
-const byId=new Map(result.map(x=>[x.id,x]));
-const missing=archive.filter(s=>isPermanentArchiveSignal(s,Date.now(),{allowHistorical:false})&&
-  !byId.has(s.id));
-if(missing.length)throw Error("WEBSITE_SHARED_CATCHUP_READBACK_INCOMPLETE");
+const readbackAt=Date.now();
+const result=await fetchAllDerivedNews(fetch,readbackAt);
+const readback=verifyWebsiteNewsCatchupReadback(archive,result,readbackAt,
+  s=>isPermanentArchiveSignal(s,readbackAt,{allowHistorical:false})&&
+    verifyDerivedStory(s,readbackAt));
 console.log(JSON.stringify({
   schema:"geomacro.website-predge-common-journal-catchup.v1",
   same_canonical_d1_journal_for_website_and_partner:true,
   eligible_archive_ids:planned.eligible_archive_ids,
   already_present:planned.already_present,
   newly_published:planned.missing.length,
-  missing_eligible_ids:0,
+  missing_eligible_ids:readback.missing_eligible_ids,
+  readback_eligible_ids:readback.eligible_archive_ids,
+  readback_category_counts:readback.counts_by_category,
+  exact_source_native_payloads_verified:readback.exact_derived_payloads_and_source_clocks_verified,
+  recovery_exercised:planned.missing.length>0,
+  nonempty_eligible_archive_cohort:readback.eligible_archive_ids>0,
+  authenticated_partner_live_delivery_verified:false,
   conflicting_existing_ids:0,
   retention_hours:72,
-  source_clocks_preserved:true,
+  source_clocks_preserved:readback.exact_derived_payloads_and_source_clocks_verified,
   predge_auth_or_quota_modified:false,
   original_upstream_data_delivered:false,
   signed_gro_created:false,
