@@ -786,7 +786,7 @@ export async function signAutomatedFindsBatch(
     payload_sha256:createHash("sha256").update(bytes).digest("hex"),signature:signBytes(null,bytes,privateKey).toString("base64"),
   }};
   // Respect the existing registry's revocation/conflict state in production.
-  const keys=configured?loadRiskObjectVerificationKeysFromEnv():{[keyId]:{
+  const keys:RiskObjectVerificationKeys=configured?loadRiskObjectVerificationKeysFromEnv():{[keyId]:{
     public_key_spki_b64:publicB64,status:"active",not_before:material.not_before,not_after:material.not_after}};
   const registered=normalizeRiskObjectVerificationKeys(keys)[keyId];
   if(!registered||registered.status!=="active")throw Error("AUTOMATED_FINDS_ACTIVE_SIGNER_REQUIRED");
@@ -812,7 +812,7 @@ export async function signAutomatedIntelligenceInput(
   signing_key_id:keyId,signature_scheme:'ed25519',canonicalization:'geomacro-canonical-json-v1',
   payload_sha256:createHash('sha256').update(bytes).digest('hex'),signature:signBytes(null,bytes,privateKey).toString('base64'),
  }};
- const keys=configured?loadRiskObjectVerificationKeysFromEnv():{[keyId]:{
+ const keys:RiskObjectVerificationKeys=configured?loadRiskObjectVerificationKeysFromEnv():{[keyId]:{
   public_key_spki_b64:publicB64,status:'active',not_before:material.not_before,not_after:material.not_after}};
  if(normalizeRiskObjectVerificationKeys(keys)[keyId]?.status!=='active')throw Error('AUTOMATED_INPUT_ACTIVE_SIGNER_REQUIRED');
  await verifyAutomatedInput(envelope,keys);return envelope;

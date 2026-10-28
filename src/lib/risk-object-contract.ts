@@ -144,14 +144,13 @@ export type RiskEvidenceReference = {
   source_ids?: string[];
   source_record_ids?: string[];
   source_urls?: string[];
-  source_families?: string[];
   content_hashes?: string[];
   relevance_reason?: string;
   transmission_channel?: string | null;
   relevance_weight?: number;
   subject_is_primary?: boolean;
-  subject_attribution_confidence?: number;
-  subject_attribution_method?: string;
+  subject_attribution_confidence?: number | null;
+  subject_attribution_method?: string | null;
   material_evidence_at?: string;
   evidence_age_hours?: number;
   freshness_status?: "FRESH" | "AGING" | "STALE";
@@ -159,14 +158,14 @@ export type RiskEvidenceReference = {
 
   direction: RiskDirection;
 
-  last_seen_at: string;
-
   evidence_count: number;
   independent_source_count: number;
-
-  evidence_refs: string[];
-  source_families: string[];
-};
+} & (
+  /** Legacy GRO evidence has these three fields together. */
+  | { last_seen_at: string; evidence_refs: string[]; source_families: string[] }
+  /** Strict Federico evidence deliberately omits all three together. */
+  | { last_seen_at?: never; evidence_refs?: never; source_families?: never }
+);
 
 export type RiskIntegrity = {
   input_hash: string;
@@ -190,6 +189,10 @@ export type RiskIntegrity = {
     | null;
 
   signing_key_id: string | null;
+  /** Optional public registry metadata already emitted by the signer. */
+  trust_registry_url?: string;
+  canonicalization_url?: string;
+  public_key_spki_b64?: string;
 };
 
 export type GeomacroRiskObject = {
@@ -206,6 +209,9 @@ export type GeomacroRiskObject = {
   risk: {
     score: number;
     label: RiskLabel;
+    /** Optional bounded uncertainty from the real country risk calculation. */
+    score_band?: string;
+    uncertainty_interval?: { low: number; high: number };
 
     previous_score: number | null;
     delta: number | null;
@@ -304,9 +310,9 @@ export type GeomacroRiskObject = {
         rounded_score: number;
         aggregate_confidence: number;
       };
-      hash_inputs: {
-        data_projection: unknown;
-      };
+      hash_inputs:
+        | { data_projection: unknown; data_projection_version?: never; data_projection_sha256?: never }
+        | { data_projection_version: string; data_projection_sha256: string; data_projection?: never };
     };
   };
 };

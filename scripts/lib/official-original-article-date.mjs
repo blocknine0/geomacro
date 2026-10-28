@@ -98,6 +98,12 @@ function closingScriptTag(source, from) {
   return null;
 }
 
+/**
+ * @param {string} html
+ * @param {Date} [now]
+ * @param {{date_reason?: string}|null} [diagnostics]
+ * @param {{maxAgeMs?: number}} [options]
+ */
 export function verifiedPublisherPageDate(
   html, now = new Date(), diagnostics = null, options = {},
 ) {

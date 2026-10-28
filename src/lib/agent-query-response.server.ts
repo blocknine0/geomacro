@@ -799,7 +799,6 @@ function intentAnalysis(plan: AgentQueryPlan, riskObjects: LoadedRiskObject[]) {
       independently_verifiable: true,
       signed_object_count: riskObjects.length,
       objects: riskObjects.map(({ subject, object }) => ({
-        subject,
         risk_object_id: object.object_id,
         methodology_version: object.methodology_version,
         calculation_hash: object.integrity.calculation_hash,

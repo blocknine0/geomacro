@@ -48,7 +48,7 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
-  nitro: {
+  nitro: ({
     // Geomacro's Nitro handlers live under ./server/{api,routes,...}.
     // Nitro 3 scans this directory for server routes, so legacy standalone
     // Testnet Access HTML handlers must be excluded: the React route
@@ -60,7 +60,7 @@ export default defineConfig({
       "routes/testnet-access-wallet-first.get.ts",
       "routes/testnet-access-canonical-wallet-first.get.ts",
     ],
-  },
+  } as unknown as NonNullable<NonNullable<Parameters<typeof defineConfig>[0]>["nitro"]>),
   vite: {
     // Exact development-preview host; keep Vite host checking enabled.
     server: { allowedHosts: ["terminal.local"] },

@@ -773,7 +773,10 @@ export async function buildCountryRiskObject(
             3,
           );
 
-  const evidence =
+  // The strict and legacy evidence projections are mutually exclusive in
+  // the mapper below: either all three legacy fields exist together or
+  // none is emitted. Preserve this correlation in the published GRO type.
+  const evidence: GeomacroRiskObject["evidence"] =
     selectedWeighted.map(
       ({ event, age_hours }) => ({
         event_id:
@@ -880,14 +883,15 @@ export async function buildCountryRiskObject(
         evidence_age_hours:
           round(age_hours, 2),
 
-        freshness_status:
+        freshness_status: (
           age_hours <=
           FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS
             ? "FRESH"
             : age_hours <=
                 FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS
               ? "AGING"
-              : "STALE",
+              : "STALE"
+        ) as "FRESH" | "AGING" | "STALE",
 
         corroboration_status:
           event.corroboration_status ??
@@ -927,7 +931,7 @@ export async function buildCountryRiskObject(
               0,
           ),
       }),
-    );
+    ) as GeomacroRiskObject["evidence"];
   const structureVersions =
     normalizeStringArray(
       selectedWeighted.map(

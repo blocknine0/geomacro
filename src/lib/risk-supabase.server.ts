@@ -217,7 +217,6 @@ export function getRiskSupabase(): SupabaseClient | null {
       persistSession: false,
       autoRefreshToken: false,
     },
-    db: { retry: false },
     global: { fetch: riskSupabaseFetch },
   });
   cachedRiskIdentity = identity;

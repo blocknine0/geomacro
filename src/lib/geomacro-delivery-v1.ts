@@ -101,6 +101,7 @@ export async function assertGeomacroDeliveryV1(
    !PUBLIC_ID.test(payload.integrity.key_id)||
    typeof payload.integrity.signature!=="string"||
    payload.integrity.signature.length<64||
+   typeof payload.integrity.content_hash!=="string"||
    !HASH.test(payload.integrity.content_hash)||
    payload.integrity.content_hash!==expected.verified_content_hash)
    throw Error("DELIVERY_UNVERIFIED_SIGNATURE_OR_HASH");

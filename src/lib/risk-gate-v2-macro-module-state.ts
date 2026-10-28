@@ -19,7 +19,7 @@ export const RISK_GATE_V2_MACRO_MODULE_TTL_MS =
 
 type ModuleDefinition = {
   module: Extract<RiskGateV2Module, "macro_monetary" | "sovereign_fiscal">;
-  dimensions: readonly Array<{
+  dimensions: ReadonlyArray<{
     key: MacroDimensionKey;
     driver: RiskGateV2Driver;
   }>;

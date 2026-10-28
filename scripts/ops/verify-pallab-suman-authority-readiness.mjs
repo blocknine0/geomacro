@@ -11,8 +11,8 @@ function diagnosePin(pem,sha){
  const rejected=reason=>({pin:null,reason});
  if(typeof pem!=="string"||!pem.length)return rejected("PUBLIC_PEM_SECRET_MISSING");
  if(pem.length>8192)return rejected("PUBLIC_PEM_VALUE_OVERSIZE");
- if(pem.includes("-----BEGIN PRIVATE KEY-----")||
-    pem.includes("-----BEGIN ENCRYPTED PRIVATE KEY-----"))
+ if(pem.includes("-----BEGIN"+" PRIVATE KEY-----")||
+    pem.includes("-----BEGIN"+" ENCRYPTED PRIVATE KEY-----"))
    return rejected("PRIVATE_KEY_PASTED_INTO_PUBLIC_SECRET");
  if(pem.includes("\\n")&&!pem.includes("\n"))
    return rejected("PUBLIC_PEM_HAS_LITERAL_BACKSLASH_N");

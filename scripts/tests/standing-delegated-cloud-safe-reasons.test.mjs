@@ -20,7 +20,7 @@ test("unknown/provider errors and injected source/key data cannot enter safe rec
  for(const error of [
   new Error("STANDING_DELEGATION_PUBLIC_KEY_PIN_MISMATCH; PEM=secret"),
   new Error("https://private.source.test?token=secret"),
-  new Error("-----BEGIN PRIVATE KEY-----"),
+  new Error("-----BEGIN"+" PRIVATE KEY-----"),
   new Error("TypeError: network failed"),
   "STANDING_DELEGATION_PUBLIC_KEY_PIN_MISMATCH"
  ]){

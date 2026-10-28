@@ -110,6 +110,6 @@ export async function readPibMinesOriginalCandidates(now=Date.now()):Promise<{
       publishedAt:new Date(original).toISOString(),
       sourceId:"in_pib_mines",category:"rare_earth" as const,credit:null,
     };
-  }))).filter((row):row is StatelessSourceCandidate=>row!==null);
+  }))).filter(row=>row!==null);
   return {healthy:true,candidates,inspected:found.length,original_verified:candidates.length};
 }

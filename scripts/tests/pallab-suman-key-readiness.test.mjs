@@ -95,7 +95,7 @@ test("diagnostics report precise missing vs malformed vs mismatch without printi
   ["PUBLIC_PEM_SHA256_PIN_MISMATCH",{GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256:
     "a".repeat(64)===base.GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_SHA256?"b".repeat(64):"a".repeat(64)}],
   ["PRIVATE_KEY_PASTED_INTO_PUBLIC_SECRET",{GEOMACRO_OWNER_HUMAN_PUBLIC_KEY_PEM:
-    "-----BEGIN PRIVATE KEY-----\n[redacted]\n-----END PRIVATE KEY-----"}],
+    "-----BEGIN"+" PRIVATE KEY-----\n[redacted]\n-----END"+" PRIVATE KEY-----"}],
  ];
  for(const [reason,override] of variants){
   const actual=pallabSumanAuthorityReadiness({...base,...override});

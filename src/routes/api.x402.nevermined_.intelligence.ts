@@ -126,7 +126,7 @@ function settlementTxHash(value: string | null | undefined) {
   return /^0x[a-fA-F0-9]{64}$/.test(normalized) ? normalized : null;
 }
 
-export const Route = createFileRoute("/api/x402/nevermined/intelligence")({
+export const Route = createFileRoute("/api/x402/nevermined_/intelligence")({
   server: {
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),

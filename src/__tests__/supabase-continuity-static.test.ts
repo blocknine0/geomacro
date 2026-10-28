@@ -9,7 +9,9 @@ describe("Supabase continuity contract", () => {
     expect(source).toContain("APP_SUPABASE_REQUEST_TIMEOUT_MS = 8_000");
     expect(source).toContain("APP_SUPABASE_CIRCUIT_FAILURE_THRESHOLD = 3");
     expect(source).toContain("APP_SUPABASE_CIRCUIT_OPEN_MS = 30_000");
-    expect(source).toContain("db: { retry: false }");
+    expect(source).not.toContain("db: { retry: false }");
+    // The installed Supabase client does not accept db.retry; retry controls
+    // remain in the bounded HTTP fetch circuit rather than an inert DB option.
     expect(source).toContain("idempotentRead ? 2 : 1");
     expect(source).toContain("x-geomacro-degraded");
     expect(source).not.toMatch(/process\.env\.VITE_SUPABASE_/);
@@ -20,7 +22,9 @@ describe("Supabase continuity contract", () => {
     expect(source).toContain("RISK_SUPABASE_REQUEST_TIMEOUT_MS = 15_000");
     expect(source).toContain("RISK_SUPABASE_CIRCUIT_FAILURE_THRESHOLD = 3");
     expect(source).toContain("RISK_SUPABASE_CIRCUIT_OPEN_MS = 30_000");
-    expect(source).toContain("db: { retry: false }");
+    expect(source).not.toContain("db: { retry: false }");
+    // The installed Supabase client does not accept db.retry; retry controls
+    // remain in the bounded HTTP fetch circuit rather than an inert DB option.
     expect(source).toContain("risk-supabase-circuit-open");
     expect(source).not.toContain("APP_SUPABASE_ANON_KEY");
     expect(source).not.toContain("SUPABASE_ANON_KEY");

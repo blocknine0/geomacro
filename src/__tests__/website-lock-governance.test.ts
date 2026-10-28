@@ -50,7 +50,19 @@ describe("website lock governance", () => {
     expect(config.published_source_sha).toMatch(/^[0-9a-f]{40}$/);
     // Founder-authorized source-redaction baseline stays enabled. Visual/live
     // publication is independently accepted; it is never presumed by CI.
-    expect(config.lock_revision).toBe("founder-approved-geomacro-self-certified-news-severity-gri-20261028");
+    expect(config.lock_revision).toBe("founder-approved-lovable-github-source-type-repair-20261028");
+    const typeRepairApproval=config.approved_lovable_types_github_20261028;
+    expect(typeRepairApproval.type_only).toBe(true);
+    expect(typeRepairApproval.visual_layout_unchanged).toBe(true);
+    expect(typeRepairApproval.scope).toEqual(["src/components/home/risk-indices-preview.tsx", "src/routes/intelligence.tsx", "src/routes/__root.tsx", "vite.config.ts"]);
+    expect(typeRepairApproval.vite_nitro_runtime_unchanged).toBe(true);
+    expect(typeRepairApproval.seven_ask_ui_files_unmodified).toBe(true);
+    expect(typeRepairApproval.global_risk_final_lock_unmodified).toBe(true);
+    expect(typeRepairApproval.predge_unmodified).toBe(true);
+    expect(typeRepairApproval.published_source_sha_unchanged).toBe(true);
+    expect(typeRepairApproval.payment_authorized).toBe(false);
+    expect(typeRepairApproval.previous_baseline_sha).toBe(config.approved_geomacro_self_certified_news_severity_20261028.approved_source_commit);
+    expect(config.baseline_sha).toBe(typeRepairApproval.approved_ui_commit);
     const newsGriApproval=config.approved_geomacro_self_certified_news_severity_20261028;
     expect(newsGriApproval).toBeTruthy();
     expect(newsGriApproval.approved_source_commit).toMatch(/^[a-f0-9]{40}$/);
@@ -105,7 +117,7 @@ describe("website lock governance", () => {
     expect(askConversationApproval.approved_ui_commit).not.toBe(config.baseline_sha);
     // Historical approval chain is retained; the independent founder-approved
     // GeoMacro news+OSINT Risk Indices copy now has its own active baseline.
-    expect(config.baseline_sha).toBe(newsGriApproval.approved_source_commit);
+    expect(typeRepairApproval.previous_baseline_sha).toBe(newsGriApproval.approved_source_commit);
     expect(askConversationApproval.scope).toEqual(["src/components/ask/ask-workspace.tsx"]);
     expect(askConversationApproval.predge_unmodified).toBe(true);
     expect(askConversationApproval.global_risk_final_lock_unmodified).toBe(true);

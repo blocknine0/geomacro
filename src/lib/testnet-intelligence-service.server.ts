@@ -32,6 +32,19 @@ function asRecord(value: unknown): Record<string, any> | null {
     : null;
 }
 
+/**
+ * Telemetry-only canonical subject identity; never infer a generic .id on
+ * global/country/corridor discriminated subjects.
+ */
+function testnetSubjectTelemetryKey(
+  subject: TestnetIntelligenceRequest["subject"],
+): string | null {
+  if (!subject) return null;
+  if (subject.type === "global") return "global";
+  if (subject.type === "country") return `country:${subject.country_iso3}`;
+  return `corridor:${subject.origin_country_iso3}:${subject.destination_country_iso3}`;
+}
+
 export type TestnetAccessSurface = "testnet_tester" | "commercial_api";
 
 export type TestnetIntelligenceServiceResult =
@@ -99,9 +112,7 @@ export async function deliverTestnetIntelligence(input: {
       request_id: request.request_id,
       capability: request.capability,
       subject_type: subjectType,
-      subject_key: request.subject
-        ? `${request.subject.type}:${request.subject.id}`
-        : null,
+      subject_key: testnetSubjectTelemetryKey(request.subject),
       stage: "payment",
       outcome: "started",
     });
@@ -125,9 +136,7 @@ export async function deliverTestnetIntelligence(input: {
         request_id: request.request_id,
         capability: request.capability,
         subject_type: subjectType,
-        subject_key: request.subject
-          ? `${request.subject.type}:${request.subject.id}`
-          : null,
+        subject_key: testnetSubjectTelemetryKey(request.subject),
         stage: "payment",
         outcome: "failed",
         http_status: error instanceof CommercialAccessError ? error.status : 503,
@@ -147,9 +156,7 @@ export async function deliverTestnetIntelligence(input: {
         request_id: request.request_id,
         capability: request.capability,
         subject_type: subjectType,
-        subject_key: request.subject
-          ? `${request.subject.type}:${request.subject.id}`
-          : null,
+        subject_key: testnetSubjectTelemetryKey(request.subject),
         stage: "payment",
         outcome: "required",
         http_status: 402,
@@ -184,9 +191,7 @@ export async function deliverTestnetIntelligence(input: {
       request_id: request.request_id,
       capability: request.capability,
       subject_type: subjectType,
-      subject_key: request.subject
-        ? `${request.subject.type}:${request.subject.id}`
-        : null,
+      subject_key: testnetSubjectTelemetryKey(request.subject),
       stage: "payment",
       outcome: "passed",
       http_status: 200,
@@ -199,9 +204,7 @@ export async function deliverTestnetIntelligence(input: {
       request_id: request.request_id,
       capability: request.capability,
       subject_type: subjectType,
-      subject_key: request.subject
-        ? `${request.subject.type}:${request.subject.id}`
-        : null,
+      subject_key: testnetSubjectTelemetryKey(request.subject),
       stage: "intelligence_delivery",
       outcome: "started",
     });
@@ -246,9 +249,7 @@ export async function deliverTestnetIntelligence(input: {
         request_id: request.request_id,
         capability: request.capability,
         subject_type: subjectType,
-        subject_key: request.subject
-          ? `${request.subject.type}:${request.subject.id}`
-          : null,
+        subject_key: testnetSubjectTelemetryKey(request.subject),
         stage: "intelligence_delivery",
         outcome: "failed",
         http_status: failureStatus,

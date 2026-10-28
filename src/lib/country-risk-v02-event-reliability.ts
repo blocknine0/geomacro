@@ -394,7 +394,7 @@ buildEventReliability(
   ) {
     for (
       const family of
-        evidence.source_families
+        evidence.source_families ?? []
     ) {
       sourceFamilies.add(
         family,
@@ -404,7 +404,7 @@ buildEventReliability(
 
     for (
       const reference of
-        evidence.evidence_refs
+        evidence.evidence_refs ?? []
     ) {
       evidenceReferences.add(
         reference,

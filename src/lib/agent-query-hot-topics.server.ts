@@ -113,6 +113,7 @@ type LiveEventRow = {
   status: string;
   first_seen_at: string;
   last_seen_at: string;
+  last_observed_at: string;
   evidence_count: number | null;
   independent_source_count: number | null;
   structure_version: string;

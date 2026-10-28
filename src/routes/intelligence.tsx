@@ -56,7 +56,8 @@ export const Route = createFileRoute("/intelligence")({
       ),
     ]);
     const accepted = [geopolitics, macro, minerals].map((entry, i) =>
-      entry.status === "fulfilled" && entry.value.category === domains[i] &&
+      entry.status === "fulfilled" && !Array.isArray(entry.value) &&
+       entry.value.category === domains[i] &&
       entry.value.healthy_feed_count > 0 ? entry.value : null);
     return {
       rows: [],

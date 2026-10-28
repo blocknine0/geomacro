@@ -106,12 +106,25 @@ function normalizedAddress(value: unknown) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
-export function assertCircleX402PaymentBinding(paymentPayload: Record<string, unknown>) {
-  if (paymentPayload.x402Version !== 2) {
+export function assertCircleX402PaymentBinding(
+  paymentPayload: unknown,
+): asserts paymentPayload is Parameters<typeof facilitator.verify>[0] {
+  // Narrow untrusted payment data by runtime v2 structural checks before
+  // the strongly-typed facilitator accepts it; never bypass binding.
+  if (!paymentPayload || typeof paymentPayload !== "object" ||
+      Array.isArray(paymentPayload)) {
+    throw new Error("PAYMENT_SIGNATURE_INVALID_PAYLOAD");
+  }
+  const candidate = paymentPayload as Record<string, unknown>;
+  if (!candidate.payload || typeof candidate.payload !== "object" ||
+      Array.isArray(candidate.payload)) {
+    throw new Error("PAYMENT_SIGNATURE_INVALID_PAYLOAD");
+  }
+  if (candidate.x402Version !== 2) {
     throw new Error("PAYMENT_X402_VERSION_MISMATCH");
   }
 
-  const accepted = paymentPayload.accepted;
+  const accepted = candidate.accepted;
   if (!accepted || typeof accepted !== "object" || Array.isArray(accepted)) {
     throw new Error("PAYMENT_ACCEPTED_REQUIREMENTS_MISSING");
   }
@@ -198,7 +211,7 @@ export async function verifyCircleX402(
 ): Promise<CircleX402VerifyResult> {
   assertCircleX402PaymentBinding(paymentPayload);
   return (await facilitator.verify(
-    paymentPayload as Parameters<typeof facilitator.verify>[0],
+    paymentPayload,
     circleX402PaymentRequirements() as Parameters<typeof facilitator.verify>[1],
   )) as CircleX402VerifyResult;
 }
@@ -294,7 +307,7 @@ export async function settleCircleX402(
   const requirements = circleX402PaymentRequirements();
 
   const settled = await facilitator.settle(
-    paymentPayload as Parameters<typeof facilitator.settle>[0],
+    paymentPayload,
     requirements as Parameters<typeof facilitator.settle>[1],
   );
 

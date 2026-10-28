@@ -86,6 +86,20 @@ export function planBoundedGroqBrowserSearch({categories,country_iso3=null,count
   personal_question_forwarded:false
  });
 }
+/**
+ * The bounded browser response is a typed **unverified** research lead,
+ * never a signed original or commercial event. This declaration documents
+ * the existing parser output without modifying its validation behavior.
+ * @param {string} content
+ * @param {{categories: string[], now?: Date}} [options]
+ * @returns {ReadonlyArray<{
+ *  category:"GEOPOLITICS"|"MACRO"|"CRITICAL_MINERALS",
+ *  what_changed:string, why_it_matters:string,source_claim_fingerprint:string,
+ *  claimed_original_calendar_day:string|null,source_native_date_verified:false,
+ *  original_html_verified:false,factual_claim_independently_verified:false,
+ *  commercial_permission_verified:false
+ * }>}
+ */
 export function validateGroqBrowserLeadText(content,{categories,now=new Date()}={}){
  if(typeof content!=="string"||content.length>4000)reject();
  const trimmed=content.trim();
@@ -123,6 +137,13 @@ export function validateGroqBrowserLeadText(content,{categories,now=new Date()}=
  });
  return Object.freeze(leads);
 }
+/**
+ * @param {{
+ *  categories:string[],country_iso3?:string|null,country_name?:string|null,
+ *  env?:Record<string,string|undefined>,fetchImpl?:typeof fetch,
+ *  now?:Date,budget?:unknown
+ * }} [options]
+ */
 export async function groqBrowserResearchForMissingOfficial({
  categories,country_iso3=null,country_name=null,
  env=process.env,fetchImpl=fetch,now=new Date(),budget=inMemoryBrowserBudget

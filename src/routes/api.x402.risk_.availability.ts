@@ -47,7 +47,7 @@ async function body(request: Request) {
   }
 }
 
-export const Route = createFileRoute("/api/x402/risk/availability")({
+export const Route = createFileRoute("/api/x402/risk_/availability")({
   server: {
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),

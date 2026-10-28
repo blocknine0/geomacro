@@ -119,7 +119,7 @@ function timeOf(e: Pick<IntelEvent, "publishedAt" | "createdAt">) {
 
 function mapPublicRows(rows: PublicIntelligenceApiRow[]): IntelEvent[] {
   const allowed = new Set<string>(PUBLIC_INTELLIGENCE_CATEGORIES);
-  return rows.flatMap((input) => {
+  return rows.flatMap<IntelEvent>((input) => {
     const r = sanitizePublicIntelligenceRow(input);
     if (!r) return [];
     const title = String(r.source_title ?? "").replace(/\s+/g, " ").trim();

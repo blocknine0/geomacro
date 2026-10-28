@@ -83,7 +83,7 @@ export function observedPublicFinds195x3Coverage(
      !["exact","day"].includes(row.date_precision)||
      row.severity!==null||row.same_event_corrob_verified!==false||
      !Array.isArray(row.sources_credited)||row.sources_credited.length>2||
-     row.sources_credited.some(credit=>typeof credit!=="string"||credit.length>230))
+     row.sources_credited.some((credit:unknown)=>typeof credit!=="string"||credit.length>230))
    throw Error("COUNTRY_NEWS_195X3_PUBLIC_FIND_INVALID");
   seen.add(row.id);
   const at=Date.parse(row.published_at);
@@ -206,7 +206,7 @@ export function observed195x3Coverage(
   if(seen.has(row.id))throw Error("COUNTRY_NEWS_195X3_DUPLICATE_ID");
   seen.add(row.id);
   if(!COUNTRY_NEWS_DOMAINS.includes(row.category))throw Error("COUNTRY_NEWS_195X3_DOMAIN_INVALID");
-  categoryTotals[row.category]++;
+  categoryTotals[row.category as NewsDomain]++;
   const iso=countryFromDerivedGeography(row.geography_mentioned);
   if(!iso){unassigned++;continue;}
   const key=iso+":"+row.category;

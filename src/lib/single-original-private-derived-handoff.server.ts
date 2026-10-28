@@ -51,6 +51,8 @@ export async function preparePrivateSingleOriginalFactualHandoff({
   if(typeof eventType!=="string"||!/^[a-z][a-z0-9_]{2,63}$/u.test(eventType))
     return Object.freeze({accepted:false,reason:"SIGNED_EVENT_TYPE_NOT_ADMISSIBLE",
       derived_input:null,derived_input_sha256:null});
+  if(typeof qualified.qualified_until!=="string")
+    return Object.freeze({accepted:false,reason:"SIGNED_PROOF_WINDOW_INVALID",derived_input:null,derived_input_sha256:null});
   const expires=Date.parse(qualified.qualified_until);
   if(!Number.isFinite(expires)||expires<=now.getTime()||
      expires-now.getTime()>3600_000)
