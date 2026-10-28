@@ -53,19 +53,22 @@ for(const [index,c] of cases.entries()){
   const [id,question,actor,category,product,subjects,topics,intent,tier,detail,price]=c;
   const languageNumber=(index+1)%10;
   const native=languageNumber===5?"bn":languageNumber===8?"hi":null;
+  const effectiveProduct=product.variant==="newly_qualified_signed"?{...product,
+    issued_after:new Date(Date.now()-60_000).toISOString()}:product;
   const canonical={
-    schema_version:"geomacro.agent-query.v1",question,product,subjects,topics,intent,
+    schema_version:"geomacro.agent-query.v1",question,product:effectiveProduct,subjects,topics,intent,
     fulfillment_mode:"published_only",delivery_tier:tier,detail,
     client_request_id:"GM-MOCK100-"+String(index+1).padStart(3,"0"),
     ...(native?{response_locale:native}:{})
   };
   const payload=actor==="user"?{
-    question,product,subjects,topics,client_request_id:canonical.client_request_id,
+    question,product:effectiveProduct,subjects,topics,client_request_id:canonical.client_request_id,
     ...(native?{language:native}:{})
   }:canonical;
   const item={
     id,actor,category,price_usdc:price,sku:product.capability+"/"+product.variant,
     question,request_body:payload,api_url:root+route[actor],
+    live_request_adjustment:product.variant==="newly_qualified_signed"?"FRESH_FIVE_MINUTE_ISSUED_AFTER":null,
     status:"NOT_EXECUTED",http_status:null,classification:"NOT_EXECUTED",
     response_json:null,error_code:null,settlement_performed:false,
     payment_signature_sent:false,fee_collected_usdc:"0"
@@ -87,7 +90,11 @@ for(const [index,c] of cases.entries()){
       item.status="RESPONDED";
       item.payment_challenge_present=Boolean(response.headers.get("payment-required"));
       item.delivered_product_hash_present=Boolean(response.headers.get("x-geomacro-delivery-sha256"));
-      if(response.status===402){
+      if(!safeLength){
+        item.classification="REAL_NON_JSON_RESPONSE";
+        item.error_code="NON_JSON_OR_OVERSIZED";
+        item.response_json={content_type:contentType.slice(0,80)};
+      }else if(response.status===402){
         item.classification="PROVEN_ELIGIBLE_X402_CHALLENGE_NO_PAYMENT";
         // Deliberately do not republish merchant account/payment header.
         item.response_json={x402Version:json?.x402Version??null,
