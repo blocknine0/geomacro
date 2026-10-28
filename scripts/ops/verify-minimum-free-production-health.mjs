@@ -167,19 +167,52 @@ export function classifyMinimumFreeProduction({
     current_numerical_gri_verified:false,
     paid_delivery_authorized:false,d1_requests:0,b2_requests:0,supabase_requests:0,payments:0};
 }
-async function read(url,{json=false}={}){
-  const response=await fetch(url,{redirect:"error",
-    headers:{"Accept":json?"application/json":"text/html","Cache-Control":"no-cache"},
-    signal:AbortSignal.timeout(16_000)});
+// Public providers occasionally time out during edge publication. Retry only
+// transient transport/status failures, never malformed 200 JSON, a forbidden
+// redirect, unexpected shapes, a stale build or a missing current original.
+// No fake data or production mutation. Total attempts per URL: 3.
+const RETRIABLE_PUBLIC_STATUS=new Set([408,425,429,500,502,503,504]);
+export async function readPublicHealthResource(url,{json=false,
+  fetchImpl=fetch,wait=ms=>new Promise(done=>setTimeout(done,ms)),
+}={}){
+ for(let attempt=0;attempt<3;attempt++){
+  let response;
+  try{
+   response=await fetchImpl(url,{redirect:"error",
+     headers:{"Accept":json?"application/json":"text/html","Cache-Control":"no-cache"},
+     signal:AbortSignal.timeout(16_000)});
+  }catch(error){
+   // Do not chase redirects; no cross-site fallback is authorized.
+   if(error instanceof TypeError&&/redirect/iu.test(error.message))
+    throw Error("MINIMUM_PUBLIC_REDIRECT_FORBIDDEN");
+   if(attempt===2)throw Error("MINIMUM_PUBLIC_READBACK_NETWORK_UNAVAILABLE");
+   await wait(300*(attempt+1));continue;
+  }
+  if(response.redirected===true||response.status>=300&&response.status<400)
+   throw Error("MINIMUM_PUBLIC_REDIRECT_FORBIDDEN");
+  if(RETRIABLE_PUBLIC_STATUS.has(response.status)){
+   try{await response.body?.cancel()}catch{}
+   if(attempt===2)throw Error("MINIMUM_PUBLIC_READBACK_PROVIDER_UNAVAILABLE");
+   await wait(300*(attempt+1));continue;
+  }
   const body=await response.text();
   if(body.length>1_500_000)throw Error("MINIMUM_PUBLIC_READBACK_TOO_LARGE");
-  return {status:response.status,body:json?JSON.parse(body):body};
+  // A malformed 200 response is an actual contract violation, not a green
+  // candidate to hunt for at another edge/URL.
+  let parsed=body;
+  if(json)try{parsed=JSON.parse(body)}catch{
+   throw Error("MINIMUM_PUBLIC_READBACK_JSON_INVALID");
+  }
+  return {status:response.status,body:parsed};
+ }
+ throw Error("MINIMUM_PUBLIC_READBACK_NETWORK_UNAVAILABLE");
 }
 export async function checkMinimumFreeProduction(expectedSha){
   // Three read-only requests only. No provider API, B2 GET, D1 write, money.
   const [j,s,b]=await Promise.all([
-    read(ARCHIVE_FEED,{json:true}),read(ROOT+"/intelligence"),
-    read(ROOT+"/.well-known/geomacro-build.json",{json:true}),
+    readPublicHealthResource(ARCHIVE_FEED,{json:true}),
+    readPublicHealthResource(ROOT+"/intelligence"),
+    readPublicHealthResource(ROOT+"/.well-known/geomacro-build.json",{json:true}),
   ]);
   const observedSha=b.body?.canonical_main_sha;
   const websiteSourceEquivalent=observedSha===expectedSha?false:
