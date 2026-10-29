@@ -111,6 +111,29 @@ export function projectThreeDomainStructuredDelivery(continuity,now=Date.now()){
           country_iso3:null, // Never convert publisher geography into event-country
           corroboration_status:"NOT_INDEPENDENTLY_VERIFIED",
           severity:null,market_direction:null,commercially_qualified:false,
+          // One admitted D1 observation immediately becomes a machine-ready
+          // newsroom brief. Never synthesize a second event/issuer/market move.
+          // Original-derived lede and significance remain in their existing
+          // canonical fields, referenced here without another provider read.
+          news_desk:{
+            schema:"geomacro.news-desk-item.v1",
+            format:"EVENT_SPECIFIC_ORIGINAL_DATED_BRIEF",
+            lede:s.what_changed,
+            issue:s.topic,
+            development:s.development_type,
+            why_it_matters:s.why_it_matters,
+            original_publication_at:isExact?original:null,
+            original_publication_day:isExact?original.slice(0,10):period,
+            publication_clock_verified:true,
+            event_country_independently_verified:false,
+            evidence_tier:"ORIGINAL_DATED_OBSERVATION_UNSCORED",
+            economic_impact_verified:false,
+            affected_assets_confirmed:[],
+            market_direction:null,
+            forecast_price_change:null,
+            next_confirmed_development_at:null,
+            commercial_rights_verified:false,
+          },
         });
       }
     }else if(row.source_neutral_news.length!==0)

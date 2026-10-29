@@ -64,6 +64,20 @@ describe("three-domain D1-backed machine structured JSON delivery",()=>{
      expect(result.native_release_records[0].topic).toBe(news(category).topic);
      expect(result.native_release_records[0].original_published_at).toBe("2026-10-29T15:33:50.000Z");
      expect(result.native_release_records[0].why_it_matters).toBe(news(category).why_it_matters);
+     expect(result.native_release_records[0].news_desk).toMatchObject({
+       schema:"geomacro.news-desk-item.v1",
+       format:"EVENT_SPECIFIC_ORIGINAL_DATED_BRIEF",
+       lede:news(category).what_changed,
+       issue:news(category).topic,
+       why_it_matters:news(category).why_it_matters,
+       original_publication_at:"2026-10-29T15:33:50.000Z",
+       event_country_independently_verified:false,
+       economic_impact_verified:false,
+       market_direction:null,forecast_price_change:null,
+       next_confirmed_development_at:null,commercial_rights_verified:false,
+       affected_assets_confirmed:[],
+     });
+     expect(result.official_reference_records[0].news_desk).toBeUndefined();
      expect(result.official_reference_records[0].observation_period).toBe("2025");
      expect(result.official_reference_records[0].original_published_at).toBeNull();
      expect(result.official_reference_records[0].clock_semantics).toBe("reference_year");
@@ -74,6 +88,8 @@ describe("three-domain D1-backed machine structured JSON delivery",()=>{
      .not.toBe(body.categories.macro.native_release_records[0].topic);
    expect(body.categories.rare_earth.native_release_records[0].topic)
      .not.toBe(body.categories.macro.native_release_records[0].topic);
+   expect(new Set(domains.map(category=>
+     body.categories[category].native_release_records[0].news_desk.issue)).size).toBe(3);
    expect(body.commercial.payment_authorized).toBe(false);
    expect(body.raw_upstream_delivered).toBe(false);
    expect(JSON.stringify(body)).not.toContain("https://");

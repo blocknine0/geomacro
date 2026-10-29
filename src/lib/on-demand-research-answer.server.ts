@@ -5,6 +5,7 @@ import {
   type PrivatePageDateResult,
 } from "./on-demand-global-discovery.server";
 import { country195ByIso3 } from "./canonical-country-registry-195";
+import { buildQueryBoundNewsDesk, type QueryBoundNewsDesk } from "./query-bound-news-desk";
 import {
   deriveStatelessSignals,
   type StatelessIntelligenceSignal,
@@ -39,6 +40,7 @@ export type SourceGroundedResearchAnswer = Readonly<{
   answer: Readonly<{
     status: "ORIGINAL_DATED_OBSERVATIONS_ONLY";
     summary: string;
+    news_desk: QueryBoundNewsDesk;
     observations: readonly Readonly<{
       category: OnDemandCategory;
       topic: string;
@@ -173,18 +175,28 @@ export function buildSourceGroundedResearchAnswer(input: Readonly<{
   // multi-category question produce a genuinely multi-category structure,
   // while the fixed three-signal ceiling and evidence checks stay intact.
   const selected: StatelessIntelligenceSignal[] = [];
+  const accepted = new Set<string>();
+  const add = (signal: StatelessIntelligenceSignal) => {
+    const key = signal.published_at.slice(0, 10) + "|" +
+      signal.what_changed.normalize("NFKC").toLowerCase().replace(/\s+/gu, " ").trim() + "|" +
+      signal.why_it_matters.normalize("NFKC").toLowerCase().replace(/\s+/gu, " ").trim();
+    if (selected.length < MAX_ANSWER_SIGNALS && !accepted.has(key)) {
+      accepted.add(key);
+      selected.push(signal);
+    }
+  };
   for (const category of input.categories) {
     const signal = signals.find(item => item.category === category);
-    if (signal && selected.length < MAX_ANSWER_SIGNALS) selected.push(signal);
+    if (signal) add(signal);
   }
-  for (const signal of signals) {
-    if (selected.length >= MAX_ANSWER_SIGNALS) break;
-    if (!selected.some(item => item.id === signal.id)) selected.push(signal);
-  }
+  for (const signal of signals) add(signal);
+  const newsDesk = buildQueryBoundNewsDesk({
+    question: input.question, country_iso3: input.country_iso3, signals: selected,
+  });
+  if (!newsDesk || newsDesk.unique_story_count !== selected.length) return null; // Do not leak an excluded/unsafe derived signal elsewhere in the response.
   const latest = selected.reduce((a,b) =>
     Date.parse(a.published_at) >= Date.parse(b.published_at) ? a : b).published_at;
   const categoriesObserved = [...new Set(selected.map(signal => signal.category))];
-  const categoryText = categoriesObserved.map(category => CATEGORY_LABEL[category]).join(", ");
 
   return {
     schema: "geomacro.source-grounded-research-answer.v1",
@@ -198,7 +210,8 @@ export function buildSourceGroundedResearchAnswer(input: Readonly<{
     },
     answer: {
       status: "ORIGINAL_DATED_OBSERVATIONS_ONLY",
-      summary: `Geomacro found ${selected.length} original-dated research observation${selected.length === 1 ? "" : "s"} relevant to ${country.name} in ${categoryText}. This does not fully answer the question or establish a verified risk assessment.`,
+      summary: newsDesk.direct_answer,
+      news_desk: newsDesk,
       observations: selected.map(signal => ({
         category: signal.category,
         topic: signal.topic,
