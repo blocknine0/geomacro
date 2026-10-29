@@ -1,5 +1,6 @@
 import process from "node:process";
 import { HTTPFacilitatorClient } from "@x402/core/server";
+import { confirmNoCardNativeUsdcChainSettlement } from "./no-card-usdc-receipt.server";
 import { assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server";
 import { assertSharedUsdcReceiver } from "./shared-usdc-receiver.server";
 import { assertAcceptedCapabilityQuote, assertCapabilityPaymentBinding,
@@ -241,7 +242,6 @@ export async function runNoCardMainnetPreparedPurchase(input:{
   quote:PreparedCapabilityQuote;paymentPayload:Record<string,unknown>;
   requestFingerprint:string;clientRequestId?:string|null;
   revalidateCurrent:(quote:NoCardQuote,prepared:Record<string,unknown>)=>Promise<boolean>;
-  confirmChain:(settlement:Settled,quote:NoCardQuote)=>Promise<ChainConfirmation>;
 }) {
   const quote=assertNoCardProductionAuthorized(input.quote);
   const supported=await probeNoCardX402Supported(quote.payment_rail,quote.network);
@@ -274,7 +274,9 @@ export async function runNoCardMainnetPreparedPurchase(input:{
     settle:async(payload,req)=>client.settle(
       payload as Parameters<typeof client.settle>[0],
       req as Parameters<typeof client.settle>[1]) as Promise<Settled>,
-    confirmChain:input.confirmChain,
+    confirmChain:async(settled,q)=>confirmNoCardNativeUsdcChainSettlement({
+      quote:q,transaction:settled.transaction!,payer:settled.payer??null,
+    }),
     complete:async(provider,paymentFingerprint,token,payer,settled)=>{
       await completeAgentCommerceDelivery({provider,providerEnvironment:env,paymentFingerprint,
         claimToken:token,payerReference:payer,
