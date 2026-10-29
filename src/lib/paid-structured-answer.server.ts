@@ -64,9 +64,12 @@ async function retryWithBoundedLiveResearch(input:Readonly<{
     const value=input.request.headers.get(name);
     if(value)headers.set(name,value);
   }
+  // Store selectors are published-only contracts. This separate unsigned
+  // research request must not carry one; keep the original paid query intact.
+  const {product:_paidProduct,...researchQuery}=input.query;
   return input.post({request:new Request(new URL(TARGET,input.request.url),{
     method:"POST",headers,
-    body:JSON.stringify({...input.query,fulfillment_mode:"live_on_demand"}),
+    body:JSON.stringify({...researchQuery,fulfillment_mode:"live_on_demand"}),
   })});
 }
 

@@ -2,6 +2,7 @@ import {describe,expect,it,vi} from "vitest";
 import {paidStructuredAnswer,paidStructuredAnswerHandlers} from "./paid-structured-answer.server";
 import {interpretMultilingualIntelligenceQuery} from "./multilingual-query-intent";
 import {allowPublicDemoRequest} from "./public-demo-rate-limit.server";
+import {agentAdaptiveQuerySchema,buildAgentQueryPlan} from "./agent-query-plan";
 
 const endpoint="https://geomacro.live/api/v1/intelligence/structured-answer";
 const question="ভারতের মুদ্রাস্ফীতি ও বৈদেশিক মুদ্রার রিজার্ভ";
@@ -29,7 +30,12 @@ describe("single-pass paid user and machine structured answer",()=>{
    expect((await paidStructuredAnswer(request({question},{"cf-connecting-ip":"192.0.2.4"}),
      {rateLimit:()=>true,post})).status).toBe(429);
  });
- it("maps a multilingual question and retries only as zero-charge live discovery when stored evidence is missing",async()=>{
+ it.each([
+   question,
+   "What are the latest geopolitical risks in India?",
+   "What are the latest interest rates in the United States?",
+   "What are the latest lithium supply developments in Australia?",
+ ])("validates the unsigned research fallback with the real query planner: %s",async(question)=>{
    const expected=interpretMultilingualIntelligenceQuery({question});
    let calls=0;
    const res=await paidStructuredAnswer(request({question}),{
@@ -43,7 +49,14 @@ describe("single-pass paid user and machine structured answer",()=>{
          return Response.json({ok:false,chargeable:false,payment_required_now:false,
            error:{code:"INSUFFICIENT_COVERAGE"}},{status:422});
        }
-       expect(body).toMatchObject({...expected.canonical_request,fulfillment_mode:"live_on_demand"});
+       const {product:_paidProduct,...researchRequest}=expected.canonical_request;
+       expect(body).toEqual({...researchRequest,fulfillment_mode:"live_on_demand"});
+       // Exercise the real canonical scope validator: a Store selector on
+       // live research rejects before discovery, even when the adapter mock
+       // would otherwise return a plausible research answer.
+       const researchPlan=buildAgentQueryPlan(agentAdaptiveQuerySchema.parse(body));
+       expect(researchPlan.fulfillment_mode).toBe("live_on_demand");
+       expect(researchPlan.product).toBeUndefined();
        return Response.json({ok:false,chargeable:false,payment_required_now:false,
          structured_answer:{schema:"geomacro.structured-answer.v1",status:"INSUFFICIENT_VERIFIED_EVIDENCE",
            answer:null,delivery:{chargeable:false,execution_authorized:false}}},{status:422});
