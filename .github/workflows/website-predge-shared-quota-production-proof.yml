@@ -9,11 +9,6 @@ on:
       - ".github/workflows/website-predge-shared-quota-production-proof.yml"
       - "scripts/ops/verify-website-predge-existing-production-receipts.mjs"
       - "scripts/tests/verify-website-predge-existing-production-receipts.test.mjs"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/website-predge-shared-quota-production-proof.yml"
-      - "scripts/ops/verify-website-predge-existing-production-receipts.mjs"
   schedule:
     # Four low-cost GitHub-evidence checks daily, after ordinary hourly ingest
     # and partner watchdog. No new D1/Cloudflare/PREDGE request.
