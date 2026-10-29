@@ -77,6 +77,7 @@ const held=(reason,now)=>Object.freeze({
   schema:"geomacro.d1-free-bundled-work-admission.v1",
   day_utc:now.toISOString().slice(0,10),state:"HELD",
   reason,critical:false,research:false,maintenance:false,source_intake:false,
+  governed_measurement:false,
   predge_account_headroom_guard_enabled:true,
   predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
   predge_account_headroom_is_hard_partition:false,
@@ -125,7 +126,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
       reason:admitted?"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET":
         "WORKERS_PAID_CONSERVATIVE_SOFT_BUDGET_REACHED",
       critical:admitted,research:false,maintenance:false,
-      source_intake:false,source_intake_interval_minutes:null,
+      source_intake:false,governed_measurement:false,source_intake_interval_minutes:null,
       source_intake_max_new_rows:0,snapshot_refresh:false,
       structural_snapshot:false,
       structural_snapshot_max_b2_network_attempts:0,
@@ -165,6 +166,18 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // This never admits the signer, reviewer, R2 exporter or audit fan-out.
   const intakeBudget=planSourceIntake(snapshot,now);
   const sourceIntake=intakeBudget!==null;
+  // Dedicated, once-per-run optional EIA/NOAA measurement import. These two
+  // source-native statistics are NOT current news or commercial signals.
+  // Preserve the ENTIRE day-to-reset source-intake allocation, plus critical
+  // safety and PREDGE reserves, BEFORE granting 25k reads / 500 writes for
+  // both compact checkpoints and atomically ticketed B2 GET/PUT operations.
+  // This is not maintenance, signing, research, website or PREDGE admission.
+  // The measurement workflow also enforces its own 20-B2-request cap.
+  const governedMeasurement=sourceIntake &&
+    snapshot.remaining_rows_read>
+      D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+25_000 &&
+    snapshot.remaining_rows_written>
+      D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+500;
   // Bounded public-serving refresh, even if intake pacing is HELD. The
   // Worker checks the 8-minute revision fence *before* its <=601-row scan.
   // Separate from source intake/signing; reserve 250k read and 5k write rows
@@ -195,6 +208,10 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     day_utc:snapshot.day_utc,state,
     reason:state==="HELD"?(sourceIntake?"DISCRETIONARY_PACING_HELD_SOURCE_ADMITTED":"D1_FREE_RESERVE_REACHED"):"ACCOUNT_WIDE_HEADROOM_OBSERVED",
     ...grants,source_intake:sourceIntake,
+    governed_measurement:governedMeasurement,
+    governed_measurement_extra_read_budget:governedMeasurement?25_000:0,
+    governed_measurement_extra_write_budget:governedMeasurement?500:0,
+    governed_measurement_no_signing_or_payments:true,
     predge_account_headroom_guard_enabled:true,
     predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
     predge_account_headroom_is_hard_partition:false,
@@ -268,7 +285,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   };
   console.log(JSON.stringify(receipt));
   if(process.env.GITHUB_OUTPUT){
-    for(const key of ["critical","research","maintenance","source_intake","snapshot_refresh","structural_snapshot"]){
+    for(const key of ["critical","research","maintenance","source_intake","governed_measurement","snapshot_refresh","structural_snapshot"]){
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key])+"\n");
     }
     for(const key of ["source_intake_interval_minutes","source_intake_max_new_rows"])
