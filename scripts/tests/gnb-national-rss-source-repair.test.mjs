@@ -1,0 +1,22 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+test("Guinea-Bissau source substitution preserves bounded inventory and rights gate",()=>{
+ const j=JSON.parse(readFileSync("config/private-osint-local-gaplane.v1.json","utf8"));
+ assert.equal(j.schema,"geomacro.private-osint-local-gaplane.v1");
+ assert.equal(j.scope,"PROTECTED_INTERNAL_OSINT_ONLY");
+ assert.equal(j.sources.length,96);
+ const ids=new Set(j.sources.map(s=>s.id));
+ assert.equal(ids.size,j.sources.length);
+ assert.equal(j.sources.some(s=>s.id==="private_gaplane_gnb_supplement"),false);
+ const rows=j.sources.filter(s=>s.publisher_country_iso3==="GNB");
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].id,"private_gaplane_gnb_ang_agency");
+ assert.equal(rows[0].url,"https://ang.gw/feed/");
+ assert.equal(rows[0].type,"rss");
+ assert.equal(rows[0].publisher_native_dates_required,true);
+ assert.equal(rows[0].activation_state,"RUNTIME_PROBE_REQUIRED");
+ assert.equal(rows[0].commercial_eligible,false);
+ assert.equal(rows[0].publicly_deliverable,false);
+ assert.equal(rows[0].transport_verified_at_registration,false);
+});
