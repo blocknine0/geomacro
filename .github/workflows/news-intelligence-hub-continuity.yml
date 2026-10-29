@@ -82,11 +82,11 @@ jobs:
       - name: Verify one D1 journal drives Website, machine projection and 195 by 3 coverage
         if: steps.budget.outputs.research == 'true'
         run: node scripts/ops/verify-news-hub-live-bundle.mjs
-      - name: Prepare private paid-evidence source recovery instructions from existing receipts
-        if: steps.budget.outputs.research == 'true'
+      - name: Prepare private paid-evidence source recovery even when D1 readback is quota-held
+        if: always()
         run: node scripts/ops/plan-paid-evidence-source-recovery.mjs
-      - name: Preserve owner-only source gap routing (no new upstream fetch or D1 write)
-        if: always() && steps.budget.outputs.research == 'true'
+      - name: Preserve owner-only source gap routing (zero D1, B2 or source network calls)
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-owner-paid-source-gap-plan-${{ github.run_id }}
