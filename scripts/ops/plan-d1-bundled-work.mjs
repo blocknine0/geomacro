@@ -244,6 +244,63 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     budget_is_nonatomic_provider_snapshot:true,
   });
 }
+/**
+ * Read-only, zero-cost Phase 2F operational classification. Physical Cloudflare
+ * exhaustion, protected account reserves and UTC pacing are different causes.
+ * Never turn this receipt into admission; only planD1BundledWork grants work.
+ */
+export function phase2fQuotaDiagnostic(plan){
+  const valid=plan?.schema==="geomacro.d1-free-bundled-work-admission.v1" &&
+    Number.isSafeInteger(plan.observed_rows_read) &&
+    Number.isSafeInteger(plan.observed_rows_written) &&
+    Number.isSafeInteger(plan.remaining_rows_read) &&
+    Number.isSafeInteger(plan.remaining_rows_written);
+  const readReserve=D1_BUNDLE_LANES.critical.read_reserve;
+  const writeReserve=D1_BUNDLE_LANES.critical.write_reserve;
+  const physical=valid&&
+    (plan.remaining_rows_read===0||plan.remaining_rows_written===0);
+  const protectedReserve=valid&&
+    (plan.remaining_rows_read<=readReserve||plan.remaining_rows_written<=writeReserve);
+  const pacing=valid&&
+    (plan.observed_rows_read>=plan.paced_ceiling_by_lane?.critical?.rows_read||
+     plan.observed_rows_written>=plan.paced_ceiling_by_lane?.critical?.rows_written);
+  const cause=!valid?"PROVIDER_USAGE_UNVERIFIED":
+    physical?"PHYSICAL_FREE_LIMIT_REACHED":
+    protectedReserve?"PROTECTED_CRITICAL_AND_PREDGE_RESERVE_HELD":
+    plan.research===true?"THREE_CATEGORY_DERIVED_PUBLISHER_ADMITTED":
+    plan.source_intake===true?"BOUNDED_ORIGINAL_SOURCE_INTAKE_ONLY":
+    pacing?"UTC_DAILY_PACING_HELD":
+    "SOURCE_FULL_DAY_BUDGET_OR_DISCRETIONARY_LANE_HELD";
+  return Object.freeze({
+    schema:"geomacro.phase2f.d1-admission-diagnostic.v1",
+    day_utc:typeof plan?.day_utc==="string"?plan.day_utc:null,
+    status:valid?"PROVIDER_COUNTERS_VERIFIED":"PROVIDER_COUNTERS_UNVERIFIED",
+    cause,
+    observed_rows_read:valid?plan.observed_rows_read:null,
+    observed_rows_written:valid?plan.observed_rows_written:null,
+    remaining_rows_read:valid?plan.remaining_rows_read:null,
+    remaining_rows_written:valid?plan.remaining_rows_written:null,
+    physical_free_limit_reached:valid?physical:null,
+    protected_critical_predge_reserve_held:valid?protectedReserve:null,
+    utc_critical_pacing_held:valid?pacing:null,
+    critical_read_reserve_rows:readReserve,
+    critical_write_reserve_rows:writeReserve,
+    critical_read_reserve_shortfall:valid?
+      Math.max(0,readReserve+1-plan.remaining_rows_read):null,
+    critical_write_reserve_shortfall:valid?
+      Math.max(0,writeReserve+1-plan.remaining_rows_written):null,
+    predge_read_reserve_unchanged:PREDGE_D1_FREE_HEADROOM.rows_read,
+    predge_write_reserve_unchanged:PREDGE_D1_FREE_HEADROOM.rows_written,
+    bounded_original_intake_admitted:plan?.source_intake===true,
+    derived_three_category_d1_publisher_admitted:plan?.research===true,
+    billing_or_quota_change_performed:false,
+    extra_d1_reads:0,d1_writes:0,b2_requests:0,payments:0,
+    // Only a diagnosis, not license, original-source admission or product proof.
+    rights_verified:false,original_source_evidence_verified:false,
+    publication_verified:false,
+  });
+}
+
 export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=new Date()}={}){
   try{
     // A transient Cloudflare GraphQL transport/429 outage is not D1 quota
@@ -284,6 +341,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
     // No source content, account ID, database ID or credential in logs.
   };
   console.log(JSON.stringify(receipt));
+  console.log(JSON.stringify(phase2fQuotaDiagnostic(result)));
   if(process.env.GITHUB_OUTPUT){
     for(const key of ["critical","research","maintenance","source_intake","governed_measurement","snapshot_refresh","structural_snapshot"]){
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key])+"\n");
