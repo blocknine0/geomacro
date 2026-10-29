@@ -95,7 +95,12 @@ export function assertProofHead(v){
       !isSnapshotKey(v.snapshot_key)||!SHA.test(v.snapshot_sha256)||
       !SHA40.test(v.git_commit)||
       !goodTime(v.recorded_at) ||
-      typeof v.audit_ok!=="boolean")err("HEAD_INVALID");
+      typeof v.audit_ok!=="boolean" ||
+      (v.last_success_snapshot_key!==null && !isSnapshotKey(v.last_success_snapshot_key)) ||
+      (v.last_success_snapshot_sha256!==null && !SHA.test(v.last_success_snapshot_sha256)) ||
+      (v.last_success_snapshot_key===null)!==(v.last_success_snapshot_sha256===null) ||
+      (v.audit_ok && (v.last_success_snapshot_key!==v.snapshot_key ||
+        v.last_success_snapshot_sha256!==v.snapshot_sha256)))err("HEAD_INVALID");
   return v;
 }
 export function buildGlobalAuditSnapshot({audit,gitCommit,runId,runAttempt,recordedAt,previousHead}){
@@ -131,6 +136,14 @@ export function buildGlobalAuditSnapshot({audit,gitCommit,runId,runAttempt,recor
     snapshot_key:key,snapshot_sha256:sha,audit_ok:audit.audit_ok,
     previous_snapshot_key:previous?.snapshot_key??null,
     previous_snapshot_sha256:previous?.snapshot_sha256??null,
+    // Keep the last accepted source snapshot separately from the latest
+    // outage receipt. A historical source snapshot NEVER establishes current
+    // country/category evidence or authorizes payment.
+    last_success_snapshot_key:audit.audit_ok?key:
+      previous?.last_success_snapshot_key??null,
+    last_success_snapshot_sha256:audit.audit_ok?sha:
+      previous?.last_success_snapshot_sha256??null,
+    last_success_reference_only:!audit.audit_ok,
     versioned_history_preserved:true,live_data_eligibility_implied:false,
   };
   return{key,bytes,sha,head,counts};
