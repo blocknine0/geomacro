@@ -85,7 +85,7 @@ export function buildRevenueSourceDemand(worklist){
     countries:195,total_cells:195,
     live_item_candidate_cells:rows.filter(x=>x.category===cat&&x.live_item_candidates_observed>0).length,
     repair_or_missing_first_party_cells:rows.filter(x=>x.category===cat&&x.priority<4).length,
-    independently_qualified_paid_cells:0
+    independently_qualified_paid_cells:null,qualification_not_assessed:true
  }]));
  return{
    schema:"geomacro.revenue-source-demand-195x3.v1",
@@ -116,6 +116,6 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   country_count:195,category_count:3,total_cells:585,
   demand_by_category:report.demand_by_category,
   first_party_repair_queue:report.prioritized_sourcing_queue.filter(x=>x.priority<4).length,
-  newly_qualified_paid_cells:0,source_truth_not_bypassable:true,
+  newly_qualified_paid_cells_not_assessed:true,source_truth_not_bypassable:true,
   d1_b2_writes:0,payments:0,predge_modified:false}));
 }
