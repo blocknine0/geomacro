@@ -91,6 +91,27 @@ export async function probeNoCardX402Supported(
   return false;
 }
 
+
+/**
+ * Reviewed fee-only ceiling: default 5% of the immutable Store amount.
+ * Provider prices are not trusted from the buyer or an unreviewed website.
+ * Missing owner-reviewed provider fee or malformed decimals fail closed.
+ * Zero advertised fees require an explicit owner-verified zero setting.
+ */
+export function assertNoCardFeeCeiling(quote:PreparedCapabilityQuote,
+  approvedFeeUsdc:string,maxBps=500) {
+  const q=assertNoCardQuoteScope(quote);
+  if(!/^(?:0|[1-9]\d{0,5})(?:\.\d{1,6})?$/u.test(approvedFeeUsdc) ||
+      !Number.isInteger(maxBps)||maxBps<0||maxBps>10000)
+    throw Error("NO_CARD_APPROVED_FEE_INVALID");
+  const [whole,fraction=""]=approvedFeeUsdc.split(".");
+  const feeAtomic=BigInt(whole)*1000000n+BigInt((fraction+"000000").slice(0,6));
+  const maxAtomic=BigInt(q.amount_atomic)*BigInt(maxBps)/10000n;
+  if(feeAtomic>maxAtomic)throw Error("NO_CARD_PROVIDER_FEE_OVER_MICROPAYMENT_BUDGET");
+  return {feeAtomic:feeAtomic.toString(),maxAtomic:maxAtomic.toString(),
+    actualProfitVerified:false};
+}
+
 /** Fail closed on missing merchant authority, fee approval, or frozen ledger. */
 export function assertNoCardProductionAuthorized(quote:PreparedCapabilityQuote) {
   const q=assertNoCardQuoteScope(quote);
@@ -101,6 +122,10 @@ export function assertNoCardProductionAuthorized(quote:PreparedCapabilityQuote) 
       process.env.GEOMACRO_COMMERCE_LEDGER_BACKEND?.trim()!=="durable_object" ||
       process.env.GEOMACRO_NO_CARD_PROVIDER_FEE_APPROVED?.trim()!=="I_HAVE_VERIFIED_CURRENT_PROVIDER_FEES")
     throw Error("NO_CARD_PRODUCTION_SETTLEMENT_NOT_AUTHORIZED");
+  const feeEnv=q.payment_rail==="xpay_x402"?
+    "GEOMACRO_NO_CARD_APPROVED_FEE_XPAY_USDC":
+    "GEOMACRO_NO_CARD_APPROVED_FEE_DEXTER_USDC";
+  assertNoCardFeeCeiling(q,process.env[feeEnv]?.trim()??"");
   return q;
 }
 
