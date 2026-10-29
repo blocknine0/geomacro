@@ -42,8 +42,15 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     directB2NetworkAttempts += 1;
     throw new Error("NO_SUPABASE_B2_ACCEPTANCE_BLOCKED_UNMETERED_ORIGIN");
   }
-  const response = await originalFetch(input, init);
   const service = readService(host, target?.pathname ?? "");
+  let response: Response;
+  try { response = await originalFetch(input, init); }
+  catch {
+    if(service && governedReadTrace.length < 8)
+      governedReadTrace.push({service,status:0,authority:"ABSENT_OR_OTHER",
+        continuity:"ABSENT",data_available:"UNSPECIFIED"});
+    throw new Error("GOVERNED_PUBLIC_EDGE_TRANSPORT_UNAVAILABLE");
+  }
   if(service && governedReadTrace.length < 8){
     governedReadTrace.push({
       service,status:response.status,
