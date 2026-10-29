@@ -16,6 +16,7 @@ on:
       - "workers/global-risk-edge/wrangler.jsonc"
       - "workers/shared/current-source-clock.mjs"
       - "workers/shared/b2-origin-negative-cache.mjs"
+      - "workers/shared/governed-b2-origin-retry.mjs"
       - "scripts/ops/configure-global-risk-edge-d1-quota.mjs"
       - ".github/workflows/deploy-global-risk-edge.yml"
   workflow_run:
