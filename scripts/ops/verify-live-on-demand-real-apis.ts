@@ -8,6 +8,7 @@
  * No unbounded search, source-identity leak, funds or extra workflow.
  */
 import { writeFileSync, mkdirSync } from "node:fs";
+import {approvedOnDemandSourceHostname} from "../lib/on-demand-source-origin-allowlist.mjs";
 import { buildPrivateOnDemandMacroDrivers } from "../../src/lib/on-demand-private-macro-drivers.server";
 import {
   discoverOnDemandForPrivateQualification,
@@ -34,6 +35,11 @@ const FAMILY_BY_HOST:Readonly<Record<string,string>>={
   "www.iea.org":"iea",
   "www.bankofcanada.ca":"bank_of_canada",
   "news.gov.bc.ca":"bc_minerals",
+  "www.consilium.europa.eu":"eu_council",
+  "www.usgs.gov":"usgs",
+  "www.energy.gov":"us_doe",
+  "www.rbi.org.in":"rbi_india",
+  "www.ungeneva.org":"un_geneva",
 };
 const outcomeCounts=new Map<string,Record<
   "ok_2xx"|"http_403"|"http_429"|"http_5xx"|"other_http"|"network_error",number
@@ -53,7 +59,8 @@ const statusOnlyFetch:typeof fetch=async(input,init)=>{
   let uri:URL;
   try {uri=new URL(String(input));} catch {throw Error("UNRECOGNIZED_PROBE_URL");}
   const family=FAMILY_BY_HOST[uri.hostname];
-  if(uri.protocol!=="https:"||!family)throw Error("UNRECOGNIZED_PROBE_ORIGIN");
+  if(uri.protocol!=="https:"||!approvedOnDemandSourceHostname(uri.hostname)||!family||
+    uri.username||uri.password||uri.port||uri.hash)throw Error("UNRECOGNIZED_PROBE_ORIGIN");
   const kind=family==="world_bank" && uri.pathname.includes("/indicator/FP.CPI.TOTL.ZG")
     ?"world_bank_inflation":family==="world_bank" && uri.pathname.includes("/indicator/NY.GDP.MKTP.KD.ZG")
     ?"world_bank_gdp":family==="world_bank"
