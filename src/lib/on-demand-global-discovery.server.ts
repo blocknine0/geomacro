@@ -193,10 +193,14 @@ const TOPIC_CATEGORIES:Readonly<Record<string,readonly OnDemandCategory[]>>={
   food_agriculture:["macro"],
   critical_minerals:["rare_earth"],
 };
-const CATEGORY_TOPICS:Readonly<Record<OnDemandCategory,readonly string[]>>=
-  Object.fromEntries(DOMAINS.map(category=>[category,
-    Object.entries(TOPIC_CATEGORIES).filter(([,categories])=>categories.includes(category))
-      .map(([topic])=>topic)])) as Record<OnDemandCategory,readonly string[]>;
+const sourceTopicsFor=(category:OnDemandCategory):string[]=>
+  Object.entries(TOPIC_CATEGORIES).filter(([,categories])=>categories.includes(category))
+    .map(([topic])=>topic);
+const CATEGORY_TOPICS:Readonly<Record<OnDemandCategory,readonly string[]>>={
+  geopolitics:sourceTopicsFor("geopolitics"),
+  macro:sourceTopicsFor("macro"),
+  rare_earth:sourceTopicsFor("rare_earth"),
+};
 export const ON_DEMAND_TOPIC_NAMES=Object.freeze([
   ...Object.keys(TOPIC_CATEGORIES),"hot_topics",
 ]);
@@ -1357,7 +1361,9 @@ async function discoverOnDemandImpl(
   // gap candidates as query-time first-party leads. Every selected feed gets
   // a fresh bounded GET and requires a native item clock, topic + country
   // mention, and the original publisher-page checks below.
-  if(!historicalMineralQuery&&name){
+  if(!historicalMineralQuery&&name&&topics.length){
+    // Country-local publisher expansion is only justified for a scoped
+    // event question. Preserve bounded no-topic macro reference budgets.
     for(const category of categories){
       const fixedIssuerHosts=new Set([...ORIGINAL_FALLBACK_FEEDS,...INTERNATIONAL_ORIGINAL_FEEDS]
         .filter(source=>source.domain===category).map(source=>source.originalHost));
