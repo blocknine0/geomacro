@@ -16,10 +16,16 @@ describe("permanent public Finds archive deployment", () => {
     expect(workflow).toContain('workers/public-finds-archive/assets/latest.json');
     expect(workflow).toContain("isPermanentArchiveSignal(signal,now,{allowHistorical:true})");
     expect(workflow).toContain("npx --yes wrangler@4.136.3 deploy --config wrangler.jsonc");
-    expect(workflow).toContain("public_index_readback_verified:true");
-    expect(workflow).toContain("public_latest_readback_verified:true");
-    expect(workflow).toContain("d1_reads:0");
-    expect(workflow).toContain("d1_writes:0");
+    const verifier = readFileSync(
+      "scripts/lib/verify-public-static-archive-readback.mjs",
+      "utf8",
+    );
+    expect(workflow).toContain("verifyPublicStaticArchiveReadback");
+    expect(verifier).toContain("public_index_readback_verified:true");
+    expect(verifier).toContain("public_latest_readback_verified:true");
+    expect(verifier).toContain("full_72h_eligible_ids_hash_verified:true");
+    expect(verifier).toContain("d1_reads:0");
+    expect(verifier).toContain("d1_writes:0");
     expect(workflow).toContain("PERMANENT_ARCHIVE_CLOUDFLARE_API_TOKEN_MISSING");
     expect(workflow).not.toContain("D1_DATABASE_ID");
     expect(workflow).not.toContain("website-derived-news-immediate");
