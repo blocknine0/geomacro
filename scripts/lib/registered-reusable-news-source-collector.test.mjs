@@ -182,3 +182,47 @@ test("native-language macro, mineral and armed-conflict headlines are admitted a
    assert.equal(out.items[0].usage_rights.commercial_reuse_authorized,false);
  }
 });
+
+test("WTO/BIS/Australia original verticals produce separate native-clock non-payable structured discovery",async()=>{
+ const sources=registeredReusableNewsSources();
+ const cases=[
+  ["wto_trade_policy_global","geopolitics","WTO trade dispute tariffs and safeguard measures between economies"],
+  ["bis_management_macro_global","macro","BIS management speech on financial stability liquidity and inflation policy"],
+  ["australia_critical_minerals_minister_global","rare_earth","Australia approves new critical minerals lithium processing project"],
+ ];
+ const requested=new Map();
+ for(const [id,category,title] of cases){
+  const s=sources.find(x=>x.id===id);
+  assert.ok(s&&s.supported&&s.categories.includes(category),id);
+  requested.set(s.url,{spec:s,category,title});
+ }
+ assert.equal(requested.size,3);
+ const collected=await collectRegisteredReusableNews({
+  now:new Date("2026-10-29T12:00:00Z"),
+  registry:[...requested.values()].map(x=>x.spec),
+  normalize,resolveCountry:()=>null,perCategory:8,
+  fetchImpl:async url=>{
+   const entry=requested.get(url);
+   assert.ok(entry,"no arbitrary network URL");
+   const xml="<rss><channel><item><title>"+entry.title+"</title>"+
+    "<pubDate>Thu, 29 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>";
+   return response(xml);
+  },
+ });
+ assert.equal(collected.items.length,3);
+ assert.equal(collected.checks.length,3);
+ assert.deepEqual(new Set(collected.items.map(x=>x.category)),
+  new Set(["geopolitics","macro","rare_earth"]));
+ for(const category of ["geopolitics","macro","rare_earth"]){
+  assert.equal(collected.summary.supported_registered_sources_by_category[category],1);
+  assert.equal(collected.summary.actual_observed_country_count_by_category[category],0);
+ }
+ assert.equal(collected.summary.source_rights_commercial_authorized,false);
+ assert.equal(collected.summary.paid_publication_authorized,false);
+ assert.equal(collected.summary.original_issuer_page_verified,false);
+ assert.equal(collected.summary.raw_upstream_stored,false);
+ assert.ok(collected.items.every(x=>x.usage_rights.commercial_reuse_authorized===false
+  &&x.delivery.raw_article_included===false
+  &&x.source.original_published_at==="2026-10-29T11:55:00.000Z"));
+ for(const entry of requested.values())assert.ok(!JSON.stringify(collected).includes(entry.title));
+});
