@@ -76,7 +76,7 @@ export async function assembleVerifiedCapabilityProduct(input:{
 export async function prepareVerifiedCapabilityOffer(input:{
   plan:AgentQueryPlan;availability:AgentQueryDeliverability;
   clientRequestId:string|null;requestFingerprint:string;
-  rail:"coinbase_x402"|"circle_gateway_x402";
+  rail:"coinbase_x402"|"circle_gateway_x402"|"xpay_x402"|"dexter_x402";
   network:string;asset:string;recipient:string;
 }) {
   // New public Risk Gate sales are on hold; existing paid frozen replays are
