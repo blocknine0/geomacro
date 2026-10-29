@@ -115,8 +115,8 @@ export function privateOsintGlobalSources(){
   ["private_repo8_can_boc_release","https://www.bankofcanada.ca/feeds/media-releases/"],
   ["private_repo8_world_bank_release","https://www.worldbank.org/en/news/rss"],
   ["private_repo8_imf_release","https://www.imf.org/en/news/rss"],
-  ["private_repo8_us_eia_energy","https://www.eia.gov/rss/todayinenergy.xml"],
-  ["private_repo8_uk_lme_metals","https://www.lme.com/News/rss"],
+  ["private_repo8_gbr_transport_original","https://www.gov.uk/government/organisations/department-for-transport.atom"],
+  ["private_repo8_gbr_export_finance_original","https://www.gov.uk/government/organisations/uk-export-finance.atom"],
  ]);
  if(macroMinerals?.schema!=="geomacro.private-osint-macro-minerals-additions.v1"||
     macroMinerals.scope!=="PROTECTED_INTERNAL_OSINT_ONLY"||
@@ -127,15 +127,17 @@ export function privateOsintGlobalSources(){
  for(const s of macroMinerals.sources){
    const expectedUrl=pinnedMacroMinerals.get(s.id);
    const u=new URL(s.url);
-   const expectedCategory=s.id==="private_repo8_uk_lme_metals"?"rare_earth":"macro";
-   const expectedContinent=s.id==="private_repo8_uk_lme_metals"?"europe":
+   const ukNew=["private_repo8_gbr_transport_original","private_repo8_gbr_export_finance_original"].includes(s.id);
+   const expectedCategory=s.id==="private_repo8_gbr_export_finance_original"?"rare_earth":"macro";
+   const expectedContinent=ukNew?"europe":
      ["private_repo8_world_bank_release","private_repo8_imf_release"].includes(s.id)?"global":"north_america";
-   const expectedCountry=s.id==="private_repo8_uk_lme_metals"?"GBR":
+   const expectedCountry=ukNew?"GBR":
      s.id==="private_repo8_can_boc_release"?"CAN":
      expectedContinent==="global"?null:"USA";
+   const expectedType=ukNew?"atom":"rss";
    if(!expectedUrl||expectedUrl!==s.url||seenMacroMineralsIds.has(s.id)||
       u.protocol!=="https:"||u.username||u.password||u.port||u.hash||
-      s.type!=="rss"||s.continent!==expectedContinent||
+      s.type!==expectedType||s.continent!==expectedContinent||
       s.publisher_country_iso3!==expectedCountry||
       !Array.isArray(s.categories)||s.categories.length!==1||
       s.categories[0]!==expectedCategory||
