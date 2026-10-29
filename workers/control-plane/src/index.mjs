@@ -26,6 +26,7 @@ import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
+import {deliverThreeDomainStructuredOutput} from "./three-domain-structured-delivery.mjs";
 import {readPublicFreeD1Cached,eligiblePublicFreeD1CacheRequest} from "./public-free-d1-cache.mjs";
 import {readPublicNewsR2Snapshot,publishPublicNewsR2Snapshot,PUBLIC_NEWS_R2_MAX_BYTES}
   from "./public-news-r2-offload.mjs";
@@ -1296,6 +1297,16 @@ export default {
       return publicReadCache(()=>publicReusableSourceNews(env,url.searchParams));
     if(request.method==="GET"&&url.pathname==="/v1/public/three-domain-continuity"&&!url.search)
       return publicReadCache(()=>threeDomainEvidenceContinuity(env));
+    if(request.method==="GET"&&url.pathname==="/v1/public/three-domain-structured-output"&&!url.search){
+      // Reuse the exact anonymous POP cache key of the existing verified D1
+      // three-domain continuity read. A second public machine endpoint must
+      // not double origin row-read demand or bypass Cache-Control: no-cache.
+      const originalUrl=new URL("/v1/public/three-domain-continuity",request.url);
+      const originalCacheRequest=new Request(originalUrl,{method:"GET",
+        headers:request.headers});
+      return deliverThreeDomainStructuredOutput(env,Date.now(),()=>
+        publicReadCache(()=>threeDomainEvidenceContinuity(env),originalCacheRequest));
+    }
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime-context"){
       if([...url.searchParams.keys()].some(k=>k!=="category")||url.searchParams.getAll("category").length!==1)
         return json({ok:false,error:"SOURCE_RUNTIME_QUERY_INVALID"},400);

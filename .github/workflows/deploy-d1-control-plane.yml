@@ -21,6 +21,8 @@ on:
       - ".github/workflows/deploy-d1-control-plane.yml"
       - ".github/workflows/recover-d1-quota-deployment-after-reset.yml"
       - "workers/control-plane/src/index.mjs"
+      - "workers/control-plane/src/three-domain-structured-delivery.mjs"
+      - "src/__tests__/three-domain-structured-delivery.test.ts"
       - "workers/control-plane/src/geomacro-news-severity-gri.mjs"
       - "scripts/tests/geomacro-news-severity-gri.test.mjs"
       - "scripts/ops/verify-live-geomacro-news-gri.mjs"
@@ -532,6 +534,49 @@ jobs:
           done
           echo "::error::THREE_DOMAIN_CONTINUITY_DIRECT_D1_LIVE_READBACK_FAILED"
           exit 10
+
+      - name: Verify 3 category machine structured JSON response from canonical D1 after deploy
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          trap 'rm -f "$body"' EXIT
+          for attempt in 1 2 3 4 5 6; do
+            code="$(curl -sS --max-time 12 -o "$body" -w '%{http_code}' "$CONTROL_PLANE_URL/v1/public/three-domain-structured-output" || true)"
+            if test "$code" = 200 && jq -e '
+              .ok==true and
+              .schema=="geomacro.three-domain-structured-delivery.v1" and
+              .category_count==3 and
+              .delivery_channel=="PUBLIC_READ_ONLY_STRUCTURED_JSON" and
+              .raw_upstream_delivered==false and
+              .commercial.chargeable==false and
+              .commercial.payment_authorized==false and
+              .commercial.commercially_qualified==false and
+              .commercial.paid_evidence_must_be_separately_verified==true and
+              ((.categories|keys|sort)==(["geopolitics","macro","rare_earth"]|sort)) and
+              ([.categories[] |
+                (.native_release_records|type)=="array" and
+                (.official_reference_records|type)=="array" and
+                (.source_data_present|type)=="boolean" and
+                .qualified_paid_records_count==0 and
+                .signed_risk_available==false] | all)
+            ' "$body" >/dev/null 2>&1; then
+              jq -c '{schema:"geomacro.three-domain-machine-delivery-acceptance.v1",
+                category_statuses:(.categories|with_entries(.value={
+                  delivery_state:.value.delivery_state,
+                  native_release_records_count:.value.native_release_records_count,
+                  official_reference_records_count:.value.official_reference_records_count
+                })),delivery_state,
+                source_reference_not_news:.data_quality.open_reference_is_not_current_news,
+                qualified_paid:false,payments:0,raw_upstream_delivered:false}' "$body"
+              exit 0
+            fi
+            sleep "$attempt"
+          done
+          echo "::error::THREE_DOMAIN_MACHINE_STRUCTURED_OUTPUT_READBACK_FAILED"
+          exit 11
 
       - name: Count only D1 derived journal rows before shared Website/machine parity
         id: derived_cap
