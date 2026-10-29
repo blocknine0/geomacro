@@ -3,6 +3,7 @@ import {readFileSync} from "node:fs";
 import {
  projectThreeDomainStructuredDelivery,
  deliverThreeDomainStructuredOutput,
+ deliverThreeDomainStructuredWithCacheRecovery,
  THREE_DOMAIN_STRUCTURED_DELIVERY_SCHEMA,
 } from "../../workers/control-plane/src/three-domain-structured-delivery.mjs";
 import {threeDomainEvidenceContinuity} from "../../workers/control-plane/src/three-domain-evidence-continuity.mjs";
@@ -138,10 +139,64 @@ describe("three-domain D1-backed machine structured JSON delivery",()=>{
    expect(body.commercial.payment_required).toBe(false);
    expect(body.commercial.paid_evidence_must_be_separately_verified).toBe(true);
  });
+ it("valid cached D1 source is projected with ONE read and no origin miss",async()=>{
+   let cached=0,origin=0;
+   const response=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
+     async()=>{cached++;return Response.json(source());},
+     async()=>{origin++;return Response.json(source());});
+   expect(response.status).toBe(200);
+   expect(cached).toBe(1);
+   expect(origin).toBe(0);
+   const body=await response.json();
+   expect(body.category_count).toBe(3);
+   expect(body.commercial.payment_authorized).toBe(false);
+ });
+ it("stale HTTP 200 continuity cached source is recovered ONCE from fresh D1, not returned as 503",async()=>{
+   let cached=0,origin=0;
+   const old=source();
+   old.checked_at=new Date(NOW-11*60_000).toISOString();
+   const response=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
+     async()=>{cached++;return Response.json(old);},
+     async()=>{origin++;return Response.json(source());});
+   expect(response.status).toBe(200);
+   expect(cached).toBe(1);
+   expect(origin).toBe(1);
+   const body=await response.json();
+   expect(body.categories.macro.native_release_records_count).toBe(1);
+   expect(body.commercial.chargeable).toBe(false);
+ });
+ it("outdated cached source contract triggers exactly one fallback, never promotes invalid evidence",async()=>{
+   let refreshed=0;
+   const old=source();old.categories.macro.commercial_rights_verified=true;
+   const response=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
+     async()=>Response.json(old),
+     async()=>{refreshed++;return Response.json(source());});
+   expect(response.status).toBe(200);
+   expect(refreshed).toBe(1);
+ });
+ it("provider 503 is not retried; invalid canonical retry still returns safe 503",async()=>{
+   let refreshed=0;
+   const down=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
+     async()=>Response.json({ok:false},{status:503}),
+     async()=>{refreshed++;return Response.json(source());});
+   expect(down.status).toBe(503);
+   expect(refreshed).toBe(0);
+   const previous=source();previous.checked_at=new Date(NOW-11*60_000).toISOString();
+   const invalid=source();invalid.signed_gro_verified=true;
+   const response=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
+     async()=>Response.json(previous),
+     async()=>{refreshed++;return Response.json(invalid);});
+   expect(response.status).toBe(503);
+   expect(refreshed).toBe(1);
+   const payload=await response.json();
+   expect(payload).toMatchObject({chargeable:false,payment_authorized:false,
+     raw_upstream_delivered:false});
+ });
  it("has dedicated public Worker GET with shared read-only edge caching, no partner path changes",()=>{
    const index=readFileSync("workers/control-plane/src/index.mjs","utf8");
    expect(index).toContain('/v1/public/three-domain-structured-output');
-   expect(index).toContain("deliverThreeDomainStructuredOutput(env,Date.now(),()=>");
+   expect(index).toContain("deliverThreeDomainStructuredWithCacheRecovery(env,Date.now(),");
+   expect(index).toContain("publicReadCache(()=>threeDomainEvidenceContinuity(env),canonicalRequest)");
    expect(index).toContain("publicReadCache(()=>threeDomainEvidenceContinuity(env),originalCacheRequest)");
    expect(index).toContain('new URL("/v1/public/three-domain-continuity",request.url)');
    const code=readFileSync("workers/control-plane/src/three-domain-structured-delivery.mjs","utf8");
