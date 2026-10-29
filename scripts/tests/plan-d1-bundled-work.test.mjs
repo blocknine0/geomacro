@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {planD1BundledWork,checkD1BundledWork,d1LanePacedCeiling,PREDGE_D1_FREE_HEADROOM} from "../ops/plan-d1-bundled-work.mjs";
+import {planD1BundledWork,checkD1BundledWork,d1LanePacedCeiling,PREDGE_D1_FREE_HEADROOM,phase2fQuotaDiagnostic} from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
 
 const now=new Date("2026-10-27T12:00:00.000Z");
@@ -197,4 +197,56 @@ test('optional governed measurement yields to PREDGE, future source intake, stal
  assert.equal(planD1BundledWork({
   ...quota(1_000_000,1_000),day_utc:'2026-10-28',
  },{now:at}).governed_measurement,false);
+});
+
+test("Phase 2F classifies verified live reserve-exhaustion without falsifying physical D1 exhaustion",()=>{
+ const time=new Date("2026-10-29T22:26:08.788Z");
+ const snapshot={...quota(4_348_180,66_839),day_utc:"2026-10-29"};
+ const original=planD1BundledWork(snapshot,{now:time});
+ const receipt=phase2fQuotaDiagnostic(original);
+ assert.equal(original.state,"HELD");
+ assert.equal(original.critical,false);
+ assert.equal(original.source_intake,false);
+ assert.equal(receipt.cause,"PROTECTED_CRITICAL_AND_PREDGE_RESERVE_HELD");
+ assert.equal(receipt.physical_free_limit_reached,false);
+ assert.equal(receipt.protected_critical_predge_reserve_held,true);
+ assert.equal(receipt.utc_critical_pacing_held,true);
+ assert.equal(receipt.remaining_rows_read,651_820);
+ assert.equal(receipt.remaining_rows_written,33_161);
+ assert.equal(receipt.critical_read_reserve_shortfall,598_181);
+ assert.equal(receipt.critical_write_reserve_shortfall,0);
+ assert.equal(receipt.predge_read_reserve_unchanged,500_000);
+ assert.equal(receipt.predge_write_reserve_unchanged,8_000);
+ assert.equal(receipt.derived_three_category_d1_publisher_admitted,false);
+ assert.equal(receipt.bounded_original_intake_admitted,false);
+ assert.equal(receipt.extra_d1_reads,0);
+ assert.equal(receipt.d1_writes,0);
+ assert.equal(receipt.payments,0);
+});
+test("Phase 2F distinguishes physical stop, UTC pacing, source-only admission and publisher allowance",()=>{
+ const time=new Date("2026-10-27T12:00:00Z");
+ const physical=phase2fQuotaDiagnostic(planD1BundledWork(quota(5_000_000,100_000),{now:time}));
+ assert.equal(physical.cause,"PHYSICAL_FREE_LIMIT_REACHED");
+ assert.equal(physical.physical_free_limit_reached,true);
+ const paced=phase2fQuotaDiagnostic(planD1BundledWork(quota(2_900_000,50_000),{now:time}));
+ assert.equal(paced.cause,"UTC_DAILY_PACING_HELD");
+ assert.equal(paced.protected_critical_predge_reserve_held,false);
+ const source=phase2fQuotaDiagnostic(planD1BundledWork(quota(2_825_556,21_330),{now:new Date("2026-10-27T09:17:28Z")}));
+ assert.equal(source.cause,"BOUNDED_ORIGINAL_SOURCE_INTAKE_ONLY");
+ assert.equal(source.bounded_original_intake_admitted,true);
+ assert.equal(source.derived_three_category_d1_publisher_admitted,false);
+ const full=phase2fQuotaDiagnostic(planD1BundledWork(quota(1_000_000,10_000),{now:time}));
+ assert.equal(full.cause,"THREE_CATEGORY_DERIVED_PUBLISHER_ADMITTED");
+ assert.equal(full.derived_three_category_d1_publisher_admitted,true);
+});
+test("Phase 2F unverified provider counters fail closed without inventing usage",()=>{
+ for(const state of [null,planD1BundledWork(null,{now})]){
+  const output=phase2fQuotaDiagnostic(state);
+  assert.equal(output.status,"PROVIDER_COUNTERS_UNVERIFIED");
+  assert.equal(output.cause,"PROVIDER_USAGE_UNVERIFIED");
+  assert.equal(output.observed_rows_read,null);
+  assert.equal(output.physical_free_limit_reached,null);
+  assert.equal(output.derived_three_category_d1_publisher_admitted,false);
+  assert.equal(output.publication_verified,false);
+ }
 });
