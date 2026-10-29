@@ -101,7 +101,8 @@ export function verifyStructuredDeliveryEnvelope(doc,now=Date.now()){
   assert.equal(v.delivery_state==="NO_OBSERVATION_AVAILABLE",!v.source_data_present);
   if(v.source_check_current){
    assertClock(v.last_source_check_at,now,3*3600_000,"CURRENT_SOURCE_CHECK");
-   assert.equal(v.delivery_state,"OBSERVATIONS_WITH_CURRENT_SOURCE_CHECK");
+   assert.equal(v.delivery_state,v.source_data_present?
+    "OBSERVATIONS_WITH_CURRENT_SOURCE_CHECK":"NO_OBSERVATION_AVAILABLE");
   }else if(v.last_source_check_at!==null)
    assertClock(v.last_source_check_at,now,14*DAY,"HISTORICAL_SOURCE_CHECK");
   for(const field of BLOCKED)assert.equal(Object.hasOwn(v,field),false);
