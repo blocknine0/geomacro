@@ -21,6 +21,12 @@ Status: implementation in GitHub PR; NO claim of 585 current paid sources. This 
 - Independent source families are not conflated; two URLs from one agency don't constitute corroboration. Source identity stays server-side.
 - Source continuity requires an actual publisher to supply independent qualifying evidence. Some small states/rare-minerals lanes will legitimately have zero current originals; coverage routing can be global without inventing news.
 
+## Independent GitHub SHA witness when D1 or B2 is unavailable
+
+The existing daily audited main workflow independently appends a **redacted** status-and-hash-only comment to [GitHub issue #3102](https://github.com/blocknine0/geomacro/issues/3102) using an `issues:write` job-scoped GitHub token. This step runs even after a source-read error and **before** the D1 account quota/B2 archiver. It needs no external news fetch, D1 query, B2 transaction, payment, private article rights, or merchant API key. The stored witness contains exactly the protected main SHA, run and attempt, UTC audit clock, 195×3 denominator, red/green source-runtime audit state and SHA-256 of the original private audit document.
+
+No publisher names, source URLs, raw article text, country-lane internal flags, PREDGE or customer information are posted to GitHub. The SHA comment is an independent **audit-occurrence anchor**, not a complete data backup; private full 585-lane evidence still belongs in B2. The GitHub issue history is longer-lived than the 14-day Actions artifact, but comments can still be deleted by authorized administrators. For strict irreversible legal retention, use owner-approved B2 compliance-mode Object Lock on a purpose-scoped bucket, not automatic default retention on a shared operational bucket.
+
 ## Physical durability limits
 
 The B2 writer is append-only by code, not storage-enforced WORM. The latest pointer is intentionally replaceable, and an administrator with B2 delete/write permissions could still alter/delete objects. For stronger legal/irreversible retention enable a provider-supported Object Lock/retention policy with a verified separate owner approval; this PR cannot fabricate an account feature or retention guarantee.
