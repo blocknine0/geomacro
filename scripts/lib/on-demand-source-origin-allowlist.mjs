@@ -30,6 +30,7 @@ export const ON_DEMAND_OFFICIAL_HOSTS = Object.freeze([
   "www.energy.gov",
   "www.rbi.org.in",
   "www.ungeneva.org",
+  "ogcapi.bgs.ac.uk",
 ]);
 export function approvedOnDemandSourceHostname(host) {
   return typeof host === "string" && ON_DEMAND_OFFICIAL_HOSTS.includes(host);
