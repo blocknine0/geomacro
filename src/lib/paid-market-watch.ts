@@ -70,7 +70,7 @@ const CHANNELS: readonly Channel[] = [
     eases:"Verified supply restoration could ease pressure if other factors remain stable.",
     indicator:"Verified production, inventory, embargo or energy transport update",
     referenceInstruments:["ICE Brent crude futures (BRN)","NYMEX WTI crude futures (CL)","Dutch TTF natural-gas futures (for European gas exposure)"],
-    instrumentScope:"Select only the benchmark connected to the verified commodity, region and affected flow."},
+    instrumentScope:"Choose only the benchmark connected to the verified commodity, region and affected flow."},
   {key:"minerals",dimension:"critical_minerals",market:"Critical-minerals price benchmarks",
     transmission:"Mineral production and export policy can affect upstream supply and downstream input costs.",
     intensifies:"A verified supply constraint could lift affected mineral prices, only where the specific mineral is confirmed.",
@@ -125,6 +125,8 @@ const DIMENSION_ALIASES: Readonly<Record<string,RegExp>> = {
 
 function normalizeDimension(value: string): string | null {
   if (value.length > 160) return null;
+  // Machine dimension IDs include underscores; exact reviewed keys take priority.
+  if (Object.prototype.hasOwnProperty.call(DIMENSION_ALIASES,value)) return value;
   for (const [dimension, pattern] of Object.entries(DIMENSION_ALIASES)) {
     if (pattern.test(value)) return dimension;
   }
