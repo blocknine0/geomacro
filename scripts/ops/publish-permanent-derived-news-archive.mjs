@@ -13,6 +13,7 @@ import {
 import {dirname, join, resolve} from "node:path";
 import {createHash} from "node:crypto";
 import {isSafeDerivedNewsReadbackSignal} from "../lib/derived-news-readback-policy.mjs";
+import {buildWebsitePilotSnapshot} from "../lib/website-predge-static-72h-snapshot.mjs";
 
 export const ARCHIVE_INDEX_SCHEMA="geomacro.permanent-derived-news-archive-index.v1";
 export const ARCHIVE_MONTH_SCHEMA="geomacro.permanent-derived-news-archive-month.v1";
@@ -450,6 +451,9 @@ export async function publishPermanentDerivedNewsArchive({
     writeFileSync(dataLatest,JSON.stringify(latest,null,2)+"\n",{encoding:"utf8",mode:0o644});
     const coverage=buildCurrentArchiveEligibility(recent,now,latest.signals);
     writeFileSync(join(dataDir,"coverage-72h.json"),JSON.stringify(coverage,null,2)+"\n",{encoding:"utf8",mode:0o644});
+    writeFileSync(join(dataDir,"website-intelligence-predge-72h.json"),
+      JSON.stringify(buildWebsitePilotSnapshot(recent,now),null,2)+"\n",
+      {encoding:"utf8",mode:0o644});
   }
 
   const indexChanged=added>0||seedCompleteThisRun||index.total_signals!==totalSignals;
