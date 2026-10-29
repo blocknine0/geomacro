@@ -57,6 +57,39 @@ export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
    path:/^\/(?:articles|cmei\/articles|em\/articles)\/[a-z0-9]+(?:-[a-z0-9]+){2,120}$/u,
    topic:MINERAL_RELEASE_TOPIC,credit:'U.S. Department of Energy; first-party U.S. government original; external materials still require individual rights review.',
    family:'us_doe_minerals_original_publisher'},
+ // Market-moving international trade and first-party government releases.
+ // All three are RSS DISCOVERY sources, not approved paid delivery. Per-item
+ // original-page clocks, country/event attribution, independent confirmation,
+ // legal reuse review and signing remain required by the existing product gates.
+ // WTO's trade-policy notifications cover tariff, safeguard and WTO dispute
+ // developments; the issuing WTO country is NEVER inferred from its host.
+ {id:'wto_trade_policy_global',category:'geopolitics',
+   url:'https://www.wto.org/library/rss/latest_news_e.xml',
+   format:'rss',host:'www.wto.org',
+   path:/^\\/english\\/news_e\\/(?:news|pres)\\d{2}_e\\/[a-z0-9_]{4,180}\\.htm$/u,
+   topic:/\\b(?:tariffs?|trade disputes?|dispute settlement|safeguards?|export controls?|sanctions?|trade tensions?|trade restrictions?|trade policy|border|trade measures?)\\b/iu,
+   credit:'World Trade Organization; attribution required; no article-text redistribution approval.',
+   family:'wto_original_trade_policy_news'},
+ // BIS management speeches are first-party BIS releases; republished external
+ // central-bank speeches belong to a separate source class and are NOT claimed
+ // as BIS original. Speeches are potential MARKET-IMPACT leads, not forecasts.
+ {id:'bis_management_macro_global',category:'macro',
+   url:'https://www.bis.org/doclist/mgmtspeeches.rss?paging_length=15',
+   format:'rss',host:'www.bis.org',
+   path:/^\\/speeches\\/sp\\d{6}[a-z]?\\.htm$/u,
+   topic:GLOBAL_MACRO_RELEASE_TOPIC,
+   credit:'Bank for International Settlements; original management speech metadata only; commercial reuse unapproved.',
+   family:'bis_management_original_macro_speeches'},
+ // Australian government minister's FIRST-PARTY critical-minerals releases.
+ // This also has an existing read-only private probe, but the global release
+ // reader lacked its original issuer link eligibility checks.
+ {id:'australia_critical_minerals_minister_global',category:'rare_earth',
+   url:'https://www.minister.industry.gov.au/feed/t-ayres/rss.xml',
+   format:'rss',host:'www.minister.industry.gov.au',
+   path:/^\\/t-ayres\\/media\\/[a-z0-9]+(?:-[a-z0-9]+){2,140}$/u,
+   topic:MINERAL_RELEASE_TOPIC,
+   credit:'Australian Government Department of Industry, Science and Resources; commercial reuse review pending.',
+   family:'australia_industry_minister_original_minerals'},
  {id:'iea_minerals_global',category:'rare_earth',url:'https://www.iea.org/news?topic%5B0%5D=critical-minerals',format:'html',host:'www.iea.org',path:/^\/news\/[a-z0-9]+(?:-[a-z0-9]+){1,35}$/u,topic:MINERAL_RELEASE_TOPIC,credit:'International Energy Agency',family:'iea_minerals_original_publisher'},
 ].map(s=>{
  const u=new URL(s.url);if(u.protocol!=='https:'||u.hostname!==s.host||u.username||u.password||u.port||u.hash)throw Error('GLOBAL_RELEASE_REGISTRY_INVALID');
