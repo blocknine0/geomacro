@@ -22,6 +22,7 @@ import {auditEveryDerivedNewsOriginal} from "../lib/all-news-original-evidence-a
 import type {StatelessIntelligenceResult} from "../../src/lib/stateless-public-intelligence.server";
 import {DERIVED_NEWS_TOPIC_POLICY_REVISION,requireDerivedNewsWorkerPolicy} from "../lib/derived-news-readback-policy.mjs";
 import {safeDerivedNewsD1FailureClass} from "../lib/derived-news-d1-failure.mjs";
+import {phase2fCategorySourceReceipt} from "../lib/phase2f-category-source-receipt.mjs";
 
 const ARCHIVE_ONLY = process.env.GEOMACRO_DERIVED_ARCHIVE_ONLY === "1";
 const ROOT = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
@@ -50,6 +51,14 @@ const reports:StatelessIntelligenceResult[]=[];
 const archiveCandidateSignals:StatelessIntelligenceSignal[]=[];
 const sourceHealthReceipts:Array<{category:string}>=[];
 const sharedOfficialDocuments=createRunScopedAustralianResourcesFetch();
+function emitPhase2FCategoryFunnel(base:{category:string;discovered:number;relevant:number;
+  deduplicated:number;archiveOnly:boolean;policyReady:boolean;d1WriteAcknowledged?:number}){
+  // Diagnostic only; a serialization/measurement defect must never alter
+  // the governed source-to-D1 production outcome or create an approval.
+  try{console.log(JSON.stringify(phase2fCategorySourceReceipt(base)));}
+  catch{console.warn("::warning::PHASE2F_CATEGORY_FUNNEL_RECEIPT_UNAVAILABLE");}
+}
+
 // Fail closed before any original-source reads or D1 writes if the live Worker
 // has not deployed the exact readback/topic allowlist contract this publisher
 // emits. A repository push can start this workflow before Worker deployment.
@@ -113,6 +122,9 @@ for (const category of categories) {
         reason:"D1_PUBLISHER_POLICY_PREFLIGHT_UNAVAILABLE",
         supabase_attempts:denied,payments:0,
       }));
+      emitPhase2FCategoryFunnel({category,discovered:report.releases_examined,
+        relevant:eligible.length,deduplicated:signals.length,
+        archiveOnly:ARCHIVE_ONLY,policyReady:false});
     }else{
       let acknowledged=0;
       for(const chunk of chunks){
@@ -169,6 +181,9 @@ for (const category of categories) {
         source_check_receipt_d1_verified:true,
         supabase_attempts:denied,storage:"cloudflare-d1-derived-only",
       }));
+      emitPhase2FCategoryFunnel({category,discovered:report.releases_examined,
+        relevant:eligible.length,deduplicated:signals.length,
+        archiveOnly:false,policyReady:true,d1WriteAcknowledged:acknowledged});
     }
   } catch(error) {
     success=false;
