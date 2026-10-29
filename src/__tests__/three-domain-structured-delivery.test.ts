@@ -174,23 +174,44 @@ describe("three-domain D1-backed machine structured JSON delivery",()=>{
    expect(response.status).toBe(200);
    expect(refreshed).toBe(1);
  });
- it("provider 503 is not retried; invalid canonical retry still returns safe 503",async()=>{
+ it("one transient cached D1 503 recovers with one canonical source read",async()=>{
+   let refreshed=0;
+   const restored=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
+     async()=>Response.json({ok:false},{status:503}),
+     async()=>{refreshed++;return Response.json(source());});
+   expect(restored.status).toBe(200);
+   expect(refreshed).toBe(1);
+   const body=await restored.json();
+   expect(body.categories.geopolitics.native_release_records_count).toBe(1);
+   expect(body.commercial.payment_authorized).toBe(false);
+ });
+ it("persistent 503 is retried once, still returns 503; invalid canonical recovery remains 503",async()=>{
    let refreshed=0;
    const down=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
      async()=>Response.json({ok:false},{status:503}),
-     async()=>{refreshed++;return Response.json(source());});
+     async()=>{refreshed++;return Response.json({ok:false},{status:503});});
    expect(down.status).toBe(503);
-   expect(refreshed).toBe(0);
+   expect(refreshed).toBe(1);
    const previous=source();previous.checked_at=new Date(NOW-11*60_000).toISOString();
    const invalid=source();invalid.signed_gro_verified=true;
    const response=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
      async()=>Response.json(previous),
      async()=>{refreshed++;return Response.json(invalid);});
    expect(response.status).toBe(503);
-   expect(refreshed).toBe(1);
+   expect(refreshed).toBe(2);
    const payload=await response.json();
    expect(payload).toMatchObject({chargeable:false,payment_authorized:false,
      raw_upstream_delivered:false});
+ });
+ it("non-503 upstream restrictions do not trigger hidden retries",async()=>{
+   for(const status of [400,401,429]){
+     let origin=0;
+     const response=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
+       async()=>Response.json({ok:false},{status}),
+       async()=>{origin++;return Response.json(source());});
+     expect(response.status).toBe(503); // public delivery stays fail-closed
+     expect(origin).toBe(0);
+   }
  });
  it("has dedicated public Worker GET with shared read-only edge caching, no partner path changes",()=>{
    const index=readFileSync("workers/control-plane/src/index.mjs","utf8");
