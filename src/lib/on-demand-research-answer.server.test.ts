@@ -119,8 +119,25 @@ describe("source-grounded on-demand research answer", () => {
       status: "UNVERIFIED_RESEARCH_ONLY",
       query_plan_hash: PLAN_HASH,
       answer: {
+        summary: signal.what_changed,
         what_changed: "A monetary-policy release was observed.",
         why_it_matters: signal.why_it_matters,
+        news_desk: {
+          schema: "geomacro.query-bound-news-desk.v1",
+          focus: "what_happened",
+          direct_answer: signal.what_changed,
+          unique_story_count: 1,
+          stories: [{
+            category: "macro",
+            what_happened: signal.what_changed,
+            potential_implication: signal.why_it_matters,
+            affected_country_independently_verified: false,
+            market_direction: null,
+            price_impact: null,
+          }],
+          chargeable: false,
+          execution_authorized: false,
+        },
       },
       evidence_summary: {
         original_page_date_verified_count: 1,
@@ -142,6 +159,8 @@ describe("source-grounded on-demand research answer", () => {
     expect(serialized).not.toContain(URL);
     expect(serialized).not.toContain("Federal Reserve");
     expect(serialized).not.toContain("Private original item summary");
+    expect(serialized).not.toContain("Geomacro found 1 original-dated research observation");
+    expect(answer?.answer.news_desk.stories[0].original_page_date_verified).toBe(true);
   });
 
   it("deduplicates the same original item before deriving answer signals", () => {
