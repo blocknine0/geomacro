@@ -167,13 +167,16 @@ test("new macro/FX and critical-metals feeds are private only and deduplicated",
  }
  assert.ok(sources.length<=512);
  const selected=sources.filter(x=>
-  ["private_repo8_can_boc_release","private_repo8_uk_lme_metals"].includes(x.id));
- const feed=title=>'<rss><channel><item><title>'+title+
-  '</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
+  ["private_repo8_can_boc_release","private_repo8_gbr_export_finance_original"].includes(x.id));
+ const feed=(title,atom=false)=>atom
+  ?'<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>'+title+
+   '</title><published>2026-10-25T11:55:00Z</published></entry></feed>'
+  :'<rss><channel><item><title>'+title+
+   '</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
  const testBatch=await collectPrivateOsint15m({now,normalize,resolveCountry:()=>null,
-  registry:selected,fetchImpl:async url=>new Response(feed(isExpectedFeedHost(url,"www.bankofcanada.ca")?
-   "Bank of Canada announces new monetary policy exchange rate decision":
-   "London Metal Exchange reports copper and nickel minerals supply change"))});
+  registry:selected,fetchImpl:async url=>new Response(isExpectedFeedHost(url,"www.bankofcanada.ca")?
+   feed("Bank of Canada announces new monetary policy exchange rate decision"):
+   feed("UK Export Finance critical minerals copper and nickel supply projects",true))});
  assert.equal(testBatch.items.length,2);
  assert.equal(testBatch.summary.selected_items_by_category.macro,1);
  assert.equal(testBatch.summary.selected_items_by_category.rare_earth,1);
