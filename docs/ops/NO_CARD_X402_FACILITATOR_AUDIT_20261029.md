@@ -17,7 +17,7 @@ These are publicly advertised prices/capabilities, not independently proven 24/7
 READ-ONLY CHECK (no card, no credentials, no funds):
 - node --test scripts/tests/no-card-x402-facilitator-policy.test.mjs
 - node scripts/ops/audit-no-card-x402-facilitators.mjs
-- Or invoke GitHub Actions workflow 'No-card x402 facilitator read-only audit' manually.
+- Run the audit manually from a trusted Node.js environment; no GitHub workflow was added due to the repository workflow inventory lock.
 
 A successful /supported probe is not a settled payment and never authorizes charging.
 Before a production adapter is wired into POST /api/v1/intelligence/query:
