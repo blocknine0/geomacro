@@ -16,7 +16,7 @@ The OFAC parser only counts a first-party `/recent-actions/YYYYMMDD` notice if i
 
 **These rows are listing discovery candidates only**, not original-article readback, independent confirmation, country-specific impact, licence, reviewer signature, new signed GRO, or payable response. The categorical query test may use the source-gap status to route additional research; it must never promote an item to customer output from this observation alone.
 
-The pre-existing 30-minute original-publisher pulse now also runs an **OFAC-only** source check outside D1 quota admission, gated to one UTC half-hour slot per hour (normally at :12, not :42). This gives best-effort hourly official sanctions-listing reachability even during D1 quota-hold, without a new cron or increased B2/D1 operations. The same existing source-pulse artifact includes an explicitly redacted OFAC observation or a `SKIPPED_NOT_THIS_HOURLY_SLOT` receipt. It never upgrades the three-domain D1 scoring pulse or PREDGE.
+The pre-existing 30-minute original-publisher pulse now also runs an **OFAC-only** source check outside D1 quota admission, nominally gated to one UTC half-hour slot per hour (normally at :12, not :42; delayed GitHub runs can cross slot boundaries, so this is not a strict account-wide per-hour cap). This gives best-effort hourly official sanctions-listing reachability even during D1 quota-hold, without a new cron or increased B2/D1 operations. The same existing source-pulse artifact includes an explicitly redacted OFAC observation or a `SKIPPED_NOT_THIS_HOURLY_SLOT` receipt. It never upgrades the three-domain D1 scoring pulse or PREDGE.
 
 The scheduled original-news ingestion and PREDGE flows are unchanged. No new cron, D1/B2 writes, paid feeds or cloud plan required.
 
