@@ -71,7 +71,7 @@ export function buildBgsWorldMineralStatisticsUrl(countryIso3: string, mineral: 
   ].join(","));
   // Only the ISO3 code and one fixed, validated commodity can enter this
   // CQL filter. Free-form user text never reaches the publisher.
-  url.searchParams.set("filter", `country_iso3_code = ${country} AND erml_commodity LIKE '${commodity}'`);
+  url.searchParams.set("filter", `country_iso3_code = ${country} AND erml_commodity LIKE '%${commodity}%'`);
   return url;
 }
 
@@ -95,8 +95,12 @@ export function deriveBgsMineralProductionHistory(
     const rowCountry = cleanString(props.country_iso3_code, 3)?.toUpperCase();
     const rowCommodity = cleanString(props.erml_commodity, 100)?.toLowerCase();
     const statistic = cleanString(props.bgs_statistic_type_trans, 100)?.toLowerCase() ?? "";
-    const yearText = cleanString(props.year, 4);
-    const year = yearText && /^\d{4}$/u.test(yearText) ? Number(yearText) : NaN;
+    const yearValue = typeof props.year === "number" && Number.isInteger(props.year)
+      ? String(props.year) : typeof props.year === "string" ? props.year.trim() : "";
+    // BGS serializes its source-native year date as e.g.
+    // "2022-01-01 00:00:00"; accept the year-only form used by older clients too.
+    const yearMatch = /^(\d{4})(?:-01-01(?:[ T]00:00:00(?:\.0+)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?)?$/u.exec(yearValue);
+    const year = yearMatch ? Number(yearMatch[1]) : NaN;
     const quantity = safeNumber(props.quantity);
     const unit = cleanString(props.units, 40);
     const sub = cleanString(props.bgs_sub_commodity_trans, 100);
