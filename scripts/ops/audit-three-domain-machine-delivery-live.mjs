@@ -30,7 +30,38 @@ const assertClock=(value,now,maxAge,context)=>{
    context+"_FUTURE_STALE_OR_MALFORMED");
  return at;
 };
-const assertSafeRecord=(v,category,now,kind)=>{
+const verifyFivePartDesk=(v,required)=>{
+ const d=v.news_desk;
+ if(!required&&!d?.market_relevance)return;
+ assert.equal(d?.schema,"geomacro.news-desk-item.v1");
+ assert.equal(d.what_happened?.text,v.what_changed);
+ assert.equal(d.why_it_matters_analysis?.text,v.why_it_matters);
+ assert.equal(d.why_it_matters_analysis?.claim_independently_verified,false);
+ assert.equal(d.lede,v.what_changed);
+ assert.equal(d.why_it_matters,v.why_it_matters);
+ assert.equal(d.issue,v.topic);
+ assert.equal(d.market_relevance?.status,"POTENTIAL_CHANNELS_ONLY");
+ assert.ok(Array.isArray(d.market_relevance?.potential_watch_channels));
+ assert.ok(d.market_relevance.potential_watch_channels.every(x=>[
+   "rates_and_bonds","fx_and_payments","trade_and_logistics","mineral_supply_chain"].includes(x)));
+ assert.deepEqual(d.market_relevance.affected_instruments_confirmed,[]);
+ assert.equal(d.market_relevance.observed_market_reaction_verified,false);
+ assert.equal(d.market_relevance.price_direction,null);
+ assert.equal(d.market_relevance.price_change,null);
+ assert.equal(d.what_to_watch?.focus_topic,v.topic);
+ assert.equal(d.what_to_watch?.followup_trigger,"NEW_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION");
+ assert.equal(d.what_to_watch.confirmed_followup_scheduled,false);
+ assert.equal(d.what_to_watch.next_verified_event_at,null);
+ assert.equal(d.evidence_confidence?.tier,"ORIGINAL_DATE_VERIFIED_CLAIMS_UNCORROBORATED");
+ assert.equal(d.evidence_confidence.original_page_date_verified,true);
+ for(const k of ["event_claim_independently_verified","country_impact_verified","market_impact_verified","commercial_rights_verified","risk_scored"])
+  assert.equal(d.evidence_confidence[k],false,"NEWSDESK_FALSE_CONFIDENCE_"+k);
+ assert.equal(d.evidence_confidence.original_publication_day,v.original_publication_day);
+ assert.equal(d.evidence_confidence.original_publication_time,v.original_published_at);
+ assert.equal(d.next_confirmed_development_at,null);
+ assert.equal(d.commercial_rights_verified,false);
+};
+const assertSafeRecord=(v,category,now,kind,requireNewsDesk=false)=>{
  assert.ok(v&&typeof v==="object"&&!Array.isArray(v),"RECORD_INVALID");
  assert.equal(v.category,category,"CROSS_CATEGORY_RECORD");
  assert.equal(v.record_kind,kind,"RECORD_KIND_MISMATCH");
@@ -61,14 +92,16 @@ const assertSafeRecord=(v,category,now,kind)=>{
     day<=now&&now-day<=72*3600_000,"ORIGINAL_DAY_INVALID");
    assert.equal(v.clock_semantics,"issuer_native_day");
   }
+  verifyFivePartDesk(v,requireNewsDesk);
  }else{
   assert.equal(v.original_published_at,null,"REFERENCE_FABRICATED_NEWS_CLOCK");
+  assert.equal(Object.hasOwn(v,"news_desk"),false,"HISTORICAL_REFERENCE_MUST_NOT_GET_NEWSDESK");
   assert.equal(typeof v.observation_period,"string");
   assert.ok(v.observation_period.length>0&&v.observation_period.length<=150);
   assert.ok(typeof v.clock_semantics==="string"&&v.clock_semantics.length>0);
  }
 };
-export function verifyStructuredDeliveryEnvelope(doc,now=Date.now()){
+export function verifyStructuredDeliveryEnvelope(doc,now=Date.now(),requireNewsDesk=false){
  assert.equal(doc?.ok,true,"STRUCTURED_NOT_OK");
  assert.equal(doc.schema,"geomacro.three-domain-structured-delivery.v1");
  assertClock(doc.generated_at,now,10*60_000,"DOCUMENT_CHECK");
@@ -111,7 +144,7 @@ export function verifyStructuredDeliveryEnvelope(doc,now=Date.now()){
   for(const field of BLOCKED)assert.equal(Object.hasOwn(v,field),false);
   assert.ok(Array.isArray(v.source_credits_required)&&v.source_credits_required.length<=25);
   for(const record of v.native_release_records){
-   assertSafeRecord(record,category,now,"native_dated_source_release");
+   assertSafeRecord(record,category,now,"native_dated_source_release",requireNewsDesk);
    // Identical explanation across independently classified release categories
    // is a regression in category-specific research, not verified market impact.
    const key=record.what_changed.trim().toLowerCase()+"|"+record.why_it_matters.trim().toLowerCase();
@@ -159,7 +192,7 @@ const get=(fetchImpl,url,headers={})=>fetchImpl(url,{
  method:"GET",redirect:"error",headers:{Accept:"application/json",...headers},
  signal:AbortSignal.timeout(12_000),
 });
-export async function auditThreeDomainLive({fetchImpl=fetch,now,wait}={}){
+export async function auditThreeDomainLive({fetchImpl=fetch,now,wait,requireNewsDesk=false}={}){
  // A real publisher-side clock may be later than the request's START time.
  // Validate each received HTTP document at its actual RECEIPT time.
  // Offline tests can pin now for deterministic adversarial fixtures.
@@ -252,9 +285,9 @@ export async function auditThreeDomainLive({fetchImpl=fetch,now,wait}={}){
   throw Error("STRUCTURED_CACHED_HTTP_"+firstResponse.status+"_"+uncached+"_"+cachedContinuity+"_"+diagnostic+"_EDGE_"+cacheStatus+"_AGE_"+ageHeader+"_POLICY_"+responseCachePolicy+"_CODE_"+sourceErrorCode);
  }
  const initial=verifyStructuredDeliveryEnvelope(
-   await readBoundedJson(firstResponse,"STRUCTURED_CACHED"),clock());
+   await readBoundedJson(firstResponse,"STRUCTURED_CACHED"),clock(),requireNewsDesk);
  const refreshed=verifyStructuredDeliveryEnvelope(
-   await readBoundedJson(await call(STRUCTURED_API,{"Cache-Control":"no-cache"}),"STRUCTURED_ORIGIN"),clock());
+   await readBoundedJson(await call(STRUCTURED_API,{"Cache-Control":"no-cache"}),"STRUCTURED_ORIGIN"),clock(),requireNewsDesk);
  // Require positive correctness on both cache and canonical D1 no-cache views,
  // but never demand identical counts across separately clocked source updates.
  const continuity=await readBoundedJson(
@@ -305,7 +338,7 @@ export async function auditThreeDomainLive({fetchImpl=fetch,now,wait}={}){
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{
-  const receipt=await auditThreeDomainLive();
+  const receipt=await auditThreeDomainLive({requireNewsDesk:process.env.GEOMACRO_REQUIRE_NEWS_DESK==="true"});
   process.stdout.write(JSON.stringify(receipt)+"\n");
  }catch(error){
   process.stderr.write(JSON.stringify({
