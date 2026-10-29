@@ -99,3 +99,14 @@ test('duplicate archive IDs and duplicate partner IDs cannot pass',()=>{
  const g=fixture();g.research.items=[g.research.items[0],g.research.items[0]];
  assert.throws(()=>verifyEligiblePartnerParity(g),/EXACT_CANONICAL_PROJECTION_MISMATCH/);
 });
+
+test('day-only originals crossing the 36h eligibility gate are clock differences, not rights blocks',()=>{
+ const now=Date.parse('2026-10-29T12:00:10.000Z');
+ const partnerAt=Date.parse('2026-10-29T11:59:50.000Z');
+ const s={...row('macro',1,'Federal Reserve Board'),'published_at':'2026-10-28',
+  date_precision:'day'};
+ assert.equal(isPermanentArchiveSignal(s,now,{allowHistorical:false}),true);
+ const result=verifyEligiblePartnerParity(fixture({signals:[s],now,partnerAt}));
+ assert.equal(result.counts_by_category.expired_or_newer_at_partner_clock.macro,1);
+ assert.equal(result.counts_by_category.attribution_withheld.macro,0);
+});
