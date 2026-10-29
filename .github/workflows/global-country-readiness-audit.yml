@@ -22,8 +22,9 @@ on:
       - "scripts/tests/195x3-durable-proof-chain.test.ts"
       - "scripts/tests/195x3-source-continuity.test.mjs"
   schedule:
-    # Read-only daily consistency check; no B2/Supabase/paid requests.
-    - cron: "27 6 * * *"
+    # One daily audit immediately after UTC quota reset, with governed B2 durable proof.
+    # B2 publication is denied if the shared D1 ledger lacks headroom.
+    - cron: "21 0 * * *"
 permissions:
   contents: read
 concurrency:
