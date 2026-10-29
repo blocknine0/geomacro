@@ -70,6 +70,7 @@ jobs:
     environment: production
     outputs:
       maintenance: ${{ steps.budget.outputs.maintenance }}
+      governed_measurement: ${{ steps.budget.outputs.governed_measurement }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -85,9 +86,12 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/ops/plan-d1-bundled-work.mjs
 
+  # Only this governed EIA/NOAA statistical-measurement job may use the
+  # independent 25k-read/500-write account admission. It still requires
+  # source-state validation, atomic shared B2 D1 tickets and hash readback.
   ingest:
     needs: quota-admission
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.quota-admission.outputs.maintenance == 'true'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (needs.quota-admission.outputs.maintenance == 'true' || needs.quota-admission.outputs.governed_measurement == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
