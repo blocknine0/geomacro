@@ -4,7 +4,8 @@
  * Does not create a source right, signed GRO, a public intelligence object,
  * a B2 archive, D1 checkpoint, a USDC payment or an x402 settlement.
  * Exact customer example: CHN lithium supply risk x the same three
- * Geomacro categories. Maximum 12 discovery plus 4 original page GETs.
+ * Geomacro categories plus one historical BGS query. Maximum 13 discovery
+ * plus 4 original page GETs.
  * No unbounded search, source-identity leak, funds or extra workflow.
  */
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -41,6 +42,7 @@ const FAMILY_BY_HOST:Readonly<Record<string,string>>={
   "www.energy.gov":"us_doe",
   "www.rbi.org.in":"rbi_india",
   "www.ungeneva.org":"un_geneva",
+  "ogcapi.bgs.ac.uk":"bgs_world_mineral_statistics",
 };
 const outcomeCounts=new Map<string,Record<
   "ok_2xx"|"http_403"|"http_429"|"http_5xx"|"other_http"|"network_error",number
@@ -87,6 +89,16 @@ const privateEvidence=await discoverOnDemandForPrivateQualification({
   topics:["sanctions_restrictions","macro_risk","critical_minerals"],
   max_age_seconds:7*86_400,
 },{fetchImpl:statusOnlyFetch});
+// Exercise the separate historical-data lane with one real, fixed-origin BGS
+// request. This proves retrieval and structured derivation only; it does not
+// certify current supply, commercial rights, signing or x402 eligibility.
+const historicalEvidence=await discoverOnDemandForPrivateQualification({
+  country_iso3:"CHN",
+  categories:["rare_earth"],
+  mineral:"lithium",
+  topics:["critical_minerals"],
+  include_historical_mineral_data:true,
+},{fetchImpl:statusOnlyFetch});
 const receipt=privateEvidence.discovery;
 const privateMacroDrivers=buildPrivateOnDemandMacroDrivers(privateEvidence.private_macro_changes);
 // PRIVATE evidence continuation: only the aggregate count may enter logs or
@@ -126,6 +138,19 @@ const proof={
   sample_topic_mineral:"lithium",
   sample_case:"CHN_LITHIUM_CURRENT_SUPPLY_RISK",
   category_count:receipt.categories.length,
+  historical_mineral_history_proof:{
+    provider_attempts:historicalEvidence.discovery.source_probes.filter(p=>
+      p.family==="bgs_world_mineral_statistics").length,
+    provider_reachable:historicalEvidence.discovery.source_probes.some(p=>
+      p.family==="bgs_world_mineral_statistics"&&p.reachable),
+    structured_answer_schema:historicalEvidence.private_mineral_history?.schema??null,
+    structured_series_count:historicalEvidence.private_mineral_history?.series.length??0,
+    raw_upstream_delivered:historicalEvidence.private_mineral_history?.delivery.raw_upstream_delivered??false,
+    raw_response_persisted:historicalEvidence.private_mineral_history?.delivery.raw_response_persisted??false,
+    commercial_rights_verified:historicalEvidence.private_mineral_history?.delivery.commercial_rights_verified??false,
+    chargeable:historicalEvidence.private_mineral_history?.delivery.chargeable??false,
+    x402_authorized:false,
+  },
   categories:receipt.categories,
   category_retrieval_proof:categoryRetrievalProof,
   // This is a time-sensitive availability probe, not positive capability
@@ -146,7 +171,8 @@ const proof={
   provider_http_outcomes:[...outcomeCounts.entries()]
     .sort(([a],[b])=>a.localeCompare(b))
     .map(([family,counts])=>({family,...counts})),
-  total_bounded_network_attempts:receipt.network_attempts+pageProof.attempted,
+  total_bounded_network_attempts:receipt.network_attempts+pageProof.attempted+
+    historicalEvidence.discovery.network_attempts,
   parallel:receipt.searched_in_parallel,
   status:receipt.status,
   distinct_provider_families_reached:receipt.reached_source_families,
@@ -192,15 +218,22 @@ const observedRequests=proof.provider_http_outcomes.reduce((n,row)=>
   n+row.ok_2xx+row.http_403+row.http_429+row.http_5xx+
     row.other_http+row.network_error,0);
 if(observedRequests!==proof.total_bounded_network_attempts ||
-   proof.provider_http_outcomes.length>10 ||
+   proof.provider_http_outcomes.length>11 ||
    proof.current_lithium_risk_answer_verified!==false ||
    proof.x402_commercial_release_authorized!==false ||
    proof.sample_country_iso3!=="CHN" ||
    proof.sample_topic_mineral!=="lithium" ||
    proof.sample_case!=="CHN_LITHIUM_CURRENT_SUPPLY_RISK" ||
    proof.category_count!==3||proof.network_attempts>12 ||
+   proof.historical_mineral_history_proof.provider_attempts!==1 ||
+   proof.historical_mineral_history_proof.structured_series_count>3 ||
+   proof.historical_mineral_history_proof.raw_upstream_delivered!==false ||
+   proof.historical_mineral_history_proof.raw_response_persisted!==false ||
+   proof.historical_mineral_history_proof.commercial_rights_verified!==false ||
+   proof.historical_mineral_history_proof.chargeable!==false ||
+   proof.historical_mineral_history_proof.x402_authorized!==false ||
    proof.original_article_page_attempts>4 ||
-   proof.total_bounded_network_attempts>16 ||
+   proof.total_bounded_network_attempts>17 ||
    proof.original_article_page_publication_date_verified_count>
      proof.original_article_page_attempts ||
    proof.private_original_candidate_count>16 ||
@@ -224,6 +257,11 @@ if(observedRequests!==proof.total_bounded_network_attempts ||
    proof.payment_settlement_attempted!==false||
    proof.supabase_requests!==0||proof.b2_requests!==0)
   process.exitCode=2;
+else if(proof.historical_mineral_history_proof.structured_answer_schema!==
+    "geomacro.mineral-production-history.v1" ||
+    proof.historical_mineral_history_proof.structured_series_count<1 ||
+    proof.historical_mineral_history_proof.provider_reachable!==true)
+  process.exitCode=6; // historical BGS read did not produce a structured result
 else if(proof.distinct_provider_families_reached===0)
   process.exitCode=3; // zero genuine external sources; NOT false GREEN
 else if(proof.category_retrieval_proof.length!==3 ||
