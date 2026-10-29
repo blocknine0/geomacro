@@ -170,7 +170,12 @@ export async function auditThreeDomainLive({fetchImpl=fetch,now=Date.now()}={}){
   // Root-cause a real public 503 with ONE bounded, read-only canonical
   // continuity GET and the same pure projector used by the Worker. No source
   // original or D1 credentials are ever requested or printed.
-  let diagnostic="CANONICAL_ORIGIN_UNVERIFIED";
+  let diagnostic="CANONICAL_ORIGIN_UNVERIFIED", uncached="UNCACHED_NOT_TESTED";
+  try{
+   const freshResponse=await call(STRUCTURED_API,{"Cache-Control":"no-cache"});
+   uncached="UNCACHED_HTTP_"+freshResponse.status;
+   await freshResponse.body?.cancel();
+  }catch{uncached="UNCACHED_NETWORK_UNAVAILABLE";}
   try{
    const response=await call(CONTINUITY_API,{"Cache-Control":"no-cache"});
    if(response.status!==200){
@@ -189,7 +194,7 @@ export async function auditThreeDomainLive({fetchImpl=fetch,now=Date.now()}={}){
    }
   }catch{diagnostic="CONTINUITY_DIAGNOSTIC_READ_UNAVAILABLE";}
   await firstResponse.body?.cancel();
-  throw Error("STRUCTURED_CACHED_HTTP_"+firstResponse.status+"_"+diagnostic);
+  throw Error("STRUCTURED_CACHED_HTTP_"+firstResponse.status+"_"+uncached+"_"+diagnostic);
  }
  const initial=verifyStructuredDeliveryEnvelope(
    await readBoundedJson(firstResponse,"STRUCTURED_CACHED"),now);
