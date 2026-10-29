@@ -83,3 +83,18 @@ test('keyset pagination returns each retained story once and excludes expired in
   const failed=await readNewsProductFactory({DB:{prepare(){throw Error('private db details')}}},new URLSearchParams(),now);
   assert.equal(failed.status,503);assert.equal((await failed.text()).includes('private db details'),false);
 });
+
+
+test('scheduled all-source factual JSON publisher has Bun shebang before ANY import',()=>{
+  // A shebang anywhere other than byte zero parses as an invalid private
+  // identifier in Bun. This previously let PR static tests PASS while the
+  // REAL protected-main 25h D1 publisher failed with Syntax Error on line 2.
+  const producer=readFileSync(new URL('../ops/publish-all-source-reusable-news-json.ts',import.meta.url),'utf8');
+  assert.ok(producer.startsWith('#!/usr/bin/env bun\n'), 'Bun executable shebang must be the first line');
+  assert.equal(producer.slice(2).includes('#!/usr/bin/env bun'),false,
+    'Second shebang would break the 25h publisher at production runtime');
+  assert.ok(producer.includes('await collectRegisteredReusableNews('));
+  assert.ok(producer.includes('d1_readback_verified'));
+  assert.ok(producer.includes('buildNewsProductPacket(item,{now:factoryNow})'));
+  assert.equal(producer.includes('settleCoinbaseX402'),false);
+});
