@@ -229,7 +229,24 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
 }
 export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=new Date()}={}){
   try{
-    const quota=await readCloudflareD1AccountQuota({env,fetchImpl,now});
+    // A transient Cloudflare GraphQL transport/429 outage is not D1 quota
+    // exhaustion. Retry a bounded READ-ONLY provider usage observation;
+    // never retry invalid counters, missing auth, or 403, and never invent
+    // rows-read headroom if all attempts fail.
+    let quota;
+    for(let attempt=0;attempt<3;attempt++){
+      try{
+        quota=await readCloudflareD1AccountQuota({env,fetchImpl,now});
+        break;
+      }catch(error){
+        const transient=error instanceof Error&&[
+          "D1_ACCOUNT_QUOTA_READ_FAILED",
+          "D1_ACCOUNT_QUOTA_TRANSIENT_PROVIDER_HTTP",
+        ].includes(error.message);
+        if(!transient||attempt===2)throw error;
+        await new Promise(resolve=>setTimeout(resolve,attempt===0?400:1200));
+      }
+    }
     // Optional READ-only provider billing evidence. If the account has not
     // enabled Billing Read or paid entitlement proof fails, remain on the
     // original conservative Free plan guard. No magic paid-mode env switch.

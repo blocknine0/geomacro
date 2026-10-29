@@ -77,6 +77,8 @@ export async function readCloudflareD1AccountQuota({env=process.env,fetchImpl=fe
     signal:AbortSignal.timeout(12000),
     redirect:"error",
   });}catch{throw Error("D1_ACCOUNT_QUOTA_READ_FAILED")}
+  if([429,502,503,504].includes(response?.status))
+    throw Error("D1_ACCOUNT_QUOTA_TRANSIENT_PROVIDER_HTTP");
   if(!response?.ok)throw Error("D1_ACCOUNT_QUOTA_RESPONSE_NOT_OK");
   let body;try{body=await response.json()}catch{throw Error("D1_ACCOUNT_QUOTA_RESPONSE_INVALID")}
   if(body?.data?.viewer?.accounts?.length!==1)throw Error("D1_ACCOUNT_QUOTA_RESPONSE_INVALID");
