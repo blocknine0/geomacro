@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {reconcileHistoricalSnapshots as reconcile,auditProvenanceAndPreview as audit,
- validateProposedNewsContext as draft} from "./verify-owner-partner-four-gates.mjs";
+ createProposedNewsContext as buildDraft,validateProposedNewsContext as draft} from "./verify-owner-partner-four-gates.mjs";
 const C=["geopolitics","macro","rare_earth"];
 function feed(utc="2026-10-29T12:05:00.000Z",n=3){
  const items=C.flatMap(category=>Array.from({length:n},(_,i)=>({
@@ -81,6 +81,16 @@ test("draft news_context may not pretend to be signed or production compatible",
  assert.throws(()=>draft({...candidate,signed_news:true},f,Date.parse(f.generated_at)),/NEWS_CONTEXT_DRAFT_INVALID/);
  assert.throws(()=>draft({...candidate,categories:{...candidate.categories,macro:["rare_earth-0"]}},f,Date.parse(f.generated_at)),/NEWS_CONTEXT_ID_NOT_IN_CURRENT_FEED/);
  assert.throws(()=>draft({...candidate,categories:{...candidate.categories,macro:Array(51).fill("macro-0")}},f,Date.parse(f.generated_at)),/NEWS_CONTEXT_CATEGORY_CAP/);
+});
+test("owner-side preview creates only real 50-per-category IDs, never signs",()=>{
+ const f=feed("2026-10-29T12:05:00Z",53);
+ const candidate=buildDraft(f);
+ const r=draft(candidate,f,Date.parse(f.generated_at));
+ assert.equal(r.all_categories_have_50,true);
+ assert.equal(r.selected_counts.geopolitics,50);
+ assert.equal(r.signed_news_verified,false);
+ assert.equal(candidate.commercial_rights_verified,false);
+ assert.equal(candidate.execution_authorized,false);
 });
 test("different 72-hour retention windows cannot prove delivery loss",()=>{
  const p=feed("2026-10-26T10:00:00Z"),c=feed("2026-10-29T12:05:00Z");
