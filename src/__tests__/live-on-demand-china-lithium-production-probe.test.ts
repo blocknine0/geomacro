@@ -84,7 +84,7 @@ describe("production customer-query acceptance without B2, new services or money
     expect(workflow).toContain('cron: "23 8 * * *"');
     expect(script).toContain("proof.network_attempts>12");
     expect(script).toContain("proof.original_article_page_attempts>4");
-    expect(script).toContain("proof.total_bounded_network_attempts>16");
+    expect(script).toContain("proof.total_bounded_network_attempts>17");
     expect(discovery).toContain("private_original_review_candidates");
     expect(script).not.toContain("settleCoinbaseX402");
     expect(script).not.toContain("readB2");
