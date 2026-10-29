@@ -27,7 +27,8 @@ describe("one original news -> user and machine query-bound newsroom JSON",()=>{
   expect(what.direct_answer).toBe(macro.what_changed);
   expect(why.direct_answer).toBe(macro.why_it_matters);
   expect(trade.direct_answer).toBe(macro.why_it_matters);
-  expect(watch.direct_answer).toBe(macro.why_it_matters);
+  expect(watch.direct_answer).toContain("No confirmed follow-up date is established for policy rates.");
+  expect(watch.direct_answer).toContain(macro.what_changed);
   expect(new Set([what.focus,why.focus,trade.focus,watch.focus]).size).toBe(4);
   for(const result of [what,why,trade,watch]){
     expect(result.unique_story_count).toBe(1);
