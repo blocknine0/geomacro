@@ -10,6 +10,7 @@
  */
 import {readFileSync} from "node:fs";
 import {createB2Client} from "../ops/b2-s3-client.mjs";
+import {createB2D1AccountGovernor} from "../ops/b2-d1-account-governor.mjs";
 import {GLOBAL_PROOF_HEAD_KEY,buildGlobalAuditSnapshot,assertProofHead,
   verifyPreviousSnapshot,digest} from "../lib/195x3-durable-proof-chain.mjs";
 
@@ -35,6 +36,17 @@ export async function archiveGlobalCountryAudit({
   config(env);
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
     fail("CLOCK_INVALID");
+  // Preserve an explicit shared-account buffer for existing producers and
+  // locked PREDGE operations. This is a read-only admission test, NOT an
+  // increase of any B2 or D1 account quota. Each later request still has to
+  // reserve its own atomic D1 ticket (and can fail if concurrent jobs race).
+  if(b2===null){
+    const status=await createB2D1AccountGovernor({env}).status();
+    const remaining=(k)=>status.limits[k]-status.used[k];
+    if(!status.ok||remaining("total")<20||remaining("GET")<18||
+       remaining("PUT")<6||remaining("NATIVE_AUTH")<2)
+      fail("SHARED_B2_QUOTA_BUFFER_REQUIRED");
+  }
   const client=b2??createB2Client({
     endpointUrl:"https://s3.us-east-005.backblazeb2.com",
     accessKey:env.B2_KEY_ID,secretKey:env.B2_APPLICATION_KEY,
