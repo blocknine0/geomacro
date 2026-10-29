@@ -74,6 +74,8 @@ describe("Phase 2: governed public B2 transient recovery", () => {
     expect(once).toContain("AWS4-HMAC-SHA256 Credential=");
     expect(once).toContain("controller.abort()");
     expect(worker).toContain('classifyGovernedB2OriginFailure(error)');
+    const deploy=readFileSync(`.github/workflows/deploy-${edge.replace("-edge","")}-edge.yml`,"utf8");
+    expect(deploy).toContain('"workers/shared/governed-b2-origin-retry.mjs"');
     expect(worker).toContain("rememberFailedB2Origin(cache, negativeKey)");
     expect(worker).toContain("return unavailable(503)");
     expect(worker).not.toContain("stale-if-error");
