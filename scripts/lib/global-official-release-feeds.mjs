@@ -76,7 +76,7 @@ export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
  {id:'bis_management_macro_global',category:'macro',
    url:'https://www.bis.org/doclist/mgmtspeeches.rss?paging_length=15',
    format:'rss',host:'www.bis.org',
-   path:/^\/speeches\/sp\d{6}[a-z]?\.htm$/u,
+   path:/^\/speeches\/(?:sp\d{6}[a-z]?\.htm|20\d{6}-[a-z0-9]+(?:-[a-z0-9]+){1,36})$/u,
    topic:GLOBAL_MACRO_RELEASE_TOPIC,
    credit:'Bank for International Settlements; original management speech metadata only; commercial reuse unapproved.',
    family:'bis_management_original_macro_speeches'},
