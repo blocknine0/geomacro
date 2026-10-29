@@ -171,6 +171,24 @@ export async function auditThreeDomainLive({fetchImpl=fetch,now=Date.now()}={}){
   // continuity GET and the same pure projector used by the Worker. No source
   // original or D1 credentials are ever requested or printed.
   let diagnostic="CANONICAL_ORIGIN_UNVERIFIED", uncached="UNCACHED_NOT_TESTED";
+  let cachedContinuity="CACHED_CONTINUITY_NOT_READ";
+  try{
+   const response=await call(CONTINUITY_API);
+   if(response.status!==200){
+    cachedContinuity="CACHED_CONTINUITY_HTTP_"+response.status;
+    await response.body?.cancel();
+   }else{
+    const source=await readBoundedJson(response,"DIAGNOSTIC_CACHED_CONTINUITY");
+    try{
+     projectThreeDomainStructuredDelivery(source,Date.now());
+     cachedContinuity="CACHED_CONTINUITY_PROJECTOR_PASS";
+    }catch(error){
+     const code=String(error?.message??"");
+     cachedContinuity=/^THREE_DOMAIN_STRUCTURED_[A-Z_]+$/u.test(code)?
+      "CACHED_CONTINUITY_"+code:"CACHED_CONTINUITY_PROJECTOR_INVALID";
+    }
+   }
+  }catch{cachedContinuity="CACHED_CONTINUITY_READ_UNAVAILABLE";}
   try{
    const freshResponse=await call(STRUCTURED_API,{"Cache-Control":"no-cache"});
    uncached="UNCACHED_HTTP_"+freshResponse.status;
@@ -194,7 +212,7 @@ export async function auditThreeDomainLive({fetchImpl=fetch,now=Date.now()}={}){
    }
   }catch{diagnostic="CONTINUITY_DIAGNOSTIC_READ_UNAVAILABLE";}
   await firstResponse.body?.cancel();
-  throw Error("STRUCTURED_CACHED_HTTP_"+firstResponse.status+"_"+uncached+"_"+diagnostic);
+  throw Error("STRUCTURED_CACHED_HTTP_"+firstResponse.status+"_"+uncached+"_"+cachedContinuity+"_"+diagnostic);
  }
  const initial=verifyStructuredDeliveryEnvelope(
    await readBoundedJson(firstResponse,"STRUCTURED_CACHED"),now);
