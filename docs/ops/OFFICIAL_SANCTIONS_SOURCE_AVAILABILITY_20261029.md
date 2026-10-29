@@ -29,3 +29,11 @@ The scheduled original-news ingestion and PREDGE flows are unchanged. No new cro
 
 ## Operational limit
 The daily source probe is useful as an inexpensive reachability alarm. Continuous near-real-time sanctions tracking requires an admitted frequent publisher poll with a durable scheduler/queue, actual source health/circuit state, independent D1/B2 readback and measured 72-hour runtime evidence. This change DOES NOT establish that SLA or all 585 country-category cells.
+
+## Country-specific source repair from real 195×3 coverage receipt
+
+The read-only 511-endpoint PR source probe on 29 Oct 2026 (run `40911872139`) found 15 country/category cells with registered but nonhealthy local publishers. These include Guinea-Bissau (all three categories), while healthy regional fallback is not country-specific original proof. The preexisting `www.odemocratagb.com/feed/` GNB publisher returned unavailable on the GitHub runner.
+
+This change performs a strictly **one-for-one** prospective local publisher replacement in `config/private-osint-local-gaplane.v1.json`: Guinea-Bissau's native publisher `Agência de Notícias da Guiné` `https://ang.gw/feed/`. This URL was publicly observed as RSS (`application/rss+xml`), but real GitHub-hosted runtime RSS parse and native-date outcomes must still be checked in the next PR/live source audit. No source slot is added, source identity is new, and its `RUNTIME_PROBE_REQUIRED`, commercial-rights-false, private-only gates remain unchanged.
+
+If the exact country/category runner outcome remains unavailable, this substitution is **not** a verified repair and must not be called accepted or payable. Source-country publisher metadata is not the country affected by a story; individual events still need their own attribution and verified release clocks.
