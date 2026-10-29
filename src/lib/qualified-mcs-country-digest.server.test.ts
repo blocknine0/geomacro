@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { deriveMcsProductionChanges, verifyMcsCc0Metadata,
-  loadQualifiedMcsCountryContext, loadQualifiedMcsRelease, MCS_DIGEST_SOURCE_ID }
+  loadQualifiedMcsCountryContext, loadQualifiedMcsRelease,
+  summarizeQualifiedMcs195StructuralCoverage, MCS_DIGEST_SOURCE_ID }
   from "./qualified-mcs-country-digest.server";
 
 const now = new Date("2026-10-18T00:00:00Z");
@@ -15,6 +16,34 @@ const rights = () => ({ data: { attributes: { doi: "10.5066/p1wkq63t", publicati
     rightsUri: "https://creativecommons.org/publicdomain/zero/1.0/legalcode" }] } } });
 
 describe("scoped original CC0 mineral structural digest", () => {
+  it("measures 195 real annual source eligibility candidates without fake paid country coverage",()=>{
+    const rows=[row("2024","100"),row("2025","125"),
+      row("2024","200","India"),row("2025","250","India"),
+      row("2024","80","Atlantis"),row("2025","160","Atlantis")];
+    const result=summarizeQualifiedMcs195StructuralCoverage(rows,now);
+    expect(result.canonical_country_count).toBe(195);
+    expect(result.country_coverage).toHaveLength(195);
+    expect(result.countries_with_comparable_source).toBe(2);
+    expect(result.countries_without_comparable_source).toBe(193);
+    expect(result.derived_annual_series_candidates).toBe(2);
+    expect(result.country_coverage.find(x=>x.iso3==="CHN")?.derived_series_count).toBe(1);
+    expect(result.country_coverage.find(x=>x.iso3==="IND")?.derived_series_count).toBe(1);
+    expect(result.country_coverage.find(x=>x.iso3==="USA")?.status).toBe("NO_COMPARABLE_2024_2025_SOURCE");
+    expect(result.current_country_mineral_events_verified).toBe(false);
+    expect(result.paid_entitlements_or_mainnet_settlements_verified).toBe(false);
+    expect(result.canonical_product_preflight_per_country_not_assessed).toBe(true);
+    expect(result.source_rights_grant_is_exact_scoped_dataset_only).toBe(true);
+    expect(JSON.stringify(result)).not.toContain("Atlantis");
+    expect(JSON.stringify(result)).not.toContain("125");
+  });
+  it("quarantines ambiguous duplicate country mineral rows instead of granting source availability",()=>{
+    const rows=[row("2024","100"),row("2025","125"),row("2025","126")];
+    const result=summarizeQualifiedMcs195StructuralCoverage(rows,now);
+    expect(result.countries_with_ambiguous_rows).toBe(1);
+    expect(result.country_coverage.find(x=>x.iso3==="CHN")?.status).toBe("UNVERIFIED_DUPLICATE_OR_AMBIGUOUS_ROWS");
+    expect(result.countries_with_comparable_source).toBe(0);
+  });
+
   it("derives only comparable annual changes, never raw production numbers or scores", () => {
     const result = deriveMcsProductionChanges([row("2024", "100"), row("2025", "125")], "CHN", now);
     expect(result).toHaveLength(1);
