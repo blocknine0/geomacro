@@ -23,9 +23,24 @@ describe("BGS historical mineral data path", () => {
     expect(url?.pathname).toBe("/collections/world-mineral-statistics/items");
     expect(url?.searchParams.get("limit")).toBe("100");
     expect(url?.searchParams.get("sortby")).toBe("-year");
-    expect(url?.searchParams.get("filter")).toBe("country_iso3_code = GBR AND erml_commodity LIKE 'Lithium'");
+    expect(url?.searchParams.get("filter")).toBe("country_iso3_code = GBR AND erml_commodity LIKE '%Lithium%'");
     expect(buildBgsWorldMineralStatisticsUrl("GBR", "lithium' OR 1=1")).toBeNull();
     expect(buildBgsWorldMineralStatisticsUrl("GBR.evil", "lithium")).toBeNull();
+  });
+
+  it("parses BGS source-native date timestamps and full commodity labels", () => {
+    const sourcePayload = {
+      features: [
+        { properties: { country_iso3_code: "GBR", erml_commodity: "Lithium (mine production, metal content)", bgs_statistic_type_trans: "Production", bgs_sub_commodity_trans: "Lithium content", quantity: 10, units: "tonnes", year: "2022-01-01 00:00:00" } },
+        { properties: { country_iso3_code: "GBR", erml_commodity: "Lithium (mine production, metal content)", bgs_statistic_type_trans: "Production", bgs_sub_commodity_trans: "Lithium content", quantity: 8, units: "tonnes", year: "2021-01-01 00:00:00" } },
+      ],
+    };
+    const answer = deriveBgsMineralProductionHistory(sourcePayload, "GBR", "lithium");
+    expect(answer?.series[0]).toMatchObject({
+      latest: { year: 2022, value: 10 },
+      previous: { year: 2021, value: 8 },
+      direction: "up",
+    });
   });
 
   it("turns raw rows into bounded latest/prior production metrics, without returning the raw table", () => {
