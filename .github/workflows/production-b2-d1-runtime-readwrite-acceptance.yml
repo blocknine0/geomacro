@@ -129,7 +129,22 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          bun scripts/ops/verify-production-b2-d1-runtime-acceptance.mjs --no-funds-runtime-test > /tmp/geomacro-runtime-acceptance.json 2>/tmp/geomacro-runtime-acceptance.stderr
+          if ! bun scripts/ops/verify-production-b2-d1-runtime-acceptance.mjs --no-funds-runtime-test > /tmp/geomacro-runtime-acceptance.json 2>/tmp/geomacro-runtime-acceptance.stderr; then
+            node --input-type=module <<'NODE'
+          import {readFileSync} from "node:fs";
+          const raw=readFileSync("/tmp/geomacro-runtime-acceptance.stderr","utf8");
+          const line=raw.split("\\n").find(x=>x.includes('"schema":"geomacro.production-b2-d1-runtime-acceptance.v1"'));
+          let code="B2_RUNTIME_FAILURE_UNCLASSIFIED";
+          try {
+            const v=JSON.parse(line??"");
+            const allowed=/^(B2_PUT_OR_FULL_READBACK_FAILED|B2_SECOND_INDEPENDENT_GET_FAILED):B2_[A-Z_]+$/;
+            const known=new Set(["B2_SHARED_D1_QUOTA_HEADROOM_INSUFFICIENT","CONTROL_PLANE_TOKEN_MISMATCH","CONTROL_PLANE_D1_STATUS_READ_FAILED","D1_RUNTIME_QUERY_FAILED","D1_RUNTIME_QUERY_REJECTED","D1_QUOTA_STATUS_READBACK_INVALID","D1_PER_RUN_WRITE_READBACK_RECEIPT_MISSING"]);
+            if(allowed.test(v?.reason)||known.has(v?.reason))code=v.reason;
+          } catch {}
+          console.log(JSON.stringify({schema:"geomacro.phase2b.protected-diagnostic.v1",status:"FAIL",reason:code}));
+          NODE
+            exit 1
+          fi
           node --input-type=module <<'NODE'
           import {readFileSync} from "node:fs";
           const r=JSON.parse(readFileSync("/tmp/geomacro-runtime-acceptance.json","utf8"));
