@@ -1,4 +1,6 @@
 import {resolveEligiblePublishedCapabilityPrice} from "./verified-capability-coinbase-binding.server";
+import {explicitlyConfiguredNoCardCheckout,isNoCardSignedPayload,
+  handleNoCardAdaptiveCheckout} from "./no-card-x402-adaptive-route.server";
 import { randomUUID } from "node:crypto";
 import {makeGeomacroNoChargeResponse} from "./geomacro-nocharge";
 import {
@@ -591,6 +593,20 @@ export const mainnetIntelligenceHandlers = {
             },
             execution_authorized:false,
           },422);
+        }
+
+        // A separately approved low-fee x402 checkout is strictly opt-in.
+        // Existing Coinbase-signed payments ALWAYS retain their own route and
+        // settlement history. Already-settled no-card signatures can replay
+        // immutable delivery even if new low-fee sales are subsequently frozen.
+        const existingPaymentSignature=request.headers.get("payment-signature");
+        const noCardProof=isNoCardSignedPayload(existingPaymentSignature);
+        if(noCardProof || (!existingPaymentSignature && explicitlyConfiguredNoCardCheckout())){
+          return handleNoCardAdaptiveCheckout({
+            request,plan,requestBody:parsed,
+            clientRequestId:parsed.client_request_id??null,
+            replayOnly:!explicitlyConfiguredNoCardCheckout(),
+          });
         }
 
         // Paid published-only requests continue using the identical Coinbase
