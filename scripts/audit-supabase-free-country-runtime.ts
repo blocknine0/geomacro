@@ -44,7 +44,7 @@ export function blockedGlobalCountryReadinessReceipt(checkedAt=new Date()){
     checked_at:checkedAt.toISOString(),
     audit_state:"SOURCE_RUNTIME_UNAVAILABLE",
     audit_ok:false,
-    canonical_country_count:195,category_count:3,routing_cell_count:585,
+    country_count:195,category_count:3,routing_cell_count:585,
     country_registry_version:CANONICAL_195_VERSION,
     source_runtime:null,automated_finds_categories:[],
     country_current_evidence_not_inferred_from_global_feeds:true,
