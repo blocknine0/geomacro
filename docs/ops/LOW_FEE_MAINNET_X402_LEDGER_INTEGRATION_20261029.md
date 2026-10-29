@@ -21,6 +21,7 @@ The staged adapter requires ALL:
 - `GEOMACRO_NO_CARD_MAINNET_ACK=I_AUTHORIZE_NO_CARD_FACILITATOR_REAL_USDC`
 - `GEOMACRO_NO_CARD_PROVIDER_FEE_APPROVED=I_HAVE_VERIFIED_CURRENT_PROVIDER_FEES`
 - `GEOMACRO_COMMERCE_LEDGER_BACKEND=durable_object`
+- `GEOMACRO_NO_CARD_APPROVED_FEE_XPAY_USDC` / `GEOMACRO_NO_CARD_APPROVED_FEE_DEXTER_USDC`: current owner-verified per-settlement facilitator fee (six-decimal USDC), required and capped at 5% of the exact Store SKU; no default 0 is assumed.
 - `GEOMACRO_NO_CARD_RPC_BASE` or `GEOMACRO_NO_CARD_RPC_POLYGON` (trusted HTTPS mainnet RPC) and `GEOMACRO_NO_CARD_CONFIRMATIONS_BASE` or `GEOMACRO_NO_CARD_CONFIRMATIONS_POLYGON` (approved positive required depth).
 - Positive independent merchant eligibility/terms review and no-funds chain-specific security acceptance, then separate explicit founder approval and first real-USDC canary.
 
