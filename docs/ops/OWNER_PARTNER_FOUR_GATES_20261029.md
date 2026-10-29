@@ -26,7 +26,7 @@ A real production signed preview needs current verified sources, independent rig
 
 ## D. Risk Gate news-context compatibility
 
-The current strict Risk Gate v1 response does not contain a news_context field. Injecting one unilaterally could break the partner's validator. This tool validates only a separate draft geomacro.news-context.draft.v1 document with up to 50 CURRENT research IDs in each of the three categories. It explicitly requires research_only true, signed_news false, execution_authorized false, retention_hours 72, partner_validator_approved false and commercial_rights_verified false. Unknown IDs, incorrect categories, duplicate IDs and caps above 50 are rejected.
+The current strict Risk Gate v1 response does not contain a news_context field. Injecting one unilaterally could break the partner's validator. This tool builds and validates a separate owner-only draft geomacro.news-context.draft.v1 document with up to 50 CURRENT research IDs in each of the three categories. It explicitly requires research_only true, signed_news false, execution_authorized false, retention_hours 72, partner_validator_approved false and commercial_rights_verified false. Unknown IDs, incorrect categories, duplicate IDs and caps above 50 are rejected.
 
 A future new versioned contract requires explicit buyer/partner schema and signer-spec agreement, exact bytes covered by signature, key rotation and attribution treatment. No existing risk-gate-1.0 endpoint, PREDGE validator or production credential is changed by this PR.
 
