@@ -486,13 +486,15 @@ export function createB2Client({
     return promise;
   }
 
-  async function putWithMetadataVerification(key, bytes, { verifyRestored } = {}) {
+  async function putWithMetadataVerification(key, bytes, { verifyRestored, onStage } = {}) {
     // A previously proven B2 download cap means a new verified archive write
     // cannot be completed. Never PUT and strand a knowingly unverified object.
     if (nativeReadFatalError) throw new Error(nativeReadFatalError);
     const body = Buffer.from(bytes);
     const digest = sha(body);
 
+    // Optional probe-only stage signal; no network request, state or quota change.
+    if (typeof onStage === "function") onStage("INITIAL_PUT");
     await request("PUT", key, body, {
       extraSignedHeaders: {
         "x-amz-meta-geomacro-sha256": digest,
@@ -506,6 +508,7 @@ export function createB2Client({
     // use the authenticated Backblaze Native fallback when S3 read access is
     // denied. This is deliberately stronger without increasing the number of
     // verification operations per upload.
+    if (typeof onStage === "function") onStage("FIRST_VERIFICATION_GET");
     const readback = await readSingleFlight(key, false);
 
     if (readback.length !== body.length) {
