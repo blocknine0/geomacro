@@ -26,6 +26,8 @@ on:
       - "src/lib/agent-query-critical-minerals.server.ts"
       - "src/lib/qualified-bls-us-cpi.server.ts"
       - "src/lib/qualified-bls-us-cpi.server.test.ts"
+      - "scripts/ops/probe-brazil-bcb-ipca-original.mjs"
+      - "scripts/tests/brazil-bcb-ipca-original.test.mjs"
       - "src/lib/store-structural-release-context.server.ts"
       - "src/lib/commercial-source-eligibility.server.ts"
       - "src/lib/coinbase-x402.server.ts"
@@ -61,6 +63,8 @@ on:
       - "src/lib/agent-query-critical-minerals.server.ts"
       - "src/lib/qualified-bls-us-cpi.server.ts"
       - "src/lib/qualified-bls-us-cpi.server.test.ts"
+      - "scripts/ops/probe-brazil-bcb-ipca-original.mjs"
+      - "scripts/tests/brazil-bcb-ipca-original.test.mjs"
       - "src/lib/store-structural-release-context.server.ts"
       - "src/lib/commercial-source-eligibility.server.ts"
       - "src/lib/coinbase-x402.server.ts"
@@ -91,6 +95,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Verify official Brazil BCB original monthly-IPCA adapter safety without funds
+        if: github.event_name == 'pull_request' || github.event_name == 'schedule'
+        run: node --test scripts/tests/brazil-bcb-ipca-original.test.mjs
+      - name: One bounded Brazil BCB IPCA official-source read, private status only
+        if: github.event_name == 'pull_request' || github.event_name == 'schedule'
+        run: node scripts/ops/probe-brazil-bcb-ipca-original.mjs
       - name: Verify first-buyer locked pricing only and zero-payments contract
         run: |
           node --check scripts/agentic/first-sale-price-proof.mjs
