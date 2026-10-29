@@ -20,8 +20,8 @@ const sourceClock=(str,nowMs)=>{
  if(!Number.isFinite(n)||n>nowMs+86400000||n<Date.UTC(2000,0,1))return null;
  return new Date(n).toISOString().slice(0,10);
 };
-const textOnly=s=>s.replace(/<script\b[^>]*>[\s\S]*?<\/script>/giu," ")
-  .replace(/<style\b[^>]*>[\s\S]*?<\/style>/giu," ")
+const textOnly=s=>s.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu," ")
+  .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/giu," ")
   .replace(/<[^>]*>/gu," ").replace(/&(?:nbsp|amp|quot|apos);/giu," ")
   .replace(/\s+/gu," ").trim();
 /** Conservative, listing-only observation: no lookup of a date solely from URL. */
