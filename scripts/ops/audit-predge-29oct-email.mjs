@@ -143,7 +143,15 @@ if(process.argv[1]?.endsWith("audit-predge-29oct-email.mjs")){
     };
     result=auditEmailResearchSnapshots(parse(args[1]),parse(args[2]));
   }else abort("USAGE");
-  console.log(JSON.stringify(result));
+  // This repository is public: live Actions logs must NOT expose the partner's
+  // item counts, source-credit distribution, native ID digests, or any records.
+  // Owners can run --offline locally for the detailed aggregate receipt.
+  if(args[0]==="--live"){
+    console.log(JSON.stringify({schema:"geomacro.partner-research-parity-private.v1",
+      status:result.public_subset_comparison,
+      contract_validated:true,live_counts_redacted:true,
+      no_signature_or_payment_claim:true}));
+  }else console.log(JSON.stringify(result));
  }catch(e){
   const code=String(e?.message??"");
   console.error("::error::"+(/^PREDGE_EMAIL_ACCEPTANCE_[A-Z0-9_]+$/.test(code)?
