@@ -108,14 +108,9 @@ describe("three-domain D1-backed machine structured JSON delivery",()=>{
    ]){
      const copy=structuredClone(source());
      mutation(copy);
-     // A source has already passed the canonical continuity reader; the
-     // projector must independently keep the strong no-paid evidence boundary.
-     if(copy.categories?.macro?.source_neutral_news?.[0]?.source_url){
-       // The existing canonical D1 journalist reader removes all non-fixed
-       // fields; this projector refuses unsafe prose but never prints URLs.
-       expect(projectThreeDomainStructuredDelivery(copy,NOW).categories.macro.native_release_records[0])
-         .not.toHaveProperty("source_url");
-     }else expect(()=>projectThreeDomainStructuredDelivery(copy,NOW)).toThrow();
+     // Defence in depth: even the projection itself must reject any source
+     // field that is absent from the canonical D1 journal contract.
+     expect(()=>projectThreeDomainStructuredDelivery(copy,NOW)).toThrow();
    }
  });
  it("returns 503 instead of empty paid-looking 200 on real D1 outage or invalid source",async()=>{
@@ -146,7 +141,9 @@ describe("three-domain D1-backed machine structured JSON delivery",()=>{
  it("has dedicated public Worker GET with shared read-only edge caching, no partner path changes",()=>{
    const index=readFileSync("workers/control-plane/src/index.mjs","utf8");
    expect(index).toContain('/v1/public/three-domain-structured-output');
-   expect(index).toContain("publicReadCache(()=>deliverThreeDomainStructuredOutput(env))");
+   expect(index).toContain("deliverThreeDomainStructuredOutput(env,Date.now(),()=>");
+   expect(index).toContain("publicReadCache(()=>threeDomainEvidenceContinuity(env),originalCacheRequest)");
+   expect(index).toContain('new URL("/v1/public/three-domain-continuity",request.url)');
    const code=readFileSync("workers/control-plane/src/three-domain-structured-delivery.mjs","utf8");
    expect(code).not.toContain("settleCoinbaseX402");
    expect(code).not.toContain("requireRiskSupabase");
