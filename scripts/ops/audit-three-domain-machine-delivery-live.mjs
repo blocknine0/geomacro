@@ -131,8 +131,8 @@ export function verifyStructuredDeliveryEnvelope(doc,now=Date.now()){
   native_news_total:CATEGORIES.reduce((n,c)=>n+receipt[c].native_news,0),
   reference_total:CATEGORIES.reduce((n,c)=>n+receipt[c].official_reference,0)};
 }
-async function readBoundedJson(response,max=256*1024){
- assert.equal(response.status,200,"HTTP_"+response.status);
+async function readBoundedJson(response,stage,max=256*1024){
+ assert.equal(response.status,200,stage+"_HTTP_"+response.status);
  assert.match(response.headers.get("content-type")??"",/application\/json/iu,"JSON_CONTENT_TYPE_REQUIRED");
  const declared=Number(response.headers.get("content-length")??0);
  assert.ok(Number.isFinite(declared)&&declared<=max,"CONTENT_LENGTH_LIMIT");
@@ -165,20 +165,20 @@ export async function auditThreeDomainLive({fetchImpl=fetch,now=Date.now()}={}){
    fetchImpl(url,{method,redirect:"error",signal:AbortSignal.timeout(12_000)});
  };
  const initial=verifyStructuredDeliveryEnvelope(
-   await readBoundedJson(await call(STRUCTURED_API)),now);
+   await readBoundedJson(await call(STRUCTURED_API),"STRUCTURED_CACHED"),now);
  const refreshed=verifyStructuredDeliveryEnvelope(
-   await readBoundedJson(await call(STRUCTURED_API,{"Cache-Control":"no-cache"})),now);
+   await readBoundedJson(await call(STRUCTURED_API,{"Cache-Control":"no-cache"}),"STRUCTURED_ORIGIN"),now);
  // Require positive correctness on both cache and canonical D1 no-cache views,
  // but never demand identical counts across separately clocked source updates.
  const continuity=await readBoundedJson(
-   await call(CONTINUITY_API,{"Cache-Control":"no-cache"}));
+   await call(CONTINUITY_API,{"Cache-Control":"no-cache"}),"CANONICAL_CONTINUITY");
  assert.equal(continuity?.ok,true,"CANONICAL_CONTINUITY_NOT_OK");
  assert.equal(continuity.schema,"geomacro.three-domain-evidence-continuity.v1");
  assert.equal(continuity.chargeable,false);
  assert.equal(continuity.three_domains_returned,true);
  assert.equal(continuity.raw_upstream_delivered,false);
  assert.deepEqual(Object.keys(continuity.categories??{}).sort(),[...CATEGORIES].sort());
- const factual=await readBoundedJson(await call(FACTUAL_API));
+ const factual=await readBoundedJson(await call(FACTUAL_API),"FACTUAL_25H");
  assert.equal(factual?.ok,true,"FACTUAL_NEWS_NOT_OK");
  assert.equal(factual.schema,"geomacro.reusable-source-news-feed.v1");
  assert.equal(factual.commercial_product_ready,false);
