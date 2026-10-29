@@ -1313,6 +1313,24 @@
               "scenario_only"
             ],
             "properties": {
+              "reference_instruments": {
+                "type": "array",
+                "maxItems": 3,
+                "items": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 180
+                },
+                "description": "Reference instruments for trader research; confirm the actual exposure, contract and venue independently."
+              },
+              "instrument_scope_status": {
+                "const": "REFERENCE_CANDIDATES_ONLY"
+              },
+              "instrument_scope": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 240
+              },
               "watch_id": {
                 "type": "string"
               },
@@ -1415,6 +1433,9 @@
             "actual_market_prices_included": {
               "const": false
             },
+            "live_quotes_included": {
+              "const": false
+            },
             "market_direction_verified": {
               "const": false
             },
@@ -1424,12 +1445,25 @@
             "asset_specificity_may_require_further_evidence": {
               "const": true
             },
+            "reference_instruments_are_not_confirmed_exposure": {
+              "const": true
+            },
             "private_inputs_exposed": {
               "const": false
             },
             "execution_authorized": {
               "const": false
             }
+          }
+        },
+        "trader_checklist": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 240
           }
         }
       },

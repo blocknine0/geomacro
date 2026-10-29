@@ -168,8 +168,21 @@ export function buildSourceGroundedResearchAnswer(input: Readonly<{
     Date.parse(b.published_at) - Date.parse(a.published_at) || a.id.localeCompare(b.id));
 
   if (!signals.length) return null;
-  const selected = signals.slice(0, MAX_ANSWER_SIGNALS);
-  const latest = selected[0].published_at;
+  // Give every requested category with qualifying evidence one slot before
+  // spending remaining slots on the newest observations. This makes a
+  // multi-category question produce a genuinely multi-category structure,
+  // while the fixed three-signal ceiling and evidence checks stay intact.
+  const selected: StatelessIntelligenceSignal[] = [];
+  for (const category of input.categories) {
+    const signal = signals.find(item => item.category === category);
+    if (signal && selected.length < MAX_ANSWER_SIGNALS) selected.push(signal);
+  }
+  for (const signal of signals) {
+    if (selected.length >= MAX_ANSWER_SIGNALS) break;
+    if (!selected.some(item => item.id === signal.id)) selected.push(signal);
+  }
+  const latest = selected.reduce((a,b) =>
+    Date.parse(a.published_at) >= Date.parse(b.published_at) ? a : b).published_at;
   const categoriesObserved = [...new Set(selected.map(signal => signal.category))];
   const categoryText = categoriesObserved.map(category => CATEGORY_LABEL[category]).join(", ");
 
@@ -263,6 +276,7 @@ export function buildStructuredEvidenceGap(input: Readonly<{
   query_plan_hash: string;
   checked_at: string;
   source_families_reached: number;
+  gap_reason?: "MULTIPLE_MINERALS_REQUIRE_SEPARATE_SCOPED_QUERY";
 }>){
   const country=country195ByIso3(input.country_iso3);
   const checked=Date.parse(input.checked_at);
@@ -285,7 +299,7 @@ export function buildStructuredEvidenceGap(input: Readonly<{
       country_attribution_verified:false,independent_corroboration_verified:false},
     source_check:{checked_at:input.checked_at,source_families_reached:input.source_families_reached,
       bounded_search_exhaustive:false},
-    gaps:[queryType==="CURRENT_EVENT_OR_RELEASE"
+    gaps:[...(input.gap_reason?[input.gap_reason]:[]),queryType==="CURRENT_EVENT_OR_RELEASE"
       ?"NO_COUNTRY_MATCHED_ORIGINAL_DATED_OBSERVATION_VERIFIED_IN_THIS_BOUNDED_SEARCH"
       :"A_QUALIFIED_COUNTRY_AND_PERIOD_SPECIFIC_STRUCTURAL_SERIES_IS_REQUIRED"],
     delivery:{chargeable:false,payment_required_now:false,payment_authorized:false,

@@ -7,6 +7,9 @@ on:
   pull_request:
     paths:
       - 'src/lib/canonical-country-registry-195.ts'
+      - 'src/lib/multilingual-query-intent.ts'
+      - 'src/lib/on-demand-global-discovery.server.ts'
+      - 'src/lib/mainnet-intelligence-endpoint.server.ts'
       - 'config/answer-source-candidates-195x3.v1.json'
       - 'scripts/ops/audit-195x3-human-machine-source-gaps.mjs'
       - 'scripts/lib/195x3-live-sample.mjs'
@@ -43,11 +46,11 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v4
         with:
           node-version: '22'
-      - name: Verify 4680 question archetypes and 1170 bounded live candidates
+      - name: Verify 5850 question archetypes and 1170 bounded live candidates
         run: node scripts/tests/verify-195x3-human-machine-source-gaps.mjs
       - name: Verify exact daily live-probe count and full rotation
         run: node scripts/tests/195x3-live-sample.test.mjs
-      - name: Generate full 4680-question mock and source-gap artifacts (offline)
+      - name: Generate full 5850-question mock and source-gap artifacts (offline)
         run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs
       - name: Validate official 195-country macro source adapter without network
         run: node scripts/tests/wdi-195-batch-reference.test.mjs

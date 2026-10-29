@@ -267,18 +267,30 @@ export function assertGeomacroIntelligenceResponseContract(payload: unknown): as
           (watch.status==="NO_QUALIFIED_MARKET_LINKAGE"&&watch.items.length!==0) ||
           !isRecord(watch.monitoring) || !isRecord(watch.limitations) ||
           watch.limitations.actual_market_prices_included!==false ||
+          (watch.limitations.live_quotes_included!==undefined&&watch.limitations.live_quotes_included!==false) ||
+          (watch.limitations.reference_instruments_are_not_confirmed_exposure!==undefined&&
+            watch.limitations.reference_instruments_are_not_confirmed_exposure!==true) ||
           watch.limitations.market_direction_verified!==false ||
           watch.limitations.quantitative_forecast_included!==false ||
           watch.limitations.private_inputs_exposed!==false ||
           watch.limitations.execution_authorized!==false) {
         throw Error("INTELLIGENCE_RESPONSE_MARKET_WATCH_BOUNDARY_INVALID");
       }
+      if(watch.trader_checklist!==undefined&&(!Array.isArray(watch.trader_checklist)||
+        watch.trader_checklist.length!==4||watch.trader_checklist.some((item:unknown)=>
+          typeof item!=="string"||item.length<12||item.length>240)))
+        throw Error("INTELLIGENCE_RESPONSE_TRADER_CHECKLIST_INVALID");
       if(watch.items.some((item:unknown)=>!isRecord(item) ||
         item.predicted_direction!=="NOT_ESTABLISHED" ||
         item.scenario_only!==true ||
         item.current_market_price!==null ||
         item.estimated_price_change_pct!==null ||
         typeof item.market!=="string" || typeof item.evidence_dimension!=="string" ||
+        (item.reference_instruments!==undefined&&(!Array.isArray(item.reference_instruments)||
+          item.reference_instruments.length<1||item.reference_instruments.length>3||
+          item.reference_instruments.some((instrument:unknown)=>typeof instrument!=="string"||instrument.length<3||instrument.length>180))) ||
+        (item.instrument_scope_status!==undefined&&item.instrument_scope_status!=="REFERENCE_CANDIDATES_ONLY") ||
+        (item.instrument_scope!==undefined&&(typeof item.instrument_scope!=="string"||item.instrument_scope.length<3||item.instrument_scope.length>240)) ||
         (item.evidence_class!==undefined&&item.evidence_class!==({
           VERIFIED_STRUCTURAL_MODULE:"STRUCTURAL_CONTEXT",
           VERIFIED_SIGNED_GRO_DRIVER:"SIGNED_RISK_DRIVER",

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * 195 UN-members-and-observers x 3 domains x 4 question archetypes x 2 actors
- * = 4,680 immutable synthetic QUESTION scenarios, not invented facts/answers.
+ * 195 UN-members-and-observers x 3 domains x 15 question archetypes x 2 actors
+ * = 5,850 immutable synthetic QUESTION scenarios, not invented facts/answers.
  * A separate 1,170-case country/category/actor set rotates through live probes.
  * Default is offline generation, with zero requests. --live is strictly
  * rate-limited, no-funds and cannot imply a paid 200 delivery.
@@ -44,13 +44,16 @@ const topics = {
     {id:"sanctions",topic:"sanctions_restrictions",text:"What are the latest sanctions or export restrictions affecting"},
     {id:"conflict",topic:"conflict_geopolitics",text:"What verified armed-conflict or security developments affect"},
     {id:"governance",topic:"political_governance",text:"What has changed in elections or political governance in"},
-    {id:"tariff",topic:"trade_corridor",text:"How do new tariffs and trade policy affect"}
+    {id:"tariff",topic:"trade_corridor",text:"How do new tariffs and trade policy affect"},
+    {id:"hazard",topic:"natural_hazards",text:"What official earthquake or flood developments affect"}
   ],
   macro:[
     {id:"inflation",topic:"macro_risk",text:"What is the latest official inflation and monetary-policy release for"},
     {id:"foreign_exchange",topic:"fx_external_risk",text:"What are the foreign exchange and reserves developments for"},
     {id:"sovereign_debt",topic:"sovereign_risk",text:"What official sovereign debt and fiscal deficit evidence exists for"},
-    {id:"banking",topic:"banking_financial_system",text:"What are the latest bank liquidity and financial-system signals for"}
+    {id:"banking",topic:"banking_financial_system",text:"What are the latest bank liquidity and financial-system signals for"},
+    {id:"energy",topic:"energy_commodities",text:"What are the latest Brent and natural-gas supply developments for"},
+    {id:"food",topic:"food_agriculture",text:"What wheat and food-security developments are reported for"}
   ],
   critical_minerals:[
     {id:"lithium",topic:"critical_minerals",text:"What new lithium mining or production developments have been published for"},
@@ -103,12 +106,14 @@ for (const [i,country] of countries.entries()) {
     }
   }
 }
-if(matrix.length!==4680 || new Set(matrix.map(x=>x.id)).size!==4680 ||
+if(matrix.length!==5850 || new Set(matrix.map(x=>x.id)).size!==5850 ||
    liveCandidates.length!==1170 || new Set(liveCandidates.map(x=>x.id)).size!==1170 ||
-   categories.some(category=>matrix.filter(x=>x.category===category).length!==1560) ||
-   countries.some(c=>matrix.filter(x=>x.country_iso3===c.iso3).length!==24) ||
-   matrix.filter(x=>x.actor==="human").length!==2340 ||
-   matrix.filter(x=>x.actor==="machine").length!==2340 ||
+   matrix.filter(x=>x.category==="geopolitics").length!==1950 ||
+   matrix.filter(x=>x.category==="macro").length!==2340 ||
+   matrix.filter(x=>x.category==="critical_minerals").length!==1560 ||
+   countries.some(c=>matrix.filter(x=>x.country_iso3===c.iso3).length!==30) ||
+   matrix.filter(x=>x.actor==="human").length!==2925 ||
+   matrix.filter(x=>x.actor==="machine").length!==2925 ||
    categories.some(category=>topics[category].some(topic=>
      !matrix.some(x=>x.category===category&&x.scenario===topic.id))))
   throw Error("QUESTION_MATRIX_INTEGRITY_FAILED");
@@ -116,7 +121,7 @@ if(matrix.length!==4680 || new Set(matrix.map(x=>x.id)).size!==4680 ||
 const manifestHash=sha(JSON.stringify(matrix.map(({id,country_iso3,category,scenario,actor,language,request_body})=>
   ({id,country_iso3,category,scenario,actor,language,request_body}))));
 // Rotate over the candidate list itself; indexing a permutation of the full
-// 4,680-case matrix silently under-selected live probes.
+// 5,850-case matrix silently under-selected live probes.
 const epochDay=Math.max(0,Math.floor((Date.now()-Date.UTC(2026,9,29))/86400000));
 const selected=live ? select195x3LiveSample(liveCandidates,limit,epochDay) : [];
 function errorCode(json) {
@@ -178,8 +183,8 @@ mkdirSync(output,{recursive:true});
 const summary={
  schema:"geomacro.195x3-human-machine-structured-output-audit.v1",generated_at:new Date().toISOString(),
  country_universe:"193_UN_members_plus_2_observer_states",countries:195,categories:3,
- total_question_scenarios:4680,human:2340,machine:2340,matrix_cells:585,
- question_archetypes_per_country_category:4,
+ total_question_scenarios:5850,human:2925,machine:2925,matrix_cells:585,
+ question_archetypes_per_category:{geopolitics:5,macro:6,critical_minerals:4},
  live_probe_candidate_scenarios:1170,
  manifest_sha256:manifestHash, mode:live?"PRODUCTION_UNPAID_PROBE":"OFFLINE_TEST_CASE_GENERATION",
  live_requests_attempted:results.length,live_result_classes:counts,

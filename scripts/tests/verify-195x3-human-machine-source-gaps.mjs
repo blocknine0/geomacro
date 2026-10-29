@@ -16,23 +16,23 @@ try {
  const gaps=JSON.parse(readFileSync(join(path,"country-category-gaps.json"),"utf8"));
  assert.equal(report.summary,undefined);
  assert.equal(report.countries,195);
- assert.equal(report.total_question_scenarios,4680);
- assert.equal(report.human,2340);
- assert.equal(report.machine,2340);
+ assert.equal(report.total_question_scenarios,5850);
+ assert.equal(report.human,2925);
+ assert.equal(report.machine,2925);
  assert.equal(report.matrix_cells,585);
- assert.equal(report.question_archetypes_per_country_category,4);
+ assert.deepEqual(report.question_archetypes_per_category,{geopolitics:5,macro:6,critical_minerals:4});
  assert.equal(report.live_probe_candidate_scenarios,1170);
  assert.equal(report.mode,"OFFLINE_TEST_CASE_GENERATION");
  assert.equal(report.live_requests_attempted,0);
  assert.equal(report.paid_structured_deliveries_verified,0);
  assert.equal(report.source_families_newly_active,0);
  assert.equal(report.predge_modified,false);
- assert.equal(manifest.cases.length,4680);
+ assert.equal(manifest.cases.length,5850);
  assert.equal(gaps.cells.length,585);
- assert.equal(new Set(manifest.cases.map(x=>x.id)).size,4680);
+ assert.equal(new Set(manifest.cases.map(x=>x.id)).size,5850);
  assert.equal(new Set(manifest.cases.map(x=>x.country_iso3)).size,195);
- assert.equal(manifest.cases.filter(x=>x.actor==="human").length,2340);
- assert.equal(manifest.cases.filter(x=>x.actor==="machine").length,2340);
+ assert.equal(manifest.cases.filter(x=>x.actor==="human").length,2925);
+ assert.equal(manifest.cases.filter(x=>x.actor==="machine").length,2925);
  assert.equal(manifest.cases.filter(x=>x.language==="bn").length>0,true);
  assert.equal(manifest.cases.filter(x=>x.language==="hi").length>0,true);
  assert.equal(manifest.cases.every(x=>x.source_coverage_status==="NOT_MEASURED"),true);
@@ -44,13 +44,15 @@ try {
  assert.equal(liveCandidates.cases.filter(x=>x.actor==="human").length,585);
  assert.equal(liveCandidates.cases.filter(x=>x.actor==="machine").length,585);
  for(const category of ["geopolitics","macro","critical_minerals"]){
-   assert.equal(manifest.cases.filter(x=>x.category===category).length,1560);
+   assert.equal(manifest.cases.filter(x=>x.category===category).length,
+     category==="geopolitics"?1950:category==="macro"?2340:1560);
    assert.equal(gaps.cells.filter(x=>x.category===category).length,195);
-   assert.equal(new Set(manifest.cases.filter(x=>x.category===category).map(x=>x.scenario)).size,4);
+   assert.equal(new Set(manifest.cases.filter(x=>x.category===category).map(x=>x.scenario)).size,
+     category==="geopolitics"?5:category==="macro"?6:4);
  }
  for(const country of new Set(manifest.cases.map(x=>x.country_iso3)))
-   assert.equal(manifest.cases.filter(x=>x.country_iso3===country).length,24);
+   assert.equal(manifest.cases.filter(x=>x.country_iso3===country).length,30);
  // Avoid accidentally invoking production by the offline test.
  assert.equal(JSON.parse(readFileSync(join(path,"live-no-funds-results.json"),"utf8")).results.length,0);
- console.log("195x3 mock PASS: 4,680 questions across four archetypes, 1,170 live-probe candidates and 585 country-category cells; no live calls or paid claims.");
+ console.log("195x3 mock PASS: 5,850 questions across 15 archetypes, 1,170 live-probe candidates and 585 country-category cells; no live calls or paid claims.");
 } finally {rmSync(dir,{recursive:true,force:true});}

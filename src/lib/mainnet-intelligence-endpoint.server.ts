@@ -65,7 +65,7 @@ import { lookupTelegramFallback } from "./on-demand-telegram-fallback.server";
 import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
 import {readAllAutoIngest72hStructuredDrafts} from "./auto-ingest-72h-context.server";
 import {
-  discoverOnDemandForPrivateQualification, inferOnDemandMineral,
+  categoriesForOnDemandTopics, discoverOnDemandForPrivateQualification, inferOnDemandMineral,
   inferOnDemandFreshnessSeconds, requestsHistoricalMineralData,
   verifyOnDemandOriginalArticlePages, type OnDemandCategory, type SourceProbe,
 } from "./on-demand-global-discovery.server";
@@ -400,18 +400,9 @@ export const mainnetIntelligenceHandlers = {
               execution_authorized:false,
             },422);
           }
-          const categories: OnDemandCategory[]=[];
-          if (plan.topics.some(t => ["sanctions_restrictions","conflict_geopolitics","political_governance"].includes(t)))
-            categories.push("geopolitics");
-          if (plan.topics.some(t => ["sovereign_risk","macro_risk","fx_external_risk"].includes(t)))
-            categories.push("macro");
-          if (plan.topics.includes("critical_minerals"))
-            categories.push("rare_earth");
-          // An unscoped "latest news" request searches all three Geomacro
-          // categories, bounded to one country and the fixed provider mesh.
-          if (categories.length === 0 && plan.topics.includes("hot_topics")) {
-            categories.push("geopolitics","macro","rare_earth");
-          }
+          // One canonical topic registry selects all applicable source lanes;
+          // cross-cutting trade topics intentionally reach both geo and macro.
+          const categories:OnDemandCategory[]=categoriesForOnDemandTopics(plan.topics);
           if (categories.length === 0) {
             return json({
               ok:false,chargeable:false,payment_required_now:false,
@@ -432,15 +423,16 @@ export const mainnetIntelligenceHandlers = {
           // Ambiguous multi-mineral requests require a scoped query instead of
           // returning unrelated articles as intelligence for one commodity.
           let mineral;
+          let mineralScopeAmbiguous=false;
           try {
             mineral=categories.includes("rare_earth")
               ? inferOnDemandMineral(plan.question_key) : null;
           } catch {
-            return json({
-              ok:false,chargeable:false,payment_required_now:false,
-              error:{code:"ON_DEMAND_MULTIPLE_MINERALS_UNSUPPORTED"},
-              execution_authorized:false,
-            },422);
+            // Keep the valid question in the same structured-response contract.
+            // Without a multi-mineral source adapter, return a scoped gap rather
+            // than silently choosing one commodity or emitting an unfiltered hit.
+            mineral=null;
+            mineralScopeAmbiguous=true;
           }
           let requestedNewsAgeSeconds:number|undefined;
           try {
@@ -486,7 +478,7 @@ export const mainnetIntelligenceHandlers = {
               max_age_seconds:requestedNewsAgeSeconds,
               include_historical_mineral_data:categories.length===1 &&
                 categories[0]==="rare_earth" && Boolean(mineral) &&
-                requestsHistoricalMineralData(plan.question_key),
+                !mineralScopeAmbiguous&&requestsHistoricalMineralData(plan.question_key),
             });
             discovery=privateResult.discovery;
             historicalMineralAnswer=privateResult.private_mineral_history;
@@ -520,7 +512,7 @@ export const mainnetIntelligenceHandlers = {
             const pageProof=await verifyOnDemandOriginalArticlePages(
               privateResult.private_original_review_candidates,
               {maxAgeSeconds:requestedNewsAgeSeconds});
-            sourceGroundedResearchAnswer=buildSourceGroundedResearchAnswer({
+            sourceGroundedResearchAnswer=mineralScopeAmbiguous?null:buildSourceGroundedResearchAnswer({
               country_iso3:subject.country_iso3,categories,topics:plan.topics,
               max_age_seconds:requestedNewsAgeSeconds,
               query_plan_hash:plan.query_plan_hash,pageProof,question:plan.question_key,
@@ -616,6 +608,7 @@ export const mainnetIntelligenceHandlers = {
             question:plan.question_key,query_plan_hash:plan.query_plan_hash,
             checked_at:discovery.checked_at,
             source_families_reached:discovery.reached_source_families,
+            ...(mineralScopeAmbiguous?{gap_reason:"MULTIPLE_MINERALS_REQUIRE_SEPARATE_SCOPED_QUERY" as const}:{}),
           });
           // No raw upstream records, publisher IDs or original links cross
           // this boundary. No x402 payment quote is issued for discoveries.
