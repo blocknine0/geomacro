@@ -1,4 +1,5 @@
 import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
+import {approvedOnDemandSourceHostname} from "../../scripts/lib/on-demand-source-origin-allowlist.mjs";
 import {pinnedRbiPressReleaseLink} from "../../scripts/lib/rbi-official-macro-release.mjs";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,verifiedGlobalRdfFeed,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { createHash } from "node:crypto";
@@ -238,11 +239,8 @@ async function boundedFetch(
   // This whitelist is not caller configurable. Do not follow redirects to
   // arbitrary locations, signed querystrings, credentials or metadata IPs.
   if (target.protocol !== "https:" ||
-      !["api.worldbank.org","api.gdeltproject.org","api.reliefweb.int",
-        "www.gov.uk","news.un.org","www.federalreserve.gov","www.ecb.europa.eu",
-        "www.minister.industry.gov.au","api.io.canada.ca",
-        "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.bankofcanada.ca","news.gov.bc.ca",
-        "www.consilium.europa.eu","www.usgs.gov","www.energy.gov","www.rbi.org.in"].includes(target.hostname)) {
+      !approvedOnDemandSourceHostname(target.hostname) ||
+      target.username || target.password || target.port || target.hash) {
     throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
   }
   const maxBytes = accept === "text/html" ? MAX_FIRST_PARTY_HTML_BYTES : MAX_BODY_BYTES;
@@ -1120,12 +1118,8 @@ async function discoverOnDemandImpl(
     const upstream=new URL(String(target));
     // Defense in depth: this wrapper must never become a variable-origin
     // proxy even if future callers bypass boundedFetch's own allowlist.
-    const permittedHosts=["api.worldbank.org","api.gdeltproject.org",
-      "api.reliefweb.int","www.gov.uk","news.un.org","www.rbi.org.in",
-      "www.federalreserve.gov","www.ecb.europa.eu",
-      "www.minister.industry.gov.au","api.io.canada.ca",
-      "www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.bankofcanada.ca","news.gov.bc.ca"];
-    if(upstream.protocol!=="https:" || !permittedHosts.includes(upstream.hostname) ||
+    if(upstream.protocol!=="https:" ||
+       !approvedOnDemandSourceHostname(upstream.hostname) ||
        upstream.username || upstream.password || upstream.port || upstream.hash)
       throw Error("ON_DEMAND_SOURCE_ORIGIN_NOT_ALLOWED");
     const host=upstream.hostname;

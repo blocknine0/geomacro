@@ -5,6 +5,7 @@
  * B2, D1, signing, new connectors, raw article export, or lasting raw storage.
  */
 import {mkdirSync,writeFileSync} from "node:fs";
+import {approvedOnDemandSourceHostname} from "../lib/on-demand-source-origin-allowlist.mjs";
 import {
   discoverOnDemandForPrivateQualification,
   verifyOnDemandOriginalArticlePages,
@@ -37,10 +38,6 @@ const CASES:readonly Case[]=[
    topics:["sanctions_restrictions","macro_risk","critical_minerals"],
    mineral:"lithium",max_age_seconds:7*86_400,time_class:"RECENT_7D"},
 ];
-const HOSTS=new Set(["api.worldbank.org","api.gdeltproject.org",
-  "api.reliefweb.int","www.gov.uk","news.un.org",
-  "www.federalreserve.gov","www.ecb.europa.eu",
-  "www.minister.industry.gov.au","api.io.canada.ca","www.canada.ca","press.un.org","www.bis.org","www.boj.or.jp","www.iea.org","www.bankofcanada.ca","news.gov.bc.ca"]);
 const checkedAt=new Date();
 const cases=[];
 let allNetwork=0;
@@ -49,7 +46,7 @@ for(const sample of CASES){
   let totalHttp=0, successes=0, rateLimited=0, accessDenied=0, networkErrors=0;
   const countedFetch:typeof fetch=async(input,init)=>{
     const url=new URL(String(input));
-    if(url.protocol!=="https:" || !HOSTS.has(url.hostname) ||
+    if(url.protocol!=="https:" || !approvedOnDemandSourceHostname(url.hostname) ||
       url.username || url.password || url.port || url.hash)
       throw Error("REPRESENTATIVE_PROBE_UNRECOGNIZED_ORIGIN");
     totalHttp++;
