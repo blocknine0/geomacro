@@ -44,21 +44,26 @@
       "url": "https://main.un.org/securitycouncil/en/content/list-updates-unsc-consolidated-list",
       "cadence": "event_driven",
       "country_mapping": "event_specific",
-      "phase": "CANDIDATE_REQUIRES_ADAPTER_PROBE_AND_RIGHTS_REVIEW",
-      "purpose": "Verify original dated UN sanctions list changes; not all political events"
+      "phase": "OFFICIAL_HTML_LISTING_PROBE_REQUIRED_RSS_ACCESS_NOT_CONFIRMED",
+      "purpose": "Source-native update table is official, but no per-country impact or signed event is established by a listing; documented RSS transport not confirmed.",
+      "current_probe_script": "scripts/ops/probe-official-sanctions-listings.mjs",
+      "rss_fallback_forbidden_on_403": true
     },
     {
-      "id": "ofac_sanctions_list_service",
+      "id": "ofac_sanctions_list_original_html",
       "categories": [
         "geopolitics"
       ],
       "kind": "official_event",
       "publisher": "US Treasury OFAC",
-      "url": "https://ofac.treasury.gov/sanctions-list-service",
+      "url": "https://ofac.treasury.gov/recent-actions/sanctions-list-updates",
       "cadence": "event_driven",
       "country_mapping": "event_specific",
-      "phase": "CANDIDATE_REQUIRES_ADAPTER_PROBE_AND_RIGHTS_REVIEW",
-      "purpose": "Cross-check US sanctions releases and dataset change clocks; not independent of its own republications"
+      "phase": "OFFICIAL_HTML_LISTING_PROBE_REQUIRED_NOT_EVENT_VERIFIED",
+      "purpose": "Official Recent Actions HTML listing; native visible dates are discovery only pending original-page and rights evidence. Retired RSS must not be used.",
+      "rss_retired_at": "2025-02-06",
+      "feed_protocol": "NO_RSS_RETIRED",
+      "current_probe_script": "scripts/ops/probe-official-sanctions-listings.mjs"
     },
     {
       "id": "world_bank_indicators_v2",

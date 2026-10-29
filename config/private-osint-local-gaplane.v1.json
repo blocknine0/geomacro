@@ -1127,10 +1127,10 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_gaplane_gnb_supplement",
-      "url": "https://www.odemocratagb.com/feed/",
+      "id": "private_gaplane_gnb_ang_agency",
+      "url": "https://ang.gw/feed/",
       "publisher_country_iso3": "GNB",
-      "discovery_reference_url": "https://www.odemocratagb.com/",
+      "discovery_reference_url": "https://ang.gw/",
       "categories": [
         "geopolitics",
         "macro",

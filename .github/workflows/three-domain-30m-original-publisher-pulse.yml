@@ -19,6 +19,9 @@ on:
     paths:
       - ".github/workflows/three-domain-30m-original-publisher-pulse.yml"
       - "scripts/ops/probe-30min-three-domain-pulse.mjs"
+      - "scripts/lib/official-sanctions-listings-observer.mjs"
+      - "scripts/ops/probe-official-sanctions-listings.mjs"
+      - "scripts/tests/official-sanctions-listings-observer.test.mjs"
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - "src/__tests__/three-domain-30m-source-pulse.test.ts"
       - "src/__tests__/ecb-original-macro-third-publisher.test.ts"
@@ -66,6 +69,9 @@ on:
     paths:
       - ".github/workflows/three-domain-30m-original-publisher-pulse.yml"
       - "scripts/ops/probe-30min-three-domain-pulse.mjs"
+      - "scripts/lib/official-sanctions-listings-observer.mjs"
+      - "scripts/ops/probe-official-sanctions-listings.mjs"
+      - "scripts/tests/official-sanctions-listings-observer.test.mjs"
       - "scripts/ops/probe-expanded-official-source-mesh.mjs"
       - "src/__tests__/three-domain-30m-source-pulse.test.ts"
       - "src/__tests__/ecb-original-macro-third-publisher.test.ts"
@@ -140,6 +146,7 @@ jobs:
           node --check scripts/lib/private-original-cross-poll-dedupe.mjs
           node --check scripts/ops/write-30min-source-pulse-d1.mjs
           node --test scripts/tests/auto-private-scoring-trigger.test.mjs
+          node --test scripts/tests/official-sanctions-listings-observer.test.mjs
           node --test scripts/lib/private-classifier-retry-ledger.test.mjs
           node --check scripts/ops/private-classifier-retry-lifecycle.mjs
           node --test scripts/lib/pulse-rotated-original-scorer.test.mjs
@@ -187,10 +194,18 @@ jobs:
         if: steps.budget.outputs.research != 'true'
         run: echo "::notice::HALF_HOUR_SOURCE_PULSE_QUOTA_HELD; no D1 or original-fetch proof."
       - name: Setup Node.js 22
-        if: steps.budget.outputs.research == 'true'
+        # This setup is shared with a source-only monitor. It runs even when
+        # quota admission denies D1 writes or the main official source pulse.
+        if: ${{ !cancelled() }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v4
         with:
           node-version: "22"
+      - name: Observe official OFAC sanctions list independent of D1 quota
+        # Nominally one read per hour; delayed crons can cross hourly slots.
+        # An upstream 403/429/202 or missed slot is recorded, never upgraded
+        # to a signed/current country event or paid customer response.
+        if: ${{ !cancelled() }}
+        run: node scripts/ops/probe-official-sanctions-listings.mjs --live --ofac-hourly-slot
       - name: Bounded, origin-validated half-hour source observation across all 3 domains
         if: steps.budget.outputs.research == 'true'
         run: |
@@ -296,13 +311,15 @@ jobs:
           }));
           NODE
       - name: Preserve two-day source-native counts, never raw news or session tokens
-        if: always() && steps.budget.outputs.research == 'true'
+        # OFAC reachability survives D1 quota-held cycles independently.
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
         with:
           name: original-source-pulse-${{ github.run_id }}
           path: |
             artifacts/private-intake/three-domain-30m-source-pulse.json
             artifacts/private-intake/three-domain-30m-d1-readback.json
+            artifacts/official-sanctions-listings/receipt.json
           if-no-files-found: warn
           retention-days: 2
 
