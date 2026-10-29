@@ -1,33 +1,35 @@
-# Amir 29 October 2026: GeoMacro-only remediation and evidence
+# Partner research parity and signed-output readiness (GeoMacro-owned)
 
-This document is a technical handoff, not proof of a paid or signed live product. It does not change PREDGE code, tokens, quota, driver, schema, contract, workflows, deployments, or the free research pilot.
+This operational specification contains no partner-private delivery counts, partner email contents, source-native identifiers, raw articles, tokens, PII or settlement data. Nothing changes the locked partner code, credentials, research quota, operating policy, retention or signed Risk Gate route.
 
-## 1. 353 versus 507
+## Current 72-hour research acceptance
 
-The old GeoMacro totals reported to the partner were geopolitics 183, macro 133, rare_earth 37 (353). The partner's two reads around 13:05 UTC on 29 October returned geopolitics 183, macro 219, rare_earth 105 (507): category differences 0, +86, +68. The source date, endpoint, filters, and exact IDs of the *older 353* are not established by this report. Therefore the gap of 154 is not independently explained. Do not assert that these are missing records, duplicate records or purely attribution differences until the same cohort and projected scope are compared.
+A private, attributed research endpoint reads the same canonical D1 journal as Website Intelligence. The public source-neutral projection intentionally withholds mandatory-credit records. Since these are different projections, their counts may legitimately differ. Because journal publication and TTL continue between calls, identical item counts at two different times are not proof of exact parity either.
 
-The authenticated PREDGE projection retains known mandatory source credits. Public source-neutral responses omit credited records. PREDGE counted 499 credited of 507; only eight uncredited remain on that snapshot. Thus a hypothetical SAME-COHORT public source-neutral projection could not contain 353 of these same partner items; an old Website subset must be treated as a different cohort/view until the 353 original ID set is recovered.
+Use scripts/ops/audit-predge-29oct-email.mjs with --offline followed by two private JSON export filenames to audit no quota at all. Or run --live inside a protected owner-only GitHub Actions job: one authenticated GET with the existing research bearer plus one public GET; zero retries, source reads, B2 writes and payments.
 
-scripts/ops/audit-predge-29oct-email.mjs provides an owner-only, bounded, read-only audit. With --live, it consumes one existing protected authenticated GET plus one public GET, prints no item IDs, publisher materials, URLs or bearer, and shows category, source-credit, confidence-state counts plus hashed IDs and exact same-cohort subset status. With --offline it processes local privately held JSON exports and uses zero quota. If the clocks differ by more than 90 seconds or old 353 source IDs are unknown, the result is INCONCLUSIVE rather than claimed PASS. For exact archive->D1->partner parity use the existing verified one-shot D1/archive verifier separately.
+The receipt validates bounded length, stable item identities, full unfiltered category counts, source-native original dates, credit and notices, confidence status, no rights/signature/payment authorization and a 90-second snapshot-cohort bound. Its LOCAL --offline mode emits only category/status/credit counts and SHA256 digests of sorted IDs, never source text, IDs, payment material, or bearer. Protected --live mode emits ONLY safe contract/subset status with counts and hashes redacted because the repository's Actions logs are public.
 
-## 2. Fifty IDs per category and the signed-flow request
+A previous summary or Website view can be reconciled only with its exact original endpoint, timestamp, filters, full native-ID set and field projection. When those are unavailable, explicitly mark the historical comparison INCONCLUSIVE. The existing separate source archive -> canonical D1 -> attributed partner one-shot verifier is needed for full journal parity, which this new tool does not claim.
 
-The recipient's driver reportedly carries up to 50 research IDs for each category. Research items remain unsigned and advisory. The current live risk-gate-1.0 response contract in src/lib/risk-gate-contract.ts has NO news_context field. The current PREDGE Risk Gate Worker response carries a risk_gate decision plus a separate context object, not a 150-ID signed research overlay. Its strict validator rejects unknown response keys.
+## Attribution and research confidence
 
-Adding risk_gate.news_context silently to risk-gate-1.0 would break current consumer parity. Before deployment, both parties must approve a versioned additive response contract and an upgraded recipient validator. A *proposed future* nested risk_gate.news_context could carry schema geomacro.news-context.v1, retention_hours 72, and geopolitics/macro/rare_earth lists with up to 50 eligible source-native IDs each, original release clocks and mandatory source credits. The context must explicitly distinguish research_only=true and signed_news=false unless the exact context bytes themselves have been independently signed and verified. A signed GRO alongside news ID references does NOT cryptographically sign those references.
+An item with no sources_credited is not automatically attribution-defective or licensed: verify actual originating source rights and its attribution obligation before any classification change. Recognized notices must remain intact. A monitored, unverified OSINT item remains unverified even when transport, signature of the source journal or partner client parsing passed. Evidence-level qualification requires real originating originals, genuine clocks, independent corroboration, topical/country identification and commercial rights where applicable. Never blanket-upgrade OSINT.
 
-No REAL production signed preview can be claimed from unsiged 72-hour research. Actual approval requires an active distinct protected Risk Gate token, current cryptographically valid production gro-1.1, genuine corroborated evidence, licensing/rights and exact B2/D1 acceptance. The existing TEST-ONLY Ed25519 vector is expired and not production trusted; it may be shared solely as a parser test vector with a prominent TEST ONLY label. PREDGE must revise its validator itself if the new news_context is mutually accepted. Never modify PREDGE or release its Risk Gate bearer prematurely.
+## Fifty per category preview versus signed output
 
-## 3. Attribution and OSINT confidence
+An existing research client may select at most 50 current source-native IDs in each of geopolitics, macro and rare_earth for an **unsigned advisory preview**. The actual number depends on the live research item supply and query time. Neither the number of IDs nor a JSON envelope alongside a signed object signs those IDs.
 
-Amir reports attribution present in 499/507 records. The other eight have no source credit in the response, but that does not prove a legal attribution defect. Verify originating source and whether it requires a notice before changing allowlists or claiming compliance. 475/507 are classified unverified OSINT observations. Preserve that status; original publisher and native time, topic relevance, independent corroboration and commercial permissions must be checked before individual qualifications. A HTTP 200, source signature or driver acceptance does not make those verified or payable.
+The current risk-gate-1.0 risk_gate response has no news_context property. Its response validator may reject unknown fields. Do not silently change that existing production partner contract.
 
-## Evidence and release gate
+A future explicitly negotiated, versioned risk_gate.news_context extension MAY carry a schema marker, original timestamps, source credits, a maximum of 50 canonical IDs per category, category counts and always non-execution advisory flags. Both parties must agree to update the response validator and define whether the news-context bytes themselves must be signed in a distinct verified envelope. Otherwise report context as unverified references, not signed content.
 
-1. Offline synthetic tests pass without partner data or secrets.
-2. The protected one-shot main-branch audit performs ONE authenticated GET + ONE public GET and produces aggregate-only receipt; HTTP 429/503 is a truthful failed acceptance, not success.
-3. Compare same-cohort exact ID digests; old 353 remains unverified without its original IDs, time and filters.
-4. Only generate and send a real signed-flow response after independent current GRO/rights/credential readiness; no manufactured item scoring, no unauthorized partner schema edit.
-5. Send the partner the safe receipt, precise scope/clock and proposed compatibility note; no commercial claim.
+The current signed Risk Gate requires a distinct protected credential, a genuinely fresh rights-qualified production gro-1.1 signed by a pinned real Ed25519 authority and exact B2/D1 proof. The private research bearer or old expired TEST-ONLY vector cannot substitute for those. New commercial Risk Gate remains Coming Soon, and no charge/credential release is authorized by research parity.
 
-Source contracts: docs/partners/predge/PREDGE_20261020_INTEGRATION_CONTRACT.md, src/lib/risk-gate-contract.ts, workers/control-plane/src/predge-risk-gate-d1.mjs, docs/ops/WEBSITE_PREDGE_SHARED_NEWS_72H_RECOVERY_20261029.md.
+## Independent acceptance
+
+- Offline synthetic tests pass without tokens.
+- In the reviewed main-branch one-shot protected execution, one private and one public read yield a safe aggregate receipt or fail clearly on 401/429/503.
+- Historical count claims need matching owner-held original data to prove ID-level reconciliation.
+- Any real signed preview is withheld until current signed GRO, rights, credentials, versioned schema and consumer agreement are independently proven.
+- Do not modify the locked partner system, manufacture events, publish private source records or send signed/paid output without its real prerequisites.

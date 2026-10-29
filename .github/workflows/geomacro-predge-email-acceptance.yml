@@ -1,4 +1,4 @@
-name: GeoMacro PREDGE 29 Oct Email Acceptance (No Funds)
+name: GeoMacro Partner Research One-Shot Parity (No Funds)
 on:
   pull_request:
     paths:
@@ -46,7 +46,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version: "22"}
-      - name: Exactly one partner + public 72h GET, aggregate-only receipt
+      - name: One partner + public 72h GET, public status only (counts redacted)
         env:
           PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
         run: node scripts/ops/audit-predge-29oct-email.mjs --live
