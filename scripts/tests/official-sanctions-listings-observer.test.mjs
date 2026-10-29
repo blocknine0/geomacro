@@ -59,3 +59,18 @@ test("original-page license/rights proof never inferred from healthy listing",as
   s.independent_same_event_confirmation===false &&
   s.paid_delivery_eligible===false));
 });
+
+test("Hourly production path checks OFAC only; blocked UNSC is not aggressively repeated",async()=>{
+ const urls=[];
+ const got=await observeOfficialSanctionsListings({now,onlySourceId:"ofac_sanctions_list_updates",
+   fetchImpl:async(url)=>{urls.push(url);return new Response(ofac,{status:200,headers:{"content-type":"text/html"}});}
+ });
+ assert.equal(urls.length,1);
+ assert.equal(got.source_count,1);
+ assert.equal(got.reachable_sources,1);
+ assert.equal(got.sources[0].id,"ofac_sanctions_list_updates");
+ await assert.rejects(()=>observeOfficialSanctionsListings({now,
+  onlySourceId:"https://evil.test/redirect",fetchImpl:async()=>{throw Error("NETWORK_NOT_ALLOWED");}}),
+  /SANCTIONS_LISTING_SOURCE_ID_NOT_ALLOWED/);
+ assert.equal(urls.length,1);
+});
