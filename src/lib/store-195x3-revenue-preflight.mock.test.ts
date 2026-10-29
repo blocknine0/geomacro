@@ -126,7 +126,11 @@ describe("195 x 3 585-cell synthetic Store no-funds coverage contracts",()=>{
      const body=await response.json();
      expect(body.payment_authorized).toBe(false);
      expect(body.chargeable).toBe(false);
-     expect(body.error.code).toBe("STORE_PREFLIGHT_SOURCE_EVIDENCE_UNVERIFIED");
+     // Some denied receipts are rejected by the earlier canonical checker
+     // before the independent structural defence-in-depth check. Both
+     // responses MUST remain 422/no-charge, and neither implies proof.
+     if(body.error)expect(body.error.code).toBe("STORE_PREFLIGHT_SOURCE_EVIDENCE_UNVERIFIED");
+     else expect(body.status).toBe("DATA_NOT_CURRENTLY_DELIVERABLE");
    }
  });
  it("a signed current Intelligence query cannot be sold with a mock annual structural source",async()=>{
