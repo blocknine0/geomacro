@@ -1,0 +1,47 @@
+name: Global 195x3 human machine source-gap regression
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '53 3 * * *'
+  pull_request:
+    paths:
+      - 'src/lib/canonical-country-registry-195.ts'
+      - 'config/answer-source-candidates-195x3.v1.json'
+      - 'scripts/ops/audit-195x3-human-machine-source-gaps.mjs'
+      - 'scripts/tests/verify-195x3-human-machine-source-gaps.mjs'
+      - '.github/workflows/global-195x3-human-machine-source-regression.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-195x3-regression-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deterministic-matrix-and-bounded-production-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify deterministic 195 country x 3 category x 2 actor cases
+        run: node scripts/tests/verify-195x3-human-machine-source-gaps.mjs
+      - name: Generate full 1170-question requirements and gap artifacts (offline)
+        run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs
+      - name: Run 12 rotated production questions with NO PAYMENT (daily or operator initiated)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs --live --limit=12
+        env:
+          GEOMACRO_195_AUDIT_DELAY_MS: '5000'
+      - name: Publish de-identified, no-funds audit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: geomacro-195x3-query-research-${{ github.run_id }}
+          path: ${{ runner.temp }}/geomacro-195x3-query-regression/*.json
+          if-no-files-found: warn
+          retention-days: 7
