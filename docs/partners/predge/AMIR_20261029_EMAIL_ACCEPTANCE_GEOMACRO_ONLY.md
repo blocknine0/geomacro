@@ -22,6 +22,39 @@ No REAL production signed preview can be claimed from unsiged 72-hour research. 
 
 Amir reports attribution present in 499/507 records. The other eight have no source credit in the response, but that does not prove a legal attribution defect. Verify originating source and whether it requires a notice before changing allowlists or claiming compliance. 475/507 are classified unverified OSINT observations. Preserve that status; original publisher and native time, topic relevance, independent corroboration and commercial permissions must be checked before individual qualifications. A HTTP 200, source signature or driver acceptance does not make those verified or payable.
 
+## 4. Protected one-shot readback — 2026-10-29 14:21 UTC
+
+GeoMacro commit `dcecc2ea7865bab76e0fac1e2f0d16dcae6a4f69` ran the bounded,
+read-only acceptance workflow [#40890602963](https://github.com/blocknine0/geomacro/actions/runs/40890602963).
+The offline contract and protected production step both succeeded. The protected
+step made exactly one authenticated partner GET and one public GET. The receipt
+contains aggregate counts and hashes only; it did not log item IDs, source
+materials, article URLs, or the bearer.
+
+- Same-cohort clocks: private `2026-10-29T14:21:28.477Z`; public
+  `2026-10-29T14:21:30.375Z` (1.898 seconds apart).
+- Attributed research projection: **506** items — Geopolitics **178**,
+  Macro **222**, Critical Minerals **106**.
+- Source-neutral public projection: **8** items — **8 / 0 / 0**. The
+  same-cohort check passed: it is a subset of the attributed projection.
+- The attributed projection contained **498 credited** items and **8 with no
+  source credit**. The eight uncredited rows are not automatically classified
+  as an attribution defect.
+- Confidence states: **469 unverified OSINT** and **37 official unscored**
+  (29 / 7 / 1 by category); no unclassified official candidates.
+- The 2026-10-29 13:05 email snapshot reported 507 items (183 / 219 / 105).
+  This later readback is a different cohort. The older GeoMacro **353**
+  snapshot (183 / 133 / 37) still has no ID-set, timestamp, or filter receipt,
+  so the historical 154-item difference remains **unexplained**.
+- The feed contains at least 50 research IDs in each category, but the
+  **signed 50-per-category flow remains unverified**. Current signed GRO,
+  item-level commercial rights, Risk Gate credential, and partner schema
+  acceptance are still false/not proven. No payment was authorized.
+
+This readback proves one current no-charge research-feed retrieval and
+same-cohort subset relationship. It does not prove historical 353 parity,
+signed output, commercial reuse rights, or a paid customer delivery.
+
 ## Evidence and release gate
 
 1. Offline synthetic tests pass without partner data or secrets.
