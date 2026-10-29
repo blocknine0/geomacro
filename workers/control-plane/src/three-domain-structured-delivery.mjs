@@ -223,8 +223,9 @@ export async function deliverThreeDomainStructuredOutput(env,now=Date.now(),
  * Validate a clone of the cached source BEFORE handing it to the projector.
  * Only when that cached HTTP 200 is incompatible, bypass cache ONCE and
  * validate a fresh canonical D1 readback via the regular fail-closed path.
- * Never retry a source HTTP 503, add a source GET, sign or pay. Never promote
- * cached unsupported data to commercial evidence.
+ * Only source HTTP 503 is also retried once, and ONLY after an actual 503. Never promote
+ * cached unsupported data to commercial evidence. Normal healthy reads still use
+ * the existing shared cache and spend no new provider reads.
  */
 export async function deliverThreeDomainStructuredWithCacheRecovery(
  env,now=Date.now(),readCached,readCanonical){
@@ -232,6 +233,12 @@ export async function deliverThreeDomainStructuredWithCacheRecovery(
   return denied();
  return deliverThreeDomainStructuredOutput(env,now,async()=>{
   const cached=await readCached();
+  // A first anonymous canonical read can return a transient 503 although
+  // an immediately following uncached canonical read is healthy (confirmed
+  // by real protected-run HTTP 503/200 pairs). Retry exactly ONE no-cache
+  // read on 503, but NEVER relabel a second 503 as available or chargeable.
+  // No retry on 429, 401, 400 or other status; no concurrent source fetch.
+  if(cached?.status===503)return readCanonical();
   if(cached?.status!==200)return cached;
   try{
    const body=await cached.clone().json();
