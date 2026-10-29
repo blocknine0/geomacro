@@ -1,3 +1,27 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {
+  ON_DEMAND_OFFICIAL_HOSTS,
+  approvedOnDemandSourceHostname,
+} from "../lib/on-demand-source-origin-allowlist.mjs";
+import {GLOBAL_OFFICIAL_RELEASE_FEEDS}
+  from "../lib/global-official-release-feeds.mjs";
+
+const discovery=readFileSync("src/lib/on-demand-global-discovery.server.ts","utf8");
+const live=readFileSync("scripts/ops/verify-live-on-demand-real-apis.ts","utf8");
+const representative=readFileSync("scripts/ops/verify-live-on-demand-representative-cases.ts","utf8");
+
+test("all pinned global first-party release feeds share the bounded origin policy",()=>{
+  const registered=[...new Set(GLOBAL_OFFICIAL_RELEASE_FEEDS.map(s=>s.host))];
+  for(const host of registered) {
+    assert.ok(approvedOnDemandSourceHostname(host), "missing registered source origin: "+host);
+    assert.ok(live.includes('"'+host+'":'),"live receipt has no status family for "+host);
+  }
+  assert.equal(new Set(ON_DEMAND_OFFICIAL_HOSTS).size,ON_DEMAND_OFFICIAL_HOSTS.length);
+  assert.ok(ON_DEMAND_OFFICIAL_HOSTS.length<=24);
+});
+
 test("arbitrary, obfuscated and external hosts are never implicitly permitted",()=>{
   for(const host of [
     "localhost","127.0.0.1","169.254.169.254","metadata.google.internal",
