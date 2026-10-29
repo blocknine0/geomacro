@@ -128,6 +128,19 @@ export function auditProvenanceAndPreview(feed){
   exact_id_set_sha256:digest(rows),
  });
 }
+export function createProposedNewsContext(feed){
+ const f=verify(feed);
+ if(f.projection!=="attributed_research")err("PREVIEW_ATTRIBUTED_FEED_REQUIRED");
+ return Object.freeze({
+  schema:"geomacro.news-context.draft.v1",
+  snapshot_at:f.generated_at,
+  research_only:true,signed_news:false,execution_authorized:false,
+  retention_hours:72,partner_validator_approved:false,
+  commercial_rights_verified:false,
+  categories:Object.fromEntries(CATS.map(c=>[c,f.items.filter(x=>x.category===c)
+    .slice(0,50).map(x=>x.id)])),
+ });
+}
 export function validateProposedNewsContext(proposal,feed,now=Date.now()){
  const f=verify(feed);
  const captured=epoch(f.generated_at);
