@@ -9,6 +9,10 @@ on:
     branches: [main]
     paths:
       - "src/lib/agent-query-plan.ts"
+      # Current first-party source qualification can change buyer eligibility.
+      # Rerun the same zero-funds three-category buyer preflight on source changes.
+      - "src/lib/on-demand-global-discovery.server.ts"
+      - "scripts/lib/global-official-release-feeds.mjs"
       - "src/lib/agent-query-response.server.ts"
       - "src/lib/earn-first-structural-offers.server.ts"
       # The security classifier for unpaid POST and both fallback module
@@ -39,6 +43,10 @@ on:
   pull_request:
     paths:
       - "src/lib/agent-query-plan.ts"
+      # Current first-party source qualification can change buyer eligibility.
+      # Rerun the same zero-funds three-category buyer preflight on source changes.
+      - "src/lib/on-demand-global-discovery.server.ts"
+      - "scripts/lib/global-official-release-feeds.mjs"
       - "src/lib/agent-query-response.server.ts"
       - "src/lib/earn-first-structural-offers.server.ts"
       - "src/routes/api.v1.intelligence.availability.ts"
