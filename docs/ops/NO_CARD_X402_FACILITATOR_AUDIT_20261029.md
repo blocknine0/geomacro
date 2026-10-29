@@ -30,3 +30,7 @@ Before a production adapter is wired into POST /api/v1/intelligence/query:
 7. Profit = paid USDC less facilitator, inference, acquisition, hosting, compliance, refunds and taxes. A fee-only estimate is NOT net profit.
 
 EXPLICIT LOCKS: All Coinbase/Circle payment production ACKs, emergency freezes, source rights, PREDGE code/workflows/credentials/quotas/contracts and deploy paths remain untouched. No card, paid plan, customer funds or auto-activation.
+
+## Optional illustrative fee-only budget
+
+The pure feeBudgetDecision helper defaults to a strict 5% maximum of a sale's USDC value. A $0.02 payment permits at most $0.001 in facilitator fees, so current PayAI Base (~$0.00197) and Polygon (~$0.00362) rates would be over this ceiling; an advertised zero-fee hosted option is preferable, but only after verification. A missing current fee quote always fails this budget. Budget acceptance never authorizes payment or establishes real net profit.
