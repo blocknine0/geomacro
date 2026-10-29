@@ -34,3 +34,17 @@ test("selection is pure and its printed role can never disclose actual B2 secret
  assert.equal(safe.includes("MY_PRIVATE"),false);
  assert.equal(a.role,"DEDICATED_ARCHIVE_WRITER");
 });
+
+test("production quarantines the known-invalid generic B2 key before a source fetch or PUT",()=>{
+ assert.throws(()=>select({
+  B2_KEY_ID:"old-id",B2_APPLICATION_KEY:"old-invalid-secret",
+  GOVERNED_B2_REQUIRE_DEDICATED_WRITER:"1",
+ }),/GOVERNED_B2_DEDICATED_WRITER_REQUIRED_OWNER_SECRET/);
+ const x=select({
+  B2_KEY_ID:"old-id",B2_APPLICATION_KEY:"old-invalid-secret",
+  B2_ARCHIVE_WRITE_KEY_ID:"new-id",B2_ARCHIVE_WRITE_APPLICATION_KEY:"new-secret",
+  GOVERNED_B2_REQUIRE_DEDICATED_WRITER:"1",
+ });
+ assert.equal(x.role,"DEDICATED_ARCHIVE_WRITER");
+ assert.equal(x.authenticated,false);
+});
