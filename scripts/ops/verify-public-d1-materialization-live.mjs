@@ -2,8 +2,10 @@
 /**
  * Strict production anonymous-vs-origin materialization proof.
  * This is customer-serving read validation, not a synthetic production probe.
- * One anonymous GET plus one owner-authenticated canonical D1 GET. No D1
- * mutation, B2 call, publisher source fetch, or credential exposure.
+ * One anonymous cache-bypassing GET of the public materialized page plus one
+ * owner-authenticated canonical D1 GET. No D1 mutation, B2 call, publisher
+ * source fetch, or credential exposure. Bypassing the POP cache avoids
+ * comparing a cached older response with a newer canonical revision.
  */
 import {createHmac} from "node:crypto";
 import {resolve} from "node:path";
@@ -15,13 +17,11 @@ const MAX_BYTES=200_000;
 async function read(fetchImpl,direct,{token=null}={}){
  const res=await fetchImpl(ORIGIN+(direct?OWNER_ROUTE:ROUTE),{
   method:"GET",redirect:"error",
-  // Public read remains a browser-like cache-eligible GET.
-  // Protected read has a DISTINCT uncached authenticated route, not merely
-  // Cache-Control:no-cache on the same CDN-cacheable public URL.
-  ...(direct?{cache:"no-store"}:{}),
-  headers:{"Accept":"application/json",...(direct?{
+  // Both reads bypass request/POP caches. The public read must still return
+  // the D1 materialized receipt; the distinct owner route proves canonical D1.
+  cache:"no-store",
+  headers:{"Accept":"application/json","Cache-Control":"no-cache",...(direct?{
     Authorization:"Bearer "+token,
-    "Cache-Control":"no-cache"
   }:{})},
   signal:AbortSignal.timeout(12_000),
  });

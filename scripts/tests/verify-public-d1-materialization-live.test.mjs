@@ -11,7 +11,7 @@ function page(receipt,ids=["macro-abc01234"],owner=false){
       "Cache-Control":"no-store"}:{})}
  });
 }
-test("actual anonymous materialization and mandatory no-cache canonical parity",async()=>{
+test("anonymous D1 materialization and no-cache parity with canonical origin",async()=>{
  const calls=[];
  const result=await verifyMaterializedAnonymousRead({env,fetchImpl:async(url,opts)=>{
   calls.push({url,opts});
@@ -28,8 +28,9 @@ test("actual anonymous materialization and mandatory no-cache canonical parity",
  assert.match(calls[1].opts.headers.Authorization,/^Bearer [a-f0-9]{64}$/u);
  assert.equal(calls[1].opts.headers["Cache-Control"],"no-cache");
  assert.equal(calls[1].opts.cache,"no-store");
- assert.equal(calls[0].opts.headers["Cache-Control"],undefined);
- assert.equal(calls[0].opts.cache,undefined,"anonymous probe must stay edge-cache eligible");
+ assert.equal(calls[0].opts.headers["Cache-Control"],"no-cache");
+ assert.equal(calls[0].opts.cache,"no-store",
+  "parity probe must not compare a cached older page with current canonical D1");
 });
 test("missing offload receipt never passes CI and never needs origin read",async()=>{
  let calls=0;
