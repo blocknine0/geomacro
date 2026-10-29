@@ -20,6 +20,7 @@ export const ON_DEMAND_OFFICIAL_HOSTS = Object.freeze([
   "www.canada.ca",
   "press.un.org",
   "www.bis.org",
+  "www.wto.org",
   "www.stats.gov.cn",
   "www.boj.or.jp",
   "www.iea.org",
