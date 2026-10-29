@@ -74,3 +74,16 @@ test("Hourly production path checks OFAC only; blocked UNSC is not aggressively 
   /SANCTIONS_LISTING_SOURCE_ID_NOT_ALLOWED/);
  assert.equal(urls.length,1);
 });
+
+test("Script tags including whitespace end tags never supply fake notice links or native dates",()=>{
+ const bad=`<html><h1>Sanctions List Updates</h1>
+ <script data-x="1"><a href="/recent-actions/20261029">Not visible</a> October 29, 2026</script >
+ <style>October 29, 2026</style ></html>`;
+ const r=inspectSanctionsListing(bad,"OFAC_RECENT_ACTIONS_HTML",{now});
+ assert.equal(r.listing_article_paths_seen,0);
+ assert.equal(r.source_native_listing_date_candidates,0);
+});
+test("Malformed unclosed executable content is rejected instead of being treated as events",()=>{
+ const bad='<h1>Sanctions List Updates</h1><script><a href="/recent-actions/20261029">Fake</a> October 29, 2026';
+ assert.throws(()=>inspectSanctionsListing(bad,"OFAC_RECENT_ACTIONS_HTML",{now}),/MALFORMED_EXECUTABLE_BLOCK/);
+});
