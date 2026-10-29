@@ -20,8 +20,37 @@ const sourceClock=(str,nowMs)=>{
  if(!Number.isFinite(n)||n>nowMs+86400000||n<Date.UTC(2000,0,1))return null;
  return new Date(n).toISOString().slice(0,10);
 };
-const withoutNonVisible=s=>s.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu," ")
-  .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/giu," ");
+// Do not use regex to strip HTML executable blocks. Closing tags may have
+// arbitrary whitespace or malformed trailing tokens. Scan and drop the WHOLE
+// raw block or fail closed; never accept dates/links from non-visible JS/CSS.
+function withoutNonVisible(html){
+ const lower=html.toLowerCase();
+ const afterTagName=c=>c===undefined||c===">"||c==="/"||
+   c===" "||c==="\t"||c==="\r"||c==="\n"||c==="\f";
+ const findName=(marker,from)=>{
+   let i=lower.indexOf(marker,from);
+   while(i>=0&&!afterTagName(lower[i+marker.length]))
+     i=lower.indexOf(marker,i+1);
+   return i;
+ };
+ let position=0,out="";
+ while(position<html.length){
+   const a=findName("<script",position),b=findName("<style",position);
+   if(a<0&&b<0){out+=html.slice(position);break}
+   const start=a>=0&&(b<0||a<b)?a:b;
+   const name=start===a?"script":"style";
+   out+=html.slice(position,start);
+   const openerEnd=lower.indexOf(">",start+name.length+1);
+   if(openerEnd<0)throw Error("SANCTIONS_LISTING_MALFORMED_EXECUTABLE_BLOCK");
+   const close=findName("</"+name,openerEnd+1);
+   if(close<0)throw Error("SANCTIONS_LISTING_MALFORMED_EXECUTABLE_BLOCK");
+   const closeEnd=lower.indexOf(">",close+name.length+2);
+   if(closeEnd<0)throw Error("SANCTIONS_LISTING_MALFORMED_EXECUTABLE_BLOCK");
+   out+=" ";
+   position=closeEnd+1;
+ }
+ return out;
+}
 const textOnly=s=>withoutNonVisible(s)
   .replace(/<[^>]*>/gu," ").replace(/&(?:nbsp|amp|quot|apos);/giu," ")
   .replace(/\s+/gu," ").trim();
