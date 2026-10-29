@@ -240,9 +240,8 @@ test("new regional macro/minerals and maritime corridor candidates are deduplica
   assert.equal(found[0].publicly_deliverable,false);
  }
  const selected=complete.filter(s=>[
-  "private_expansion_wto_trade_news",
   "private_expansion_mining_dot_com",
- ].includes(s.id));
+ ].includes(s.id)||s.url==="https://www.wto.org/library/rss/latest_news_e.xml");
  const rss='<rss><channel><item><title>WTO publishes inflation economic trade statistics update</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
  const minerals='<rss><channel><item><title>Global mining industry announces lithium and rare-earth mineral supply changes</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate></item></channel></rss>';
  const mock=await collectPrivateOsint15m({now,registry:selected,normalize,resolveCountry:()=>null,
