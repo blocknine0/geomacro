@@ -128,8 +128,12 @@ export function auditProvenanceAndPreview(feed){
   exact_id_set_sha256:digest(rows),
  });
 }
-export function validateProposedNewsContext(proposal,feed){
+export function validateProposedNewsContext(proposal,feed,now=Date.now()){
  const f=verify(feed);
+ const captured=epoch(f.generated_at);
+ if(!Number.isFinite(now)||captured>now+60_000||now-captured>90_000)
+    err("NEWS_CONTEXT_STALE_SNAPSHOT");
+ if(proposal?.snapshot_at!==f.generated_at)err("NEWS_CONTEXT_CLOCK_BINDING");
  if(proposal?.schema!=="geomacro.news-context.draft.v1"||
    proposal?.research_only!==true||proposal.signed_news!==false||
    proposal?.execution_authorized!==false||
@@ -146,6 +150,8 @@ export function validateProposedNewsContext(proposal,feed){
   for(const id of selection){
    const item=lookup.get(id);
    if(!item||item.category!==c)err("NEWS_CONTEXT_ID_NOT_IN_CURRENT_FEED");
+   const original=epoch(item.original_published_at);
+   if(original>captured||captured-original>W)err("NEWS_CONTEXT_ID_EXPIRED_OR_FUTURE");
   }
  }
  return Object.freeze({
