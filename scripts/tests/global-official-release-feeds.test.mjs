@@ -7,7 +7,7 @@ const now=new Date('2026-10-16T08:00:00Z');
 const candidate={articleUrl:'https://www.iea.org/news/zambia-critical-minerals-supply-security',title:'Zambia critical minerals supply security'};
 const page=(clock='2026-10-16T07:00:00Z',extra='')=>`<!doctype html><html><h1>${candidate.title}</h1><p class="o-hero-news__meta">News<br/><time datetime="${clock}">16 October 2026</time></p>${extra}</html>`;
 test('expanded official international connectors cover all three categories without credentials',()=>{
- assert.equal(feeds.length,16);assert.equal(new Set(feeds.map(s=>s.id)).size,16);
+ assert.equal(feeds.length,19);assert.equal(new Set(feeds.map(s=>s.id)).size,19);
  assert.deepEqual(new Set(feeds.map(s=>s.category)),new Set(['geopolitics','macro','rare_earth']));
  for(const s of feeds){const u=new URL(s.url);assert.equal(u.hostname,s.host);assert.equal(u.protocol,'https:');assert.ok(!u.username&&!u.password);assert.equal(s.poll_minutes,30);}
 });
@@ -157,4 +157,42 @@ test('DOE official battery supply-chain strategy is a discovery lead, never a ce
  // The feed is only an ORIGINAL CANDIDATE. Neither article rights nor
  // independence, time/readback, scoring or payment can be inferred here.
  assert.equal(doe.production_update_reader,true);
+});
+
+test('trade-geo-macro-minerals official issuer feeds keep exact first-party URL and fail closed',()=>{
+ const cases=[
+  ['wto_trade_policy_global','geopolitics','https://www.wto.org/english/news_e/news26_e/tar_29jun26_431_e.htm','https://www.wto.org/english/news_e/news26_e/news26_e.htm'],
+  ['bis_management_macro_global','macro','https://www.bis.org/speeches/20261029-deposit-insurance-changing-financial-landscape','https://www.bis.org/review/r261029a.htm'],
+  ['australia_critical_minerals_minister_global','rare_earth','https://www.minister.industry.gov.au/t-ayres/media/construction-starts-arafura-rare-earths-project','https://www.minister.industry.gov.au/media-centre'],
+ ];
+ for (const [id,category,real,nonArticle] of cases) {
+  const source=feeds.find(s=>s.id===id);
+  assert.ok(source,id+' registered');
+  assert.equal(source.category,category);
+  assert.equal(source.format,'rss');
+  assert.equal(source.production_update_reader,true);
+  assert.equal(source.poll_minutes,30);
+  assert.equal(globalOriginalArticleUrl(real,source),real);
+  assert.equal(globalOriginalArticleUrl(nonArticle,source),null);
+  assert.equal(globalOriginalArticleUrl(real+'?ref=feed',source),null);
+  assert.equal(globalOriginalArticleUrl(real+'#modified',source),null);
+  assert.equal(globalOriginalArticleUrl(real.replace('https://','http://'),source),null);
+  assert.equal(globalOriginalArticleUrl(real.replace('https://','https://evil.example/'),source),null);
+  assert.equal(source.credit.length>30,true);
+  assert.notEqual(source.commercial_reuse_authorized,true);
+  assert.notEqual(source.signed_delivery_verified,true);
+ }
+ const bis=feeds.find(s=>s.id==='bis_management_macro_global');
+ assert.equal(globalOriginalArticleUrl('https://www.bis.org/speeches/sp261029.htm',bis),
+  'https://www.bis.org/speeches/sp261029.htm');
+ assert.equal(globalOriginalArticleUrl('https://www.bis.org/speeches/20261029-deposit-insurance-changing-financial-landscape',bis),
+  'https://www.bis.org/speeches/20261029-deposit-insurance-changing-financial-landscape');
+ assert.equal(globalOriginalArticleUrl('https://www.bis.org/speeches/20261029',bis),null);
+ const wto=feeds.find(s=>s.id==='wto_trade_policy_global');
+ const xml='<rss><channel><item><title>WTO members announce tariff safeguard and trade dispute talks</title>'+
+  '<link>https://www.wto.org/english/news_e/news26_e/tar_29jun26_431_e.htm</link>'+
+  '<pubDate>Thu, 29 Oct 2026 08:00:00 GMT</pubDate></item></channel></rss>';
+ assert.equal(validateFreeLineupProbePayload(wto,xml).valid,true);
+ assert.equal(summarizeFreeSourceUpdates(wto,xml,new Date('2026-10-29T12:00:00Z')).latest_native_publication_at,'2026-10-29T08:00:00.000Z');
+ assert.equal(summarizeFreeSourceUpdates(wto,xml.replaceAll('pubDate','updated'),new Date('2026-10-29T12:00:00Z')).latest_native_publication_at,null);
 });

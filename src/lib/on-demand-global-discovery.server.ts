@@ -691,7 +691,12 @@ const GOVUK_SEARCH_FALLBACKS:readonly OriginalFeed[]=[
     topic:/\b(?:critical minerals?|critical raw materials?|strategic minerals?|rare[- ]earth(?:s?| elements?)?|lanthanides?|lithium|cobalt|nickel|graphite|copper|gallium|germanium|antimony|tungsten|manganese|vanadium|scandium|tantalum|niobium|dysprosium|neodymium|terbium|praseodymium|samarium|yttrium|mineral supply|minerals? processing|mining|ore processing|smelting|refining|refineries|permanent magnets?|magnet production|battery materials)\b/iu,
   },
 ];
-const INTERNATIONAL_ORIGINAL_FEEDS:readonly OriginalFeed[]=GLOBAL_OFFICIAL_RELEASE_FEEDS.filter((s:{format:string})=>s.format!=='json').map(
+const INTERNATIONAL_ORIGINAL_FEEDS:readonly OriginalFeed[]=GLOBAL_OFFICIAL_RELEASE_FEEDS.filter((s:{format:string;id:string})=>
+  // Australia industry minister is already handled by the protected country-
+  // native original feed with exact same-publisher HTTP failure fallback.
+  // The new global registry route remains available to scheduled collection,
+  // but on-demand must NOT double-fetch or count same issuer twice.
+  s.format!=='json' && s.id!=='australia_critical_minerals_minister_global').map(
   s=>({
     domain:s.category as OnDemandCategory,family:s.family,url:s.url,media:s.format==='rss'?'rss' as const:'search' as const,
     originalHost:s.host,originalPath:s.path,topic:s.topic,
