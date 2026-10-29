@@ -11,6 +11,9 @@ on:
       - 'scripts/ops/audit-195x3-human-machine-source-gaps.mjs'
       - 'scripts/tests/verify-195x3-human-machine-source-gaps.mjs'
       - 'scripts/ops/probe-195x3-wdi-official-reference.mjs'
+      - 'scripts/lib/production-source-continuity-evaluator.mjs'
+      - 'scripts/ops/observe-production-three-domain-source-continuity.mjs'
+      - 'scripts/tests/production-three-domain-source-continuity.test.mjs'
       - 'scripts/lib/wdi-195-batch-reference.mjs'
       - '.github/workflows/global-195x3-human-machine-source-regression.yml'
 
@@ -36,6 +39,8 @@ jobs:
         run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs
       - name: Validate official 195-country macro source adapter without network
         run: node scripts/tests/wdi-195-batch-reference.test.mjs
+      - name: Assert actual first-party source clock and publisher pulse invariants
+        run: node --test scripts/tests/production-three-domain-source-continuity.test.mjs
       - name: Generate offline source availability receipt
         run: node scripts/ops/probe-195x3-wdi-official-reference.mjs
       - name: Run one bounded World Bank 195-country reference batch
