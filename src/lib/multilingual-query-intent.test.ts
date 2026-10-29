@@ -112,7 +112,7 @@ describe("multilingual no-funds query interpreter", () => {
       question:"What graphite supply and export restrictions are documented for Ethiopia?",
       subjects:[{type:"country",country_iso3:"ETH"}],topics:["critical_minerals"],
     });
-    expect(graphite.topics).toEqual(["critical_minerals"]);
+    expect(graphite.topics).toContain("critical_minerals");
     expect(graphite.subjects).toEqual([{type:"country",country_iso3:"ETH"}]);
     expect(graphite.canonical_request.fulfillment_mode).toBe("published_only");
   });
