@@ -3,6 +3,7 @@ import type {PrivatePageDatedOriginal} from "../lib/on-demand-global-discovery.s
 import type {StatelessIntelligenceSignal, StatelessSourceCandidate} from "../lib/stateless-intelligence-model";
 import {
   buildSourceGroundedResearchAnswer,
+  buildStructuredEvidenceGap,
   isSourceGroundedResearchAnswer,
 } from "../lib/on-demand-research-answer.server";
 
@@ -62,6 +63,29 @@ const signal: StatelessIntelligenceSignal = {
 };
 
 describe("source-grounded on-demand research answer", () => {
+  it("returns one stable structured no-evidence object instead of inventing a fact",()=>{
+    const result=buildStructuredEvidenceGap({
+      country_iso3:"LSO",categories:["macro"],topics:["sovereign_risk"],
+      question:"What official sovereign debt and fiscal deficit evidence exists for Lesotho?",
+      query_plan_hash:PLAN_HASH,checked_at:NOW.toISOString(),source_families_reached:3,
+    });
+    expect(result).toMatchObject({
+      schema:"geomacro.structured-answer.v1",status:"INSUFFICIENT_VERIFIED_EVIDENCE",
+      query_plan_hash:PLAN_HASH,
+      query_scope:{country_iso3:"LSO",categories:["macro"],requested_topics:["sovereign_risk"],
+        query_type:"CURRENT_EVENT_OR_RELEASE"},
+      answer:null,evidence_summary:{verified_observation_count:0,latest_original_published_at:null},
+      source_check:{checked_at:NOW.toISOString(),source_families_reached:3,bounded_search_exhaustive:false},
+      delivery:{chargeable:false,payment_required_now:false,raw_upstream_delivered:false,
+        source_identity_exposed:false,signed:false,execution_authorized:false},
+    });
+    expect(buildStructuredEvidenceGap({
+      country_iso3:"LSO",categories:["macro"],topics:["macro_risk"],
+      question:"What was the inflation rate?",query_plan_hash:PLAN_HASH,
+      checked_at:NOW.toISOString(),source_families_reached:0,
+    })?.query_scope.query_type).toBe("STATISTICAL_HISTORICAL_OR_FORECAST_SERIES");
+  });
+
   it("builds a concise derived-only answer from country/topic-matched original-page proof", () => {
     const candidateFromPage = vi.fn(() => candidate);
     const deriveSignals = vi.fn((_candidates: readonly StatelessSourceCandidate[], _now?: number, _options?: {websiteDelay?: boolean; maxSignals?: number; editorialVersion?: "legacy_v1" | "actor_action_v2"}) => [signal]);

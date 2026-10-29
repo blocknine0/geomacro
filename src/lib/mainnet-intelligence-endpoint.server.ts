@@ -69,7 +69,8 @@ import {
   inferOnDemandFreshnessSeconds, requestsHistoricalMineralData,
   verifyOnDemandOriginalArticlePages, type OnDemandCategory, type SourceProbe,
 } from "./on-demand-global-discovery.server";
-import { buildSourceGroundedResearchAnswer, type SourceGroundedResearchAnswer } from "./on-demand-research-answer.server";
+import { buildSourceGroundedResearchAnswer, buildStructuredEvidenceGap,
+  type SourceGroundedResearchAnswer } from "./on-demand-research-answer.server";
 import type { BgsMineralHistory } from "./bgs-world-mineral-statistics.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
@@ -585,11 +586,43 @@ export const mainnetIntelligenceHandlers = {
             // this request has a genuine intelligence evidence gap.
             originalArticleEvidenceSufficient: false,
           });
+          const structuredAnswer=sourceGroundedResearchAnswer?{
+            schema:"geomacro.structured-answer.v1" as const,
+            status:"RESEARCH_ONLY_WITH_ORIGINAL_DATED_OBSERVATIONS" as const,
+            query_plan_hash:plan.query_plan_hash,
+            query_scope:sourceGroundedResearchAnswer.query_scope,
+            answer:sourceGroundedResearchAnswer.answer,
+            evidence_summary:sourceGroundedResearchAnswer.evidence_summary,
+            gaps:[...sourceGroundedResearchAnswer.limitations],
+            delivery:{chargeable:false,payment_required_now:false,payment_authorized:false,
+              signed:false,raw_upstream_delivered:false,execution_authorized:false},
+          }:historicalMineralAnswer?{
+            schema:"geomacro.structured-answer.v1" as const,
+            status:"HISTORICAL_SERIES_ONLY" as const,
+            query_plan_hash:plan.query_plan_hash,
+            query_scope:{country_iso3:subject.country_iso3,categories,requested_topics:plan.topics,
+              query_type:"HISTORICAL_MINERAL_PRODUCTION_SERIES"},
+            answer:historicalMineralAnswer,
+            evidence_summary:{verified_observation_count:historicalMineralAnswer.series.length,
+              first_year:historicalMineralAnswer.observation_period.first_year,
+              latest_year:historicalMineralAnswer.observation_period.latest_year,
+              current_data:false},
+            gaps:[...historicalMineralAnswer.limitations],
+            delivery:{chargeable:false,payment_required_now:false,payment_authorized:false,
+              signed:false,raw_upstream_delivered:false,source_identity_exposed:true,
+              execution_authorized:false},
+          }:buildStructuredEvidenceGap({
+            country_iso3:subject.country_iso3,categories,topics:plan.topics,
+            question:plan.question_key,query_plan_hash:plan.query_plan_hash,
+            checked_at:discovery.checked_at,
+            source_families_reached:discovery.reached_source_families,
+          });
           // No raw upstream records, publisher IDs or original links cross
           // this boundary. No x402 payment quote is issued for discoveries.
           return json({
             ok:false,chargeable:false,payment_required_now:false,
             product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,
+            structured_answer:structuredAnswer,
             ...(sourceGroundedResearchAnswer ? {research_answer:sourceGroundedResearchAnswer} : {}),
             ...(historicalMineralAnswer ? {historical_mineral_answer:historicalMineralAnswer} : {}),
             on_demand:{

@@ -23,6 +23,52 @@ const noCharge = (code:string,status=422,resolution?:ReturnType<typeof publicQue
 },{status,headers:HEADERS});
 
 type CanonicalPost=(args:{request:Request})=>Promise<Response>;
+const LIVE_RESEARCH_RETRY_CODES=new Set([
+  "NOT_AVAILABLE","INSUFFICIENT_COVERAGE","STALE_REQUIRED_DATA","UNAVAILABLE",
+  "AVAILABILITY_CHECK_UNAVAILABLE","CDP_API_CREDENTIALS_MISSING",
+  "COINBASE_X402_NOT_CONFIGURED","COINBASE_X402_CONFIGURATION_INVALID",
+  "CAPABILITY_PRICE_UNVERIFIED_NO_CHARGE",
+]);
+
+async function retryWithBoundedLiveResearch(input:Readonly<{
+  request:Request;
+  query:ReturnType<typeof interpretMultilingualIntelligenceQuery>["canonical_request"];
+  response:Response;
+  post:CanonicalPost;
+}>):Promise<Response>{
+  if(input.request.headers.has("payment-signature")||
+    (input.response.status!==422&&input.response.status!==503)||
+    input.query.fulfillment_mode!=="published_only"||
+    input.query.product?.capability!=="intelligence_query"||
+    input.query.subjects.length!==1||input.query.subjects[0]?.type!=="country"||
+    (input.query.as_of!==undefined&&input.query.as_of!==null)||
+    (input.query.ranking!==undefined&&input.query.ranking!==null)||
+    (input.query.change!==undefined&&input.query.change!==null)||
+    (input.query.risk_gate_context!==undefined&&input.query.risk_gate_context!==null)||
+    input.query.topics.some(topic=>["risk_object","risk_gate","gri_context"].includes(topic)))
+    return input.response;
+  let code:string|null=null;
+  try{
+    const payload=await input.response.clone().json() as {error?:{code?:unknown};availability?:{code?:unknown}};
+    const candidate=payload.error?.code??payload.availability?.code;
+    if(typeof candidate==="string")code=candidate;
+  }catch{return input.response;}
+  if(!code||!LIVE_RESEARCH_RETRY_CODES.has(code))return input.response;
+
+  // Retry only as explicit no-payment discovery, only for a single-country
+  // intelligence question and only after canonical deliverability refused a
+  // charge. The paid request remains unchanged; no quote or payment signature
+  // is generated or forwarded into the live research pass.
+  const headers=new Headers({"Content-Type":"application/json"});
+  for(const name of ["cf-connecting-ip","true-client-ip","x-forwarded-for"]){
+    const value=input.request.headers.get(name);
+    if(value)headers.set(name,value);
+  }
+  return input.post({request:new Request(new URL(TARGET,input.request.url),{
+    method:"POST",headers,
+    body:JSON.stringify({...input.query,fulfillment_mode:"live_on_demand"}),
+  })});
+}
 
 /**
  * Thin, fast user + machine adapter. In one incoming POST, deterministic
@@ -90,7 +136,9 @@ export async function paidStructuredAnswer(
     body:JSON.stringify(interpreted.canonical_request),
   });
   try{
-    return await (options.post??mainnetIntelligenceHandlers.POST)({request:canonical});
+    const post=options.post??mainnetIntelligenceHandlers.POST;
+    const response=await post({request:canonical});
+    return await retryWithBoundedLiveResearch({request,query:interpreted.canonical_request,response,post});
   }catch{
     return noCharge("PAID_STRUCTURED_CANONICAL_HANDLER_UNAVAILABLE",503);
   }
@@ -104,13 +152,16 @@ export const paidStructuredAnswerHandlers={
     method:"POST",
     input:"question, optional language/subjects/topics/product",
     payment:"Canonical x402 PAYMENT-SIGNATURE header only; never accept wallet keys",
-    response:"Exact canonical 402 payment challenge or frozen 200 structured JSON",
+    response:"Canonical x402 challenge or frozen paid JSON when qualified; otherwise bounded zero-charge live-research JSON with explicit evidence status",
     machine_tool:"paid_structured_answer",
     canonical_payment_resource:TARGET,
     prices:"/api/v1/pricing",
     risk_gate:"COMING_SOON",
     no_auto_charge:true, no_unverified_data_charge:true,
     no_raw_source_delivery:true, execution_authorized:false,
+    bounded_live_research_fallback:true,
+    live_research_requires_no_payment_signature:true,
+    live_research_never_issues_x402_quote:true,
   },{headers:{...HEADERS,"Cache-Control":"public, max-age=300, must-revalidate"}}),
   POST:async({request}:{request:Request})=>paidStructuredAnswer(request),
 };

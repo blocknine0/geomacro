@@ -77,7 +77,7 @@ const TOPIC_WORDS: Partial<Record<AgentQueryTopic, readonly string[]>> = {
     "নিষেধাজ্ঞা", "आर्थिक प्रतिबंध", "प्रतिबंध", "عقوبات", "حظر",
     "sanciones", "embargo", "sanctions", "sanktionen", "санкции",
     "制裁", "制裁措置", "제재", "sanções"],
-  conflict_geopolitics: ["war", "military conflict", "geopolitical", "armed conflict",
+  conflict_geopolitics: ["war", "military conflict", "geopolitical", "armed conflict", "armed-conflict",
     "যুদ্ধ", "সংঘাত", "ভূরাজনীতি", "युद्ध", "भूराजनीति", "الحرب",
     "نزاع", "guerra", "geopolítica", "conflit", "guerre",
     "krieg", "геополитика", "война", "战争", "地缘政治", "戦争", "전쟁"],
@@ -276,7 +276,13 @@ export function interpretMultilingualIntelligenceQuery(raw: unknown) {
   const q = norm(input.question);
   const inferredTopics = semanticTopics(input.question);
   const requestedTopics = input.topics ?? inferredTopics;
-  if (input.topics && inferredTopics.some(t => !input.topics!.includes(t)))
+  // Explicit topic enums are the machine caller's requested slice. A natural
+  // language question may mention a second adjacent concept (for example a
+  // graphite export restriction is both mineral and trade language); keep the
+  // explicitly selected topic when it overlaps the question's semantics, and
+  // reject only a genuinely unrelated override.
+  if (input.topics && inferredTopics.length > 0 &&
+      !input.topics.some(topic => inferredTopics.includes(topic)))
     throw Error("EXPLICIT_TOPICS_CONTRADICT_QUESTION");
   if (requestedTopics.length === 0) throw Error("UNSUPPORTED_QUERY_TOPIC_PROVIDE_ENUM");
   const hintedIntent = queryIntent(input.question);

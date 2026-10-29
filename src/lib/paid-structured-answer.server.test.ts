@@ -29,21 +29,31 @@ describe("single-pass paid user and machine structured answer",()=>{
    expect((await paidStructuredAnswer(request({question},{"cf-connecting-ip":"192.0.2.4"}),
      {rateLimit:()=>true,post})).status).toBe(429);
  });
- it("maps a multilingual question to one identical canonical SKU and no secondary quote",async()=>{
+ it("maps a multilingual question and retries only as zero-charge live discovery when stored evidence is missing",async()=>{
    const expected=interpretMultilingualIntelligenceQuery({question});
    let calls=0;
    const res=await paidStructuredAnswer(request({question}),{
      rateLimit:()=>true,post:async ({request:canonical})=>{
        calls++;
        expect(new URL(canonical.url).pathname).toBe("/api/v1/intelligence/query");
-       expect(await canonical.json()).toEqual(expected.canonical_request);
+       const body=await canonical.json();
        expect(canonical.headers.has("payment-signature")).toBe(false);
-       return Response.json({ok:false,chargeable:false,error:{code:"INSUFFICIENT_COVERAGE"}},{status:422});
+       if(calls===1){
+         expect(body).toEqual(expected.canonical_request);
+         return Response.json({ok:false,chargeable:false,payment_required_now:false,
+           error:{code:"INSUFFICIENT_COVERAGE"}},{status:422});
+       }
+       expect(body).toMatchObject({...expected.canonical_request,fulfillment_mode:"live_on_demand"});
+       return Response.json({ok:false,chargeable:false,payment_required_now:false,
+         structured_answer:{schema:"geomacro.structured-answer.v1",status:"INSUFFICIENT_VERIFIED_EVIDENCE",
+           answer:null,delivery:{chargeable:false,execution_authorized:false}}},{status:422});
      },
    });
    expect(res.status).toBe(422);
-   expect(calls).toBe(1);
-   expect((await res.json()).chargeable).toBe(false);
+   expect(calls).toBe(2);
+   expect((await res.json()).structured_answer).toMatchObject({
+     schema:"geomacro.structured-answer.v1",status:"INSUFFICIENT_VERIFIED_EVIDENCE",
+   });
  });
  it("preserves canonical 402 challenge without issuing any payment itself",async()=>{
    const wire=JSON.stringify({x402Version:2,resource:{url:"https://geomacro.live/api/v1/intelligence/query"}});
@@ -55,6 +65,18 @@ describe("single-pass paid user and machine structured answer",()=>{
    expect(res.status).toBe(402);
    expect(res.headers.get("PAYMENT-REQUIRED")).toBe("synthetic-challenge");
    expect(await res.text()).toBe(wire);
+ });
+ it("does not run live discovery after a buyer has supplied payment proof",async()=>{
+   let calls=0;
+   const res=await paidStructuredAnswer(request({question},{"payment-signature":"synthetic-payment-token"}),{
+     rateLimit:()=>true,post:async()=>{
+       calls++;
+       return Response.json({ok:false,chargeable:false,payment_required_now:false,
+         error:{code:"NOT_AVAILABLE"}},{status:422});
+     },
+   });
+   expect(res.status).toBe(422);
+   expect(calls).toBe(1);
  });
  it("forwards buyer-supplied proof unchanged and returns frozen settlement body exactly",async()=>{
    const wire=JSON.stringify({schema_version:"geomacro.adaptive-intelligence-response.v1",
@@ -97,6 +119,9 @@ describe("single-pass paid user and machine structured answer",()=>{
  });
  it("advertises canonical rather than alternative payment authority",async()=>{
    const res=await paidStructuredAnswerHandlers.GET();
-   expect((await res.json()).canonical_payment_resource).toBe("/api/v1/intelligence/query");
+   const json=await res.json();
+   expect(json.canonical_payment_resource).toBe("/api/v1/intelligence/query");
+   expect(json.bounded_live_research_fallback).toBe(true);
+   expect(json.live_research_never_issues_x402_quote).toBe(true);
  });
 });
