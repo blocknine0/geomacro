@@ -15,6 +15,9 @@ on:
       - 'scripts/ops/observe-production-three-domain-source-continuity.mjs'
       - 'scripts/tests/production-three-domain-source-continuity.test.mjs'
       - 'scripts/lib/wdi-195-batch-reference.mjs'
+      - 'scripts/lib/official-sanctions-listings-observer.mjs'
+      - 'scripts/ops/probe-official-sanctions-listings.mjs'
+      - 'scripts/tests/official-sanctions-listings-observer.test.mjs'
       - '.github/workflows/global-195x3-human-machine-source-regression.yml'
 
 permissions:
@@ -43,6 +46,10 @@ jobs:
         run: node scripts/tests/wdi-195-batch-reference.test.mjs
       - name: Assert actual first-party source clock and publisher pulse invariants
         run: node --test scripts/tests/production-three-domain-source-continuity.test.mjs
+      - name: Reject retired RSS and unauthorized sanctions source promotion
+        run: node --test scripts/tests/official-sanctions-listings-observer.test.mjs
+      - name: Probe two official sanctions listings without funds or D1 writes
+        run: node scripts/ops/probe-official-sanctions-listings.mjs --live
       - name: Generate offline source availability receipt
         run: node scripts/ops/probe-195x3-wdi-official-reference.mjs
       - name: Run one bounded World Bank 195-country reference batch
@@ -63,6 +70,8 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4
         with:
           name: geomacro-195x3-query-research-${{ github.run_id }}
-          path: ${{ runner.temp }}/geomacro-195x3-query-regression/*.json
+          path: |
+            ${{ runner.temp }}/geomacro-195x3-query-regression/*.json
+            artifacts/official-sanctions-listings/receipt.json
           if-no-files-found: warn
           retention-days: 7
