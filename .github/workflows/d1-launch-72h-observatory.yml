@@ -100,7 +100,7 @@ jobs:
       - name: Independently measure actual three-domain source freshness from canonical D1
         if: always()
         continue-on-error: true
-        run: node scripts/ops/observe-production-three-domain-source-continuity.mjs
+        run: node scripts/ops/observe-production-three-domain-source-continuity.mjs --strict
       - name: Retain privacy-safe hourly receipt for rolling 72h independent review
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
