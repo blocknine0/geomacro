@@ -3,8 +3,8 @@
   "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
   "purpose": "Macro/FX and critical-mineral news discovery only; do not change store pricing or publish/sell unverified data.",
   "upstream": "https://github.com/jflogol/tradeFeed/blob/main/rss.txt",
-  "selection": "Only pinned official-publisher feed candidates not already present in Geomacro's accepted private feed manifest or registered reusable official feeds. Other repositories supplied for review are not live sources; no third-party code imported.",
-  "runtime_rule": "Each production tick verifies HTTP 200, native dated RSS item, topic relevance. Failed, stale or access-controlled feeds do not become working endpoints.",
+  "selection": "Replace exactly two previously confirmed unavailable/denied private source slots with original government Atom sources; keep seven-slot cap and source-native publication/rights validation. Candidate is NOT certified by registration.",
+  "runtime_rule": "Every actual production/PR poll must prove HTTP, native item published clock, relevance and attribution. Last-known/reference data never automatically qualifies for commercial or signed delivery.",
   "sources": [
     {
       "id": "private_repo8_us_bea_release",
@@ -87,15 +87,15 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_repo8_us_eia_energy",
-      "url": "https://www.eia.gov/rss/todayinenergy.xml",
-      "continent": "north_america",
-      "publisher_country_iso3": "USA",
+      "id": "private_repo8_gbr_transport_original",
+      "url": "https://www.gov.uk/government/organisations/department-for-transport.atom",
+      "continent": "europe",
+      "publisher_country_iso3": "GBR",
       "categories": [
         "macro"
       ],
-      "type": "rss",
-      "discovered_in": "jflogol/tradeFeed:rss.txt",
+      "type": "atom",
+      "discovered_in": "official_govuk_first_party_atom",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
@@ -103,15 +103,15 @@
       "publicly_deliverable": false
     },
     {
-      "id": "private_repo8_uk_lme_metals",
-      "url": "https://www.lme.com/News/rss",
+      "id": "private_repo8_gbr_export_finance_original",
+      "url": "https://www.gov.uk/government/organisations/uk-export-finance.atom",
       "continent": "europe",
       "publisher_country_iso3": "GBR",
       "categories": [
         "rare_earth"
       ],
-      "type": "rss",
-      "discovered_in": "jflogol/tradeFeed:rss.txt",
+      "type": "atom",
+      "discovered_in": "official_govuk_first_party_atom",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "provider_rights_verified": false,
       "commercial_eligible": false,
