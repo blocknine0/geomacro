@@ -29,7 +29,7 @@ export function phase2fCategorySourceReceipt({
     relevant_derived_candidates:relevant,
     deduplicated_derived_candidates:deduplicated,
     source_native_original_page_verified_count:null,
-    source_native_original_clock_preserved:true,
+    candidate_original_date_not_modified_by_receipt:true,
     commercially_permitted_count:null,
     commercial_rights_status:"NOT_INDEPENDENTLY_CERTIFIED_IN_THIS_RUN",
     archive_candidate_count:deduplicated,
