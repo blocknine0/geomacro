@@ -6,8 +6,8 @@
  */
 import {verifyFirstSalePriceManifest} from "./first-sale-price-proof.mjs";
 export const EARNING_PILOT_CASES = [
-  { name: "geopolitics", topic: "conflict_geopolitics", country: "USA" },
-  { name: "macro_fx", topic: "macro_risk", country: "USA" },
+  { name: "geopolitics", topic: "conflict_geopolitics", country: "USA", store_digest: true },
+  { name: "macro_fx", topic: "macro_risk", country: "USA", store_digest: true },
   { name: "critical_minerals", topic: "critical_minerals", country: "USA",
     first_sale_product: true },
 ];
@@ -16,8 +16,8 @@ export const EARNING_PILOT_CASES = [
 // It can never confer production earning authorization (even if one offer
 // appears available); that requires exact-live canonical main buyer acceptance.
 export const EARNING_PILOT_ALTERNATE_CASES = Object.freeze([
-  Object.freeze({ name: "geopolitics", topic: "conflict_geopolitics", country: "UKR" }),
-  Object.freeze({ name: "macro_fx", topic: "macro_risk", country: "BRA" }),
+  Object.freeze({ name: "geopolitics", topic: "conflict_geopolitics", country: "UKR", store_digest: true }),
+  Object.freeze({ name: "macro_fx", topic: "macro_risk", country: "BRA", store_digest: true }),
   Object.freeze({ name: "critical_minerals", topic: "critical_minerals", country: "AUS",
     first_sale_product: true }),
 ]);
@@ -164,7 +164,7 @@ export async function acceptEarningPilotLive({
   for(const item of pilotCases){
     const body={
       schema_version:"geomacro.agent-query.v1",
-      ...(item.first_sale_product ? {product:{
+      ...((item.first_sale_product || item.store_digest) ? {product:{
         capability:"structural_country_digest",variant:"standard"
       }} : {}),
       delivery_tier:"structural_baseline",

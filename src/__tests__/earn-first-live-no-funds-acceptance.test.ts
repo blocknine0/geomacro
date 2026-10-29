@@ -62,6 +62,15 @@ describe("first revenue no-funds exact deployment acceptance",()=>{
     expect(report.checkout_or_settlement_attempted).toBe(false);
     expect(received).toHaveLength(6); // build SHA, offer catalog, price catalog, three categories
     expect(received.filter(x=>x.method==="POST")).toHaveLength(3);
+    // All three categories now probe the ACTUAL $0.02 Store product path.
+    // The unique first_sale_product marker still selects the first-real-money
+    // candidate for accounting and does not broaden any payment permission.
+    for (const call of received.filter(x=>x.method==="POST")) {
+      const body=JSON.parse(call.body??"{}");
+      expect(body.product).toEqual({capability:"structural_country_digest",variant:"standard"});
+      expect(body.delivery_tier).toBe("structural_baseline");
+      expect(body.fulfillment_mode).toBe("published_only");
+    }
     const mined=JSON.parse(received.filter(x=>x.method==="POST")[2].body??"{}");
     expect(mined.product).toEqual({capability:"structural_country_digest",variant:"standard"});
     expect(mined.delivery_tier).toBe("structural_baseline");
