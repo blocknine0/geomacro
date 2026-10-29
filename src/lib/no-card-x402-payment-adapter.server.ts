@@ -10,7 +10,8 @@ import { assertFrozenCapabilityResponse, assertFrozenCapabilityCurrentForSettlem
   from "./capability-x402-offer.server";
 import { freezeCanonicalCapabilityHttpBody } from "./capability-x402-exact-http-body.server";
 import { claimAgentCommerceDelivery, prepareAgentCommerceDelivery,
-  completeAgentCommerceDelivery, releaseAgentCommerceDelivery, commerceFingerprint }
+  completeAgentCommerceDelivery, releaseAgentCommerceDelivery, commerceFingerprint,
+  commerceReferenceHash, callDurableLedger }
   from "./agent-commerce-delivery.server";
 import type { PreparedCapabilityQuote } from "./capability-prepared-quote.server";
 
@@ -312,4 +313,51 @@ export async function runNoCardMainnetPreparedPurchase(input:{
         claimToken:token,failureCode:code,manualReview});
     },
   });
+}
+
+
+/**
+ * Authenticated DO delivered-only replay for old signed proofs.
+ * An expired quote is accepted ONLY when an already-settled, immutable
+ * on-chain delivery receipt matches the exact original payment fingerprint.
+ * This code never calls verify/settle and never opens a fresh claim.
+ */
+export async function readAlreadyDeliveredNoCardReplay(input:{
+  quote:PreparedCapabilityQuote;paymentPayload:Record<string,unknown>;
+  requestFingerprint:string;
+}) {
+  const issued=Date.parse(input.quote.issued_at);
+  if(!Number.isFinite(issued)||issued>Date.now())
+    throw Error("NO_CARD_REPLAY_QUOTE_TIME_INVALID");
+  const originalInstant=new Date(issued+1000);
+  const quote=assertNoCardQuoteScope(input.quote,originalInstant);
+  const req=requirementsForNoCardQuote(quote,originalInstant);
+  if(quote.request_fingerprint_sha256!==input.requestFingerprint ||
+      !SHA.test(input.requestFingerprint))
+    throw Error("NO_CARD_REPLAY_REQUEST_MISMATCH");
+  assertCapabilityPaymentBinding(input.paymentPayload,quote,req,originalInstant);
+  const record=await callDurableLedger<{
+    disposition?:string;response_payload?:unknown;response_sha256?:string;
+    settlement_reference?:string;settlement_network?:string;
+  }>("replay",{
+    provider:quote.payment_rail,providerEnvironment:"mainnet",
+    paymentFingerprint:commerceFingerprint(input.paymentPayload),
+    requestFingerprint:capabilityLedgerRequestFingerprint(quote,originalInstant),
+    productId:"geomacro_adaptive_risk_intelligence_v1",
+    rail:quote.payment_rail,network:quote.network,asset:quote.asset_contract,
+    amountAtomic:quote.amount_atomic,recipientHash:commerceReferenceHash(quote.recipient),
+  });
+  if(record.disposition==="NOT_FOUND")return null;
+  if(record.disposition!=="REPLAY" || !record.response_payload ||
+      typeof record.response_payload!=="object" ||
+      Array.isArray(record.response_payload) ||
+      !record.settlement_reference || !HEX_TX.test(record.settlement_reference) ||
+      record.settlement_network!==quote.network ||
+      record.response_sha256!==quote.prepared_answer_sha256 ||
+      commerceFingerprint(record.response_payload)!==record.response_sha256)
+    throw Error("NO_CARD_DELIVERED_REPLAY_UNVERIFIED");
+  assertFrozenCapabilityResponse(record.response_payload as Record<string,unknown>);
+  return {quote,receipt:record.settlement_reference,
+    response:record.response_payload as Record<string,unknown>,
+    responseSha256:record.response_sha256};
 }
