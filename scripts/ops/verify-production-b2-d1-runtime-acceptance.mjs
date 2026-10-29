@@ -23,6 +23,36 @@ const present=(value)=>typeof value==="string"&&value.trim().length>0;
 const integer=(value)=>Number.isSafeInteger(Number(value))&&Number(value)>=0;
 
 function fail(code){throw new Error(code);}
+export function classifyB2ProbeProviderFailure(error){
+  // B2 client emits fixed status/error codes. Never expose upstream XML,
+  // signed URLs, exception messages, credentials or arbitrary response bodies.
+  const code=error instanceof Error ? error.message : "";
+  if(/(?:transaction_cap_exceeded|download_cap_exceeded)/i.test(code))
+    return "B2_PROVIDER_CAP_EXCEEDED";
+  if(code==="B2_PROVIDER_THROTTLED" || /^B2_(?:PUT|GET)_FAILED_429_/.test(code))
+    return "B2_PROVIDER_RATE_LIMIT";
+  if(code==="B2_REQUEST_BUDGET_EXHAUSTED" || code.startsWith("B2_ACCOUNT_GLOBAL_QUOTA_"))
+    return "B2_D1_QUOTA_DENIED";
+  if(code==="B2_ARCHIVE_CONFIG_INVALID" || code==="B2_ARCHIVE_READ_CREDENTIAL_PAIR_INCOMPLETE")
+    return "B2_CREDENTIAL_CONFIGURATION_INVALID";
+  if(/^B2_NATIVE_AUTHORIZE_FAILED_(?:401|403)_/.test(code))
+    return "B2_CREDENTIALS_REJECTED";
+  if(/^B2_(?:PUT|GET)_FAILED_403_/.test(code) ||
+     ["B2_NATIVE_READ_CAPABILITY_MISSING","B2_NATIVE_READ_BUCKET_NOT_ALLOWED",
+       "B2_NATIVE_READ_PREFIX_NOT_ALLOWED"].includes(code))
+    return "B2_CREDENTIAL_OR_BUCKET_SCOPE_DENIED";
+  if(/^B2_(?:PUT|GET)_FAILED_404_/.test(code))
+    return "B2_OBJECT_NOT_FOUND";
+  if(/^B2_(?:PUT|GET)_FAILED_(?:408|500|502|503|504)_/.test(code) ||
+     /^B2_(?:PUT|GET)_RETRY_EXHAUSTED$/.test(code))
+    return "B2_PROVIDER_TRANSIENT_EXHAUSTED";
+  if(["B2_NATIVE_AUTHORIZE_NETWORK_FAILED","B2_NATIVE_GET_NETWORK_FAILED"].includes(code))
+    return "B2_NETWORK_UNAVAILABLE";
+  if(["B2_READBACK_SHA256_MISMATCH","B2_READBACK_CONTENT_LENGTH_MISMATCH"].includes(code))
+    return "B2_BYTE_INTEGRITY_MISMATCH";
+  return "B2_FAILURE_NOT_YET_CLASSIFIED";
+}
+
 function safeStatus(receipt,expectedDay){
   if(receipt?.ok!==true||
     receipt.schema!=="geomacro.b2-account-quota-status.v1"||
@@ -150,7 +180,7 @@ export async function runProductionB2D1RuntimeAcceptance({
   const expected=sha256(payload);
   let writeReceipt;
   try{writeReceipt=await b2.putWithMetadataVerification(key,payload);}
-  catch{fail("B2_PUT_OR_FULL_READBACK_FAILED");}
+  catch(error){fail("B2_PUT_OR_FULL_READBACK_FAILED:"+classifyB2ProbeProviderFailure(error));}
   if(writeReceipt?.full_body_readback_verified!==true||
     writeReceipt?.verification_mode!=="signed-put-full-readback-sha256"||
     writeReceipt?.sha256!==expected||writeReceipt?.bytes!==payload.length)
@@ -158,7 +188,7 @@ export async function runProductionB2D1RuntimeAcceptance({
 
   let readback;
   try{readback=Buffer.from(await b2.get(key));}
-  catch{fail("B2_SECOND_INDEPENDENT_GET_FAILED");}
+  catch(error){fail("B2_SECOND_INDEPENDENT_GET_FAILED:"+classifyB2ProbeProviderFailure(error));}
   if(readback.length!==payload.length||sha256(readback)!==expected||
     !readback.equals(payload))
     fail("B2_SECOND_INDEPENDENT_READBACK_MISMATCH");
