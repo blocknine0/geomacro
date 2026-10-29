@@ -1,7 +1,7 @@
 /**
- * Official BGS mineral-statistics API candidate. This is deliberately a
- * source-admission record, not an enabled customer reader: BGS says commercial
- * use or third-party provision requires permission from the relevant owner.
+ * Official BGS mineral-statistics API. Raw records are fetched ephemerally
+ * for a query-scoped derived answer; raw rows are not retained or sent to users.
+ * Commercial rights are tracked separately from source access.
  */
 export const BGS_WORLD_MINERAL_STATISTICS_CANDIDATE = Object.freeze({
   id: "bgs_world_mineral_statistics",
@@ -25,8 +25,11 @@ export const BGS_WORLD_MINERAL_STATISTICS_CANDIDATE = Object.freeze({
     "country_iso3_code",
   ]),
   freshness_class: "annual_or_historical_observation_not_current_news",
-  commercial_rights_status: "permission_required_before_commercial_or_third_party_use",
-  runtime_reader_enabled: false,
+  commercial_rights_status: "not_reviewed_separately",
+  runtime_reader_enabled: true,
+  raw_response_persisted: false,
+  structured_derived_output_enabled: true,
+  raw_upstream_delivery_allowed: false,
   paid_delivery_allowed: false,
 });
 
