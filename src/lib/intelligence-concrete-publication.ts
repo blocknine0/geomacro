@@ -230,7 +230,7 @@ function articleSpecificFocus(category:StatelessCategory,event:string):EventFocu
   if(/\b(?:export bans?|export controls?|export restrictions?|shipment restrictions?|quotas?|licen[cs]es?)\b/iu.test(event)){
    return {rule:/$/u,
     impact:"the reported trade-control action"+scoped+
-      " raises questions about eligible buyers, shipment permissions and available substitute suppliers.",
+      " raises questions about eligible buyers, shipment permissions, possible effects on shipments and available substitute suppliers.",
     limit:"The effective product list and implementation date require official confirmation; an actual supply loss is not established."};
   }
   if(/\b(?:strike|shutdown|halt(?:ed)?|suspend(?:ed|sion)?|outage|flood|landslide|mine accident|disruption|blockade)\b/iu.test(event)){
@@ -261,7 +261,7 @@ function articleSpecificFocus(category:StatelessCategory,event:string):EventFocu
    return {rule:/$/u,
     impact:"the reported project or permitting milestone"+scoped+
       " may affect the pipeline of future sourcing options.",
-    limit:"Economic feasibility, financing, construction and commercial production are separate milestones."};
+    limit:"Economic feasibility, financing, construction and commercially viable production are separate milestones."};
   }
   if(/\b(?:investment|funding|financing|grant|loan|strategic partnership)\b/iu.test(event)){
    return {rule:/$/u,
@@ -300,7 +300,7 @@ function articleSpecificFocus(category:StatelessCategory,event:string):EventFocu
   if(/\b(?:central bank|federal reserve|European Central Bank|ECB|Bank of England|Bank of Japan|policy rates?)\b/iu.test(event)
    &&/\b(?:interest rates?|rates? steady|rate cut|rate hike|rates? unchanged|rates? raised|rates? lowered|held.*rates?|cut.*rates?|raised.*rates?)\b/iu.test(event)){
    return {rule:/$/u,
-    impact:"the reported policy-rate decision links financing costs and rate differentials to currency and inflation expectations.",
+    impact:"the reported policy-rate decision links borrowing costs, financing conditions and rate differentials to currency and inflation expectations.",
     limit:"Check the official policy decision and guidance before drawing conclusions about the next meeting or actual asset-price reactions."};
   }
   if(/\b(?:earnings|profits?|quarterly results?|revenue|corporate results?)\b/iu.test(event))
