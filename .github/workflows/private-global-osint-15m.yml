@@ -66,6 +66,8 @@ on:
       - "scripts/ops/probe-private-osint-live-category-coverage.mjs"
       - "scripts/ops/build-native-country-repair-worklist.mjs"
       - "scripts/tests/native-country-repair-worklist.test.mjs"
+      - "scripts/ops/build-revenue-source-demand-195x3.mjs"
+      - "scripts/tests/revenue-source-demand-195x3.test.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
       - "config/private-osint-local-gaplane.v1.json"
@@ -120,6 +122,8 @@ on:
       - "scripts/ops/probe-private-osint-live-category-coverage.mjs"
       - "scripts/ops/build-native-country-repair-worklist.mjs"
       - "scripts/tests/native-country-repair-worklist.test.mjs"
+      - "scripts/ops/build-revenue-source-demand-195x3.mjs"
+      - "scripts/tests/revenue-source-demand-195x3.test.mjs"
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
@@ -271,6 +275,11 @@ jobs:
           set -euo pipefail
           node --test scripts/tests/native-country-repair-worklist.test.mjs
           node scripts/ops/build-native-country-repair-worklist.mjs /tmp/geomacro-private-osint-live-coverage.json /tmp/geomacro-private-osint-native-gap-worklist.json
+      - name: Build paid-product-driven original source requirements, without activating payments
+        run: |
+          set -euo pipefail
+          node --test scripts/tests/revenue-source-demand-195x3.test.mjs
+          node scripts/ops/build-revenue-source-demand-195x3.mjs /tmp/geomacro-private-osint-native-gap-worklist.json /tmp/geomacro-revenue-source-demand-195x3.json
       - name: Save counts-only live coverage report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -279,6 +288,7 @@ jobs:
           path: |
             /tmp/geomacro-private-osint-live-coverage.json
             /tmp/geomacro-private-osint-native-gap-worklist.json
+            /tmp/geomacro-revenue-source-demand-195x3.json
           if-no-files-found: warn
           retention-days: 7
 
