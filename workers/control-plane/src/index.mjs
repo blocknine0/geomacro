@@ -26,7 +26,7 @@ import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
-import {deliverThreeDomainStructuredOutput} from "./three-domain-structured-delivery.mjs";
+import {deliverThreeDomainStructuredWithCacheRecovery} from "./three-domain-structured-delivery.mjs";
 import {readPublicFreeD1Cached,eligiblePublicFreeD1CacheRequest} from "./public-free-d1-cache.mjs";
 import {readPublicNewsR2Snapshot,publishPublicNewsR2Snapshot,PUBLIC_NEWS_R2_MAX_BYTES}
   from "./public-news-r2-offload.mjs";
@@ -1304,8 +1304,16 @@ export default {
       const originalUrl=new URL("/v1/public/three-domain-continuity",request.url);
       const originalCacheRequest=new Request(originalUrl,{method:"GET",
         headers:request.headers});
-      return deliverThreeDomainStructuredOutput(env,Date.now(),()=>
-        publicReadCache(()=>threeDomainEvidenceContinuity(env),originalCacheRequest));
+      // A 200 POP cache entry may no longer satisfy current projector proof.
+      // Bypass ONCE only for an invalid cached source; ordinary responses use
+      // the exact shared 45s cache and cost no extra D1 origin reads.
+      const noCacheHeaders=new Headers(request.headers);
+      noCacheHeaders.set("Cache-Control","no-cache");
+      const canonicalRequest=new Request(originalUrl,{method:"GET",
+        headers:noCacheHeaders});
+      return deliverThreeDomainStructuredWithCacheRecovery(env,Date.now(),
+        ()=>publicReadCache(()=>threeDomainEvidenceContinuity(env),originalCacheRequest),
+        ()=>publicReadCache(()=>threeDomainEvidenceContinuity(env),canonicalRequest));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime-context"){
       if([...url.searchParams.keys()].some(k=>k!=="category")||url.searchParams.getAll("category").length!==1)

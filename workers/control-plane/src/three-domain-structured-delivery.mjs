@@ -212,3 +212,35 @@ export async function deliverThreeDomainStructuredOutput(env,now=Date.now(),
     return resultJson(projectThreeDomainStructuredDelivery(original,now));
   }catch{return denied();}
 }
+
+
+/**
+ * The structured endpoint originally reused the continuity endpoint's
+ * POP-cache key to avoid additional D1 scans. A cache hit can be HTTP 200
+ * yet fail the stricter structured-delivery contract; blindly projecting
+ * it then returns 503 even if a fresh canonical D1 read would pass.
+ *
+ * Validate a clone of the cached source BEFORE handing it to the projector.
+ * Only when that cached HTTP 200 is incompatible, bypass cache ONCE and
+ * validate a fresh canonical D1 readback via the regular fail-closed path.
+ * Never retry a source HTTP 503, add a source GET, sign or pay. Never promote
+ * cached unsupported data to commercial evidence.
+ */
+export async function deliverThreeDomainStructuredWithCacheRecovery(
+ env,now=Date.now(),readCached,readCanonical){
+ if(typeof readCached!=="function"||typeof readCanonical!=="function")
+  return denied();
+ return deliverThreeDomainStructuredOutput(env,now,async()=>{
+  const cached=await readCached();
+  if(cached?.status!==200)return cached;
+  try{
+   const body=await cached.clone().json();
+   projectThreeDomainStructuredDelivery(body,now);
+   return cached;
+  }catch{
+   // One canonical no-cache source read, then the regular strict projector.
+   // No hidden retries or source mutation; if D1 is down, return 503.
+   return readCanonical();
+  }
+ });
+}
