@@ -50,7 +50,12 @@ describe("195-country × 3-category structured query routing",()=>{
                 topics:[selected.topic],
               }:{}),
               ...(isTranslated?{language}:{})};
-            const result=interpretMultilingualIntelligenceQuery(body);
+            let result;
+            try {
+              result=interpretMultilingualIntelligenceQuery(body);
+            } catch(error) {
+              throw new Error(`routing failed: ${JSON.stringify({country:country.iso3,category,scenario:selected.id,actor,language,text,topics:body.topics})}; ${(error as Error).message}`);
+            }
             expect(result.subjects,{country:country.iso3,category,scenario:selected.id,actor}).toEqual([
               {type:"country",country_iso3:country.iso3},
             ]);
