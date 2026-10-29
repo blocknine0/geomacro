@@ -77,7 +77,7 @@ const TOPIC_WORDS: Partial<Record<AgentQueryTopic, readonly string[]>> = {
     "নিষেধাজ্ঞা", "आर्थिक प्रतिबंध", "प्रतिबंध", "عقوبات", "حظر",
     "sanciones", "embargo", "sanctions", "sanktionen", "санкции",
     "制裁", "制裁措置", "제재", "sanções"],
-  conflict_geopolitics: ["war", "military conflict", "geopolitical", "armed conflict",
+  conflict_geopolitics: ["war", "military conflict", "geopolitical", "armed conflict", "armed-conflict",
     "যুদ্ধ", "সংঘাত", "ভূরাজনীতি", "युद्ध", "भूराजनीति", "الحرب",
     "نزاع", "guerra", "geopolítica", "conflit", "guerre",
     "krieg", "геополитика", "война", "战争", "地缘政治", "戦争", "전쟁"],
