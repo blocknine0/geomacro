@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 7123)
-Total output lines: 411
-
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
@@ -147,7 +144,67 @@ test('first success after denial stays a baseline and degraded state survives no
  assert.equal(first.retained_degraded_readers,1);
  const next=await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('two'),now:new Date(at.getTime()+1800000)});
  assert.equal(next.unavailable,0);assert.equal(next.retained_degraded_readers,1);
- const old=structuredClone(state.rows.get('rare_earth').payload.…1123 tokens truncated…et(k,v);
+ const old=structuredClone(state.rows.get('rare_earth').payload.snapshot.sources.us_doe);
+ assert.equal(old.last_success_at,null);
+ const recovered=await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('two'),now:new Date(at.getTime()+360*60000)});
+ assert.equal(recovered.retained_degraded_readers,0);
+ // Both other fast minerals feeds already saw "two"; DOE's first success is not a new update.
+ assert.equal(recovered.per_category.rare_earth.newly_detected_update_fingerprints,0);
+});
+test('degraded historical source receipt remains explicit and contains no raw publisher content',async()=>{
+ const state=memoryState();
+ await collectProductionFreeSourceUpdates({stateClient:state,fetchImpl:network('one','usgs_mcs'),now:at});
+ const result=await collectProductionFreeSourceUpdates({stateClient:state,
+  fetchImpl:network('two'),now:new Date(at.getTime()+60_000)});
+ assert.deepEqual(result.retained_degraded_source_readers.map(x=>x.id),['usgs_mcs']);
+ assert.equal(result.retained_degraded_source_readers[0].state,'DENIED_OR_RATE_LIMIT');
+ assert.equal(result.current_verified_intelligence,false);
+ assert.equal(result.commercial_eligible,false);
+ assert.ok(!JSON.stringify(result).includes('https://'));
+});
+test('unavailable D1 checkpoint stops all upstream reads',async()=>{
+ let calls=0;
+ await assert.rejects(()=>collectProductionFreeSourceUpdates({stateClient:{async loadRows(){throw Error('state unavailable');}},fetchImpl:async()=>{calls++;},now:at}),/state unavailable/);
+ assert.equal(calls,0);
+});
+test('production schedule isolates refs and exposes only checkpoint credentials and aggregate artifact',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const workflow=readFileSync(new URL('../../.github/workflows/free-commercial-source-lineup.yml',import.meta.url),'utf8');
+ assert.ok(workflow.includes('cron: "17,47 * * * *"'));
+ assert.ok(workflow.includes('geomacro-free-commercial-lineup-${{ github.ref }}'));
+ assert.ok(workflow.includes('cancel-in-progress: false'));
+ assert.ok(workflow.includes('environment: production'));
+ assert.ok(workflow.includes('--production-updates'));
+ assert.ok(workflow.includes('path: |'));
+ assert.ok(workflow.includes('artifacts/free-source-updates/receipt.json'));
+ assert.ok(workflow.includes('artifacts/free-source-updates/deployed-main-readback.json'));
+ assert.ok(workflow.includes('Check actual published main build for WDI source changes'));
+ assert.ok(workflow.includes('github.event_name == \'push\' || github.event_name == \'workflow_dispatch\''));
+ const writerSection=workflow.split('  read-only-production-mesh:')[1]?.split('  zoho-subscribed-maritime-candidates:')[0];
+ assert.ok(writerSection);
+ assert.deepEqual([...writerSection.matchAll(/secrets\.([A-Z0-9_]+)/gu)].map(m=>m[1]).sort(),['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_API_TOKEN']);
+ const mailboxSection=workflow.split('  zoho-subscribed-maritime-candidates:')[1];
+ assert.ok(mailboxSection);
+ assert.ok(mailboxSection.includes('github.event_name != \'pull_request\''));
+ assert.ok(mailboxSection.includes('environment: production'));
+ assert.ok(mailboxSection.includes('scripts/ops/observe-zoho-maritime-subscriptions.mjs'));
+ assert.ok(workflow.includes("github.event_name != 'pull_request'"));
+});
+test('CISA bounded window selects latest catalogue additions rather than the first historical rows',()=>{
+ const s=PRODUCTION_FREE_UPDATE_SOURCES.find(x=>x.id==='cisa_kev');
+ const rows=Array.from({length:60},(_,i)=>({cveID:'historical-'+i,dateAdded:'2025-01-01'}));
+ rows.push({cveID:'latest',dateAdded:'2026-10-16'});
+ const a=summarizeFreeSourceUpdates(s,JSON.stringify({vulnerabilities:rows}),at);
+ rows.at(-1).cveID='latest-correction';
+ const b=summarizeFreeSourceUpdates(s,JSON.stringify({vulnerabilities:rows}),at);
+ assert.equal(a.sampled_records,40);assert.notDeepEqual(a.fingerprints,b.fingerprints);
+ assert.equal(b.latest_native_publication_at,null);
+});
+test('UN follows only one exact official read-only distribution, never arbitrary or expired redirects',async()=>{
+ const {probeNoKeySource}=await import('../lib/free-no-key-source-probe.mjs');
+ const s=PRODUCTION_FREE_UPDATE_SOURCES.find(x=>x.id==='un_security_council_sanctions');
+ const target=new URL('https://unsolprodfiles.blob.core.windows.net/publiclegacyxmlfiles/EN/consolidatedLegacyByPRN.xml');
+ for(const [k,v] of Object.entries({sv:'2024-05-04',st:new Date(Date.now()-60000).toISOString(),se:new Date(Date.now()+3600000).toISOString(),sr:'b',sp:'r',sig:'public-test-fixture-signature0000'}))target.searchParams.set(k,v);
  // A syntactically valid public fixture, not a publisher-issued credential.
  target.searchParams.set('sig','a'.repeat(43)+'=');
  let calls=0;
