@@ -27,7 +27,7 @@ describe("BLS native Atom hourly source transport",()=>{
         (index,lane)=>diagnostics.push({index,ok:lane.transport_ok}));
       expect(peakBls).toBe(1);
       expect(requested).toEqual(["/feed/cpi.rss","/feed/empsit.rss","/feed/ximpim.rss"]);
-      expect(report.feed_count).toBe(23);
+      expect(report.feed_count).toBe(24);
       expect(report.healthy_feed_count).toBe(3);
       expect(diagnostics).toHaveLength(report.feed_count);
       expect(diagnostics.map(x=>x.index)).toEqual([...diagnostics.keys()]);
