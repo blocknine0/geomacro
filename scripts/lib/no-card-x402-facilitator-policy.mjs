@@ -54,3 +54,28 @@ export function feeOnlyEstimate(priceAtomic,feeUsd){
   return {grossUsd,facilitatorFeeUsd:feeUsd,afterFacilitatorUsd:Math.max(0,grossUsd-feeUsd),
     verifiedNetProfit:false};
 }
+
+/**
+ * Do not expose a provider as fee-budget suitable without a current explicit
+ * fee quote. This is a prepayment cost ceiling, not proof of net profitability.
+ * Micro-USDC arithmetic rounds fees UP and maximum fee allowance DOWN.
+ */
+export function feeBudgetDecision(priceAtomic, quotedFeeUsd, maxFeeBps = 500) {
+  if (!/^[1-9][0-9]{0,11}$/.test(String(priceAtomic)) ||
+      !Number.isInteger(maxFeeBps) || maxFeeBps < 0 || maxFeeBps > 10000) {
+    throw Error("INVALID_FEE_BUDGET");
+  }
+  const capAtomic = BigInt(priceAtomic) * BigInt(maxFeeBps) / 10000n;
+  if (typeof quotedFeeUsd !== "number" || !Number.isFinite(quotedFeeUsd) ||
+      quotedFeeUsd < 0 || quotedFeeUsd > 100000) {
+    return { passesFeeOnlyCeiling: false, reason: "CURRENT_QUOTED_FEE_REQUIRED",
+      capAtomic: capAtomic.toString(), paymentEnabled: false, verifiedNetProfit: false };
+  }
+  const feeAtomic = BigInt(Math.ceil(quotedFeeUsd * 1000000));
+  return {
+    passesFeeOnlyCeiling: feeAtomic <= capAtomic,
+    reason: feeAtomic <= capAtomic ? "FEE_BELOW_CEILING_ONLY" : "FEE_ABOVE_CEILING",
+    feeAtomic: feeAtomic.toString(), capAtomic: capAtomic.toString(),
+    paymentEnabled: false, verifiedNetProfit: false,
+  };
+}
