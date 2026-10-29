@@ -16,8 +16,11 @@ test("BGS mineral statistics is registered as a global historical data candidate
   assert.equal(source.freshness_class, "annual_or_historical_observation_not_current_news");
 });
 
-test("BGS commercial rights hold cannot be promoted by source registration", () => {
-  assert.equal(source.commercial_rights_status, "permission_required_before_commercial_or_third_party_use");
-  assert.equal(source.runtime_reader_enabled, false);
+test("BGS raw fetch is ephemeral and separate from commercial-rights assessment", () => {
+  assert.equal(source.commercial_rights_status, "not_reviewed_separately");
+  assert.equal(source.runtime_reader_enabled, true);
+  assert.equal(source.raw_response_persisted, false);
+  assert.equal(source.structured_derived_output_enabled, true);
+  assert.equal(source.raw_upstream_delivery_allowed, false);
   assert.equal(source.paid_delivery_allowed, false);
 });
