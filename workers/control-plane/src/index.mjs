@@ -1311,7 +1311,7 @@ export default {
       noCacheHeaders.set("Cache-Control","no-cache");
       const canonicalRequest=new Request(originalUrl,{method:"GET",
         headers:noCacheHeaders});
-      return deliverThreeDomainStructuredWithCacheRecovery(env,Date.now(),
+      return deliverThreeDomainStructuredWithCacheRecovery(env,()=>Date.now(),
         ()=>publicReadCache(()=>threeDomainEvidenceContinuity(env),originalCacheRequest),
         ()=>publicReadCache(()=>threeDomainEvidenceContinuity(env),canonicalRequest));
     }
