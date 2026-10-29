@@ -38,8 +38,7 @@ test("safe partner/public three-domain parity, no signed or paid inference",()=>
  assert.equal(r.unverified_osint_count,12);
  assert.equal(r.public_subset_comparison,
   "PUBLIC_SOURCE_NEUTRAL_IS_SUBSET_OF_PRIVATE_ATTRIBUTED");
- assert.equal(r.partner_reported_count_gap_by_category.macro,86);
- assert.equal(r.partner_reported_count_gap_by_category.rare_earth,68);
+ assert.equal(r.historical_comparison,"REQUIRES_OWNER_HELD_SAME_COHORT_BASELINE_ID_SET");
  assert.equal(r.signed_flow_50_per_category_verified,false);
  assert.equal(r.no_source_credit_is_proven_attribution_defect,false);
  assert.ok(!JSON.stringify(r).includes("synthetic-"));
