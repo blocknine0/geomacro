@@ -90,11 +90,13 @@ async function boundedText(response){
  for(const p of parts){b.set(p,offset);offset+=p.byteLength}
  return new TextDecoder("utf-8",{fatal:true}).decode(b);
 }
-export async function observeOfficialSanctionsListings({fetchImpl=fetch,now=new Date()}={}){
+export async function observeOfficialSanctionsListings({fetchImpl=fetch,now=new Date(),onlySourceId=null}={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||typeof fetchImpl!=="function")
    throw Error("SANCTIONS_LISTING_PROBE_INVALID");
+ if(onlySourceId!==null&&!SANCTIONS_ORIGINAL_LISTINGS.some(s=>s.id===onlySourceId))
+   throw Error("SANCTIONS_LISTING_SOURCE_ID_NOT_ALLOWED");
  const sources=[];
- for(const source of SANCTIONS_ORIGINAL_LISTINGS){
+ for(const source of SANCTIONS_ORIGINAL_LISTINGS.filter(s=>onlySourceId===null||s.id===onlySourceId)){
    let status="NETWORK_UNAVAILABLE",http_status=null,detail=null;
    try{
      const u=new URL(source.url);
