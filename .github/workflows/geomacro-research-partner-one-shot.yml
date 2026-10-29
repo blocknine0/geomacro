@@ -46,7 +46,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version: "22"}
-      - name: One research-auth GET plus one public GET, aggregate-only receipt
+      - name: One research-auth GET plus one public GET, public-safe status only
         env:
           PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
         run: node scripts/ops/audit-predge-29oct-email.mjs --live
