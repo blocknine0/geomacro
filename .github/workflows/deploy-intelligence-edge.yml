@@ -13,6 +13,7 @@ on:
       - "workers/intelligence-edge/**"
       - "workers/shared/current-source-clock.mjs"
       - "workers/shared/b2-origin-negative-cache.mjs"
+      - "workers/shared/governed-b2-origin-retry.mjs"
       - "scripts/ops/configure-intelligence-edge-d1-quota.mjs"
       - "workers/control-plane/src/b2-account-quota.mjs"
       - ".github/workflows/deploy-intelligence-edge.yml"
