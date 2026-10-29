@@ -1,6 +1,7 @@
 import {describe,expect,it,vi} from "vitest";
 import {paidStructuredAnswer,paidStructuredAnswerHandlers} from "./paid-structured-answer.server";
 import {interpretMultilingualIntelligenceQuery} from "./multilingual-query-intent";
+import {allowPublicDemoRequest} from "./public-demo-rate-limit.server";
 
 const endpoint="https://geomacro.live/api/v1/intelligence/structured-answer";
 const question="ভারতের মুদ্রাস্ফীতি ও বৈদেশিক মুদ্রার রিজার্ভ";
@@ -8,6 +9,26 @@ function request(body:unknown,headers:Record<string,string>={},url=endpoint) {
  return new Request(url,{method:"POST",headers:{"content-type":"application/json",...headers},body:JSON.stringify(body)});
 }
 describe("single-pass paid user and machine structured answer",()=>{
+ it("keeps independent buyers separate while retaining the canonical global quota",async()=>{
+   const namespace="adapter-client-isolation-"+crypto.randomUUID();
+   const post=async({request:canonical}:{request:Request})=>{
+     expect(canonical.headers.has("cookie")).toBe(false);
+     const allowed=allowPublicDemoRequest(canonical,{
+       namespace,windowMs:60_000,maxPerClient:1,maxGlobal:3,
+     });
+     return new Response(null,{status:allowed?402:429});
+   };
+   for(const header of ["cf-connecting-ip","true-client-ip","x-forwarded-for"]){
+     const res=await paidStructuredAnswer(request({question},{
+       [header]:"192.0.2."+(1+["cf-connecting-ip","true-client-ip","x-forwarded-for"].indexOf(header)),
+       cookie:"private-session=not-forwarded",
+     }),{rateLimit:()=>true,post});
+     expect(res.status).toBe(402);
+   }
+   // A fourth distinct client still exhausts the shared global budget.
+   expect((await paidStructuredAnswer(request({question},{"cf-connecting-ip":"192.0.2.4"}),
+     {rateLimit:()=>true,post})).status).toBe(429);
+ });
  it("maps a multilingual question to one identical canonical SKU and no secondary quote",async()=>{
    const expected=interpretMultilingualIntelligenceQuery({question});
    let calls=0;
