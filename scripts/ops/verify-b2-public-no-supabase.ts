@@ -15,6 +15,15 @@ for (const key of [
 const originalFetch = globalThis.fetch.bind(globalThis);
 let supabaseNetworkAttempts = 0;
 let directB2NetworkAttempts = 0;
+// Public transport metadata only: no source rows, URLs, credentials, keys,
+// response bodies, entitlement decisions or B2 quotas bypassed.
+const governedReadTrace: Array<{service:string;status:number;authority:"EXPECTED"|"ABSENT_OR_OTHER";continuity:"PRESENT"|"ABSENT";data_available:"FALSE"|"UNSPECIFIED"}> = [];
+const readService = (host:string,path:string):string|null =>
+  host==="geomacro-intelligence.daspallab202391.workers.dev" && path==="/intelligence"
+    ? "intelligence_edge"
+    : host==="geomacro-global-risk.daspallab202391.workers.dev" && path==="/global-risk"
+      ? "global_risk_edge" : null;
+
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const value = input instanceof Request ? input.url : String(input);
   let target: URL | null = null;
@@ -33,7 +42,19 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     directB2NetworkAttempts += 1;
     throw new Error("NO_SUPABASE_B2_ACCEPTANCE_BLOCKED_UNMETERED_ORIGIN");
   }
-  return originalFetch(input, init);
+  const response = await originalFetch(input, init);
+  const service = readService(host, target?.pathname ?? "");
+  if(service && governedReadTrace.length < 8){
+    governedReadTrace.push({
+      service,status:response.status,
+      authority:response.headers.get("x-geomacro-authority")===
+        (service==="intelligence_edge"?"backblaze-b2-intelligence-edge":"backblaze-b2-verified-edge")
+        ? "EXPECTED" : "ABSENT_OR_OTHER",
+      continuity:response.headers.has("x-geomacro-continuity")?"PRESENT":"ABSENT",
+      data_available:response.headers.get("x-geomacro-data-available")==="false"?"FALSE":"UNSPECIFIED",
+    });
+  }
+  return response;
 }) as typeof fetch;
 
 const {
@@ -55,6 +76,16 @@ const [intelligence, risk] = await Promise.all([
 ]);
 
 if (!Array.isArray(intelligence) || intelligence.length === 0) {
+  console.error(JSON.stringify({
+    schema:"geomacro.b2-governed-runtime-diagnostic.v1",
+    status:"INTELLIGENCE_EDGE_UNAVAILABLE",
+    governed_public_edge_reads:governedReadTrace,
+    direct_b2_network_attempts:directB2NetworkAttempts,
+    supabase_network_attempts:supabaseNetworkAttempts,
+    b2_proof_verified:false,
+    paid_delivery_verified:false,
+    credentials_or_source_data_logged:false,
+  }));
   throw new Error("NO_SUPABASE_B2_INTELLIGENCE_UNAVAILABLE");
 }
 const categories = Array.from(
