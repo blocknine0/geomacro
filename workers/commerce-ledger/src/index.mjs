@@ -240,7 +240,7 @@ export class CommerceLedger {
         quote.version!=="geomacro.capability-usdc.v1" ||
         quote.availability!=="VERIFIED_DELIVERABLE" ||
         quote.execution_authorized!==false ||
-        !["coinbase_x402","circle_gateway_x402"].includes(quote.payment_rail) ||
+        !["coinbase_x402","circle_gateway_x402","xpay_x402","dexter_x402"].includes(quote.payment_rail) ||
         body.provider!==quote.payment_rail ||
         !["mainnet","production"].includes(body.providerEnvironment) ||
         typeof quote.amount_atomic!=="string" ||

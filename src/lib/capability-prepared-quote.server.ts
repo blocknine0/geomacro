@@ -25,7 +25,7 @@ export function quoteGeomacroPreparedCapability(input:Readonly<{
   capability:string;variant:string;
   requestFingerprint:string;preparedAnswerSha256:string;
   network:string;asset:string;recipient:string;
-  rail:"coinbase_x402"|"circle_gateway_x402";
+  rail:"coinbase_x402"|"circle_gateway_x402"|"xpay_x402"|"dexter_x402";
   availabilityVerified:boolean;
   preparedAnswerVerified:boolean;
   now?:Date;
@@ -38,8 +38,10 @@ export function quoteGeomacroPreparedCapability(input:Readonly<{
   const matched=exactGeomacroUsdcRail(input.network,input.asset);
   if(!HASH.test(input.requestFingerprint)||!HASH.test(input.preparedAnswerSha256)||
       !matched||!ADDRESS.test(input.recipient)||
-      !["coinbase_x402","circle_gateway_x402"].includes(input.rail)||
-      (input.rail==="coinbase_x402"&&matched.id!=="base"))
+      !["coinbase_x402","circle_gateway_x402","xpay_x402","dexter_x402"].includes(input.rail)||
+      (input.rail==="coinbase_x402"&&matched.id!=="base")||
+       (input.rail==="xpay_x402"&&matched.id!=="base")||
+       (input.rail==="dexter_x402"&&!["base","polygon"].includes(matched.id)))
     throw Error("CAPABILITY_PREPARED_QUOTE_SCOPE_INVALID");
   const now=input.now??new Date();
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
