@@ -14,7 +14,7 @@ export async function readVerifiedCapabilityAnswer(input:{quote:CapabilityQuote;
     payment_authorized?:unknown;settlement_attempted?:unknown;expiresAtMs?:unknown;
   }>("capability-prequote-readback",{
     provider:quote.payment_rail,
-    providerEnvironment:quote.payment_rail==="coinbase_x402"?"mainnet":"production",
+    providerEnvironment:quote.payment_rail==="circle_gateway_x402"?"production":"mainnet",
     quoteId:quote.quote_id,
   });
   if(data?.ok!==true || data.schema!=="geomacro.capability-prequote.v1" ||
@@ -42,7 +42,7 @@ export async function freezeVerifiedCapabilityAnswer(input:{
     ok?:boolean;disposition?:string;quote_id?:string;prepared_answer_sha256?:string;
   }>("capability-prequote-freeze",{
     provider:quote.payment_rail,
-    providerEnvironment:quote.payment_rail==="coinbase_x402"?"mainnet":"production",
+    providerEnvironment:quote.payment_rail==="circle_gateway_x402"?"production":"mainnet",
     quote,customerBytes:frozen.body,
   });
   if(stored?.ok!==true || !["FROZEN","EXACT_REPLAY"].includes(stored.disposition??"") ||
