@@ -75,8 +75,14 @@ describe("195-country × 3-category structured query routing",()=>{
             const expectedRoutes=selected.topic==="trade_corridor"
               ?["geopolitics","macro"]
               :[category==="critical_minerals"?"rare_earth":category];
+            // A mineral export-control question can also entail sanctions;
+            // mixed-intent routing must not discard a valid additional lane.
+            // Each queried category is mandatory; multi-domain expansion is
+            // allowed only within the three reviewed verticals.
             expect(routed,{country:country.iso3,category,scenario:selected.id,actor})
-              .toEqual(expectedRoutes);
+              .toEqual(expect.arrayContaining(expectedRoutes));
+            expect(routed.every(x=>["geopolitics","macro","rare_earth"].includes(x)))
+              .toBe(true);
             expect(ON_DEMAND_TOPIC_NAMES).toContain(selected.topic);
             expect(result.canonical_request.fulfillment_mode).toBe("published_only");
             expect(result.payment_required_now).toBe(false);
