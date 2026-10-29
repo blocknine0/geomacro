@@ -157,7 +157,11 @@ const get=(fetchImpl,url,headers={})=>fetchImpl(url,{
  method:"GET",redirect:"error",headers:{Accept:"application/json",...headers},
  signal:AbortSignal.timeout(12_000),
 });
-export async function auditThreeDomainLive({fetchImpl=fetch,now=Date.now()}={}){
+export async function auditThreeDomainLive({fetchImpl=fetch,now}={}){
+ // A real publisher-side clock may be later than the request's START time.
+ // Validate each received HTTP document at its actual RECEIPT time.
+ // Offline tests can pin now for deterministic adversarial fixtures.
+ const clock=()=>now===undefined?Date.now():now;
  let requests=0;
  const call=async(url,headers,method="GET")=>{
   requests++;
@@ -215,9 +219,9 @@ export async function auditThreeDomainLive({fetchImpl=fetch,now=Date.now()}={}){
   throw Error("STRUCTURED_CACHED_HTTP_"+firstResponse.status+"_"+uncached+"_"+cachedContinuity+"_"+diagnostic);
  }
  const initial=verifyStructuredDeliveryEnvelope(
-   await readBoundedJson(firstResponse,"STRUCTURED_CACHED"),now);
+   await readBoundedJson(firstResponse,"STRUCTURED_CACHED"),clock());
  const refreshed=verifyStructuredDeliveryEnvelope(
-   await readBoundedJson(await call(STRUCTURED_API,{"Cache-Control":"no-cache"}),"STRUCTURED_ORIGIN"),now);
+   await readBoundedJson(await call(STRUCTURED_API,{"Cache-Control":"no-cache"}),"STRUCTURED_ORIGIN"),clock());
  // Require positive correctness on both cache and canonical D1 no-cache views,
  // but never demand identical counts across separately clocked source updates.
  const continuity=await readBoundedJson(
