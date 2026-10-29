@@ -201,3 +201,25 @@ test("diagnoses a production cached 503 separately from healthy canonical no-cac
  assert.equal(requests,4);
  assert.equal(f.urls.every(url=>[STRUCTURED_API,CONTINUITY_API].includes(url)),true);
 });
+
+
+test("27 real-contract 3-domain matrices preserve empty, reference-only and news-plus-reference independently",()=>{
+ let tested=0;
+ const states=["NEWS_AND_REFERENCE","REFERENCE_ONLY","EMPTY"];
+ for(const a of states)for(const b of states)for(const d of states){
+  const selected=[a,b,d];
+  const missing=CATS.filter((_,i)=>selected[i]==="EMPTY");
+  const noNews=CATS.filter((_,i)=>selected[i]!=="NEWS_AND_REFERENCE");
+  const x=verifyStructuredDeliveryEnvelope(structured({missing,noNews}),NOW);
+  assert.equal(x.all_categories_with_data,missing.length===0);
+  for(let i=0;i<CATS.length;i++){
+   const cat=x.categories[CATS[i]];
+   assert.equal(cat.native_news,selected[i]==="NEWS_AND_REFERENCE"?1:0);
+   assert.equal(cat.official_reference,selected[i]==="EMPTY"?0:1);
+   assert.equal(cat.delivery_state,selected[i]==="EMPTY"?
+    "NO_OBSERVATION_AVAILABLE":"OBSERVATIONS_WITH_CURRENT_SOURCE_CHECK");
+  }
+  tested++;
+ }
+ assert.equal(tested,27);
+});
