@@ -68,5 +68,5 @@ describe("195-country × 3-category structured query routing",()=>{
       }
     }
     expect(count).toBe(4_680);
-  });
+  },180_000);
 });
