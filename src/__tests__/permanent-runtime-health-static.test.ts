@@ -53,6 +53,18 @@ describe("permanent runtime health acceptance", () => {
     expect(b2Canary).toContain("supabase_credentials_present: false");
   });
 
+  it("emits only redacted HTTP/authority evidence and does not weaken B2 fail-closed acceptance", () => {
+    expect(b2Canary).toContain("geomacro.b2-governed-runtime-diagnostic.v1");
+    expect(b2Canary).toContain("NO_SUPABASE_B2_INTELLIGENCE_UNAVAILABLE");
+    expect(b2Canary).toContain('status:response.status');
+    expect(b2Canary).toContain('credentials_or_source_data_logged:false');
+    expect(b2Canary).not.toContain("console.error(response");
+    expect(b2Canary).not.toContain("console.error(payload");
+    expect(b2Canary).toContain("directB2NetworkAttempts");
+    expect(b2Canary).toContain("supabaseNetworkAttempts");
+    expect(workflow).toContain("b?.b2_origin_quota_governed_at_worker!==true");
+  });
+
   it("executes the real commerce adapter against Durable Objects with Supabase blocked", () => {
     expect(workflow).toContain("Execute actual commerce adapter with Supabase absent");
     expect(workflow).toContain("bun scripts/ops/verify-commerce-no-supabase.ts");
