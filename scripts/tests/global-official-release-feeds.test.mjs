@@ -162,7 +162,7 @@ test('DOE official battery supply-chain strategy is a discovery lead, never a ce
 test('trade-geo-macro-minerals official issuer feeds keep exact first-party URL and fail closed',()=>{
  const cases=[
   ['wto_trade_policy_global','geopolitics','https://www.wto.org/english/news_e/news26_e/tar_29jun26_431_e.htm','https://www.wto.org/english/news_e/news26_e/news26_e.htm'],
-  ['bis_management_macro_global','macro','https://www.bis.org/speeches/sp261029.htm','https://www.bis.org/review/r261029a.htm'],
+  ['bis_management_macro_global','macro','https://www.bis.org/speeches/20261029-deposit-insurance-changing-financial-landscape','https://www.bis.org/review/r261029a.htm'],
   ['australia_critical_minerals_minister_global','rare_earth','https://www.minister.industry.gov.au/t-ayres/media/construction-starts-arafura-rare-earths-project','https://www.minister.industry.gov.au/media-centre'],
  ];
  for (const [id,category,real,nonArticle] of cases) {
@@ -182,6 +182,12 @@ test('trade-geo-macro-minerals official issuer feeds keep exact first-party URL 
   assert.notEqual(source.commercial_reuse_authorized,true);
   assert.notEqual(source.signed_delivery_verified,true);
  }
+ const bis=feeds.find(s=>s.id==='bis_management_macro_global');
+ assert.equal(globalOriginalArticleUrl('https://www.bis.org/speeches/sp261029.htm',bis),
+  'https://www.bis.org/speeches/sp261029.htm');
+ assert.equal(globalOriginalArticleUrl('https://www.bis.org/speeches/20261029-deposit-insurance-changing-financial-landscape',bis),
+  'https://www.bis.org/speeches/20261029-deposit-insurance-changing-financial-landscape');
+ assert.equal(globalOriginalArticleUrl('https://www.bis.org/speeches/20261029',bis),null);
  const wto=feeds.find(s=>s.id==='wto_trade_policy_global');
  const xml='<rss><channel><item><title>WTO members announce tariff safeguard and trade dispute talks</title>'+
   '<link>https://www.wto.org/english/news_e/news26_e/tar_29jun26_431_e.htm</link>'+
