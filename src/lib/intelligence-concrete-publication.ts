@@ -91,29 +91,110 @@ export function isConcretePublicIntelligence(s:StatelessIntelligenceSignal):bool
  return intelligenceDisplayRejection(s)===null;
 }
 
-/** Topic-specific, cautiously worded implications. Never invent market moves
- * or the outcome of a policy/announcement. Event facts stay in What changed. */
-const FOCUS:Record<StatelessCategory,ReadonlyArray<[RegExp,string]>>={
+/**
+ * News-specific explanatory watchpoints. Formerly each broad keyword returned
+ * identical prose; now the verified display headline anchors every explanation
+ * and narrower event patterns select an appropriate mechanism and limitation.
+ * No new data fetches, model calls, risk scores or provenance promotions.
+ */
+type EventFocus=Readonly<{rule:RegExp;impact:string;limit:string}>;
+const EVENT_FOCUS:Record<StatelessCategory,readonly EventFocus[]>={
  geopolitics:[
-  [/sanction|embargo|trade restriction/iu,"Sanctions or trade restrictions may change which counterparties and transactions need screening. The effective scope still needs checking."],
-  [/ceasefire|peace|conflict|security|military/iu,"The reported development is relevant to conflict and security monitoring. It does not establish a change in conditions on the ground."],
-  [/diplomac|foreign policy|international trade/iu,"The stated policy action may affect diplomatic or cross-border operating conditions. Practical implementation is not yet established."],
+  {rule:/\b(?:elections?|electoral|ballots?|voting|votes?|democra\w*)\b/iu,
+   impact:"the watchpoints are political legitimacy narratives, official reactions and possible diplomatic friction.",
+   limit:"A public statement does not independently establish electoral misconduct or a changed result."},
+  {rule:/\b(?:MSF|Médecins Sans Frontières|doctors without borders|aid workers?|humanitarian|relief|darfur|refugees?|medical teams?|civilian protection)\b/iu,
+   impact:"the operational exposure is safety of relief workers and continuity of access to affected communities.",
+   limit:"The reported appeal does not prove that new protections were implemented or access improved."},
+  {rule:/\b(?:sanctions?|embargo(?:es)?|asset freezes?|trade restrictions?)\b/iu,
+   impact:"the practical questions are which entities, transactions and trade routes would be covered.",
+   limit:"Enforceability, effective dates and compliance duties need a confirmed policy text."},
+  {rule:/\b(?:ceasefire|peace talks?|peace agreement|truce|hostage|prisoner exchange)\b/iu,
+   impact:"the watchpoint is whether negotiating parties implement terms and whether access and safety conditions change.",
+   limit:"A statement about talks does not prove hostilities have stopped."},
+  {rule:/\b(?:shipping|strait|hormuz|red sea|port|maritime|vessel|sea lane|border crossing)\b/iu,
+   impact:"the relevant exposure is passage across trade routes and continuity of freight.",
+   limit:"A closure, delay or freight-price increase has not been established by this report."},
+  {rule:/\b(?:tariffs?|trade agreement|trade policy|export ban|import ban)\b/iu,
+   impact:"the decision-relevant channels are market access and trading-partner exposure.",
+   limit:"Implementation and commercial magnitude require corroborated policy detail."},
+  {rule:/\b(?:diplomac\w*|ambassador|foreign minister|bilateral|summit|treaty|negotiat\w*)\b/iu,
+   impact:"the watchpoint is whether public remarks result in formal diplomatic or cross-border policy steps.",
+   limit:"Statements alone do not change enforceable rules or treaty terms."},
+  {rule:/\b(?:security|military|conflict|attack|strikes?|violence|war|armed|troops?|missiles?|drones?)\b/iu,
+   impact:"the exposures to monitor are civilian safety, operating continuity and regional access.",
+   limit:"This observation alone does not confirm changed conditions on the ground."},
  ],
  macro:[
-  [/inflation|prices|consumer price/iu,"The announcement affects the inflation data or policy outlook being monitored. No FX or interest-rate response is implied without market evidence."],
-  [/interest rate|monetary|central bank/iu,"The stated monetary-policy action matters to rate and currency exposure. The actual market response requires separate price data."],
-  [/trade|export|fiscal|debt/iu,"The stated trade or fiscal measure changes the monitored policy context. Its size and FX impact require independently checked figures."],
-  [/employment|gdp|growth|economic|financial/iu,"The reported indicator or policy action informs the macro outlook. Its direction and magnitude must come from confirmed numerical data."],
+  {rule:/\b(?:inflation|consumer prices?|CPI|producer prices?|PPI|cost of living)\b/iu,
+   impact:"the economic channel is purchasing-power pressure and its relevance to monetary-policy expectations.",
+   limit:"An announcement does not establish an inflation figure or a currency-market move."},
+  {rule:/\b(?:interest rates?|policy rates?|central bank|federal reserve|FOMC|monetary|rate cut|rate hike)\b/iu,
+   impact:"the channels to monitor are borrowing costs, rate differentials and currency exposure.",
+   limit:"An FX or bond-price response needs separate observed market data."},
+  {rule:/\b(?:jobs?|employment|unemployment|payrolls?|wages?|labou?r force|hiring)\b/iu,
+   impact:"the relevant indicators are labour demand, household income and the policy outlook.",
+   limit:"Direction and scale require the released statistics and comparison period."},
+  {rule:/\b(?:GDP|gross domestic product|economic growth|recession|industrial production|manufacturing)\b/iu,
+   impact:"the watchpoint is whether activity signals stronger or weaker output and demand.",
+   limit:"No growth direction or magnitude follows without period-specific figures."},
+  {rule:/\b(?:tariffs?|exports?|imports?|trade balance|customs|trade deficit)\b/iu,
+   impact:"transmission channels include import costs, external balances and cross-border commerce.",
+   limit:"The report is not proof of an implemented measure or a measurable FX effect."},
+  {rule:/\b(?:currency|exchange rates?|foreign.exchange|FX|reserves?|capital flows?|balance of payments?)\b/iu,
+   impact:"the exposure to monitor is currency liquidity and external funding conditions.",
+   limit:"No directional currency forecast follows from the report alone."},
+  {rule:/\b(?:gold|silver|precious metals?|bullion)\b/iu,
+   impact:"the relevant channels are real rates, currency conditions and demand for precious metals.",
+   limit:"Metal-price direction needs current market evidence."},
+  {rule:/\b(?:energy|oil|gas|electricity|fuel|OPEC)\b/iu,
+   impact:"the transmission channel is through energy costs, inflation and external balances.",
+   limit:"Neither a supply disruption nor a price move is established by the headline."},
+  {rule:/\b(?:debt|budget|tax|fiscal|government spending|treasury|bond)\b/iu,
+   impact:"the watchpoints are fiscal capacity, financing needs and borrowing conditions.",
+   limit:"Amounts and yield effects require verified figures."},
  ],
  rare_earth:[
-  [/export|restriction|control/iu,"The announced measure is relevant to mineral supply access and trade controls. A shipment or price impact has not been established."],
-  [/mining|mine|deposit|exploration|project/iu,"The development concerns mineral project progress. It does not establish commercial production, output or a completion date."],
-  [/processing|refining|supply|critical|mineral|rare.earth/iu,"The action is relevant to critical-mineral supply chains. Available volumes and delivery timelines are not confirmed by the announcement."],
+  {rule:/\b(?:export controls?|export bans?|export restrictions?|licen[cs]ing|trade bans?|quotas?|tariffs?)\b/iu,
+   impact:"the key question is which materials, jurisdictions and shipments face possible access restrictions.",
+   limit:"A reported control does not establish a delayed cargo or commodity-price change."},
+  {rule:/\b(?:refining|refiner\w*|processing|separation|smelting|magnets?|recycling)\b/iu,
+   impact:"the capacity to watch is downstream conversion of raw material into usable industrial inputs.",
+   limit:"Planned capacity is not verified operating throughput or delivered material."},
+  {rule:/\b(?:mine|mining|exploration|deposit|discovery|drilling|resource estimate)\b/iu,
+   impact:"the long-run question is whether the resource or project advances toward viable production.",
+   limit:"The announcement does not prove recoverable reserves, output or a start date."},
+  {rule:/\b(?:lithium|cobalt|nickel|graphite|battery)\b/iu,
+   impact:"the exposure to monitor is battery-material sourcing and processing-chain concentration.",
+   limit:"Available battery-grade supply or near-term pricing is not quantified here."},
+  {rule:/\b(?:rare.earth|neodymium|dysprosium|terbium|gallium|germanium|tungsten|antimony)\b/iu,
+   impact:"the dependency is access to strategic inputs for manufacturing and advanced technology.",
+   limit:"The report does not verify changes in physical supply."},
+  {rule:/\b(?:investment|funding|partnership|agreement|strateg\w*|supply chains?)\b/iu,
+   impact:"the watchpoint is whether financing or cooperation leads to reliable new sourcing.",
+   limit:"A commitment is not a completed facility or delivered tonnage."},
  ],
 };
+const EVENT_FALLBACK:Record<StatelessCategory,Readonly<{impact:string;limit:string}>>={
+ geopolitics:{impact:"the next evidence to watch is the specific policy, security or diplomatic response.",
+  limit:"The observation does not establish an implemented change or measured effect."},
+ macro:{impact:"the next evidence to check is the affected indicator, economic channel and reporting period.",
+  limit:"Market direction and size of the impact need verified figures."},
+ rare_earth:{impact:"the next evidence to check is the affected material, supply-chain stage and geography.",
+  limit:"Neither added output nor a disruption is established by the observation."},
+};
 export function concreteGeomacroAnalysis(s:StatelessIntelligenceSignal):string{
- const text=s.topic+" "+s.title+" "+s.what_changed;
- return FOCUS[s.category].find(([rule])=>rule.test(text))?.[1]??s.why_it_matters;
+ const headline=concreteIntelligenceHeadline(s);
+ // Rejected/anonymous statements must never acquire an invented actor.
+ if(!headline)return s.why_it_matters;
+ const event=headline.replace(/[.!?]+$/u,"").trim();
+ const text=event+" "+intelligenceActorChange(s);
+ const focus=EVENT_FOCUS[s.category].find(item=>item.rule.test(text))
+   ??EVENT_FOCUS[s.category].find(item=>item.rule.test(s.topic))
+   ??EVENT_FALLBACK[s.category];
+ const prefix=s.status==="osint_feed_observed_unverified"
+   ?"For the independently unverified report":"For the dated release";
+ return prefix+" “"+event+"”, "+focus.impact+" "+focus.limit;
 }
 
 /** Source-neutral homepage Finds must have an explicit, concrete action. */
