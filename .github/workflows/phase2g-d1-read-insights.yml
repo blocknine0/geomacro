@@ -1,0 +1,84 @@
+name: Phase 2G D1 Query Insights Attribution (No Funds)
+
+# Strictly read-only Cloudflare provider insights, not a source producer,
+# not a D1 reset, not new quota or protected PREDGE policy.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/phase2g-d1-read-insights.yml"
+      - "scripts/ops/attribute-d1-query-insights.mjs"
+      - "scripts/ops/capture-d1-launch-insights.mjs"
+      - "scripts/tests/attribute-d1-query-insights.test.mjs"
+      - "scripts/tests/capture-d1-launch-insights.test.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/phase2g-d1-read-insights.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-phase2g-d1-readonly-insights-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Prove exact matching and reject private SQL disclosure
+        run: |
+          node --check scripts/ops/attribute-d1-query-insights.mjs
+          node --check scripts/ops/capture-d1-launch-insights.mjs
+          node --test scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/capture-d1-launch-insights.test.mjs
+  protected-provider-insights:
+    needs: offline-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    defaults:
+      run:
+        working-directory: workers/control-plane
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Require exact canonical main before provider access
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/main'
+          test "$GITHUB_SHA" = "$(git rev-parse HEAD)"
+      - name: Rank real D1 provider SQL by rows and executions, sans raw SQL
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          reads="$(mktemp)"
+          writes="$(mktemp)"
+          trap 'rm -f "$reads" "$writes"' EXIT
+          # Provider Query Insights uses a rolling day, not UTC daily billing.
+          # No D1 SELECT, direct B2, payments, ingestion or account mutations.
+          npx -y "wrangler@4.136.3" d1 insights geomacro-control-plane --timePeriod=1d --sort-type=sum --sort-by=reads --limit=100 --json > "$reads" 2>/dev/null
+          npx -y "wrangler@4.136.3" d1 insights geomacro-control-plane --timePeriod=1d --sort-type=sum --sort-by=writes --limit=100 --json > "$writes" 2>/dev/null
+          node ../../scripts/ops/capture-d1-launch-insights.mjs "$reads" "$writes"
+          node ../../scripts/ops/attribute-d1-query-insights.mjs "$reads"
+          # No raw provider query text leaves the protected runner; no
+          # artifact is published until the sanitizer succeeds.
