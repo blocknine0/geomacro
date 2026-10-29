@@ -1,5 +1,5 @@
-import {buildNewsProductPacket,NEWS_PRODUCT_FACTORY_VERSION} from "../../src/lib/news-product-factory.ts";
 #!/usr/bin/env bun
+import {buildNewsProductPacket,NEWS_PRODUCT_FACTORY_VERSION} from "../../src/lib/news-product-factory.ts";
 // Production collector: registered sources -> one factual JSON -> protected
 // Cloudflare D1 -> D1 readback. No raw source, premium, Supabase or x402.
 import {createHmac,createHash} from "node:crypto";
