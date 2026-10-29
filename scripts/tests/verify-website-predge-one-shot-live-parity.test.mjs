@@ -58,6 +58,15 @@ test("same bounded 72h cohort exactly delivers all three categories and source c
   {geopolitics:0,macro:0,rare_earth:0});
  assert.equal(r.exact_complete_canonical_d1_journal_projection_verified,true);
  assert.equal(r.authenticated_partner_readback_verified,true);
+ assert.deepEqual(r.website_official_topic_release_by_category,
+  {geopolitics:1,macro:1,rare_earth:1});
+ assert.deepEqual(r.website_unclassified_candidate_by_category,
+  {geopolitics:0,macro:0,rare_earth:0});
+ assert.deepEqual(r.website_unverified_osint_by_category,
+  {geopolitics:0,macro:0,rare_earth:0});
+ assert.deepEqual(r.partner_qualified_topic_release_by_category,
+  {geopolitics:1,macro:1,rare_earth:1});
+ assert.equal(r.absent_qualified_release_is_not_missing_research_data,true);
  assert.equal(r.additional_partner_gets,1);
  assert.equal(r.canonical_bundle_gets,1);
  assert.equal(r.payments,0);
@@ -71,6 +80,7 @@ test("unknown attribution credit remains withheld; release never promoted",()=>{
  const r=verifyOneShotLiveParity(f);
  assert.equal(r.withheld_unknown_credits_by_category.rare_earth,1);
  assert.equal(r.authenticated_partner_by_category.rare_earth,0);
+ assert.equal(r.partner_qualified_topic_release_by_category.rare_earth,0);
 });
 test("missing archive ID, changed native clock, partner payload change always fail closed",()=>{
  for(const mutate of [
@@ -100,5 +110,7 @@ test("never count archival static candidate or unverified OSINT as commercially 
  f.partner.counts=Object.fromEntries(cats.map(c=>[c,f.partner.items.filter(x=>x.category===c).length]));
  const r=verifyOneShotLiveParity(f);
  assert.equal(r.paid_or_signed_products_verified,false);
+ assert.equal(r.website_unclassified_candidate_by_category.macro,1);
+ assert.equal(r.partner_qualified_topic_release_by_category.macro,0);
  assert.equal(f.partner.items.find(x=>x.id===s.id).qualifying_topic_release_verified,false);
 });
