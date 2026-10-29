@@ -882,6 +882,24 @@
       "commercial_eligible": false,
       "access_verified_in_production": false,
       "publicly_deliverable": false
+    },
+    {
+      "id": "private_expansion_ukr_presidential_official_original",
+      "url": "https://www.president.gov.ua/en/rss/news/all.rss",
+      "continent": "europe",
+      "publisher_country_iso3": "UKR",
+      "categories": [
+        "geopolitics"
+      ],
+      "type": "rss",
+      "related_corridor_ids": [],
+      "provenance_note": "Ukraine president first-party English RSS explicitly listed at official subscription page. Real 2026-10-29 GitHub read-only source probe observed two geopolitics-keyword articles with native dates. Event-country attribution, corroboration and commercial source reuse rights remain unverified.",
+      "discovery_reference_url": "https://www.president.gov.ua/en/subscribe/",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false
     }
   ]
 }
