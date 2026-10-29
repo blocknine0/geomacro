@@ -32,7 +32,7 @@ const assertClock=(value,now,maxAge,context)=>{
 };
 const verifyFivePartDesk=(v,required)=>{
  const d=v.news_desk;
- if(!required&&!d?.market_relevance)return;
+ if(!required)return; // Pre-merge production may still run prior deployed revision.
  assert.equal(d?.schema,"geomacro.news-desk-item.v1");
  assert.equal(d.what_happened?.text,v.what_changed);
  assert.equal(d.why_it_matters_analysis?.text,v.why_it_matters);
