@@ -238,7 +238,14 @@ export async function deliverThreeDomainStructuredWithCacheRecovery(
   // by real protected-run HTTP 503/200 pairs). Retry exactly ONE no-cache
   // read on 503, but NEVER relabel a second 503 as available or chargeable.
   // No retry on 429, 401, 400 or other status; no concurrent source fetch.
-  if(cached?.status===503)return readCanonical();
+  if(cached?.status===503){
+   // The provider can return two immediate origin 503s during a short
+   // contention burst, then a healthy source on the next request. The
+   // ONE allowed canonical retry is paced, not multiplied or scheduled.
+   // No additional D1 attempts, no background task, no change on success.
+   await new Promise(resolve=>setTimeout(resolve,750));
+   return readCanonical();
+  }
   if(cached?.status!==200)return cached;
   try{
    const body=await cached.clone().json();
