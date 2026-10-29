@@ -20,8 +20,9 @@ const sourceClock=(str,nowMs)=>{
  if(!Number.isFinite(n)||n>nowMs+86400000||n<Date.UTC(2000,0,1))return null;
  return new Date(n).toISOString().slice(0,10);
 };
-const textOnly=s=>s.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu," ")
-  .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/giu," ")
+const withoutNonVisible=s=>s.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu," ")
+  .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/giu," ");
+const textOnly=s=>withoutNonVisible(s)
   .replace(/<[^>]*>/gu," ").replace(/&(?:nbsp|amp|quot|apos);/giu," ")
   .replace(/\s+/gu," ").trim();
 /** Conservative, listing-only observation: no lookup of a date solely from URL. */
@@ -30,17 +31,20 @@ export function inspectSanctionsListing(html,kind,{now=new Date()}={}){
    /<!DOCTYPE[^>]*\[/iu.test(html)||/<!ENTITY/iu.test(html)||
    !(now instanceof Date)||!Number.isFinite(now.getTime()))
    throw Error("SANCTIONS_LISTING_BODY_INVALID");
+ const visibleHtml=withoutNonVisible(html);
+ if(/<(?:script|style)\b/iu.test(visibleHtml))
+   throw Error("SANCTIONS_LISTING_MALFORMED_EXECUTABLE_BLOCK");
  if(kind==="OFAC_RECENT_ACTIONS_HTML"){
    // On an official sanctions-list-updates listing, date needs a visible textual
    // month/day/year near a /recent-actions/YYYYMMDD link. The URL digits
    // alone are NEVER interpreted as a source-native publication date.
-   const heading=textOnly(html.slice(0,Math.min(html.length,50000)));
+   const heading=textOnly(visibleHtml.slice(0,Math.min(visibleHtml.length,50000)));
    if(!/Sanctions List Updates/iu.test(heading))throw Error("SANCTIONS_LISTING_WRONG_PAGE");
-   const match=[...html.matchAll(/href\s*=\s*["'](?:https:\/\/ofac\.treasury\.gov)?(\/recent-actions\/20\d{6})(?:\?[^"']*)?["']/giu)];
+   const match=[...visibleHtml.matchAll(/href\s*=\s*["'](?:https:\/\/ofac\.treasury\.gov)?(\/recent-actions\/20\d{6})(?:\?[^"']*)?["']/giu)];
    const days=new Set();
    for(const m of match.slice(0,70)){
-     const fragment=textOnly(html.slice(Math.max(0,m.index-1200),
-       Math.min(html.length,m.index+PREVIEW_CHARS)));
+     const fragment=textOnly(visibleHtml.slice(Math.max(0,m.index-1200),
+       Math.min(visibleHtml.length,m.index+PREVIEW_CHARS)));
      const found=[...fragment.matchAll(OFAC_DATE)].map(x=>sourceClock(x[0],now.getTime())).filter(Boolean);
      if(found.length===1)days.add(found[0]); // Ambiguous dates reject.
    }
@@ -51,12 +55,12 @@ export function inspectSanctionsListing(html,kind,{now=new Date()}={}){
      signed_or_commercial_event_verified:false};
  }
  if(kind==="UNSC_LIST_UPDATES_HTML"){
-   const page=textOnly(html.slice(0,Math.min(html.length,30000)));
+   const page=textOnly(visibleHtml.slice(0,Math.min(visibleHtml.length,30000)));
    if(!/List of updates to the UNSC Consolidated List/iu.test(page))
      throw Error("SANCTIONS_LISTING_WRONG_PAGE");
    // A table row must contain an explicit source-native DD/MM/YYYY cell. A
    // modified/updated-on footer date is never counted as a source event.
-   const rows=[...html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/giu)].slice(0,200);
+   const rows=[...visibleHtml.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/giu)].slice(0,200);
    const days=new Set();let originalRows=0;
    for(const [,row] of rows){
      const cells=[...row.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/giu)]
