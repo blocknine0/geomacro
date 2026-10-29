@@ -2,6 +2,13 @@ name: Global Country Readiness Audit
 
 # Canonical routing and live source-state audit, not the legacy Risk Gate census.
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/global-country-readiness-audit.yml"
+      - "scripts/audit-supabase-free-country-runtime.ts"
+      - "scripts/lib/195x3-*.mjs"
+      - "scripts/ops/archive-195x3-global-readiness-proof.mjs"
+      - "scripts/tests/195x3-*.test.*"
   workflow_dispatch: {}
   # The D1 Worker must be fully deployed before its new public source-runtime
   # routes can be read. The old push/orchestrator triggers raced the deployment.
@@ -31,6 +38,22 @@ concurrency:
   group: geomacro-global-country-readiness-audit
   cancel-in-progress: false
 jobs:
+  no-funds-proof-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: node --test scripts/tests/195x3-source-continuity.test.mjs
+      - run: bun test scripts/tests/195x3-durable-proof-chain.test.ts
+
   audit:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
