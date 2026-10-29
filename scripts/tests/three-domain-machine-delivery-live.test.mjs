@@ -223,3 +223,37 @@ test("27 real-contract 3-domain matrices preserve empty, reference-only and news
  }
  assert.equal(tested,27);
 });
+
+
+test("one transient initial structured transport error is bounded and still validates all six live checks",async()=>{
+ const fixture=fakeFetch();
+ let attempts=0;
+ const waits=[];
+ const fetchImpl=async(url,opts)=>{
+  if(url===STRUCTURED_API&&opts.method==="GET"&&!opts.headers?.["Cache-Control"]&&attempts++===0)
+   throw Error("fetch failed: private-diagnostic-data-must-not-leak");
+  return fixture.fetchImpl(url,opts);
+ };
+ const receipt=await auditThreeDomainLive({
+  fetchImpl,now:NOW,wait:async ms=>{waits.push(ms);},
+ });
+ assert.equal(receipt.status,"PASS_WITH_SOURCE_COVERAGE_REPORTED_SEPARATELY");
+ assert.equal(receipt.total_upstream_requests,7);
+ assert.deepEqual(waits,[750]);
+ assert.equal(fixture.urls.length,6);
+ assert.equal(receipt.payment_settlement_attempts,0);
+});
+
+test("persistent initial structured transport failure stops after one retry without leaking network details",async()=>{
+ let attempts=0;
+ const waits=[];
+ await assert.rejects(
+  ()=>auditThreeDomainLive({
+   fetchImpl:async()=>{attempts++;throw Error("internal-only-provider-url-and-credentials");},
+   now:NOW,wait:async ms=>{waits.push(ms);},
+  }),
+  error=>error.message==="STRUCTURED_CACHED_TRANSPORT_UNAVAILABLE_AFTER_ONE_RETRY",
+ );
+ assert.equal(attempts,2);
+ assert.deepEqual(waits,[750]);
+});
