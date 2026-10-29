@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-29T18:36:08.811Z",
+  "checked_at": "2026-10-29T19:08:01.526Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 408,
+  "item_count": 411,
   "counts": {
-    "geopolitics": 194,
-    "macro": 170,
-    "rare_earth": 44
+    "geopolitics": 195,
+    "macro": 171,
+    "rare_earth": 45
   },
-  "source_native_ids_sha256": "fa6fd700f3e6079e3f95c7a1b13ae897950170146eb705b3498c7e892a7aa93f",
+  "source_native_ids_sha256": "a975cb89f96be1cc4fda7416c55ab2695c1862d2df91c506a86bc8d1a300ca5c",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,63 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-42d32509",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rio Tinto suspended Operations of Oyu Tolgoi Copper Mine After Rockfall, Bloomberg Reports - marketscreener.com",
+      "what_changed": "A monitored source feed reports: Rio Tinto suspended Operations of Oyu Tolgoi Copper Mine After Rockfall, Bloomberg Reports - marketscreener.com. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T18:43:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-00a38cf5",
+      "category": "macro",
+      "title": "Geomacro finds BorgWarner increased 2026 adjusted EPS guidance to $5.20-$5.35 while expecting $300M turbine generator revenue in 2027",
+      "what_changed": "A monitored source feed reports: BorgWarner increased 2026 adjusted EPS guidance to $5.20-$5.35 while expecting $300M turbine generator revenue in 2027. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T18:31:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-03994b87",
+      "category": "macro",
+      "title": "Geomacro finds Norwegian Cruise Line projected 1% to 2% net yield growth in 2027 as CFO transition begins",
+      "what_changed": "A monitored source feed reports: Norwegian Cruise Line projected 1% to 2% net yield growth in 2027 as CFO transition begins. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T18:29:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-71869a2d",
       "category": "macro",
@@ -353,6 +410,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-fe15aaf6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Qatar denied allegations of meddling in Israeli elections",
+      "what_changed": "A monitored source feed reports: Qatar denied allegations of meddling in Israeli elections. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T16:09:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: english.palinfo.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-8da8fc64",
       "category": "geopolitics",
       "title": "Geomacro finds US and Japan agreed to establish a Japanese facility for joint missile production",
@@ -518,6 +594,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.breakingbelizenews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-cc051601",
+      "category": "macro",
+      "title": "Geomacro finds Mansouri urged Russia-Africa summit to move ‘from planning to action’ on energy and industry",
+      "what_changed": "A monitored source feed reports: Mansouri urged Russia-Africa summit to move ‘from planning to action’ on energy and industry. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T15:05:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.hespress.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -7732,44 +7827,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-33a9d305",
-      "category": "macro",
-      "title": "Geomacro finds MultiChoice Ghana said Inflation and Currency Depreciation Affect DStv Prices - Modern Ghana",
-      "what_changed": "A monitored source feed reports: MultiChoice Ghana said Inflation and Currency Depreciation Affect DStv Prices - Modern Ghana. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "inflation and prices",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T19:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-c0fe8eb8",
-      "category": "macro",
-      "title": "Geomacro finds Scott Bessent said Iran's economy is 'collapsing' as Treasury tightens financial vise",
-      "what_changed": "A monitored source feed reports: Scott Bessent said Iran's economy is 'collapsing' as Treasury tightens financial vise. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T18:51:09.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: moxie.foxbusiness.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

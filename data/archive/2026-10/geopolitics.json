@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-29T18:36:08.811Z",
+  "updated_at": "2026-10-29T19:08:01.526Z",
   "signals": [
     {
       "id": "geopolitics-23905408",
@@ -189,6 +189,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-fe15aaf6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Qatar denied allegations of meddling in Israeli elections",
+      "what_changed": "A monitored source feed reports: Qatar denied allegations of meddling in Israeli elections. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T16:09:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: english.palinfo.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

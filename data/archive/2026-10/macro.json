@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-29T18:36:08.811Z",
+  "updated_at": "2026-10-29T19:08:01.526Z",
   "signals": [
+    {
+      "id": "macro-00a38cf5",
+      "category": "macro",
+      "title": "Geomacro finds BorgWarner increased 2026 adjusted EPS guidance to $5.20-$5.35 while expecting $300M turbine generator revenue in 2027",
+      "what_changed": "A monitored source feed reports: BorgWarner increased 2026 adjusted EPS guidance to $5.20-$5.35 while expecting $300M turbine generator revenue in 2027. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T18:31:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-03994b87",
+      "category": "macro",
+      "title": "Geomacro finds Norwegian Cruise Line projected 1% to 2% net yield growth in 2027 as CFO transition begins",
+      "what_changed": "A monitored source feed reports: Norwegian Cruise Line projected 1% to 2% net yield growth in 2027 as CFO transition begins. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T18:29:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-71869a2d",
       "category": "macro",
@@ -170,6 +208,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.breakingbelizenews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-cc051601",
+      "category": "macro",
+      "title": "Geomacro finds Mansouri urged Russia-Africa summit to move ‘from planning to action’ on energy and industry",
+      "what_changed": "A monitored source feed reports: Mansouri urged Russia-Africa summit to move ‘from planning to action’ on energy and industry. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T15:05:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.hespress.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
