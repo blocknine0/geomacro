@@ -2,8 +2,160 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-28T22:26:05.855Z",
+  "updated_at": "2026-10-29T00:08:07.157Z",
   "signals": [
+    {
+      "id": "macro-d2345ecd",
+      "category": "macro",
+      "title": "Geomacro finds Gold Edges lowered After Fed Holds Rates With Limited Guidance - Bloomberg",
+      "what_changed": "A monitored source feed reports: Gold Edges lowered After Fed Holds Rates With Limited Guidance - Bloomberg. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T23:44:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-17019802",
+      "category": "macro",
+      "title": "Geomacro finds Qatar Central Bank kept Interest Rates Unchanged - Fana News -",
+      "what_changed": "A monitored source feed reports: Qatar Central Bank kept Interest Rates Unchanged - Fana News -. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T20:10:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1e498919",
+      "category": "macro",
+      "title": "Geomacro finds Gold held Above $4,000 as Traders Look to Fed Rate Decision - Bloomberg.com",
+      "what_changed": "A monitored source feed reports: Gold held Above $4,000 as Traders Look to Fed Rate Decision - Bloomberg.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T20:09:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c6e3a1eb",
+      "category": "macro",
+      "title": "Geomacro finds Federal Reserve kept rates unchanged despite elevated inflation, gives little signal of next move - Forex Factory",
+      "what_changed": "A monitored source feed reports: Federal Reserve kept rates unchanged despite elevated inflation, gives little signal of next move - Forex Factory. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T19:35:30.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2b4951a0",
+      "category": "macro",
+      "title": "Geomacro finds Qatar Central Bank kept Interest Rates Unchanged - Qatar news agency",
+      "what_changed": "A monitored source feed reports: Qatar Central Bank kept Interest Rates Unchanged - Qatar news agency. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T19:30:45.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c001a60e",
+      "category": "macro",
+      "title": "Geomacro finds Qatar Central Bank kept interest rates unchanged - The Peninsula Qatar",
+      "what_changed": "A monitored source feed reports: Qatar Central Bank kept interest rates unchanged - The Peninsula Qatar. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T19:29:51.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2e01a8b6",
+      "category": "macro",
+      "title": "Geomacro finds UAE Central Bank held base rate at 3.9% after US Federal Reserve keeps rates unchanged - Emirates 24|7",
+      "what_changed": "A monitored source feed reports: UAE Central Bank held base rate at 3.9% after US Federal Reserve keeps rates unchanged - Emirates 24|7. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T19:22:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-5d060011",
+      "category": "macro",
+      "title": "Geomacro finds Fed held Rates, but Dissent Keeps Bitcoin, Gold and Tech Stocks Under Pressure - Investing.com",
+      "what_changed": "A monitored source feed reports: Fed held Rates, but Dissent Keeps Bitcoin, Gold and Tech Stocks Under Pressure - Investing.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T19:20:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-18e81505",
       "category": "macro",
