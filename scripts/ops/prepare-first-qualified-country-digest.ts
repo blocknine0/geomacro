@@ -6,7 +6,8 @@ import { buildAgentQueryPlan, agentAdaptiveQuerySchema } from "../../src/lib/age
 import { checkAgentQueryDeliverability } from "../../src/lib/agent-query-deliverability.server";
 import { assembleAgentQueryResponse } from "../../src/lib/agent-query-response.server";
 import { loadQualifiedMcsCountryContext, loadQualifiedMcsRelease,
-  summarizeQualifiedMcs195StructuralCoverage, MCS_DIGEST_CSV_SHA256, qualifiedMcsAcquisitionFailure }
+  summarizeQualifiedMcs195StructuralCoverage, MCS_DIGEST_SOURCE_ID,
+  MCS_DIGEST_CSV_SHA256, qualifiedMcsAcquisitionFailure }
   from "../../src/lib/qualified-mcs-country-digest.server";
 import { resolveGeomacroCapabilityPrice } from "../../src/lib/capability-pricing-catalog";
 import { country195ByIso3 } from "../../src/lib/canonical-country-registry-195";
@@ -59,6 +60,66 @@ if (/sciencebase|datacite|usgs_mcs|source_url|source_id|input_row_hashes/iu.test
     answer.signed_risk_objects.length || answer.gri_context !== null || answer.execution_authorized !== false)
   throw Error("FIRST_DIGEST_CUSTOMER_BOUNDARY_REJECTED");
 const hash = sha(customerBytes);
+// Fixed, 3-country canonical Store evidence sampling from the same verified
+// source bytes. No second publisher CSV fetch, wallet/payment, quote, signed
+// risk object, buyer entitlement or cloud archive write. Availability may be
+// genuinely negative: retain the negative state, never invent a sale.
+const additionalCountrySampleIso3s=["AUS","IND","USA"] as const;
+const additionalCountrySamples: Array<{
+  iso3:string;
+  state:"PREPARED_SOURCE_ELIGIBLE_NO_FUNDS"|"ALREADY_SELECTED_COUNTRY_PROVEN"|
+    "NO_COMPARABLE_SOURCE"|"CANONICAL_STORE_UNAVAILABLE";
+  answer_sha256:string|null;payment_authorized:false;
+  signed_risk_object_verified:false;customer_delivery_verified:false;
+}> = [];
+for(const iso3 of additionalCountrySampleIso3s){
+  let state:typeof additionalCountrySamples[number]["state"]="NO_COMPARABLE_SOURCE";
+  let answerHash:string|null=null;
+  if(iso3===country){
+    state="ALREADY_SELECTED_COUNTRY_PROVEN";answerHash=hash;
+  } else if(mcs195SourceCensus.country_coverage.some(row=>row.iso3===iso3 &&
+      row.status==="COMPARABLE_2024_2025_SOURCE")) {
+    try {
+      const candidatePlan=buildAgentQueryPlan(agentAdaptiveQuerySchema.parse({
+        schema_version:"geomacro.agent-query.v1",
+        delivery_tier:"structural_baseline",fulfillment_mode:"published_only",
+        subjects:[{type:"country",country_iso3:iso3}],
+        topics:["critical_minerals"],detail:"compact",
+      }));
+      const availabilityForCountry=await checkAgentQueryDeliverability(candidatePlan);
+      // Rights are for the exact USGS dataset only. An unrelated available
+      // product source cannot qualify as this MCS2026 country acceptance.
+      const eligible=availabilityForCountry.deliverable===true&&
+        availabilityForCountry.code==="AVAILABLE"&&
+        availabilityForCountry.query_plan_hash===candidatePlan.query_plan_hash&&
+        availabilityForCountry.source_contracts.length===1&&
+        availabilityForCountry.source_contracts[0].source_id===MCS_DIGEST_SOURCE_ID&&
+        availabilityForCountry.source_contracts[0].attribution_required===false&&
+        availabilityForCountry.ineligible_source_ids.length===0&&
+        availabilityForCountry.missing_modules.length===0&&
+        availabilityForCountry.stale_modules.length===0;
+      if(eligible){
+        const payload=await assembleAgentQueryResponse({
+          plan:candidatePlan,requestId:"source-qualified-sample:"+candidatePlan.query_plan_hash,
+          priceUsdc:price.amount_usdc,
+        });
+        const bytes=canonicalJson(payload);
+        if(!/sciencebase|datacite|usgs_mcs|source_url|source_id|input_row_hashes/iu.test(bytes)&&
+          payload.signed_risk_objects.length===0&&payload.gri_context===null&&
+          payload.execution_authorized===false) {
+          state="PREPARED_SOURCE_ELIGIBLE_NO_FUNDS";
+          answerHash=sha(bytes);
+        }
+      }
+      if(!answerHash)state="CANONICAL_STORE_UNAVAILABLE";
+    }catch{state="CANONICAL_STORE_UNAVAILABLE";}
+  }
+  additionalCountrySamples.push({
+    iso3,state,answer_sha256:answerHash,payment_authorized:false,
+    signed_risk_object_verified:false,customer_delivery_verified:false,
+  });
+}
+
 const provenance = context.observations.map(row => row.provenance);
 const checkedAt = context.observations[0].retrieved_at!;
 const bundle = canonicalJson({ schema: "geomacro.qualified-structural-delivery-candidate.v1",
@@ -157,6 +218,10 @@ const receipt = { schema: "geomacro.first-qualified-structural-digest-receipt.v1
   country_iso3: country, topic: "critical_minerals", capability: "structural_country_digest", amount_usdc: "0.02",
   source_rights_verified: true, original_file_sha256_verified: true,
   mcs_195_source_census: mcs195SourceCensus,
+  mcs_canonical_store_no_funds_country_samples: additionalCountrySamples,
+  mcs_canonical_store_source_sample_count: additionalCountrySamples.filter(s=>
+    s.state==="PREPARED_SOURCE_ELIGIBLE_NO_FUNDS"||
+    s.state==="ALREADY_SELECTED_COUNTRY_PROVEN").length,
   reference_year: 2025, previous_reference_year: 2024, current_news_or_risk_score: false,
   canonical_engine_deliverable: true, prepared_customer_bytes_sha256: hash,
   prepared_customer_bytes_length: Buffer.byteLength(customerBytes),
