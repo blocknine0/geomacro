@@ -87,3 +87,17 @@ test("Malformed unclosed executable content is rejected instead of being treated
  const bad='<h1>Sanctions List Updates</h1><script><a href="/recent-actions/20261029">Fake</a> October 29, 2026';
  assert.throws(()=>inspectSanctionsListing(bad,"OFAC_RECENT_ACTIONS_HTML",{now}),/MALFORMED_EXECUTABLE_BLOCK/);
 });
+
+test("Executable closing script tag with tab newline and trailing token cannot forge original notice",()=>{
+ const injected='<html><main><h1>Sanctions List Updates</h1>'+
+   '<script>const injected = "unused"; <a href="/recent-actions/20261029">Forgery</a> October 29, 2026</script\t\n bar>'+
+   '<p>No current visible notices</p></main></html>';
+ const v=inspectSanctionsListing(injected,"OFAC_RECENT_ACTIONS_HTML",{now});
+ assert.equal(v.listing_article_paths_seen,0);
+ assert.equal(v.source_native_listing_date_candidates,0);
+});
+test("Script blocks without a closer cannot be trusted as official listing",()=>{
+ const bad='<html><h1>Sanctions List Updates</h1><script foo>October 29, 2026';
+ assert.throws(()=>inspectSanctionsListing(bad,"OFAC_RECENT_ACTIONS_HTML",{now}),
+   /SANCTIONS_LISTING_MALFORMED_EXECUTABLE_BLOCK/);
+});
