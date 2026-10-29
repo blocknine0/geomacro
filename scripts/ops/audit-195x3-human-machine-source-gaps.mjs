@@ -103,7 +103,14 @@ if(matrix.length!==1170 || new Set(matrix.map(x=>x.id)).size!==1170 ||
 
 const manifestHash=sha(JSON.stringify(matrix.map(({id,country_iso3,category,scenario,actor,language,request_body})=>
   ({id,country_iso3,category,scenario,actor,language,request_body}))));
-const sampleIndices = new Set(Array.from({length:limit},(_,i)=>Math.floor((i+0.5)*matrix.length/limit)));
+// Stable pseudorandom permutation prevents alphabetical/geographical bias.
+// A daily rotating window covers the full 1,170 over successive scheduled runs
+// without creating 1,170 unaffordable live requests in one day.
+const permutation = matrix.map((item,index)=>({index,order:sha(item.id)}))
+  .sort((a,b)=>a.order.localeCompare(b.order)).map(x=>x.index);
+const epochDay=Math.max(0,Math.floor((Date.now()-Date.UTC(2026,9,29))/86400000));
+const sampleIndices=new Set(Array.from({length:limit},(_,i)=>
+  permutation[(epochDay*limit+i)%permutation.length]));
 const selected=live ? matrix.filter((_,i)=>sampleIndices.has(i)) : [];
 function errorCode(json) {
  const value=json?.error?.code??json?.error_code??json?.code??json?.reason;
