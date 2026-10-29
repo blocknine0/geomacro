@@ -40,3 +40,16 @@ test("fee-only margin is not a verified profit",()=>{
   assert.throws(()=>feeOnlyEstimate("oops",0));
   assert.throws(()=>feeOnlyEstimate("20000",-1));
 });
+
+test("five-percent facilitator fee ceiling protects micropayment margin", async () => {
+  const { feeBudgetDecision } = await import("../lib/no-card-x402-facilitator-policy.mjs");
+  const base002 = feeBudgetDecision("20000", 0.00197);
+  assert.equal(base002.passesFeeOnlyCeiling, false);
+  assert.equal(base002.capAtomic, "1000");
+  assert.equal(base002.paymentEnabled, false);
+  assert.equal(feeBudgetDecision("20000", 0.00362).passesFeeOnlyCeiling, false);
+  assert.equal(feeBudgetDecision("100000", 0.00197).passesFeeOnlyCeiling, true);
+  assert.equal(feeBudgetDecision("20000", 0).passesFeeOnlyCeiling, true);
+  assert.equal(feeBudgetDecision("20000", undefined).passesFeeOnlyCeiling, false);
+  assert.throws(() => feeBudgetDecision("20000", 0.001, 10001));
+});
