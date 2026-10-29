@@ -2,6 +2,13 @@ name: Global Country Readiness Audit
 
 # Canonical routing and live source-state audit, not the legacy Risk Gate census.
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/global-country-readiness-audit.yml"
+      - "scripts/audit-supabase-free-country-runtime.ts"
+      - "scripts/lib/195x3-*.mjs"
+      - "scripts/ops/archive-195x3-global-readiness-proof.mjs"
+      - "scripts/tests/195x3-*.test.*"
   workflow_dispatch: {}
   # The D1 Worker must be fully deployed before its new public source-runtime
   # routes can be read. The old push/orchestrator triggers raced the deployment.
@@ -15,8 +22,15 @@ on:
       - ".github/workflows/global-country-readiness-audit.yml"
       - "src/lib/canonical-country-registry-195.ts"
       - "src/lib/canonical-195-country-coverage-matrix.ts"
+      - "scripts/audit-supabase-free-country-runtime.ts"
+      - "scripts/lib/195x3-durable-proof-chain.mjs"
+      - "scripts/lib/195x3-source-continuity.mjs"
+      - "scripts/ops/archive-195x3-global-readiness-proof.mjs"
+      - "scripts/tests/195x3-durable-proof-chain.test.ts"
+      - "scripts/tests/195x3-source-continuity.test.mjs"
   schedule:
-    # Read-only daily consistency check; no B2/Supabase/paid requests.
+    # Existing protected UTC cadence, with governed B2 durable proof.
+    # B2 publication fails red if shared D1 ledger headroom is unavailable.
     - cron: "27 6 * * *"
 permissions:
   contents: read
@@ -24,6 +38,22 @@ concurrency:
   group: geomacro-global-country-readiness-audit
   cancel-in-progress: false
 jobs:
+  no-funds-proof-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: node --test scripts/tests/195x3-source-continuity.test.mjs
+      - run: bun test scripts/tests/195x3-durable-proof-chain.test.ts
+
   audit:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
@@ -33,6 +63,15 @@ jobs:
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
       RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: global_195_audit
+      B2_REQUEST_BUDGET: "12"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -40,6 +79,10 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
+      - name: Prove durable-history and source-outage admission invariants (no funds)
+        run: |
+          node --test scripts/tests/195x3-source-continuity.test.mjs
+          bun test scripts/tests/195x3-durable-proof-chain.test.ts
       - name: Read canonical 195-country routing and actual D1 source proofs
         run: bun scripts/audit-supabase-free-country-runtime.ts
       - name: Enforce country evidence boundaries
@@ -52,6 +95,34 @@ jobs:
             .boundaries.supabase_requests == 0 and .boundaries.b2_requests == 0 and
             .boundaries.payments == 0 and .boundaries.raw_source_urls_emitted == false
           ' /tmp/global-country-runtime.json >/dev/null
+      - name: Enforce B2-independent permanent proof prerequisites
+        if: ${{ success() || failure() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s /tmp/global-country-runtime.json || { echo "::error::NO_195X3_AUDIT_DOCUMENT_TO_ARCHIVE"; exit 3; }
+          for k in B2_KEY_ID B2_APPLICATION_KEY B2_ARCHIVE_READ_KEY_ID B2_ARCHIVE_READ_APPLICATION_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            test -n "${!k:-}" || { echo "::error::PERSISTENT_195X3_AUDIT_CREDENTIAL_NOT_CONFIGURED"; exit 3; }
+          done
+          test "$B2_ARCHIVE_READ_KEY_ID" != "$B2_KEY_ID" || { echo "::error::INDEPENDENT_B2_READBACK_REQUIRED"; exit 3; }
+      - name: Resolve existing canonical D1 quota governor
+        if: ${{ success() || failure() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIST_JSON="$(npx -y wrangler@4.136.3 d1 list --json)"
+          DB_ID="$(printf '%s' "$LIST_JSON" | node -e '
+            let s="";process.stdin.on("data",d=>s+=d);
+            process.stdin.on("end",()=>{
+              const rows=JSON.parse(s);const matched=rows.filter(r=>r.name==="geomacro-control-plane");
+              if(matched.length!==1)process.exit(3);
+              process.stdout.write(matched[0].uuid??matched[0].id??"");
+            });')"
+          test -n "$DB_ID" || { echo "::error::D1_ACCOUNT_GOVERNOR_MISSING"; exit 3; }
+          echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
+      - name: Persist private append-only 585-cell proof with full B2 readback even on source outage
+        if: ${{ success() || failure() }}
+        run: node scripts/ops/archive-195x3-global-readiness-proof.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
