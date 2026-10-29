@@ -1501,7 +1501,7 @@ async function discoverOnDemandImpl(
       // original GET budget, never imply independent same-event proof.
       const secondary=categories.map((category,index)=>{
         const preferredSecondary=category==="geopolitics"
-          ?"eu_council_original_publisher":null;
+          ?"uk_fcdo_original_publisher":null;
         const primaryFamily=originals[index]?.publisherFamily;
         return (preferredSecondary?tasks.find(t=>originalTask(t,category) &&
           t.name===preferredSecondary && t.name!==originals[index]?.name):undefined) ??
