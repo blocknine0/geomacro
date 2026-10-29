@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-29T00:08:07.157Z",
+  "checked_at": "2026-10-29T00:48:14.653Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,44 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-6951a92c",
+      "category": "macro",
+      "title": "Geomacro finds Gold cut losses as Fed pauses and stays silent on future hikes - The Business Times",
+      "what_changed": "A monitored source feed reports: Gold cut losses as Fed pauses and stays silent on future hikes - The Business Times. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T00:23:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-d6f77fc2",
+      "category": "rare_earth",
+      "title": "Geomacro finds Study confirmed FireFly on track to be a significant copper producer - GlobeNewswire",
+      "what_changed": "A monitored source feed reports: Study confirmed FireFly on track to be a significant copper producer - GlobeNewswire. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T00:07:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-d2345ecd",
       "category": "macro",
@@ -4557,44 +4595,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.pravda.com.ua"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-0b264c5a",
-      "category": "geopolitics",
-      "title": "Geomacro finds Manipur CM said all possible assistance will be provided to families of three killed in October 19 gun attack",
-      "what_changed": "A monitored source feed reports: Manipur CM said all possible assistance will be provided to families of three killed in October 19 gun attack. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T09:27:41.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thehindu.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-b114b287",
-      "category": "geopolitics",
-      "title": "Geomacro finds PM said fight against terrorism and extremism will continue",
-      "what_changed": "A monitored source feed reports: PM said fight against terrorism and extremism will continue. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T09:24:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.ammonnews.net"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
