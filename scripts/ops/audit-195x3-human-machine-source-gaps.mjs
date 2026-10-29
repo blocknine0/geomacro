@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * 195 UN-members-and-observers x 3 domains x 2 actors = 1,170 immutable
- * synthetic QUESTION scenarios, not invented facts/answers.
+ * 195 UN-members-and-observers x 3 domains x 4 question archetypes x 2 actors
+ * = 4,680 immutable synthetic QUESTION scenarios, not invented facts/answers.
+ * A separate 1,170-case country/category/actor set rotates through live probes.
  * Default is offline generation, with zero requests. --live is strictly
  * rate-limited, no-funds and cannot imply a paid 200 delivery.
  *
@@ -59,47 +60,57 @@ const topics = {
 };
 const categories = Object.keys(topics);
 const matrix=[];
+const liveCandidates=[];
 let n=0;
 for (const [i,country] of countries.entries()) {
   for (const category of categories) {
-    const selected=topics[category][i%4];
-    for (const actor of ["human","machine"]) {
-      const isBn = i%19===5 && actor==="human";
-      const isHi = i%19===8 && actor==="human";
-      const language=isBn?"bn":isHi?"hi":"en";
-      const translated=isBn
-        ? {geopolitics:"সর্বশেষ নিষেধাজ্ঞা ও ভূরাজনৈতিক ঘটনা কী?",macro:"সর্বশেষ মুদ্রাস্ফীতি ও সুদের হার কী?",critical_minerals:"লিথিয়াম ও গুরুত্বপূর্ণ খনিজের সাম্প্রতিক পরিস্থিতি কী?"}[category]
-        : isHi
-          ? {geopolitics:"नवीनतम प्रतिबंध और भू-राजनीतिक घटनाएं क्या हैं?",macro:"नवीनतम मुद्रास्फीति और ब्याज दरें क्या हैं?",critical_minerals:"लिथियम और महत्वपूर्ण खनिजों की ताज़ा स्थिति क्या है?"}[category]
-          : null;
-      const question=translated ? `${country.name}: ${translated}`
-        : `${selected.text} ${country.name}? Return dated evidence, uncertainty, and what to monitor, without guessing.`;
-      const id="G195-"+String(++n).padStart(4,"0");
-      const subject={type:"country",country_iso3:country.iso3};
-      const payload={question, client_request_id:id,
-        // A person can ask only a question, while an agent passes explicit ISO3.
-        ...(actor==="machine" || language!=="en" ? {subjects:[subject],topics:[selected.topic]} : {}),
-        ...(language!=="en"?{language}:{})
-      };
-      const key=category==="critical_minerals"?"critical_minerals":category;
-      matrix.push({id,country_iso3:country.iso3,country:country.name,category,
-        scenario:selected.id,topic:selected.topic,actor,language,
-        request_body:payload,endpoint:"/api/v1/intelligence/structured-answer",
-        expected_evidence:sources.classification[key].must_have,
-        prospective_source_ids:sources.candidate_sources
-          .filter(s=>s.categories.includes(category)).map(s=>s.id),
-        // This is a REQUIREMENTS inventory, not claimed publisher/evidence access.
-        source_coverage_status:"NOT_MEASURED",
-        response_status:"NOT_TESTED",http_status:null,error_code:null,
-        payment_submitted:false,settlement_performed:false});
+    const liveScenario=topics[category][i%topics[category].length].id;
+    for (const selected of topics[category]) {
+      for (const actor of ["human","machine"]) {
+        const multilingualSample=selected.id===topics[category][0].id;
+        const isBn = multilingualSample && i%19===5 && actor==="human";
+        const isHi = multilingualSample && i%19===8 && actor==="human";
+        const language=isBn?"bn":isHi?"hi":"en";
+        const translated=isBn
+          ? {geopolitics:"সর্বশেষ নিষেধাজ্ঞা ও ভূরাজনৈতিক ঘটনা কী?",macro:"সর্বশেষ মুদ্রাস্ফীতি ও সুদের হার কী?",critical_minerals:"লিথিয়াম ও গুরুত্বপূর্ণ খনিজের সাম্প্রতিক পরিস্থিতি কী?"}[category]
+          : isHi
+            ? {geopolitics:"नवीनतम प्रतिबंध और भू-राजनीतिक घटनाएं क्या हैं?",macro:"नवीनतम मुद्रास्फीति और ब्याज दरें क्या हैं?",critical_minerals:"लिथियम और महत्वपूर्ण खनिजों की ताज़ा स्थिति क्या है?"}[category]
+            : null;
+        const question=translated ? `${country.name}: ${translated}`
+          : `${selected.text} ${country.name}? Return dated evidence, uncertainty, and what to monitor, without guessing.`;
+        const id="G195-"+String(++n).padStart(5,"0");
+        const subject={type:"country",country_iso3:country.iso3};
+        const payload={question, client_request_id:id,
+          // A person can ask only a question, while an agent passes explicit ISO3.
+          ...(actor==="machine" || language!=="en" ? {subjects:[subject],topics:[selected.topic]} : {}),
+          ...(language!=="en"?{language}:{})
+        };
+        const key=category==="critical_minerals"?"critical_minerals":category;
+        const testCase={id,country_iso3:country.iso3,country:country.name,category,
+          scenario:selected.id,topic:selected.topic,actor,language,
+          request_body:payload,endpoint:"/api/v1/intelligence/structured-answer",
+          expected_evidence:sources.classification[key].must_have,
+          prospective_source_ids:sources.candidate_sources
+            .filter(s=>s.categories.includes(category)).map(s=>s.id),
+          // This is a REQUIREMENTS inventory, not claimed publisher/evidence access.
+          source_coverage_status:"NOT_MEASURED",
+          response_status:"NOT_TESTED",http_status:null,error_code:null,
+          payment_submitted:false,settlement_performed:false};
+        matrix.push(testCase);
+        if(selected.id===liveScenario)liveCandidates.push(testCase);
+      }
     }
   }
 }
-if(matrix.length!==1170 || new Set(matrix.map(x=>x.id)).size!==1170 ||
-   categories.some(category=>matrix.filter(x=>x.category===category).length!==390) ||
-   countries.some(c=>matrix.filter(x=>x.country_iso3===c.iso3).length!==6) ||
-   matrix.filter(x=>x.actor==="human").length!==585 ||
-   matrix.filter(x=>x.actor==="machine").length!==585)throw Error("QUESTION_MATRIX_INTEGRITY_FAILED");
+if(matrix.length!==4680 || new Set(matrix.map(x=>x.id)).size!==4680 ||
+   liveCandidates.length!==1170 || new Set(liveCandidates.map(x=>x.id)).size!==1170 ||
+   categories.some(category=>matrix.filter(x=>x.category===category).length!==1560) ||
+   countries.some(c=>matrix.filter(x=>x.country_iso3===c.iso3).length!==24) ||
+   matrix.filter(x=>x.actor==="human").length!==2340 ||
+   matrix.filter(x=>x.actor==="machine").length!==2340 ||
+   categories.some(category=>topics[category].some(topic=>
+     !matrix.some(x=>x.category===category&&x.scenario===topic.id))))
+  throw Error("QUESTION_MATRIX_INTEGRITY_FAILED");
 
 const manifestHash=sha(JSON.stringify(matrix.map(({id,country_iso3,category,scenario,actor,language,request_body})=>
   ({id,country_iso3,category,scenario,actor,language,request_body}))));
@@ -111,7 +122,7 @@ const permutation = matrix.map((item,index)=>({index,order:sha(item.id)}))
 const epochDay=Math.max(0,Math.floor((Date.now()-Date.UTC(2026,9,29))/86400000));
 const sampleIndices=new Set(Array.from({length:limit},(_,i)=>
   permutation[(epochDay*limit+i)%permutation.length]));
-const selected=live ? matrix.filter((_,i)=>sampleIndices.has(i)) : [];
+const selected=live ? liveCandidates.filter((_,i)=>sampleIndices.has(i)) : [];
 function errorCode(json) {
  const value=json?.error?.code??json?.error_code??json?.code??json?.reason;
  return typeof value==="string"?value.slice(0,110):null;
@@ -171,7 +182,9 @@ mkdirSync(output,{recursive:true});
 const summary={
  schema:"geomacro.195x3-human-machine-structured-output-audit.v1",generated_at:new Date().toISOString(),
  country_universe:"193_UN_members_plus_2_observer_states",countries:195,categories:3,
- total_question_scenarios:1170,human:585,machine:585,matrix_cells:585,
+ total_question_scenarios:4680,human:2340,machine:2340,matrix_cells:585,
+ question_archetypes_per_country_category:4,
+ live_probe_candidate_scenarios:1170,
  manifest_sha256:manifestHash, mode:live?"PRODUCTION_UNPAID_PROBE":"OFFLINE_TEST_CASE_GENERATION",
  live_requests_attempted:results.length,live_result_classes:counts,
  paid_structured_deliveries_verified:0,usdc_spent:"0",source_registration_is_not_ingestion:true,
@@ -181,6 +194,10 @@ const summary={
 };
 writeFileSync(output+"/summary.json",JSON.stringify(summary,null,2)+"\n");
 writeFileSync(output+"/question-manifest.json",JSON.stringify({summary,cases:matrix},null,2)+"\n");
+writeFileSync(output+"/live-probe-candidate-manifest.json",JSON.stringify({
+  summary:{...summary,total_question_scenarios:liveCandidates.length,
+    human:585,machine:585,mode:"LIVE_PROBE_CANDIDATES_NOT_EXECUTED"},cases:liveCandidates
+},null,2)+"\n");
 writeFileSync(output+"/country-category-gaps.json",JSON.stringify({summary,cells},null,2)+"\n");
 writeFileSync(output+"/live-no-funds-results.json",JSON.stringify({summary,results},null,2)+"\n");
 console.log(JSON.stringify({output,summary}));
