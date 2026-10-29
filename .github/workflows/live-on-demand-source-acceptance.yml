@@ -137,6 +137,7 @@ jobs:
           RELIEFWEB_APPROVED_APPNAME: ${{ secrets.RELIEFWEB_APPROVED_APPNAME }}
         shell: bash
         run: |
+          set +e
           set -uo pipefail
           failed=0
           run_check() {
@@ -275,6 +276,7 @@ jobs:
         env:
           RELIEFWEB_APPROVED_APPNAME: ""
         run: |
+          set +e
           set -uo pipefail
           failed=0
           run_check() {
