@@ -2,8 +2,65 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-29T16:36:17.132Z",
+  "updated_at": "2026-10-29T17:20:33.092Z",
   "signals": [
+    {
+      "id": "macro-8c8602ac",
+      "category": "macro",
+      "title": "Geomacro finds IMF said Federal Reserve is 'appropriately' keeping close eye on data - Kitco",
+      "what_changed": "A monitored source feed reports: IMF said Federal Reserve is 'appropriately' keeping close eye on data - Kitco. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T16:53:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-dafeb8e0",
+      "category": "macro",
+      "title": "Geomacro finds Iran said four tankers on fire after hitting mines in Hormuz",
+      "what_changed": "A monitored source feed reports: Iran said four tankers on fire after hitting mines in Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T16:32:17.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-19bc01b4",
+      "category": "macro",
+      "title": "Geomacro finds India increased growth forecast for fiscal year",
+      "what_changed": "A monitored source feed reports: India increased growth forecast for fiscal year. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T16:30:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: rss.dw.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-0a8fa7be",
       "category": "macro",
@@ -24,6 +81,25 @@
       "severity": null
     },
     {
+      "id": "macro-db170aba",
+      "category": "macro",
+      "title": "Geomacro finds Minister of Economic Transformation said Maya Island Air to commence air connectivity in Southern Belize",
+      "what_changed": "A monitored source feed reports: Minister of Economic Transformation said Maya Island Air to commence air connectivity in Southern Belize. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T15:14:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.breakingbelizenews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-b40ce292",
       "category": "macro",
       "title": "Geomacro finds PM approved expansion of Jinnah and Allama Iqbal airports, eyes making Karachi 'air cargo hub'",
@@ -37,6 +113,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.dawn.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-43592126",
+      "category": "macro",
+      "title": "Geomacro finds Macron said Russia Choosing ‘Escalation’ After Deadly Dnipro Train Station Strike - Kyiv Post",
+      "what_changed": "A monitored source feed reports: Macron said Russia Choosing ‘Escalation’ After Deadly Dnipro Train Station Strike - Kyiv Post. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T14:35:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -204,6 +299,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T13:18:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-e5af183b",
+      "category": "macro",
+      "title": "Geomacro finds Whirlpool reported Mixed Q3 Results as Inflation and Lower Demand Impact Performance - SSBCrack",
+      "what_changed": "A monitored source feed reports: Whirlpool reported Mixed Q3 Results as Inflation and Lower Demand Impact Performance - SSBCrack. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T13:12:17.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -442,6 +556,25 @@
       "severity": null
     },
     {
+      "id": "macro-1c8eae12",
+      "category": "macro",
+      "title": "Geomacro finds India's Ambuja Cements reported quarterly profit drop as fuel, freight costs rise - Reuters",
+      "what_changed": "A monitored source feed reports: India's Ambuja Cements reported quarterly profit drop as fuel, freight costs rise - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T10:05:11.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-60116006",
       "category": "macro",
       "title": "Geomacro finds Russia said Drone Strike Hit Cargo Ship Near Ukraine’s Odesa Port - Khaama Press",
@@ -527,6 +660,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T08:46:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c541614c",
+      "category": "macro",
+      "title": "Geomacro finds Kotak raised FY27 crude oil price forecast to $100 amid 8-month supply disruption - Times of Oman",
+      "what_changed": "A monitored source feed reports: Kotak raised FY27 crude oil price forecast to $100 amid 8-month supply disruption - Times of Oman. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:40:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

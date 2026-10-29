@@ -2,8 +2,122 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-29T16:36:17.132Z",
+  "updated_at": "2026-10-29T17:20:33.092Z",
   "signals": [
+    {
+      "id": "geopolitics-37fe83e1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Cubans called for lifting of embargo, express hope for better lives",
+      "what_changed": "A monitored source feed reports: Cubans called for lifting of embargo, express hope for better lives. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "sanctions and trade restrictions",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T16:37:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.africanews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a87fcb21",
+      "category": "geopolitics",
+      "title": "Geomacro finds Qatar said Israel seeking 'scapegoat', denies election interference allegations",
+      "what_changed": "A monitored source feed reports: Qatar said Israel seeking 'scapegoat', denies election interference allegations. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T16:36:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.khaleejtimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-eb5799cf",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said at least 13 killed in Russian attack on train station - The New Indian Express",
+      "what_changed": "A monitored source feed reports: Ukraine said at least 13 killed in Russian attack on train station - The New Indian Express. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T16:33:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-7612200e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Lithuania announced plans to introduce universal military conscription for men ages 18, 22 starting in 2032",
+      "what_changed": "A monitored source feed reports: Lithuania announced plans to introduce universal military conscription for men ages 18, 22 starting in 2032. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T16:31:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: meduza.io"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-655fe35e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said at least 13 killed in Russian attack on train station",
+      "what_changed": "A monitored source feed reports: Ukraine said at least 13 killed in Russian attack on train station. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T16:24:13.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-8da8fc64",
+      "category": "geopolitics",
+      "title": "Geomacro finds US and Japan agreed to establish a Japanese facility for joint missile production",
+      "what_changed": "A monitored source feed reports: US and Japan agreed to establish a Japanese facility for joint missile production. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T15:58:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: feeds.npr.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-c2811d3d",
       "category": "geopolitics",
@@ -37,6 +151,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.vanguardngr.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ee27b560",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran left JD Vance's message unanswered, security source says",
+      "what_changed": "A monitored source feed reports: Iran left JD Vance's message unanswered, security source says. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T15:35:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.dailysabah.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -94,6 +227,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.jpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-41820d6a",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. and Japan agreed to establish a Japanese facility for joint missile production - Los Angeles Times",
+      "what_changed": "A monitored source feed reports: U.S. and Japan agreed to establish a Japanese facility for joint missile production - Los Angeles Times. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T14:49:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -170,6 +322,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e7e7e04b",
+      "category": "geopolitics",
+      "title": "Geomacro finds Qatar rejected ‘dangerous’ accusations that it interfered in Israeli elections - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Qatar rejected ‘dangerous’ accusations that it interfered in Israeli elections - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T13:33:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
