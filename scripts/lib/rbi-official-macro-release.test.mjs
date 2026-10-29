@@ -36,7 +36,7 @@ test("RBI first-party native RSS timestamps only prove a discovery reference, ne
    item(65236,"Maturity of securities","Fri, 23 Oct 2026 09:00:00 GMT")+
    item(65237,"Currency and foreign exchange outlook","Mon, 19 Oct 2026 09:00:00 GMT")+
    item(65238,"Reserve Bank repo rate","Sat, 24 Oct 2026 11:59:00 GMT")+
-   item(65239,"Foreign exchange reserves","2026-10-24")));
+   item(65239,"Foreign exchange reserves","2026-10-24")),now);
  assert.equal(a.country_iso3,"IND");assert.equal(a.category,"macro");
  assert.equal(a.rss_items_inspected,6);
  assert.equal(a.exact_original_link_ids,5);
