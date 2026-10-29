@@ -174,6 +174,23 @@ export async function auditThreeDomainLive({fetchImpl=fetch,now}={}){
   // Root-cause a real public 503 with ONE bounded, read-only canonical
   // continuity GET and the same pure projector used by the Worker. No source
   // original or D1 credentials are ever requested or printed.
+  // Only provider-cache metadata and a fixed public error code are logged,
+  // never the response body, a source item, a URL, or a private account value.
+  const cacheStatus=String(firstResponse.headers.get("cf-cache-status")??"NONE")
+   .replace(/[^A-Za-z0-9_-]/gu,"").slice(0,18);
+  const ageHeader=String(firstResponse.headers.get("age")??"NA")
+   .replace(/[^0-9]/gu,"").slice(0,10)||"NA";
+  const responseCachePolicy=firstResponse.headers.get("cache-control")==="no-store"?
+   "NO_STORE":"OTHER";
+  let sourceErrorCode="NON_JSON";
+  if(Number(firstResponse.headers.get("content-length")??0)<=4096&&
+    firstResponse.headers.get("content-type")?.includes("application/json")){
+   try{
+    const x=await firstResponse.clone().json();
+    if(typeof x?.error==="string"&&/^[A-Z_]{3,80}$/u.test(x.error))
+      sourceErrorCode=x.error;
+   }catch{/* unknown error type must remain source-neutral */}
+  }
   let diagnostic="CANONICAL_ORIGIN_UNVERIFIED", uncached="UNCACHED_NOT_TESTED";
   let cachedContinuity="CACHED_CONTINUITY_NOT_READ";
   try{
@@ -216,7 +233,7 @@ export async function auditThreeDomainLive({fetchImpl=fetch,now}={}){
    }
   }catch{diagnostic="CONTINUITY_DIAGNOSTIC_READ_UNAVAILABLE";}
   await firstResponse.body?.cancel();
-  throw Error("STRUCTURED_CACHED_HTTP_"+firstResponse.status+"_"+uncached+"_"+cachedContinuity+"_"+diagnostic);
+  throw Error("STRUCTURED_CACHED_HTTP_"+firstResponse.status+"_"+uncached+"_"+cachedContinuity+"_"+diagnostic+"_EDGE_"+cacheStatus+"_AGE_"+ageHeader+"_POLICY_"+responseCachePolicy+"_CODE_"+sourceErrorCode);
  }
  const initial=verifyStructuredDeliveryEnvelope(
    await readBoundedJson(firstResponse,"STRUCTURED_CACHED"),clock());
@@ -277,7 +294,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
  }catch(error){
   process.stderr.write(JSON.stringify({
    schema:"geomacro.three-domain-blackbox-acceptance.v1",
-   status:"FAIL",reason:String(error?.message??"UNKNOWN").slice(0,130),
+   status:"FAIL",reason:String(error?.message??"UNKNOWN").slice(0,320),
    payment_attempted:false,paid_delivery_verified:false,
   })+"\n");
   process.exitCode=1;
