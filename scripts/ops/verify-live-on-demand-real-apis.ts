@@ -31,6 +31,7 @@ const FAMILY_BY_HOST:Readonly<Record<string,string>>={
   "www.canada.ca":"canada_nrcan",
   "press.un.org":"un_press",
   "www.bis.org":"bis",
+  "www.stats.gov.cn":"china_nbs",
   "www.boj.or.jp":"bank_of_japan",
   "www.iea.org":"iea",
   "www.bankofcanada.ca":"bank_of_canada",

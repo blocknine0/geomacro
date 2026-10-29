@@ -98,6 +98,12 @@ export function originalPublisherMatchesCountry(
      publisherFamily==="boj_original_publisher" &&
      /^(?:Statement on Monetary Policy|Monetary Policy Decision|Outlook for Economic Activity and Prices)(?:\s*[:\-–]\s*.+)?$/iu.test(title))
     return true;
+  // NBS's exact English "Latest Releases" RSS is the original China national
+  // statistics bulletin stream; its release titles often omit "China" even
+  // when the release is explicitly China-only. This binds source identity to
+  // relevance, never to article clocks, independent claims, rights or payment.
+  if(countryIso3==="CHN" && verifiedOfficialName==="China" &&
+     publisherFamily==="china_nbs_original_macro_publisher")return true;
   return countryIso3==="USA" && verifiedOfficialName==="United States" &&
     publisherFamily==="us_federal_reserve_original_publisher" &&
     /^Minutes of the Board['\u2019]s discount rate meetings on\s+\S/iu.test(title);

@@ -26,7 +26,7 @@ describe("Official Macro/FX and critical-minerals global source expansion",()=>{
       const at=Date.parse("2026-10-17T13:00:00Z");
       const macro=await readStatelessWebsiteIntelligence("macro",at);
       const minerals=await readStatelessWebsiteIntelligence("rare_earth",at);
-      expect(macro.feed_count).toBe(23);
+      expect(macro.feed_count).toBe(24);
       expect(minerals.feed_count).toBe(18); // +one first-party DOE HTML fallback; fixed read-only budget
       expect(macro.healthy_feed_count).toBe(1);
       expect(minerals.healthy_feed_count).toBe(2);

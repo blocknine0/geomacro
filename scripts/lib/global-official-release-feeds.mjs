@@ -25,6 +25,10 @@ export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
    family:'un_geneva_original_press_release_publisher'},
  {id:'un_press_global',category:'geopolitics',url:'https://press.un.org/en/rss.xml',format:'rss',host:'press.un.org',path:/^\/en\/20\d{2}\/[a-z]+\d+[a-z0-9]*\.doc\.htm$/u,topic:geo,credit:'United Nations',family:'un_press_original_publisher'},
  {id:'un_news_economy',category:'macro',url:'https://news.un.org/feed/subscribe/en/news/topic/economic-development/feed/rss.xml',format:'rss',host:'news.un.org',path:/^\/en\/story\/20\d{2}\/\d{1,2}\/[a-z0-9-]+$/u,topic:macro,credit:'UN News',family:'un_economy_original_publisher'},
+ // China NBS officially publishes this English RSS and current macro releases.
+ // Its terms allow use of statistical data with correct attribution; article
+ // text, third-party material, and commercial redistribution are NOT cleared.
+ {id:'china_nbs_macro_original',category:'macro',url:'https://www.stats.gov.cn/english/PressRelease/rss.xml',format:'rss',host:'www.stats.gov.cn',path:/^\/english\/PressRelease\/\d{6}\/t\d{8}_\d+\.html$/u,topic:macro,credit:'National Bureau of Statistics of China; attribute the statistical data. Article-text and third-party rights remain unverified.',family:'china_nbs_original_macro_publisher'},
  {id:'bis_press_global',category:'macro',url:'https://www.bis.org/doclist/all_pressrels.rss',format:'rss',host:'www.bis.org',path:/^\/(?:press\/p\d{6}[a-z]?\.htm|media-releases\/20\d{6}-[a-z0-9-]+)$/u,topic:macro,credit:'Bank for International Settlements',family:'bis_original_publisher',rdf:true,websiteId:'bis_press'},
  {id:'boj_press_global',category:'macro',url:'https://www.boj.or.jp/en/rss/whatsnew.xml',format:'rss',host:'www.boj.or.jp',path:/^\/en\/(?:about|announcements|mopo|statistics|research)\/[A-Za-z0-9_./-]+\.htm$/u,topic:macro,credit:'Bank of Japan',family:'boj_original_publisher'},
  {id:'un_news_minerals',category:'rare_earth',url:'https://news.un.org/feed/subscribe/en/news/all/rss.xml',format:'rss',host:'news.un.org',path:/^\/en\/story\/20\d{2}\/\d{1,2}\/[a-z0-9-]+$/u,topic:MINERAL_RELEASE_TOPIC,credit:'UN News',family:'un_minerals_original_publisher'},

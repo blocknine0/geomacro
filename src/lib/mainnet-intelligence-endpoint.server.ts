@@ -66,9 +66,11 @@ import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
 import {readAllAutoIngest72hStructuredDrafts} from "./auto-ingest-72h-context.server";
 import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
-  inferOnDemandFreshnessSeconds, verifyOnDemandOriginalArticlePages, type OnDemandCategory,
+  inferOnDemandFreshnessSeconds, requestsHistoricalMineralData,
+  verifyOnDemandOriginalArticlePages, type OnDemandCategory, type SourceProbe,
 } from "./on-demand-global-discovery.server";
 import { buildSourceGroundedResearchAnswer, type SourceGroundedResearchAnswer } from "./on-demand-research-answer.server";
+import type { BgsMineralHistory } from "./bgs-world-mineral-statistics.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const PRODUCT_ID = "geomacro_adaptive_risk_intelligence_v1";
@@ -238,6 +240,56 @@ function licensedPaidDeliveryHeaders(prepared: Record<string, unknown>) {
        GEOMACRO_STRUCTURED_LICENSE_DISCOVERY.id)
     return {};
   return GEOMACRO_STRUCTURED_LICENSE_HEADERS;
+}
+
+type PublicSourceHealthState =
+  | "LEADS_OBSERVED"
+  | "NO_LEADS_IN_BOUNDED_SEARCH"
+  | "PARTIAL_SOURCE_OUTAGE"
+  | "SOURCE_OUTAGE"
+  | "ACCESS_RESTRICTED"
+  | "NOT_ATTEMPTED_WITHIN_BUDGET";
+
+/** Aggregate only: never expose publisher families, URLs, titles or private evidence. */
+export function publicOnDemandSourceHealth(
+  probes: readonly SourceProbe[],
+  categories: readonly OnDemandCategory[],
+) {
+  return Object.fromEntries(categories.map(category => {
+    const rows=probes.filter(probe=>probe.category===category);
+    const count=(state:NonNullable<SourceProbe["retrieval_state"]>)=>
+      rows.filter(probe=>probe.retrieval_state===state).length;
+    const attempted=rows.filter(probe=>probe.attempted).length;
+    const reachable=rows.filter(probe=>probe.reachable).length;
+    const leads=rows.reduce((total,probe)=>total+Math.max(0,probe.observed_record_count),0);
+    const rateLimited=count("RATE_LIMITED");
+    const accessRestricted=count("ACCESS_RESTRICTED");
+    const transportUnavailable=count("TRANSPORT_UNAVAILABLE");
+    const cooldownActive=count("COOLDOWN_ACTIVE");
+    const providerInvalid=count("PROVIDER_INVALID");
+    const failed=rateLimited+accessRestricted+transportUnavailable+cooldownActive+providerInvalid;
+    const state:PublicSourceHealthState=leads>0 ? "LEADS_OBSERVED"
+      : attempted===0 ? "NOT_ATTEMPTED_WITHIN_BUDGET"
+      : reachable>0 && failed>0 ? "PARTIAL_SOURCE_OUTAGE"
+      : reachable>0 ? "NO_LEADS_IN_BOUNDED_SEARCH"
+      : accessRestricted>0 && failed===accessRestricted ? "ACCESS_RESTRICTED"
+      : "SOURCE_OUTAGE";
+    return [category,{
+      state,
+      search_scope:"BOUNDED_APPROVED_SOURCE_MESH",
+      exhaustive:false,
+      source_checks_attempted:attempted,
+      source_checks_reachable:reachable,
+      leads_observed:leads,
+      rate_limited:rateLimited,
+      access_restricted:accessRestricted,
+      transport_unavailable:transportUnavailable,
+      cooldown_active:cooldownActive,
+      provider_invalid:providerInvalid,
+      retryable:rateLimited+transportUnavailable+cooldownActive>0,
+      automatic_retry:false,
+    }];
+  }));
 }
 
 function replaySettlement(tx: string | null, network: string | null): CoinbaseSettleResult {
@@ -425,13 +477,18 @@ export const mainnetIntelligenceHandlers = {
           let privatePeerScoredDimensions=0;
           let privateEvidenceQualification:ReturnType<typeof publicOnDemandQualificationStatus>|null=null;
           let sourceGroundedResearchAnswer:SourceGroundedResearchAnswer|null=null;
+          let historicalMineralAnswer:BgsMineralHistory|null=null;
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
               topics:plan.topics,
               max_age_seconds:requestedNewsAgeSeconds,
+              include_historical_mineral_data:categories.length===1 &&
+                categories[0]==="rare_earth" && Boolean(mineral) &&
+                requestsHistoricalMineralData(plan.question_key),
             });
             discovery=privateResult.discovery;
+            historicalMineralAnswer=privateResult.private_mineral_history;
             // NEVER copy privateResult.private_candidates into the public
             // response/ledger/x402 quote; article-page publication, rights
             // and independent same-event verification are not yet complete.
@@ -534,6 +591,7 @@ export const mainnetIntelligenceHandlers = {
             ok:false,chargeable:false,payment_required_now:false,
             product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,
             ...(sourceGroundedResearchAnswer ? {research_answer:sourceGroundedResearchAnswer} : {}),
+            ...(historicalMineralAnswer ? {historical_mineral_answer:historicalMineralAnswer} : {}),
             on_demand:{
               status:discovery.status,
               searched_in_parallel:discovery.searched_in_parallel,
@@ -544,6 +602,7 @@ export const mainnetIntelligenceHandlers = {
               reached_source_families:discovery.reached_source_families,
               existing_verified_country_gro_available:existingVerifiedCountryGroAvailable,
               discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
+              source_health_by_category:publicOnDemandSourceHealth(discovery.source_probes,categories),
               // Own-derived news guides this query's structured research,
               // but only separately verified originals can produce a paid
               // score, quote or settled customer delivery.
@@ -553,6 +612,7 @@ export const mainnetIntelligenceHandlers = {
               private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
               duplicate_original_headlines_suppressed:duplicatePrivateOriginalHeadlines,
               private_official_annual_change_count:privateOfficialAnnualChanges,
+              historical_mineral_series_count:historicalMineralAnswer?.series.length??0,
               private_annual_directional_macro_driver_count:privateAnnualDirectionalDrivers,
               private_annual_macro_rights_status:privateAnnualMacroRightsStatus,
               private_annual_macro_rights_verified_driver_count:privateAnnualRightsVerifiedDrivers,
