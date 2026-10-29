@@ -3,9 +3,16 @@ import {mkdirSync,writeFileSync} from "node:fs";
 import {observeOfficialSanctionsListings} from "../lib/official-sanctions-listings-observer.mjs";
 const OUT="artifacts/official-sanctions-listings/receipt.json";
 const live=process.argv.includes("--live");
-const result=live?await observeOfficialSanctionsListings():{
+const hourlyGate=process.argv.includes("--ofac-hourly-slot");
+const now=new Date();
+// Existing 12/42 UTC 30m runner: at most one OFAC GET per UTC hour.
+// Skipped half-hour is explicitly NO-PROBE, not a source freshness heartbeat.
+const due=!hourlyGate||now.getUTCMinutes()<30;
+const result=live&&due?await observeOfficialSanctionsListings({
+ now,onlySourceId:hourlyGate?"ofac_sanctions_list_updates":null
+}):{
  schema:"geomacro.official-sanctions-listings-observation.v1",
- checked_at:new Date().toISOString(),mode:"OFFLINE_NO_SOURCE_CALLS",
+ checked_at:new Date().toISOString(),mode:hourlyGate&&!due?"SKIPPED_NOT_THIS_HOURLY_SLOT":"OFFLINE_NO_SOURCE_CALLS",
  sources:[],source_count:0,reachable_sources:0,
  fully_qualified_event_count:0,applies_to_country_category_cells_verified:0,
  ofac_rss_retired:true,unsc_rss_access_approved:false,
