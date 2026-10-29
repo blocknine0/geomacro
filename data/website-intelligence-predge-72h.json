@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-29T16:02:32.611Z",
+  "checked_at": "2026-10-29T16:36:17.132Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 384,
+  "item_count": 382,
   "counts": {
-    "geopolitics": 185,
-    "macro": 156,
-    "rare_earth": 43
+    "geopolitics": 183,
+    "macro": 155,
+    "rare_earth": 44
   },
-  "source_native_ids_sha256": "8c2676c18f886ae899c214f2610b425ea30709112e0795ec6a88fc20621dcc74",
+  "source_native_ids_sha256": "9242e778ce479915feedf2edf04e126df6ac5f243d311f90c23b7cc67c42466b",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -290,6 +290,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: kyivindependent.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-9573e75c",
+      "category": "rare_earth",
+      "title": "Geomacro finds Metals.io launched Copper, Unlocking Access to the Critical Metal at the Heart of Electrification - Newswire",
+      "what_changed": "A monitored source feed reports: Metals.io launched Copper, Unlocking Access to the Critical Metal at the Heart of Electrification - Newswire. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T14:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -7257,63 +7276,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-314e6d22",
-      "category": "macro",
-      "title": "Geomacro finds Late reported of Hormuz attacks as Iran blacklist expands",
-      "what_changed": "A monitored source feed reports: Late reported of Hormuz attacks as Iran blacklist expands. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T16:12:32.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.seatrade-maritime.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-65344c72",
-      "category": "geopolitics",
-      "title": "Geomacro finds Egypt approved military support for Saudi Arabia amid escalating Houthi attacks",
-      "what_changed": "A monitored source feed reports: Egypt approved military support for Saudi Arabia amid escalating Houthi attacks. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T16:09:25.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.africanews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-9d70fde4",
-      "category": "geopolitics",
-      "title": "Geomacro finds Italy said new military aid package for Ukraine is ready",
-      "what_changed": "A monitored source feed reports: Italy said new military aid package for Ukraine is ready. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T16:03:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.pravda.com.ua"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
