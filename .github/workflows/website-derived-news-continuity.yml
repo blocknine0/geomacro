@@ -29,6 +29,8 @@ on:
       - ".github/workflows/website-derived-news-continuity.yml"
       - "scripts/ops/plan-d1-bundled-work.mjs"
       - "scripts/tests/plan-d1-bundled-work.test.mjs"
+      - "scripts/lib/phase2f-category-source-receipt.mjs"
+      - "scripts/tests/phase2f-category-source-receipt.test.mjs"
   workflow_dispatch: {}
   workflow_run:
     workflows: ["Deploy D1 Control Plane", "Deploy Permanent Public Finds Archive"]
@@ -132,6 +134,7 @@ jobs:
         run: |
           node --check scripts/ops/verify-production-observed-195x3.mjs
           node --test scripts/tests/plan-d1-bundled-work.test.mjs
+          node --test scripts/tests/phase2f-category-source-receipt.test.mjs
           node --test scripts/tests/verify-production-observed-195x3.test.mjs
           node --check scripts/lib/derived-news-b2-readwrite-backup.mjs
           node --check scripts/lib/derived-news-readback-policy.mjs
