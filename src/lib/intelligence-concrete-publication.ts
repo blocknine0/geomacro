@@ -209,7 +209,7 @@ function articleSpecificFocus(category:StatelessCategory,event:string):EventFocu
  if(category==="rare_earth"){
   const materials=materialNames(event);
   const scoped=materials?" involving "+materials:" in the minerals sector";
-  if(/\b(?:tokens?|tokenized|tokenised|digital assets?|digital commodity|trading platform|investment product)\b/iu.test(event)){
+  if(/\b(?:tokens?|tokenized|tokenised|digital assets?|digital commodity|trading platform|investment product|metals\.io|unlocking access|investment access)\b/iu.test(event)){
    return {rule:/$/u,
     impact:"the reported product or platform launch"+scoped+
       " concerns financial or digital access to material exposure, not necessarily new physical supply.",
