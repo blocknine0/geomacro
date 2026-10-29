@@ -7,6 +7,7 @@
 import assert from "node:assert/strict";
 import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
+import {projectThreeDomainStructuredDelivery} from "../../workers/control-plane/src/three-domain-structured-delivery.mjs";
 
 export const STRUCTURED_API="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/three-domain-structured-output";
 export const CONTINUITY_API="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/three-domain-continuity";
@@ -164,8 +165,34 @@ export async function auditThreeDomainLive({fetchImpl=fetch,now=Date.now()}={}){
   return method==="GET"?get(fetchImpl,url,headers):
    fetchImpl(url,{method,redirect:"error",signal:AbortSignal.timeout(12_000)});
  };
+ const firstResponse=await call(STRUCTURED_API);
+ if(firstResponse.status!==200){
+  // Root-cause a real public 503 with ONE bounded, read-only canonical
+  // continuity GET and the same pure projector used by the Worker. No source
+  // original or D1 credentials are ever requested or printed.
+  let diagnostic="CANONICAL_ORIGIN_UNVERIFIED";
+  try{
+   const response=await call(CONTINUITY_API,{"Cache-Control":"no-cache"});
+   if(response.status!==200){
+    diagnostic="CONTINUITY_HTTP_"+response.status;
+    await response.body?.cancel();
+   }else{
+    const source=await readBoundedJson(response,"DIAGNOSTIC_CONTINUITY");
+    try{
+     projectThreeDomainStructuredDelivery(source,Date.now());
+     diagnostic="CANONICAL_PROJECTOR_PASS_ORIGIN_ROUTE_DEGRADED";
+    }catch(error){
+     const code=String(error?.message??"").trim();
+     diagnostic=/^THREE_DOMAIN_STRUCTURED_[A-Z_]+$/u.test(code)?
+      code:"CANONICAL_PROJECTOR_UNVERIFIED";
+    }
+   }
+  }catch{diagnostic="CONTINUITY_DIAGNOSTIC_READ_UNAVAILABLE";}
+  await firstResponse.body?.cancel();
+  throw Error("STRUCTURED_CACHED_HTTP_"+firstResponse.status+"_"+diagnostic);
+ }
  const initial=verifyStructuredDeliveryEnvelope(
-   await readBoundedJson(await call(STRUCTURED_API),"STRUCTURED_CACHED"),now);
+   await readBoundedJson(firstResponse,"STRUCTURED_CACHED"),now);
  const refreshed=verifyStructuredDeliveryEnvelope(
    await readBoundedJson(await call(STRUCTURED_API,{"Cache-Control":"no-cache"}),"STRUCTURED_ORIGIN"),now);
  // Require positive correctness on both cache and canonical D1 no-cache views,
