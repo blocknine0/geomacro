@@ -183,3 +183,21 @@ test("invalid filters or POST unexpectedly succeeding fails the live security au
  await assert.rejects(()=>auditThreeDomainLive({fetchImpl:bypass,now:NOW}),
   /UNSCOPED_FILTER_MUST_NOT_SUCCEED/);
 });
+
+
+test("diagnoses a production cached 503 separately from healthy canonical no-cache projection",async()=>{
+ const f=fakeFetch();
+ let requests=0;
+ const firstCached503=async(url,opts)=>{
+  requests++;
+  if(url===STRUCTURED_API&&!opts.headers?.["Cache-Control"]&&opts.method==="GET")
+   return Response.json({ok:false,error:"CANONICAL_THREE_DOMAIN_READBACK_UNAVAILABLE"},{status:503});
+  return f.fetchImpl(url,opts);
+ };
+ await assert.rejects(
+  ()=>auditThreeDomainLive({fetchImpl:firstCached503,now:NOW}),
+  /STRUCTURED_CACHED_HTTP_503_UNCACHED_HTTP_200_CANONICAL_PROJECTOR_PASS_ORIGIN_ROUTE_DEGRADED/
+ );
+ assert.equal(requests,3);
+ assert.equal(f.urls.every(url=>[STRUCTURED_API,CONTINUITY_API].includes(url)),true);
+});
