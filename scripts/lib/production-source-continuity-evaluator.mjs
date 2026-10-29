@@ -39,7 +39,7 @@ export function evaluateProductionSourceContinuity(response,{now=new Date()}={})
      s.signed_intelligence_available!==false)throw Error("SOURCE_CONTINUITY_DOMAIN_INVALID");
    const at=iso(s.latest_source_check_at,now.getTime());
    const age=at===null?null:Math.floor((now.getTime()-at)/60000);
-   const current=age!==null && age>=0&&age*60000<=MAX_SOURCE_CHECK_AGE_MS &&
+   const current=age!==null && age>=0&&(now.getTime()-at)<=MAX_SOURCE_CHECK_AGE_MS &&
      s.source_check_current===true && s.service_state.startsWith("CURRENT_SOURCE_CHECK");
    const pulse=s.original_publisher_pulse;
    if(!pulse || typeof pulse!=="object" || typeof pulse.status!=="string" ||
