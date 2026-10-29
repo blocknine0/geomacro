@@ -119,3 +119,28 @@ test("false paid delivery or invented positive evidence is rejected",()=>{
  bad.source_runtime={contexts:[]};
  expect(()=>assertGlobalAuditDocument(bad)).toThrow();
 });
+
+
+test("last successful source proof remains pinned across repeated outage days",async()=>{
+ const b2=memoryStore();
+ const healthy=await archiveGlobalCountryAudit({
+   audit:makeAudit(true),env:ENV,b2,now:new Date(clock),
+ });
+ const afterOne=await archiveGlobalCountryAudit({
+   audit:makeAudit(false),env:{...ENV,GITHUB_RUN_ID:"123457"},b2,
+   now:new Date("2026-10-29T12:00:22.000Z"),
+ });
+ const afterTwo=await archiveGlobalCountryAudit({
+   audit:makeAudit(false),env:{...ENV,GITHUB_RUN_ID:"123458"},b2,
+   now:new Date("2026-10-29T12:00:32.000Z"),
+ });
+ const head=assertProofHead(JSON.parse(b2.data.get(GLOBAL_PROOF_HEAD_KEY).toString("utf8")));
+ expect(head.snapshot_key).toBe(afterTwo.archived_snapshot);
+ expect(head.last_success_snapshot_key).toBe(healthy.archived_snapshot);
+ expect(head.last_success_snapshot_sha256).toBe(healthy.sha256);
+ expect(head.last_success_reference_only).toBe(true);
+ expect(b2.data.has(healthy.archived_snapshot)).toBe(true);
+ expect(b2.data.has(afterOne.archived_snapshot)).toBe(true);
+ expect(b2.data.has(afterTwo.archived_snapshot)).toBe(true);
+ expect(head.live_data_eligibility_implied).toBe(false);
+});
