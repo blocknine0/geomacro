@@ -19,7 +19,13 @@ on:
   # Failures are observable, not transformed into new articles or risk scores.
   schedule:
     - cron: "23 3 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      country_iso3:
+        description: 'Canonical country ISO3; real 2024+2025 USGS mineral rows required; no funds'
+        type: string
+        required: true
+        default: 'CHN'
 permissions:
   contents: read
 concurrency:
@@ -100,7 +106,7 @@ jobs:
         env:
           NODE_ENV: production
           GEOMACRO_SUPABASE_RUNTIME_MODE: standby
-          GEOMACRO_FIRST_DIGEST_COUNTRY: CHN
+          GEOMACRO_FIRST_DIGEST_COUNTRY: ${{ inputs.country_iso3 }}
           B2_ACCOUNT_QUOTA_REQUIRED: '1'
           B2_ACCOUNT_QUOTA_WORKFLOW_ID: first_qualified_country_digest
           B2_REQUEST_BUDGET: '8'
