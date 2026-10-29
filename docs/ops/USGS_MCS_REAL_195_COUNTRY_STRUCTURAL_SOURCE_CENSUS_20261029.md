@@ -32,3 +32,9 @@ After merge, verify a **new protected-main real daily run** and retain the exact
 4. Only then pursue actual merchant mainnet USDC x402 quote/settlement for a buyer-authorized $0.02 structural country digest. Merchant activation, payment/custody and signed risk objects remain completely unchanged.
 
 PREDGE (including locked code, quota, credentials, deployments and customer contract) remains untouched.
+
+## Country-scoped real original no-funds preparation (manual existing workflow)
+
+The previously hardcoded `USA`/`CHN` operator script now accepts any **exact canonical ISO3** but **only after** the actual country has at least one unambiguous, comparable 2024/2025 row from this exact original CSV. The existing paid Store plan/rights/source-eligibility checker must independently return AVAILABLE for that exact ISO3, and exact customer bytes must pass the existing candidate-vault signature and SHA binding before a private archive can be written. Invalid ISO3, absent country rows, unverified rights, mixed years or failed Store preflight abort without paying, signing or publishing.
+
+The existing `First qualified country digest (no funds)` manual `workflow_dispatch` now accepts a `country_iso3` input. Protected main nightly/PR source verification continues testing real CHN, so the prior stable scheduled acceptance does not change. An operator may run the manual workflow for a selected one of the 76 measured source candidates (or any later country with genuine qualifying data). That run uses the already-governed D1/B2 quota and protected environment and must be independently inspected; it is **not a payment** and must not be used to claim all 76 canonical Store products have been preflighted.
