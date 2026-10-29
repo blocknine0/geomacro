@@ -59,6 +59,9 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      # Scoped writer is preferred atomically over the legacy generic key.
+      B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}
+      B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}
       B2_REQUEST_BUDGET: "20"
       # Every PUT/GET/retry/native read is reserved from the SAME account-wide
       # D1 quota ledger as Intelligence, Global Risk, Risk Indices and archive jobs.
@@ -88,12 +91,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in EIA_API_KEY NOAA_NCEI_TOKEN B2_S3_ENDPOINT B2_KEY_ID B2_APPLICATION_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+          for name in EIA_API_KEY NOAA_NCEI_TOKEN B2_S3_ENDPOINT CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
             test -n "${!name:-}" || { echo "::error::Missing ${name}"; exit 1; }
           done
           test "$B2_S3_ENDPOINT" = "https://s3.us-east-005.backblazeb2.com" || { echo "::error::Unexpected B2 endpoint"; exit 1; }
+          # Credentials are checked as a complete pair before the first
+          # source fetch; no probing, secret logs or invalid-key B2 retries.
+          node --input-type=module -e '
+            import {selectGovernedB2WriterCredentials} from "./scripts/lib/governed-source-b2-writer-credentials.mjs";
+            const selected=selectGovernedB2WriterCredentials();
+            console.log("::notice::GOVERNED_B2_WRITER_ROLE="+selected.role);
+          '
           test -z "${APP_SUPABASE_URL:-}" || { echo "::error::Supabase URL must not be injected into governed ingestion"; exit 1; }
           test -z "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Supabase service key must not be injected into governed ingestion"; exit 1; }
+
+      - name: Test bounded existing-key selection (no network, no credentials logged)
+        run: node --test scripts/tests/governed-source-b2-writer-credentials.test.mjs
 
       - name: Resolve existing D1 control plane
         id: d1
