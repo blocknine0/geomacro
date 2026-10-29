@@ -31,7 +31,7 @@ let lastFailure:string|null=null;
 export function blsCpiAcquisitionFailure(){return lastFailure;}
 function monthEnd(year:number,month:number){
   const day=new Date(Date.UTC(year,month,0)).getUTCDate();
-  return \`\${year}-\${String(month).padStart(2,"0")}-\${String(day).padStart(2,"0")}T23:59:59.000Z\`;
+  return `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}T23:59:59.000Z`;
 }
 export function parseBlsUsCpiRelease(payload:unknown,asOf:Date):Sample|null{
   const root=payload as {status?:unknown;Results?:{series?:unknown}}|null;
@@ -138,7 +138,7 @@ export async function loadQualifiedBlsCountryContext(
       source_series_id:BLS_CPI_SERIES,
       source_response_sha256:release.responseHash,
       source_row_sha256:data.rowHash,
-      measurement_period:\`\${data.year}-\${String(data.month).padStart(2,"0")}\`,
+      measurement_period:`${data.year}-${String(data.month).padStart(2,"0")}`,
       original_measurement_month:true,
       retrieval_is_not_release_or_observation_date:true,
       rights_basis:"BLS_FEDERAL_PUBLIC_DOMAIN_NON_GRAPHICS",
