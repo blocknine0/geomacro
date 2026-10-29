@@ -2,7 +2,7 @@ import {test,expect} from "bun:test";
 import {buildCanonical195x3CoverageMatrix} from "../../src/lib/canonical-195-country-coverage-matrix";
 import {assertGlobalAuditDocument,buildGlobalAuditSnapshot,assertProofHead,
   verifyPreviousSnapshot,digest,GLOBAL_PROOF_HEAD_KEY} from "../lib/195x3-durable-proof-chain.mjs";
-import {archiveGlobalCountryAudit} from "../ops/archive-195x3-global-readiness-proof.mjs";
+import {archiveGlobalCountryAudit,classifyGlobalProofArchiveFailure} from "../ops/archive-195x3-global-readiness-proof.mjs";
 
 const when="2026-10-29T12:00:00.000Z";
 const clock="2026-10-29T12:00:12.000Z";
@@ -143,4 +143,16 @@ test("last successful source proof remains pinned across repeated outage days",a
  expect(b2.data.has(afterOne.archived_snapshot)).toBe(true);
  expect(b2.data.has(afterTwo.archived_snapshot)).toBe(true);
  expect(head.live_data_eligibility_implied).toBe(false);
+});
+
+test("archive failures disclose only safe class, never credential/endpoint contents",()=>{
+ expect(classifyGlobalProofArchiveFailure(
+   Error("B2_ACCOUNT_GLOBAL_QUOTA_D1_RESERVATION_FAILED")))
+   .toBe("GLOBAL_PROOF_PUBLISH_D1_ACCOUNT_GOVERNOR_UNAVAILABLE");
+ expect(classifyGlobalProofArchiveFailure(Error("B2_GLOBAL_DAILY_QUOTA_EXHAUSTED")))
+   .toBe("GLOBAL_PROOF_PUBLISH_B2_SHARED_QUOTA_HELD");
+ expect(classifyGlobalProofArchiveFailure(Error("B2_GET_FAILED_403_AccessDenied_secret")))
+   .toBe("GLOBAL_PROOF_PUBLISH_B2_ACCESS_DENIED");
+ const text="response includes private-token-should-not-appear";
+ expect(classifyGlobalProofArchiveFailure(Error(text))).not.toContain(text);
 });

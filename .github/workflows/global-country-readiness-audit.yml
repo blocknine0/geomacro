@@ -8,6 +8,7 @@ on:
       - "scripts/audit-supabase-free-country-runtime.ts"
       - "scripts/lib/195x3-*.mjs"
       - "scripts/ops/archive-195x3-global-readiness-proof.mjs"
+      - "scripts/ops/publish-195x3-github-audit-witness.mjs"
       - "scripts/tests/195x3-*.test.*"
   workflow_dispatch: {}
   # The D1 Worker must be fully deployed before its new public source-runtime
@@ -26,6 +27,8 @@ on:
       - "scripts/lib/195x3-durable-proof-chain.mjs"
       - "scripts/lib/195x3-source-continuity.mjs"
       - "scripts/ops/archive-195x3-global-readiness-proof.mjs"
+      - "scripts/ops/publish-195x3-github-audit-witness.mjs"
+      - "scripts/tests/195x3-github-witness.test.ts"
       - "scripts/tests/195x3-durable-proof-chain.test.ts"
       - "scripts/tests/195x3-source-continuity.test.mjs"
   schedule:
@@ -52,13 +55,16 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: node --test scripts/tests/195x3-source-continuity.test.mjs
-      - run: bun test scripts/tests/195x3-durable-proof-chain.test.ts
+      - run: bun test scripts/tests/195x3-durable-proof-chain.test.ts scripts/tests/195x3-github-witness.test.ts
 
   audit:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 8
     environment: production
+    permissions:
+      contents: read
+      issues: write
     env:
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
@@ -82,7 +88,7 @@ jobs:
       - name: Prove durable-history and source-outage admission invariants (no funds)
         run: |
           node --test scripts/tests/195x3-source-continuity.test.mjs
-          bun test scripts/tests/195x3-durable-proof-chain.test.ts
+          bun test scripts/tests/195x3-durable-proof-chain.test.ts scripts/tests/195x3-github-witness.test.ts
       - name: Read canonical 195-country routing and actual D1 source proofs
         run: bun scripts/audit-supabase-free-country-runtime.ts
       - name: Enforce country evidence boundaries
@@ -95,6 +101,11 @@ jobs:
             .boundaries.supabase_requests == 0 and .boundaries.b2_requests == 0 and
             .boundaries.payments == 0 and .boundaries.raw_source_urls_emitted == false
           ' /tmp/global-country-runtime.json >/dev/null
+      - name: Anchor 195×3 private-audit SHA on GitHub, independently of source D1/B2 outages
+        if: ${{ success() || failure() }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ops/publish-195x3-github-audit-witness.mjs
       - name: Enforce B2-independent permanent proof prerequisites
         if: ${{ success() || failure() }}
         shell: bash

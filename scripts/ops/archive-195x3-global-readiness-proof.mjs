@@ -109,6 +109,31 @@ export async function archiveGlobalCountryAudit({
     b2_daily_account_governor_applied:true,
   };
 }
+/**
+ * Return only an allowlisted operational failure CLASS. Never expose provider
+ * response bodies, tokens, source endpoints or signed AWS headers in CI logs.
+ */
+export function classifyGlobalProofArchiveFailure(err){
+ const m=err instanceof Error?err.message:"";
+ if(/^GLOBAL_PROOF_PUBLISH_[A-Z0-9_]+$/u.test(m)||
+    /^GLOBAL_PROOF_[A-Z0-9_]+$/u.test(m))return m;
+ if(/^B2_ACCOUNT_GLOBAL_QUOTA_/u.test(m)||
+    /^B2_QUOTA_D1_/u.test(m))
+   return "GLOBAL_PROOF_PUBLISH_D1_ACCOUNT_GOVERNOR_UNAVAILABLE";
+ if(/^B2_GLOBAL_DAILY_QUOTA_EXHAUSTED$/u.test(m)||
+    /^B2_REQUEST_BUDGET_EXHAUSTED$/u.test(m)||
+    /^B2_(?:TRANSACTION_CAP_EXCEEDED|DOWNLOAD_CAP_EXCEEDED)$/u.test(m))
+   return "GLOBAL_PROOF_PUBLISH_B2_SHARED_QUOTA_HELD";
+ if(/^B2_(?:GET|PUT|HEAD)_FAILED_403_/u.test(m)||
+    /^B2_NATIVE_(?:AUTHORIZE|GET)_FAILED_403_/u.test(m))
+   return "GLOBAL_PROOF_PUBLISH_B2_ACCESS_DENIED";
+ if(/^B2_(?:GET|PUT|HEAD)_FAILED_429_/u.test(m)||
+    m==="B2_PROVIDER_THROTTLED")
+   return "GLOBAL_PROOF_PUBLISH_B2_THROTTLED";
+ if(/^B2_ARCHIVE_/u.test(m))
+   return "GLOBAL_PROOF_PUBLISH_B2_ARCHIVE_CONFIG_OR_ACCESS_INVALID";
+ return "GLOBAL_PROOF_PUBLISH_INTERNAL_NOT_VERIFIED";
+}
 if(import.meta.main){
   try{
     const path=process.argv[2]??"/tmp/global-country-runtime.json";
@@ -120,8 +145,7 @@ if(import.meta.main){
     console.log(JSON.stringify(receipt));
     if(!receipt.provider_snapshot_audit_ok)process.exitCode=2;
   }catch(e){
-    console.error(/^GLOBAL_(?:PROOF_PUBLISH|PROOF)_[A-Z0-9_]+$/u.test(e?.message??"")
-      ?e.message:"GLOBAL_PROOF_PUBLISH_NOT_VERIFIED");
+    console.error(classifyGlobalProofArchiveFailure(e));
     process.exitCode=2;
   }
 }
