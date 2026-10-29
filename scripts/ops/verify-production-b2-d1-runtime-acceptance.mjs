@@ -178,9 +178,17 @@ export async function runProductionB2D1RuntimeAcceptance({
   })+"\n","utf8");
   if(payload.length>1024)fail("RUNTIME_PROBE_PAYLOAD_BOUNDS_INVALID");
   const expected=sha256(payload);
-  let writeReceipt;
-  try{writeReceipt=await b2.putWithMetadataVerification(key,payload);}
-  catch(error){fail("B2_PUT_OR_FULL_READBACK_FAILED:"+classifyB2ProbeProviderFailure(error));}
+  let writeReceipt, storageStage="INITIAL_PUT";
+  try{
+    writeReceipt=await b2.putWithMetadataVerification(key,payload,{
+      // Marker is local and non-sensitive; no other B2 requests or D1 reservations.
+      onStage(stage){
+        storageStage=stage==="FIRST_VERIFICATION_GET"?"FIRST_VERIFICATION_GET":"INITIAL_PUT";
+      },
+    });
+  }catch(error){
+    fail("B2_"+storageStage+"_FAILED:"+classifyB2ProbeProviderFailure(error));
+  }
   if(writeReceipt?.full_body_readback_verified!==true||
     writeReceipt?.verification_mode!=="signed-put-full-readback-sha256"||
     writeReceipt?.sha256!==expected||writeReceipt?.bytes!==payload.length)
