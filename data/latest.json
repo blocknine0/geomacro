@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-29T10:16:29.202Z",
+  "checked_at": "2026-10-29T13:30:25.751Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,82 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-7a5762d3",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Russia’s justifications for its war do not withstand scrutiny · United Kingdom",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "United Kingdom issued a statement to the OSCE concerning Russia’s justifications for its war do not withstand scrutiny. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "geopolitical security",
+      "published_at": "2026-10-29T13:21:38.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-8d87d278",
+      "category": "rare_earth",
+      "title": "Geomacro finds Teck Resources reported higher copper and zinc prices help boost Q3 profit - BNN Bloomberg",
+      "what_changed": "A monitored source feed reports: Teck Resources reported higher copper and zinc prices help boost Q3 profit - BNN Bloomberg. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T11:46:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-9919873c",
+      "category": "rare_earth",
+      "title": "Geomacro finds Teck Resources reported higher copper and zinc prices help boost Q3 profit - CP24",
+      "what_changed": "A monitored source feed reports: Teck Resources reported higher copper and zinc prices help boost Q3 profit - CP24. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T11:46:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-02b0f561",
+      "category": "macro",
+      "title": "Geomacro finds Heavy Selling Pressure Pushes Gold lowered After Fed Holds Interest Rates Steady - Sada Elbalad English",
+      "what_changed": "A monitored source feed reports: Heavy Selling Pressure Pushes Gold lowered After Fed Holds Interest Rates Steady - Sada Elbalad English. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T10:50:57.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-cafb5719",
       "category": "geopolitics",
@@ -3391,6 +3467,25 @@
       "severity": null
     },
     {
+      "id": "rare_earth-e168f30f",
+      "category": "rare_earth",
+      "title": "Geomacro finds Canada: invested to unlock lithium potential and improve connectivity and industry in northern Quebec · Canada",
+      "why_it_matters": "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence.",
+      "what_changed": "Canada invested to unlock lithium potential and improve connectivity and industry in northern Quebec. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "funding",
+      "topic": "critical-mineral inputs",
+      "published_at": "2026-10-28",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Natural Resources Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-8cc5d548",
       "category": "macro",
       "title": "Geomacro finds Rogers forecast Q4 revenue of $215M-$225M with 16% adjusted EBITDA increase",
@@ -4379,42 +4474,6 @@
       "severity": null
     },
     {
-      "id": "geopolitics-800b8dc8",
-      "category": "geopolitics",
-      "title": "Geomacro finds FM Sybiha rejected normalizing Putin as Russian missiles hit Kyiv bridge and clinics",
-      "what_changed": "A monitored source feed reports: FM Sybiha rejected normalizing Putin as Russian missiles hit Kyiv bridge and clinics. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T12:07:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: english.nv.ua"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-9fdf5ef7",
-      "category": "geopolitics",
-      "title": "Geomacro finds Security Council: met Tuesday to debate the best way to improve security for women caught up in conflict",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "Security Council met Tuesday to debate the best way to improve security for women caught up in conflict.",
-      "geography": null,
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-10-27T12:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "macro-c31ba9e5",
       "category": "macro",
       "title": "Geomacro finds Govt proposed Rs4,500 wheat price for 2027, up Rs1,000 - Investify",
@@ -4567,25 +4626,6 @@
       "severity": null
     },
     {
-      "id": "macro-c45a65b4",
-      "category": "macro",
-      "title": "Geomacro finds Raghuram Rajan urged against using forex reserves to defend rupee - NewsBytes",
-      "what_changed": "A monitored source feed reports: Raghuram Rajan urged against using forex reserves to defend rupee - NewsBytes. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T08:56:07.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-1c8abf00",
       "category": "rare_earth",
       "title": "Geomacro finds India held 7, 8% of Global Rare-Earth Reserves but Still Imports Key Battery Materials: OECD - The Policy Edge",
@@ -4614,25 +4654,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-27T08:31:08.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-a9cdbfc3",
-      "category": "macro",
-      "title": "Geomacro finds IEA warned about Dangerous Concentration in Global Clean Energy Supply Chains - Crude Oil Prices Today | OilPrice.com",
-      "what_changed": "A monitored source feed reports: IEA warned about Dangerous Concentration in Global Clean Energy Supply Chains - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T08:30:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4728,25 +4749,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-26T23:15:02.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-4bd9c543",
-      "category": "rare_earth",
-      "title": "Geomacro finds Teck Resources said strike begins at Highland Valley Copper mine (NYSE:TECK) - Seeking Alpha",
-      "what_changed": "A monitored source feed reports: Teck Resources said strike begins at Highland Valley Copper mine (NYSE:TECK) - Seeking Alpha. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T12:21:57.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
