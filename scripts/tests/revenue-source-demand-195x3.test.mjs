@@ -25,7 +25,8 @@ test("every canonical country and category becomes distinct priced-product evide
  assert.equal(r.prioritized_sourcing_queue.length,585);
  assert.deepEqual(Object.keys(r.demand_by_category),cats);
  assert.ok(r.demand_by_category.macro.repair_or_missing_first_party_cells>0);
- assert.equal(r.demand_by_category.rare_earth.independently_qualified_paid_cells,0);
+ assert.equal(r.demand_by_category.rare_earth.independently_qualified_paid_cells,null);
+ assert.equal(r.demand_by_category.rare_earth.qualification_not_assessed,true);
  assert.equal(r.ingestion_and_d1_b2_write_verified_by_this_receipt,false);
  assert.equal(r.mainnet_settlement_verified_by_this_receipt,false);
  assert.equal(r.predge_modified,false);
