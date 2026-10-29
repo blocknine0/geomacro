@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /**
  * Actual no-funds public-API contract test. Fixed GeoMacro origins only.
- * Exactly four successful GETs at most + one rejected query + one rejected
- * method; no credentials, checkout, D1 writes, B2, PREDGE or x402.
+ * Healthy path: four public GETs and two rejected methods/queries.
+ * At most one extra structured GET on an initial transport exception only;
+ * never retry an HTTP 503, a payment request or a malformed proof.
+ * No credentials, checkout, D1 writes, B2, PREDGE or x402.
  */
 import assert from "node:assert/strict";
 import {pathToFileURL} from "node:url";
@@ -157,7 +159,7 @@ const get=(fetchImpl,url,headers={})=>fetchImpl(url,{
  method:"GET",redirect:"error",headers:{Accept:"application/json",...headers},
  signal:AbortSignal.timeout(12_000),
 });
-export async function auditThreeDomainLive({fetchImpl=fetch,now}={}){
+export async function auditThreeDomainLive({fetchImpl=fetch,now,wait}={}){
  // A real publisher-side clock may be later than the request's START time.
  // Validate each received HTTP document at its actual RECEIPT time.
  // Offline tests can pin now for deterministic adversarial fixtures.
@@ -165,9 +167,23 @@ export async function auditThreeDomainLive({fetchImpl=fetch,now}={}){
  let requests=0;
  const call=async(url,headers,method="GET")=>{
   requests++;
-  if(requests>6)throw Error("UPSTREAM_REQUEST_BUDGET_EXCEEDED");
-  return method==="GET"?get(fetchImpl,url,headers):
+  if(requests>7)throw Error("UPSTREAM_REQUEST_BUDGET_EXCEEDED");
+  const read=()=>method==="GET"?get(fetchImpl,url,headers):
    fetchImpl(url,{method,redirect:"error",signal:AbortSignal.timeout(12_000)});
+  try{
+   return await read();
+  }catch{
+   // Do not conflate a runner/edge transport failure with D1 quota or data
+   // absence. One bounded retry ONLY for the first anonymous structured GET.
+   // All HTTP responses, including 503, still follow fail-closed handling.
+   if(requests!==1||method!=="GET"||url!==STRUCTURED_API)
+    throw Error("PUBLIC_API_TRANSPORT_UNAVAILABLE");
+   await (wait?wait(750):new Promise(resolve=>setTimeout(resolve,750)));
+   requests++;
+   if(requests>7)throw Error("UPSTREAM_REQUEST_BUDGET_EXCEEDED");
+   try{return await read();}
+   catch{throw Error("STRUCTURED_CACHED_TRANSPORT_UNAVAILABLE_AFTER_ONE_RETRY");}
+  }
  };
  const firstResponse=await call(STRUCTURED_API);
  if(firstResponse.status!==200){
