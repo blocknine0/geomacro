@@ -160,3 +160,41 @@ test('bounded source intake cannot consume the protected reserve or use unknown 
  assert.equal(planD1BundledWork(null,{now}).source_intake,false);
  assert.equal(planD1BundledWork({...quota(1000,100),day_utc:'2026-10-26'},{now}).source_intake,false);
 });
+
+
+test('live 13:19 UTC CONSERVE keeps original intake and protected EIA/NOAA measurement',()=>{
+ const at=new Date('2026-10-29T13:19:46.000Z');
+ const s={...quota(1_509_065,32_136),day_utc:'2026-10-29'};
+ const result=planD1BundledWork(s,{now:at});
+ assert.equal(result.state,'CONSERVE');
+ assert.equal(result.maintenance,false);
+ assert.equal(result.source_intake,true);
+ assert.equal(result.governed_measurement,true);
+ assert.equal(result.governed_measurement_extra_read_budget,25_000);
+ assert.equal(result.governed_measurement_extra_write_budget,500);
+ assert.equal(result.governed_measurement_no_signing_or_payments,true);
+ const a=result.source_intake_budget_to_utc_reset;
+ assert.ok(result.remaining_rows_read-a.rows_read-25_000 >
+   750_000+PREDGE_D1_FREE_HEADROOM.rows_read);
+ assert.ok(result.remaining_rows_written-a.rows_written-500 >
+   15_000+PREDGE_D1_FREE_HEADROOM.rows_written);
+ assert.equal(result.paid_calls,0);
+ assert.equal(result.b2_requests,0);
+ assert.equal(result.d1_queries,0);
+});
+
+test('optional governed measurement yields to PREDGE, future source intake, stale and unverified quota',()=>{
+ for(const [read,written] of [
+  [4_300_000,10_000],[1_509_065,68_000],[4_990_000,99_000],
+  [5_000_000,100_000],
+ ]) {
+  const at=new Date('2026-10-29T13:19:46.000Z');
+  const p=planD1BundledWork({...quota(read,written),day_utc:'2026-10-29'},{now:at});
+  assert.equal(p.governed_measurement,false,JSON.stringify([read,written]));
+ }
+ const at=new Date('2026-10-29T13:19:46.000Z');
+ assert.equal(planD1BundledWork(null,{now:at}).governed_measurement,false);
+ assert.equal(planD1BundledWork({
+  ...quota(1_000_000,1_000),day_utc:'2026-10-28',
+ },{now:at}).governed_measurement,false);
+});
