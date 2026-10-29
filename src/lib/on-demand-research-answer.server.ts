@@ -249,3 +249,47 @@ export function isSourceGroundedResearchAnswer(value: unknown): boolean {
     row.payment_required_now === false &&
     row.execution_authorized === false;
 }
+
+/** A stable JSON result for questions where the bounded source pass found no
+ * qualified, country-matched observation. This is an explicit gap receipt,
+ * not an invented factual answer or a signal that the event/data does not
+ * exist. It lets human clients and agents handle every valid scoped query with
+ * the same schema while the evidence is absent. */
+export function buildStructuredEvidenceGap(input: Readonly<{
+  country_iso3: string;
+  categories: readonly OnDemandCategory[];
+  topics: readonly string[];
+  question?: string | null;
+  query_plan_hash: string;
+  checked_at: string;
+  source_families_reached: number;
+}>){
+  const country=country195ByIso3(input.country_iso3);
+  const checked=Date.parse(input.checked_at);
+  if(!country||!SHA256.test(input.query_plan_hash)||!Number.isFinite(checked)||
+    !Number.isSafeInteger(input.source_families_reached)||input.source_families_reached<0||
+    !Array.isArray(input.categories)||input.categories.length<1||input.categories.length>3||
+    new Set(input.categories).size!==input.categories.length||
+    input.categories.some(category=>!Object.hasOwn(CATEGORY_LABEL,category))||
+    !Array.isArray(input.topics)||input.topics.length<1)return null;
+  const queryType=supportsSourceGroundedResearchQuestion(input.question)
+    ?"CURRENT_EVENT_OR_RELEASE":"STATISTICAL_HISTORICAL_OR_FORECAST_SERIES";
+  return {
+    schema:"geomacro.structured-answer.v1" as const,
+    status:"INSUFFICIENT_VERIFIED_EVIDENCE" as const,
+    query_plan_hash:input.query_plan_hash,
+    query_scope:{country_iso3:input.country_iso3,country_name:country.name,
+      categories:[...input.categories],requested_topics:[...input.topics],query_type:queryType},
+    answer:null,
+    evidence_summary:{verified_observation_count:0,latest_original_published_at:null,
+      country_attribution_verified:false,independent_corroboration_verified:false},
+    source_check:{checked_at:input.checked_at,source_families_reached:input.source_families_reached,
+      bounded_search_exhaustive:false},
+    gaps:[queryType==="CURRENT_EVENT_OR_RELEASE"
+      ?"NO_COUNTRY_MATCHED_ORIGINAL_DATED_OBSERVATION_VERIFIED_IN_THIS_BOUNDED_SEARCH"
+      :"A_QUALIFIED_COUNTRY_AND_PERIOD_SPECIFIC_STRUCTURAL_SERIES_IS_REQUIRED"],
+    delivery:{chargeable:false,payment_required_now:false,payment_authorized:false,
+      raw_upstream_delivered:false,source_identity_exposed:false,signed:false,
+      execution_authorized:false},
+  };
+}
