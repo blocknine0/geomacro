@@ -19,6 +19,8 @@ const CATEGORIES=Object.freeze([
 const NEWS_MAX=5,BASELINE_MAX=8,MAX_TEXT=1400;
 const CLOCK=/^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u;
 const ITEM_ID=/^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u;
+const NEWS_KEYS=new Set(["id","category","topic","development_type",
+  "published_at","date_precision","what_changed","why_it_matters"]);
 const SAFE_PROSE=/^(?!.*(?:https?:\/\/|www\.|[<>]))[\s\S]*$/iu;
 const validText=(value,max=MAX_TEXT)=>typeof value==="string"&&
   value.length>0&&value.length<=max&&SAFE_PROSE.test(value);
@@ -81,7 +83,9 @@ export function projectThreeDomainStructuredDelivery(continuity,now=Date.now()){
     // fields were admitted only by the canonical verified D1 journal reader.
     if(row.original_news_window_verified){
       for(const s of row.source_neutral_news){
-        if(!s||s.category!==key||!ITEM_ID.test(String(s.id??""))||
+        if(!s||Object.keys(s).length!==NEWS_KEYS.size||
+           Object.keys(s).some(k=>!NEWS_KEYS.has(k))||
+           s.category!==key||!ITEM_ID.test(String(s.id??""))||
            !validText(s.topic,120)||!validText(s.development_type,80)||
            !validText(s.what_changed,650)||!validText(s.why_it_matters,700)||
            s.date_precision!=="exact"&&s.date_precision!=="day")
@@ -91,7 +95,9 @@ export function projectThreeDomainStructuredDelivery(continuity,now=Date.now()){
         const period=typeof original==="string"&&/^20\d{2}-\d{2}-\d{2}$/u.test(original)
           ?original:null;
         if(isExact?!validDate(original,now,72*3_600_000):
-          period===null||Date.parse(period+"T00:00:00.000Z")>now||
+          period===null||!Number.isFinite(Date.parse(period+"T00:00:00.000Z"))||
+            new Date(Date.parse(period+"T00:00:00.000Z")).toISOString().slice(0,10)!==period||
+            Date.parse(period+"T00:00:00.000Z")>now||
             now-Date.parse(period+"T00:00:00.000Z")>72*3_600_000)
           throw Error("THREE_DOMAIN_STRUCTURED_ORIGINAL_CLOCK_INVALID");
         news.push({
@@ -187,7 +193,8 @@ export function projectThreeDomainStructuredDelivery(continuity,now=Date.now()){
       paid_evidence_must_be_separately_verified:true,
     },
     raw_upstream_delivered:false,
-    source_identity_delivered:false,
+    upstream_source_ids_delivered:false,
+    required_source_credit_names_may_be_disclosed:true,
     supabase_dependency:false,
     predge_integration_modified:false,
   };
