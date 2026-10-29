@@ -118,3 +118,29 @@ test('UN Geneva official geopolitical feed accepts issuer press releases, not in
    new Date('2026-10-22T11:00:00Z'));
  assert.equal(undated.latest_native_publication_at,null);
 });
+
+
+test('DOE official battery supply-chain strategy is a discovery lead, never a certified paid release',()=>{
+ const doe=feeds.find(s=>s.id==='us_doe_minerals_global');
+ assert.equal(doe.host,'www.energy.gov');
+ assert.equal(doe.family,'us_doe_minerals_original_publisher');
+ const official='https://www.energy.gov/cmei/articles/does-office-critical-minerals-and-energy-innovation-unveils-new-strategy-and';
+ assert.equal(globalOriginalArticleUrl(official,doe),official);
+ for(const title of [
+  'DOE national battery strategy and manufacturing accelerator',
+  'National battery strategy to secure US manufacturing',
+  'Battery supply chain policy for domestic processing',
+ ])assert.equal(MINERAL_RELEASE_TOPIC.test(title),true,title);
+ for(const unrelated of [
+  'battery football championship',
+  'battery phone charger user manual',
+  'electric vehicle racing result',
+  'community sports supply update'
+ ])assert.equal(MINERAL_RELEASE_TOPIC.test(unrelated),false,unrelated);
+ assert.equal(globalOriginalArticleUrl('https://www.energy.gov.evil.example/cmei/articles/'+
+   'does-office-critical-minerals-and-energy-innovation-unveils-new-strategy-and',doe),null);
+ assert.equal(globalOriginalArticleUrl(official+'?updated_at=2026-10-29',doe),null);
+ // The feed is only an ORIGINAL CANDIDATE. Neither article rights nor
+ // independence, time/readback, scoring or payment can be inferred here.
+ assert.equal(doe.production_update_reader,true);
+});
