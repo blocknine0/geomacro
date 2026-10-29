@@ -95,7 +95,7 @@ describe("World Bank CHN official 2xx != verified annual intelligence",()=>{
     const script=readFileSync("scripts/ops/verify-live-on-demand-real-apis.ts","utf8");
     expect(script).toContain("private_world_bank_annual_qualification:privateEvidence.private_macro_qualifications");
     expect(script).toContain("proof.network_attempts>12");
-    expect(script).toContain("proof.total_bounded_network_attempts>16");
+    expect(script).toContain("proof.total_bounded_network_attempts>17");
     expect(script).toContain("current_lithium_risk_answer_verified:false");
     expect(script).toContain("x402_commercial_release_authorized:false");
     expect(script).not.toContain("signRiskObject(");
