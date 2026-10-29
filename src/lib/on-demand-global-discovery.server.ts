@@ -159,7 +159,7 @@ export function inferOnDemandMineral(question: string | null | undefined): OnDem
 /** Historical mineral questions use a separate bounded annual-data lane. */
 export function requestsHistoricalMineralData(question:string|null|undefined):boolean {
   return typeof question==="string" &&
-    /\\b(?:histor(?:y|ical)|annual|production|produced|output|time series|statistics|historical data)\\b/iu.test(question);
+    /\b(?:histor(?:y|ical)|annual|production|produced|output|time series|statistics|historical data)\b/iu.test(question);
 }
 
 // Fixed topic vocabulary. Never send a customer's freeform question upstream.
@@ -2009,6 +2009,7 @@ export async function discoverOnDemandForPrivateQualification(
   duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
   private_macro_qualifications:PrivateMacroQualification[];
+  private_mineral_history:BgsMineralHistory|null;
   private_verified_country_name:string|null;
 }>{
   return discoverOnDemandImpl(input,options);
