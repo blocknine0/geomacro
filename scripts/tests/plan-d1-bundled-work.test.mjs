@@ -228,7 +228,7 @@ test("Phase 2F distinguishes physical stop, UTC pacing, source-only admission an
  const physical=phase2fQuotaDiagnostic(planD1BundledWork(quota(5_000_000,100_000),{now:time}));
  assert.equal(physical.cause,"PHYSICAL_FREE_LIMIT_REACHED");
  assert.equal(physical.physical_free_limit_reached,true);
- const paced=phase2fQuotaDiagnostic(planD1BundledWork(quota(3_400_000,50_000),{now:time}));
+ const paced=phase2fQuotaDiagnostic(planD1BundledWork(quota(3_749_900,50_000),{now:time}));
  assert.equal(paced.cause,"UTC_DAILY_PACING_HELD");
  assert.equal(paced.protected_critical_predge_reserve_held,false);
  const source=phase2fQuotaDiagnostic(planD1BundledWork(quota(2_825_556,21_330),{now:new Date("2026-10-27T09:17:28Z")}));
