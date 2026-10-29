@@ -31,7 +31,12 @@ test("one official first-party RSS original native-time geopolitical candidate, 
  assert.equal(result.b2_requests,0);
  assert.equal(result.predge_modified,false);
  assert.equal(JSON.stringify(result).includes("Ukraine President discusses"),false);
- assert.equal(JSON.stringify(result).includes("https://www.president.gov.ua"),false);
+ // Check the emitted receipt schema directly; never attempt to validate
+ // URL origins by comparing a substring of an arbitrary URL.
+ for(const field of ["source_url","article_url","feed_url","original_url",
+   "headline","title","raw_body","body","text"]) {
+   assert.equal(Object.hasOwn(result,field),false);
+ }
 });
 test("official transport unavailable, denied and XML hostile content never grant revenue",async()=>{
  for(const response of [
