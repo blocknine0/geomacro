@@ -62,6 +62,9 @@ jobs:
       # Scoped writer is preferred atomically over the legacy generic key.
       B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}
       B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}
+      # Verified production legacy pair is rejected by B2 (403 InvalidAccessKeyId).
+      # Hold before any source fetch or billable PUT until an actual scoped writer exists.
+      GOVERNED_B2_REQUIRE_DEDICATED_WRITER: "1"
       B2_REQUEST_BUDGET: "20"
       # Every PUT/GET/retry/native read is reserved from the SAME account-wide
       # D1 quota ledger as Intelligence, Global Risk, Risk Indices and archive jobs.

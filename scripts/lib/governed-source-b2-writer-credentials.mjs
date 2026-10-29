@@ -15,6 +15,13 @@ export function selectGovernedB2WriterCredentials(env=process.env){
   if(Boolean(legacyId)!==Boolean(legacySecret))
     throw Error("GOVERNED_B2_LEGACY_WRITE_PAIR_INCOMPLETE");
   const dedicated=Boolean(dedicatedId&&dedicatedSecret);
+  // Production evidence 40792865152 proved the available legacy pair returns
+  // Backblaze 403 InvalidAccessKeyId. Quarantine that pair for this one
+  // governed-source workflow until owner provisions a scoped writer; never
+  // spend a B2 PUT against known-bad credentials every scheduled cycle.
+  if(env.GOVERNED_B2_REQUIRE_DEDICATED_WRITER==="1"&&!dedicated)
+    throw Error("GOVERNED_B2_DEDICATED_WRITER_REQUIRED_OWNER_SECRET");
+
   const accessKey=dedicated?dedicatedId:legacyId;
   const secretKey=dedicated?dedicatedSecret:legacySecret;
   if(!accessKey||!secretKey)
