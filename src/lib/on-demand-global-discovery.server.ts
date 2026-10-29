@@ -1360,6 +1360,8 @@ async function discoverOnDemandImpl(
           ?"australian_industry_original_publisher":
         category==="rare_earth" && country==="GBR"
           ?"uk_dbt_original_publisher":
+        category==="macro" && country==="CHN"
+          ?"china_nbs_original_macro_publisher":
         category==="geopolitics" && country==="GBR"
           ?"uk_fcdo_original_publisher":
         category==="macro" && country==="CAN"
@@ -1408,7 +1410,11 @@ async function discoverOnDemandImpl(
     })()
     : tasks.length>maxPrimary
       ? [...tasks.filter(t=>t.name.startsWith("world_bank_official_")),
-         ...tasks.filter(t=>!t.name.startsWith("world_bank_official_"))].slice(0,maxPrimary)
+         ...(country==="CHN"&&topics.length>0
+           ?tasks.filter(t=>t.name==="china_nbs_original_macro_publisher"):[]),
+         ...tasks.filter(t=>!t.name.startsWith("world_bank_official_")&&
+           !(country==="CHN"&&topics.length>0&&
+             t.name==="china_nbs_original_macro_publisher"))].slice(0,maxPrimary)
       : tasks;
   // A single user query never bursts 2-3 category-index calls into GDELT
   // simultaneously. A real 429/403 on the FIRST scoped index suppresses
