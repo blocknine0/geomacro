@@ -8,7 +8,7 @@ import {
 const NOW=Date.parse("2026-10-30T01:00:00.000Z");
 const STAMP="2026-10-30T00:58:00.000Z";
 const CATS=["geopolitics","macro","rare_earth"];
-const news=(c)=>({
+const news=(c)=>{const base=({
  record_id:c+"-deadbeef",category:c,record_kind:"native_dated_source_release",
  topic:c==="geopolitics"?"foreign policy":c==="macro"?"monetary policy":"rare-earth supply",
  development_type:"official release observation",
@@ -23,6 +23,37 @@ const news=(c)=>({
  country_iso3:null,corroboration_status:"NOT_INDEPENDENTLY_VERIFIED",
  severity:null,market_direction:null,commercially_qualified:false,
 });
+return {...base,news_desk:{
+ schema:"geomacro.news-desk-item.v1",
+ format:"EVENT_SPECIFIC_ORIGINAL_DATED_BRIEF",
+ lede:base.what_changed,issue:base.topic,development:base.development_type,
+ why_it_matters:base.why_it_matters,
+ original_publication_at:base.original_published_at,
+ original_publication_day:base.original_publication_day,
+ publication_clock_verified:true,event_country_independently_verified:false,
+ evidence_tier:"ORIGINAL_DATED_OBSERVATION_UNSCORED",
+ economic_impact_verified:false,affected_assets_confirmed:[],
+ market_direction:null,forecast_price_change:null,next_confirmed_development_at:null,
+ commercial_rights_verified:false,
+ what_happened:{text:base.what_changed,observation_verified:true},
+ why_it_matters_analysis:{text:base.why_it_matters,claim_independently_verified:false},
+ market_relevance:{
+   status:"POTENTIAL_CHANNELS_ONLY",potential_watch_channels:[],
+   affected_instruments_confirmed:[],observed_market_reaction_verified:false,
+   price_direction:null,price_change:null},
+ what_to_watch:{
+   focus_topic:base.topic,
+   followup_trigger:"NEW_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION",
+   confirmed_followup_scheduled:false,next_verified_event_at:null},
+ evidence_confidence:{
+   tier:"ORIGINAL_DATE_VERIFIED_CLAIMS_UNCORROBORATED",
+   original_publication_time:base.original_published_at,
+   original_publication_day:base.original_publication_day,
+   original_page_date_verified:true,event_claim_independently_verified:false,
+   country_impact_verified:false,market_impact_verified:false,
+   commercial_rights_verified:false,risk_scored:false},
+}};
+};
 const reference=(c)=>({
  record_id:"official:2025:"+c,category:c,
  record_kind:"official_statistical_or_reference_context",
@@ -256,4 +287,30 @@ test("persistent initial structured transport failure stops after one retry with
  );
  assert.equal(attempts,2);
  assert.deepEqual(waits,[750]);
+});
+
+
+test("mandatory post-deploy five-part newsroom contract matches each real source item",()=>{
+ const x=verifyStructuredDeliveryEnvelope(structured(),NOW,true);
+ assert.equal(x.native_news_total,3);
+ for(const c of CATS){
+  const record=structured().categories[c].native_release_records[0];
+  assert.equal(record.news_desk.what_happened.text,record.what_changed);
+  assert.equal(record.news_desk.why_it_matters_analysis.text,record.why_it_matters);
+  assert.equal(record.news_desk.evidence_confidence.risk_scored,false);
+ }
+ const mutations=[
+  x=>{delete x.categories.macro.native_release_records[0].news_desk.market_relevance;},
+  x=>{x.categories.macro.native_release_records[0].news_desk.market_relevance.price_change=2.3;},
+  x=>{x.categories.macro.native_release_records[0].news_desk.what_to_watch.confirmed_followup_scheduled=true;},
+  x=>{x.categories.rare_earth.native_release_records[0].news_desk.evidence_confidence.event_claim_independently_verified=true;},
+  x=>{x.categories.geopolitics.native_release_records[0].news_desk.what_happened.text="Made up event";},
+  x=>{x.categories.macro.official_reference_records[0].news_desk={schema:"fake"};},
+ ];
+ for(const mutate of mutations){
+  const broken=structured();mutate(broken);
+  assert.throws(()=>verifyStructuredDeliveryEnvelope(broken,NOW,true));
+ }
+ // A quiet original feed cannot be turned into a fabricated current release.
+ assert.equal(verifyStructuredDeliveryEnvelope(structured({noNews:CATS}),NOW,true).native_news_total,0);
 });

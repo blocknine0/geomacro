@@ -2,6 +2,10 @@ name: Three-Domain Machine Delivery Deep Live Audit (No Funds)
 
 on:
   workflow_dispatch: {}
+  # Best-effort durable public contract monitoring; source release cadence
+  # is independent, and quiet categories may legitimately have zero news.
+  schedule:
+    - cron: "17 1,7,13,19 * * *"
   pull_request:
     paths:
       - "scripts/ops/audit-three-domain-machine-delivery-live.mjs"
@@ -10,12 +14,16 @@ on:
       - "workers/control-plane/src/three-domain-structured-delivery.mjs"
       - "workers/control-plane/src/three-domain-evidence-continuity.mjs"
       - "workers/control-plane/src/reusable-source-news.mjs"
+      - "src/lib/query-bound-news-desk.ts"
+      - "src/lib/query-bound-news-desk.test.ts"
   push:
     branches: [main]
     paths:
       - "scripts/ops/audit-three-domain-machine-delivery-live.mjs"
       - "scripts/tests/three-domain-machine-delivery-live.test.mjs"
       - ".github/workflows/three-domain-machine-deep-live-audit.yml"
+      - "workers/control-plane/src/three-domain-structured-delivery.mjs"
+      - "src/lib/query-bound-news-desk.ts"
 
 permissions:
   contents: read
@@ -47,6 +55,9 @@ jobs:
         # No owner token, payment signature, protected partner route or D1 write.
         env:
           NODE_ENV: production
+          # PRs can only test the prior production revision. Scheduled and
+          # manually triggered post-deploy audits MUST require all five parts.
+          GEOMACRO_REQUIRE_NEWS_DESK: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         run: |
           set -euo pipefail
           node scripts/ops/audit-three-domain-machine-delivery-live.mjs

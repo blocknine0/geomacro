@@ -39,6 +39,20 @@ describe("one original news -> user and machine query-bound newsroom JSON",()=>{
       affected_country_independently_verified:false,
       market_direction:null,price_impact:null,next_confirmed_event_at:null,
     });
+    expect(result.stories[0].market_relevance).toMatchObject({
+      status:"POTENTIAL_CHANNELS_ONLY",observed_market_reaction_verified:false,
+      affected_instruments_confirmed:[],price_direction:null,price_change:null,
+    });
+    expect(result.stories[0].what_to_watch).toMatchObject({
+      focus_topic:"policy rates",confirmed_followup_scheduled:false,
+      next_verified_event_at:null,
+    });
+    expect(result.stories[0].evidence_confidence).toMatchObject({
+      tier:"ORIGINAL_DATE_VERIFIED_CLAIMS_UNCORROBORATED",
+      event_claim_independently_verified:false,market_impact_verified:false,
+      country_impact_verified:false,commercial_rights_verified:false,
+    });
+    expect(result.stories[0].market_relevance.potential_watch_channels).toContain("rates_and_bonds");
     expect(result.chargeable).toBe(false);
     expect(result.commercial_rights_verified).toBe(false);
     expect(result.execution_authorized).toBe(false);
@@ -55,6 +69,8 @@ describe("one original news -> user and machine query-bound newsroom JSON",()=>{
   expect(m.stories[0].category).toBe("macro");
   expect(r.stories[0].category).toBe("rare_earth");
   expect(g.stories[0].category).toBe("geopolitics");
+  expect(r.stories[0].market_relevance.potential_watch_channels).toContain("mineral_supply_chain");
+  expect(g.stories[0].market_relevance.potential_watch_channels).toContain("trade_and_logistics");
  });
  it("suppresses exact repeat news/analysis across categories, retains distinct evidence",()=>{
   const duplicate={...macro,id:"geopolitics-88888888",category:"geopolitics" as const};

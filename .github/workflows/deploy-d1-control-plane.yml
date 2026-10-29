@@ -172,6 +172,9 @@ jobs:
       - name: Verify P0-1 D1 quota and public-only cache contracts offline
         run: node --test scripts/tests/news-product-factory.test.mjs scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/materialized-public-news-pages.test.mjs scripts/tests/website-derived-cap-compaction.test.mjs scripts/tests/refresh-public-news-pages-under-quota.test.mjs scripts/tests/public-materialized-worker-import.test.mjs scripts/tests/verify-public-d1-materialization-live.test.mjs scripts/tests/materialized-origin-owner-route.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs
 
+      - name: Verify one-news-to-five-part newsroom contract offline (no funds)
+        run: node --test scripts/tests/three-domain-machine-delivery-live.test.mjs
+
       - name: Test all-news signed publication integrity and source-proof boundaries offline
         run: node --test scripts/tests/public-signed-news.test.mjs scripts/tests/signed-news-owner-race-reconcile.test.mjs
 
@@ -561,7 +564,31 @@ jobs:
                 (.official_reference_records|type)=="array" and
                 (.source_data_present|type)=="boolean" and
                 .qualified_paid_records_count==0 and
-                .signed_risk_available==false] | all)
+                .signed_risk_available==false] | all) and
+              ([.categories[].native_release_records[] as $item |
+                $item.news_desk as $desk |
+                ($desk.schema=="geomacro.news-desk-item.v1") and
+                ($desk.what_happened.text==$item.what_changed) and
+                ($desk.why_it_matters_analysis.text==$item.why_it_matters) and
+                ($desk.why_it_matters_analysis.claim_independently_verified==false) and
+                ($desk.market_relevance.status=="POTENTIAL_CHANNELS_ONLY") and
+                ($desk.market_relevance.potential_watch_channels|type=="array") and
+                ($desk.market_relevance.affected_instruments_confirmed==[]) and
+                ($desk.market_relevance.observed_market_reaction_verified==false) and
+                ($desk.market_relevance.price_direction==null) and
+                ($desk.market_relevance.price_change==null) and
+                ($desk.what_to_watch.focus_topic==$item.topic) and
+                ($desk.what_to_watch.confirmed_followup_scheduled==false) and
+                ($desk.what_to_watch.next_verified_event_at==null) and
+                ($desk.evidence_confidence.tier=="ORIGINAL_DATE_VERIFIED_CLAIMS_UNCORROBORATED") and
+                ($desk.evidence_confidence.original_page_date_verified==true) and
+                ($desk.evidence_confidence.event_claim_independently_verified==false) and
+                ($desk.evidence_confidence.market_impact_verified==false) and
+                ($desk.evidence_confidence.country_impact_verified==false) and
+                ($desk.evidence_confidence.commercial_rights_verified==false) and
+                ($desk.evidence_confidence.original_publication_day==$item.original_publication_day) and
+                ($desk.evidence_confidence.original_publication_time==$item.original_published_at)
+              ] | all)
             ' "$body" >/dev/null 2>&1; then
               jq -c '{schema:"geomacro.three-domain-machine-delivery-acceptance.v1",
                 category_statuses:(.categories|with_entries(.value={
