@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {eligiblePublicFreeD1CacheRequest,readPublicFreeD1Cached,PUBLIC_FREE_D1_TTL_SECONDS,PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS,PUBLIC_FREE_D1_DERIVED_TTL_SECONDS}
+import {eligiblePublicFreeD1CacheRequest,eligiblePublicFreeD1MaterializedNewsPageRequest,
+ readPublicFreeD1Cached,PUBLIC_FREE_D1_TTL_SECONDS,PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS,PUBLIC_FREE_D1_DERIVED_TTL_SECONDS}
   from "../../workers/control-plane/src/public-free-d1-cache.mjs";
 
 import {projectPublicMachineDomainResponse}
@@ -324,6 +325,25 @@ test("five-minute derived and 60-second bundle public caches preserve authentica
  }
  assert.equal(origin,8);
  assert.equal(objects.size,4);
+});
+
+test("no-cache public journal reads bypass POP cache but retain materialized D1 eligibility",()=>{
+ const url="https://geomacro-control-plane.example/v1/public/website-derived-news-immediate?offset=500";
+ const noCache=request(url,{"Cache-Control":"no-cache"});
+ assert.equal(eligiblePublicFreeD1CacheRequest(noCache),false);
+ assert.equal(eligiblePublicFreeD1MaterializedNewsPageRequest(noCache),true);
+ assert.equal(eligiblePublicFreeD1MaterializedNewsPageRequest(request(
+  "https://geomacro-control-plane.example/v1/public/website-derived-news-immediate")),true);
+ for(const req of [
+  request(url,{Authorization:"Bearer owner"}),
+  request(url,{Cookie:"sid=private"}),
+  request(url,{Range:"bytes=0-10"}),
+  request(url+"&extra=1",{"Cache-Control":"no-cache"}),
+  new Request(url,{method:"POST",headers:{"Cache-Control":"no-cache"}}),
+ ])assert.equal(eligiblePublicFreeD1MaterializedNewsPageRequest(req),false);
+ const worker=readFileSync(new URL("../../workers/control-plane/src/index.mjs",import.meta.url),"utf8");
+ assert.ok(worker.includes("const allowMaterialized=eligiblePublicFreeD1MaterializedNewsPageRequest(request)"));
+ assert.ok(worker.includes("readDerivedStories(env,Date.now(),Number(q.get(\"offset\")),legacyDelay,\n          allowMaterialized)"));
 });
 
 test("three public machine domains reuse one complete source-neutral origin payload",async()=>{

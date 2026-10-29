@@ -27,7 +27,8 @@ import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-s
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
 import {deliverThreeDomainStructuredWithCacheRecovery} from "./three-domain-structured-delivery.mjs";
-import {readPublicFreeD1Cached,eligiblePublicFreeD1CacheRequest} from "./public-free-d1-cache.mjs";
+import {readPublicFreeD1Cached,eligiblePublicFreeD1CacheRequest,
+  eligiblePublicFreeD1MaterializedNewsPageRequest} from "./public-free-d1-cache.mjs";
 import {readPublicNewsR2Snapshot,publishPublicNewsR2Snapshot,PUBLIC_NEWS_R2_MAX_BYTES}
   from "./public-news-r2-offload.mjs";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
@@ -1398,17 +1399,18 @@ export default {
       // Only deterministic 250-row read pages of the existing 600-row D1
       // journal. No arbitrary SQL offsets or raw publisher payloads.
       const q=url.searchParams;
+      const allowMaterialized=eligiblePublicFreeD1MaterializedNewsPageRequest(request);
       if(q.size===0)return publicReadCache(async()=>
         await readPublicNewsR2Snapshot(request,env) ??
         await readDerivedStories(env,Date.now(),0,legacyDelay,
-          eligiblePublicFreeD1CacheRequest(request)));
+          allowMaterialized));
       if(q.size!==1||q.getAll("offset").length!==1||
          !["250","500"].includes(q.get("offset")))
         return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID",chargeable:false},400);
       return publicReadCache(async()=>
         await readPublicNewsR2Snapshot(request,env) ??
         await readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay,
-          eligiblePublicFreeD1CacheRequest(request)));
+          allowMaterialized));
     }
     if (request.method === "GET" && url.pathname === "/v1/public/source-pulse-30m") {
       return publicReadCache(()=>getPublicThreeDomain30MinSourcePulse(env));
