@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-29T15:34:55.701Z",
+  "updated_at": "2026-10-29T16:02:32.611Z",
   "signals": [
     {
       "id": "rare_earth-efe7c263",
@@ -52,6 +52,63 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T11:46:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-236352f8",
+      "category": "rare_earth",
+      "title": "Geomacro finds Glencore maintained guidance but quarterly copper output falls short - London South East",
+      "what_changed": "A monitored source feed reports: Glencore maintained guidance but quarterly copper output falls short - London South East. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T11:07:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-0582f247",
+      "category": "rare_earth",
+      "title": "Geomacro finds Shell approved $5B Buyback as Refining Boosts Profit",
+      "what_changed": "A monitored source feed reports: Shell approved $5B Buyback as Refining Boosts Profit. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T09:10:46.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.rigzone.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-8eb602c9",
+      "category": "rare_earth",
+      "title": "Geomacro finds Glencore kept copper forecast as Q3 output improves - MiningMX",
+      "what_changed": "A monitored source feed reports: Glencore kept copper forecast as Q3 output improves - MiningMX. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T09:08:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
