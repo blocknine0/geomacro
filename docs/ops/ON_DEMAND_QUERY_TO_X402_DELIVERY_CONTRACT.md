@@ -111,10 +111,20 @@ not require a durable risk-object publication or signing claim.
 - Keep original articles, raw search results, private source IDs and rights
   receipts request-local; never put them in the public response or prepared
   delivery record.
-- The sanitized answer may be frozen in the existing short-lived,
-  quote-bound prepared-response store so separate 402, payment and replay
-  requests return identical bytes. Its actual TTL and deletion behavior must
-  be verified before launch.
+- **The existing x402 prepared-response store is not an ephemeral store.**
+  `quoteGeomacroPreparedCapability` gives a quote a five-minute window and
+  the D1 ledger's prepared lease is also five minutes, but those clocks do
+  not delete the response. A prepared record whose lease expires is moved to
+  `manual_review` with its payload retained; a delivered record retains its
+  payload so the ledger can replay identical bytes. The ledger schema and
+  worker currently define no response-payload TTL or deletion job.
+- Therefore do not place a query-bound ephemeral answer in the current
+  delivery ledger. Before selling this profile, add and verify a
+  product-specific retention/deletion path that still recovers a paid
+  response after a lost HTTP delivery. Alternatively, select a transparently
+  durable answer product only after exact source rights permit that retention
+  and the customer contract discloses it. The profile choice alone does not
+  choose or authorize either retention policy.
 - Return explicit facts, inference, source-credit/attribution when required,
   evidence dates, freshness and limitations. Do not invent a confidence
   score or say an answer is supported when the evidence cannot answer the
@@ -127,7 +137,9 @@ not require a durable risk-object publication or signing claim.
   that has its own reviewer, signing, publication, rights and readback gates.
 
 This profile decision does not authorize live charging or loosen any
-evidence, source-rights, price or x402 settlement gate.
+evidence, source-rights, price or x402 settlement gate. Current prepared
+answer persistence is an open implementation blocker for this profile, in
+addition to missing item-level rights, source coverage and live acceptance.
 
 ### 5. Bind x402 to prepared bytes
 
