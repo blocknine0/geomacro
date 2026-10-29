@@ -18,6 +18,8 @@ on:
       - 'scripts/lib/official-sanctions-listings-observer.mjs'
       - 'scripts/ops/probe-official-sanctions-listings.mjs'
       - 'scripts/tests/official-sanctions-listings-observer.test.mjs'
+      - 'scripts/tests/gnb-national-rss-source-repair.test.mjs'
+      - 'config/private-osint-local-gaplane.v1.json'
       - '.github/workflows/global-195x3-human-machine-source-regression.yml'
 
 permissions:
@@ -46,6 +48,8 @@ jobs:
         run: node scripts/tests/wdi-195-batch-reference.test.mjs
       - name: Assert actual first-party source clock and publisher pulse invariants
         run: node --test scripts/tests/production-three-domain-source-continuity.test.mjs
+      - name: Assert local Guinea-Bissau one-for-one source repair candidate
+        run: node --test scripts/tests/gnb-national-rss-source-repair.test.mjs
       - name: Reject retired RSS and unauthorized sanctions source promotion
         run: node --test scripts/tests/official-sanctions-listings-observer.test.mjs
       - name: Probe two official sanctions listings without funds or D1 writes
