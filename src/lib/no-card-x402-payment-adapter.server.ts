@@ -1,5 +1,4 @@
 import process from "node:process";
-import { createHash } from "node:crypto";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server";
 import { assertSharedUsdcReceiver } from "./shared-usdc-receiver.server";
