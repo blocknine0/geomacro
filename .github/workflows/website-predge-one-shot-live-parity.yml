@@ -1,0 +1,66 @@
+name: GeoMacro Website to PREDGE Exact Live Parity (One Shot No Funds)
+
+# GeoMacro-owned acceptance only: does not modify PREDGE code, workflows,
+# credentials, grants, deployments, retention or existing 500/day cap.
+# On merge, one canonical D1 GET + ONE authenticated research GET; zero retries.
+# Reads public static archive assets without D1/B2/provider source requests.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/website-predge-one-shot-live-parity.yml"
+      - "scripts/ops/verify-website-predge-one-shot-live-parity.mjs"
+      - "scripts/tests/verify-website-predge-one-shot-live-parity.test.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/website-predge-one-shot-live-parity.yml"
+      - "scripts/ops/verify-website-predge-one-shot-live-parity.mjs"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  offline-direct-parity-tests:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "24"}
+      - name: Three-category exact source-native ID attribution tests without network
+        run: |
+          node --check scripts/ops/verify-website-predge-one-shot-live-parity.mjs
+          node --test scripts/tests/verify-website-predge-one-shot-live-parity.test.mjs
+
+  one-shot-protected-live-parity:
+    # Production gated, serialized against the existing D1 news publisher.
+    # This makes no persistent credential changes and never patches PREDGE.
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "24"}
+      - name: Fail closed on offline source-native/attribution regression
+        run: |
+          node --check scripts/ops/verify-website-predge-one-shot-live-parity.mjs
+          node --test scripts/tests/verify-website-predge-one-shot-live-parity.test.mjs
+      - name: Compare same 72-hour static Website, exact canonical D1, and existing authenticated PREDGE output
+        env:
+          PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
+        run: node scripts/ops/verify-website-predge-one-shot-live-parity.mjs
