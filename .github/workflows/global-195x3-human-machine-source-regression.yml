@@ -9,6 +9,8 @@ on:
       - 'src/lib/canonical-country-registry-195.ts'
       - 'config/answer-source-candidates-195x3.v1.json'
       - 'scripts/ops/audit-195x3-human-machine-source-gaps.mjs'
+      - 'scripts/lib/195x3-live-sample.mjs'
+      - 'scripts/tests/195x3-live-sample.test.mjs'
       - 'scripts/tests/verify-195x3-human-machine-source-gaps.mjs'
       - 'scripts/ops/probe-195x3-wdi-official-reference.mjs'
       - 'scripts/lib/production-source-continuity-evaluator.mjs'
@@ -43,6 +45,8 @@ jobs:
           node-version: '22'
       - name: Verify 4680 question archetypes and 1170 bounded live candidates
         run: node scripts/tests/verify-195x3-human-machine-source-gaps.mjs
+      - name: Verify exact daily live-probe count and full rotation
+        run: node scripts/tests/195x3-live-sample.test.mjs
       - name: Generate full 4680-question mock and source-gap artifacts (offline)
         run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs
       - name: Validate official 195-country macro source adapter without network

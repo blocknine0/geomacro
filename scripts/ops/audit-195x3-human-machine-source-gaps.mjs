@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
+import { select195x3LiveSample } from "../lib/195x3-live-sample.mjs";
 
 const sha = v => createHash("sha256").update(v).digest("hex");
 const flags = new Set(process.argv.slice(2));
@@ -114,15 +115,10 @@ if(matrix.length!==4680 || new Set(matrix.map(x=>x.id)).size!==4680 ||
 
 const manifestHash=sha(JSON.stringify(matrix.map(({id,country_iso3,category,scenario,actor,language,request_body})=>
   ({id,country_iso3,category,scenario,actor,language,request_body}))));
-// Stable pseudorandom permutation prevents alphabetical/geographical bias.
-// A daily rotating window covers the full 1,170 over successive scheduled runs
-// without creating 1,170 unaffordable live requests in one day.
-const permutation = matrix.map((item,index)=>({index,order:sha(item.id)}))
-  .sort((a,b)=>a.order.localeCompare(b.order)).map(x=>x.index);
+// Rotate over the candidate list itself; indexing a permutation of the full
+// 4,680-case matrix silently under-selected live probes.
 const epochDay=Math.max(0,Math.floor((Date.now()-Date.UTC(2026,9,29))/86400000));
-const sampleIndices=new Set(Array.from({length:limit},(_,i)=>
-  permutation[(epochDay*limit+i)%permutation.length]));
-const selected=live ? liveCandidates.filter((_,i)=>sampleIndices.has(i)) : [];
+const selected=live ? select195x3LiveSample(liveCandidates,limit,epochDay) : [];
 function errorCode(json) {
  const value=json?.error?.code??json?.error_code??json?.code??json?.reason;
  return typeof value==="string"?value.slice(0,110):null;
