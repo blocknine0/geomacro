@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {planWebsiteNewsCatchup} from "../lib/website-news-canonical-reconciliation.mjs";
 const now=Date.parse("2026-10-29T10:00:00.000Z");
 const row=(id,at)=>({id,published_at:at,category:"macro",body:"derived"});
@@ -61,4 +62,12 @@ test("post-write readback never re-dates old records or promotes absent news",()
   assert.equal(receipt.eligible_archive_ids,0);
   assert.deepEqual(receipt.counts_by_category,{geopolitics:0,macro:0,rare_earth:0});
   assert.equal(Object.isFrozen(receipt),true);
+});
+
+test("healthy no-write archive catch-up reuses its one canonical D1 read; real writes require fresh post-write readback",()=>{
+ const script=readFileSync(new URL("../ops/reconcile-website-news-to-d1.ts",import.meta.url),"utf8");
+ assert.match(script,/const reusedFirstCanonicalSnapshot=planned\.missing\.length===0/);
+ assert.match(script,/const result=reusedFirstCanonicalSnapshot\?canonical:\s*await fetchAllDerivedNews\(fetch,readbackAt\)/);
+ assert.match(script,/post_write_exact_readback_performed:!reusedFirstCanonicalSnapshot/);
+ assert.match(script,/no_write_second_bundle_avoided:reusedFirstCanonicalSnapshot/);
 });
