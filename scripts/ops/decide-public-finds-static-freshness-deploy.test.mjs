@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {mkdtempSync,writeFileSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {shouldDeployFreshPublicArchive,decidePublicArchiveDeployment}
+import {shouldDeployFreshPublicArchive,shouldDeployFullArchiveSnapshot,decidePublicArchiveDeployment}
  from "./decide-public-finds-static-freshness-deploy.mjs";
 const now=Date.parse("2026-10-28T00:45:00.000Z");
 const old=new Date(now-71*60*60*1000).toISOString();
@@ -18,6 +18,29 @@ function feed(signals=[]){return {
  delivery_scope:"free_website_only",scored:false,chargeable:false,
  supabase_dependency:false,signals,
 };}
+const COVERAGE={
+ schema:"geomacro.free-derived-archive-eligibility.v1",
+ checked_at:new Date(now).toISOString(),retention_hours:72,
+ original_release_eligible_total:1,eligible_ids_sha256:"a".repeat(64),
+ free_displayable_findings_total:1,d1_reads:0,free_website_only:true,
+ paid_customer_eligible:false,unverified_promoted:false,
+};
+const INDEX={
+ schema:"geomacro.permanent-derived-news-archive-index.v1",
+ months:["2026-10"],categories:["geopolitics","macro","rare_earth"],
+ updated_at:new Date(now-60_000).toISOString(),seed_complete:true,total_signals:100,
+};
+function writeCompanions(dir){
+ writeFileSync(join(dir,"coverage-72h.json"),JSON.stringify(COVERAGE));
+ writeFileSync(join(dir,"index.json"),JSON.stringify(INDEX));
+}
+test("identical preview does not hide changed full-archive eligibility or index",()=>{
+ const older={...COVERAGE,checked_at:new Date(now-30*60_000).toISOString()};
+ assert.equal(shouldDeployFullArchiveSnapshot(COVERAGE,older,INDEX,INDEX,now).deploy,false);
+ assert.equal(shouldDeployFullArchiveSnapshot(COVERAGE,{...older,eligible_ids_sha256:"b".repeat(64)},INDEX,INDEX,now).deploy,true);
+ assert.equal(shouldDeployFullArchiveSnapshot(COVERAGE,older,INDEX,{...INDEX,total_signals:101},now).deploy,true);
+ assert.equal(shouldDeployFullArchiveSnapshot(COVERAGE,{...older,checked_at:new Date(now-7*60*60_000).toISOString()},INDEX,INDEX,now).deploy,true);
+});
 test("no D1 read / no needless Cloudflare Worker deploy when current live rows are identical",()=>{
  const a=feed([source("a".repeat(8))]);
  const b={...a,checked_at:new Date(now-30*60000).toISOString()};
@@ -50,15 +73,19 @@ test("scheduled bounded network compare touches ONLY existing PUBLIC static orig
  try{
   const path=join(dir,"latest.json"),expected=feed([source("c".repeat(8))]);
   writeFileSync(path,JSON.stringify(expected));
+  writeCompanions(dir);
   const requests=[];
   const fetchImpl=async(url,opts)=>{
    requests.push({url,opts});
+   if(String(url).includes("/coverage-72h.json"))
+    return Response.json({...COVERAGE,checked_at:new Date(now-3600000).toISOString()});
+   if(String(url).includes("/index.json"))return Response.json(INDEX);
    return Response.json({...expected,checked_at:new Date(now-3600000).toISOString()});
   };
   const r=await decidePublicArchiveDeployment({
    localPath:path,fetchImpl,now,env:{}});
   assert.equal(r.deploy_required,false);
-  assert.equal(requests.length,1);
+  assert.equal(requests.length,3);
   assert.ok(requests[0].url.startsWith(
    "https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json?"));
   assert.equal(requests[0].opts.method,"GET");
@@ -75,6 +102,7 @@ test("network denial triggers safe existing-public-Worker refresh, never fake no
  const dir=mkdtempSync(join(tmpdir(),"geomacro-free-launch-test-"));
  try{
   const path=join(dir,"latest.json");writeFileSync(path,JSON.stringify(feed()));
+  writeCompanions(dir);
   const r=await decidePublicArchiveDeployment({localPath:path,now,
    fetchImpl:async()=>new Response(null,{status:503}),env:{}});
   assert.equal(r.deploy_required,true);

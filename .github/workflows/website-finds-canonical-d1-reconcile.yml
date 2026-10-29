@@ -16,6 +16,9 @@ on:
       - "scripts/tests/reconcile-website-finds-to-d1.test.mjs"
       - "scripts/ops/verify-website-predge-eligible-parity.mjs"
       - "scripts/tests/website-predge-eligible-parity.test.mjs"
+      - "scripts/ops/reconcile-website-news-to-d1.ts"
+      - "scripts/lib/website-shared-partner-expectation.mjs"
+      - "scripts/tests/website-shared-partner-expectation.test.mjs"
 
 permissions:
   contents: read
@@ -42,6 +45,7 @@ jobs:
           node --test scripts/tests/reconcile-website-finds-to-d1.test.mjs
           node --check scripts/ops/verify-website-predge-eligible-parity.mjs
           node --test scripts/tests/website-predge-eligible-parity.test.mjs
+          node --test scripts/tests/website-news-canonical-reconciliation.test.mjs scripts/tests/website-shared-partner-expectation.test.mjs
 
   quota-admission:
     if: >-
@@ -69,6 +73,11 @@ jobs:
         run: node scripts/ops/plan-d1-bundled-work.mjs
 
   reconcile-website-ids:
+    # Serialize with the existing hourly publisher/archive writer; two workflows
+    # must never race to reinsert the same D1 IDs or duplicate quota consumption.
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
     needs: quota-admission
     if: >-
       github.repository == 'blocknine0/geomacro' &&
@@ -85,6 +94,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
+      - name: Setup existing Bun 1.4.2 full-archive reconciler
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
       - name: Fail visibly unless the existing quota guard authorizes source catch-up
         env:
           D1_CRITICAL_ADMITTED: ${{ needs.quota-admission.outputs.critical }}
@@ -99,9 +112,11 @@ jobs:
             echo "::error::WEBSITE_D1_RECONCILE_STARTS_2026_10_29"
             exit 2
           fi
-      - name: Run fixed-scope tests before the first private owner operation
-        run: node --test scripts/tests/reconcile-website-finds-to-d1.test.mjs
-      - name: Restore only missing current website Findings with exact D1 readback
+      - name: Prove full 72-hour archive rules and rights-safe projection before owner operation
+        run: |
+          node --test scripts/tests/website-news-canonical-reconciliation.test.mjs
+          node --test scripts/tests/website-shared-partner-expectation.test.mjs
+      - name: Restore ALL current archive shards through existing one-bundle D1 journal
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
-        run: node scripts/ops/reconcile-website-finds-to-d1.mjs
+        run: bun scripts/ops/reconcile-website-news-to-d1.ts

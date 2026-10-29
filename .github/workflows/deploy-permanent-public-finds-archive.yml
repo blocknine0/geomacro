@@ -23,6 +23,8 @@ on:
       - ".github/workflows/deploy-permanent-public-finds-archive.yml"
       - "scripts/ops/decide-public-finds-static-freshness-deploy.mjs"
       - "scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs"
+      - "scripts/lib/verify-public-static-archive-readback.mjs"
+      - "scripts/tests/verify-public-static-archive-readback.test.mjs"
 
 permissions:
   contents: read
@@ -47,6 +49,7 @@ jobs:
         run: |
           node --check scripts/ops/decide-public-finds-static-freshness-deploy.mjs
           node --test scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs
+          node --test scripts/tests/verify-public-static-archive-readback.test.mjs
           node --test scripts/ops/publish-permanent-derived-news-archive.test.mjs
   deploy-public-static-archive:
     concurrency:
@@ -172,7 +175,7 @@ jobs:
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
-          import assert from "node:assert/strict";
+          import {verifyPublicStaticArchiveReadback} from "./scripts/lib/verify-public-static-archive-readback.mjs";
           import { readFileSync } from "node:fs";
           const base="https://geomacro-public-finds-archive.daspallab202391.workers.dev";
           const expectedIndex=JSON.parse(readFileSync("workers/public-finds-archive/assets/index.json","utf8"));
@@ -199,34 +202,12 @@ jobs:
           const liveIndex=await get("/index.json");
           const liveLatest=await get("/latest.json");
           const liveCoverage=await get("/coverage-72h.json");
-          assert.equal(liveIndex.schema,expectedIndex.schema);
-          assert.equal(liveIndex.updated_at,expectedIndex.updated_at);
-          assert.equal(liveIndex.total_signals,expectedIndex.total_signals);
-          assert.equal(liveIndex.seed_complete,expectedIndex.seed_complete);
-          assert.deepEqual(liveIndex.months,expectedIndex.months);
-          assert.equal(liveLatest.ok,true);
-          assert.equal(liveLatest.schema,expectedLatest.schema);
-          assert.equal(liveLatest.delivery_scope,"free_website_only");
-          assert.equal(liveLatest.signals.length,expectedLatest.signals.length);
-          assert.equal(liveLatest.chargeable,false);
-          assert.equal(liveLatest.scored,false);
-          assert.equal(liveCoverage.schema,"geomacro.free-derived-archive-eligibility.v1");
-          assert.equal(liveCoverage.checked_at,expectedCoverage.checked_at);
-          assert.deepEqual(liveCoverage.original_release_by_category,expectedCoverage.original_release_by_category);
-          assert.equal(liveCoverage.original_release_eligible_total,expectedCoverage.original_release_eligible_total);
-          assert.equal(liveCoverage.free_displayable_findings_total,expectedCoverage.free_displayable_findings_total);
-          assert.deepEqual(liveCoverage.free_displayable_by_category,expectedCoverage.free_displayable_by_category);
-          assert.equal(liveCoverage.free_displayable_outside_latest_preview,expectedCoverage.free_displayable_outside_latest_preview);
-          assert.equal(liveCoverage.free_displayable_status,"MIXED_OFFICIAL_AND_EXPLICITLY_UNVERIFIED");
-          assert.equal(liveCoverage.eligible_ids_sha256,expectedCoverage.eligible_ids_sha256);
-          assert.equal(liveCoverage.unverified_promoted,false);
-          assert.equal(liveCoverage.paid_customer_eligible,false);
-          assert.equal(liveCoverage.d1_reads,0);
-          console.log(JSON.stringify({schema:"geomacro.permanent-public-finds-static-readback.v1",
-            public_index_readback_verified:true,public_latest_readback_verified:true,
-            archive_signals:liveIndex.total_signals,latest_signals:liveLatest.signals.length,
-            full_72h_original_eligible:liveCoverage.original_release_eligible_total,
-            all_current_free_displayable:liveCoverage.free_displayable_findings_total,
-            outside_250_preview:liveCoverage.free_displayable_outside_latest_preview,
-            d1_reads:0,d1_writes:0,payments:0}));
+          // Scheduled no-op publication may retain an older *checked_at*
+          // while exact native IDs/credits and entire eligible coverage match.
+          // Never mistake clock-only drift for a failed static deployment.
+          const receipt=verifyPublicStaticArchiveReadback({
+            expectedIndex,expectedLatest,expectedCoverage,
+            liveIndex,liveLatest,liveCoverage,now:Date.now(),
+          });
+          console.log(JSON.stringify(receipt));
           NODE

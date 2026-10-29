@@ -10,10 +10,13 @@
  * No D1, B2, R2, KV, upstream publisher, payment or PREDGE requests.
  */
 import {readFileSync,appendFileSync} from "node:fs";
-import {resolve} from "node:path";
+import {resolve,dirname,join} from "node:path";
 import {pathToFileURL} from "node:url";
 
-const URL="https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json";
+const BASE="https://geomacro-public-finds-archive.daspallab202391.workers.dev";
+const URL=BASE+"/latest.json";
+const COVERAGE_URL=BASE+"/coverage-72h.json";
+const INDEX_URL=BASE+"/index.json";
 const MAX_BYTES=1_500_000;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const validTime=s=>typeof s==="string"&&Number.isFinite(Date.parse(s));
@@ -52,6 +55,33 @@ export function shouldDeployFreshPublicArchive(expected,remote,now=Date.now()){
   reason:exact?"ALREADY_IDENTICAL_NATIVE_CLOCK_VALIDATED_FEED":
     "PUBLIC_FEED_ROWS_OR_SAFETY_CONTRACT_DIFFERS"};
 }
+
+// A 250-row rolling preview is NOT the full 72h archive. A scheduled no-op
+// must also match all untruncated eligibility statistics/ID digest and the
+// append-only index, otherwise a newly archived old item could be omitted.
+const withoutClock=doc=>{
+ const {checked_at,...data}=doc;
+ return JSON.stringify(data);
+};
+export function shouldDeployFullArchiveSnapshot(expectedCoverage,liveCoverage,expectedIndex,liveIndex,now=Date.now()){
+ if(!Number.isFinite(now)||
+    expectedCoverage?.schema!=="geomacro.free-derived-archive-eligibility.v1"||
+    expectedCoverage.d1_reads!==0||typeof expectedCoverage.eligible_ids_sha256!=="string"||
+    !/^[a-f0-9]{64}$/.test(expectedCoverage.eligible_ids_sha256)||
+    !Number.isFinite(Date.parse(expectedCoverage.checked_at))||
+    Date.parse(expectedCoverage.checked_at)>now+60_000||
+    now-Date.parse(expectedCoverage.checked_at)>10*60_000)
+  throw Error("PUBLIC_FINDS_EXPECTED_COVERAGE_INVALID");
+ const at=Date.parse(liveCoverage?.checked_at??"");
+ if(!Number.isFinite(at)||at>now+60_000||now-at>6*60*60_000||
+    liveCoverage?.schema!==expectedCoverage.schema)
+  return {deploy:true,reason:"PUBLIC_ARCHIVE_COVERAGE_STALE_OR_MISSING"};
+ if(withoutClock(liveCoverage)!==withoutClock(expectedCoverage))
+  return {deploy:true,reason:"PUBLIC_ARCHIVE_FULL_COVERAGE_CHANGED"};
+ if(JSON.stringify(liveIndex)!==JSON.stringify(expectedIndex))
+  return {deploy:true,reason:"PUBLIC_ARCHIVE_IMMUTABLE_INDEX_CHANGED"};
+ return {deploy:false,reason:"FULL_ARCHIVE_AND_NATIVE_ELIGIBILITY_IDENTICAL"};
+}
 export async function decidePublicArchiveDeployment({
  localPath="workers/public-finds-archive/assets/latest.json",
  fetchImpl=fetch,now=Date.now(),env=process.env,
@@ -62,6 +92,12 @@ export async function decidePublicArchiveDeployment({
  let expected;
  try{expected=JSON.parse(source)}
  catch{throw Error("PUBLIC_FINDS_LOCAL_JSON_INVALID")}
+ const assetsDir=dirname(resolve(localPath));
+ let expectedCoverage,expectedIndex;
+ try{
+  expectedCoverage=JSON.parse(readFileSync(join(assetsDir,"coverage-72h.json"),"utf8"));
+  expectedIndex=JSON.parse(readFileSync(join(assetsDir,"index.json"),"utf8"));
+ }catch{throw Error("PUBLIC_FINDS_LOCAL_FULL_ARCHIVE_MISSING")}
  let result;
  try{
   const response=await fetchImpl(URL+"?freshness="+Math.floor(now),{
@@ -76,6 +112,27 @@ export async function decidePublicArchiveDeployment({
   if(Buffer.byteLength(text)>MAX_BYTES)
    throw Error("PUBLIC_ARCHIVE_REMOTE_OVERSIZE");
   result=shouldDeployFreshPublicArchive(expected,JSON.parse(text),now);
+  if(!result.deploy){
+   // Only when the preview matches: two cheap STATIC Worker reads catch
+   // changes outside the 250-row preview. No D1 or PREDGE quota is spent.
+   const check=async(url,cap)=>{
+    const response=await fetchImpl(url+"?freshness="+Math.floor(now),{
+     method:"GET",redirect:"error",cache:"no-store",
+     headers:{Accept:"application/json","Cache-Control":"no-cache"},
+     signal:AbortSignal.timeout(9000),
+    });
+    if(response?.status!==200||response.redirected||
+       Number(response.headers?.get("content-length")||0)>cap)
+     throw Error("PUBLIC_ARCHIVE_AUXILIARY_READ_UNAVAILABLE");
+    const payload=await response.text();
+    if(Buffer.byteLength(payload)>cap)
+     throw Error("PUBLIC_ARCHIVE_AUXILIARY_OVERSIZE");
+    return JSON.parse(payload);
+   };
+   result=shouldDeployFullArchiveSnapshot(expectedCoverage,
+    await check(COVERAGE_URL,1_500_000),expectedIndex,
+    await check(INDEX_URL,256_000),now);
+  }
  }catch(error){
   if(!expectedShape(expected)||Date.parse(expected.checked_at)>now+60_000||
      now-Date.parse(expected.checked_at)>10*60_000)

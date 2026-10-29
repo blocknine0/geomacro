@@ -1,0 +1,60 @@
+name: Website to PREDGE Shared Quota Evidence (No Funds)
+
+# Zero-D1 independent post-run attestation. Reuses already completed GitHub
+# receipts instead of making a fresh authenticated partner GET or D1 scan.
+# This does not edit or dispatch any PREDGE workflow, credentials or quota.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/website-predge-shared-quota-production-proof.yml"
+      - "scripts/ops/verify-website-predge-existing-production-receipts.mjs"
+      - "scripts/tests/verify-website-predge-existing-production-receipts.test.mjs"
+  schedule:
+    # Four low-cost GitHub-evidence checks daily, after ordinary hourly ingest
+    # and partner watchdog. No new D1/Cloudflare/PREDGE request.
+    - cron: "37 2,8,14,20 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: geomacro-website-predge-evidence-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-evidence-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "24"}
+      - name: Refuse skipped, stale and rights-invalid receipts without live calls
+        run: |
+          node --check scripts/ops/verify-website-predge-existing-production-receipts.mjs
+          node --test scripts/tests/verify-website-predge-existing-production-receipts.test.mjs
+
+  existing-protected-and-publisher-evidence:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "24"}
+      - name: Validate offline receipt contract before GitHub evidence reads
+        run: node --test scripts/tests/verify-website-predge-existing-production-receipts.test.mjs
+      - name: Prove existing non-skipped live partner and full Website archive receipts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ops/verify-website-predge-existing-production-receipts.mjs

@@ -11,6 +11,8 @@ import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client";
 import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {prepareDerivedNewsBatches} from "../lib/derived-news-d1-batches.mjs";
 import {planWebsiteNewsCatchup,verifyWebsiteNewsCatchupReadback} from "../lib/website-news-canonical-reconciliation.mjs";
+import {verifySharedArchivePartnerExpectation} from "../lib/website-shared-partner-expectation.mjs";
+import {requireDerivedNewsWorkerPolicy,DERIVED_NEWS_TOPIC_POLICY_REVISION} from "../lib/derived-news-readback-policy.mjs";
 
 const ROOT=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(ROOT.length<32)throw Error("WEBSITE_SHARED_CATCHUP_AUTH_REQUIRED");
@@ -18,6 +20,12 @@ const TOKEN=createHmac("sha256",ROOT).update("geomacro-control-plane-v1").digest
 const BASE="https://geomacro-public-finds-archive.daspallab202391.workers.dev";
 const WORKER="https://geomacro-control-plane.daspallab202391.workers.dev";
 const now=Date.now();
+// Health preflight is not a D1 rows-read query; fail before any owner write
+// if a stale Worker is still deployed after a repository merge.
+await requireDerivedNewsWorkerPolicy({
+  fetchImpl:fetch,url:WORKER+"/health",
+  expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION,
+});
 async function read(url,cap){
   const response=await fetch(url,{method:"GET",redirect:"error",cache:"no-store",
     headers:{Accept:"application/json"},signal:AbortSignal.timeout(12_000)});
@@ -71,11 +79,20 @@ for(const chunk of chunks){
   if(receipt?.ok!==true||receipt.accepted!==chunk.length)
     throw Error("WEBSITE_SHARED_D1_CATCHUP_ACK_INVALID");
 }
-const readbackAt=Date.now();
-const result=await fetchAllDerivedNews(fetch,readbackAt);
+// When nothing was written, the already validated canonical snapshot is the
+// exact readback of the untouched cohort. Do not spend a second 600-row
+// bundle read merely to re-fetch identical D1 data on healthy cycles.
+// A write ALWAYS gets a real independent post-write canonical readback.
+const reusedFirstCanonicalSnapshot=planned.missing.length===0;
+const readbackAt=reusedFirstCanonicalSnapshot?now:Date.now();
+const result=reusedFirstCanonicalSnapshot?canonical:
+  await fetchAllDerivedNews(fetch,readbackAt);
 const readback=verifyWebsiteNewsCatchupReadback(archive,result,readbackAt,
   s=>isPermanentArchiveSignal(s,readbackAt,{allowHistorical:false})&&
     verifyDerivedStory(s,readbackAt));
+// Reuse the SAME verified D1 snapshot, with no new D1 or partner GET.
+// This predicts eligible attributed IDs; authenticated live proof remains separate.
+const partnerExpectation=verifySharedArchivePartnerExpectation(archive,result,readbackAt);
 console.log(JSON.stringify({
   schema:"geomacro.website-predge-common-journal-catchup.v1",
   same_canonical_d1_journal_for_website_and_partner:true,
@@ -85,6 +102,13 @@ console.log(JSON.stringify({
   missing_eligible_ids:readback.missing_eligible_ids,
   readback_eligible_ids:readback.eligible_archive_ids,
   readback_category_counts:readback.counts_by_category,
+  eligible_partner_projection:partnerExpectation,
+  existing_shared_quota_reused:true,
+  canonical_bundle_reads_this_reconciliation:reusedFirstCanonicalSnapshot?1:2,
+  no_write_second_bundle_avoided:reusedFirstCanonicalSnapshot,
+  post_write_exact_readback_performed:!reusedFirstCanonicalSnapshot,
+  additional_d1_reads_for_projection:0,
+  additional_partner_gets_for_projection:0,
   exact_source_native_payloads_verified:readback.exact_derived_payloads_and_source_clocks_verified,
   recovery_exercised:planned.missing.length>0,
   nonempty_eligible_archive_cohort:readback.eligible_archive_ids>0,
