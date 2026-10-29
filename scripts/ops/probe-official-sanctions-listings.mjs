@@ -5,7 +5,9 @@ const OUT="artifacts/official-sanctions-listings/receipt.json";
 const live=process.argv.includes("--live");
 const hourlyGate=process.argv.includes("--ofac-hourly-slot");
 const now=new Date();
-// Existing 12/42 UTC 30m runner: at most one OFAC GET per UTC hour.
+// Existing 12/42 UTC 30m runner: target one OFAC GET per UTC hour.
+// A delayed GitHub schedule can cross an hour boundary; this stateless gate
+// is a nominal rate reduction, NOT a durable per-hour request governor.
 // Skipped half-hour is explicitly NO-PROBE, not a source freshness heartbeat.
 const due=!hourlyGate||now.getUTCMinutes()<30;
 const result=live&&due?await observeOfficialSanctionsListings({
