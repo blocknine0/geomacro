@@ -66,9 +66,11 @@ import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
 import {readAllAutoIngest72hStructuredDrafts} from "./auto-ingest-72h-context.server";
 import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
-  inferOnDemandFreshnessSeconds, verifyOnDemandOriginalArticlePages, type OnDemandCategory, type SourceProbe,
+  inferOnDemandFreshnessSeconds, requestsHistoricalMineralData,
+  verifyOnDemandOriginalArticlePages, type OnDemandCategory, type SourceProbe,
 } from "./on-demand-global-discovery.server";
 import { buildSourceGroundedResearchAnswer, type SourceGroundedResearchAnswer } from "./on-demand-research-answer.server";
+import type { BgsMineralHistory } from "./bgs-world-mineral-statistics.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const PRODUCT_ID = "geomacro_adaptive_risk_intelligence_v1";
@@ -475,13 +477,18 @@ export const mainnetIntelligenceHandlers = {
           let privatePeerScoredDimensions=0;
           let privateEvidenceQualification:ReturnType<typeof publicOnDemandQualificationStatus>|null=null;
           let sourceGroundedResearchAnswer:SourceGroundedResearchAnswer|null=null;
+          let historicalMineralAnswer:BgsMineralHistory|null=null;
           try {
             const privateResult=await discoverOnDemandForPrivateQualification({
               country_iso3:subject.country_iso3,categories,mineral,
               topics:plan.topics,
               max_age_seconds:requestedNewsAgeSeconds,
+              include_historical_mineral_data:categories.length===1 &&
+                categories[0]==="rare_earth" && Boolean(mineral) &&
+                requestsHistoricalMineralData(plan.question_key),
             });
             discovery=privateResult.discovery;
+            historicalMineralAnswer=privateResult.private_mineral_history;
             // NEVER copy privateResult.private_candidates into the public
             // response/ledger/x402 quote; article-page publication, rights
             // and independent same-event verification are not yet complete.
@@ -584,6 +591,7 @@ export const mainnetIntelligenceHandlers = {
             ok:false,chargeable:false,payment_required_now:false,
             product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,
             ...(sourceGroundedResearchAnswer ? {research_answer:sourceGroundedResearchAnswer} : {}),
+            ...(historicalMineralAnswer ? {historical_mineral_answer:historicalMineralAnswer} : {}),
             on_demand:{
               status:discovery.status,
               searched_in_parallel:discovery.searched_in_parallel,
@@ -604,6 +612,7 @@ export const mainnetIntelligenceHandlers = {
               private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
               duplicate_original_headlines_suppressed:duplicatePrivateOriginalHeadlines,
               private_official_annual_change_count:privateOfficialAnnualChanges,
+              historical_mineral_series_count:historicalMineralAnswer?.series.length??0,
               private_annual_directional_macro_driver_count:privateAnnualDirectionalDrivers,
               private_annual_macro_rights_status:privateAnnualMacroRightsStatus,
               private_annual_macro_rights_verified_driver_count:privateAnnualRightsVerifiedDrivers,
