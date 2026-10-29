@@ -1,5 +1,6 @@
 import {describe,it,expect,vi} from "vitest";
 import {assessD1AccountFreeQuota,readCloudflareD1AccountQuota} from "../../scripts/ops/audit-d1-account-daily-quota-readonly.mjs";
+import {checkD1BundledWork} from "../../scripts/ops/plan-d1-bundled-work.mjs";
 const today="2026-10-11";
 const mk=(read:number,write:number)=>({data:{viewer:{accounts:[{
  d1AnalyticsAdaptiveGroups:[{dimensions:{databaseId:"a".repeat(32),date:today},sum:{rowsRead:read,rowsWritten:write}}]
@@ -50,4 +51,29 @@ describe("#1827 actual D1 account-wide before-source-recovery quota audit",()=>{
   expect(JSON.stringify(opts.body)).not.toContain(env.CLOUDFLARE_API_TOKEN);
   expect(JSON.stringify(r)).not.toContain(env.CLOUDFLARE_API_TOKEN);
  });
+ it("bounded retries recover genuine transient Cloudflare 503 usage evidence without spending D1 rows",async()=>{
+  const env={CLOUDFLARE_API_TOKEN:"x".repeat(24),CLOUDFLARE_ACCOUNT_ID:"a".repeat(32)};
+  let calls=0;
+  const fetchImpl=vi.fn(async()=>{
+   calls++;
+   if(calls===1)return {ok:false,status:503};
+   return {ok:true,status:200,json:async()=>mk(100,5)};
+  });
+  const out=await checkD1BundledWork({env,fetchImpl,now:new Date(today+"T12:00:00Z")});
+  expect(fetchImpl).toHaveBeenCalledTimes(2);
+  expect(out.reason).not.toBe("D1_ACCOUNT_QUOTA_PROBE_FAILED");
+  expect(out.d1_queries).toBe(0);
+  expect(out.predge_request_governor_is_separate_and_unchanged).toBe(true);
+ });
+ it("never retries permanent Cloudflare auth failures or treats unknown as healthy",async()=>{
+  const env={CLOUDFLARE_API_TOKEN:"x".repeat(24),CLOUDFLARE_ACCOUNT_ID:"a".repeat(32)};
+  const fetchImpl=vi.fn(async()=>({ok:false,status:403}));
+  const out=await checkD1BundledWork({env,fetchImpl,now:new Date(today+"T12:00:00Z")});
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
+  expect(out.state).toBe("HELD");
+  expect(out.critical).toBe(false);
+  expect(out.source_intake).toBe(false);
+  expect(out.reason).toBe("D1_ACCOUNT_QUOTA_PROBE_FAILED");
+ });
+
 });
