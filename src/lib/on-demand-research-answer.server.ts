@@ -30,8 +30,24 @@ export type SourceGroundedResearchAnswer = Readonly<{
   schema: "geomacro.source-grounded-research-answer.v1";
   status: "UNVERIFIED_RESEARCH_ONLY";
   query_plan_hash: string;
+  query_scope: Readonly<{
+    country_iso3: string;
+    categories: readonly OnDemandCategory[];
+    requested_topics: readonly string[];
+    max_age_seconds: number;
+  }>;
   answer: Readonly<{
+    status: "ORIGINAL_DATED_OBSERVATIONS_ONLY";
     summary: string;
+    observations: readonly Readonly<{
+      category: OnDemandCategory;
+      topic: string;
+      observation: string;
+      published_at: string;
+      original_page_date_verified: true;
+      claim_independently_verified: false;
+    }>[];
+    inference: readonly string[];
     what_changed: string;
     why_it_matters: string;
     geomacro_view: string;
@@ -161,8 +177,24 @@ export function buildSourceGroundedResearchAnswer(input: Readonly<{
     schema: "geomacro.source-grounded-research-answer.v1",
     status: "UNVERIFIED_RESEARCH_ONLY",
     query_plan_hash: input.query_plan_hash,
+    query_scope: {
+      country_iso3: input.country_iso3,
+      categories: [...input.categories],
+      requested_topics: [...input.topics],
+      max_age_seconds: maxAge,
+    },
     answer: {
-      summary: `Geomacro found ${selected.length} original-dated research observation${selected.length === 1 ? "" : "s"} relevant to ${country.name} in ${categoryText}. This is not a verified risk assessment.`,
+      status: "ORIGINAL_DATED_OBSERVATIONS_ONLY",
+      summary: `Geomacro found ${selected.length} original-dated research observation${selected.length === 1 ? "" : "s"} relevant to ${country.name} in ${categoryText}. This does not fully answer the question or establish a verified risk assessment.`,
+      observations: selected.map(signal => ({
+        category: signal.category,
+        topic: signal.topic,
+        observation: signal.what_changed,
+        published_at: signal.published_at,
+        original_page_date_verified: true as const,
+        claim_independently_verified: false as const,
+      })),
+      inference: selected.map(signal => signal.why_it_matters),
       what_changed: selected.map(signal => signal.what_changed).join(" "),
       why_it_matters: selected.map(signal => signal.why_it_matters).join(" "),
       geomacro_view: "The original publication dates and first-party pages were checked. The underlying claims have not passed independent same-event review, item-specific commercial-rights review or signing.",
