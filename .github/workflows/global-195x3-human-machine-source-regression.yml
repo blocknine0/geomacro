@@ -41,9 +41,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v4
         with:
           node-version: '22'
-      - name: Verify deterministic 195 country x 3 category x 2 actor cases
+      - name: Verify 4680 question archetypes and 1170 bounded live candidates
         run: node scripts/tests/verify-195x3-human-machine-source-gaps.mjs
-      - name: Generate full 1170-question requirements and gap artifacts (offline)
+      - name: Generate full 4680-question mock and source-gap artifacts (offline)
         run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs
       - name: Validate official 195-country macro source adapter without network
         run: node scripts/tests/wdi-195-batch-reference.test.mjs
