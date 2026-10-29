@@ -16,9 +16,12 @@ The OFAC parser only counts a first-party `/recent-actions/YYYYMMDD` notice if i
 
 **These rows are listing discovery candidates only**, not original-article readback, independent confirmation, country-specific impact, licence, reviewer signature, new signed GRO, or payable response. The categorical query test may use the source-gap status to route additional research; it must never promote an item to customer output from this observation alone.
 
+The pre-existing 30-minute original-publisher pulse now also runs an **OFAC-only** source check outside D1 quota admission, gated to one UTC half-hour slot per hour (normally at :12, not :42). This gives best-effort hourly official sanctions-listing reachability even during D1 quota-hold, without a new cron or increased B2/D1 operations. The same existing source-pulse artifact includes an explicitly redacted OFAC observation or a `SKIPPED_NOT_THIS_HOURLY_SLOT` receipt. It never upgrades the three-domain D1 scoring pulse or PREDGE.
+
 The scheduled original-news ingestion and PREDGE flows are unchanged. No new cron, D1/B2 writes, paid feeds or cloud plan required.
 
 ## Production acceptance sequence
+0. Confirm source-only first GH Actions live run: OFAC HTTP 200 with one dated-listing candidate; UNSC HTML HTTP 202 and no verified event. Do not count the 202 as functioning UN transport.
 1. On PR run `node --test scripts/tests/official-sanctions-listings-observer.test.mjs` and the real `--live` two-source read-only probe. Inspect source-specific HTTP/dated listing outcomes; if a provider is blocked, record that fact.
 2. After verified main merge, the existing daily `Global 195x3 human machine source-gap regression` performs exactly two more external GET requests alongside its existing no-funds test. Inspect the sanitized source receipt in the Action artifact. This proves the candidate monitor ran, not uninterrupted 24/7 event supply.
 3. For qualifying publication downstream, develop separately reviewed original sanction-notice page parser, country/target mapping, original native clock, rights determination, and at least one independent same-event corroboration. Confirm D1 original and B2 receipt under existing provider quota admission, then allow the existing canonical commercial gates to decide deliverability.
