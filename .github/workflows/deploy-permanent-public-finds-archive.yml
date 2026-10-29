@@ -23,6 +23,8 @@ on:
       - ".github/workflows/deploy-permanent-public-finds-archive.yml"
       - "scripts/ops/decide-public-finds-static-freshness-deploy.mjs"
       - "scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs"
+      - "scripts/lib/verify-public-static-archive-readback.mjs"
+      - "scripts/tests/verify-public-static-archive-readback.test.mjs"
 
 permissions:
   contents: read
@@ -47,6 +49,7 @@ jobs:
         run: |
           node --check scripts/ops/decide-public-finds-static-freshness-deploy.mjs
           node --test scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs
+          node --test scripts/tests/verify-public-static-archive-readback.test.mjs
           node --test scripts/ops/publish-permanent-derived-news-archive.test.mjs
   deploy-public-static-archive:
     concurrency:
