@@ -178,8 +178,8 @@ export function buildSourceGroundedResearchAnswer(input: Readonly<{
   const accepted = new Set<string>();
   const add = (signal: StatelessIntelligenceSignal) => {
     const key = signal.published_at.slice(0, 10) + "|" +
-      signal.what_changed.normalize("NFKC").toLowerCase().replace(/\\s+/gu, " ").trim() + "|" +
-      signal.why_it_matters.normalize("NFKC").toLowerCase().replace(/\\s+/gu, " ").trim();
+      signal.what_changed.normalize("NFKC").toLowerCase().replace(/\s+/gu, " ").trim() + "|" +
+      signal.why_it_matters.normalize("NFKC").toLowerCase().replace(/\s+/gu, " ").trim();
     if (selected.length < MAX_ANSWER_SIGNALS && !accepted.has(key)) {
       accepted.add(key);
       selected.push(signal);
@@ -193,7 +193,7 @@ export function buildSourceGroundedResearchAnswer(input: Readonly<{
   const newsDesk = buildQueryBoundNewsDesk({
     question: input.question, country_iso3: input.country_iso3, signals: selected,
   });
-  if (!newsDesk) return null; // Derived evidence fails the safe newsroom contract.
+  if (!newsDesk || newsDesk.unique_story_count !== selected.length) return null; // Do not leak an excluded/unsafe derived signal elsewhere in the response.
   const latest = selected.reduce((a,b) =>
     Date.parse(a.published_at) >= Date.parse(b.published_at) ? a : b).published_at;
   const categoriesObserved = [...new Set(selected.map(signal => signal.category))];
