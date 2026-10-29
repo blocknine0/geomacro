@@ -68,17 +68,19 @@ test("no silent research item scoring or payable privilege escalation",()=>{
 });
 test("draft news_context may not pretend to be signed or production compatible",()=>{
  const f=feed(),candidate={
-  schema:"geomacro.news-context.draft.v1",research_only:true,
+  schema:"geomacro.news-context.draft.v1",snapshot_at:f.generated_at,research_only:true,
   signed_news:false,execution_authorized:false,retention_hours:72,
   partner_validator_approved:false,commercial_rights_verified:false,
   categories:{geopolitics:["geopolitics-0"],macro:["macro-2"],rare_earth:[]}
  };
- const p=draft(candidate,f);
+ const p=draft(candidate,f,Date.parse(f.generated_at));
  assert.equal(p.status,"VALID_OFFLINE_DRAFT_NOT_RISK_GATE_1_0_COMPATIBLE");
  assert.equal(p.signed_news_verified,false);
- assert.throws(()=>draft({...candidate,signed_news:true},f),/NEWS_CONTEXT_DRAFT_INVALID/);
- assert.throws(()=>draft({...candidate,categories:{...candidate.categories,macro:["rare_earth-0"]}},f),/NEWS_CONTEXT_ID_NOT_IN_CURRENT_FEED/);
- assert.throws(()=>draft({...candidate,categories:{...candidate.categories,macro:Array(51).fill("macro-0")}},f),/NEWS_CONTEXT_CATEGORY_CAP/);
+ assert.throws(()=>draft({...candidate,snapshot_at:"2026-10-29T12:06:00Z"},f,Date.parse(f.generated_at)),/NEWS_CONTEXT_CLOCK_BINDING/);
+ assert.throws(()=>draft(candidate,f,Date.parse(f.generated_at)+91_000),/NEWS_CONTEXT_STALE_SNAPSHOT/);
+ assert.throws(()=>draft({...candidate,signed_news:true},f,Date.parse(f.generated_at)),/NEWS_CONTEXT_DRAFT_INVALID/);
+ assert.throws(()=>draft({...candidate,categories:{...candidate.categories,macro:["rare_earth-0"]}},f,Date.parse(f.generated_at)),/NEWS_CONTEXT_ID_NOT_IN_CURRENT_FEED/);
+ assert.throws(()=>draft({...candidate,categories:{...candidate.categories,macro:Array(51).fill("macro-0")}},f,Date.parse(f.generated_at)),/NEWS_CONTEXT_CATEGORY_CAP/);
 });
 test("different 72-hour retention windows cannot prove delivery loss",()=>{
  const p=feed("2026-10-26T10:00:00Z"),c=feed("2026-10-29T12:05:00Z");
