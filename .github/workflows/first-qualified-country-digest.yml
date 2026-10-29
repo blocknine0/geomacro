@@ -71,6 +71,14 @@ jobs:
              r.mcs_195_source_census?.current_country_mineral_events_verified!==false||
              r.mcs_195_source_census?.paid_entitlements_or_mainnet_settlements_verified!==false||
              r.mcs_195_source_census?.canonical_product_preflight_per_country_not_assessed!==true||
+             r.mcs_canonical_store_no_funds_country_samples?.length!==3||
+             JSON.stringify(r.mcs_canonical_store_no_funds_country_samples.map(x=>x.iso3))!=='["AUS","IND","USA"]'||
+             r.mcs_canonical_store_no_funds_country_samples.some(x=>
+               x.payment_authorized!==false||
+               x.signed_risk_object_verified!==false||
+               x.customer_delivery_verified!==false||
+               (x.answer_sha256!==null && !/^[a-f0-9]{64}$/.test(x.answer_sha256)))||
+             r.mcs_canonical_store_source_sample_count<1||
              r.current_news_or_risk_score!==false||
              !/^[a-f0-9]{64}$/.test(r.prepared_customer_bytes_sha256)||
              r.payable_offer_issued!==false||r.merchant_acceptance_verified!==false||
