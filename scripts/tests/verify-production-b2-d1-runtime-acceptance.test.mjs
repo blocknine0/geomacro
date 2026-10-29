@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash,createHmac} from "node:crypto";
-import {runProductionB2D1RuntimeAcceptance} from "../ops/verify-production-b2-d1-runtime-acceptance.mjs";
+import {readFileSync} from "node:fs";
+import {runProductionB2D1RuntimeAcceptance,classifyB2ProbeProviderFailure} from "../ops/verify-production-b2-d1-runtime-acceptance.mjs";
 
 const sha=(bytes)=>createHash("sha256").update(bytes).digest("hex");
 const testSecrets={
@@ -140,4 +141,32 @@ test("no D1 receipt means no PASS, even if the B2 body is byte-perfect",async()=
     }),
     (error)=>error.message==="D1_PER_RUN_WRITE_READBACK_RECEIPT_MISSING",
   );
+});
+
+test("Phase 2B safely separates B2 provider and integrity failure categories",()=>{
+  const pairs=[
+    ["B2_PUT_FAILED_403_AccessDenied","B2_CREDENTIAL_OR_BUCKET_SCOPE_DENIED"],
+    ["B2_NATIVE_AUTHORIZE_FAILED_401_unauthorized","B2_CREDENTIALS_REJECTED"],
+    ["B2_NATIVE_READ_BUCKET_NOT_ALLOWED","B2_CREDENTIAL_OR_BUCKET_SCOPE_DENIED"],
+    ["B2_PUT_FAILED_403_transaction_cap_exceeded","B2_PROVIDER_CAP_EXCEEDED"],
+    ["B2_GET_FAILED_404_NoSuchKey","B2_OBJECT_NOT_FOUND"],
+    ["B2_GET_FAILED_429_TooManyRequests","B2_PROVIDER_RATE_LIMIT"],
+    ["B2_REQUEST_BUDGET_EXHAUSTED","B2_D1_QUOTA_DENIED"],
+    ["B2_PUT_FAILED_503_ServiceUnavailable","B2_PROVIDER_TRANSIENT_EXHAUSTED"],
+    ["B2_READBACK_SHA256_MISMATCH","B2_BYTE_INTEGRITY_MISMATCH"],
+    ["B2_NATIVE_GET_NETWORK_FAILED","B2_NETWORK_UNAVAILABLE"],
+    ["irrelevant-sensitive-input","B2_FAILURE_NOT_YET_CLASSIFIED"],
+  ];
+  for(const [raw,expected] of pairs)
+    assert.equal(classifyB2ProbeProviderFailure(new Error(raw)),expected);
+});
+
+test("Phase 2B prints an allowlisted code, not the raw B2 error stream",()=>{
+  const workflow=readFileSync(".github/workflows/production-b2-d1-runtime-readwrite-acceptance.yml","utf8");
+  const verifier=readFileSync("scripts/ops/verify-production-b2-d1-runtime-acceptance.mjs","utf8");
+  assert.ok(workflow.includes("if ! bun scripts/ops/verify-production-b2-d1-runtime-acceptance.mjs"));
+  assert.ok(workflow.includes("geomacro.phase2b.protected-diagnostic.v1"));
+  assert.ok(workflow.includes("B2_RUNTIME_FAILURE_UNCLASSIFIED"));
+  assert.ok(!workflow.includes("cat /tmp/geomacro-runtime-acceptance.stderr"));
+  assert.ok(verifier.includes("classifyB2ProbeProviderFailure(error)"));
 });
