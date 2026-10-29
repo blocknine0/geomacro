@@ -76,6 +76,21 @@ describe("one original news -> user and machine query-bound newsroom JSON",()=>{
   expect(buildQueryBoundNewsDesk({country_iso3:"USA",signals:[]})).toBeNull();
   expect(buildQueryBoundNewsDesk({country_iso3:"NOT-ISO3",signals:[macro]})).toBeNull();
  });
+ it("preserves original date-only release without fabricating an intraday event timestamp",()=>{
+  const day={...mineral,date_precision:"day" as const,published_at:"2026-10-29"};
+  const result=buildQueryBoundNewsDesk({country_iso3:"IND",signals:[day]})!;
+  expect(result.stories[0]).toMatchObject({
+    original_published_at:null,original_publication_day:"2026-10-29",
+    date_precision:"day",original_page_date_verified:true,
+  });
+  const sentinel=buildQueryBoundNewsDesk({country_iso3:"IND",signals:[{
+    ...day,published_at:"2026-10-29T00:00:00.000Z",
+  }]})!;
+  expect(sentinel.stories[0].original_published_at).toBeNull();
+  expect(buildQueryBoundNewsDesk({country_iso3:"IND",signals:[{
+    ...day,published_at:"2026-10-29T09:30:00.000Z",
+  }]})).toBeNull();
+ });
  it("keeps Bengali and Hindi queries in intent routing without fake translation",()=>{
   expect(questionNewsFocus("এর প্রভাব কী?")).toBe("why_it_matters");
   expect(questionNewsFocus("বাজারে কী প্রভাব?")).toBe("market_relevance");
