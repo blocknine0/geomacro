@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-29T13:30:25.751Z",
+  "updated_at": "2026-10-29T14:27:19.843Z",
   "signals": [
+    {
+      "id": "macro-d82b99ec",
+      "category": "macro",
+      "title": "Geomacro finds European Central Bank kept key interest rate on hold at 2.5% - CNBC",
+      "what_changed": "A monitored source feed reports: European Central Bank kept key interest rate on hold at 2.5% - CNBC. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T13:18:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-02b0f561",
       "category": "macro",
@@ -280,6 +299,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T07:24:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-25af5c1f",
+      "category": "macro",
+      "title": "Geomacro finds First Quantum cut Kansanshi gold guidance as lower grades weigh on Zambia output - Shanghai Metals Market",
+      "what_changed": "A monitored source feed reports: First Quantum cut Kansanshi gold guidance as lower grades weigh on Zambia output - Shanghai Metals Market. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:17:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

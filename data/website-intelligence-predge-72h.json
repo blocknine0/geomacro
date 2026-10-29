@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-29T13:30:25.751Z",
+  "checked_at": "2026-10-29T14:27:19.843Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 338,
+  "item_count": 333,
   "counts": {
-    "geopolitics": 166,
+    "geopolitics": 161,
     "macro": 133,
     "rare_earth": 39
   },
-  "source_native_ids_sha256": "96924e0cf1618c30993fb969e8d5096032d2b389ae78fee52f2c6495b20ef22a",
+  "source_native_ids_sha256": "862f5a8848afa0f6bcbeb05d5485deb5026e7d1b6669ca6717e77c68c96eca31",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -45,6 +45,25 @@
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d82b99ec",
+      "category": "macro",
+      "title": "Geomacro finds European Central Bank kept key interest rate on hold at 2.5% - CNBC",
+      "what_changed": "A monitored source feed reports: European Central Bank kept key interest rate on hold at 2.5% - CNBC. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T13:18:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
@@ -537,6 +556,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: dailynews.co.tz"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-25af5c1f",
+      "category": "macro",
+      "title": "Geomacro finds First Quantum cut Kansanshi gold guidance as lower grades weigh on Zambia output - Shanghai Metals Market",
+      "what_changed": "A monitored source feed reports: First Quantum cut Kansanshi gold guidance as lower grades weigh on Zambia output - Shanghai Metals Market. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:17:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -6307,139 +6345,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-61692c25",
-      "category": "macro",
-      "title": "Geomacro finds USTR proposed two-month extension of China maritime trade fee suspension - Logistics Management",
-      "what_changed": "A monitored source feed reports: USTR proposed two-month extension of China maritime trade fee suspension - Logistics Management. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T14:20:26.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-c97b8fc5",
-      "category": "geopolitics",
-      "title": "Geomacro finds China said it opposes US 'stigmatisation' of Confucius Institutes after Pentagon labels them security threat - Reuters",
-      "what_changed": "A monitored source feed reports: China said it opposes US 'stigmatisation' of Confucius Institutes after Pentagon labels them security threat - Reuters. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T14:19:43.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-7dea367e",
-      "category": "geopolitics",
-      "title": "Geomacro finds China said it opposes US 'stigmatisation' of Confucius Institutes after Pentagon labels them security threat - Yahoo",
-      "what_changed": "A monitored source feed reports: China said it opposes US 'stigmatisation' of Confucius Institutes after Pentagon labels them security threat - Yahoo. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T14:17:54.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-5a5bf900",
-      "category": "macro",
-      "title": "Geomacro finds Udupi Cochin Shipyard Ltd. launched first of eight 6,300 DWT dry cargo vessels built for European firm",
-      "what_changed": "A monitored source feed reports: Udupi Cochin Shipyard Ltd. launched first of eight 6,300 DWT dry cargo vessels built for European firm. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T14:06:11.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thehindu.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-0add2891",
-      "category": "geopolitics",
-      "title": "Geomacro finds Egypt approved military support for Saudi Arabia after Houthi attacks escalate",
-      "what_changed": "A monitored source feed reports: Egypt approved military support for Saudi Arabia after Houthi attacks escalate. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T14:03:13.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.dawn.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-b4d779e6",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia said Ukraine Has Repeatedly Struck Oleshky With Artillery, Drones Ahead of Local Ceasefire",
-      "what_changed": "A monitored source feed reports: Russia said Ukraine Has Repeatedly Struck Oleshky With Artillery, Drones Ahead of Local Ceasefire. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T13:50:09.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.themoscowtimes.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-ab85dda8",
-      "category": "geopolitics",
-      "title": "Geomacro finds Egypt approved military support for Saudi Arabia against Houthis",
-      "what_changed": "A monitored source feed reports: Egypt approved military support for Saudi Arabia against Houthis. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T13:47:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.dailysabah.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

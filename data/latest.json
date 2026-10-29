@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-29T13:30:25.751Z",
+  "checked_at": "2026-10-29T14:27:19.843Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -26,6 +26,25 @@
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d82b99ec",
+      "category": "macro",
+      "title": "Geomacro finds European Central Bank kept key interest rate on hold at 2.5% - CNBC",
+      "what_changed": "A monitored source feed reports: European Central Bank kept key interest rate on hold at 2.5% - CNBC. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T13:18:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
@@ -518,6 +537,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: dailynews.co.tz"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-25af5c1f",
+      "category": "macro",
+      "title": "Geomacro finds First Quantum cut Kansanshi gold guidance as lower grades weigh on Zambia output - Shanghai Metals Market",
+      "what_changed": "A monitored source feed reports: First Quantum cut Kansanshi gold guidance as lower grades weigh on Zambia output - Shanghai Metals Market. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:17:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4559,44 +4597,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-27T10:30:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-f4adc8fc",
-      "category": "macro",
-      "title": "Geomacro finds Raghuram Rajan urged Caution: Fighting Rupee Depreciation With Forex Reserves Is A Trap - NDTV Profit",
-      "what_changed": "A monitored source feed reports: Raghuram Rajan urged Caution: Fighting Rupee Depreciation With Forex Reserves Is A Trap - NDTV Profit. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T10:25:18.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-4b01ec15",
-      "category": "macro",
-      "title": "Geomacro finds Cabinet cut excise tax on E20 and B20 fuels - Thai PBS World",
-      "what_changed": "A monitored source feed reports: Cabinet cut excise tax on E20 and B20 fuels - Thai PBS World. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T09:48:31.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
