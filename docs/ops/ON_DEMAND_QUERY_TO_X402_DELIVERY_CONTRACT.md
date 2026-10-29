@@ -1,6 +1,6 @@
 # Query-time research to x402 delivery: implementation contract
 
-**Status:** implementation plan; commercial delivery remains closed until the gates below pass.  
+**Status:** GeoMacro-only implementation contract; commercial delivery remains closed until the gates below pass.  
 **Scope:** GeoMacro query-time retrieval and structured delivery only. PREDGE is excluded.
 
 ## What is already implemented
@@ -101,20 +101,33 @@ and derivation are defined. Distinguish verified facts from model inference,
 and return `insufficient_evidence` when the exact question cannot be answered
 from admissible evidence.
 
-### 4. Establish the signing and persistence profile
+### 4. Selected profile: ephemeral, query-bound research answer
 
-Choose one of two explicit product profiles before implementation:
+GeoMacro's first query-time product will be a separately named **ephemeral
+research answer**, not signed GRI/GRO or Risk Gate output. This matches the
+request for question-specific JSON that a human or machine can buy. It does
+not require a durable risk-object publication or signing claim.
 
-- **Ephemeral answer:** prepare and hash the full final JSON in request memory;
-  retain no raw source content and do not claim a durable signed GRO. This
-  profile must meet the prepared-response and replay contract below.
-- **Durable signed intelligence:** use the existing private evidence package,
-  reviewer/signing process, governed B2/D1 publication, independent readback,
-  expiry, and public projection controls. Do not substitute a request-local
-  draft or internal score for these proofs.
+- Keep original articles, raw search results, private source IDs and rights
+  receipts request-local; never put them in the public response or prepared
+  delivery record.
+- The sanitized answer may be frozen in the existing short-lived,
+  quote-bound prepared-response store so separate 402, payment and replay
+  requests return identical bytes. Its actual TTL and deletion behavior must
+  be verified before launch.
+- Return explicit facts, inference, source-credit/attribution when required,
+  evidence dates, freshness and limitations. Do not invent a confidence
+  score or say an answer is supported when the evidence cannot answer the
+  exact question.
+- Do not claim a durable signed GRO, risk score, execution authorization or
+  source redistribution right. The product remains unavailable for payment
+  unless every exact source used is cleared for the specific derived use and
+  its required attribution.
+- Keep the durable signed-intelligence profile separate for a later product
+  that has its own reviewer, signing, publication, rights and readback gates.
 
-The profile is a product decision because it changes what can truthfully be
-claimed and what storage/retention is required.
+This profile decision does not authorize live charging or loosen any
+evidence, source-rights, price or x402 settlement gate.
 
 ### 5. Bind x402 to prepared bytes
 
