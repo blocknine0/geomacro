@@ -9,7 +9,7 @@ export type CapabilityQuote=Readonly<CapabilityPrice&{
   quote_window_seconds:300;request_fingerprint_sha256:string;
   network:string;asset_contract:string;recipient:string;
   availability:"VERIFIED_DELIVERABLE";
-  payment_rail:"coinbase_x402"|"circle_gateway_x402";
+  payment_rail:"coinbase_x402"|"circle_gateway_x402"|"xpay_x402"|"dexter_x402";
   execution_authorized:false;
 }>;
 const SHA=/^[a-f0-9]{64}$/u;
@@ -19,7 +19,7 @@ const digest=(s:string)=>createHash("sha256").update(s,"utf8").digest("hex");
 export function quoteGeomacroCapability(input:Readonly<{
   capability:string;variant:string;
   requestFingerprint:string;network:string;asset:string;recipient:string;
-  rail:"coinbase_x402"|"circle_gateway_x402";
+  rail:"coinbase_x402"|"circle_gateway_x402"|"xpay_x402"|"dexter_x402";
   availabilityVerified:boolean;now?:Date;
 }>):CapabilityQuote{
   if(!isPublicStoreCapability(input.capability))throw Error("CAPABILITY_RETIRED_NO_CHARGE");
