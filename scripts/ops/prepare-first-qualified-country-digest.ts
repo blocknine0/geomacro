@@ -9,13 +9,14 @@ import { loadQualifiedMcsCountryContext, loadQualifiedMcsRelease,
   summarizeQualifiedMcs195StructuralCoverage, MCS_DIGEST_CSV_SHA256, qualifiedMcsAcquisitionFailure }
   from "../../src/lib/qualified-mcs-country-digest.server";
 import { resolveGeomacroCapabilityPrice } from "../../src/lib/capability-pricing-catalog";
+import { country195ByIso3 } from "../../src/lib/canonical-country-registry-195";
 import { createB2Client } from "./b2-s3-client.mjs";
 import { STRUCTURAL_CANDIDATE_VERSION, STRUCTURAL_CANDIDATE_SCOPE, structuralCandidateHash, assertStructuralCandidate }
   from "../../workers/commerce-ledger/src/structural-candidate.mjs";
 
 const sha = (v: string | Uint8Array) => createHash("sha256").update(v).digest("hex");
 const country = process.env.GEOMACRO_FIRST_DIGEST_COUNTRY ?? "CHN";
-if (!["USA", "CHN"].includes(country)) throw Error("FIRST_DIGEST_UNSUPPORTED_COUNTRY");
+if (!country195ByIso3(country)) throw Error("FIRST_DIGEST_UNSUPPORTED_COUNTRY");
 const persist = process.argv.includes("--archive-private");
 const freezePrivate = process.argv.includes("--freeze-private");
 // Never load frozen DB/payment credentials or real-money ACKs for this operation.
