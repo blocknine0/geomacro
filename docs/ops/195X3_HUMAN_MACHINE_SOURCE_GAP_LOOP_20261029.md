@@ -7,7 +7,7 @@ Status: engineering candidate branch, **not** production acceptance or an auto-a
 - `scripts/ops/audit-195x3-human-machine-source-gaps.mjs` generates exactly **1,170 synthetic question scenarios** (195 × geopolitics/macro/minerals × human/machine), **585 country/category cells**, and receipts. The scenarios are questions and evidence requirements, **not generated answers** or evidence.
 - `config/answer-source-candidates-195x3.v1.json` inventories official and institutional new/confirmed *research candidate lanes*: UN Security Council, OFAC, World Bank Indicators v2, UN Comtrade trade releases/preview, USGS MCS 2026, IEA critical-minerals data and the GDELT discovery index. Every lane is **NON_ACTIVE_RESEARCH_REGISTRY**, requires endpoint/schema/original-clock/rights review before any canonical publisher insertion, and cannot be counted as live event coverage. Some overlap existing sources; this is a gap-routing registry, not eight newly activated feeds.
 - `.github/workflows/global-195x3-human-machine-source-regression.yml` generates/validates the offline matrix on PR and runs **12 unattended, no-funds production preflight queries per daily tick** once merged, rotating their IDs so the full suite is sampled over ~98 delivered daily runs. GitHub scheduled delivery is best effort; no 98-day guarantee.
-- Separate `question-manifest.json`, `country-category-gaps.json`, `live-no-funds-results.json`, `summary.json` receipts under `$RUNNER_TEMP/geomacro-195x3-query-regression`. Action artifact retention: seven days. For longer-term proof, operator-reviewed evidence may later be written through existing governed B2 evidence storage, subject to quota; this PR does **not** write B2/D1.
+- A one-request daily read-only World Bank WDI 195-country batch uses the already existing bounded official-data adapter and records per-country actual non-null indicator availability (annual previous-year reference only). A provider denial is recorded as UNAVAILABLE; no current event, signed intelligence, commercial right, D1 write or B2 publication is inferred.\n- Separate `question-manifest.json`, `country-category-gaps.json`, `live-no-funds-results.json`, `summary.json` receipts under `$RUNNER_TEMP/geomacro-195x3-query-regression`. Action artifact retention: seven days. For longer-term proof, operator-reviewed evidence may later be written through existing governed B2 evidence storage, subject to quota; this PR does **not** write B2/D1.
 - The previous frozen 100-original-question audit remains unchanged and is a separate regression corpus. PREDGE code/contracts/quotas/credentials remain unchanged.
 
 ## Question classes
@@ -35,7 +35,7 @@ Never infer that an absence of headlines means a country is safe, that a GDELT m
 ```bash
 node scripts/tests/verify-195x3-human-machine-source-gaps.mjs
 node scripts/ops/audit-195x3-human-machine-source-gaps.mjs
-node scripts/ops/audit-195x3-human-machine-source-gaps.mjs --live --limit=12
+node scripts/ops/audit-195x3-human-machine-source-gaps.mjs --live --limit=12\nnode scripts/ops/probe-195x3-wdi-official-reference.mjs --live
 ```
 
 `--live` is opt-in when invoked locally, with minimum 4-second spacing, maximum 30 requests/run, a pinned geomacro.live origin, 12-second request deadline, no secret or payment header and bounded sanitized response receipt. An unpaid 402 is not revenue or a fulfilled customer answer. A structurally complete 585-cell matrix is not 585 current verified cells.
