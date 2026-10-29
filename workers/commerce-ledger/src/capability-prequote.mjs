@@ -33,11 +33,14 @@ export async function assertCapabilityPrequote(quote,scope,now=Date.now()){
   // The Coinbase CDP settlement adapter is not a Circle facilitator and
   // MUST never inherit Arc/Polygon from the Circle discovery catalog.
   (quote.payment_rail==='coinbase_x402'&&quote.network!=='eip155:8453')||
+  (quote.payment_rail==='xpay_x402'&&quote.network!=='eip155:8453')||
+  (quote.payment_rail==='dexter_x402'&&
+    !['eip155:8453','eip155:137'].includes(quote.network))||
   !ADDRESS.test(quote.recipient)||quote.execution_authorized!==false||
   quote.availability!=='VERIFIED_DELIVERABLE'||
-  !['coinbase_x402','circle_gateway_x402'].includes(quote.payment_rail)||
+  !['coinbase_x402','circle_gateway_x402','xpay_x402','dexter_x402'].includes(quote.payment_rail)||
   scope.provider!==quote.payment_rail||scope.providerEnvironment!==
-   (quote.payment_rail==='coinbase_x402'?'mainnet':'production'))fail();
+   (['coinbase_x402','xpay_x402','dexter_x402'].includes(quote.payment_rail)?'mainnet':'production'))fail();
  const issued=Date.parse(quote.issued_at),expires=Date.parse(quote.expires_at);
  if(!Number.isSafeInteger(issued)||!Number.isSafeInteger(expires)||
   new Date(issued).toISOString()!==quote.issued_at||
