@@ -45,7 +45,8 @@ export function evaluateProductionSourceContinuity(response,{now=new Date()}={})
    const pulse=s.original_publisher_pulse;
    if(!pulse || typeof pulse!=="object" || typeof pulse.status!=="string" ||
      pulse.status.length>80)throw Error("SOURCE_CONTINUITY_PULSE_INVALID");
-   if(s.source_check_current!==clockCurrent || (s.source_check_current && !current))\n     throw Error("SOURCE_CONTINUITY_SOURCE_CLOCK_CONTRADICTS");
+   if(s.source_check_current!==clockCurrent || (s.source_check_current && !current))
+     throw Error("SOURCE_CONTINUITY_SOURCE_CLOCK_CONTRADICTS");
    const lastPulse=iso(pulse.last_checked_at,now.getTime());
    const publisherCurrent=lastPulse!==null && now.getTime()-lastPulse<=75*60*1000 &&
      pulse.status==="SOURCE_NATIVE_OBSERVED";
