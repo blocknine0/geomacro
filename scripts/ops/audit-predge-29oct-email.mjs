@@ -100,11 +100,7 @@ export function auditEmailResearchSnapshots(privateFeed,publicFeed){
     x.confidence_state==="OFFICIAL_RELEASE_OBSERVED_UNSCORED").length,
   unverified_osint_count:privateRows.filter(x=>
     x.confidence_state==="MONITORED_SOURCE_REPORT_UNVERIFIED").length,
-  comparison_to_reported_353:
-    "HISTORICAL_DIFFERENT_COHORT_UNVERIFIED_WITHOUT_353_SOURCE_ID_SNAPSHOT",
-  reported_29oct_353_by_category:{geopolitics:183,macro:133,rare_earth:37},
-  reported_29oct_507_by_category:{geopolitics:183,macro:219,rare_earth:105},
-  partner_reported_count_gap_by_category:{geopolitics:0,macro:86,rare_earth:68},
+  historical_comparison:"REQUIRES_OWNER_HELD_SAME_COHORT_BASELINE_ID_SET",
   provisional_research_preview_capacity: Object.fromEntries(CATEGORIES.map(c=>
     [c,Math.min(50,privateRows.filter(x=>x.category===c).length)])),
   signed_flow_50_per_category_verified:false,
@@ -147,7 +143,15 @@ if(process.argv[1]?.endsWith("audit-predge-29oct-email.mjs")){
     };
     result=auditEmailResearchSnapshots(parse(args[1]),parse(args[2]));
   }else abort("USAGE");
-  console.log(JSON.stringify(result));
+  // This repository is public: live Actions logs must NOT expose the partner's
+  // item counts, source-credit distribution, native ID digests, or any records.
+  // Owners can run --offline locally for the detailed aggregate receipt.
+  if(args[0]==="--live"){
+    console.log(JSON.stringify({schema:"geomacro.partner-research-parity-private.v1",
+      status:result.public_subset_comparison,
+      contract_validated:true,live_counts_redacted:true,
+      no_signature_or_payment_claim:true}));
+  }else console.log(JSON.stringify(result));
  }catch(e){
   const code=String(e?.message??"");
   console.error("::error::"+(/^PREDGE_EMAIL_ACCEPTANCE_[A-Z0-9_]+$/.test(code)?
