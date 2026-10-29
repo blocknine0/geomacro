@@ -45,11 +45,15 @@ export function evaluateProductionSourceContinuity(response,{now=new Date()}={})
    if(!pulse || typeof pulse!=="object" || typeof pulse.status!=="string" ||
      pulse.status.length>80)throw Error("SOURCE_CONTINUITY_PULSE_INVALID");
    if(s.source_check_current!==current)throw Error("SOURCE_CONTINUITY_SOURCE_CLOCK_CONTRADICTS");
-   const state=current?
-     (s.native_news_event_count_72h>0 ? "SOURCE_CHECK_CURRENT_NEWS_UNSCORED" :
-       "SOURCE_CHECK_CURRENT_NO_VERIFIED_NEW_EVENT"):"SOURCE_CHECK_STALE_OR_MISSING";
-   if(!current)failures.push(category+":SOURCE_CHECK_STALE_OR_MISSING");
    const lastPulse=iso(pulse.last_checked_at,now.getTime());
+   const publisherCurrent=lastPulse!==null && now.getTime()-lastPulse<=75*60*1000 &&
+     pulse.status==="SOURCE_NATIVE_OBSERVED";
+   const state=!current?"SOURCE_CHECK_STALE_OR_MISSING":
+     !publisherCurrent?"ORIGINAL_PUBLISHER_PULSE_STALE_OR_DEGRADED":
+     s.native_news_event_count_72h>0?"SOURCE_AND_ORIGINAL_PUBLISHER_CURRENT_NEWS_UNSCORED":
+       "SOURCE_AND_ORIGINAL_PUBLISHER_CURRENT_NO_VERIFIED_NEW_EVENT";
+   if(!current)failures.push(category+":SOURCE_CHECK_STALE_OR_MISSING");
+   if(!publisherCurrent)failures.push(category+":ORIGINAL_PUBLISHER_PULSE_STALE_OR_DEGRADED");
    categories[category]={
      status:state,source_check_age_minutes:age,
      last_source_check_at:at===null?null:new Date(at).toISOString(),
