@@ -267,9 +267,9 @@ export function phase2fQuotaDiagnostic(plan){
   const cause=!valid?"PROVIDER_USAGE_UNVERIFIED":
     physical?"PHYSICAL_FREE_LIMIT_REACHED":
     protectedReserve?"PROTECTED_CRITICAL_AND_PREDGE_RESERVE_HELD":
-    pacing?"UTC_DAILY_PACING_HELD":
     plan.research===true?"THREE_CATEGORY_DERIVED_PUBLISHER_ADMITTED":
     plan.source_intake===true?"BOUNDED_ORIGINAL_SOURCE_INTAKE_ONLY":
+    pacing?"UTC_DAILY_PACING_HELD":
     "SOURCE_FULL_DAY_BUDGET_OR_DISCRETIONARY_LANE_HELD";
   return Object.freeze({
     schema:"geomacro.phase2f.d1-admission-diagnostic.v1",
