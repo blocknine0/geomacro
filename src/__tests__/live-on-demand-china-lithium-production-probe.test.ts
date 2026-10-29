@@ -29,7 +29,7 @@ describe("production customer-query acceptance without B2, new services or money
     expect(script).toContain("provider_http_outcomes:");
     expect(script).toContain('"ok_2xx"|"http_403"|"http_429"|"http_5xx"|"other_http"|"network_error"');
     expect(script).toContain("observedRequests!==proof.total_bounded_network_attempts");
-    expect(script).toContain("proof.provider_http_outcomes.length>10");
+    expect(script).toContain("proof.provider_http_outcomes.length>11");
     expect(script).toContain("category_retrieval_proof:categoryRetrievalProof");
     expect(script).toContain("{fetchImpl:statusOnlyFetch}");
     expect(script).not.toContain("provider_http_outcomes:outcomeCounts");
