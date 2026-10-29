@@ -353,7 +353,9 @@ jobs:
   # cannot double-spend per-minute free quotas inside the same workflow.
   # GitHub's shared run-level concurrency protects across concurrent PRs.
   hosted-customer-post-no-funds:
-    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.verify_hosted_customer_post == true }}
+    # Always run after the upstream probe job finishes, even when current-source
+    # capability is negative; production readback is an independent no-funds check.
+    if: ${{ always() && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.verify_hosted_customer_post == true }}
     needs: real-api-proof
     runs-on: ubuntu-latest
     timeout-minutes: 9
