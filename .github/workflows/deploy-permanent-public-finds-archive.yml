@@ -10,6 +10,8 @@ on:
       - ".github/workflows/deploy-permanent-public-finds-archive.yml"
       - ".github/workflows/website-derived-news-continuity.yml"
       - "scripts/ops/publish-permanent-derived-news-archive.mjs"
+      - "scripts/lib/website-predge-static-72h-snapshot.mjs"
+      - "scripts/tests/website-predge-static-72h-snapshot.test.mjs"
       - "scripts/ops/verify-minimum-free-production-health.mjs"
       - "scripts/ops/verify-minimum-free-production-health.test.mjs"
       - "workers/public-finds-archive/**"
@@ -51,6 +53,7 @@ jobs:
           node --test scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs
           node --test scripts/tests/verify-public-static-archive-readback.test.mjs
           node --test scripts/ops/publish-permanent-derived-news-archive.test.mjs
+          node --test scripts/tests/website-predge-static-72h-snapshot.test.mjs
   deploy-public-static-archive:
     concurrency:
       group: geomacro-permanent-news-publication
@@ -89,6 +92,7 @@ jobs:
           import { existsSync, readFileSync, writeFileSync } from "node:fs";
           import { join } from "node:path";
           import { isPermanentArchiveSignal, selectCurrentArchiveSignals, buildCurrentArchiveEligibility } from "./scripts/ops/publish-permanent-derived-news-archive.mjs";
+          import {buildWebsitePilotSnapshot} from "./scripts/lib/website-predge-static-72h-snapshot.mjs";
           const dataDir=join(process.env.RUNNER_TEMP,"geomacro-public-archive","data");
           const assetsDir="workers/public-finds-archive/assets";
           const categories=["geopolitics","macro","rare_earth"];
@@ -132,6 +136,9 @@ jobs:
           writeFileSync(join(assetsDir,"latest.json"),JSON.stringify(latest,null,2)+"\n",{mode:0o644});
           const coverage=buildCurrentArchiveEligibility(recent,now,latest.signals);
           writeFileSync(join(assetsDir,"coverage-72h.json"),JSON.stringify(coverage,null,2)+"\n",{mode:0o644});
+          const websitePilot=buildWebsitePilotSnapshot(recent,now);
+          writeFileSync(join(assetsDir,"website-intelligence-predge-72h.json"),
+            JSON.stringify(websitePilot,null,2)+"\n",{mode:0o644});
           // The archive index, rather than the rolling latest feed, is the permanent source of truth.
           writeFileSync(join(assetsDir,"index.json"),JSON.stringify(index,null,2)+"\n",{mode:0o644});
           const latest_category_counts={geopolitics:0,macro:0,rare_earth:0};
@@ -176,11 +183,13 @@ jobs:
           set -euo pipefail
           node --input-type=module <<'NODE'
           import {verifyPublicStaticArchiveReadback} from "./scripts/lib/verify-public-static-archive-readback.mjs";
+          import {verifyWebsitePilotStaticReadback} from "./scripts/lib/website-predge-static-72h-snapshot.mjs";
           import { readFileSync } from "node:fs";
           const base="https://geomacro-public-finds-archive.daspallab202391.workers.dev";
           const expectedIndex=JSON.parse(readFileSync("workers/public-finds-archive/assets/index.json","utf8"));
           const expectedLatest=JSON.parse(readFileSync("workers/public-finds-archive/assets/latest.json","utf8"));
           const expectedCoverage=JSON.parse(readFileSync("workers/public-finds-archive/assets/coverage-72h.json","utf8"));
+          const expectedPilot=JSON.parse(readFileSync("workers/public-finds-archive/assets/website-intelligence-predge-72h.json","utf8"));
           async function get(path){
             let last;
             for(let attempt=0;attempt<5;attempt++){
@@ -210,4 +219,7 @@ jobs:
             liveIndex,liveLatest,liveCoverage,now:Date.now(),
           });
           console.log(JSON.stringify(receipt));
+          const livePilot=await get("/website-intelligence-predge-72h.json");
+          const pilotReceipt=verifyWebsitePilotStaticReadback(expectedPilot,livePilot,Date.now());
+          console.log(JSON.stringify(pilotReceipt));
           NODE
