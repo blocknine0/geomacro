@@ -39,12 +39,13 @@ export function evaluateProductionSourceContinuity(response,{now=new Date()}={})
      s.signed_intelligence_available!==false)throw Error("SOURCE_CONTINUITY_DOMAIN_INVALID");
    const at=iso(s.latest_source_check_at,now.getTime());
    const age=at===null?null:Math.floor((now.getTime()-at)/60000);
-   const current=age!==null && age>=0&&(now.getTime()-at)<=MAX_SOURCE_CHECK_AGE_MS &&
-     s.source_check_current===true && s.service_state.startsWith("CURRENT_SOURCE_CHECK");
+   const clockCurrent=age!==null && age>=0&&(now.getTime()-at)<=MAX_SOURCE_CHECK_AGE_MS;
+   const current=clockCurrent&&s.source_check_current===true &&
+     s.service_state.startsWith("CURRENT_SOURCE_CHECK");
    const pulse=s.original_publisher_pulse;
    if(!pulse || typeof pulse!=="object" || typeof pulse.status!=="string" ||
      pulse.status.length>80)throw Error("SOURCE_CONTINUITY_PULSE_INVALID");
-   if(s.source_check_current!==current)throw Error("SOURCE_CONTINUITY_SOURCE_CLOCK_CONTRADICTS");
+   if(s.source_check_current!==clockCurrent || (s.source_check_current && !current))\n     throw Error("SOURCE_CONTINUITY_SOURCE_CLOCK_CONTRADICTS");
    const lastPulse=iso(pulse.last_checked_at,now.getTime());
    const publisherCurrent=lastPulse!==null && now.getTime()-lastPulse<=75*60*1000 &&
      pulse.status==="SOURCE_NATIVE_OBSERVED";
