@@ -1,0 +1,52 @@
+name: GeoMacro PREDGE 29 Oct Email Acceptance (No Funds)
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/geomacro-predge-email-acceptance.yml"
+      - "scripts/ops/audit-predge-29oct-email.mjs"
+      - "scripts/ops/audit-predge-29oct-email.test.mjs"
+      - "docs/partners/predge/AMIR_20261029_EMAIL_ACCEPTANCE_GEOMACRO_ONLY.md"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/geomacro-predge-email-acceptance.yml"
+      - "scripts/ops/audit-predge-29oct-email.mjs"
+      - "scripts/ops/audit-predge-29oct-email.test.mjs"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "22"}
+      - name: Verify no-funds data contract and OSINT classification
+        run: |
+          node --check scripts/ops/audit-predge-29oct-email.mjs
+          node --test scripts/ops/audit-predge-29oct-email.test.mjs
+  protected-once:
+    needs: offline-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    environment: production
+    concurrency:
+      group: geomacro-predge-email-bounded-readback
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "22"}
+      - name: Exactly one partner + public 72h GET, aggregate-only receipt
+        env:
+          PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
+        run: node scripts/ops/audit-predge-29oct-email.mjs --live
