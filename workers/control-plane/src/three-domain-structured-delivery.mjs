@@ -16,6 +16,19 @@ const CATEGORIES=Object.freeze([
   {key:"macro",label:"Macro / FX"},
   {key:"rare_earth",label:"Critical Minerals"},
 ]);
+const marketResearchChannels=topic=>{
+ const t=String(topic);
+ const channels=[];
+ if(/\b(?:monetary|interest|rates?|bond|treasury|yield|inflation)\b/iu.test(t))
+   channels.push("rates_and_bonds");
+ if(/\b(?:fx|foreign.exchange|currenc(?:y|ies)|exchange.rate|cross.border)\b/iu.test(t))
+   channels.push("fx_and_payments");
+ if(/\b(?:sanctions?|embargo|trade|export|tariff|shipping|corridor)\b/iu.test(t))
+   channels.push("trade_and_logistics");
+ if(/\b(?:mineral|rare.earth|copper|lithium|graphite|nickel|mining|processing)\b/iu.test(t))
+   channels.push("mineral_supply_chain");
+ return channels;
+};
 const NEWS_MAX=5,BASELINE_MAX=8,MAX_TEXT=1400;
 const CLOCK=/^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u;
 const ITEM_ID=/^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u;
@@ -133,6 +146,36 @@ export function projectThreeDomainStructuredDelivery(continuity,now=Date.now()){
             forecast_price_change:null,
             next_confirmed_development_at:null,
             commercial_rights_verified:false,
+            // Five-part event desk. Candidate channels classify the supplied
+            // topic; they are NOT observed instrument moves or forecasts.
+            what_happened:{text:s.what_changed,observation_verified:true},
+            why_it_matters_analysis:{
+              text:s.why_it_matters,claim_independently_verified:false,
+            },
+            market_relevance:{
+              status:"POTENTIAL_CHANNELS_ONLY",
+              potential_watch_channels:marketResearchChannels(s.topic),
+              affected_instruments_confirmed:[],
+              observed_market_reaction_verified:false,
+              price_direction:null,price_change:null,
+            },
+            what_to_watch:{
+              focus_topic:s.topic,
+              followup_trigger:"NEW_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION",
+              confirmed_followup_scheduled:false,
+              next_verified_event_at:null,
+            },
+            evidence_confidence:{
+              tier:"ORIGINAL_DATE_VERIFIED_CLAIMS_UNCORROBORATED",
+              original_publication_time:isExact?original:null,
+              original_publication_day:isExact?original.slice(0,10):period,
+              original_page_date_verified:true,
+              event_claim_independently_verified:false,
+              country_impact_verified:false,
+              market_impact_verified:false,
+              commercial_rights_verified:false,
+              risk_scored:false,
+            },
           },
         });
       }
