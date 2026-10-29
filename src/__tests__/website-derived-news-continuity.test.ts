@@ -419,4 +419,29 @@ describe("website-only Supabase-free derived news continuity",()=>{
       expect(worker).not.toContain(forbidden);
     }
   });
+  it("legacy 15m public feed excludes monitored OSINT that the frozen client cannot parse, while modern Website and canonical D1 retain it",async()=>{
+    const genuine=sample("macro","2026-10-12T19:00:00.000Z");
+    const monitored={...sample("rare_earth","2026-10-12T19:00:00.000Z"),
+      topic:"critical-mineral inputs",
+      title:"Geomacro finds mineral inputs source-feed observation for research",
+      what_changed:"A monitored source feed contains a dated report on mineral inputs, but the precise actor and event have not been independently verified.",
+      why_it_matters:"This remains a research lead only and cannot certify a disruption, production change or commercial source permission.",
+      geography:null,development_type:"unverified OSINT feed observation",
+      sources_credited:["Monitored feed: www.bankofcanada.ca"],
+      status:"osint_feed_observed_unverified" as const};
+    expect(verifyDerivedStory(monitored,NOW)).toBe(true);
+    const {env}=db();
+    expect((await publishDerivedStories(env,
+      {schema:"geomacro.website-derived-news-batch.v1",signals:[genuine,monitored]},NOW)).status).toBe(200);
+    const immediate=await (await readDerivedStories(env,NOW,0,0)).json();
+    const legacy=await (await readDerivedStories(env,NOW,0,15)).json();
+    const canonical=await (await readDerivedStoriesBundle(env,NOW)).json();
+    expect(immediate.signals.map((s:{id:string})=>s.id).sort()).toEqual([genuine.id,monitored.id].sort());
+    expect(canonical.signals.map((s:{id:string})=>s.id).sort()).toEqual([genuine.id,monitored.id].sort());
+    expect(legacy.original_release_delay_minutes).toBe(15);
+    expect(legacy.signals.map((s:{id:string})=>s.id)).toEqual([genuine.id]);
+    expect(legacy.first_ingest.map((s:{id:string})=>s.id)).toEqual([genuine.id]);
+    expect(legacy.chargeable).toBe(false);
+  });
+
 });
