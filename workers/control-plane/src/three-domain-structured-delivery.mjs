@@ -25,7 +25,7 @@ const marketResearchChannels=topic=>{
    channels.push("fx_and_payments");
  if(/\b(?:sanctions?|embargo|trade|export|tariff|shipping|corridor)\b/iu.test(t))
    channels.push("trade_and_logistics");
- if(/\b(?:mineral|rare.earth|copper|lithium|graphite|nickel|mining|processing)\b/iu.test(t))
+ if(/\b(?:minerals?|rare.earths?|copper|lithium|graphite|nickel|mining|processing)\b/iu.test(t))
    channels.push("mineral_supply_chain");
  return channels;
 };
