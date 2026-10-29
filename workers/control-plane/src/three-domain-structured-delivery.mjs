@@ -214,6 +214,48 @@ export async function deliverThreeDomainStructuredOutput(env,now=Date.now(),
 }
 
 
+// One in-isolate, per-D1 binding recovery flight for public structured reads.
+// This does not cache news, bypass source verification or alter partner routes.
+const canonicalRecoveryFlights=new WeakMap();
+const waitForCanonicalRecovery=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function boundedCanonicalRecovery(env,readCanonical,now){
+ const db=env?.DB;
+ if(!db||typeof db!=="object")return denied();
+ let state=canonicalRecoveryFlights.get(db);
+ if(!state){state={pending:null,cooldownUntil:0};canonicalRecoveryFlights.set(db,state);}
+ // Coalesce an actual 503 burst BEFORE checking the failure circuit; clients
+ // observing the same source failure share a single bounded origin recovery.
+ if(state.pending)return (await state.pending).clone();
+ if(state.cooldownUntil>Date.now())return denied();
+ const work=(async()=>{
+  try{
+   await waitForCanonicalRecovery(750);
+   let result=await readCanonical();
+   // Only a second actual 503 permits one final paced read. No retries for
+   // 400/401/429, malformed 200, unrelated sources or protected endpoints.
+   if(result?.status===503){
+    await waitForCanonicalRecovery(1000);
+    result=await readCanonical();
+   }
+   if(result?.status!==200){
+    if(!result||result.status===503)state.cooldownUntil=Date.now()+5000;
+    return result??denied();
+   }
+   // Revalidate before sharing recovery across concurrent public requests.
+   // Existing downstream delivery repeats this strict fail-closed projection.
+   projectThreeDomainStructuredDelivery(await result.clone().json(),now);
+   state.cooldownUntil=0;
+   return result;
+  }catch{
+   state.cooldownUntil=Date.now()+5000;
+   return denied();
+  }
+ })();
+ state.pending=work;
+ try{return (await work).clone();}
+ finally{if(state.pending===work)state.pending=null;}
+}
+
 /**
  * The structured endpoint originally reused the continuity endpoint's
  * POP-cache key to avoid additional D1 scans. A cache hit can be HTTP 200
@@ -238,14 +280,7 @@ export async function deliverThreeDomainStructuredWithCacheRecovery(
   // by real protected-run HTTP 503/200 pairs). Retry exactly ONE no-cache
   // read on 503, but NEVER relabel a second 503 as available or chargeable.
   // No retry on 429, 401, 400 or other status; no concurrent source fetch.
-  if(cached?.status===503){
-   // The provider can return two immediate origin 503s during a short
-   // contention burst, then a healthy source on the next request. The
-   // ONE allowed canonical retry is paced, not multiplied or scheduled.
-   // No additional D1 attempts, no background task, no change on success.
-   await new Promise(resolve=>setTimeout(resolve,750));
-   return readCanonical();
-  }
+  if(cached?.status===503)return boundedCanonicalRecovery(env,readCanonical,now);
   if(cached?.status!==200)return cached;
   try{
    const body=await cached.clone().json();
@@ -254,7 +289,7 @@ export async function deliverThreeDomainStructuredWithCacheRecovery(
   }catch{
    // One canonical no-cache source read, then the regular strict projector.
    // No hidden retries or source mutation; if D1 is down, return 503.
-   return readCanonical();
+   return boundedCanonicalRecovery(env,readCanonical,now);
   }
  });
 }
