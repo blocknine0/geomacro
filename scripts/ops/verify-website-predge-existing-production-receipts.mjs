@@ -94,7 +94,11 @@ export function verifyExistingRunReceipts({canonical,protectedLive,archive,proof
   fail("PUBLIC_STATIC_ARCHIVE_READBACK_UNVERIFIED");
  return Object.freeze({
   schema:"geomacro.website-predge-shared-quota-production-proof.v1",
-  accepted:true,verification:"GITHUB_EXISTING_NON_SKIPPED_PROTECTED_AND_PUBLISHER_RECEIPTS",
+  accepted:true,
+  acceptance_scope:"EXISTING_RUN_RECEIPT_CONSISTENCY_ONLY",
+  same_instant_cross_run_source_native_id_set_verified:false,
+  full_end_to_end_partner_id_parity_verified:false,
+  verification:"GITHUB_EXISTING_NON_SKIPPED_PROTECTED_AND_PUBLISHER_RECEIPTS",
   eligible_archive_ids:canonical.eligible_archive_ids,
   expected_partner_items_by_category:expected.category_expected_attributed_partner_ids,
   rights_withheld_by_category:expected.category_rights_credit_withheld,
@@ -105,6 +109,7 @@ export function verifyExistingRunReceipts({canonical,protectedLive,archive,proof
   source_native_clocks_verified:true,
   public_archive_live_readback_verified:true,
   protected_live_authenticated_parity_verified:true,
+  cross_run_id_digest_missing:true,
   no_extra_d1_reads_or_partner_gets_for_acceptance:true,
   additional_d1_reads:0,additional_predge_gets:0,
   new_publisher_fetches:0,payments:0,
