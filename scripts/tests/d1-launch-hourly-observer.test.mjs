@@ -16,10 +16,13 @@ test("post-deploy observation uses protected main, read-only permissions and no 
 
 test("72h hourly receipts use YAML block scalar with REAL newlines, never literal backslash-n",()=>{
  const yaml=readFileSync(new URL("../../.github/workflows/d1-launch-72h-observatory.yml",import.meta.url),"utf8");
- assert.ok(yaml.includes(
-   "          path: |\\n            artifacts/d1-launch-hourly/receipt.json\\n"+
-   "            artifacts/d1-launch-hourly/source-continuity.json"));
- assert.equal(yaml.includes("path: |\\\\n"),false);
+ const expected=[
+  "          path: |",
+  "            artifacts/d1-launch-hourly/receipt.json",
+  "            artifacts/d1-launch-hourly/source-continuity.json",
+ ].join(String.fromCharCode(10));
+ assert.ok(yaml.includes(expected));
+ assert.equal(yaml.includes("path: |"+String.fromCharCode(92)+"n"),false);
  assert.ok(yaml.includes("name: geomacro-d1-launch-hourly"));
  assert.ok(yaml.includes("name: geomacro-d1-launch-72h-acceptance"));
  assert.ok(yaml.includes("node scripts/ops/d1-launch-hourly-observer.mjs"));
