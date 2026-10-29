@@ -5,7 +5,8 @@ import { canonicalJson } from "../../src/lib/canonical-json";
 import { buildAgentQueryPlan, agentAdaptiveQuerySchema } from "../../src/lib/agent-query-plan";
 import { checkAgentQueryDeliverability } from "../../src/lib/agent-query-deliverability.server";
 import { assembleAgentQueryResponse } from "../../src/lib/agent-query-response.server";
-import { loadQualifiedMcsCountryContext, MCS_DIGEST_CSV_SHA256, qualifiedMcsAcquisitionFailure }
+import { loadQualifiedMcsCountryContext, loadQualifiedMcsRelease,
+  summarizeQualifiedMcs195StructuralCoverage, MCS_DIGEST_CSV_SHA256, qualifiedMcsAcquisitionFailure }
   from "../../src/lib/qualified-mcs-country-digest.server";
 import { resolveGeomacroCapabilityPrice } from "../../src/lib/capability-pricing-catalog";
 import { createB2Client } from "./b2-s3-client.mjs";
@@ -26,6 +27,18 @@ for (const name of ["SUPABASE_DB_URL", "SUPABASE_SERVICE_ROLE_KEY", "APP_SUPABAS
 }
 const context = await loadQualifiedMcsCountryContext(country);
 if (!context) throw Error(qualifiedMcsAcquisitionFailure() ?? "FIRST_DIGEST_COMPARABLE_COUNTRY_ROWS_UNAVAILABLE");
+const alreadyVerifiedMcs = await loadQualifiedMcsRelease();
+if (!alreadyVerifiedMcs) throw Error("FIRST_DIGEST_195_COUNTRY_SOURCE_CENSUS_UNAVAILABLE");
+const mcs195SourceCensus = summarizeQualifiedMcs195StructuralCoverage(alreadyVerifiedMcs.rows, new Date());
+// Census is measured from SAME SHA and CC0 rights-verified cached original.
+// It cannot qualify source eligibility for other countries without the exact
+// canonical Store per-country availability + source-rights contract.
+if (mcs195SourceCensus.canonical_country_count !== 195 ||
+    mcs195SourceCensus.countries_with_comparable_source<1 ||
+    !mcs195SourceCensus.country_coverage.some(x=>x.iso3===country &&
+      x.status==="COMPARABLE_2024_2025_SOURCE"))
+  throw Error("FIRST_DIGEST_CENSUS_WRONG_COUNTRY_OR_NO_SOURCE");
+
 const plan = buildAgentQueryPlan(agentAdaptiveQuerySchema.parse({
   schema_version: "geomacro.agent-query.v1", delivery_tier: "structural_baseline",
   fulfillment_mode: "published_only", subjects: [{ type: "country", country_iso3: country }],
@@ -142,6 +155,7 @@ if (persist) {
 const receipt = { schema: "geomacro.first-qualified-structural-digest-receipt.v1", checked_at: new Date().toISOString(),
   country_iso3: country, topic: "critical_minerals", capability: "structural_country_digest", amount_usdc: "0.02",
   source_rights_verified: true, original_file_sha256_verified: true,
+  mcs_195_source_census: mcs195SourceCensus,
   reference_year: 2025, previous_reference_year: 2024, current_news_or_risk_score: false,
   canonical_engine_deliverable: true, prepared_customer_bytes_sha256: hash,
   prepared_customer_bytes_length: Buffer.byteLength(customerBytes),
