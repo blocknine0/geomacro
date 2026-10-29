@@ -170,3 +170,38 @@ test("Phase 2B prints an allowlisted code, not the raw B2 error stream",()=>{
   assert.ok(!workflow.includes("cat /tmp/geomacro-runtime-acceptance.stderr"));
   assert.ok(verifier.includes("classifyB2ProbeProviderFailure(error)"));
 });
+
+test("Phase 2C distinguishes owner B2 PUT denial from first verification GET denial without extra requests",async()=>{
+  for(const phase of ["INITIAL_PUT","FIRST_VERIFICATION_GET"]){
+    let calls=0;
+    await assert.rejects(
+      ()=>runProductionB2D1RuntimeAcceptance({
+        env:baseEnv,now:()=>new Date("2026-10-25T18:00:00.000Z"),
+        createGovernorImpl:()=>({async status(){return before;}}),
+        createB2ClientImpl:()=>({
+          async putWithMetadataVerification(_key,_payload,{onStage}){
+            calls++;
+            onStage("INITIAL_PUT");
+            if(phase==="FIRST_VERIFICATION_GET")onStage("FIRST_VERIFICATION_GET");
+            throw new Error("B2_PUT_FAILED_403_AccessDenied");
+          },
+          async get(){throw Error("DO_NOT_GET_AFTER_DENIED_PROBE");},
+        }),
+        fetchImpl:async()=>({ok:true,status:200,json:async()=>before}),
+      }),
+      error=>error.message==="B2_"+phase+"_FAILED:B2_CREDENTIAL_OR_BUCKET_SCOPE_DENIED",
+    );
+    assert.equal(calls,1);
+  }
+});
+
+test("Phase 2C safe production failure codes remain tightly allowlisted",()=>{
+ const workflow=readFileSync(".github/workflows/production-b2-d1-runtime-readwrite-acceptance.yml","utf8");
+ const client=readFileSync("scripts/ops/b2-s3-client.mjs","utf8");
+ const verifier=readFileSync("scripts/ops/verify-production-b2-d1-runtime-acceptance.mjs","utf8");
+ assert.ok(workflow.includes("B2_INITIAL_PUT_FAILED|B2_FIRST_VERIFICATION_GET_FAILED|B2_SECOND_INDEPENDENT_GET_FAILED"));
+ assert.ok(client.includes('onStage("INITIAL_PUT")'));
+ assert.ok(client.includes('onStage("FIRST_VERIFICATION_GET")'));
+ assert.ok(verifier.includes('fail("B2_"+storageStage+"_FAILED:"'));
+ assert.ok(!workflow.includes("cat /tmp/geomacro-runtime-acceptance.stderr"));
+});
