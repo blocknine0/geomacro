@@ -209,6 +209,18 @@ function articleSpecificFocus(category:StatelessCategory,event:string):EventFocu
  if(category==="rare_earth"){
   const materials=materialNames(event);
   const scoped=materials?" involving "+materials:" in the minerals sector";
+  if(/\b(?:tokens?|tokenized|tokenised|digital assets?|digital commodity|trading platform|investment product)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported product or platform launch"+scoped+
+      " concerns financial or digital access to material exposure, not necessarily new physical supply.",
+    limit:"Check redemption, custody, inventory backing and actual delivery terms before treating it as direct access to the commodity."};
+  }
+  if(/\b(?:output falls short|output shortfall|production shortfall|maintained guidance|output below|production below)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported guidance-versus-output development"+scoped+
+      " raises a specific question about production performance relative to company expectations.",
+    limit:"Check stated guidance, actual period output and explanations for any variance before inferring a lasting supply deficit."};
+  }
   if(/\b(?:profits?|earnings|financial results?|quarterly results?|Q[1-4]|revenue|EBITDA|net income)\b/iu.test(event)){
    return {rule:/$/u,
     impact:"the reported corporate financial update"+scoped+
@@ -270,6 +282,27 @@ function articleSpecificFocus(category:StatelessCategory,event:string):EventFocu
     limit:"The available headline does not establish whether this changed mine output, prices or shipments."};
  }
  if(category==="macro"){
+  if(/\b(?:nuclear power station|nuclear power plant|nuclear reactor|power station|electricity grid|power generation project)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported power-infrastructure development is relevant to energy capacity, long-term capital needs and potential import dependencies.",
+    limit:"Talks or a project proposal do not establish funding, construction, commissioning or lower electricity costs."};
+  }
+  if(/\b(?:airports?|air cargo|cargo hubs?|logistics hubs?|seaports?|shipping terminals?|railway expansion|transport infrastructure)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported transport-infrastructure initiative concerns freight capacity, connectivity and possible trade throughput.",
+    limit:"Approval or plans are not evidence of completed works, increased cargo handling or measured economic growth."};
+  }
+  if(/\b(?:gold.backed|bullion reserves?|token offerings?|tokenized gold|tokenised gold|stablecoins?|digital tokens?)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported commodity-linked financial product raises questions about reserve backing, redemption terms and issuer or counterparty exposure.",
+    limit:"A token offering is not evidence of a central-bank reserve change or an observed gold-price movement."};
+  }
+  if(/\b(?:central bank|federal reserve|European Central Bank|ECB|Bank of England|Bank of Japan|policy rates?)\b/iu.test(event)
+   &&/\b(?:interest rates?|rates? steady|rate cut|rate hike|rates? unchanged|rates? raised|rates? lowered|held.*rates?|cut.*rates?|raised.*rates?)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported policy-rate decision links financing costs and rate differentials to currency and inflation expectations.",
+    limit:"Check the official policy decision and guidance before drawing conclusions about the next meeting or actual asset-price reactions."};
+  }
   if(/\b(?:earnings|profits?|quarterly results?|revenue|corporate results?)\b/iu.test(event))
    return {rule:/$/u,
     impact:"the reported financial result informs firm-level profitability, financing capacity and the wider activity outlook.",
