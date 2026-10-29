@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildWebsitePilotSnapshot,WEBSITE_PILOT_MAX_ROWS}
+import {buildWebsitePilotSnapshot,verifyWebsitePilotStaticReadback,WEBSITE_PILOT_MAX_ROWS}
  from "../lib/website-predge-static-72h-snapshot.mjs";
 
 const now=Date.parse("2026-10-29T09:45:00.000Z");
@@ -55,4 +55,21 @@ test("never promote raw, unsafe or forged rows",()=>{
   assert.throws(()=>buildWebsitePilotSnapshot([{...row("macro","ffffffff"),...patch}],now),
    /INVALID_ARCHIVE_ROW/);
  }
+});
+
+test("exact static readback tolerates harmless no-op deployment clock, never changed native content",()=>{
+ const expected=buildWebsitePilotSnapshot([row("geopolitics","12345678"),
+   row("macro","abcdef12"),
+   row("rare_earth","77778888","osint_feed_observed_unverified")],now);
+ const live={...expected,checked_at:new Date(now-60_000).toISOString()};
+ const r=verifyWebsitePilotStaticReadback(expected,live,now);
+ assert.equal(r.same_website_archive_source_native_ids_verified,true);
+ assert.equal(r.recent_rows,3);
+ assert.equal(r.d1_reads,0);
+ assert.throws(()=>verifyWebsitePilotStaticReadback(expected,{
+  ...live,signals:live.signals.slice(1),item_count:2,
+ },now),/EXACT_ID_PAYLOAD_ATTRIBUTION_MISMATCH/);
+ assert.throws(()=>verifyWebsitePilotStaticReadback(expected,{
+  ...live,checked_at:new Date(now-7*60*60_000).toISOString(),
+ },now),/STALE_OR_FUTURE_DEPLOYMENT/);
 });
