@@ -14,6 +14,7 @@ import { classifyGlobalEntity } from "./global-entity-classification";
 import { verifiedFedBoardDiscountMinutesOriginal } from "./on-demand-fed-board-discount-release.server";
 import { originalFedDiscountMinutesArchiveLinks } from "./on-demand-fed-official-archive.server";
 import { canadaOriginalPublicationDay } from "./stateless-canada-original.server";
+import { fetchBgsMineralProductionHistory, type BgsMineralHistory } from "./bgs-world-mineral-statistics.server";
 
 /**
  * Query-time, bounded, Supabase/B2-free GLOBAL DISCOVERY for a future paid
@@ -30,6 +31,8 @@ export type OnDemandSearchInput = {
   mineral?: OnDemandMineral | null;
   topics?: readonly string[];
   max_age_seconds?: number;
+  /** Server-classified annual mineral data intent; never customer query text. */
+  include_historical_mineral_data?: boolean;
 };
 /**
  * PRIVATE EPHEMERAL EVIDENCE ONLY: never put this in response JSON or
@@ -151,6 +154,12 @@ export function inferOnDemandMineral(question: string | null | undefined): OnDem
   const matches = MINERAL_TERMS.filter((term) => term.pattern.test(question));
   if (matches.length > 1) throw Error("ON_DEMAND_MULTIPLE_MINERALS_UNSUPPORTED");
   return matches[0]?.value ?? null;
+}
+
+/** Historical mineral questions use a separate bounded annual-data lane. */
+export function requestsHistoricalMineralData(question:string|null|undefined):boolean {
+  return typeof question==="string" &&
+    /\\b(?:histor(?:y|ical)|annual|production|produced|output|time series|statistics|historical data)\\b/iu.test(question);
 }
 
 // Fixed topic vocabulary. Never send a customer's freeform question upstream.
@@ -1185,6 +1194,7 @@ async function discoverOnDemandImpl(
   duplicate_original_headline_count:number;
   private_macro_changes:PrivateOfficialMacroChange[];
   private_macro_qualifications:PrivateMacroQualification[];
+  private_mineral_history:BgsMineralHistory|null;
   /** Private first-party World Bank country identity; never in public discovery. */
   private_verified_country_name:string|null;
 }> {
@@ -1245,6 +1255,9 @@ async function discoverOnDemandImpl(
       new Set(input.categories).size !== input.categories.length)
     throw Error("ON_DEMAND_CATEGORIES_INVALID");
   const categories = [...input.categories].sort();
+  const mineral = input.mineral ?? null;
+  const historicalMineralQuery = input.include_historical_mineral_data === true &&
+    categories.length===1 && categories[0]==="rare_earth" && mineral !== null;
   // Explicit recent three-domain discovery is a NEWS/EVENT retrieval lane.
   // Annual WDI observation years are structural context and must not take
   // a scarce 12-request original-source slot in a <=24h event search.
@@ -1252,7 +1265,6 @@ async function discoverOnDemandImpl(
   const freshThreeDomainEventDiscovery = categories.length===3 &&
     input.max_age_seconds!==undefined && input.max_age_seconds<=86_400 &&
     Array.isArray(input.topics) && input.topics.length>0;
-  const mineral = input.mineral ?? null;
   if (mineral !== null &&
       (!categories.includes("rare_earth") ||
        !MINERAL_TERMS.some((term) => term.value === mineral)))
@@ -1274,9 +1286,14 @@ async function discoverOnDemandImpl(
   // PSE query must still match the UN observer-state country denominator.
   if(country==="PSE" && name)name="State of Palestine";
   const gdeltDeadline=Date.now()+12_000;
-  const tasks: Array<{name:string;category:OnDemandCategory;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult>}> = [];
+  type PrivateMineralHistoryResult={probe:SourceProbe;private_mineral_history:BgsMineralHistory|null};
+  const tasks: Array<{name:string;category:OnDemandCategory;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult|PrivateMineralHistoryResult>}> = [];
+  if(historicalMineralQuery)tasks.push({name:"bgs_world_mineral_statistics",category:"rare_earth",run:async()=>{
+    const history=await fetchBgsMineralProductionHistory(country,mineral!,trackedFetch);
+    return {probe:probe("bgs_world_mineral_statistics",history?.series.length??0,false),private_mineral_history:history};
+  }});
   const approvedReliefAppname=approvedReliefWebAppname();
-  if (name && !options.disableDiscoveryIndex) for (const category of categories) {
+  if (!historicalMineralQuery && name && !options.disableDiscoveryIndex) for (const category of categories) {
     tasks.push({name:"gdelt_doc_discovery",category,run:()=>gdelt(category,name,trackedFetch,mineral,topics,country,newsMaxAgeMs,gdeltDeadline)});
     // ReliefWeb changed to pre-approved appnames in Nov 2025. A pending
     // account approval must not generate repeat 403s on every user query.
@@ -1284,7 +1301,7 @@ async function discoverOnDemandImpl(
       tasks.push({name:"reliefweb_discovery",category,run:()=>
         reliefWeb(name,trackedFetch,now,approvedReliefAppname,newsMaxAgeMs)});
   }
-  if (name) for (const source of [...ORIGINAL_FALLBACK_FEEDS,...(topics.length?INTERNATIONAL_ORIGINAL_FEEDS:[])]) {
+  if (!historicalMineralQuery && name) for (const source of [...ORIGINAL_FALLBACK_FEEDS,...(topics.length?INTERNATIONAL_ORIGINAL_FEEDS:[])]) {
     // Reuse the Canadian government publisher for verified Canadian country
     // scope only. Do not consume a scarce original-provider slot or alter
     // unrelated global/China queries simply because a new issuer was added.
@@ -1307,7 +1324,7 @@ async function discoverOnDemandImpl(
         country,name,trackedFetch,now,mineral,topics,newsMaxAgeMs),
     });
   }
-  if (!options.directPublisherOnly && categories.includes("macro") &&
+  if (!historicalMineralQuery && !options.directPublisherOnly && categories.includes("macro") &&
       !freshThreeDomainEventDiscovery) for (const indicator of [
     "FP.CPI.TOTL.ZG","NY.GDP.MKTP.KD.ZG",
   ] as const) tasks.push({name:"world_bank_official_" + indicator,category:"macro",
@@ -1326,7 +1343,7 @@ async function discoverOnDemandImpl(
   // 1 annual WDI context = 10 primary GETs, never more than the existing
   // 12 total. WDI annual records are NOT current event proof. Two-domain
   // queries and unscoped legacy requests retain their existing behaviour.
-  const maxPrimary=Math.min(networkLimit,freshThreeDomainEventDiscovery?9:
+  const maxPrimary=historicalMineralQuery?1:Math.min(networkLimit,freshThreeDomainEventDiscovery?9:
     topics.length>0 && categories.length===3?10:11);
   // Multi-category current-event questions must sample two distinct
   // ORIGINAL issuers per requested domain before spending the bounded
@@ -1458,7 +1475,7 @@ async function discoverOnDemandImpl(
   // preserving at least one remaining network slot for an independent
   // original-publisher fallback. Every search lead still requires its
   // first-party article page and real original publication date.
-  if(name && topics.length>0 && categories.length===3){
+  if(!historicalMineralQuery && name && topics.length>0 && categories.length===3){
     // In a genuine <=24h three-domain search, include Macro in issuer-index
     // rescue instead of spending that slot on an annual WDI statistic.
     const targeted=freshThreeDomainEventDiscovery
@@ -1487,7 +1504,7 @@ async function discoverOnDemandImpl(
   // try another already registered original institution within the SAME
   // twelve-request budget. Do not promote GDELT index links to originals, and
   // do not turn a source outage into a positive coverage claim.
-  if(name && topics.length>0 && categories.length>1){
+  if(!historicalMineralQuery && name && topics.length>0 && categories.length>1){
     for(const category of categories){
       const hasOriginal=()=>settled.some(result=>
         result.status==="fulfilled" &&
@@ -1518,7 +1535,7 @@ async function discoverOnDemandImpl(
   // A live Federal Reserve RSS is rolling-window limited. This ONE
   // optional official annual press index GET recovers missing source leads.
   // It does not prove a precise release clock, licence, corroboration or GRO.
-  if(country==="USA" && categories.includes("macro") &&
+  if(!historicalMineralQuery && country==="USA" && categories.includes("macro") &&
      topics.includes("macro_risk") && networkAttempts<networkLimit &&
      !settled.some(result=>result.status==="fulfilled" &&
        "private_candidates" in result.value &&
@@ -1563,7 +1580,7 @@ async function discoverOnDemandImpl(
   // miss, not proof the original publisher has no matching article.
   // Reuse one bounded public issuer search only when the original feed mesh
   // found nothing relevant to this country/commodity.
-  if(name && topics.length>0)for(const category of categories){
+  if(!historicalMineralQuery && name && topics.length>0)for(const category of categories){
     const originalPresent=settled.some(result=>
       result.status==="fulfilled" &&
       "private_candidates" in result.value &&
@@ -1586,7 +1603,7 @@ async function discoverOnDemandImpl(
   // categories missed by GDELT/official feeds, but each result still needs an
   // allowlisted first-party URL, original-page date, exact scope, rights and
   // independent review before it can ever reach a paid gate.
-  if(tavilyEnabled&&name&&topics.length>0&&networkAttempts<12){
+  if(!historicalMineralQuery&&tavilyEnabled&&name&&topics.length>0&&networkAttempts<12){
     const hasAnyCandidate=(category:OnDemandCategory)=>
       settled.some(result=>result.status==="fulfilled"&&
         "private_candidates" in result.value&&
@@ -1624,6 +1641,9 @@ async function discoverOnDemandImpl(
   const private_macro_qualifications=settled.flatMap(result=>
     result.status==="fulfilled" && "private_macro_qualification" in result.value
       ? [result.value.private_macro_qualification] : []);
+  const private_mineral_history=settled.flatMap(result=>
+    result.status==="fulfilled" && "private_mineral_history" in result.value
+      ? [result.value.private_mineral_history] : []).find(Boolean)??null;
   const private_candidates:PrivateOriginalCandidate[]=[];
   // Round-robin preserves distinct publisher families and all 3 categories
   // under heavy news flow; a dominant feed cannot starve a later independent
@@ -1675,6 +1695,7 @@ async function discoverOnDemandImpl(
     duplicate_original_headline_count:grouped.duplicate_headlines_removed,
     private_macro_changes,
     private_macro_qualifications,
+    private_mineral_history,
     private_verified_country_name:name||null,
   };
 }
