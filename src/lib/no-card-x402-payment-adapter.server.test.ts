@@ -3,7 +3,7 @@ import { quoteGeomacroPreparedCapability } from "./capability-prepared-quote.ser
 import { freezeCanonicalCapabilityHttpBody } from "./capability-x402-exact-http-body.server";
 import { commerceFingerprint } from "./agent-commerce-delivery.server";
 import { executeNoCardPreparedPurchase, assertNoCardQuoteScope,
-  requirementsForNoCardQuote, assertNoCardProductionAuthorized } from "./no-card-x402-payment-adapter.server";
+  requirementsForNoCardQuote, assertNoCardProductionAuthorized, assertNoCardFeeCeiling } from "./no-card-x402-payment-adapter.server";
 
 // No live data can be commercially valid in a synthetic no-funds fixture.
 // The real guarded production entrypoint MUST use the canonical validators.
@@ -156,5 +156,17 @@ describe("No-card mainnet x402 candidate adapters — NO FUNDS", () => {
   it("real funds remain locked without separate production approvals",()=>{
     const f=fixture();
     expect(()=>assertNoCardProductionAuthorized(f.quote)).toThrow();
+  });
+});
+
+describe("Fee budget: owner-attested fee, never net profit",()=>{
+  it("permits zero fee and prevents PayAI-sized fees on a 2-cent SKU",()=>{
+    const q=fixture().quote;
+    expect(assertNoCardFeeCeiling(q,"0").feeAtomic).toBe("0");
+    expect(assertNoCardFeeCeiling(q,"0.001").maxAtomic).toBe("1000");
+    expect(()=>assertNoCardFeeCeiling(q,"0.00197")).toThrow();
+    expect(()=>assertNoCardFeeCeiling(q,"0.00362")).toThrow();
+    expect(()=>assertNoCardFeeCeiling(q,"")).toThrow();
+    expect(()=>assertNoCardFeeCeiling(q,"-0.01")).toThrow();
   });
 });
