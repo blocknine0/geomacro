@@ -4,12 +4,16 @@ on:
     paths:
       - src/lib/qualified-mcs-country-digest.server.ts
       - scripts/ops/prepare-first-qualified-country-digest.ts
+      - src/lib/qualified-mcs-country-digest.server.test.ts
+      - src/lib/canonical-country-registry-195.ts
       - .github/workflows/first-qualified-country-digest.yml
   push:
     branches: [main]
     paths:
       - src/lib/qualified-mcs-country-digest.server.ts
       - scripts/ops/prepare-first-qualified-country-digest.ts
+      - src/lib/qualified-mcs-country-digest.server.test.ts
+      - src/lib/canonical-country-registry-195.ts
       - .github/workflows/first-qualified-country-digest.yml
   # One bounded, source-native CC0 + canonical customer-byte recheck daily.
   # Failures are observable, not transformed into new articles or risk scores.
@@ -34,6 +38,8 @@ jobs:
         with:
           bun-version: '1.4.2'
       - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify no-funds 195-country original mineral source census contract
+        run: bun x vitest run src/lib/qualified-mcs-country-digest.server.test.ts
       - name: Real source qualification and canonical byte preparation, no secrets or durable writes
         env:
           NODE_ENV: production
@@ -53,6 +59,12 @@ jobs:
              r.original_file_sha256_verified!==true||
              r.canonical_engine_deliverable!==true||
              r.private_vault_admission_validated!==true||
+             r.mcs_195_source_census?.canonical_country_count!==195||
+             r.mcs_195_source_census?.country_coverage?.length!==195||
+             r.mcs_195_source_census?.source_rights_grant_is_exact_scoped_dataset_only!==true||
+             r.mcs_195_source_census?.current_country_mineral_events_verified!==false||
+             r.mcs_195_source_census?.paid_entitlements_or_mainnet_settlements_verified!==false||
+             r.mcs_195_source_census?.canonical_product_preflight_per_country_not_assessed!==true||
              r.current_news_or_risk_score!==false||
              !/^[a-f0-9]{64}$/.test(r.prepared_customer_bytes_sha256)||
              r.payable_offer_issued!==false||r.merchant_acceptance_verified!==false||
