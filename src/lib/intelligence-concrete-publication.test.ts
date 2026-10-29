@@ -83,4 +83,55 @@ describe("actual-event Intelligence publication",()=>{
      what_changed:"United Nations "+action+" in its dated statement."} as never)).toBe(true);
   });
 
+ it("distinguishes humanitarian security from election statements, even within geopolitics",()=>{
+   const msf={...sample("geopolitics"),
+     title:"Geomacro finds MSF called for stronger security measures to protect its work in Central Darfur",
+     what_changed:"A monitored source feed reports: MSF called for stronger security measures to protect its work in Central Darfur. This report has not been independently verified.",
+     status:"osint_feed_observed_unverified" as const,
+     development_type:"unverified OSINT feed observation",
+     sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"],
+     topic:"geopolitical security"};
+   const brazil={...msf,
+     id:"geopolitics-12345679",
+     title:"Geomacro finds Trump said Brazil election was a disgrace",
+     what_changed:"A monitored source feed reports: Trump said Brazil election was a disgrace. This report has not been independently verified."};
+   const security=concreteGeomacroAnalysis(msf);
+   const election=concreteGeomacroAnalysis(brazil);
+   expect(isConcretePublicIntelligence(msf)).toBe(true);
+   expect(isConcretePublicIntelligence(brazil)).toBe(true);
+   expect(security).toContain("relief workers");
+   expect(security).toContain("Central Darfur");
+   expect(election).toContain("electoral misconduct");
+   expect(election).toContain("Brazil election");
+   expect(election).not.toBe(security);
+   expect(election).not.toContain("continuity of access");
+   expect(security).not.toContain("political legitimacy");
+   expect(election).toContain("independently unverified");
+ });
+ it("explains distinct macro and minerals events without invented outcomes",()=>{
+   const rates={...sample("macro"),
+     title:"Geomacro finds Federal Reserve raised interest rates",
+     what_changed:"Federal Reserve raised interest rates in a dated release."};
+   const prices={...sample("macro"),
+     title:"Geomacro finds Statistics Canada reported consumer price inflation",
+     what_changed:"Statistics Canada reported consumer price inflation in its release."};
+   const controls={...sample("rare_earth"),
+     title:"Geomacro finds European Union announced lithium export controls",
+     what_changed:"European Union announced lithium export controls in its dated release."};
+   const exploration={...sample("rare_earth"),
+     title:"Geomacro finds Canada announced a new mineral exploration project",
+     what_changed:"Canada announced a new mineral exploration project in its dated release."};
+   expect(concreteGeomacroAnalysis(rates)).toContain("borrowing costs");
+   expect(concreteGeomacroAnalysis(prices)).toContain("purchasing-power");
+   expect(concreteGeomacroAnalysis(controls)).toContain("shipments");
+   expect(concreteGeomacroAnalysis(exploration)).toContain("viable production");
+   expect(concreteGeomacroAnalysis(rates)).not.toBe(concreteGeomacroAnalysis(prices));
+   expect(concreteGeomacroAnalysis(controls)).not.toBe(concreteGeomacroAnalysis(exploration));
+   for(const story of [rates,prices,controls,exploration]){
+     const explanation=concreteGeomacroAnalysis(story);
+     expect(explanation).toContain(story.title.replace("Geomacro finds ",""));
+     expect(explanation).not.toMatch(/https?:\/\/|www\./u);
+   }
+ });
+
 });
