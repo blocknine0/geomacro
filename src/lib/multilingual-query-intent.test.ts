@@ -107,6 +107,16 @@ describe("multilingual no-funds query interpreter", () => {
       topics:["critical_minerals"]})).toThrow("EXPLICIT_TOPICS_CONTRADICT_QUESTION");
   });
 
+  it("keeps a valid explicit category when the question also mentions an adjacent topic",()=>{
+    const graphite=interpret({
+      question:"What graphite supply and export restrictions are documented for Ethiopia?",
+      subjects:[{type:"country",country_iso3:"ETH"}],topics:["critical_minerals"],
+    });
+    expect(graphite.topics).toEqual(["critical_minerals"]);
+    expect(graphite.subjects).toEqual([{type:"country",country_iso3:"ETH"}]);
+    expect(graphite.canonical_request.fulfillment_mode).toBe("published_only");
+  });
+
   it("requires explicit policy/action input for a Risk Gate, without creating a signature", () => {
     expect(()=>interpret({question:"Risk gate for India"})).toThrow("RISK_GATE_CONTEXT_REQUIRED");
     const out = interpret({question:"Risk gate for India",
