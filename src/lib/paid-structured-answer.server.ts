@@ -76,6 +76,13 @@ export async function paidStructuredAnswer(
   // x402 payment challenge MUST bind to /api/v1/intelligence/query, even if
   // the caller came from this convenience endpoint.
   const forwardedHeaders=new Headers({"Content-Type":"application/json"});
+  // Keep the existing limiter's proxy hints across this in-process adapter.
+  // Without these, all human buyers share the canonical "unknown" bucket.
+  // These remain hints, never authentication; the global limit still applies.
+  for(const name of ["cf-connecting-ip","true-client-ip","x-forwarded-for"]){
+    const value=request.headers.get(name);
+    if(value)forwardedHeaders.set(name,value);
+  }
   const paymentSignature=request.headers.get("payment-signature");
   if(paymentSignature)forwardedHeaders.set("PAYMENT-SIGNATURE",paymentSignature);
   const canonical=new Request(targetUrl,{
