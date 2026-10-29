@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-29T18:18:05.322Z",
+  "updated_at": "2026-10-29T18:36:08.811Z",
   "signals": [
+    {
+      "id": "macro-71869a2d",
+      "category": "macro",
+      "title": "Geomacro finds Alerus forecast 2026 net interest margin of 3.75% to 3.85% amid mid-single-digit loan growth",
+      "what_changed": "A monitored source feed reports: Alerus forecast 2026 net interest margin of 3.75% to 3.85% amid mid-single-digit loan growth. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T18:20:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d89341c8",
+      "category": "macro",
+      "title": "Geomacro finds Encompass Health raised 2026 outlook to $6.45B-$6.5B revenue as it targets $20M-$24M pre-opening costs while expanding capacity",
+      "what_changed": "A monitored source feed reports: Encompass Health raised 2026 outlook to $6.45B-$6.5B revenue as it targets $20M-$24M pre-opening costs while expanding capacity. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T18:19:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-2b47913b",
       "category": "macro",
@@ -246,6 +284,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1451fe95",
+      "category": "macro",
+      "title": "Geomacro finds European Central Bank held interest rates steady as energy shock threatens inflation and growth",
+      "what_changed": "A monitored source feed reports: European Central Bank held interest rates steady as energy shock threatens inflation and growth. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T14:13:05.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: cyprus-mail.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-29T18:18:05.322Z",
+  "checked_at": "2026-10-29T18:36:08.811Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 405,
+  "item_count": 408,
   "counts": {
     "geopolitics": 194,
-    "macro": 167,
+    "macro": 170,
     "rare_earth": 44
   },
-  "source_native_ids_sha256": "35e39d5fa4cbe7b6ccbdb30d3f26ea72156a0374a78c9e4695a40cc0cf3189fb",
+  "source_native_ids_sha256": "fa6fd700f3e6079e3f95c7a1b13ae897950170146eb705b3498c7e892a7aa93f",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,44 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-71869a2d",
+      "category": "macro",
+      "title": "Geomacro finds Alerus forecast 2026 net interest margin of 3.75% to 3.85% amid mid-single-digit loan growth",
+      "what_changed": "A monitored source feed reports: Alerus forecast 2026 net interest margin of 3.75% to 3.85% amid mid-single-digit loan growth. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T18:20:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d89341c8",
+      "category": "macro",
+      "title": "Geomacro finds Encompass Health raised 2026 outlook to $6.45B-$6.5B revenue as it targets $20M-$24M pre-opening costs while expanding capacity",
+      "what_changed": "A monitored source feed reports: Encompass Health raised 2026 outlook to $6.45B-$6.5B revenue as it targets $20M-$24M pre-opening costs while expanding capacity. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T18:19:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-23905408",
       "category": "geopolitics",
@@ -670,6 +708,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1451fe95",
+      "category": "macro",
+      "title": "Geomacro finds European Central Bank held interest rates steady as energy shock threatens inflation and growth",
+      "what_changed": "A monitored source feed reports: European Central Bank held interest rates steady as energy shock threatens inflation and growth. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T14:13:05.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: cyprus-mail.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
