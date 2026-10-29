@@ -9,6 +9,7 @@ import { checkAgentQueryExternalModule } from "./agent-query-external-modules.se
 import { resolveEligiblePublishedCapabilityPrice } from "./verified-capability-coinbase-binding.server";
 import { resolveGeomacroCapabilityPrice, publicCapabilityPricingCatalog, publicCapabilityLaunchStatus, publicCapabilityNewSalesAllowed } from "./capability-pricing-catalog";
 import { GEOMACRO_STORE_REQUEST_EXAMPLES } from "./store-product-examples";
+import { isStructuralStoreProduct } from "./store-product-selection";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 
 type Plan = ReturnType<typeof buildAgentQueryPlan>;
@@ -66,6 +67,59 @@ export function storeProductAvailabilityDiscovery() {
     example_signed_new_issued_after_must_be_updated: true,
     country_routing_is_not_verified_current_coverage: true,
   };
+}
+
+/**
+ * Defence in depth for priced structural Store DATA preflight.
+ * The canonical checker is authoritative; an injected checker/cache/transport
+ * cannot turn a bare AVAILABLE boolean into a sellable source. This NEVER
+ * performs source qualification or grants permission to charge.
+ */
+export function verifiedStructuralStorePreflightReceipt(
+  plan: Plan, proof: AgentQueryDeliverability, now = Date.now(),
+): boolean {
+  if (!isStructuralStoreProduct(plan.product) || !proof || !Number.isFinite(now)) return false;
+  const at=Date.parse(proof.checked_at);
+  if (!Number.isFinite(at) || at>now+60_000 || now-at>3*60*60_000 ||
+      proof.query_plan_hash!==plan.query_plan_hash ||
+      proof.deliverable!==true || proof.code!=="AVAILABLE" ||
+      proof.subjects?.length!==plan.subjects.length ||
+      proof.missing_modules?.length!==0 || proof.stale_modules?.length!==0 ||
+      proof.ineligible_source_ids?.length!==0 ||
+      !Array.isArray(proof.source_contracts) || !proof.source_contracts.length)
+    return false;
+  const eligible=new Set<string>();
+  for(const source of proof.source_contracts){
+    if(!source || typeof source.source_id!=="string" ||
+       !/^[a-zA-Z0-9_-]{3,128}$/u.test(source.source_id) ||
+       !["COMMERCIAL_OK","DERIVED_ONLY"].includes(source.commercial_usage_status??"") ||
+       source.attribution_required!==false || eligible.has(source.source_id))
+      return false;
+    eligible.add(source.source_id);
+  }
+  for(let i=0;i<plan.subjects.length;i++){
+    const expected=plan.subjects[i];
+    const row=proof.subjects[i];
+    if(!row || !row.subject || row.subject.type!==expected.type ||
+       (expected.type==="country"
+         ? row.subject.type!=="country" || row.subject.country_iso3!==expected.country_iso3
+         : row.subject.type!=="corridor" ||
+           row.subject.origin_country_iso3!==expected.origin_country_iso3 ||
+           row.subject.destination_country_iso3!==expected.destination_country_iso3) ||
+       row.status!=="AVAILABLE" || !Array.isArray(row.available_modules) ||
+       !plan.required_modules.every(module=>row.available_modules.includes(module)) ||
+       !Array.isArray(row.required_source_ids) || !row.required_source_ids.length ||
+       row.required_source_ids.some(source=>!eligible.has(source)))
+      return false;
+    // Native measurement/reference clock; never substitute D1 retrieval time.
+    const observed=Date.parse(row.latest_evidence_at??"");
+    if(!Number.isFinite(observed) || observed>now) return false;
+    const maxAge=Math.max(...plan.required_modules.map(module=>
+      plan.module_max_age_seconds[module] ?? 0));
+    if(!Number.isFinite(maxAge) || maxAge<=0 || now-observed>maxAge*1000)
+      return false;
+  }
+  return true;
 }
 
 /** Read-only per-request DATA proof, independent of merchant launch.
@@ -145,6 +199,13 @@ export async function preflightStoreProductData(
       availability: availability ? publicAgentQueryAvailability(availability) : null,
     }, 422);
   }
+
+  // All structurals require the same actual source identity, rights, native
+  // observation and module proof as the governed reader. No trust in a
+  // convenient available boolean or synthetic coverage metadata.
+  if (isStructuralStoreProduct(plan.product) &&
+      !verifiedStructuralStorePreflightReceipt(plan, availability))
+    return denied("STORE_PREFLIGHT_SOURCE_EVIDENCE_UNVERIFIED", 422);
 
   let price: ClassifiedPrice;
   try {

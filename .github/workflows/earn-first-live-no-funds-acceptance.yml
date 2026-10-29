@@ -21,6 +21,8 @@ on:
       # availability route source is edited.
       - "src/lib/central-security.server.ts"
       - "src/lib/agent-query-deliverability.server.ts"
+      - "src/lib/store-product-availability.server.ts"
+      - "src/lib/store-195x3-revenue-preflight.mock.test.ts"
       - "src/lib/structural-context.server.ts"
       - "src/lib/agent-query-world-bank-modules.server.ts"
       - "src/lib/agent-query-critical-minerals.server.ts"
@@ -56,6 +58,8 @@ on:
       - "src/__tests__/earn-first-live-no-funds-acceptance.test.ts"
       - "src/lib/central-security.server.ts"
       - "src/lib/agent-query-deliverability.server.ts"
+      - "src/lib/store-product-availability.server.ts"
+      - "src/lib/store-195x3-revenue-preflight.mock.test.ts"
       - "src/lib/structural-context.server.ts"
       - "src/lib/agent-query-world-bank-modules.server.ts"
       - "src/lib/agent-query-critical-minerals.server.ts"
