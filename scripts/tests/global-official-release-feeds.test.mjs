@@ -7,9 +7,23 @@ const now=new Date('2026-10-16T08:00:00Z');
 const candidate={articleUrl:'https://www.iea.org/news/zambia-critical-minerals-supply-security',title:'Zambia critical minerals supply security'};
 const page=(clock='2026-10-16T07:00:00Z',extra='')=>`<!doctype html><html><h1>${candidate.title}</h1><p class="o-hero-news__meta">News<br/><time datetime="${clock}">16 October 2026</time></p>${extra}</html>`;
 test('expanded official international connectors cover all three categories without credentials',()=>{
- assert.equal(feeds.length,15);assert.equal(new Set(feeds.map(s=>s.id)).size,15);
+ assert.equal(feeds.length,16);assert.equal(new Set(feeds.map(s=>s.id)).size,16);
  assert.deepEqual(new Set(feeds.map(s=>s.category)),new Set(['geopolitics','macro','rare_earth']));
  for(const s of feeds){const u=new URL(s.url);assert.equal(u.hostname,s.host);assert.equal(u.protocol,'https:');assert.ok(!u.username&&!u.password);assert.equal(s.poll_minutes,30);}
+});
+test('China NBS RSS uses HTTPS and only admits its exact English release-article path',()=>{
+ const s=feeds.find(s=>s.id==='china_nbs_macro_original');assert.ok(s);
+ assert.equal(s.category,'macro');assert.equal(s.family,'china_nbs_original_macro_publisher');
+ assert.equal(s.url,'https://www.stats.gov.cn/english/PressRelease/rss.xml');
+ const article='https://www.stats.gov.cn/english/PressRelease/202610/t20261029_1966000.html';
+ assert.equal(globalOriginalArticleUrl(article,s),article);
+ for(const raw of [article+'?source=rss',article+'#top',
+  article.replace('www.stats.gov.cn','stats.gov.cn.evil.test'),
+  'http://www.stats.gov.cn/english/PressRelease/202610/t20261029_1966000.html',
+  'https://www.stats.gov.cn/english/PressRelease/rss.xml'])
+  assert.equal(globalOriginalArticleUrl(raw,s),null);
+ assert.match(s.credit,/attribute the statistical data/iu);
+ assert.match(s.credit,/rights remain unverified/iu);
 });
 test('macro/FX and critical-minerals title matching covers global supply-chain and policy terms',()=>{
  for(const title of ['central bank FX reserves','foreign-exchange intervention','sovereign debt and bond yields','balance of payments and capital flows','industrial production and tariffs','rare earth elements export controls','dysprosium and neodymium magnet production','antimony refining capacity','tungsten supply chain','lithium battery materials','critical raw materials processing']){
