@@ -56,6 +56,11 @@ const signed=[
 const marketWatch=[
   "decision_intelligence[*].market_watch.schema_version",
   "decision_intelligence[*].market_watch.status",
+  "decision_intelligence[*].market_watch.items[*].reference_instruments",
+  "decision_intelligence[*].market_watch.items[*].transmission_channel",
+  "decision_intelligence[*].market_watch.items[*].scenario_if_disruption_intensifies",
+  "decision_intelligence[*].market_watch.items[*].scenario_if_pressure_eases",
+  "decision_intelligence[*].market_watch.trader_checklist",
   "decision_intelligence[*].market_watch.monitoring",
   "decision_intelligence[*].market_watch.limitations",
 ] as const;
