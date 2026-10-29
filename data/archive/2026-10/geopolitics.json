@@ -2,8 +2,312 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-29T08:03:22.050Z",
+  "updated_at": "2026-10-29T08:55:18.712Z",
   "signals": [
+    {
+      "id": "geopolitics-68ff566d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Israel Police rejected Likud claims that Arab parties 'stole' 2026 election, citing lack of evidence",
+      "what_changed": "A monitored source feed reports: Israel Police rejected Likud claims that Arab parties 'stole' 2026 election, citing lack of evidence. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:19:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.jpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1de18068",
+      "category": "geopolitics",
+      "title": "Geomacro finds Election Committee Chief urged Shin Bet to Probe Foreign Funding Allegations - Haaretz",
+      "what_changed": "A monitored source feed reports: Election Committee Chief urged Shin Bet to Probe Foreign Funding Allegations - Haaretz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:35:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e31b732f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Rajnath raised U.S. F-16 package for Pakistan, cross-border terrorism with Hegseth",
+      "what_changed": "A monitored source feed reports: Rajnath raised U.S. F-16 package for Pakistan, cross-border terrorism with Hegseth. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:24:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-f7b65b96",
+      "category": "geopolitics",
+      "title": "Geomacro finds Simba announced January 2027 election timetable",
+      "what_changed": "A monitored source feed reports: Simba announced January 2027 election timetable. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:17:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: dailynews.co.tz"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-131d1215",
+      "category": "geopolitics",
+      "title": "Geomacro finds South Korea said considering deployment options to Strait of Hormuz, including aircraft - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: South Korea said considering deployment options to Strait of Hormuz, including aircraft - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:07:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9d99023e",
+      "category": "geopolitics",
+      "title": "Geomacro finds SASSA revised November grant payment dates ahead of elections",
+      "what_changed": "A monitored source feed reports: SASSA revised November grant payment dates ahead of elections. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:00:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.sanews.gov.za"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-3d6b690e",
+      "category": "geopolitics",
+      "title": "Geomacro finds South Korea said considering deployment options to Strait of Hormuz, including aircraft - Reuters",
+      "what_changed": "A monitored source feed reports: South Korea said considering deployment options to Strait of Hormuz, including aircraft - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T06:45:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e18badf5",
+      "category": "geopolitics",
+      "title": "Geomacro finds South Korea said Considering Deployment Options to Strait of Hormuz, Including Aircraft - U.S. News & World Report",
+      "what_changed": "A monitored source feed reports: South Korea said Considering Deployment Options to Strait of Hormuz, Including Aircraft - U.S. News & World Report. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T06:45:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-799b8b9f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Interior Ministry denied reports of attack on Adakhan Madumarov",
+      "what_changed": "A monitored source feed reports: Interior Ministry denied reports of attack on Adakhan Madumarov. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T06:02:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: 24.kg"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-81f0d901",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said Starlink And Starshield Restored After Zelenski Warned Of Military Impact: who 9 outlets blamed - NewsCord",
+      "what_changed": "A monitored source feed reports: Ukraine said Starlink And Starshield Restored After Zelenski Warned Of Military Impact: who 9 outlets blamed - NewsCord. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T05:19:37.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-b8d2d25b",
+      "category": "geopolitics",
+      "title": "Geomacro finds Court rejected plea to add murder, terrorism charges in Karachi's Gul Plaza fire case",
+      "what_changed": "A monitored source feed reports: Court rejected plea to add murder, terrorism charges in Karachi's Gul Plaza fire case. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T04:30:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.dawn.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2a02ff69",
+      "category": "geopolitics",
+      "title": "Geomacro finds Brands warned about more price hikes as Iran war costs bite - Bangkok Post",
+      "what_changed": "A monitored source feed reports: Brands warned about more price hikes as Iran war costs bite - Bangkok Post. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T03:22:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-d7d1c72d",
+      "category": "geopolitics",
+      "title": "Geomacro finds CJ Koome said fresh training of judges, on election dispute resolution starts this week",
+      "what_changed": "A monitored source feed reports: CJ Koome said fresh training of judges, on election dispute resolution starts this week. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T02:40:38.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: nation.africa"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-bb57cffa",
+      "category": "geopolitics",
+      "title": "Geomacro finds Dutch PM said Europe Won’t Return to Russian Gas Amid US Peace Talks",
+      "what_changed": "A monitored source feed reports: Dutch PM said Europe Won’t Return to Russian Gas Amid US Peace Talks. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T02:34:35.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c3ea14ed",
+      "category": "geopolitics",
+      "title": "Geomacro finds MEA said 22 Indians killed during West Asia conflict",
+      "what_changed": "A monitored source feed reports: MEA said 22 Indians killed during West Asia conflict. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T02:32:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: timesofindia.indiatimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a9e6bad8",
+      "category": "geopolitics",
+      "title": "Geomacro finds Chadchart rejected claims of flood-relief dispute - Bangkok Post",
+      "what_changed": "A monitored source feed reports: Chadchart rejected claims of flood-relief dispute - Bangkok Post. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T01:38:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-6bf58f19",
       "category": "geopolitics",
@@ -132,6 +436,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.militarytimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-688b7687",
+      "category": "geopolitics",
+      "title": "Geomacro finds INEC said Benue Is on Track for 2027 Elections, Reports 98% of BVAS Devices Functional",
+      "what_changed": "A monitored source feed reports: INEC said Benue Is on Track for 2027 Elections, Reports 98% of BVAS Devices Functional. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T19:24:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: fmino.gov.ng"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -280,6 +603,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T16:23:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-65974e6e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Yemen said Houthi ballistic missile attack on Aden airport wounds civilians - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Yemen said Houthi ballistic missile attack on Aden airport wounds civilians - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T16:14:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -934,6 +1276,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-5de1a089",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said strike on Iran after US election is possible - Iran International",
+      "what_changed": "A monitored source feed reports: Trump said strike on Iran after US election is possible - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T05:28:55.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-764426f0",
       "category": "geopolitics",
       "title": "Geomacro finds Trump said Putin-Zelensky Meeting Will Be Arranged ‘Very Soon,’ Claims Progress on Ukraine Peace",
@@ -947,6 +1308,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-5f5c7a67",
+      "category": "geopolitics",
+      "title": "Geomacro finds Behind Khamenei's called for peace, Tehran's unchanged demands - Iran International",
+      "what_changed": "A monitored source feed reports: Behind Khamenei's called for peace, Tehran's unchanged demands - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T02:00:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -1631,6 +2011,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: meduza.io"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-cf72eb70",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States warned about Missile, Drone Threats In Saudi Arabia As Houthi Attacks Escalate - Outlook India",
+      "what_changed": "A monitored source feed reports: United States warned about Missile, Drone Threats In Saudi Arabia As Houthi Attacks Escalate - Outlook India. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-27T12:08:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

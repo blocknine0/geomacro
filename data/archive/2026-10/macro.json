@@ -2,8 +2,236 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-29T08:03:22.050Z",
+  "updated_at": "2026-10-29T08:55:18.712Z",
   "signals": [
+    {
+      "id": "macro-a745f9e8",
+      "category": "macro",
+      "title": "Geomacro finds Morgan Stanley cut Alphabet stock price target on growth concerns By Investing.com - Investing.com South Africa",
+      "what_changed": "A monitored source feed reports: Morgan Stanley cut Alphabet stock price target on growth concerns By Investing.com - Investing.com South Africa. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:46:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2d2d275c",
+      "category": "macro",
+      "title": "Geomacro finds Morgan Stanley raised Microsoft stock price target on strong cloud growth - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Morgan Stanley raised Microsoft stock price target on strong cloud growth - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:38:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8e8fceef",
+      "category": "macro",
+      "title": "Geomacro finds Morgan Stanley cut ServiceNow stock price target on growth concerns By Investing.com - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Morgan Stanley cut ServiceNow stock price target on growth concerns By Investing.com - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:38:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-6d089863",
+      "category": "macro",
+      "title": "Geomacro finds UKMTO said ship ablaze in Hormuz off Oman",
+      "what_changed": "A monitored source feed reports: UKMTO said ship ablaze in Hormuz off Oman. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:35:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.mehrnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-fce859cf",
+      "category": "macro",
+      "title": "Geomacro finds Tianneng unveiled Multi-Chemistry Battery Portfolio, Advances Localized New Energy Ecosystem",
+      "what_changed": "A monitored source feed reports: Tianneng unveiled Multi-Chemistry Battery Portfolio, Advances Localized New Energy Ecosystem. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:22:48.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.antaranews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3db316b8",
+      "category": "macro",
+      "title": "Geomacro finds China unveiled 16 measures to further liberalize Hainan Free Trade Port trade - chinadailyhk",
+      "what_changed": "A monitored source feed reports: China unveiled 16 measures to further liberalize Hainan Free Trade Port trade - chinadailyhk. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:19:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-0aeba76b",
+      "category": "macro",
+      "title": "Geomacro finds Shell increased LNG production by 12% in first nine months of 2026 - TASS",
+      "what_changed": "A monitored source feed reports: Shell increased LNG production by 12% in first nine months of 2026 - TASS. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:12:55.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-49a74764",
+      "category": "macro",
+      "title": "Geomacro finds Barclays raised Microsoft stock price target to $610 on Azure growth - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Barclays raised Microsoft stock price target to $610 on Azure growth - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:08:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-01d479d0",
+      "category": "macro",
+      "title": "Geomacro finds Germany's Steinmeier said China must avoid one-sided benefits in economic ties - Reuters",
+      "what_changed": "A monitored source feed reports: Germany's Steinmeier said China must avoid one-sided benefits in economic ties - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:24:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ed4237dc",
+      "category": "macro",
+      "title": "Geomacro finds United Nations condemned US economic embargo of Cuba though more nations sit out after Trump administration push",
+      "what_changed": "A monitored source feed reports: United Nations condemned US economic embargo of Cuba though more nations sit out after Trump administration push. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T05:19:28.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: clubofmozambique.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-eb4aff21",
+      "category": "macro",
+      "title": "Geomacro finds Press released No 31 RBF Monetary Policy Stance Remains Unchanged",
+      "what_changed": "A monitored source feed reports: Press released No 31 RBF Monetary Policy Stance Remains Unchanged. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T05:10:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.rbf.gov.fj"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-adc7e3ed",
+      "category": "macro",
+      "title": "Geomacro finds Fed held Rates Steady Amid High Inflation and Economic Uncertainty - SSBCrack",
+      "what_changed": "A monitored source feed reports: Fed held Rates Steady Amid High Inflation and Economic Uncertainty - SSBCrack. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T04:07:10.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-d311351f",
       "category": "macro",
@@ -33,6 +261,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T02:59:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-804b3006",
+      "category": "macro",
+      "title": "Geomacro finds US Fed held interest rates steady as inflation runs hot - The National",
+      "what_changed": "A monitored source feed reports: US Fed held interest rates steady as inflation runs hot - The National. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T02:37:31.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -170,6 +417,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: oilprice.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a778feee",
+      "category": "macro",
+      "title": "Geomacro finds U.S. Natural Gas Production Hits New recorded as Demand Surges - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: U.S. Natural Gas Production Hits New recorded as Demand Surges - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T22:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -594,6 +860,25 @@
       "severity": null
     },
     {
+      "id": "macro-d0336b68",
+      "category": "macro",
+      "title": "Geomacro finds Saudi projected seek to boost water storage and cut energy use in Riyadh - Arab News",
+      "what_changed": "A monitored source feed reports: Saudi projected seek to boost water storage and cut energy use in Riyadh - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T15:33:38.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-70be69aa",
       "category": "macro",
       "title": "Geomacro finds Bank of Russia raised dollar exchange rate to 80.87 rubles for October 29 - TASS",
@@ -660,6 +945,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T12:29:46.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-63f60f57",
+      "category": "macro",
+      "title": "Geomacro finds Punjab Government announced ‘Kisan Bank’; Wheat Price Set At Rs4,500 Per Maund - UrduPoint",
+      "what_changed": "A monitored source feed reports: Punjab Government announced ‘Kisan Bank’; Wheat Price Set At Rs4,500 Per Maund - UrduPoint. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T12:06:30.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
