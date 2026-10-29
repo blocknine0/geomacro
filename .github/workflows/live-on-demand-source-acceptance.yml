@@ -23,6 +23,8 @@ on:
     paths:
       - ".github/workflows/live-on-demand-source-acceptance.yml"
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
+      - "scripts/lib/on-demand-source-origin-allowlist.mjs"
+      - "scripts/tests/on-demand-source-origin-allowlist.test.mjs"
       - "scripts/ops/verify-live-on-demand-representative-cases.ts"
       - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
@@ -60,6 +62,8 @@ on:
     paths:
       - ".github/workflows/live-on-demand-source-acceptance.yml"
       - "scripts/ops/verify-live-on-demand-real-apis.ts"
+      - "scripts/lib/on-demand-source-origin-allowlist.mjs"
+      - "scripts/tests/on-demand-source-origin-allowlist.test.mjs"
       - "scripts/ops/verify-live-on-demand-representative-cases.ts"
       - "scripts/ops/verify-live-on-demand-capabilities.ts"
       - "src/lib/on-demand-global-discovery.server.ts"
@@ -149,7 +153,7 @@ jobs:
       # Country batch probes here run only on explicit dispatch.
       # A push never repeats the same national source probe/quota window.
       - name: Offline country calendar rotation invariant
-        run: node --test scripts/tests/country-195-daily-rotation.test.mjs
+        run: node --test scripts/tests/country-195-daily-rotation.test.mjs scripts/tests/on-demand-source-origin-allowlist.test.mjs
       - name: Select deterministic manual country batch (no duplicate scheduled source requests)
         # 6 geographically isolated two-hour workflows now own the scheduled
         # 195-country original scans. Keep this workflow's daily GLOBAL API
@@ -250,7 +254,7 @@ jobs:
           if high:sys.exit(4)
           PY
       - name: Exact 195-country rotation and 250-area crosswalk offline tests
-        run: node --test scripts/tests/country-195-daily-rotation.test.mjs scripts/tests/continent-country-195-rotation.test.mjs scripts/tests/free-three-domain-country-gap-audit.test.mjs
+        run: node --test scripts/tests/country-195-daily-rotation.test.mjs scripts/tests/continent-country-195-rotation.test.mjs scripts/tests/free-three-domain-country-gap-audit.test.mjs scripts/tests/on-demand-source-origin-allowlist.test.mjs
       - name: Private evidence bridge regression checks
         run: bunx vitest run src/lib/on-demand-evidence-qualification.server.test.ts src/lib/on-demand-provider-category-proof.test.ts
       - name: Real no-charge per-category provider readback
