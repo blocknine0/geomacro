@@ -86,6 +86,18 @@ describe("source-grounded on-demand research answer", () => {
     })?.query_scope.query_type).toBe("STATISTICAL_HISTORICAL_OR_FORECAST_SERIES");
   });
 
+  it("returns a machine-readable gap when a multi-mineral request cannot be narrowed safely",()=>{
+    const result=buildStructuredEvidenceGap({
+      country_iso3:"CHL",categories:["rare_earth"],topics:["critical_minerals"],
+      question:"Compare current lithium and cobalt production in Chile",
+      query_plan_hash:PLAN_HASH,checked_at:NOW.toISOString(),source_families_reached:2,
+      gap_reason:"MULTIPLE_MINERALS_REQUIRE_SEPARATE_SCOPED_QUERY",
+    });
+    expect(result?.status).toBe("INSUFFICIENT_VERIFIED_EVIDENCE");
+    expect(result?.gaps).toContain("MULTIPLE_MINERALS_REQUIRE_SEPARATE_SCOPED_QUERY");
+    expect(result?.delivery.payment_required_now).toBe(false);
+  });
+
   it("builds a concise derived-only answer from country/topic-matched original-page proof", () => {
     const candidateFromPage = vi.fn(() => candidate);
     const deriveSignals = vi.fn((_candidates: readonly StatelessSourceCandidate[], _now?: number, _options?: {websiteDelay?: boolean; maxSignals?: number; editorialVersion?: "legacy_v1" | "actor_action_v2"}) => [signal]);

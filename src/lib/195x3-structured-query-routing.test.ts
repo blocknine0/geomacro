@@ -1,6 +1,7 @@
 import {describe,expect,it} from "vitest";
 import {COUNTRIES_195} from "./canonical-country-registry-195";
 import {interpretMultilingualIntelligenceQuery} from "./multilingual-query-intent";
+import {categoriesForOnDemandTopics,ON_DEMAND_TOPIC_NAMES} from "./on-demand-global-discovery.server";
 
 const categories={
   geopolitics:[
@@ -8,12 +9,15 @@ const categories={
     {id:"conflict",topic:"conflict_geopolitics",text:"What verified armed-conflict or security developments affect"},
     {id:"governance",topic:"political_governance",text:"What has changed in elections or political governance in"},
     {id:"tariff",topic:"trade_corridor",text:"How do new tariffs and trade policy affect"},
+    {id:"hazard",topic:"natural_hazards",text:"What official earthquake or flood developments affect"},
   ],
   macro:[
     {id:"inflation",topic:"macro_risk",text:"What is the latest official inflation and monetary-policy release for"},
     {id:"foreign_exchange",topic:"fx_external_risk",text:"What are the foreign exchange and reserves developments for"},
     {id:"sovereign_debt",topic:"sovereign_risk",text:"What official sovereign debt and fiscal deficit evidence exists for"},
     {id:"banking",topic:"banking_financial_system",text:"What are the latest bank liquidity and financial-system signals for"},
+    {id:"energy",topic:"energy_commodities",text:"What are the latest Brent and natural-gas supply developments for"},
+    {id:"food",topic:"food_agriculture",text:"What wheat and food-security developments are reported for"},
   ],
   critical_minerals:[
     {id:"lithium",topic:"critical_minerals",text:"What new lithium mining or production developments have been published for"},
@@ -31,7 +35,14 @@ const translated:Record<Category,{bn:string;hi:string}>={
 };
 
 describe("195-country × 3-category structured query routing",()=>{
-  it("interprets all 4,680 generated human/machine questions without losing country or requested topic",()=>{
+  it("fans out explicit hot-topic searches to all three category source lanes",()=>{
+    expect(categoriesForOnDemandTopics(["hot_topics"]))
+      .toEqual(["geopolitics","macro","rare_earth"]);
+    expect(categoriesForOnDemandTopics(["trade_corridor"]))
+      .toEqual(["geopolitics","macro"]);
+  });
+
+  it("interprets all 5,850 generated human/machine questions and routes every topic to a source lane",()=>{
     let count=0;
     for(const [countryIndex,country] of COUNTRIES_195.entries()){
       for(const [category,archetypes] of Object.entries(categories) as [Category,typeof categories[Category]][]){
@@ -60,6 +71,13 @@ describe("195-country × 3-category structured query routing",()=>{
               {type:"country",country_iso3:country.iso3},
             ]);
             expect(result.topics,{country:country.iso3,category,scenario:selected.id,actor}).toContain(selected.topic);
+            const routed=categoriesForOnDemandTopics(result.topics);
+            const expectedRoutes=selected.topic==="trade_corridor"
+              ?["geopolitics","macro"]
+              :[category==="critical_minerals"?"rare_earth":category];
+            expect(routed,{country:country.iso3,category,scenario:selected.id,actor})
+              .toEqual(expectedRoutes);
+            expect(ON_DEMAND_TOPIC_NAMES).toContain(selected.topic);
             expect(result.canonical_request.fulfillment_mode).toBe("published_only");
             expect(result.payment_required_now).toBe(false);
             if(selected.id===liveScenario)expect(result.query_plan_hash).toMatch(/^[a-f0-9]{64}$/u);
@@ -67,6 +85,6 @@ describe("195-country × 3-category structured query routing",()=>{
         }
       }
     }
-    expect(count).toBe(4_680);
+    expect(count).toBe(5_850);
   },180_000);
 });

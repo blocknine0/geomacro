@@ -1,5 +1,6 @@
 import {fetchWithoutRedirectUsing} from "./fetch-without-redirect";
 import {approvedOnDemandSourceHostname} from "../../scripts/lib/on-demand-source-origin-allowlist.mjs";
+import {onDemandCountryPublisherFeeds,isPinnedCountryPublisherUrl} from "../../scripts/lib/on-demand-country-publisher-mesh.mjs";
 import {pinnedRbiPressReleaseLink} from "../../scripts/lib/rbi-official-macro-release.mjs";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS,verifiedGlobalRdfFeed,globalOriginalArticleUrl,ieaMineralsIndexCandidates,verifiedIeaOriginalPublication} from '../../scripts/lib/global-official-release-feeds.mjs';
 import { createHash } from "node:crypto";
@@ -171,13 +172,50 @@ const TOPIC_TITLE_PATTERNS:Readonly<Record<string,RegExp>>={
   macro_risk:/\b(?:inflation|deflation|consumer prices?|producer prices?|cpi|pce|gdp|gross domestic product|monetary|central banks?|growth|interest rates?|discount rates?|econom(?:y|ic|ics)|financial|chancellor|treasury|tariffs?|trade flows?|trade balances?|trade deficits?|trade surpluses?|current accounts?|balance of payments|liquidity|banking|bond yields?|treasury yields?|purchasing managers? index|pmi|manufacturing|industrial production|commodity prices?|energy prices?|unemployment|wages?|payrolls?|employment|fiscal|debt|capital flows?|foreign exchange|exchange rates?|currencies|fx reserves?|foreign reserves|economic outlook|business confidence|retail sales|consumer spending|exports?|imports?)\b/iu,
   sovereign_risk:/\b(?:fiscal|sovereign|budgets?|government borrowing|public finances?|bond(?:s)?|debt(?: servicing| issuance| restructuring)?|deficits?|credit ratings?|treasury yields?|sovereign yields?|refinancing|default risk|public borrowing|government bonds?)\b/iu,
   fx_external_risk:/\b(?:foreign[- ]exchange|exchange rates?|currencies|currency|fx|fx reserves?|foreign reserves|reserve assets|balance of payments|current account|capital flows?|currency volatility|exchange markets?|foreign assets|cross[- ]border payments?)\b/iu,
+  trade_corridor:/\b(?:trade corridors?|shipping routes?|maritime routes?|strait of hormuz|red sea|suez canal|panama canal|trade routes?|supply chains?|tariffs?|customs duties|trade restrictions?|port disruptions?|freight rates?|container shipping|exports?|imports?)\b/iu,
+  energy_commodities:/\b(?:crude oil|brent|wti|natural gas|lng|petroleum|coal|electricity prices?|energy markets?|oil prices?|gas prices?|opec|fuel prices?|energy supply)\b/iu,
+  banking_financial_system:/\b(?:bank(?:ing)? crisis|bank liquidity|financial system|commercial banks?|bank deposits?|bank runs?|capital adequacy|nonperforming loans?|payment systems?)\b/iu,
+  food_agriculture:/\b(?:food security|food prices?|agricultural? commodities|crop yields?|wheat|rice|corn|maize|fertili[sz]er|grain exports?|harvests?|drought impacts?)\b/iu,
+  natural_hazards:/\b(?:earthquakes?|floods?|flooding|cyclones?|hurricanes?|typhoons?|wildfires?|volcanic eruptions?|landslides?|natural disasters?|extreme weather)\b/iu,
   critical_minerals:/\b(?:critical minerals?|critical raw materials?|strategic minerals?|rare[- ]earth(?:s?| elements?)?|lanthanides?|lithium|cobalt|nickel|graphite|copper|gallium|germanium|antimony|tungsten|manganese|vanadium|scandium|tantalum|niobium|dysprosium|neodymium|terbium|praseodymium|samarium|yttrium|mineral supply|minerals? processing|mining|mine closures?|ore processing|smelting|refining|refineries|mineral exports?|permanent magnets?|magnet production|battery materials|national battery strateg(?:y|ies)|battery manufacturing accelerator|battery supply chains?|supply chains?|export controls?)\b/iu,
 };
-const CATEGORY_TOPICS:Readonly<Record<OnDemandCategory,readonly string[]>>={
-  geopolitics:["sanctions_restrictions","conflict_geopolitics","political_governance"],
-  macro:["macro_risk","sovereign_risk","fx_external_risk"],
-  rare_earth:["critical_minerals"],
+const TOPIC_CATEGORIES:Readonly<Record<string,readonly OnDemandCategory[]>>={
+  sanctions_restrictions:["geopolitics"],
+  conflict_geopolitics:["geopolitics"],
+  political_governance:["geopolitics"],
+  trade_corridor:["geopolitics","macro"],
+  natural_hazards:["geopolitics"],
+  macro_risk:["macro"],
+  sovereign_risk:["macro"],
+  fx_external_risk:["macro"],
+  energy_commodities:["macro"],
+  banking_financial_system:["macro"],
+  food_agriculture:["macro"],
+  critical_minerals:["rare_earth"],
 };
+const CATEGORY_TOPICS:Readonly<Record<OnDemandCategory,readonly string[]>>=
+  Object.fromEntries(DOMAINS.map(category=>[category,
+    Object.entries(TOPIC_CATEGORIES).filter(([,categories])=>categories.includes(category))
+      .map(([topic])=>topic)])) as Record<OnDemandCategory,readonly string[]>;
+export const ON_DEMAND_TOPIC_NAMES=Object.freeze([
+  ...Object.keys(TOPIC_CATEGORIES),"hot_topics",
+]);
+/** One canonical topic → category registry drives question and source routing. */
+export function categoriesForOnDemandTopics(topics:readonly string[]):OnDemandCategory[]{
+  const selected=new Set<OnDemandCategory>();
+  for(const topic of topics){
+    for(const category of TOPIC_CATEGORIES[topic]??[])selected.add(category);
+    if(topic==="hot_topics")for(const category of DOMAINS)selected.add(category);
+  }
+  return DOMAINS.filter(category=>selected.has(category));
+}
+function topicPattern(category:OnDemandCategory,topics:readonly string[]):RegExp{
+  const scoped=topics.filter(topic=>CATEGORY_TOPICS[category].includes(topic));
+  const patterns=(scoped.length?scoped:CATEGORY_TOPICS[category])
+    .map(topic=>TOPIC_TITLE_PATTERNS[topic]).filter((pattern):pattern is RegExp=>Boolean(pattern));
+  return patterns.length===1?patterns[0]:new RegExp(
+    `(?:${patterns.map(pattern=>pattern.source).join("|")})`,"iu");
+}
 export function matchesRequestedTopic(title:string,category:OnDemandCategory,topics:readonly string[]):boolean {
   const scoped=topics.filter(topic=>CATEGORY_TOPICS[category].includes(topic));
   return scoped.length===0 || scoped.some(topic=>TOPIC_TITLE_PATTERNS[topic]?.test(title));
@@ -190,6 +228,11 @@ const GDELT_TOPIC_QUERY_TERMS:Readonly<Record<string,readonly string[]>>={
   macro_risk:["inflation","GDP","monetary","central bank","growth","interest rates","economy","financial","PMI","manufacturing","tariffs","trade flows","industrial production","commodity prices","energy prices","employment","unemployment","wages","exports","imports"],
   sovereign_risk:["fiscal","sovereign debt","budget deficit","bond yields","treasury yields","government borrowing","credit ratings","public debt"],
   fx_external_risk:["foreign exchange","exchange rates","currency","FX reserves","balance of payments","current account","capital flows"],
+  trade_corridor:["trade routes","shipping routes","maritime routes","strait of Hormuz","Red Sea","Suez Canal","Panama Canal","supply chains","tariffs","freight rates","port disruptions","exports","imports"],
+  energy_commodities:["crude oil","Brent","WTI","natural gas","LNG","petroleum","coal","electricity prices","OPEC","fuel prices","energy supply"],
+  banking_financial_system:["banking crisis","bank liquidity","financial system","bank deposits","bank runs","capital adequacy","payment systems"],
+  food_agriculture:["food security","food prices","agricultural commodities","crop yields","wheat","rice","corn","maize","fertilizer","grain exports","harvest","drought"],
+  natural_hazards:["earthquake","flood","cyclone","hurricane","typhoon","wildfire","volcanic eruption","landslide","natural disaster","extreme weather"],
   critical_minerals:["critical minerals","critical raw materials","strategic minerals","rare earth","lithium","cobalt","nickel","graphite","copper","gallium","germanium","antimony","tungsten","manganese","vanadium","scandium","tantalum","niobium","neodymium","dysprosium","refining","mineral processing","permanent magnets","battery materials"],
 };
 
@@ -667,6 +710,7 @@ type OriginalFeed = {
   originalPath:RegExp;
   topic:RegExp;
   scopedTopics?:readonly string[];
+  privateCountrySource?:true;
 };
 const GOVUK_SEARCH_FALLBACKS:readonly OriginalFeed[]=[
   {
@@ -796,6 +840,15 @@ function originalArticleUrl(value:string, def:OriginalFeed):string|null {
     return pinnedRbiPressReleaseLink(value);
   const global=GLOBAL_OFFICIAL_RELEASE_FEEDS.find((s:{family:string})=>s.family===def.family);
   if(global)return globalOriginalArticleUrl(value,global);
+  if(def.privateCountrySource){
+    try{
+      const u=new URL(value.replace(/&amp;/giu,"&"));
+      if(!isPinnedCountryPublisherUrl(u.href)||u.hostname!==def.originalHost||
+         !def.originalPath.test(u.pathname)||
+         /(?:^|\/)(?:feed|rss|atom|category|tag|search)(?:\/|$)/iu.test(u.pathname))return null;
+      return u.origin+u.pathname;
+    }catch{return null;}
+  }
   try {
     const u=new URL(value.replace(/&amp;/giu,"&"));
     if(u.protocol!=="https:" || u.hostname!==def.originalHost ||
@@ -1200,11 +1253,10 @@ async function discoverOnDemandImpl(
 }> {
   const now=options.now ?? new Date(), fetchImpl=options.fetchImpl ?? fetch;
   const topics=input.topics??[];
-  const allowedTopics=["sanctions_restrictions","conflict_geopolitics",
-    "political_governance","macro_risk","sovereign_risk",
-    "fx_external_risk","critical_minerals","hot_topics"];
-  if(!Array.isArray(topics)||topics.length>8||
-    topics.some(topic=>!allowedTopics.includes(topic)))
+  // Keep this aligned with agentAdaptiveQuerySchema (16); routing validation
+  // must not reject a valid multi-topic canonical question after intake.
+  if(!Array.isArray(topics)||topics.length>16||
+    topics.some(topic=>!ON_DEMAND_TOPIC_NAMES.includes(topic)))
     throw Error("ON_DEMAND_TOPICS_INVALID");
   const newsMaxAgeMs=input.max_age_seconds===undefined?ONE_DAY_MS:
     Number.isInteger(input.max_age_seconds)&&input.max_age_seconds>0
@@ -1287,7 +1339,7 @@ async function discoverOnDemandImpl(
   if(country==="PSE" && name)name="State of Palestine";
   const gdeltDeadline=Date.now()+12_000;
   type PrivateMineralHistoryResult={probe:SourceProbe;private_mineral_history:BgsMineralHistory|null};
-  const tasks: Array<{name:string;category:OnDemandCategory;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult|PrivateMineralHistoryResult>}> = [];
+  const tasks: Array<{name:string;category:OnDemandCategory;publisherFamily?:string;run:()=>Promise<SourceProbe|OriginalFeedResult|PrivateMacroResult|PrivateMineralHistoryResult>}> = [];
   if(historicalMineralQuery)tasks.push({name:"bgs_world_mineral_statistics",category:"rare_earth",run:async()=>{
     const history=await fetchBgsMineralProductionHistory(country,mineral!,trackedFetch);
     return {probe:probe("bgs_world_mineral_statistics",history?.series.length??0,false),private_mineral_history:history};
@@ -1300,6 +1352,34 @@ async function discoverOnDemandImpl(
     if (category==="geopolitics" && approvedReliefAppname)
       tasks.push({name:"reliefweb_discovery",category,run:()=>
         reliefWeb(name,trackedFetch,now,approvedReliefAppname,newsMaxAgeMs)});
+  }
+  // Reuse the continuously polled country publisher mesh and pinned country
+  // gap candidates as query-time first-party leads. Every selected feed gets
+  // a fresh bounded GET and requires a native item clock, topic + country
+  // mention, and the original publisher-page checks below.
+  if(!historicalMineralQuery&&name){
+    for(const category of categories){
+      const fixedIssuerHosts=new Set([...ORIGINAL_FALLBACK_FEEDS,...INTERNATIONAL_ORIGINAL_FEEDS]
+        .filter(source=>source.domain===category).map(source=>source.originalHost));
+      let selectedCountryFeeds=0;
+      for(const source of onDemandCountryPublisherFeeds(country,category,{limit:12})){
+        // An official feed already in the fixed portfolio stays represented
+        // by its stable issuer family; never add its mirrored OSINT slot as
+        // a second apparent publisher or a duplicate upstream request.
+        if(fixedIssuerHosts.has(source.article_host))continue;
+        if(selectedCountryFeeds>=3)break;
+        selectedCountryFeeds++;
+        const topic=topicPattern(category,topics);
+        const family="country_publisher:"+source.article_host;
+        const def:OriginalFeed={domain:category,family,url:source.url,
+          media:source.type,originalHost:source.article_host,
+          originalPath:/^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]{1,1600}$/u,
+          topic,privateCountrySource:true};
+        tasks.push({name:"country_feed_"+source.id,category,publisherFamily:family,
+          run:()=>originalOfficialFeed(def,country,name,trackedFetch,now,
+            mineral,topics,newsMaxAgeMs)});
+      }
+    }
   }
   if (!historicalMineralQuery && name) for (const source of [...ORIGINAL_FALLBACK_FEEDS,...(topics.length?INTERNATIONAL_ORIGINAL_FEEDS:[])]) {
     // Reuse the Canadian government publisher for verified Canadian country
@@ -1317,7 +1397,7 @@ async function discoverOnDemandImpl(
         (!source.scopedTopics || !topics.length ||
          source.scopedTopics.some(t=>topics.includes(t)))) tasks.push({
       name:source.family,category:source.domain,
-      run:()=>originalOfficialFeed(
+        publisherFamily:source.family,run:()=>originalOfficialFeed(
         source.family==="uk_dbt_original_publisher" && topics.length>0
           ? {...source,url:"https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom"}
           : source,
@@ -1414,10 +1494,12 @@ async function discoverOnDemandImpl(
       const secondary=categories.map((category,index)=>{
         const preferredSecondary=category==="geopolitics"
           ?"eu_council_original_publisher":null;
+        const primaryFamily=originals[index]?.publisherFamily;
         return (preferredSecondary?tasks.find(t=>originalTask(t,category) &&
           t.name===preferredSecondary && t.name!==originals[index]?.name):undefined) ??
           tasks.find(t=>originalTask(t,category) &&
-            t.name!==originals[index]?.name);
+            t.name!==originals[index]?.name &&
+            (!primaryFamily||!t.publisherFamily||t.publisherFamily!==primaryFamily));
       }).filter((t):t is (typeof tasks)[number]=>Boolean(t));
       const indexes=categories.map(category=>tasks.find(t=>
         t.category===category && t.name==="gdelt_doc_discovery")).filter(
@@ -1745,6 +1827,21 @@ export type PrivatePageRejectReason =
   "FIRST_PARTY_SOURCE_ACCESS_DENIED" |
   "SOURCE_FETCH_TRANSPORT_OR_MIME_FAILURE";
 
+function countryPublisherOriginalFeed(country:string,category:OnDemandCategory,
+  family:string):OriginalFeed|null{
+  const prefix="country_publisher:";
+  if(!family.startsWith(prefix))return null;
+  const host=family.slice(prefix.length);
+  const source=onDemandCountryPublisherFeeds(country,category,{limit:12})
+    .find(row=>row.article_host===host);
+  if(!source)return null;
+  const topic=topicPattern(category,CATEGORY_TOPICS[category]);
+  return {domain:category,family,url:source.url,media:source.type,
+    originalHost:source.article_host,
+    originalPath:/^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]{1,1600}$/u,
+    topic,privateCountrySource:true};
+}
+
 
 const MAX_ARTICLE_PAGE_PROBES = 4;
 // Do not maintain a second, permissive on-demand <meta> scraper. The shared
@@ -1766,7 +1863,9 @@ export async function verifyOnDemandOriginalArticlePages(
     throw Error("ON_DEMAND_CLOCK_INVALID");
   const eligible=candidates.slice(0,16).filter((candidate)=>{
     const def=[...ORIGINAL_FALLBACK_FEEDS,...INTERNATIONAL_ORIGINAL_FEEDS,...GOVUK_SEARCH_FALLBACKS].find((feed)=>
-      feed.family===candidate.publisher_family && feed.domain===candidate.domain);
+      feed.family===candidate.publisher_family && feed.domain===candidate.domain)??
+      countryPublisherOriginalFeed(candidate.country_iso3??"",candidate.domain,
+        candidate.publisher_family);
     return !!def &&
       originalArticleUrl(candidate.article_url,def)===candidate.article_url &&
       candidate.article_identity_sha256===digest(def.family+"|"+candidate.article_url) &&
@@ -2039,7 +2138,8 @@ export function websiteCandidateFromCountryOriginal(
 ):import("./stateless-intelligence-model").StatelessSourceCandidate|null {
  if(!page||!country195ByIso3(country)||!Number.isFinite(now.getTime()))return null;
  const def=[...ORIGINAL_FALLBACK_FEEDS,...INTERNATIONAL_ORIGINAL_FEEDS,...GOVUK_SEARCH_FALLBACKS]
-  .find(d=>d.family===page.publisher_family&&d.domain===page.domain);
+  .find(d=>d.family===page.publisher_family&&d.domain===page.domain)??
+  countryPublisherOriginalFeed(country,page.domain,page.publisher_family);
  const at=Date.parse(page.page_original_published_at);
  if(!def||page.country_iso3!==country||page.publisher_article_page_date_verified!==true||
     page.first_party_article_url_verified!==true||originalArticleUrl(page.article_url,def)!==page.article_url||

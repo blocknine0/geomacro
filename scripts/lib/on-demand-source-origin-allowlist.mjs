@@ -1,6 +1,8 @@
+import {isPinnedCountryPublisherHost} from "./on-demand-country-publisher-mesh.mjs";
+
 /**
- * Single immutable origin allowlist for bounded customer-side FIRST-PARTY
- * discovery and its no-funds production verifiers.
+ * Fixed official origins plus pinned country-publisher origins for bounded
+ * customer-side first-party discovery and no-funds production verifiers.
  *
  * A hostname match alone never grants a source commercial rights, original
  * article status, independent corroboration, signing or payment eligibility.
@@ -33,5 +35,6 @@ export const ON_DEMAND_OFFICIAL_HOSTS = Object.freeze([
   "ogcapi.bgs.ac.uk",
 ]);
 export function approvedOnDemandSourceHostname(host) {
-  return typeof host === "string" && ON_DEMAND_OFFICIAL_HOSTS.includes(host);
+  return typeof host === "string" &&
+    (ON_DEMAND_OFFICIAL_HOSTS.includes(host)||isPinnedCountryPublisherHost(host));
 }
