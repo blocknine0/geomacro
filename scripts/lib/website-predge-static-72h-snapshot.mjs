@@ -52,3 +52,43 @@ export function buildWebsitePilotSnapshot(archiveRows,now=Date.now()){
   signals:records,
  });
 }
+
+/**
+ * Independent no-D1 public static readback. All original IDs, payloads and
+ * attribution must match; only deployment observation clock may drift.
+ */
+export function verifyWebsitePilotStaticReadback(expected,actual,now=Date.now()){
+ if(!Number.isFinite(now)||!expected||!actual||
+    actual.schema!==WEBSITE_PILOT_SNAPSHOT_SCHEMA||
+    actual.complete!==true||actual.free_website_only!==true||
+    actual.attributed_research_only!==true||
+    actual.raw_upstream_delivered!==false||actual.signed!==false||
+    actual.chargeable!==false||
+    actual.unverified_osint_remains_unverified!==true||
+    actual.retention_hours!==72||actual.original_release_delay_minutes!==0||
+    actual.max_items!==WEBSITE_PILOT_MAX_ROWS||
+    !Array.isArray(actual.signals)||actual.signals.length!==actual.item_count||
+    actual.signals.length>WEBSITE_PILOT_MAX_ROWS)
+  err("LIVE_CONTRACT_INVALID");
+ const actualAt=Date.parse(actual.checked_at);
+ const expectedAt=Date.parse(expected.checked_at);
+ if(!Number.isFinite(actualAt)||!Number.isFinite(expectedAt)||
+    actualAt>now+60_000||expectedAt>now+60_000||
+    now-actualAt>6*60*60_000||now-expectedAt>6*60*60_000)
+  err("STALE_OR_FUTURE_DEPLOYMENT");
+ const withoutClock=(obj)=>{const {checked_at,...rest}=obj;return JSON.stringify(rest);};
+ if(withoutClock(expected)!==withoutClock(actual))
+  err("EXACT_ID_PAYLOAD_ATTRIBUTION_MISMATCH");
+ if(idDigest(actual.signals)!==actual.source_native_ids_sha256||
+    JSON.stringify(tally(actual.signals))!==JSON.stringify(actual.counts))
+  err("ID_DIGEST_OR_CATEGORY_COUNTS_MISMATCH");
+ return Object.freeze({
+  schema:"geomacro.website-predge-static-source-readback.v1",
+  same_website_archive_source_native_ids_verified:true,
+  exact_72h_native_clock_and_attribution_verified:true,
+  counts:actual.counts,
+  source_native_ids_sha256:actual.source_native_ids_sha256,
+  recent_rows:actual.item_count,retention_hours:72,
+  d1_reads:0,predge_gets:0,payments:0,
+ });
+}
