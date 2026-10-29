@@ -28,6 +28,7 @@ on:
       - "scripts/tests/verify-production-observed-195x3.test.mjs"
       - ".github/workflows/website-derived-news-continuity.yml"
       - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
   workflow_dispatch: {}
   workflow_run:
     workflows: ["Deploy D1 Control Plane", "Deploy Permanent Public Finds Archive"]
@@ -130,6 +131,7 @@ jobs:
       - name: Validate truthful 195-country observed-source matrix without network
         run: |
           node --check scripts/ops/verify-production-observed-195x3.mjs
+          node --test scripts/tests/plan-d1-bundled-work.test.mjs
           node --test scripts/tests/verify-production-observed-195x3.test.mjs
           node --check scripts/lib/derived-news-b2-readwrite-backup.mjs
           node --check scripts/lib/derived-news-readback-policy.mjs
@@ -140,6 +142,34 @@ jobs:
           node --check scripts/ops/verify-derived-news-public-readback.mjs
           node --test scripts/tests/derived-news-public-readback.test.mjs
           node --test scripts/tests/derived-news-b2-readwrite-backup.test.mjs
+
+  # Push-only quota counter evidence for this scoped recovery repair.
+  # Existing production ingestion still refuses push-triggered publication.
+  # Cloudflare GraphQL usage observation is read-only and consumes ZERO D1 rows.
+  phase2f-readonly-quota-diagnostic:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify bounded quota classification offline
+        run: |
+          node --check scripts/ops/plan-d1-bundled-work.mjs
+          node --test scripts/tests/plan-d1-bundled-work.test.mjs
+      - name: Emit actual provider-readonly Phase 2F quota cause receipt
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/plan-d1-bundled-work.mjs
 
   quota-admission:
     if: >-
