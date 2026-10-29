@@ -124,7 +124,8 @@ export async function handleNoCardAdaptiveCheckout(input:{
           });
       }
     }catch{
-      return response({ok:false,chargeable:false,error:{code:"NO_CARD_SIGNED_REPLAY_PROOF_INVALID_OR_UNAVAILABLE"}},409);
+      return response({ok:false,chargeable:null,payment_state:"RECONCILIATION_REQUIRED",
+        error:{code:"NO_CARD_SIGNED_REPLAY_PROOF_INVALID_OR_UNAVAILABLE"}},409);
     }
   }
   if(input.replayOnly)
@@ -217,7 +218,7 @@ export async function handleNoCardAdaptiveCheckout(input:{
       "X-Geomacro-Quote-ID":quote.quote_id,
     });
   }catch{
-    return response({ok:false,chargeable:false,error:{
+    return response({ok:false,chargeable:null,payment_state:"RECONCILIATION_REQUIRED",error:{
       code:"NO_CARD_SETTLEMENT_OR_DELIVERY_REQUIRES_RECONCILIATION",
       message:"No automatic re-charge; inspect the existing immutable payment state."
     }},503,{"Retry-After":"120"});
