@@ -39,7 +39,7 @@ test("first-party source and both no-funds probes use the identical policy",()=>
   assert.ok(representative.includes('REPRESENTATIVE_PROBE_UNRECOGNIZED_ORIGIN'));
   assert.ok(discovery.includes('if(networkAttempts>=12)'));
   assert.ok(representative.includes('totalHttp>16'));
-  assert.ok(live.includes('proof.total_bounded_network_attempts>16'));
+  assert.ok(live.includes('proof.total_bounded_network_attempts>17'));
   assert.ok(live.includes('proof.x402_commercial_release_authorized!==false'));
   assert.ok(representative.includes('qualified.commercial_delivery_eligible!==false'));
 });

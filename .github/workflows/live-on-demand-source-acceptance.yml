@@ -137,14 +137,29 @@ jobs:
           RELIEFWEB_APPROVED_APPNAME: ${{ secrets.RELIEFWEB_APPROVED_APPNAME }}
         shell: bash
         run: |
-          set -euo pipefail
-          bun scripts/ops/verify-live-on-demand-capabilities.ts
-          bun scripts/ops/verify-live-on-demand-real-apis.ts
-          bun scripts/ops/verify-live-on-demand-representative-cases.ts
-          bun scripts/ops/verify-live-on-demand-nrcan-original.ts
-          bun scripts/ops/export-canonical-195-country-matrix.ts
-          bunx vitest run src/lib/country-195-batch-evidence.test.ts
-          bun scripts/ops/verify-live-fed-board-private-finding.ts
+          set +e
+          set -uo pipefail
+          failed=0
+          run_check() {
+            local name="$1"
+            shift
+            echo "::group::${name}"
+            "$@"
+            local status=$?
+            echo "::endgroup::"
+            printf 'probe_status name=%s exit=%s\\n' "$name" "$status"
+            if (( status != 0 )); then failed=1; fi
+          }
+          # Run every bounded probe even when one category or source fails.
+          # This keeps independent historical retrieval evidence observable.
+          run_check capabilities bun scripts/ops/verify-live-on-demand-capabilities.ts
+          run_check real_apis bun scripts/ops/verify-live-on-demand-real-apis.ts
+          run_check representative_cases bun scripts/ops/verify-live-on-demand-representative-cases.ts
+          run_check nrcan_original bun scripts/ops/verify-live-on-demand-nrcan-original.ts
+          run_check country_matrix bun scripts/ops/export-canonical-195-country-matrix.ts
+          run_check country_batch_tests bunx vitest run src/lib/country-195-batch-evidence.test.ts
+          run_check fed_board_private_finding bun scripts/ops/verify-live-fed-board-private-finding.ts
+          exit "$failed"
       # Manual explicit source-acceptance only; 6 continent workflows own cron.
       # One canonical three-category request per country, <=12 discovery GETs
       # and <=4 original-page reads PER COUNTRY (max three countries/run).
@@ -261,13 +276,29 @@ jobs:
         env:
           RELIEFWEB_APPROVED_APPNAME: ""
         run: |
-          bun scripts/ops/verify-live-on-demand-capabilities.ts
-          bun scripts/ops/verify-live-on-demand-real-apis.ts
-          bun scripts/ops/verify-live-on-demand-representative-cases.ts
-          bun scripts/ops/verify-live-on-demand-nrcan-original.ts
-          bun scripts/ops/export-canonical-195-country-matrix.ts
-          bunx vitest run src/lib/country-195-batch-evidence.test.ts
-          bun scripts/ops/verify-live-fed-board-private-finding.ts
+          set +e
+          set -uo pipefail
+          failed=0
+          run_check() {
+            local name="$1"
+            shift
+            echo "::group::${name}"
+            "$@"
+            local status=$?
+            echo "::endgroup::"
+            printf 'probe_status name=%s exit=%s\\n' "$name" "$status"
+            if (( status != 0 )); then failed=1; fi
+          }
+          # Keep source/category outcomes independent: a failed current-news
+          # check must not skip the historical BGS structured retrieval proof.
+          run_check capabilities bun scripts/ops/verify-live-on-demand-capabilities.ts
+          run_check real_apis bun scripts/ops/verify-live-on-demand-real-apis.ts
+          run_check representative_cases bun scripts/ops/verify-live-on-demand-representative-cases.ts
+          run_check nrcan_original bun scripts/ops/verify-live-on-demand-nrcan-original.ts
+          run_check country_matrix bun scripts/ops/export-canonical-195-country-matrix.ts
+          run_check country_batch_tests bunx vitest run src/lib/country-195-batch-evidence.test.ts
+          run_check fed_board_private_finding bun scripts/ops/verify-live-fed-board-private-finding.ts
+          exit "$failed"
       - name: Preserve redacted provider diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
