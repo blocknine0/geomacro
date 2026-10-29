@@ -65,6 +65,29 @@ describe("three-domain D1-backed machine structured JSON delivery",()=>{
      expect(result.native_release_records[0].original_published_at).toBe("2026-10-29T15:33:50.000Z");
      expect(result.native_release_records[0].why_it_matters).toBe(news(category).why_it_matters);
      expect(result.native_release_records[0].news_desk).toMatchObject({
+       what_happened:{text:news(category).what_changed,observation_verified:true},
+       why_it_matters_analysis:{
+         text:news(category).why_it_matters,claim_independently_verified:false,
+       },
+       market_relevance:{
+         status:"POTENTIAL_CHANNELS_ONLY",affected_instruments_confirmed:[],
+         observed_market_reaction_verified:false,price_direction:null,price_change:null,
+       },
+       what_to_watch:{
+         focus_topic:news(category).topic,
+         followup_trigger:"NEW_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION",
+         confirmed_followup_scheduled:false,next_verified_event_at:null,
+       },
+       evidence_confidence:{
+         tier:"ORIGINAL_DATE_VERIFIED_CLAIMS_UNCORROBORATED",
+         original_publication_time:"2026-10-29T15:33:50.000Z",
+         original_page_date_verified:true,
+         event_claim_independently_verified:false,
+         market_impact_verified:false,country_impact_verified:false,
+         commercial_rights_verified:false,risk_scored:false,
+       },
+     });
+     expect(result.native_release_records[0].news_desk).toMatchObject({
        schema:"geomacro.news-desk-item.v1",
        format:"EVENT_SPECIFIC_ORIGINAL_DATED_BRIEF",
        lede:news(category).what_changed,
@@ -93,6 +116,18 @@ describe("three-domain D1-backed machine structured JSON delivery",()=>{
    expect(body.commercial.payment_authorized).toBe(false);
    expect(body.raw_upstream_delivered).toBe(false);
    expect(JSON.stringify(body)).not.toContain("https://");
+ });
+ it("one original-dated release produces a complete five-part brief while other categories remain empty",()=>{
+   const body=projectThreeDomainStructuredDelivery(
+     source({missing:"macro",journal:true}),NOW);
+   expect(body.categories.geopolitics.native_release_records).toHaveLength(1);
+   const desk=body.categories.geopolitics.native_release_records[0].news_desk;
+   expect(desk.market_relevance.potential_watch_channels).toEqual([]);
+   expect(desk.what_to_watch.next_verified_event_at).toBeNull();
+   expect(desk.evidence_confidence.event_claim_independently_verified).toBe(false);
+   expect(body.categories.macro.native_release_records).toHaveLength(0);
+   expect(body.categories.macro.official_reference_records).toHaveLength(0);
+   expect(body.commercial.payment_authorized).toBe(false);
  });
  it("delivers all 3 category keys with explicit missing/stale readiness, never invents records",()=>{
    const body=projectThreeDomainStructuredDelivery(source({missing:"geopolitics",stale:"macro"}),NOW);
