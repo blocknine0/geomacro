@@ -14,6 +14,8 @@ on:
       - ".github/workflows/website-finds-canonical-d1-reconcile.yml"
       - "scripts/ops/reconcile-website-finds-to-d1.mjs"
       - "scripts/tests/reconcile-website-finds-to-d1.test.mjs"
+      - "scripts/ops/verify-website-predge-eligible-parity.mjs"
+      - "scripts/tests/website-predge-eligible-parity.test.mjs"
 
 permissions:
   contents: read
@@ -38,6 +40,8 @@ jobs:
         run: |
           node --check scripts/ops/reconcile-website-finds-to-d1.mjs
           node --test scripts/tests/reconcile-website-finds-to-d1.test.mjs
+          node --check scripts/ops/verify-website-predge-eligible-parity.mjs
+          node --test scripts/tests/website-predge-eligible-parity.test.mjs
 
   quota-admission:
     if: >-
