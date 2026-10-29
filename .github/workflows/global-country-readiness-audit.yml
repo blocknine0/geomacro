@@ -29,9 +29,9 @@ on:
       - "scripts/tests/195x3-durable-proof-chain.test.ts"
       - "scripts/tests/195x3-source-continuity.test.mjs"
   schedule:
-    # One daily audit immediately after UTC quota reset, with governed B2 durable proof.
-    # B2 publication is denied if the shared D1 ledger lacks headroom.
-    - cron: "21 0 * * *"
+    # Existing protected UTC cadence, with governed B2 durable proof.
+    # B2 publication fails red if shared D1 ledger headroom is unavailable.
+    - cron: "27 6 * * *"
 permissions:
   contents: read
 concurrency:
