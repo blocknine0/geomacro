@@ -7,7 +7,7 @@ const now=new Date('2026-10-16T08:00:00Z');
 const candidate={articleUrl:'https://www.iea.org/news/zambia-critical-minerals-supply-security',title:'Zambia critical minerals supply security'};
 const page=(clock='2026-10-16T07:00:00Z',extra='')=>`<!doctype html><html><h1>${candidate.title}</h1><p class="o-hero-news__meta">News<br/><time datetime="${clock}">16 October 2026</time></p>${extra}</html>`;
 test('expanded official international connectors cover all three categories without credentials',()=>{
- assert.equal(feeds.length,19);assert.equal(new Set(feeds.map(s=>s.id)).size,16);
+ assert.equal(feeds.length,19);assert.equal(new Set(feeds.map(s=>s.id)).size,19);
  assert.deepEqual(new Set(feeds.map(s=>s.category)),new Set(['geopolitics','macro','rare_earth']));
  for(const s of feeds){const u=new URL(s.url);assert.equal(u.hostname,s.host);assert.equal(u.protocol,'https:');assert.ok(!u.username&&!u.password);assert.equal(s.poll_minutes,30);}
 });
