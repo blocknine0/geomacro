@@ -66,7 +66,7 @@ export const GLOBAL_OFFICIAL_RELEASE_FEEDS=Object.freeze([
  {id:'wto_trade_policy_global',category:'geopolitics',
    url:'https://www.wto.org/library/rss/latest_news_e.xml',
    format:'rss',host:'www.wto.org',
-   path:/^\/english\/news_e\/(?:news|pres)\d{2}_e\/[a-z0-9_]{4,180}\.htm$/u,
+   path:/^\/english\/news_e\/(?:news|pres)\d{2}_e\/(?!(?:news|pres)\d{2}_e\.htm$)[a-z0-9_]{4,180}\.htm$/u,
    topic:/\b(?:tariffs?|trade disputes?|dispute settlement|safeguards?|export controls?|sanctions?|trade tensions?|trade restrictions?|trade policy|border|trade measures?)\b/iu,
    credit:'World Trade Organization; attribution required; no article-text redistribution approval.',
    family:'wto_original_trade_policy_news'},
