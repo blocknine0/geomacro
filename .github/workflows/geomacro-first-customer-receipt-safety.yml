@@ -1,0 +1,30 @@
+name: GeoMacro First-Customer Receipt Safety (No Funds)
+on:
+  pull_request:
+    paths:
+      - "scripts/ops/audit-first-customer-intelligence-receipt.mjs"
+      - "scripts/ops/audit-first-customer-intelligence-receipt.test.mjs"
+      - "docs/ops/GEOMACRO_FIRST_PAID_B2B_CUSTOMER_ACCEPTANCE_20261029.md"
+      - ".github/workflows/geomacro-first-customer-receipt-safety.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/audit-first-customer-intelligence-receipt.mjs"
+      - "scripts/ops/audit-first-customer-intelligence-receipt.test.mjs"
+      - ".github/workflows/geomacro-first-customer-receipt-safety.yml"
+permissions:
+  contents: read
+jobs:
+  offline-no-funds-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "22"}
+      - name: Static syntax and synthetic no-network privacy tests
+        run: |
+          node --check scripts/ops/audit-first-customer-intelligence-receipt.mjs
+          node --test scripts/ops/audit-first-customer-intelligence-receipt.test.mjs
