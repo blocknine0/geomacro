@@ -79,8 +79,14 @@ for(const chunk of chunks){
   if(receipt?.ok!==true||receipt.accepted!==chunk.length)
     throw Error("WEBSITE_SHARED_D1_CATCHUP_ACK_INVALID");
 }
-const readbackAt=Date.now();
-const result=await fetchAllDerivedNews(fetch,readbackAt);
+// When nothing was written, the already validated canonical snapshot is the
+// exact readback of the untouched cohort. Do not spend a second 600-row
+// bundle read merely to re-fetch identical D1 data on healthy cycles.
+// A write ALWAYS gets a real independent post-write canonical readback.
+const reusedFirstCanonicalSnapshot=planned.missing.length===0;
+const readbackAt=reusedFirstCanonicalSnapshot?now:Date.now();
+const result=reusedFirstCanonicalSnapshot?canonical:
+  await fetchAllDerivedNews(fetch,readbackAt);
 const readback=verifyWebsiteNewsCatchupReadback(archive,result,readbackAt,
   s=>isPermanentArchiveSignal(s,readbackAt,{allowHistorical:false})&&
     verifyDerivedStory(s,readbackAt));
@@ -98,6 +104,9 @@ console.log(JSON.stringify({
   readback_category_counts:readback.counts_by_category,
   eligible_partner_projection:partnerExpectation,
   existing_shared_quota_reused:true,
+  canonical_bundle_reads_this_reconciliation:reusedFirstCanonicalSnapshot?1:2,
+  no_write_second_bundle_avoided:reusedFirstCanonicalSnapshot,
+  post_write_exact_readback_performed:!reusedFirstCanonicalSnapshot,
   additional_d1_reads_for_projection:0,
   additional_partner_gets_for_projection:0,
   exact_source_native_payloads_verified:readback.exact_derived_payloads_and_source_clocks_verified,
