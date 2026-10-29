@@ -81,7 +81,9 @@ export function verifyEligiblePartnerParity({archive,canonical,research,publicFe
   if(!Number.isFinite(published))fail('SOURCE_NATIVE_CLOCK_INVALID');
   // A record that entered or expired in the <=90s capture gap cannot be
   // represented as a PREDGE loss. Preserve that difference explicitly.
-  if(published>at||published<at-LOOKBACK){
+  if(published>at||published<at-LOOKBACK||
+     !isPermanentArchiveSignal(s,at,{allowHistorical:false})||
+     !verifyDerivedStory(s,at)){
    stats.expired_or_newer_at_partner_clock[s.category]++;
    continue;
   }
