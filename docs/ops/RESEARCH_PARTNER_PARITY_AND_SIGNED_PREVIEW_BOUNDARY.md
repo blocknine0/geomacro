@@ -8,7 +8,7 @@ A private, attributed research endpoint reads the same canonical D1 journal as W
 
 Use scripts/ops/audit-predge-29oct-email.mjs with --offline followed by two private JSON export filenames to audit no quota at all. Or run --live inside a protected owner-only GitHub Actions job: one authenticated GET with the existing research bearer plus one public GET; zero retries, source reads, B2 writes and payments.
 
-The receipt validates bounded length, stable item identities, full unfiltered category counts, source-native original dates, credit and notices, confidence status, no rights/signature/payment authorization and a 90-second snapshot-cohort bound. It emits only category/status/credit counts and SHA256 digests of sorted IDs, never source text, IDs, payment material, or bearer.
+The receipt validates bounded length, stable item identities, full unfiltered category counts, source-native original dates, credit and notices, confidence status, no rights/signature/payment authorization and a 90-second snapshot-cohort bound. Its LOCAL --offline mode emits only category/status/credit counts and SHA256 digests of sorted IDs, never source text, IDs, payment material, or bearer. Protected --live mode emits ONLY safe contract/subset status with counts and hashes redacted because the repository's Actions logs are public.
 
 A previous summary or Website view can be reconciled only with its exact original endpoint, timestamp, filters, full native-ID set and field projection. When those are unavailable, explicitly mark the historical comparison INCONCLUSIVE. The existing separate source archive -> canonical D1 -> attributed partner one-shot verifier is needed for full journal parity, which this new tool does not claim.
 
