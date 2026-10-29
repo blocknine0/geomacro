@@ -41,6 +41,11 @@ jobs:
       - name: Run one bounded World Bank 195-country reference batch
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: node scripts/ops/probe-195x3-wdi-official-reference.mjs --live
+      - name: Run three strictly no-funds PR smoke queries
+        if: github.event_name == 'pull_request'
+        run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs --live --limit=3
+        env:
+          GEOMACRO_195_AUDIT_DELAY_MS: '5000'
       - name: Run 12 rotated production questions with NO PAYMENT (daily or operator initiated)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs --live --limit=12
