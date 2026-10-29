@@ -114,7 +114,9 @@ export function buildQueryBoundNewsDesk(input: Readonly<{
   // already in the derived interpretation. Never upgrade it to a prediction.
   const lead = stories[0];
   const direct = focus === "what_happened" ? lead.what_happened
-    : lead.potential_implication ?? lead.what_happened;
+    : focus === "what_to_watch"
+      ? `No confirmed follow-up date is established for ${lead.topic}. ${lead.what_happened}`
+      : lead.potential_implication ?? lead.what_happened;
   return {
     schema: "geomacro.query-bound-news-desk.v1",
     focus,
