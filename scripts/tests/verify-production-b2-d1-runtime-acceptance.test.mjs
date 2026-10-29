@@ -202,6 +202,6 @@ test("Phase 2C safe production failure codes remain tightly allowlisted",()=>{
  assert.ok(workflow.includes("B2_INITIAL_PUT_FAILED|B2_FIRST_VERIFICATION_GET_FAILED|B2_SECOND_INDEPENDENT_GET_FAILED"));
  assert.ok(client.includes('onStage("INITIAL_PUT")'));
  assert.ok(client.includes('onStage("FIRST_VERIFICATION_GET")'));
- assert.ok(verifier.includes("B2_"+'storageStage+"_FAILED:'));
+ assert.ok(verifier.includes('fail("B2_"+storageStage+"_FAILED:"'));
  assert.ok(!workflow.includes("cat /tmp/geomacro-runtime-acceptance.stderr"));
 });
