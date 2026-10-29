@@ -14,6 +14,9 @@ on:
       - "scripts/ops/verify-news-intelligence-hub-topology.mjs"
       - "scripts/ops/verify-news-hub-live-bundle.mjs"
       - "scripts/tests/news-intelligence-hub.test.mjs"
+      - "config/paid-evidence-recovery-routes.v1.json"
+      - "scripts/ops/plan-paid-evidence-source-recovery.mjs"
+      - "scripts/tests/paid-evidence-source-recovery.test.mjs"
       - ".github/workflows/news-intelligence-hub-continuity.yml"
   push:
     branches: [main]
@@ -22,6 +25,9 @@ on:
       - "scripts/ops/verify-news-intelligence-hub-topology.mjs"
       - "scripts/ops/verify-news-hub-live-bundle.mjs"
       - "scripts/tests/news-intelligence-hub.test.mjs"
+      - "config/paid-evidence-recovery-routes.v1.json"
+      - "scripts/ops/plan-paid-evidence-source-recovery.mjs"
+      - "scripts/tests/paid-evidence-source-recovery.test.mjs"
       - ".github/workflows/news-intelligence-hub-continuity.yml"
 
 permissions:
@@ -48,6 +54,7 @@ jobs:
         run: |
           node scripts/ops/verify-news-intelligence-hub-topology.mjs
           node --test scripts/tests/news-intelligence-hub.test.mjs
+          node --test scripts/tests/paid-evidence-source-recovery.test.mjs
 
   one-bundled-quota-and-distribution-readback:
     needs: five-group-topology
@@ -75,6 +82,17 @@ jobs:
       - name: Verify one D1 journal drives Website, machine projection and 195 by 3 coverage
         if: steps.budget.outputs.research == 'true'
         run: node scripts/ops/verify-news-hub-live-bundle.mjs
+      - name: Prepare private paid-evidence source recovery instructions from existing receipts
+        if: steps.budget.outputs.research == 'true'
+        run: node scripts/ops/plan-paid-evidence-source-recovery.mjs
+      - name: Preserve owner-only source gap routing (no new upstream fetch or D1 write)
+        if: always() && steps.budget.outputs.research == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-owner-paid-source-gap-plan-${{ github.run_id }}
+          path: artifacts/news-hub/paid-source-recovery-plan.json
+          if-no-files-found: error
+          retention-days: 3
       - name: Save only counts and source-neutral contract evidence (no raw news)
         if: always() && steps.budget.outputs.research == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
