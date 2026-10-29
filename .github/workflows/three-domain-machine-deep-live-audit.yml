@@ -1,0 +1,52 @@
+name: Three-Domain Machine Delivery Deep Live Audit (No Funds)
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "scripts/ops/audit-three-domain-machine-delivery-live.mjs"
+      - "scripts/tests/three-domain-machine-delivery-live.test.mjs"
+      - ".github/workflows/three-domain-machine-deep-live-audit.yml"
+      - "workers/control-plane/src/three-domain-structured-delivery.mjs"
+      - "workers/control-plane/src/three-domain-evidence-continuity.mjs"
+      - "workers/control-plane/src/reusable-source-news.mjs"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/audit-three-domain-machine-delivery-live.mjs"
+      - "scripts/tests/three-domain-machine-delivery-live.test.mjs"
+      - ".github/workflows/three-domain-machine-deep-live-audit.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-three-domain-deep-live-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-canonical-structured-json:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Checkout exact evaluated source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Use Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Offline adversarial 3 category freshness, rights, D1 outage and security tests
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/audit-three-domain-machine-delivery-live.mjs
+          node --test scripts/tests/three-domain-machine-delivery-live.test.mjs
+      - name: Read actual Cloudflare three-domain JSON and registered original sources, no funds
+        # Exactly 4 bounded issuer-free public reads plus invalid query/method.
+        # No owner token, payment signature, protected partner route or D1 write.
+        env:
+          NODE_ENV: production
+        run: |
+          set -euo pipefail
+          node scripts/ops/audit-three-domain-machine-delivery-live.mjs
