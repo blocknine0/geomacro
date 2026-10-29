@@ -330,6 +330,7 @@
     "three-category-combined-open-data.yml",
     "three-category-live-official-api-acceptance.yml",
     "three-domain-30m-original-publisher-pulse.yml",
+    "three-domain-machine-deep-live-audit.yml",
     "three-domain-private-source-intake.yml",
     "three-domain-real-source-pr-readonly.yml",
     "treasury-structural-digest.yml",
