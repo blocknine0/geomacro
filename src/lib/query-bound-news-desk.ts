@@ -94,11 +94,11 @@ function watchChannels(topic: string): string[] {
   const channels: string[] = [];
   if (/\b(?:monetary|interest|rates?|bond|treasury|yield|inflation)\b/iu.test(topic))
     channels.push("rates_and_bonds");
-  if (/\b(?:fx|foreign.exchange|currenc|exchange.rate|cross.border)\b/iu.test(topic))
+  if (/\b(?:fx|foreign.exchange|currenc(?:y|ies)|exchange.rate|cross.border)\b/iu.test(topic))
     channels.push("fx_and_payments");
-  if (/\b(?:sanction|embargo|trade|export|tariff|shipping|corridor)\b/iu.test(topic))
+  if (/\b(?:sanctions?|embargo|trade|export|tariff|shipping|corridor)\b/iu.test(topic))
     channels.push("trade_and_logistics");
-  if (/\b(?:mineral|rare.earth|copper|lithium|graphite|nickel|mining|processing)\b/iu.test(topic))
+  if (/\b(?:minerals?|rare.earths?|copper|lithium|graphite|nickel|mining|processing)\b/iu.test(topic))
     channels.push("mineral_supply_chain");
   return channels;
 }
