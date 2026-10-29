@@ -185,23 +185,53 @@ describe("three-domain D1-backed machine structured JSON delivery",()=>{
    expect(body.categories.geopolitics.native_release_records_count).toBe(1);
    expect(body.commercial.payment_authorized).toBe(false);
  });
- it("persistent 503 is retried once, still returns 503; invalid canonical recovery remains 503",async()=>{
+ it("persistent 503 exhausts two paced retries and returns 503; invalid canonical recovery remains 503",async()=>{
    let refreshed=0;
    const down=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
      async()=>Response.json({ok:false},{status:503}),
      async()=>{refreshed++;return Response.json({ok:false},{status:503});});
    expect(down.status).toBe(503);
-   expect(refreshed).toBe(1);
+   expect(refreshed).toBe(2);
    const previous=source();previous.checked_at=new Date(NOW-11*60_000).toISOString();
    const invalid=source();invalid.signed_gro_verified=true;
    const response=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
      async()=>Response.json(previous),
      async()=>{refreshed++;return Response.json(invalid);});
    expect(response.status).toBe(503);
-   expect(refreshed).toBe(2);
+   expect(refreshed).toBe(3);
    const payload=await response.json();
    expect(payload).toMatchObject({chargeable:false,payment_authorized:false,
      raw_upstream_delivered:false});
+ });
+ it("intermittent 503 then 503 then 200 recovers only after two paced canonical reads",async()=>{
+   let attempts=0;
+   const response=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
+     async()=>Response.json({ok:false},{status:503}),
+     async()=>{attempts++;return attempts===1?
+       Response.json({ok:false},{status:503}):Response.json(source());});
+   expect(response.status).toBe(200);
+   expect(attempts).toBe(2);
+   expect((await response.json()).category_count).toBe(3);
+ });
+ it("coalesces a concurrent 503 burst to two total origin reads, not two per client",async()=>{
+   const env={DB:{}};let origin=0;
+   const cached=async()=>Response.json({ok:false},{status:503});
+   const canonical=async()=>{origin++;return origin===1?
+     Response.json({ok:false},{status:503}):Response.json(source());};
+   const out=await Promise.all(Array.from({length:5},()=>
+     deliverThreeDomainStructuredWithCacheRecovery(env,NOW,cached,canonical)));
+   expect(out.map(r=>r.status)).toEqual([200,200,200,200,200]);
+   expect(origin).toBe(2);
+   expect((await out[0].json()).categories.geopolitics.category).toBe("geopolitics");
+   expect((await out[4].json()).categories.rare_earth.category).toBe("rare_earth");
+ });
+ it("persistent provider 503 trips a bounded fail-closed cooldown without a retry stampede",async()=>{
+   const env={DB:{}};let origin=0;
+   const cached=async()=>Response.json({ok:false},{status:503});
+   const canonical=async()=>{origin++;return Response.json({ok:false},{status:503});};
+   expect((await deliverThreeDomainStructuredWithCacheRecovery(env,NOW,cached,canonical)).status).toBe(503);
+   expect((await deliverThreeDomainStructuredWithCacheRecovery(env,NOW,cached,canonical)).status).toBe(503);
+   expect(origin).toBe(2);
  });
  it("non-503 upstream restrictions do not trigger hidden retries",async()=>{
    for(const status of [400,401,429]){
