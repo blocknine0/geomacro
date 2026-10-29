@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { createB2Client } from "./ops/b2-s3-client.mjs";
+import {selectGovernedB2WriterCredentials} from "./lib/governed-source-b2-writer-credentials.mjs";
 import { createB2D1AccountGovernor } from "./ops/b2-d1-account-governor.mjs";
 import { evaluateGovernedB2Headroom } from "./lib/governed-b2-headroom.mjs";
 import { planSharedGovernedBundle, verifySharedGovernedBundle } from "./lib/governed-shared-ingestion-bundle.mjs";
@@ -84,12 +85,15 @@ if (process.env.B2_ACCOUNT_QUOTA_REQUIRED !== "1" ||
   throw new Error("GOVERNED_INGESTION_B2_SHARED_ACCOUNT_QUOTA_REQUIRED");
 }
 
+const writeCredentials=selectGovernedB2WriterCredentials();
 const b2 = createB2Client({
   endpointUrl: env("B2_S3_ENDPOINT"),
-  accessKey: env("B2_KEY_ID"),
-  secretKey: env("B2_APPLICATION_KEY"),
+  accessKey: writeCredentials.accessKey,
+  secretKey: writeCredentials.secretKey,
   bucket: "geomacro-private-archive",
 });
+// Log only the role, never an access key ID or secret.
+console.log("::notice::GOVERNED_B2_WRITER_ROLE="+writeCredentials.role);
 
 
 function observation({ sourceId, category, record, country, metric, value, unit, observed, url, provenance, raw }) {
