@@ -25,6 +25,44 @@ permissions: {contents: read}
 concurrency: {group: governed-source-ingestion, cancel-in-progress: false}
 
 jobs:
+  # Zero provider requests, independent of D1 quota: safely proves whether
+  # the founder-provisioned production environment exposes a COMPLETE
+  # dedicated writer pair. Pair presence is NOT B2 authentication or PUT proof.
+  b2-writer-preflight:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Check dedicated archive writer secret presence, without any B2/D1/HTTP requests
+        env:
+          B2_ARCHIVE_WRITE_KEY_ID: ${{ secrets.B2_ARCHIVE_WRITE_KEY_ID }}
+          B2_ARCHIVE_WRITE_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_WRITE_APPLICATION_KEY }}
+          GOVERNED_B2_REQUIRE_DEDICATED_WRITER: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {appendFileSync} from 'node:fs';
+          import {selectGovernedB2WriterCredentials} from './scripts/lib/governed-source-b2-writer-credentials.mjs';
+          try {
+            const result=selectGovernedB2WriterCredentials(process.env);
+            if (result.role!=='DEDICATED_ARCHIVE_WRITER' || result.authenticated!==false ||
+                result.credential_validation_requires_real_put!==true)
+              throw Error('UNEXPECTED_B2_WRITER_SELECTOR_STATE');
+            console.log('::notice::B2_DEDICATED_ARCHIVE_WRITER_PAIR_CONFIGURED');
+            if(process.env.GITHUB_STEP_SUMMARY)
+              appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+                'Dedicated production writer pair: PRESENT. No B2 authentication, PUT/GET, D1, or paid-delivery acceptance implied.\n');
+          } catch {
+            console.error('::error::B2_DEDICATED_ARCHIVE_WRITER_PAIR_MISSING_OR_INCOMPLETE_IN_PRODUCTION');
+            process.exitCode=2;
+          }
+          NODE
   quota-admission:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
