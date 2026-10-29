@@ -54,6 +54,19 @@ const ttlForPath=pathname=>
 // Per-isolate single-flight avoids the D1 read stampede between a cache miss
 // and the cache PUT. Cache API remains authoritative across requests/POPs.
 const inFlightPublicReads=new Map();
+/**
+ * Exact anonymous public journal pages can use their D1 materialized snapshot
+ * even when a caller explicitly bypasses the shared POP cache. Cache policy
+ * and materialized-read policy are independent: no-cache must skip the POP
+ * response cache without forcing an expensive canonical journal scan.
+ */
+export function eligiblePublicFreeD1MaterializedNewsPageRequest(request){
+  if(request?.method!=="GET")return false;
+  const url=new URL(request.url);
+  if(!PAGED_NEWS_PATHS.has(url.pathname)||
+     url.search&&!CANONICAL_OFFSETS.has(url.search.slice(1)))return false;
+  return [...forbidden].every(name=>!request.headers.has(name));
+}
 export function eligiblePublicFreeD1CacheRequest(request){
   if(request?.method!=="GET")return false;
   const url=new URL(request.url);
