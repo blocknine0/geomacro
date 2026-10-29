@@ -1357,6 +1357,31 @@ async function discoverOnDemandImpl(
       tasks.push({name:"reliefweb_discovery",category,run:()=>
         reliefWeb(name,trackedFetch,now,approvedReliefAppname,newsMaxAgeMs)});
   }
+  if (!historicalMineralQuery && name) for (const source of [...ORIGINAL_FALLBACK_FEEDS,...(topics.length?INTERNATIONAL_ORIGINAL_FEEDS:[])]) {
+    // Reuse the Canadian government publisher for verified Canadian country
+    // scope only. Do not consume a scarce original-provider slot or alter
+    // unrelated global/China queries simply because a new issuer was added.
+    if(source.family==="canada_nrcan_original_publisher" && country!=="CAN") continue;
+    // Preserve legacy no-topic quota/source contracts; the RBI lane is
+    // reserved for explicit India original-event review or on-demand
+    // query topics, not annual structural reference retrieval.
+    if(source.family==="rbi_india_original_macro_publisher" &&
+       (country!=="IND" || !topics.length)) continue;
+    if(!topics.length && ["uk_ofsi_original_publisher","ecb_original_publisher",
+      "uk_desnz_original_publisher","uk_hmt_original_publisher"].includes(source.family)) continue;
+    if (categories.includes(source.domain) &&
+        (!source.scopedTopics || !topics.length ||
+         source.scopedTopics.some(t=>topics.includes(t)))) tasks.push({
+      name:source.family,category:source.domain,
+        publisherFamily:source.family,run:()=>originalOfficialFeed(
+        source.family==="uk_dbt_original_publisher" && topics.length>0
+          ? {...source,url:"https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom"}
+          : source,
+        country,name,trackedFetch,now,mineral,topics,newsMaxAgeMs),
+    });
+  }
+  // Preserve established original issuers as primary and secondary sources.
+  // Country-mesh candidates are bounded tertiary fallbacks, not slot stealers.
   // Reuse the continuously polled country publisher mesh and pinned country
   // gap candidates as query-time first-party leads. Every selected feed gets
   // a fresh bounded GET and requires a native item clock, topic + country
@@ -1386,29 +1411,6 @@ async function discoverOnDemandImpl(
             mineral,topics,newsMaxAgeMs)});
       }
     }
-  }
-  if (!historicalMineralQuery && name) for (const source of [...ORIGINAL_FALLBACK_FEEDS,...(topics.length?INTERNATIONAL_ORIGINAL_FEEDS:[])]) {
-    // Reuse the Canadian government publisher for verified Canadian country
-    // scope only. Do not consume a scarce original-provider slot or alter
-    // unrelated global/China queries simply because a new issuer was added.
-    if(source.family==="canada_nrcan_original_publisher" && country!=="CAN") continue;
-    // Preserve legacy no-topic quota/source contracts; the RBI lane is
-    // reserved for explicit India original-event review or on-demand
-    // query topics, not annual structural reference retrieval.
-    if(source.family==="rbi_india_original_macro_publisher" &&
-       (country!=="IND" || !topics.length)) continue;
-    if(!topics.length && ["uk_ofsi_original_publisher","ecb_original_publisher",
-      "uk_desnz_original_publisher","uk_hmt_original_publisher"].includes(source.family)) continue;
-    if (categories.includes(source.domain) &&
-        (!source.scopedTopics || !topics.length ||
-         source.scopedTopics.some(t=>topics.includes(t)))) tasks.push({
-      name:source.family,category:source.domain,
-        publisherFamily:source.family,run:()=>originalOfficialFeed(
-        source.family==="uk_dbt_original_publisher" && topics.length>0
-          ? {...source,url:"https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom"}
-          : source,
-        country,name,trackedFetch,now,mineral,topics,newsMaxAgeMs),
-    });
   }
   if (!historicalMineralQuery && !options.directPublisherOnly && categories.includes("macro") &&
       !freshThreeDomainEventDiscovery) for (const indicator of [
