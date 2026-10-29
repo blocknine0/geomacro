@@ -1,0 +1,30 @@
+name: GeoMacro Owner Partner Evidence Four Gates (No Funds)
+on:
+  pull_request:
+    paths:
+      - "scripts/ops/verify-owner-partner-four-gates.mjs"
+      - "scripts/ops/verify-owner-partner-four-gates.test.mjs"
+      - "docs/ops/OWNER_PARTNER_FOUR_GATES_20261029.md"
+      - ".github/workflows/geomacro-owner-partner-four-gates.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/verify-owner-partner-four-gates.mjs"
+      - "scripts/ops/verify-owner-partner-four-gates.test.mjs"
+      - ".github/workflows/geomacro-owner-partner-four-gates.yml"
+permissions:
+  contents: read
+jobs:
+  offline-no-funds-owner-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "22"}
+      - name: Fail-closed ID, attribution, OSINT and news-context draft checks
+        run: |
+          node --check scripts/ops/verify-owner-partner-four-gates.mjs
+          node --test scripts/ops/verify-owner-partner-four-gates.test.mjs
