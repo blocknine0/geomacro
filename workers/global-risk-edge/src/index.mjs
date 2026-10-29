@@ -2,6 +2,7 @@ import continuity from "./continuity.mjs";
 import {originalSourceIsCurrent,liveEdgeCacheControl,validatedCachedLiveResponse} from "../../shared/current-source-clock.mjs";
 import { reserveB2AccountQuota } from "../../control-plane/src/b2-account-quota.mjs";
 import { b2OriginFailureCacheKey, failedB2OriginRecently, rememberFailedB2Origin } from "../../shared/b2-origin-negative-cache.mjs";
+import { withGovernedB2OriginRetry, classifyGovernedB2OriginFailure } from "../../shared/governed-b2-origin-retry.mjs";
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
@@ -37,6 +38,11 @@ async function hmac(key, value) {
 }
 
 async function signedGet(key, env) {
+  return withGovernedB2OriginRetry(() => signedGetOnce(key, env));
+}
+
+// Each attempt independently reserves a D1 quota ticket AND signs a new GET.
+async function signedGetOnce(key, env) {
   const accessKey = String(env.B2_KEY_ID ?? "").trim();
   const secretKey = String(env.B2_APPLICATION_KEY ?? "").trim();
   if (!accessKey || !secretKey) throw new Error("B2_EDGE_CONFIG_REQUIRED");
@@ -84,7 +90,7 @@ async function signedGet(key, env) {
         Authorization: `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
       },
       signal: controller.signal,
-    });
+    }).catch(() => { throw new Error("B2_EDGE_TRANSPORT_UNAVAILABLE"); });
     if (!response.ok) throw new Error(`B2_EDGE_READ_${response.status}`);
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (!bytes.length || bytes.length > MAX_COMPRESSED_BYTES) throw new Error("B2_EDGE_SIZE_INVALID");
@@ -403,7 +409,7 @@ export default {
       ctx.waitUntil(cache.put(cacheKey, response.clone()));
       return response;
     } catch (error) {
-      console.error("global-risk-edge origin unavailable", error instanceof Error ? error.message : "unknown");
+      console.error("global-risk-edge origin unavailable", classifyGovernedB2OriginFailure(error));
       try {
         const response = await buildContinuityResponse();
         ctx.waitUntil(cache.put(cacheKey, response.clone()));
