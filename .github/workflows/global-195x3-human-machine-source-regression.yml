@@ -19,6 +19,7 @@ on:
       - 'scripts/ops/probe-official-sanctions-listings.mjs'
       - 'scripts/tests/official-sanctions-listings-observer.test.mjs'
       - 'scripts/tests/gnb-national-rss-source-repair.test.mjs'
+      - 'scripts/ops/probe-gnb-native-source.mjs'
       - 'config/private-osint-local-gaplane.v1.json'
       - '.github/workflows/global-195x3-human-machine-source-regression.yml'
 
@@ -54,6 +55,8 @@ jobs:
         run: node --test scripts/tests/official-sanctions-listings-observer.test.mjs
       - name: Probe two official sanctions listings without funds or D1 writes
         run: node scripts/ops/probe-official-sanctions-listings.mjs --live
+      - name: Read one exact Guinea-Bissau original RSS candidate without funds
+        run: node scripts/ops/probe-gnb-native-source.mjs --live
       - name: Generate offline source availability receipt
         run: node scripts/ops/probe-195x3-wdi-official-reference.mjs
       - name: Run one bounded World Bank 195-country reference batch
