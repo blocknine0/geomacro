@@ -185,7 +185,7 @@ test('live 13:19 UTC CONSERVE keeps original intake and protected EIA/NOAA measu
 
 test('optional governed measurement yields to PREDGE, future source intake, stale and unverified quota',()=>{
  for(const [read,written] of [
-  [4_300_000,10_000],[1_509_065,68_000],[4_990_000,99_000],
+  [4_300_000,10_000],[1_509_065,74_000],[1_509_065,80_000],[4_990_000,99_000],
   [5_000_000,100_000],
  ]) {
   const at=new Date('2026-10-29T13:19:46.000Z');
