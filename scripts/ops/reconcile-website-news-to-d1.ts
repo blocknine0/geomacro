@@ -12,6 +12,7 @@ import {verifyDerivedStory} from "../../workers/control-plane/src/website-derive
 import {prepareDerivedNewsBatches} from "../lib/derived-news-d1-batches.mjs";
 import {planWebsiteNewsCatchup,verifyWebsiteNewsCatchupReadback} from "../lib/website-news-canonical-reconciliation.mjs";
 import {verifySharedArchivePartnerExpectation} from "../lib/website-shared-partner-expectation.mjs";
+import {requireDerivedNewsWorkerPolicy,DERIVED_NEWS_TOPIC_POLICY_REVISION} from "../lib/derived-news-readback-policy.mjs";
 
 const ROOT=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(ROOT.length<32)throw Error("WEBSITE_SHARED_CATCHUP_AUTH_REQUIRED");
@@ -19,6 +20,12 @@ const TOKEN=createHmac("sha256",ROOT).update("geomacro-control-plane-v1").digest
 const BASE="https://geomacro-public-finds-archive.daspallab202391.workers.dev";
 const WORKER="https://geomacro-control-plane.daspallab202391.workers.dev";
 const now=Date.now();
+// Health preflight is not a D1 rows-read query; fail before any owner write
+// if a stale Worker is still deployed after a repository merge.
+await requireDerivedNewsWorkerPolicy({
+  fetchImpl:fetch,url:WORKER+"/health",
+  expectedRevision:DERIVED_NEWS_TOPIC_POLICY_REVISION,
+});
 async function read(url,cap){
   const response=await fetch(url,{method:"GET",redirect:"error",cache:"no-store",
     headers:{Accept:"application/json"},signal:AbortSignal.timeout(12_000)});
