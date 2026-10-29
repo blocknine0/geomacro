@@ -1,0 +1,68 @@
+name: Global 195x3 human machine source-gap regression
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '53 3 * * *'
+  pull_request:
+    paths:
+      - 'src/lib/canonical-country-registry-195.ts'
+      - 'config/answer-source-candidates-195x3.v1.json'
+      - 'scripts/ops/audit-195x3-human-machine-source-gaps.mjs'
+      - 'scripts/tests/verify-195x3-human-machine-source-gaps.mjs'
+      - 'scripts/ops/probe-195x3-wdi-official-reference.mjs'
+      - 'scripts/lib/production-source-continuity-evaluator.mjs'
+      - 'scripts/ops/observe-production-three-domain-source-continuity.mjs'
+      - 'scripts/tests/production-three-domain-source-continuity.test.mjs'
+      - 'scripts/lib/wdi-195-batch-reference.mjs'
+      - '.github/workflows/global-195x3-human-machine-source-regression.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-195x3-regression-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deterministic-matrix-and-bounded-production-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v4
+        with:
+          node-version: '22'
+      - name: Verify deterministic 195 country x 3 category x 2 actor cases
+        run: node scripts/tests/verify-195x3-human-machine-source-gaps.mjs
+      - name: Generate full 1170-question requirements and gap artifacts (offline)
+        run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs
+      - name: Validate official 195-country macro source adapter without network
+        run: node scripts/tests/wdi-195-batch-reference.test.mjs
+      - name: Assert actual first-party source clock and publisher pulse invariants
+        run: node --test scripts/tests/production-three-domain-source-continuity.test.mjs
+      - name: Generate offline source availability receipt
+        run: node scripts/ops/probe-195x3-wdi-official-reference.mjs
+      - name: Run one bounded World Bank 195-country reference batch
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: node scripts/ops/probe-195x3-wdi-official-reference.mjs --live
+      - name: Run three strictly no-funds PR smoke queries
+        if: github.event_name == 'pull_request'
+        run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs --live --limit=3
+        env:
+          GEOMACRO_195_AUDIT_DELAY_MS: '5000'
+      - name: Run 12 rotated production questions with NO PAYMENT (daily or operator initiated)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs --live --limit=12
+        env:
+          GEOMACRO_195_AUDIT_DELAY_MS: '5000'
+      - name: Publish de-identified, no-funds audit receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4
+        with:
+          name: geomacro-195x3-query-research-${{ github.run_id }}
+          path: ${{ runner.temp }}/geomacro-195x3-query-regression/*.json
+          if-no-files-found: warn
+          retention-days: 7

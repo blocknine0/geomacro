@@ -1,0 +1,150 @@
+{
+  "schema": "geomacro.195x3-answer-source-candidates.v1",
+  "as_of": "2026-10-29",
+  "scope": "GEOMACRO_ONLY_PREDGE_LOCKED",
+  "execution": "NON_ACTIVE_RESEARCH_REGISTRY",
+  "registration_is_not_activation": true,
+  "never_promote_missing_evidence": true,
+  "classification": {
+    "geopolitics": {
+      "must_have": [
+        "original_event_or_governed_structural_evidence",
+        "country_specific_attribution",
+        "native_published_at",
+        "independent_same_event_confirmation_if_live",
+        "rights_and_signed_delivery_receipt"
+      ]
+    },
+    "macro": {
+      "must_have": [
+        "period_and_unit_for_statistics_or_native_event_date",
+        "country_specific_series_and_methodology",
+        "independent_verification_for_live_assertion",
+        "licence_and_signed_delivery_receipt"
+      ]
+    },
+    "critical_minerals": {
+      "must_have": [
+        "named_commodity_and_lifecycle",
+        "country_specific_country_or_trade_flow",
+        "publication_or_reference_period",
+        "original_source_and_qualified_corrob",
+        "licence_and_signed_delivery_receipt"
+      ]
+    }
+  },
+  "candidate_sources": [
+    {
+      "id": "unsc_sanctions_original_updates",
+      "categories": [
+        "geopolitics"
+      ],
+      "kind": "official_event",
+      "publisher": "UN Security Council",
+      "url": "https://main.un.org/securitycouncil/en/content/list-updates-unsc-consolidated-list",
+      "cadence": "event_driven",
+      "country_mapping": "event_specific",
+      "phase": "CANDIDATE_REQUIRES_ADAPTER_PROBE_AND_RIGHTS_REVIEW",
+      "purpose": "Verify original dated UN sanctions list changes; not all political events"
+    },
+    {
+      "id": "ofac_sanctions_list_service",
+      "categories": [
+        "geopolitics"
+      ],
+      "kind": "official_event",
+      "publisher": "US Treasury OFAC",
+      "url": "https://ofac.treasury.gov/sanctions-list-service",
+      "cadence": "event_driven",
+      "country_mapping": "event_specific",
+      "phase": "CANDIDATE_REQUIRES_ADAPTER_PROBE_AND_RIGHTS_REVIEW",
+      "purpose": "Cross-check US sanctions releases and dataset change clocks; not independent of its own republications"
+    },
+    {
+      "id": "world_bank_indicators_v2",
+      "categories": [
+        "macro"
+      ],
+      "kind": "periodic_structural",
+      "publisher": "World Bank",
+      "url": "https://api.worldbank.org/v2/country/all/indicator/NY.GDP.MKTP.CD?format=json",
+      "documentation": "https://datahelpdesk.worldbank.org/knowledgebase/articles/889392",
+      "cadence": "dataset_revision",
+      "country_mapping": "dataset_code_not_assumed_iso3",
+      "phase": "CANDIDATE_REQUIRES_ADAPTER_PROBE_AND_RIGHTS_REVIEW",
+      "purpose": "Country GDP structural indicator; period and revision are mandatory; no current news inference"
+    },
+    {
+      "id": "un_comtrade_release_metadata",
+      "categories": [
+        "macro",
+        "critical_minerals"
+      ],
+      "kind": "periodic_structural",
+      "publisher": "UN Comtrade",
+      "url": "https://comtradeapi.un.org/public/v1/getComtradeReleases",
+      "documentation": "https://uncomtrade.org/docs/data-availability/",
+      "cadence": "dataset_release",
+      "country_mapping": "reporter_code_mapping_required",
+      "phase": "CANDIDATE_REQUIRES_ADAPTER_PROBE_AND_RIGHTS_REVIEW",
+      "purpose": "Trade data availability metadata; HS commodity and reporting period needed; free preview is limited"
+    },
+    {
+      "id": "un_comtrade_commodity_preview",
+      "categories": [
+        "critical_minerals"
+      ],
+      "kind": "periodic_structural",
+      "publisher": "UN Comtrade",
+      "url": "https://comtradeapi.un.org/public/v1/preview/C/A/HS?reporterCode=36&period=2023&partnerCode=0&cmdCode=TOTAL&flowCode=X",
+      "documentation": "https://uncomtrade.org/docs/un-comtrade-api/",
+      "cadence": "annual_or_monthly",
+      "country_mapping": "reporter_code_mapping_required",
+      "phase": "CANDIDATE_REQUIRES_ADAPTER_PROBE_AND_RIGHTS_REVIEW",
+      "purpose": "Mineral trade baseline once exact HS codes are qualified; sample URL is Australia total exports, not mineral evidence"
+    },
+    {
+      "id": "usgs_mcs_2026_country_minerals",
+      "categories": [
+        "critical_minerals"
+      ],
+      "kind": "periodic_structural",
+      "publisher": "U.S. Geological Survey",
+      "url": "https://www.usgs.gov/data/mineral-commodity-summaries-2026-data-release",
+      "documentation": "https://pubs.usgs.gov/publication/mcs2026",
+      "cadence": "annual",
+      "country_mapping": "commodity_table_country_mapping_required",
+      "phase": "CANDIDATE_REQUIRES_ADAPTER_PROBE_AND_RIGHTS_REVIEW",
+      "purpose": "World production/reserves context; missing country/commodity rows mean no coverage"
+    },
+    {
+      "id": "iea_critical_minerals_dataset",
+      "categories": [
+        "critical_minerals"
+      ],
+      "kind": "periodic_structural",
+      "publisher": "International Energy Agency",
+      "url": "https://www.iea.org/data-and-statistics/data-product/critical-minerals-dataset",
+      "cadence": "periodic",
+      "country_mapping": "dataset_specific",
+      "phase": "CANDIDATE_REQUIRES_ADAPTER_PROBE_AND_RIGHTS_REVIEW",
+      "purpose": "Mineral demand, supply and processing baseline only where accessible and licensed"
+    },
+    {
+      "id": "gdelt_2_event_discovery",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "critical_minerals"
+      ],
+      "kind": "discovery_index_only",
+      "publisher": "GDELT Project",
+      "url": "https://www.gdeltproject.org/data.html",
+      "cadence": "roughly_15_minutes",
+      "country_mapping": "index_geo_requires_original_confirmation",
+      "phase": "DISCOVERY_ONLY_NEVER_VERIFIED_EVENT",
+      "purpose": "Lead discovery; never a first-party event, same-event corroborator or billable signed intelligence"
+    }
+  ],
+  "source_selection_policy": "Country primary issuer first; global structural datasets as baseline only, issuer-independent corroboration for current developments; never poll all 195 countries per minute; bounded cache/batch + failed-source telemetry."
+}
