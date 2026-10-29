@@ -5,13 +5,14 @@ describe("representative real source acceptance",()=>{
   const probe=readFileSync("scripts/ops/verify-live-on-demand-representative-cases.ts","utf8");
   const workflow=readFileSync(".github/workflows/live-on-demand-source-acceptance.yml","utf8");
   it("uses three distinct current-window single-category tests and a cross-domain recent-window query",()=>{
-    for(const id of ["RUS_GEO_24H","GBR_FX_24H","GBR_MINERALS_24H","GBR_CROSS_DOMAIN_7D"])
+    for(const id of ["RUS_GEO_24H","GBR_FX_24H","USA_DOE_MINERALS_24H","GBR_CROSS_DOMAIN_7D"])
       expect(probe).toContain(id);
     expect(probe).toContain('time_class:"CURRENT_24H"');
     expect(probe).toContain('time_class:"RECENT_7D"');
     expect(probe).toContain('categories:["geopolitics","macro","rare_earth"]');
     expect(probe).toContain('max_age_seconds:86_400');
     expect(probe).toContain("NO_RELEVANT_ORIGINAL_IN_REQUESTED_WINDOW");
+    expect(probe).toContain('{id:"USA_DOE_MINERALS_24H",country_iso3:"USA"');
     expect(probe).toContain("ORIGINAL_DATE_QUALIFIED_REVIEW_PENDING");
   });
   it("runs genuinely read-only in both PR and protected-main scopes",()=>{
