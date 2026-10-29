@@ -243,6 +243,7 @@ function licensedPaidDeliveryHeaders(prepared: Record<string, unknown>) {
 type PublicSourceHealthState =
   | "LEADS_OBSERVED"
   | "NO_LEADS_IN_BOUNDED_SEARCH"
+  | "PARTIAL_SOURCE_OUTAGE"
   | "SOURCE_OUTAGE"
   | "ACCESS_RESTRICTED"
   | "NOT_ATTEMPTED_WITHIN_BUDGET";
@@ -263,12 +264,13 @@ function publicOnDemandSourceHealth(
     const accessRestricted=count("ACCESS_RESTRICTED");
     const transportUnavailable=count("TRANSPORT_UNAVAILABLE");
     const cooldownActive=count("COOLDOWN_ACTIVE");
-    const notAttempted=rows.filter(probe=>!probe.attempted).length;
+    const providerInvalid=count("PROVIDER_INVALID");
+    const failed=rateLimited+accessRestricted+transportUnavailable+cooldownActive+providerInvalid;
     const state:PublicSourceHealthState=leads>0 ? "LEADS_OBSERVED"
-      : attempted===0 || (notAttempted>0 && reachable===0)
-        ? "NOT_ATTEMPTED_WITHIN_BUDGET"
+      : attempted===0 ? "NOT_ATTEMPTED_WITHIN_BUDGET"
+      : reachable>0 && failed>0 ? "PARTIAL_SOURCE_OUTAGE"
       : reachable>0 ? "NO_LEADS_IN_BOUNDED_SEARCH"
-      : accessRestricted>0 ? "ACCESS_RESTRICTED"
+      : accessRestricted>0 && failed===accessRestricted ? "ACCESS_RESTRICTED"
       : "SOURCE_OUTAGE";
     return [category,{
       state,
@@ -281,6 +283,7 @@ function publicOnDemandSourceHealth(
       access_restricted:accessRestricted,
       transport_unavailable:transportUnavailable,
       cooldown_active:cooldownActive,
+      provider_invalid:providerInvalid,
       retryable:rateLimited+transportUnavailable+cooldownActive>0,
       automatic_retry:false,
     }];
