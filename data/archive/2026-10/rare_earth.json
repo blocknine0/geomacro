@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-29T01:48:45.274Z",
+  "updated_at": "2026-10-29T02:32:38.611Z",
   "signals": [
     {
       "id": "rare_earth-d6f77fc2",
@@ -147,6 +147,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T13:59:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-b6389d05",
+      "category": "rare_earth",
+      "title": "Geomacro finds Fastmarkets launched calculated fob China battery-grade lithium prices - Fastmarkets",
+      "what_changed": "A monitored source feed reports: Fastmarkets launched calculated fob China battery-grade lithium prices - Fastmarkets. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T11:34:01.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
