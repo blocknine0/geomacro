@@ -2,6 +2,7 @@ import type { AgentQueryPlan } from "./agent-query-plan";
 import { loadStructuralContext, type StructuralContext, type StructuralSubject } from "./structural-context.server";
 import { loadQualifiedMcsCountryContext } from "./qualified-mcs-country-digest.server";
 import { loadQualifiedTreasuryFxCountryContext } from "./qualified-treasury-fx.server";
+import { loadQualifiedBlsCountryContext } from "./qualified-bls-us-cpi.server";
 import { isStructuralStoreProduct } from "./store-product-selection";
 import { storeProductRows } from "./store-product-evidence.server";
 import { assertCommercialSourcesEligible } from "./commercial-source-eligibility.server";
@@ -84,11 +85,12 @@ export async function loadAgentQueryStructuralContext(
 
   const releases = await Promise.all(plan.required_modules.flatMap(module => countries.map(async country => {
     if (original && availableRows(original, module).some(row => row.country_iso3 === country)) return null;
-    // These two readers already verify exact publisher bytes, scoped rights,
+    // These scoped readers verify first-party original series, country, clock and rights,
     // country identity and native reference periods. There is no generic
     // fallback that could turn a different module into the requested one.
     const release = module === "critical_minerals" ? await loadQualifiedMcsCountryContext(country)
-      : module === "external_fx" ? await loadQualifiedTreasuryFxCountryContext(country) : null;
+      : module === "external_fx" ? await loadQualifiedTreasuryFxCountryContext(country)
+      : module === "macro_monetary" ? await loadQualifiedBlsCountryContext(country) : null;
     if (!release || release.status !== "AVAILABLE" || key(release.subject) !== `country:${country}`) return null;
     return { module, release };
   })));
