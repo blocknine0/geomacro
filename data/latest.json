@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-29T02:32:38.611Z",
+  "checked_at": "2026-10-29T05:37:21.283Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,44 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "rare_earth-6f91b5d1",
+      "category": "rare_earth",
+      "title": "Geomacro finds Copper held Steady As Firm Dollar And Fed Policy Caution Limit Price Moves Now By Kedia Advisory - Investing.com India",
+      "what_changed": "A monitored source feed reports: Copper held Steady As Firm Dollar And Fed Policy Caution Limit Price Moves Now By Kedia Advisory - Investing.com India. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T04:55:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f8d8f451",
+      "category": "macro",
+      "title": "Geomacro finds Hong Kong Monetary Authority left interest rates unchanged, tracking Fed move - Forex Factory",
+      "what_changed": "A monitored source feed reports: Hong Kong Monetary Authority left interest rates unchanged, tracking Fed move - Forex Factory. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T02:59:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-2a82138c",
       "category": "macro",
@@ -77,6 +115,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T00:23:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-a7ed764d",
+      "category": "rare_earth",
+      "title": "Geomacro finds Study confirmed FireFly on track to be a significant copper producer - The Manila Times",
+      "what_changed": "A monitored source feed reports: Study confirmed FireFly on track to be a significant copper producer - The Manila Times. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T00:10:18.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4432,25 +4489,6 @@
       "severity": null
     },
     {
-      "id": "geopolitics-db18f574",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Brazil election looked 'rigged' without giving evidence - Euronews.com",
-      "what_changed": "A monitored source feed reports: Trump said Brazil election looked 'rigged' without giving evidence - Euronews.com. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T21:37:22.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "macro-cb6275ca",
       "category": "macro",
       "title": "Geomacro finds Cadence increased full-year fiscal 2026 guidance as backlog builds to $8.2B - Seeking Alpha",
@@ -4692,44 +4730,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-df7cb568",
-      "category": "macro",
-      "title": "Geomacro finds China proposed measures against foreign entities' infringement of trade secrets - Reuters",
-      "what_changed": "A monitored source feed reports: China proposed measures against foreign entities' infringement of trade secrets - Reuters. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T08:29:43.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-7a4b2d16",
-      "category": "macro",
-      "title": "Geomacro finds Ministry called for tapping local potential to boost village economy",
-      "what_changed": "A monitored source feed reports: Ministry called for tapping local potential to boost village economy. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T08:14:54.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.antaranews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

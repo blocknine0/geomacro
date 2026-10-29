@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-29T02:32:38.611Z",
+  "updated_at": "2026-10-29T05:37:21.283Z",
   "signals": [
+    {
+      "id": "rare_earth-6f91b5d1",
+      "category": "rare_earth",
+      "title": "Geomacro finds Copper held Steady As Firm Dollar And Fed Policy Caution Limit Price Moves Now By Kedia Advisory - Investing.com India",
+      "what_changed": "A monitored source feed reports: Copper held Steady As Firm Dollar And Fed Policy Caution Limit Price Moves Now By Kedia Advisory - Investing.com India. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T04:55:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-a7ed764d",
+      "category": "rare_earth",
+      "title": "Geomacro finds Study confirmed FireFly on track to be a significant copper producer - The Manila Times",
+      "what_changed": "A monitored source feed reports: Study confirmed FireFly on track to be a significant copper producer - The Manila Times. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T00:10:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-d6f77fc2",
       "category": "rare_earth",

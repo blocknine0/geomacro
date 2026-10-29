@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-29T02:32:38.611Z",
+  "updated_at": "2026-10-29T05:37:21.283Z",
   "signals": [
+    {
+      "id": "macro-f8d8f451",
+      "category": "macro",
+      "title": "Geomacro finds Hong Kong Monetary Authority left interest rates unchanged, tracking Fed move - Forex Factory",
+      "what_changed": "A monitored source feed reports: Hong Kong Monetary Authority left interest rates unchanged, tracking Fed move - Forex Factory. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T02:59:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-2a82138c",
       "category": "macro",
