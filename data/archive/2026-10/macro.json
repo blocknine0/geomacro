@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-29T17:20:33.092Z",
+  "updated_at": "2026-10-29T18:18:05.322Z",
   "signals": [
+    {
+      "id": "macro-2b47913b",
+      "category": "macro",
+      "title": "Geomacro finds Houthis held 37 UN food workers as Trump-backed WFP chief inherits humanitarian crises across globe",
+      "what_changed": "A monitored source feed reports: Houthis held 37 UN food workers as Trump-backed WFP chief inherits humanitarian crises across globe. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T17:41:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: moxie.foxnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-8c8602ac",
       "category": "macro",
@@ -14,6 +33,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T16:53:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d60a64df",
+      "category": "macro",
+      "title": "Geomacro finds Punjab announced Kisan Bank, Rs4,500 Wheat Support Price, Minister Says - UrduPoint",
+      "what_changed": "A monitored source feed reports: Punjab announced Kisan Bank, Rs4,500 Wheat Support Price, Minister Says - UrduPoint. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T16:40:49.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -144,6 +182,25 @@
       "what_changed": "A monitored source feed reports: Herculis Tokens SA announced XAUH Gold-Backed Token Offering With Swiss Bullion Reserves and Multi-Chain Access - CoinCodex. This report has not been independently verified.",
       "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
       "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T14:32:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c1281fe7",
+      "category": "macro",
+      "title": "Geomacro finds RBC raised ICON stock price target on growth and margin recovery - Investing.com UK",
+      "what_changed": "A monitored source feed reports: RBC raised ICON stock price target on growth and margin recovery - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T14:32:00.000Z",
@@ -974,6 +1031,25 @@
       "severity": null
     },
     {
+      "id": "macro-0cf2c776",
+      "category": "macro",
+      "title": "Geomacro finds World Bank forecast higher energy, food commodity prices - Daily Post Nigeria",
+      "what_changed": "A monitored source feed reports: World Bank forecast higher energy, food commodity prices - Daily Post Nigeria. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T05:05:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-99270fc4",
       "category": "macro",
       "title": "Geomacro finds Fed kept interest rates unchanged, gold prices and many precious metals simultaneously fall - Laodong.vn",
@@ -1002,6 +1078,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T04:07:10.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-7d23dd91",
+      "category": "macro",
+      "title": "Geomacro finds World Bank forecast 28% surge in global wheat prices in 2026 - Profit by Pakistan Today",
+      "what_changed": "A monitored source feed reports: World Bank forecast 28% surge in global wheat prices in 2026 - Profit by Pakistan Today. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T03:55:39.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

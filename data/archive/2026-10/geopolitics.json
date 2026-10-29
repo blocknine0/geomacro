@@ -2,8 +2,103 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-29T17:20:33.092Z",
+  "updated_at": "2026-10-29T18:18:05.322Z",
   "signals": [
+    {
+      "id": "geopolitics-23905408",
+      "category": "geopolitics",
+      "title": "Geomacro finds Paris Gun Attack left One Dead, Five Wounded As Suspect Faces Terrorism Probe",
+      "what_changed": "A monitored source feed reports: Paris Gun Attack left One Dead, Five Wounded As Suspect Faces Terrorism Probe. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T18:04:28.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.channelstv.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-120f61a6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Colombia reported 256 dead, 973 missing in Russia-Ukraine war - upi",
+      "what_changed": "A monitored source feed reports: Colombia reported 256 dead, 973 missing in Russia-Ukraine war - upi. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T17:58:14.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-85036e9d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Modi'in Mayor Haim Bibas called for Netanyahu-Eisenkot unity government, warns against new elections",
+      "what_changed": "A monitored source feed reports: Modi'in Mayor Haim Bibas called for Netanyahu-Eisenkot unity government, warns against new elections. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T17:48:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.jpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1a3c1474",
+      "category": "geopolitics",
+      "title": "Geomacro finds Colombia reported 256 Dead, 973 Missing in Russia-Ukraine War - ColombiaOne.com",
+      "what_changed": "A monitored source feed reports: Colombia reported 256 Dead, 973 Missing in Russia-Ukraine War - ColombiaOne.com. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T17:01:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-cd6a03fc",
+      "category": "geopolitics",
+      "title": "Geomacro finds Pentagon said Iran war has cost US taxpayers $47bn: What that means - Al Jazeera",
+      "what_changed": "A monitored source feed reports: Pentagon said Iran war has cost US taxpayers $47bn: What that means - Al Jazeera. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T16:52:05.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-37fe83e1",
       "category": "geopolitics",
@@ -132,6 +227,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.dabangasudan.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c7ff3183",
+      "category": "geopolitics",
+      "title": "Geomacro finds UNHCR Somalia PSMN reported Q3 2026 - UNHCR - The UN Refugee Agency",
+      "what_changed": "A monitored source feed reports: UNHCR Somalia PSMN reported Q3 2026 - UNHCR - The UN Refugee Agency. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T15:46:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -328,6 +442,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-23d1d964",
+      "category": "geopolitics",
+      "title": "Geomacro finds Qatar rejected ‘dangerous’ accusations that it interfered in Israeli elections - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Qatar rejected ‘dangerous’ accusations that it interfered in Israeli elections - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T13:33:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-e7e7e04b",
       "category": "geopolitics",
       "title": "Geomacro finds Qatar rejected ‘dangerous’ accusations that it interfered in Israeli elections - Al Arabiya English",
@@ -461,6 +594,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-775653db",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said 14 killed in Russian drone attack on railway station in Ukraine’s Dnipro - Anadolu Ajansı",
+      "what_changed": "A monitored source feed reports: Ukraine said 14 killed in Russian drone attack on railway station in Ukraine’s Dnipro - Anadolu Ajansı. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T11:22:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-fe52e98b",
       "category": "geopolitics",
       "title": "Geomacro finds Pentagon said Iran war has cost US taxpayers $47bn: What that means",
@@ -474,6 +626,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.aljazeera.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e8d42db8",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said at least 13 killed in Russian attack on train station - France 24",
+      "what_changed": "A monitored source feed reports: Ukraine said at least 13 killed in Russian attack on train station - France 24. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T11:10:35.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -664,6 +835,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-edbf507b",
+      "category": "geopolitics",
+      "title": "Geomacro finds Eisenkot warned about campaign to 'delegitimise' election",
+      "what_changed": "A monitored source feed reports: Eisenkot warned about campaign to 'delegitimise' election. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T09:17:20.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.rte.ie"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
