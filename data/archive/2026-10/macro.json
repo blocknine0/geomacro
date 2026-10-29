@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-29T08:55:18.712Z",
+  "updated_at": "2026-10-29T10:16:29.202Z",
   "signals": [
+    {
+      "id": "macro-7bfe24f9",
+      "category": "macro",
+      "title": "Geomacro finds Truist cut Fortinet stock price target on service revenue concerns By Investing.com - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Truist cut Fortinet stock price target on service revenue concerns By Investing.com - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T09:02:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-e3cc5e82",
+      "category": "macro",
+      "title": "Geomacro finds Stifel raised Cohu stock price target on thermal test handler growth - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Stifel raised Cohu stock price target on thermal test handler growth - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:56:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-a745f9e8",
       "category": "macro",
@@ -100,6 +138,25 @@
       "severity": null
     },
     {
+      "id": "macro-722cfc2a",
+      "category": "macro",
+      "title": "Geomacro finds Kotak raised FY27 crude oil price forecast to USD 100 amid 8-month supply disruption - The Tribune",
+      "what_changed": "A monitored source feed reports: Kotak raised FY27 crude oil price forecast to USD 100 amid 8-month supply disruption - The Tribune. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:22:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-3db316b8",
       "category": "macro",
       "title": "Geomacro finds China unveiled 16 measures to further liberalize Hainan Free Trade Port trade - chinadailyhk",
@@ -147,6 +204,44 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T08:08:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d6c9c0e7",
+      "category": "macro",
+      "title": "Geomacro finds Fed held interest rates steady at 3.75-4.00 pct amid elevated inflation",
+      "what_changed": "A monitored source feed reports: Fed held interest rates steady at 3.75-4.00 pct amid elevated inflation. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:06:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: timeskuwait.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8172013d",
+      "category": "macro",
+      "title": "Geomacro finds CBA forecast average oil price of $92.8 per barrel in 2026 - Report.az",
+      "what_changed": "A monitored source feed reports: CBA forecast average oil price of $92.8 per barrel in 2026 - Report.az. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:47:08.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -208,6 +303,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.rbf.gov.fj"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-99270fc4",
+      "category": "macro",
+      "title": "Geomacro finds Fed kept interest rates unchanged, gold prices and many precious metals simultaneously fall - Laodong.vn",
+      "what_changed": "A monitored source feed reports: Fed kept interest rates unchanged, gold prices and many precious metals simultaneously fall - Laodong.vn. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T04:58:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

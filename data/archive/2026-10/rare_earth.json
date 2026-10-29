@@ -2,8 +2,65 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-29T08:55:18.712Z",
+  "updated_at": "2026-10-29T10:16:29.202Z",
   "signals": [
+    {
+      "id": "rare_earth-cb470f15",
+      "category": "rare_earth",
+      "title": "Geomacro finds Glencore kept copper forecast as Q3 output improves - MiningMX",
+      "what_changed": "A monitored source feed reports: Glencore kept copper forecast as Q3 output improves - MiningMX. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T09:08:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-0832a74d",
+      "category": "rare_earth",
+      "title": "Geomacro finds Commission launched High-Level Dialogue with the European refining sector - Energy",
+      "what_changed": "A monitored source feed reports: Commission launched High-Level Dialogue with the European refining sector - Energy. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T08:15:17.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-c959582e",
+      "category": "rare_earth",
+      "title": "Geomacro finds Glencore reported 12% Rise in Adjusted Copper Production and Maintains 2026 Guidance - Yahoo Finance UK",
+      "what_changed": "A monitored source feed reports: Glencore reported 12% Rise in Adjusted Copper Production and Maintains 2026 Guidance - Yahoo Finance UK. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:39:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-cf64f96b",
       "category": "rare_earth",
@@ -71,6 +128,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T00:07:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-ce834940",
+      "category": "rare_earth",
+      "title": "Geomacro finds Study confirmed FireFly on track to be a significant copper producer - Taiwan News",
+      "what_changed": "A monitored source feed reports: Study confirmed FireFly on track to be a significant copper producer - Taiwan News. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T00:03:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

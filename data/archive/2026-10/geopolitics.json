@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-29T08:55:18.712Z",
+  "updated_at": "2026-10-29T10:16:29.202Z",
   "signals": [
+    {
+      "id": "geopolitics-cafb5719",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran announced plans to disrupt US midterm elections - Telegraph - Iran International",
+      "what_changed": "A monitored source feed reports: Iran announced plans to disrupt US midterm elections - Telegraph - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T09:17:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-68ff566d",
       "category": "geopolitics",
@@ -33,6 +52,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T07:35:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e71afbb2",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. and Japan agreed to establish missile-production facility - Japan Today",
+      "what_changed": "A monitored source feed reports: U.S. and Japan agreed to establish missile-production facility - Japan Today. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:33:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -75,6 +113,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: dailynews.co.tz"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-b352f1ec",
+      "category": "geopolitics",
+      "title": "Geomacro finds Liberia launched Road to UN Security Council Presidency: Foreign Minister Nyanti Highlights Nation s Historic Journey from Sanctions to Global Leadership",
+      "what_changed": "A monitored source feed reports: Liberia launched Road to UN Security Council Presidency: Foreign Minister Nyanti Highlights Nation s Historic Journey from Sanctions to Global Leadership. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "sanctions and trade restrictions",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T07:09:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: frontpageafricaonline.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -208,6 +265,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.dawn.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-5e3dddcf",
+      "category": "geopolitics",
+      "title": "Geomacro finds Oman called for economic and security pact between Iran and Gulf countries - The National",
+      "what_changed": "A monitored source feed reports: Oman called for economic and security pact between Iran and Gulf countries - The National. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T03:59:11.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
