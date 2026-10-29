@@ -183,13 +183,169 @@ const EVENT_FALLBACK:Record<StatelessCategory,Readonly<{impact:string;limit:stri
  rare_earth:{impact:"the next evidence to check is the affected material, supply-chain stage and geography.",
   limit:"Neither added output nor a disruption is established by the observation."},
 };
+/** High-specificity article-level pathways take precedence over broad topic
+ * templates. These are generic causal mechanisms, not assertions that the
+ * reported effect happened. Only already-public headline/change fields feed
+ * these patterns; nothing queries source material or changes ingest/storage.
+ */
+const MATERIAL_TERMS:readonly [RegExp,string][]=[
+ [/\bcopper\b/iu,"copper"],[/\bzinc\b/iu,"zinc"],[/\blithium\b/iu,"lithium"],
+ [/\bnickel\b/iu,"nickel"],[/\bcobalt\b/iu,"cobalt"],[/\bgraphite\b/iu,"graphite"],
+ [/\brare[- ]earths?\b/iu,"rare earths"],[/\buranium\b/iu,"uranium"],
+ [/\btungsten\b/iu,"tungsten"],[/\bgallium\b/iu,"gallium"],
+ [/\bgermanium\b/iu,"germanium"],[/\bantimony\b/iu,"antimony"],
+ [/\bmanganese\b/iu,"manganese"],[/\bvanadium\b/iu,"vanadium"],
+ [/\bpotash\b/iu,"potash"],[/\bbauxite\b/iu,"bauxite"],
+ [/\balumina\b/iu,"alumina"],[/\baluminium\b|\baluminum\b/iu,"aluminium"],
+ [/\bgold\b/iu,"gold"],[/\bsilver\b/iu,"silver"],
+];
+function materialNames(event:string):string{
+ const found=MATERIAL_TERMS.filter(([test])=>test.test(event)).map(([,name])=>name);
+ if(found.length===0)return "";
+ if(found.length===1)return found[0];
+ return found.slice(0,3).join(", ").replace(/, ([^,]+)$/u," and $1");
+}
+function articleSpecificFocus(category:StatelessCategory,event:string):EventFocus|null{
+ if(category==="rare_earth"){
+  const materials=materialNames(event);
+  const scoped=materials?" involving "+materials:" in the minerals sector";
+  if(/\b(?:tokens?|tokenized|tokenised|digital assets?|digital commodity|trading platform|investment product|metals\.io|unlocking access|investment access)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported product or platform launch"+scoped+
+      " concerns financial or digital access to material exposure, not necessarily new physical supply.",
+    limit:"Check redemption, custody, inventory backing and actual delivery terms before treating it as direct access to the commodity."};
+  }
+  if(/\b(?:output falls short|output shortfall|production shortfall|maintained guidance|output below|production below)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported guidance-versus-output development"+scoped+
+      " raises a specific question about production performance relative to company expectations.",
+    limit:"Check stated guidance, actual period output and explanations for any variance before inferring a lasting supply deficit."};
+  }
+  if(/\b(?:profits?|earnings|financial results?|quarterly results?|Q[1-4]|revenue|EBITDA|net income)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported corporate financial update"+scoped+
+     " is relevant to producer margins, investment capacity and commodity-price exposure.",
+    limit:"Compare reported realized prices, sales volumes and operating costs before inferring any change in physical supply."};
+  }
+  if(/\b(?:export bans?|export controls?|export restrictions?|shipment restrictions?|quotas?|licen[cs]es?)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported trade-control action"+scoped+
+      " raises questions about eligible buyers, shipment permissions, possible effects on shipments and available substitute suppliers.",
+    limit:"The effective product list and implementation date require official confirmation; an actual supply loss is not established."};
+  }
+  if(/\b(?:strike|shutdown|halt(?:ed)?|suspend(?:ed|sion)?|outage|flood|landslide|mine accident|disruption|blockade)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported operating interruption"+scoped+
+      " makes mine or processing continuity and delivery exposure the key watchpoints.",
+    limit:"Verify which facilities, capacities and shipment dates were affected before quantifying lost supply."};
+  }
+  if(/\b(?:prices?|price rally|price surge|price drop|price fall|spot market|benchmark)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported pricing development"+scoped+
+      " is relevant to procurement costs, producer revenues and inventory decisions.",
+    limit:"The article alone does not verify benchmark prices, timing, traded volumes or a sustained market trend."};
+  }
+  if(/\b(?:merger|acquisition|takeover|stake purchase|buyout|joint venture|joint-venture)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported ownership or partnership change"+scoped+
+      " matters for control of assets, funding and future supply concentration.",
+    limit:"Completion, regulatory approval and changes in output require separate evidence."};
+  }
+  if(/\b(?:production|output|tonnes?|tons?|capacity|shipment|exports?|deliveries|smelter)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported operating or delivery development"+scoped+
+      " is relevant to material availability and supply-chain lead times.",
+    limit:"Confirm the period, operational status and quantified volumes before treating announced amounts as delivered supply."};
+  }
+  if(/\b(?:mine|exploration|project|drilling|deposit|resource|discovery|permit|approval)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported project or permitting milestone"+scoped+
+      " may affect the pipeline of future sourcing options.",
+    limit:"Economic feasibility, financing, construction and commercially viable production are separate milestones."};
+  }
+  if(/\b(?:investment|funding|financing|grant|loan|strategic partnership)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported capital commitment"+scoped+
+      " is relevant to the funding available for processing and supply diversification.",
+    limit:"A commitment does not establish commissioning, contracted tonnage or actual deliveries."};
+  }
+  if(/\b(?:demand|shortage|surplus|stockpile|inventory|supply chain)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported demand or inventory signal"+scoped+
+      " informs sourcing concentration and potential procurement planning.",
+    limit:"Verified inventories, consumption and delivery data are needed before claiming a shortage or surplus."};
+  }
+  // A commodity can be known even when the action doesn't fit an event rule.
+  if(materials)return {rule:/$/u,
+    impact:"the reported development concerns "+materials+
+      " and therefore points to material-specific sourcing and industrial exposure.",
+    limit:"The available headline does not establish whether this changed mine output, prices or shipments."};
+ }
+ if(category==="macro"){
+  if(/\b(?:nuclear power station|nuclear power plant|nuclear reactor|power station|electricity grid|power generation project)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported power-infrastructure development is relevant to energy capacity, long-term capital needs and potential import dependencies.",
+    limit:"Talks or a project proposal do not establish funding, construction, commissioning or lower electricity costs."};
+  }
+  if(/\b(?:airports?|air cargo|cargo hubs?|logistics hubs?|seaports?|shipping terminals?|railway expansion|transport infrastructure)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported transport-infrastructure initiative concerns freight capacity, connectivity and possible trade throughput.",
+    limit:"Approval or plans are not evidence of completed works, increased cargo handling or measured economic growth."};
+  }
+  if(/\b(?:gold.backed|bullion reserves?|token offerings?|tokenized gold|tokenised gold|stablecoins?|digital tokens?)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported commodity-linked financial product raises questions about reserve backing, redemption terms and issuer or counterparty exposure.",
+    limit:"A token offering is not evidence of a central-bank reserve change or an observed gold-price movement."};
+  }
+  if(/\b(?:central bank|federal reserve|European Central Bank|ECB|Bank of England|Bank of Japan|policy rates?)\b/iu.test(event)
+   &&/\b(?:interest rates?|rates? steady|rate cut|rate hike|rates? unchanged|rates? raised|rates? lowered|held.*rates?|cut.*rates?|raised.*rates?)\b/iu.test(event)){
+   return {rule:/$/u,
+    impact:"the reported policy-rate decision links borrowing costs, financing conditions and rate differentials to currency and inflation expectations.",
+    limit:"Check the official policy decision and guidance before drawing conclusions about the next meeting or actual asset-price reactions."};
+  }
+  if(/\b(?:earnings|profits?|quarterly results?|revenue|corporate results?)\b/iu.test(event))
+   return {rule:/$/u,
+    impact:"the reported financial result informs firm-level profitability, financing capacity and the wider activity outlook.",
+    limit:"The underlying period, comparable figures and wider economic significance need separate confirmation."};
+  if(/\b(?:PMI|purchasing managers|factory orders|manufacturing|industrial production)\b/iu.test(event))
+   return {rule:/$/u,
+    impact:"the reported manufacturing indicator is relevant to factory activity, demand and trade-sensitive production.",
+    limit:"An actual acceleration or contraction needs the period-specific index and comparison baseline."};
+  if(/\b(?:retail sales|consumer spending|household consumption)\b/iu.test(event))
+   return {rule:/$/u,
+    impact:"the reported consumption indicator informs household demand and potential growth momentum.",
+    limit:"Direction and scale require the original figures and comparison period."};
+  if(/\b(?:housing|property prices?|mortgages?|home sales|real estate)\b/iu.test(event))
+   return {rule:/$/u,
+    impact:"the reported housing development links household wealth, financing conditions and construction activity.",
+    limit:"No economy-wide conclusion follows without the measured period and underlying housing figures."};
+  if(/\b(?:bank failures?|banking crisis|capital requirements?|liquidity support|financial stability)\b/iu.test(event))
+   return {rule:/$/u,
+    impact:"the banking or liquidity development is relevant to counterparty resilience, credit availability and funding stress.",
+    limit:"Institutional solvency or market contagion is not established by a single reported statement."};
+  if(/\b(?:forecast|outlook|projection|estimate|predicted)\b/iu.test(event))
+   return {rule:/$/u,
+    impact:"the reported outlook can change expectations for the named economic variable and the assumptions behind decisions.",
+    limit:"A projection is not an observed data point or a verified market response."};
+  if(/\b(?:budget|government spending|tax reform|fiscal stimulus|public debt)\b/iu.test(event))
+   return {rule:/$/u,
+    impact:"the reported fiscal measure is relevant to government financing needs and potential demand conditions.",
+    limit:"The enacted scope, funding and effects require official documents and figures."};
+  if(/\b(?:commodity|metals?|oil|gas|fuel|energy prices?)\b/iu.test(event))
+   return {rule:/$/u,
+    impact:"the reported commodity or energy development is relevant to input costs, inflation and external balances.",
+    limit:"Benchmark prices and any pass-through to consumers need independently verified measurements."};
+ }
+ return null;
+}
 export function concreteGeomacroAnalysis(s:StatelessIntelligenceSignal):string{
  const headline=concreteIntelligenceHeadline(s);
  // Rejected/anonymous statements must never acquire an invented actor.
  if(!headline)return s.why_it_matters;
  const event=headline.replace(/[.!?]+$/u,"").trim();
  const text=event+" "+intelligenceActorChange(s);
- const focus=EVENT_FOCUS[s.category].find(item=>item.rule.test(text))
+ const focus=articleSpecificFocus(s.category,text)
+   ??EVENT_FOCUS[s.category].find(item=>item.rule.test(text))
    ??EVENT_FOCUS[s.category].find(item=>item.rule.test(s.topic))
    ??EVENT_FALLBACK[s.category];
  const prefix=s.status==="osint_feed_observed_unverified"

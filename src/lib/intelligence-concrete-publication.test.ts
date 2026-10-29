@@ -134,4 +134,52 @@ describe("actual-event Intelligence publication",()=>{
    }
  });
 
+ it("turns specific currently observed macro stories into different causal watchpoints",()=>{
+  const headlines=[
+   ["Mahama said Ghana is in talks with Russia over first nuclear power station","power-infrastructure","commissioning"],
+   ["PM approved expansion of Jinnah and Allama Iqbal airports, eyes making Karachi air cargo hub","freight capacity","cargo handling"],
+   ["Herculis Tokens SA announced XAUH Gold-Backed Token Offering With Swiss Bullion Reserves and Multi-Chain Access","reserve backing","central-bank reserve"],
+   ["Sterling Financial reported 37.1% growth in nine-month profit before tax to 97.28bn","firm-level profitability","comparable figures"],
+   ["European Central Bank held key interest rates steady as energy prices cloud inflation and growth outlook","policy-rate decision","asset-price"],
+  ] as const;
+  const tails:string[]=[];
+  for(const [headline,subject,limit] of headlines){
+   const story={...sample("macro"),title:"Geomacro finds "+headline,
+    what_changed:"A monitored source feed reports: "+headline+". This report has not been independently verified.",
+    topic:"macro economics",status:"osint_feed_observed_unverified" as const,
+    development_type:"unverified OSINT feed observation",
+    sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"]};
+   const analysis=concreteGeomacroAnalysis(story);
+   expect(analysis).toContain("independently unverified");
+   expect(analysis).toContain(subject);
+   expect(analysis).toContain(limit);
+   tails.push(analysis.split("”, ")[1]??"");
+  }
+  expect(new Set(tails).size).toBe(headlines.length);
+  expect(tails.every(t=>!t.includes("affected indicator, economic channel and reporting period"))).toBe(true);
+ });
+ it("separates mineral access product, earnings, and copper output shortfall",()=>{
+  const headlines=[
+   ["Metals.io launched Copper, Unlocking Access to the Critical Metal at the Heart of Electrification","digital access","redemption"],
+   ["Teck Resources reported higher copper and zinc prices help boost Q3 profit","copper and zinc","operating costs"],
+   ["Glencore maintained guidance but quarterly copper output falls short","guidance-versus-output","actual period output"],
+   ["European Union announced lithium export controls","shipment permissions","implementation date"],
+  ] as const;
+  const tails:string[]=[];
+  for(const [headline,focus,limit] of headlines){
+   const story={...sample("rare_earth"),title:"Geomacro finds "+headline,
+    what_changed:"A monitored source feed reports: "+headline+". This report has not been independently verified.",
+    topic:"critical minerals",status:"osint_feed_observed_unverified" as const,
+    development_type:"unverified OSINT feed observation",
+    sources_credited:["Monitored feed: news.google.com (aggregator; original publisher not verified)"]};
+   const analysis=concreteGeomacroAnalysis(story);
+   expect(analysis).toContain("independently unverified");
+   expect(analysis).toContain(focus);
+   expect(analysis).toContain(limit);
+   tails.push(analysis.split("”, ")[1]??"");
+  }
+  expect(new Set(tails).size).toBe(headlines.length);
+  expect(tails.every(t=>!t.includes("affected material, supply-chain stage and geography"))).toBe(true);
+ });
+
 });
