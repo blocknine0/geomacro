@@ -203,13 +203,16 @@ export function projectThreeDomainStructuredDelivery(continuity,now=Date.now()){
 /** One existing bounded canonical D1 reader; no additional upstream request. */
 export async function deliverThreeDomainStructuredOutput(env,now=Date.now(),
   reader=threeDomainEvidenceContinuity){
-  if(!env?.DB||!Number.isFinite(now))return denied();
+  const readClock=()=>typeof now==="function"?now():now;
+  if(!env?.DB||!Number.isFinite(readClock()))return denied();
   let response;
   try{
-    response=await reader(env,now);
+    response=await reader(env,readClock());
     if(response.status!==200)return denied();
     const original=await response.json();
-    return resultJson(projectThreeDomainStructuredDelivery(original,now));
+    // Validate checked_at against the observation time AFTER the canonical
+    // async D1 read, not the request-entry clock before I/O completed.
+    return resultJson(projectThreeDomainStructuredDelivery(original,readClock()));
   }catch{return denied();}
 }
 
@@ -243,7 +246,8 @@ async function boundedCanonicalRecovery(env,readCanonical,now){
    }
    // Revalidate before sharing recovery across concurrent public requests.
    // Existing downstream delivery repeats this strict fail-closed projection.
-   projectThreeDomainStructuredDelivery(await result.clone().json(),now);
+   projectThreeDomainStructuredDelivery(await result.clone().json(),
+     typeof now==="function"?now():now);
    state.cooldownUntil=0;
    return result;
   }catch{
@@ -284,7 +288,7 @@ export async function deliverThreeDomainStructuredWithCacheRecovery(
   if(cached?.status!==200)return cached;
   try{
    const body=await cached.clone().json();
-   projectThreeDomainStructuredDelivery(body,now);
+   projectThreeDomainStructuredDelivery(body,typeof now==="function"?now():now);
    return cached;
   }catch{
    // One canonical no-cache source read, then the regular strict projector.

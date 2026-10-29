@@ -174,6 +174,20 @@ describe("three-domain D1-backed machine structured JSON delivery",()=>{
    expect(response.status).toBe(200);
    expect(refreshed).toBe(1);
  });
+ it("uses observation-time clock after awaited D1 I/O, not request-entry clock",async()=>{
+   let clock=NOW;
+   const later=source();
+   later.checked_at=new Date(NOW+2000).toISOString();
+   const reader=async()=>{clock=NOW+3000;return Response.json(later);};
+   const direct=await deliverThreeDomainStructuredOutput({DB:{}},()=>clock,reader);
+   expect(direct.status).toBe(200);
+   expect((await direct.json()).category_count).toBe(3);
+   clock=NOW;
+   const cached=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},()=>clock,
+     reader,async()=>{throw Error("UNNEEDED_ORIGIN_READ");});
+   expect(cached.status).toBe(200);
+   expect((await cached.json()).categories.macro.category).toBe("macro");
+ });
  it("one transient cached D1 503 recovers with one canonical source read",async()=>{
    let refreshed=0;
    const restored=await deliverThreeDomainStructuredWithCacheRecovery({DB:{}},NOW,
@@ -246,7 +260,7 @@ describe("three-domain D1-backed machine structured JSON delivery",()=>{
  it("has dedicated public Worker GET with shared read-only edge caching, no partner path changes",()=>{
    const index=readFileSync("workers/control-plane/src/index.mjs","utf8");
    expect(index).toContain('/v1/public/three-domain-structured-output');
-   expect(index).toContain("deliverThreeDomainStructuredWithCacheRecovery(env,Date.now(),");
+   expect(index).toContain("deliverThreeDomainStructuredWithCacheRecovery(env,()=>Date.now(),");
    expect(index).toContain("publicReadCache(()=>threeDomainEvidenceContinuity(env),canonicalRequest)");
    expect(index).toContain("publicReadCache(()=>threeDomainEvidenceContinuity(env),originalCacheRequest)");
    expect(index).toContain('new URL("/v1/public/three-domain-continuity",request.url)');
