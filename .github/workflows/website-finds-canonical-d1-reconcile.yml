@@ -73,6 +73,11 @@ jobs:
         run: node scripts/ops/plan-d1-bundled-work.mjs
 
   reconcile-website-ids:
+    # Serialize with the existing hourly publisher/archive writer; two workflows
+    # must never race to reinsert the same D1 IDs or duplicate quota consumption.
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
     needs: quota-admission
     if: >-
       github.repository == 'blocknine0/geomacro' &&
