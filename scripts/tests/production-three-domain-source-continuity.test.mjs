@@ -20,7 +20,7 @@ test("Three genuinely current source checks are NOT 585 payable current events",
  assert.equal(receipt.all_three_source_checks_current,true);
  assert.equal(receipt.all_three_paid_signed_categories_verified,false);
  assert.equal(receipt.current_verified_original_events_in_all_195_countries,false);
- assert.equal(receipt.categories.rare_earth.status,"SOURCE_CHECK_CURRENT_NO_VERIFIED_NEW_EVENT");
+ assert.equal(receipt.categories.rare_earth.status,"SOURCE_AND_ORIGINAL_PUBLISHER_CURRENT_NO_VERIFIED_NEW_EVENT");
 });
 test("Stale source checks remain degraded even if other domains are fine",()=>{
  const doc=sample();
@@ -28,6 +28,13 @@ test("Stale source checks remain degraded even if other domains are fine",()=>{
  const r=evaluateProductionSourceContinuity(doc,{now});
  assert.equal(r.all_three_source_checks_current,false);
  assert.deepEqual(r.stale_or_missing_source_categories,["rare_earth:SOURCE_CHECK_STALE_OR_MISSING"]);
+});
+test("Healthy context with stale primary publisher pulse must remain DEGRADED",()=>{
+ const doc=sample();
+ doc.categories.macro.original_publisher_pulse.status="STALE_OR_UNAVAILABLE";
+ const r=evaluateProductionSourceContinuity(doc,{now});
+ assert.equal(r.all_three_source_checks_current,false);
+ assert.ok(r.stale_or_missing_source_categories.includes("macro:ORIGINAL_PUBLISHER_PULSE_STALE_OR_DEGRADED"));
 });
 test("Reject contradictory freshness or forged rights flags",()=>{
  const doc=sample();
