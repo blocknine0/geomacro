@@ -10,6 +10,8 @@ on:
       - 'config/answer-source-candidates-195x3.v1.json'
       - 'scripts/ops/audit-195x3-human-machine-source-gaps.mjs'
       - 'scripts/tests/verify-195x3-human-machine-source-gaps.mjs'
+      - 'scripts/ops/probe-195x3-wdi-official-reference.mjs'
+      - 'scripts/lib/wdi-195-batch-reference.mjs'
       - '.github/workflows/global-195x3-human-machine-source-regression.yml'
 
 permissions:
@@ -32,6 +34,13 @@ jobs:
         run: node scripts/tests/verify-195x3-human-machine-source-gaps.mjs
       - name: Generate full 1170-question requirements and gap artifacts (offline)
         run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs
+      - name: Validate official 195-country macro source adapter without network
+        run: node scripts/tests/wdi-195-batch-reference.test.mjs
+      - name: Generate offline source availability receipt
+        run: node scripts/ops/probe-195x3-wdi-official-reference.mjs
+      - name: Run one bounded World Bank 195-country reference batch
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: node scripts/ops/probe-195x3-wdi-official-reference.mjs --live
       - name: Run 12 rotated production questions with NO PAYMENT (daily or operator initiated)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: node scripts/ops/audit-195x3-human-machine-source-gaps.mjs --live --limit=12
