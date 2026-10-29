@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { parseUsGSMcsCsv } from "../../global-intelligence/adapters/usgs-mcs-2026.mjs";
 import { canonicalJson } from "./canonical-json";
-import { country195ByIso3 } from "./canonical-country-registry-195";
+import { country195ByIso3, COUNTRIES_195 } from "./canonical-country-registry-195";
 import type { StructuralContext, StructuralObservation } from "./structural-context.server";
 import type { SourceRightsRow } from "./commercial-source-eligibility.server";
 
@@ -151,6 +151,75 @@ export function deriveMcsProductionChanges(rows: Record<string, string>[], iso3:
     return [{ commodity: JSON.parse(key)[0] as string, change_pct: Number(change.toFixed(6)),
       row_hashes: [previous.rowHash, current.rowHash], series_key_hash: sha(key) }];
   }).slice(0, 12);
+}
+
+/**
+ * Measure *actual* exact-hash USGS MCS 2026 annual structural country coverage.
+ * Every candidate comes from verified CC0 dataset rows with 2024+2025
+ * comparable production periods; publisher country ≠ current event country.
+ * The output never certifies signed GRO, current news, an x402 quote,
+ * independent customer delivery or product availability.
+ */
+export function summarizeQualifiedMcs195StructuralCoverage(
+  rows: Record<string,string>[], now: Date,
+) {
+  if (!Array.isArray(rows) || !Number.isFinite(now.getTime()) ||
+      COUNTRIES_195.length !== 195)
+    throw Error("MCS_195_SOURCE_CENSUS_INPUT_INVALID");
+  const nameToIso3 = new Map(COUNTRIES_195.map(c=>[c.name.toUpperCase(),c.iso3]));
+  if (nameToIso3.size!==195) throw Error("MCS_195_SOURCE_CENSUS_COUNTRY_DUPLICATE");
+  const grouped = new Map<string, Record<string,string>[]>();
+  for(const row of rows){
+    const iso3=nameToIso3.get(String(row?.Country??"").trim().toUpperCase());
+    if(!iso3) continue; // A USGS territory/alias is never guessed as a country.
+    const group=grouped.get(iso3)??[];
+    group.push(row);grouped.set(iso3,group);
+  }
+  const countries: Array<{
+    iso3:string;status:"COMPARABLE_2024_2025_SOURCE"|
+      "NO_COMPARABLE_2024_2025_SOURCE"|"UNVERIFIED_DUPLICATE_OR_AMBIGUOUS_ROWS";
+    derived_series_count:number; raw_original_rows_in_customer_response:false;
+    commercial_offer_eligible_not_assessed:true;
+  }> = [];
+  for(const country of COUNTRIES_195) {
+    const sourceRows=grouped.get(country.iso3)??[];
+    let status:"COMPARABLE_2024_2025_SOURCE"|
+      "NO_COMPARABLE_2024_2025_SOURCE"|"UNVERIFIED_DUPLICATE_OR_AMBIGUOUS_ROWS" =
+      "NO_COMPARABLE_2024_2025_SOURCE";
+    let count=0;
+    try {
+      const comparable=deriveMcsProductionChanges(sourceRows,country.iso3,now);
+      count=comparable.length;
+      if(count>0)status="COMPARABLE_2024_2025_SOURCE";
+    } catch {status="UNVERIFIED_DUPLICATE_OR_AMBIGUOUS_ROWS";}
+    countries.push({iso3:country.iso3,status,derived_series_count:count,
+      raw_original_rows_in_customer_response:false,
+      commercial_offer_eligible_not_assessed:true});
+  }
+  const comparable=countries.filter(x=>x.status==="COMPARABLE_2024_2025_SOURCE");
+  const invalid=countries.filter(x=>x.status==="UNVERIFIED_DUPLICATE_OR_AMBIGUOUS_ROWS");
+  return {
+    schema:"geomacro.mcs-195-qualified-annual-country-source-census.v1" as const,
+    canonical_country_count:195 as const,
+    source:"USGS_MCS_2026_EXACT_SHA_CC0_VERIFIED_ONLY" as const,
+    publisher_release_verified_before_census_by_caller:true as const,
+    source_sha256:MCS_DIGEST_CSV_SHA256,
+    reference_periods:[2024,2025] as const,
+    native_observation_kind:"ANNUAL_STRUCTURAL_NOT_CURRENT_NEWS" as const,
+    countries_with_comparable_source:comparable.length,
+    countries_without_comparable_source:195-comparable.length-invalid.length,
+    countries_with_ambiguous_rows:invalid.length,
+    derived_annual_series_candidates:comparable.reduce((n,c)=>n+c.derived_series_count,0),
+    canonical_product_preflight_per_country_not_assessed:true,
+    source_rights_grant_is_exact_scoped_dataset_only:true,
+    current_country_mineral_events_verified:false,
+    signed_risk_objects_verified:false,
+    paid_entitlements_or_mainnet_settlements_verified:false,
+    full_195_country_commercial_coverage_verified:false,
+    no_additional_source_network_calls:true,
+    no_raw_country_production_data_exported:true,
+    country_coverage:countries,
+  };
 }
 
 export async function loadQualifiedMcsCountryContext(iso3: string, options: Parameters<typeof loadQualifiedMcsRelease>[0] = {}): Promise<StructuralContext | null> {
