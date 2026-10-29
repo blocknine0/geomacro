@@ -30,6 +30,8 @@ on:
       - "src/lib/qualified-bls-us-cpi.server.test.ts"
       - "scripts/ops/probe-brazil-bcb-ipca-original.mjs"
       - "scripts/tests/brazil-bcb-ipca-original.test.mjs"
+      - "scripts/ops/probe-ukraine-presidential-rss-original.mjs"
+      - "scripts/tests/ukraine-presidential-original-rss.test.mjs"
       - "src/lib/store-structural-release-context.server.ts"
       - "src/lib/commercial-source-eligibility.server.ts"
       - "src/lib/coinbase-x402.server.ts"
@@ -69,6 +71,8 @@ on:
       - "src/lib/qualified-bls-us-cpi.server.test.ts"
       - "scripts/ops/probe-brazil-bcb-ipca-original.mjs"
       - "scripts/tests/brazil-bcb-ipca-original.test.mjs"
+      - "scripts/ops/probe-ukraine-presidential-rss-original.mjs"
+      - "scripts/tests/ukraine-presidential-original-rss.test.mjs"
       - "src/lib/store-structural-release-context.server.ts"
       - "src/lib/commercial-source-eligibility.server.ts"
       - "src/lib/coinbase-x402.server.ts"
@@ -105,6 +109,12 @@ jobs:
       - name: One bounded Brazil BCB IPCA official-source read, private status only
         if: github.event_name == 'pull_request' || github.event_name == 'schedule'
         run: node scripts/ops/probe-brazil-bcb-ipca-original.mjs
+      - name: Unit-test official Ukraine native RSS source provenance and rejection
+        if: github.event_name == 'pull_request' || github.event_name == 'schedule'
+        run: node --test scripts/tests/ukraine-presidential-original-rss.test.mjs
+      - name: One bounded Ukraine presidential official original RSS observation
+        if: github.event_name == 'pull_request' || github.event_name == 'schedule'
+        run: node scripts/ops/probe-ukraine-presidential-rss-original.mjs
       - name: Verify first-buyer locked pricing only and zero-payments contract
         run: |
           node --check scripts/agentic/first-sale-price-proof.mjs
