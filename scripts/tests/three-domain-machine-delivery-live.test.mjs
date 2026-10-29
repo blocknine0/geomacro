@@ -198,6 +198,6 @@ test("diagnoses a production cached 503 separately from healthy canonical no-cac
   ()=>auditThreeDomainLive({fetchImpl:firstCached503,now:NOW}),
   /STRUCTURED_CACHED_HTTP_503_UNCACHED_HTTP_200_/
  );
- assert.equal(requests,3);
+ assert.equal(requests,4);
  assert.equal(f.urls.every(url=>[STRUCTURED_API,CONTINUITY_API].includes(url)),true);
 });
