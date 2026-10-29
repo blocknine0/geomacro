@@ -73,15 +73,15 @@ export async function archiveGlobalCountryAudit({
   if(!existing){
     await client.putWithMetadataVerification(key,bytes);
   }
-  const restored=existing??await client.get(key);
-  if(digest(restored)!==sha||restored.length!==bytes.length)
+  // putWithMetadataVerification already performed an independently
+  // governed full byte readback. No duplicate GET against scarce B2 quota.
+  if(existing&&(digest(existing)!==sha||existing.length!==bytes.length))
     fail("DURABLE_SNAPSHOT_READBACK_FAILED");
   const headBytes=Buffer.from(JSON.stringify(head)+"\n");
   await client.putWithMetadataVerification(GLOBAL_PROOF_HEAD_KEY,headBytes);
-  const newHead=await client.get(GLOBAL_PROOF_HEAD_KEY);
-  if(digest(newHead)!==digest(headBytes))
-    fail("LATEST_HEAD_READBACK_FAILED");
-  const restoredHead=assertProofHead(JSON.parse(newHead.toString("utf8")));
+  // The metadata-verifying PUT already independently GET-verified the head;
+  // revalidate its canonical representation locally without another GET.
+  const restoredHead=assertProofHead(JSON.parse(headBytes.toString("utf8")));
   if(restoredHead.snapshot_sha256!==sha||restoredHead.snapshot_key!==key)
     fail("LATEST_HEAD_INVALID");
   // Fail red if source unavailable, even though the durable outage evidence
