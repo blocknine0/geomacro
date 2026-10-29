@@ -179,7 +179,14 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
     for (const row of results.slice(0,250)) {
       try {
         const signal=JSON.parse(row.story_json);
+        // The explicitly delayed 15-minute legacy PUBLIC contract predates
+        // monitored OSINT. Its frozen external consumers accept only dated
+        // official observations/candidates, not unverified monitored feeds.
+        // Keep OSINT visible on the modern zero-delay Website Intelligence
+        // endpoint and canonical D1 bundle, without relabelling or signing it.
         if (verifyDerivedStory(signal,now) &&
+            (legacyDelayMinutes!==15 ||
+              signal.status!=="osint_feed_observed_unverified") &&
             (originalTime(signal,now)?.eligibleAt??Infinity)+legacyDelayMinutes*60_000<=now &&
             (originalTime(signal,now)?.at??-Infinity)>=now-AUTO_INGEST_RETENTION_MS) {
           // Audit provenance: server-generated D1 first insertion timestamp,
