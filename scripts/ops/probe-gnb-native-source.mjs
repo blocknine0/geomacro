@@ -4,10 +4,10 @@
  */
 import {mkdirSync,writeFileSync} from "node:fs";
 import {resolve} from "node:path";
-import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
+import {privateLocalPublisherCandidates} from "../lib/private-osint-local-publisher-rotation.mjs";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 const ID="private_gaplane_gnb_ang_agency";
-const sources=privateOsintGlobalSources().filter(x=>x.id===ID);
+const sources=privateLocalPublisherCandidates().filter(x=>x.id===ID);
 if(sources.length!==1||sources[0].publisher_country_iso3!=="GNB"||
  sources[0].url!=="https://ang.gw/feed/"||sources[0].private_only===false)
  throw Error("GNB_EXACT_NATIVE_SOURCE_NOT_REGISTERED");
@@ -38,7 +38,7 @@ if(process.argv.includes("--live")){
     category:x.category,state:x.state
   })),native_dated_candidates:r.items.length,
    source_country_rss_transport_healthy:r.checks.every(x=>
-    ["LIVE_FEED_AND_DATED_ITEMS","LIVE_FEED_HEALTHY_NO_MATCHING_DATED_ITEMS"].includes(x.state)),
+    ["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW"].includes(x.state)),
   };
  }catch(e){
   state={...state,source_requests_executed:1,
