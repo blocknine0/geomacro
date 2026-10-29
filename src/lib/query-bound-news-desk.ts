@@ -58,6 +58,28 @@ export type QueryBoundNewsDesk = Readonly<{
     market_direction: null;
     price_impact: null;
     next_confirmed_event_at: null;
+    market_relevance: Readonly<{
+      status: "POTENTIAL_CHANNELS_ONLY";
+      potential_watch_channels: readonly string[];
+      observed_market_reaction_verified: false;
+      affected_instruments_confirmed: readonly string[];
+      price_direction: null;
+      price_change: null;
+    }>;
+    what_to_watch: Readonly<{
+      focus_topic: string;
+      followup_trigger: "NEW_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION";
+      confirmed_followup_scheduled: false;
+      next_verified_event_at: null;
+    }>;
+    evidence_confidence: Readonly<{
+      tier: "ORIGINAL_DATE_VERIFIED_CLAIMS_UNCORROBORATED";
+      original_page_date_verified: true;
+      event_claim_independently_verified: false;
+      market_impact_verified: false;
+      country_impact_verified: false;
+      commercial_rights_verified: false;
+    }>;
   }>[];
   unique_story_count: number;
   unresolved: readonly string[];
@@ -65,6 +87,21 @@ export type QueryBoundNewsDesk = Readonly<{
   commercial_rights_verified: false;
   execution_authorized: false;
 }>;
+
+/** Potential research channels are topic labels, not confirmed exposures.
+ * Do not infer an affected instrument or price from a headline. */
+function watchChannels(topic: string): string[] {
+  const channels: string[] = [];
+  if (/\b(?:monetary|interest|rates?|bond|treasury|yield|inflation)\b/iu.test(topic))
+    channels.push("rates_and_bonds");
+  if (/\b(?:fx|foreign.exchange|currenc|exchange.rate|cross.border)\b/iu.test(topic))
+    channels.push("fx_and_payments");
+  if (/\b(?:sanction|embargo|trade|export|tariff|shipping|corridor)\b/iu.test(topic))
+    channels.push("trade_and_logistics");
+  if (/\b(?:mineral|rare.earth|copper|lithium|graphite|nickel|mining|processing)\b/iu.test(topic))
+    channels.push("mineral_supply_chain");
+  return channels;
+}
 
 /** Date-only publishers cannot acquire an invented UTC hour. */
 function validPublicationClock(signal: NewsDeskSignal): boolean {
@@ -129,6 +166,28 @@ export function buildQueryBoundNewsDesk(input: Readonly<{
     market_direction: null,
     price_impact: null,
     next_confirmed_event_at: null,
+    market_relevance: {
+      status: "POTENTIAL_CHANNELS_ONLY" as const,
+      potential_watch_channels: watchChannels(signal.topic),
+      observed_market_reaction_verified: false as const,
+      affected_instruments_confirmed: [] as string[],
+      price_direction: null,
+      price_change: null,
+    },
+    what_to_watch: {
+      focus_topic: signal.topic,
+      followup_trigger: "NEW_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION" as const,
+      confirmed_followup_scheduled: false as const,
+      next_verified_event_at: null,
+    },
+    evidence_confidence: {
+      tier: "ORIGINAL_DATE_VERIFIED_CLAIMS_UNCORROBORATED" as const,
+      original_page_date_verified: true as const,
+      event_claim_independently_verified: false as const,
+      market_impact_verified: false as const,
+      country_impact_verified: false as const,
+      commercial_rights_verified: false as const,
+    },
   }));
   // Prefer the actual specific finding, not "GeoMacro found N stories".
   // For the market/implications question, preserve the "may/could" wording
