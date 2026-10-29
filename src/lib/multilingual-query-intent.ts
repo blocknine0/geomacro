@@ -276,7 +276,13 @@ export function interpretMultilingualIntelligenceQuery(raw: unknown) {
   const q = norm(input.question);
   const inferredTopics = semanticTopics(input.question);
   const requestedTopics = input.topics ?? inferredTopics;
-  if (input.topics && inferredTopics.some(t => !input.topics!.includes(t)))
+  // Explicit topic enums are the machine caller's requested slice. A natural
+  // language question may mention a second adjacent concept (for example a
+  // graphite export restriction is both mineral and trade language); keep the
+  // explicitly selected topic when it overlaps the question's semantics, and
+  // reject only a genuinely unrelated override.
+  if (input.topics && inferredTopics.length > 0 &&
+      !input.topics.some(topic => inferredTopics.includes(topic)))
     throw Error("EXPLICIT_TOPICS_CONTRADICT_QUESTION");
   if (requestedTopics.length === 0) throw Error("UNSUPPORTED_QUERY_TOPIC_PROVIDE_ENUM");
   const hintedIntent = queryIntent(input.question);
