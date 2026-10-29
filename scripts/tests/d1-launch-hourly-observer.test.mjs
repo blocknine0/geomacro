@@ -14,6 +14,17 @@ test("post-deploy observation uses protected main, read-only permissions and no 
  assert.match(yaml,/contents: read\n  actions: read/);
 });
 
+test("72h hourly receipts use YAML block scalar with REAL newlines, never literal backslash-n",()=>{
+ const yaml=readFileSync(new URL("../../.github/workflows/d1-launch-72h-observatory.yml",import.meta.url),"utf8");
+ assert.ok(yaml.includes(
+   "          path: |\\n            artifacts/d1-launch-hourly/receipt.json\\n"+
+   "            artifacts/d1-launch-hourly/source-continuity.json"));
+ assert.equal(yaml.includes("path: |\\\\n"),false);
+ assert.ok(yaml.includes("name: geomacro-d1-launch-hourly"));
+ assert.ok(yaml.includes("name: geomacro-d1-launch-72h-acceptance"));
+ assert.ok(yaml.includes("node scripts/ops/d1-launch-hourly-observer.mjs"));
+});
+
 const now=new Date("2026-10-28T08:30:00.000Z");
 const sha="a".repeat(40);
 const env={CLOUDFLARE_API_TOKEN:"x".repeat(32),
