@@ -66,7 +66,7 @@ import { readD1VerifiedHotCountryGro } from "./d1-country-gro-hot.server";
 import {readAllAutoIngest72hStructuredDrafts} from "./auto-ingest-72h-context.server";
 import {
   discoverOnDemandForPrivateQualification, inferOnDemandMineral,
-  inferOnDemandFreshnessSeconds, verifyOnDemandOriginalArticlePages, type OnDemandCategory,
+  inferOnDemandFreshnessSeconds, verifyOnDemandOriginalArticlePages, type OnDemandCategory, type SourceProbe,
 } from "./on-demand-global-discovery.server";
 import { buildSourceGroundedResearchAnswer, type SourceGroundedResearchAnswer } from "./on-demand-research-answer.server";
 
@@ -238,6 +238,53 @@ function licensedPaidDeliveryHeaders(prepared: Record<string, unknown>) {
        GEOMACRO_STRUCTURED_LICENSE_DISCOVERY.id)
     return {};
   return GEOMACRO_STRUCTURED_LICENSE_HEADERS;
+}
+
+type PublicSourceHealthState =
+  | "LEADS_OBSERVED"
+  | "NO_LEADS_IN_BOUNDED_SEARCH"
+  | "SOURCE_OUTAGE"
+  | "ACCESS_RESTRICTED"
+  | "NOT_ATTEMPTED_WITHIN_BUDGET";
+
+/** Aggregate only: never expose publisher families, URLs, titles or private evidence. */
+function publicOnDemandSourceHealth(
+  probes: readonly SourceProbe[],
+  categories: readonly OnDemandCategory[],
+) {
+  return Object.fromEntries(categories.map(category => {
+    const rows=probes.filter(probe=>probe.category===category);
+    const count=(state:NonNullable<SourceProbe["retrieval_state"]>)=>
+      rows.filter(probe=>probe.retrieval_state===state).length;
+    const attempted=rows.filter(probe=>probe.attempted).length;
+    const reachable=rows.filter(probe=>probe.reachable).length;
+    const leads=rows.reduce((total,probe)=>total+Math.max(0,probe.observed_record_count),0);
+    const rateLimited=count("RATE_LIMITED");
+    const accessRestricted=count("ACCESS_RESTRICTED");
+    const transportUnavailable=count("TRANSPORT_UNAVAILABLE");
+    const cooldownActive=count("COOLDOWN_ACTIVE");
+    const notAttempted=rows.filter(probe=>!probe.attempted).length;
+    const state:PublicSourceHealthState=leads>0 ? "LEADS_OBSERVED"
+      : attempted===0 || (notAttempted>0 && reachable===0)
+        ? "NOT_ATTEMPTED_WITHIN_BUDGET"
+      : reachable>0 ? "NO_LEADS_IN_BOUNDED_SEARCH"
+      : accessRestricted>0 ? "ACCESS_RESTRICTED"
+      : "SOURCE_OUTAGE";
+    return [category,{
+      state,
+      search_scope:"BOUNDED_APPROVED_SOURCE_MESH",
+      exhaustive:false,
+      providers_attempted:attempted,
+      providers_reachable:reachable,
+      leads_observed:leads,
+      rate_limited:rateLimited,
+      access_restricted:accessRestricted,
+      transport_unavailable:transportUnavailable,
+      cooldown_active:cooldownActive,
+      retryable:rateLimited+transportUnavailable+cooldownActive>0,
+      automatic_retry:false,
+    }];
+  }));
 }
 
 function replaySettlement(tx: string | null, network: string | null): CoinbaseSettleResult {
@@ -544,6 +591,7 @@ export const mainnetIntelligenceHandlers = {
               reached_source_families:discovery.reached_source_families,
               existing_verified_country_gro_available:existingVerifiedCountryGroAvailable,
               discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
+              source_health_by_category:publicOnDemandSourceHealth(discovery.source_probes,categories),
               // Own-derived news guides this query's structured research,
               // but only separately verified originals can produce a paid
               // score, quote or settled customer delivery.
