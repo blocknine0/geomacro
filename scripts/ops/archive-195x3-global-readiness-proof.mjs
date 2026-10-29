@@ -91,7 +91,7 @@ export async function archiveGlobalCountryAudit({
     archived_snapshot:key,sha256:sha,previous_snapshot:previousHead?.snapshot_key??null,
     archive_full_readback_verified:true,head_full_readback_verified:true,
     provider_snapshot_audit_ok:audit.audit_ok,
-    195_country_routing_verified:counts.covered_lanes===585,
+    country_195_routing_verified:counts.covered_lanes===585,
     country_current_news_not_inferred:true,
     paid_country_coverage_verified:false,real_usdc_settled:false,
     b2_daily_account_governor_applied:true,
