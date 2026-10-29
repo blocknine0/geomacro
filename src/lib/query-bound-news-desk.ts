@@ -14,6 +14,7 @@ export type NewsDeskSignal = Readonly<{
   category: NewsDeskCategory;
   topic: string;
   published_at: string;
+  date_precision?: "exact" | "day";
   what_changed: string;
   why_it_matters: string;
 }>;
@@ -45,7 +46,9 @@ export type QueryBoundNewsDesk = Readonly<{
     observation_id: string;
     category: NewsDeskCategory;
     topic: string;
-    original_published_at: string;
+    original_published_at: string | null;
+    original_publication_day: string;
+    date_precision: "exact" | "day";
     what_happened: string;
     potential_implication: string | null;
     requested_country_iso3: string;
@@ -63,6 +66,20 @@ export type QueryBoundNewsDesk = Readonly<{
   execution_authorized: false;
 }>;
 
+/** Date-only publishers cannot acquire an invented UTC hour. */
+function validPublicationClock(signal: NewsDeskSignal): boolean {
+  const value = signal.published_at;
+  const dayOnly = /^20\d{2}-\d{2}-\d{2}$/u.test(value);
+  const exact = /^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u.test(value);
+  const published = Date.parse(value);
+  if ((!dayOnly && !exact) || !Number.isFinite(published) ||
+      new Date(published).toISOString().slice(0, 10) !== value.slice(0, 10)) return false;
+  if (signal.date_precision === "day")
+    return dayOnly || value.endsWith("T00:00:00.000Z");
+  if (signal.date_precision === "exact") return exact;
+  return dayOnly || exact;
+}
+
 /** Dedupe exact publication/derived fact repeats, not merely identical topics.
  * Absence of impact analysis is represented by null, never boilerplate. */
 export function buildQueryBoundNewsDesk(input: Readonly<{
@@ -79,8 +96,7 @@ export function buildQueryBoundNewsDesk(input: Readonly<{
     if (!signal || !clean(signal.id, 120) || !clean(signal.topic, 120) ||
         !clean(signal.what_changed, 700) || !clean(signal.why_it_matters, 900) ||
         !/^(?:geopolitics|macro|rare_earth)$/u.test(signal.category) ||
-        !/^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u.test(signal.published_at) ||
-        !Number.isFinite(Date.parse(signal.published_at))) continue;
+        !validPublicationClock(signal)) continue;
     const factKey = [signal.published_at.slice(0, 10),
       signal.what_changed, signal.why_it_matters]
       .map(value => value.normalize("NFKC").toLowerCase().replace(/\s+/gu, " ").trim()).join("|");
@@ -97,7 +113,12 @@ export function buildQueryBoundNewsDesk(input: Readonly<{
     observation_id: signal.id,
     category: signal.category,
     topic: signal.topic,
-    original_published_at: signal.published_at,
+    original_published_at: signal.date_precision === "day" ||
+      /^20\d{2}-\d{2}-\d{2}$/u.test(signal.published_at)
+      ? null : signal.published_at,
+    original_publication_day: signal.published_at.slice(0, 10),
+    date_precision: signal.date_precision === "day" ||
+      /^20\d{2}-\d{2}-\d{2}$/u.test(signal.published_at) ? "day" as const : "exact" as const,
     what_happened: signal.what_changed.trim(),
     potential_implication: signal.why_it_matters.trim() === signal.what_changed.trim()
       ? null : signal.why_it_matters.trim(),
