@@ -97,6 +97,12 @@ export function verifyOneShotLiveParity({archive,canonicalBundle,partner,now=Dat
      !partnerIds.has(s.id))fail("ARCHIVE_ELIGIBLE_ID_NOT_IN_AUTH_PARTNER");
  }
  const archiveCounts=allCounts(eligible);
+ // Distinguish DELIVERED news from verified original topic releases. A
+ // candidate or monitored OSINT is useful research, never an invented
+ // qualified mineral event. This is a SAFE receipt: counts only, no IDs.
+ const byStatus=status=>allCounts(eligible.filter(s=>s.status===status));
+ const qualifiedPartner=allCounts(projected.filter(
+   r=>r.qualifying_topic_release_verified===true));
  if(readback.matched_eligible_ids!==eligible.length||
     readback.missing_eligible_ids!==0||
     CATEGORIES.some(c=>readback.counts_by_category[c]!==archiveCounts[c]))
@@ -112,6 +118,14 @@ export function verifyOneShotLiveParity({archive,canonicalBundle,partner,now=Dat
   evaluated_single_bounded_72h_cohort:true,
   covered_eligible_archive_ids:eligible.length,
   eligible_archive_by_category:archiveCounts,
+  website_official_topic_release_by_category:
+    byStatus("official_release_observed_unscored"),
+  website_unclassified_candidate_by_category:
+    byStatus("official_feed_candidate_unscored"),
+  website_unverified_osint_by_category:
+    byStatus("osint_feed_observed_unverified"),
+  partner_qualified_topic_release_by_category:qualifiedPartner,
+  absent_qualified_release_is_not_missing_research_data:true,
   withheld_unknown_credits_by_category:withheld,
   authenticated_partner_by_category:expectedCounts,
   archive_eligible_id_digest_sha256:digest(eligible),
