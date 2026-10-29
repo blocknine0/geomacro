@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 15080)
+Total output lines: 1011
+
 import {resolveEligiblePublishedCapabilityPrice} from "./verified-capability-coinbase-binding.server";
 import {explicitlyConfiguredNoCardCheckout,isNoCardSignedPayload,
   handleNoCardAdaptiveCheckout} from "./no-card-x402-adaptive-route.server";
@@ -69,7 +72,8 @@ import {
   inferOnDemandFreshnessSeconds, requestsHistoricalMineralData,
   verifyOnDemandOriginalArticlePages, type OnDemandCategory, type SourceProbe,
 } from "./on-demand-global-discovery.server";
-import { buildSourceGroundedResearchAnswer, type SourceGroundedResearchAnswer } from "./on-demand-research-answer.server";
+import { buildSourceGroundedResearchAnswer, buildStructuredEvidenceGap,
+  type SourceGroundedResearchAnswer } from "./on-demand-research-answer.server";
 import type { BgsMineralHistory } from "./bgs-world-mineral-statistics.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
@@ -484,164 +488,7 @@ export const mainnetIntelligenceHandlers = {
               topics:plan.topics,
               max_age_seconds:requestedNewsAgeSeconds,
               include_historical_mineral_data:categories.length===1 &&
-                categories[0]==="rare_earth" && Boolean(mineral) &&
-                requestsHistoricalMineralData(plan.question_key),
-            });
-            discovery=privateResult.discovery;
-            historicalMineralAnswer=privateResult.private_mineral_history;
-            // NEVER copy privateResult.private_candidates into the public
-            // response/ledger/x402 quote; article-page publication, rights
-            // and independent same-event verification are not yet complete.
-            privatelyQualifiedOriginalCandidateCount=privateResult.private_candidates.length;
-            privateOriginalReviewCandidateCount=privateResult.private_original_review_candidates.length;
-            duplicatePrivateOriginalHeadlines=privateResult.duplicate_original_headline_count;
-            // Annual official change is useful structural evidence, NOT current
-            // news, source rights, an issued risk score, or paid intelligence.
-            privateOfficialAnnualChanges=privateResult.private_macro_changes.length;
-            const privateDrivers=buildPrivateOnDemandMacroDrivers(
-              privateResult.private_macro_changes);
-            privateAnnualDirectionalDrivers=privateDrivers.length;
-            // The shared certified-source policy is consulted only for
-            // actual validated annual evidence, using the existing private
-            // B2 rights snapshot. Unavailable/expired rights fail closed.
-            const rightsProof=await checkPrivateOnDemandMacroRights(privateDrivers);
-            privateAnnualRightsVerifiedDrivers=rightsProof.rights_verified_driver_count;
-            privateAnnualMacroRightsStatus=rightsProof.status;
-            // Reuse existing versioned pilot normalization only if derived
-            // rights are certified. Official peer registry + at most two
-            // same-year indicators: three extra bounded read-only calls.
-            // The partial component stays private; never quote x402 or
-            // present an unsigned score as a customer product.
-            const privatePeerProof=await scorePrivateOnDemandMacroPeers(
-              privateResult.private_macro_changes, rightsProof);
-            privatePeerMacroStatus=privatePeerProof.status;
-            privatePeerScoredDimensions=privatePeerProof.peer_normalized_dimension_count;
-            const pageProof=await verifyOnDemandOriginalArticlePages(
-              privateResult.private_original_review_candidates,
-              {maxAgeSeconds:requestedNewsAgeSeconds});
-            sourceGroundedResearchAnswer=buildSourceGroundedResearchAnswer({
-              country_iso3:subject.country_iso3,categories,topics:plan.topics,
-              max_age_seconds:requestedNewsAgeSeconds,
-              query_plan_hash:plan.query_plan_hash,pageProof,question:plan.question_key,
-              now:new Date(privateResult.discovery.checked_at),
-            });
-            // No page HTML, original URL, title or publisher identity is
-            // serialized. This is only publication-clock consistency, NOT
-            // independent facts, commercial source rights or signed risk.
-            articlePageChecks=pageProof.attempted;
-            articleDatesVerified=pageProof.verified;
-            // Feed/page-backed original records and official annual structural
-            // observations now enter ONE deterministic private qualification
-            // contract, without signing, scoring or requesting x402 funds.
-            // This remains separate from reviewer-signed same-event admission.
-            const qualification:QualifiedPrivateEvidence=qualifyRetrievedOnDemandEvidence({
-              search:{
-                country_iso3:subject.country_iso3,categories,mineral,
-                topics:plan.topics,
-                max_age_seconds:requestedNewsAgeSeconds===undefined?undefined:
-                  Math.min(requestedNewsAgeSeconds,31*86_400),
-              },
-              discovery:privateResult.discovery,
-              originals:privateResult.private_original_review_candidates,
-              verifiedCountryName:privateResult.private_verified_country_name,
-              pageProof,macroChanges:privateResult.private_macro_changes,
-              macroRights:rightsProof,
-              now:new Date(privateResult.discovery.checked_at),
-            });
-            // Existing query engine, request-local only. No private source
-            // references, event prose or hashes enter the public 422 body.
-            const privateFedFinding=buildPrivateVerifiedFedMinutesFinding(
-              qualification,pageProof,{
-                queryPlanHash:plan.query_plan_hash,
-                observedAt:new Date(privateResult.discovery.checked_at),
-              });
-            privateFedSourceBoundFindingCandidateCount=privateFedFinding?1:0;
-            if(privateFedFinding){
-              const queryBound=bindPrivateFedMinutesToExactCustomerQuery({
-                receivedRequest:raw,canonicalPlan:plan,finding:privateFedFinding,
-              });
-              privateExactQueryBoundFedDraftCount=queryBound.ok?1:0;
-              // The unsigned private JSON and article SHA NEVER leave memory.
-              // A matching question is NOT rights, reviewer or payment admission.
-            }
-            privateEvidenceQualification=publicOnDemandQualificationStatus(qualification);
-          } catch(error) {
-            console.error("[x402-live] bounded discovery failed",error);
-            return json({
-              ok:false,chargeable:false,payment_required_now:false,
-              error:{code:"ON_DEMAND_SEARCH_UNAVAILABLE"},
-              execution_authorized:false,
-            },503);
-          }
-          // A missing first-party original triggers at most one governed,
-          // per-request read-only research lookup. Telegram returns UNVERIFIED
-          // counts only; no reader status makes an x402 product chargeable.
-          const telegramFallback = await lookupTelegramFallback({
-            country_iso3: subject.country_iso3,
-            categories,
-            // A feed candidate, article-page timestamp or annual data is NOT
-            // qualified same-event corroboration, rights or signed intelligence.
-            // Until the independent qualified product is actually available,
-            // this request has a genuine intelligence evidence gap.
-            originalArticleEvidenceSufficient: false,
-          });
-          // No raw upstream records, publisher IDs or original links cross
-          // this boundary. No x402 payment quote is issued for discoveries.
-          return json({
-            ok:false,chargeable:false,payment_required_now:false,
-            product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,
-            ...(sourceGroundedResearchAnswer ? {research_answer:sourceGroundedResearchAnswer} : {}),
-            ...(historicalMineralAnswer ? {historical_mineral_answer:historicalMineralAnswer} : {}),
-            on_demand:{
-              status:discovery.status,
-              searched_in_parallel:discovery.searched_in_parallel,
-              categories:discovery.categories,
-              country_iso3:discovery.country_iso3,
-              checked_at:discovery.checked_at,
-              network_attempts:discovery.network_attempts,
-              reached_source_families:discovery.reached_source_families,
-              existing_verified_country_gro_available:existingVerifiedCountryGroAvailable,
-              discovered_record_count:discovery.source_probes.reduce((n,p)=>n+p.observed_record_count,0),
-              source_health_by_category:publicOnDemandSourceHealth(discovery.source_probes,categories),
-              // Own-derived news guides this query's structured research,
-              // but only separately verified originals can produce a paid
-              // score, quote or settled customer delivery.
-              auto_ingest_72h_research_draft_count:autoIngestDrafts.length,
-              auto_ingest_72h_distinct_research_topics:autoIngestCandidateTopicCount,
-              auto_ingest_72h_drafts_commercially_eligible:false,
-              private_original_candidate_count:privatelyQualifiedOriginalCandidateCount,
-              duplicate_original_headlines_suppressed:duplicatePrivateOriginalHeadlines,
-              private_official_annual_change_count:privateOfficialAnnualChanges,
-              historical_mineral_series_count:historicalMineralAnswer?.series.length??0,
-              private_annual_directional_macro_driver_count:privateAnnualDirectionalDrivers,
-              private_annual_macro_rights_status:privateAnnualMacroRightsStatus,
-              private_annual_macro_rights_verified_driver_count:privateAnnualRightsVerifiedDrivers,
-              private_macro_peer_score_status:privatePeerMacroStatus,
-              private_macro_peer_scored_dimension_count:privatePeerScoredDimensions,
-              original_article_page_checks:articlePageChecks,
-              article_page_publication_dates_verified:articleDatesVerified,
-              private_source_bound_structured_finding_candidates:privateFedSourceBoundFindingCandidateCount,
-              private_exact_query_bound_fed_drafts:privateExactQueryBoundFedDraftCount,
-              structured_candidate_commercially_admitted:false,
-              private_evidence_qualification:privateEvidenceQualification,
-              private_originals_article_page_verified:
-                privateOriginalReviewCandidateCount>0 &&
-                articleDatesVerified===privateOriginalReviewCandidateCount,
-              // A missing *verified* current event is scoped to this
-              // bounded on-demand search, not an assertion that no real
-              // event occurred anywhere. Index hits cannot promote it.
-              verified_signed_current_event_count:0,
-              current_evidence_state:articleDatesVerified>0
-                ?"ORIGINAL_PAGE_DATED_BUT_UNQUALIFIED"
-                :"NO_VERIFIED_CURRENT_EVENT_IN_BOUNDED_SEARCH",
-              searched_country_category_cells:categories.length,
-              bounded_search_exhaustive:false,
-              missing_proof_dimensions:[
-                "INDEPENDENT_SAME_EVENT",
-                "ITEM_COMMERCIAL_RIGHTS",
-                "CURRENT_SIGNED_CUSTOMER_READBACK",
-              ],
-              independent_same_event_corroboration_verified:false,
+                categories[0]==…3080 tokens truncated…ndent_same_event_corroboration_verified:false,
               source_derived_commercial_rights_verified:false,
               signed_derived_intelligence_created:false,
               telegram_fallback:telegramFallback,
