@@ -1,5 +1,11 @@
 # Production B2/D1 runtime acceptance (no Supabase, no new paid services)
 
+## Phase 2B protected runtime readback after governed edge recovery (#3154)
+
+The main-only, no-funds B2/D1 acceptance workflow also runs automatically on canonical `main` pushes to this operations document. This section records why an explicit bounded production probe is needed following the merge of [#3154](https://github.com/blocknine0/geomacro/pull/3154) (squash commit `0a8fea1e045219cbf55ef78317c9ee4cdf942815`): both public B2 Workers had previously returned HTTP 503, and CI alone cannot prove provider B2 PUT/GET, SHA-256 bytes, and D1 quota receipts. A documentation-triggered push is an existing authorized workflow event, not a new endpoint, external payment, or override of the manual `VERIFY_EXISTING_B2_D1_ONLY_NO_FUNDS` confirmation contract. It runs the existing eight-attempt-budget diagnostic in the existing `production` GitHub Environment. Never treat its offline job as production acceptance, and never manually enter credentials into logs or artifacts.
+
+**Acceptance is deliberately separate:** Require the real `production-runtime-read-write-readback` job's PASS receipt, nonzero GET/PUT D1 ledgers, exact immutable diagnostic object hash and second independent GET. This diagnostic probes B2/D1 configuration only; it does NOT independently sign current public evidence, promote a D1 signed-hot product, establish both edge source freshness, prove the deployed Worker revision, or authorize x402 payments. Retain HTTP 503 for unavailable signed material. If this job fails, classify its error from redacted job evidence and use the existing owner-only production Environment/Backblaze/Cloudflare controls to repair the actual dependency; do not change PREDGE, historical data, source rights, pricing, settlement, or quota limits.
+
 ## What this verifies
 
 The local owner preflight is **not** a view of GitHub Environment secrets or Cloudflare runtime state. A local `NOT_PROVIDED` only describes that shell. It cannot diagnose production credential presence or production writes.
