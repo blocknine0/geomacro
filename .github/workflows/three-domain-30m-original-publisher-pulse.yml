@@ -201,7 +201,7 @@ jobs:
         with:
           node-version: "22"
       - name: Observe official OFAC sanctions list independent of D1 quota
-        # Existing 12/42 UTC workflow, one read per UTC hour at most.
+        # Nominally one read per hour; delayed crons can cross hourly slots.
         # An upstream 403/429/202 or missed slot is recorded, never upgraded
         # to a signed/current country event or paid customer response.
         if: ${{ !cancelled() }}
