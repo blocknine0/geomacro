@@ -3,6 +3,7 @@ import {LAUNCH_NEWS_TOPIC_PATTERNS} from "../../src/lib/launch-news-coverage.ts"
 import {readFileSync} from "node:fs";
 import {registeredReusableNewsSources} from "./registered-reusable-news-source-collector.mjs";
 import {CONTINENT_COUNTRIES_195} from "./continent-country-195-rotation.mjs";
+import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 
 export const PRIVATE_OSINT_CATEGORIES=Object.freeze(["geopolitics","macro","rare_earth"]);
 // RNZ's Pacific newsroom is an Oceania regional desk even though RNZ is
@@ -304,7 +305,7 @@ export function privateOsintGlobalSources(){
   const configured=result.filter(source=>source.categories.includes(category)).length;
   if(configured<12)throw Error("PRIVATE_OSINT_CATEGORY_SOURCE_DIVERSITY_TOO_LOW:"+category);
  }
- return result;
+ return result.filter(source=>!isRetiredPrivateOsintSource(source));
 }
 
 export function privateOsintContinentCoverage(sources,checks,items){
