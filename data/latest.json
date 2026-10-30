@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-30T06:29:44.873Z",
+  "checked_at": "2026-10-30T07:11:11.675Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "rare_earth-012c4fbc",
+      "category": "rare_earth",
+      "title": "Geomacro finds IMC Rare Earths reported yttrium discoveries at Brazil project",
+      "what_changed": "A monitored source feed reports: IMC Rare Earths reported yttrium discoveries at Brazil project. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T06:39:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-20d0a021",
       "category": "macro",
@@ -4736,25 +4755,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: en.antaranews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-061001a5",
-      "category": "rare_earth",
-      "title": "Geomacro finds Canada's Capstone Copper announced $3bn investment plan in Chile - Mining Weekly",
-      "what_changed": "A monitored source feed reports: Canada's Capstone Copper announced $3bn investment plan in Chile - Mining Weekly. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T07:06:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T06:29:44.873Z",
+  "checked_at": "2026-10-30T07:11:11.675Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 428,
+  "item_count": 425,
   "counts": {
-    "geopolitics": 198,
+    "geopolitics": 197,
     "macro": 183,
-    "rare_earth": 47
+    "rare_earth": 45
   },
-  "source_native_ids_sha256": "6cd5ed3c25f947d5f06fd9af9a0bc1959d3fbc7ddd9f1a9ac68fb8023248bea3",
+  "source_native_ids_sha256": "9182498aef91eeeaeb0eb8d8b925e18b441c98d2b2dc305cc0eade3cfe125a74",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-012c4fbc",
+      "category": "rare_earth",
+      "title": "Geomacro finds IMC Rare Earths reported yttrium discoveries at Brazil project",
+      "what_changed": "A monitored source feed reports: IMC Rare Earths reported yttrium discoveries at Brazil project. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T06:39:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-20d0a021",
       "category": "macro",
@@ -286,6 +305,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T03:24:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-aa71e7f3",
+      "category": "macro",
+      "title": "Geomacro finds BOJ held rates as inflation aligns with 2% target for first time since 2013 - Forex Factory",
+      "what_changed": "A monitored source feed reports: BOJ held rates as inflation aligns with 2% target for first time since 2013 - Forex Factory. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T03:20:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -8055,101 +8093,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.dailysabah.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-061001a5",
-      "category": "rare_earth",
-      "title": "Geomacro finds Canada's Capstone Copper announced $3bn investment plan in Chile - Mining Weekly",
-      "what_changed": "A monitored source feed reports: Canada's Capstone Copper announced $3bn investment plan in Chile - Mining Weekly. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T07:06:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-eb0061a7",
-      "category": "rare_earth",
-      "title": "Geomacro finds Canada's Capstone Copper announced $3bn investment plan in Chile",
-      "what_changed": "A monitored source feed reports: Canada's Capstone Copper announced $3bn investment plan in Chile. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T07:06:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-fc212f4f",
-      "category": "rare_earth",
-      "title": "Geomacro finds Canada's Capstone Copper announced $3bn investment plan in Chile - Mining Weekly",
-      "what_changed": "A monitored source feed reports: Canada's Capstone Copper announced $3bn investment plan in Chile - Mining Weekly. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T07:06:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-4de4290f",
-      "category": "macro",
-      "title": "Geomacro finds Singapore launched first LNG term supply tender, weighs third import terminal - Mining Weekly",
-      "what_changed": "A monitored source feed reports: Singapore launched first LNG term supply tender, weighs third import terminal - Mining Weekly. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T06:55:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-0733166c",
-      "category": "geopolitics",
-      "title": "Geomacro finds Military Officials said Netanyahu Using Clash With IDF Chief for Campaign Purposes - Haaretz",
-      "what_changed": "A monitored source feed reports: Military Officials said Netanyahu Using Clash With IDF Chief for Campaign Purposes - Haaretz. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T06:43:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
