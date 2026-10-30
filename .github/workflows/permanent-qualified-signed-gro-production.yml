@@ -87,6 +87,30 @@ jobs:
             );
           '
 
+      - name: Resolve existing canonical D1 UUID for central quota governor
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun --eval '
+            import {appendFileSync} from "node:fs";
+            const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+            const token=process.env.CLOUDFLARE_API_TOKEN;
+            if(!/^[a-f0-9]{32}$/i.test(account??"") || (token??"").length<20)
+              throw Error("GRO_D1_ACCOUNT_CONFIGURATION_REQUIRED");
+            const response=await fetch(
+              "https://api.cloudflare.com/client/v4/accounts/"+account+"/d1/database?per_page=100",
+              {headers:{authorization:"Bearer "+token,accept:"application/json"},
+               signal:AbortSignal.timeout(15000),redirect:"error"},
+            );
+            if(!response.ok)throw Error("GRO_D1_DATABASE_DISCOVERY_FAILED");
+            const body=await response.json();
+            const ids=(body.result??[]).filter(x=>x?.name==="geomacro-control-plane");
+            if(body.success!==true || ids.length!==1 ||
+               !/^[0-9a-f-]{36}$/i.test(ids[0]?.uuid??""))
+              throw Error("GRO_CANONICAL_D1_DATABASE_NOT_UNIQUE");
+            appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+ids[0].uuid+"\\n");
+          '
+
       - name: Score, Ed25519 sign and independently verify B2 then D1 hot with existing data
         shell: bash
         run: |
