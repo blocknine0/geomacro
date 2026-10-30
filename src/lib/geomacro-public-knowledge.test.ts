@@ -44,7 +44,7 @@ describe("approved public Geomacro knowledge",()=>{
   expect(first.answer.answer_kind).toBe("public_info");
   const next=await executeHybridChatTurn({question:"How much does it cost?",history:[{role:"user",content:first.resolved_question}]},"public-brand-cost");
   expect(next.answer.summary).toContain("Country Structural Digest: $0.02");
-  expect(next.answer.summary).toContain("Risk Gate — Preflight / Standard / Complex: $0.10 / $0.15 / $0.25");
+  expect(next.answer.summary).toContain("Risk Gate — Preflight / Standard / Complex: $0.03 / $0.05 / $0.05");
   expect(next.answer.source_identity_exposed).toBe(false);
  });
 });

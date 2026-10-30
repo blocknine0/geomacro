@@ -92,7 +92,7 @@ describe("founder-approved deterministic capability pricing — NO FUNDS",()=>{
    }
    expect(()=>quoteGeomacroCapability({...opts,availabilityVerified:false}))
      .toThrow("CAPABILITY_NOT_DELIVERABLE_NO_CHARGE");
-   expect(()=>verifyGeomacroCapabilityQuote({...first,amount_atomic:"50000"},first,now)).toThrow();
+   expect(()=>verifyGeomacroCapabilityQuote({...first,amount_atomic:"49999"},first,now)).toThrow();
    expect(()=>verifyGeomacroCapabilityQuote({...first,price_version:"testnet"},first,now)).toThrow();
  });
 });

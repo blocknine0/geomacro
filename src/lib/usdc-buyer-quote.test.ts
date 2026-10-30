@@ -6,7 +6,7 @@ const recipient="0x1111111111111111111111111111111111111111";
 const make=(id:keyof typeof GEOMACRO_USDC_NATIVE_RAILS)=>{
  const rail=GEOMACRO_USDC_NATIVE_RAILS[id];
  return {x402Version:2,resource:{url:origin+"/api/v1/intelligence/query",mimeType:"application/json"},
-  accepts:[{scheme:"exact",network:rail.caip2,asset:rail.asset,amount:"100000",payTo:recipient,
+  accepts:[{scheme:"exact",network:rail.caip2,asset:rail.asset,amount:"30000",payTo:recipient,
    maxTimeoutSeconds:60,extra:{name:"USDC",version:"2"}}],extensions:{geomacro:{info:{execution_authorized:false,
    capability_quote:{quote_id:"a".repeat(64),prepared_answer_sha256:"b".repeat(64),
     version:"geomacro.capability-usdc.v2",
