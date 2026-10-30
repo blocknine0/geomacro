@@ -8,6 +8,7 @@ import {validPrivateRawNews,phase2hPrivateRawPut,phase2hPrivateRawGet,
 import {buildPhase2hRawB2Plan,verifyPhase2hRawB2Restore,
  runPhase2hGovernedRawB2}
  from "../ops/phase2h-archive-private-raw-news.mjs";
+import {verifyPhase2hProductionQuestionChain} from "../ops/phase2h-verify-private-question-delivery.mjs";
 const now=new Date("2026-10-30T06:07:00.000Z");
 const candidates=[
  {category:"geopolitics",sourceId:"un_press",title:"UN security council discusses ceasefire proposal",
@@ -213,4 +214,49 @@ test("only B2-acknowledged records enter the protected exact-question JSON",asyn
    bind:()=>({all:async()=>({results:[]})})
  })}},q,now.getTime());
  assert.equal((await miss.json()).question_matches.length,0);
+});
+
+test("production acceptance links verified B2 hash, canonical ID and HTTP five-part JSON",async()=>{
+ const row=data().records.find(x=>x.category==="macro");
+ const digest="c".repeat(64);
+ let providerReads=0,httpReads=0;
+ const receipt={schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
+  status:"B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED",
+  storage_confirmed:true,rows_archived:1,b2_first_get_verified:true,
+  b2_second_independent_get_verified:true,post_archive_d1_verified:true,
+  object_sha256:digest};
+ const env={GITHUB_REPOSITORY:"blocknine0/geomacro",GITHUB_REF:"refs/heads/main",
+  GITHUB_ACTIONS:"true",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"d".repeat(36),CLOUDFLARE_API_TOKEN:"token".repeat(10),
+  GEOMACRO_COMMERCE_LEDGER_TOKEN:"root".repeat(12)};
+ const fetchImpl=async(url,init)=>{
+  if(String(url).includes("api.cloudflare.com")){
+   providerReads++;
+   const sql=JSON.parse(init.body).sql;
+   const results=sql.startsWith("SELECT record_id")?
+    [{record_id:row.record_id,raw_sha256:row.raw_sha256,
+     raw_json:JSON.stringify(row),b2_object_sha256:digest,
+     b2_archived_at:now.toISOString()}]:[{has_pending:0}];
+   return Response.json({success:true,result:[{success:true,results}]});
+  }
+  httpReads++;
+  assert.match(String(url),/\/v1\/internal\/phase2h-raw-news\?/u);
+  assert.ok(String(url).includes(row.record_id));
+  assert.ok(init.headers.Authorization.startsWith("Bearer "));
+  return Response.json({ok:true,schema:"geomacro.phase2h.private-question-fivepart.v1",
+   source:"B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1",
+   chargeable:false,paid_eligible:false,raw_original_not_delivered:true,
+   question_matches:[{record_id:row.record_id,category:row.category,
+    original_published_at:row.original.original_published_at,
+    archive_d1_ack_present:true,focus:"why_it_matters",
+    direct_answer:row.analysis.why_it_matters.text,five_part:row.analysis}]});
+ };
+ const proof=await verifyPhase2hProductionQuestionChain({
+  now:now.getTime(),env,receipt,fetchImpl});
+ assert.equal(proof.entire_admitted_raw_backlog_verified,true);
+ assert.equal(proof.per_record_five_part_exact,true);
+ assert.equal(providerReads,2);assert.equal(httpReads,1);
+ await assert.rejects(verifyPhase2hProductionQuestionChain({
+  now:now.getTime(),env,receipt:{...receipt,b2_second_independent_get_verified:false},
+  fetchImpl}),/PHASE2H_QUESTION_CHAIN_B2_POSITIVE_EXACT_READBACK_RECEIPT_REQUIRED/u);
 });
