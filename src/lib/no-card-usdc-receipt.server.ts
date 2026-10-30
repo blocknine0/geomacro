@@ -109,7 +109,7 @@ function rpcConfig(network:string) {
        alternates.some(item=>typeof item!=="string"||!item.trim()))
       throw Error("NO_CARD_RPC_ALTERNATES_INVALID");
   }
-  const endpoints=[...new Set([primary,...alternates as string[]].map(approvedRpcUrl))];
+  const endpoints=[...new Set([primary,...(alternates as string[])].map(approvedRpcUrl))];
   return {endpoints,confirmations};
 }
 async function rpc(url:string,method:string,params:unknown[],
