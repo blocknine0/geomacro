@@ -129,7 +129,8 @@ export async function verifyPhase2hExistingArchive({
    category_counts:doc.category_counts,object_sha256:last.b2_object_sha256,
    b2_first_get_verified:true,b2_second_independent_get_verified:true,
    post_archive_d1_verified:true};
- const proof=await questionVerifier({env,fetchImpl,now:now.getTime(),receipt});
+ const proof=await questionVerifier({env,fetchImpl,now:now.getTime(),receipt,
+   expectedArchivedRows:doc.rows});
  return {...proof,existing_archived_object_two_get_restored:true,existing_object_sha256:last.b2_object_sha256};
 }
 export async function runPhase2hPermanentAcceptance({
@@ -197,6 +198,8 @@ export async function runPhase2hPermanentAcceptance({
   Object.values(census.category_counts).every(x=>x.archived>0);
  const complete=proofs.at(-1)?.entire_admitted_raw_backlog_verified===true&&
   allCurrentRowsHaveB2ArchiveAck&&
+  threeCategoriesHaveArchivedOriginals&&
+  entireStagedSetIndependentlyVerified&&
   proofs.every(x=>x.b2_two_get_verified_in_preceding_step===true&&
     x.deployed_authenticated_http_200===true&&x.per_record_five_part_exact===true);
  const summary={
@@ -232,7 +235,8 @@ export async function runPhase2hPermanentAcceptance({
   commercial_rights_verified:false,payments:0,
  };
  writeSummary(summary);
- if(!complete)fail("UNARCHIVED_BACKLOG_REMAINS");
+ if(!complete)fail(census.pending_total>0?"UNARCHIVED_BACKLOG_REMAINS":
+   "ENTIRE_ARCHIVED_SET_NOT_INDEPENDENTLY_VERIFIED");
  return summary;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
