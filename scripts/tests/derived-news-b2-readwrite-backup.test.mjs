@@ -40,13 +40,20 @@ const fetchDoc=(doc=bundle(rows))=>async(url,init)=>{
  return Response.json(doc);
 };
 const b2=()=>({
- count:0,async putWithMetadataVerification(key,compressed,{verifyRestored}){
+ count:0,readCount:0,stored:null,
+ async putWithMetadataVerification(key,compressed,{verifyRestored}){
   assert.match(key,/^geomacro-evidence\/v1\/private\/derived-news-journal\/2026\/10\/22\/[0-9a-f]{64}\.json\.gz$/u);
   assert.ok(compressed.length>40);
   assert.equal(await verifyRestored(compressed),true);
+  this.stored=Buffer.from(compressed);
   this.count++;return {full_body_readback_verified:true,
    sha256:(await import("node:crypto")).createHash("sha256").update(compressed).digest("hex"),
    bytes:compressed.length};
+ },
+ async get(key){
+  assert.match(key,/^geomacro-evidence\/v1\/private\/derived-news-journal\//u);
+  this.readCount++;
+  return Buffer.from(this.stored);
  }
 });
 test("actual three-domain D1 stories are B2 PUT+GET restored exact, no paid signing",async()=>{
@@ -56,7 +63,10 @@ test("actual three-domain D1 stories are B2 PUT+GET restored exact, no paid sign
  assert.equal(result.archived_rows,3);
  assert.deepEqual(result.category_counts,{geopolitics:1,macro:1,rare_earth:1});
  assert.equal(archive.count,1);
+ assert.equal(archive.readCount,1);
  assert.equal(result.b2_exact_readback_verified,true);
+ assert.equal(result.independent_second_get_verified,true);
+ assert.equal(result.second_get_sha256,result.compressed_sha256);
  assert.equal(result.source_d1_readback_verified,true);
  assert.equal(result.same_news_as_intelligence_d1,true);
  assert.equal(result.independent_gri_signed,false);
@@ -192,6 +202,8 @@ test("independent B2 job receipt is green ONLY after actual PUT plus full GET an
  const good=summarizeSafeBackupReceipt({
   status:"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED",
   b2_put_verified:true,b2_exact_readback_verified:true,
+  independent_second_get_verified:true,
+  second_get_sha256:"a".repeat(64),
   source_d1_readback_verified:true,
   archived_rows:3,category_counts:{geopolitics:1,macro:1,rare_earth:1},
   compressed_sha256:"a".repeat(64),
@@ -199,6 +211,7 @@ test("independent B2 job receipt is green ONLY after actual PUT plus full GET an
  },testNow);
  assert.equal(good.status,"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED");
  assert.equal(good.storage_confirmed,true);
+ assert.equal(good.independent_second_b2_get_sha_verified,true);
  assert.equal(good.derived_rows_archived,3);
  assert.equal(good.source_news_d1_website_delivery_not_modified,true);
  assert.equal(good.signed_hot_gri_verified,false);
@@ -207,7 +220,11 @@ test("independent B2 job receipt is green ONLY after actual PUT plus full GET an
   {status:"B2_SHARED_ACCOUNT_RECOVERY_HEADROOM_HELD"},
   {status:"BACKUP_FAILED_CLOSED"},
   {status:"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED",b2_put_verified:true,
-    b2_exact_readback_verified:false,source_d1_readback_verified:true}
+    b2_exact_readback_verified:false,independent_second_get_verified:true,
+    source_d1_readback_verified:true},
+  {status:"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED",b2_put_verified:true,
+    b2_exact_readback_verified:true,independent_second_get_verified:false,
+    source_d1_readback_verified:true}
  ]){
   const failed=summarizeSafeBackupReceipt(receipt,testNow);
   assert.equal(failed.storage_confirmed,false);
@@ -215,4 +232,16 @@ test("independent B2 job receipt is green ONLY after actual PUT plus full GET an
   assert.equal(failed.derived_rows_archived,0);
   assert.equal(failed.paid_eligible,false);
  }
+});
+
+test("second independent B2 GET must be byte-identical, SHA-matched and restored",async()=>{
+ const first=b2();
+ first.get=async()=>Buffer.from("corrupted second fetch");
+ await assert.rejects(()=>archiveDerivedJournalToB2({
+  fetchImpl:fetchDoc(),b2:first,now
+ }),/DERIVED_NEWS_B2_B2_EXACT_COMPRESSED_READBACK_INVALID/);
+ const missing=b2();delete missing.get;
+ await assert.rejects(()=>archiveDerivedJournalToB2({
+  fetchImpl:fetchDoc(),b2:missing,now
+ }),/DERIVED_NEWS_B2_SECOND_INDEPENDENT_GET_REQUIRED/);
 });
