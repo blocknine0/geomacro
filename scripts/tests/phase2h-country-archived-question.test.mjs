@@ -147,3 +147,70 @@ test("one canonical D1-staged source original yields research-only five-part bef
  assert.equal(payload.paid_eligible,false);
  assert.doesNotMatch(statements[0].sql,/b2_object_sha256 IS NOT NULL/u);
 });
+
+test("one genuine native-dated country original gives five populated private research parts even without a derived signal",async()=>{
+ const original=buildPhase2hPrivateRawRecords([{
+  category:"rare_earth",sourceId:"ind_official",
+  title:"India announces lithium recycling policy",
+  articleUrl:"https://official.example.org/news/india-lithium-policy",
+  publishedAt:"2026-10-30T08:00:00.000Z",credit:null
+ }],{now,derive:()=>[]}).records[0];
+ assert.equal(original.analysis.what_happened.text,null);
+ assert.equal(original.analysis.why_it_matters.text,null);
+ const {DB}=workerDb([original],{archived:false});
+ const params=new URLSearchParams({country_iso3:"IND",category:"rare_earth",
+  question:"What is India lithium policy news?"});
+ const resp=await phase2hPrivateRawGet({DB},params,now.getTime());
+ assert.equal(resp.status,200);
+ const reply=await resp.json();
+ assert.equal(reply.question_matches.length,1);
+ const one=reply.question_matches[0];
+ assert.equal(one.source_title_only_research_fallback_used,true);
+ assert.match(one.five_part.what_happened.text,/India announces lithium recycling policy/u);
+ assert.match(one.five_part.why_it_matters.text,/India announces lithium recycling policy/u);
+ assert.ok(one.five_part.market_relevance);
+ assert.ok(one.five_part.what_to_watch);
+ assert.ok(one.five_part.evidence_and_confidence);
+ assert.equal(one.five_part.evidence_and_confidence.paid_eligible,false);
+ assert.equal(one.original_page_independently_verified,false);
+ assert.equal(one.commercial_rights_verified,false);
+ assert.equal(one.archive_d1_ack_present,false);
+ assert.equal(reply.private_research_only,true);
+ assert.equal(reply.chargeable,false);
+ assert.equal(reply.paid_eligible,false);
+ // The immutable D1/B2 row is never rewritten merely to fill the response.
+ assert.equal(original.analysis.what_happened.text,null);
+ assert.equal(original.analysis.why_it_matters.text,null);
+});
+test("event-specific existing analysis and original identity are never changed by one-original projection",async()=>{
+ const original=rawRows[0];
+ const {DB}=workerDb([original],{archived:true});
+ const params=new URLSearchParams({country_iso3:"IND",category:"macro",
+  question:"Why India monetary policy rates matter?"});
+ const res=await phase2hPrivateRawGet({DB},params,now.getTime());
+ assert.equal(res.status,200);
+ const body=await res.json();
+ assert.equal(body.question_matches.length,1);
+ assert.equal(body.question_matches[0].source_title_only_research_fallback_used,false);
+ assert.deepEqual(body.question_matches[0].five_part,original.analysis);
+ assert.equal(body.question_matches[0].archive_d1_ack_present,true);
+});
+test("market-focused one-source private research never invents a price move",async()=>{
+ const one=buildPhase2hPrivateRawRecords([{
+  category:"macro",sourceId:"official_bangladesh",
+  title:"Bangladesh monetary policy rates announcement",
+  articleUrl:"https://official.example.org/bgd-macro",
+  publishedAt:"2026-10-30T08:00:00.000Z",credit:null
+ }],{now,derive:()=>[]}).records[0];
+ const {DB}=workerDb([one],{archived:false});
+ const q=new URLSearchParams({country_iso3:"BGD",category:"macro",
+  question:"Bangladesh monetary policy rates market"});
+ const response=await phase2hPrivateRawGet({DB},q,now.getTime());
+ assert.equal(response.status,200);
+ const body=await response.json();
+ assert.equal(body.question_matches.length,1);
+ assert.equal(body.question_matches[0].focus,"market_relevance");
+ assert.match(body.question_matches[0].direct_answer,/not independently verified/u);
+ assert.equal(body.question_matches[0].five_part.market_relevance.price_direction,null);
+ assert.equal(body.chargeable,false);
+});
