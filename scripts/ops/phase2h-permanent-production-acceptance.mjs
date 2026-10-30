@@ -35,6 +35,40 @@ function protectedEnv(env){
     (env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").length<32)
   fail("PROTECTED_MAIN_GOVERNED_CONFIG_REQUIRED");
 }
+/** Count only canonical D1 metadata, never expose private originals or IDs. */
+export async function readPhase2hCanonicalCensus({env=process.env,fetchImpl=fetch}={}){
+ protectedEnv(env);
+ const endpoint="https://api.cloudflare.com/client/v4/accounts/"+
+  env.CLOUDFLARE_ACCOUNT_ID+"/d1/database/"+env.D1_DATABASE_ID+"/query";
+ const sql="SELECT category,COUNT(*) AS staged,"+
+  "SUM(CASE WHEN b2_object_sha256 IS NULL THEN 1 ELSE 0 END) AS pending,"+
+  "SUM(CASE WHEN b2_object_sha256 IS NOT NULL THEN 1 ELSE 0 END) AS archived "+
+  "FROM phase2h_private_raw_news GROUP BY category";
+ const response=await fetchImpl(endpoint,{method:"POST",redirect:"error",
+  headers:{Authorization:"Bearer "+env.CLOUDFLARE_API_TOKEN,
+   "Content-Type":"application/json"},
+  body:JSON.stringify({sql,params:[]}),signal:AbortSignal.timeout(15000)});
+ const data=await response.json(),rows=data?.result?.[0]?.results;
+ if(!response.ok||data?.success!==true||!Array.isArray(rows)||
+    rows.length>3||data.result?.[0]?.success===false)
+  fail("CANONICAL_D1_CENSUS_UNAVAILABLE");
+ const counts={geopolitics:{staged:0,archived:0,pending:0},
+  macro:{staged:0,archived:0,pending:0},
+  rare_earth:{staged:0,archived:0,pending:0}};
+ const seen=new Set();
+ for(const row of rows){
+  if(!Object.hasOwn(counts,row.category)||seen.has(row.category)||
+    !["staged","archived","pending"].every(k=>Number.isSafeInteger(row[k])&&row[k]>=0)||
+    row.staged!==row.archived+row.pending)
+   fail("CANONICAL_D1_CENSUS_INVALID");
+  seen.add(row.category);
+  counts[row.category]={staged:row.staged,archived:row.archived,pending:row.pending};
+ }
+ const sum=k=>Object.values(counts).reduce((n,r)=>n+r[k],0);
+ return {category_counts:counts,staged_total:sum("staged"),
+  archived_total:sum("archived"),pending_total:sum("pending")};
+}
+
 // Also used on slots with no new intake: independently restore the last
 // archived B2 object *twice*, compare exact bytes and then query the same
 // canonical D1 record through the deployed authenticated Worker.
@@ -101,7 +135,8 @@ export async function runPhase2hPermanentAcceptance({
  env=process.env,now=new Date(),
  archive=runPhase2hGovernedRawB2,
  verify=verifyPhase2hProductionQuestionChain,
- verifyExisting=verifyPhase2hExistingArchive
+ verifyExisting=verifyPhase2hExistingArchive,
+ readCensus=readPhase2hCanonicalCensus
 }={}){
  protectedEnv(env);
  const receipts=[],proofs=[];
@@ -130,6 +165,12 @@ export async function runPhase2hPermanentAcceptance({
   if(proof.unarchived_backlog_present===false)break;
  }
  if(!proofs.length)fail("NO_TRUE_POSITIVE_EVIDENCE");
+ const census=await readCensus({env});
+ if(!census||!Number.isSafeInteger(census.staged_total)||
+    !Number.isSafeInteger(census.archived_total)||
+    !Number.isSafeInteger(census.pending_total)||
+    census.staged_total!==census.archived_total+census.pending_total)
+  fail("CANONICAL_D1_CENSUS_NOT_VERIFIED");
  // Full Phase2H requires positive archived originals in all three domains;
  // a single-domain B2 object cannot certify the three-category contract.
  const verifiedCategoryCounts={geopolitics:0,macro:0,rare_earth:0};
@@ -141,7 +182,13 @@ export async function runPhase2hPermanentAcceptance({
    for(const c of Object.keys(verifiedCategoryCounts))
     verifiedCategoryCounts[c]+=proof.verified_category_counts?.[c]??0;
  const threeCategoriesHaveArchivedOriginals=Object.values(verifiedCategoryCounts).every(n=>Number.isSafeInteger(n)&&n>0);
- const complete=proofs.at(-1)?.entire_admitted_raw_backlog_verified===true&&threeCategoriesHaveArchivedOriginals;
+ const independentlyVerifiedBatchRecords=receipts.reduce((n,r)=>n+r.rows_archived,0)+
+  proofs.filter(p=>p.existing_archived_object_two_get_restored===true)
+   .reduce((n,p)=>n+(p.verified_b2_batch_rows??0),0);
+ const entireStagedSetIndependentlyVerified=independentlyVerifiedBatchRecords===
+  census.archived_total&&census.pending_total===0;
+ const complete=proofs.at(-1)?.entire_admitted_raw_backlog_verified===true&&
+  threeCategoriesHaveArchivedOriginals&&entireStagedSetIndependentlyVerified;
  const summary={
   schema:"geomacro.phase2h.permanent-raw-b2-production-acceptance.v1",
   status:complete?"PASS_REAL_B2_TO_EXACT_QUESTION":"INCOMPLETE_ARCHIVE_BACKLOG",
@@ -154,6 +201,12 @@ export async function runPhase2hPermanentAcceptance({
    .filter(x=>x.existing_archived_object_two_get_restored===true)
    .map(x=>x.existing_object_sha256),
   verified_category_counts:verifiedCategoryCounts,
+  canonical_d1_category_census:census.category_counts,
+  canonical_d1_staged_total:census.staged_total,
+  canonical_d1_archived_total:census.archived_total,
+  canonical_d1_pending_total:census.pending_total,
+  same_run_independently_verified_batch_records:independentlyVerifiedBatchRecords,
+  entire_staged_set_independently_verified:entireStagedSetIndependentlyVerified,
   three_categories_have_archived_originals:threeCategoriesHaveArchivedOriginals,
   archived_records_this_run:receipts.reduce((sum,x)=>sum+x.rows_archived,0),
   archived_category_counts:receipts.reduce((sum,x)=>{
