@@ -175,6 +175,7 @@ export async function postPhase2hPrivateRawRecords({
   const expected=new Map(group.map(row=>[row.record_id,row]));
   if(expected.size!==group.length)throw Error("PHASE2H_PRIVATE_DUPLICATE_LOCAL_ID");
   const seen=new Set();
+  let groupRetained=0;
   for(const proof of receipt.per_original_evidence){
    const row=expected.get(proof?.record_id);
    if(!row||seen.has(row.record_id)||
@@ -195,11 +196,11 @@ export async function postPhase2hPrivateRawRecords({
    if(proof.submitted_five_part_exact_readback!==current||
       (current&&proof.persisted_raw_sha256!==row.raw_sha256))
      throw Error("PHASE2H_PRIVATE_FIVE_PART_VERSION_RECEIPT_MISMATCH");
-   if(current)exactFivePart++;else retainedFivePart++;
+   if(current)exactFivePart++;else {retainedFivePart++;groupRetained++;}
    seen.add(row.record_id);
   }
   if(seen.size!==group.length||
-     receipt.all_submitted_five_parts_exact!==(retainedFivePart===0))
+     receipt.all_submitted_five_parts_exact!==(groupRetained===0))
     throw Error("PHASE2H_PRIVATE_BATCH_EVIDENCE_INCOMPLETE");
   stored+=receipt.accepted;duplicates+=receipt.unchanged;
  }
