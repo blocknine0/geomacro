@@ -52,6 +52,15 @@ test("three distinct collected original categories, exact native date, one ID pe
  assert.equal(x.records.find(r=>r.category==="macro").original.original_content,null);
  assert.equal(data().records[0].raw_sha256,x.records[0].raw_sha256);
 });
+test("a date-only publisher keeps its native calendar day, never a fabricated midnight",async()=>{
+ const single={...candidates[2],datePrecision:"day",publishedAt:"2026-10-29T00:00:00.000Z"};
+ const result=buildPhase2hPrivateRawRecords([single],{now,derive});
+ const record=result.records[0];
+ assert.equal(record.original.original_published_at,"2026-10-29");
+ assert.equal(record.original.date_precision,"day");
+ assert.equal(record.analysis.evidence_and_confidence.source_published_at,"2026-10-29");
+ assert.equal(await validPrivateRawNews(record,now.getTime()),JSON.stringify(record));
+});
 test("changed original bytes with same URL/date fails closed, not a phantom new story",()=>{
  assert.throws(()=>buildPhase2hPrivateRawRecords([
   candidates[0],{...candidates[0],title:"A changed headline for same original date"}
