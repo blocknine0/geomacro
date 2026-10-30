@@ -23,6 +23,7 @@ import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-in
 import {getInternalNewsScores,putInternalNewsScores} from './internal-signed-news-scores.ts';
 import {handleLowSourceReviews} from './low-source-reviews.ts';
 import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
+import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived} from "./phase2h-private-raw-news.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
@@ -1441,6 +1442,19 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      // Canonical admin-only original observation intake. No public, partner,
+      // PREDGE, scoring, signing or x402 route is modified or reused.
+      if(url.pathname==="/v1/internal/phase2h-raw-news"){
+        if(request.method==="GET")return phase2hPrivateRawGet(env,url.searchParams);
+        if(request.method==="PUT"&&!url.search){
+          const body=await readJson(request,240000);
+          if(body.schema==="geomacro.phase2h.private-raw-batch.v1")
+            return phase2hPrivateRawPut(env,body);
+          if(body.schema==="geomacro.phase2h.b2-archive-ack.v1")
+            return phase2hPrivateRawMarkArchived(env,body);
+        }
+        return json({ok:false,error:"PRIVATE_RAW_METHOD_INVALID"},405);
+      }
       if(request.method==='GET'&&url.pathname==='/v1/internal/website-derived-news-bundle'&&!url.search){
         const direct=await readDerivedStoriesBundle(env,Date.now(),false);
         const headers=new Headers(direct.headers);

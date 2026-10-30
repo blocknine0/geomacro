@@ -9,6 +9,7 @@ import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
 import {persistPrivateOsintBatch} from "../lib/private-osint-15m-durable-publisher.mjs";
+import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
 import {privateGdeltGlobalDiscovery} from "../lib/private-osint-gdelt-global.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
@@ -41,6 +42,8 @@ const timestamp=new Date();
 // origin/permalink rules. Unverified private-only rows remain in private D1.
 const originalCandidates=[];
 const candidateIds=new Set();
+const collectedPrivateOriginals=[];
+const phase2hRawSeen=new Set();
 // At most 300 most recent concrete reports from each lane; no publisher
 // titles/links ever enter public D1 and no extra fetch or provider charge.
 const observedByCategory=new Map(["geopolitics","macro","rare_earth"].map(c=>[c,new Map()]));
@@ -52,7 +55,26 @@ const runtimeSources=privateOsintRuntimeSources(timestamp,privateOsintGlobalSour
 const result=await collectPrivateOsint15m({
  now:timestamp,registry:runtimeSources,normalize:normalizeReusableNewsJson,
  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
- onOriginalCandidate:researchPrivateOnly?null:(raw=>{
+ onOriginalCandidate:(raw=>{
+  // Store each discoverable native-dated original's private feed metadata
+  // before the existing website candidate classifier can discard it.
+  // This remains protected research: no original body fetch or rights grant.
+  if(raw&&typeof raw.article_url==="string"&&
+     typeof raw.title==="string"&&typeof raw.published_at==="string"&&
+     ["geopolitics","macro","rare_earth"].includes(raw.category)){
+    const rawKey=raw.category+"|"+raw.article_url+"|"+raw.published_at;
+    if(!phase2hRawSeen.has(rawKey)){
+      phase2hRawSeen.add(rawKey);
+      let host="";
+      try{host=new URL(raw.source_url).hostname}catch{}
+      collectedPrivateOriginals.push({
+       category:raw.category,title:raw.title,articleUrl:raw.article_url,
+       publishedAt:raw.published_at,sourceId:host,credit:null,
+      });
+    }
+  }
+  if(researchPrivateOnly)return;
+
   const eligible=officialWebsiteCandidateFromOsint(raw,timestamp.getTime());
   if(eligible){
    const key=eligible.category+"|"+eligible.articleUrl;
@@ -107,6 +129,21 @@ if(persisted.source_checks_observed_this_tick!==result.checks.length||
  !persisted.d1_write_exact_readback_verified||
  !persisted.separate_private_d1_readback_verified)
  throw Error("PRIVATE_OSINT_15M_DURABLE_PRODUCTION_ACCEPTANCE_FAILED");
+// The same quota-admitted private research collector now captures its
+// original observed publisher metadata in the existing canonical D1, without
+// adding a source read or modifying any public or partner feed.
+const phase2h=buildPhase2hPrivateRawRecords(collectedPrivateOriginals,{
+ now:timestamp,derive:deriveStatelessSignals,
+});
+const rawReceipt=await postPhase2hPrivateRawRecords({
+ records:phase2h.records,controlPlaneRoot,token:control,
+});
+console.log(JSON.stringify({schema:"geomacro.phase2h.private-osint-originals.v1",
+ counts:phase2h.counts,ingested:rawReceipt.stored,duplicates:rawReceipt.duplicate,
+ excluded_invalid:phase2h.discarded_invalid,
+ d1_readback_verified:rawReceipt.readback_verified,
+ b2_verified:false,rights_verified:false,payments:0}));
+
 
 // Production workflow sets GEOMACRO_OSINT_RESEARCH_PRIVATE_ONLY=1.
 // Complete the existing authenticated D1 write + independent readback first,

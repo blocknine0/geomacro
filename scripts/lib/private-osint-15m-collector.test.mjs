@@ -213,7 +213,12 @@ test("production private OSINT bypasses public health, signing and website publi
  const website=tick.indexOf("const website=await publishPrivateOsintWebsiteSignals(");
  assert.ok(guard>=0&&db>guard&&accepted>db&&exit>accepted&&website>exit);
  assert.ok(tick.includes("const workerPolicy=researchPrivateOnly?null:await requireDerivedNewsWorkerPolicy("));
- assert.ok(tick.includes("onOriginalCandidate:researchPrivateOnly?null:(raw=>{"));
+ // Internal raw metadata capture now also runs in research-only mode, but the
+ // previous public website/signer branch remains barred in that mode.
+ assert.ok(tick.includes("onOriginalCandidate:(raw=>{"));
+ assert.ok(tick.includes("if(researchPrivateOnly)return;"));
+ assert.ok(tick.indexOf("const rawReceipt=await postPhase2hPrivateRawRecords(")>accepted);
+ assert.ok(tick.indexOf("const rawReceipt=await postPhase2hPrivateRawRecords(")<exit);
  assert.ok(tick.slice(exit,website).includes("process.exit(0);"));
  assert.ok(tick.slice(exit,website).includes("website_publication_attempted:false"));
  assert.ok(tick.slice(exit,website).includes("paid_publication_attempted:false"));

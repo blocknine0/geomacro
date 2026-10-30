@@ -10,11 +10,12 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { summarizeDerivedSourceHealth } from "../lib/derived-news-source-health.mjs";
 import {prepareDerivedNewsBatches} from '../lib/derived-news-d1-batches.mjs';
 import {reconcileAcknowledgedDerivedNews} from "../lib/phase2g-per-id-d1-reconciliation.mjs";
+import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
 import { buildMaterialGriNewsReviewQueue } from "../lib/material-gri-news-review.mjs";
 import { readStatelessWebsiteIntelligence } from "../../src/lib/stateless-public-intelligence.server";
 import {createRunScopedAustralianResourcesFetch} from "../../src/lib/stateless-run-shared-official-fetch";
 import {
-  conservativeDayReleaseMs,reconcilePrivateDerivedSourceRefs,selectBoundedRetainedOriginalTargets,
+  conservativeDayReleaseMs,reconcilePrivateDerivedSourceRefs,selectBoundedRetainedOriginalTargets,deriveStatelessSignals,
   type StatelessSourceCandidate,
   type StatelessIntelligenceSignal,
 } from "../../src/lib/stateless-intelligence-model";
@@ -241,6 +242,30 @@ if (ARCHIVE_ONLY) {
   process.exit(success&&denied===0?0:2);
 }
 
+// Phase 2H: capture private ORIGINAL publisher metadata at the same existing
+// quota-admitted collector, before native candidate identities leave memory.
+// Internal analysis is deterministic and not a commercial approval. A failed
+// archive intake never falsely marks a B2 object as written or publishes URLs.
+try {
+  if(workerPolicyReady) {
+    const plan=buildPhase2hPrivateRawRecords(privateOriginals,{
+      now:new Date(),derive:deriveStatelessSignals,
+    });
+    const raw=await postPhase2hPrivateRawRecords({
+      records:plan.records,controlPlaneRoot:CONTROL_PLANE_ORIGIN,token:TOKEN,
+      fetchImpl:noSupabase,
+    });
+    console.log(JSON.stringify({schema:"geomacro.phase2h.website-original-d1-receipt.v1",
+      collected:plan.records.length,excluded_not_retained:plan.discarded_invalid,
+      categories:plan.counts,inserted:raw.stored,previously_seen:raw.duplicate,
+      canonical_d1_readback_verified:raw.readback_verified,
+      b2_verified:false,rights_verified:false,payments:0}));
+  }
+}catch {
+  // An unavailable new deployment / quota is never equivalent to raw intake.
+  success=false;
+  console.error("::error::PHASE2H_WEBSITE_PRIVATE_RAW_INTAKE_NOT_VERIFIED");
+}
 // Physical TTL/600-row cleanup is an explicit, authenticated empty batch.
  // Run it once per successful three-category collection, not once per category
  // plus every non-empty news write; failed D1 publication must not amplify load.
