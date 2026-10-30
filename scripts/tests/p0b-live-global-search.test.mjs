@@ -112,3 +112,21 @@ test("GOV.UK native first publication with timezone offset is original evidence"
  assert.equal(r.first_party_matches[0].original_published_at,"2026-10-30T08:00:00.000Z");
  assert.equal(r.first_party_matches[0].first_party_content_api_metadata_verified,true);
 });
+
+
+test("official call and statement headline speech acts produce factual, distinct geopolitical why",()=>{
+ for(const title of [
+  "Foreign Minister's call with the President of Ukraine: 28 October 2026",
+  "Foreign Minister's statement on Ukraine security assistance"
+ ]){
+  const x=p0bHeadlineEvent(title,"geopolitics");
+  assert.ok(x,title);
+  assert.notEqual(x.what,x.why);
+  assert.match(x.what,/Foreign Minister/u);
+  assert.match(x.what,/Ukraine/u);
+  assert.match(x.why,/unverified|not proof/u);
+  assert.equal(/\b(?:agreement signed|ceasefire reached)\b/iu.test(x.what),false);
+ }
+ assert.equal(p0bHeadlineEvent("Foreign Minister's call with President of Ukraine",
+  "macro"),null);
+});
