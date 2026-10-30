@@ -6,7 +6,7 @@
  */
 import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
 import {resolve} from "node:path";
-import {pathToFileURL} from "node:url";
+import {pathToFileURL,fileURLToPath} from "node:url";
 import {attributeD1ReadInsights} from "./attribute-d1-query-insights.mjs";
 const check=rows=>{
  if(!Array.isArray(rows)||rows.length<1||rows.length>150)
@@ -44,8 +44,9 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   const data=rankedDailyD1Insights(
    JSON.parse(readFileSync(process.argv[2],"utf8")),
    JSON.parse(readFileSync(process.argv[3],"utf8")));
-  mkdirSync("artifacts/d1-launch-72h",{recursive:true});
-  writeFileSync("artifacts/d1-launch-72h/query-insights.json",
+  const outputDir=fileURLToPath(new URL("../../artifacts/d1-launch-72h/",import.meta.url));
+  mkdirSync(outputDir,{recursive:true});
+  writeFileSync(resolve(outputDir,"query-insights.json"),
    JSON.stringify(data,null,2)+"\n",{mode:0o600});
   console.log(JSON.stringify({schema:data.schema,observed_at_utc:data.observed_at_utc,
    query_read_count:data.read_query_count_observed,
