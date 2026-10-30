@@ -35,7 +35,7 @@ test("Phase2H has isolated free-tier archive admission without opening general m
  // More write headroom is needed when reserving three five-hour slots.
  const observed={...quota(2_441_367,43_000),day_utc:"2026-10-30"};
  const p=planD1BundledWork(observed,{now:at});
- assert.equal(p.state,"HELD");
+ assert.equal(p.state,"CRITICAL_ONLY");
  assert.equal(p.maintenance,false);
  assert.equal(p.source_intake,true);
  assert.equal(p.phase2h_raw_archive,true);
