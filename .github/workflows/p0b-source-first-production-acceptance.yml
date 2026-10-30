@@ -1,0 +1,74 @@
+name: P0-B Permanent Source-First Global Research Production Acceptance
+# No funds; exact deployed canonical main, source-first real responses only.
+on:
+  pull_request:
+    paths:
+      - "scripts/lib/p0b-event-grounded-projection.mjs"
+      - "scripts/lib/p0b-live-global-search.mjs"
+      - "scripts/tests/p0b-live-global-search.test.mjs"
+      - "scripts/ops/p0b-source-first-production-acceptance.mjs"
+      - "workers/control-plane/src/phase2h-private-raw-news.mjs"
+      - "workers/control-plane/wrangler.example.jsonc"
+      - ".github/workflows/p0b-source-first-production-acceptance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/lib/p0b-event-grounded-projection.mjs"
+      - "scripts/lib/p0b-live-global-search.mjs"
+      - "scripts/tests/p0b-live-global-search.test.mjs"
+      - "scripts/ops/p0b-source-first-production-acceptance.mjs"
+      - "workers/control-plane/src/phase2h-private-raw-news.mjs"
+      - "workers/control-plane/wrangler.example.jsonc"
+      - ".github/workflows/p0b-source-first-production-acceptance.yml"
+  schedule:
+    - cron: "43 9 * * *"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-p0b-production-source-first
+  cancel-in-progress: false
+jobs:
+  source-first-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Prove grounded events and immutable original boundary
+        run: |
+          node --check scripts/lib/p0b-event-grounded-projection.mjs
+          node --check scripts/lib/p0b-live-global-search.mjs
+          node --check scripts/ops/p0b-source-first-production-acceptance.mjs
+          node --check workers/control-plane/src/phase2h-private-raw-news.mjs
+          node --test scripts/tests/p0b-live-global-search.test.mjs scripts/tests/p0a-evidence-quality.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs
+  independent-production:
+    needs: source-first-contract
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: production
+    env:
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify deployed SHA and 3 production source-first responses
+        run: node scripts/ops/p0b-source-first-production-acceptance.mjs
+      - name: Preserve redacted three-category real acceptance receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: p0b-source-first-production-${{ github.run_id }}
+          path: artifacts/derived-news/p0b-source-first-live-acceptance.json
+          if-no-files-found: warn
+          retention-days: 30

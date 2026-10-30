@@ -72,7 +72,7 @@ export async function runP0AProductionAcceptance({
    try{parsed=JSON.parse(dbRow.raw_json)}catch{fail("CANONICAL_JSON_INVALID")}
    if(parsed.record_id!==dbRow.record_id||parsed.category!==dbRow.category||
       !HEX.test(parsed.raw_sha256))fail("CANONICAL_IDENTITY_DIVERGED");
-   const projected=phase2hOneOriginalResearchFivePart(parsed);
+   const projected=phase2hOneOriginalResearchFivePart(parsed,true);
    if(!projected)fail("LIVE_QUALITY_PROJECTION_UNAVAILABLE");
    // Immutable D1/B2 originals are never rewritten. Audit the exact
    // read-time derived representation customers/machines would receive.

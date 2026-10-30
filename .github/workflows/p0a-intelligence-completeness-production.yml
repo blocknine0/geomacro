@@ -5,6 +5,9 @@ on:
   pull_request:
     paths:
       - "scripts/lib/p0a-evidence-quality.mjs"
+      - "scripts/lib/p0b-event-grounded-projection.mjs"
+      - "scripts/lib/p0b-live-global-search.mjs"
+      - "scripts/tests/p0b-live-global-search.test.mjs"
       - "scripts/tests/p0a-evidence-quality.test.mjs"
       - "scripts/ops/p0a-intelligence-completeness-production.mjs"
       - ".github/workflows/p0a-intelligence-completeness-production.yml"
@@ -12,6 +15,9 @@ on:
     branches: [main]
     paths:
       - "scripts/lib/p0a-evidence-quality.mjs"
+      - "scripts/lib/p0b-event-grounded-projection.mjs"
+      - "scripts/lib/p0b-live-global-search.mjs"
+      - "scripts/tests/p0b-live-global-search.test.mjs"
       - "scripts/tests/p0a-evidence-quality.test.mjs"
       - "scripts/ops/p0a-intelligence-completeness-production.mjs"
       - ".github/workflows/p0a-intelligence-completeness-production.yml"
@@ -37,7 +43,10 @@ jobs:
       - run: |
           node --check scripts/lib/p0a-evidence-quality.mjs
           node --check scripts/ops/p0a-intelligence-completeness-production.mjs
-          node --test scripts/tests/p0a-evidence-quality.test.mjs
+          node --check scripts/lib/p0b-live-global-search.mjs
+          node --check scripts/lib/p0b-event-grounded-projection.mjs
+          node --check workers/control-plane/src/phase2h-private-raw-news.mjs
+          node --test scripts/tests/p0a-evidence-quality.test.mjs scripts/tests/p0b-live-global-search.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs
   independent-live-acceptance:
     needs: quality-contract
     if: github.ref == 'refs/heads/main' && github.repository == 'blocknine0/geomacro'

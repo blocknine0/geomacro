@@ -3,6 +3,7 @@
   "main": "src/index.mjs",
   "compatibility_date": "2026-10-03",
   "workers_dev": true,
+  "vars": {"GEOMACRO_P0B_SOURCE_FIRST_ENABLED": "1"},
   "triggers": {"crons": ["* * * * *"]},
   "cache": {
     "enabled": true
