@@ -166,6 +166,36 @@ describe("bounded Base/Polygon RPC alternatives for independent receipt verifica
     expect(calls).toEqual([primary,backup,backup,backup,backup]);
   });
 
+  it("uses Worker-supported redirect:manual on every verification subrequest",async()=>{
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      if(init?.redirect==="error")throw new TypeError("workerd rejects redirect:error");
+      expect(init?.redirect).toBe("manual");
+      expect(init?.cache).toBe("no-store");
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(result(method));
+    }) as typeof fetch;
+    const proof=await confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,payer:PAYER,fetcher,
+    });
+    expect(proof.confirmed).toBe(true);
+  });
+  it("never follows redirected provider RPC calls; fails over to independent endpoint",async()=>{
+    const called:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      expect(init?.redirect).toBe("manual");
+      called.push(String(input));
+      if(String(input)===primary)
+        return new Response(null,{status:302,headers:{location:"https://untrusted.example/"}});
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(result(method));
+    }) as typeof fetch;
+    expect((await confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,payer:PAYER,fetcher,
+    })).confirmed).toBe(true);
+    expect(called).toEqual([primary,backup,backup,backup,backup]);
+    expect(called).not.toContain("https://untrusted.example/");
+  });
+
   it("does not fallback on wrong-chain replies even if a backup could pass",async()=>{
     const origins:string[]=[];
     const fetcher=(async(input:unknown,init?:RequestInit)=>{
