@@ -315,6 +315,20 @@ test("actual 30 Oct provider-paced source-only snapshot can reserve 25 Phase2H d
  }
 });
 
+test("Phase2H reserves all remaining 6h archive slots without touching PREDGE",()=>{
+ const time=new Date("2026-10-30T01:00:00Z");
+ const quotaBefore={...quota(100_000,10_000),day_utc:"2026-10-30"};
+ const p=planD1BundledWork(quotaBefore,{now:time});
+ assert.equal(PREDGE_D1_FREE_HEADROOM.rows_read,500_000);
+ assert.equal(PREDGE_D1_FREE_HEADROOM.rows_written,8_000);
+ if(p.phase2h_raw_archive){
+  assert.ok(quotaBefore.remaining_rows_written>
+    23_000+p.source_intake_budget_to_utc_reset.rows_written+
+    4*750+p.retention_cleanup_max_rows+150);
+ }
+ assert.equal(p.d1_queries,0);
+ assert.equal(p.b2_requests,0);
+});
 test("Phase2H cleanup grant funds exactly one provider-budgeted daily pass",()=>{
  const at=new Date("2026-10-30T13:43:32.000Z");
  for(const written of [49_693,50_000,55_000,70_000,95_000]){
