@@ -59,7 +59,7 @@ test("source-only job strictly uses the existing provider budget and D1 intake w
 
 test("optional unverified private D1 research cannot spend automatic minimum Free-plan quota",()=>{
  const background=workflow.slice(workflow.indexOf("  collect-unverified-private:"));
- assert.match(background,/needs\\.quota-admission\\.outputs\\.research == 'true'/u);
- assert.match(background,/github\\.event_name == 'workflow_dispatch'/u);
+ assert.match(background,/needs\.quota-admission\.outputs\.research == 'true'/u);
+ assert.match(background,/github\.event_name == 'workflow_dispatch'/u);
  assert.doesNotMatch(background,/GEOMACRO_OSINT_RESEARCH_PRIVATE_ONLY: "0"/u);
 });
