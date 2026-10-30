@@ -123,7 +123,6 @@ export async function runPhase2hGovernedRawB2({
  if(now.getUTCHours()%6!==0||now.getUTCMinutes()>59)
   return {status:"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT",storage_confirmed:false,
    rows_archived:0,object_sha256:null};
- const d1=d1Factory({env,fetchImpl});
  const governor=governorFactory({env,fetchImpl});
  const q=await governor.status(),u=q?.used,l=q?.limits;
  if(q?.ok!==true||!u||!l)fail("PROVIDER_GOVERNOR_UNAVAILABLE");
@@ -131,6 +130,7 @@ export async function runPhase2hGovernedRawB2({
     u.NATIVE_AUTH>l.NATIVE_AUTH-2)
    return {status:"B2_ACCOUNT_HEADROOM_HELD",storage_confirmed:false,
     rows_archived:0,object_sha256:null};
+ const d1=d1Factory({env,fetchImpl});
  const initialRows=await d1.readPending();
  if(!Array.isArray(initialRows)||initialRows.length>100)
    fail("PRIVATE_SOURCE_CONTRACT_INVALID");
