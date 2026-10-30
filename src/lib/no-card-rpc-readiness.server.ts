@@ -87,7 +87,8 @@ function providerFamily(url:string){
   const host=new URL(url).hostname.toLowerCase();
   if(host==="alchemy.com"||host.endsWith(".alchemy.com"))return "ALCHEMY";
   if(host==="ankr.com"||host.endsWith(".ankr.com"))return "ANKR";
-  if(host==="drpc.org"||host.endsWith(".drpc.org"))return "DRPC";
+  if(host==="drpc.org"||host.endsWith(".drpc.org")||
+     host==="drpc.live"||host.endsWith(".drpc.live"))return "DRPC";
   return "OTHER";
 }
 async function outboundHttpsCheck(fetcher:typeof fetch){
