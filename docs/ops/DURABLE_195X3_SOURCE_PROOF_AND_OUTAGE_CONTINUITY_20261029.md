@@ -42,3 +42,10 @@ If B2 quota, D1 governor, key, upstream, or access is unavailable, permanent pro
 5. Distinct tests still required for real per-country current originals, source rights, D1 hot state, accepted signed country category object, buyer 402 prequote and first real-USDC delivery. **Do not set commercial flags based on this archive.**
 
 No changes to PREDGE source, workflow, code, credentials, quota, contracts, client operation or auth.
+
+## 29 October mainnet archival access diagnosis
+
+The source-runtime audit failed red while independent GitHub SHA witness [#3102](https://github.com/blocknine0/geomacro/issues/3102) succeeded. The first B2 archive attempt failed with a sanitized `B2_ACCESS_DENIED` class, so **no full private B2 snapshot write/readback is proven**. This revision prefers the existing scoped `B2_ARCHIVE_WRITE_KEY_ID` / `B2_ARCHIVE_WRITE_APPLICATION_KEY` key pair when present, while still enforcing a *different* dedicated readback key. It now reports `B2_READ_ACCESS_DENIED` versus `B2_WRITE_ACCESS_DENIED` without printing keys or object contents, for narrow operator key permission remediation.
+
+A Backblaze application key must have `readFiles` and/or `writeFiles` on the existing `geomacro-private-archive` bucket, and any configured `namePrefix` must include `geomacro-evidence/v1/country-195x3/audit-proof/`. Never broaden PREDGE keys, disable D1/B2 quota admission, or substitute a master account key. If scoped existing credentials cannot reach the proof prefix, an owner must separately authorize a purpose-scoped reader/writer key pair and configure the protected GitHub production environment; code cannot override a provider's denied credentials.
+
