@@ -84,7 +84,7 @@ test("Workers-compatible manual redirects preserve fail-closed 3xx source policy
   question:"Ukraine sanctions update",countryIso3:"UKR",
   category:"geopolitics",now,fetchImpl
  });
- assert.deepEqual(seen,["manual","manual"]);
+ assert.deepEqual(seen,["manual","manual","manual"]);
  assert.deepEqual(r.provider_diagnostics,{govuk:"REDIRECT_DENIED",gdelt:"REDIRECT_DENIED"});
  assert.equal(r.status,"GLOBAL_PROVIDER_UNAVAILABLE");
  assert.equal(r.first_party_matches.length,0);
