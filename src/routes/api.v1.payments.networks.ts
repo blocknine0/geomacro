@@ -1,4 +1,5 @@
 import {createFileRoute} from "@tanstack/react-router";
+import {runSignedRpcReadiness} from "../lib/no-card-rpc-readiness.server";
 import {publicGeomacroUsdcRailDiscovery}
   from "../lib/geomacro-multichain-usdc.server";
 
@@ -10,6 +11,7 @@ const headers={
 export const Route=createFileRoute("/api/v1/payments/networks")({
   server:{handlers:{
     OPTIONS:async()=>new Response(null,{status:204,headers}),
+    POST:async({request}:{request:Request})=>runSignedRpcReadiness(request),
     GET:async({request}:{request:Request})=>{
       const url=new URL(request.url);
       if(url.search||url.hash)
