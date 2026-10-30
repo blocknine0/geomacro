@@ -40,6 +40,10 @@ test("unknown cause stays null rather than being filled with category boilerplat
  const result=p0aAuditOriginal(e);
  assert.equal(result.status,"EVIDENCE_LIMITED");
  assert.ok(result.reasons.includes("WHY_MISSING"));
+ const batch=p0aAuditBatch([e]);
+ assert.equal(batch.counts.geopolitics.limited,1);
+ assert.equal(batch.counts.geopolitics.reject,0);
+ assert.equal(Object.hasOwn(batch.counts.geopolitics,"evidence_limited"),false);
 });
 test("generic analysis, ungrounded facts and repeated why fail closed",()=>{
  const boilerplate=structuredClone(events[1]);
