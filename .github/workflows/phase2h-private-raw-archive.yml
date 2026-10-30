@@ -1,6 +1,8 @@
 name: Phase 2H Permanent Private Raw B2 and Exact-Question Acceptance
-# Exactly one daily schedule, 00:29 UTC, for raw B2 archive followed by
-# quota-admitted retention cleanup. No hourly D1 or B2 provider checks.
+# Locked daily 00:29 UTC production schedule; a one-time manual smoke path is
+# permitted only with explicit confirmation through 2026-11-01 UTC, and
+# remains subject to all existing provider quota and archival proof gates.
+# No hourly D1/B2 provider checks.
 # Archive evidence/rights and PREDGE protected capacity remain unchanged.
 # Existing provider-approved maintenance=true admission and atomic B2 reserve are mandatory.
 on:
@@ -26,6 +28,12 @@ on:
       - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
   schedule:
     - cron: "29 0 * * *"
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "One-time LIVE smoke: type RUN_ONCE_PHASE2H_2026_10_31; expires 2026-11-02 00:00 UTC"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -35,6 +43,31 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  manual-smoke-gate:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Verify one-time consent, canonical main, and expiry without provider calls
+        env:
+          MANUAL_CONFIRMATION: ${{ inputs.confirmation }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const start=Date.parse("2026-10-30T18:00:00Z");
+          const expires=Date.parse("2026-11-02T00:00:00Z");
+          const now=Date.now();
+          if(process.env.MANUAL_CONFIRMATION!=="RUN_ONCE_PHASE2H_2026_10_31"||
+             process.env.GITHUB_REF!=="refs/heads/main"||
+             process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
+             process.env.GITHUB_RUN_ATTEMPT!=="1"||
+             now<start||now>=expires)
+            throw Error("PHASE2H_MANUAL_PRODUCTION_SMOKE_NOT_AUTHORIZED");
+          console.log(JSON.stringify({schema:"geomacro.phase2h.one-time-manual-gate.v1",
+            status:"ELIGIBLE_FOR_QUOTA_ADMISSION",cloudflare_d1_queries:0,
+            b2_requests:0,expires_at:"2026-11-02T00:00:00Z"}));
+          NODE
   offline-census-contract:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
@@ -49,7 +82,11 @@ jobs:
       - name: Verify scoped metadata-only census and strict B2 admission (offline)
         run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs
   quota-admission:
-    if: github.event_name == 'schedule' && github.event.schedule == '29 0 * * *' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'schedule' && github.event.schedule == '29 0 * * *') ||
+       (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RUN_ONCE_PHASE2H_2026_10_31'))
     runs-on: ubuntu-24.04
     timeout-minutes: 4
     environment: production
@@ -105,6 +142,7 @@ jobs:
       B2_ACCOUNT_QUOTA_REQUIRED: "1"
       B2_ACCOUNT_QUOTA_WORKFLOW_ID: derived_news_backup
       B2_REQUEST_BUDGET: "12"
+      PHASE2H_ONE_TIME_PRODUCTION_SMOKE: ${{ github.event_name == 'workflow_dispatch' && inputs.confirmation || '' }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
@@ -167,8 +205,8 @@ jobs:
     needs: [quota-admission, raw-b2-to-production-question]
     if: >-
       always() &&
-      github.event_name == 'schedule' &&
-      github.event.schedule == '29 0 * * *' &&
+      ((github.event_name == 'schedule' && github.event.schedule == '29 0 * * *') ||
+       (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RUN_ONCE_PHASE2H_2026_10_31')) &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
