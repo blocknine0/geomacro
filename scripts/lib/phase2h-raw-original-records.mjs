@@ -27,7 +27,7 @@ const channels=topic=>{
  return out;
 };
 export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}={}){
- if(!Array.isArray(candidates)||!Number.isFinite(now.getTime())||
+ if(!Array.isArray(candidates)||!(now instanceof Date)||!Number.isFinite(now.getTime())||
     typeof derive!=="function")throw Error("PHASE2H_RAW_COLLECTOR_INVALID");
  const map=new Map(),counts={geopolitics:0,macro:0,rare_earth:0};
  let excluded=0;
@@ -52,7 +52,7 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
    content_scope:openLicense?"OPEN_LICENSE_FEED_DESCRIPTION_WHEN_PRESENT":"ORIGINAL_FEED_METADATA_ONLY",
    full_article_html_collected:false,
    original_article_license_verified:false,
-   source_credit:c.credit??null,
+   source_credit:typeof c.credit==="string"&&c.credit.length<=250?c.credit:null,
   };
   const observationId=sha(c.category+"\n"+c.articleUrl+"\n"+c.publishedAt);
   let signals=[];
