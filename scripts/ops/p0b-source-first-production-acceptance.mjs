@@ -66,6 +66,7 @@ const verify=async({env=process.env,fetchImpl=fetch,now=new Date()}={})=>{
     verified_first_party_count:firstParty,
     discovery_only_count:body.global_discovery_only_count??0,
     provider_errors:body.global_provider_error_count??null,
+    provider_diagnostics:body.global_provider_diagnostics??null,
     fallback_status:body.global_fallback_status??null,
     source_or_fallback_contract_verified:good});
   }
