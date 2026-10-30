@@ -15,7 +15,7 @@ const TIMEOUT_MS=6000;
 const MAX_ALTERNATES=10;
 const HEX=/^0x[0-9a-fA-F]+$/u;
 type AuditEnvironment=Record<string,string|undefined>;
-type ProbeResult={network:string;slot:string;status:string};
+type ProbeResult={network:string;slot:string;status:string;provider_family?:string};
 
 export function rpcAuditSignature(secret:string,atMs:number){
   return createHmac("sha256",secret).update(SCOPE+String(atMs)).digest("hex");
@@ -69,6 +69,36 @@ function slotConfig(suffix:string,env:AuditEnvironment){
   if(new Set(urls).size!==3)throw Error("DUPLICATE_PROVIDER_URL");
   return urls;
 }
+function errorClass(e:unknown){
+  if(e instanceof Error && (e.name==="TimeoutError"||e.name==="AbortError"))
+    return "RPC_TIMEOUT";
+  const cause=(e&&typeof e==="object"&&"cause" in e)?e.cause:null;
+  const code=cause&&typeof cause==="object"&&"code" in cause?String(cause.code):"";
+  if(["ENOTFOUND","EAI_AGAIN"].includes(code))return "RPC_DNS_UNRESOLVED";
+  if(["ETIMEDOUT","UND_ERR_CONNECT_TIMEOUT"].includes(code))return "RPC_CONNECT_TIMEOUT";
+  if(["ENETUNREACH","EHOSTUNREACH","ECONNREFUSED"].includes(code))
+    return "RPC_NETWORK_UNREACHABLE";
+  if(["CERT_HAS_EXPIRED","UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+      "ERR_TLS_CERT_ALTNAME_INVALID","SELF_SIGNED_CERT_IN_CHAIN"].includes(code))
+    return "RPC_TLS_ERROR";
+  return "RPC_FETCH_FAILED";
+}
+function providerFamily(url:string){
+  const host=new URL(url).hostname.toLowerCase();
+  if(host==="alchemy.com"||host.endsWith(".alchemy.com"))return "ALCHEMY";
+  if(host==="ankr.com"||host.endsWith(".ankr.com"))return "ANKR";
+  if(host==="drpc.org"||host.endsWith(".drpc.org"))return "DRPC";
+  return "OTHER";
+}
+async function outboundHttpsCheck(fetcher:typeof fetch){
+  try{
+    const r=await fetcher("https://www.cloudflare.com/cdn-cgi/trace",{
+      method:"GET",redirect:"error",cache:"no-store",
+      signal:AbortSignal.timeout(5000),
+    });
+    return r.status===200?"EGRESS_PASS":"EGRESS_HTTP_FAILURE";
+  }catch(e){return "EGRESS_"+errorClass(e);}
+}
 async function call(url:string,method:string,params:unknown[],fetcher:typeof fetch){
   let response:Response;
   try{
@@ -77,11 +107,7 @@ async function call(url:string,method:string,params:unknown[],fetcher:typeof fet
       body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),
       signal:AbortSignal.timeout(TIMEOUT_MS),
     });
-  }catch(e){
-    if(e instanceof Error && (e.name==="TimeoutError"||e.name==="AbortError"))
-      throw Error("RPC_TIMEOUT");
-    throw Error("RPC_FETCH_FAILED");
-  }
+  }catch(e){throw Error(errorClass(e));}
   if(!response.ok){
     const status=response.status;
     if(status===401)throw Error("RPC_AUTH_REJECTED");
@@ -124,6 +150,8 @@ const STATUSES=new Set([
   "RPC_AUTH_REJECTED","RPC_ACCESS_DENIED","RPC_ENDPOINT_NOT_FOUND",
   "RPC_RATE_LIMITED","RPC_PROVIDER_5XX","RPC_HTTP_ERROR",
   "RPC_RESPONSE_TOO_LARGE","RPC_WRONG_CHAIN","RPC_UNAVAILABLE",
+  "RPC_DNS_UNRESOLVED","RPC_CONNECT_TIMEOUT",
+  "RPC_NETWORK_UNREACHABLE","RPC_TLS_ERROR",
   "RPC_INVALID_HEAD","RPC_INVALID_BLOCK","RPC_UNEXPECTED_RECEIPT",
 ]);
 export async function runSignedRpcReadiness(
@@ -136,6 +164,7 @@ export async function runSignedRpcReadiness(
   if(new URL(request.url).search||new URL(request.url).hash)
     return Response.json({ok:false,error:"REQUEST_INVALID"},{status:400,
       headers:{"Cache-Control":"no-store"}});
+  const egress_check=await outboundHttpsCheck(fetcher);
   const results:ProbeResult[]=[];
   for(const net of NETWORKS){
     let urls:string[];
@@ -159,7 +188,8 @@ export async function runSignedRpcReadiness(
         const code=e instanceof Error?e.message:"";
         status=STATUSES.has(code)?code:"RPC_UNAVAILABLE";
       }
-      return {network:net.slug,slot:i===0?"primary":i===1?"backup_1":"backup_2",status};
+      return {network:net.slug,slot:i===0?"primary":i===1?"backup_1":"backup_2",
+        status,provider_family:providerFamily(url)};
     }));
     results.push(...checked);
   }
@@ -168,7 +198,8 @@ export async function runSignedRpcReadiness(
   // responses, block numbers, JSON-RPC error strings or payment auth state.
   return Response.json({
     schema:"geomacro.no-funds-six-rpc-readiness.v1",
-    ok:verified,checked_at:new Date(now).toISOString(),checks:results,
+    ok:verified,checked_at:new Date(now).toISOString(),
+    egress_check,checks:results,
     secrets_exposed:false,chargeable:false,payment_performed:false,
     settlement_verified:false,paid_delivery_verified:false,
     proof_scope:"production SSR chain RPC connectivity only; NOT payment or rights acceptance",
