@@ -1,8 +1,7 @@
 name: Phase 2H Permanent Private Raw B2 and Exact-Question Acceptance
-# User-selected ONE monthly Phase2H production run at 00:29 UTC day 1.
-# This is a low-frequency best-effort quota check/archival, NOT continuous
-# 72-hour capture. The archive only reads still-eligible 72-hour raw rows;
-# a month of incoming originals cannot be recovered by this workflow.
+# Every six hours, bounded incremental archive of ORIGINAL pending D1 rows.
+# One D1 raw-json read per row before B2 PUT/two GETs and hash ACK.
+# Backlog is explicit, never silently reported as complete.
 # Automatic D1 raw-news deletion is PAUSED; no monthly cleanup job.
 # Backblaze B2 has its OWN independent provider lifecycle rule and must be
 # changed by the bucket owner; this workflow cannot disable provider rules.
@@ -22,6 +21,9 @@ on:
       - "scripts/ops/phase2h-verify-b2-72h-lifecycle.mjs"
       - "scripts/ops/phase2h-archive-private-raw-news.mjs"
       - "scripts/tests/phase2h-raw-news.test.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
+      - "scripts/ops/phase2i-b-evidence-bridge.mjs"
+      - "scripts/tests/phase2i-b-evidence-bridge.test.mjs"
       - "scripts/lib/phase2h-retention-72h.mjs"
       - "scripts/tests/phase2h-retention-72h.test.mjs"
       - "scripts/lib/phase2h-raw-original-records.mjs"
@@ -30,7 +32,7 @@ on:
       - "scripts/tests/phase2ib-fastlane-private-staging.test.mjs"
       - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
   schedule:
-    - cron: "29 0 1 * *"
+    - cron: "29 0,6,12,18 * * *"
 
 permissions:
   contents: read
@@ -52,11 +54,11 @@ jobs:
         with:
           node-version: "22"
       - name: Verify scoped metadata-only census and strict B2 admission (offline)
-        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs
+        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/phase2i-b-evidence-bridge.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs
   quota-admission:
     if: >-
       github.event_name == 'schedule' &&
-      github.event.schedule == '29 0 1 * *' &&
+      github.event.schedule == '29 0,6,12,18 * * *' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -77,12 +79,12 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
-      - name: Disclose paused D1 cleanup and monthly archive coverage honestly
+      - name: Disclose six-hour incremental archive and manual-only cleanup
         shell: bash
         run: |
-          echo "::warning::Phase2H automatic D1 deletion is PAUSED. Monthly archival is not continuous; B2 provider lifecycle must be disabled separately by bucket owner."
+          echo "::notice::Phase2H 6h incremental original-news archive with no scheduled D1 delete; provider must verify disabled B2 auto-delete lifecycle."
           echo "### Phase2H cadence limitation" >> "$GITHUB_STEP_SUMMARY"
-          echo "Monthly archive is not 72-hour continuous capture. Automatic D1 cleanup is PAUSED; no D1 delete SQL runs here. Backblaze B2 native lifecycle remains external and MUST be disabled separately for the raw-news prefix. PREDGE is unchanged." >> "$GITHUB_STEP_SUMMARY"
+          echo "Every six hours: bounded pending original archive, SHA readback and D1 ack. Backlog may remain beyond a slot; no D1 physical deletion. Backblaze B2 auto-delete must independently be OFF. PREDGE unchanged." >> "$GITHUB_STEP_SUMMARY"
       - id: provider
         name: Verify provider-approved D1 maintenance=true admission
         env:
@@ -214,7 +216,7 @@ jobs:
     if: >-
       always() &&
       github.event_name == 'schedule' &&
-      github.event.schedule == '29 0 1 * *' &&
+      github.event.schedule == '29 0,6,12,18 * * *' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04

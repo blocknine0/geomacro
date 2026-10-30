@@ -70,9 +70,9 @@ export async function readPhase2hCanonicalCensus({env=process.env,fetchImpl=fetc
   archived_total:sum("archived"),pending_total:sum("pending")};
 }
 
-// Also used on slots with no new intake: independently restore the last
-// archived B2 object *twice*, compare exact bytes and then query the same
-// canonical D1 record through the deployed authenticated Worker.
+// Optional independent deep verification, NOT used by idle incremental
+// runs. Never repeatedly download historical B2 objects just to keep a
+// scheduled workflow green.
 export async function verifyPhase2hExistingArchive({
  env=process.env,fetchImpl=fetch,now=new Date(),
  b2Factory=createB2Client,governorFactory=createB2D1AccountGovernor,
@@ -149,7 +149,21 @@ export async function runPhase2hPermanentAcceptance({
   if(receipt?.storage_confirmed!==true)
    fail("B2_ARCHIVE_HELD_OR_FAILED");
   if(receipt.rows_archived===0){
-   if(i===0)proofs.push(await verifyExisting({env,now}));
+   if(i===0){
+    // No B2 GET or historical census on empty incremental slots. This
+    // receipt is *not* an object verification or corpus acceptance.
+    const idle={schema:"geomacro.phase2h.permanent-raw-b2-production-acceptance.v1",
+     status:"IDLE_NO_PENDING_RAW_ROWS_NO_ARCHIVE_PROOF",
+     verified_at:now.toISOString(),production_main_sha:env.GITHUB_SHA??null,
+     archived_batches_this_run:0,archived_records_this_run:0,
+     actual_b2_readback_verified:false,incremental_batch_proof_pass:false,
+     entire_admitted_raw_backlog_verified:false,
+     all_historical_b2_objects_independently_refetched_this_run:false,
+     canonical_d1_category_census:null,source_pending_read_verified:true,
+     commercial_rights_verified:false,payments:0};
+    writeSummary(idle);
+    return idle;
+   }
    break;
   }
   if(receipt.schema!=="geomacro.phase2h.private-raw-b2-acceptance.v1"||
@@ -205,8 +219,13 @@ export async function runPhase2hPermanentAcceptance({
  const summary={
   schema:"geomacro.phase2h.permanent-raw-b2-production-acceptance.v1",
   status:complete?"PASS_REAL_B2_TO_EXACT_QUESTION":
-   census.pending_total>0?"INCOMPLETE_ARCHIVE_BACKLOG":
-   "INCOMPLETE_ARCHIVED_OBJECT_RECHECK",
+   census.pending_total>0?"VERIFIED_INCREMENTAL_B2_WITH_BACKLOG":
+   "VERIFIED_INCREMENTAL_B2_CORPUS_NOT_EXHAUSTIVELY_RECHECKED",
+  incremental_batch_proof_pass:receipts.length>0&&
+   proofs.every(x=>x.same_b2_object_and_d1_original===true&&
+     x.b2_two_get_verified_in_preceding_step===true&&
+     x.per_record_five_part_exact===true&&
+     x.deployed_authenticated_http_200===true),
   verified_at:now.toISOString(),production_main_sha:env.GITHUB_SHA??null,
   actual_b2_readback_verified:proofs.every(x=>x.b2_two_get_verified_in_preceding_step===true),
   category_question_readbacks:Math.max(...proofs.map(x=>x.production_question_readback_categories??0)),
@@ -237,8 +256,8 @@ export async function runPhase2hPermanentAcceptance({
   commercial_rights_verified:false,payments:0,
  };
  writeSummary(summary);
- if(!complete)fail(census.pending_total>0?"UNARCHIVED_BACKLOG_REMAINS":
-   "ENTIRE_ARCHIVED_SET_NOT_INDEPENDENTLY_VERIFIED");
+ if(!summary.incremental_batch_proof_pass)
+  fail("INCREMENTAL_B2_OR_QUESTION_PROOF_UNAVAILABLE");
  return summary;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){

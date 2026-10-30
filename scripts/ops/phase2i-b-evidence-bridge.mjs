@@ -21,8 +21,12 @@ const validCounts=x=>x&&CATEGORIES.every(k=>nonnegative(x[k]))&&
 
 export function validateExistingPhase2hReceipt(report,mainSha){
  if(report?.schema!=="geomacro.phase2h.permanent-raw-b2-production-acceptance.v1"||
-    !["PASS_REAL_B2_TO_EXACT_QUESTION","INCOMPLETE_ARCHIVE_BACKLOG",
-       "INCOMPLETE_ARCHIVED_OBJECT_RECHECK"].includes(report.status)||
+     !["PASS_REAL_B2_TO_EXACT_QUESTION","INCOMPLETE_ARCHIVE_BACKLOG",
+       "INCOMPLETE_ARCHIVED_OBJECT_RECHECK",
+       "VERIFIED_INCREMENTAL_B2_WITH_BACKLOG",
+       "VERIFIED_INCREMENTAL_B2_CORPUS_NOT_EXHAUSTIVELY_RECHECKED"].includes(report.status)||
+     (String(report.status).startsWith("VERIFIED_INCREMENTAL_")&&
+       report.incremental_batch_proof_pass!==true)||
     report.production_main_sha!==mainSha||
     report.actual_b2_readback_verified!==true||
     report.canonical_d1_and_deployed_question_exact!==true||
@@ -100,14 +104,17 @@ export function createPhase2ibCycle({mainSha,runId,admission,archiveJob,report=n
   admission!=="true"?"QUOTA_HELD_MAINTENANCE_NOT_ADMITTED":
   archiveJob==="skipped"?"ARCHIVE_NOT_RUN":
   archiveJob==="failure"?"ARCHIVE_FAILED_NO_POSITIVE_RECEIPT":
-  "ARCHIVE_POSITIVE_PROOF_NOT_AVAILABLE";
+   report?.status==="IDLE_NO_PENDING_RAW_ROWS_NO_ARCHIVE_PROOF"?
+    "IDLE_NO_PENDING_NO_NEW_B2_PROOF":
+   "ARCHIVE_POSITIVE_PROOF_NOT_AVAILABLE";
  return {
   schema:RAW_CYCLE_SCHEMA,production_main_sha:mainSha,
   github_run_id:String(runId),checked_at:now.toISOString(),
   provider_maintenance_admitted:admission==="true",
-  archive_schedule:"MONTHLY_FIRST_DAY_00_29_UTC",
-  archive_cycle_hours:null,archive_admitted_only_once_per_slot:true,
-  monthly_only_cannot_guarantee_72h_original_archive:true,
+  archive_schedule:"EVERY_SIX_HOURS_00_06_12_18_UTC",
+  archive_cycle_hours:6,archive_admitted_only_once_per_slot:true,
+  incremental_pending_backlog_not_silent:true,
+  automatic_d1_deletion_paused:true,
   batch_maximum_unmodified:300,account_governor_unchanged:true,
   status,archive_job_result:archiveJob,
   latest_verified_receipt:positive,

@@ -4,8 +4,6 @@
  * request uses the shared atomic B2 D1 governor.
  */
 import {createHash} from "node:crypto";
-import {phase2hNewsCutoff,phase2hRawWithinRetention}
- from "../lib/phase2h-retention-72h.mjs";
 import {gzipSync,gunzipSync} from "node:zlib";
 import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
@@ -24,7 +22,9 @@ export function buildPhase2hRawB2Plan(rows,now=new Date()){
   if(!r||!/^[a-f0-9]{64}$/u.test(r.record_id)||seen.has(r.record_id)||
    !categories.includes(r.category)||!/^[a-f0-9]{64}$/u.test(r.raw_sha256)||
    r.schema!=="geomacro.phase2h.private-raw-observation.v1"||
-   !phase2hRawWithinRetention(r,now.getTime())||
+   typeof r.ingested_at!=="string"||!/^20\d\d-\d\d-\d\dT/u.test(r.ingested_at)||
+   !Number.isFinite(Date.parse(r.ingested_at))||
+   Date.parse(r.ingested_at)>now.getTime()+60_000||
    r.commercial_rights_verified!==false||
    r.commercial_delivery_authorized!==false)
    fail("SOURCE_CONTENT_INVALID");
@@ -85,7 +85,11 @@ export function createPhase2hCanonicalD1({
  };
  return {
   async readPending(){
-   const r=await sql("SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL AND first_ingested_at>? ORDER BY first_ingested_at,record_id LIMIT 300",[phase2hNewsCutoff(Date.now())]);
+   // Oldest unarchived first: no 72h cutoff. Newer arrivals are still
+   // validated and ingested separately; this drains the real backlog.
+   // Existing (b2_object_sha256,first_ingested_at,record_id) index bounds
+   // scans. Never fetch already archived raw_json again.
+   const r=await sql("SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL ORDER BY first_ingested_at,record_id LIMIT 300");
    return r.results.map(x=>{
     if(typeof x.raw_json!=="string"||x.raw_json.length>12000)fail("D1_ROW_INVALID");
     return JSON.parse(x.raw_json);
@@ -113,10 +117,9 @@ export function createPhase2hCanonicalD1({
   },
  };
 }
-/** Only the exact canonical monthly day-1 scheduled GitHub event may enter
- * the protected B2 writer; no manual/push/synthetic event can open it.
- * A delayed scheduled job remains eligible if GitHub signed event and main
- * ref still match. This is NOT continuous 72h archival for monthly intake.
+/** Only four canonical six-hour GitHub cron events; no manual/push bypass.
+ * Delayed scheduled jobs retain their trusted event identity. All D1 and
+ * B2 shared quota/governor rules remain in force without exceptions.
  */
 export function phase2hAuthorizedArchiveWindow({
  env=process.env,now=new Date(),eventReader=readFileSync,
@@ -131,7 +134,7 @@ export function phase2hAuthorizedArchiveWindow({
    return false;
  try{
   const event=JSON.parse(eventReader(path,"utf8"));
-  return event?.schedule==="29 0 1 * *";
+  return event?.schedule==="29 0,6,12,18 * * *";
  }catch{return false}
 }
 export async function runPhase2hGovernedRawB2({
@@ -149,8 +152,8 @@ export async function runPhase2hGovernedRawB2({
   env.PHASE2H_PROVIDER_MAINTENANCE!=="true"||
   !/^\d{1,20}$/u.test(env.GITHUB_RUN_ID??""))
   fail("PROTECTED_MAIN_GOVERNOR_REQUIRED");
- // Only canonical monthly schedule. A separate monthly run never implies
- // complete archive coverage for the preceding month or a 72h SLA.
+ // Only canonical six-hour schedule; backlog may exceed a single slot.
+ // Manual-only storage deletion remains independent.
  if(!windowAuthorizer({env,now,eventReader}))
   return {status:"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT",storage_confirmed:false,
    rows_archived:0,object_sha256:null};

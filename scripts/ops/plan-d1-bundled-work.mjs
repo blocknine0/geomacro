@@ -172,10 +172,13 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // Preserve projected source intake to UTC reset AND the PREDGE/critical
   // reserve; a source-only grant is not permission for arbitrary cleanup.
   // GraphQL account usage is non-atomic, never a physical erase guarantee.
-  // Exactly one Phase2H monthly scheduled archive/cleanup run. This
-  // admission is account-wide and preserves protected PREDGE capacity.
-  // If quota is held, no D1/B2 calls are authorized; do not borrow from
-  // critical/free-source reservations to force a retention pass.
+  // Four six-hour Phase2H archive slots per UTC day. Keep PREDGE,
+  // existing source-intake and critical reserves; manual cleanup remains
+  // separate and cannot be automatically scheduled by this admission.
+  // The B2 writer may ACK two <=300-row batches per slot.
+  const slotHours=[0,6,12,18];
+  const utcHour=now.getUTCHours();
+  const remainingArchiveSlots=slotHours.filter(h=>h>=utcHour).length||1;
   const remainingHourSlots=1;
   // One quota-admitted Phase2H cleanup run can use 25..1000 row deletes;
   // reserve the *entire* one-run retention pass at the granted maximum.
@@ -183,11 +186,10 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // Prefer retaining enough headroom for the single B2 archive slot
   // before allocating an optional larger deletion batch. Otherwise choose a
   // smaller safe cleanup cap rather than silently starving raw news archival.
-  const remainingArchiveSlots=remainingHourSlots;
   const rawWriteRoom=sourceIntake?
     snapshot.remaining_rows_written-
       D1_BUNDLE_LANES.critical.write_reserve-intakeBudget.rows_written-150:0;
-  const archiveWriteReserve=remainingArchiveSlots*350;
+  const archiveWriteReserve=remainingArchiveSlots*750;
   const preserveArchive=rawWriteRoom>archiveWriteReserve+
     remainingHourSlots*25;
   const hourlyDeleteWriteRoom=rawWriteRoom-
@@ -204,18 +206,19 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // Dedicated Phase 2H original-news B2 corridor. General discretionary
   // maintenance can be pacing-held even when the full remaining-day
   // source-intake budget and protected PREDGE headroom have been reserved.
-  // Reserve the single B2 archive slot (<=300 D1 row ACKs,
-  // quota-ledger writes and bounded census), as well as admitted raw TTL
-  // cleanup, before allowing this *archive-only* grant. The B2 atomic
-  // governor and per-prefix 1+1d lifecycle check remain mandatory.
+  // Reserve every remaining six-hour B2 archive slot (up to 600 D1
+  // ACKs across two batches plus ledger/census) and protected source-intake
+  // capacity. Manual cleanup is NOT scheduled and has a separate opt-in
+  // admission, so its optional delete budget must NOT block the writer.
+  // B2 native no-auto-delete and atomic per-request governor still apply.
   // This does NOT grant general maintenance, signing or paid operations.
   const phase2hRawArchive=sourceIntake&&
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
-      remainingArchiveSlots*20_000+remainingHourSlots*2500+10_000&&
+      remainingArchiveSlots*20_000+10_000&&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
-      remainingArchiveSlots*350+remainingHourSlots*retentionCleanupMaxRows+150;
+      remainingArchiveSlots*750+150;
   // Dedicated, once-per-run optional EIA/NOAA measurement import. These two
   // source-native statistics are NOT current news or commercial signals.
   // Preserve the ENTIRE day-to-reset source-intake allocation, plus critical

@@ -119,6 +119,16 @@ test("immutable per-ID compressed B2 plan restores exact source-native and five 
  assert.throws(()=>verifyPhase2hRawB2Restore(Buffer.from("tamper"),plan),
    /PHASE2H_RAW_B2_COMPRESSED_SHA_MISMATCH/u);
 });
+test("six-hour incremental writer can archive old, never-archived D1 originals once",()=>{
+ const older=data().records.map(x=>({...x,ingested_at:"2026-10-01T09:00:00.000Z"}));
+ const plan=buildPhase2hRawB2Plan(older,now);
+ assert.equal(plan.record_count,3);
+ assert.deepEqual(plan.counts,{geopolitics:1,macro:1,rare_earth:1});
+ assert.equal(verifyPhase2hRawB2Restore(plan.compressed,plan),true);
+ assert.throws(()=>buildPhase2hRawB2Plan([
+  {...older[0],ingested_at:"2026-10-31T06:10:00.000Z"}
+ ],now),/PHASE2H_RAW_B2_SOURCE_CONTENT_INVALID/u);
+});
 test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exact readback required",async()=>{
  const items=data().records;
  let put=0,first=0,second=0,postRead=0,marked=0;
@@ -193,7 +203,7 @@ test("maintenance archive never starts from an unscheduled credentialed job",asy
  assert.equal(r.storage_confirmed,false);
  assert.equal(r.object_sha256,null);
 });
-test("delayed monthly GitHub cron archive retains one authorized day-1 schedule without ungoverned manual work",async()=>{
+test("delayed six-hour GitHub cron archive retains one authorized schedule without ungoverned manual work",async()=>{
  const when=new Date("2026-10-30T19:08:00Z");
  const base={
   GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
@@ -204,7 +214,7 @@ test("delayed monthly GitHub cron archive retains one authorized day-1 schedule 
   GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main",
   GITHUB_EVENT_PATH:"/home/runner/work/_temp/_github_workflow/event.json"
  };
- const reader=()=>JSON.stringify({schedule:"29 0 1 * *"});
+ const reader=()=>JSON.stringify({schedule:"29 0,6,12,18 * * *"});
  assert.equal(phase2hAuthorizedArchiveWindow({env:base,now:when,eventReader:reader}),true);
  for(const different of [
   {GITHUB_EVENT_NAME:"workflow_dispatch"},
@@ -240,7 +250,7 @@ test("delayed monthly GitHub cron archive retains one authorized day-1 schedule 
  assert.equal(skipped.status,"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT");
 });
 
-test("monthly Phase2H production rejects manual dispatch without a D1/B2 quota request",async()=>{
+test("six-hour Phase2H production rejects manual dispatch without a D1/B2 quota request",async()=>{
  const when=new Date("2026-11-01T00:39:00Z");
  const env={
   GITHUB_EVENT_NAME:"workflow_dispatch",
@@ -267,7 +277,7 @@ test("monthly Phase2H production rejects manual dispatch without a D1/B2 quota r
   now:when,eventReader:()=>JSON.stringify({schedule:"29 0 * * *"})}),false);
  assert.equal(phase2hAuthorizedArchiveWindow({
   env:{...env,GITHUB_EVENT_NAME:"schedule"},
-  now:when,eventReader:()=>JSON.stringify({schedule:"29 0 1 * *"})}),true);
+  now:when,eventReader:()=>JSON.stringify({schedule:"29 0,6,12,18 * * *"})}),true);
 });
 
 test("governor headroom hold never calls B2 or protected D1",async()=>{
@@ -479,7 +489,7 @@ test("even trusted main-push B2 bootstrap cannot bypass the daily schedule",asyn
  assert.equal(r.status,"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT");
 });
 
-test("earlier archived objects remain valid when no-new-data slot verifies latest object",async()=>{
+test("no pending originals is metadata-only idle: no repeat B2 download or D1 census",async()=>{
  const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
   GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",
   B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
@@ -487,26 +497,52 @@ test("earlier archived objects remain valid when no-new-data slot verifies lates
   D1_DATABASE_ID:"a".repeat(8)+"-"+"a".repeat(4)+"-"+"a".repeat(4)+
    "-"+"a".repeat(4)+"-"+"a".repeat(12),
   CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40)};
- await assert.rejects(runPhase2hPermanentAcceptance({env,now,
+ const idle=await runPhase2hPermanentAcceptance({env,now,
   archive:async()=>({storage_confirmed:true,rows_archived:0,
    status:"NO_PENDING_PRIVATE_RAW_ROWS"}),
-  verifyExisting:async()=>({
-   same_b2_object_and_d1_original:true,per_record_five_part_exact:true,
-   deployed_authenticated_http_200:true,
-   b2_two_get_verified_in_preceding_step:true,
-   existing_archived_object_two_get_restored:true,
-   existing_object_sha256:"d".repeat(64),
-   verified_category_counts:{geopolitics:20,macro:70,rare_earth:210},
-   verified_b2_batch_rows:300,
-   production_question_readback_categories:3,
-   unarchived_backlog_present:false,
-   entire_admitted_raw_backlog_verified:true}),
-  readCensus:async()=>({staged_total:315,archived_total:315,pending_total:0,
-   category_counts:{geopolitics:{staged:20,archived:20,pending:0},
-    macro:{staged:75,archived:75,pending:0},
-    rare_earth:{staged:220,archived:220,pending:0}}})}),/PHASE2H_PERMANENT_ENTIRE_ARCHIVED_SET_NOT_INDEPENDENTLY_VERIFIED/u);
+  verifyExisting:()=>{throw Error("NO_B2_GET_FOR_IDLE")},
+  readCensus:()=>{throw Error("NO_D1_CENSUS_FOR_IDLE")}});
+ assert.equal(idle.status,"IDLE_NO_PENDING_RAW_ROWS_NO_ARCHIVE_PROOF");
+ assert.equal(idle.incremental_batch_proof_pass,false);
+ assert.equal(idle.actual_b2_readback_verified,false);
+ assert.equal(idle.archived_records_this_run,0);
+ assert.equal(idle.entire_admitted_raw_backlog_verified,false);
 });
-
+test("one verified batch with backlog is valid incremental progress, never corpus PASS",async()=>{
+ const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",GITHUB_SHA:"1".repeat(40),
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true",
+  CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"a".repeat(8)+"-"+"a".repeat(4)+"-"+"a".repeat(4)+
+   "-"+"a".repeat(4)+"-"+"a".repeat(12),
+  CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40)};
+ let count=0;
+ const result=await runPhase2hPermanentAcceptance({env,now,
+  archive:async()=>({schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
+   storage_confirmed:true,rows_archived:300,
+   status:"B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED",
+   category_counts:{geopolitics:100,macro:100,rare_earth:100},
+   object_sha256:(++count===1?"a":"b").repeat(64),
+   b2_first_get_verified:true,b2_second_independent_get_verified:true,
+   post_archive_d1_verified:true}),
+  verify:async()=>({
+   same_b2_object_and_d1_original:true,per_record_five_part_exact:true,
+   deployed_authenticated_http_200:true,b2_two_get_verified_in_preceding_step:true,
+   production_question_readback_categories:3,unarchived_backlog_present:true,
+   entire_admitted_raw_backlog_verified:false}),
+  verifyExisting:()=>{throw Error("NO_HISTORICAL_B2_RESCAN")},
+  readCensus:async()=>({staged_total:900,archived_total:600,pending_total:300,
+   category_counts:{geopolitics:{staged:300,archived:200,pending:100},
+    macro:{staged:300,archived:200,pending:100},
+    rare_earth:{staged:300,archived:200,pending:100}}})});
+ assert.equal(count,2);
+ assert.equal(result.status,"VERIFIED_INCREMENTAL_B2_WITH_BACKLOG");
+ assert.equal(result.incremental_batch_proof_pass,true);
+ assert.equal(result.entire_admitted_raw_backlog_verified,false);
+ assert.equal(result.archived_records_this_run,600);
+ assert.equal(result.canonical_d1_pending_total,300);
+});
 test("re-observed immutable original survives deployed event-analysis wording upgrades",async()=>{
  const existing=data().records.find(x=>x.category==="macro");
  const hashRow=row=>{
