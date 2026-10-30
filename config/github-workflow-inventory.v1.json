@@ -243,6 +243,7 @@
     "phase-a-runtime-freshness-repair.yml",
     "phase2-signed-gri-readiness-no-funds.yml",
     "phase2h-private-raw-archive.yml",
+    "phase2i-195x3-source-coverage.yml",
     "post-listing-health.yml",
     "ppg-production-promotion-census.yml",
     "pre-mainnet-x402-zero-fund-acceptance.yml",

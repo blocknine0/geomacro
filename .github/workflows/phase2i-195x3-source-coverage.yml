@@ -1,0 +1,108 @@
+name: Phase 2I-A Canonical 195x3 Source Coverage and Bounded Live Evidence
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/phase2i-195x3-source-coverage.yml"
+      - "scripts/ops/phase2i-coverage-inventory.mjs"
+      - "scripts/tests/phase2i-coverage-inventory.test.mjs"
+      - "config/github-workflow-inventory.v1.json"
+  push:
+    branches: [main]
+    paths: [".github/workflows/phase2i-195x3-source-coverage.yml"]
+  workflow_dispatch: {}
+  schedule:
+    - cron: "23 */2 * * *"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-phase2i-195x3-source-census
+  cancel-in-progress: false
+jobs:
+  offline-585-contract:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify canonical 195, exact 585, native clocks and request safety
+        run: |
+          node --check scripts/ops/phase2i-coverage-inventory.mjs
+          node --test scripts/tests/phase2i-coverage-inventory.test.mjs
+          node --test scripts/lib/country-news-mentions-195.test.mjs scripts/tests/continent-country-195-rotation.test.mjs
+      - name: Produce offline 585-cell matrix (no invented HTTP history)
+        run: node scripts/ops/phase2i-coverage-inventory.mjs
+      - name: Upload complete offline 585-cell JSON
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: phase2i-585-offline-${{ github.run_id }}
+          path: artifacts/phase2i/coverage-585.latest.json
+          retention-days: 30
+          if-no-files-found: error
+  production-source-probe:
+    needs: offline-585-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      needs.offline-585-contract.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    environment: production
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Read previous persistent source HTTP receipts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+          git -c http.extraheader="$auth" fetch origin refs/heads/phase2i-source-evidence:refs/remotes/origin/phase2i-source-evidence
+          mkdir -p artifacts/phase2i
+          git show refs/remotes/origin/phase2i-source-evidence:data/phase2i/coverage-585.latest.json > artifacts/phase2i/previous-coverage-585.json || rm -f artifacts/phase2i/previous-coverage-585.json
+      - name: Real bounded GET of up to 18 pinned RSS/Atom sources (no redirects)
+        run: node scripts/ops/phase2i-coverage-inventory.mjs --probe
+      - name: Upload complete 585-cell live runtime evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: phase2i-585-real-http-${{ github.run_id }}
+          path: |
+            artifacts/phase2i/coverage-585.latest.json
+            artifacts/phase2i/summary.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Commit metadata-only full ledger to isolated evidence branch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.schema == "geomacro.phase2i.195x3-source-coverage.v1" and .country_count == 195 and .cell_count == 585 and (.cells | length) == 585 and .complete_live_585_country_event_coverage_verified == false' artifacts/phase2i/coverage-585.latest.json >/dev/null
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+          git -c http.extraheader="$auth" fetch origin refs/heads/phase2i-source-evidence:refs/remotes/origin/phase2i-source-evidence
+          evidence="$RUNNER_TEMP/phase2i-source-evidence"
+          git worktree add --detach "$evidence" refs/remotes/origin/phase2i-source-evidence
+          mkdir -p "$evidence/data/phase2i"
+          cp artifacts/phase2i/coverage-585.latest.json "$evidence/data/phase2i/coverage-585.latest.json"
+          cp artifacts/phase2i/summary.json "$evidence/data/phase2i/summary.latest.json"
+          git -C "$evidence" add data/phase2i/
+          if ! git -C "$evidence" diff --cached --quiet; then
+            git -C "$evidence" config user.name "github-actions[bot]"
+            git -C "$evidence" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$evidence" commit -m "Store bounded Phase 2I real source and 585-cell coverage evidence"
+            git -C "$evidence" -c http.extraheader="$auth" push origin HEAD:refs/heads/phase2i-source-evidence
+          fi
