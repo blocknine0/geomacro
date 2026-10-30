@@ -61,6 +61,14 @@ test("a date-only publisher keeps its native calendar day, never a fabricated mi
  assert.equal(record.analysis.evidence_and_confidence.source_published_at,"2026-10-29");
  assert.equal(await validPrivateRawNews(record,now.getTime()),JSON.stringify(record));
 });
+test("date-only RSS without an explicit precision hint stays a calendar day",async()=>{
+ const source={...candidates[0],publishedAt:"2026-10-29",datePrecision:undefined};
+ const plan=buildPhase2hPrivateRawRecords([source],{now,derive});
+ assert.equal(plan.records[0].original.original_published_at,"2026-10-29");
+ assert.equal(plan.records[0].original.date_precision,"day");
+ assert.equal(await validPrivateRawNews(plan.records[0],now.getTime()),
+  JSON.stringify(plan.records[0]));
+});
 test("changed original bytes with same URL/date fails closed, not a phantom new story",()=>{
  assert.throws(()=>buildPhase2hPrivateRawRecords([
   candidates[0],{...candidates[0],title:"A changed headline for same original date"}
