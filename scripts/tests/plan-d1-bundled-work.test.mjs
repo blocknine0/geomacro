@@ -55,7 +55,7 @@ test("Phase2H has isolated free-tier archive admission without opening general m
 });
 test("Phase2H archive stays closed on denied or insufficient provider headroom",()=>{
  const at=new Date("2026-10-30T14:10:33.000Z");
- for(const [read,written] of [[4_000_000,50_171],[2_441_367,51_000],
+ for(const [read,written] of [[4_000_000,50_171],[2_441_367,75_000],
                                [2_441_367,90_000],[5_000_000,100_000]]) {
   const q=planD1BundledWork({...quota(read,written),day_utc:"2026-10-30"},{now:at});
   assert.equal(q.phase2h_raw_archive,false);

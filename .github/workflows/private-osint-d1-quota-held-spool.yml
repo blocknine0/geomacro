@@ -19,6 +19,8 @@ on:
       - ".github/workflows/private-osint-d1-quota-held-spool.yml"
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
+      - "scripts/lib/private-osint-bounded-replay.mjs"
+      - "scripts/tests/private-osint-bounded-replay.test.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.mjs"
       - "scripts/lib/private-osint-free-r2-guard.mjs"
@@ -34,6 +36,8 @@ on:
       - ".github/workflows/private-osint-d1-quota-held-spool.yml"
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
+      - "scripts/lib/private-osint-bounded-replay.mjs"
+      - "scripts/tests/private-osint-bounded-replay.test.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.mjs"
       - "scripts/lib/private-osint-free-r2-guard.mjs"
@@ -73,6 +77,7 @@ jobs:
           set -euo pipefail
           node --check scripts/lib/private-osint-encrypted-spool.mjs
           node --check scripts/ops/private-osint-replay-held.mjs
+          node --test scripts/tests/private-osint-bounded-replay.test.mjs
           node --test scripts/lib/private-osint-encrypted-spool.test.mjs
           node --test scripts/lib/private-osint-shared-read-contract.test.mjs
           node --check scripts/lib/private-osint-free-r2-guard.mjs
@@ -97,6 +102,7 @@ jobs:
     outputs:
       state: ${{ steps.quota.outputs.state }}
       critical: ${{ steps.quota.outputs.critical }}
+      source_intake: ${{ steps.quota.outputs.source_intake }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -124,6 +130,7 @@ jobs:
     if: >-
       needs.quota-admission.outputs.state == 'HELD' &&
       needs.quota-admission.outputs.critical != 'true' &&
+      needs.quota-admission.outputs.source_intake != 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request'

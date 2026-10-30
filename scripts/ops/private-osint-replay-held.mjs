@@ -10,6 +10,7 @@ import {execFileSync} from "node:child_process";
 import {createHmac} from "node:crypto";
 import {persistPrivateOsintBatch} from "../lib/private-osint-15m-durable-publisher.mjs";
 import {buildPrivateSourceSharedReadManifest} from "../lib/private-osint-shared-read-contract.mjs";
+import {selectBoundedPrivateOsintReplay} from "../lib/private-osint-bounded-replay.mjs";
 import {selectPrivateOsintSpoolArtifacts,unsealPrivateOsintSpool,
  planPrivateOsintEncryptedReplay,canDeletePrivateOsintSpoolArtifacts,
  OSINT_SPOOL_ARTIFACT_NAME} from "../lib/private-osint-encrypted-spool.mjs";
@@ -76,37 +77,48 @@ for(const artifact of selected){
  }finally{rmSync(dir,{recursive:true,force:true})}
 }
 const planned=planPrivateOsintEncryptedReplay(decoded);
+const bounded=selectBoundedPrivateOsintReplay(planned,{now:Date.now()});
 let receipt=null;
-if(planned.items.length){
+if(bounded.items.length){
  const control=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
  const privateToken=createHmac("sha256",control)
   .update("geomacro-private-osint-15m-v1").digest("hex");
  receipt=await persistPrivateOsintBatch({
-  result:{schema:"geomacro.private-osint-15m-batch.v1",items:planned.items,checks:[]},
+  result:{schema:"geomacro.private-osint-15m-batch.v1",items:bounded.items,checks:[]},
   privateToken,controlPlaneRoot:privateRoot,
   now:Date.now(),sourceHealthSnapshotSlots:3,
  });
 }
-const sharedSourceRead=buildPrivateSourceSharedReadManifest(planned.items,Date.now());
-if(planned.items.length&&(
+const sharedSourceRead=buildPrivateSourceSharedReadManifest(bounded.items,Date.now());
+if(bounded.items.length&&(
    receipt?.shared_source_read_content_sha256!==sharedSourceRead.content_sha256||
-   receipt?.shared_source_read_item_count!==planned.items.length))
- throw Error("OSINT_SPOOL_D1_SHARED_INPUT_MISMATCH_KEEP_BACKLOG");
-if(!canDeletePrivateOsintSpoolArtifacts(receipt,planned))
- throw Error("OSINT_SPOOL_D1_DURABILITY_OR_CAPACITY_UNVERIFIED_KEEP_BACKLOG");
-// Deletion occurs only AFTER completed D1 write and independent readback,
-// or when every original 25h native-dated item has expired.
-for(const artifact of selected)await request(api+"/artifacts/"+artifact.id,"DELETE");
+   receipt?.shared_source_read_item_count!==bounded.items.length||
+   receipt?.d1_write_exact_readback_verified!==true||
+   receipt?.separate_private_d1_readback_verified!==true||
+   receipt?.excluded_by_d1_capacity!==0||
+   receipt?.news_rows_verified_in_d1!==bounded.items.length))
+ throw Error("OSINT_SPOOL_MINIMUM_BUNDLE_D1_READBACK_OR_CAPACITY_UNVERIFIED_KEEP_BACKLOG");
+// NEVER delete a partially recovered artifact. Full delete requires both
+// all eligible rows in the five-row budget and the original strict D1 proof.
+// Expired-only artifacts are eligible for the existing strict expiry cleanup.
+const allEligibleRecovered=bounded.all_eligible_selected;
+const fullyVerified=allEligibleRecovered&&canDeletePrivateOsintSpoolArtifacts(receipt,planned);
+if(fullyVerified)for(const artifact of selected)
+ await request(api+"/artifacts/"+artifact.id,"DELETE");
 console.log(JSON.stringify({
  schema:"geomacro.private-osint-spool-replay.v1",
- artifacts_recovered:selected.length,
+ state:fullyVerified?"FULLY_RECOVERED":"PARTIAL_MINIMUM_BUNDLE_BACKLOG_RETAINED",
+ artifacts_inspected:selected.length,
  distinct_items_eligible:planned.items.length,
+ bundled_items_selected:bounded.eligible_selected,
+ eligible_items_deferred:bounded.eligible_deferred,
+ recovered_by_category:bounded.category_counts,
  shared_source_read_sha256:sharedSourceRead.content_sha256,
  duplicate_items_suppressed:planned.duplicates_removed,
  native_clock_expired_items:planned.expired,
- d1_exact_readback_verified:planned.items.length>0,
+ d1_exact_readback_verified:receipt?.d1_write_exact_readback_verified===true,
  d1_persisted:receipt?.news_rows_verified_in_d1??0,
  d1_capacity_excluded:receipt?.excluded_by_d1_capacity??0,
- all_backlog_artifacts_deleted_after_strict_receipt:true,
+ all_backlog_artifacts_deleted_after_strict_receipt:fullyVerified,
  source_fetches:0,output_is_private_and_noncommercial:true,
 }));

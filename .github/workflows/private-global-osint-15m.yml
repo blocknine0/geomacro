@@ -54,6 +54,8 @@ on:
       - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
+      - "scripts/lib/private-osint-bounded-replay.mjs"
+      - "scripts/tests/private-osint-bounded-replay.test.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.mjs"
       - "scripts/lib/private-osint-free-r2-guard.mjs"
@@ -106,6 +108,7 @@ on:
       - "scripts/lib/cloudflare-workers-paid-plan-proof.mjs"
       - "scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs"
       - "scripts/tests/plan-d1-bundled-work.test.mjs"
+      - "scripts/tests/minimum-daily-bundled-source.test.mjs"
       - "scripts/tests/critical-workflow-budget-guards.test.mjs"
       - "scripts/tests/critical-fastlane-d1-pacing-workflows.test.mjs"
       - ".github/workflows/five-minute-original-news-fastlane.yml"
@@ -145,6 +148,8 @@ on:
       - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
+      - "scripts/lib/private-osint-bounded-replay.mjs"
+      - "scripts/tests/private-osint-bounded-replay.test.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.mjs"
       - "scripts/lib/private-osint-free-r2-guard.mjs"
@@ -223,6 +228,7 @@ jobs:
           node --check scripts/ops/private-osint-mirror-held-to-r2.mjs
           node --test scripts/lib/private-osint-r2-encrypted-escrow.test.mjs
           node --check scripts/ops/private-osint-replay-held.mjs
+          node --test scripts/tests/private-osint-bounded-replay.test.mjs
           node --test scripts/lib/private-osint-local-publisher-rotation.test.mjs
           node --test scripts/lib/private-osint-15m-collector.test.mjs
           node --test scripts/lib/private-osint-15m-durable-publisher.test.mjs
@@ -238,6 +244,7 @@ jobs:
           node --check scripts/ops/probe-private-osint-local-gaplane.mjs
           node --test scripts/lib/private-osint-bundle.test.mjs
           node --test scripts/tests/plan-d1-bundled-work.test.mjs
+          node --test scripts/tests/minimum-daily-bundled-source.test.mjs
           node --test scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
           node --test scripts/tests/critical-workflow-budget-guards.test.mjs
           node --test scripts/tests/critical-fastlane-d1-pacing-workflows.test.mjs
@@ -360,9 +367,19 @@ jobs:
           retention-days: 7
 
   collect-private:
+    # Only a human dispatch may run the legacy full 768-item research
+    # pipeline; daily scheduled ingestion uses five-row micro-bundles.
+    # Serialize D1 source writes with the five-minute fastlane; never
+    # oversubscribe the same non-atomic Cloudflare Free budget in parallel.
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
     needs: [verify, quota-admission]
     if: >-
+      github.event_name == 'workflow_dispatch' &&
       needs.quota-admission.outputs.critical == 'true' &&
+      needs.quota-admission.outputs.research == 'true' &&
+      needs.quota-admission.outputs.source_intake == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&
@@ -391,18 +408,20 @@ jobs:
 
   collect-source-intake-only:
     name: Governed source-only original news to canonical D1 when full publication is paced
+    # One private micro-bundle per scheduled 15-minute slot only.
+    # Push/dispatch/wakeups do not create extra Free D1 write slots.
+    # Serialize D1 source writes with the five-minute fastlane; never
+    # oversubscribe the same non-atomic Cloudflare Free budget in parallel.
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
     needs: [verify, quota-admission]
     if: >-
       needs.quota-admission.result == 'success' &&
-      needs.quota-admission.outputs.critical != 'true' &&
       needs.quota-admission.outputs.source_intake == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name != 'pull_request' &&
-      (github.event_name != 'workflow_run' ||
-       (github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_branch == 'main' &&
-        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'))
+      github.event_name == 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: production
@@ -420,6 +439,7 @@ jobs:
           GEOMACRO_SOURCE_INTAKE_ONLY: "1"
           PHASE2I_PROVIDER_SOURCE_INTAKE: ${{ needs.quota-admission.outputs.source_intake }}
           PHASE2I_PROVIDER_CRITICAL: ${{ needs.quota-admission.outputs.critical }}
+          PHASE2I_PROVIDER_RESEARCH: ${{ needs.quota-admission.outputs.research }}
           PHASE2I_PROVIDER_MAX_NEW_ROWS: ${{ needs.quota-admission.outputs.source_intake_max_new_rows }}
         run: |
           set -euo pipefail
@@ -432,7 +452,6 @@ jobs:
       cancel-in-progress: false
     needs: [verify, quota-admission]
     if: >-
-      needs.quota-admission.outputs.critical != 'true' &&
       needs.quota-admission.outputs.source_intake != 'true' &&
       needs.quota-admission.result == 'success' &&
       github.repository == 'blocknine0/geomacro' &&
@@ -487,10 +506,16 @@ jobs:
 
   replay-quota-held-encrypted-spool:
     name: Recover one encrypted held-source batch into verified canonical D1
-    needs: [verify, quota-admission, collect-private]
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
+    needs: [verify, quota-admission, collect-source-intake-only]
     if: >-
-      needs.collect-private.result == 'success' &&
+      needs.collect-source-intake-only.result == 'success' &&
+      github.event_name == 'schedule' &&
       needs.quota-admission.outputs.critical == 'true' &&
+      needs.quota-admission.outputs.research == 'true' &&
+      needs.quota-admission.outputs.source_intake == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request'
@@ -518,9 +543,12 @@ jobs:
           node scripts/ops/private-osint-replay-held.mjs
 
   collect-unverified-private:
+    # The optional unbounded unverified research D1 producer is never
+    # automatic on the minimum Free ingestion plan; operator-only dispatch.
     needs: [verify, quota-admission]
     if: >-
       needs.quota-admission.outputs.research == 'true' &&
+      github.event_name == 'workflow_dispatch' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&

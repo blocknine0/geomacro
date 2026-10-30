@@ -30,6 +30,7 @@ on:
       - "scripts/tests/bounded-news-intake-publication.test.mjs"
       - "scripts/ops/plan-d1-bundled-work.mjs"
       - "scripts/tests/plan-d1-bundled-work.test.mjs"
+      - "scripts/tests/minimum-daily-bundled-source.test.mjs"
       - "scripts/lib/macro-direct-release.mjs"
       - "scripts/lib/critical-minerals-fastlane.mjs"
       - "scripts/lib/critical-minerals-registry.mjs"
@@ -102,6 +103,7 @@ on:
       - "scripts/tests/bounded-news-intake-publication.test.mjs"
       - "scripts/ops/plan-d1-bundled-work.mjs"
       - "scripts/tests/plan-d1-bundled-work.test.mjs"
+      - "scripts/tests/minimum-daily-bundled-source.test.mjs"
       - "scripts/lib/macro-direct-release.mjs"
       - "scripts/lib/critical-minerals-fastlane.mjs"
       - "scripts/lib/critical-minerals-registry.mjs"
@@ -289,7 +291,7 @@ jobs:
           bun run vitest run src/__tests__/five-minute-original-news-fastlane.test.ts src/__tests__/automated-intelligence-input.test.ts src/__tests__/low-authority-source-review.test.ts
           bun test scripts/tests/private-source-handoff-sqlite.test.ts
           bun test scripts/tests/macro-fastlane.test.mjs
-          node --test scripts/tests/plan-d1-bundled-work.test.mjs scripts/tests/bounded-news-intake-publication.test.mjs scripts/tests/fastlane-source-checkpoints.test.mjs scripts/tests/budgeted-news-intake.test.mjs
+          node --test scripts/tests/minimum-daily-bundled-source.test.mjs && node --test scripts/tests/plan-d1-bundled-work.test.mjs scripts/tests/bounded-news-intake-publication.test.mjs scripts/tests/fastlane-source-checkpoints.test.mjs scripts/tests/budgeted-news-intake.test.mjs
           node --test scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2h-raw-news.test.mjs
           bun build scripts/ops/publish-original-news-five-minute-fastlane.ts --target=bun --outfile=/tmp/geomacro-bundled-news-fastlane.js
           node --test scripts/tests/derived-news-readback-policy.test.mjs

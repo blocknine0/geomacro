@@ -3,7 +3,10 @@
  * the provider-authorized five Phase 2H D1 originals. Does NOT publish website
  * cards, persist the broad OSINT health ring, use B2, sign, settle or touch
  * PREDGE. Used only when critical/research publication is held but the
- * independent source_intake lane has positive provider approval.
+ * independent source_intake lane has positive provider approval. The actual
+ * Free minimum lane may run during any permitted source-intake tier, including
+ * CRITICAL_ONLY (critical=true, research=false):
+ * no full OSINT health ring, speculative research, signing or public output.
  */
 import {createHmac} from "node:crypto";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
@@ -23,7 +26,8 @@ if(env.GITHUB_ACTIONS!=="true"||
  env.GITHUB_REF!=="refs/heads/main"||
  env.GEOMACRO_SOURCE_INTAKE_ONLY!=="1"||
  env.PHASE2I_PROVIDER_SOURCE_INTAKE!=="true"||
- env.PHASE2I_PROVIDER_CRITICAL==="true"||
+ !["true","false"].includes(env.PHASE2I_PROVIDER_CRITICAL??"")||
+ !["true","false"].includes(env.PHASE2I_PROVIDER_RESEARCH??"")||
  ![3,5,10,25,50].includes(Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS)))
  throw Error("PHASE2I_SOURCE_ONLY_PROVIDER_ADMISSION_REQUIRED");
 // Spend no more than the live provider admission. Five is the existing
