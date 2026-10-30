@@ -12,6 +12,10 @@ test("Phase 2H B2 workflow requires archive-only provider approval and one daily
  assert.match(yaml,/needs: manual-smoke-gate/u);
  assert.ok(yaml.includes("needs.manual-smoke-gate.result == 'success'"));
  assert.ok(yaml.includes("RUN_ONCE_PHASE2H_2026_10_31"));
+ assert.match(yaml,/type: choice/u);
+ assert.match(yaml,/default: NOT_AUTHORIZED/u);
+ assert.ok(yaml.indexOf("- NOT_AUTHORIZED") < yaml.indexOf("- RUN_ONCE_PHASE2H_2026_10_31"));
+ assert.doesNotMatch(yaml,/description: ".*type RUN_ONCE_PHASE2H/u);
  assert.ok(yaml.includes("2026-11-02T00:00:00Z"));
  assert.match(yaml,/maintenance: \$\{\{ steps\.provider\.outputs\.maintenance \}\}/u);
  assert.match(yaml,/needs\.quota-admission\.outputs\.raw_archive == 'true'/u);
