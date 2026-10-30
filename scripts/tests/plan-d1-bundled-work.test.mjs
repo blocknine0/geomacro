@@ -50,7 +50,7 @@ test("Phase2H has isolated free-tier archive admission without opening general m
    slots*20_000+hours*2500+10_000);
  assert.ok(p.remaining_rows_written>
    23_000+p.source_intake_budget_to_utc_reset.rows_written+
-   slots*350+hours*25+150);
+   slots*350+hours*p.retention_cleanup_max_rows+150);
 });
 test("Phase2H archive stays closed on denied or insufficient provider headroom",()=>{
  const at=new Date("2026-10-30T14:10:33.000Z");
