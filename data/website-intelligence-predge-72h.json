@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T11:52:58.284Z",
+  "checked_at": "2026-10-30T12:50:09.193Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 417,
+  "item_count": 411,
   "counts": {
-    "geopolitics": 194,
-    "macro": 181,
-    "rare_earth": 42
+    "geopolitics": 188,
+    "macro": 180,
+    "rare_earth": 43
   },
-  "source_native_ids_sha256": "38fecaa2cbeb62482b8f524bc408cd13f2637ef4c156dd352056ca8a6db67d20",
+  "source_native_ids_sha256": "5a1e28d198fbea77bbe8b891cacb93c19cf91572b2ef4af7ebfccab7b94e6c98",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -39,6 +39,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T11:51:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-58531115",
+      "category": "rare_earth",
+      "title": "Geomacro finds EU extended $711 million MMG-Anglo nickel review - Mining.com.au",
+      "what_changed": "A monitored source feed reports: EU extended $711 million MMG-Anglo nickel review - Mining.com.au. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T10:50:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -7812,135 +7831,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: tass.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-8f84d33f",
-      "category": "geopolitics",
-      "title": "Geomacro finds Ukraine said ceasefire in Oleshky will last until November 1",
-      "what_changed": "A monitored source feed reports: Ukraine said ceasefire in Oleshky will last until November 1. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T12:32:34.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: meduza.io"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-cf72eb70",
-      "category": "geopolitics",
-      "title": "Geomacro finds United States warned about Missile, Drone Threats In Saudi Arabia As Houthi Attacks Escalate - Outlook India",
-      "what_changed": "A monitored source feed reports: United States warned about Missile, Drone Threats In Saudi Arabia As Houthi Attacks Escalate - Outlook India. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T12:08:09.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-800b8dc8",
-      "category": "geopolitics",
-      "title": "Geomacro finds FM Sybiha rejected normalizing Putin as Russian missiles hit Kyiv bridge and clinics",
-      "what_changed": "A monitored source feed reports: FM Sybiha rejected normalizing Putin as Russian missiles hit Kyiv bridge and clinics. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T12:07:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: english.nv.ua"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-9fdf5ef7",
-      "category": "geopolitics",
-      "title": "Geomacro finds Security Council: met Tuesday to debate the best way to improve security for women caught up in conflict",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "Security Council met Tuesday to debate the best way to improve security for women caught up in conflict.",
-      "geography": null,
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-10-27T12:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-a1df621d",
-      "category": "geopolitics",
-      "title": "Geomacro finds General Assembly: opened its annual debate on the US economic embargo against Cuba on Tuesday · United States",
-      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
-      "what_changed": "General Assembly opened its annual debate on the US economic embargo against Cuba on Tuesday. Country or region mentioned: United States.",
-      "geography": "United States",
-      "development_type": "trade restriction",
-      "topic": "sanctions and trade restrictions",
-      "published_at": "2026-10-27T12:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-f21d9b66",
-      "category": "geopolitics",
-      "title": "Geomacro finds India rejected ‘second-class’ permanent UN Security Council seats",
-      "what_changed": "A monitored source feed reports: India rejected ‘second-class’ permanent UN Security Council seats. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T11:59:36.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: rt-english.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-c31ba9e5",
-      "category": "macro",
-      "title": "Geomacro finds Govt proposed Rs4,500 wheat price for 2027, up Rs1,000 - Investify",
-      "what_changed": "A monitored source feed reports: Govt proposed Rs4,500 wheat price for 2027, up Rs1,000 - Investify. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T11:54:08.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
