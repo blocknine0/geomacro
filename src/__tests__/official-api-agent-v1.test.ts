@@ -36,9 +36,9 @@ describe("official Geomacro API and AI Agent v1",()=>{
   expect(d.tools.find(t=>t.name==="verify_risk_object")?.endpoint).toBe("/api/mcp");
   expect(d.pricing_version).toBe(GEOMACRO_CAPABILITY_PRICING_VERSION);
   expect(d.pricing.flatMap(x=>x.variants).find(p=>
-   p.capability==="intelligence_query"&&p.variant==="standard")?.amount_usdc).toBe("0.10");
+   p.capability==="intelligence_query"&&p.variant==="standard")?.amount_usdc).toBe("0.03");
   expect(d.pricing.flatMap(x=>x.variants).find(p=>
-   p.capability==="structural_corridor_profile")?.amount_usdc).toBe("0.08");
+   p.capability==="structural_corridor_profile")?.amount_usdc).toBe("0.05");
   expect(d.payment_authorized_by_discovery).toBe(false);
   expect(d.execution_authorized).toBe(false);
   expect(d.all_routed_country_category_cells_commercially_verified).toBe(false);

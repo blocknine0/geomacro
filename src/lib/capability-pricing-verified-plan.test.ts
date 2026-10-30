@@ -19,7 +19,7 @@ describe("capability prices selected only from verified canonical plans (NO FUND
     expect(resolveVerifiedPublishedPlanPrice(plan({detail:"full"}),proof)).toMatchObject({
       variant:"complex_multi_source",amount_atomic:"150000"});
     const multi=plan({topics:["macro_risk","fx_external_risk","conflict_geopolitics","critical_minerals"]});
-    expect(resolveVerifiedPublishedPlanPrice(multi,proof).amount_usdc).toBe("0.15");
+    expect(resolveVerifiedPublishedPlanPrice(multi,proof).amount_usdc).toBe("0.05");
     expect(resolveVerifiedPublishedPlanPrice(plan({}),proof)).toEqual(resolveVerifiedPublishedPlanPrice(plan({}),proof));
   });
   it("routes signed objects and bundles without adding a second object fee",()=>{

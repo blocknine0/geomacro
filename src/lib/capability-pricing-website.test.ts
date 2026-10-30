@@ -33,7 +33,7 @@ describe("canonical capability pricing parity on the public website",()=>{
     expect(read("src/components/agent-commerce-status.tsx")).not.toContain("USDC/call");
   });
   it("exposes exactly eight founder-approved capabilities and 14 variants",()=>{
-    expect(GEOMACRO_CAPABILITY_PRICING_VERSION).toBe("geomacro.capability-usdc.v1");
+    expect(GEOMACRO_CAPABILITY_PRICING_VERSION).toBe("geomacro.capability-usdc.v2");
     expect(Object.keys(GEOMACRO_CAPABILITY_PRICES)).toHaveLength(8);
     const catalog=publicCapabilityPricingCatalog();
     expect(catalog).toHaveLength(7);
