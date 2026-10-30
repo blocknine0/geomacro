@@ -7,7 +7,7 @@ import {mkdirSync,writeFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
-import {assertPhase2hB2Lifecycle,PHASE2H_B2_PREFIX} from "./phase2h-verify-b2-72h-lifecycle.mjs";
+import {assertPhase2hB2ManualRetention,PHASE2H_B2_PREFIX} from "./phase2h-verify-b2-72h-lifecycle.mjs";
 
 const DAY=86_400_000;
 const MAX_PAGES=4;
@@ -97,7 +97,7 @@ export async function verifyPhase2hB2VersionInventory({
  const exact=bucketData?.buckets?.filter(x=>x.bucketName==="geomacro-private-archive")??[];
  if(exact.length!==1||typeof exact[0].bucketId!=="string")
   FAIL("PRIVATE_BUCKET_NOT_VERIFIED");
- assertPhase2hB2Lifecycle(exact[0].lifecycleRules);
+ assertPhase2hB2ManualRetention(exact[0].lifecycleRules);
  const bucketId=exact[0].bucketId;
  let pages=0,uploads=0,hides=0,overdue=0;
  let nextName=null,nextId=null;
@@ -120,15 +120,16 @@ export async function verifyPhase2hB2VersionInventory({
  }
  if(nextName!==null)FAIL("CENSUS_EXCEEDS_BOUNDED_PAGES");
  return {schema:RECEIPT_SCHEMA,checked_at:now.toISOString(),
-  provider_lifecycle_exact_prefix_verified:true,
+  provider_lifecycle_exact_prefix_verified:false,
+  provider_auto_deletion_paused_verified:true,
   current_prefix_inventory_complete:true,private_originals_exposed:false,
   existing_credential_used:useReadKey?"ARCHIVE_READ":"PRIMARY_ARCHIVE",
   live_versions:uploads,hide_markers:hides,versions_older_than_72h:overdue,
   pages_checked:pages,provider_b2_requests:2+pages,
   past_versions_independently_deleted:false,
   archive_put_get_readback_verified_by_this_audit:false,
-  status:overdue>0?"OVERDUE_B2_FILE_VERSIONS_PRESENT":
-    uploads===0?"EMPTY_PREFIX_NO_ARCHIVE_PROOF":"CURRENT_PREFIX_NO_OVERDUE_VERSIONS",
+  status:overdue>0?"OLDER_VERSIONS_RETAINED_BY_MANUAL_POLICY":
+    uploads===0?"EMPTY_PREFIX_NO_ARCHIVE_PROOF":"MANUAL_RETENTION_ACTIVE",
   no_payments:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
@@ -138,7 +139,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   writeFileSync("artifacts/phase2h/independent-b2-versions.json",
    JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
   console.log(JSON.stringify(receipt));
-  if(receipt.versions_older_than_72h>0)process.exitCode=3;
+  // Older versions are expected under manual retention; not a violation.
  }catch(e){
   console.error(safeB2RetentionError(e));
   process.exitCode=2;
