@@ -176,9 +176,18 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // One quota-admitted Phase2H cleanup run can use 25..1000 row deletes;
   // reserve the *entire* remaining hourly cadence at the granted maximum.
   // Do not admit a 1000-row writer behind the old 25-row/hour budget.
-  const hourlyDeleteWriteRoom=sourceIntake?
+  // Prefer retaining enough headroom for the existing four B2 archive slots
+  // before allocating an optional larger deletion batch. Otherwise choose a
+  // smaller safe cleanup cap rather than silently starving raw news archival.
+  const remainingArchiveSlots=Math.ceil((DAY_MS-(now.getTime()%DAY_MS))/(6*3_600_000));
+  const rawWriteRoom=sourceIntake?
     snapshot.remaining_rows_written-
       D1_BUNDLE_LANES.critical.write_reserve-intakeBudget.rows_written-150:0;
+  const archiveWriteReserve=remainingArchiveSlots*350;
+  const preserveArchive=rawWriteRoom>archiveWriteReserve+
+    remainingHourSlots*25;
+  const hourlyDeleteWriteRoom=rawWriteRoom-
+    (preserveArchive?archiveWriteReserve:0);
   const safeRowsPerHour=hourlyDeleteWriteRoom>0?
     Math.floor((hourlyDeleteWriteRoom-1)/remainingHourSlots):0;
   const retentionReadHeadroom=sourceIntake&&
@@ -196,7 +205,6 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // cleanup, before allowing this *archive-only* grant. The B2 atomic
   // governor and per-prefix 1+1d lifecycle check remain mandatory.
   // This does NOT grant general maintenance, signing or paid operations.
-  const remainingArchiveSlots=Math.ceil((DAY_MS-(now.getTime()%DAY_MS))/(6*3_600_000));
   const phase2hRawArchive=sourceIntake&&
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
