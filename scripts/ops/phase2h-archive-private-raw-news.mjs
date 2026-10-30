@@ -9,6 +9,7 @@ import {phase2hNewsCutoff,phase2hRawWithinRetention}
 import {gzipSync,gunzipSync} from "node:zlib";
 import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
+import {verifyPhase2hB2Lifecycle} from "./phase2h-verify-b2-72h-lifecycle.mjs";
 import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
 import {mkdirSync,writeFileSync} from "node:fs";
@@ -115,7 +116,8 @@ export function createPhase2hCanonicalD1({
 export async function runPhase2hGovernedRawB2({
  env=process.env,now=new Date(),fetchImpl=fetch,
  b2Factory=createB2Client,governorFactory=createB2D1AccountGovernor,
- d1Factory=createPhase2hCanonicalD1
+ d1Factory=createPhase2hCanonicalD1,
+ lifecycleVerifier=verifyPhase2hB2Lifecycle
 }={}){
  if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
   env.GITHUB_REF!=="refs/heads/main"||
@@ -144,6 +146,16 @@ export async function runPhase2hGovernedRawB2({
  if(!initialRows.length)
   return {status:"NO_PENDING_PRIVATE_RAW_ROWS",storage_confirmed:true,
    rows_archived:0,object_sha256:null,all_backlog_cleared:true};
+ // Enforce provider lifecycle on EVERY caller, not only on a single workflow.
+ // Two native read-only operations use the SAME global atomic B2 governor.
+ // No B2 original-news PUT without exact-prefix, 1+1-day provider proof.
+ let lifecycle;
+ try{lifecycle=await lifecycleVerifier({env,fetchImpl,governor});}
+ catch{fail("LIFECYCLE_NOT_VERIFIED")}
+ if(lifecycle?.phase2h_raw_prefix_verified!==true||
+    lifecycle?.deletion_within_three_days_provider_rule!==true||
+    lifecycle?.no_bucket_mutation!==true)
+  fail("LIFECYCLE_NOT_VERIFIED");
  const plan=buildPhase2hRawB2Plan(initialRows,now);
  const b2=b2Factory({endpointUrl:"https://s3.us-east-005.backblazeb2.com",
   bucket:"geomacro-private-archive",accessKey:env.B2_KEY_ID,
@@ -173,6 +185,7 @@ export async function runPhase2hGovernedRawB2({
   category_counts:plan.counts,object_sha256:plan.compressed_sha256,
   object_key:plan.key,private_raw_includes_original_full_article:false,
   backlog_may_remain:initialRows.length===300,
+  b2_lifecycle_exact_prefix_readback_verified:true,
   b2_first_get_verified:true,b2_second_independent_get_verified:true,
   post_archive_d1_verified:true,original_clocks_unchanged:true,
   rights_verified:false,paid_eligible:false,payments:0};

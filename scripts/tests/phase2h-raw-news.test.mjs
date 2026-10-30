@@ -131,6 +131,8 @@ test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exac
   governorFactory:()=>({status:async()=>({ok:true,
     used:{total:3,GET:2,PUT:1,NATIVE_AUTH:0},
     limits:{total:100,GET:100,PUT:100,NATIVE_AUTH:100}})}),
+  lifecycleVerifier:async()=>({phase2h_raw_prefix_verified:true,
+   deletion_within_three_days_provider_rule:true,no_bucket_mutation:true}),
   d1Factory:()=>({
    async readPending(){postRead++;return items;},
    async markArchived(rows,objectSha){
@@ -152,12 +154,31 @@ test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exac
  });
  assert.equal(r.storage_confirmed,true);
  assert.equal(r.rows_archived,3);
+ assert.equal(r.b2_lifecycle_exact_prefix_readback_verified,true);
  assert.equal(r.b2_first_get_verified,true);
  assert.equal(r.b2_second_independent_get_verified,true);
  assert.equal(r.post_archive_d1_verified,true);
  assert.equal(put,1);assert.equal(first,1);assert.equal(second,1);
  assert.equal(postRead,2);assert.equal(marked,1);
  assert.equal(r.payments,0);
+});
+test("no B2 PUT, GET or D1 archive mutation if provider's exact 72h rule cannot be independently proven",async()=>{
+ const items=data().records;
+ let writes=0;
+ await assert.rejects(()=>runPhase2hGovernedRawB2({
+  now,env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+   GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
+   B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+   B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true"},
+  governorFactory:()=>({status:async()=>({ok:true,
+   used:{total:1,GET:0,PUT:0,NATIVE_AUTH:1},
+   limits:{total:100,GET:100,PUT:100,NATIVE_AUTH:100}})}),
+  d1Factory:()=>({readPending:async()=>items,markArchived:async()=>{writes++;}}),
+  lifecycleVerifier:async()=>({phase2h_raw_prefix_verified:false,
+   deletion_within_three_days_provider_rule:false,no_bucket_mutation:true}),
+  b2Factory:()=>{throw Error("B2_NETWORK_MUST_NOT_OPEN")},
+ }),/PHASE2H_RAW_B2_LIFECYCLE_NOT_VERIFIED/u);
+ assert.equal(writes,0);
 });
 test("maintenance archive does not start out of existing 00/06/12/18 slots",async()=>{
  const r=await runPhase2hGovernedRawB2({

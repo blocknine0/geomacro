@@ -8,12 +8,16 @@ on:
     paths:
       - ".github/workflows/phase2h-72h-news-retention.yml"
       - "scripts/ops/phase2h-72h-d1-cleanup.mjs"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
       - "scripts/lib/phase2h-retention-72h.mjs"
       - "scripts/tests/phase2h-retention-72h.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/phase2h-72h-news-retention.yml"
       - "scripts/ops/phase2h-72h-d1-cleanup.mjs"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
       - "scripts/lib/phase2h-retention-72h.mjs"
       - "scripts/tests/phase2h-retention-72h.test.mjs"
 permissions:
@@ -37,6 +41,7 @@ jobs:
           node --check scripts/ops/phase2h-72h-d1-cleanup.mjs
           node --check scripts/ops/phase2h-verify-b2-72h-lifecycle.mjs
           node --test scripts/tests/phase2h-retention-72h.test.mjs
+          node --test scripts/tests/plan-d1-bundled-work.test.mjs
 
   quota-admission:
     needs: verify
@@ -46,6 +51,7 @@ jobs:
     environment: production
     outputs:
       critical: ${{ steps.provider.outputs.critical }}
+      retention_cleanup: ${{ steps.provider.outputs.retention_cleanup }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -63,7 +69,7 @@ jobs:
 
   cleanup:
     needs: [verify,quota-admission]
-    if: needs.quota-admission.result == 'success' && needs.quota-admission.outputs.critical == 'true' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: needs.quota-admission.result == 'success' && (needs.quota-admission.outputs.critical == 'true' || needs.quota-admission.outputs.retention_cleanup == 'true') && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: production
@@ -99,6 +105,7 @@ jobs:
       - name: Proactively remove Phase2H D1 original news after 60 hours (25 max per admitted hour)
         env:
           PHASE2H_PROVIDER_CRITICAL: ${{ needs.quota-admission.outputs.critical }}
+          PHASE2H_PROVIDER_RETENTION_CLEANUP: ${{ needs.quota-admission.outputs.retention_cleanup }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node scripts/ops/phase2h-72h-d1-cleanup.mjs

@@ -12,7 +12,8 @@ export async function cleanupPhase2hD1({
 }={}){
  if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
     env.GITHUB_REF!=="refs/heads/main"||
-    env.PHASE2H_PROVIDER_CRITICAL!=="true"||
+    (env.PHASE2H_PROVIDER_CRITICAL!=="true"&&
+     env.PHASE2H_PROVIDER_RETENTION_CLEANUP!=="true")||
     !/^[a-f0-9]{32}$/u.test(env.CLOUDFLARE_ACCOUNT_ID??"")||
     !/^[0-9a-f-]{36}$/iu.test(env.D1_DATABASE_ID??"")||
     String(env.CLOUDFLARE_API_TOKEN??"").length<20||

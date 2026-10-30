@@ -19,6 +19,7 @@ on:
       - "scripts/lib/phase2h-raw-original-records.mjs"
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "workers/control-plane/migrations/0035_phase2h_private_raw_news.sql"
+      - "workers/control-plane/migrations/0036_phase2h_72h_retention_index.sql"
       - "scripts/lib/macro-*.mjs"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
