@@ -100,6 +100,9 @@ export function evaluateD1HotCountryGroRows(
     observed_at:at.toISOString(),
     d1_hot_row_count:rows.length,
     cryptographically_verified_current_d1_hot_count:accepted.length,
+    // Prefer a genuinely current signed hot country already available in canonical D1.
+    // One public ISO3 only; no GRO, article or source identifiers in the receipt.
+    first_verified_current_country_iso3:accepted.includes("USA")?"USA":accepted[0]??null,
     invalid_or_ineligible_count:rejected,
     expired_count:expired,
     d1_hot_195_count_threshold_met:accepted.length>=195,

@@ -5,9 +5,13 @@ import { classifySignedGroLiveBridge } from "../lib/signed-gro-live-bridge-evide
 const OUTPUT = "artifacts/signed-gro-live-bridge/bridge-evidence.json";
 const CANDIDATE = "artifacts/signed-gro-live-bridge/backend-country-canary.json";
 const URL = "https://geomacro.live/api/x402/risk/availability";
+const countryIso3 = String(process.env.GRO_CONTINUITY_COUNTRY_ISO3 ?? "").trim();
+if (!/^[A-Z]{3}$/u.test(countryIso3)) {
+  throw new Error("SIGNED_GRO_BRIDGE_COUNTRY_UNSELECTED");
+}
 const body = {
   schema_version: "geomacro.agent-query.v1",
-  subjects: [{type:"country", country_iso3:"USA"}],
+  subjects: [{type:"country", country_iso3:countryIso3}],
   topics: ["risk_object"],
   evidence: "required",
   detail: "compact",
@@ -43,7 +47,7 @@ try {
   throw new Error("SIGNED_GRO_BRIDGE_SITE_BODY_INVALID");
 }
 const receipt = classifySignedGroLiveBridge({
-  backendCanary: backend, status:response.status, body:parsed,
+  backendCanary: backend, status:response.status, body:parsed, expectedCountryIso3:countryIso3,
 });
 mkdirSync("artifacts/signed-gro-live-bridge",{recursive:true});
 writeFileSync(OUTPUT, JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
