@@ -95,7 +95,9 @@ test("protected archived news returns only same-country, same-category, question
  assert.match(statements[0].sql,/category=\?/u);
  assert.match(statements[0].sql,/ESCAPE '!'/u);
  assert.equal(statements[0].binds[0],"macro");
- assert.ok(statements[0].binds.some(x=>x==="%india%"));
+ assert.ok(JSON.parse(statements[0].binds[1]).includes("india"));
+ assert.match(statements[0].sql,/json_each\(\?\)/u);
+ assert.equal(statements[0].binds.length,2);
 });
 test("no candidate matching the exact country/topic is an honest empty no-charge answer",async()=>{
  const {DB}=workerDb(rawRows);
