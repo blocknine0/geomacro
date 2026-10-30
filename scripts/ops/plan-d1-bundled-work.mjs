@@ -67,7 +67,7 @@ export const MINIMUM_DAILY_BUNDLED_SOURCE=Object.freeze({
  interval_minutes:15,max_new_rows:5,rows_read_per_slot:3200,
  rows_written_per_new_row:16,rows_written_overhead_per_slot:40,
  rows_read_fixed:100000,rows_written_fixed:2000,
- expected_categories:3,maximum_private_d1_batches_per_slot:1,
+ expected_categories:3,maximum_original_records_per_slot:5,
  no_paid_capacity:true,protect_predge_reserve:true,
 });
 export function planSourceIntake(snapshot,now){
