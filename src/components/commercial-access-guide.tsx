@@ -22,7 +22,7 @@ const ACCESS = [
   },
   {
     key: "monthly",
-    title: "Monthly access",
+    title: "Monthly plans + prepaid credits",
     subtitle: "Starter $9 · Pro $29 · Business $99 per month",
     features: ["Recurring intelligence for teams and workflows", "Usage and commercial terms agreed directly"],
   },
