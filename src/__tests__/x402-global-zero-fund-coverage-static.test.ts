@@ -24,8 +24,8 @@ describe('Supabase-free canonical global no-funds verification',()=>{
   for(const c of cases){expect(c.subjects.length).toBeLessThanOrEqual(25);expect(buildAgentQueryPlan(c.body).required_modules).toContain('signed_risk_object');}
  });
  it('uses exact locked capability prices and refuses mismatched plans/modules or execution authorization',()=>{
-  const c=cases[0],good=available(c);expect(verifyCoverageAvailability(c,good,200).amount_usdc).toBe('0.15');
-  for(const bad of [{...good,execution_authorized:true},{...good,exact_price:{...good.exact_price,amount_usdc:'0.05'}},
+  const c=cases[0],good=available(c);expect(verifyCoverageAvailability(c,good,200).amount_usdc).toBe('0.05');
+  for(const bad of [{...good,execution_authorized:true},{...good,exact_price:{...good.exact_price,amount_usdc:'0.15'}},
    {...good,query_plan_hash:'a'.repeat(64)},
    {...good,availability:{...good.availability,subjects:good.availability.subjects.map(s=>({...s,available_modules:[]}))}}])
     expect(()=>verifyCoverageAvailability(c,bad,200)).toThrow();

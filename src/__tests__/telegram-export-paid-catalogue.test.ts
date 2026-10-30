@@ -26,8 +26,8 @@ describe("Telegram owner-export T3 no-funds catalogue mapping",()=>{
    quote_authorized:false,status:"TELEGRAM_DERIVED_PAID_DISABLED"});
  });
  it("exact locked existing USDC price atomic units for all three intelligence_query variants",()=>{
-  const mapping=[["focused","0.05","50000"],
-    ["standard","0.10","100000"],["complex_multi_source","0.15","150000"]] as const;
+  const mapping=[["focused","0.02","20000"],
+    ["standard","0.03","30000"],["complex_multi_source","0.05","50000"]] as const;
   for(const [variant,price,atomic] of mapping){
    const catalog=resolveGeomacroCapabilityPrice("intelligence_query",variant);
    expect(catalog.amount_usdc).toBe(price);

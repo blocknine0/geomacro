@@ -20,17 +20,17 @@ describe("Geomacro Answer Question tool",()=>{
     expect(query.product).toEqual({capability:"intelligence_query",variant:"focused"});
     expect(query.detail).toBe("compact");
     const plan=buildAgentQueryPlan(query);
-    expect(resolveGeomacroCapabilityPrice("intelligence_query",plan.product!.variant).amount_usdc).toBe("0.05");
+    expect(resolveGeomacroCapabilityPrice("intelligence_query",plan.product!.variant).amount_usdc).toBe("0.02");
   });
 
-  it("maps two topics for one country to standard and uses the exact 0.10 USDC catalog price",()=>{
+  it("maps two topics for one country to standard and uses the exact 0.03 USDC catalog price",()=>{
     const query=normalize("Inflation and currency reserves in Brazil");
     expect(query.topics).toEqual(["fx_external_risk","macro_risk"]);
     expect(query.product.variant).toBe("standard");
-    expect(resolveGeomacroCapabilityPrice("intelligence_query",query.product.variant).amount_usdc).toBe("0.10");
+    expect(resolveGeomacroCapabilityPrice("intelligence_query",query.product.variant).amount_usdc).toBe("0.03");
   });
 
-  it("maps multiple countries to complex and uses the exact 0.15 USDC catalog price",()=>{
+  it("maps multiple countries to complex and uses the exact 0.05 USDC catalog price",()=>{
     const query=normalize("Compare inflation in Brazil and Argentina");
     expect(query.subjects).toEqual([
       {type:"country",country_iso3:"ARG"},
@@ -39,7 +39,7 @@ describe("Geomacro Answer Question tool",()=>{
     expect(query.product.variant).toBe("complex_multi_source");
     expect(query.detail).toBe("full");
     expect(buildAgentQueryPlan(query).intent).toBe("comparison");
-    expect(resolveGeomacroCapabilityPrice("intelligence_query",query.product.variant).amount_usdc).toBe("0.15");
+    expect(resolveGeomacroCapabilityPrice("intelligence_query",query.product.variant).amount_usdc).toBe("0.05");
   });
 
   it("chooses the longest country name and does not resolve ambiguous names",()=>{
