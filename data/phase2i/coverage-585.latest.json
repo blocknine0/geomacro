@@ -1,28 +1,28 @@
 {
   "schema": "geomacro.phase2i.195x3-source-coverage.v1",
-  "generated_at": "2026-10-30T09:25:28.813Z",
+  "generated_at": "2026-10-30T09:30:18.405Z",
   "canonical_registry": "src/lib/canonical-country-registry-195.ts",
   "country_count": 195,
   "category_count": 3,
   "cell_count": 585,
   "registered_source_count": 453,
-  "verified_http_source_count": 17,
+  "verified_http_source_count": 32,
   "actual_source_requests_this_run": 18,
   "status_counts": {
-    "WORKING": 0,
+    "WORKING": 30,
     "NO_NEW_EVENT": 0,
     "SOURCE_UNAVAILABLE": 0,
-    "UNSUPPORTED_FORMAT": 0,
+    "UNSUPPORTED_FORMAT": 6,
     "RIGHTS_PENDING": 0,
     "QUOTA_HELD": 0,
-    "NOT_YET_VERIFIED": 585
+    "NOT_YET_VERIFIED": 549
   },
   "per_category": {
     "geopolitics": {
       "cells": 195,
       "registered_local_source_cells": 80,
       "no_local_source_cells": 115,
-      "live_fetched_local_source_cells": 0,
+      "live_fetched_local_source_cells": 10,
       "verified_country_events": 0,
       "commercially_eligible_country_events": 0
     },
@@ -30,7 +30,7 @@
       "cells": 195,
       "registered_local_source_cells": 85,
       "no_local_source_cells": 110,
-      "live_fetched_local_source_cells": 0,
+      "live_fetched_local_source_cells": 10,
       "verified_country_events": 0,
       "commercially_eligible_country_events": 0
     },
@@ -38,7 +38,7 @@
       "cells": 195,
       "registered_local_source_cells": 80,
       "no_local_source_cells": 115,
-      "live_fetched_local_source_cells": 0,
+      "live_fetched_local_source_cells": 10,
       "verified_country_events": 0,
       "commercially_eligible_country_events": 0
     }
@@ -9860,6 +9860,294 @@
   ],
   "source_probes": [
     {
+      "source_id": "private_mesh_clar_n",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-30T09:15:08.000Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 09:15:08 +0000",
+      "observed_feed_items": 10,
+      "recent_native_dated_items": 10,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_mesh_cna",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-30T09:09:31.000Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 17:09:31 +0800",
+      "observed_feed_items": 20,
+      "recent_native_dated_items": 20,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_mesh_dabanga_sudan",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-29T20:51:53.000Z",
+      "last_source_native_publication_time": "Thu, 29 Oct 2026 20:51:53 +0000",
+      "observed_feed_items": 12,
+      "recent_native_dated_items": 4,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_mesh_dagens_nyheter",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-30T09:28:44.000Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 10:28:44 +0100",
+      "observed_feed_items": 40,
+      "recent_native_dated_items": 40,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_mesh_daily_nation",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-30T06:00:00.000Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 06:00:00 +0000",
+      "observed_feed_items": 25,
+      "recent_native_dated_items": 25,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_mesh_daily_trust",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-30T09:03:27.000Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 09:03:27 +0000",
+      "observed_feed_items": 14,
+      "recent_native_dated_items": 14,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_mesh_dawn",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "UNSUPPORTED_FORMAT",
+      "http_status": null,
+      "last_successful_http_fetch_at": null,
+      "last_source_native_publication_at": null,
+      "last_source_native_publication_time": null,
+      "observed_feed_items": 0,
+      "recent_native_dated_items": 0,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": "BODY_OVER_192KB"
+    },
+    {
+      "source_id": "private_mesh_der_spiegel",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-30T09:09:00.000Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 10:09:00 +0100",
+      "observed_feed_items": 21,
+      "recent_native_dated_items": 15,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_mesh_digi24",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "UNSUPPORTED_FORMAT",
+      "http_status": null,
+      "last_successful_http_fetch_at": null,
+      "last_source_native_publication_at": null,
+      "last_source_native_publication_time": null,
+      "observed_feed_items": 0,
+      "recent_native_dated_items": 0,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": "BODY_OVER_192KB"
+    },
+    {
+      "source_id": "private_mesh_dnevnik",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-30T09:27:00.000Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 11:27:00 +0200",
+      "observed_feed_items": 30,
+      "recent_native_dated_items": 30,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_mesh_egypt_independent",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-29T13:54:47.000Z",
+      "last_source_native_publication_time": "Thu, 29 Oct 2026 13:54:47 +0000",
+      "observed_feed_items": 10,
+      "recent_native_dated_items": 10,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_mesh_el_mundo",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-30T09:14:38.000Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 10:14:38 +0100",
+      "observed_feed_items": 29,
+      "recent_native_dated_items": 28,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_repo_930b7931d57552089aa4",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-30T09:05:48.000Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 09:05:48 GMT",
+      "observed_feed_items": 40,
+      "recent_native_dated_items": 37,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_repo_968c06a6ef758076c983",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-29T22:25:10.000Z",
+      "last_source_native_publication_time": "Thu, 29 Oct 2026 22:25:10 +0000",
+      "observed_feed_items": 10,
+      "recent_native_dated_items": 9,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_repo_9862cc63a6e180373c90",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-30T00:39:00.000Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 00:39:00 GMT",
+      "observed_feed_items": 40,
+      "recent_native_dated_items": 5,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_repo_9cb745d1da1a22a9398d",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-30T09:22:19.000Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 09:22:19 +0000",
+      "observed_feed_items": 40,
+      "recent_native_dated_items": 36,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_repo_9ebe00ee7196a1b70301",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "UNSUPPORTED_FORMAT",
+      "http_status": null,
+      "last_successful_http_fetch_at": null,
+      "last_source_native_publication_at": null,
+      "last_source_native_publication_time": null,
+      "observed_feed_items": 0,
+      "recent_native_dated_items": 0,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": "BODY_OVER_192KB"
+    },
+    {
+      "source_id": "private_repo_9f8a9b78d69338d9350d",
+      "attempted_at": "2026-10-30T09:30:18.405Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_at": "2026-10-30T03:03:25.000Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 03:03:25 GMT",
+      "observed_feed_items": 40,
+      "recent_native_dated_items": 32,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
       "source_id": "private_repo_e456bbc65e773899eff2",
       "attempted_at": "2026-10-30T09:25:28.813Z",
       "status": "WORKING",
@@ -11227,7 +11515,7 @@
       "country_iso2": "AR",
       "country_name": "Argentina",
       "category": "geopolitics",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_clar_n",
         "private_mesh_infobae_americas"
@@ -11255,9 +11543,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 09:15:08 +0000",
+      "last_source_native_publication_at": "2026-10-30T09:15:08.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -11268,14 +11556,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "ARG",
       "country_iso2": "AR",
       "country_name": "Argentina",
       "category": "macro",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_clar_n",
         "private_mesh_infobae_americas"
@@ -11303,9 +11591,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 09:15:08 +0000",
+      "last_source_native_publication_at": "2026-10-30T09:15:08.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -11316,14 +11604,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "ARG",
       "country_iso2": "AR",
       "country_name": "Argentina",
       "category": "rare_earth",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_clar_n",
         "private_mesh_infobae_americas"
@@ -11351,9 +11639,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 09:15:08 +0000",
+      "last_source_native_publication_at": "2026-10-30T09:15:08.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -11364,7 +11652,7 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "ARM",
@@ -13125,7 +13413,7 @@
       "country_iso2": "BG",
       "country_name": "Bulgaria",
       "category": "geopolitics",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_dnevnik"
       ],
@@ -13190,9 +13478,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 11:27:00 +0200",
+      "last_source_native_publication_at": "2026-10-30T09:27:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -13203,14 +13491,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "BGR",
       "country_iso2": "BG",
       "country_name": "Bulgaria",
       "category": "macro",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_dnevnik"
       ],
@@ -13278,9 +13566,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 11:27:00 +0200",
+      "last_source_native_publication_at": "2026-10-30T09:27:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -13291,14 +13579,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "BGR",
       "country_iso2": "BG",
       "country_name": "Bulgaria",
       "category": "rare_earth",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_dnevnik"
       ],
@@ -13363,9 +13651,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 11:27:00 +0200",
+      "last_source_native_publication_at": "2026-10-30T09:27:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -13376,7 +13664,7 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "BHR",
@@ -17783,7 +18071,7 @@
       "country_iso2": "DE",
       "country_name": "Germany",
       "category": "geopolitics",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_der_spiegel",
         "private_mesh_welt"
@@ -17850,9 +18138,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 10:09:00 +0100",
+      "last_source_native_publication_at": "2026-10-30T09:09:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -17863,14 +18151,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "DEU",
       "country_iso2": "DE",
       "country_name": "Germany",
       "category": "macro",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "ecb_public",
         "private_mesh_der_spiegel",
@@ -17944,9 +18232,9 @@
         "sdmx",
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 10:09:00 +0100",
+      "last_source_native_publication_at": "2026-10-30T09:09:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -17957,14 +18245,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "DEU",
       "country_iso2": "DE",
       "country_name": "Germany",
       "category": "rare_earth",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_der_spiegel",
         "private_mesh_welt"
@@ -18031,9 +18319,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 10:09:00 +0100",
+      "last_source_native_publication_at": "2026-10-30T09:09:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -18044,7 +18332,7 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "DJI",
@@ -18867,7 +19155,7 @@
       "country_iso2": "EG",
       "country_name": "Egypt",
       "category": "geopolitics",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_egypt_independent"
       ],
@@ -18893,9 +19181,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Thu, 29 Oct 2026 13:54:47 +0000",
+      "last_source_native_publication_at": "2026-10-29T13:54:47.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -18906,14 +19194,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "EGY",
       "country_iso2": "EG",
       "country_name": "Egypt",
       "category": "macro",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_egypt_independent"
       ],
@@ -18939,9 +19227,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Thu, 29 Oct 2026 13:54:47 +0000",
+      "last_source_native_publication_at": "2026-10-29T13:54:47.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -18952,14 +19240,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "EGY",
       "country_iso2": "EG",
       "country_name": "Egypt",
       "category": "rare_earth",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_egypt_independent"
       ],
@@ -18985,9 +19273,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Thu, 29 Oct 2026 13:54:47 +0000",
+      "last_source_native_publication_at": "2026-10-29T13:54:47.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -18998,7 +19286,7 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "ERI",
@@ -19125,7 +19413,7 @@
       "country_iso2": "ES",
       "country_name": "Spain",
       "category": "geopolitics",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_el_mundo"
       ],
@@ -19190,9 +19478,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 10:14:38 +0100",
+      "last_source_native_publication_at": "2026-10-30T09:14:38.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -19203,14 +19491,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "ESP",
       "country_iso2": "ES",
       "country_name": "Spain",
       "category": "macro",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_el_mundo"
       ],
@@ -19278,9 +19566,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 10:14:38 +0100",
+      "last_source_native_publication_at": "2026-10-30T09:14:38.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -19291,14 +19579,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "ESP",
       "country_iso2": "ES",
       "country_name": "Spain",
       "category": "rare_earth",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_el_mundo"
       ],
@@ -19363,9 +19651,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 10:14:38 +0100",
+      "last_source_native_publication_at": "2026-10-30T09:14:38.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -19376,7 +19664,7 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "EST",
@@ -25877,7 +26165,7 @@
       "country_iso2": "KE",
       "country_name": "Kenya",
       "category": "geopolitics",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_daily_nation"
       ],
@@ -25903,9 +26191,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 06:00:00 +0000",
+      "last_source_native_publication_at": "2026-10-30T06:00:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -25916,14 +26204,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "KEN",
       "country_iso2": "KE",
       "country_name": "Kenya",
       "category": "macro",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_kenya_bank",
         "private_mesh_daily_nation"
@@ -25951,9 +26239,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 06:00:00 +0000",
+      "last_source_native_publication_at": "2026-10-30T06:00:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -25964,14 +26252,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "KEN",
       "country_iso2": "KE",
       "country_name": "Kenya",
       "category": "rare_earth",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_daily_nation"
       ],
@@ -25997,9 +26285,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 06:00:00 +0000",
+      "last_source_native_publication_at": "2026-10-30T06:00:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -26010,7 +26298,7 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "KGZ",
@@ -32696,7 +32984,7 @@
       "country_iso2": "NG",
       "country_name": "Nigeria",
       "category": "geopolitics",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_expansion_ng_fmino_rss",
         "private_mesh_channels_tv",
@@ -32730,9 +33018,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 09:03:27 +0000",
+      "last_source_native_publication_at": "2026-10-30T09:03:27.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -32743,14 +33031,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "NGA",
       "country_iso2": "NG",
       "country_name": "Nigeria",
       "category": "macro",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_expansion_ng_fmino_rss",
         "private_mesh_channels_tv",
@@ -32784,9 +33072,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 09:03:27 +0000",
+      "last_source_native_publication_at": "2026-10-30T09:03:27.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -32797,14 +33085,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "NGA",
       "country_iso2": "NG",
       "country_name": "Nigeria",
       "category": "rare_earth",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_expansion_ng_fmino_rss",
         "private_mesh_channels_tv",
@@ -32838,9 +33126,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 09:03:27 +0000",
+      "last_source_native_publication_at": "2026-10-30T09:03:27.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -32851,7 +33139,7 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "NIC",
@@ -34161,7 +34449,7 @@
       "country_iso2": "PK",
       "country_name": "Pakistan",
       "category": "geopolitics",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "UNSUPPORTED_FORMAT",
       "registered_source_ids": [
         "private_mesh_dawn"
       ],
@@ -34232,14 +34520,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "BODY_OVER_192KB"
     },
     {
       "country_iso3": "PAK",
       "country_iso2": "PK",
       "country_name": "Pakistan",
       "category": "macro",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "UNSUPPORTED_FORMAT",
       "registered_source_ids": [
         "private_mesh_dawn"
       ],
@@ -34311,14 +34599,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "BODY_OVER_192KB"
     },
     {
       "country_iso3": "PAK",
       "country_iso2": "PK",
       "country_name": "Pakistan",
       "category": "rare_earth",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "UNSUPPORTED_FORMAT",
       "registered_source_ids": [
         "private_mesh_dawn"
       ],
@@ -34390,7 +34678,7 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "BODY_OVER_192KB"
     },
     {
       "country_iso3": "PAN",
@@ -36421,7 +36709,7 @@
       "country_iso2": "RO",
       "country_name": "Romania",
       "category": "geopolitics",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "UNSUPPORTED_FORMAT",
       "registered_source_ids": [
         "private_mesh_digi24"
       ],
@@ -36499,14 +36787,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "BODY_OVER_192KB"
     },
     {
       "country_iso3": "ROU",
       "country_iso2": "RO",
       "country_name": "Romania",
       "category": "macro",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "UNSUPPORTED_FORMAT",
       "registered_source_ids": [
         "private_mesh_digi24"
       ],
@@ -36587,14 +36875,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "BODY_OVER_192KB"
     },
     {
       "country_iso3": "ROU",
       "country_iso2": "RO",
       "country_name": "Romania",
       "category": "rare_earth",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "UNSUPPORTED_FORMAT",
       "registered_source_ids": [
         "private_mesh_digi24"
       ],
@@ -36672,7 +36960,7 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "BODY_OVER_192KB"
     },
     {
       "country_iso3": "RUS",
@@ -37285,7 +37573,7 @@
       "country_iso2": "SD",
       "country_name": "Sudan",
       "category": "geopolitics",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_dabanga_sudan"
       ],
@@ -37311,9 +37599,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Thu, 29 Oct 2026 20:51:53 +0000",
+      "last_source_native_publication_at": "2026-10-29T20:51:53.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -37324,14 +37612,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "SDN",
       "country_iso2": "SD",
       "country_name": "Sudan",
       "category": "macro",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_dabanga_sudan"
       ],
@@ -37357,9 +37645,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Thu, 29 Oct 2026 20:51:53 +0000",
+      "last_source_native_publication_at": "2026-10-29T20:51:53.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -37370,14 +37658,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "SDN",
       "country_iso2": "SD",
       "country_name": "Sudan",
       "category": "rare_earth",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_dabanga_sudan"
       ],
@@ -37403,9 +37691,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Thu, 29 Oct 2026 20:51:53 +0000",
+      "last_source_native_publication_at": "2026-10-29T20:51:53.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -37416,7 +37704,7 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "SEN",
@@ -37561,7 +37849,7 @@
       "country_iso2": "SG",
       "country_name": "Singapore",
       "category": "geopolitics",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_cna"
       ],
@@ -37619,9 +37907,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 17:09:31 +0800",
+      "last_source_native_publication_at": "2026-10-30T09:09:31.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -37632,14 +37920,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "SGP",
       "country_iso2": "SG",
       "country_name": "Singapore",
       "category": "macro",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_cna"
       ],
@@ -37698,9 +37986,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 17:09:31 +0800",
+      "last_source_native_publication_at": "2026-10-30T09:09:31.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -37711,14 +37999,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "SGP",
       "country_iso2": "SG",
       "country_name": "Singapore",
       "category": "rare_earth",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_cna"
       ],
@@ -37777,9 +38065,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 17:09:31 +0800",
+      "last_source_native_publication_at": "2026-10-30T09:09:31.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -37790,7 +38078,7 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "SLB",
@@ -39585,7 +39873,7 @@
       "country_iso2": "SE",
       "country_name": "Sweden",
       "category": "geopolitics",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_dagens_nyheter",
         "private_mesh_svenska_dagbladet"
@@ -39652,9 +39940,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 10:28:44 +0100",
+      "last_source_native_publication_at": "2026-10-30T09:28:44.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -39665,14 +39953,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "SWE",
       "country_iso2": "SE",
       "country_name": "Sweden",
       "category": "macro",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_expansion_swe_riksbank_press",
         "private_mesh_dagens_nyheter",
@@ -39744,9 +40032,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 10:28:44 +0100",
+      "last_source_native_publication_at": "2026-10-30T09:28:44.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -39757,14 +40045,14 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "SWE",
       "country_iso2": "SE",
       "country_name": "Sweden",
       "category": "rare_earth",
-      "source_status": "NOT_YET_VERIFIED",
+      "source_status": "WORKING",
       "registered_source_ids": [
         "private_mesh_dagens_nyheter",
         "private_mesh_svenska_dagbladet"
@@ -39831,9 +40119,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": null,
-      "last_source_native_publication_time": null,
-      "last_source_native_publication_at": null,
+      "last_actual_successful_http_fetch_at": "2026-10-30T09:30:18.405Z",
+      "last_source_native_publication_time": "Fri, 30 Oct 2026 10:28:44 +0100",
+      "last_source_native_publication_at": "2026-10-30T09:28:44.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -39844,7 +40132,7 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "NO_LIVE_PROBE_YET"
+      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED"
     },
     {
       "country_iso3": "SWZ",
