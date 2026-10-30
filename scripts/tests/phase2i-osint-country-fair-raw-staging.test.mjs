@@ -94,3 +94,51 @@ test("all conflicts cannot fabricate a positive D1 receipt; unrelated failure st
   post:async()=>{throw Error("PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE")}}),
   /PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE/u);
 });
+
+test("a high-volume country never permanently starves its second through sixth genuine originals",()=>{
+ const countries=PHASE2H_COUNTRIES_195.filter(c=>["IND","UGA"].includes(c.iso3));
+ assert.equal(countries.length,2);
+ const candidates=countries.flatMap(country=>cats.flatMap(category=>
+  Array.from({length:6},(_,n)=>mk(country,category,100+n+
+   (country.iso3==="IND"?0:1000)))));
+ const all=new Set(),byCat=Object.fromEntries(cats.map(cat=>[cat,new Set()]));
+ const accepted=new Set();
+ for(let n=0;n<18;n++){
+  const plan=planPhase2iOsintCountryFairRaw(candidates,{
+   now:new Date(now.getTime()+n*900_000),derive,maxRows:5,
+  });
+  assert.equal(plan.available_originals,36);
+  assert.equal(plan.selected_count,5);
+  for(const row of plan.records){
+   all.add(row.record_id);byCat[row.category].add(row.record_id);
+   const iso=phase2hHeadlineCountryCandidate(row.original.original_title);
+   assert.ok(["IND","UGA"].includes(iso));
+   accepted.add(iso+":"+row.category);
+  }
+ }
+ assert.equal(all.size,36);
+ assert.equal(byCat.geopolitics.size,12);
+ assert.equal(byCat.macro.size,12);
+ assert.equal(byCat.rare_earth.size,12);
+ assert.equal(accepted.size,6);
+});
+test("provider-limited 3-row slot still reaches each category and every original over time",()=>{
+ const countries=PHASE2H_COUNTRIES_195.filter(c=>["IND","UGA"].includes(c.iso3));
+ const candidates=countries.flatMap(country=>cats.flatMap(category=>
+  Array.from({length:2},(_,n)=>mk(country,category,200+n+
+   (country.iso3==="IND"?0:1000)))));
+ const ids=new Set();
+ for(let n=0;n<6;n++){
+  const plan=planPhase2iOsintCountryFairRaw(candidates,{
+   now:new Date(now.getTime()+n*900_000),derive,maxRows:3,
+  });
+  assert.equal(plan.selected_count,3);
+  assert.deepEqual(plan.selected_by_category,
+   {geopolitics:1,macro:1,rare_earth:1});
+  for(const row of plan.records)ids.add(row.record_id);
+ }
+ assert.equal(ids.size,12);
+ for(const tooSmall of [0,1,2,6,50])
+  assert.throws(()=>planPhase2iOsintCountryFairRaw(candidates,
+   {now,derive,maxRows:tooSmall}),/PHASE2I_OSINT_RAW_PLAN_INVALID/u);
+});
