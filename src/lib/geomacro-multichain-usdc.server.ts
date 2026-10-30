@@ -1,5 +1,6 @@
 import {createHash} from "node:crypto";
 import {resolveSharedUsdcReceiver} from "./shared-usdc-receiver.server";
+import approvedRecipient from "../../config/mainnet-usdc-recipient.json";
 import {
   GEOMACRO_CAPABILITY_PRICING_VERSION,
   isPublicStoreCapability,
@@ -74,10 +75,13 @@ export function quoteGeomacroUsdcCapabilityPreflight(input:unknown){
     canonical_agent_path:"/api/v1/agent",
   });
 }
-export function publicGeomacroUsdcRailDiscovery(){
+export function publicGeomacroUsdcRailDiscovery(
+  env:Record<string,string|undefined>=process.env,
+){
   let receiver:string|null=null,receiverState="RECEIVER_NOT_CONFIGURED";
   try{
-    receiver=resolveSharedUsdcReceiver();receiverState="RECEIVER_CONFIGURED_CONTROL_NOT_ATTESTED";
+    receiver=resolveSharedUsdcReceiver(env);
+    receiverState="RECEIVER_CONFIGURED_CONTROL_NOT_ATTESTED";
   }catch(error){
     if(error instanceof Error&&error.message==="SHARED_USDC_RECEIVER_MISMATCH")
       receiverState="RECEIVER_CONFIGURATION_MISMATCH";
@@ -86,6 +90,18 @@ export function publicGeomacroUsdcRailDiscovery(){
     else if(error instanceof Error&&error.message==="SHARED_USDC_RECEIVER_NOT_OWNER_APPROVED")
       receiverState="RECEIVER_NOT_OWNER_APPROVED";
   }
+  // Only report cryptographic control after the LIVE configured recipient
+  // matches the owner-signed pin. This is never a live transfer/fee/settlement
+  // receipt, and a stale production secret may not inherit the attestation.
+  const ownerProof=approvedRecipient.ownership_proof;
+  const walletControlVerified=receiver!==null &&
+    approvedRecipient.wallet_control_verified===true &&
+    approvedRecipient.merchant_settlement_verified===false &&
+    ownerProof?.scheme==="EIP191_PERSONAL_SIGN" &&
+    ownerProof.authorization_scope==="WALLET_OWNERSHIP_PROOF_ONLY" &&
+    ownerProof.recovered_address.toLowerCase()===receiver.toLowerCase() &&
+    approvedRecipient.receiver.toLowerCase()===receiver.toLowerCase();
+  if(walletControlVerified)receiverState="RECEIVER_CONFIGURED_CONTROL_ATTESTED";
   return {
     schema:GEOMACRO_USDC_RAIL_SCHEMA,ok:true,
     chain_policy:"NATIVE_CIRCLE_USDC_ONLY",
@@ -95,7 +111,7 @@ export function publicGeomacroUsdcRailDiscovery(){
     native_facilitator_distinct_from_gateway_batching:true,
     merchant_receiver:{state:receiverState,address:receiver,
       same_address_configuration_verified:receiver!==null,
-      wallet_control_verified:false},
+      wallet_control_verified:walletControlVerified},
     networks:Object.values(GEOMACRO_USDC_NETWORKS).map(rail=>({
       ...rail,scheme:"exact" as const,x402_version:2 as const,
       // Rail support from Circle != Geomacro merchant activation.
