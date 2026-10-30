@@ -22,8 +22,12 @@ if(env.GITHUB_ACTIONS!=="true"||
  env.GEOMACRO_SOURCE_INTAKE_ONLY!=="1"||
  env.PHASE2I_PROVIDER_SOURCE_INTAKE!=="true"||
  env.PHASE2I_PROVIDER_CRITICAL==="true"||
- env.PHASE2I_PROVIDER_MAX_NEW_ROWS!=="5")
+ ![3,5,10,25,50].includes(Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS)))
  throw Error("PHASE2I_SOURCE_ONLY_PROVIDER_ADMISSION_REQUIRED");
+// Spend no more than the live provider admission. Five is the existing
+// D1 collision-isolation batch cap, NOT an authority to exceed a 3-row slot.
+const providerRows=Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS);
+const admittedRows=Math.min(providerRows,5);
 const root=String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(root.length<32)throw Error("PHASE2I_SOURCE_ONLY_PRIVATE_AUTH_REQUIRED");
 const controlToken=createHmac("sha256",root)
@@ -58,7 +62,7 @@ if(result.summary.configured_country_routes!==195||
  throw Error("PHASE2I_SOURCE_ONLY_195X3_SOURCE_SWEEP_UNVERIFIED");
 const stage=await stagePhase2iOsintFairRaw({
  candidates,now,derive:deriveStatelessSignals,
- maxRows:5,
+ maxRows:admittedRows,
  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
  token:controlToken,
 });
@@ -72,6 +76,7 @@ console.log(JSON.stringify({
  country_routes:195,country_category_routes:585,
  source_endpoints_attempted:result.summary.source_endpoints_attempted,
  selected_count,available_originals,deferred_count,selected_by_category,
+ admitted_source_only_max_rows:admittedRows,
  d1_inserted,d1_unchanged,d1_rejected_conflicts,d1_readback_verified,
  b2_verified,rights_verified:false,paid_eligible:false,payments:0,
  predge_modified:false,publication_attempted:false,
