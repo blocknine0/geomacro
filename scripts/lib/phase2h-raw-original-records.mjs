@@ -44,12 +44,13 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
     /Open Government Licence v3\.0/u.test(c.credit);
   // A source issuing only a calendar day MUST NOT acquire a fictitious UTC
   // hour from an upstream parser's midnight sentinel.
-  const nativePublished=c.datePrecision==="day"
+  const nativeDay=c.datePrecision==="day"||/^20\d{2}-\d{2}-\d{2}$/u.test(c.publishedAt);
+  const nativePublished=nativeDay
     ?c.publishedAt.slice(0,10):c.publishedAt;
   const original={
    original_source_id:c.sourceId,original_url:c.articleUrl,
    original_published_at:nativePublished,
-   date_precision:c.datePrecision==="day"?"day":"exact",
+   date_precision:nativeDay?"day":"exact",
    original_title:c.title,
    original_content:openLicense&&typeof c.description==="string"&&
      c.description.length<=900&&!/[<>]/u.test(c.description)?c.description:null,
@@ -111,7 +112,13 @@ export async function postPhase2hPrivateRawRecords({
    body:JSON.stringify({schema:"geomacro.phase2h.private-raw-batch.v1",items:group}),
    signal:AbortSignal.timeout(16000),
   });
-  if(response.status!==200)throw Error("PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE");
+  if(response.status!==200){
+   const data=await response.json().catch(()=>null);
+   const reason=typeof data?.reason_code==="string"&&
+     /^PHASE2H_PRIVATE_RAW_[A-Z_]{3,90}$/u.test(data.reason_code)
+      ?data.reason_code:"PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE";
+   throw Error(reason);
+  }
   const receipt=await response.json();
   if(receipt.ok!==true||receipt.d1_exact_readback_verified!==true||
      receipt.accepted+receipt.unchanged!==group.length)
