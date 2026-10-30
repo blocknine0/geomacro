@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  checks: read
 
 concurrency:
   group: geomacro-phase2h-governed-b2-production
@@ -37,6 +38,16 @@ jobs:
           node-version: "22"
       - name: Verify scoped metadata-only census and strict B2 admission (offline)
         run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs
+      - name: Diagnostic exact GitHub CodeQL check annotation (nonsecret only)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # The previous high-severity check is a nonsecret PR scan artifact.
+          # Logs redact message bodies beyond 200 chars and omit code snippets.
+          gh api 'repos/blocknine0/geomacro/check-runs/124035132431/annotations' \
+            --jq '.[] | {path, start_line, end_line, annotation_level, title, message: ((.message // "") | .[0:200])}' 
   quota-admission:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
