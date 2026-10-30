@@ -29,11 +29,14 @@ const providerCode=error=>{
 };
 const getJson=async(url,fetchImpl)=>{
  let res;
- try{res=await fetchImpl(url,{method:"GET",redirect:"error",
+ try{res=await fetchImpl(url,{method:"GET",redirect:"manual",
   headers:{"Accept":"application/json"},signal:AbortSignal.timeout(9000)})}
  catch(error){providerFail(error?.name==="TimeoutError"||error?.name==="AbortError"?
   "UPSTREAM_TIMEOUT":"NETWORK_FETCH_FAILED")}
- if(res.redirected)providerFail("REDIRECT_DENIED");
+ // Cloudflare Workers does not implement Request.redirect="error": it throws
+ // before network I/O. Manual mode plus explicit 3xx rejection is equivalent
+ // fail-closed behavior and works in both workerd and Node.
+ if(res.redirected||res.status>=300&&res.status<400)providerFail("REDIRECT_DENIED");
  if(res.status!==200){
   providerFail([401,403,404,429,500,502,503].includes(res.status)?
    "HTTP_"+res.status:"HTTP_OTHER");
