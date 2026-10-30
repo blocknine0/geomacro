@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-30T05:57:23.616Z",
+  "checked_at": "2026-10-30T06:29:44.873Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,215 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-20d0a021",
+      "category": "macro",
+      "title": "Geomacro finds CTI urged Congress to postpone November 1 rally, says ₹10,000-12,000 crore trade in Delhi markets at risk",
+      "what_changed": "A monitored source feed reports: CTI urged Congress to postpone November 1 rally, says ₹10,000-12,000 crore trade in Delhi markets at risk. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T05:54:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a22ae9ff",
+      "category": "macro",
+      "title": "Geomacro finds Bank of Japan said inflation hit 2% target after 13 years",
+      "what_changed": "A monitored source feed reports: Bank of Japan said inflation hit 2% target after 13 years. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T05:46:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.euronews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-e5ef0fcb",
+      "category": "macro",
+      "title": "Geomacro finds Bank of Japan said inflation hit 2% target after 13 years - Euronews.com",
+      "what_changed": "A monitored source feed reports: Bank of Japan said inflation hit 2% target after 13 years - Euronews.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T05:46:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a50d74cc",
+      "category": "geopolitics",
+      "title": "Geomacro finds India said AI, maritime security key priorities for its UNSC candidature for 2028, 29",
+      "what_changed": "A monitored source feed reports: India said AI, maritime security key priorities for its UNSC candidature for 2028, 29. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T05:40:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e53d5f76",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran said four tankers on fire after hitting mines in Strait of Hormuz",
+      "what_changed": "A monitored source feed reports: Iran said four tankers on fire after hitting mines in Strait of Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T05:34:25.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.channelnewsasia.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d46a5f35",
+      "category": "macro",
+      "title": "Geomacro finds Kyrgyzstan announced plans to switch to paperless trade with other countries",
+      "what_changed": "A monitored source feed reports: Kyrgyzstan announced plans to switch to paperless trade with other countries. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T05:33:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: 24.kg"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-55a68f25",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia launched Overnight Attacks Across Ukraine, Leaving Over 350,000 Without Power in Dnipro",
+      "what_changed": "A monitored source feed reports: Russia launched Overnight Attacks Across Ukraine, Leaving Over 350,000 Without Power in Dnipro. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T05:28:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b0833a33",
+      "category": "macro",
+      "title": "Geomacro finds Costamare reported revenue of over $614m and net profit of $241.2m in 9-month",
+      "what_changed": "A monitored source feed reports: Costamare reported revenue of over $614m and net profit of $241.2m in 9-month. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T05:12:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.naftemporiki.gr"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2e6c1ab0",
+      "category": "geopolitics",
+      "title": "Geomacro finds India called for protecting freedom of navigation, global trade at UN amid maritime security threats",
+      "what_changed": "A monitored source feed reports: India called for protecting freedom of navigation, global trade at UN amid maritime security threats. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T04:37:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: timesofindia.indiatimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f9a0624d",
+      "category": "macro",
+      "title": "Geomacro finds Bank of Japan held Fire While Signaling Rate Hikes Ahead - WSJ",
+      "what_changed": "A monitored source feed reports: Bank of Japan held Fire While Signaling Rate Hikes Ahead - WSJ. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T04:31:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-5f2ec049",
+      "category": "rare_earth",
+      "title": "Geomacro finds Copper Drops As Glencore reported 3% Rise In Nine-Month Copper Output This Year By Kedia Advisory - Investing.com India",
+      "what_changed": "A monitored source feed reports: Copper Drops As Glencore reported 3% Rise In Nine-Month Copper Output This Year By Kedia Advisory - Investing.com India. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T04:23:11.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-1d77ebae",
       "category": "macro",
@@ -20,6 +229,234 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T04:20:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-05f7a6b7",
+      "category": "geopolitics",
+      "title": "Geomacro finds Binance said security incident had estimated $6.3B impact, $3B in assets frozen",
+      "what_changed": "A monitored source feed reports: Binance said security incident had estimated $6.3B impact, $3B in assets frozen. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T03:52:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: moxie.foxbusiness.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2b620d37",
+      "category": "macro",
+      "title": "Geomacro finds Bank of Japan said 2% inflation target reached - Financial Times",
+      "what_changed": "A monitored source feed reports: Bank of Japan said 2% inflation target reached - Financial Times. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T03:24:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8ddc10ed",
+      "category": "macro",
+      "title": "Geomacro finds BOJ kept interest rates steady, signals further rate hikes - Reuters",
+      "what_changed": "A monitored source feed reports: BOJ kept interest rates steady, signals further rate hikes - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T03:15:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1c555574",
+      "category": "macro",
+      "title": "Geomacro finds Bank of Japan held rates steady even as inflation ticks up - The Japan Times",
+      "what_changed": "A monitored source feed reports: Bank of Japan held rates steady even as inflation ticks up - The Japan Times. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T03:12:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-366ad29e",
+      "category": "macro",
+      "title": "Geomacro finds Petronas recorded RM152.4b revenue in first half of 2026",
+      "what_changed": "A monitored source feed reports: Petronas recorded RM152.4b revenue in first half of 2026. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T03:02:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.malaymail.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c2bb5ebc",
+      "category": "geopolitics",
+      "title": "Geomacro finds ANZ raised Oil Price Forecast as Market Tightens on Iran War - Bloomberg.com",
+      "what_changed": "A monitored source feed reports: ANZ raised Oil Price Forecast as Market Tightens on Iran War - Bloomberg.com. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T02:18:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-933fa4f5",
+      "category": "geopolitics",
+      "title": "Geomacro finds Bersatu confirmed use of own logo in Melaka state election",
+      "what_changed": "A monitored source feed reports: Bersatu confirmed use of own logo in Melaka state election. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T01:59:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.malaymail.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e8c1b9a9",
+      "category": "geopolitics",
+      "title": "Geomacro finds Justice Department issued subpoenas to California election workers",
+      "what_changed": "A monitored source feed reports: Justice Department issued subpoenas to California election workers. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T01:35:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: feeds.npr.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-5000aea2",
+      "category": "macro",
+      "title": "Geomacro finds United Nations warned about Winter Emergency as Russia Targets Ukraine’s Energy Infrastructure - Kyiv Post",
+      "what_changed": "A monitored source feed reports: United Nations warned about Winter Emergency as Russia Targets Ukraine’s Energy Infrastructure - Kyiv Post. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T01:33:13.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8d7eb771",
+      "category": "macro",
+      "title": "Geomacro finds National Bank revised 2026 real GDP forecast downward",
+      "what_changed": "A monitored source feed reports: National Bank revised 2026 real GDP forecast downward. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T01:29:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.ukrinform.net"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a3b39ee3",
+      "category": "macro",
+      "title": "Geomacro finds Govt announced plans to reform development expenditure allocation based on states’ needs, says Economy Ministry",
+      "what_changed": "A monitored source feed reports: Govt announced plans to reform development expenditure allocation based on states’ needs, says Economy Ministry. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T01:23:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.malaymail.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a7aed3a3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran said four tankers on fire after hitting mines in Strait of Hormuz - Free Malaysia Today",
+      "what_changed": "A monitored source feed reports: Iran said four tankers on fire after hitting mines in Strait of Hormuz - Free Malaysia Today. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T01:11:24.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -43,6 +480,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.aljazeera.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3ac10d7c",
+      "category": "macro",
+      "title": "Geomacro finds China increased LNG imports from Russia by 44.3% to 7.19 mln tons in January-September - TASS",
+      "what_changed": "A monitored source feed reports: China increased LNG imports from Russia by 44.3% to 7.19 mln tons in January-September - TASS. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T00:05:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -157,6 +613,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.ukrinform.net"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-00403d55",
+      "category": "macro",
+      "title": "Geomacro finds FedEx Freight forecast quarterly earnings above estimates on improving volumes, pricing By Reuters - Investing.com",
+      "what_changed": "A monitored source feed reports: FedEx Freight forecast quarterly earnings above estimates on improving volumes, pricing By Reuters - Investing.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T21:19:28.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -3792,82 +4267,6 @@
       "severity": null
     },
     {
-      "id": "macro-1e498919",
-      "category": "macro",
-      "title": "Geomacro finds Gold held Above $4,000 as Traders Look to Fed Rate Decision - Bloomberg.com",
-      "what_changed": "A monitored source feed reports: Gold held Above $4,000 as Traders Look to Fed Rate Decision - Bloomberg.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T20:09:34.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-c6e3a1eb",
-      "category": "macro",
-      "title": "Geomacro finds Federal Reserve kept rates unchanged despite elevated inflation, gives little signal of next move - Forex Factory",
-      "what_changed": "A monitored source feed reports: Federal Reserve kept rates unchanged despite elevated inflation, gives little signal of next move - Forex Factory. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "inflation and prices",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T19:35:30.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-2b4951a0",
-      "category": "macro",
-      "title": "Geomacro finds Qatar Central Bank kept Interest Rates Unchanged - Qatar news agency",
-      "what_changed": "A monitored source feed reports: Qatar Central Bank kept Interest Rates Unchanged - Qatar news agency. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T19:30:45.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-c001a60e",
-      "category": "macro",
-      "title": "Geomacro finds Qatar Central Bank kept interest rates unchanged - The Peninsula Qatar",
-      "what_changed": "A monitored source feed reports: Qatar Central Bank kept interest rates unchanged - The Peninsula Qatar. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T19:29:51.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "geopolitics-688b7687",
       "category": "geopolitics",
       "title": "Geomacro finds INEC said Benue Is on Track for 2027 Elections, Reports 98% of BVAS Devices Functional",
@@ -3887,25 +4286,6 @@
       "severity": null
     },
     {
-      "id": "macro-2e01a8b6",
-      "category": "macro",
-      "title": "Geomacro finds UAE Central Bank held base rate at 3.9% after US Federal Reserve keeps rates unchanged - Emirates 24|7",
-      "what_changed": "A monitored source feed reports: UAE Central Bank held base rate at 3.9% after US Federal Reserve keeps rates unchanged - Emirates 24|7. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T19:22:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-a8ef77dc",
       "category": "rare_earth",
       "title": "Geomacro finds PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - Investing News Network",
@@ -3919,44 +4299,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-5d060011",
-      "category": "macro",
-      "title": "Geomacro finds Fed held Rates, but Dissent Keeps Bitcoin, Gold and Tech Stocks Under Pressure - Investing.com",
-      "what_changed": "A monitored source feed reports: Fed held Rates, but Dissent Keeps Bitcoin, Gold and Tech Stocks Under Pressure - Investing.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T19:20:16.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-93b36e5c",
-      "category": "macro",
-      "title": "Geomacro finds Fed left interest rates unchanged despite inflation in the US",
-      "what_changed": "A monitored source feed reports: Fed left interest rates unchanged despite inflation in the US. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T19:05:44.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.aljazeera.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4001,25 +4343,6 @@
       "severity": null
     },
     {
-      "id": "macro-aa3fc195",
-      "category": "macro",
-      "title": "Geomacro finds Fed announced plans to eliminate some rate-setting meetings, chairman says",
-      "what_changed": "A monitored source feed reports: Fed announced plans to eliminate some rate-setting meetings, chairman says. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T18:50:26.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: feeds.nbcnews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-8617100c",
       "category": "rare_earth",
       "title": "Geomacro finds PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - The Manila Times",
@@ -4052,101 +4375,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "United Nations"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-663618df",
-      "category": "macro",
-      "title": "Geomacro finds Fed held interest rates steady even as inflation remains stubborn",
-      "what_changed": "A monitored source feed reports: Fed held interest rates steady even as inflation remains stubborn. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T18:04:42.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: feeds.npr.org"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-e9fabf27",
-      "category": "macro",
-      "title": "Geomacro finds Fed held interest rates steady ahead of US midterm elections",
-      "what_changed": "A monitored source feed reports: Fed held interest rates steady ahead of US midterm elections. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T18:03:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.dailysabah.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-3766d85d",
-      "category": "macro",
-      "title": "Geomacro finds US Fed held interest rates steady as inflation runs hot",
-      "what_changed": "A monitored source feed reports: US Fed held interest rates steady as inflation runs hot. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T18:02:45.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thenationalnews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-b616e2d5",
-      "category": "macro",
-      "title": "Geomacro finds Federal Reserve left interest rates unchanged despite rising inflation",
-      "what_changed": "A monitored source feed reports: Federal Reserve left interest rates unchanged despite rising inflation. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T18:01:36.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: feeds.nbcnews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-18e81505",
-      "category": "macro",
-      "title": "Geomacro finds Federal Reserve issued FOMC statement",
-      "why_it_matters": "A monetary-policy release can influence financing conditions and FX expectations; no specific rate direction or market outcome is inferred from this signal.",
-      "what_changed": "Federal Reserve issued FOMC statement.",
-      "geography": null,
-      "development_type": "announcement",
-      "topic": "monetary policy",
-      "published_at": "2026-10-28T18:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Federal Reserve Board"
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
@@ -4191,139 +4419,6 @@
       "severity": null
     },
     {
-      "id": "macro-646586ab",
-      "category": "macro",
-      "title": "Geomacro finds MARAD approved $8.2 Billion Texas LNG Export Port in Record-Time Review",
-      "what_changed": "A monitored source feed reports: MARAD approved $8.2 Billion Texas LNG Export Port in Record-Time Review. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T17:24:40.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: gcaptain.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-5946961b",
-      "category": "geopolitics",
-      "title": "Geomacro finds United States imposed sanctions on Rwanda's defense ministry over Congo conflict",
-      "what_changed": "A monitored source feed reports: United States imposed sanctions on Rwanda's defense ministry over Congo conflict. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "sanctions and trade restrictions",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T17:03:02.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: nation.africa"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-baf19ba0",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia said Japanese diplomats get access to spy journalist according to regulations - TASS",
-      "what_changed": "A monitored source feed reports: Russia said Japanese diplomats get access to spy journalist according to regulations - TASS. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T17:01:28.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-ce7c1e80",
-      "category": "macro",
-      "title": "Geomacro finds Equinor raised Oil and Gas Output Forecast as Operating Profit Doubles - Crude Oil Prices Today | OilPrice.com",
-      "what_changed": "A monitored source feed reports: Equinor raised Oil and Gas Output Forecast as Operating Profit Doubles - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T16:30:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-ac3d3a45",
-      "category": "geopolitics",
-      "title": "Geomacro finds U.S. imposed new North Korea sanctions amid stalled diplomatic talks - NBC News",
-      "what_changed": "A monitored source feed reports: U.S. imposed new North Korea sanctions amid stalled diplomatic talks - NBC News. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "sanctions and trade restrictions",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T16:23:29.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-65974e6e",
-      "category": "geopolitics",
-      "title": "Geomacro finds Yemen said Houthi ballistic missile attack on Aden airport wounds civilians - Al Arabiya English",
-      "what_changed": "A monitored source feed reports: Yemen said Houthi ballistic missile attack on Aden airport wounds civilians - Al Arabiya English. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T16:14:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-b02154c6",
-      "category": "geopolitics",
-      "title": "Geomacro finds Zelenskyy said Ukraine will find way to involve Europe in peace talks",
-      "what_changed": "A monitored source feed reports: Zelenskyy said Ukraine will find way to involve Europe in peace talks. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T15:49:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.pravda.com.ua"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-932e6d47",
       "category": "rare_earth",
       "title": "Geomacro finds PLS signed 20-year power deal with Fortescue unit for Pilgangoora lithium mine - Kitco",
@@ -4343,44 +4438,6 @@
       "severity": null
     },
     {
-      "id": "geopolitics-0ba9e86e",
-      "category": "geopolitics",
-      "title": "Geomacro finds United States announced Sanctions in Response to Rwanda’s Destabilizing Activities in Eastern Democratic Republic of the Congo - U.S. Department of State (.gov)",
-      "what_changed": "A monitored source feed reports: United States announced Sanctions in Response to Rwanda’s Destabilizing Activities in Eastern Democratic Republic of the Congo - U.S. Department of State (.gov). This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "sanctions and trade restrictions",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T15:04:59.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-064b7e27",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran warned about ‘devastating’ economic fallout from any new Israeli attack - Arab News",
-      "what_changed": "A monitored source feed reports: Iran warned about ‘devastating’ economic fallout from any new Israeli attack - Arab News. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T14:55:34.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-d910e82c",
       "category": "rare_earth",
       "title": "Geomacro finds PLS signed 20-year power deal with Fortescue unit for Pilgangoora lithium mine - Mining.com",
@@ -4390,63 +4447,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T13:59:39.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-010d26ab",
-      "category": "geopolitics",
-      "title": "Geomacro finds Zelenskyy urged Hegseth to approve 23 Patriot missiles as Ukraine faces shortage",
-      "what_changed": "A monitored source feed reports: Zelenskyy urged Hegseth to approve 23 Patriot missiles as Ukraine faces shortage. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T13:53:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: english.nv.ua"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-1c451683",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning Russia's war against Ukraine is costing more and achieving less · United Kingdom",
-      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
-      "what_changed": "United Kingdom issued a statement to the FSC concerning Russia's war against Ukraine is costing more and achieving less. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "security",
-      "topic": "geopolitical security",
-      "published_at": "2026-10-28T13:28:52.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-07f8cecb",
-      "category": "geopolitics",
-      "title": "Geomacro finds UAE's Gargash said 'wars only lead to further crises' amid concerns of Iran escalation - The National",
-      "what_changed": "A monitored source feed reports: UAE's Gargash said 'wars only lead to further crises' amid concerns of Iran escalation - The National. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T12:25:48.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

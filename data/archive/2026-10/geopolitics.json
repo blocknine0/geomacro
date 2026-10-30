@@ -2,8 +2,179 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-30T05:57:23.616Z",
+  "updated_at": "2026-10-30T06:29:44.873Z",
   "signals": [
+    {
+      "id": "geopolitics-a50d74cc",
+      "category": "geopolitics",
+      "title": "Geomacro finds India said AI, maritime security key priorities for its UNSC candidature for 2028, 29",
+      "what_changed": "A monitored source feed reports: India said AI, maritime security key priorities for its UNSC candidature for 2028, 29. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T05:40:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e53d5f76",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran said four tankers on fire after hitting mines in Strait of Hormuz",
+      "what_changed": "A monitored source feed reports: Iran said four tankers on fire after hitting mines in Strait of Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T05:34:25.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.channelnewsasia.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-55a68f25",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia launched Overnight Attacks Across Ukraine, Leaving Over 350,000 Without Power in Dnipro",
+      "what_changed": "A monitored source feed reports: Russia launched Overnight Attacks Across Ukraine, Leaving Over 350,000 Without Power in Dnipro. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T05:28:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2e6c1ab0",
+      "category": "geopolitics",
+      "title": "Geomacro finds India called for protecting freedom of navigation, global trade at UN amid maritime security threats",
+      "what_changed": "A monitored source feed reports: India called for protecting freedom of navigation, global trade at UN amid maritime security threats. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T04:37:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: timesofindia.indiatimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-05f7a6b7",
+      "category": "geopolitics",
+      "title": "Geomacro finds Binance said security incident had estimated $6.3B impact, $3B in assets frozen",
+      "what_changed": "A monitored source feed reports: Binance said security incident had estimated $6.3B impact, $3B in assets frozen. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T03:52:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: moxie.foxbusiness.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c2bb5ebc",
+      "category": "geopolitics",
+      "title": "Geomacro finds ANZ raised Oil Price Forecast as Market Tightens on Iran War - Bloomberg.com",
+      "what_changed": "A monitored source feed reports: ANZ raised Oil Price Forecast as Market Tightens on Iran War - Bloomberg.com. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T02:18:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-933fa4f5",
+      "category": "geopolitics",
+      "title": "Geomacro finds Bersatu confirmed use of own logo in Melaka state election",
+      "what_changed": "A monitored source feed reports: Bersatu confirmed use of own logo in Melaka state election. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T01:59:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.malaymail.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e8c1b9a9",
+      "category": "geopolitics",
+      "title": "Geomacro finds Justice Department issued subpoenas to California election workers",
+      "what_changed": "A monitored source feed reports: Justice Department issued subpoenas to California election workers. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T01:35:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: feeds.npr.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a7aed3a3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran said four tankers on fire after hitting mines in Strait of Hormuz - Free Malaysia Today",
+      "what_changed": "A monitored source feed reports: Iran said four tankers on fire after hitting mines in Strait of Hormuz - Free Malaysia Today. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T01:11:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-c6b92ad8",
       "category": "geopolitics",
