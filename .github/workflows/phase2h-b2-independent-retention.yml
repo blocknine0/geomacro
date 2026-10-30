@@ -5,6 +5,12 @@ on:
       - '.github/workflows/phase2h-b2-independent-retention.yml'
       - 'scripts/ops/phase2h-independent-b2-version-census.mjs'
       - 'scripts/tests/phase2h-independent-b2-version-census.test.mjs'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/phase2h-b2-independent-retention.yml'
+      - 'scripts/ops/phase2h-independent-b2-version-census.mjs'
+      - 'scripts/tests/phase2h-independent-b2-version-census.test.mjs'
   workflow_dispatch: {}
   schedule:
     - cron: '47 2 * * *'
