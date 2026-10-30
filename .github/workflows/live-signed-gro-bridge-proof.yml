@@ -55,10 +55,19 @@ jobs:
           }
           mkdir -p artifacts/signed-gro-live-bridge
           chmod 700 artifacts/signed-gro-live-bridge
-          if ! bun scripts/ops/verify-country-gro-hot-serving.ts > artifacts/signed-gro-live-bridge/backend-country-canary.json 2>/dev/null; then
-            echo "::error::SIGNED_GRO_BACKEND_CANARY_NOT_VERIFIED"
+          if ! bun scripts/ops/verify-country-gro-hot-serving.ts > artifacts/signed-gro-live-bridge/backend-country-canary.json 2>"$RUNNER_TEMP/gro-backend-private-stderr.log"; then
+            diagnostic="$(grep -E '^SAFE_GRO_DIAGNOSTIC=[A-Z0-9_]+$' "$RUNNER_TEMP/gro-backend-private-stderr.log" | head -n 1 | cut -d= -f2 || true)"
+            # Fixed-code allowlist. No raw stderr, GRO payload, token, URL or source identity is printed.
+            case "${diagnostic:-}" in
+              SUBJECT_INVALID|REQUEST_TIME_INVALID|AUTH_ROOT_UNAVAILABLE|CONTROL_PLANE_ORIGIN_INVALID|CONTROL_PLANE_HTTP_401|CONTROL_PLANE_HTTP_403|CONTROL_PLANE_HTTP_404|CONTROL_PLANE_HTTP_503|CONTROL_PLANE_HTTP_OTHER|HOT_OBJECT_MISSING|HOT_ENVELOPE_INVALID|HOT_CLOCK_INVALID|HOT_OBJECT_EXPIRED|HOT_OBJECT_SHA_MISMATCH|PUBLIC_SIGNER_REGISTRY_UNAVAILABLE|HOT_SIGNATURE_INVALID|HOT_COMMERCIAL_INELIGIBLE|CONTROL_PLANE_TRANSPORT_OR_JSON_INVALID)
+                echo "::error::SIGNED_GRO_BACKEND_${diagnostic}"
+                ;;
+              *) echo "::error::SIGNED_GRO_BACKEND_CANARY_NOT_VERIFIED" ;;
+            esac
+            rm -f "$RUNNER_TEMP/gro-backend-private-stderr.log" artifacts/signed-gro-live-bridge/backend-country-canary.json
             exit 2
           fi
+          rm -f "$RUNNER_TEMP/gro-backend-private-stderr.log"
           echo "PASS: authenticated country GRO D1 hot, public trust signing and commercial policy verified; no secret or GRO body logged."
 
       - name: Compare live website no-charge signed-GRO availability

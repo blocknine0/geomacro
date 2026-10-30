@@ -94,7 +94,7 @@ describe("country GRO zero-cost continuity", () => {
     expect(canary).toContain("delete process.env.B2_ARCHIVE_READ_KEY_ID");
     expect(canary).toContain("delete process.env.APP_SUPABASE_URL");
     expect(canary).toContain("delete process.env.SUPABASE_DB_URL");
-    expect(canary).toContain("readD1VerifiedHotCountryGro(iso3, at)");
+    expect(canary).toContain("readD1VerifiedHotCountryGro(iso3, at,");
     expect(canary).toContain("loadPublicRiskObjectVerificationKeys()");
     expect(canary).toContain("verifyRiskObjectSignature(object, verificationKeys)");
     expect(canary).toContain("verification_keys: verificationKeys");

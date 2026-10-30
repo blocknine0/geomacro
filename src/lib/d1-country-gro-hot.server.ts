@@ -124,23 +124,39 @@ export async function loadPublicRiskObjectVerificationKeys(): Promise<RiskObject
   }
 }
 
+export type CountryGroHotFailureCode =
+  | "SUBJECT_INVALID" | "REQUEST_TIME_INVALID" | "AUTH_ROOT_UNAVAILABLE"
+  | "CONTROL_PLANE_ORIGIN_INVALID" | "CONTROL_PLANE_HTTP_401"
+  | "CONTROL_PLANE_HTTP_403" | "CONTROL_PLANE_HTTP_404"
+  | "CONTROL_PLANE_HTTP_503" | "CONTROL_PLANE_HTTP_OTHER"
+  | "HOT_OBJECT_MISSING" | "HOT_ENVELOPE_INVALID"
+  | "HOT_CLOCK_INVALID" | "HOT_OBJECT_EXPIRED" | "HOT_OBJECT_SHA_MISMATCH"
+  | "PUBLIC_SIGNER_REGISTRY_UNAVAILABLE" | "HOT_SIGNATURE_INVALID"
+  | "HOT_COMMERCIAL_INELIGIBLE" | "CONTROL_PLANE_TRANSPORT_OR_JSON_INVALID";
+
+/** Optional owner-only fixed-code diagnostics; never emit actual source data. */
 export async function readD1VerifiedHotCountryGro(
   countryIso3: string,
   atOrBefore: string,
+  onDiagnostic?: (reason: CountryGroHotFailureCode) => void,
 ): Promise<GeomacroRiskObject | null> {
+  const fail = (reason: CountryGroHotFailureCode): null => {
+    try { onDiagnostic?.(reason); } catch { /* keep read fail-closed */ }
+    return null;
+  };
   const iso3 = countryIso3.trim().toUpperCase();
-  if (!/^[A-Z]{3}$/.test(iso3)) return null;
+  if (!/^[A-Z]{3}$/.test(iso3)) return fail("SUBJECT_INVALID");
 
   const requestedMs = Date.parse(atOrBefore);
-  if (!Number.isFinite(requestedMs)) return null;
+  if (!Number.isFinite(requestedMs)) return fail("REQUEST_TIME_INVALID");
 
   const token = controlPlaneToken();
-  if (!token) return null;
+  if (!token) return fail("AUTH_ROOT_UNAVAILABLE");
 
   const base = String(
     process.env.GEOMACRO_CONTROL_PLANE_URL ?? DEFAULT_CONTROL_PLANE_URL,
   ).replace(/\/+$/, "");
-  if (!/^https:\/\/[A-Za-z0-9._-]+(?::\d+)?$/.test(base)) return null;
+  if (!/^https:\/\/[A-Za-z0-9._-]+(?::\d+)?$/.test(base)) return fail("CONTROL_PLANE_ORIGIN_INVALID");
 
   try {
     const url = new URL(`${base}/v1/country-gro-hot/${iso3}`);
@@ -154,10 +170,17 @@ export async function readD1VerifiedHotCountryGro(
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       redirect: "manual",
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      if (response.status === 401) return fail("CONTROL_PLANE_HTTP_401");
+      if (response.status === 403) return fail("CONTROL_PLANE_HTTP_403");
+      if (response.status === 404) return fail("CONTROL_PLANE_HTTP_404");
+      if (response.status === 503) return fail("CONTROL_PLANE_HTTP_503");
+      return fail("CONTROL_PLANE_HTTP_OTHER");
+    }
 
     const payload = (await response.json()) as Record<string, any>;
     const object = payload?.object as GeomacroRiskObject | undefined;
+    if (!object) return fail("HOT_OBJECT_MISSING");
     if (
       payload?.ok !== true ||
       payload?.serving_store !== "cloudflare-d1" ||
@@ -172,32 +195,29 @@ export async function readD1VerifiedHotCountryGro(
       object.object_id !== payload.object_id ||
       object.integrity?.payload_hash !== payload.payload_hash ||
       object.integrity?.signing_key_id !== payload.signing_key_id
-    ) return null;
+    ) return fail("HOT_ENVELOPE_INVALID");
 
     const generatedMs = Date.parse(String(object.generated_at ?? ""));
     const expiresMs = Date.parse(String(object.expires_at ?? ""));
-    if (
-      !Number.isFinite(generatedMs) ||
-      !Number.isFinite(expiresMs) ||
-      generatedMs > requestedMs ||
-      expiresMs <= requestedMs ||
-      recordSha256(object) !== payload.record_sha256
-    ) return null;
+    if (!Number.isFinite(generatedMs) || !Number.isFinite(expiresMs) || generatedMs > requestedMs)
+      return fail("HOT_CLOCK_INVALID");
+    if (expiresMs <= requestedMs) return fail("HOT_OBJECT_EXPIRED");
+    if (recordSha256(object) !== payload.record_sha256) return fail("HOT_OBJECT_SHA_MISMATCH");
 
     const verificationKeys = await loadPublicRiskObjectVerificationKeys();
-    if (!verificationKeys) return null;
+    if (!verificationKeys) return fail("PUBLIC_SIGNER_REGISTRY_UNAVAILABLE");
 
     const signature = verifyRiskObjectSignature(object, verificationKeys);
-    if (!signature.valid) return null;
+    if (!signature.valid) return fail("HOT_SIGNATURE_INVALID");
 
     const commercial = verifyCommercialRiskObjectArtifact(object, {
       now: new Date(requestedMs),
       verification_keys: verificationKeys,
     });
-    if (!commercial.deliverable) return null;
+    if (!commercial.deliverable) return fail("HOT_COMMERCIAL_INELIGIBLE");
 
     return object;
   } catch {
-    return null;
+    return fail("CONTROL_PLANE_TRANSPORT_OR_JSON_INVALID");
   }
 }
