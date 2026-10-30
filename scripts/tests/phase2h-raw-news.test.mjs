@@ -164,7 +164,7 @@ test("maintenance archive does not start out of existing 00/06/12/18 slots",asyn
   env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
    GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
    B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
-   B2_REQUEST_BUDGET:"12"},
+   B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true"},
   b2Factory:()=>{throw Error("B2_MUST_NOT_OPEN")},
   fetchImpl:()=>{throw Error("NETWORK_MUST_NOT_RUN")},
  });
