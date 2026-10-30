@@ -15,8 +15,9 @@ export async function cleanupPhase2hD1({
 }={}){
  if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
     env.GITHUB_REF!=="refs/heads/main"||
-    (env.PHASE2H_PROVIDER_CRITICAL!=="true"&&
-     env.PHASE2H_PROVIDER_RETENTION_CLEANUP!=="true")||
+    env.PHASE2H_PROVIDER_RETENTION_CLEANUP!=="true"||
+    !/^[1-9][0-9]{0,3}$/u.test(String(env.PHASE2H_PROVIDER_CLEANUP_MAX_ROWS??""))||
+    Number(env.PHASE2H_PROVIDER_CLEANUP_MAX_ROWS)>PHASE2H_NEWS_CLEANUP_RUN_LIMIT||
     !/^[a-f0-9]{32}$/u.test(env.CLOUDFLARE_ACCOUNT_ID??"")||
     !/^[0-9a-f-]{36}$/iu.test(env.D1_DATABASE_ID??"")||
     String(env.CLOUDFLARE_API_TOKEN??"").length<20||
@@ -40,15 +41,16 @@ export async function cleanupPhase2hD1({
     fail("CANONICAL_D1_RECEIPT_INVALID");
   return body.result[0];
  };
+ const perRunLimit=Number(env.PHASE2H_PROVIDER_CLEANUP_MAX_ROWS);
  const hardCutoff=phase2hNewsCutoff(now);
  const softCutoff=phase2hNewsCutoff(now,PHASE2H_NEWS_CLEANUP_TARGET_MS);
  let deleted=0,deletedHard=0,deletedProactive=0,unarchivedExpiredDiscarded=0;
  let selectedQueries=0,exactReadbacks=0;
  // First clear hard-expired data (including unarchived rows). On each iteration,
  // then drain the oldest B2-acknowledged proactive 60h+ rows.
- while(deleted<PHASE2H_NEWS_CLEANUP_RUN_LIMIT){
+ while(deleted<perRunLimit){
   const limit=Math.min(PHASE2H_NEWS_CLEANUP_LIMIT,
-   PHASE2H_NEWS_CLEANUP_RUN_LIMIT-deleted);
+   perRunLimit-deleted);
   let hardExpiry=true;
   let selection=await run(
    "SELECT record_id,first_ingested_at,b2_object_sha256 FROM phase2h_private_raw_news "+
@@ -105,7 +107,8 @@ export async function cleanupPhase2hD1({
   proactive_d1_cleanup_complete:softN===0,
   post_delete_d1_readback_verified:exactReadbacks>0,
   selected_queries:selectedQueries,exact_readback_queries:exactReadbacks,
-  maximum_deletions_per_hour:PHASE2H_NEWS_CLEANUP_RUN_LIMIT,
+  maximum_deletions_per_hour:perRunLimit,
+  source_quota_headroom_protected:true,
   b2_physical_deletion_verified:false,
   provider_quota_admitted:true,predge_untouched:true,payments:0,
   production_acceptance_pass:hardN===0&&unarchivedExpiredDiscarded===0
