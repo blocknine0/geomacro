@@ -23,6 +23,7 @@ test("critical-pacing hold with source approval does not become a full publisher
  assert.match(lane,/needs\.quota-admission\.outputs\.source_intake == 'true'/u);
  assert.match(lane,/needs\.quota-admission\.result == 'success'/u);
  assert.match(lane,/github\.ref == 'refs\/heads\/main'/u);
+ assert.match(lane,/github\.event_name == 'schedule'/u);
  assert.match(lane,/environment: production/u);
  assert.match(lane,/PHASE2I_PROVIDER_SOURCE_INTAKE:/u);
  assert.match(lane,/PHASE2I_PROVIDER_RESEARCH:/u);
