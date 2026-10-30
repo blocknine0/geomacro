@@ -11,9 +11,9 @@ on:
       - '.github/workflows/phase2h-b2-independent-retention.yml'
       - 'scripts/ops/phase2h-independent-b2-version-census.mjs'
       - 'scripts/tests/phase2h-independent-b2-version-census.test.mjs'
-  workflow_dispatch: {}
+  # Once a month, after the 00:29 UTC archive slot.
   schedule:
-    - cron: '47 2 * * *'
+    - cron: '47 2 1 * *'
 
 permissions:
   contents: read
@@ -39,7 +39,7 @@ jobs:
           node --test scripts/tests/phase2h-independent-b2-version-census.test.mjs
   provider-version-census:
     needs: offline-verification
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'schedule' && github.event.schedule == '47 2 1 * *'
     runs-on: ubuntu-24.04
     timeout-minutes: 9
     environment: production
