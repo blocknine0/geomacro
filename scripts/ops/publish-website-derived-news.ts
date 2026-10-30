@@ -9,6 +9,7 @@ import { createHmac } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { summarizeDerivedSourceHealth } from "../lib/derived-news-source-health.mjs";
 import {prepareDerivedNewsBatches} from '../lib/derived-news-d1-batches.mjs';
+import {reconcileAcknowledgedDerivedNews} from "../lib/phase2g-per-id-d1-reconciliation.mjs";
 import { buildMaterialGriNewsReviewQueue } from "../lib/material-gri-news-review.mjs";
 import { readStatelessWebsiteIntelligence } from "../../src/lib/stateless-public-intelligence.server";
 import {createRunScopedAustralianResourcesFetch} from "../../src/lib/stateless-run-shared-official-fetch";
@@ -50,6 +51,11 @@ const reports:StatelessIntelligenceResult[]=[];
 // This happens before D1 publication, so a D1 quota outage does not discard the daily findings.
 const archiveCandidateSignals:StatelessIntelligenceSignal[]=[];
 const sourceHealthReceipts:Array<{category:string}>=[];
+// Capture exactly one 600-row baseline on the first nonempty admitted batch.
+// The existing post-publication retained-original read is reused for proof.
+let beforePublicationRows:StatelessIntelligenceSignal[]|null=null;
+let afterPublicationRows:StatelessIntelligenceSignal[]|null=null;
+const acknowledgedSignals:StatelessIntelligenceSignal[]=[];
 const sharedOfficialDocuments=createRunScopedAustralianResourcesFetch();
 function emitPhase2FCategoryFunnel(base:{category:string;discovered:number;relevant:number;
   deduplicated:number;archiveOnly:boolean;policyReady:boolean;d1WriteAcknowledged?:number}){
@@ -126,6 +132,10 @@ for (const category of categories) {
         relevant:eligible.length,deduplicated:signals.length,
         archiveOnly:ARCHIVE_ONLY,policyReady:false});
     }else{
+      // A quiet source does not justify an extra expensive canonical scan.
+      // This baseline is before the FIRST write across all three categories.
+      if(signals.length>0&&beforePublicationRows===null)
+        beforePublicationRows=await fetchAllDerivedNews(fetch,Date.now(),{fresh:true});
       let acknowledged=0;
       for(const chunk of chunks){
         if(chunk.length===0)continue;
@@ -146,6 +156,7 @@ for (const category of categories) {
         if(receipt.ok!==true||receipt.accepted!==chunk.length)
           throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_ACK_INVALID");
         acknowledged+=chunk.length;
+        acknowledgedSignals.push(...chunk);
       }
       if(acknowledged!==signals.length)
         throw Error("CLOUDFLARE_DERIVED_NEWS_INGEST_PARTIAL");
@@ -304,7 +315,10 @@ try {
   // original-source audit. This is one bounded D1 read, not a publisher GET.
   let retained:typeof signals=[];
   if(workerPolicyReady){
-    try{retained=await fetchAllDerivedNews(fetch,now.getTime());}
+    try{
+      retained=await fetchAllDerivedNews(fetch,now.getTime(),{fresh:true});
+      afterPublicationRows=retained;
+    }
     catch{console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_UNAVAILABLE");}
   }else console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_SKIPPED_D1_UNAVAILABLE");
   const reconciled=new Map<string,StatelessSourceCandidate>();
@@ -357,6 +371,39 @@ try {
   // Evidence audit unavailable does NOT upgrade RSS-only entries to verified
   // and must not force duplicate ingestion/news polling or paid availability.
   console.warn("::warning::ALL_NEWS_ORIGINAL_EVIDENCE_AUDIT_UNAVAILABLE");
+}
+
+// Only genuinely acknowledged source-neutral IDs receive independent GET
+// acceptance. Reuse the existing post-publication read; no extra GET here.
+// A missing canonical row, divergent native timestamp, duplicate ID or failed
+// GET makes this reconciliation RED, never a fabricated successful insert.
+if(!ARCHIVE_ONLY&&acknowledgedSignals.length>0){
+  try{
+    if(!beforePublicationRows||!afterPublicationRows)
+      throw Error("PHASE2G_D1_RECONCILIATION_SNAPSHOT_UNAVAILABLE");
+    const receipt=reconcileAcknowledgedDerivedNews({
+      before:beforePublicationRows,after:afterPublicationRows,
+      acknowledged:acknowledgedSignals,now:Date.now(),
+      sourceSha:String(process.env.GITHUB_SHA??"")
+    });
+    mkdirSync("artifacts/derived-news",{recursive:true});
+    writeFileSync("artifacts/derived-news/phase2g-per-id-d1-reconciliation.json",
+      JSON.stringify(receipt,null,2)+"\n",{encoding:"utf8",mode:0o600});
+    console.log(JSON.stringify({
+      schema:receipt.schema,
+      source_sha:receipt.source_sha,
+      acknowledged_ids:receipt.actual_acknowledged_ids,
+      counts:receipt.counts,
+      independent_get_verified:receipt.complete_independent_get,
+      classification:receipt.classification,
+      sqlite_physical_change_counters_not_inferred:true,
+      original_timestamps_preserved:true,
+      rights_verified:false,paid_eligible:false,payments:0
+    }));
+  }catch{
+    success=false;
+    console.error("::error::PHASE2G_D1_PER_ID_RECONCILIATION_UNVERIFIED");
+  }
 }
 
 // An ephemeral, sanitized hourly source-health artifact helps identify outages
