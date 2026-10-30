@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T15:45:28.319Z",
+  "checked_at": "2026-10-30T15:50:24.638Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 402,
+  "item_count": 404,
   "counts": {
     "geopolitics": 180,
-    "macro": 177,
+    "macro": 179,
     "rare_earth": 45
   },
-  "source_native_ids_sha256": "d66971fad4638ac9eabecd6992901d3684e6b00df66203e5eaadb34701e281cb",
+  "source_native_ids_sha256": "6d81f1f4fc951fdc37c60e3037f2bdf02f51aa69466dd5413df114b68ab7ade2",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -4453,6 +4453,44 @@
         "Monitored feed: www.taipeitimes.com"
       ],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3d5579e9",
+      "category": "macro",
+      "title": "Geomacro finds Monthly estimated of business openings and closures, July 2026",
+      "why_it_matters": "An original-dated first-party economic statistical release may inform macroeconomic context; no metric direction, materiality or risk score is inferred from its headline.",
+      "what_changed": "Monthly estimated of business openings and closures, July 2026.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-10-29",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-504170ac",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published employment figures for August 2026 · Canada",
+      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
+      "what_changed": "Statistics Canada published employment figures for August 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-10-29",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },

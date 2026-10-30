@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-30T15:45:28.319Z",
+  "updated_at": "2026-10-30T15:50:24.638Z",
   "signals": [
     {
       "id": "macro-2f380064",
@@ -2015,6 +2015,44 @@
         "Monitored feed: www.cbsnews.com"
       ],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3d5579e9",
+      "category": "macro",
+      "title": "Geomacro finds Monthly estimated of business openings and closures, July 2026",
+      "why_it_matters": "An original-dated first-party economic statistical release may inform macroeconomic context; no metric direction, materiality or risk score is inferred from its headline.",
+      "what_changed": "Monthly estimated of business openings and closures, July 2026.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-10-29",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-504170ac",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published employment figures for August 2026 · Canada",
+      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
+      "what_changed": "Statistics Canada published employment figures for August 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-10-29",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
