@@ -8,7 +8,7 @@ import {validPrivateRawNews,phase2hPrivateRawPut,phase2hPrivateRawGet,
  phase2hQuestionMatchesArchived,phase2hQuestionDirectAnswer}
  from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
 import {buildPhase2hRawB2Plan,verifyPhase2hRawB2Restore,
- runPhase2hGovernedRawB2}
+ runPhase2hGovernedRawB2,phase2hAuthorizedArchiveWindow}
  from "../ops/phase2h-archive-private-raw-news.mjs";
 import {verifyPhase2hProductionQuestionChain} from "../ops/phase2h-verify-private-question-delivery.mjs";
 import {runPhase2hPermanentAcceptance} from "../ops/phase2h-permanent-production-acceptance.mjs";
@@ -193,6 +193,53 @@ test("maintenance archive does not start out of existing 00/06/12/18 slots",asyn
  assert.equal(r.storage_confirmed,false);
  assert.equal(r.object_sha256,null);
 });
+test("delayed GitHub cron archive retains the original four slots without ungoverned manual work",async()=>{
+ const when=new Date("2026-10-30T19:08:00Z");
+ const base={
+  GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true",
+  GITHUB_EVENT_NAME:"schedule",
+  GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main",
+  GITHUB_EVENT_PATH:"/home/runner/work/_temp/_github_workflow/event.json"
+ };
+ const reader=()=>JSON.stringify({schedule:"3 0,6,12,18 * * *"});
+ assert.equal(phase2hAuthorizedArchiveWindow({env:base,now:when,eventReader:reader}),true);
+ for(const different of [
+  {GITHUB_EVENT_NAME:"workflow_dispatch"},
+  {GITHUB_EVENT_NAME:"push"},
+  {GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/other.yml@refs/heads/main"},
+  {GITHUB_EVENT_PATH:"relative-event.json"},
+ ]){
+  assert.equal(phase2hAuthorizedArchiveWindow({env:{...base,...different},
+    now:when,eventReader:reader}),false);
+ }
+ assert.equal(phase2hAuthorizedArchiveWindow({env:base,now:when,
+  eventReader:()=>JSON.stringify({schedule:"* * * * *"})}),false);
+ assert.equal(phase2hAuthorizedArchiveWindow({env:base,now:when,
+  eventReader:()=>{throw Error("MISSING_EVENT")}}),false);
+ let status=0;
+ const result=await runPhase2hGovernedRawB2({
+  env:base,now:when,eventReader:reader,
+  governorFactory:()=>({status:async()=>{
+    status++;
+    return {ok:true,used:{total:100,GET:90,PUT:90,NATIVE_AUTH:10},
+      limits:{total:100,GET:100,PUT:100,NATIVE_AUTH:100}};
+  }}),
+  d1Factory:()=>{throw Error("D1_NOT_ADMITTED")},
+  b2Factory:()=>{throw Error("B2_NOT_ADMITTED")}
+ });
+ assert.equal(status,1);
+ assert.equal(result.status,"B2_ACCOUNT_HEADROOM_HELD");
+ assert.equal(result.storage_confirmed,false);
+ const skipped=await runPhase2hGovernedRawB2({
+  env:{...base,GITHUB_EVENT_NAME:"workflow_dispatch"},now:when,eventReader:reader,
+  governorFactory:()=>{throw Error("UNAUTHORIZED_QUOTA_READ")}
+ });
+ assert.equal(skipped.status,"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT");
+});
+
 test("governor headroom hold never calls B2 or protected D1",async()=>{
  const r=await runPhase2hGovernedRawB2({
   now,env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
