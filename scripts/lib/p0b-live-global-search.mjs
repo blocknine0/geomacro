@@ -12,7 +12,8 @@ const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const SKIP=new Set(["what","why","when","which","does","did","will","latest",
  "update","news","happened","matter","matters","important","market","markets",
  "could","would","and","from","with","this","that","about","the","for",
- "are","was","were","have","impact","today","country","please","explain"]);
+ "are","was","were","have","impact","today","country","please","explain",
+ "macro","geopolitics","geopolitical","category","breaking"]);
 const limitText=(s,n)=>typeof s==="string"&&s.length<=n&&!/[<>]|\b(?:system prompt|ignore previous instructions)\b/iu.test(s);
 const dateNative=(value,now)=>{
  // First-publication metadata may carry an explicit timezone offset. Use
