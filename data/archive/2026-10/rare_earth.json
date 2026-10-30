@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-30T14:44:07.043Z",
+  "updated_at": "2026-10-30T15:45:28.319Z",
   "signals": [
+    {
+      "id": "rare_earth-9eca48d3",
+      "category": "rare_earth",
+      "title": "Geomacro finds Oxus Metals AI raised $36M to hunt critical minerals with AI in Central Asia - Dealroom",
+      "what_changed": "A monitored source feed reports: Oxus Metals AI raised $36M to hunt critical minerals with AI in Central Asia - Dealroom. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T15:36:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-e27ed0c5",
       "category": "rare_earth",
@@ -14,6 +33,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T11:21:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-d4eb58b2",
+      "category": "rare_earth",
+      "title": "Geomacro finds Centerra cut Mount Milligan AISC Guidance After Strong Q3 Copper Credits - News and Statistics - IndexBox",
+      "what_changed": "A monitored source feed reports: Centerra cut Mount Milligan AISC Guidance After Strong Q3 Copper Credits - News and Statistics - IndexBox. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T11:20:56.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

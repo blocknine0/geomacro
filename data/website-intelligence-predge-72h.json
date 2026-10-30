@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T14:44:07.043Z",
+  "checked_at": "2026-10-30T15:45:28.319Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 407,
+  "item_count": 402,
   "counts": {
-    "geopolitics": 184,
-    "macro": 179,
-    "rare_earth": 44
+    "geopolitics": 180,
+    "macro": 177,
+    "rare_earth": 45
   },
-  "source_native_ids_sha256": "d34bca66e7963d372ad2ea787c6767ede77e4c51ed4ee50337a35bd642a81e3b",
+  "source_native_ids_sha256": "d66971fad4638ac9eabecd6992901d3684e6b00df66203e5eaadb34701e281cb",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-9eca48d3",
+      "category": "rare_earth",
+      "title": "Geomacro finds Oxus Metals AI raised $36M to hunt critical minerals with AI in Central Asia - Dealroom",
+      "what_changed": "A monitored source feed reports: Oxus Metals AI raised $36M to hunt critical minerals with AI in Central Asia - Dealroom. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T15:36:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-2f380064",
       "category": "macro",
@@ -77,6 +96,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T11:21:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-d4eb58b2",
+      "category": "rare_earth",
+      "title": "Geomacro finds Centerra cut Mount Milligan AISC Guidance After Strong Q3 Copper Credits - News and Statistics - IndexBox",
+      "what_changed": "A monitored source feed reports: Centerra cut Mount Milligan AISC Guidance After Strong Q3 Copper Credits - News and Statistics - IndexBox. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T11:20:56.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -7624,139 +7662,6 @@
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-168800c1",
-      "category": "macro",
-      "title": "Geomacro finds Bank of Russia raised dollar exchange rate to 80.53 rubles for October 28 - TASS",
-      "what_changed": "A monitored source feed reports: Bank of Russia raised dollar exchange rate to 80.53 rubles for October 28 - TASS. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "FX and external balances",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T15:41:42.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-9e53a1dd",
-      "category": "rare_earth",
-      "title": "Geomacro finds Oman announced new mining concession as part of critical minerals drive - The National",
-      "what_changed": "A monitored source feed reports: Oman announced new mining concession as part of critical minerals drive - The National. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T15:33:17.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-d5b75bfd",
-      "category": "geopolitics",
-      "title": "Geomacro finds Yemen said destroyed two Saudi military plane at airports",
-      "what_changed": "A monitored source feed reports: Yemen said destroyed two Saudi military plane at airports. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T15:30:41.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.mehrnews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-3a456fac",
-      "category": "geopolitics",
-      "title": "Geomacro finds Melania Trump said ceasefire has expanded as it takes effect around Russian-occupied city of Oleshky - CNN",
-      "what_changed": "A monitored source feed reports: Melania Trump said ceasefire has expanded as it takes effect around Russian-occupied city of Oleshky - CNN. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T15:17:35.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-4aa16727",
-      "category": "geopolitics",
-      "title": "Geomacro finds Pezeshkian said US military intervention in Persian Gulf disrupts global energy markets",
-      "what_changed": "A monitored source feed reports: Pezeshkian said US military intervention in Persian Gulf disrupts global energy markets. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T15:00:42.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.irna.ir"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-8244d0b2",
-      "category": "macro",
-      "title": "Geomacro finds Conservative Party rejected Museveni’s export plan, proposes $2.5b forex intervention - Daily Monitor",
-      "what_changed": "A monitored source feed reports: Conservative Party rejected Museveni’s export plan, proposes $2.5b forex intervention - Daily Monitor. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T15:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-56813518",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Nations said Russia’s Energy Attacks Possibly Crimes Against Humanity",
-      "what_changed": "A monitored source feed reports: United Nations said Russia’s Energy Attacks Possibly Crimes Against Humanity. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T14:45:05.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.kyivpost.com"
-      ],
-      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     }
