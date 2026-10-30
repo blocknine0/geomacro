@@ -32,7 +32,7 @@ const verify=async({env=process.env,fetchImpl=fetch,now=new Date()}={})=>{
    const r=await fetchImpl(ORIGIN+path,{method:"GET",redirect:"error",
     headers:authenticated?{Authorization:"Bearer "+root,Accept:"application/json",
      "Cache-Control":"no-store"}:{Accept:"application/json"},
-    signal:AbortSignal.timeout(20000)});
+    signal:AbortSignal.timeout(28000)});
    const data=await r.json().catch(()=>null);
    if(r.status!==200||r.redirected||!data||data.ok!==true)
     throw Error("LIVE_WORKER_READBACK_UNAVAILABLE");
