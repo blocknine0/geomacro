@@ -12,6 +12,19 @@ const counts=rows=>Object.fromEntries(CATS.map(category=>[
  category,rows.filter(row=>row.category===category).length,
 ]));
 
+/** Prevent unrelated articles from fan-out into all categories merely
+ * because a pinned general publisher has three catalogue labels.
+ * A category-only publisher stays eligible without requiring headline tokens.
+ */
+export function phase2iSourceOnlyCategoryRelevant(raw,pinnedCategories,topics){
+ if(!raw||!CATS.includes(raw.category)||typeof raw.title!=="string"||
+    typeof raw.source_url!=="string"||!(pinnedCategories instanceof Map)||
+    !(topics?.[raw.category] instanceof RegExp))return false;
+ const allowed=pinnedCategories.get(raw.source_url);
+ return Array.isArray(allowed)&&allowed.includes(raw.category)&&
+   (allowed.length===1||topics[raw.category].test(raw.title));
+}
+
 function withoutAmbiguousSameOriginal(candidates){
  const rows=new Map(),conflict=new Set();
  for(const raw of candidates){
