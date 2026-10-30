@@ -52,6 +52,21 @@ describe("one original news -> user and machine query-bound newsroom JSON",()=>{
       event_claim_independently_verified:false,market_impact_verified:false,
       country_impact_verified:false,commercial_rights_verified:false,
     });
+    const f=result.stories[0].five_part;
+    expect(Object.keys(f).sort()).toEqual([
+      "what_happened","why_it_matters","market_relevance","what_to_watch","evidence_and_confidence"
+    ].sort());
+    expect(f.what_happened.text).toBe(macro.what_changed);
+    expect(f.why_it_matters.text).toBe(macro.why_it_matters);
+    expect(f.why_it_matters.independent_causality_verified).toBe(false);
+    expect(f.market_relevance.price_direction).toBeNull();
+    expect(f.what_to_watch.verified_next_development_at).toBeNull();
+    expect(f.evidence_and_confidence).toMatchObject({
+      observation_id:macro.id,original_published_at:at,
+      independent_event_verified:false,
+      commercial_rights_verified:false,
+      confidence_tier:"SOURCE_DATE_VERIFIED_IMPACT_UNVERIFIED",
+    });
     expect(result.stories[0].market_relevance.potential_watch_channels).toContain("rates_and_bonds");
     expect(result.chargeable).toBe(false);
     expect(result.commercial_rights_verified).toBe(false);
@@ -71,6 +86,8 @@ describe("one original news -> user and machine query-bound newsroom JSON",()=>{
   expect(g.stories[0].category).toBe("geopolitics");
   expect(r.stories[0].market_relevance.potential_watch_channels).toContain("mineral_supply_chain");
   expect(g.stories[0].market_relevance.potential_watch_channels).toContain("trade_and_logistics");
+  expect(new Set([m,r,g].map(x=>x.stories[0].five_part.why_it_matters.text)).size).toBe(3);
+  expect(new Set([m,r,g].map(x=>x.stories[0].five_part.what_happened.text)).size).toBe(3);
  });
  it("suppresses exact repeat news/analysis across categories, retains distinct evidence",()=>{
   const duplicate={...macro,id:"geopolitics-88888888",category:"geopolitics" as const};
@@ -98,6 +115,10 @@ describe("one original news -> user and machine query-bound newsroom JSON",()=>{
   expect(result.stories[0]).toMatchObject({
     original_published_at:null,original_publication_day:"2026-10-29",
     date_precision:"day",original_page_date_verified:true,
+    five_part:{evidence_and_confidence:{
+      original_published_at:null,original_publication_day:"2026-10-29",
+      date_precision:"day",commercial_rights_verified:false,
+    }},
   });
   const sentinel=buildQueryBoundNewsDesk({country_iso3:"IND",signals:[{
     ...day,published_at:"2026-10-29T00:00:00.000Z",
