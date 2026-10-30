@@ -103,8 +103,14 @@ function rpcConfig(network:string) {
   const alternateConfig=process.env["GEOMACRO_NO_CARD_RPC_"+suffix+"_ALTERNATES"]?.trim()??"";
   let alternates:unknown=[];
   if(alternateConfig){
-    try{alternates=JSON.parse(alternateConfig);}
-    catch{throw Error("NO_CARD_RPC_ALTERNATES_INVALID");}
+    try{
+      // Existing owner secrets may contain a single Ankr URL, not a JSON array.
+      // Accept either exact HTTPS URL, JSON string, or JSON array; never infer
+      // a comma-separated list, so payment verification remains deterministic.
+      const parsed=alternateConfig.startsWith("https://")?
+        alternateConfig:JSON.parse(alternateConfig);
+      alternates=typeof parsed==="string"?[parsed]:parsed;
+    }catch{throw Error("NO_CARD_RPC_ALTERNATES_INVALID");}
     if(!Array.isArray(alternates)||alternates.length>MAX_RPC_ALTERNATES||
        alternates.some(item=>typeof item!=="string"||!item.trim()))
       throw Error("NO_CARD_RPC_ALTERNATES_INVALID");

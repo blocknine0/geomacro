@@ -59,6 +59,24 @@ describe("signed private live six-RPC no-funds readiness",()=>{
     expect(JSON.stringify(receipt)).not.toContain("opaque-base");
     expect(JSON.stringify(receipt)).not.toContain(token);
   });
+  it("accepts one raw Ankr HTTPS URL per existing _ALTERNATES secret",async()=>{
+    const raw={...env,
+      GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES:"https://base-ankr.example/rpc",
+      GEOMACRO_NO_CARD_RPC_POLYGON_ALTERNATES:"https://polygon-ankr.example/rpc",
+    };
+    const response=await runSignedRpcReadiness(request(),raw,rpcFetch,now);
+    expect(response.status).toBe(200);
+    const body=await response.json() as {checks:{status:string}[]};
+    expect(body.checks.every(x=>x.status==="PASS")).toBe(true);
+  });
+  it("reports non-sensitive reason when legacy backup string is invalid JSON",async()=>{
+    const bad={...env,GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES:"not-a-url"};
+    const response=await runSignedRpcReadiness(request(),bad,rpcFetch,now);
+    expect(response.status).toBe(503);
+    const body=await response.json() as {checks:{status:string}[]};
+    expect(body.checks.slice(0,3).every(x=>x.status==="ALTERNATES_INVALID")).toBe(true);
+    expect(JSON.stringify(body)).not.toContain("not-a-url");
+  });
   it("never mislabels a Polygon RPC answering Base chain ID",async()=>{
     const badFetcher=(async(u:unknown,options?:RequestInit)=>{
       const reply=await rpcFetch(u,options);
@@ -77,7 +95,7 @@ describe("signed private live six-RPC no-funds readiness",()=>{
     const response=await runSignedRpcReadiness(request(),bad,rpcFetch,now);
     const body=await response.json() as {checks:{status:string}[]};
     expect(response.status).toBe(503);
-    expect(body.checks.slice(-3).every(c=>c.status==="CONFIG_INVALID")).toBe(true);
+    expect(body.checks.slice(-3).every(c=>c.status==="INVALID_URL")).toBe(true);
     expect(JSON.stringify(body)).not.toContain("localhost");
   });
 });
