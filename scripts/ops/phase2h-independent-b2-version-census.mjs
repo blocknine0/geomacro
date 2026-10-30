@@ -15,6 +15,13 @@ const FAIL=code=>{throw Error("PHASE2H_B2_VERSION_"+code)};
 const PREFIX=PHASE2H_B2_PREFIX;
 const nameRe=/^geomacro-evidence\/v1\/private\/phase2h-raw-news\/20\d{2}\/\d{2}\/\d{2}\/[a-f0-9]{64}\.json\.gz$/u;
 export const RECEIPT_SCHEMA="geomacro.phase2h.independent-b2-versions.v1";
+// Keep provider failures actionable without ever returning raw HTTP bodies,
+// account identifiers, keys, buckets, source titles or stack traces.
+export function safeB2RetentionError(error){
+ const code=String(error?.message??"");
+ return /^(?:PHASE2H_B2_VERSION_[A-Z_]+|PHASE2H_B2_72H_[A-Z_]+|B2_GLOBAL_DAILY_QUOTA_EXHAUSTED|B2_ACCOUNT_GLOBAL_QUOTA_[A-Z_]+)$/u.test(code)?
+  code:"PHASE2H_B2_VERSION_INDEPENDENT_PROVIDER_PROOF_UNAVAILABLE";
+}
 
 export function checkB2VersionsPage(page,now=new Date()){
  if(!Number.isFinite(now.getTime())||!Array.isArray(page?.files)||page.files.length>1000)
@@ -133,9 +140,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   console.log(JSON.stringify(receipt));
   if(receipt.versions_older_than_72h>0)process.exitCode=3;
  }catch(e){
-  const code=String(e?.message??"");
-  console.error(/^PHASE2H_B2_VERSION_[A-Z_]+$/u.test(code)?code:
-   "PHASE2H_B2_VERSION_INDEPENDENT_PROVIDER_PROOF_UNAVAILABLE");
+  console.error(safeB2RetentionError(e));
   process.exitCode=2;
  }
 }
