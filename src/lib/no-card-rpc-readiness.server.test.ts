@@ -22,6 +22,8 @@ const request=(timestamp=now,signature=rpcAuditSignature(token,timestamp))=>
     },
   });
 const rpcFetch=(async (url:unknown,options?:RequestInit)=>{
+  if(String(url)==="https://www.cloudflare.com/cdn-cgi/trace")
+    return new Response("",{status:200});
   const data=JSON.parse(String(options?.body));
   const chain=String(url).includes("polygon")?"0x89":"0x2105";
   const latest="0x12ab";
@@ -55,7 +57,7 @@ describe("signed private live six-RPC no-funds readiness",()=>{
       "base:primary","base:backup_1","base:backup_2",
       "polygon:primary","polygon:backup_1","polygon:backup_2",
     ]);
-    expect(fetcher).toHaveBeenCalledTimes(24);
+    expect(fetcher).toHaveBeenCalledTimes(25);
     expect(JSON.stringify(receipt)).not.toContain("opaque-base");
     expect(JSON.stringify(receipt)).not.toContain(token);
   });
@@ -106,6 +108,27 @@ describe("signed private live six-RPC no-funds readiness",()=>{
     const body=await response.json() as {checks:{status:string}[]};
     expect(body.checks[0].status).toBe(expected);
     expect(JSON.stringify(body)).not.toContain("opaque-base");
+  });
+  it("reports an independent outbound HTTPS baseline and sanitized provider families",async()=>{
+    const response=await runSignedRpcReadiness(request(),env,rpcFetch,now);
+    const body=await response.json() as {egress_check:string;checks:{provider_family:string}[]};
+    expect(body.egress_check).toBe("EGRESS_PASS");
+    expect(body.checks.every(c=>c.provider_family==="OTHER")).toBe(true);
+  });
+  it("reports all-provider DNS failures without outputting the failed URLs",async()=>{
+    const fetcher=(async(u:unknown,options?:RequestInit)=>{
+      if(String(u)==="https://www.cloudflare.com/cdn-cgi/trace")
+        return new Response("",{status:200});
+      const failure=new TypeError("https://private-key.example");
+      Object.assign(failure,{cause:{code:"ENOTFOUND"}});
+      throw failure;
+    }) as typeof fetch;
+    const response=await runSignedRpcReadiness(request(),env,fetcher,now);
+    expect(response.status).toBe(503);
+    const body=await response.json() as {egress_check:string;checks:{status:string}[]};
+    expect(body.egress_check).toBe("EGRESS_PASS");
+    expect(body.checks.every(c=>c.status==="RPC_DNS_UNRESOLVED")).toBe(true);
+    expect(JSON.stringify(body)).not.toContain("private-key.example");
   });
   it("distinguishes blocked runtime egress from provider rejection without leaking URL",async()=>{
     const fetcher=(async(u:unknown,options?:RequestInit)=>{
