@@ -64,29 +64,75 @@ export function validateNoCardNativeUsdcReceipt(input:ChainInspection) {
     transaction:txHash,
   };
 }
+/**
+ * Ordered read-only RPC fallback for Base/Polygon merchant settlement verification.
+ *
+ * Only transport/unavailable-node failures are retryable. Wrong chain, reorg,
+ * invalid Transfer, under-confirmed receipts and all other *semantic* failures
+ * MUST fail closed rather than promote another node's answer.
+ *
+ * Each candidate reads chain ID, receipt, canonical block, and head from the
+ * SAME endpoint. Never mix proof fields from different providers.
+ */
+const MAX_RPC_ALTERNATES=10;
+const RPC_PROOF_BUDGET_MS=25000;
+const RETRYABLE_RPC_ERRORS=new Set(["NO_CARD_RPC_UNAVAILABLE","NO_CARD_RPC_INVALID_REPLY"]);
+
+function approvedRpcUrl(value:string) {
+  let url:URL;
+  try{url=new URL(value);}catch{throw Error("NO_CARD_RPC_OR_FINALITY_NOT_APPROVED");}
+  const host=url.hostname.toLowerCase();
+  if(url.protocol!=="https:"||url.username||url.password||url.hash||
+     !host||host==="localhost"||host.endsWith(".localhost")||
+     host==="[::1]"||host==="::1"||
+     /^127\./u.test(host)||/^10\./u.test(host)||
+     /^192\.168\./u.test(host)||/^169\.254\./u.test(host)||
+     /^172\.(1[6-9]|2[0-9]|3[01])\./u.test(host))
+    throw Error("NO_CARD_RPC_OR_FINALITY_NOT_APPROVED");
+  return url.toString();
+}
 function rpcConfig(network:string) {
   const suffix=network==="eip155:8453"?"BASE":
     network==="eip155:137"?"POLYGON":null;
   if(!suffix)throw Error("NO_CARD_RPC_UNSUPPORTED_NETWORK");
-  const endpoint=process.env["GEOMACRO_NO_CARD_RPC_"+suffix]?.trim()??"";
+  const primary=process.env["GEOMACRO_NO_CARD_RPC_"+suffix]?.trim()??"";
   const confirmations=Number(process.env["GEOMACRO_NO_CARD_CONFIRMATIONS_"+suffix]??"");
-  let url:URL;
-  try{url=new URL(endpoint);}catch{throw Error("NO_CARD_RPC_NOT_CONFIGURED");}
-  if(url.protocol!=="https:" || url.username || url.password || url.hash ||
-      !Number.isInteger(confirmations)||confirmations<1||confirmations>2048)
+  if(!primary)throw Error("NO_CARD_RPC_NOT_CONFIGURED");
+  if(!Number.isInteger(confirmations)||confirmations<1||confirmations>2048)
     throw Error("NO_CARD_RPC_OR_FINALITY_NOT_APPROVED");
-  return {endpoint:url.toString(),confirmations};
+  const alternateConfig=process.env["GEOMACRO_NO_CARD_RPC_"+suffix+"_ALTERNATES"]?.trim()??"";
+  let alternates:unknown=[];
+  if(alternateConfig){
+    try{alternates=JSON.parse(alternateConfig);}
+    catch{throw Error("NO_CARD_RPC_ALTERNATES_INVALID");}
+    if(!Array.isArray(alternates)||alternates.length>MAX_RPC_ALTERNATES||
+       alternates.some(item=>typeof item!=="string"||!item.trim()))
+      throw Error("NO_CARD_RPC_ALTERNATES_INVALID");
+  }
+  const endpoints=[...new Set([primary,...alternates as string[]].map(approvedRpcUrl))];
+  return {endpoints,confirmations};
 }
-async function rpc(url:string,method:string,params:unknown[],fetcher:typeof fetch):Promise<unknown> {
-  const response=await fetcher(url,{method:"POST",redirect:"error",cache:"no-store",
-    headers:{"Content-Type":"application/json",Accept:"application/json"},
-    body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),
-    signal:AbortSignal.timeout(6000)});
-  if(!response.ok || Number(response.headers.get("content-length")||0)>131072)
-    throw Error("NO_CARD_RPC_UNAVAILABLE");
-  const raw=await response.text();
-  if(raw.length>131072)throw Error("NO_CARD_RPC_RESPONSE_TOO_LARGE");
-  const parsed=JSON.parse(raw) as {jsonrpc?:string;id?:number;result?:unknown;error?:unknown};
+async function rpc(url:string,method:string,params:unknown[],
+  fetcher:typeof fetch,timeoutMs:number):Promise<unknown> {
+  let response:Response;
+  try{
+    response=await fetcher(url,{method:"POST",redirect:"error",cache:"no-store",
+      headers:{"Content-Type":"application/json",Accept:"application/json"},
+      body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),
+      signal:AbortSignal.timeout(Math.max(1,Math.min(6000,timeoutMs)))});
+  }catch{throw Error("NO_CARD_RPC_UNAVAILABLE");}
+  if(!response.ok)throw Error("NO_CARD_RPC_UNAVAILABLE");
+  if(Number(response.headers.get("content-length")||0)>131072)
+    throw Error("NO_CARD_RPC_RESPONSE_TOO_LARGE");
+  let parsed:{jsonrpc?:string;id?:number;result?:unknown;error?:unknown};
+  try{
+    const raw=await response.text();
+    if(raw.length>131072)throw Error("NO_CARD_RPC_RESPONSE_TOO_LARGE");
+    parsed=JSON.parse(raw);
+  }catch(e){
+    if(e instanceof Error&&e.message==="NO_CARD_RPC_RESPONSE_TOO_LARGE")throw e;
+    throw Error("NO_CARD_RPC_INVALID_REPLY");
+  }
   if(parsed?.jsonrpc!=="2.0"||parsed.id!==1||parsed.error||parsed.result==null)
     throw Error("NO_CARD_RPC_INVALID_REPLY");
   return parsed.result;
@@ -97,17 +143,37 @@ export async function confirmNoCardNativeUsdcChainSettlement(input:{
 }) {
   const q=input.quote;
   if(!TX.test(input.transaction))throw Error("NO_CARD_TX_HASH_REQUIRED");
-  const {endpoint,confirmations}=rpcConfig(q.network);
+  const {endpoints,confirmations}=rpcConfig(q.network);
   const fetcher=input.fetcher??fetch;
-  const reportedChainId=await rpc(endpoint,"eth_chainId",[],fetcher) as string;
-  const receipt=await rpc(endpoint,"eth_getTransactionReceipt",[input.transaction],fetcher) as TxReceipt;
-  if(!receipt?.blockNumber || !/^0x[0-9a-fA-F]+$/u.test(receipt.blockNumber))
-    throw Error("NO_CARD_RECEIPT_MISSING_BLOCK");
-  const block=await rpc(endpoint,"eth_getBlockByNumber",[receipt.blockNumber,false],fetcher) as Block;
-  const latestBlock=await rpc(endpoint,"eth_blockNumber",[],fetcher) as string;
-  return validateNoCardNativeUsdcReceipt({
-    network:q.network,asset:q.asset_contract,recipient:q.recipient,
-    amountAtomic:q.amount_atomic,txHash:input.transaction,receipt,block,
-    latestBlock,reportedChainId,minConfirmations:confirmations,payer:input.payer,
-  });
+  const deadline=Date.now()+RPC_PROOF_BUDGET_MS;
+  for(let i=0;i<endpoints.length;i++){
+    const endpoint=endpoints[i];
+    const read=(method:string,params:unknown[])=>{
+      const remaining=deadline-Date.now();
+      if(remaining<=0)throw Error("NO_CARD_RPC_BUDGET_EXHAUSTED");
+      return rpc(endpoint,method,params,fetcher,remaining);
+    };
+    try{
+      const reportedChainId=await read("eth_chainId",[]) as string;
+      if(typeof reportedChainId!=="string"||
+         reportedChainId.toLowerCase()!=="0x"+CHAIN_IDS[q.network]?.toString(16))
+        throw Error("NO_CARD_RPC_WRONG_CHAIN");
+      const receipt=await read("eth_getTransactionReceipt",[input.transaction]) as TxReceipt;
+      if(!receipt?.blockNumber || !/^0x[0-9a-fA-F]+$/u.test(receipt.blockNumber))
+        throw Error("NO_CARD_RECEIPT_MISSING_BLOCK");
+      const block=await read("eth_getBlockByNumber",[receipt.blockNumber,false]) as Block;
+      const latestBlock=await read("eth_blockNumber",[]) as string;
+      return validateNoCardNativeUsdcReceipt({
+        network:q.network,asset:q.asset_contract,recipient:q.recipient,
+        amountAtomic:q.amount_atomic,txHash:input.transaction,receipt,block,
+        latestBlock,reportedChainId,minConfirmations:confirmations,payer:input.payer,
+      });
+    }catch(e){
+      const code=e instanceof Error?e.message:"";
+      if(!RETRYABLE_RPC_ERRORS.has(code))throw e;
+      if(i===endpoints.length-1||Date.now()>=deadline)
+        throw Error("NO_CARD_RPC_ALL_ENDPOINTS_UNAVAILABLE");
+    }
+  }
+  throw Error("NO_CARD_RPC_ALL_ENDPOINTS_UNAVAILABLE");
 }
