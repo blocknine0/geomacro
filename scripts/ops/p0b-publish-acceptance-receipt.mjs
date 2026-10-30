@@ -24,7 +24,12 @@ export function formatP0BReceiptComment(raw,run){
    "; first_party_count="+(Number.isInteger(x?.verified_first_party_count)?x.verified_first_party_count:0)+
    "; discovery_only_count="+(Number.isInteger(x?.discovery_only_count)?x.discovery_only_count:0)+
    "; provider_errors="+(Number.isInteger(x?.provider_errors)?x.provider_errors:"unknown")+
-   "; status="+status);
+   "; status="+status+
+   "; govuk="+(STATUSES.has(x?.provider_diagnostics?.govuk)?x.provider_diagnostics.govuk:
+    /^[A-Z_0-9]{2,40}$/u.test(x?.provider_diagnostics?.govuk??"")?
+     x.provider_diagnostics.govuk:"UNVERIFIED")+
+   "; gdelt="+(/^[A-Z_0-9]{2,40}$/u.test(x?.provider_diagnostics?.gdelt??"")?
+     x.provider_diagnostics.gdelt:"UNVERIFIED"));
  }
  lines.push("This redacted receipt does not claim universal coverage, article licensing or payments.");
  return lines.join("\n")+"\n";
