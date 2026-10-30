@@ -12,6 +12,8 @@ on:
       - "scripts/tests/website-news-canonical-reconciliation.test.mjs"
       - "scripts/tests/website-news-archive-admission.test.mjs"
       - "scripts/ops/publish-website-derived-news.ts"
+      - "scripts/lib/phase2g-per-id-d1-reconciliation.mjs"
+      - "scripts/tests/phase2g-per-id-d1-reconciliation.test.mjs"
       - "scripts/ops/publish-permanent-derived-news-archive.mjs"
       - "scripts/ops/publish-permanent-derived-news-archive.test.mjs"
       - "scripts/lib/derived-news-b2-readwrite-backup.mjs"
@@ -46,6 +48,8 @@ on:
       - "scripts/lib/global-official-release-feeds.mjs"
       - ".github/workflows/website-derived-news-continuity.yml"
       - "scripts/ops/publish-website-derived-news.ts"
+      - "scripts/lib/phase2g-per-id-d1-reconciliation.mjs"
+      - "scripts/tests/phase2g-per-id-d1-reconciliation.test.mjs"
       - "scripts/ops/publish-automated-intelligence-inputs.ts"
       - "scripts/lib/derived-news-b2-readwrite-backup.mjs"
       - "scripts/ops/archive-live-derived-news-to-b2.mjs"
@@ -145,6 +149,7 @@ jobs:
           node --check scripts/ops/verify-derived-news-public-readback.mjs
           node --test scripts/tests/derived-news-public-readback.test.mjs
           node --test scripts/tests/derived-news-b2-readwrite-backup.test.mjs
+          node --test scripts/tests/phase2g-per-id-d1-reconciliation.test.mjs
 
   # Push-only quota counter evidence for this scoped recovery repair.
   # Existing production ingestion still refuses push-triggered publication.
@@ -323,6 +328,7 @@ jobs:
         run: | 
           node --check scripts/lib/website-news-canonical-reconciliation.mjs
           node --test scripts/tests/website-news-canonical-reconciliation.test.mjs
+          node --test scripts/tests/phase2g-per-id-d1-reconciliation.test.mjs
       - name: Verify append-only permanent archive retains old items and tolerates D1 outage
         run: |
           node --check scripts/ops/publish-permanent-derived-news-archive.mjs
@@ -541,6 +547,15 @@ jobs:
         if: always() && github.event_name != 'push'
         shell: bash
         run: node scripts/ops/verify-shared-derived-news-live.mjs
+
+      - name: Save exact acknowledged derived-news D1 ID reconciliation (source-neutral only)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: phase2g-per-id-d1-reconciliation-${{ github.run_id }}
+          path: artifacts/derived-news/phase2g-per-id-d1-reconciliation.json
+          if-no-files-found: warn
+          retention-days: 3
 
       - name: Save sanitized hourly three-category source health receipt
         if: always()
