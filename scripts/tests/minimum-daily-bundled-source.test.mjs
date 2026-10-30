@@ -12,7 +12,7 @@ const quota=(when,read,written)=>({
  remaining_rows_read:Math.max(0,5_000_000-read),
  remaining_rows_written:Math.max(0,100_000-written),
 });
-test("minimum Free D1 account plan reserves all 96 15-minute bundles, not fictional five-minute writes",()=>{
+test("minimum Free D1 account plan reserves both 15-minute source producers without fictional five-minute write slots",()=>{
  const at=new Date("2026-10-31T00:00:00.000Z"),snapshot=quota(at,0,0);
  const plan=planD1BundledWork(snapshot,{now:at});
  const budget=plan.source_intake_budget_to_utc_reset;
@@ -22,9 +22,10 @@ test("minimum Free D1 account plan reserves all 96 15-minute bundles, not fictio
  assert.equal(plan.minimum_daily_bundled_source_admitted,true);
  assert.equal(plan.minimum_daily_bundled_source_policy.no_paid_capacity,true);
  assert.equal(budget.remaining_source_slots,96);
- assert.equal(budget.rows_read,407200);
- assert.equal(budget.rows_written,13520);
+ assert.equal(budget.rows_read,714400);
+ assert.equal(budget.rows_written,25040);
  assert.equal(MINIMUM_DAILY_BUNDLED_SOURCE.maximum_original_records_per_slot,5);
+ assert.equal(MINIMUM_DAILY_BUNDLED_SOURCE.producers_per_slot,2);
  assert.equal(MINIMUM_DAILY_BUNDLED_SOURCE.expected_categories,3);
  assert.ok(budget.rows_read+PREDGE_D1_FREE_HEADROOM.rows_read+750000<
   D1_FREE_DAILY.rows_read);
@@ -35,7 +36,7 @@ test("minimum Free D1 account plan reserves all 96 15-minute bundles, not fictio
 });
 test("strict account-wide Free reserve leaves PREDGE and critical capacity untouched",()=>{
  const at=new Date("2026-10-31T23:45:00.000Z");
- const readBudget=103200,writeBudget=2120;
+ const readBudget=106400,writeBudget=2240;
  const exactRead=quota(at,5_000_000-(1_250_000+readBudget),0);
  const exactWrite=quota(at,0,100_000-(23_000+writeBudget));
  assert.equal(planSourceIntake(exactRead,at),null);
@@ -63,6 +64,6 @@ test("daily budget recalculates only from true UTC time and never admits unknown
  assert.equal(planD1BundledWork({...quota(at,1_000_000,1_000),day_utc:"2026-10-30"},{now:at}).source_intake,false);
  const admitted=planD1BundledWork(quota(at,1_000_000,1_000),{now:at});
  assert.equal(admitted.source_intake_budget_to_utc_reset.remaining_source_slots,48);
- assert.equal(admitted.source_intake_budget_to_utc_reset.rows_read,253600);
- assert.equal(admitted.source_intake_budget_to_utc_reset.rows_written,7760);
+ assert.equal(admitted.source_intake_budget_to_utc_reset.rows_read,407200);
+ assert.equal(admitted.source_intake_budget_to_utc_reset.rows_written,13520);
 });
