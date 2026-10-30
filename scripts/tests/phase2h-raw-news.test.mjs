@@ -240,6 +240,58 @@ test("delayed daily GitHub cron archive retains one authorized schedule without 
  assert.equal(skipped.status,"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT");
 });
 
+test("one-time manual Phase2H production smoke authenticates event and expires; unsafe replay never calls D1/B2",async()=>{
+ const base={
+  GITHUB_EVENT_NAME:"workflow_dispatch",
+  GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main",
+  GITHUB_EVENT_PATH:"/home/runner/work/_temp/_github_workflow/event.json",
+  GITHUB_RUN_ATTEMPT:"1",
+  PHASE2H_ONE_TIME_PRODUCTION_SMOKE:"RUN_ONCE_PHASE2H_2026_10_31"
+ };
+ const when=new Date("2026-10-31T00:42:00Z");
+ const allowed=()=>JSON.stringify({inputs:{confirmation:"RUN_ONCE_PHASE2H_2026_10_31"}});
+ assert.equal(phase2hAuthorizedArchiveWindow({env:base,now:when,eventReader:allowed}),true);
+ assert.equal(phase2hAuthorizedArchiveWindow({
+  env:{...base,GITHUB_RUN_ATTEMPT:"2"},now:when,eventReader:allowed}),false);
+ assert.equal(phase2hAuthorizedArchiveWindow({
+  env:{...base,PHASE2H_ONE_TIME_PRODUCTION_SMOKE:""},now:when,eventReader:allowed}),false);
+ assert.equal(phase2hAuthorizedArchiveWindow({
+  env:{...base,GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/other.yml@refs/heads/main"},
+  now:when,eventReader:allowed}),false);
+ assert.equal(phase2hAuthorizedArchiveWindow({
+  env:base,now:new Date("2026-11-02T00:00:00Z"),eventReader:allowed}),false);
+ assert.equal(phase2hAuthorizedArchiveWindow({
+  env:base,now:new Date("2026-10-30T17:59:59Z"),eventReader:allowed}),false);
+ for(const corrupted of [
+  ()=>JSON.stringify({inputs:{confirmation:"RUN_ANY_TIME"}}),
+  ()=>JSON.stringify({schedule:"29 0 * * *"}),
+  ()=>"not-json",
+ ])assert.equal(phase2hAuthorizedArchiveWindow({env:base,now:when,eventReader:corrupted}),false);
+ let governor=0;
+ const strict={
+  ...base,GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"1234",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true"
+ };
+ const held=await runPhase2hGovernedRawB2({env:strict,now:when,eventReader:allowed,
+  governorFactory:()=>({status:async()=>{
+   governor++;
+   return {ok:true,used:{total:100,GET:90,PUT:90,NATIVE_AUTH:10},
+    limits:{total:100,GET:100,PUT:100,NATIVE_AUTH:100}};
+  }}),
+  d1Factory:()=>{throw Error("FORBIDDEN_D1_WHEN_QUOTA_HELD")},
+  b2Factory:()=>{throw Error("FORBIDDEN_B2_WHEN_QUOTA_HELD")}
+ });
+ assert.equal(governor,1);
+ assert.equal(held.status,"B2_ACCOUNT_HEADROOM_HELD");
+ assert.equal(held.storage_confirmed,false);
+ const denied=await runPhase2hGovernedRawB2({env:{...strict,GITHUB_RUN_ATTEMPT:"2"},
+  now:when,eventReader:allowed,governorFactory:()=>{throw Error("FORBIDDEN_QUOTA_READ")}
+ });
+ assert.equal(denied.status,"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT");
+});
+
 test("governor headroom hold never calls B2 or protected D1",async()=>{
  const r=await runPhase2hGovernedRawB2({
   now,windowAuthorizer:()=>true,env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
