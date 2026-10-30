@@ -42,9 +42,13 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
   // fabricated from the feed. Full-text rights are not inferred from access.
   const openLicense=typeof c.credit==="string"&&
     /Open Government Licence v3\.0/u.test(c.credit);
+  // A source issuing only a calendar day MUST NOT acquire a fictitious UTC
+  // hour from an upstream parser's midnight sentinel.
+  const nativePublished=c.datePrecision==="day"
+    ?c.publishedAt.slice(0,10):c.publishedAt;
   const original={
    original_source_id:c.sourceId,original_url:c.articleUrl,
-   original_published_at:c.publishedAt,
+   original_published_at:nativePublished,
    date_precision:c.datePrecision==="day"?"day":"exact",
    original_title:c.title,
    original_content:openLicense&&typeof c.description==="string"&&
@@ -54,7 +58,7 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
    original_article_license_verified:false,
    source_credit:typeof c.credit==="string"&&c.credit.length<=250?c.credit:null,
   };
-  const observationId=sha(c.category+"\n"+c.articleUrl+"\n"+c.publishedAt);
+  const observationId=sha(c.category+"\n"+c.articleUrl+"\n"+nativePublished);
   let signals=[];
   try{signals=derive([c],now.getTime(),{maxSignals:2})}catch{/* no event is fabricated */}
   const s=Array.isArray(signals)?signals.find(x=>x.category===c.category&&
@@ -70,10 +74,10 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
    what_to_watch:{event_topic:topic,trigger:"NEXT_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION",
      confirmed_followup_at:null},
    evidence_and_confidence:{original_observation_id:observationId,
-     source_published_at:c.publishedAt,date_precision:original.date_precision,
+     source_published_at:nativePublished,date_precision:original.date_precision,
      observed_feed_title_available:true,original_article_page_verified:false,
      independent_event_verified:false,commercial_rights_verified:false,
-     paid_eligible:false,source_content_identity_sha256:sha(c.title+"\n"+c.publishedAt)},
+     paid_eligible:false,source_content_identity_sha256:sha(c.title+"\n"+nativePublished)},
   };
   const immutable={schema:RAW2H_SCHEMA,record_id:observationId,
     category:c.category,original,analysis,
