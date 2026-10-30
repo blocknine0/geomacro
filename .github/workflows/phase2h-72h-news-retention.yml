@@ -8,12 +8,16 @@ on:
     paths:
       - ".github/workflows/phase2h-72h-news-retention.yml"
       - "scripts/ops/phase2h-72h-d1-cleanup.mjs"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
       - "scripts/lib/phase2h-retention-72h.mjs"
       - "scripts/tests/phase2h-retention-72h.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/phase2h-72h-news-retention.yml"
       - "scripts/ops/phase2h-72h-d1-cleanup.mjs"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
       - "scripts/lib/phase2h-retention-72h.mjs"
       - "scripts/tests/phase2h-retention-72h.test.mjs"
 permissions:
@@ -37,6 +41,7 @@ jobs:
           node --check scripts/ops/phase2h-72h-d1-cleanup.mjs
           node --check scripts/ops/phase2h-verify-b2-72h-lifecycle.mjs
           node --test scripts/tests/phase2h-retention-72h.test.mjs
+          node --test scripts/tests/plan-d1-bundled-work.test.mjs
 
   quota-admission:
     needs: verify
