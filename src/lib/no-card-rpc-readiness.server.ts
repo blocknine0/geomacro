@@ -11,7 +11,7 @@ const NETWORKS=[
   {slug:"base",suffix:"BASE",chainId:"0x2105"},
   {slug:"polygon",suffix:"POLYGON",chainId:"0x89"},
 ] as const;
-const TIMEOUT_MS=2500;
+const TIMEOUT_MS=6000;
 const MAX_ALTERNATES=10;
 const HEX=/^0x[0-9a-fA-F]+$/u;
 type AuditEnvironment=Record<string,string|undefined>;
@@ -77,9 +77,22 @@ async function call(url:string,method:string,params:unknown[],fetcher:typeof fet
       body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),
       signal:AbortSignal.timeout(TIMEOUT_MS),
     });
-  }catch{throw Error("RPC_UNAVAILABLE");}
-  if(!response.ok||Number(response.headers.get("content-length")||0)>65536)
-    throw Error("RPC_UNAVAILABLE");
+  }catch(e){
+    if(e instanceof Error && (e.name==="TimeoutError"||e.name==="AbortError"))
+      throw Error("RPC_TIMEOUT");
+    throw Error("RPC_FETCH_FAILED");
+  }
+  if(!response.ok){
+    const status=response.status;
+    if(status===401)throw Error("RPC_AUTH_REJECTED");
+    if(status===403)throw Error("RPC_ACCESS_DENIED");
+    if(status===404)throw Error("RPC_ENDPOINT_NOT_FOUND");
+    if(status===429)throw Error("RPC_RATE_LIMITED");
+    if(status>=500)throw Error("RPC_PROVIDER_5XX");
+    throw Error("RPC_HTTP_ERROR");
+  }
+  if(Number(response.headers.get("content-length")||0)>65536)
+    throw Error("RPC_RESPONSE_TOO_LARGE");
   let body:{jsonrpc?:string;id?:number;result?:unknown;error?:unknown};
   try{
     const raw=await response.text();
@@ -107,7 +120,10 @@ async function probe(url:string,chainId:string,fetcher:typeof fetch){
   return "PASS";
 }
 const STATUSES=new Set([
-  "PASS","RPC_UNAVAILABLE","RPC_INVALID_REPLY","RPC_WRONG_CHAIN",
+  "PASS","RPC_FETCH_FAILED","RPC_TIMEOUT","RPC_INVALID_REPLY",
+  "RPC_AUTH_REJECTED","RPC_ACCESS_DENIED","RPC_ENDPOINT_NOT_FOUND",
+  "RPC_RATE_LIMITED","RPC_PROVIDER_5XX","RPC_HTTP_ERROR",
+  "RPC_RESPONSE_TOO_LARGE","RPC_WRONG_CHAIN","RPC_UNAVAILABLE",
   "RPC_INVALID_HEAD","RPC_INVALID_BLOCK","RPC_UNEXPECTED_RECEIPT",
 ]);
 export async function runSignedRpcReadiness(
