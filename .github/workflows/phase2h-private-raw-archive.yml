@@ -15,6 +15,8 @@ on:
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "scripts/ops/phase2h-permanent-production-acceptance.mjs"
       - "scripts/ops/phase2h-verify-b2-72h-lifecycle.mjs"
+      - "scripts/ops/phase2h-archive-private-raw-news.mjs"
+      - "scripts/tests/phase2h-raw-news.test.mjs"
       - "scripts/lib/phase2h-retention-72h.mjs"
       - "scripts/tests/phase2h-retention-72h.test.mjs"
       - "scripts/lib/phase2h-raw-original-records.mjs"
