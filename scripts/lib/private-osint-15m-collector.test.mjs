@@ -217,8 +217,8 @@ test("production private OSINT bypasses public health, signing and website publi
  // previous public website/signer branch remains barred in that mode.
  assert.ok(tick.includes("onOriginalCandidate:(raw=>{"));
  assert.ok(tick.includes("if(researchPrivateOnly)return;"));
- assert.ok(tick.indexOf("const rawReceipt=await postPhase2hPrivateRawRecords(")>accepted);
- assert.ok(tick.indexOf("const rawReceipt=await postPhase2hPrivateRawRecords(")<exit);
+ assert.ok(tick.indexOf("const rawStage=await stagePhase2iOsintFairRaw(")>accepted);
+ assert.ok(tick.indexOf("const rawStage=await stagePhase2iOsintFairRaw(")<exit);
  assert.ok(tick.slice(exit,website).includes("process.exit(0);"));
  assert.ok(tick.slice(exit,website).includes("website_publication_attempted:false"));
  assert.ok(tick.slice(exit,website).includes("paid_publication_attempted:false"));

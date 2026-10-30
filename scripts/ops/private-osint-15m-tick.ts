@@ -9,7 +9,7 @@ import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
 import {persistPrivateOsintBatch} from "../lib/private-osint-15m-durable-publisher.mjs";
-import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
+import {stagePhase2iOsintFairRaw} from "../lib/phase2i-osint-country-fair-raw-staging.mjs";
 import {privateGdeltGlobalDiscovery} from "../lib/private-osint-gdelt-global.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
@@ -132,17 +132,13 @@ if(persisted.source_checks_observed_this_tick!==result.checks.length||
 // The same quota-admitted private research collector now captures its
 // original observed publisher metadata in the existing canonical D1, without
 // adding a source read or modifying any public or partner feed.
-const phase2h=buildPhase2hPrivateRawRecords(collectedPrivateOriginals,{
- now:timestamp,derive:deriveStatelessSignals,
+const rawStage=await stagePhase2iOsintFairRaw({
+ candidates:collectedPrivateOriginals,now:timestamp,
+ derive:deriveStatelessSignals,controlPlaneRoot,token:control,
 });
-const rawReceipt=await postPhase2hPrivateRawRecords({
- records:phase2h.records,controlPlaneRoot,token:control,
-});
-console.log(JSON.stringify({schema:"geomacro.phase2h.private-osint-originals.v1",
- counts:phase2h.counts,ingested:rawReceipt.stored,duplicates:rawReceipt.duplicate,
- excluded_invalid:phase2h.discarded_invalid,
- d1_readback_verified:rawReceipt.readback_verified,
- b2_verified:false,rights_verified:false,payments:0}));
+console.log(JSON.stringify(rawStage));
+if(rawStage.selected_count>0&&rawStage.d1_readback_verified!==true)
+ throw Error("PHASE2I_OSINT_NO_POSITIVE_CANONICAL_RAW_D1_RECEIPT");
 
 
 // Production workflow sets GEOMACRO_OSINT_RESEARCH_PRIVATE_ONLY=1.
