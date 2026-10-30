@@ -8,9 +8,6 @@ on:
       - "scripts/lib/p0b-event-grounded-projection.mjs"
       - "scripts/lib/p0b-live-global-search.mjs"
       - "scripts/tests/p0b-live-global-search.test.mjs"
-      - "scripts/lib/p0b-event-grounded-projection.mjs"
-      - "scripts/lib/p0b-live-global-search.mjs"
-      - "scripts/tests/p0b-live-global-search.test.mjs"
       - "scripts/tests/p0a-evidence-quality.test.mjs"
       - "scripts/ops/p0a-intelligence-completeness-production.mjs"
       - ".github/workflows/p0a-intelligence-completeness-production.yml"
@@ -18,6 +15,9 @@ on:
     branches: [main]
     paths:
       - "scripts/lib/p0a-evidence-quality.mjs"
+      - "scripts/lib/p0b-event-grounded-projection.mjs"
+      - "scripts/lib/p0b-live-global-search.mjs"
+      - "scripts/tests/p0b-live-global-search.test.mjs"
       - "scripts/tests/p0a-evidence-quality.test.mjs"
       - "scripts/ops/p0a-intelligence-completeness-production.mjs"
       - ".github/workflows/p0a-intelligence-completeness-production.yml"
