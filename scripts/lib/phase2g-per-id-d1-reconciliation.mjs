@@ -12,13 +12,14 @@ const safeTime=(s,now)=>{
  const at=Date.parse(s);
  return Number.isFinite(at)&&at<=now+60_000&&at>=now-72*60*60_000;
 };
-function indexed(rows,now){
+function indexed(rows,now,{historicalBaseline=false}={}){
  if(!Array.isArray(rows)||rows.length>600)fail("SNAPSHOT_UNBOUNDED");
  const index=new Map();
  for(const s of rows){
   if(!s||typeof s.id!=="string"||s.id.length<1||s.id.length>160||
      index.has(s.id)||!CATEGORIES.includes(s.category)||
-     !verifyDerivedStory(s,now)||!safeTime(s.published_at,now))
+     !(Number.isFinite(Date.parse(s.published_at)))||
+     (!historicalBaseline&&(!verifyDerivedStory(s,now)||!safeTime(s.published_at,now))))
    fail("CANONICAL_SNAPSHOT_INVALID");
   index.set(s.id,s);
  }
@@ -30,7 +31,9 @@ export function reconcileAcknowledgedDerivedNews({
  if(!Number.isFinite(now)||!Array.isArray(acknowledged)||
     acknowledged.length<1||acknowledged.length>600||
     !/^[a-f0-9]{40}$/u.test(sourceSha))fail("INPUT_INVALID");
- const previous=indexed(before,now),current=indexed(after,now);
+ // An unrelated baseline row can naturally expire during a bounded publisher run;
+ // only acknowledged post-write IDs must satisfy the CURRENT 72h window.
+ const previous=indexed(before,now,{historicalBaseline:true}),current=indexed(after,now);
  const seen=new Set();
  const counts=Object.fromEntries(CATEGORIES.map(x=>[x,{
    acknowledged:0,newly_observed:0,updated_observed:0,unchanged_observed:0,
