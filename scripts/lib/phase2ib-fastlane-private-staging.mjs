@@ -87,18 +87,60 @@ export async function stagePhase2iFastlanePrivateOriginals({
   d1_inserted:0,d1_unchanged:0,d1_readback_verified:false,
   b2_verified:false,payments:0,
  };
- const receipt=await post({records:plan.records,controlPlaneRoot,token,fetchImpl});
- if(receipt?.readback_verified!==true||
-    !Number.isSafeInteger(receipt.stored)||!Number.isSafeInteger(receipt.duplicate)||
-    receipt.stored<0||receipt.duplicate<0||
-    receipt.stored+receipt.duplicate!==plan.selected_count)
-  throw Error("PHASE2IB_FASTLANE_RAW_D1_RECEIPT_INVALID");
+ // The existing Phase 2H D1 endpoint rejects the ENTIRE batch before any
+ // insert if one immutable ID has a true original-content collision.
+ // During only a 3/5-row intake allowance, isolate that row without changing
+ // an older canonical original, and preserve a truthful partial receipt.
+ // No retry on auth, D1 quota, transport, or generic readback failure.
+ const postRows=records=>post({records,controlPlaneRoot,token,fetchImpl});
+ const checkedAck=(ack,n)=>{
+  if(ack?.readback_verified!==true||
+     !Number.isSafeInteger(ack.stored)||!Number.isSafeInteger(ack.duplicate)||
+     ack.stored<0||ack.duplicate<0||ack.stored+ack.duplicate!==n)
+   throw Error("PHASE2IB_FASTLANE_RAW_D1_RECEIPT_INVALID");
+  return ack;
+ };
+ let inserted=0,unchanged=0,collisionCount=0,acknowledged=[];
+ const collisionByCategory=Object.fromEntries(CATEGORIES.map(c=>[c,0]));
+ try{
+  const ack=checkedAck(await postRows(plan.records),plan.selected_count);
+  inserted=ack.stored;unchanged=ack.duplicate;
+  acknowledged=plan.records;
+ }catch(error){
+  // Restrict isolation to tiny admitted batches. Larger batches retain the
+  // original fail-closed path, never increase the existing D1 provider budget.
+  if(error?.message!=="PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION"||maxRows>5)
+   throw error;
+  for(const row of plan.records){
+   try{
+    const ack=checkedAck(await postRows([row]),1);
+    inserted+=ack.stored;unchanged+=ack.duplicate;
+    acknowledged.push(row);
+   }catch(singleError){
+    if(singleError?.message!=="PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION")
+     throw singleError;
+    collisionCount++;
+    collisionByCategory[row.category]++;
+   }
+  }
+ }
+ if(inserted+unchanged+collisionCount!==plan.selected_count)
+  throw Error("PHASE2IB_FASTLANE_RAW_D1_ROW_ACCOUNTING_INVALID");
  const {records:privateRecords,...safe}=plan;
  return {schema:"geomacro.phase2ib.fastlane-private-raw-stage.v1",
-  status:"CANONICAL_D1_EXACT_READBACK_VERIFIED",
-  ...safe,d1_inserted:receipt.stored,d1_unchanged:receipt.duplicate,
-  d1_readback_verified:true,b2_verified:false,
-  event_country_verified:false,commercial_rights_verified:false,
-  original_body_collected:false,payments:0,
+  status:collisionCount>0
+   ?(acknowledged.length>0
+     ?"PARTIAL_CANONICAL_D1_READBACK_COLLISION_QUARANTINED"
+     :"IDENTITY_COLLISION_HELD_NO_CANONICAL_ACK")
+   :"CANONICAL_D1_EXACT_READBACK_VERIFIED",
+  ...safe,
+  deferred_count:plan.deferred_count+collisionCount,
+  d1_inserted:inserted,d1_unchanged:unchanged,
+  d1_readback_verified:acknowledged.length>0,
+  all_selected_d1_readback_verified:collisionCount===0,
+  collision_held:collisionCount,collision_held_by_category:collisionByCategory,
+  b2_verified:false,event_country_verified:false,
+  commercial_rights_verified:false,original_body_collected:false,
+  payments:0,
  };
 }
