@@ -49,7 +49,9 @@ function slotConfig(suffix:string,env:AuditEnvironment){
   let legacy:string[]=[];
   if(raw){
     let parsed:unknown;
-    try{parsed=JSON.parse(raw);}catch{throw Error("ALTERNATES_INVALID");}
+    try{parsed=raw.startsWith("https://")?raw:JSON.parse(raw);}
+    catch{throw Error("ALTERNATES_INVALID");}
+    if(typeof parsed==="string")parsed=[parsed];
     if(!Array.isArray(parsed)||parsed.length>MAX_ALTERNATES||
       parsed.some(v=>typeof v!=="string"||!v.trim()))throw Error("ALTERNATES_INVALID");
     legacy=parsed;
@@ -122,10 +124,15 @@ export async function runSignedRpcReadiness(
   for(const net of NETWORKS){
     let urls:string[];
     try{urls=slotConfig(net.suffix,env);}
-    catch{
+    catch(e){
+      const code=e instanceof Error?e.message:"";
+      const configCode=new Set([
+        "ALTERNATES_INVALID","SIX_PROVIDER_SLOTS_REQUIRED",
+        "DUPLICATE_PROVIDER_URL","INVALID_URL",
+      ]).has(code)?code:"CONFIG_INVALID";
       for(let i=0;i<3;i++)results.push({
         network:net.slug,slot:i===0?"primary":i===1?"backup_1":"backup_2",
-        status:"CONFIG_INVALID",
+        status:configCode,
       });
       continue;
     }
