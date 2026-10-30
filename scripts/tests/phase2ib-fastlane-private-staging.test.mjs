@@ -148,7 +148,7 @@ test("non-collision D1 outage is never swallowed by the isolation routine",async
   }).records,
   post:async()=>{throw Error("PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE")},
  }),/PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE/);
- assert.rejects(postPhase2iCollisionIsolated({
+ await assert.rejects(postPhase2iCollisionIsolated({
   records:Array.from({length:6},(_,i)=>mk(i)),
  }),/PHASE2IB_FASTLANE_COLLISION_BATCH_CAP/);
 });
