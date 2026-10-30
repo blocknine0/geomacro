@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-29T19:08:01.526Z",
+  "checked_at": "2026-10-30T00:25:35.022Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 411,
+  "item_count": 390,
   "counts": {
-    "geopolitics": 195,
-    "macro": 171,
+    "geopolitics": 180,
+    "macro": 165,
     "rare_earth": 45
   },
-  "source_native_ids_sha256": "a975cb89f96be1cc4fda7416c55ab2695c1862d2df91c506a86bc8d1a300ca5c",
+  "source_native_ids_sha256": "82e663003db1b72c63016f54f0d3ad6d843f1fd194d890cbd800a867bc4b2fca",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,44 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-7914955e",
+      "category": "macro",
+      "title": "Geomacro finds European Central Bank kept Interest Rates Unchanged and Warns of Rising Inflation Risks - وكالة سبأ",
+      "what_changed": "A monitored source feed reports: European Central Bank kept Interest Rates Unchanged and Warns of Rising Inflation Risks - وكالة سبأ. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T19:50:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-9c2cc354",
+      "category": "rare_earth",
+      "title": "Geomacro finds Glencore reported 3% Rise in Copper Output, Low-End 2026 Guidance Maintained - Shanghai Metals Market",
+      "what_changed": "A monitored source feed reports: Glencore reported 3% Rise in Copper Output, Low-End 2026 Guidance Maintained - Shanghai Metals Market. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T19:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-42d32509",
       "category": "rare_earth",
@@ -7386,443 +7424,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-27T00:44:36.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-225bf928",
-      "category": "geopolitics",
-      "title": "Geomacro finds Bolsonaro said police demand passports after Brazil election defeat",
-      "what_changed": "A monitored source feed reports: Bolsonaro said police demand passports after Brazil election defeat. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T23:53:45.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.aljazeera.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-2f871e2c",
-      "category": "rare_earth",
-      "title": "Geomacro finds Hawk Resources confirmed Copper-Gold-Silver Hits Across 550m of Cactus Corridor in Utah - Kalkine",
-      "what_changed": "A monitored source feed reports: Hawk Resources confirmed Copper-Gold-Silver Hits Across 550m of Cactus Corridor in Utah - Kalkine. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T23:15:02.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-71872aa2",
-      "category": "geopolitics",
-      "title": "Geomacro finds Jordan said its military struck 'militant hideouts' in Syria after deadly church attack",
-      "what_changed": "A monitored source feed reports: Jordan said its military struck 'militant hideouts' in Syria after deadly church attack. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T22:15:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: rss.dw.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-fa684b65",
-      "category": "macro",
-      "title": "Geomacro finds Corn Holds lowered on Monday, with Spillover Pressure - TradingView",
-      "what_changed": "A monitored source feed reports: Corn Holds lowered on Monday, with Spillover Pressure - TradingView. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T22:14:56.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-fdc8fde5",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Brazil election looked ‘rigged’ after Bolsonaro loses - Politico",
-      "what_changed": "A monitored source feed reports: Trump said Brazil election looked ‘rigged’ after Bolsonaro loses - Politico. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T22:10:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-090a986e",
-      "category": "macro",
-      "title": "Geomacro finds Big Tree Cloud Holdings Limited announced Filing of Annual Report on Form 20-F for Fiscal Year 2026",
-      "what_changed": "A monitored source feed reports: Big Tree Cloud Holdings Limited announced Filing of Annual Report on Form 20-F for Fiscal Year 2026. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T22:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: laotiantimes.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-f2ca48aa",
-      "category": "macro",
-      "title": "Geomacro finds Panama Canal held Its 41st Advisory Board Meeting to Analyze Global Trade Challenges",
-      "what_changed": "A monitored source feed reports: Panama Canal held Its 41st Advisory Board Meeting to Analyze Global Trade Challenges. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T21:59:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: pancanal.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-ab59b2b5",
-      "category": "macro",
-      "title": "Geomacro finds Sugar Land increased minimum requirements for tax abatements - Community Impact Newspaper",
-      "what_changed": "A monitored source feed reports: Sugar Land increased minimum requirements for tax abatements - Community Impact Newspaper. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T21:49:33.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-45726585",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran held 'very good' talks with Mecca pact nations on region's security",
-      "what_changed": "A monitored source feed reports: Iran held 'very good' talks with Mecca pact nations on region's security. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T21:43:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.channelnewsasia.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-f754cea9",
-      "category": "macro",
-      "title": "Geomacro finds USDA revised September Corn Yield as Analysts Weigh Impact - Successful Farming",
-      "what_changed": "A monitored source feed reports: USDA revised September Corn Yield as Analysts Weigh Impact - Successful Farming. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T21:41:43.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-cfec5104",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Brazil election looked 'rigged' without giving evidence",
-      "what_changed": "A monitored source feed reports: Trump said Brazil election looked 'rigged' without giving evidence. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T21:37:22.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.euronews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-db18f574",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Brazil election looked 'rigged' without giving evidence - Euronews.com",
-      "what_changed": "A monitored source feed reports: Trump said Brazil election looked 'rigged' without giving evidence - Euronews.com. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T21:37:22.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-d0afdb79",
-      "category": "geopolitics",
-      "title": "Geomacro finds Berlin announced plans to buy ‘drone missiles’ from Kiev, media",
-      "what_changed": "A monitored source feed reports: Berlin announced plans to buy ‘drone missiles’ from Kiev, media. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T21:21:08.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: rt-english.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-698e21e3",
-      "category": "geopolitics",
-      "title": "Geomacro finds Syria said civilians killed in Jordanian airstrikes as Amman links targets to ‘terrorist group’ - Rudaw",
-      "what_changed": "A monitored source feed reports: Syria said civilians killed in Jordanian airstrikes as Amman links targets to ‘terrorist group’ - Rudaw. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T21:20:48.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-1ad351ad",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Brazil election looked 'rigged' as Bolsonaro refuses to recognize Lula win - Reuters",
-      "what_changed": "A monitored source feed reports: Trump said Brazil election looked 'rigged' as Bolsonaro refuses to recognize Lula win - Reuters. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T21:16:28.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-6f399fa5",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Brazil’s election results ‘looked rigged’ - The Hill",
-      "what_changed": "A monitored source feed reports: Trump said Brazil’s election results ‘looked rigged’ - The Hill. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T21:15:57.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-b0a2c05a",
-      "category": "geopolitics",
-      "title": "Geomacro finds Gold held above $4,000 as Hormuz diplomacy cools crude ahead of Fed decision - Kitco PM Report - Kitco",
-      "what_changed": "A monitored source feed reports: Gold held above $4,000 as Hormuz diplomacy cools crude ahead of Fed decision - Kitco PM Report - Kitco. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T21:02:20.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-c96c33d3",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Brazil Election Looked ‘Rigged’ After Lula’s Win - Bloomberg.com",
-      "what_changed": "A monitored source feed reports: Trump said Brazil Election Looked ‘Rigged’ After Lula’s Win - Bloomberg.com. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T20:23:37.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-cb6275ca",
-      "category": "macro",
-      "title": "Geomacro finds Cadence increased full-year fiscal 2026 guidance as backlog builds to $8.2B - Seeking Alpha",
-      "what_changed": "A monitored source feed reports: Cadence increased full-year fiscal 2026 guidance as backlog builds to $8.2B - Seeking Alpha. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T20:19:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-28b9e128",
-      "category": "geopolitics",
-      "title": "Geomacro finds First Committee: debated Disarmament Machinery Deadlock, Frequency of Resolutions",
-      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
-      "what_changed": "First Committee debated Disarmament Machinery Deadlock, Frequency of Resolutions.",
-      "geography": null,
-      "development_type": "official update",
-      "topic": "geopolitical security",
-      "published_at": "2026-10-26T20:16:50.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "United Nations"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-fa75ba98",
-      "category": "geopolitics",
-      "title": "Geomacro finds Brazil's Bolsonaro said barred from leaving country after election loss",
-      "what_changed": "A monitored source feed reports: Brazil's Bolsonaro said barred from leaving country after election loss. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T20:11:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.dailysabah.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-db7a3ad5",
-      "category": "macro",
-      "title": "Geomacro finds UPSA urged graduates to embrace entrepreneurship amid graduate unemployment",
-      "what_changed": "A monitored source feed reports: UPSA urged graduates to embrace entrepreneurship amid graduate unemployment. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T20:03:54.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.myjoyonline.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-7813e9c1",
-      "category": "geopolitics",
-      "title": "Geomacro finds Jordan launched airstrikes in Syria in retaliation for deadly church attack - Al Arabiya English",
-      "what_changed": "A monitored source feed reports: Jordan launched airstrikes in Syria in retaliation for deadly church attack - Al Arabiya English. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T19:55:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

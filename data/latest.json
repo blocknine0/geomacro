@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-29T19:08:01.526Z",
+  "checked_at": "2026-10-30T00:25:35.022Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,44 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-7914955e",
+      "category": "macro",
+      "title": "Geomacro finds European Central Bank kept Interest Rates Unchanged and Warns of Rising Inflation Risks - وكالة سبأ",
+      "what_changed": "A monitored source feed reports: European Central Bank kept Interest Rates Unchanged and Warns of Rising Inflation Risks - وكالة سبأ. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T19:50:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-9c2cc354",
+      "category": "rare_earth",
+      "title": "Geomacro finds Glencore reported 3% Rise in Copper Output, Low-End 2026 Guidance Maintained - Shanghai Metals Market",
+      "what_changed": "A monitored source feed reports: Glencore reported 3% Rise in Copper Output, Low-End 2026 Guidance Maintained - Shanghai Metals Market. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T19:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-42d32509",
       "category": "rare_earth",
@@ -4227,25 +4265,6 @@
       "severity": null
     },
     {
-      "id": "macro-09b3a838",
-      "category": "macro",
-      "title": "Geomacro finds Reserve Bank of New Zealand kept Rates on Hold but Signals Further Hikes - Action Forex",
-      "what_changed": "A monitored source feed reports: Reserve Bank of New Zealand kept Rates on Hold but Signals Further Hikes - Action Forex. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T11:03:45.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-fc9ebd7a",
       "category": "rare_earth",
       "title": "Geomacro finds Copper Explorer launched 10000-Foot Nevada Drill Program as Global Supply Shortage Fears Grow - Streetwise Reports",
@@ -4730,25 +4749,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-27T00:44:36.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-2f871e2c",
-      "category": "rare_earth",
-      "title": "Geomacro finds Hawk Resources confirmed Copper-Gold-Silver Hits Across 550m of Cactus Corridor in Utah - Kalkine",
-      "what_changed": "A monitored source feed reports: Hawk Resources confirmed Copper-Gold-Silver Hits Across 550m of Cactus Corridor in Utah - Kalkine. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-26T23:15:02.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

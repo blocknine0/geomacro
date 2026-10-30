@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-29T19:08:01.526Z",
+  "updated_at": "2026-10-30T00:25:35.022Z",
   "signals": [
+    {
+      "id": "rare_earth-9c2cc354",
+      "category": "rare_earth",
+      "title": "Geomacro finds Glencore reported 3% Rise in Copper Output, Low-End 2026 Guidance Maintained - Shanghai Metals Market",
+      "what_changed": "A monitored source feed reports: Glencore reported 3% Rise in Copper Output, Low-End 2026 Guidance Maintained - Shanghai Metals Market. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T19:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-42d32509",
       "category": "rare_earth",

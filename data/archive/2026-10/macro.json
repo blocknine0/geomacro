@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-29T19:08:01.526Z",
+  "updated_at": "2026-10-30T00:25:35.022Z",
   "signals": [
+    {
+      "id": "macro-7914955e",
+      "category": "macro",
+      "title": "Geomacro finds European Central Bank kept Interest Rates Unchanged and Warns of Rising Inflation Risks - وكالة سبأ",
+      "what_changed": "A monitored source feed reports: European Central Bank kept Interest Rates Unchanged and Warns of Rising Inflation Risks - وكالة سبأ. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T19:50:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-00a38cf5",
       "category": "macro",
