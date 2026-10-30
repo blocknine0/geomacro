@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {planPhase2iFastlanePrivateStage,stagePhase2iFastlanePrivateOriginals}
+import {postPhase2iCollisionIsolated,planPhase2iFastlanePrivateStage,stagePhase2iFastlanePrivateOriginals}
  from "../lib/phase2ib-fastlane-private-staging.mjs";
 const now=new Date("2026-10-30T10:15:00.000Z");
 const base={title:"Agency confirms new mineral export regulation",
@@ -92,4 +92,63 @@ test("invalid native dates and missing metadata never become invented records",(
  ],{now,derive,maxRows:5,intervalMinutes:5});
  assert.equal(plan.observed_unique,0);
  assert.equal(plan.invalid_or_old,2);
+});
+
+test("one immutable original collision never discards other source originals",async()=>{
+ const originals=[mk(1,"geopolitics"),mk(2,"macro"),mk(3,"rare_earth")];
+ const plan=planPhase2iFastlanePrivateStage(originals,{
+  now,derive,maxRows:5,intervalMinutes:5,
+ });
+ let attempted=0,accepted=0;
+ const post=async({records})=>{
+  attempted++;
+  if(records.some(r=>r.category==="macro"))
+   throw Error("PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION");
+  accepted+=records.length;
+  return {stored:records.length,duplicate:0,readback_verified:true};
+ };
+ const receipt=await postPhase2iCollisionIsolated({
+  records:plan.records,post,
+ });
+ assert.equal(receipt.stored,2);
+ assert.equal(receipt.rejected_conflicts,1);
+ assert.equal(receipt.rejected_conflicts_by_category.macro,1);
+ assert.equal(accepted,2);
+ assert.ok(attempted<=5);
+ assert.equal(receipt.readback_verified,true);
+ const live=await stagePhase2iFastlanePrivateOriginals({
+  candidates:originals,now,derive,maxRows:5,intervalMinutes:5,env,post,
+ });
+ assert.equal(live.status,"CANONICAL_D1_PARTIAL_READBACK_WITH_IMMUTABLE_CONFLICTS");
+ assert.equal(live.d1_inserted,2);
+ assert.equal(live.d1_rejected_conflicts,1);
+ assert.equal(live.b2_verified,false);
+});
+test("all immutable conflicts never become a fabricated D1 readback",async()=>{
+ const rows=planPhase2iFastlanePrivateStage([base],{
+  now,derive,maxRows:5,intervalMinutes:5,
+ }).records;
+ const result=await postPhase2iCollisionIsolated({
+  records:rows,post:async()=>{throw Error("PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION")},
+ });
+ assert.equal(result.rejected_conflicts,1);
+ assert.equal(result.stored,0);
+ assert.equal(result.readback_verified,false);
+ const stage=await stagePhase2iFastlanePrivateOriginals({
+  candidates:[base],now,derive,maxRows:5,intervalMinutes:5,env,
+  post:async()=>{throw Error("PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION")},
+ });
+ assert.equal(stage.status,"IMMUTABLE_ORIGINAL_CONFLICTS_NO_POSITIVE_D1_RECEIPT");
+ assert.equal(stage.d1_readback_verified,false);
+});
+test("non-collision D1 outage is never swallowed by the isolation routine",async()=>{
+ await assert.rejects(postPhase2iCollisionIsolated({
+  records:planPhase2iFastlanePrivateStage([base],{
+   now,derive,maxRows:5,intervalMinutes:5,
+  }).records,
+  post:async()=>{throw Error("PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE")},
+ }),/PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE/);
+ await assert.rejects(postPhase2iCollisionIsolated({
+  records:Array.from({length:6},(_,i)=>mk(i)),
+ }),/PHASE2IB_FASTLANE_COLLISION_BATCH_CAP/);
 });

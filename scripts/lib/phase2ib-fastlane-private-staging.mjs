@@ -63,6 +63,51 @@ export function planPhase2iFastlanePrivateStage(candidates,{
  });
 }
 
+/**
+ * A previously staged first-party original may retain the same immutable
+ * URL/native-clock key while its headline/credit changes upstream.
+ * A single 409 must never overwrite that D1 ID nor abort all other originals.
+ * Bisect ONLY the exact immutable collision; all other D1 failures stay fatal.
+ * Callers cap input to five rows, so retries are tightly bounded.
+ */
+export async function postPhase2iCollisionIsolated({
+ records,controlPlaneRoot,token,fetchImpl=fetch,post=postPhase2hPrivateRawRecords
+}={}){
+ if(!Array.isArray(records)||records.length>5)
+  throw Error("PHASE2IB_FASTLANE_COLLISION_BATCH_CAP");
+ let stored=0,duplicate=0,rejected=0,requests=0;
+ const rejectedByCategory=count([]);
+ const emit=async group=>{
+  requests++;
+  try{
+   const reply=await post({records:group,controlPlaneRoot,token,fetchImpl});
+   if(reply?.readback_verified!==true||
+      !Number.isSafeInteger(reply.stored)||!Number.isSafeInteger(reply.duplicate)||
+      reply.stored<0||reply.duplicate<0||
+      reply.stored+reply.duplicate!==group.length)
+     throw Error("PHASE2IB_FASTLANE_RAW_D1_RECEIPT_INVALID");
+   stored+=reply.stored;duplicate+=reply.duplicate;
+  }catch(error){
+   if(error?.message!=="PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION")
+    throw error;
+   if(group.length===1){
+    rejected++;rejectedByCategory[group[0].category]++;return;
+   }
+   const mid=Math.floor(group.length/2);
+   await emit(group.slice(0,mid));
+   await emit(group.slice(mid));
+  }
+ };
+ if(records.length)await emit(records);
+ if(stored+duplicate+rejected!==records.length)
+  throw Error("PHASE2IB_FASTLANE_COLLISION_RECONCILIATION_FAILED");
+ return Object.freeze({stored,duplicate,rejected_conflicts:rejected,
+  rejected_conflicts_by_category:rejectedByCategory,
+  d1_successful_readback_records:stored+duplicate,
+  readback_verified:stored+duplicate>0,
+  attempts:requests});
+}
+
 export async function stagePhase2iFastlanePrivateOriginals({
  candidates,now=new Date(),maxRows,intervalMinutes,derive,
  env=process.env,controlPlaneRoot,token,fetchImpl=fetch,
@@ -87,17 +132,21 @@ export async function stagePhase2iFastlanePrivateOriginals({
   d1_inserted:0,d1_unchanged:0,d1_readback_verified:false,
   b2_verified:false,payments:0,
  };
- const receipt=await post({records:plan.records,controlPlaneRoot,token,fetchImpl});
- if(receipt?.readback_verified!==true||
-    !Number.isSafeInteger(receipt.stored)||!Number.isSafeInteger(receipt.duplicate)||
-    receipt.stored<0||receipt.duplicate<0||
-    receipt.stored+receipt.duplicate!==plan.selected_count)
-  throw Error("PHASE2IB_FASTLANE_RAW_D1_RECEIPT_INVALID");
+ const receipt=await postPhase2iCollisionIsolated({
+  records:plan.records,controlPlaneRoot,token,fetchImpl,post,
+ });
  const {records:privateRecords,...safe}=plan;
  return {schema:"geomacro.phase2ib.fastlane-private-raw-stage.v1",
-  status:"CANONICAL_D1_EXACT_READBACK_VERIFIED",
+  status:receipt.readback_verified
+   ?(receipt.rejected_conflicts>0
+     ?"CANONICAL_D1_PARTIAL_READBACK_WITH_IMMUTABLE_CONFLICTS"
+     :"CANONICAL_D1_EXACT_READBACK_VERIFIED")
+   :"IMMUTABLE_ORIGINAL_CONFLICTS_NO_POSITIVE_D1_RECEIPT",
   ...safe,d1_inserted:receipt.stored,d1_unchanged:receipt.duplicate,
-  d1_readback_verified:true,b2_verified:false,
+  d1_rejected_conflicts:receipt.rejected_conflicts,
+  rejected_conflicts_by_category:receipt.rejected_conflicts_by_category,
+  d1_successful_readback_records:receipt.d1_successful_readback_records,
+  d1_readback_verified:receipt.readback_verified,b2_verified:false,
   event_country_verified:false,commercial_rights_verified:false,
   original_body_collected:false,payments:0,
  };
