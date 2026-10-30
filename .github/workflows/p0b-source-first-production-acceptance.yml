@@ -11,6 +11,8 @@ on:
     paths:
       - "scripts/lib/p0b-event-grounded-projection.mjs"
       - "scripts/lib/p0b-live-global-search.mjs"
+      - "scripts/lib/p0b-first-party-rss.mjs"
+      - "scripts/tests/p0b-first-party-rss.test.mjs"
       - "scripts/tests/p0b-live-global-search.test.mjs"
       - "scripts/ops/p0b-source-first-production-acceptance.mjs"
       - "scripts/ops/p0b-publish-acceptance-receipt.mjs"
@@ -22,6 +24,8 @@ on:
     paths:
       - "scripts/lib/p0b-event-grounded-projection.mjs"
       - "scripts/lib/p0b-live-global-search.mjs"
+      - "scripts/lib/p0b-first-party-rss.mjs"
+      - "scripts/tests/p0b-first-party-rss.test.mjs"
       - "scripts/tests/p0b-live-global-search.test.mjs"
       - "scripts/ops/p0b-source-first-production-acceptance.mjs"
       - "scripts/ops/p0b-publish-acceptance-receipt.mjs"
@@ -52,10 +56,11 @@ jobs:
         run: |
           node --check scripts/lib/p0b-event-grounded-projection.mjs
           node --check scripts/lib/p0b-live-global-search.mjs
+          node --check scripts/lib/p0b-first-party-rss.mjs
           node --check scripts/ops/p0b-source-first-production-acceptance.mjs
           node --check scripts/ops/p0b-publish-acceptance-receipt.mjs
           node --check workers/control-plane/src/phase2h-private-raw-news.mjs
-          node --test scripts/tests/p0b-live-global-search.test.mjs scripts/tests/p0a-evidence-quality.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs
+          node --test scripts/tests/p0b-live-global-search.test.mjs scripts/tests/p0b-first-party-rss.test.mjs scripts/tests/p0a-evidence-quality.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs
   independent-production:
     needs: source-first-contract
     if: >-

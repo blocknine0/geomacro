@@ -442,10 +442,12 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    global_provider_error_count:globalResult?.provider_errors??0,
    global_provider_diagnostics:globalResult?.provider_diagnostics??null,
    global_first_party_verified_count:globalResult?.first_party_matches?.length??0,
+   global_official_rss_verified_count:globalResult?.first_party_rss_verified_count??0,
    // Prefer a verified publisher-metadata fallback over an incomplete
    // canonical original; never force clients to select a null first result.
    question_matches:[...(globalResult?.first_party_matches??[]).map(item=>({
-    ...item,country_iso3:countryIso3,source:"GOV_UK_FIRST_PARTY_CONTENT_API",
+    ...item,country_iso3:countryIso3,source:item.first_party_feed_metadata_verified===true?
+     "FIRST_PARTY_OFFICIAL_RSS":"GOV_UK_FIRST_PARTY_CONTENT_API",
     ...phase2hPrivateResearchDirectAnswer(question,item.five_part),
    })),...matched.map(item=>{
     const missing=typeof item.analysis.what_happened?.text!=="string"||

@@ -23,6 +23,7 @@ on:
       - "scripts/lib/macro-*.mjs"
       - "scripts/lib/p0b-event-grounded-projection.mjs"
       - "scripts/lib/p0b-live-global-search.mjs"
+      - "scripts/lib/p0b-first-party-rss.mjs"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
       - ".github/workflows/deploy-d1-control-plane.yml"
@@ -59,6 +60,7 @@ on:
       - "scripts/lib/macro-*.mjs"
       - "scripts/lib/p0b-event-grounded-projection.mjs"
       - "scripts/lib/p0b-live-global-search.mjs"
+      - "scripts/lib/p0b-first-party-rss.mjs"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
       # Keep the guarded automatic deployment reachable when the recovery

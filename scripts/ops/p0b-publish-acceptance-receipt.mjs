@@ -18,7 +18,8 @@ export function formatP0BReceiptComment(raw,run){
   const x=Array.isArray(raw?.source_first_readbacks)?
    raw.source_first_readbacks.find(z=>z.category===cat):null;
   const status=STATUSES.has(x?.fallback_status)?x.fallback_status:"UNVERIFIED";
-  lines.push("- "+cat+": "+(x?.source_or_fallback_contract_verified===true?"PASS":"NOT VERIFIED")+
+  lines.push("- "+cat+": contract="+(x?.source_or_fallback_contract_verified===true?"PASS":"NOT VERIFIED")+
+   "; intelligence="+(x?.grounded_five_part_available===true?"PASS":"NOT VERIFIED")+
    "; fallback_attempted="+(x?.attempted===true)+
    "; grounded_five_part="+(x?.grounded_five_part_available===true)+
    "; first_party_count="+(Number.isInteger(x?.verified_first_party_count)?x.verified_first_party_count:0)+
