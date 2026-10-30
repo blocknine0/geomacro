@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords}
  from "../lib/phase2h-raw-original-records.mjs";
-import {validPrivateRawNews,phase2hPrivateRawPut}
+import {validPrivateRawNews,phase2hPrivateRawPut,phase2hPrivateRawGet,
+ phase2hQuestionMatchesArchived,phase2hQuestionDirectAnswer}
  from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
 import {buildPhase2hRawB2Plan,verifyPhase2hRawB2Restore,
  runPhase2hGovernedRawB2}
@@ -159,4 +160,57 @@ test("raw D1 intake HTTP readback cannot be faked with an empty payload",async()
   fetchImpl:async()=>Response.json({
     ok:true,accepted:0,unchanged:0,d1_exact_readback_verified:true}),
  }),/PHASE2H_PRIVATE_D1_READBACK_MISMATCH/u);
+});
+
+test("question matching is event-specific rather than one incidental word",()=>{
+ const rows=data().records;
+ const macro=rows.find(r=>r.category==="macro");
+ const mineral=rows.find(r=>r.category==="rare_earth");
+ assert.equal(phase2hQuestionMatchesArchived(macro,
+  "Why does monetary policy rates matter?"),true);
+ assert.equal(phase2hQuestionMatchesArchived(macro,
+  "Why does lithium policy matter?"),false);
+ assert.equal(phase2hQuestionMatchesArchived(mineral,
+  "Why does lithium policy matter?"),false);
+ assert.equal(phase2hQuestionMatchesArchived(macro,
+  "what happened?"),false);
+ const focused=phase2hQuestionDirectAnswer(
+  "Why does monetary policy matter?",macro.analysis);
+ assert.equal(focused.focus,"why_it_matters");
+ assert.equal(focused.direct_answer,macro.analysis.why_it_matters.text);
+});
+test("only B2-acknowledged records enter the protected exact-question JSON",async()=>{
+ const macro=data().records.find(r=>r.category==="macro");
+ const statement=[];
+ const db={prepare(sql){
+  statement.push(sql);
+  const rows=sql.includes("b2_object_sha256 IS NOT NULL")?
+   [{record_id:macro.record_id,category:macro.category,
+     raw_sha256:macro.raw_sha256,raw_json:JSON.stringify(macro),
+     b2_object_sha256:"a".repeat(64)}]:[];
+  return {
+   all:async()=>({results:rows}),
+   bind(){return {all:async()=>({results:rows})};},
+  };
+ }};
+ const q=new URLSearchParams({record_id:macro.record_id,
+  question:"Why does monetary policy matter?"});
+ const r=await phase2hPrivateRawGet({DB:db},q,now.getTime());
+ assert.equal(r.status,200);
+ const body=await r.json();
+ assert.equal(body.question_matches.length,1);
+ assert.equal(body.question_matches[0].record_id,macro.record_id);
+ assert.equal(body.question_matches[0].focus,"why_it_matters");
+ assert.equal(body.question_matches[0].five_part.why_it_matters.text,
+  macro.analysis.why_it_matters.text);
+ assert.equal(body.question_matches[0].archive_d1_ack_present,true);
+ assert.equal(body.chargeable,false);
+ assert.equal(body.raw_original_not_delivered,true);
+ assert.equal(JSON.stringify(body).includes(macro.original.original_url),false);
+ assert.equal(statement.length,1);
+ assert.match(statement[0],/b2_object_sha256 IS NOT NULL/u);
+ const miss=await phase2hPrivateRawGet({DB:{prepare:()=>({
+   bind:()=>({all:async()=>({results:[]})})
+ })}},q,now.getTime());
+ assert.equal((await miss.json()).question_matches.length,0);
 });
