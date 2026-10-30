@@ -11,6 +11,8 @@
 import {createHash,createHmac} from "node:crypto";
 import {unsealPrivateOsintSpool,OSINT_SPOOL_ENVELOPE}
  from "./private-osint-encrypted-spool.mjs";
+import {PRIVATE_R2_MAX_CIPHERTEXT_BYTES}
+ from "./private-osint-free-r2-guard.mjs";
 
 export const PRIVATE_OSINT_R2_PREFIX="geomacro/private-osint-held/v1";
 export const PRIVATE_OSINT_R2_RECEIPT_SCHEMA="geomacro.private-osint-r2-encrypted-escrow-receipt.v1";
@@ -88,6 +90,10 @@ export async function mirrorEncryptedOsintToPrivateR2({
     checked.shared_source_read.raw_publisher_stored!==false)
   fail("ORIGINAL_CLOCK_OR_PRIVATE_CONTRACT_INVALID");
  const bytes=Buffer.from(JSON.stringify(envelope),"utf8");
+ // A large sealed batch is retained in the original GitHub artifact instead
+ // of silently consuming optional R2 capacity beyond the free-first cap.
+ if(bytes.length>PRIVATE_R2_MAX_CIPHERTEXT_BYTES)
+  fail("FREE_TIER_CIPHERTEXT_BATCH_TOO_LARGE");
  const objectKey=privateOsintR2ObjectKey(envelope);
  const endpoint="https://"+config.account+".r2.cloudflarestorage.com";
  const put=sigV4({method:"PUT",endpoint,...config,key:objectKey,
@@ -124,6 +130,8 @@ export async function mirrorEncryptedOsintToPrivateR2({
   d1_sql_queries:0,b2_requests:0,kv_requests:0,
   public_r2_news_written:false,raw_publisher_bytes_archived:false,
   canonical_d1_status:"PENDING_QUOTA_ADMISSION",
+  free_tier_bytes_per_object_guard_verified:true,
+  account_wide_r2_usage_unknown:true,
  });
 }
 
