@@ -1,5 +1,6 @@
 import {launchPriorityWatchSources} from "./launch-priority-watch-sources.mjs";
 import {privateOsintGlobalHubSources} from "./private-osint-global-hub-overlay.mjs";
+import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 /**
  * Private-only 195-country topical discovery over one pinned public news-index
  * host. An index query is NOT an original publisher, event location, native
@@ -91,7 +92,7 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  // Overlay exact, pinned multilateral hubs by reallocating only rotating
  // Google index slots, never by increasing the existing 512 network GET cap.
  // Tiny synthetic test registries keep their original country-index behavior.
- const local=includeLocalGapLane?rotatingPrivateLocalPublisherSources(now):[];
+ const local=includeLocalGapLane?rotatingPrivateLocalPublisherSources(now).filter(s=>!isRetiredPrivateOsintSource(s)):[];
  const normalIndex=includeLocalGapLane?
   COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK:COUNTRY_DISCOVERY_PER_TICK;
  if(base.length+local.length+normalIndex>512)
