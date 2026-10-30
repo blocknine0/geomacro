@@ -95,7 +95,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   if(process.env.GITHUB_ACTIONS!=="true"||
      process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
      process.env.GITHUB_REF!=="refs/heads/main")fail("TRUSTED_MAIN_ONLY");
-  const receipt=await probeFirstQuery({expectedSha:process.env.GITHUB_SHA});
+  const receipt=await probeFirstQuery({expectedSha:process.env.EXPECTED_CANONICAL_SHA});
   mkdirSync("artifacts/commercial",{recursive:true,mode:0o700});
   writeFileSync(OUTPUT,JSON.stringify(receipt)+"\n",{mode:0o600});
   console.log(JSON.stringify(receipt));
