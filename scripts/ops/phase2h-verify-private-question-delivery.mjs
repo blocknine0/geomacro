@@ -46,49 +46,74 @@ export async function verifyPhase2hProductionQuestionChain({
    fail("PROVIDER_CANONICAL_D1_READ_FAILED");
   return body.result[0].results;
  }
- const rows=await query("SELECT record_id,raw_sha256,raw_json,b2_object_sha256,b2_archived_at FROM phase2h_private_raw_news WHERE b2_object_sha256=? ORDER BY b2_archived_at DESC,record_id LIMIT 1",
+ const rows=await query("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256,b2_archived_at FROM phase2h_private_raw_news WHERE b2_object_sha256=? ORDER BY record_id LIMIT 301",
   [receipt.object_sha256]);
- if(rows.length!==1||!HEX.test(rows[0].record_id)||
-   rows[0].b2_object_sha256!==receipt.object_sha256||
-   !HEX.test(rows[0].raw_sha256)||!rows[0].b2_archived_at)
-  fail("B2_OBJECT_D1_ID_NOT_ACKNOWLEDGED");
- const row=JSON.parse(rows[0].raw_json);
- if(row.record_id!==rows[0].record_id||row.raw_sha256!==rows[0].raw_sha256)
-  fail("CANONICAL_D1_IMMUTABLE_ID_MISMATCH");
- await validPrivateRawNews(row,now,false);
- // An ID-specific question never requires a second upstream fetch.
+ if(rows.length!==receipt.rows_archived||rows.length>300)
+  fail("B2_BATCH_D1_ID_CENSUS_INCOMPLETE");
+ const categories=["geopolitics","macro","rare_earth"];
+ const counts=Object.fromEntries(categories.map(c=>[c,0]));
+ const originals=[],seen=new Set();
+ for(const record of rows){
+  if(!HEX.test(record.record_id)||seen.has(record.record_id)||
+    record.b2_object_sha256!==receipt.object_sha256||
+    !HEX.test(record.raw_sha256)||!record.b2_archived_at)
+   fail("B2_OBJECT_D1_ID_NOT_ACKNOWLEDGED");
+  seen.add(record.record_id);
+  const row=JSON.parse(record.raw_json);
+  if(row.record_id!==record.record_id||row.raw_sha256!==record.raw_sha256||
+    !categories.includes(row.category)||row.category!==record.category)
+   fail("CANONICAL_D1_IMMUTABLE_ID_MISMATCH");
+  await validPrivateRawNews(row,now,false);
+  if(typeof row.analysis?.what_happened?.text!=="string"||
+     !row.analysis.what_happened.text.trim()||
+     typeof row.analysis?.why_it_matters?.text!=="string"||
+     !row.analysis.why_it_matters.text.trim())
+   fail("PER_NEWS_FIVE_PART_ANALYSIS_MISSING");
+  counts[row.category]++;
+  originals.push(row);
+ }
+ if(categories.some(category=>counts[category]!==receipt.category_counts?.[category]))
+  fail("B2_BATCH_CATEGORY_COUNTS_DIVERGED");
+ // Three bounded authenticated requests, one from each actually present
+ // domain. Every archived record was already validated above against B2/D1.
  const question="Why does this specific news matter?";
- const url=ORIGIN+"/v1/internal/phase2h-raw-news?"+
-  new URLSearchParams({record_id:row.record_id,question}).toString();
  const controlToken=createHmac("sha256",env.GEOMACRO_COMMERCE_LEDGER_TOKEN)
   .update("geomacro-control-plane-v1").digest("hex");
- const response=await fetchImpl(url,{method:"GET",redirect:"error",
-  cache:"no-store",headers:{Authorization:"Bearer "+controlToken,
-   Accept:"application/json","Cache-Control":"no-store"},
-  signal:AbortSignal.timeout(15000)});
- if(response.status!==200||response.redirected)fail("DEPLOYED_PRIVATE_HTTP_UNAVAILABLE");
- const reply=await response.json();
- if(reply?.ok!==true||reply.schema!=="geomacro.phase2h.private-question-fivepart.v1"||
-   reply.source!=="B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1"||
-   reply.chargeable!==false||reply.paid_eligible!==false||
-   reply.raw_original_not_delivered!==true||
-   !Array.isArray(reply.question_matches)||reply.question_matches.length!==1)
-  fail("EXACT_QUESTION_CONTRACT_INVALID");
- const answer=reply.question_matches[0];
- if(answer.record_id!==row.record_id||answer.category!==row.category||
-   answer.original_published_at!==row.original.original_published_at||
-   answer.archive_d1_ack_present!==true||
-   answer.focus!=="why_it_matters"||
-   answer.direct_answer!==row.analysis.why_it_matters.text||
-   JSON.stringify(answer.five_part)!==JSON.stringify(row.analysis)||
-   !answer.five_part?.what_happened?.text||
-   !answer.five_part?.why_it_matters?.text)
-  fail("EXACT_QUESTION_FIVE_PART_NOT_MATCHED");
- const raw=JSON.stringify(reply);
- if(raw.includes(row.original.original_url)||
-   raw.includes(row.original.original_title)||
-   raw.includes(row.original.original_source_id))
-  fail("PRIVATE_ORIGINAL_EXPOSED_IN_QUESTION_JSON");
+ let questionReadbacks=0;
+ for(const category of categories){
+  const row=originals.find(x=>x.category===category);
+  if(!row)continue;
+  const url=ORIGIN+"/v1/internal/phase2h-raw-news?"+
+   new URLSearchParams({record_id:row.record_id,question}).toString();
+  const response=await fetchImpl(url,{method:"GET",redirect:"error",
+   cache:"no-store",headers:{Authorization:"Bearer "+controlToken,
+    Accept:"application/json","Cache-Control":"no-store"},
+   signal:AbortSignal.timeout(15000)});
+  if(response.status!==200||response.redirected)fail("DEPLOYED_PRIVATE_HTTP_UNAVAILABLE");
+  const reply=await response.json();
+  if(reply?.ok!==true||reply.schema!=="geomacro.phase2h.private-question-fivepart.v1"||
+    reply.source!=="B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1"||
+    reply.chargeable!==false||reply.paid_eligible!==false||
+    reply.raw_original_not_delivered!==true||
+    !Array.isArray(reply.question_matches)||reply.question_matches.length!==1)
+   fail("EXACT_QUESTION_CONTRACT_INVALID");
+  const answer=reply.question_matches[0];
+  if(answer.record_id!==row.record_id||answer.category!==row.category||
+    answer.original_published_at!==row.original.original_published_at||
+    answer.archive_d1_ack_present!==true||
+    answer.focus!=="why_it_matters"||
+    answer.direct_answer!==row.analysis.why_it_matters.text||
+    JSON.stringify(answer.five_part)!==JSON.stringify(row.analysis))
+   fail("EXACT_QUESTION_FIVE_PART_NOT_MATCHED");
+  const publicShape=JSON.stringify(reply);
+  if(publicShape.includes(row.original.original_url)||
+     publicShape.includes(row.original.original_title)||
+     publicShape.includes(row.original.original_source_id))
+   fail("PRIVATE_ORIGINAL_EXPOSED_IN_QUESTION_JSON");
+  questionReadbacks++;
+ }
+ if(questionReadbacks!==categories.filter(c=>counts[c]>0).length)
+  fail("THREE_CATEGORY_QUESTION_READBACK_INCOMPLETE");
  const pending=await query("SELECT EXISTS(SELECT 1 FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL LIMIT 1) AS has_pending");
  if(pending.length!==1||![0,1].includes(Number(pending[0].has_pending)))
   fail("ARCHIVE_BACKLOG_NOT_VERIFIABLE");
@@ -98,6 +123,9 @@ export async function verifyPhase2hProductionQuestionChain({
   b2_two_get_verified_in_preceding_step:true,
   original_native_clock_preserved:true,
   per_record_five_part_exact:true,
+  verified_b2_batch_rows:originals.length,
+  verified_category_counts:counts,
+  production_question_readback_categories:questionReadbacks,
   deployed_authenticated_http_200:true,
   raw_source_not_delivered:true,
   unarchived_backlog_present:Boolean(Number(pending[0].has_pending)),
