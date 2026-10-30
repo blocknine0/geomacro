@@ -36,6 +36,35 @@ export const GEOMACRO_ACCESS_TIERS = {
       risk_gate: false,
     },
   },
+  starter_dev: {
+    id: "starter_dev", label: "Starter / Dev",
+    credits_per_30_days: 1_000, pricing_reference: "USD 9 / 30 days",
+    access_mode: "subscription_api",
+    structured_data: {api_access: true, raw_data_access: false, governed_structured_data_only: true,
+      signed_risk_objects: false, risk_gate: false, execution_authorized: false},
+  },
+  pro_analyst: {
+    id: "pro_analyst", label: "Pro Analyst",
+    credits_per_30_days: 5_000, pricing_reference: "USD 29 / 30 days",
+    access_mode: "subscription_api",
+    structured_data: {api_access: true, raw_data_access: false, governed_structured_data_only: true,
+      signed_risk_objects: false, risk_gate: false, execution_authorized: false,
+      critical_minerals_alerts: "activation_pending"},
+  },
+  business_pilot: {
+    id: "business_pilot", label: "Business Pilot",
+    credits_per_30_days: 25_000, pricing_reference: "USD 99 / 30 days",
+    access_mode: "subscription_api",
+    structured_data: {api_access: true, raw_data_access: false, governed_structured_data_only: true,
+      signed_risk_objects: true, risk_gate: true, execution_authorized: false},
+  },
+  prepaid_credits: {
+    id: "prepaid_credits", label: "One-time Credit Pack",
+    credits_per_30_days: 0, pricing_reference: "USD 5/100; USD 15/500; USD 30/1500; non-recurring",
+    access_mode: "prepaid_credits_api",
+    structured_data: {api_access: true, raw_data_access: false, governed_structured_data_only: true,
+      signed_risk_objects: false, risk_gate: false, execution_authorized: false},
+  },
   testnet_tester: {
     id: "testnet_tester",
     label: "Testnet USDC Tester Pass",
@@ -70,7 +99,7 @@ export const GEOMACRO_ACCESS_TIERS = {
     id: "analyst_pilot",
     label: "Founding Analyst Pilot",
     credits_per_30_days: 5_000,
-    pricing_reference: "USD 1,500 / 30 days default founding quote",
+    pricing_reference: "Legacy entitlement only — retired for new sales",
     access_mode: "paid_dashboard",
     structured_data: {
       api_access: false,
@@ -91,7 +120,7 @@ export const GEOMACRO_ACCESS_TIERS = {
     id: "api_pilot",
     label: "Founding API + Risk Gate Pilot",
     credits_per_30_days: 20_000,
-    pricing_reference: "USD 2,500 / 30 days default founding quote",
+    pricing_reference: "Legacy entitlement only — retired for new sales",
     access_mode: "paid_api_and_agent",
     structured_data: {
       api_access: true,
@@ -113,7 +142,7 @@ export const GEOMACRO_ACCESS_TIERS = {
     id: "institutional",
     label: "Institutional",
     credits_per_month_starting_pool: 100_000,
-    pricing_reference: "contracted; current annual discussion anchor starts around USD 24k-36k",
+    pricing_reference: "Legacy contracted entitlement only — not offered to new buyers",
     access_mode: "contracted_enterprise",
     structured_data: {
       api_access: true,
