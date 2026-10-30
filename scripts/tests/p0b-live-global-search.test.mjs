@@ -66,7 +66,7 @@ test("real upstream failures expose bounded statuses, not publisher URLs or resp
   category:"geopolitics",now,fetchImpl
  });
  assert.equal(result.first_party_matches.length,0);
- assert.deepEqual(result.provider_diagnostics,{govuk:"HTTP_403",gdelt:"HTTP_429"});
+ assert.deepEqual(result.provider_diagnostics,{govuk:"HTTP_403",gdelt:"HTTP_429",rss:"FEED_UNAVAILABLE"});
  assert.equal(result.provider_errors,2);
  assert.equal(result.status,"GLOBAL_PROVIDER_UNAVAILABLE");
  assert.doesNotMatch(JSON.stringify(result),/untrusted upstream content|https?:\/\//u);
@@ -85,7 +85,7 @@ test("Workers-compatible manual redirects preserve fail-closed 3xx source policy
   category:"geopolitics",now,fetchImpl
  });
  assert.deepEqual(seen,["manual","manual","manual"]);
- assert.deepEqual(r.provider_diagnostics,{govuk:"REDIRECT_DENIED",gdelt:"REDIRECT_DENIED"});
+ assert.deepEqual(r.provider_diagnostics,{govuk:"REDIRECT_DENIED",gdelt:"REDIRECT_DENIED",rss:"FEED_UNAVAILABLE"});
  assert.equal(r.status,"GLOBAL_PROVIDER_UNAVAILABLE");
  assert.equal(r.first_party_matches.length,0);
  assert.doesNotMatch(JSON.stringify(r),/redirect body must never become evidence/u);
