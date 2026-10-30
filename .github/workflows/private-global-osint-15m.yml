@@ -405,6 +405,8 @@ jobs:
 
   collect-source-intake-only:
     name: Governed source-only original news to canonical D1 when full publication is paced
+    # One private micro-bundle per scheduled 15-minute slot only.
+    # Push/dispatch/wakeups do not create extra Free D1 write slots.
     # Serialize D1 source writes with the five-minute fastlane; never
     # oversubscribe the same non-atomic Cloudflare Free budget in parallel.
     concurrency:
@@ -417,9 +419,6 @@ jobs:
       needs.quota-admission.outputs.source_intake == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      # One admitted private micro-bundle per existing :00/:15/:30/:45 tick.
-      # Push/dispatch and D1 deploy wakeups cannot spend extra daily source
-      # budgets outside the 96 planned source-only slots.
       github.event_name == 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
