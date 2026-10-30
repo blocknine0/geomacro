@@ -166,7 +166,7 @@ const QUESTION_STOP=new Set(["what","why","when","where","which","who","how",
 export function phase2hQuestionMatchesArchived(item,question){
  if(typeof question!=="string"||!item?.analysis||!item?.original)return false;
  const terms=[...new Set((question.normalize("NFKC").toLowerCase()
-   .match(/[\\p{L}\\p{N}]{3,}/gu)??[]).filter(x=>!QUESTION_STOP.has(x)))].slice(0,12);
+   .match(/[\p{L}\p{N}]{3,}/gu)??[]).filter(x=>!QUESTION_STOP.has(x)))].slice(0,12);
  if(!terms.length)return false;
  const scope=[item.category,item.original.original_title,
    item.analysis.what_happened?.text,item.analysis.why_it_matters?.text,
@@ -176,11 +176,11 @@ export function phase2hQuestionMatchesArchived(item,question){
 }
 export function phase2hQuestionDirectAnswer(question,analysis){
  const q=String(question??"").toLowerCase();
- const focus=/\\b(?:what next|follow.?up|watch next|upcoming)\\b|পরবর্তী|আগামী|अगला/u.test(q)
+ const focus=/\b(?:what next|follow.?up|watch next|upcoming)\b|পরবর্তী|আগামী|अगला/u.test(q)
   ?"what_to_watch":
-  /\\b(?:market|trading|trader|fx|commodity|commodities|bonds?)\\b|বাজার|मार्केट/u.test(q)
+  /\b(?:market|trading|trader|fx|commodity|commodities|bonds?)\b|বাজার|मार्केट/u.test(q)
   ?"market_relevance":
-  /\\b(?:why|impact|matter|affect|consequence)\\b|কেন|প্রভাব|क्यों/u.test(q)
+  /\b(?:why|impact|matter|affect|consequence)\b|কেন|প্রভাব|क्यों/u.test(q)
   ?"why_it_matters":"what_happened";
  const selected=analysis?.[focus];
  return {focus,direct_answer:typeof selected?.text==="string"?selected.text:
