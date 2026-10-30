@@ -325,13 +325,13 @@ test("governor-held archive never receives a false full-chain PASS",async()=>{
   verify:()=>{throw Error("SHOULD_NOT_VERIFY")}}),
   /PHASE2H_PERMANENT_B2_ARCHIVE_HELD_OR_FAILED/u);
 });
-test("unguarded push cannot use B2 slot bootstrap",async()=>{
+test("even trusted main-push B2 bootstrap cannot bypass six-hour maintenance slot",async()=>{
  const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
   GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
   B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
   B2_REQUEST_BUDGET:"12",PHASE2H_BOOTSTRAP_ON_MAIN_PUSH:"1",
   GITHUB_EVENT_NAME:"push",
-  GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/other.yml@refs/heads/main"};
+  GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main"};
  const r=await runPhase2hGovernedRawB2({env,now:new Date("2026-10-30T08:25:00Z"),
   b2Factory:()=>{throw Error("UNSAFE_B2")},
   governorFactory:()=>{throw Error("UNSAFE_GOVERNOR")}});
