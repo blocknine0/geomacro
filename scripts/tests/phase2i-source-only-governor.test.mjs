@@ -13,13 +13,14 @@ test("provider reports source_intake separately from critical D1 publication adm
  assert.match(full,/needs\.quota-admission\.outputs\.critical == 'true'/u);
  assert.match(full,/needs\.quota-admission\.outputs\.research == 'true'/u);
  assert.match(full,/needs\.quota-admission\.outputs\.source_intake == 'true'/u);
+ assert.match(full,/github\.event_name == 'workflow_dispatch'/u);
 });
 test("critical-pacing hold with source approval does not become a full publisher or an encrypted D1-held clone",()=>{
  const lane=workflow.slice(workflow.indexOf("  collect-source-intake-only:"),
   workflow.indexOf("  stage-private-sources-when-d1-held:"));
  const held=workflow.slice(workflow.indexOf("  stage-private-sources-when-d1-held:"),
   workflow.indexOf("  collect-unverified-private:"));
- assert.match(lane,/needs\.quota-admission\.outputs\.research != 'true'/u);
+ assert.doesNotMatch(lane,/needs\.quota-admission\.outputs\.research != 'true'/u);
  assert.match(lane,/needs\.quota-admission\.outputs\.source_intake == 'true'/u);
  assert.match(lane,/needs\.quota-admission\.result == 'success'/u);
  assert.match(lane,/github\.ref == 'refs\/heads\/main'/u);
@@ -27,6 +28,7 @@ test("critical-pacing hold with source approval does not become a full publisher
  assert.match(lane,/environment: production/u);
  assert.match(lane,/PHASE2I_PROVIDER_SOURCE_INTAKE:/u);
  assert.match(lane,/PHASE2I_PROVIDER_RESEARCH:/u);
+ assert.match(lane,/needs\.quota-admission\.outputs\.source_intake == 'true'/u);
  assert.match(lane,/PHASE2I_PROVIDER_MAX_NEW_ROWS:/u);
  assert.match(lane,/GEOMACRO_SOURCE_INTAKE_ONLY: "1"/u);
  assert.match(lane,/bun scripts\/ops\/phase2i-source-only-raw-tick\.ts/u);
