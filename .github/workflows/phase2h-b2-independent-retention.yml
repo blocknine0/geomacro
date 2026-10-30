@@ -1,0 +1,84 @@
+name: Phase 2H Independent Private B2 Version and 72h Lifecycle Proof
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/phase2h-b2-independent-retention.yml'
+      - 'scripts/ops/phase2h-independent-b2-version-census.mjs'
+      - 'scripts/tests/phase2h-independent-b2-version-census.test.mjs'
+  workflow_dispatch: {}
+  schedule:
+    - cron: '47 2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-phase2h-private-b2-retention-independent
+  cancel-in-progress: false
+
+jobs:
+  offline-verification:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Refuse synthetic deletion or unscoped B2 access claims
+        run: |
+          node --check scripts/ops/phase2h-independent-b2-version-census.mjs
+          node --test scripts/tests/phase2h-independent-b2-version-census.test.mjs
+  provider-version-census:
+    needs: offline-verification
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    environment: production
+    env:
+      GITHUB_ACTIONS: 'true'
+      B2_ACCOUNT_QUOTA_REQUIRED: '1'
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: phase2h_b2_retention
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Resolve exact canonical control-plane D1; no PREDGE/historical access
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {appendFileSync} from 'node:fs';
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!/^[a-f0-9]{32}$/.test(account??'')||(token??'').length<20)
+            throw Error('PHASE2H_B2_PROVIDER_D1_CREDENTIALS_MISSING');
+          const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database?per_page=100',{
+            headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)});
+          const j=await r.json();
+          const row=j?.result?.filter(x=>x.name==='geomacro-control-plane')??[];
+          if(!r.ok||j.success!==true||row.length!==1||
+             !/^[a-f0-9-]{36}$/i.test(row[0]?.uuid??''))
+            throw Error('PHASE2H_B2_CANONICAL_D1_NOT_VERIFIED');
+          appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+row[0].uuid+'\n');
+          NODE
+      - name: Independently read scoped B2 lifecycle and complete version inventory
+        run: node scripts/ops/phase2h-independent-b2-version-census.mjs
+      - name: Preserve redacted version census, including overdue evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: phase2h-private-b2-version-retention-${{ github.run_id }}
+          path: artifacts/phase2h/independent-b2-versions.json
+          retention-days: 30
+          if-no-files-found: warn
