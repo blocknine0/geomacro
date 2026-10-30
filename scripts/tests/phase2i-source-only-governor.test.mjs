@@ -11,28 +11,31 @@ test("provider reports source_intake separately from critical D1 publication adm
  const full=workflow.slice(workflow.indexOf("  collect-private:"),
   workflow.indexOf("  collect-source-intake-only:"));
  assert.match(full,/needs\.quota-admission\.outputs\.critical == 'true'/u);
- assert.doesNotMatch(full,/source_intake == 'true'/u);
+ assert.match(full,/needs\.quota-admission\.outputs\.research == 'true'/u);
+ assert.match(full,/needs\.quota-admission\.outputs\.source_intake == 'true'/u);
 });
 test("critical-pacing hold with source approval does not become a full publisher or an encrypted D1-held clone",()=>{
  const lane=workflow.slice(workflow.indexOf("  collect-source-intake-only:"),
   workflow.indexOf("  stage-private-sources-when-d1-held:"));
  const held=workflow.slice(workflow.indexOf("  stage-private-sources-when-d1-held:"),
   workflow.indexOf("  collect-unverified-private:"));
- assert.match(lane,/needs\.quota-admission\.outputs\.critical != 'true'/u);
+ assert.match(lane,/needs\.quota-admission\.outputs\.research != 'true'/u);
  assert.match(lane,/needs\.quota-admission\.outputs\.source_intake == 'true'/u);
  assert.match(lane,/needs\.quota-admission\.result == 'success'/u);
  assert.match(lane,/github\.ref == 'refs\/heads\/main'/u);
  assert.match(lane,/environment: production/u);
  assert.match(lane,/PHASE2I_PROVIDER_SOURCE_INTAKE:/u);
+ assert.match(lane,/PHASE2I_PROVIDER_RESEARCH:/u);
  assert.match(lane,/PHASE2I_PROVIDER_MAX_NEW_ROWS:/u);
  assert.match(lane,/GEOMACRO_SOURCE_INTAKE_ONLY: "1"/u);
  assert.match(lane,/bun scripts\/ops\/phase2i-source-only-raw-tick\.ts/u);
- assert.match(held,/needs\.quota-admission\.outputs\.critical != 'true'/u);
+ assert.doesNotMatch(held,/needs\.quota-admission\.outputs\.critical != 'true'/u);
  assert.match(held,/needs\.quota-admission\.outputs\.source_intake != 'true'/u);
 });
 test("source-only job strictly uses the existing provider budget and D1 intake without altering PREDGE or paid rights",()=>{
  for(const marker of ["GITHUB_ACTIONS","GITHUB_REPOSITORY","GITHUB_REF",
   "PHASE2I_PROVIDER_SOURCE_INTAKE","PHASE2I_PROVIDER_CRITICAL",
+  "PHASE2I_PROVIDER_RESEARCH",
   "PHASE2I_PROVIDER_MAX_NEW_ROWS","GEOMACRO_SOURCE_INTAKE_ONLY"])
   assert.ok(sourceOnly.includes(marker),marker);
  assert.match(sourceOnly,/maxRows:admittedRows/u);
