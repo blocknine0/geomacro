@@ -20,7 +20,15 @@ describe("permanent public Finds archive deployment", () => {
       "scripts/lib/verify-public-static-archive-readback.mjs",
       "utf8",
     );
-    expect(workflow).toContain("verifyPublicStaticArchiveReadback");
+    // The deployment must verify a single coherent asset cohort; a bare
+    // per-file readback cannot protect against mixed Cloudflare versions.
+    expect(workflow).toContain("verifyConvergedPublicStaticArchiveReadback");
+    const wrangler = readFileSync("workers/public-finds-archive/wrangler.jsonc","utf8");
+    expect(wrangler).toContain('"/latest.json", "/coverage-72h.json"');
+    expect(wrangler).not.toContain('"/website-intelligence-predge-72h.json"');
+    const guarded = readFileSync("workers/public-finds-archive/src/index.mjs","utf8");
+    expect(guarded).toContain("PUBLIC_ARCHIVE_COHORT_UNVERIFIED");
+    expect(guarded).toContain("checkPublicStaticCohort");
     expect(verifier).toContain("public_index_readback_verified:true");
     expect(verifier).toContain("public_latest_readback_verified:true");
     expect(verifier).toContain("full_72h_eligible_ids_hash_verified:true");
