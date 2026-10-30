@@ -4,7 +4,8 @@
  * cards, persist the broad OSINT health ring, use B2, sign, settle or touch
  * PREDGE. Used only when critical/research publication is held but the
  * independent source_intake lane has positive provider approval. The actual
- * Free minimum lane may run during CRITICAL_ONLY (critical=true, research=false):
+ * Free minimum lane may run during any permitted source-intake tier, including
+ * CRITICAL_ONLY (critical=true, research=false):
  * no full OSINT health ring, speculative research, signing or public output.
  */
 import {createHmac} from "node:crypto";
@@ -26,7 +27,7 @@ if(env.GITHUB_ACTIONS!=="true"||
  env.GEOMACRO_SOURCE_INTAKE_ONLY!=="1"||
  env.PHASE2I_PROVIDER_SOURCE_INTAKE!=="true"||
  !["true","false"].includes(env.PHASE2I_PROVIDER_CRITICAL??"")||
- env.PHASE2I_PROVIDER_RESEARCH!=="false"||
+ !["true","false"].includes(env.PHASE2I_PROVIDER_RESEARCH??"")||
  ![3,5,10,25,50].includes(Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS)))
  throw Error("PHASE2I_SOURCE_ONLY_PROVIDER_ADMISSION_REQUIRED");
 // Spend no more than the live provider admission. Five is the existing
