@@ -180,9 +180,10 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
    reason_code:reason,rights_verified:false,payments:0},503);
  }
 }
-// Only a B2-acknowledged original can enter question-bound delivery. D1 staging
-// alone is not durable archive proof. This is an authenticated internal path;
-// unlicensed originals and source identity never become a customer response.
+// B2-acknowledged originals remain mandatory for legacy archived-only lookup.
+// An explicit canonical country/category can additionally project D1-staged
+// originals for authenticated PRIVATE RESEARCH ONLY, never paid/archive proof.
+// Unlicensed originals and source identity never become a customer response.
 const QUESTION_STOP=new Set(["what","why","when","where","which","who","how",
  "does","did","do","is","are","the","a","an","to","of","for","with","in",
  "on","this","that","about","matter","matters","affect","impact","impacts",
