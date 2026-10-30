@@ -21,9 +21,9 @@ describe("no-charge v1 integration preserves canonical x402 safety",()=>{
   const catalog=readFileSync("src/lib/capability-pricing-catalog.ts","utf8");
   expect(route).toContain("resolveEligibleCoinbaseCapabilityConfig");
   expect(catalog).toContain('structural_country_digest:{standard:"0.02"}');
-  expect(catalog).toContain('structural_corridor_digest:{standard:"0.05"}');
+  expect(catalog).toContain('structural_corridor_digest:{standard:"0.03"}');
   expect(catalog).toContain('structural_country_profile:{standard:"0.03"}');
-  expect(catalog).toContain('structural_corridor_profile:{standard:"0.08"}');
-  expect(catalog).toContain('focused:"0.05",standard:"0.10",complex_multi_source:"0.15"');
+  expect(catalog).toContain('structural_corridor_profile:{standard:"0.05"}');
+  expect(catalog).toContain('focused:"0.02",standard:"0.03",complex_multi_source:"0.05"');
  });
 });
