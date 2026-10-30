@@ -88,7 +88,10 @@ test("protected archived news returns only same-country, same-category, question
  assert.equal(body.question_matches[0].country_iso3,"IND");
  assert.deepEqual(Object.keys(body.question_matches[0].five_part),
   ["schema","what_happened","why_it_matters","market_relevance","what_to_watch","evidence_and_confidence"]);
- assert.equal(JSON.stringify(body).includes("https://official.example.org"),false);
+ assert.equal(Object.hasOwn(body.question_matches[0],"original_url"),false);
+ assert.equal(Object.hasOwn(body.question_matches[0],"article_url"),false);
+ assert.equal(Object.hasOwn(body.question_matches[0],"original"),false);
+ assert.equal(Object.hasOwn(body.question_matches[0],"source_credit"),false);
  assert.equal(statements.length,1);
  assert.doesNotMatch(statements[0].sql,/b2_object_sha256 IS NOT NULL/u);
  assert.equal(body.d1_staged_unarchived_research_allowed,true);
