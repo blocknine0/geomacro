@@ -86,16 +86,14 @@ test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exac
   governorFactory:()=>({status:async()=>({ok:true,
     used:{total:3,GET:2,PUT:1,NATIVE_AUTH:0},
     limits:{total:100,GET:100,PUT:100,NATIVE_AUTH:100}})}),
-  fetchImpl:async(url,opt)=>{
-   if(opt.method==="GET"){
-    postRead++;
-    return Response.json({ok:true,schema:"geomacro.phase2h.private-pending-archive.v1",rows:items});
+  d1Factory:()=>({
+   async readPending(){postRead++;return items;},
+   async markArchived(rows,objectSha){
+    marked++;assert.equal(rows.length,3);
+    assert.match(objectSha,/^[a-f0-9]{64}$/u);
+    return {archived:3,independent_d1_archive_ack_verified:true};
    }
-   marked++;
-   assert.equal(opt.method,"PUT");
-   assert.equal(JSON.parse(opt.body).items.length,3);
-   return Response.json({ok:true,archived:3,independent_d1_archive_ack_verified:true});
-  },
+  }),
   b2Factory:()=>({
    async putWithMetadataVerification(key,bytes,{verifyRestored}){
     put++;first++;
@@ -139,7 +137,7 @@ test("governor headroom hold never calls B2 or protected D1",async()=>{
    used:{total:99,GET:90,PUT:90,NATIVE_AUTH:90},
    limits:{total:100,GET:100,PUT:100,NATIVE_AUTH:100}})}),
   b2Factory:()=>{throw Error("B2_FORBIDDEN")},
-  fetchImpl:()=>{throw Error("D1_PRIVATE_FORBIDDEN")},
+  d1Factory:()=>{throw Error("D1_PRIVATE_FORBIDDEN")},
  });
  assert.equal(r.status,"B2_ACCOUNT_HEADROOM_HELD");
  assert.equal(r.object_sha256,null);
