@@ -8,9 +8,9 @@ export const FIRST_SALE_VARIANT="standard";
 export const FIRST_SALE_LOCKED_USDC="0.02";
 export const FIRST_SALE_LOCKED_ATOMIC="20000";
 export function verifyFirstSalePriceManifest(manifest){
- if(manifest?.schema!=="geomacro.public-capability-price-catalog.v1"||
-    manifest?.pricing_version!=="geomacro.capability-usdc.v1"||
-    manifest?.pricing_status!=="FOUNDER_LOCKED_APPROVED_SCHEDULE"||
+ if(manifest?.schema!=="geomacro.public-launch-pricing-catalog.v2"||
+    manifest?.pricing_version!=="geomacro.capability-usdc.v2"||
+    manifest?.pricing_status!=="FOUNDER_APPROVED_LOW_BARRIER_PRECHECKOUT"||
     manifest?.payment_authorized!==false||
     manifest?.money_transferred!==false||
     manifest?.x402_payment_requirement_issued!==false||
