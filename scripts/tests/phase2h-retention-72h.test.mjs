@@ -77,6 +77,7 @@ test("deletion run fails closed without provider admission and never changes PRE
 });
 const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
  GITHUB_REF:"refs/heads/main",PHASE2H_PROVIDER_RETENTION_CLEANUP:"true",
+ PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:"1000",
  CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
  D1_DATABASE_ID:"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
  CLOUDFLARE_API_TOKEN:"mock-test-token-"+("t".repeat(30))};
@@ -163,4 +164,25 @@ test("quota admission is mandatory even when cleanup is required",async()=>{
  await assert.rejects(()=>cleanupPhase2hD1({env:{...env,
   PHASE2H_PROVIDER_RETENTION_CLEANUP:"false"},now,fetchImpl:db.fetchImpl}),
   /PROTECTED_PROVIDER_ADMISSION_REQUIRED/u);
+});
+
+test("cleanup cannot exceed provider grant or borrow critical capacity",async()=>{
+ const db=mockD1(Array.from({length:23},(_,i)=>({
+  record_id:i.toString(16).padStart(64,"0"),
+  first_ingested_at:clock(75),b2_object_sha256:"f".repeat(64)
+ })));
+ const r=await cleanupPhase2hD1({env:{...env,PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:"7"},
+  now,fetchImpl:db.fetchImpl});
+ assert.equal(r.deleted_records,7);
+ assert.equal(r.remaining_older_than_72h,16);
+ assert.equal(r.maximum_deletions_per_hour,7);
+ assert.equal(r.production_acceptance_pass,false);
+ for(const override of [
+  {PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:"1001"},
+  {PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:"0"},
+  {PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:""},
+  {PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:undefined},
+  {PHASE2H_PROVIDER_RETENTION_CLEANUP:"false",PHASE2H_PROVIDER_CRITICAL:"true"},
+ ])await assert.rejects(()=>cleanupPhase2hD1({env:{...env,...override},now,
+   fetchImpl:db.fetchImpl}),/PROTECTED_PROVIDER_ADMISSION_REQUIRED/u);
 });
