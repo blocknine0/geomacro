@@ -156,7 +156,7 @@ export async function archiveDerivedJournalToB2({
  // Independent post-archive canonical D1 GET. Never infer source equality
  // from the initial snapshot or first/second B2 bytes alone. One additional
  // bounded 600-row query is allowed ONLY after protected maintenance admission.
- const current=await readExactCurrentDerivedJournal({fetchImpl,now:new Date()});
+ const current=await readExactCurrentDerivedJournal({fetchImpl,now});
  const exact=rows=>JSON.stringify([...rows].sort((a,b)=>a.id.localeCompare(b.id)));
  if(exact(current)!==exact(rows))
    fail("D1_SOURCE_CHANGED_DURING_ARCHIVE");
