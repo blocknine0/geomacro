@@ -6,6 +6,7 @@ import {privateWebsiteRetentionPriority,privateWebsiteRetentionNewestFirst} from
 import {verifyDerivedStory} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {collectCriticalMineralsFastlane} from "../lib/critical-minerals-fastlane.mjs";
 import {collectMacroFastlane} from "../lib/macro-fastlane-collector.mjs";
+import {stagePhase2iFastlanePrivateOriginals} from "../lib/phase2ib-fastlane-private-staging.mjs";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model";
 /**
  * 5-minute BEST EFFORT news latency fastlane, exactly one existing first-party
@@ -94,6 +95,27 @@ for(const category of ["macro","rare_earth"] as const){
  if(report)report.signals=[...new Map([...report.signals,...mineral.signals.filter(s=>s.category===category)].map(s=>[s.id,s])).values()].sort((a,b)=>b.published_at.localeCompare(a.published_at)).slice(0,60);
 }
 console.log(JSON.stringify(mineral.receipt));
+// Phase 2I-B: original source candidates were previously kept only in memory.
+// Reuse the existing protected Phase 2H endpoint, never B2 or a new pipeline.
+// Share precisely the current admission's bounded source-intake row budget.
+let rawStageNeedsRetry=false;
+try{
+ const privateStage=await stagePhase2iFastlanePrivateOriginals({
+  candidates:privateOriginals,now:new Date(runAt),derive:deriveStatelessSignals,
+  maxRows:intakeMaxRows,intervalMinutes:intakeInterval,
+  controlPlaneRoot:controlPlaneOrigin,token,fetchImpl:globalThis.fetch,
+ });
+ rawStageNeedsRetry=(privateStage.deferred_count??0)>0;
+ console.log(JSON.stringify(privateStage));
+}catch(error){
+ // The existing derived-news/partner flow remains independent. Never assert
+ // raw D1 success; force the next legitimate source tick to retry old ETags.
+ rawStageNeedsRetry=true;
+ const reason=error instanceof Error&&
+  /^PHASE2(?:H_PRIVATE|IB_FASTLANE)_[A-Z_]{3,90}$/u.test(error.message)
+   ?error.message:"PHASE2IB_FASTLANE_PRIVATE_RAW_UNVERIFIED";
+ console.error("::error::"+reason);
+}
 let journalVerified=true;
 let failure=false,allPublished:StatelessIntelligenceSignal[]=[];
 const pending:StatelessIntelligenceSignal[]=[];
@@ -209,7 +231,7 @@ if(allPublished.length){
 // lease only after journal publication/readback succeeds. A failed run never
 // loses candidates behind a persisted ETag or renews the minute poller.
 if(journalVerified){
- if(pending.length>publishPending.length){
+ if(pending.length>publishPending.length||rawStageNeedsRetry){
   // A smaller budget must not acknowledge unseen releases behind an ETag.
   // Retry the same bounded feeds next due poll; keep denied-source cooldowns.
   for(const cursor of Object.values(macro.state.cursors) as {etag:string|null}[])cursor.etag=null;

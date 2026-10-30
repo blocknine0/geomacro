@@ -45,6 +45,8 @@ on:
       - "scripts/tests/actor-action-news.test.mjs"
       - ".github/workflows/five-minute-original-news-fastlane.yml"
       - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
+      - "scripts/lib/phase2ib-fastlane-private-staging.mjs"
+      - "scripts/tests/phase2ib-fastlane-private-staging.test.mjs"
       - "scripts/ops/publish-public-news-r2-snapshot.mjs"
       - "scripts/tests/public-news-r2-offload.test.mjs"
       - "scripts/lib/derived-news-readback-policy.mjs"
@@ -115,6 +117,8 @@ on:
       - "scripts/tests/actor-action-news.test.mjs"
       - ".github/workflows/five-minute-original-news-fastlane.yml"
       - "scripts/ops/publish-original-news-five-minute-fastlane.ts"
+      - "scripts/lib/phase2ib-fastlane-private-staging.mjs"
+      - "scripts/tests/phase2ib-fastlane-private-staging.test.mjs"
       - "scripts/ops/publish-public-news-r2-snapshot.mjs"
       - "scripts/tests/public-news-r2-offload.test.mjs"
       - "scripts/lib/derived-news-readback-policy.mjs"
@@ -286,6 +290,7 @@ jobs:
           bun test scripts/tests/private-source-handoff-sqlite.test.ts
           bun test scripts/tests/macro-fastlane.test.mjs
           node --test scripts/tests/plan-d1-bundled-work.test.mjs scripts/tests/bounded-news-intake-publication.test.mjs scripts/tests/fastlane-source-checkpoints.test.mjs scripts/tests/budgeted-news-intake.test.mjs
+          node --test scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2h-raw-news.test.mjs
           bun build scripts/ops/publish-original-news-five-minute-fastlane.ts --target=bun --outfile=/tmp/geomacro-bundled-news-fastlane.js
           node --test scripts/tests/derived-news-readback-policy.test.mjs
           node --test scripts/tests/derived-news-worker-policy.test.mjs
