@@ -36,7 +36,11 @@ async function strictBundle(response){
     !Array.isArray(doc.signals)||doc.signals.length>600||
     doc.returned_rows!==doc.signals.length||
     !Array.isArray(doc.first_ingest)||
-    doc.first_ingest.length!==doc.signals.length)
+    doc.first_ingest.length!==doc.signals.length||
+    doc.first_ingest.some((x,i)=>x?.id!==doc.signals[i]?.id||
+      !(x.first_seen_at===null||
+        typeof x.first_seen_at==="string"&&
+        Number.isFinite(Date.parse(x.first_seen_at)))))
   fail("D1_CANONICAL_BUNDLE_CONTRACT_INVALID");
  return doc;
 }
