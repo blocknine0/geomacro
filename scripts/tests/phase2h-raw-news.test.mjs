@@ -131,6 +131,8 @@ test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exac
   governorFactory:()=>({status:async()=>({ok:true,
     used:{total:3,GET:2,PUT:1,NATIVE_AUTH:0},
     limits:{total:100,GET:100,PUT:100,NATIVE_AUTH:100}})}),
+  lifecycleVerifier:async()=>({phase2h_raw_prefix_verified:true,
+   deletion_within_three_days_provider_rule:true,no_bucket_mutation:true}),
   d1Factory:()=>({
    async readPending(){postRead++;return items;},
    async markArchived(rows,objectSha){
@@ -152,6 +154,7 @@ test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exac
  });
  assert.equal(r.storage_confirmed,true);
  assert.equal(r.rows_archived,3);
+ assert.equal(r.b2_lifecycle_exact_prefix_readback_verified,true);
  assert.equal(r.b2_first_get_verified,true);
  assert.equal(r.b2_second_independent_get_verified,true);
  assert.equal(r.post_archive_d1_verified,true);
