@@ -57,7 +57,8 @@ const pinnedPermalink=(raw,source)=>{
 };
 const topicWords=(question,countryName)=>{
  const skipped=new Set(["the","what","why","when","latest","news","update","does",
- "did","impact","matter","happened","about","please","for","with","from"]);
+ "did","impact","matter","happened","about","please","for","with","from",
+ "macro","geopolitics","geopolitical","economics","economic","category","breaking"]);
  const country=new Set(countryName.toLowerCase().split(/\s+/u));
  return [...new Set((question.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu)??[])
   .filter(x=>x.length<=35&&!skipped.has(x)&&!country.has(x)))].slice(0,6);
