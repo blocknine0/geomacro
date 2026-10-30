@@ -261,10 +261,14 @@ try {
       canonical_d1_readback_verified:raw.readback_verified,
       b2_verified:false,rights_verified:false,payments:0}));
   }
-}catch {
+}catch(error) {
   // An unavailable new deployment / quota is never equivalent to raw intake.
+  // No source item, title, URL, secret, SQL or upstream body may be logged.
   success=false;
-  console.error("::error::PHASE2H_WEBSITE_PRIVATE_RAW_INTAKE_NOT_VERIFIED");
+  const reason=error instanceof Error&&
+    /^PHASE2H_PRIVATE_(?:RAW_[A-Z_]{3,90}|D1_[A-Z_]{3,90})$/u.test(error.message)
+      ?error.message:"PHASE2H_PRIVATE_RAW_UNKNOWN_REJECTION";
+  console.error("::error::PHASE2H_WEBSITE_PRIVATE_RAW_INTAKE_NOT_VERIFIED_"+reason);
 }
 // Physical TTL/600-row cleanup is an explicit, authenticated empty batch.
  // Run it once per successful three-category collection, not once per category
