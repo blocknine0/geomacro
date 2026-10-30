@@ -24,24 +24,24 @@ describe("commercial access is explained sitewide", () => {
     expect(guide).toContain("Browse public Intelligence and Risk Indices");
     expect(guide).toContain("Ask Geomacro and read research");
     expect(guide).toContain("Pay per call");
-    expect(guide).toContain("Exact USDC price by capability");
+    expect(guide).toContain("$0.02–$0.05 USDC per eligible delivery");
     const schedule=read("src/components/capability-price-schedule.tsx");
     const dataApi=read("src/routes/data-api.tsx");
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICES");
     expect(schedule).toContain("GEOMACRO_PUBLIC_PRICING_GROUPS");
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
     expect(schedule).toContain("without a second object charge");
-    expect(pricing).toContain("<CapabilityPriceSchedule />");
+    expect(pricing).toContain("<CapabilityPriceSchedule compact />");
     expect(dataApi).toContain("<CapabilityPriceSchedule compact />");
     expect(pricing).not.toContain("Launch price for the first 20,000");
     expect(dataApi).not.toContain("Launch price for the first 20,000");
     expect(guide).toContain("Structured intelligence for APIs and AI agents");
-    expect(guide).toContain("Monthly access");
-    expect(guide).toContain("Recurring intelligence for teams and workflows");
+    expect(guide).toContain("Monthly plans + prepaid credits");
+    expect(guide).toContain("1,000 / 5,000 / 25,000 monthly credits");
     expect(guide).toContain('mailto:contact@geomacro.live?subject=Geomacro%20monthly');
     expect(guide).toContain("Monthly subscription checkout is Coming Soon; plan enquiries are open.");
     expect(read("src/components/api-keys-notice.tsx")).toContain("Self-service access and checkout are not open yet.");
-    expect(pricing).toContain("Building for a team?");
+    expect(pricing).toContain("Monthly plans");
   });
 
   it("provides buyer action on Intelligence, Ask and Docs without promising paid availability", () => {
