@@ -147,12 +147,20 @@ export async function archiveDerivedJournalToB2({
     proof.sha256!==plan.compressed_sha256||
     proof.bytes!==plan.compressed.length)
    fail("B2_PUT_GET_SHA_ACK_INVALID");
+ // Independently repeat the full GET through the unchanged atomic quota
+ // governor. This is a genuine second provider operation, not a cached
+ // digest or the first readback returned by putWithMetadataVerification.
+ if(typeof b2.get!=="function")fail("SECOND_INDEPENDENT_GET_REQUIRED");
+ const secondBytes=await b2.get(plan.key);
+ verifyDerivedJournalB2Restore(secondBytes,plan);
  return {schema:"geomacro.private-derived-news-b2-backup-receipt.v1",
   status:"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED",
   archived_rows:plan.record_count,category_counts:plan.category_counts,
   archive_object_key:plan.key,compressed_sha256:plan.compressed_sha256,
   raw_sha256:plan.raw_sha256,
   b2_put_verified:true,b2_exact_readback_verified:true,
+  independent_second_get_verified:true,
+  second_get_sha256:plan.compressed_sha256,
   restored_json_verified:true,source_d1_readback_verified:true,
   same_news_as_intelligence_d1:true,
   public_website_unchanged:true,raw_original_content_stored:false,
