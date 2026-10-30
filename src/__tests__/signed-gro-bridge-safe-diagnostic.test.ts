@@ -24,7 +24,7 @@ describe("protected signed GRO bridge root diagnosis", () => {
     [404, "CONTROL_PLANE_HTTP_404"], [503, "CONTROL_PLANE_HTTP_503"],
   ])("attributes actual Worker HTTP %i without another fetch or leaking body", async (http, reason) => {
     vi.stubEnv("GEOMACRO_COMMERCE_LEDGER_TOKEN", "a".repeat(64));
-    const fetchMock = vi.fn(async () => new Response("private-redacted", { status:http }));
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => new Response("private-redacted", { status:http }));
     vi.stubGlobal("fetch", fetchMock);
     expect(await probe()).toEqual({ result: null, codes: [reason] });
     expect(fetchMock).toHaveBeenCalledTimes(1);
