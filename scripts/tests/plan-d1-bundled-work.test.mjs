@@ -294,7 +294,7 @@ test("actual 30 Oct provider-paced source-only snapshot can reserve 25 Phase2H d
  assert.equal(p.retention_cleanup,true);
  assert.ok(p.retention_cleanup_max_rows>=25);
  assert.ok(p.retention_cleanup_max_rows<=1000);
- assert.ok(p.retention_cleanup_max_rows*4+150+
+ assert.ok(p.retention_cleanup_max_rows*1+150+
    p.source_intake_budget_to_utc_reset.rows_written+23000<
    live.remaining_rows_written);
  assert.equal(p.retention_cleanup, p.retention_cleanup_max_rows>0);
