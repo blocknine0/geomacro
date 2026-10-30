@@ -82,11 +82,15 @@ jobs:
       - name: Verify scoped metadata-only census and strict B2 admission (offline)
         run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs
   quota-admission:
+    needs: manual-smoke-gate
     if: >-
+      always() &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       ((github.event_name == 'schedule' && github.event.schedule == '29 0 * * *') ||
-       (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RUN_ONCE_PHASE2H_2026_10_31'))
+       (github.event_name == 'workflow_dispatch' &&
+        needs.manual-smoke-gate.result == 'success' &&
+        inputs.confirmation == 'RUN_ONCE_PHASE2H_2026_10_31'))
     runs-on: ubuntu-24.04
     timeout-minutes: 4
     environment: production
