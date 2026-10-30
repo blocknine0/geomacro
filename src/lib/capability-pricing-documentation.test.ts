@@ -12,7 +12,7 @@ const docs = [
 
 describe("commercial runbooks cannot contradict founder-locked capability pricing", () => {
   it("anchors all revenue instructions to the one versioned catalog", () => {
-    expect(GEOMACRO_CAPABILITY_PRICING_VERSION).toBe("geomacro.capability-usdc.v1");
+    expect(GEOMACRO_CAPABILITY_PRICING_VERSION).toBe("geomacro.capability-usdc.v2");
     expect(Object.keys(GEOMACRO_CAPABILITY_PRICES)).toHaveLength(8);
     for (const path of docs) {
       const content = readFileSync(path, "utf8");
