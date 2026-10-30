@@ -1,4 +1,5 @@
 import {launchPriorityWatchSources} from "./launch-priority-watch-sources.mjs";
+import {privateOsintGlobalHubSources} from "./private-osint-global-hub-overlay.mjs";
 /**
  * Private-only 195-country topical discovery over one pinned public news-index
  * host. An index query is NOT an original publisher, event location, native
@@ -19,6 +20,10 @@ export const COUNTRY_DISCOVERY_CYCLE_SLOTS=4;
 export const COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK=25;
 export const COUNTRY_DISCOVERY_LOCAL_LANE_CYCLE_MINUTES=120;
 export const COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES=60;
+// The existing 512-slot budget can be shared with three global hub feeds.
+// 22 country leads per local-lane tick reach all 195 in nine 15m slots.
+export const COUNTRY_DISCOVERY_HUB_LOCAL_CYCLE_MINUTES=135;
+export const COUNTRY_DISCOVERY_HUB_NOMINAL_CYCLE_MINUTES=75;
 const CATEGORIES=Object.freeze(["geopolitics","macro","rare_earth"]);
 export const COUNTRY_MACRO_DISCOVERY_TERMS=Object.freeze([
  '"central bank"','CPI','PPI','PMI','GDP','inflation','"interest rates"',
@@ -43,7 +48,7 @@ const STEP_MS=15*60000;
 
 export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=COUNTRIES_195,perTick=COUNTRY_DISCOVERY_PER_TICK){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
-    ![COUNTRY_DISCOVERY_PER_TICK,COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK].includes(perTick)||
+    ![COUNTRY_DISCOVERY_PER_TICK,COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK,46,22].includes(perTick)||
     !Array.isArray(countries)||countries.length!==195||
     new Set(countries.map(c=>c?.iso3)).size!==195||
     countries.some(c=>!/^[A-Z]{3}$/u.test(c?.iso3??"")||
@@ -82,19 +87,31 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_BASE_INVALID");
  const urls=new Set(base.map(s=>s.url));
  if(urls.size!==base.length)throw Error("PRIVATE_OSINT_COUNTRY_INDEX_BASE_DUPLICATE");
- // Native country publisher feeds take priority over an equal number of
- // index-only searches. Do not add a D1 read/write or increase source GETs.
+ // Preserve all 463 native/index publisher endpoints and 24 local candidates.
+ // Overlay exact, pinned multilateral hubs by reallocating only rotating
+ // Google index slots, never by increasing the existing 512 network GET cap.
+ // Tiny synthetic test registries keep their original country-index behavior.
  const local=includeLocalGapLane?rotatingPrivateLocalPublisherSources(now):[];
- const countryIndex=rotatingPrivateCountryDiscoverySources(now,countries,
-   includeLocalGapLane?COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK:COUNTRY_DISCOVERY_PER_TICK);
+ const normalIndex=includeLocalGapLane?
+  COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK:COUNTRY_DISCOVERY_PER_TICK;
+ if(base.length+local.length+normalIndex>512)
+  throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
+ const hubs=base.length>=300?
+  privateOsintGlobalHubSources().filter(source=>!urls.has(source.url)):[];
+ // A missed index query is discovery-only, not a missing registered publisher.
+ // Every canonical country still gets its turn over the extended cycle.
+ const indexPerTick=Math.min(normalIndex,512-base.length-local.length-hubs.length);
+ if(indexPerTick<1)
+  throw Error("PRIVATE_OSINT_GLOBAL_HUB_SOURCE_CEILING");
+ const countryIndex=rotatingPrivateCountryDiscoverySources(now,countries,indexPerTick);
  const fresh=[];
- for(const source of [...local,...countryIndex]){
-   if(urls.has(source.url))continue;
-   urls.add(source.url);
-   fresh.push(source);
+ for(const source of [...hubs,...local,...countryIndex]){
+  if(urls.has(source.url))continue;
+  urls.add(source.url);fresh.push(source);
  }
  if(base.length+fresh.length>512||
-    (includeLocalGapLane&&fresh.length>PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK))
+    (includeLocalGapLane&&fresh.length>
+      PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
  return launchPriorityWatchSources([...base,...fresh]);
 }
