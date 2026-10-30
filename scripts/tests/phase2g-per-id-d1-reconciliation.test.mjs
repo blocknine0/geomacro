@@ -56,6 +56,14 @@ test("missing, duplicate, stale, forged or divergent post-write IDs fail closed"
  for(const x of bad)assert.throws(()=>reconcileAcknowledgedDerivedNews(x),
   /PHASE2G_D1_RECONCILIATION_/u);
 });
+test("unrelated pre-write baseline rows can age beyond TTL during collection",()=>{
+ const aged={...sample("macro","ffffeeee"),
+  published_at:"2026-10-27T05:59:30.000Z"};
+ const receipt=reconcileAcknowledgedDerivedNews({
+  ...args,before:[...prior,aged]});
+ assert.equal(receipt.actual_acknowledged_ids,3);
+ assert.equal(receipt.counts.macro.updated_observed,1);
+});
 test("does not invent successful readback when no acknowledgement exists",()=>{
  assert.throws(()=>reconcileAcknowledgedDerivedNews({
   before:[],after:[],acknowledged:[],now,sourceSha
