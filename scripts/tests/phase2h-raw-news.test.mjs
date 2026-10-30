@@ -217,7 +217,14 @@ test("only B2-acknowledged records enter the protected exact-question JSON",asyn
 });
 
 test("production acceptance links verified B2 hash, canonical ID and HTTP five-part JSON",async()=>{
- const row=data().records.find(x=>x.category==="macro");
+ const row=buildPhase2hPrivateRawRecords([candidates[1]],{now,
+  derive:items=>items.map(item=>({
+   category:item.category,published_at:item.publishedAt,
+   topic:"monetary policy rates",
+   what_changed:"A monetary policy statement was issued on the reported native publication date.",
+   why_it_matters:"The monetary policy release is relevant to rate expectations; an actual market response remains unverified.",
+  })),
+ }).records[0];
  const digest="c".repeat(64);
  let providerReads=0,httpReads=0;
  const receipt={schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
