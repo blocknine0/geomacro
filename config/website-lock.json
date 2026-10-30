@@ -846,5 +846,18 @@
     "historical_repository_unchanged": true,
     "website_lock_remains_active": true,
     "published_source_sha_unchanged_until_live_acceptance": true
+  },
+  "approved_low_barrier_pricing_20261031": {
+    "approval": "Founder explicitly requested 31 Oct 2026 to permanently replace all new-sale prices with $9/$29/$99 subscriptions, $5/$15/$30 credit packs, Base x402 $0.02-$0.05; old public tiers retired.",
+    "approved_source_commit": "98521e58e2ee1b7e368ed8fff2c877d4f8263144",
+    "approved_paths": [
+      "src/components/low-barrier-pricing.tsx",
+      "src/components/home/commercial-home.tsx",
+      "src/routes/pricing.tsx"
+    ],
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "payment_activation_unchanged": true,
+    "exact_blob_lock": true
   }
 }

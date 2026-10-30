@@ -19,7 +19,7 @@ async function main(){
  if(!/type="search"/u.test(pages.get('/intelligence'))||!pages.get('/intelligence').includes('Filter by publication time'))throw Error('INTELLIGENCE_FILTERS_UNAVAILABLE');
  const manifest=JSON.parse(await read('/api/v1/pricing'));
  const expected=capabilityPricingCatalog();
- if(manifest.pricing_version!=='geomacro.capability-usdc.v1'||manifest.capability_count!==expected.length||manifest.price_variant_count!==14)throw Error('PUBLIC_PRICE_CATALOG_SCOPE_MISMATCH');
+ if(manifest.pricing_version!=='geomacro.capability-usdc.v2'||manifest.capability_count!==expected.length||manifest.price_variant_count!==12)throw Error('PUBLIC_PRICE_CATALOG_SCOPE_MISMATCH');
  for(const cap of expected){
   const rows=manifest.capabilities.filter(x=>x.capability===cap.capability);
   if(rows.length!==1||rows[0].variants.length!==cap.variants.length)throw Error('PUBLIC_PRICE_CAPABILITY_MISMATCH');

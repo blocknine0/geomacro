@@ -1005,7 +1005,7 @@ export async function assembleAgentQueryResponse(input: {
       // Historical pilot reference was 0.05. Current offers are resolved
       // exclusively by the governed capability+variant price classifier.
       // A caller without a verified quote must NEVER advertise 0.05 by default.
-      pricing_phase: "CAPABILITY_USDC_V1",
+      pricing_phase: "CAPABILITY_USDC_V2",
       price_usdc: input.priceUsdc ?? null,
       current_event_delivery: includeHotTopics ? "structured-derived-intelligence-only" : null,
       governed_module_fallbacks: structural.flatMap((item) => item.serving.governed_module_fallbacks),

@@ -55,7 +55,7 @@ export function usdcDecimalToAtomic(value:string):string{
     throw Error("USDC_DECIMAL_PRECISION_INVALID");
   const [whole,fraction=""]=value.split(".");
   const amount=BigInt(whole)*1_000_000n+BigInt(fraction.padEnd(6,"0"));
-  if(amount<=0n||amount>250_000n)throw Error("USDC_FOUNDER_MAX_PRICE_EXCEEDED");
+  if(amount<=0n||amount>50_000n)throw Error("USDC_FOUNDER_MAX_PRICE_EXCEEDED");
   return amount.toString();
 }
 export type CapabilityPrice=Readonly<{

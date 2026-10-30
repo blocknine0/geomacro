@@ -237,7 +237,7 @@ export class CommerceLedger {
         !PAYMENT_HASH_RE.test(quote.request_fingerprint_sha256) ||
         typeof quote.prepared_answer_sha256!=="string" ||
         !PAYMENT_HASH_RE.test(quote.prepared_answer_sha256) ||
-        quote.version!=="geomacro.capability-usdc.v1" ||
+        quote.version!=="geomacro.capability-usdc.v2" ||
         quote.availability!=="VERIFIED_DELIVERABLE" ||
         quote.execution_authorized!==false ||
         !["coinbase_x402","circle_gateway_x402","xpay_x402","dexter_x402"].includes(quote.payment_rail) ||
@@ -245,7 +245,7 @@ export class CommerceLedger {
         !["mainnet","production"].includes(body.providerEnvironment) ||
         typeof quote.amount_atomic!=="string" ||
         !/^[1-9][0-9]*$/u.test(quote.amount_atomic) ||
-        BigInt(quote.amount_atomic)>250_000n ||
+        BigInt(quote.amount_atomic)>50_000n ||
         typeof customerBytes!=="string" ||
         new TextEncoder().encode(customerBytes).byteLength>WDI_PREQUOTE_MAX_BYTES ||
         await sha256Text(customerBytes)!==quote.prepared_answer_sha256)

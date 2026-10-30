@@ -126,7 +126,23 @@ const changed = new Set([
   ...lines(git(["diff", "--cached", "--name-only", "--diff-filter=ACDMRTUXB"])),
 ]);
 
-const violations = [...changed].filter(isProtectedWebsitePath);
+// Founder-approved low-barrier presentation is allowed ONLY at immutable blob
+// identities from its explicit authorizing commit; subsequent edits fail closed.
+const approvedPricing = config.approved_low_barrier_pricing_20261031;
+const approvedPricingPaths = new Set(approvedPricing?.approved_paths || []);
+function matchesApprovedPricingBlob(path) {
+  if (!approvedPricingPaths.has(path)) return false;
+  const sha = String(approvedPricing?.approved_source_commit || "");
+  if (!/^[0-9a-f]{40}$/.test(sha)) return false;
+  try {
+    const approvedBlob = git(["rev-parse", sha + ":" + path]);
+    const currentBlob = git(["rev-parse", "HEAD:" + path]);
+    const workingChanges = git(["diff", "--name-only", "HEAD", "--", path]);
+    const stagedChanges = git(["diff", "--cached", "--name-only", "--", path]);
+    return approvedBlob === currentBlob && !workingChanges && !stagedChanges;
+  } catch { return false; }
+}
+const violations = [...changed].filter(path => isProtectedWebsitePath(path) && !matchesApprovedPricingBlob(path));
 
 if (violations.length > 0) {
   console.error("::error::GEOMACRO WEBSITE LOCK VIOLATION");
