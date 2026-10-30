@@ -2,6 +2,12 @@ name: Phase 2H Permanent Private Raw B2 and Exact-Question Acceptance
 # Exactly four UTC archive windows. No out-of-slot B2 bootstrap.
 # Existing provider-approved maintenance=true admission and atomic B2 reserve are mandatory.
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/phase2h-private-raw-archive.yml"
+      - "scripts/ops/phase2h-canonical-census-receipt.mjs"
+      - "scripts/tests/phase2h-canonical-census-receipt.test.mjs"
+      - "scripts/ops/phase2h-permanent-production-acceptance.mjs"
   workflow_dispatch: {}
   schedule:
     - cron: "17 0,6,12,18 * * *"
@@ -14,6 +20,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  offline-census-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify scoped metadata-only census and strict B2 admission (offline)
+        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs
   quota-admission:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
