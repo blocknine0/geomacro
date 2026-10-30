@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T12:50:09.193Z",
+  "checked_at": "2026-10-30T13:37:26.282Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -14,11 +14,11 @@
   "max_items": 600,
   "item_count": 411,
   "counts": {
-    "geopolitics": 188,
+    "geopolitics": 187,
     "macro": 180,
-    "rare_earth": 43
+    "rare_earth": 44
   },
-  "source_native_ids_sha256": "5a1e28d198fbea77bbe8b891cacb93c19cf91572b2ef4af7ebfccab7b94e6c98",
+  "source_native_ids_sha256": "a04a49af2db9c2061a601e8ddaef85f4f1c20f4d163aa74417bbe87a5bfdf3a5",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -96,6 +96,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T10:06:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-eeb5bb9e",
+      "category": "rare_earth",
+      "title": "Geomacro finds Metals.io launched tokenised copper trading as demand grows - Yahoo! Finance Canada",
+      "what_changed": "A monitored source feed reports: Metals.io launched tokenised copper trading as demand grows - Yahoo! Finance Canada. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T08:02:23.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -7812,25 +7831,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-151add29",
-      "category": "geopolitics",
-      "title": "Geomacro finds Houthis said they repelled attack from pro-Saudi forces near Bab el-Mandeb Strait",
-      "what_changed": "A monitored source feed reports: Houthis said they repelled attack from pro-Saudi forces near Bab el-Mandeb Strait. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T13:36:58.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: tass.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
