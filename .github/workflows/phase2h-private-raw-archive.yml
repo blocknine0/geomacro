@@ -1,6 +1,6 @@
 name: Phase 2H Permanent Private Raw B2 and Exact-Question Acceptance
 # Exactly four UTC archive windows. No out-of-slot B2 bootstrap.
-# Existing provider-approved structural snapshot admission and atomic B2 reserve are mandatory.
+# Existing provider-approved maintenance=true admission and atomic B2 reserve are mandatory.
 on:
   workflow_dispatch: {}
   schedule:
@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 4
     environment: production
     outputs:
-      structural_snapshot: ${{ steps.provider.outputs.structural_snapshot }}
+      maintenance: ${{ steps.provider.outputs.maintenance }}
     steps:
       - name: Checkout exact main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: "22"
       - id: provider
-        name: Verify provider-approved bounded D1 structural-snapshot admission
+        name: Verify provider-approved D1 maintenance=true admission
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -42,13 +42,14 @@ jobs:
     needs: quota-admission
     if: >-
       needs.quota-admission.result == 'success' &&
-      needs.quota-admission.outputs.structural_snapshot == 'true' &&
+      needs.quota-admission.outputs.maintenance == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 14
     environment: production
     env:
+      PHASE2H_PROVIDER_MAINTENANCE: ${{ needs.quota-admission.outputs.maintenance }}
       B2_ACCOUNT_QUOTA_REQUIRED: "1"
       B2_ACCOUNT_QUOTA_WORKFLOW_ID: derived_news_backup
       B2_REQUEST_BUDGET: "12"
@@ -71,7 +72,7 @@ jobs:
           node-version: "22"
       - name: Verify Phase 2H regression and strict immutable formats
         run: |
-          node --test scripts/tests/phase2h-raw-news.test.mjs
+          node --test scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs
           node --check scripts/ops/phase2h-permanent-production-acceptance.mjs
       - name: Resolve existing canonical D1 database for archive read and quota governor
         shell: bash
