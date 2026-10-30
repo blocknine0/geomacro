@@ -27,6 +27,9 @@ on:
       - "scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs"
       - "scripts/lib/verify-public-static-archive-readback.mjs"
       - "scripts/tests/verify-public-static-archive-readback.test.mjs"
+      - "scripts/tests/public-static-worker-cohort-guard.test.mjs"
+      - "workers/public-finds-archive/src/index.mjs"
+      - "workers/public-finds-archive/wrangler.jsonc"
 
 permissions:
   contents: read
@@ -52,6 +55,7 @@ jobs:
           node --check scripts/ops/decide-public-finds-static-freshness-deploy.mjs
           node --test scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs
           node --test scripts/tests/verify-public-static-archive-readback.test.mjs
+          node --test scripts/tests/public-static-worker-cohort-guard.test.mjs
           node --test scripts/ops/publish-permanent-derived-news-archive.test.mjs
           node --test scripts/tests/website-predge-static-72h-snapshot.test.mjs
   deploy-public-static-archive:
