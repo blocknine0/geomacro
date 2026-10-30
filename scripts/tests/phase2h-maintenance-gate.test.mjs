@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const path=".github/workflows/phase2h-private-raw-archive.yml";
-test("Phase 2H B2 workflow requires provider maintenance=true and original UTC slots",()=>{
+test("Phase 2H B2 workflow requires provider maintenance=true and four quota-first UTC slots",()=>{
  const yaml=readFileSync(path,"utf8");
- assert.match(yaml,/cron: "17 0,6,12,18 \* \* \*"/u);
+ assert.match(yaml,/cron: "3 0,6,12,18 \* \* \*"/u);
  assert.match(yaml,/maintenance: \$\{\{ steps\.provider\.outputs\.maintenance \}\}/u);
  assert.match(yaml,/needs\.quota-admission\.outputs\.maintenance == 'true'/u);
  assert.match(yaml,/PHASE2H_PROVIDER_MAINTENANCE: \$\{\{ needs\.quota-admission\.outputs\.maintenance \}\}/u);
