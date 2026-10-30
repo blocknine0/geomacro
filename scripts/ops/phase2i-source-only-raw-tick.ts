@@ -10,7 +10,8 @@ import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
-import {stagePhase2iOsintFairRaw} from "../lib/phase2i-osint-country-fair-raw-staging.mjs";
+import {stagePhase2iOsintFairRaw,phase2iSourceOnlyCategoryRelevant} from "../lib/phase2i-osint-country-fair-raw-staging.mjs";
+import {PRIVATE_OSINT_TOPICS} from "../lib/private-osint-global-sources.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
@@ -34,15 +35,18 @@ const controlToken=createHmac("sha256",root)
  .update("geomacro-control-plane-v1").digest("hex");
 const now=new Date();
 const candidates=[],seen=new Set();
+let crossCategoryOfftopic=0;
 const registry=privateOsintRuntimeSources(now,privateOsintGlobalSources(),
  COUNTRIES_195,{includeLocalGapLane:true});
+const pinnedCategories=new Map(registry.map(source=>[source.url,source.categories]));
 const result=await collectPrivateOsint15m({
  now,registry,normalize:normalizeReusableNewsJson,
  resolveCountry:title=>privateOsintCountryMention(title,COUNTRIES_195),
  onOriginalCandidate:raw=>{
-  if(!raw||!["geopolitics","macro","rare_earth"].includes(raw.category)||
-    typeof raw.article_url!=="string"||typeof raw.published_at!=="string"||
-    typeof raw.title!=="string"||typeof raw.source_url!=="string")return;
+  if(!phase2iSourceOnlyCategoryRelevant(raw,pinnedCategories,PRIVATE_OSINT_TOPICS)){
+   crossCategoryOfftopic++;return;
+  }
+  if(typeof raw.article_url!=="string"||typeof raw.published_at!=="string")return;
   let host;
   try{host=new URL(raw.source_url).hostname;}catch{return;}
   if(!host||host.length>110)return;
@@ -75,6 +79,7 @@ console.log(JSON.stringify({
  schema,status,source_intake_lane_only:true,
  country_routes:195,country_category_routes:585,
  source_endpoints_attempted:result.summary.source_endpoints_attempted,
+ cross_category_offtopic_candidates_filtered:crossCategoryOfftopic,
  selected_count,available_originals,deferred_count,selected_by_category,
  admitted_source_only_max_rows:admittedRows,
  d1_inserted,d1_unchanged,d1_rejected_conflicts,d1_readback_verified,
