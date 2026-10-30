@@ -1,8 +1,7 @@
 name: Phase 2H News Retention <=72 Hours (Governed D1, No Funds)
 on:
-  schedule:
-    - cron: "21 * * * *"
-  workflow_dispatch: {}
+  # Production cleanup executes after verified archival in the five-hour
+  # Phase2H workflow. This workflow now performs offline validation only.
   push:
     branches: [main]
     paths:
@@ -45,95 +44,3 @@ jobs:
           node --test scripts/tests/phase2h-retention-72h.test.mjs
           node --test scripts/tests/plan-d1-bundled-work.test.mjs
 
-  quota-admission:
-    needs: verify
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 3
-    environment: production
-    outputs:
-      critical: ${{ steps.provider.outputs.critical }}
-      retention_cleanup: ${{ steps.provider.outputs.retention_cleanup }}
-      retention_cleanup_max_rows: ${{ steps.provider.outputs.retention_cleanup_max_rows }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: main
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version: "24"
-      - id: provider
-        name: Read real account-wide Cloudflare D1 admission, no D1 queries
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/phase2h
-          node scripts/ops/plan-d1-bundled-work.mjs | tee artifacts/phase2h/d1-admission.jsonl
-      - name: Preserve read-only provider quota admission or held reason
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: phase2h-d1-quota-admission-${{ github.run_id }}
-          path: artifacts/phase2h/d1-admission.jsonl
-          retention-days: 30
-          if-no-files-found: warn
-
-  cleanup:
-    needs: [verify,quota-admission]
-    if: needs.quota-admission.result == 'success' && needs.quota-admission.outputs.retention_cleanup == 'true' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    environment: production
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: main
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version: "24"
-      - name: Resolve exact canonical D1, not PREDGE or historical DB
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --input-type=module <<'NODE'
-          import {appendFileSync} from "node:fs";
-          const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
-          if(!/^[a-f0-9]{32}$/.test(account??"")||String(token??"").length<20)
-            throw Error("PHASE2H_RETENTION_PROVIDER_TOKEN_UNVERIFIED");
-          const response=await fetch("https://api.cloudflare.com/client/v4/accounts/"+account+"/d1/database?per_page=100",{
-            headers:{Authorization:"Bearer "+token},signal:AbortSignal.timeout(15000)});
-          const doc=await response.json();
-          const rows=doc?.result?.filter(x=>x.name==="geomacro-control-plane")??[];
-          if(!response.ok||doc.success!==true||rows.length!==1||
-            !/^[0-9a-f-]{36}$/i.test(rows[0].uuid??""))
-            throw Error("PHASE2H_RETENTION_CANONICAL_D1_UNVERIFIED");
-          appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+rows[0].uuid+"\n");
-          NODE
-      - name: Phase2H archive-safe 60h cleanup and hard 72h deletion (1000 max/hour)
-        env:
-          PHASE2H_PROVIDER_CRITICAL: ${{ needs.quota-admission.outputs.critical }}
-          PHASE2H_PROVIDER_RETENTION_CLEANUP: ${{ needs.quota-admission.outputs.retention_cleanup }}
-          PHASE2H_PROVIDER_CLEANUP_MAX_ROWS: ${{ needs.quota-admission.outputs.retention_cleanup_max_rows }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/phase2h
-          node scripts/ops/phase2h-72h-d1-cleanup.mjs | tee artifacts/phase2h/d1-retention-receipt.json
-      - name: Preserve raw-free D1 retention admission and deletion receipt
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: phase2h-d1-retention-${{ github.run_id }}
-          path: artifacts/phase2h/d1-retention-receipt.json
-          retention-days: 30
-          if-no-files-found: warn
