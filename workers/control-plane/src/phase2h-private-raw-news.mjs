@@ -422,7 +422,9 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
     exhaustive_global_search:false};}
   }
   return safeReply({ok:true,schema:"geomacro.phase2h.private-question-fivepart.v1",
-   source:qualityProbe?"CANONICAL_D1_PRIVATE_P0A_QUALITY_READBACK":
+   source:globalResult?.first_party_matches?.length?
+    "CANONICAL_D1_WITH_FIRST_PARTY_LIVE_FALLBACK":
+    qualityProbe?"CANONICAL_D1_PRIVATE_P0A_QUALITY_READBACK":
     countryScoped?"CANONICAL_D1_PRIVATE_ORIGINAL_RESEARCH":
     "B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1",
    bounded_most_recent_scan:requestedId!==null?1:100,
@@ -438,7 +440,12 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    global_discovery_only_count:globalResult?.gdelt_discovery_count??0,
    global_provider_error_count:globalResult?.provider_errors??0,
    global_first_party_verified_count:globalResult?.first_party_matches?.length??0,
-   question_matches:[...matched.map(item=>{
+   // Prefer a verified publisher-metadata fallback over an incomplete
+   // canonical original; never force clients to select a null first result.
+   question_matches:[...(globalResult?.first_party_matches??[]).map(item=>({
+    ...item,country_iso3:countryIso3,source:"GOV_UK_FIRST_PARTY_CONTENT_API",
+    ...phase2hPrivateResearchDirectAnswer(question,item.five_part),
+   })),...matched.map(item=>{
     const missing=typeof item.analysis.what_happened?.text!=="string"||
       !item.analysis.what_happened.text.trim()||
       typeof item.analysis.why_it_matters?.text!=="string"||
@@ -458,10 +465,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
        phase2hQuestionDirectAnswer(question,five)),
      archive_d1_ack_present:active.find(
        x=>x.record_id===item.record_id)?.b2_object_sha256!=null};
-   }),...(globalResult?.first_party_matches??[]).map(item=>({
-    ...item,source:"GOV_UK_FIRST_PARTY_CONTENT_API",
-    ...phase2hPrivateResearchDirectAnswer(question,item.five_part),
-   }))],private_research_only:true,chargeable:false,
+   })],private_research_only:true,chargeable:false,
    paid_eligible:false,raw_original_not_delivered:true});
  }catch{return safeReply({ok:false,error:"PRIVATE_RAW_CANONICAL_READ_UNAVAILABLE"},503)}
 }

@@ -17,13 +17,13 @@ const verify=async({env=process.env,fetchImpl=fetch,now=new Date()}={})=>{
  const write=o=>{mkdirSync("artifacts/derived-news",{recursive:true});
   writeFileSync(FILE,JSON.stringify(o,null,2)+"\n",{mode:0o600})};
  const result={schema:"geomacro.p0b.production-source-first-acceptance.v1",
-  at:now.toISOString(),expected_sha:env.GITHUB_SHA??null,
+  at:now.toISOString(),expected_sha:env.EXPECTED_DEPLOYED_SHA??env.GITHUB_SHA??null,
   deployed_sha:null,source_first_readbacks:[],accepted:false,
   raw_article_redistribution:false,commerce_authorized:false,payments:0};
  try{
   if(env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
    env.GITHUB_REF!=="refs/heads/main"||env.GITHUB_ACTIONS!=="true"||
-   !/^[a-f0-9]{40}$/u.test(env.GITHUB_SHA??"")||
+   !/^[a-f0-9]{40}$/u.test(env.EXPECTED_DEPLOYED_SHA??env.GITHUB_SHA??"")||
    String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").length<32)
    throw Error("PRODUCTION_MAIN_CREDENTIALS_UNAVAILABLE");
   const root=createHmac("sha256",env.GEOMACRO_COMMERCE_LEDGER_TOKEN)
@@ -40,7 +40,7 @@ const verify=async({env=process.env,fetchImpl=fetch,now=new Date()}={})=>{
   };
   const health=await get("/health");
   result.deployed_sha=health.deployed_source_sha??null;
-  if(result.deployed_sha!==env.GITHUB_SHA)
+  if(result.deployed_sha!==result.expected_sha)
    throw Error("DEPLOYED_WORKER_MAIN_SHA_NOT_MATCHED");
   for(const [cat,question] of CATS){
    const q=new URLSearchParams({country_iso3:"VAT",category:cat,question});

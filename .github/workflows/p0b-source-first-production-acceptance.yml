@@ -1,12 +1,19 @@
 name: P0-B Permanent Source-First Global Research Production Acceptance
 # No funds; exact deployed canonical main, source-first real responses only.
 on:
+  # A main push can run acceptance BEFORE the Worker deployment completes.
+  # Re-verify when its actual deploy run completes, even if a later unrelated
+  # deployment smoke step fails; the deployed SHA check remains authoritative.
+  workflow_run:
+    workflows: ["Deploy D1 Control Plane"]
+    types: [completed]
   pull_request:
     paths:
       - "scripts/lib/p0b-event-grounded-projection.mjs"
       - "scripts/lib/p0b-live-global-search.mjs"
       - "scripts/tests/p0b-live-global-search.test.mjs"
       - "scripts/ops/p0b-source-first-production-acceptance.mjs"
+      - "scripts/ops/p0b-publish-acceptance-receipt.mjs"
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "workers/control-plane/wrangler.example.jsonc"
       - ".github/workflows/p0b-source-first-production-acceptance.yml"
@@ -17,6 +24,7 @@ on:
       - "scripts/lib/p0b-live-global-search.mjs"
       - "scripts/tests/p0b-live-global-search.test.mjs"
       - "scripts/ops/p0b-source-first-production-acceptance.mjs"
+      - "scripts/ops/p0b-publish-acceptance-receipt.mjs"
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "workers/control-plane/wrangler.example.jsonc"
       - ".github/workflows/p0b-source-first-production-acceptance.yml"
@@ -25,6 +33,7 @@ on:
   workflow_dispatch: {}
 permissions:
   contents: read
+  issues: write
 concurrency:
   group: geomacro-p0b-production-source-first
   cancel-in-progress: false
@@ -44,26 +53,43 @@ jobs:
           node --check scripts/lib/p0b-event-grounded-projection.mjs
           node --check scripts/lib/p0b-live-global-search.mjs
           node --check scripts/ops/p0b-source-first-production-acceptance.mjs
+          node --check scripts/ops/p0b-publish-acceptance-receipt.mjs
           node --check workers/control-plane/src/phase2h-private-raw-news.mjs
           node --test scripts/tests/p0b-live-global-search.test.mjs scripts/tests/p0a-evidence-quality.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs
   independent-production:
     needs: source-first-contract
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-24.04
     timeout-minutes: 7
     environment: production
     env:
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      EXPECTED_DEPLOYED_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
       - name: Verify deployed SHA and 3 production source-first responses
         run: node scripts/ops/p0b-source-first-production-acceptance.mjs
+      - name: Publish redacted proof to P0-B tracking issue (no raw evidence)
+        if: always() && github.event_name == 'workflow_run'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/ops/p0b-publish-acceptance-receipt.mjs
       - name: Preserve redacted three-category real acceptance receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
