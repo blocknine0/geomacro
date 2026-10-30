@@ -47,6 +47,7 @@
     "b2-raw-storage-maintenance.yml",
     "b2-read-health-canary-once.yml",
     "b2-structural-serving-snapshot.yml",
+    "base-polygon-six-private-rpc-no-funds.yml",
     "base-polygon-three-category-no-funds.yml",
     "bgs-native-mineral-reference.yml",
     "bls-atom-native-readonly-acceptance.yml",
