@@ -272,10 +272,7 @@ test("production acceptance links verified B2 hash, canonical ID and HTTP five-p
  const proof=await verifyPhase2hProductionQuestionChain({
   now:now.getTime(),env,receipt,fetchImpl});
  assert.equal(proof.entire_admitted_raw_backlog_verified,true);
- assert.equal(proof.canonical_d1_staged_total,315);
- assert.equal(proof.canonical_d1_pending_total,0);
- assert.equal(proof.three_categories_have_archived_originals,true);
- assert.deepEqual(proof.verified_b2_object_sha256,["a".repeat(64),"b".repeat(64)]);
+
  assert.equal(proof.per_record_five_part_exact,true);
  assert.equal(providerReads,2);assert.equal(httpReads,1);
  await assert.rejects(verifyPhase2hProductionQuestionChain({
@@ -317,6 +314,10 @@ test("bounded two-batch real-shaped archive drains and verifies exact production
  assert.equal(archived,2);assert.equal(checked,2);
  assert.equal(proof.status,"PASS_REAL_B2_TO_EXACT_QUESTION");
  assert.equal(proof.archived_records_this_run,315);
+ assert.equal(proof.canonical_d1_staged_total,315);
+ assert.equal(proof.canonical_d1_pending_total,0);
+ assert.equal(proof.three_categories_have_archived_originals,true);
+ assert.deepEqual(proof.verified_b2_object_sha256,["a".repeat(64),"b".repeat(64)]);
  assert.equal(proof.entire_admitted_raw_backlog_verified,true);
  assert.equal(proof.payments,0);
 });
