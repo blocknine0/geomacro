@@ -417,11 +417,10 @@ jobs:
       needs.quota-admission.outputs.source_intake == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name != 'pull_request' &&
-      (github.event_name != 'workflow_run' ||
-       (github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_branch == 'main' &&
-        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'))
+      # One admitted private micro-bundle per existing :00/:15/:30/:45 tick.
+      # Push/dispatch and D1 deploy wakeups cannot spend extra daily source
+      # budgets outside the 96 planned source-only slots.
+      github.event_name == 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: production
