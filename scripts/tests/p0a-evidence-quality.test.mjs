@@ -39,12 +39,12 @@ test("unknown cause stays null rather than being filled with category boilerplat
  const e=structuredClone(events[0]);e.analysis.why_it_matters.text=null;
  const result=p0aAuditOriginal(e);
  assert.equal(result.status,"EVIDENCE_LIMITED");
- assert.ok(result.reasons.includes("WHY_MISSING_OR_BOILERPLATE"));
+ assert.ok(result.reasons.includes("WHY_MISSING"));
 });
 test("generic analysis, ungrounded facts and repeated why fail closed",()=>{
  const boilerplate=structuredClone(events[1]);
  boilerplate.analysis.why_it_matters.text="A dated first-party source item was observed.";
- assert.equal(p0aAuditOriginal(boilerplate).status,"EVIDENCE_LIMITED");
+ assert.equal(p0aAuditOriginal(boilerplate).status,"REJECT");
  const falseNumber=structuredClone(events[1]);
  falseNumber.analysis.why_it_matters.text="The benchmark rate increased 50 basis points, contrary to the statement.";
  assert.ok(p0aAuditOriginal(falseNumber).reasons.includes("UNSOURCED_QUANTITATIVE_CLAIM"));
