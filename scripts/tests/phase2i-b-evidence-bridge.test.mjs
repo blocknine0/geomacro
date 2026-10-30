@@ -80,3 +80,27 @@ test("invalid source ledger and spoofed positive hash fail closed",()=>{
  const r=report();r.verified_b2_object_sha256=["0"];
  assert.equal(validateExistingPhase2hReceipt(r,sha),null);
 });
+
+test("six-hour incremental receipt is real batch proof without false full-corpus claim",()=>{
+ const r={...report(),status:"VERIFIED_INCREMENTAL_B2_WITH_BACKLOG",
+  incremental_batch_proof_pass:true};
+ const proof=validateExistingPhase2hReceipt(r,sha);
+ assert.ok(proof);
+ assert.equal(proof.archived_records_this_run,15);
+ assert.equal(proof.all_backlog_clear,false);
+ const cycle=createPhase2ibCycle({mainSha:sha,runId:"41012345683",
+  admission:"true",archiveJob:"success",report:r,now});
+ assert.equal(cycle.status,"VERIFIED_PARTIAL_ARCHIVE_BACKLOG");
+ const unsafe={...r,incremental_batch_proof_pass:false};
+ assert.equal(validateExistingPhase2hReceipt(unsafe,sha),null);
+});
+test("idle new-news archive never fabricates historic provider object proof",()=>{
+ const idle={schema:"geomacro.phase2h.permanent-raw-b2-production-acceptance.v1",
+  status:"IDLE_NO_PENDING_RAW_ROWS_NO_ARCHIVE_PROOF",
+  production_main_sha:sha,incremental_batch_proof_pass:false};
+ assert.equal(validateExistingPhase2hReceipt(idle,sha),null);
+ const cycle=createPhase2ibCycle({mainSha:sha,runId:"41012345684",
+  admission:"true",archiveJob:"success",report:idle,now});
+ assert.equal(cycle.status,"IDLE_NO_PENDING_NO_NEW_B2_PROOF");
+ assert.equal(cycle.latest_verified_receipt,null);
+});
