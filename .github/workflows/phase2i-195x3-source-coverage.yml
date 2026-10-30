@@ -8,7 +8,9 @@ on:
       - "config/github-workflow-inventory.v1.json"
   push:
     branches: [main]
-    paths: [".github/workflows/phase2i-195x3-source-coverage.yml"]
+    paths:
+      - ".github/workflows/phase2i-195x3-source-coverage.yml"
+      - "scripts/ops/phase2i-coverage-inventory.mjs"
   workflow_dispatch: {}
   schedule:
     - cron: "23 */2 * * *"
