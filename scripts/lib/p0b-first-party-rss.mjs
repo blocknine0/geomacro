@@ -15,6 +15,12 @@ const SOURCES=Object.freeze({
   // the topic still must be present in the same first-party native title.
   {url:"https://www.bls.gov/feed/bls_latest.rss",host:"www.bls.gov",
    path:/^\/news\.release\/(?:[a-z]{2,20}\.nr\d|archives\/[a-z]{2,20}_\d{8})\.htm$/u,
+   issuer_country:"USA",issuer:"US Bureau of Labor Statistics"},
+  // BLS officially publishes this topic-specific RSS, unlike its general
+  // latest-numbers feed which may point to summary pages rather than a
+  // publisher-native dated news release.
+  {url:"https://www.bls.gov/feed/eci.rss",host:"www.bls.gov",
+   path:/^\/news\.release\/(?:eci\.nr\d|archives\/eci_\d{8})\.htm$/u,
    issuer_country:"USA",issuer:"US Bureau of Labor Statistics"}],
  rare_earth:[{url:"https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed",
   host:"news.gov.bc.ca",path:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,
