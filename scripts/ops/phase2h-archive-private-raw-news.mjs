@@ -11,8 +11,8 @@ import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {verifyPhase2hB2Lifecycle} from "./phase2h-verify-b2-72h-lifecycle.mjs";
 import {pathToFileURL} from "node:url";
-import {resolve} from "node:path";
-import {mkdirSync,writeFileSync} from "node:fs";
+import {resolve,isAbsolute} from "node:path";
+import {mkdirSync,writeFileSync,readFileSync} from "node:fs";
 const hex=x=>createHash("sha256").update(x).digest("hex");
 const fail=x=>{throw Error("PHASE2H_RAW_B2_"+x)};
 const categories=["geopolitics","macro","rare_earth"];
@@ -113,11 +113,34 @@ export function createPhase2hCanonicalD1({
   },
  };
 }
+/** Accept exactly the original four six-hour scheduled triggers even if
+ * GitHub queues the run until a later UTC hour. Never use untrusted manual
+ * inputs to infer a scheduled trigger; verify the Actions event JSON and
+ * immutable workflow ref. All D1/B2 provider quota gates still apply.
+ */
+export function phase2hAuthorizedArchiveWindow({
+ env=process.env,now=new Date(),eventReader=readFileSync,
+}={}){
+ if(!(now instanceof Date)||!Number.isFinite(now.getTime()))return false;
+ if(now.getUTCHours()%6===0)return true;
+ if(env.GITHUB_EVENT_NAME!=="schedule"||
+    env.GITHUB_WORKFLOW_REF!==
+      "blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main")
+   return false;
+ const path=String(env.GITHUB_EVENT_PATH??"");
+ if(!isAbsolute(path)||!path.endsWith("/event.json")||path.length>512)
+   return false;
+ try{
+  const event=JSON.parse(eventReader(path,"utf8"));
+  return event?.schedule==="3 0,6,12,18 * * *";
+ }catch{return false}
+}
 export async function runPhase2hGovernedRawB2({
  env=process.env,now=new Date(),fetchImpl=fetch,
  b2Factory=createB2Client,governorFactory=createB2D1AccountGovernor,
  d1Factory=createPhase2hCanonicalD1,
- lifecycleVerifier=verifyPhase2hB2Lifecycle
+ lifecycleVerifier=verifyPhase2hB2Lifecycle,
+ eventReader=readFileSync,
 }={}){
  if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
   env.GITHUB_REF!=="refs/heads/main"||
@@ -127,9 +150,10 @@ export async function runPhase2hGovernedRawB2({
   env.PHASE2H_PROVIDER_MAINTENANCE!=="true"||
   !/^\d{1,20}$/u.test(env.GITHUB_RUN_ID??""))
   fail("PROTECTED_MAIN_GOVERNOR_REQUIRED");
- // Existing four six-hour maintenance windows only. Main pushes and manual
- // dispatches outside these UTC slots must not contact D1 or B2.
- if(now.getUTCHours()%6!==0)
+ // Four authorized GitHub scheduled windows only. GitHub may start a run
+ // late; event identity permits that delayed schedule, never manual/push
+ // jobs outside the original 00/06/12/18 UTC hours.
+ if(!phase2hAuthorizedArchiveWindow({env,now,eventReader}))
   return {status:"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT",storage_confirmed:false,
    rows_archived:0,object_sha256:null};
  const governor=governorFactory({env,fetchImpl});
