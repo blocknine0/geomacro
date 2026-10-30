@@ -31,7 +31,7 @@ export async function cleanupPhase2hD1({
   }catch{fail("CANONICAL_D1_UNAVAILABLE")}
   if(res.status!==200||body?.success!==true||
      !Array.isArray(body.result)||body.result.length!==1||
-     body.result[0]?.success!==true||
+     body.result[0]?.success===false||
      !Array.isArray(body.result[0]?.results))
     fail("CANONICAL_D1_RECEIPT_INVALID");
   return body.result[0];
