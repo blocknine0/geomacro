@@ -19,7 +19,7 @@ export const RECEIPT_SCHEMA="geomacro.phase2h.independent-b2-versions.v1";
 // account identifiers, keys, buckets, source titles or stack traces.
 export function safeB2RetentionError(error){
  const code=String(error?.message??"");
- return /^(?:PHASE2H_B2_VERSION_[A-Z_]+|PHASE2H_B2_72H_[A-Z_]+|B2_GLOBAL_DAILY_QUOTA_EXHAUSTED|B2_ACCOUNT_GLOBAL_QUOTA_[A-Z_]+)$/u.test(code)?
+ return /^(?:PHASE2H_B2_VERSION_[A-Z_]+|PHASE2H_B2_72H_[A-Z_]+|B2_GLOBAL_DAILY_QUOTA_EXHAUSTED|B2_ACCOUNT_GLOBAL_QUOTA_[A-Z0-9_]+)$/u.test(code)?
   code:"PHASE2H_B2_VERSION_INDEPENDENT_PROVIDER_PROOF_UNAVAILABLE";
 }
 
