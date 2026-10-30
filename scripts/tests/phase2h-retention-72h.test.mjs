@@ -62,9 +62,11 @@ test("deletion run fails closed without provider admission and never changes PRE
  await assert.rejects(()=>cleanupPhase2hD1({now,env:{},fetchImpl:()=>{
   throw Error("NO_NETWORK")}}),/PROTECTED_PROVIDER_ADMISSION_REQUIRED/u);
  const wf=readFileSync(".github/workflows/phase2h-72h-news-retention.yml","utf8");
- assert.match(wf,/cron: "21 \* \* \* \*"/u);
- assert.match(wf,/needs\.quota-admission\.outputs\.retention_cleanup == 'true'/u);
- assert.match(wf,/PHASE2H_PROVIDER_RETENTION_CLEANUP/u);
+ assert.doesNotMatch(wf,/cron:|workflow_dispatch:|quota-admission:/u);
+ const cycle=readFileSync(".github/workflows/phase2h-private-raw-archive.yml","utf8");
+ assert.match(cycle,/archive-then-retention:/u);
+ assert.match(cycle,/needs\\.quota-admission\\.outputs\\.retention_cleanup == 'true'/u);
+ assert.match(cycle,/PHASE2H_PROVIDER_RETENTION_CLEANUP/u);
  assert.doesNotMatch(wf,/PREDGE_RESEARCH|APP_SUPABASE_SERVICE_ROLE_KEY/u);
  const archive=readFileSync(".github/workflows/phase2h-private-raw-archive.yml","utf8");
  const archiveImpl=readFileSync("scripts/ops/phase2h-archive-private-raw-news.mjs","utf8");
