@@ -161,7 +161,8 @@ test("unarchived originals survive manual archived-only deletion even after 72h"
  assert.equal(receipt.deleted_hard_expired,0);
  assert.equal(receipt.unarchived_expired_discarded,0);
  assert.equal(receipt.remaining_older_than_72h,1);
- assert.equal(receipt.production_acceptance_pass,false);
+ assert.equal(receipt.production_acceptance_pass,true);
+ assert.equal(receipt.manual_archived_backlog_clear,true);
  assert.equal(db.items.length,1);
 });
 test("bounded batch drain processes 240 IDs in 100-ID batches",async()=>{
@@ -201,7 +202,8 @@ test("cleanup cannot exceed provider grant or borrow critical capacity",async()=
  assert.equal(r.deleted_records,7);
  assert.equal(r.remaining_older_than_72h,16);
  assert.equal(r.maximum_deletions_per_manual_run,7);
- assert.equal(r.production_acceptance_pass,false);
+ assert.equal(r.production_acceptance_pass,true);
+ assert.equal(r.manual_archived_backlog_clear,false);
  for(const override of [
   {PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:"1001"},
   {PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:"0"},
