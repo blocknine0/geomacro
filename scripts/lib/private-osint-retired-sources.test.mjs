@@ -25,7 +25,7 @@ test("76 repeatedly failing sources are retired from private production ingestio
   assert.ok(registry.length<=512);
   assert.equal(new Set(registry.map(s=>s.url)).size,registry.length);
   assert.ok(registry.every(s=>!isRetiredPrivateOsintSource(s)));
-  assert.equal(registry.filter(s=>s.private_discovery_index_only&&s.discovery_country_iso3).length,25);
+  assert.equal(registry.filter(s=>s.private_discovery_index_only&&s.discovery_country_iso3).length,Math.min(25,195-n*25));
   assert.equal(registry.filter(s=>s.private_hub_overlay).length,3);
  }
 });
