@@ -1,5 +1,7 @@
 name: Phase 2H Permanent Private Raw B2 and Exact-Question Acceptance
-# Exactly four UTC archive windows. No out-of-slot B2 bootstrap.
+# Exactly four UTC archive windows; raw private originals reserve B2 quota
+# before the existing hourly minute-07 derived-news job. No extra slots.
+# No out-of-slot B2 bootstrap.
 # Existing provider-approved maintenance=true admission and atomic B2 reserve are mandatory.
 on:
   pull_request:
@@ -14,7 +16,7 @@ on:
       - "scripts/ops/phase2h-permanent-production-acceptance.mjs"
   workflow_dispatch: {}
   schedule:
-    - cron: "17 0,6,12,18 * * *"
+    - cron: "3 0,6,12,18 * * *"
 
 permissions:
   contents: read
