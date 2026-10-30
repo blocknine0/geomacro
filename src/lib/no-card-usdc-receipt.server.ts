@@ -131,11 +131,15 @@ async function rpc(url:string,method:string,params:unknown[],
   fetcher:typeof fetch,timeoutMs:number):Promise<unknown> {
   let response:Response;
   try{
-    response=await fetcher(url,{method:"POST",redirect:"error",cache:"no-store",
+    response=await fetcher(url,{method:"POST",redirect:"manual",cache:"no-store",
       headers:{"Content-Type":"application/json",Accept:"application/json"},
       body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),
       signal:AbortSignal.timeout(Math.max(1,Math.min(6000,timeoutMs)))});
   }catch{throw Error("NO_CARD_RPC_UNAVAILABLE");}
+  // Workerd does not support redirect:"error". Redirects are never followed:
+  // a manual 3xx is rejected and may only trigger bounded read-only fallback.
+  if(response.status>=300&&response.status<400)
+    throw Error("NO_CARD_RPC_UNAVAILABLE");
   if(!response.ok)throw Error("NO_CARD_RPC_UNAVAILABLE");
   if(Number(response.headers.get("content-length")||0)>131072)
     throw Error("NO_CARD_RPC_RESPONSE_TOO_LARGE");
