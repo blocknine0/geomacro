@@ -109,7 +109,15 @@ function rpcConfig(network:string) {
        alternates.some(item=>typeof item!=="string"||!item.trim()))
       throw Error("NO_CARD_RPC_ALTERNATES_INVALID");
   }
-  const endpoints=[...new Set([primary,...(alternates as string[])].map(approvedRpcUrl))];
+  // Each backup can be saved independently in Lovable Secrets (BACKUP_1...BACKUP_10).
+  // Keep the legacy JSON-array config working for existing deployments.
+  const individuallyConfigured=Array.from({length:MAX_RPC_ALTERNATES},(_,i)=>
+    process.env["GEOMACRO_NO_CARD_RPC_"+suffix+"_BACKUP_"+(i+1)]?.trim()??""
+  ).filter(Boolean);
+  const configuredAlternates=[...individuallyConfigured,...(alternates as string[])];
+  if(configuredAlternates.length>MAX_RPC_ALTERNATES)
+    throw Error("NO_CARD_RPC_ALTERNATES_INVALID");
+  const endpoints=[...new Set([primary,...configuredAlternates].map(approvedRpcUrl))];
   return {endpoints,confirmations};
 }
 async function rpc(url:string,method:string,params:unknown[],
