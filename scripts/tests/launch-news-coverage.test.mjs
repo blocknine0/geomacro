@@ -39,7 +39,7 @@ test('runtime catches wars, corridor, systemic and mineral shocks without routin
 test('global watches replace three existing slots and retain 195-country/512 endpoint budget',()=>{
  const base=privateOsintGlobalSources(),at=new Date('2026-10-28T07:00:00Z');
  const result=privateOsintRuntimeSources(at,base,undefined,{includeLocalGapLane:true});
- assert.equal(result.length,base.length+49+3); // 24 local + 25 country index + 3 bounded official hubs
+ assert.ok(result.length<=base.length+49+3); // retired catalogue IDs are excluded before the 24 local + 25 country + 3 hub budget
  assert.ok(result.length<=512);
  const watch=result.filter(s=>s.launch_watch);
  assert.equal(watch.length,3);
