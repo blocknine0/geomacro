@@ -242,7 +242,7 @@ test("production acceptance links verified B2 hash, canonical ID and HTTP five-p
    providerReads++;
    const sql=JSON.parse(init.body).sql;
    const results=sql.startsWith("SELECT record_id")?
-    [{record_id:row.record_id,raw_sha256:row.raw_sha256,
+    [{record_id:row.record_id,category:row.category,raw_sha256:row.raw_sha256,
      raw_json:JSON.stringify(row),b2_object_sha256:digest,
      b2_archived_at:now.toISOString()}]:[{has_pending:0}];
    return Response.json({success:true,result:[{success:true,results}]});
