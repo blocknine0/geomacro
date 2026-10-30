@@ -13,6 +13,7 @@ on:
       - "scripts/lib/p0b-live-global-search.mjs"
       - "scripts/tests/p0b-live-global-search.test.mjs"
       - "scripts/ops/p0b-source-first-production-acceptance.mjs"
+      - "scripts/ops/p0b-publish-acceptance-receipt.mjs"
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "workers/control-plane/wrangler.example.jsonc"
       - ".github/workflows/p0b-source-first-production-acceptance.yml"
@@ -23,6 +24,7 @@ on:
       - "scripts/lib/p0b-live-global-search.mjs"
       - "scripts/tests/p0b-live-global-search.test.mjs"
       - "scripts/ops/p0b-source-first-production-acceptance.mjs"
+      - "scripts/ops/p0b-publish-acceptance-receipt.mjs"
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "workers/control-plane/wrangler.example.jsonc"
       - ".github/workflows/p0b-source-first-production-acceptance.yml"
@@ -51,6 +53,7 @@ jobs:
           node --check scripts/lib/p0b-event-grounded-projection.mjs
           node --check scripts/lib/p0b-live-global-search.mjs
           node --check scripts/ops/p0b-source-first-production-acceptance.mjs
+          node --check scripts/ops/p0b-publish-acceptance-receipt.mjs
           node --check workers/control-plane/src/phase2h-private-raw-news.mjs
           node --test scripts/tests/p0b-live-global-search.test.mjs scripts/tests/p0a-evidence-quality.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs
   independent-production:
@@ -58,8 +61,10 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name != 'workflow_run' ||
-       (github.event.workflow_run.event == 'push' &&
+      (github.event_name == 'schedule' ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.event == 'push' &&
         github.event.workflow_run.head_branch == 'main' &&
         github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-24.04
