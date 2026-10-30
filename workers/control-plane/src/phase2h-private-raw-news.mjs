@@ -68,10 +68,34 @@ export async function validPrivateRawNews(row,now=Date.now(),requireRecent=true)
     a.why_it_matters?.independently_verified!==false||
     !(a.why_it_matters.text===null||typeof a.why_it_matters.text==="string"&&
       a.why_it_matters.text.length<=1200)||
+    !allowed(a.market_relevance,["potential_watch_channels","observed_market_reaction_verified",
+      "confirmed_instruments","price_direction","price_change"])||
     !Array.isArray(a.market_relevance?.potential_watch_channels)||
+    a.market_relevance.potential_watch_channels.length>4||
+    a.market_relevance.potential_watch_channels.some(v=>![
+      "rates_and_bonds","fx_and_payments","trade_and_logistics","mineral_supply_chain"
+    ].includes(v))||
+    new Set(a.market_relevance.potential_watch_channels).size!==
+      a.market_relevance.potential_watch_channels.length||
+    !Array.isArray(a.market_relevance.confirmed_instruments)||
+    a.market_relevance.confirmed_instruments.length!==0||
     a.market_relevance?.observed_market_reaction_verified!==false||
     a.market_relevance?.price_direction!==null||a.market_relevance?.price_change!==null||
+    !allowed(a.what_to_watch,["event_topic","trigger","confirmed_followup_at"])||
+    !(a.what_to_watch.event_topic===null||
+      typeof a.what_to_watch.event_topic==="string"&&a.what_to_watch.event_topic.length<=120)||
+    a.what_to_watch.trigger!=="NEXT_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION"||
     a.what_to_watch?.confirmed_followup_at!==null||
+    !allowed(a.evidence_and_confidence,[
+      "original_observation_id","source_published_at","date_precision",
+      "observed_feed_title_available","original_article_page_verified",
+      "independent_event_verified","commercial_rights_verified",
+      "paid_eligible","source_content_identity_sha256"])||
+    a.evidence_and_confidence.observed_feed_title_available!==true||
+    !HEX.test(a.evidence_and_confidence.source_content_identity_sha256)||
+    /https?:\/\/|[<>]/iu.test(
+      String(a.what_happened.text??"")+" "+String(a.why_it_matters.text??""))||
+
     a.evidence_and_confidence?.original_observation_id!==id||
     a.evidence_and_confidence?.source_published_at!==o.original_published_at||
     a.evidence_and_confidence?.date_precision!==o.date_precision||
