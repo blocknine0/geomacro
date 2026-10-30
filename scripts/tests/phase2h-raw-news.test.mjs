@@ -229,7 +229,8 @@ test("production acceptance links verified B2 hash, canonical ID and HTTP five-p
  let providerReads=0,httpReads=0;
  const receipt={schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
   status:"B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED",
-  storage_confirmed:true,rows_archived:1,b2_first_get_verified:true,
+  storage_confirmed:true,rows_archived:1,category_counts:{geopolitics:0,macro:1,rare_earth:0},
+  b2_first_get_verified:true,
   b2_second_independent_get_verified:true,post_archive_d1_verified:true,
   object_sha256:digest};
  const env={GITHUB_REPOSITORY:"blocknine0/geomacro",GITHUB_REF:"refs/heads/main",
