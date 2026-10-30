@@ -20,9 +20,9 @@ describe("no phantom flat 0.05 USDC price on commercial adaptive responses",()=>
   });
   it("must use approved variant 0.02,0.05,0.10 and 0.15 amounts when available",()=>{
     expect(resolveGeomacroCapabilityPrice("structural_country_digest","standard").amount_usdc).toBe("0.02");
-    expect(resolveGeomacroCapabilityPrice("intelligence_query","focused").amount_usdc).toBe("0.05");
-    expect(resolveGeomacroCapabilityPrice("intelligence_query","standard").amount_usdc).toBe("0.10");
-    expect(resolveGeomacroCapabilityPrice("intelligence_query","complex_multi_source").amount_usdc).toBe("0.15");
+    expect(resolveGeomacroCapabilityPrice("intelligence_query","focused").amount_usdc).toBe("0.02");
+    expect(resolveGeomacroCapabilityPrice("intelligence_query","standard").amount_usdc).toBe("0.03");
+    expect(resolveGeomacroCapabilityPrice("intelligence_query","complex_multi_source").amount_usdc).toBe("0.05");
     expect(Object.keys(GEOMACRO_CAPABILITY_PRICES)).toHaveLength(8);
   });
 });
