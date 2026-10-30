@@ -77,7 +77,7 @@ export function p0aAuditBatch(rows){
   const category=row?.category;
   if(!CATEGORIES.has(category))continue;
   const score=p0aAuditOriginal(row), bucket=counts[category];
-  bucket.total++;bucket[score.status.toLowerCase()]++;
+  bucket.total++;bucket[score.status==="EVIDENCE_LIMITED"?"limited":score.status.toLowerCase()]++;
   for(const reason of score.reasons)issues[reason]=(issues[reason]??0)+1;
   if(score.status!=="PASS")continue;
   const rawWhy=norm(row.analysis.why_it_matters.text);
