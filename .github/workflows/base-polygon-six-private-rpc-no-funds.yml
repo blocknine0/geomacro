@@ -9,6 +9,8 @@ on:
       - "src/lib/no-card-rpc-readiness.server.test.ts"
       - "src/routes/api.v1.payments.networks.ts"
       - "scripts/ops/verify-merchant-six-rpc-no-funds.mjs"
+      - "scripts/lib/production-exact-build-readiness.mjs"
+      - "scripts/tests/production-exact-build-readiness.test.mjs"
       - ".github/workflows/base-polygon-six-private-rpc-no-funds.yml"
 
 permissions:
@@ -33,6 +35,8 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
+      - name: Prove exact SHA preflight blocks private RPC calls on stale builds
+        run: node --test scripts/tests/production-exact-build-readiness.test.mjs
       - name: Verify owner-backed six production RPC reads without payment or exposed secrets
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
