@@ -53,11 +53,25 @@ test("missing lifecycle or listFiles capability refuses positive proof",async()=
  const m=make([{...auth,apiInfo:{storageApi:{...auth.apiInfo.storageApi,
   allowed:{capabilities:["listBuckets"]}}}},bucket]);
  await assert.rejects(verifyPhase2hB2VersionInventory({env,now,fetchImpl:m.fetchImpl,governor:m.governor}),
-  /PROVIDER_LIST_CAPABILITY_MISSING/u);
+  /PROVIDER_LIST_FILES_CAPABILITY_MISSING/u);
  assert.equal(m.calls,1);
  const absent=make([auth,{buckets:[{...bucket.buckets[0],lifecycleRules:[]}]}]);
  await assert.rejects(verifyPhase2hB2VersionInventory({env,now,fetchImpl:absent.fetchImpl,governor:absent.governor}),
   /THREE_DAY_EXPIRY_NOT_PROVEN/u);
+});
+test("existing archive-read principal is used for provider inventory without widening writer key",async()=>{
+ const extendedEnv={...env,B2_ARCHIVE_READ_KEY_ID:"read".repeat(5),
+  B2_ARCHIVE_READ_APPLICATION_KEY:"s".repeat(24)};
+ const seen=[];
+ const docs=[auth,bucket,{files:[],nextFileName:null,nextFileId:null}];
+ const r=await verifyPhase2hB2VersionInventory({env:extendedEnv,now,
+  fetchImpl:async(_url,options)=>{seen.push(options?.headers?.Authorization);return{
+   status:200,redirected:false,json:async()=>docs[seen.length-1]};},
+  governor:{reserve:async()=>{}}});
+ assert.equal(r.existing_credential_used,"ARCHIVE_READ");
+ assert.match(seen[0],/^Basic /u);
+ assert.equal(Buffer.from(seen[0].slice(6),"base64").toString("utf8"),
+  extendedEnv.B2_ARCHIVE_READ_KEY_ID+":"+extendedEnv.B2_ARCHIVE_READ_APPLICATION_KEY);
 });
 test("quota hold occurs before B2 network call, off-main fails closed",async()=>{
  let calls=0;
