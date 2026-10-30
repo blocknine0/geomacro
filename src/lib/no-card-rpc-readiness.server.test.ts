@@ -61,6 +61,38 @@ describe("signed private live six-RPC no-funds readiness",()=>{
     expect(JSON.stringify(receipt)).not.toContain("opaque-base");
     expect(JSON.stringify(receipt)).not.toContain(token);
   });
+  it("uses Workerd-safe redirect:manual for egress baseline and all six RPCs",async()=>{
+    const calls:{url:string;redirect:RequestRedirect|undefined}[]=[];
+    const fetcher=(async(u:unknown,init?:RequestInit)=>{
+      calls.push({url:String(u),redirect:init?.redirect});
+      if(init?.redirect==="error")throw new TypeError("workerd rejects redirect:error");
+      expect(init?.redirect).toBe("manual");
+      return rpcFetch(u,init);
+    }) as typeof fetch;
+    const response=await runSignedRpcReadiness(request(),env,fetcher,now);
+    const result=await response.json() as {ok:boolean;egress_check:string};
+    expect(response.status).toBe(200);
+    expect(result.egress_check).toBe("EGRESS_PASS");
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveLength(25);
+  });
+  it("does not follow a redirect to an untrusted RPC address",async()=>{
+    const destinations:string[]=[];
+    const fetcher=(async(u:unknown,init?:RequestInit)=>{
+      destinations.push(String(u));
+      expect(init?.redirect).toBe("manual");
+      if(String(u).includes("base-primary"))return new Response(null,{
+        status:302,headers:{Location:"https://untrusted.example/evil"},
+      });
+      return rpcFetch(u,init);
+    }) as typeof fetch;
+    const response=await runSignedRpcReadiness(request(),env,fetcher,now);
+    const body=await response.json() as {checks:{status:string}[]};
+    expect(response.status).toBe(503);
+    expect(body.checks[0].status).toBe("RPC_REDIRECT_REJECTED");
+    expect(destinations).not.toContain("https://untrusted.example/evil");
+  });
+
   it("accepts one raw Ankr HTTPS URL per existing _ALTERNATES secret",async()=>{
     const raw={...env,
       GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES:"https://base-ankr.example/rpc",
