@@ -97,6 +97,24 @@ jobs:
           fi
 
           git commit -m "sync: canonical main ${GITHUB_SHA:0:12}"
-          git push origin HEAD:main
-
+          # A remote 5xx can reject a correct, non-force Git push. Retry ONLY
+          # transport/server failures; auth, branch divergence and other
+          # errors remain fail-closed. No secrets are printed in the log.
+          pushed=false
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main > "$RUNNER_TEMP/geomacro-mirror-push.log" 2>&1; then
+              pushed=true
+              break
+            fi
+            if ! grep -Eiq 'Internal Server Error|HTTP (500|502|503|504)|remote end hung up unexpectedly' "$RUNNER_TEMP/geomacro-mirror-push.log"; then
+              echo "::error::LOVABLE_MIRROR_NON_RETRYABLE_PUSH_FAILURE"
+              exit 2
+            fi
+            echo "::warning::LOVABLE_MIRROR_TRANSIENT_REMOTE_ERROR attempt=$attempt"
+            if [ "$attempt" -lt 3 ]; then sleep $((attempt * 3)); fi
+          done
+          if [ "$pushed" != true ]; then
+            echo "::error::LOVABLE_MIRROR_REMOTE_UNAVAILABLE_AFTER_RETRIES"
+            exit 2
+          fi
           echo "Mirrored canonical main ${GITHUB_SHA} to ${LOVABLE_MIRROR_REPOSITORY}:main."
