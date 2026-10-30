@@ -170,12 +170,12 @@ export async function runPhase2hGovernedRawB2({
    rows_archived:0,object_sha256:null,all_backlog_cleared:true};
  // Enforce provider lifecycle on EVERY caller, not only on a single workflow.
  // Two native read-only operations use the SAME global atomic B2 governor.
- // No B2 original-news PUT without exact-prefix, 1+1-day provider proof.
+ // No B2 original-news PUT while provider-side automatic deletion remains enabled.
  let lifecycle;
  try{lifecycle=await lifecycleVerifier({env,fetchImpl,governor});}
  catch{fail("LIFECYCLE_NOT_VERIFIED")}
  if(lifecycle?.phase2h_raw_prefix_verified!==true||
-    lifecycle?.deletion_within_three_days_provider_rule!==true||
+    lifecycle?.auto_deletion_paused!==true||
     lifecycle?.no_bucket_mutation!==true)
   fail("LIFECYCLE_NOT_VERIFIED");
  const plan=buildPhase2hRawB2Plan(initialRows,now);
@@ -205,7 +205,7 @@ export async function runPhase2hGovernedRawB2({
   category_counts:plan.counts,object_sha256:plan.compressed_sha256,
   object_key:plan.key,private_raw_includes_original_full_article:false,
   backlog_may_remain:initialRows.length===300,
-  b2_lifecycle_exact_prefix_readback_verified:true,
+  b2_automatic_deletion_paused_provider_verified:true,
   b2_first_get_verified:true,b2_second_independent_get_verified:true,
   post_archive_d1_verified:true,original_clocks_unchanged:true,
   rights_verified:false,paid_eligible:false,payments:0};
