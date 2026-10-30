@@ -195,6 +195,43 @@ describe("category intelligence HTTP handler boundary", () => {
     });
   });
 
+  it.each(["base","polygon"])("preserves %s selected USDC network on all three category APIs",async network=>{
+    for(const {config,question} of cases){
+      mainnetHandlers.POST.mockReset();
+      mainnetHandlers.POST.mockResolvedValue(Response.json({
+        ok:false,chargeable:false,payment_required_now:false,
+      },{status:422}));
+      const handlers=createCategoryIntelligenceHandlers(config);
+      const request=new Request("https://geomacro.live/api/v1/intelligence/geopolitics?network="+network,{
+        method:"POST",headers:{"content-type":"application/json",
+          "payment-signature":"signed-payment-proof-test-only"},
+        body:JSON.stringify({question,subjects:[subject],fulfillment_mode:"published_only"}),
+      });
+      const response=await handlers.POST({request});
+      expect(response.status).toBe(422);
+      expect(mainnetHandlers.POST).toHaveBeenCalledTimes(1);
+      const forwarded=mainnetHandlers.POST.mock.calls[0]?.[0]?.request as Request;
+      expect(forwarded.url).toBe("https://geomacro.live/api/v1/intelligence/query?network="+network);
+      expect(forwarded.headers.get("payment-signature")).toBe("signed-payment-proof-test-only");
+      const plan=await forwarded.json();
+      expect(plan.topics).toEqual(config.topics);
+    }
+  });
+  it("does not silently pay on Base after an invalid Polygon query selector",async()=>{
+    const handlers=createCategoryIntelligenceHandlers(cases[0].config);
+    for(const suffix of ["?network=polygon&network=base","?network=arc",
+      "?network=polygon&view=foo"]){
+      mainnetHandlers.POST.mockReset();
+      const res=await handlers.POST({request:new Request(
+        "https://geomacro.live/api/v1/intelligence/geopolitics"+suffix,{
+          method:"POST",headers:{"content-type":"application/json"},
+          body:JSON.stringify({subjects:[subject],fulfillment_mode:"published_only"}),
+        })});
+      expect(res.status).toBe(400);
+      expect((await res.json()).chargeable).toBe(false);
+      expect(mainnetHandlers.POST).not.toHaveBeenCalled();
+    }
+  });
   it.each([
     ["geopolitics", "geopolitics"],
     ["macro-fx", "macro-fx"],
