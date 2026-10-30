@@ -29,7 +29,6 @@ jobs:
     environment: production
     env:
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
-      GRO_CONTINUITY_COUNTRY_ISO3: USA
     steps:
       - name: Checkout exact canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -45,6 +44,24 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Select any already current signed-hot GRO country from protected D1
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Source-free, read-only auditor refuses administrative ledger credentials.
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ""
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p artifacts/signed-gro-live-bridge
+          bun scripts/ops/audit-country-gro-d1-hot-readonly.ts --read-only > artifacts/signed-gro-live-bridge/existing-current-gro-audit.json
+          iso3="$(jq -r '.first_verified_current_country_iso3 // empty' artifacts/signed-gro-live-bridge/existing-current-gro-audit.json)"
+          if ! [[ "$iso3" =~ ^[A-Z]{3}$ ]]; then
+            echo "::error::SIGNED_GRO_NO_EXISTING_CURRENT_VERIFIED_D1_HOT"
+            exit 2
+          fi
+          echo "GRO_CONTINUITY_COUNTRY_ISO3=$iso3" >> "$GITHUB_ENV"
       - name: Prove authenticated D1 hot signed GRO with full signature and commercial policy
         shell: bash
         run: |
@@ -78,6 +95,8 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: signed-gro-live-bridge-${{ github.run_id }}
-          path: artifacts/signed-gro-live-bridge/bridge-evidence.json
+          path: |
+            artifacts/signed-gro-live-bridge/bridge-evidence.json
+            artifacts/signed-gro-live-bridge/existing-current-gro-audit.json
           if-no-files-found: warn
           retention-days: 7
