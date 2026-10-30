@@ -34,13 +34,25 @@ export function planPhase2iFastlanePrivateStage(candidates,{
  }).sort((a,b)=>a.category.localeCompare(b.category)||
   b.original.original_published_at.localeCompare(a.original.original_published_at)||
   a.record_id.localeCompare(b.record_id));
- // Bounded deterministic rotation ensures a stable >maxRows candidate set
- // does not repeatedly spend every tick on its first five old IDs. No D1
- // existence guesses: the protected Phase 2H endpoint alone counts duplicates.
- const start=recent.length
-  ?(Math.floor(now.getTime()/(intervalMinutes*60_000))*maxRows)%recent.length:0;
- const selected=Array.from({length:Math.min(maxRows,recent.length)},
-  (_,i)=>recent[(start+i)%recent.length]);
+ // A bounded round-robin gives each non-empty original-source category
+ // an opportunity in every small admitted tick. Rotate WITHIN each lane so
+ // old identical IDs cannot consume the same first five slots forever.
+ // No D1 existence guesses: Phase 2H alone proves same-ID duplicates.
+ const cycle=Math.floor(now.getTime()/(intervalMinutes*60_000));
+ const lanes=CATEGORIES.map(category=>recent.filter(r=>r.category===category));
+ const taken=lanes.map(()=>0);
+ const offsets=lanes.map(rows=>rows.length
+  ?(cycle*Math.ceil(maxRows/CATEGORIES.length))%rows.length:0);
+ const selected=[];
+ while(selected.length<maxRows&&selected.length<recent.length){
+  let progress=false;
+  for(let i=0;i<lanes.length&&selected.length<maxRows;i++){
+   if(taken[i]>=lanes[i].length)continue;
+   selected.push(lanes[i][(offsets[i]+taken[i])%lanes[i].length]);
+   taken[i]++;progress=true;
+  }
+  if(!progress)break;
+ }
  return Object.freeze({
   records:selected,observed_unique:recent.length,selected_count:selected.length,
   deferred_count:recent.length-selected.length,
