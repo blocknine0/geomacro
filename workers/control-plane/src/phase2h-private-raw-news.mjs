@@ -235,6 +235,8 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
   // Query a country/category using original headline hints, not publisher
   // location. This is a SQL prefilter only: the 195-state unambiguous country
   // resolver validates every result. A positive LIKE is NEVER attribution.
+  // A first canonical D1-staged original can support internal research even
+  // while B2 archive is pending. It NEVER qualifies for paid delivery.
   // Index-friendly category/time ordering remains bounded; no full-table
   // row download or 585-query fanout per customer request.
   let countryQuery=null;
@@ -246,8 +248,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
      .join(" OR ");
    countryQuery=env.DB.prepare(
     "SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 "+
-    "FROM phase2h_private_raw_news WHERE category=? AND "+
-    "b2_object_sha256 IS NOT NULL AND ("+predicate+") "+
+    "FROM phase2h_private_raw_news WHERE category=? AND ("+predicate+") "+
     "ORDER BY original_published_at DESC,record_id LIMIT 100"
    ).bind(category,...hints.map(x=>"%"+x+"%"));
   }
@@ -274,19 +275,22 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
       phase2hHeadlineCountryCandidate(item.original.original_title)===countryIso3)&&
       phase2hQuestionMatchesArchived(item,question)).slice(0,3);
   return safeReply({ok:true,schema:"geomacro.phase2h.private-question-fivepart.v1",
-   source:"B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1",
+   source:countryScoped?"CANONICAL_D1_PRIVATE_ORIGINAL_RESEARCH":
+    "B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1",
    bounded_most_recent_scan:requestedId!==null?1:100,
    ...(countryScoped?{requested_country_iso3:countryIso3,
     requested_category:category,
     country_attribution_basis:"UNAMBIGUOUS_ORIGINAL_HEADLINE_CANDIDATE",
-    country_event_independently_verified:false}:{}),
+    country_event_independently_verified:false,
+    d1_staged_unarchived_research_allowed:true,
+    staged_row_never_paid_eligible:true}:{}),
    global_search_complete:false,
    question_matches:matched.map(item=>({record_id:item.record_id,
     category:item.category,
     ...(countryScoped?{country_iso3:countryIso3}:{}),
     original_published_at:item.original.original_published_at,
     five_part:item.analysis,...phase2hQuestionDirectAnswer(question,item.analysis),
-    archive_d1_ack_present:true})),private_research_only:true,chargeable:false,
+    archive_d1_ack_present:results.results.find(x=>x.record_id===item.record_id)?.b2_object_sha256!=null})),private_research_only:true,chargeable:false,
    paid_eligible:false,raw_original_not_delivered:true});
  }catch{return safeReply({ok:false,error:"PRIVATE_RAW_CANONICAL_READ_UNAVAILABLE"},503)}
 }
