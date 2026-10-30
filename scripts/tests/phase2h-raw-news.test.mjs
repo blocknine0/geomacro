@@ -296,13 +296,17 @@ test("production acceptance links verified B2 hash, canonical ID and HTTP five-p
     direct_answer:row.analysis[focus].text,five_part:row.analysis}]});
  };
  const proof=await verifyPhase2hProductionQuestionChain({
-  now:now.getTime(),env,receipt,fetchImpl});
+  now:now.getTime(),env,receipt,fetchImpl,expectedArchivedRows:[row]});
  assert.equal(proof.entire_admitted_raw_backlog_verified,true);
 
  assert.equal(proof.per_record_five_part_exact,true);
  assert.equal(providerReads,2);assert.equal(httpReads,2);
  assert.equal(proof.question_variants_verified,2);
  assert.equal(proof.what_and_why_change_with_question,true);
+ await assert.rejects(verifyPhase2hProductionQuestionChain({
+  now:now.getTime(),env,receipt,fetchImpl,
+  expectedArchivedRows:[{...row,original:{...row.original,original_title:"Tampered source title"}}]}),
+  /PHASE2H_QUESTION_CHAIN_B2_RESTORED_CANONICAL_D1_CONTENT_MISMATCH/u);
  await assert.rejects(verifyPhase2hProductionQuestionChain({
   now:now.getTime(),env,receipt:{...receipt,b2_second_independent_get_verified:false},
   fetchImpl}),/PHASE2H_QUESTION_CHAIN_B2_POSITIVE_EXACT_READBACK_RECEIPT_REQUIRED/u);
@@ -384,7 +388,7 @@ test("earlier archived objects remain valid when no-new-data slot verifies lates
   D1_DATABASE_ID:"a".repeat(8)+"-"+"a".repeat(4)+"-"+"a".repeat(4)+
    "-"+"a".repeat(4)+"-"+"a".repeat(12),
   CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40)};
- const result=await runPhase2hPermanentAcceptance({env,now,
+ await assert.rejects(runPhase2hPermanentAcceptance({env,now,
   archive:async()=>({storage_confirmed:true,rows_archived:0,
    status:"NO_PENDING_PRIVATE_RAW_ROWS"}),
   verifyExisting:async()=>({
@@ -401,13 +405,7 @@ test("earlier archived objects remain valid when no-new-data slot verifies lates
   readCensus:async()=>({staged_total:315,archived_total:315,pending_total:0,
    category_counts:{geopolitics:{staged:20,archived:20,pending:0},
     macro:{staged:75,archived:75,pending:0},
-    rare_earth:{staged:220,archived:220,pending:0}}})});
- assert.equal(result.status,"PASS_REAL_B2_TO_EXACT_QUESTION");
- assert.equal(result.all_current_staged_rows_have_b2_archive_ack,true);
- assert.equal(result.entire_staged_set_independently_verified,false);
- assert.equal(result.all_historical_b2_objects_independently_refetched_this_run,false);
- assert.equal(result.existing_archived_object_verified,true);
- assert.equal(result.archived_records_this_run,0);
+    rare_earth:{staged:220,archived:220,pending:0}}})}),/PHASE2H_PERMANENT_ENTIRE_ARCHIVED_SET_NOT_INDEPENDENTLY_VERIFIED/u);
 });
 
 test("re-observed immutable original survives deployed event-analysis wording upgrades",async()=>{

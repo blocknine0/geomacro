@@ -14,7 +14,8 @@ const RECEIPT="artifacts/derived-news/phase2h-private-raw-b2-verified.json";
 const HEX=/^[a-f0-9]{64}$/u;
 const fail=code=>{throw Error("PHASE2H_QUESTION_CHAIN_"+code)};
 export async function verifyPhase2hProductionQuestionChain({
- env=process.env,fetchImpl=fetch,now=Date.now(),receipt
+ env=process.env,fetchImpl=fetch,now=Date.now(),receipt,
+ expectedArchivedRows=null
 }={}){
  if(env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
    env.GITHUB_REF!=="refs/heads/main"||env.GITHUB_ACTIONS!=="true"||
@@ -50,6 +51,26 @@ export async function verifyPhase2hProductionQuestionChain({
   [receipt.object_sha256]);
  if(rows.length!==receipt.rows_archived||rows.length>300)
   fail("B2_BATCH_D1_ID_CENSUS_INCOMPLETE");
+ // For restored B2 objects, category counts alone cannot prove identical
+ // original ID/hash/content in canonical D1. Never log private originals.
+ if(expectedArchivedRows!==null){
+  if(!Array.isArray(expectedArchivedRows)||
+     expectedArchivedRows.length!==rows.length||
+     expectedArchivedRows.some(x=>!x||!HEX.test(x.record_id)||
+       !HEX.test(x.raw_sha256)))
+   fail("B2_RESTORED_OBJECT_ID_SET_INVALID");
+  const restored=new Map();
+  for(const x of expectedArchivedRows){
+   if(restored.has(x.record_id))fail("B2_RESTORED_DUPLICATE_ID");
+   restored.set(x.record_id,x);
+  }
+  if(rows.some(x=>{
+   const original=restored.get(x.record_id);
+   return !original||original.category!==x.category||
+      original.raw_sha256!==x.raw_sha256||
+      JSON.stringify(original)!==x.raw_json;
+  }))fail("B2_RESTORED_CANONICAL_D1_CONTENT_MISMATCH");
+ }
  const categories=["geopolitics","macro","rare_earth"];
  const counts=Object.fromEntries(categories.map(c=>[c,0]));
  const originals=[],seen=new Set();
