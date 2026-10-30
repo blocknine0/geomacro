@@ -91,6 +91,34 @@ describe("founder locked three-chain native USDC x402 v2 discovery",()=>{
     expect(info.raw_data_delivery).toBe(false);
     expect(info.networks.every(x=>x.merchant_settlement_ready===false)).toBe(true);
   });
+  it("shows owner control only when ALL configured aliases match the EIP-191 signed recipient",()=>{
+    const wallet="0x95ba71d21C41bDa8bBA9533f96D25f793E4137b5";
+    const shared={
+      NODE_ENV:"production",
+      GEOMACRO_USDC_RECEIVER:wallet,
+      COINBASE_X402_PAY_TO:wallet.toLowerCase(),
+      CIRCLE_X402_SELLER_ADDRESS:wallet,
+    };
+    const verified=publicGeomacroUsdcRailDiscovery(shared);
+    expect(verified.merchant_receiver).toEqual({
+      state:"RECEIVER_CONFIGURED_CONTROL_ATTESTED",
+      address:wallet.toLowerCase(),
+      same_address_configuration_verified:true,
+      wallet_control_verified:true,
+    });
+    expect(verified.settlement_authorized).toBe(false);
+    expect(verified.real_money_acknowledged).toBe(false);
+    expect(verified.networks.every(x=>x.merchant_settlement_ready===false)).toBe(true);
+    const previous="0xF98c18231ceFBD6d11154DEc14b3Aec6D74dC4B0";
+    expect(publicGeomacroUsdcRailDiscovery({
+      NODE_ENV:"production",GEOMACRO_USDC_RECEIVER:previous,
+    }).merchant_receiver.wallet_control_verified).toBe(false);
+    const drift=publicGeomacroUsdcRailDiscovery({
+      ...shared, CIRCLE_X402_SELLER_ADDRESS:previous,
+    });
+    expect(drift.merchant_receiver.wallet_control_verified).toBe(false);
+    expect(drift.merchant_receiver.state).toBe("RECEIVER_CONFIGURATION_MISMATCH");
+  });
   it("exposes separate no-funds routes and reuses the actual official AI agent",()=>{
     const agent=readFileSync("src/lib/official-geomacro-agent.server.ts","utf8");
     const n=readFileSync("src/routes/api.v1.payments.networks.ts","utf8");
