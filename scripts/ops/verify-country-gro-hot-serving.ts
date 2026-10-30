@@ -17,8 +17,13 @@ delete process.env.SUPABASE_DB_URL;
 delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const at = new Date().toISOString();
-const object = await readD1VerifiedHotCountryGro(iso3, at);
-if (!object) throw new Error("COUNTRY_GRO_HOT_CANARY_UNAVAILABLE");
+let hotFailure = "HOT_DIAGNOSTIC_UNCLASSIFIED";
+const object = await readD1VerifiedHotCountryGro(iso3, at, code => { hotFailure = code; });
+if (!object) {
+  // Fixed, non-sensitive codes only; no secrets, source URLs, object IDs or payloads.
+  console.error("SAFE_GRO_DIAGNOSTIC=" + hotFailure);
+  process.exit(2);
+}
 const verificationKeys = await loadPublicRiskObjectVerificationKeys();
 if (!verificationKeys) throw new Error("COUNTRY_GRO_HOT_CANARY_TRUST_REGISTRY_UNAVAILABLE");
 const signature = verifyRiskObjectSignature(object, verificationKeys);
