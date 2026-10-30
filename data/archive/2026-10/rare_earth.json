@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-30T00:25:35.022Z",
+  "updated_at": "2026-10-30T01:07:52.640Z",
   "signals": [
+    {
+      "id": "rare_earth-570a1945",
+      "category": "rare_earth",
+      "title": "Geomacro finds Glencore reported Higher Q3 Copper Production, Maintains 2026 Guidance - marketscreener.com",
+      "what_changed": "A monitored source feed reports: Glencore reported Higher Q3 Copper Production, Maintains 2026 Guidance - marketscreener.com. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T00:02:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-93c0c96c",
+      "category": "rare_earth",
+      "title": "Geomacro finds First Lithium Minerals announced Closing of Second Tranche of LIFE Offering and Private Placement for Gross Proceeds of $1,442,144 - TMX Newsfile",
+      "what_changed": "A monitored source feed reports: First Lithium Minerals announced Closing of Second Tranche of LIFE Offering and Private Placement for Gross Proceeds of $1,442,144 - TMX Newsfile. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T21:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-9c2cc354",
       "category": "rare_earth",
@@ -14,6 +52,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T19:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-53a51a34",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rio Tinto suspended Underground Operations of Oyu Tolgoi Copper Mine After Rockfall - marketscreener.com",
+      "what_changed": "A monitored source feed reports: Rio Tinto suspended Underground Operations of Oyu Tolgoi Copper Mine After Rockfall - marketscreener.com. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T18:44:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
