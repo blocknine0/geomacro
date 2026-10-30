@@ -40,7 +40,9 @@ export function verifyPublicStaticArchiveReadback({
     liveCoverage.d1_reads!==0||
     !/^[a-f0-9]{64}$/.test(liveCoverage.eligible_ids_sha256??""))
   fail("COVERAGE_CONTRACT_INVALID");
- clock(expectedLatest,now);clock(expectedCoverage,now);
+ const expectedLatestAt=clock(expectedLatest,now),expectedCoverageAt=clock(expectedCoverage,now);
+ if(Math.abs(expectedLatestAt-expectedCoverageAt)>30_000)
+  fail("BUILT_SNAPSHOT_CLOCK_SPLIT");
  const latestAt=clock(liveLatest,now),coverageAt=clock(liveCoverage,now);
  if(Math.abs(latestAt-coverageAt)>30_000)
   fail("STATIC_SNAPSHOT_CLOCK_SPLIT");
@@ -69,4 +71,42 @@ export function verifyPublicStaticArchiveReadback({
   max_verified_snapshot_age_seconds:Math.ceil((now-Math.min(latestAt,coverageAt))/1000),
   d1_reads:0,d1_writes:0,b2_requests:0,predge_gets:0,payments:0,
  });
+}
+
+/**
+ * Asset files can converge at different Cloudflare edge caches immediately
+ * after a deploy. Re-read the WHOLE static cohort, not each cached file in
+ * isolation; no partial readback may return success. This is a bounded
+ * public-static retry, never D1/partner/B2 polling or a clock rewrite.
+ */
+export async function verifyConvergedPublicStaticArchiveReadback({
+  read,expectedIndex,expectedLatest,expectedCoverage,
+  now=()=>Date.now(),sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),
+  attempts=5,delayMs=1200
+}={}){
+  if(typeof read!=="function"||typeof now!=="function"||
+     typeof sleep!=="function"||!Number.isSafeInteger(attempts)||
+     attempts<1||attempts>5||!Number.isSafeInteger(delayMs)||
+     delayMs<0||delayMs>2500)fail("COHORT_RETRY_CONFIG_INVALID");
+  let last=null;
+  for(let i=0;i<attempts;i++){
+    try{
+      const [liveIndex,liveLatest,liveCoverage]=await Promise.all([
+        read("/index.json"),read("/latest.json"),read("/coverage-72h.json")
+      ]);
+      const verified=verifyPublicStaticArchiveReadback({
+        expectedIndex,expectedLatest,expectedCoverage,
+        liveIndex,liveLatest,liveCoverage,now:now()
+      });
+      return Object.freeze({...verified,
+        verified_as_single_coherent_cohort:true,
+        public_static_cohort_attempts:i+1
+      });
+    }catch(e){
+      last=e;
+      if(i+1<attempts)await sleep(delayMs);
+    }
+  }
+  // Never reclassify a persistent mismatched or stale snapshot as healthy.
+  throw last??Error("PERMANENT_ARCHIVE_STATIC_READBACK_COHORT_UNAVAILABLE");
 }
