@@ -238,7 +238,8 @@ test("production acceptance links verified B2 hash, canonical ID and HTTP five-p
   D1_DATABASE_ID:"d".repeat(36),CLOUDFLARE_API_TOKEN:"token".repeat(10),
   GEOMACRO_COMMERCE_LEDGER_TOKEN:"root".repeat(12)};
  const fetchImpl=async(url,init)=>{
-  if(String(url).includes("api.cloudflare.com")){
+  const parsedUrl=new URL(url);
+  if(parsedUrl.origin==="https://api.cloudflare.com"){
    providerReads++;
    const sql=JSON.parse(init.body).sql;
    const results=sql.startsWith("SELECT record_id")?
