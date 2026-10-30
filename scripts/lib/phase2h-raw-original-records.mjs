@@ -35,10 +35,13 @@ export function phase2hEventSpecificWhy(signal){
  if(!change||!relevance||
    /a dated first-party source item was observed|has not yet been established|does not establish a named actor/iu.test(change))
   return null;
- const result="The observed development — "+change.replace(/\\.$/u,"")+
+ const event=change.endsWith(".")?change.slice(0,-1):change;
+ const result="The observed development — "+event+
   " — matters to the stated topic because "+relevance+
   " Any realized market response or subsequent outcome remains unverified.";
- return result.length<=1200&&!/https?:\\/\\/|[<>]/iu.test(result)?result:null;
+ return result.length<=1200&&!result.includes("https://")&&
+  !result.includes("http://")&&!result.includes("<")&&!result.includes(">")?
+  result:null;
 }
 export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}={}){
  if(!Array.isArray(candidates)||!(now instanceof Date)||!Number.isFinite(now.getTime())||
