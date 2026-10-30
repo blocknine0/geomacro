@@ -6,6 +6,7 @@
  */
 import {createHmac} from "node:crypto";
 import {mkdir,writeFile} from "node:fs/promises";
+import {awaitExactGeomacroBuild} from "../lib/production-exact-build-readiness.mjs";
 
 const token=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"");
 const expectedSha=String(process.env.GITHUB_SHA??"");
@@ -28,15 +29,9 @@ const result={
 try{
   if(token.length<32 || !/^[0-9a-f]{40}$/u.test(expectedSha))
     throw Error("OWNER_PROTECTED_RUNTIME_TOKEN_OR_SHA_REQUIRED");
-  const build=await fetch(site+"/.well-known/geomacro-build.json",{
-    redirect:"error",cache:"no-store",headers:{"Cache-Control":"no-store"},
-    signal:AbortSignal.timeout(15000),
-  });
-  if(build.ok){
-    const data=await build.json();
-    result.deployed_exact_main=data.canonical_repository==="blocknine0/geomacro" &&
-      data.canonical_main_sha===expectedSha;
-  }
+  // A single signed six-RPC probe is permissible only after exact main is live.
+  // The no-secret build marker is retried while deployment propagates.
+  result.deployed_exact_main=await awaitExactGeomacroBuild({origin:site,expectedSha});
   // Only a generated HMAC crosses the HTTPS boundary, never the ledger token.
   const at=Date.now();
   const msg="geomacro.rpc-readiness.v1\nPOST\n"+path+"\n"+String(at);
