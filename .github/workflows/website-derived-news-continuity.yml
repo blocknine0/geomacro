@@ -666,6 +666,11 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/ops/phase2h-archive-private-raw-news.mjs
+      - name: Archive real website Intelligence records to private B2 with exact full GET
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/archive-live-derived-news-to-b2.mjs
       - name: Verify SAME B2 original ID through deployed exact-question private JSON
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
@@ -678,11 +683,6 @@ jobs:
           else
             echo "::notice::PHASE2H_NO_NEW_B2_RAW_ARCHIVE_TO_VERIFY"
           fi
-      - name: Archive real website Intelligence records to private B2 with exact full GET
-        shell: bash
-        run: |
-          set -euo pipefail
-          node scripts/ops/archive-live-derived-news-to-b2.mjs
       - name: Keep private 3-day actual B2 storage acceptance receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
