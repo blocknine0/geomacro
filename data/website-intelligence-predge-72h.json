@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T20:41:31.795Z",
+  "checked_at": "2026-10-30T22:24:36.062Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 380,
+  "item_count": 376,
   "counts": {
-    "geopolitics": 164,
-    "macro": 172,
-    "rare_earth": 44
+    "geopolitics": 163,
+    "macro": 170,
+    "rare_earth": 43
   },
-  "source_native_ids_sha256": "b78b8b7ef22211a596aed099a41ed772cbdbe96e406a667023336022e60d8d28",
+  "source_native_ids_sha256": "f0df64d6047395df0172f6e181da758fbd216151bf0424f1499fcc16a92a6118",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,44 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-be28ba3f",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning We urge those who did not support the US’ resolution to seek to find a solution on the basis of that draft · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning We urge those who did not support the US’ resolution to seek to find a solution on the basis of that draft. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-30T20:57:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-efbca968",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Russia’s decision to veto this draft resolution risks setting back progress on the political process for the Western Sahara · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Russia’s decision to veto this draft resolution risks setting back progress on the political process for the Western Sahara. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-30T20:56:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-e72a2f77",
       "category": "geopolitics",
@@ -7128,120 +7166,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: feeds.feedburner.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-16fb7452",
-      "category": "rare_earth",
-      "title": "Geomacro finds Copper Explorer launched 10000-Foot Nevada Drill Program as Global Supply Shortage Fears Grow - Streetwise Reports",
-      "what_changed": "A monitored source feed reports: Copper Explorer launched 10000-Foot Nevada Drill Program as Global Supply Shortage Fears Grow - Streetwise Reports. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T21:45:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-e8bedeae",
-      "category": "geopolitics",
-      "title": "Geomacro finds Flávio Bolsonaro left Brazil, lands in U.S. after losing presidential election - CBS News",
-      "what_changed": "A monitored source feed reports: Flávio Bolsonaro left Brazil, lands in U.S. after losing presidential election - CBS News. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T21:43:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-33e2b68b",
-      "category": "macro",
-      "title": "Geomacro finds Fed said it ignores politics. Its rate moves tell a more complicated story - CNN",
-      "what_changed": "A monitored source feed reports: Fed said it ignores politics. Its rate moves tell a more complicated story - CNN. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T21:26:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-da7674f2",
-      "category": "geopolitics",
-      "title": "Geomacro finds Prosecutor said defendants filmed journalists' addresses to plan attacks - Iran International",
-      "what_changed": "A monitored source feed reports: Prosecutor said defendants filmed journalists' addresses to plan attacks - Iran International. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T21:02:38.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-c5af90aa",
-      "category": "geopolitics",
-      "title": "Geomacro finds Eisenkot urged against new election, warns Netanyahu against political war - Haaretz",
-      "what_changed": "A monitored source feed reports: Eisenkot urged against new election, warns Netanyahu against political war - Haaretz. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T21:01:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-7913e422",
-      "category": "macro",
-      "title": "Geomacro finds Coinbase CEO said gold's supply can change, Bitcoin's can't - Yahoo Finance Singapore",
-      "what_changed": "A monitored source feed reports: Coinbase CEO said gold's supply can change, Bitcoin's can't - Yahoo Finance Singapore. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T21:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
