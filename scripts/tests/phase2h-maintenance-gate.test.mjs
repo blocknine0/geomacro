@@ -2,21 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const path=".github/workflows/phase2h-private-raw-archive.yml";
-test("Phase 2H B2 workflow requires archive-only provider approval and one daily quota-first archive slot",()=>{
+test("Phase 2H B2 workflow requires archive-only provider approval and one monthly quota-first archive slot",()=>{
  const yaml=readFileSync(path,"utf8");
- assert.ok(yaml.includes('cron: "29 0 * * *"'));
- assert.ok(yaml.includes("github.event.schedule == '29 0 * * *'"));
+ assert.ok(yaml.includes('cron: "29 0 1 * *"'));
+ assert.ok(yaml.includes("github.event.schedule == '29 0 1 * *'"));
  assert.ok(yaml.includes("archive-then-retention:"));
  assert.doesNotMatch(yaml,/five-hour-slot:|cron: "21/u);
- assert.match(yaml,/workflow_dispatch:/u);
- assert.match(yaml,/needs: manual-smoke-gate/u);
- assert.ok(yaml.includes("needs.manual-smoke-gate.result == 'success'"));
- assert.ok(yaml.includes("RUN_ONCE_PHASE2H_2026_10_31"));
- assert.match(yaml,/type: choice/u);
- assert.match(yaml,/default: NOT_AUTHORIZED/u);
- assert.ok(yaml.indexOf("- NOT_AUTHORIZED") < yaml.indexOf("- RUN_ONCE_PHASE2H_2026_10_31"));
- assert.doesNotMatch(yaml,/description: ".*type RUN_ONCE_PHASE2H/u);
- assert.ok(yaml.includes("2026-11-02T00:00:00Z"));
+ assert.doesNotMatch(yaml,/workflow_dispatch:|manual-smoke-gate:|RUN_ONCE_PHASE2H/u);
+ assert.match(yaml,/monthly archived-only cleanup/u);
+ assert.match(yaml,/monthly cycle captures only still-eligible last-72h rows/u);
+ assert.match(yaml,/monthly retention receipt/u);
  assert.match(yaml,/maintenance: \$\{\{ steps\.provider\.outputs\.maintenance \}\}/u);
  assert.match(yaml,/needs\.quota-admission\.outputs\.raw_archive == 'true'/u);
  assert.match(yaml,/raw_archive: \$\{\{ steps\.provider\.outputs\.phase2h_raw_archive \}\}/u);
