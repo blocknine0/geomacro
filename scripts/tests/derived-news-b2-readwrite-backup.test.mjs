@@ -23,15 +23,20 @@ const rows=[
  sample("geopolitics","1234abcd"),sample("macro","2345abcd"),
  sample("rare_earth","3456abcd")
 ];
-const page=(signals,offset=0,more=false)=>({
- ok:true,schema:"geomacro.website-derived-news-feed.v1",
+const bundle=(signals,patch={})=>({
+ ok:true,schema:"geomacro.website-derived-news-bundle.v1",
  delivery_scope:"free_website_only",retention_hours:72,
- original_release_delay_minutes:0,page_offset:offset,page_size:250,
- has_more:more,next_offset:more?offset+250:null,signals
+ original_release_delay_minutes:0,complete:true,item_cap:600,
+ returned_rows:signals.length,checked_at:now.toISOString(),
+ first_ingest:signals.map(s=>({id:s.id,first_seen_at:now.toISOString()})),
+ signals,...patch
 });
-const fetchDoc=(doc=page(rows))=>async(url,init)=>{
+const fetchDoc=(doc=bundle(rows))=>async(url,init)=>{
  assert.equal(new URL(url).host,"geomacro-control-plane.daspallab202391.workers.dev");
+ assert.equal(new URL(url).pathname,"/v1/public/website-derived-news-bundle");
  assert.equal(init.redirect,"error");assert.equal(init.method,"GET");
+ assert.equal(init.headers["Cache-Control"],"no-cache");
+ assert.equal(init.headers.Pragma,"no-cache");
  return Response.json(doc);
 };
 const b2=()=>({
@@ -68,12 +73,12 @@ test("safe domain-only OSINT attribution passes the same Worker, D1 readback and
    sources_credited:["Monitored feed: www.bankofcanada.ca"],
    status:"osint_feed_observed_unverified"};
  assert.equal(isSafeDerivedNewsReadbackSignal(osint),true);
- const fromD1=await readExactCurrentDerivedJournal({fetchImpl:fetchDoc(page([...rows,osint])),now});
+ const fromD1=await readExactCurrentDerivedJournal({fetchImpl:fetchDoc(bundle([...rows,osint])),now});
  assert.equal(fromD1.length,4);
  assert.deepEqual(buildDerivedJournalB2Plan(fromD1,now).category_counts,
    {geopolitics:1,macro:2,rare_earth:1});
  const archive=b2();
- const receipt=await archiveDerivedJournalToB2({fetchImpl:fetchDoc(page([...rows,osint])),b2:archive,now});
+ const receipt=await archiveDerivedJournalToB2({fetchImpl:fetchDoc(bundle([...rows,osint])),b2:archive,now});
  assert.equal(receipt.status,"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED");
  assert.equal(receipt.archived_rows,4);
  assert.deepEqual(receipt.category_counts,{geopolitics:1,macro:2,rare_earth:1});
@@ -97,7 +102,7 @@ test("URL/path/HTML in OSINT attribution still fails closed at the archive bound
     development_type:"unverified OSINT feed observation",
     sources_credited:[credit],status:"osint_feed_observed_unverified"};
   await assert.rejects(()=>archiveDerivedJournalToB2({
-    fetchImpl:fetchDoc(page([...rows,osint])),b2:b2(),now
+    fetchImpl:fetchDoc(bundle([...rows,osint])),b2:b2(),now
   }),/DERIVED_NEWS_B2_/u);
  }
 });
@@ -110,19 +115,35 @@ test("archive only at four UTC time windows, without extra original provider rea
  assert.equal(receipt.status,"SKIPPED_SIX_HOUR_ARCHIVE_SLOT");
  assert.equal(archive.count,0);
 });
+test("one uncached canonical D1 bundle replaces non-atomic page scans and holds at 601",async()=>{
+ const sixHundred=Array.from({length:600},(_,i)=>
+  sample(["geopolitics","macro","rare_earth"][i%3],(i+1000).toString(16).padStart(8,"0")));
+ let calls=0;
+ const rowsRead=await readExactCurrentDerivedJournal({
+  now,fetchImpl:async(url,init)=>{calls++;return fetchDoc(bundle(sixHundred))(url,init);}
+ });
+ assert.equal(calls,1);
+ assert.equal(rowsRead.length,600);
+ assert.deepEqual(buildDerivedJournalB2Plan(rowsRead,now).record_count,600);
+ const overflow=Response.json({ok:false,error:"DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED",actual_rows_at_least:601},{status:503});
+ await assert.rejects(readExactCurrentDerivedJournal({
+  now,fetchImpl:async()=>overflow
+ }),/DERIVED_NEWS_B2_D1_CANONICAL_BUNDLE_UNAVAILABLE/);
+});
 test("empty D1 journal never manufactures news nor creates a private blob",async()=>{
  const archive=b2(),receipt=await archiveDerivedJournalToB2({
-  fetchImpl:fetchDoc(page([])),b2:archive,now});
+  fetchImpl:fetchDoc(bundle([])),b2:archive,now});
  assert.equal(receipt.status,"SKIPPED_NO_QUALIFYING_D1_NEWS");
  assert.equal(archive.count,0);
 });
-test("wrong D1 page identity, missing cursor, stale item, URL-containing item all fail closed",async()=>{
+test("invalid canonical bundle, missing completeness, stale or unsafe items fail closed",async()=>{
  for(const doc of [
-  page(rows,250),{...page(rows),has_more:true,next_offset:250},
-  page([{...rows[0],published_at:"2026-10-18T04:00:00.000Z"}]),
-  page([{...rows[0],source_url:"https://private.example.org"}]),
-  page([{...rows[0],what_changed:"See https://private.example.org/article"}]),
-  page([{...rows[0],status:"official_release_observed_unscored",severity:55}])
+  bundle(rows,{item_cap:601}),bundle(rows,{complete:false}),
+  bundle(rows,{returned_rows:4}),bundle(rows,{checked_at:"2026-10-20T04:00:00.000Z"}),
+  bundle([{...rows[0],published_at:"2026-10-18T04:00:00.000Z"}]),
+  bundle([{...rows[0],source_url:"https://private.example.org"}]),
+  bundle([{...rows[0],what_changed:"See https://private.example.org/article"}]),
+  bundle([{...rows[0],status:"official_release_observed_unscored",severity:55}])
  ]){
   await assert.rejects(()=>archiveDerivedJournalToB2({
    fetchImpl:fetchDoc(doc),b2:b2(),now
