@@ -15,7 +15,7 @@ const auth={authorizationToken:"secret","accountId":"a".repeat(16),
  apiInfo:{storageApi:{apiUrl:"https://api004.backblazeb2.com",
   allowed:{capabilities:["listBuckets","listFiles"]}}}};
 const bucket={buckets:[{bucketName:"geomacro-private-archive",
- bucketId:"b1",lifecycleRules:[exactRule]}]};
+ bucketId:"b1",lifecycleRules:[]}]};
 const make=(docs)=>{
  let calls=0,tickets=[];
  const governor={reserve:async kind=>{tickets.push(kind);}};
@@ -36,7 +36,8 @@ test("redacted provider failures disclose exact lifecycle or atomic-quota blocke
 test("current B2 scoped version inventory proves no overdue versions, not historical deletion",async()=>{
  const m=make([auth,bucket,{files:[row(now.getTime()-3600000)],nextFileName:null,nextFileId:null}]);
  const r=await verifyPhase2hB2VersionInventory({env,now,fetchImpl:m.fetchImpl,governor:m.governor});
- assert.equal(r.status,"CURRENT_PREFIX_NO_OVERDUE_VERSIONS");
+ assert.equal(r.status,"MANUAL_RETENTION_ACTIVE");
+ assert.equal(r.provider_auto_deletion_paused_verified,true);
  assert.equal(r.live_versions,1);assert.equal(r.versions_older_than_72h,0);
  assert.equal(r.past_versions_independently_deleted,false);
  assert.equal(r.archive_put_get_readback_verified_by_this_audit,false);
@@ -47,10 +48,10 @@ test("empty prefix does not claim archive ever happened",async()=>{
  const r=await verifyPhase2hB2VersionInventory({env,now,fetchImpl:m.fetchImpl,governor:m.governor});
  assert.equal(r.status,"EMPTY_PREFIX_NO_ARCHIVE_PROOF");
 });
-test("late stored version remains a provider-visible retention failure",async()=>{
+test("older than 72h versions remain intentionally visible with manual retention",async()=>{
  const m=make([auth,bucket,{files:[row(now.getTime()-73*3600000)],nextFileName:null,nextFileId:null}]);
  const r=await verifyPhase2hB2VersionInventory({env,now,fetchImpl:m.fetchImpl,governor:m.governor});
- assert.equal(r.status,"OVERDUE_B2_FILE_VERSIONS_PRESENT");
+ assert.equal(r.status,"OLDER_VERSIONS_RETAINED_BY_MANUAL_POLICY");
  assert.equal(r.versions_older_than_72h,1);
 });
 test("source names outside the exact private prefix are never silently counted",()=>{
@@ -63,20 +64,21 @@ test("native v4 accepts safe provider-issued non-hex account IDs, rejects malfor
  const providerAuth={...auth,accountId:"account_key-2026"};
  const m=make([providerAuth,bucket,{files:[],nextFileName:null,nextFileId:null}]);
  const good=await verifyPhase2hB2VersionInventory({env,now,fetchImpl:m.fetchImpl,governor:m.governor});
- assert.equal(good.provider_lifecycle_exact_prefix_verified,true);
+ assert.equal(good.provider_auto_deletion_paused_verified,true);
  const malformed=make([{...auth,accountId:"bad?request=1"}]);
  await assert.rejects(verifyPhase2hB2VersionInventory({env,now,fetchImpl:malformed.fetchImpl,
   governor:malformed.governor}),/PROVIDER_ACCOUNT_ID_UNVERIFIED/u);
 });
-test("missing lifecycle or listFiles capability refuses positive proof",async()=>{
+test("active auto-deletion or missing listFiles capability refuses manual-retention proof",async()=>{
  const m=make([{...auth,apiInfo:{storageApi:{...auth.apiInfo.storageApi,
   allowed:{capabilities:["listBuckets"]}}}},bucket]);
  await assert.rejects(verifyPhase2hB2VersionInventory({env,now,fetchImpl:m.fetchImpl,governor:m.governor}),
   /PROVIDER_LIST_FILES_CAPABILITY_MISSING/u);
  assert.equal(m.calls,1);
- const absent=make([auth,{buckets:[{...bucket.buckets[0],lifecycleRules:[]}]}]);
- await assert.rejects(verifyPhase2hB2VersionInventory({env,now,fetchImpl:absent.fetchImpl,governor:absent.governor}),
-  /THREE_DAY_EXPIRY_NOT_PROVEN/u);
+ const dangerous=make([auth,{buckets:[{...bucket.buckets[0],lifecycleRules:[exactRule]}]}]);
+ await assert.rejects(verifyPhase2hB2VersionInventory({
+  env,now,fetchImpl:dangerous.fetchImpl,governor:dangerous.governor
+ }),/AUTOMATIC_DELETION_STILL_ENABLED/u);
 });
 test("existing archive-read principal is used for provider inventory without widening writer key",async()=>{
  const extendedEnv={...env,B2_ARCHIVE_READ_KEY_ID:"read".repeat(5),

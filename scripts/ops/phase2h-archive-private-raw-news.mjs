@@ -113,16 +113,16 @@ export function createPhase2hCanonicalD1({
   },
  };
 }
-/** Authorize existing daily cron, or an explicitly confirmed, time-limited
- * founder production smoke run on canonical main. No generic manual/push
- * event, untrusted relative file, or replayed run can enter B2 writer.
- * All provider admission, account quota and B2 lifecycle safeguards remain.
+/** Only the exact canonical monthly day-1 scheduled GitHub event may enter
+ * the protected B2 writer; no manual/push/synthetic event can open it.
+ * A delayed scheduled job remains eligible if GitHub signed event and main
+ * ref still match. This is NOT continuous 72h archival for monthly intake.
  */
 export function phase2hAuthorizedArchiveWindow({
  env=process.env,now=new Date(),eventReader=readFileSync,
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))return false;
- if(!["schedule","workflow_dispatch"].includes(env.GITHUB_EVENT_NAME)||
+ if(env.GITHUB_EVENT_NAME!=="schedule"||
     env.GITHUB_WORKFLOW_REF!==
       "blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main")
    return false;
@@ -131,15 +131,7 @@ export function phase2hAuthorizedArchiveWindow({
    return false;
  try{
   const event=JSON.parse(eventReader(path,"utf8"));
-  if(env.GITHUB_EVENT_NAME==="schedule")
-   return event?.schedule==="29 0 * * *";
-  const gate="RUN_ONCE_PHASE2H_2026_10_31";
-  const start=Date.parse("2026-10-30T18:00:00Z");
-  const expires=Date.parse("2026-11-02T00:00:00Z");
-  return env.GITHUB_RUN_ATTEMPT==="1" &&
-   now.getTime()>=start&&now.getTime()<expires &&
-   event?.inputs?.confirmation===gate &&
-   env.PHASE2H_ONE_TIME_PRODUCTION_SMOKE===gate;
+  return event?.schedule==="29 0 1 * *";
  }catch{return false}
 }
 export async function runPhase2hGovernedRawB2({
@@ -157,8 +149,8 @@ export async function runPhase2hGovernedRawB2({
   env.PHASE2H_PROVIDER_MAINTENANCE!=="true"||
   !/^\d{1,20}$/u.test(env.GITHUB_RUN_ID??""))
   fail("PROTECTED_MAIN_GOVERNOR_REQUIRED");
- // Only canonical daily cron or one time-limited and explicitly confirmed
- // manual smoke. Both still require D1/B2 quota governors and exact receipts.
+ // Only canonical monthly schedule. A separate monthly run never implies
+ // complete archive coverage for the preceding month or a 72h SLA.
  if(!windowAuthorizer({env,now,eventReader}))
   return {status:"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT",storage_confirmed:false,
    rows_archived:0,object_sha256:null};
@@ -178,12 +170,12 @@ export async function runPhase2hGovernedRawB2({
    rows_archived:0,object_sha256:null,all_backlog_cleared:true};
  // Enforce provider lifecycle on EVERY caller, not only on a single workflow.
  // Two native read-only operations use the SAME global atomic B2 governor.
- // No B2 original-news PUT without exact-prefix, 1+1-day provider proof.
+ // No B2 original-news PUT while provider-side automatic deletion remains enabled.
  let lifecycle;
  try{lifecycle=await lifecycleVerifier({env,fetchImpl,governor});}
  catch{fail("LIFECYCLE_NOT_VERIFIED")}
  if(lifecycle?.phase2h_raw_prefix_verified!==true||
-    lifecycle?.deletion_within_three_days_provider_rule!==true||
+    lifecycle?.auto_deletion_paused!==true||
     lifecycle?.no_bucket_mutation!==true)
   fail("LIFECYCLE_NOT_VERIFIED");
  const plan=buildPhase2hRawB2Plan(initialRows,now);
@@ -213,7 +205,7 @@ export async function runPhase2hGovernedRawB2({
   category_counts:plan.counts,object_sha256:plan.compressed_sha256,
   object_key:plan.key,private_raw_includes_original_full_article:false,
   backlog_may_remain:initialRows.length===300,
-  b2_lifecycle_exact_prefix_readback_verified:true,
+  b2_automatic_deletion_paused_provider_verified:true,
   b2_first_get_verified:true,b2_second_independent_get_verified:true,
   post_archive_d1_verified:true,original_clocks_unchanged:true,
   rights_verified:false,paid_eligible:false,payments:0};

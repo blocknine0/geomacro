@@ -1,8 +1,11 @@
 name: Phase 2H Permanent Private Raw B2 and Exact-Question Acceptance
-# Locked daily 00:29 UTC production schedule; a one-time manual smoke path is
-# permitted only with explicit confirmation through 2026-11-01 UTC, and
-# remains subject to all existing provider quota and archival proof gates.
-# No hourly D1/B2 provider checks.
+# User-selected ONE monthly Phase2H production run at 00:29 UTC day 1.
+# This is a low-frequency best-effort quota check/archival, NOT continuous
+# 72-hour capture. The archive only reads still-eligible 72-hour raw rows;
+# a month of incoming originals cannot be recovered by this workflow.
+# Automatic D1 raw-news deletion is PAUSED; no monthly cleanup job.
+# Backblaze B2 has its OWN independent provider lifecycle rule and must be
+# changed by the bucket owner; this workflow cannot disable provider rules.
 # Archive evidence/rights and PREDGE protected capacity remain unchanged.
 # Existing provider-approved maintenance=true admission and atomic B2 reserve are mandatory.
 on:
@@ -27,17 +30,7 @@ on:
       - "scripts/tests/phase2ib-fastlane-private-staging.test.mjs"
       - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
   schedule:
-    - cron: "29 0 * * *"
-  workflow_dispatch:
-    inputs:
-      confirmation:
-        description: "One-time LIVE smoke; select authorized token (valid until 2026-11-02 00:00 UTC)"
-        required: true
-        type: choice
-        default: NOT_AUTHORIZED
-        options:
-          - NOT_AUTHORIZED
-          - RUN_ONCE_PHASE2H_2026_10_31
+    - cron: "29 0 1 * *"
 
 permissions:
   contents: read
@@ -47,31 +40,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  manual-smoke-gate:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    steps:
-      - name: Verify one-time consent, canonical main, and expiry without provider calls
-        env:
-          MANUAL_CONFIRMATION: ${{ inputs.confirmation }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --input-type=module <<'NODE'
-          const start=Date.parse("2026-10-30T18:00:00Z");
-          const expires=Date.parse("2026-11-02T00:00:00Z");
-          const now=Date.now();
-          if(process.env.MANUAL_CONFIRMATION!=="RUN_ONCE_PHASE2H_2026_10_31"||
-             process.env.GITHUB_REF!=="refs/heads/main"||
-             process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
-             process.env.GITHUB_RUN_ATTEMPT!=="1"||
-             now<start||now>=expires)
-            throw Error("PHASE2H_MANUAL_PRODUCTION_SMOKE_NOT_AUTHORIZED");
-          console.log(JSON.stringify({schema:"geomacro.phase2h.one-time-manual-gate.v1",
-            status:"ELIGIBLE_FOR_QUOTA_ADMISSION",cloudflare_d1_queries:0,
-            b2_requests:0,expires_at:"2026-11-02T00:00:00Z"}));
-          NODE
   offline-census-contract:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
@@ -86,15 +54,11 @@ jobs:
       - name: Verify scoped metadata-only census and strict B2 admission (offline)
         run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs
   quota-admission:
-    needs: manual-smoke-gate
     if: >-
-      always() &&
+      github.event_name == 'schedule' &&
+      github.event.schedule == '29 0 1 * *' &&
       github.repository == 'blocknine0/geomacro' &&
-      github.ref == 'refs/heads/main' &&
-      ((github.event_name == 'schedule' && github.event.schedule == '29 0 * * *') ||
-       (github.event_name == 'workflow_dispatch' &&
-        needs.manual-smoke-gate.result == 'success' &&
-        inputs.confirmation == 'RUN_ONCE_PHASE2H_2026_10_31'))
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 4
     environment: production
@@ -113,6 +77,12 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
+      - name: Disclose paused D1 cleanup and monthly archive coverage honestly
+        shell: bash
+        run: |
+          echo "::warning::Phase2H automatic D1 deletion is PAUSED. Monthly archival is not continuous; B2 provider lifecycle must be disabled separately by bucket owner."
+          echo "### Phase2H cadence limitation" >> "$GITHUB_STEP_SUMMARY"
+          echo "Monthly archive is not 72-hour continuous capture. Automatic D1 cleanup is PAUSED; no D1 delete SQL runs here. Backblaze B2 native lifecycle remains external and MUST be disabled separately for the raw-news prefix. PREDGE is unchanged." >> "$GITHUB_STEP_SUMMARY"
       - id: provider
         name: Verify provider-approved D1 maintenance=true admission
         env:
@@ -181,7 +151,6 @@ jobs:
       B2_ACCOUNT_QUOTA_REQUIRED: "1"
       B2_ACCOUNT_QUOTA_WORKFLOW_ID: derived_news_backup
       B2_REQUEST_BUDGET: "12"
-      PHASE2H_ONE_TIME_PRODUCTION_SMOKE: ${{ github.event_name == 'workflow_dispatch' && inputs.confirmation || '' }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
@@ -244,8 +213,8 @@ jobs:
     needs: [quota-admission, raw-b2-to-production-question]
     if: >-
       always() &&
-      ((github.event_name == 'schedule' && github.event.schedule == '29 0 * * *') ||
-       (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RUN_ONCE_PHASE2H_2026_10_31')) &&
+      github.event_name == 'schedule' &&
+      github.event.schedule == '29 0 1 * *' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -310,65 +279,3 @@ jobs:
             git -C "$evidence" -c http.extraheader="$auth" push origin HEAD:refs/heads/phase2i-source-evidence
           fi
 
-  archive-then-retention:
-    name: Phase2H daily archived-only cleanup after positive archive acceptance
-    needs: [quota-admission, raw-b2-to-production-question]
-    if: >-
-      always() &&
-      github.repository == 'blocknine0/geomacro' &&
-      github.ref == 'refs/heads/main' &&
-      needs.quota-admission.result == 'success' &&
-      needs.quota-admission.outputs.retention_cleanup == 'true' &&
-      needs.raw-b2-to-production-question.result == 'success'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 6
-    environment: production
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version: "24"
-      - name: Resolve canonical D1 identity without loading raw source records
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --input-type=module <<'NODE'
-          import {appendFileSync} from 'node:fs';
-          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
-          const token=process.env.CLOUDFLARE_API_TOKEN;
-          if(!/^[a-f0-9]{32}$/.test(account??'')||(token??'').length<20)
-            throw Error('PHASE2H_CYCLE_D1_CREDENTIALS_INVALID');
-          const response=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+'/d1/database?per_page=100',{
-            headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)});
-          const data=await response.json();
-          const rows=data?.result?.filter(x=>x.name==='geomacro-control-plane')??[];
-          if(!response.ok||data.success!==true||rows.length!==1||
-             !/^[0-9a-f-]{36}$/i.test(rows[0]?.uuid??''))
-            throw Error('PHASE2H_CYCLE_CANONICAL_D1_NOT_VERIFIED');
-          appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+rows[0].uuid+'\n');
-          NODE
-      - name: Retire only Phase2H originals whose archive was acknowledged
-        env:
-          PHASE2H_PROVIDER_RETENTION_CLEANUP: ${{ needs.quota-admission.outputs.retention_cleanup }}
-          PHASE2H_PROVIDER_CLEANUP_MAX_ROWS: ${{ needs.quota-admission.outputs.retention_cleanup_max_rows }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/phase2h
-          node scripts/ops/phase2h-72h-d1-cleanup.mjs | tee artifacts/phase2h/5h-d1-retention.json
-      - name: Preserve metadata-only daily retention receipt
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: phase2h-daily-retention-${{ github.run_id }}
-          path: artifacts/phase2h/5h-d1-retention.json
-          retention-days: 30
-          if-no-files-found: warn

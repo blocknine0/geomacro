@@ -24,6 +24,32 @@ export function assertPhase2hB2Lifecycle(rules){
   previous_b2_object_versions_independently_deleted:false,
   no_bucket_mutation:true,other_b2_prefixes_untouched:true});
 }
+/** Fail closed until the bucket owner removes all provider-side rules
+ * capable of hiding or deleting the Phase2H original-news prefix. This
+ * DOES NOT modify Backblaze bucket settings or unrelated bucket prefixes.
+ */
+export function assertPhase2hB2ManualRetention(rules){
+ if(!Array.isArray(rules))fail("LIFECYCLE_UNVERIFIED");
+ const matching=rules.filter(rule=>{
+  if(!rule||typeof rule!=="object")fail("LIFECYCLE_UNVERIFIED");
+  const prefix=rule.fileNamePrefix;
+  if(typeof prefix!=="string")fail("LIFECYCLE_UNVERIFIED");
+  return PHASE2H_B2_PREFIX.startsWith(prefix)||
+    prefix.startsWith(PHASE2H_B2_PREFIX);
+ });
+ // Any matching auto-hide or auto-delete rule is forbidden. Native 1+1-day
+ // expiry cannot be paused by changing GitHub Actions scheduling.
+ if(matching.some(rule=>
+    rule.daysFromUploadingToHiding!=null||
+    rule.daysFromHidingToDeleting!=null))
+  fail("AUTOMATIC_DELETION_STILL_ENABLED");
+ return Object.freeze({
+  schema:"geomacro.phase2h.b2-manual-retention.v1",
+  phase2h_raw_prefix_verified:true,auto_deletion_paused:true,
+  deletion_within_three_days_provider_rule:false,
+  no_bucket_mutation:true,other_b2_prefixes_untouched:true,
+ });
+}
 export async function verifyPhase2hB2Lifecycle({
  env=process.env,fetchImpl=fetch,
  governor=createB2D1AccountGovernor({env,fetchImpl}),
@@ -77,7 +103,7 @@ export async function verifyPhase2hB2Lifecycle({
  if(!Array.isArray(buckets))fail("BUCKET_LIST_UNVERIFIED");
  const selected=buckets.filter(b=>b.bucketName==="geomacro-private-archive");
  if(selected.length!==1)fail("EXACT_BUCKET_NOT_VERIFIED");
- return assertPhase2hB2Lifecycle(selected[0].lifecycleRules);
+ return assertPhase2hB2ManualRetention(selected[0].lifecycleRules);
 }
 if(process.argv[1]?.endsWith("/phase2h-verify-b2-72h-lifecycle.mjs")){
  try{console.log(JSON.stringify(await verifyPhase2hB2Lifecycle()))}

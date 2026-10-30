@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import {phase2hNewsCutoff,phase2hRawWithinRetention,planPhase2hD1RetentionDelete,
  PHASE2H_NEWS_MAX_AGE_MS,PHASE2H_NEWS_CLEANUP_LIMIT,
  PHASE2H_NEWS_CLEANUP_RUN_LIMIT} from "../lib/phase2h-retention-72h.mjs";
-import {assertPhase2hB2Lifecycle,PHASE2H_B2_PREFIX}
+import {assertPhase2hB2Lifecycle,assertPhase2hB2ManualRetention,PHASE2H_B2_PREFIX}
  from "../ops/phase2h-verify-b2-72h-lifecycle.mjs";
 import {cleanupPhase2hD1} from "../ops/phase2h-72h-d1-cleanup.mjs";
 const now=Date.parse("2026-10-30T15:00:00.000Z");
@@ -58,15 +58,35 @@ test("B2 lifecycle 1 day hide + 1 day delete must cover ONLY private Phase2H arc
  ])assert.throws(()=>assertPhase2hB2Lifecycle(rules),
    /PHASE2H_B2_72H_THREE_DAY_EXPIRY_NOT_PROVEN/u);
 });
+test("manual B2 pause forbids overlapping provider hide or delete policies",()=>{
+ assert.equal(assertPhase2hB2ManualRetention([]).auto_deletion_paused,true);
+ assert.equal(assertPhase2hB2ManualRetention([
+  {fileNamePrefix:"unrelated/",daysFromUploadingToHiding:1}
+ ]).auto_deletion_paused,true);
+ for(const prefix of [PHASE2H_B2_PREFIX,"geomacro-evidence/v1/private/",""]){
+  assert.throws(()=>assertPhase2hB2ManualRetention([
+   {fileNamePrefix:prefix,daysFromUploadingToHiding:1,
+    daysFromHidingToDeleting:1}
+  ]),/PHASE2H_B2_72H_AUTOMATIC_DELETION_STILL_ENABLED/u);
+ }
+});
 test("deletion run fails closed without provider admission and never changes PREDGE",async()=>{
  await assert.rejects(()=>cleanupPhase2hD1({now,env:{},fetchImpl:()=>{
   throw Error("NO_NETWORK")}}),/PROTECTED_PROVIDER_ADMISSION_REQUIRED/u);
  const wf=readFileSync(".github/workflows/phase2h-72h-news-retention.yml","utf8");
  assert.doesNotMatch(wf,/cron:|workflow_dispatch:|quota-admission:/u);
  const cycle=readFileSync(".github/workflows/phase2h-private-raw-archive.yml","utf8");
- assert.match(cycle,/archive-then-retention:/u);
- assert.ok(cycle.includes("needs.quota-admission.outputs.retention_cleanup == 'true'"));
- assert.match(cycle,/PHASE2H_PROVIDER_RETENTION_CLEANUP/u);
+ assert.doesNotMatch(cycle,/archive-then-retention:|phase2h-72h-d1-cleanup\.mjs/u);
+ const manual=readFileSync(".github/workflows/phase2h-manual-d1-storage-cleanup.yml","utf8");
+ assert.doesNotMatch(manual,/schedule:\s*\n\s*- cron:/u);
+ assert.match(manual,/workflow_dispatch:/u);
+ assert.match(manual,/default: DO_NOT_DELETE/u);
+ assert.match(manual,/DELETE_B2_ACKED_ONLY/u);
+ assert.ok(cycle.includes('cron: "29 0 1 * *"'));
+ assert.ok(cycle.includes("Automatic D1 raw-news deletion is PAUSED"));
+ assert.match(cycle,/Monthly archival is not continuous/u);
+ assert.ok(manual.includes("steps.provider.outputs.retention_cleanup == 'true'"));
+ assert.match(manual,/PHASE2H_PROVIDER_RETENTION_CLEANUP/u);
  assert.doesNotMatch(wf,/PREDGE_RESEARCH|APP_SUPABASE_SERVICE_ROLE_KEY/u);
  const archive=readFileSync(".github/workflows/phase2h-private-raw-archive.yml","utf8");
  const archiveImpl=readFileSync("scripts/ops/phase2h-archive-private-raw-news.mjs","utf8");
@@ -78,7 +98,10 @@ test("deletion run fails closed without provider admission and never changes PRE
  assert.match(getter,/phase2hRawWithinRetention/u);
 });
 const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
- GITHUB_REF:"refs/heads/main",PHASE2H_PROVIDER_RETENTION_CLEANUP:"true",
+ GITHUB_REF:"refs/heads/main",GITHUB_EVENT_NAME:"workflow_dispatch",
+ GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/phase2h-manual-d1-storage-cleanup.yml@refs/heads/main",
+ PHASE2H_MANUAL_CLEANUP_CONFIRM:"DELETE_B2_ACKED_ONLY",
+ PHASE2H_PROVIDER_RETENTION_CLEANUP:"true",
  PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:"1000",
  CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
  D1_DATABASE_ID:"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
@@ -90,7 +113,7 @@ function mockD1(rows){
   calls.push({sql,params});
   let results=[],meta={changes:0};
   if(sql.startsWith("SELECT record_id,first_ingested_at")){
-   const hard=!sql.includes("b2_object_sha256 IS NOT NULL");
+   const hard=false;
    const cutoff=params[0];
    results=items.filter(x=>x.first_ingested_at<=cutoff&&
     (hard||x.b2_object_sha256!==null)).slice(0,params[1]);
@@ -131,15 +154,16 @@ test("60h proactive D1 cleanup requires B2 archive ack and independently reads b
  assert.equal(db.calls.filter(x=>x.sql.startsWith("DELETE")).length,1);
  assert.equal(receipt.post_delete_d1_readback_verified,true);
 });
-test("72h hard deadline purges and explicitly flags unarchived evidence loss",async()=>{
+test("unarchived originals survive manual archived-only deletion even after 72h",async()=>{
  const db=mockD1([{record_id:"c".repeat(64),first_ingested_at:clock(73),
   b2_object_sha256:null}]);
  const receipt=await cleanupPhase2hD1({env,now,fetchImpl:db.fetchImpl});
- assert.equal(receipt.deleted_hard_expired,1);
- assert.equal(receipt.unarchived_expired_discarded,1);
- assert.equal(receipt.remaining_older_than_72h,0);
- assert.equal(receipt.production_acceptance_pass,false);
- assert.equal(db.items.length,0);
+ assert.equal(receipt.deleted_hard_expired,0);
+ assert.equal(receipt.unarchived_expired_discarded,0);
+ assert.equal(receipt.remaining_older_than_72h,1);
+ assert.equal(receipt.production_acceptance_pass,true);
+ assert.equal(receipt.manual_archived_backlog_clear,true);
+ assert.equal(db.items.length,1);
 });
 test("bounded batch drain processes 240 IDs in 100-ID batches",async()=>{
  const rows=Array.from({length:240},(_,i)=>({
@@ -177,14 +201,18 @@ test("cleanup cannot exceed provider grant or borrow critical capacity",async()=
   now,fetchImpl:db.fetchImpl});
  assert.equal(r.deleted_records,7);
  assert.equal(r.remaining_older_than_72h,16);
- assert.equal(r.maximum_deletions_per_hour,7);
- assert.equal(r.production_acceptance_pass,false);
+ assert.equal(r.maximum_deletions_per_manual_run,7);
+ assert.equal(r.production_acceptance_pass,true);
+ assert.equal(r.manual_archived_backlog_clear,false);
  for(const override of [
   {PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:"1001"},
   {PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:"0"},
   {PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:""},
   {PHASE2H_PROVIDER_CLEANUP_MAX_ROWS:undefined},
   {PHASE2H_PROVIDER_RETENTION_CLEANUP:"false",PHASE2H_PROVIDER_CRITICAL:"true"},
+  {PHASE2H_MANUAL_CLEANUP_CONFIRM:""},
+  {GITHUB_EVENT_NAME:"schedule"},
+  {GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main"},
  ])await assert.rejects(()=>cleanupPhase2hD1({env:{...env,...override},now,
    fetchImpl:db.fetchImpl}),/PROTECTED_PROVIDER_ADMISSION_REQUIRED/u);
 });
