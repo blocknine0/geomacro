@@ -56,12 +56,12 @@ Tests:
 ## Lovable production server settings
 
 Configure these in the server secret manager, then publish the latest synced
-main. The public receiver below is the owner's existing approved address.
+main. The public receiver below was independently verified by EIP-191 message recovery on 2026-10-30 (Etherscan signature record #340876). A signed ownership proof is NOT a completed merchant settlement or approval to transfer funds. Existing production secrets and historic receipts must be reconciled before enabling any new pay-to address.
 
 ```dotenv
-GEOMACRO_USDC_RECEIVER=0xF98c18231ceFBD6d11154DEc14b3Aec6D74dC4B0
-COINBASE_X402_PAY_TO=0xF98c18231ceFBD6d11154DEc14b3Aec6D74dC4B0
-CIRCLE_X402_SELLER_ADDRESS=0xF98c18231ceFBD6d11154DEc14b3Aec6D74dC4B0
+GEOMACRO_USDC_RECEIVER=0x95ba71d21C41bDa8bBA9533f96D25f793E4137b5
+COINBASE_X402_PAY_TO=0x95ba71d21C41bDa8bBA9533f96D25f793E4137b5
+CIRCLE_X402_SELLER_ADDRESS=0x95ba71d21C41bDa8bBA9533f96D25f793E4137b5
 COINBASE_X402_ENVIRONMENT=production
 COINBASE_X402_PRICE_USDC=0.05
 GEOMACRO_COMMERCE_EMERGENCY_FREEZE=true
