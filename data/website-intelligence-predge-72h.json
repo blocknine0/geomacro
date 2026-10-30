@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T01:07:52.640Z",
+  "checked_at": "2026-10-30T05:57:23.616Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 419,
+  "item_count": 406,
   "counts": {
-    "geopolitics": 197,
-    "macro": 175,
-    "rare_earth": 47
+    "geopolitics": 190,
+    "macro": 170,
+    "rare_earth": 46
   },
-  "source_native_ids_sha256": "b6c7c7245289cca0c44fb5244fcd5f0f08482b8e734e9dd048a8480369b732ed",
+  "source_native_ids_sha256": "2eb8f82c4fcf8dc19380211e2c0e1f06fd9a988d466d2fa4bc9f620d8c4ef88b",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-1d77ebae",
+      "category": "macro",
+      "title": "Geomacro finds BOJ held rates as inflation aligns with 2% target for first time since 2013 - Forex Factory",
+      "what_changed": "A monitored source feed reports: BOJ held rates as inflation aligns with 2% target for first time since 2013 - Forex Factory. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T04:20:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-c6b92ad8",
       "category": "geopolitics",
@@ -7713,272 +7732,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.err.ee"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-8d3e85c7",
-      "category": "geopolitics",
-      "title": "Geomacro finds Oman said Persian Gulf security framework cannot exclude Iran",
-      "what_changed": "A monitored source feed reports: Oman said Persian Gulf security framework cannot exclude Iran. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T05:23:44.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.irna.ir"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-8f68c5ff",
-      "category": "geopolitics",
-      "title": "Geomacro finds China called for ending conflicts to better protect children - chinadailyhk",
-      "what_changed": "A monitored source feed reports: China called for ending conflicts to better protect children - chinadailyhk. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T05:11:56.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-38b9e2ca",
-      "category": "macro",
-      "title": "Geomacro finds Carney said Trump moving closer to Canada's trade demands as midterms loom",
-      "what_changed": "A monitored source feed reports: Carney said Trump moving closer to Canada's trade demands as midterms loom. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T04:36:47.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thehindu.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-4b67cfd0",
-      "category": "geopolitics",
-      "title": "Geomacro finds Melania Trump said ceasefire has expanded as it takes effect around Russian-occupied city of Oleshky - CNN",
-      "what_changed": "A monitored source feed reports: Melania Trump said ceasefire has expanded as it takes effect around Russian-occupied city of Oleshky - CNN. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T04:26:37.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-bd3b9e22",
-      "category": "macro",
-      "title": "Geomacro finds Silver Automation Instruments released High-Viscosity Oil Flow Meter Selection Guide as Heavy-Oil Metering Demand Grows - iHarare News",
-      "what_changed": "A monitored source feed reports: Silver Automation Instruments released High-Viscosity Oil Flow Meter Selection Guide as Heavy-Oil Metering Demand Grows - iHarare News. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "silver industrial demand and supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T04:25:46.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-e5012ca8",
-      "category": "geopolitics",
-      "title": "Geomacro finds India called for Equal Veto Rights in UN Security Council Reform",
-      "what_changed": "A monitored source feed reports: India called for Equal Veto Rights in UN Security Council Reform. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T03:58:02.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: feeds.feedburner.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-5f3dc343",
-      "category": "geopolitics",
-      "title": "Geomacro finds Japan's announced plans to tap on U.S. crude imports for energy security - CNBC",
-      "what_changed": "A monitored source feed reports: Japan's announced plans to tap on U.S. crude imports for energy security - CNBC. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T03:25:49.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-571e4b57",
-      "category": "rare_earth",
-      "title": "Geomacro finds Stavely Minerals Thursday's Gossan Scoping Study reported A$818M NPV7 and 40% IRR for Copper-Gold-Silver Project - Kalkine",
-      "what_changed": "A monitored source feed reports: Stavely Minerals Thursday's Gossan Scoping Study reported A$818M NPV7 and 40% IRR for Copper-Gold-Silver Project - Kalkine. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T02:36:25.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-826ab961",
-      "category": "macro",
-      "title": "Geomacro finds Cadence raised 2026 outlook to 21% revenue growth and $8.40 non-GAAP EPS as it launches Maestro models - Seeking Alpha",
-      "what_changed": "A monitored source feed reports: Cadence raised 2026 outlook to 21% revenue growth and $8.40 non-GAAP EPS as it launches Maestro models - Seeking Alpha. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T02:31:26.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-da06996b",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Brazil election looked rigged, defeated Bolsonaro s party recognizes Lula win",
-      "what_changed": "A monitored source feed reports: Trump said Brazil election looked rigged, defeated Bolsonaro s party recognizes Lula win. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T02:30:38.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: clubofmozambique.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-97ceaae5",
-      "category": "macro",
-      "title": "Geomacro finds Silver Automation Instruments released High-Viscosity Oil Flow Meter Selection Guide as Heavy-Oil Metering Demand Grows - Thailand Business News",
-      "what_changed": "A monitored source feed reports: Silver Automation Instruments released High-Viscosity Oil Flow Meter Selection Guide as Heavy-Oil Metering Demand Grows - Thailand Business News. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "silver industrial demand and supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T02:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-77a04b99",
-      "category": "macro",
-      "title": "Geomacro finds Gold held Above $4,000 per Ounce, Investors Await the U.S. Federal Reserve’s Decision - Українські Національні Новини (УНН)",
-      "what_changed": "A monitored source feed reports: Gold held Above $4,000 per Ounce, Investors Await the U.S. Federal Reserve’s Decision - Українські Національні Новини (УНН). This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T01:56:32.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-b97392bd",
-      "category": "macro",
-      "title": "Geomacro finds Gold held Above $4,000 per Ounce, Investors Await the U.S. Federal Reserve’s Decision - Українські Національні Новини (УНН)",
-      "what_changed": "A monitored source feed reports: Gold held Above $4,000 per Ounce, Investors Await the U.S. Federal Reserve’s Decision - Українські Національні Новини (УНН). This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T01:56:32.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-1ba4f43f",
-      "category": "geopolitics",
-      "title": "Geomacro finds Ukraine launched major drone attack again on Russia - ABC News - Breaking News, Latest News and Videos",
-      "what_changed": "A monitored source feed reports: Ukraine launched major drone attack again on Russia - ABC News - Breaking News, Latest News and Videos. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T01:19:37.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
