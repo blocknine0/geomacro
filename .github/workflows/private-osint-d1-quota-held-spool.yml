@@ -21,6 +21,8 @@ on:
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.mjs"
+      - "scripts/lib/private-osint-free-r2-guard.mjs"
+      - "scripts/lib/private-osint-free-r2-guard.test.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.test.mjs"
       - "scripts/lib/private-osint-r2-encrypted-restore.test.mjs"
       - "scripts/ops/private-osint-restore-r2-to-d1.mjs"
@@ -34,6 +36,8 @@ on:
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.mjs"
+      - "scripts/lib/private-osint-free-r2-guard.mjs"
+      - "scripts/lib/private-osint-free-r2-guard.test.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.test.mjs"
       - "scripts/lib/private-osint-r2-encrypted-restore.test.mjs"
       - "scripts/ops/private-osint-restore-r2-to-d1.mjs"
@@ -71,6 +75,8 @@ jobs:
           node --check scripts/ops/private-osint-replay-held.mjs
           node --test scripts/lib/private-osint-encrypted-spool.test.mjs
           node --test scripts/lib/private-osint-shared-read-contract.test.mjs
+          node --check scripts/lib/private-osint-free-r2-guard.mjs
+          node --test scripts/lib/private-osint-free-r2-guard.test.mjs
           node --check scripts/ops/private-osint-mirror-held-to-r2.mjs
           node --test scripts/lib/private-osint-r2-encrypted-escrow.test.mjs
           node --check scripts/ops/private-osint-restore-r2-to-d1.mjs
@@ -157,6 +163,7 @@ jobs:
           GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           GEOMACRO_PRIVATE_OSINT_R2_BUCKET: ${{ vars.GEOMACRO_PRIVATE_OSINT_R2_BUCKET }}
           GEOMACRO_PRIVATE_OSINT_R2_ACCESS_KEY_ID: ${{ secrets.GEOMACRO_PRIVATE_OSINT_R2_ACCESS_KEY_ID }}
           GEOMACRO_PRIVATE_OSINT_R2_SECRET_ACCESS_KEY: ${{ secrets.GEOMACRO_PRIVATE_OSINT_R2_SECRET_ACCESS_KEY }}
