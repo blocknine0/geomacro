@@ -189,6 +189,23 @@ const QUESTION_STOP=new Set(["what","why","when","where","which","who","how",
  "on","this","that","about","matter","matters","affect","impact","impacts",
  "happened","happen","news","latest","update","market","markets","trader",
  "trading","please","tell","explain","next"]);
+/** Bounded, user-question-specific retrieval hints for canonical D1.
+ * Country names and generic question words are NOT topical evidence; retain
+ * years and actual release/topic terms so an older archived article can win
+ * over 100 newer same-country articles. These hints only prefilter: every
+ * returned row must still pass the immutable original-country and exact
+ * question matcher below. No parameter ever interpolates into SQL text.
+ */
+export function phase2hQuestionTopicHints(question,countryIso3){
+ if(typeof question!=="string"||question.length>180||
+    !phase2hCountry(countryIso3))return [];
+ const countryWords=new Set(phase2hCountrySqlHints(countryIso3)
+  .flatMap(name=>name.match(/[\p{L}\p{N}]{3,}/gu)??[]));
+ const tokens=question.normalize("NFKC").toLocaleLowerCase("en")
+  .match(/[\p{L}\p{N}]{3,}/gu)??[];
+ return [...new Set(tokens.filter(term=>term.length<=40&&
+   !QUESTION_STOP.has(term)&&!countryWords.has(term)))].slice(0,8);
+}
 export function phase2hQuestionMatchesArchived(item,question){
  if(typeof question!=="string"||!item?.analysis||!item?.original)return false;
  const terms=[...new Set((question.normalize("NFKC").toLowerCase()
@@ -281,8 +298,9 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
   // resolver validates every result. A positive LIKE is NEVER attribution.
   // A first canonical D1-staged original can support internal research even
   // while B2 archive is pending. It NEVER qualifies for paid delivery.
-  // Index-friendly category/time ordering remains bounded; no full-table
-  // row download or 585-query fanout per customer request.
+  // Single bounded SQL query scores topical headline matches before date:
+  // old relevant event-specific originals are not automatically displaced by
+  // the newest 100 unrelated releases. No 585-query fanout per request.
   let countryQuery=null;
   if(countryScoped){
    const hints=phase2hCountrySqlHints(countryIso3);
@@ -290,14 +308,23 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    // Keep the entire SQL static: only bounded, reviewed country hints are
    // passed as JSON parameters. No dynamic SQL fragments from any question,
    // country name, source title or JSON field.
+   const topics=phase2hQuestionTopicHints(question,countryIso3);
+   const topicJson=JSON.stringify(topics);
    countryQuery=env.DB.prepare(
     "SELECT r.record_id,r.category,r.raw_sha256,r.raw_json,r.b2_object_sha256 "+
     "FROM phase2h_private_raw_news AS r WHERE r.category=? "+
     "AND EXISTS (SELECT 1 FROM json_each(?) AS h WHERE "+
     "lower(json_extract(r.raw_json,'$.original.original_title')) "+
     "LIKE '%' || h.value || '%' ESCAPE '!') "+
-    "ORDER BY r.original_published_at DESC,r.record_id LIMIT 100"
-   ).bind(category,JSON.stringify(hints));
+    "AND (json_array_length(?)=0 OR EXISTS "+
+    "(SELECT 1 FROM json_each(?) AS t WHERE "+
+    "lower(json_extract(r.raw_json,'$.original.original_title')) "+
+    "LIKE '%' || t.value || '%' ESCAPE '!')) "+
+    "ORDER BY (SELECT COUNT(*) FROM json_each(?) AS score "+
+    "WHERE lower(json_extract(r.raw_json,'$.original.original_title')) "+
+    "LIKE '%' || score.value || '%' ESCAPE '!') DESC,"+
+    "r.original_published_at DESC,r.record_id LIMIT 100"
+   ).bind(category,JSON.stringify(hints),topicJson,topicJson,topicJson);
   }
   const results=countryQuery?
     await countryQuery.all():

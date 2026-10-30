@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import {PHASE2H_COUNTRIES_195,phase2hCountry,phase2hHeadlineCountryCandidate,
  phase2hCountrySqlHints} from "../lib/phase2h-country-originals-195.mjs";
 import {buildPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
-import {phase2hPrivateRawGet} from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
+import {phase2hPrivateRawGet,phase2hQuestionTopicHints} from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
 
 const now=new Date("2026-10-30T09:00:00.000Z");
 const derive=items=>items.map(x=>({
@@ -100,7 +100,14 @@ test("protected archived news returns only same-country, same-category, question
  assert.equal(statements[0].binds[0],"macro");
  assert.ok(JSON.parse(statements[0].binds[1]).includes("india"));
  assert.match(statements[0].sql,/json_each\(\?\)/u);
- assert.equal(statements[0].binds.length,2);
+ assert.equal(statements[0].binds.length,5);
+ assert.deepEqual(JSON.parse(statements[0].binds[2]),
+  ["announce","monetary","policy","rates"]);
+ assert.equal(statements[0].binds[2],statements[0].binds[3]);
+ assert.equal(statements[0].binds[2],statements[0].binds[4]);
+ assert.match(statements[0].sql,/json_array_length\(\?\)=0/u);
+ assert.match(statements[0].sql,/COUNT\(\*\) FROM json_each\(\?\)/u);
+ assert.match(statements[0].sql,/ORDER BY.*original_published_at/u);
 });
 test("no candidate matching the exact country/topic is an honest empty no-charge answer",async()=>{
  const {DB}=workerDb(rawRows);
@@ -213,4 +220,64 @@ test("market-focused one-source private research never invents a price move",asy
  assert.match(body.question_matches[0].direct_answer,/independently verified/u);
  assert.equal(body.question_matches[0].five_part.market_relevance.price_direction,null);
  assert.equal(body.chargeable,false);
+});
+
+test("195-country topic prefilter removes country aliases and question boilerplate, keeps named event and year",()=>{
+ assert.deepEqual(phase2hQuestionTopicHints(
+  "What happened to India's lithium exports in 2024?","IND"),
+  ["lithium","exports","2024"]);
+ assert.deepEqual(phase2hQuestionTopicHints(
+  "What is the latest India news?","IND"),[]);
+ assert.deepEqual(phase2hQuestionTopicHints(
+  "Why did United States monetary policy change in 2025?","USA"),
+  ["monetary","policy","change","2025"]);
+ assert.deepEqual(phase2hQuestionTopicHints("India lithium","XXX"),[]);
+ assert.deepEqual(phase2hQuestionTopicHints("a".repeat(181),"IND"),[]);
+});
+test("old country-specific matching original ranks above 120 unrelated new same-country records without scan expansion",async()=>{
+ const old=buildPhase2hPrivateRawRecords([{
+  category:"macro",title:"India lithium exports 2024",
+  sourceId:"official_ind",publishedAt:"2024-08-06T08:00:00.000Z",
+  articleUrl:"https://official.example.org/old-lithium-2024",credit:null,
+ }],{now,derive}).records[0];
+ const recent=Array.from({length:120},(_,i)=>make("macro",
+  "India interest rates decision "+i,500+i));
+ const originals=[...recent,old],statements=[];
+ const DB={prepare(sql){
+  const call={sql,binds:[]};statements.push(call);
+  return {bind(...args){
+   call.binds=args;
+   return {all:async()=>{
+    const terms=JSON.parse(args[2]);
+    const scoped=originals.filter(row=>terms.length===0||
+     terms.some(term=>row.original.original_title.toLowerCase().includes(term)));
+    scoped.sort((a,b)=>{
+     const matches=row=>terms.filter(term=>
+      row.original.original_title.toLowerCase().includes(term)).length;
+     return matches(b)-matches(a)||
+      b.original.original_published_at.localeCompare(a.original.original_published_at);
+    });
+    return {results:scoped.slice(0,100).map(row=>({
+     record_id:row.record_id,category:row.category,raw_sha256:row.raw_sha256,
+     raw_json:JSON.stringify(row),b2_object_sha256:null,
+    }))};
+   }};
+  }};
+ }};
+ const query=new URLSearchParams({
+  country_iso3:"IND",category:"macro",
+  question:"What happened to India lithium exports 2024?",
+ });
+ const response=await phase2hPrivateRawGet({DB},query,now.getTime());
+ assert.equal(response.status,200);
+ const body=await response.json();
+ assert.equal(body.question_matches.length,1);
+ assert.equal(body.question_matches[0].record_id,old.record_id);
+ assert.equal(body.question_matches[0].archive_d1_ack_present,false);
+ assert.equal(body.chargeable,false);
+ assert.equal(body.global_search_complete,false);
+ assert.equal(statements.length,1);
+ assert.match(statements[0].sql,/LIMIT 100/u);
+ assert.deepEqual(JSON.parse(statements[0].binds[2]),
+  ["lithium","exports","2024"]);
 });
