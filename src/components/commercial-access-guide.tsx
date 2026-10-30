@@ -24,7 +24,7 @@ const ACCESS = [
     key: "monthly",
     title: "Monthly plans + prepaid credits",
     subtitle: "Starter $9 · Pro $29 · Business $99 per month",
-    features: ["Recurring intelligence for teams and workflows", "Usage and commercial terms agreed directly"],
+    features: ["1,000 / 5,000 / 25,000 monthly credits", "Or $5 / $15 / $30 non-recurring credit packs"],
   },
 ] as const;
 
