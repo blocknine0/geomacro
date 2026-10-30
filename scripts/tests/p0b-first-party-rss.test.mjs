@@ -50,3 +50,33 @@ test("untrusted feed link, publication time and country are never promoted",asyn
   category:"geopolitics",question:"Ukraine sanctions",now,fetchImpl:fake});
  assert.equal(r.items.length,0);
 });
+
+
+test("original US BLS employment-cost feed grounds a USA macro release, never a measured change",async()=>{
+ const rss='<?xml version="1.0"?><rss><channel><item>'+
+  '<title>Employment Cost Index Update</title>'+
+  '<link>https://www.bls.gov/news.release/eci.nr0.htm</link>'+
+  '<pubDate>Fri, 30 Oct 2026 08:00:00 GMT</pubDate></item></channel></rss>';
+ const fetchImpl=async url=>({
+  status:200,redirected:false,
+  headers:{get:()=> "application/rss+xml"},
+  text:async()=>url.includes("/feed/bls_latest.rss")?rss:"<rss><channel></channel></rss>"
+ });
+ const result=await p0bFirstPartyFeedNews({
+  countryIso3:"USA",countryName:"United States",
+  category:"macro",question:"United States employment cost index",
+  now,fetchImpl});
+ assert.equal(result.items.length,1);
+ const item=result.items[0];
+ assert.equal(item.issuer_country_verified,"USA");
+ assert.equal(item.country_attribution_basis,"FIRST_PARTY_NATIONAL_STATISTICAL_ISSUER");
+ assert.match(item.five_part.what_happened.text,/published an Employment Cost Index update/u);
+ assert.match(item.five_part.why_it_matters.text,/no reported value/u);
+ assert.equal(item.five_part.market_relevance.price_change,null);
+ assert.equal(item.paid_eligible,false);
+ const wrong=await p0bFirstPartyFeedNews({
+  countryIso3:"CAN",countryName:"Canada",
+  category:"macro",question:"Canada employment cost index",
+  now,fetchImpl});
+ assert.equal(wrong.items.length,0);
+});
