@@ -83,8 +83,8 @@ test("deletion run fails closed without provider admission and never changes PRE
  assert.match(manual,/default: DO_NOT_DELETE/u);
  assert.match(manual,/DELETE_B2_ACKED_ONLY/u);
  assert.ok(cycle.includes('cron: "29 0 1 * *"'));
- assert.ok(cycle.includes("monthly archived-only cleanup"));
- assert.match(cycle,/monthly cycle captures only still-eligible last-72h rows/u);
+ assert.ok(cycle.includes("Automatic D1 raw-news deletion is PAUSED"));
+ assert.match(cycle,/Monthly archival is not continuous/u);
  assert.ok(manual.includes("steps.provider.outputs.retention_cleanup == 'true'"));
  assert.match(manual,/PHASE2H_PROVIDER_RETENTION_CLEANUP/u);
  assert.doesNotMatch(wf,/PREDGE_RESEARCH|APP_SUPABASE_SERVICE_ROLE_KEY/u);
