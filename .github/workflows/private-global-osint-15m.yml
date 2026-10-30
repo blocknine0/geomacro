@@ -374,6 +374,9 @@ jobs:
       cancel-in-progress: false
     needs: [verify, quota-admission]
     if: >-
+      # Full 768-item collector is explicitly operator-dispatched ONLY;
+      # never spend the 96-slot daily minimum Free D1 write envelope on it.
+      github.event_name == 'workflow_dispatch' &&
       needs.quota-admission.outputs.critical == 'true' &&
       needs.quota-admission.outputs.research == 'true' &&
       needs.quota-admission.outputs.source_intake == 'true' &&
@@ -415,7 +418,6 @@ jobs:
     needs: [verify, quota-admission]
     if: >-
       needs.quota-admission.result == 'success' &&
-      needs.quota-admission.outputs.research != 'true' &&
       needs.quota-admission.outputs.source_intake == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
@@ -507,9 +509,10 @@ jobs:
     concurrency:
       group: geomacro-permanent-news-publication
       cancel-in-progress: false
-    needs: [verify, quota-admission, collect-private]
+    needs: [verify, quota-admission, collect-source-intake-only]
     if: >-
-      needs.collect-private.result == 'success' &&
+      needs.collect-source-intake-only.result == 'success' &&
+      github.event_name == 'schedule' &&
       needs.quota-admission.outputs.critical == 'true' &&
       needs.quota-admission.outputs.research == 'true' &&
       needs.quota-admission.outputs.source_intake == 'true' &&
