@@ -5,6 +5,7 @@
 import {readFileSync,writeFileSync,mkdirSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
+import {CONTINENT_COUNTRIES_195} from "../lib/continent-country-195-rotation.mjs";
 export const CATEGORIES=["geopolitics","macro","rare_earth"];
 export const STATUSES=["WORKING","NO_NEW_EVENT","SOURCE_UNAVAILABLE","UNSUPPORTED_FORMAT","RIGHTS_PENDING","QUOTA_HELD","NOT_YET_VERIFIED"];
 const FAMILIES=[
@@ -47,6 +48,7 @@ export function gatherSources(countries,catalogues){
    if(iso3&&!known.has(iso3))fail("UNKNOWN_PUBLISHER_COUNTRY");
    const s={source_id:id,publisher_country_iso3:iso3,
     country_event_attributed:false,url,format,categories:cats,origin_registry:family,
+    continent:raw.continent??null,
     official_primary_candidate:family==="official_feed",
     access:"PUBLIC_ENDPOINT_BOUNDED_FETCH_ONLY",retention:"ORIGINAL_PRIVATE_RIGHTS_UNVERIFIED",
     legacy_preflight_200:raw.acceptance?.http_status===200&&raw.acceptance?.feed_parsed===true,
@@ -150,11 +152,28 @@ export function buildLedger(countries,sources,prior={},newProbes=[],now=new Date
  const ids=new Set(sources.map(s=>s.source_id)),latest=new Map();
  for(const p of prior.source_probes??[])if(ids.has(p.source_id))latest.set(p.source_id,p);
  for(const p of newProbes){if(!ids.has(p.source_id)||!STATUSES.includes(p.status))
-  fail("UNREGISTERED_SOURCE_PROBE");latest.set(p.source_id,p);}
+  fail("UNREGISTERED_SOURCE_PROBE");
+  const old=latest.get(p.source_id);
+  latest.set(p.source_id,{...p,
+   last_successful_http_fetch_at:p.last_successful_http_fetch_at??old?.last_successful_http_fetch_at??null,
+   last_source_native_publication_at:p.last_source_native_publication_at??old?.last_source_native_publication_at??null,
+   last_source_native_publication_time:p.last_source_native_publication_time??old?.last_source_native_publication_time??null});
+ }
  const cells=[];
+ const mineralAuthorities=read("global-intelligence/sources/national-minerals-authority.v1.json").sources??[];
+ const memberRegion=new Map(Object.entries(CONTINENT_COUNTRIES_195)
+   .flatMap(([region,list])=>list.map(iso3=>[iso3,region])));
  for(const country of countries)for(const category of CATEGORIES){
   const matching=sources.filter(s=>s.publisher_country_iso3===country.iso3&&s.categories.includes(category));
   const proofs=matching.map(s=>latest.get(s.source_id)).filter(Boolean);
+  const region=memberRegion.get(country.iso3)??null;
+  const regional=sources.filter(s=>s.publisher_country_iso3===null&&
+   s.continent===region&&s.categories.includes(category));
+  const mineralAuthorityReferences=category==="rare_earth"?
+    mineralAuthorities.filter(x=>x.iso3===country.iso3).map(x=>({
+     authority_name:x.authority_name,official_url:x.official_url,
+     machine_readable_news_endpoint_verified:false,
+     registry_status:x.status??"DISCOVERY"})):[];
   const live=proofs.find(p=>p.status==="WORKING")??proofs.find(p=>p.status==="NO_NEW_EVENT");
   const newest=proofs.filter(p=>p.last_successful_http_fetch_at)
     .sort((a,b)=>b.last_successful_http_fetch_at.localeCompare(a.last_successful_http_fetch_at))[0];
@@ -168,7 +187,11 @@ export function buildLedger(countries,sources,prior={},newProbes=[],now=new Date
    registered_source_ids:matching.map(s=>s.source_id),
    official_primary_source_ids:matching.filter(s=>s.official_primary_candidate).map(s=>s.source_id),
    supporting_source_ids:matching.filter(s=>!s.official_primary_candidate).map(s=>s.source_id),
-   same_event_independent_source_verified:false,endpoint_formats:[...new Set(matching.map(s=>s.format))],
+   same_event_independent_source_verified:false,
+   regional_fallback_source_ids:regional.map(s=>s.source_id),
+   regional_family_does_not_prove_country_event:true,
+   national_mineral_authority_reference_candidates:mineralAuthorityReferences,
+   endpoint_formats:[...new Set(matching.map(s=>s.format))],
    last_actual_successful_http_fetch_at:newest?.last_successful_http_fetch_at??null,
    last_source_native_publication_time:dated?.last_source_native_publication_time??null,
    last_source_native_publication_at:dated?.last_source_native_publication_at??null,
@@ -197,8 +220,8 @@ export function buildLedger(countries,sources,prior={},newProbes=[],now=new Date
   status_counts:Object.fromEntries(STATUSES.map(x=>[x,cells.filter(c=>c.source_status===x).length])),
   per_category:perCategory,source_registry:sources,source_probes:[...latest.values()].sort((a,b)=>a.source_id.localeCompare(b.source_id)),
   global_fallback_candidates_not_country_verified:{
-   geopolitics:["un_security_council","gdelt_v2"],macro:["world_bank_wdi","imf_data"],
-   rare_earth:["usgs_mcs","un_comtrade"]},
+   geopolitics:["un_security_council","gdelt_v2"],macro:["world_bank_indicators","imf_sdmx"],
+   rare_earth:["usgs_mcs","un_comtrade_minerals"]},
   language_translation_required:false,source_clock_not_retrieval_clock:true,
   publisher_location_not_event_location:true,commercial_rights_not_inferred:true,
   complete_live_585_country_event_coverage_verified:false,cells};
