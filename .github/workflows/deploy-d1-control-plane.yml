@@ -15,6 +15,10 @@ on:
       - "src/lib/reusable-news-json.ts"
       - "src/lib/canonical-country-registry-195.ts"
       - "scripts/tests/news-product-factory.test.mjs"
+      - "scripts/tests/phase2h-raw-news.test.mjs"
+      - "scripts/lib/phase2h-raw-original-records.mjs"
+      - "workers/control-plane/src/phase2h-private-raw-news.mjs"
+      - "workers/control-plane/migrations/0035_phase2h_private_raw_news.sql"
       - "scripts/lib/macro-*.mjs"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
@@ -112,6 +116,7 @@ jobs:
         run: |
           node --test scripts/tests/three-domain-continuity-single-scan.test.mjs scripts/tests/news-product-factory.test.mjs scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/materialized-public-news-pages.test.mjs scripts/tests/website-derived-cap-compaction.test.mjs scripts/tests/refresh-public-news-pages-under-quota.test.mjs scripts/tests/public-materialized-worker-import.test.mjs scripts/tests/verify-public-d1-materialization-live.test.mjs scripts/tests/materialized-origin-owner-route.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs
           node --test scripts/tests/private-news-proof-boundary.test.mjs scripts/tests/public-signed-news.test.mjs
+          node --test scripts/tests/phase2h-raw-news.test.mjs
           node --test scripts/tests/geomacro-news-severity-gri.test.mjs
           node --check scripts/ops/verify-live-geomacro-news-gri.mjs
 
