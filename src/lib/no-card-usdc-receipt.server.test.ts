@@ -1,5 +1,6 @@
-import {describe,it,expect} from "vitest";
-import {validateNoCardNativeUsdcReceipt} from "./no-card-usdc-receipt.server";
+import {describe,it,expect,vi,afterEach,beforeEach} from "vitest";
+import {validateNoCardNativeUsdcReceipt,confirmNoCardNativeUsdcChainSettlement} from "./no-card-usdc-receipt.server";
+import type {PreparedCapabilityQuote} from "./capability-prepared-quote.server";
 
 const TX="0x"+"a".repeat(64);
 const BLOCK="0x"+"b".repeat(64);
@@ -45,5 +46,173 @@ describe("no-card independent native USDC settlement proof, no RPC or funds",()=
   it("rejects zero- or maliciously-small confirmation settings",()=>{
     expect(()=>validateNoCardNativeUsdcReceipt({...good(),minConfirmations:0})).toThrow();
     expect(()=>validateNoCardNativeUsdcReceipt({...good(),minConfirmations:2049})).toThrow();
+  });
+});
+
+
+/** Network-free tests. No mainnet settlement or wallet signature is created. */
+describe("bounded Base/Polygon RPC alternatives for independent receipt verification",()=>{
+  const primary="https://primary-rpc.example/v2/private";
+  const backup="https://independent-rpc.example/rpc";
+  const quote=()=>({
+    network:"eip155:8453",asset_contract:USDC,recipient:RECIPIENT,
+    amount_atomic:"20000",
+  }) as PreparedCapabilityQuote;
+  const jsonResult=(result:unknown)=>new Response(JSON.stringify({
+    jsonrpc:"2.0",id:1,result,
+  }),{status:200,headers:{"Content-Type":"application/json"}});
+  const result=(method:string,network="eip155:8453",invalidTransfer=false)=>{
+    const original=good();
+    switch(method){
+      case "eth_chainId":return network==="eip155:8453"?"0x2105":"0x89";
+      case "eth_getTransactionReceipt":{
+        const receipt=original.receipt;
+        const polygonAsset="0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359";
+        return {...receipt,logs:invalidTransfer?[]:receipt.logs.map(log=>({
+          ...log,address:network==="eip155:8453"?USDC:polygonAsset,
+        }))};
+      }
+      case "eth_getBlockByNumber":return original.block;
+      case "eth_blockNumber":return original.latestBlock;
+      default:throw Error("UNKNOWN_TEST_METHOD");
+    }
+  };
+  beforeEach(()=>{
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE",primary);
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES",JSON.stringify([backup]));
+    vi.stubEnv("GEOMACRO_NO_CARD_CONFIRMATIONS_BASE","10");
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_POLYGON",primary);
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_POLYGON_ALTERNATES",JSON.stringify([backup]));
+    vi.stubEnv("GEOMACRO_NO_CARD_CONFIRMATIONS_POLYGON","10");
+  });
+  afterEach(()=>vi.unstubAllEnvs());
+
+  it("uses the entire successful primary RPC proof with no backup calls",async()=>{
+    const origins:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      origins.push(String(input));
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(result(method));
+    }) as typeof fetch;
+    const x=await confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,payer:PAYER,fetcher,
+    });
+    expect(x.confirmed).toBe(true);
+    expect(origins).toEqual([primary,primary,primary,primary]);
+  });
+
+  it("restarts the whole proof with the next provider on a 429",async()=>{
+    const origins:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      const url=String(input);origins.push(url);
+      if(url===primary)return new Response(null,{status:429});
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(result(method));
+    }) as typeof fetch;
+    const proof=await confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,payer:PAYER,fetcher,
+    });
+    expect(proof.confirmed).toBe(true);
+    expect(origins).toEqual([primary,backup,backup,backup,backup]);
+  });
+
+  it("retries a malformed/unavailable receipt from the primary without mixing fields",async()=>{
+    const calls:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      const url=String(input);
+      const method=JSON.parse(String(init?.body)).method as string;
+      calls.push(url+":"+method);
+      if(url===primary&&method==="eth_getTransactionReceipt")
+        return jsonResult(null);
+      return jsonResult(result(method));
+    }) as typeof fetch;
+    const proof=await confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,payer:PAYER,fetcher,
+    });
+    expect(proof.confirmed).toBe(true);
+    expect(calls.filter(x=>x.startsWith(backup))).toHaveLength(4);
+  });
+
+  it("does not fallback on wrong-chain replies even if a backup could pass",async()=>{
+    const origins:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      const url=String(input);origins.push(url);
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(url===primary&&method==="eth_chainId"?"0x89":result(method));
+    }) as typeof fetch;
+    await expect(confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,payer:PAYER,fetcher,
+    })).rejects.toThrow("NO_CARD_RPC_WRONG_CHAIN");
+    expect(origins).toEqual([primary]);
+  });
+
+  it("does not promote an invalid USDC transfer proof by trying more RPCs",async()=>{
+    const origins:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      const url=String(input);origins.push(url);
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(result(method,"eip155:8453",url===primary));
+    }) as typeof fetch;
+    await expect(confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,payer:PAYER,fetcher,
+    })).rejects.toThrow("NO_CARD_EXACT_USDC_TRANSFER_LOG_NOT_PROVEN");
+    expect(origins).toEqual([primary,primary,primary,primary]);
+  });
+
+  it("fails closed when all RPC endpoints are unavailable",async()=>{
+    const fetcher=(async()=>new Response(null,{status:503})) as typeof fetch;
+    await expect(confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,fetcher,
+    })).rejects.toThrow("NO_CARD_RPC_ALL_ENDPOINTS_UNAVAILABLE");
+  });
+
+  it("keeps the Polygon RPC list isolated from Base",async()=>{
+    const polygonQuote={
+      ...quote(),network:"eip155:137",
+      asset_contract:"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+    } as PreparedCapabilityQuote;
+    const origins:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      origins.push(String(input));
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(result(method,"eip155:137"));
+    }) as typeof fetch;
+    const x=await confirmNoCardNativeUsdcChainSettlement({
+      quote:polygonQuote,transaction:TX,payer:PAYER,fetcher,
+    });
+    expect(x.confirmed).toBe(true);
+    expect(x.network).toBe("eip155:137");
+    expect(origins).toEqual([primary,primary,primary,primary]);
+  });
+
+  it("refuses an unsafe alternate URL or too many endpoints before network calls",async()=>{
+    const fetcher=vi.fn(async()=>new Response(null,{status:200})) as typeof fetch;
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES",JSON.stringify([
+      "http://rpc.example/rpc",
+    ]));
+    await expect(confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,fetcher,
+    })).rejects.toThrow("NO_CARD_RPC_OR_FINALITY_NOT_APPROVED");
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES",JSON.stringify(
+      Array.from({length:11},(_,i)=>"https://rpc"+i+".example/rpc")
+    ));
+    await expect(confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,fetcher,
+    })).rejects.toThrow("NO_CARD_RPC_ALTERNATES_INVALID");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("preserves the existing single-primary RPC configuration",async()=>{
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES","");
+    const origins:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      origins.push(String(input));
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(result(method));
+    }) as typeof fetch;
+    expect((await confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,fetcher,
+    })).confirmed).toBe(true);
+    expect(origins).toHaveLength(4);
   });
 });
