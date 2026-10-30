@@ -30,6 +30,29 @@ test("bounded rotation stages native metadata only and never a Google discovery 
   derive,maxRows:5,intervalMinutes:5});
  assert.notDeepEqual(plan.records.map(x=>x.record_id),next.records.map(x=>x.record_id));
 });
+test("small source quota never starves existing Macro and Minerals original categories",()=>{
+ const originals=[
+  ...Array.from({length:18},(_,i)=>mk(100+i,"geopolitics")),
+  ...Array.from({length:4},(_,i)=>mk(300+i,"macro")),
+  mk(500,"rare_earth"),
+ ];
+ const plan=planPhase2iFastlanePrivateStage(originals,{
+  now,derive,maxRows:5,intervalMinutes:5,
+ });
+ assert.deepEqual(plan.selected_by_category,{
+  geopolitics:2,macro:2,rare_earth:1,
+ });
+ assert.equal(plan.selected_count,5);
+ assert.equal(plan.deferred_count,18);
+ assert.equal(new Set(plan.records.map(x=>x.record_id)).size,5);
+ const next=planPhase2iFastlanePrivateStage(originals,{
+  now:new Date(now.getTime()+5*60000),derive,maxRows:5,intervalMinutes:5,
+ });
+ assert.deepEqual(next.selected_by_category,{
+  geopolitics:2,macro:2,rare_earth:1,
+ });
+ assert.notDeepEqual(next.records.map(x=>x.record_id),plan.records.map(x=>x.record_id));
+});
 test("only protected existing source admission may write D1",async()=>{
  let called=false;
  const r=await stagePhase2iFastlanePrivateOriginals({
