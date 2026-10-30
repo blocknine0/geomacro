@@ -152,7 +152,7 @@ describe("production website runtime contract", () => {
     expect(intelligenceHook).toContain("setUpdatedAt(latestOriginalEvidenceAt(next.all))");
     expect(intelligenceHook).not.toContain("setUpdatedAt(Date.now())");
     expect(intelligenceRoute).toContain("Earlier assessments retain their original dates.");
-    expect(pricing).toContain("Geomacro Store");
+    expect(pricing).toContain("GeoMacro pricing");
     expect(read("src/components/capability-price-schedule.tsx")).toContain("A displayed price is not an available payment quote.");
     expect(institutional).toContain("Scope, service terms and access are agreed before commercial delivery.");
   });
