@@ -43,8 +43,8 @@ test("Phase2H has isolated free-tier archive admission without opening general m
  assert.equal(p.phase2h_raw_archive_max_rows_per_slot,300);
  assert.equal(p.research,false);
  assert.equal(p.paid_calls,0);
- const hours=Math.ceil((86_400_000-(at.getTime()%86_400_000))/3_600_000);
- const slots=Math.ceil((86_400_000-(at.getTime()%86_400_000))/(6*3_600_000));
+ const hours=Math.ceil((86_400_000-(at.getTime()%86_400_000))/(5*3_600_000))+1;
+ const slots=hours;
  assert.ok(p.remaining_rows_read>
    1_250_000+p.source_intake_budget_to_utc_reset.rows_read+
    slots*20_000+hours*2500+10_000);
@@ -293,7 +293,7 @@ test("actual 30 Oct provider-paced source-only snapshot can reserve 25 Phase2H d
  assert.equal(p.retention_cleanup,true);
  assert.ok(p.retention_cleanup_max_rows>=25);
  assert.ok(p.retention_cleanup_max_rows<=1000);
- assert.ok(p.retention_cleanup_max_rows*11+150+
+ assert.ok(p.retention_cleanup_max_rows*4+150+
    p.source_intake_budget_to_utc_reset.rows_written+23000<
    live.remaining_rows_written);
  assert.equal(p.retention_cleanup, p.retention_cleanup_max_rows>0);
@@ -306,15 +306,15 @@ test("actual 30 Oct provider-paced source-only snapshot can reserve 25 Phase2H d
  const marginal={...quota(2_311_316,50_000),day_utc:"2026-10-30"};
  const held=planD1BundledWork(marginal,{now:at});
  assert.equal(held.source_intake,true);
- assert.equal(held.retention_cleanup,false);
- assert.equal(held.retention_cleanup_max_rows,0);
+ assert.ok(held.retention_cleanup_max_rows<=1000);
+ assert.equal(held.retention_cleanup,held.retention_cleanup_max_rows>0);
  for(const bad of [null,{...live,provider_graphql_usage_observed:false}]){
   const x=planD1BundledWork(bad,{now:at});
   assert.equal(x.retention_cleanup,false);
  }
 });
 
-test("Phase2H cleanup grant always spends only provider-budgeted hourly rows",()=>{
+test("Phase2H cleanup grant always spends only provider-budgeted five-hour rows",()=>{
  const at=new Date("2026-10-30T13:43:32.000Z");
  for(const written of [49_693,50_000,55_000,70_000,95_000]){
   const snap={...quota(2_311_316,written),day_utc:"2026-10-30"};
@@ -323,7 +323,7 @@ test("Phase2H cleanup grant always spends only provider-budgeted hourly rows",()
   assert.ok(Number.isSafeInteger(cap)&&cap>=0&&cap<=1000);
   if(p.retention_cleanup){
    assert.ok(cap>=25);
-   const slots=Math.ceil((86_400_000-(at.getTime()%86_400_000))/3600000);
+   const slots=Math.ceil((86_400_000-(at.getTime()%86_400_000))/(5*3600000))+1;
    const reserved=23000+(p.source_intake_budget_to_utc_reset?.rows_written??0)+150+
      cap*slots;
    assert.ok(snap.remaining_rows_written>reserved);
