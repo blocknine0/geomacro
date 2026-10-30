@@ -55,6 +55,29 @@ test("three distinct collected original categories, exact native date, one ID pe
  assert.equal(x.records.find(r=>r.category==="macro").original.original_content,null);
  assert.equal(data().records[0].raw_sha256,x.records[0].raw_sha256);
 });
+test("topic-wide boilerplate becomes event-specific only with observed event facts",async()=>{
+ const one=candidates[0],two={...candidates[0],sourceId:"trade_notice",
+  articleUrl:"https://example.gov.test/news/other",title:"Agency issues a new customs notice"};
+ const result=buildPhase2hPrivateRawRecords([one,two],{now,derive:items=>
+  items.map(item=>({category:item.category,published_at:item.publishedAt,
+   topic:"trade and security",
+   what_changed:item.sourceId==="trade_notice"?
+    "A customs notice was issued.":"A ceasefire proposal was presented.",
+   why_it_matters:"Changes in policy can affect trade expectations; effects remain unverified."}))});
+ assert.equal(result.records.length,2);
+ const first=result.records[0].analysis.why_it_matters.text;
+ const second=result.records[1].analysis.why_it_matters.text;
+ assert.ok(first?.includes("ceasefire proposal"));
+ assert.ok(second?.includes("customs notice"));
+ assert.notEqual(first,second);
+ for(const item of result.records)
+  assert.equal(await validPrivateRawNews(item,now.getTime()),JSON.stringify(item));
+ const uncertain=buildPhase2hPrivateRawRecords([one],{now,derive:items=>items.map(item=>({
+  category:item.category,published_at:item.publishedAt,topic:"trade and security",
+  what_changed:"A dated first-party source item was observed; category relevance has not yet been established.",
+  why_it_matters:"Policy may matter."}))});
+ assert.equal(uncertain.records[0].analysis.why_it_matters.text,null);
+});
 test("a date-only publisher keeps its native calendar day, never a fabricated midnight",async()=>{
  const single={...candidates[2],datePrecision:"day",publishedAt:"2026-10-29T00:00:00.000Z"};
  const result=buildPhase2hPrivateRawRecords([single],{now,derive});
