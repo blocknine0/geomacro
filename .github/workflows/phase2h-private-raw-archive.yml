@@ -22,6 +22,8 @@ on:
       - "scripts/ops/phase2h-archive-private-raw-news.mjs"
       - "scripts/tests/phase2h-raw-news.test.mjs"
       - "scripts/tests/plan-d1-bundled-work.test.mjs"
+      - "scripts/ops/phase2i-b-evidence-bridge.mjs"
+      - "scripts/tests/phase2i-b-evidence-bridge.test.mjs"
       - "scripts/lib/phase2h-retention-72h.mjs"
       - "scripts/tests/phase2h-retention-72h.test.mjs"
       - "scripts/lib/phase2h-raw-original-records.mjs"
@@ -52,7 +54,7 @@ jobs:
         with:
           node-version: "22"
       - name: Verify scoped metadata-only census and strict B2 admission (offline)
-        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs
+        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/phase2i-b-evidence-bridge.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs
   quota-admission:
     if: >-
       github.event_name == 'schedule' &&
