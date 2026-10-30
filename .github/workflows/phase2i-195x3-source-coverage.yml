@@ -33,6 +33,7 @@ jobs:
         run: |
           node --check scripts/ops/phase2i-coverage-inventory.mjs
           node --test scripts/tests/phase2i-coverage-inventory.test.mjs
+          node --test scripts/lib/country-news-mentions-195.test.mjs scripts/tests/continent-country-195-rotation.test.mjs
       - name: Produce offline 585-cell matrix (no invented HTTP history)
         run: node scripts/ops/phase2i-coverage-inventory.mjs
       - name: Upload complete offline 585-cell JSON
