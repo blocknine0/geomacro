@@ -204,7 +204,9 @@ export async function runPhase2hPermanentAcceptance({
     x.deployed_authenticated_http_200===true&&x.per_record_five_part_exact===true);
  const summary={
   schema:"geomacro.phase2h.permanent-raw-b2-production-acceptance.v1",
-  status:complete?"PASS_REAL_B2_TO_EXACT_QUESTION":"INCOMPLETE_ARCHIVE_BACKLOG",
+  status:complete?"PASS_REAL_B2_TO_EXACT_QUESTION":
+   census.pending_total>0?"INCOMPLETE_ARCHIVE_BACKLOG":
+   "INCOMPLETE_ARCHIVED_OBJECT_RECHECK",
   verified_at:now.toISOString(),production_main_sha:env.GITHUB_SHA??null,
   actual_b2_readback_verified:proofs.every(x=>x.b2_two_get_verified_in_preceding_step===true),
   category_question_readbacks:Math.max(...proofs.map(x=>x.production_question_readback_categories??0)),
