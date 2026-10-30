@@ -276,9 +276,9 @@ export function phase2hOneOriginalResearchFivePart(item){
  const assertedUnsupported=["UNSOURCED_QUANTITATIVE_CLAIM","UNSUPPORTED_CERTAINTY",
   "UNVERIFIED_MARKET_CLAIM","EVIDENCE_PROVENANCE_MISMATCH"];
  const unsafe=assertedUnsupported.some(reason=>reasons.has(reason));
- const whatOK=!unsafe&&!reasons.has("WHAT_MISSING_OR_BOILERPLATE")&&
+ const whatOK=!unsafe&&!(reasons.has("WHAT_MISSING")||reasons.has("WHAT_BOILERPLATE"))&&
   !reasons.has("WHAT_LACKS_SOURCE_FACT_ANCHORS");
- const whyOK=!unsafe&&!reasons.has("WHY_MISSING_OR_BOILERPLATE")&&
+ const whyOK=!unsafe&&!(reasons.has("WHY_MISSING")||reasons.has("WHY_BOILERPLATE"))&&
   !reasons.has("WHY_LACKS_EVENT_ANCHORS")&&
   !reasons.has("WHAT_WHY_IDENTICAL");
  // No publisher headline copy as a substitute for factual extraction.
