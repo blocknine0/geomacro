@@ -36,6 +36,16 @@ export async function verifyPhase2hB2Lifecycle({
     typeof env.B2_KEY_ID!=="string"||env.B2_KEY_ID.length<12||
     typeof env.B2_APPLICATION_KEY!=="string"||env.B2_APPLICATION_KEY.length<16)
   fail("PROTECTED_GOVERNED_MAIN_REQUIRED");
+ // Prefer the already-configured read-only archive principal for
+ // lifecycle verification. The upload principal may intentionally lack
+ // listBuckets, while archive PUT remains restricted to its original key.
+ const hasReadId=(env.B2_ARCHIVE_READ_KEY_ID??"").length>0;
+ const hasReadSecret=(env.B2_ARCHIVE_READ_APPLICATION_KEY??"").length>0;
+ if(hasReadId!==hasReadSecret)fail("ARCHIVE_READ_PAIR_INCOMPLETE");
+ const credentialId=hasReadId?env.B2_ARCHIVE_READ_KEY_ID:env.B2_KEY_ID;
+ const credentialSecret=hasReadSecret?env.B2_ARCHIVE_READ_APPLICATION_KEY:env.B2_APPLICATION_KEY;
+ if((credentialId??"").length<12||(credentialSecret??"").length<16)
+  fail("PROVIDER_READ_CREDENTIAL_MISSING");
  const json=async(url,kind,headers)=>{
   await governor.reserve(kind);
   let res;
@@ -48,7 +58,7 @@ export async function verifyPhase2hB2Lifecycle({
  };
  const auth=await json("https://api.backblazeb2.com/b2api/v4/b2_authorize_account",
   "NATIVE_AUTH",{Authorization:"Basic "+Buffer.from(
-   env.B2_KEY_ID+":"+env.B2_APPLICATION_KEY).toString("base64")});
+   credentialId+":"+credentialSecret).toString("base64")});
  const storage=auth?.apiInfo?.storageApi;
  if(typeof auth.authorizationToken!=="string"||
     !/^[a-f0-9]{16,64}$/u.test(auth.accountId??"")||
