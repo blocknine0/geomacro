@@ -113,15 +113,14 @@ export function createPhase2hCanonicalD1({
   },
  };
 }
-/** One admitted five-hour epoch slot. An hourly trigger is metadata-only
- * outside that window. Delayed GitHub runs are accepted only with trusted
- * canonical workflow identity and exact scheduled event payload.
+/** One daily scheduled archive, admitted only with authenticated canonical
+ * main GitHub schedule event. Delayed execution remains valid. No manual,
+ * push, or unit-test credentials alone may open the production B2 writer.
  */
 export function phase2hAuthorizedArchiveWindow({
  env=process.env,now=new Date(),eventReader=readFileSync,
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))return false;
- if(Math.floor(now.getTime()/3_600_000)%5===0)return true;
  if(env.GITHUB_EVENT_NAME!=="schedule"||
     env.GITHUB_WORKFLOW_REF!==
       "blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main")
@@ -131,7 +130,7 @@ export function phase2hAuthorizedArchiveWindow({
    return false;
  try{
   const event=JSON.parse(eventReader(path,"utf8"));
-  return event?.schedule==="3 * * * *";
+  return event?.schedule==="29 0 * * *";
  }catch{return false}
 }
 export async function runPhase2hGovernedRawB2({
@@ -139,7 +138,7 @@ export async function runPhase2hGovernedRawB2({
  b2Factory=createB2Client,governorFactory=createB2D1AccountGovernor,
  d1Factory=createPhase2hCanonicalD1,
  lifecycleVerifier=verifyPhase2hB2Lifecycle,
- eventReader=readFileSync,
+ eventReader=readFileSync,windowAuthorizer=phase2hAuthorizedArchiveWindow,
 }={}){
  if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
   env.GITHUB_REF!=="refs/heads/main"||
@@ -149,10 +148,9 @@ export async function runPhase2hGovernedRawB2({
   env.PHASE2H_PROVIDER_MAINTENANCE!=="true"||
   !/^\d{1,20}$/u.test(env.GITHUB_RUN_ID??""))
   fail("PROTECTED_MAIN_GOVERNOR_REQUIRED");
- // Only one five-hour epoch slot is admitted. A delayed GitHub scheduled
- // run still needs the exact canonical schedule event; manual/push attempts
- // outside the permitted slot cannot open the protected B2 writer.
- if(!phase2hAuthorizedArchiveWindow({env,now,eventReader}))
+ // Exactly one canonical daily GitHub scheduled event; queued execution
+ // can be late, but never grant D1/B2 to manual or push runs.
+ if(!windowAuthorizer({env,now,eventReader}))
   return {status:"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT",storage_confirmed:false,
    rows_archived:0,object_sha256:null};
  const governor=governorFactory({env,fetchImpl});
