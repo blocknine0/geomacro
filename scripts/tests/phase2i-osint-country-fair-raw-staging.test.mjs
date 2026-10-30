@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {PHASE2H_COUNTRIES_195,phase2hHeadlineCountryCandidate}
  from "../lib/phase2h-country-originals-195.mjs";
-import {planPhase2iOsintCountryFairRaw,stagePhase2iOsintFairRaw}
+import {planPhase2iOsintCountryFairRaw,stagePhase2iOsintFairRaw,phase2iSourceOnlyCategoryRelevant}
  from "../lib/phase2i-osint-country-fair-raw-staging.mjs";
 const now=new Date("2026-10-30T12:00:00.000Z");
 const cats=["geopolitics","macro","rare_earth"];
@@ -141,4 +141,19 @@ test("provider-limited 3-row slot still reaches each category and every original
  for(const tooSmall of [0,1,2,6,50])
   assert.throws(()=>planPhase2iOsintCountryFairRaw(candidates,
    {now,derive,maxRows:tooSmall}),/PHASE2I_OSINT_RAW_PLAN_INVALID/u);
+});
+
+test("pinned mixed-category feed cannot multiply unrelated headlines into every original-news category",()=>{
+ const pinned=new Map([
+  ["https://general.example.org/feed",["geopolitics","macro","rare_earth"]],
+  ["https://bank.example.org/feed",["macro"]]
+ ]);
+ const topics={geopolitics:/sanctions/iu,macro:/inflation/iu,rare_earth:/lithium/iu};
+ const item={source_url:"https://general.example.org/feed",
+  category:"macro",title:"Central bank reports inflation"};
+ assert.equal(phase2iSourceOnlyCategoryRelevant(item,pinned,topics),true);
+ assert.equal(phase2iSourceOnlyCategoryRelevant({...item,category:"rare_earth"},pinned,topics),false);
+ assert.equal(phase2iSourceOnlyCategoryRelevant({...item,source_url:"https://unknown.example.org/feed"},pinned,topics),false);
+ assert.equal(phase2iSourceOnlyCategoryRelevant({...item,source_url:"https://bank.example.org/feed",
+  title:"Official central-bank bulletin"},pinned,topics),true);
 });
