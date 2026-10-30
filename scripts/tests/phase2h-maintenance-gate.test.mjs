@@ -24,4 +24,10 @@ test("Phase 2H B2 workflow requires archive-only provider approval and one daily
  assert.doesNotMatch(yaml,/needs\.quota-admission\.outputs\.structural_snapshot/u);
  assert.doesNotMatch(yaml,/\n  push:\s/u);
  assert.match(yaml,/B2_REQUEST_BUDGET: "12"/u);
+ assert.match(yaml,/Publish Phase2H archive admission truth without an extra provider request/u);
+ assert.match(yaml,/ARCHIVE_HELD_NOT_VERIFIED/u);
+ assert.match(yaml,/ADMITTED_PENDING_B2_PROOF/u);
+ assert.match(yaml,/QUOTA_MEASUREMENT_FAILED_NO_ARCHIVE_PROOF/u);
+ assert.match(yaml,/green workflow is NOT end-to-end archival acceptance/u);
+ assert.match(yaml,/GITHUB_STEP_SUMMARY/u);
 });
