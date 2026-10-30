@@ -114,6 +114,13 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
      independent_event_verified:false,commercial_rights_verified:false,
      paid_eligible:false,source_content_identity_sha256:sha(c.title+"\n"+nativePublished)},
   };
+  // Regression-enforced immutable shape; neither source licensing state nor
+  // paid availability is consulted during the five-part derivation.
+  if(analysis.schema!=="geomacro.phase2h.private-five-part.v1"||
+     Object.keys(analysis).length!==PHASE2H_RAW_TO_STRUCTURED_LOCK.five_part_fields.length+1||
+     !PHASE2H_RAW_TO_STRUCTURED_LOCK.five_part_fields.every(
+       field=>Object.hasOwn(analysis,field)))
+    throw Error("PHASE2H_FIVE_PART_CONTRACT_CHANGED");
   const immutable={schema:RAW2H_SCHEMA,record_id:observationId,
     category:c.category,original,analysis,
     commercial_rights_verified:false,commercial_delivery_authorized:false};
