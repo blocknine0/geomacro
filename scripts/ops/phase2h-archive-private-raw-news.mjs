@@ -121,14 +121,9 @@ export async function runPhase2hGovernedRawB2({
   env.B2_REQUEST_BUDGET!=="12"||
   !/^\d{1,20}$/u.test(env.GITHUB_RUN_ID??""))
   fail("PROTECTED_MAIN_GOVERNOR_REQUIRED");
- // Four established six-hour archive slots. A *single* new canonical
- // workflow push may bootstrap the first proof sooner; it is still subject
- // to the exact same structural D1 admission and atomic B2 account quota.
- const bootstrap=env.PHASE2H_BOOTSTRAP_ON_MAIN_PUSH==="1"&&
-   env.GITHUB_EVENT_NAME==="push"&&
-   env.GITHUB_WORKFLOW_REF===
-   "blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main";
- if(now.getUTCHours()%6!==0&&!bootstrap)
+ // Existing four six-hour maintenance windows only. Main pushes and manual
+ // dispatches outside these UTC slots must not contact D1 or B2.
+ if(now.getUTCHours()%6!==0)
   return {status:"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT",storage_confirmed:false,
    rows_archived:0,object_sha256:null};
  const governor=governorFactory({env,fetchImpl});
