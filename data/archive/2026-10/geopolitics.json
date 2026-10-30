@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-30T07:11:11.675Z",
+  "updated_at": "2026-10-30T08:05:46.868Z",
   "signals": [
+    {
+      "id": "geopolitics-a29487c0",
+      "category": "geopolitics",
+      "title": "Geomacro finds Saudi Arabia said one injured, material damage after missiles intercepted",
+      "what_changed": "A monitored source feed reports: Saudi Arabia said one injured, material damage after missiles intercepted. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T06:43:17.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.khaleejtimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-20c9a726",
+      "category": "geopolitics",
+      "title": "Geomacro finds Philippines raised volcano alert level as blast sends ash skyward",
+      "what_changed": "A monitored source feed reports: Philippines raised volcano alert level as blast sends ash skyward. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T06:33:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.channelnewsasia.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-a50d74cc",
       "category": "geopolitics",
@@ -56,6 +94,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-bbb9c65d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Kim urged drone dominance as North Korea fires missiles and rockets - The Japan Times",
+      "what_changed": "A monitored source feed reports: Kim urged drone dominance as North Korea fires missiles and rockets - The Japan Times. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T04:43:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -189,6 +246,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.aljazeera.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-afa99493",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said conflict in Ukraine nearing its end - TASS",
+      "what_changed": "A monitored source feed reports: Trump said conflict in Ukraine nearing its end - TASS. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T00:02:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
