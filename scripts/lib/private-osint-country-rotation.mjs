@@ -22,9 +22,10 @@ export const COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK=25;
 export const COUNTRY_DISCOVERY_LOCAL_LANE_CYCLE_MINUTES=120;
 export const COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES=60;
 // The existing 512-slot budget can be shared with three global hub feeds.
-// 22 country leads per local-lane tick reach all 195 in nine 15m slots.
-export const COUNTRY_DISCOVERY_HUB_LOCAL_CYCLE_MINUTES=135;
-export const COUNTRY_DISCOVERY_HUB_NOMINAL_CYCLE_MINUTES=75;
+// The 76 active source retirements recover enough slots for all 25 original
+// index queries alongside the replacement hubs; preserve 8-slot cycles.
+export const COUNTRY_DISCOVERY_HUB_LOCAL_CYCLE_MINUTES=120;
+export const COUNTRY_DISCOVERY_HUB_NOMINAL_CYCLE_MINUTES=60;
 const CATEGORIES=Object.freeze(["geopolitics","macro","rare_earth"]);
 export const COUNTRY_MACRO_DISCOVERY_TERMS=Object.freeze([
  '"central bank"','CPI','PPI','PMI','GDP','inflation','"interest rates"',
@@ -100,7 +101,7 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  const hubs=base.length>=300?
   privateOsintGlobalHubSources().filter(source=>!urls.has(source.url)):[];
  // A missed index query is discovery-only, not a missing registered publisher.
- // Every canonical country still gets its turn over the extended cycle.
+ // Retiring repeatedly failed sources restores the full 25/49 index budget.
  const indexPerTick=Math.min(normalIndex,512-base.length-local.length-hubs.length);
  if(indexPerTick<1)
   throw Error("PRIVATE_OSINT_GLOBAL_HUB_SOURCE_CEILING");
