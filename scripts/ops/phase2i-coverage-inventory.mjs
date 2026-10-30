@@ -138,9 +138,22 @@ export async function probeRotation(sources,now=new Date(),fetchImpl=fetch,max=1
  if(max<1||max>24)fail("BOUNDED_REQUEST_CAP");
  const choices=sources.filter(s=>["rss","atom","rdf","xml"].includes(s.format));
  if(!choices.length)return [];
- const start=(Math.floor(now.getTime()/7200000)*max)%choices.length;
- const selected=Array.from({length:Math.min(max,choices.length)},(_,i)=>
-  choices[(start+i)%choices.length]);
+ // Production first 18 GETs all hit country-unknown global publishers. Keep
+ // a finite 2:1 local/regional allocation without increasing requests.
+ // Deterministically rotate BOTH partitions independently every two hours.
+ const local=choices.filter(s=>/^[A-Z]{3}$/u.test(s.publisher_country_iso3??""));
+ const regional=choices.filter(s=>!s.publisher_country_iso3);
+ const slot=Math.floor(now.getTime()/7200000);
+ const localCount=Math.min(local.length,Math.min(max,Math.ceil(max*2/3)));
+ const fallbackCount=Math.min(regional.length,max-localCount);
+ const extra=Math.min(local.length-localCount,max-localCount-fallbackCount);
+ const pick=(items,n,offset)=>{
+  if(!items.length||n<1)return [];
+  const start=(slot*n+offset)%items.length;
+  return Array.from({length:n},(_,i)=>items[(start+i)%items.length]);
+ };
+ const selected=[...pick(local,localCount+extra,0),
+  ...pick(regional,fallbackCount,7)];
  const results=new Array(selected.length);let index=0;
  await Promise.all(Array.from({length:3},async()=>{
   while(index<selected.length){const i=index++;results[i]=await probeSource(selected[i],{fetchImpl,now});}
