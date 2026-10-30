@@ -140,3 +140,72 @@ jobs:
             artifacts/derived-news/phase2h-canonical-census-receipt.json
           retention-days: 90
           if-no-files-found: warn
+
+  phase2ib-durable-archive-cycle:
+    name: Retain real governed B2 result or quota hold on 585-cell evidence branch
+    needs: [quota-admission, raw-b2-to-production-question]
+    if: >-
+      always() &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    env:
+      PHASE2IB_MAINTENANCE: ${{ needs.quota-admission.outputs.maintenance || 'unknown' }}
+      PHASE2IB_ARCHIVE_JOB: ${{ needs.raw-b2-to-production-question.result }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout exact immutable main SHA, no persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Read optional same-run Phase 2H production archive acceptance artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/derived-news artifacts/phase2i
+          # Missing/failed original archiving never becomes a positive archive receipt.
+          gh run download "$GITHUB_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "phase2h-real-b2-question-production-proof-${GITHUB_RUN_ID}" \
+            --dir artifacts/derived-news \
+            >/dev/null 2>&1 || true
+          test ! -f artifacts/derived-news/phase2h-permanent-production-acceptance.json || \
+            jq -e '.schema == "geomacro.phase2h.permanent-raw-b2-production-acceptance.v1"' \
+              artifacts/derived-news/phase2h-permanent-production-acceptance.json >/dev/null
+      - name: Load previous durable real archive receipt without modifying source probes
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraheader="$auth" fetch origin refs/heads/phase2i-source-evidence:refs/remotes/origin/phase2i-source-evidence
+          git show refs/remotes/origin/phase2i-source-evidence:data/phase2i/raw-archive-cycle.latest.json > artifacts/phase2i/previous-raw-archive-cycle.json || rm -f artifacts/phase2i/previous-raw-archive-cycle.json
+      - name: Fail-closed real B2 receipts, category D1 census and held backlog
+        run: |
+          node --test scripts/tests/phase2i-b-evidence-bridge.test.mjs
+          node scripts/ops/phase2i-b-evidence-bridge.mjs --cycle
+      - name: Commit metadata-only protected archive-cycle receipt to existing evidence branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraheader="$auth" fetch origin refs/heads/phase2i-source-evidence:refs/remotes/origin/phase2i-source-evidence
+          evidence="$RUNNER_TEMP/phase2i-source-evidence"
+          git worktree add --detach "$evidence" refs/remotes/origin/phase2i-source-evidence
+          mkdir -p "$evidence/data/phase2i"
+          cp artifacts/phase2i/raw-archive-cycle.latest.json "$evidence/data/phase2i/raw-archive-cycle.latest.json"
+          git -C "$evidence" add data/phase2i/raw-archive-cycle.latest.json
+          if ! git -C "$evidence" diff --cached --quiet; then
+            git -C "$evidence" config user.name "github-actions[bot]"
+            git -C "$evidence" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$evidence" commit -m "Retain strict Phase 2I-B D1/B2 governed archive cycle evidence"
+            git -C "$evidence" -c http.extraheader="$auth" push origin HEAD:refs/heads/phase2i-source-evidence
+          fi
