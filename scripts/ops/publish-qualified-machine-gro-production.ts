@@ -60,6 +60,7 @@ function requireProtectedProductionConfig() {
       process.env.B2_REQUEST_BUDGET !== "4" ||
       (process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").length < 32 ||
       !/^[a-f0-9]{32}$/iu.test(process.env.CLOUDFLARE_ACCOUNT_ID ?? "") ||
+      !/^[0-9a-f-]{36}$/iu.test(process.env.D1_DATABASE_ID ?? "") ||
       (process.env.CLOUDFLARE_API_TOKEN ?? "").length < 20 ||
       !process.env.B2_KEY_ID || !process.env.B2_APPLICATION_KEY ||
       !process.env.RISK_OBJECT_SIGNING_KEY_ID ||
