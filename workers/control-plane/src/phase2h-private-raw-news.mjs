@@ -1,4 +1,6 @@
 import {p0aAuditOriginal} from "../../../scripts/lib/p0a-evidence-quality.mjs";
+import {p0bProjectEvidenceBounded} from "../../../scripts/lib/p0b-event-grounded-projection.mjs";
+import {p0bGlobalNewsFallback} from "../../../scripts/lib/p0b-live-global-search.mjs";
 /** Canonical D1-only private raw-news staging and archived-proof ledger.
  * No public route and no paid/signed eligibility. Records are immutable once
  * accepted. Existing PREDGE, historical and x402 paths are not consulted.
@@ -266,11 +268,15 @@ export function phase2hQuestionMatchesArchived(item,question){
  * five-part research draft when the original stateless event parser emitted
  * null what/why. Never claim page verification, market reaction or paid rights.
  */
-export function phase2hOneOriginalResearchFivePart(item){
+export function phase2hOneOriginalResearchFivePart(item,enableP0B=false){
  if(typeof item?.original?.original_title!=="string"||
     item.original.original_title.length<1||
     typeof item?.original?.original_published_at!=="string"||
     !CATEGORIES.has(item.category)||!item.analysis)return null;
+ if(enableP0B){
+  const modern=p0bProjectEvidenceBounded(item);
+  if(modern)return modern;
+ }
  const audit=p0aAuditOriginal(item);
  const reasons=new Set(audit.reasons);
  const assertedUnsupported=["UNSOURCED_QUANTITATIVE_CLAIM","UNSUPPORTED_CERTAINTY",
@@ -402,6 +408,19 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
     (!countryScoped||item.category===category&&
       phase2hHeadlineCountryCandidate(item.original.original_title)===countryIso3)&&
       phase2hQuestionMatchesArchived(item,question)).slice(0,3);
+  const p0bEnabled=env.GEOMACRO_P0B_SOURCE_FIRST_ENABLED==="1";
+  const hasGrounded=matched.some(item=>{
+   const derived=phase2hOneOriginalResearchFivePart(item,p0bEnabled);
+   return derived&&p0aAuditOriginal({...item,analysis:derived}).status==="PASS";
+  });
+  let globalResult=null;
+  if(countryScoped&&p0bEnabled&&!qualityProbe&&!hasGrounded){
+   try{globalResult=await p0bGlobalNewsFallback({
+    question,countryIso3,category,now});}
+   catch{globalResult={status:"GLOBAL_PROVIDER_UNAVAILABLE",attempted:true,
+    first_party_matches:[],gdelt_discovery_count:0,provider_errors:1,
+    exhaustive_global_search:false};}
+  }
   return safeReply({ok:true,schema:"geomacro.phase2h.private-question-fivepart.v1",
    source:qualityProbe?"CANONICAL_D1_PRIVATE_P0A_QUALITY_READBACK":
     countryScoped?"CANONICAL_D1_PRIVATE_ORIGINAL_RESEARCH":
@@ -414,18 +433,23 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
     d1_staged_unarchived_research_allowed:true,
     staged_row_never_paid_eligible:true}:{}),
    global_search_complete:false,
-   question_matches:matched.map(item=>{
+   global_search_attempted:globalResult?.attempted===true,
+   global_fallback_status:globalResult?.status??"NOT_REQUIRED_OR_DISABLED",
+   global_discovery_only_count:globalResult?.gdelt_discovery_count??0,
+   global_provider_error_count:globalResult?.provider_errors??0,
+   global_first_party_verified_count:globalResult?.first_party_matches?.length??0,
+   question_matches:[...matched.map(item=>{
     const missing=typeof item.analysis.what_happened?.text!=="string"||
       !item.analysis.what_happened.text.trim()||
       typeof item.analysis.why_it_matters?.text!=="string"||
       !item.analysis.why_it_matters.text.trim();
     const five=countryScoped||qualityProbe?
-      phase2hOneOriginalResearchFivePart(item):item.analysis;
+      phase2hOneOriginalResearchFivePart(item,p0bEnabled):item.analysis;
     return {record_id:item.record_id,category:item.category,
      ...(countryScoped?{country_iso3:countryIso3}:{}),
      ...(countryScoped||qualityProbe?{
        source_title_only_research_fallback_used:false,
-        p0a_evidence_limited:missing||p0aAuditOriginal(item).status!=="PASS",
+        p0a_evidence_limited:p0aAuditOriginal({...item,analysis:five}).status!=="PASS",
        original_page_independently_verified:false,
        commercial_rights_verified:false}:{}),
      original_published_at:item.original.original_published_at,
@@ -434,7 +458,10 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
        phase2hQuestionDirectAnswer(question,five)),
      archive_d1_ack_present:active.find(
        x=>x.record_id===item.record_id)?.b2_object_sha256!=null};
-   }),private_research_only:true,chargeable:false,
+   }),...(globalResult?.first_party_matches??[]).map(item=>({
+    ...item,source:"GOV_UK_FIRST_PARTY_CONTENT_API",
+    ...phase2hPrivateResearchDirectAnswer(question,item.five_part),
+   }))],private_research_only:true,chargeable:false,
    paid_eligible:false,raw_original_not_delivered:true});
  }catch{return safeReply({ok:false,error:"PRIVATE_RAW_CANONICAL_READ_UNAVAILABLE"},503)}
 }
