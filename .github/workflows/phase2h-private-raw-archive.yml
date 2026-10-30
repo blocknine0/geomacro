@@ -123,6 +123,37 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/derived-news
           node scripts/ops/plan-d1-bundled-work.mjs | tee artifacts/derived-news/phase2h-provider-admission.log
+      - name: Publish Phase2H archive admission truth without an extra provider request
+        if: always()
+        env:
+          RAW_ARCHIVE_GRANTED: ${{ steps.provider.outputs.phase2h_raw_archive }}
+          RETENTION_GRANTED: ${{ steps.provider.outputs.retention_cleanup }}
+          CLEANUP_MAX_ROWS: ${{ steps.provider.outputs.retention_cleanup_max_rows }}
+          ADMISSION_STEP_OUTCOME: ${{ steps.provider.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${RAW_ARCHIVE_GRANTED}" = true ]; then
+            status="ADMITTED_PENDING_B2_PROOF"
+          elif [ "${ADMISSION_STEP_OUTCOME}" != success ]; then
+            status="QUOTA_MEASUREMENT_FAILED_NO_ARCHIVE_PROOF"
+            echo "::warning::Phase2H provider quota measurement failed; no B2/D1 proof"
+          else
+            status="ARCHIVE_HELD_NOT_VERIFIED"
+            echo "::warning::Phase2H D1 quota held: B2 archive and D1 cleanup cannot run; green workflow is NOT end-to-end archival acceptance"
+          fi
+          {
+            echo "### Phase 2H — production quota admission"
+            echo "| Evidence | Result |"
+            echo "|---|---|"
+            echo "| Actual archive eligibility | ${status} |"
+            echo "| D1 archive grant | ${RAW_ARCHIVE_GRANTED:-unknown} |"
+            echo "| D1 cleanup grant | ${RETENTION_GRANTED:-unknown} |"
+            echo "| Maximum authorized D1 cleanup rows | ${CLEANUP_MAX_ROWS:-0} |"
+            echo "| Actual B2 PUT/GET + D1 ack | Requires separate successful archive receipt |"
+            echo ""
+            echo "A green GitHub Actions run is **not** proof of archival. Read the provider receipt and independent B2 result before claiming production PASS."
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Keep actual provider admission receipt even when maintenance is held
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
