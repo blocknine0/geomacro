@@ -223,6 +223,40 @@ test("market-focused one-source private research never invents a price move",asy
  assert.equal(body.chargeable,false);
 });
 
+test("P0-A authentic internal quality probe reads staged D1 without fabricating B2 archive",async()=>{
+ const original=rawRows[0];
+ const {DB}=workerDb([original],{archived:false});
+ const q=new URLSearchParams({
+  record_id:original.record_id,p0a_probe:"1",
+  question:"Why does this particular development matter?"
+ });
+ const r=await phase2hPrivateRawGet({DB},q,now.getTime());
+ assert.equal(r.status,200);
+ const body=await r.json();
+ assert.equal(body.source,"CANONICAL_D1_PRIVATE_P0A_QUALITY_READBACK");
+ assert.equal(body.question_matches.length,1);
+ const x=body.question_matches[0];
+ assert.equal(x.record_id,original.record_id);
+ assert.equal(x.focus,"why_it_matters");
+ assert.equal(x.archive_d1_ack_present,false);
+ assert.equal(x.source_title_only_research_fallback_used,false);
+ assert.equal(x.p0a_evidence_limited,false);
+ assert.equal(x.direct_answer,original.analysis.why_it_matters.text);
+ assert.deepEqual(x.five_part,original.analysis);
+ assert.equal(body.paid_eligible,false);
+ assert.equal(body.chargeable,false);
+ assert.equal(body.raw_original_not_delivered,true);
+ for(const params of [
+  {p0a_probe:"1",question:"Why does this matter?"},
+  {record_id:original.record_id,p0a_probe:"2",question:"Why does this matter?"},
+  {record_id:original.record_id,p0a_probe:"1",country_iso3:"IND",
+   category:"macro",question:"India monetary policy"}
+ ]){
+  const invalid=await phase2hPrivateRawGet({DB},new URLSearchParams(params),now.getTime());
+  assert.equal(invalid.status,400);
+ }
+});
+
 test("195-country topic prefilter removes country aliases and question boilerplate, keeps named event and year",()=>{
  assert.deepEqual(phase2hQuestionTopicHints(
   "What happened to India's lithium exports in 2024?","IND"),
