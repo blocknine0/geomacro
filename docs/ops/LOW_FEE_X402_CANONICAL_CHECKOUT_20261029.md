@@ -40,22 +40,22 @@ No anonymous /verify or /settle endpoint is exposed to clients. No payment priva
 
 ### Base/Polygon settlement RPC resilience (read-only; no payment activation)
 
-Configure the existing primary HTTPS URL for each network, optionally followed by **up to ten owner-selected alternates per network**. These must be *full RPC URLs* with distinct provider operators when available. They are **server-only strings in the actual Lovable/SSR API runtime**, never browser \`VITE_*\` settings or GitHub source.
+Configure the existing primary HTTPS URL for each network, optionally followed by **up to ten owner-selected alternates per network**. These must be *full RPC URLs* with distinct provider operators when available. They are **server-only strings in the actual Lovable/SSR API runtime**, never browser `VITE_*` settings or GitHub source.
 
-\`\`\`dotenv
+```dotenv
 GEOMACRO_NO_CARD_RPC_BASE=https://base-mainnet.g.alchemy.com/v2/YOUR_PRIVATE_KEY
 GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES=["https://base-provider-2.example/your-key","https://base-provider-3.example/your-key"]
 GEOMACRO_NO_CARD_RPC_POLYGON=https://polygon-mainnet.g.alchemy.com/v2/YOUR_PRIVATE_KEY
 GEOMACRO_NO_CARD_RPC_POLYGON_ALTERNATES=["https://polygon-provider-2.example/your-key","https://polygon-provider-3.example/your-key"]
 GEOMACRO_NO_CARD_CONFIRMATIONS_BASE=<owner-approved-positive-integer>
 GEOMACRO_NO_CARD_CONFIRMATIONS_POLYGON=<owner-approved-positive-integer>
-\`\`\`
+```
 
-The two \`_ALTERNATES\` values are **one JSON array of HTTPS URL strings per secret**, not multiple secrets named \`_2\`, \`_3\`, etc. Example domains above are placeholders; do not put them into production. Use distinct providers (for example Alchemy, Ankr, Infura, QuickNode or dRPC) with your own actual rate-limited free endpoints as permitted by current provider terms. Do **not** use the old Polygon-operated \`polygon-rpc.com\` or \`rpc-mainnet.polygon.technology\` as reliable backups: the official operators retired those free endpoints in July 2026. Base's \`mainnet.base.org\` is rate-limited and not intended for production loads.
+The two `_ALTERNATES` values are **one JSON array of HTTPS URL strings per secret**, not multiple secrets named `_2`, `_3`, etc. Example domains above are placeholders; do not put them into production. Use distinct providers (for example Alchemy, Ankr, Infura, QuickNode or dRPC) with your own actual rate-limited free endpoints as permitted by current provider terms. Do **not** use the old Polygon-operated `polygon-rpc.com` or `rpc-mainnet.polygon.technology` as reliable backups: the official operators retired those free endpoints in July 2026. Base's `mainnet.base.org` is rate-limited and not intended for production loads.
 
-Each full chain proof stays on one endpoint: \`eth_chainId\`, receipt, receipt block and latest block. Only transport failure, HTTP rate limit/service unavailable or invalid/missing JSON-RPC response can trigger alternate selection. Wrong chain, bad transaction status, missing/invalid Transfer, incorrect payee/asset/amount, wrong block hash, and insufficient confirmations immediately **fail closed**; do not use another node to conceal such evidence failures. There is a bounded 25-second total verification window; exhausted endpoints/time budget fail to the pre-existing manual-reconciliation path, with no automatic payment resettlement. Single-RPC configuration is still supported.
+Each full chain proof stays on one endpoint: `eth_chainId`, receipt, receipt block and latest block. Only transport failure, HTTP rate limit/service unavailable or invalid/missing JSON-RPC response can trigger alternate selection. Wrong chain, bad transaction status, missing/invalid Transfer, incorrect payee/asset/amount, wrong block hash, and insufficient confirmations immediately **fail closed**; do not use another node to conceal such evidence failures. There is a bounded 25-second total verification window; exhausted endpoints/time budget fail to the pre-existing manual-reconciliation path, with no automatic payment resettlement. Single-RPC configuration is still supported.
 
-The alternates never authorize a launch, generate a new payment, change pricing, alter the canonical payable resource or allow a customer 200 response without an independently verified exact native USDC Transfer and completed durable ledger state. Test the failover via \`bunx vitest run src/lib/no-card-usdc-receipt.server.test.ts\`. Keep emergency freeze and mainnet acknowledgements unchanged until the existing separate production acceptance is complete.
+The alternates never authorize a launch, generate a new payment, change pricing, alter the canonical payable resource or allow a customer 200 response without an independently verified exact native USDC Transfer and completed durable ledger state. Test the failover via `bunx vitest run src/lib/no-card-usdc-receipt.server.test.ts`. Keep emergency freeze and mainnet acknowledgements unchanged until the existing separate production acceptance is complete.
 
 **Do not set these before real production source/rights health, no-funds negative acceptance, merchant eligibility, fee and wallet verification, and founder real-funds authorization are independently complete.** No silent provider fallback after a 402 or signed payment. Do not use testnet as commercial proof.
 
