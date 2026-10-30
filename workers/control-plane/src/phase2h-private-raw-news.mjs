@@ -364,7 +364,10 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    const topicJson=JSON.stringify(topics);
    countryQuery=env.DB.prepare(
     "SELECT r.record_id,r.category,r.raw_sha256,r.raw_json,r.b2_object_sha256 "+
-    "FROM phase2h_private_raw_news AS r WHERE r.category=? "+
+    // The free-tier D1 read MUST start from the existing 72h temporal
+    // index; otherwise the native-category index can sweep old releases
+    // while matching JSON text, exhausting row-read quota under load.
+    "FROM phase2h_private_raw_news AS r INDEXED BY idx_phase2h_retention_first_ingested WHERE r.category=? "+
     "AND r.first_ingested_at>? "+
     "AND EXISTS (SELECT 1 FROM json_each(?) AS h WHERE "+
     "lower(json_extract(r.raw_json,'$.original.original_title')) "+
