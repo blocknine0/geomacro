@@ -351,3 +351,37 @@ test("even trusted main-push B2 bootstrap cannot bypass six-hour maintenance slo
  assert.equal(r.storage_confirmed,false);
  assert.equal(r.status,"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT");
 });
+
+test("earlier archived objects remain valid when no-new-data slot verifies latest object",async()=>{
+ const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"a".repeat(8)+"-"+"a".repeat(4)+"-"+"a".repeat(4)+
+   "-"+"a".repeat(4)+"-"+"a".repeat(12),
+  CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40)};
+ const result=await runPhase2hPermanentAcceptance({env,now,
+  archive:async()=>({storage_confirmed:true,rows_archived:0,
+   status:"NO_PENDING_PRIVATE_RAW_ROWS"}),
+  verifyExisting:async()=>({
+   same_b2_object_and_d1_original:true,per_record_five_part_exact:true,
+   deployed_authenticated_http_200:true,
+   b2_two_get_verified_in_preceding_step:true,
+   existing_archived_object_two_get_restored:true,
+   existing_object_sha256:"d".repeat(64),
+   verified_category_counts:{geopolitics:20,macro:70,rare_earth:210},
+   verified_b2_batch_rows:300,
+   production_question_readback_categories:3,
+   unarchived_backlog_present:false,
+   entire_admitted_raw_backlog_verified:true}),
+  readCensus:async()=>({staged_total:315,archived_total:315,pending_total:0,
+   category_counts:{geopolitics:{staged:20,archived:20,pending:0},
+    macro:{staged:75,archived:75,pending:0},
+    rare_earth:{staged:220,archived:220,pending:0}}})});
+ assert.equal(result.status,"PASS_REAL_B2_TO_EXACT_QUESTION");
+ assert.equal(result.all_current_staged_rows_have_b2_archive_ack,true);
+ assert.equal(result.entire_staged_set_independently_verified,false);
+ assert.equal(result.all_historical_b2_objects_independently_refetched_this_run,false);
+ assert.equal(result.existing_archived_object_verified,true);
+ assert.equal(result.archived_records_this_run,0);
+});
