@@ -42,10 +42,16 @@ export async function verifyPhase2hB2VersionInventory({
  env=process.env,fetchImpl=fetch,now=new Date(),
  governor=createB2D1AccountGovernor({env,fetchImpl}),
 }={}){
+ const hasReadId=(env.B2_ARCHIVE_READ_KEY_ID??"").length>0;
+ const hasReadSecret=(env.B2_ARCHIVE_READ_APPLICATION_KEY??"").length>0;
+ if(hasReadId!==hasReadSecret)FAIL("ARCHIVE_READ_PAIR_INCOMPLETE");
+ const useReadKey=hasReadId&&hasReadSecret;
+ const selectedId=useReadKey?env.B2_ARCHIVE_READ_KEY_ID:env.B2_KEY_ID;
+ const selectedSecret=useReadKey?env.B2_ARCHIVE_READ_APPLICATION_KEY:env.B2_APPLICATION_KEY;
  if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
    env.GITHUB_REF!=="refs/heads/main"||env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
    env.B2_ACCOUNT_QUOTA_WORKFLOW_ID!=="phase2h_b2_retention"||
-   (env.B2_KEY_ID??"").length<12||(env.B2_APPLICATION_KEY??"").length<16)
+   (selectedId??"").length<12||(selectedSecret??"").length<16)
   FAIL("PROTECTED_MAIN_REQUIRED");
  const get=async(url,kind,headers)=>{
   await governor.reserve(kind);
@@ -58,13 +64,16 @@ export async function verifyPhase2hB2VersionInventory({
  };
  const auth=await get("https://api.backblazeb2.com/b2api/v4/b2_authorize_account",
   "NATIVE_AUTH",{Authorization:"Basic "+Buffer.from(
-   env.B2_KEY_ID+":"+env.B2_APPLICATION_KEY).toString("base64")});
+   selectedId+":"+selectedSecret).toString("base64")});
  const storage=auth?.apiInfo?.storageApi,allowed=storage?.allowed;
  if(!Array.isArray(allowed?.capabilities)||
-    !["listBuckets","listFiles"].every(x=>allowed.capabilities.includes(x))||
     typeof auth.authorizationToken!=="string"||!auth.authorizationToken.length||
     !/^[a-f0-9]{16,64}$/iu.test(auth.accountId??""))
-  FAIL("PROVIDER_LIST_CAPABILITY_MISSING");
+  FAIL("PROVIDER_AUTHORIZATION_INVALID");
+ if(!allowed.capabilities.includes("listBuckets"))
+  FAIL("PROVIDER_LIST_BUCKETS_CAPABILITY_MISSING");
+ if(!allowed.capabilities.includes("listFiles"))
+  FAIL("PROVIDER_LIST_FILES_CAPABILITY_MISSING");
  const api=String(storage.apiUrl??"");
  if(!/^https:\/\/api\d+\.backblazeb2\.com$/u.test(api))
   FAIL("PROVIDER_ORIGIN_INVALID");
@@ -101,6 +110,7 @@ export async function verifyPhase2hB2VersionInventory({
  return {schema:RECEIPT_SCHEMA,checked_at:now.toISOString(),
   provider_lifecycle_exact_prefix_verified:true,
   current_prefix_inventory_complete:true,private_originals_exposed:false,
+  existing_credential_used:useReadKey?"ARCHIVE_READ":"PRIMARY_ARCHIVE",
   live_versions:uploads,hide_markers:hides,versions_older_than_72h:overdue,
   pages_checked:pages,provider_b2_requests:2+pages,
   past_versions_independently_deleted:false,
