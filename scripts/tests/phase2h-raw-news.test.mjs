@@ -119,6 +119,16 @@ test("immutable per-ID compressed B2 plan restores exact source-native and five 
  assert.throws(()=>verifyPhase2hRawB2Restore(Buffer.from("tamper"),plan),
    /PHASE2H_RAW_B2_COMPRESSED_SHA_MISMATCH/u);
 });
+test("six-hour incremental writer can archive old, never-archived D1 originals once",()=>{
+ const older=data().records.map(x=>({...x,ingested_at:"2026-10-01T09:00:00.000Z"}));
+ const plan=buildPhase2hRawB2Plan(older,now);
+ assert.equal(plan.record_count,3);
+ assert.deepEqual(plan.counts,{geopolitics:1,macro:1,rare_earth:1});
+ assert.equal(verifyPhase2hRawB2Restore(plan.compressed,plan),true);
+ assert.throws(()=>buildPhase2hRawB2Plan([
+  {...older[0],ingested_at:"2026-10-31T06:10:00.000Z"}
+ ],now),/PHASE2H_RAW_B2_SOURCE_CONTENT_INVALID/u);
+});
 test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exact readback required",async()=>{
  const items=data().records;
  let put=0,first=0,second=0,postRead=0,marked=0;
@@ -193,7 +203,7 @@ test("maintenance archive never starts from an unscheduled credentialed job",asy
  assert.equal(r.storage_confirmed,false);
  assert.equal(r.object_sha256,null);
 });
-test("delayed monthly GitHub cron archive retains one authorized day-1 schedule without ungoverned manual work",async()=>{
+test("delayed six-hour GitHub cron archive retains one authorized schedule without ungoverned manual work",async()=>{
  const when=new Date("2026-10-30T19:08:00Z");
  const base={
   GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
@@ -204,7 +214,7 @@ test("delayed monthly GitHub cron archive retains one authorized day-1 schedule 
   GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main",
   GITHUB_EVENT_PATH:"/home/runner/work/_temp/_github_workflow/event.json"
  };
- const reader=()=>JSON.stringify({schedule:"29 0 1 * *"});
+ const reader=()=>JSON.stringify({schedule:"29 0,6,12,18 * * *"});
  assert.equal(phase2hAuthorizedArchiveWindow({env:base,now:when,eventReader:reader}),true);
  for(const different of [
   {GITHUB_EVENT_NAME:"workflow_dispatch"},
@@ -240,7 +250,7 @@ test("delayed monthly GitHub cron archive retains one authorized day-1 schedule 
  assert.equal(skipped.status,"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT");
 });
 
-test("monthly Phase2H production rejects manual dispatch without a D1/B2 quota request",async()=>{
+test("six-hour Phase2H production rejects manual dispatch without a D1/B2 quota request",async()=>{
  const when=new Date("2026-11-01T00:39:00Z");
  const env={
   GITHUB_EVENT_NAME:"workflow_dispatch",
@@ -267,7 +277,7 @@ test("monthly Phase2H production rejects manual dispatch without a D1/B2 quota r
   now:when,eventReader:()=>JSON.stringify({schedule:"29 0 * * *"})}),false);
  assert.equal(phase2hAuthorizedArchiveWindow({
   env:{...env,GITHUB_EVENT_NAME:"schedule"},
-  now:when,eventReader:()=>JSON.stringify({schedule:"29 0 1 * *"})}),true);
+  now:when,eventReader:()=>JSON.stringify({schedule:"29 0,6,12,18 * * *"})}),true);
 });
 
 test("governor headroom hold never calls B2 or protected D1",async()=>{
