@@ -2,15 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const path=".github/workflows/phase2h-private-raw-archive.yml";
-test("Phase 2H B2 workflow requires archive-only provider approval and one monthly quota-first archive slot",()=>{
+test("Phase 2H B2 workflow requires archive-only provider approval and four six-hour quota-first archive slots",()=>{
  const yaml=readFileSync(path,"utf8");
- assert.ok(yaml.includes('cron: "29 0 1 * *"'));
- assert.ok(yaml.includes("github.event.schedule == '29 0 1 * *'"));
+ assert.ok(yaml.includes('cron: "29 0,6,12,18 * * *"'));
+ assert.ok(yaml.includes("github.event.schedule == '29 0,6,12,18 * * *'"));
  assert.doesNotMatch(yaml,/archive-then-retention:/u);
  assert.doesNotMatch(yaml,/five-hour-slot:|cron: "21/u);
  assert.doesNotMatch(yaml,/workflow_dispatch:|manual-smoke-gate:|RUN_ONCE_PHASE2H/u);
  assert.match(yaml,/Automatic D1 raw-news deletion is PAUSED/u);
- assert.match(yaml,/Monthly archival is not continuous/u);
+ assert.match(yaml,/Every six hours: bounded pending original archive/u);
  const manual=readFileSync(".github/workflows/phase2h-manual-d1-storage-cleanup.yml","utf8");
  assert.match(manual,/workflow_dispatch:/u);
  assert.match(manual,/default: DO_NOT_DELETE/u);
