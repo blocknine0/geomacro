@@ -106,6 +106,7 @@ on:
       - "scripts/lib/cloudflare-workers-paid-plan-proof.mjs"
       - "scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs"
       - "scripts/tests/plan-d1-bundled-work.test.mjs"
+      - "scripts/tests/minimum-daily-bundled-source.test.mjs"
       - "scripts/tests/critical-workflow-budget-guards.test.mjs"
       - "scripts/tests/critical-fastlane-d1-pacing-workflows.test.mjs"
       - ".github/workflows/five-minute-original-news-fastlane.yml"
@@ -238,6 +239,7 @@ jobs:
           node --check scripts/ops/probe-private-osint-local-gaplane.mjs
           node --test scripts/lib/private-osint-bundle.test.mjs
           node --test scripts/tests/plan-d1-bundled-work.test.mjs
+          node --test scripts/tests/minimum-daily-bundled-source.test.mjs
           node --test scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
           node --test scripts/tests/critical-workflow-budget-guards.test.mjs
           node --test scripts/tests/critical-fastlane-d1-pacing-workflows.test.mjs
@@ -360,6 +362,11 @@ jobs:
           retention-days: 7
 
   collect-private:
+    # Serialize D1 source writes with the five-minute fastlane; never
+    # oversubscribe the same non-atomic Cloudflare Free budget in parallel.
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
     needs: [verify, quota-admission]
     if: >-
       needs.quota-admission.outputs.critical == 'true' &&
@@ -391,6 +398,11 @@ jobs:
 
   collect-source-intake-only:
     name: Governed source-only original news to canonical D1 when full publication is paced
+    # Serialize D1 source writes with the five-minute fastlane; never
+    # oversubscribe the same non-atomic Cloudflare Free budget in parallel.
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
     needs: [verify, quota-admission]
     if: >-
       needs.quota-admission.result == 'success' &&
