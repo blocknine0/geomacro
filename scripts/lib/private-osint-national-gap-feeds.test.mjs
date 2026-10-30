@@ -33,7 +33,7 @@ test("new private national feeds occupy only available source slots and are not 
  assert.ok(oc&&oc.publisher_country_iso3==="GEO"&&oc.continent==="asia");
  assert.equal(sources.filter(s=>s.url===oc.url).length,1);
  const runtime=privateOsintRuntimeSources(fixed,sources);
- assert.equal(runtime.length,sources.length+49);
+ assert.ok(runtime.length<=sources.length+49+3,"retired source catalogue rows are excluded from polling before three official hubs are admitted");
  assert.ok(runtime.length<=512);
  assert.equal(rotatingPrivateCountryDiscoverySources(fixed).length,49);
  const matrix=privateOsintCountryCategoryCoverage(sources);

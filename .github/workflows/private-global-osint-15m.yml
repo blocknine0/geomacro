@@ -66,6 +66,10 @@ on:
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
       - "src/components/intelligence/stateless-live-desk.tsx"
       - "scripts/lib/country-news-mentions-195.mjs"
+      - "scripts/lib/private-osint-global-hub-overlay.mjs"
+      - "scripts/lib/private-osint-global-hub-overlay.test.mjs"
+      - "scripts/lib/private-osint-retired-sources.mjs"
+      - "scripts/lib/private-osint-retired-sources.test.mjs"
       - "scripts/lib/private-osint-global-sources.mjs"
       - "scripts/lib/private-osint-global-sources.test.mjs"
       - "scripts/lib/private-osint-15m-d1.test.mjs"
@@ -150,6 +154,10 @@ on:
       - "scripts/lib/private-osint-encrypted-spool.test.mjs"
       - "scripts/lib/private-osint-shared-read-contract.mjs"
       - "scripts/lib/private-osint-shared-read-contract.test.mjs"
+      - "scripts/lib/private-osint-global-hub-overlay.mjs"
+      - "scripts/lib/private-osint-global-hub-overlay.test.mjs"
+      - "scripts/lib/private-osint-retired-sources.mjs"
+      - "scripts/lib/private-osint-retired-sources.test.mjs"
       - "scripts/lib/private-osint-global-sources.mjs"
       - "scripts/lib/private-osint-country-mentions.mjs"
       - "config/private-osint-working-sources.v1.json"
@@ -219,6 +227,8 @@ jobs:
           node --test scripts/lib/private-osint-15m-collector.test.mjs
           node --test scripts/lib/private-osint-15m-durable-publisher.test.mjs
           node --test scripts/lib/private-osint-15m-d1.test.mjs
+          node --test scripts/lib/private-osint-retired-sources.test.mjs
+          node --test scripts/lib/private-osint-global-hub-overlay.test.mjs
           node --test scripts/lib/private-osint-global-sources.test.mjs
           node --test scripts/lib/private-osint-national-gap-feeds.test.mjs
           node scripts/ops/audit-private-osint-publisher-coverage.mjs > /tmp/geomacro-osint-publisher-coverage.json

@@ -8,6 +8,7 @@
 import {readFileSync} from "node:fs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {CONTINENT_COUNTRIES_195} from "./continent-country-195-rotation.mjs";
+import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 export const PRIVATE_LOCAL_FEEDS_PER_TICK=24;
 export const PRIVATE_LOCAL_NOMINAL_CYCLE_MINUTES=60;
 const PERIOD_MS=15*60*1000;
@@ -69,7 +70,16 @@ export function rotatingPrivateLocalPublisherSources(now=new Date(),all=privateL
     new Set(all.map(x=>x?.id)).size!==96||
     new Set(all.map(x=>x?.url)).size!==96)
   throw Error("PRIVATE_LOCAL_PUBLISHER_ROTATION_INVALID");
+ // Retire repeatedly failing native feeds from actual polling, while
+ // retaining historical manifest IDs for audit/replay. Refill each of the 24
+ // original slots from the remaining validated candidate registry; never
+ // enlarge the 512 GET budget. A shorter eligible catalogue naturally causes
+ // some healthy candidates to repeat across the four nominal tick slots.
+ const live=all.filter(source=>!isRetiredPrivateOsintSource(source));
+ if(live.length<PRIVATE_LOCAL_FEEDS_PER_TICK)
+  throw Error("PRIVATE_LOCAL_PUBLISHER_ACTIVE_CAPACITY_INSUFFICIENT");
  const slot=Math.floor(now.getTime()/PERIOD_MS)%4;
- return Object.freeze(all.slice(slot*PRIVATE_LOCAL_FEEDS_PER_TICK,
-  (slot+1)*PRIVATE_LOCAL_FEEDS_PER_TICK));
+ const start=(slot*PRIVATE_LOCAL_FEEDS_PER_TICK)%live.length;
+ return Object.freeze(Array.from({length:PRIVATE_LOCAL_FEEDS_PER_TICK},(_,i)=>
+  live[(start+i)%live.length]));
 }

@@ -663,7 +663,7 @@ test("Ukraine president official native RSS joins continuous 15m private source 
  const when=new Date("2026-10-29T17:59:00Z");
  const active=privateOsintRuntimeSources(when,all,COUNTRIES_195,{includeLocalGapLane:true});
  assert.ok(active.length<=512);
- assert.equal(active.filter(s=>s.url===candidate.url).length,1);
+ assert.equal(active.filter(s=>s.url===candidate.url).length,0,"four independent DENIED probes retire this production feed without deleting audit metadata");
  const original="<rss><channel><item><title>President announces international security and defence cooperation</title>"+
   "<pubDate>Thu, 29 Oct 2026 17:36:00 GMT</pubDate></item></channel></rss>";
  const observed=await collectPrivateOsint15m({now:when,registry:[source],
