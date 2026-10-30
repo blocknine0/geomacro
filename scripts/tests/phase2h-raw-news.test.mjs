@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
 import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords}
  from "../lib/phase2h-raw-original-records.mjs";
 import {validPrivateRawNews,phase2hPrivateRawPut,phase2hPrivateRawGet,
@@ -407,4 +408,54 @@ test("earlier archived objects remain valid when no-new-data slot verifies lates
  assert.equal(result.all_historical_b2_objects_independently_refetched_this_run,false);
  assert.equal(result.existing_archived_object_verified,true);
  assert.equal(result.archived_records_this_run,0);
+});
+
+test("re-observed immutable original survives deployed event-analysis wording upgrades",async()=>{
+ const existing=data().records.find(x=>x.category==="macro");
+ const hashRow=row=>{
+  const {schema,record_id,category,original,analysis,
+   commercial_rights_verified,commercial_delivery_authorized}=row;
+  const immutable={schema,record_id,category,original,analysis,
+   commercial_rights_verified,commercial_delivery_authorized};
+  return createHash("sha256").update(JSON.stringify(immutable)).digest("hex");
+ };
+ const updated=structuredClone(existing);
+ updated.analysis.why_it_matters.text=
+  "An updated evidence-bound explanation whose source original has not changed.";
+ updated.raw_sha256=hashRow(updated);
+ assert.equal(await validPrivateRawNews(updated,now.getTime()),JSON.stringify(updated));
+ let insertCalls=0,afterReads=0;
+ const db={prepare(sql){
+  if(sql.startsWith("SELECT record_id,raw_sha256,first_ingested_at,raw_json")){
+   return {bind:()=>({all:async()=>({results:[{
+    record_id:existing.record_id,raw_sha256:existing.raw_sha256,
+    first_ingested_at:existing.ingested_at,raw_json:JSON.stringify(existing),
+   }]})})};
+  }
+  if(sql.startsWith("INSERT INTO phase2h_private_raw_news")){
+   return {bind:()=>({run:async()=>{insertCalls++;return {success:true}}})};
+  }
+  if(sql.startsWith("SELECT record_id,raw_sha256,first_ingested_at FROM")){
+   return {bind:()=>({all:async()=>{afterReads++;return {results:[{
+    record_id:existing.record_id,raw_sha256:existing.raw_sha256,
+    first_ingested_at:existing.ingested_at,
+   }]}}})};
+  }
+  throw Error("UNEXPECTED_PRIVATE_QUERY");
+ }};
+ const response=await phase2hPrivateRawPut({DB:db},{
+  schema:"geomacro.phase2h.private-raw-batch.v1",items:[updated]},now.getTime());
+ assert.equal(response.status,200);
+ const receipt=await response.json();
+ assert.equal(receipt.accepted,0);
+ assert.equal(receipt.unchanged,1);
+ assert.equal(receipt.d1_exact_readback_verified,true);
+ assert.equal(insertCalls,1);assert.equal(afterReads,1);
+ const changed=structuredClone(updated);
+ changed.original.original_title="A publisher revision of the same original URL and date";
+ changed.raw_sha256=hashRow(changed);
+ const collision=await phase2hPrivateRawPut({DB:db},{
+  schema:"geomacro.phase2h.private-raw-batch.v1",items:[changed]},now.getTime());
+ assert.equal(collision.status,503);
+ assert.equal((await collision.json()).reason_code,"PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION");
 });
