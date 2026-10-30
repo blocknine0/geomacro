@@ -238,6 +238,7 @@
     "p0-live-alignment-diagnostic.yml",
     "p0-security-resilience-evidence.yml",
     "p0-strict-prepublic-closure.yml",
+    "p0a-intelligence-completeness-production.yml",
     "pallab-suman-independent-gri-authorities.yml",
     "partner-commercial-readiness.yml",
     "permanent-runtime-health.yml",
