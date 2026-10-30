@@ -324,10 +324,21 @@ test("Phase2H reserves all remaining 6h archive slots without touching PREDGE",(
  if(p.phase2h_raw_archive){
   assert.ok(quotaBefore.remaining_rows_written>
     23_000+p.source_intake_budget_to_utc_reset.rows_written+
-    4*750+p.retention_cleanup_max_rows+150);
+    4*750+150);
  }
  assert.equal(p.d1_queries,0);
  assert.equal(p.b2_requests,0);
+});
+test("Phase2H original archive does not borrow from manual-only deletion budget",()=>{
+ const at=new Date("2026-10-30T12:29:00Z");
+ const state={...quota(1_200_000,22_000),day_utc:"2026-10-30"};
+ const p=planD1BundledWork(state,{now:at});
+ if(p.phase2h_raw_archive){
+  const projected=p.source_intake_budget_to_utc_reset;
+  assert.ok(state.remaining_rows_written>
+    23_000+projected.rows_written+2*750+150);
+ }
+ assert.equal(p.d1_queries,0);
 });
 test("Phase2H cleanup grant funds exactly one provider-budgeted daily pass",()=>{
  const at=new Date("2026-10-30T13:43:32.000Z");
