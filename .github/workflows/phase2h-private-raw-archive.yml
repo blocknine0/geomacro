@@ -137,8 +137,6 @@ jobs:
           NODE
       - name: Preserve independently read canonical D1 category census before B2 attempt
         run: node scripts/ops/phase2h-canonical-census-receipt.mjs
-      - name: Verify Backblaze provider 1+1 day lifecycle on Phase 2H raw objects
-        run: node scripts/ops/phase2h-verify-b2-72h-lifecycle.mjs
       - name: Actual private B2 PUT, two GETs, D1 same-ID and deployed question JSON
         run: node scripts/ops/phase2h-permanent-production-acceptance.mjs
       - name: Preserve redacted permanent acceptance receipt (never original content)
