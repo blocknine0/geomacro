@@ -112,7 +112,13 @@ export async function postPhase2hPrivateRawRecords({
    body:JSON.stringify({schema:"geomacro.phase2h.private-raw-batch.v1",items:group}),
    signal:AbortSignal.timeout(16000),
   });
-  if(response.status!==200)throw Error("PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE");
+  if(response.status!==200){
+   const data=await response.json().catch(()=>null);
+   const reason=typeof data?.reason_code==="string"&&
+     /^PHASE2H_PRIVATE_RAW_[A-Z_]{3,90}$/u.test(data.reason_code)
+      ?data.reason_code:"PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE";
+   throw Error(reason);
+  }
   const receipt=await response.json();
   if(receipt.ok!==true||receipt.d1_exact_readback_verified!==true||
      receipt.accepted+receipt.unchanged!==group.length)
