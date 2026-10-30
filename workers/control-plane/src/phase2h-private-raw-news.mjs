@@ -1,3 +1,4 @@
+import {p0aAuditOriginal} from "../../../scripts/lib/p0a-evidence-quality.mjs";
 /** Canonical D1-only private raw-news staging and archived-proof ledger.
  * No public route and no paid/signed eligibility. Records are immutable once
  * accepted. Existing PREDGE, historical and x402 paths are not consulted.
@@ -270,26 +271,23 @@ export function phase2hOneOriginalResearchFivePart(item){
     item.original.original_title.length<1||
     typeof item?.original?.original_published_at!=="string"||
     !CATEGORIES.has(item.category)||!item.analysis)return null;
- const original=item.original,analysis=item.analysis;
- const observedTitle=original.original_title;
- const titleOnlyWhat="A publisher-native report dated "+
-  original.original_published_at+" is titled \""+observedTitle+
-  "\". The headline is an observation, not an independently verified event outcome.";
- const categoryName=item.category==="macro"?"macro/FX":
-  item.category==="rare_earth"?"critical minerals":"geopolitics";
- const titleOnlyWhy="The specific reported development — "+
-  observedTitle+" — is relevant to "+categoryName+
-  " monitoring; the headline alone does not establish a resulting policy, "+
-  "supply-chain or market change.";
- const missingWhat=typeof analysis.what_happened?.text!=="string"||
-  !analysis.what_happened.text.trim();
- const missingWhy=typeof analysis.why_it_matters?.text!=="string"||
-  !analysis.why_it_matters.text.trim();
- return Object.freeze({...analysis,
-  what_happened:{...analysis.what_happened,
-    text:missingWhat?titleOnlyWhat:analysis.what_happened.text},
-  why_it_matters:{...analysis.why_it_matters,
-    text:missingWhy?titleOnlyWhy:analysis.why_it_matters.text},
+ const audit=p0aAuditOriginal(item);
+ const reasons=new Set(audit.reasons);
+ const assertedUnsupported=["UNSOURCED_QUANTITATIVE_CLAIM","UNSUPPORTED_CERTAINTY",
+  "UNVERIFIED_MARKET_CLAIM","EVIDENCE_PROVENANCE_MISMATCH"];
+ const unsafe=assertedUnsupported.some(reason=>reasons.has(reason));
+ const whatOK=!unsafe&&!reasons.has("WHAT_MISSING_OR_BOILERPLATE")&&
+  !reasons.has("WHAT_LACKS_SOURCE_FACT_ANCHORS");
+ const whyOK=!unsafe&&!reasons.has("WHY_MISSING_OR_BOILERPLATE")&&
+  !reasons.has("WHY_LACKS_EVENT_ANCHORS")&&
+  !reasons.has("WHAT_WHY_IDENTICAL");
+ // No publisher headline copy as a substitute for factual extraction.
+ // Missing proof must remain null, and no immutable D1/B2 byte is rewritten.
+ return Object.freeze({...item.analysis,
+  what_happened:{...item.analysis.what_happened,
+    text:whatOK?item.analysis.what_happened.text:null},
+  why_it_matters:{...item.analysis.why_it_matters,
+    text:whyOK&&whatOK?item.analysis.why_it_matters.text:null},
  });
 }
 export function phase2hPrivateResearchDirectAnswer(question,fivePart){
@@ -420,7 +418,8 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
       phase2hOneOriginalResearchFivePart(item):item.analysis;
     return {record_id:item.record_id,category:item.category,
      ...(countryScoped?{country_iso3:countryIso3,
-       source_title_only_research_fallback_used:missing,
+       source_title_only_research_fallback_used:false,
+        p0a_evidence_limited:missing||p0aAuditOriginal(item).status!=="PASS",
        original_page_independently_verified:false,
        commercial_rights_verified:false}:{}),
      original_published_at:item.original.original_published_at,
