@@ -172,13 +172,15 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // Preserve projected source intake to UTC reset AND the PREDGE/critical
   // reserve; a source-only grant is not permission for arbitrary cleanup.
   // GraphQL account usage is non-atomic, never a physical erase guarantee.
-  // Five-hour epoch cadence; reserve one extra slot to safely cover
-  // delayed GitHub execution and UTC boundary jitter. No hourly D1 sweeps.
-  const remainingHourSlots=Math.ceil((DAY_MS-(now.getTime()%DAY_MS))/(5*3_600_000))+1;
+  // Exactly one Phase2H daily scheduled archive/cleanup cycle. This
+  // admission is account-wide and preserves protected PREDGE capacity.
+  // If quota is held, no D1/B2 calls are authorized; do not borrow from
+  // critical/free-source reservations to force a retention pass.
+  const remainingHourSlots=1;
   // One quota-admitted Phase2H cleanup run can use 25..1000 row deletes;
-  // reserve the *entire* remaining five-hour cadence at the granted maximum.
+  // reserve the *entire* daily retention pass at the granted maximum.
   // Do not admit a 1000-row writer behind the old 25-row/hour budget.
-  // Prefer retaining enough headroom for the five-hour B2 archive slots
+  // Prefer retaining enough headroom for the daily B2 archive slot
   // before allocating an optional larger deletion batch. Otherwise choose a
   // smaller safe cleanup cap rather than silently starving raw news archival.
   const remainingArchiveSlots=remainingHourSlots;
@@ -202,7 +204,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // Dedicated Phase 2H original-news B2 corridor. General discretionary
   // maintenance can be pacing-held even when the full remaining-day
   // source-intake budget and protected PREDGE headroom have been reserved.
-  // Reserve every possible remaining 5h archive slot (<=300 D1 row ACKs,
+  // Reserve the daily B2 archive slot (<=300 D1 row ACKs,
   // quota-ledger writes and bounded census), as well as hourly raw TTL
   // cleanup, before allowing this *archive-only* grant. The B2 atomic
   // governor and per-prefix 1+1d lifecycle check remain mandatory.
