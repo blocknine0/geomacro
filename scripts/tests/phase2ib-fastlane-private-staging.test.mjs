@@ -93,3 +93,62 @@ test("invalid native dates and missing metadata never become invented records",(
  assert.equal(plan.observed_unique,0);
  assert.equal(plan.invalid_or_old,2);
 });
+
+test("one genuine immutable identity conflict holds only that original; valid siblings retain independent D1 ACK",async()=>{
+ const originals=[mk(41,"geopolitics"),mk(42,"macro"),mk(43,"rare_earth")];
+ let calls=0;
+ const r=await stagePhase2iFastlanePrivateOriginals({
+  candidates:originals,now,maxRows:5,intervalMinutes:5,derive,env,
+  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  token:"a".repeat(64),
+  post:async({records})=>{
+   calls++;
+   if(records.length>1)throw Error("PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION");
+   if(records[0].original.original_url.endsWith("-42"))
+    throw Error("PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION");
+   return {stored:1,duplicate:0,readback_verified:true};
+  }
+ });
+ assert.equal(calls,4);
+ assert.equal(r.status,"PARTIAL_CANONICAL_D1_READBACK_COLLISION_QUARANTINED");
+ assert.equal(r.selected_count,3);
+ assert.equal(r.d1_inserted,2);
+ assert.equal(r.d1_unchanged,0);
+ assert.equal(r.collision_held,1);
+ assert.equal(r.collision_held_by_category.macro,1);
+ assert.equal(r.deferred_count,1);
+ assert.equal(r.d1_readback_verified,true);
+ assert.equal(r.all_selected_d1_readback_verified,false);
+ assert.equal(r.b2_verified,false);
+ assert.equal(JSON.stringify(r).includes(originals[0].articleUrl),false);
+});
+test("every conflicting raw ID stays held; cannot become successful raw readback",async()=>{
+ const r=await stagePhase2iFastlanePrivateOriginals({
+  candidates:[base],now,maxRows:5,intervalMinutes:5,derive,env,
+  post:async()=>{throw Error("PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION");}
+ });
+ assert.equal(r.status,"IDENTITY_COLLISION_HELD_NO_CANONICAL_ACK");
+ assert.equal(r.d1_inserted,0);
+ assert.equal(r.d1_readback_verified,false);
+ assert.equal(r.collision_held,1);
+ assert.equal(r.deferred_count,1);
+});
+test("never retry forbidden access, D1 outage or invalid D1 ACK",async()=>{
+ for(const reason of ["PHASE2H_PRIVATE_RAW_D1_PERSIST_UNAVAILABLE",
+                      "PHASE2H_PRIVATE_D1_READBACK_MISMATCH"]){
+  let calls=0;
+  await assert.rejects(stagePhase2iFastlanePrivateOriginals({
+   candidates:[base],now,maxRows:5,intervalMinutes:5,derive,env,
+   post:async()=>{calls++;throw Error(reason);}
+  }),new RegExp(reason));
+  assert.equal(calls,1);
+ }
+});
+test("a larger admitted batch never triggers unbudgeted per-record recovery",async()=>{
+ let calls=0;
+ await assert.rejects(stagePhase2iFastlanePrivateOriginals({
+  candidates:[base,mk(41,"macro")],now,maxRows:10,intervalMinutes:5,derive,env,
+  post:async()=>{calls++;throw Error("PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION");}
+ }),/PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION/);
+ assert.equal(calls,1);
+});
