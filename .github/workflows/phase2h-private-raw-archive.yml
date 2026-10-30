@@ -49,6 +49,7 @@ jobs:
     environment: production
     outputs:
       maintenance: ${{ steps.provider.outputs.maintenance }}
+      raw_archive: ${{ steps.provider.outputs.phase2h_raw_archive }}
     steps:
       - name: Checkout exact main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -82,14 +83,17 @@ jobs:
     needs: quota-admission
     if: >-
       needs.quota-admission.result == 'success' &&
-      needs.quota-admission.outputs.maintenance == 'true' &&
+      needs.quota-admission.outputs.raw_archive == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 14
     environment: production
     env:
-      PHASE2H_PROVIDER_MAINTENANCE: ${{ needs.quota-admission.outputs.maintenance }}
+      # This legacy variable is scoped to the Phase2H archive scripts only.
+      # Its value is the new archive-only governor grant, NOT the general
+      # maintenance lane. Other workflows still receive the original grant.
+      PHASE2H_PROVIDER_MAINTENANCE: ${{ needs.quota-admission.outputs.raw_archive }}
       B2_ACCOUNT_QUOTA_REQUIRED: "1"
       B2_ACCOUNT_QUOTA_WORKFLOW_ID: derived_news_backup
       B2_REQUEST_BUDGET: "12"
@@ -163,7 +167,7 @@ jobs:
       contents: write
       actions: read
     env:
-      PHASE2IB_MAINTENANCE: ${{ needs.quota-admission.outputs.maintenance || 'unknown' }}
+      PHASE2IB_MAINTENANCE: ${{ needs.quota-admission.outputs.raw_archive || 'unknown' }}
       PHASE2IB_ARCHIVE_JOB: ${{ needs.raw-b2-to-production-question.result }}
       GH_TOKEN: ${{ github.token }}
     steps:
