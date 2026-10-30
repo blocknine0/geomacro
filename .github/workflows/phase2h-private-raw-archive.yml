@@ -17,6 +17,11 @@ on:
       - "scripts/ops/phase2h-verify-b2-72h-lifecycle.mjs"
       - "scripts/lib/phase2h-retention-72h.mjs"
       - "scripts/tests/phase2h-retention-72h.test.mjs"
+      - "scripts/lib/phase2h-raw-original-records.mjs"
+      - "scripts/lib/phase2ib-fastlane-private-staging.mjs"
+      - "scripts/lib/phase2i-osint-country-fair-raw-staging.mjs"
+      - "scripts/tests/phase2ib-fastlane-private-staging.test.mjs"
+      - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
   workflow_dispatch: {}
   schedule:
     - cron: "3 0,6,12,18 * * *"
@@ -41,7 +46,7 @@ jobs:
         with:
           node-version: "22"
       - name: Verify scoped metadata-only census and strict B2 admission (offline)
-        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs
+        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs
   quota-admission:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
