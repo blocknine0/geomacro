@@ -206,18 +206,19 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // Dedicated Phase 2H original-news B2 corridor. General discretionary
   // maintenance can be pacing-held even when the full remaining-day
   // source-intake budget and protected PREDGE headroom have been reserved.
-  // Reserve each remaining six-hour B2 archive slot (up to 600 D1 row
-  // ACKs across two batches plus ledger/census), manual-only cleanup
-  // headroom, and source intake; native B2 no-auto-delete verification
-  // and atomic per-request governor remain mandatory.
+  // Reserve every remaining six-hour B2 archive slot (up to 600 D1
+  // ACKs across two batches plus ledger/census) and protected source-intake
+  // capacity. Manual cleanup is NOT scheduled and has a separate opt-in
+  // admission, so its optional delete budget must NOT block the writer.
+  // B2 native no-auto-delete and atomic per-request governor still apply.
   // This does NOT grant general maintenance, signing or paid operations.
   const phase2hRawArchive=sourceIntake&&
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
-      remainingArchiveSlots*20_000+remainingHourSlots*2500+10_000&&
+      remainingArchiveSlots*20_000+10_000&&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
-      remainingArchiveSlots*750+remainingHourSlots*retentionCleanupMaxRows+150;
+      remainingArchiveSlots*750+150;
   // Dedicated, once-per-run optional EIA/NOAA measurement import. These two
   // source-native statistics are NOT current news or commercial signals.
   // Preserve the ENTIRE day-to-reset source-intake allocation, plus critical
