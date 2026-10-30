@@ -113,15 +113,16 @@ export function createPhase2hCanonicalD1({
   },
  };
 }
-/** One daily scheduled archive, admitted only with authenticated canonical
- * main GitHub schedule event. Delayed execution remains valid. No manual,
- * push, or unit-test credentials alone may open the production B2 writer.
+/** Authorize existing daily cron, or an explicitly confirmed, time-limited
+ * founder production smoke run on canonical main. No generic manual/push
+ * event, untrusted relative file, or replayed run can enter B2 writer.
+ * All provider admission, account quota and B2 lifecycle safeguards remain.
  */
 export function phase2hAuthorizedArchiveWindow({
  env=process.env,now=new Date(),eventReader=readFileSync,
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))return false;
- if(env.GITHUB_EVENT_NAME!=="schedule"||
+ if(!["schedule","workflow_dispatch"].includes(env.GITHUB_EVENT_NAME)||
     env.GITHUB_WORKFLOW_REF!==
       "blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main")
    return false;
@@ -130,7 +131,15 @@ export function phase2hAuthorizedArchiveWindow({
    return false;
  try{
   const event=JSON.parse(eventReader(path,"utf8"));
-  return event?.schedule==="29 0 * * *";
+  if(env.GITHUB_EVENT_NAME==="schedule")
+   return event?.schedule==="29 0 * * *";
+  const gate="RUN_ONCE_PHASE2H_2026_10_31";
+  const start=Date.parse("2026-10-30T18:00:00Z");
+  const expires=Date.parse("2026-11-02T00:00:00Z");
+  return env.GITHUB_RUN_ATTEMPT==="1" &&
+   now.getTime()>=start&&now.getTime()<expires &&
+   event?.inputs?.confirmation===gate &&
+   env.PHASE2H_ONE_TIME_PRODUCTION_SMOKE===gate;
  }catch{return false}
 }
 export async function runPhase2hGovernedRawB2({
@@ -148,8 +157,8 @@ export async function runPhase2hGovernedRawB2({
   env.PHASE2H_PROVIDER_MAINTENANCE!=="true"||
   !/^\d{1,20}$/u.test(env.GITHUB_RUN_ID??""))
   fail("PROTECTED_MAIN_GOVERNOR_REQUIRED");
- // Exactly one canonical daily GitHub scheduled event; queued execution
- // can be late, but never grant D1/B2 to manual or push runs.
+ // Only canonical daily cron or one time-limited and explicitly confirmed
+ // manual smoke. Both still require D1/B2 quota governors and exact receipts.
  if(!windowAuthorizer({env,now,eventReader}))
   return {status:"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT",storage_confirmed:false,
    rows_archived:0,object_sha256:null};

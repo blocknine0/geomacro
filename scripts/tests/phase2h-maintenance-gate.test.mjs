@@ -7,7 +7,12 @@ test("Phase 2H B2 workflow requires archive-only provider approval and one daily
  assert.ok(yaml.includes('cron: "29 0 * * *"'));
  assert.ok(yaml.includes("github.event.schedule == '29 0 * * *'"));
  assert.ok(yaml.includes("archive-then-retention:"));
- assert.doesNotMatch(yaml,/workflow_dispatch:|five-hour-slot:|cron: "21/u);
+ assert.doesNotMatch(yaml,/five-hour-slot:|cron: "21/u);
+ assert.match(yaml,/workflow_dispatch:/u);
+ assert.match(yaml,/needs: manual-smoke-gate/u);
+ assert.ok(yaml.includes("needs.manual-smoke-gate.result == 'success'"));
+ assert.ok(yaml.includes("RUN_ONCE_PHASE2H_2026_10_31"));
+ assert.ok(yaml.includes("2026-11-02T00:00:00Z"));
  assert.match(yaml,/maintenance: \$\{\{ steps\.provider\.outputs\.maintenance \}\}/u);
  assert.match(yaml,/needs\.quota-admission\.outputs\.raw_archive == 'true'/u);
  assert.match(yaml,/raw_archive: \$\{\{ steps\.provider\.outputs\.phase2h_raw_archive \}\}/u);

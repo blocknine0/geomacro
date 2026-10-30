@@ -43,7 +43,9 @@ test("malformed D1 census fails closed without invented counts",()=>{
 test("workflow keeps bounded isolated archive gate, preserves quota receipt and census before B2",()=>{
  const workflow=readFileSync(".github/workflows/phase2h-private-raw-archive.yml","utf8");
  assert.ok(workflow.includes('cron: "29 0 * * *"'));
- assert.doesNotMatch(workflow,/five-hour-slot:|workflow_dispatch:/u);
+ assert.doesNotMatch(workflow,/five-hour-slot:/u);
+ assert.ok(workflow.includes("workflow_dispatch:"));
+ assert.ok(workflow.includes("needs.manual-smoke-gate.result == 'success'"));
  assert.ok(workflow.includes("archive-then-retention:"));
  assert.ok(workflow.includes("github.event.schedule == '29 0 * * *'"));
  assert.match(workflow,/needs\.quota-admission\.outputs\.raw_archive == 'true'/u);
