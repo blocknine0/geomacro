@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-30T08:05:46.868Z",
+  "checked_at": "2026-10-30T10:25:23.424Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-e1e06b4c",
+      "category": "macro",
+      "title": "Geomacro finds Gold Slides Near Session Low After Fed held Rates - Kalkine",
+      "what_changed": "A monitored source feed reports: Gold Slides Near Session Low After Fed held Rates - Kalkine. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T10:06:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-4aca32f4",
       "category": "macro",
@@ -4286,6 +4305,25 @@
       "severity": null
     },
     {
+      "id": "macro-a778feee",
+      "category": "macro",
+      "title": "Geomacro finds U.S. Natural Gas Production Hits New recorded as Demand Surges - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: U.S. Natural Gas Production Hits New recorded as Demand Surges - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T22:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-355e33bb",
       "category": "rare_earth",
       "title": "Geomacro finds PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - The Malaysian Reserve",
@@ -4419,6 +4457,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-ea7ea806",
+      "category": "geopolitics",
+      "title": "Geomacro finds Erdoğan urged diplomacy over Hormuz, Yemen tensions in Trump call",
+      "what_changed": "A monitored source feed reports: Erdoğan urged diplomacy over Hormuz, Yemen tensions in Trump call. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T18:51:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.dailysabah.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-8617100c",
       "category": "rare_earth",
       "title": "Geomacro finds PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - The Manila Times",
@@ -4434,6 +4491,25 @@
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-94193ad2",
+      "category": "geopolitics",
+      "title": "Geomacro finds General Assembly: adopted Resolution to Lift United States Embargo of Cuba · United States",
+      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
+      "what_changed": "General Assembly adopted Resolution to Lift United States Embargo of Cuba. Country or region mentioned: United States.",
+      "geography": "United States",
+      "development_type": "trade restriction",
+      "topic": "sanctions and trade restrictions",
+      "published_at": "2026-10-28T18:15:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
@@ -4679,82 +4755,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-ffed85d3",
-      "category": "rare_earth",
-      "title": "Geomacro finds Copper Price held Near USD 6.63 as China Demand and Tight Supply Support Trading - Kalkine",
-      "what_changed": "A monitored source feed reports: Copper Price held Near USD 6.63 as China Demand and Tight Supply Support Trading - Kalkine. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T09:06:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-1c8abf00",
-      "category": "rare_earth",
-      "title": "Geomacro finds India held 7, 8% of Global Rare-Earth Reserves but Still Imports Key Battery Materials: OECD - The Policy Edge",
-      "what_changed": "A monitored source feed reports: India held 7, 8% of Global Rare-Earth Reserves but Still Imports Key Battery Materials: OECD - The Policy Edge. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T08:44:58.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-19018bed",
-      "category": "rare_earth",
-      "title": "Geomacro finds BHP kept copper guidance at 1.65 million tonnes. BHP stock costs EUR 71.75 - ad-hoc-news.de",
-      "what_changed": "A monitored source feed reports: BHP kept copper guidance at 1.65 million tonnes. BHP stock costs EUR 71.75 - ad-hoc-news.de. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T08:31:08.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-5adb8789",
-      "category": "rare_earth",
-      "title": "Geomacro finds Inalum said bauxite processing can boost value and jobs",
-      "what_changed": "A monitored source feed reports: Inalum said bauxite processing can boost value and jobs. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T08:18:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.antaranews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

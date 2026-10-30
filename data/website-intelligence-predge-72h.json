@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T08:05:46.868Z",
+  "checked_at": "2026-10-30T10:25:23.424Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 433,
+  "item_count": 422,
   "counts": {
-    "geopolitics": 201,
-    "macro": 187,
-    "rare_earth": 45
+    "geopolitics": 197,
+    "macro": 184,
+    "rare_earth": 41
   },
-  "source_native_ids_sha256": "5ea98986af1c7feec347861042c97ba4a76e2063d184b020a91169fbe4f75791",
+  "source_native_ids_sha256": "759287b0244ad68e39ecb5f9138c9e420e3c87e896d27b7ee3bebdaec3610adc",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-e1e06b4c",
+      "category": "macro",
+      "title": "Geomacro finds Gold Slides Near Session Low After Fed held Rates - Kalkine",
+      "what_changed": "A monitored source feed reports: Gold Slides Near Session Low After Fed held Rates - Kalkine. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T10:06:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-4aca32f4",
       "category": "macro",
@@ -8017,234 +8036,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-f4adc8fc",
-      "category": "macro",
-      "title": "Geomacro finds Raghuram Rajan urged Caution: Fighting Rupee Depreciation With Forex Reserves Is A Trap - NDTV Profit",
-      "what_changed": "A monitored source feed reports: Raghuram Rajan urged Caution: Fighting Rupee Depreciation With Forex Reserves Is A Trap - NDTV Profit. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T10:25:18.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-a9963430",
-      "category": "geopolitics",
-      "title": "Geomacro finds Syria condemned Jordan strikes as sovereignty violation, seeks joint security committee - Rudaw",
-      "what_changed": "A monitored source feed reports: Syria condemned Jordan strikes as sovereignty violation, seeks joint security committee - Rudaw. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T10:22:46.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-243d4a11",
-      "category": "geopolitics",
-      "title": "Geomacro finds Stubb said peace efforts back on track following phone call with Putin",
-      "what_changed": "A monitored source feed reports: Stubb said peace efforts back on track following phone call with Putin. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T09:53:38.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: yle.fi"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-4b01ec15",
-      "category": "macro",
-      "title": "Geomacro finds Cabinet cut excise tax on E20 and B20 fuels - Thai PBS World",
-      "what_changed": "A monitored source feed reports: Cabinet cut excise tax on E20 and B20 fuels - Thai PBS World. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T09:48:31.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-5109f8b9",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia confirmed 11 Ugandans Killed in Ukraine War, 16 Missing - ChimpReports",
-      "what_changed": "A monitored source feed reports: Russia confirmed 11 Ugandans Killed in Ukraine War, 16 Missing - ChimpReports. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T09:33:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-ffed85d3",
-      "category": "rare_earth",
-      "title": "Geomacro finds Copper Price held Near USD 6.63 as China Demand and Tight Supply Support Trading - Kalkine",
-      "what_changed": "A monitored source feed reports: Copper Price held Near USD 6.63 as China Demand and Tight Supply Support Trading - Kalkine. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T09:06:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-c45a65b4",
-      "category": "macro",
-      "title": "Geomacro finds Raghuram Rajan urged against using forex reserves to defend rupee - NewsBytes",
-      "what_changed": "A monitored source feed reports: Raghuram Rajan urged against using forex reserves to defend rupee - NewsBytes. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T08:56:07.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-1c8abf00",
-      "category": "rare_earth",
-      "title": "Geomacro finds India held 7, 8% of Global Rare-Earth Reserves but Still Imports Key Battery Materials: OECD - The Policy Edge",
-      "what_changed": "A monitored source feed reports: India held 7, 8% of Global Rare-Earth Reserves but Still Imports Key Battery Materials: OECD - The Policy Edge. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T08:44:58.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-19018bed",
-      "category": "rare_earth",
-      "title": "Geomacro finds BHP kept copper guidance at 1.65 million tonnes. BHP stock costs EUR 71.75 - ad-hoc-news.de",
-      "what_changed": "A monitored source feed reports: BHP kept copper guidance at 1.65 million tonnes. BHP stock costs EUR 71.75 - ad-hoc-news.de. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T08:31:08.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-a9cdbfc3",
-      "category": "macro",
-      "title": "Geomacro finds IEA warned about Dangerous Concentration in Global Clean Energy Supply Chains - Crude Oil Prices Today | OilPrice.com",
-      "what_changed": "A monitored source feed reports: IEA warned about Dangerous Concentration in Global Clean Energy Supply Chains - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T08:30:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-5adb8789",
-      "category": "rare_earth",
-      "title": "Geomacro finds Inalum said bauxite processing can boost value and jobs",
-      "what_changed": "A monitored source feed reports: Inalum said bauxite processing can boost value and jobs. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T08:18:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.antaranews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-b3f2ebc1",
-      "category": "geopolitics",
-      "title": "Geomacro finds Sinner confirmed 6 Kings Slam return after Saudi security concerns",
-      "what_changed": "A monitored source feed reports: Sinner confirmed 6 Kings Slam return after Saudi security concerns. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T08:09:10.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.dailysabah.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
