@@ -26,11 +26,15 @@ const CANDIDATES=Object.freeze([
   issuer:"UN News (reported news, not an independent primary document)",
  }),
  Object.freeze({
-  id:"private_hub_us_ofac_sanctions_actions",
-  url:"https://ofac.treasury.gov/recent-actions.xml",
+  // OFAC retired its own RSS in 2025; do NOT poll the dead
+  // ofac.treasury.gov/recent-actions.xml from the Gemini draft.
+  // Federal Register agency-filtered RSS is an independent official
+  // document publication channel, NOT an OFAC Recent Actions mirror.
+  id:"private_hub_ofac_federal_register_notices",
+  url:"https://www.federalregister.gov/api/v1/documents.rss?conditions%5Bagencies%5D%5B%5D=foreign-assets-control-office",
   categories:Object.freeze(["geopolitics"]),
   type:"rss",continent:"north_america",publisher_country_iso3:"USA",
-  issuer:"U.S. Treasury OFAC sanctions actions",
+  issuer:"Federal Register: Foreign Assets Control Office documents (not all OFAC recent actions)",
  }),
 ]);
 
