@@ -11,17 +11,21 @@ Cloudflare D1 Free account-wide limits remain 5,000,000 rows read and
 not an atomic reservation or a billing entitlement. No provider counters
 means **HELD**, never a made-up available budget.
 
-The existing source-only lane reserves a full remaining UTC day of
-**15-minute ticks × at most five original news rows/tick** (2/2/1 fair
+The existing source-only lane reserves a full remaining UTC day for up to TWO
+independent D1-producing lanes (the existing five-minute fastlane, cadence-
+limited to every 15 minutes, plus private source-only). GitHub concurrency
+serializes them but does not prove that one replaces the other's writes.\n
+The protected intake plan covers
+**15-minute ticks × at most five original news rows/producer/tick** (2/2/1 fair
 category priority when all three categories have real news). At UTC midnight
 this means:
 
 | Quantity | Maximum planned budget |
 | --- | ---: |
-| Time slots | 96 |
-| Source-only original rows | 480 |
-| D1 rows read | 3,200 × 96 + 100,000 = **407,200** |
-| D1 rows written | (16 × 5 + 40) × 96 + 2,000 = **13,520** |
+| Time slots | 96 (two existing producer lanes possible each slot) |
+| Planned maximum original insert attempts | 5 × 96 × 2 = **960** (actual D1 ring capacity and dedup still apply) |
+| D1 rows read | 3,200 × 96 × 2 + 100,000 = **714,400** |
+| D1 rows written | (16 × 5 + 40) × 96 × 2 + 2,000 = **25,040** |
 | Existing PREDGE planning reserve | **500,000 reads / 8,000 writes** |
 | Existing non-PREDGE critical reserve | **750,000 reads / 15,000 writes** |
 
