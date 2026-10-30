@@ -150,7 +150,9 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
   }
  }
  return Object.freeze({status:official.length?"FIRST_PARTY_METADATA_GROUNDED":
-   discovery?"DISCOVERY_ONLY_UNVERIFIED":"NO_VERIFIED_NEWS",
+   discovery?"DISCOVERY_ONLY_UNVERIFIED":
+   providerDiagnostics.govuk!=="OK"&&providerDiagnostics.gdelt!=="OK"?
+    "GLOBAL_PROVIDER_UNAVAILABLE":"NO_VERIFIED_NEWS",
   attempted:true,first_party_matches:official,gdelt_discovery_count:discovery,
   provider_errors:providerErrors,provider_diagnostics:providerDiagnostics,
   exhaustive_global_search:false});
