@@ -152,8 +152,15 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
    accepted:items.length-prior.size,unchanged:prior.size,
    d1_exact_readback_verified:true,duplicate_new_records:0,rights_verified:false,
    payments:0,original_clocks_preserved:true});
- }catch{return safeReply({ok:false,error:"PRIVATE_RAW_D1_WRITE_OR_READBACK_UNVERIFIED",
-  rights_verified:false,payments:0},503)}
+ }catch(error){
+  // Protected caller receives only a finite diagnostic enum; never the
+  // original title, URL, free-text, SQL, source evidence, secrets or payload.
+  const reason=error instanceof Error&&
+    /^PHASE2H_PRIVATE_RAW_[A-Z_]{3,90}$/u.test(error.message)
+     ?error.message:"PHASE2H_PRIVATE_RAW_D1_OR_READBACK_FAILED";
+  return safeReply({ok:false,error:"PRIVATE_RAW_D1_WRITE_OR_READBACK_UNVERIFIED",
+   reason_code:reason,rights_verified:false,payments:0},503);
+ }
 }
 export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=Date.now()){
  if(!env?.DB||[...params.keys()].some(k=>k!=="archived"&&k!=="limit"&&k!=="question")||
