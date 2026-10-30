@@ -105,3 +105,27 @@ test("BC provincial source can establish CAN mineral release jurisdiction withou
  assert.match(one.five_part.what_happened.text,/critical minerals investment/u);
  assert.equal(one.five_part.evidence_and_confidence.paid_eligible,false);
 });
+
+
+test("official dedicated BLS ECI publisher RSS resolves when generic latest-numbers feed has no release",async()=>{
+ const native='<?xml version="1.0"?><rss><channel><item>'+
+  '<title>Employment Cost Index</title>'+
+  '<link>https://www.bls.gov/news.release/eci.nr0.htm</link>'+
+  '<pubDate>Fri, 30 Oct 2026 08:00:00 GMT</pubDate></item></channel></rss>';
+ const seen=[];
+ const fetchImpl=async url=>{
+  seen.push(url);
+  return {status:200,redirected:false,headers:{get:()=>"application/rss+xml"},
+   text:async()=>url.includes("/feed/eci.rss")?native:
+    "<rss><channel></channel></rss>"};
+ };
+ const result=await p0bFirstPartyFeedNews({
+  countryIso3:"USA",countryName:"United States",category:"macro",
+  question:"Latest United States macro news",now,fetchImpl});
+ assert.ok(seen.some(url=>url==="https://www.bls.gov/feed/eci.rss"));
+ assert.equal(result.items.length,1);
+ assert.equal(result.items[0].issuer_country_verified,"USA");
+ assert.equal(result.items[0].first_party_feed_metadata_verified,true);
+ assert.equal(result.items[0].five_part.evidence_and_confidence.paid_eligible,false);
+ assert.equal(result.items[0].original_published_at,"2026-10-30T08:00:00.000Z");
+});
