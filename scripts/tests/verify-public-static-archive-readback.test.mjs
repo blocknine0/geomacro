@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {verifyPublicStaticArchiveReadback} from "../lib/verify-public-static-archive-readback.mjs";
+import {verifyPublicStaticArchiveReadback,verifyConvergedPublicStaticArchiveReadback} from "../lib/verify-public-static-archive-readback.mjs";
 
 const NOW=Date.parse("2026-10-29T01:00:00.000Z");
 const native="2026-10-29T00:10:00.000Z";
@@ -62,4 +62,52 @@ test("missing, stale/future and inconsistent clocks never certify static archive
   assert.throws(()=>verifyPublicStaticArchiveReadback(v),
     /PERMANENT_ARCHIVE_STATIC_READBACK_/);
  }
+});
+
+test("async edge propagation: split snapshots fail until the complete cohort converges",async()=>{
+ const f=fixture(),old=new Date(NOW-4*60*60_000).toISOString();
+ let pulls=0,delayCalls=0;
+ const receipt=await verifyConvergedPublicStaticArchiveReadback({
+  expectedIndex:index,expectedLatest:latest,expectedCoverage:coverage,
+  now:()=>NOW,attempts:3,delayMs:0,sleep:async()=>{delayCalls++},
+  read:async path=>{
+   if(path==="/index.json"){pulls++;return structuredClone(index);}
+   if(path==="/latest.json")return structuredClone(latest);
+   if(path==="/coverage-72h.json"){
+    return {...structuredClone(coverage),
+     checked_at:pulls===1?old:coverage.checked_at};
+   }
+   throw Error("unexpected path");
+  }
+ });
+ assert.equal(receipt.verified_as_single_coherent_cohort,true);
+ assert.equal(receipt.public_static_cohort_attempts,2);
+ assert.equal(delayCalls,1);
+});
+test("persistent mismatched/stale static snapshots never PASS after all bounded retries",async()=>{
+ const old=new Date(NOW-4*60*60_000).toISOString();
+ for(const damaged of [
+  {...coverage,checked_at:old},
+  {...coverage,eligible_ids_sha256:"f".repeat(64)},
+  {...coverage,paid_customer_eligible:true}
+ ]){
+  let reads=0;
+  await assert.rejects(verifyConvergedPublicStaticArchiveReadback({
+   expectedIndex:index,expectedLatest:latest,expectedCoverage:coverage,
+   now:()=>NOW,attempts:2,delayMs:0,sleep:async()=>{},
+   read:async path=>{
+    reads++;
+    if(path==="/index.json")return structuredClone(index);
+    if(path==="/latest.json")return structuredClone(latest);
+    return structuredClone(damaged);
+   }
+  }),/PERMANENT_ARCHIVE_STATIC_READBACK_/u);
+  assert.equal(reads,6);
+ }
+});
+test("static generation clock split fails even when live asset clocks agree",()=>{
+ const f=fixture();
+ f.expectedCoverage={...coverage,checked_at:new Date(NOW-60_000).toISOString()};
+ assert.throws(()=>verifyPublicStaticArchiveReadback(f),
+  /PERMANENT_ARCHIVE_STATIC_READBACK_BUILT_SNAPSHOT_CLOCK_SPLIT/u);
 });

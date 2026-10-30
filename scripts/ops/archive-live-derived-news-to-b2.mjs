@@ -54,6 +54,9 @@ export function summarizeSafeBackupReceipt(receipt,now=new Date()){
  const archived=receipt?.status==="B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED"&&
    receipt?.b2_put_verified===true&&
    receipt?.b2_exact_readback_verified===true&&
+   receipt?.independent_second_get_verified===true&&
+   receipt?.second_get_sha256===receipt?.compressed_sha256&&
+   receipt?.independent_post_archive_d1_get_verified===true&&
    receipt?.source_d1_readback_verified===true;
  const safe={
   schema:"geomacro.private-derived-news-b2-independent-archive-acceptance.v1",
@@ -63,6 +66,8 @@ export function summarizeSafeBackupReceipt(receipt,now=new Date()){
   category_counts:archived?receipt.category_counts:null,
   source_d1_verified:receipt?.source_d1_readback_verified===true,
   put_then_full_get_restored_verified:archived,
+  independent_second_b2_get_sha_verified:archived,
+  independent_post_archive_d1_get_verified:archived,
   object_sha256:archived?receipt.compressed_sha256:null,
   exact_b2_archive_object_key:archived?receipt.archive_object_key:null,
   storage_confirmed:archived,

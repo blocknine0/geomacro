@@ -27,6 +27,9 @@ on:
       - "scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs"
       - "scripts/lib/verify-public-static-archive-readback.mjs"
       - "scripts/tests/verify-public-static-archive-readback.test.mjs"
+      - "scripts/tests/public-static-worker-cohort-guard.test.mjs"
+      - "workers/public-finds-archive/src/index.mjs"
+      - "workers/public-finds-archive/wrangler.jsonc"
 
 permissions:
   contents: read
@@ -52,6 +55,7 @@ jobs:
           node --check scripts/ops/decide-public-finds-static-freshness-deploy.mjs
           node --test scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs
           node --test scripts/tests/verify-public-static-archive-readback.test.mjs
+          node --test scripts/tests/public-static-worker-cohort-guard.test.mjs
           node --test scripts/ops/publish-permanent-derived-news-archive.test.mjs
           node --test scripts/tests/website-predge-static-72h-snapshot.test.mjs
   deploy-public-static-archive:
@@ -182,7 +186,7 @@ jobs:
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
-          import {verifyPublicStaticArchiveReadback} from "./scripts/lib/verify-public-static-archive-readback.mjs";
+          import {verifyConvergedPublicStaticArchiveReadback} from "./scripts/lib/verify-public-static-archive-readback.mjs";
           import {verifyWebsitePilotStaticReadback} from "./scripts/lib/website-predge-static-72h-snapshot.mjs";
           import { readFileSync } from "node:fs";
           const base="https://geomacro-public-finds-archive.daspallab202391.workers.dev";
@@ -208,15 +212,13 @@ jobs:
             }
             throw Error(path==="/index.json"?"PERMANENT_ARCHIVE_PUBLIC_INDEX_READBACK_FAILED":"PERMANENT_ARCHIVE_PUBLIC_LATEST_READBACK_FAILED");
           }
-          const liveIndex=await get("/index.json");
-          const liveLatest=await get("/latest.json");
-          const liveCoverage=await get("/coverage-72h.json");
-          // Scheduled no-op publication may retain an older *checked_at*
-          // while exact native IDs/credits and entire eligible coverage match.
-          // Never mistake clock-only drift for a failed static deployment.
-          const receipt=verifyPublicStaticArchiveReadback({
-            expectedIndex,expectedLatest,expectedCoverage,
-            liveIndex,liveLatest,liveCoverage,now:Date.now(),
+          // Verify one coherent public asset cohort, not three independent
+          // files from potentially different edge propagation generations.
+          // Every interim clock split or payload mismatch is rejected.
+          // Success requires a subsequent complete exact readback.
+          const receipt=await verifyConvergedPublicStaticArchiveReadback({
+            read:get,expectedIndex,expectedLatest,expectedCoverage,
+            now:()=>Date.now(),attempts:5,delayMs:1200,
           });
           console.log(JSON.stringify(receipt));
           const livePilot=await get("/website-intelligence-predge-72h.json");

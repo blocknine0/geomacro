@@ -36,7 +36,11 @@ async function strictBundle(response){
     !Array.isArray(doc.signals)||doc.signals.length>600||
     doc.returned_rows!==doc.signals.length||
     !Array.isArray(doc.first_ingest)||
-    doc.first_ingest.length!==doc.signals.length)
+    doc.first_ingest.length!==doc.signals.length||
+    doc.first_ingest.some((x,i)=>x?.id!==doc.signals[i]?.id||
+      !(x.first_seen_at===null||
+        typeof x.first_seen_at==="string"&&
+        Number.isFinite(Date.parse(x.first_seen_at)))))
   fail("D1_CANONICAL_BUNDLE_CONTRACT_INVALID");
  return doc;
 }
@@ -147,12 +151,28 @@ export async function archiveDerivedJournalToB2({
     proof.sha256!==plan.compressed_sha256||
     proof.bytes!==plan.compressed.length)
    fail("B2_PUT_GET_SHA_ACK_INVALID");
+ // Independently repeat the full GET through the unchanged atomic quota
+ // governor. This is a genuine second provider operation, not a cached
+ // digest or the first readback returned by putWithMetadataVerification.
+ if(typeof b2.get!=="function")fail("SECOND_INDEPENDENT_GET_REQUIRED");
+ const secondBytes=await b2.get(plan.key);
+ verifyDerivedJournalB2Restore(secondBytes,plan);
+ // Independent post-archive canonical D1 GET. Never infer source equality
+ // from the initial snapshot or first/second B2 bytes alone. One additional
+ // bounded 600-row query is allowed ONLY after protected maintenance admission.
+ const current=await readExactCurrentDerivedJournal({fetchImpl,now});
+ const exact=rows=>JSON.stringify([...rows].sort((a,b)=>a.id.localeCompare(b.id)));
+ if(exact(current)!==exact(rows))
+   fail("D1_SOURCE_CHANGED_DURING_ARCHIVE");
  return {schema:"geomacro.private-derived-news-b2-backup-receipt.v1",
   status:"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED",
   archived_rows:plan.record_count,category_counts:plan.category_counts,
   archive_object_key:plan.key,compressed_sha256:plan.compressed_sha256,
   raw_sha256:plan.raw_sha256,
   b2_put_verified:true,b2_exact_readback_verified:true,
+  independent_second_get_verified:true,
+  second_get_sha256:plan.compressed_sha256,
+  independent_post_archive_d1_get_verified:true,
   restored_json_verified:true,source_d1_readback_verified:true,
   same_news_as_intelligence_d1:true,
   public_website_unchanged:true,raw_original_content_stored:false,
