@@ -120,7 +120,7 @@ export async function loadPublicRiskObjectVerificationKeys(): Promise<RiskObject
     };
     return keys;
   } catch {
-    return fail("CONTROL_PLANE_TRANSPORT_OR_JSON_INVALID");
+    return null;
   }
 }
 
@@ -218,6 +218,6 @@ export async function readD1VerifiedHotCountryGro(
 
     return object;
   } catch {
-    return null;
+    return fail("CONTROL_PLANE_TRANSPORT_OR_JSON_INVALID");
   }
 }
