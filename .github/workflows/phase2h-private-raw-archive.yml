@@ -1,6 +1,6 @@
 name: Phase 2H Permanent Private Raw B2 and Exact-Question Acceptance
-# Exactly four UTC archive windows. No push bootstrap, no maintenance bypass.
-# Existing provider D1 maintenance admission and atomic B2 reserve are mandatory.
+# Exactly four UTC archive windows. No out-of-slot B2 bootstrap.
+# Existing provider-approved structural snapshot admission and atomic B2 reserve are mandatory.
 on:
   workflow_dispatch: {}
   schedule:
@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 4
     environment: production
     outputs:
-      maintenance: ${{ steps.provider.outputs.maintenance }}
+      structural_snapshot: ${{ steps.provider.outputs.structural_snapshot }}
     steps:
       - name: Checkout exact main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: "22"
       - id: provider
-        name: Verify existing D1 maintenance admission (no B2 and no billing)
+        name: Verify provider-approved bounded D1 structural-snapshot admission
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -42,7 +42,7 @@ jobs:
     needs: quota-admission
     if: >-
       needs.quota-admission.result == 'success' &&
-      needs.quota-admission.outputs.maintenance == 'true' &&
+      needs.quota-admission.outputs.structural_snapshot == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
