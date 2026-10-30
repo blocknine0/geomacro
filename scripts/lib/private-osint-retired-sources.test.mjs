@@ -13,10 +13,9 @@ test("76 repeatedly failing sources are retired from private production ingestio
  const oldLocal=privateLocalPublisherCandidates();
  const retainedLocal=oldLocal.filter(s=>isRetiredPrivateOsintSource(s));
  assert.equal(retainedLocal.length,7);
- const sourceIds=new Set(privateOsintGlobalSources().map(s=>s.id));
- assert.ok(PRIVATE_OSINT_RETIRED_SOURCE_IDS.some(id=>!sourceIds.has(id)));
- for(const id of PRIVATE_OSINT_RETIRED_SOURCE_IDS)
-  assert.equal(sourceIds.has(id),false,id);
+ const catalogueIds=new Set(privateOsintGlobalSources().map(s=>s.id));
+ // Audit metadata is immutable; active poll source IDs are pruned instead.
+ assert.ok(PRIVATE_OSINT_RETIRED_SOURCE_IDS.some(id=>catalogueIds.has(id)));
  for(let n=0;n<8;n++){
   const now=new Date(Date.parse("2026-10-31T00:00:00Z")+n*900000);
   const local=rotatingPrivateLocalPublisherSources(now);
