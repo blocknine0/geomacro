@@ -18,14 +18,30 @@ const dateNative=(value,now)=>{
  return Number.isFinite(ms)&&ms<=now+60_000&&now-ms<=72*3600_000?
   new Date(ms).toISOString():null;
 };
+const SAFE_PROVIDER_FAILURES=new Set(["NETWORK_TIMEOUT_OR_EGRESS","HTTP_401",
+ "HTTP_403","HTTP_404","HTTP_429","HTTP_500","HTTP_502","HTTP_503",
+ "HTTP_OTHER","REDIRECT_DENIED","NOT_JSON","OVERSIZE","INVALID_JSON"]);
+const providerFail=x=>{throw Error("P0B_UPSTREAM_"+x)};
+const providerCode=error=>{
+ const code=String(error?.message??"").replace(/^P0B_UPSTREAM_/u,"");
+ return SAFE_PROVIDER_FAILURES.has(code)?code:"NETWORK_TIMEOUT_OR_EGRESS";
+};
 const getJson=async(url,fetchImpl)=>{
- const res=await fetchImpl(url,{method:"GET",redirect:"error",
-  headers:{"Accept":"application/json"},signal:AbortSignal.timeout(5500)});
- if(res.status!==200||res.redirected||!/json/iu.test(res.headers.get("content-type")??""))
-  throw Error("P0B_SOURCE_RESPONSE_UNAVAILABLE");
- const raw=await res.text();
- if(raw.length>240000)throw Error("P0B_OVERSIZE");
- return JSON.parse(raw);
+ let res;
+ try{res=await fetchImpl(url,{method:"GET",redirect:"error",
+  headers:{"Accept":"application/json"},signal:AbortSignal.timeout(5500)})}
+ catch{providerFail("NETWORK_TIMEOUT_OR_EGRESS")}
+ if(res.redirected)providerFail("REDIRECT_DENIED");
+ if(res.status!==200){
+  providerFail([401,403,404,429,500,502,503].includes(res.status)?
+   "HTTP_"+res.status:"HTTP_OTHER");
+ }
+ if(!/json/iu.test(res.headers?.get("content-type")??""))
+  providerFail("NOT_JSON");
+ let raw;
+ try{raw=await res.text()}catch{providerFail("NETWORK_TIMEOUT_OR_EGRESS")}
+ if(raw.length>240000)providerFail("OVERSIZE");
+ try{return JSON.parse(raw)}catch{providerFail("INVALID_JSON")}
 };
 const terms=(question,countryName)=>{
  const countryWords=new Set(countryName.toLowerCase().split(/\s+/u));
@@ -100,6 +116,10 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
   getJson(govUrl.href,fetchImpl),getJson(gdeltUrl.href,fetchImpl)
  ]);
  let providerErrors=settled.filter(x=>x.status==="rejected").length;
+ const providerDiagnostics={
+  govuk: settled[0].status==="fulfilled"?"OK":providerCode(settled[0].reason),
+  gdelt: settled[1].status==="fulfilled"?"OK":providerCode(settled[1].reason),
+ };
  let discovery=0;
  if(settled[1].status==="fulfilled"){
   const rows=settled[1].value?.articles;
@@ -124,5 +144,6 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
  return Object.freeze({status:official.length?"FIRST_PARTY_METADATA_GROUNDED":
    discovery?"DISCOVERY_ONLY_UNVERIFIED":"NO_VERIFIED_NEWS",
   attempted:true,first_party_matches:official,gdelt_discovery_count:discovery,
-  provider_errors:providerErrors,exhaustive_global_search:false});
+  provider_errors:providerErrors,provider_diagnostics:providerDiagnostics,
+  exhaustive_global_search:false});
 }
