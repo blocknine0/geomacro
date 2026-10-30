@@ -10,9 +10,15 @@ const SOURCES=Object.freeze({
  geopolitics:[{url:"https://news.un.org/feed/subscribe/en/news/all/rss.xml",host:"news.un.org",
   path:/^\/en\/story\/20\d{2}\/\d{1,2}\/[a-z0-9-]+$/u}],
  macro:[{url:"https://www.bis.org/doclist/all_pressrels.rss",host:"www.bis.org",
-  path:/^\/press\/p\d{6}[a-z]?\.htm$/u}],
+  path:/^\/press\/p\d{6}[a-z]?\.htm$/u},
+  // Official US BLS release RSS: publisher's agency jurisdiction is USA;
+  // the topic still must be present in the same first-party native title.
+  {url:"https://www.bls.gov/feed/bls_latest.rss",host:"www.bls.gov",
+   path:/^\/news\.release\/(?:[a-z]{2,20}\.nr\d|archives\/[a-z]{2,20}_\d{8})\.htm$/u,
+   issuer_country:"USA",issuer:"US Bureau of Labor Statistics"}],
  rare_earth:[{url:"https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed",
-  host:"news.gov.bc.ca",path:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u}],
+  host:"news.gov.bc.ca",path:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,
+  issuer_country:"CAN",issuer_level:"PROVINCIAL",issuer:"Province of British Columbia"}],
 });
 const resultError=x=>({status:x,items:[],checked:1});
 const capped=async(url,fetchImpl)=>{
@@ -74,9 +80,13 @@ export async function p0bFirstPartyFeedNews({
    const part=match[1],title=xmlValue(part,"title");
    const url=pinnedPermalink(xmlValue(part,"link"),source);
    const time=officialItemNativePublicationMs(xmlValue(part,"pubDate"));
-   if(!title||title.length<18||title.length>260||/[<>]/u.test(title)||
-    !url||!Number.isFinite(time)||time>now+60000||now-time>72*3600000||
-    phase2hHeadlineCountryCandidate(title)!==countryIso3)continue;
+   if(!title||title.length<12||title.length>260||/[<>]/u.test(title)||
+    !url||!Number.isFinite(time)||time>now+60000||now-time>72*3600000)continue;
+   const inTitle=phase2hHeadlineCountryCandidate(title);
+   // A pinned national statistical agency may establish its own country's
+   // release jurisdiction, not the geographic subject of another country.
+   if(inTitle!==countryIso3&&
+      !(inTitle===null&&source.issuer_country===countryIso3))continue;
    if(topic.length&&!topic.some(term=>title.toLowerCase().includes(term)))continue;
    const native=new Date(time).toISOString(),id=await sha(category+"\n"+url+"\n"+native);
    const original={original_title:title,original_published_at:native,
@@ -95,11 +105,28 @@ export async function p0bFirstPartyFeedNews({
      observed_feed_title_available:true,original_article_page_verified:false,
      independent_event_verified:false,commercial_rights_verified:false,
      paid_eligible:false,source_content_identity_sha256:await sha(title+"\n"+native)}};
-   const five=p0bProjectEvidenceBounded({record_id:id,category,original,analysis:base});
+   let five=p0bProjectEvidenceBounded({record_id:id,category,original,analysis:base});
+   // The release TITLE and exact originating US BLS feed prove publication,
+   // not the numeric value or direction of the actual Employment Cost Index.
+   if(!five&&source.issuer_country==="USA"&&category==="macro"&&
+      /\bemployment cost index\b/iu.test(title)){
+    const candidate={...base,
+     what_happened:{text:"The US Bureau of Labor Statistics published an Employment Cost Index update.",
+      original_observation_id:id},
+     why_it_matters:{text:"The Employment Cost Index update informs wage-cost and inflation monitoring; no reported value, rate change or market price move is inferred from the title.",
+      independently_verified:false}};
+    const grounded=p0bProjectEvidenceBounded({record_id:id,category,original,
+     analysis:candidate});
+    if(grounded)five=grounded;
+   }
    if(!five)continue;
    items.push({record_id:id,category,original_published_at:native,five_part:five,
     original_page_independently_verified:false,
     first_party_feed_metadata_verified:true,
+    ...(source.issuer_country?{issuer_country_verified:source.issuer_country,
+      country_attribution_basis:source.issuer_level==="PROVINCIAL"?
+       "FIRST_PARTY_PROVINCIAL_MINERAL_ISSUER":
+       "FIRST_PARTY_NATIONAL_STATISTICAL_ISSUER"}:{}),
     archive_d1_ack_present:false,p0a_evidence_limited:false,
     paid_eligible:false,commercial_rights_verified:false,
     source_title_only_research_fallback_used:false});
