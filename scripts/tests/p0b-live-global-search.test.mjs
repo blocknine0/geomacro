@@ -68,5 +68,6 @@ test("real upstream failures expose bounded statuses, not publisher URLs or resp
  assert.equal(result.first_party_matches.length,0);
  assert.deepEqual(result.provider_diagnostics,{govuk:"HTTP_403",gdelt:"HTTP_429"});
  assert.equal(result.provider_errors,2);
+ assert.equal(result.status,"GLOBAL_PROVIDER_UNAVAILABLE");
  assert.doesNotMatch(JSON.stringify(result),/untrusted upstream content|https?:\/\//u);
 });
