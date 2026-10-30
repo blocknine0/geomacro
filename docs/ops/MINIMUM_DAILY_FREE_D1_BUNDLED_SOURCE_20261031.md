@@ -11,9 +11,10 @@ Cloudflare D1 Free account-wide limits remain 5,000,000 rows read and
 not an atomic reservation or a billing entitlement. No provider counters
 means **HELD**, never a made-up available budget.
 
-The existing source-only lane reserves a full remaining UTC day for up to TWO
-independent D1-producing lanes (the existing five-minute fastlane, cadence-
-limited to every 15 minutes, plus private source-only). GitHub concurrency
+The existing source-only lane reserves a full remaining UTC day for up to THREE
+bounded D1-producing lanes (the existing five-minute fastlane, cadence-
+limited to every 15 minutes; private source-only; and conditional five-item
+ciphertext replay, ONLY with separately admitted research headroom). GitHub concurrency
 serializes them but does not prove that one replaces the other's writes.\n
 The protected intake plan covers
 **15-minute ticks × at most five original news rows/producer/tick** (2/2/1 fair
@@ -22,10 +23,10 @@ this means:
 
 | Quantity | Maximum planned budget |
 | --- | ---: |
-| Time slots | 96 (two existing producer lanes possible each slot) |
-| Planned maximum original insert attempts | 5 × 96 × 2 = **960** (actual D1 ring capacity and dedup still apply) |
-| D1 rows read | 3,200 × 96 × 2 + 100,000 = **714,400** |
-| D1 rows written | (16 × 5 + 40) × 96 × 2 + 2,000 = **25,040** |
+| Time slots | 96 (up to three bounded producer lanes possible each slot) |
+| Planned maximum original insert attempts | 5 × 96 × 3 = **1,440** (actual D1 ring capacity and dedup still apply) |
+| D1 rows read | 3,200 × 96 × 3 + 100,000 = **1,021,600** |
+| D1 rows written | (16 × 5 + 40) × 96 × 3 + 2,000 = **36,560** |
 | Existing PREDGE planning reserve | **500,000 reads / 8,000 writes** |
 | Existing non-PREDGE critical reserve | **750,000 reads / 15,000 writes** |
 
@@ -38,9 +39,10 @@ unchanged.
 
 ## Priority and bounded work
 
-When **research and source_intake** both have positive provider permission,
-the pre-existing full private research pipeline may still run. During
-**critical-only/UTC pacing hold with source_intake approved**, run only
+The legacy full private research collector is no longer an automatic
+scheduled Free-plan D1 writer: it requires explicit operator workflow dispatch
+AND research admission. During every scheduled source-intake grant,
+regardless of whether research headroom is available, run only
 the source-only original-news collector: maximum five D1 originals and
 independent exact readback, no general source-health ring, public
 publication, extra D1 backfill, signing or payment.
