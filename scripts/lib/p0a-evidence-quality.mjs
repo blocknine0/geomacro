@@ -27,8 +27,10 @@ export function p0aAuditOriginal(row){
    return Object.freeze({status:"REJECT",reasons:["SCHEMA_OR_ORIGINAL_UNAVAILABLE"]});
  const publisher=title+" "+(plain(sourceBody)?sourceBody:"");
  const fp=row.analysis;
- if(!plain(what)||GENERIC.test(what??""))reasons.push("WHAT_MISSING_OR_BOILERPLATE");
- if(!plain(why)||GENERIC.test(why??""))reasons.push("WHY_MISSING_OR_BOILERPLATE");
+ if(!plain(what))reasons.push("WHAT_MISSING");
+ else if(GENERIC.test(what))reasons.push("WHAT_BOILERPLATE");
+ if(!plain(why))reasons.push("WHY_MISSING");
+ else if(GENERIC.test(why))reasons.push("WHY_BOILERPLATE");
  if(plain(what)&&plain(why)&&norm(what)===norm(why))
    reasons.push("WHAT_WHY_IDENTICAL");
  // Facts must contain distinct terms visible in the actual publisher title
@@ -63,8 +65,8 @@ export function p0aAuditOriginal(row){
     evidence?.independent_event_verified!==false)
    reasons.push("EVIDENCE_PROVENANCE_MISMATCH");
  const distinct=unique(reasons);
- const missing=distinct.some(x=>x==="WHAT_MISSING_OR_BOILERPLATE"||x==="WHY_MISSING_OR_BOILERPLATE");
- return Object.freeze({status:distinct.length===0?"PASS":missing?"EVIDENCE_LIMITED":"REJECT",
+ const unsupported=distinct.some(x=>x!=="WHAT_MISSING"&&x!=="WHY_MISSING");
+ return Object.freeze({status:distinct.length===0?"PASS":unsupported?"REJECT":"EVIDENCE_LIMITED",
   reasons:distinct,original_page_verified:false,independent_event_verified:false,
   market_impact_verified:false});
 }
