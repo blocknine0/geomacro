@@ -27,7 +27,7 @@ const rawRows=[
  make("macro","India and China discuss monetary policy rates",4),
 ];
 
-function workerDb(rows){
+function workerDb(rows,{archived=true}={}){
  const statements=[];
  return {
   statements,
@@ -38,7 +38,7 @@ function workerDb(rows){
     entry.binds=binds;
     return {all:async()=>({results:rows.map(row=>({
      record_id:row.record_id,category:row.category,raw_sha256:row.raw_sha256,
-     raw_json:JSON.stringify(row),b2_object_sha256:"f".repeat(64)
+     raw_json:JSON.stringify(row),b2_object_sha256:archived?"f".repeat(64):null
     }))})};
    }};
   }}
@@ -90,7 +90,8 @@ test("protected archived news returns only same-country, same-category, question
   ["schema","what_happened","why_it_matters","market_relevance","what_to_watch","evidence_and_confidence"]);
  assert.equal(JSON.stringify(body).includes("https://official.example.org"),false);
  assert.equal(statements.length,1);
- assert.match(statements[0].sql,/b2_object_sha256 IS NOT NULL/u);
+ assert.doesNotMatch(statements[0].sql,/b2_object_sha256 IS NOT NULL/u);
+ assert.equal(body.d1_staged_unarchived_research_allowed,true);
  assert.match(statements[0].sql,/category=\?/u);
  assert.match(statements[0].sql,/ESCAPE '!'/u);
  assert.equal(statements[0].binds[0],"macro");
@@ -122,4 +123,22 @@ test("ambiguous, invalid, and unrelated cross-category requests do not leak raw 
   country_iso3:"IND",category:"geopolitics",question:"India monetary policy rates"
  }),now.getTime())).json();
  assert.equal(empty.question_matches.length,0);
+});
+
+test("one canonical D1-staged source original yields research-only five-part before B2",async()=>{
+ const {DB,statements}=workerDb([rawRows[0]],{archived:false});
+ const params=new URLSearchParams({country_iso3:"IND",category:"macro",
+  question:"What did India announce on monetary policy rates?"});
+ const response=await phase2hPrivateRawGet({DB},params,now.getTime());
+ assert.equal(response.status,200);
+ const payload=await response.json();
+ assert.equal(payload.source,"CANONICAL_D1_PRIVATE_ORIGINAL_RESEARCH");
+ assert.equal(payload.question_matches.length,1);
+ assert.equal(payload.question_matches[0].archive_d1_ack_present,false);
+ assert.equal(payload.question_matches[0].five_part.what_happened.text,
+  rawRows[0].analysis.what_happened.text);
+ assert.equal(payload.staged_row_never_paid_eligible,true);
+ assert.equal(payload.chargeable,false);
+ assert.equal(payload.paid_eligible,false);
+ assert.doesNotMatch(statements[0].sql,/b2_object_sha256 IS NOT NULL/u);
 });
