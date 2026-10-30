@@ -36,7 +36,7 @@ jobs:
         with:
           node-version: "22"
       - name: Verify scoped metadata-only census and strict B2 admission (offline)
-        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs
+        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs
   quota-admission:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
