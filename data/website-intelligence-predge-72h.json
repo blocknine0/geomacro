@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T11:34:31.292Z",
+  "checked_at": "2026-10-30T11:52:58.284Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 418,
+  "item_count": 417,
   "counts": {
-    "geopolitics": 196,
-    "macro": 180,
+    "geopolitics": 194,
+    "macro": 181,
     "rare_earth": 42
   },
-  "source_native_ids_sha256": "4de876dfc43c2b3c480fc6b662857fe5cb23835c327a5ba709b86424458cddf0",
+  "source_native_ids_sha256": "38fecaa2cbeb62482b8f524bc408cd13f2637ef4c156dd352056ca8a6db67d20",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-2f380064",
+      "category": "macro",
+      "title": "Geomacro finds Fed Hike Bets lowered Gold’s Entry Price as Custody Shapes Digital Demand - Crux Investor",
+      "what_changed": "A monitored source feed reports: Fed Hike Bets lowered Gold’s Entry Price as Custody Shapes Digital Demand - Crux Investor. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T11:51:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-58a93bfb",
       "category": "rare_earth",
@@ -7918,44 +7937,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-27T11:54:08.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-d0926b82",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran said supreme leader met with security chief over Hormuz - Al Arabiya English",
-      "what_changed": "A monitored source feed reports: Iran said supreme leader met with security chief over Hormuz - Al Arabiya English. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T11:51:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-b109abe6",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran said supreme leader met with security chief over Hormuz - Arab News",
-      "what_changed": "A monitored source feed reports: Iran said supreme leader met with security chief over Hormuz - Arab News. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T11:50:32.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
