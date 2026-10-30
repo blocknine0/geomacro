@@ -90,3 +90,25 @@ test("Workers-compatible manual redirects preserve fail-closed 3xx source policy
  assert.equal(r.first_party_matches.length,0);
  assert.doesNotMatch(JSON.stringify(r),/redirect body must never become evidence/u);
 });
+
+
+test("GOV.UK native first publication with timezone offset is original evidence",async()=>{
+ const fetchImpl=async url=>{
+  const u=new URL(url);
+  const data=u.hostname==="www.gov.uk"&&u.pathname==="/api/search.json"?
+   {results:[{link:"/government/news/india-announces-lithium-recycling-programme"}]}:
+   u.hostname==="www.gov.uk"&&u.pathname.startsWith("/api/content/")?
+   {title:"India announces lithium recycling programme",
+    first_published_at:"2026-10-30T09:30:00+01:30"}:
+   {articles:[]};
+  const isFeed=u.hostname!=="www.gov.uk"&&u.hostname!=="api.gdeltproject.org";
+  return {status:200,redirected:false,
+   headers:{get:k=>k==="content-type"?(isFeed?"application/rss+xml":"application/json"):null},
+   text:async()=>isFeed?"<?xml version=\"1.0\"?><rss></rss>":JSON.stringify(data)};
+ };
+ const r=await p0bGlobalNewsFallback({question:"India lithium recycling programme",
+  countryIso3:"IND",category:"rare_earth",fetchImpl,now});
+ assert.equal(r.first_party_matches.length,1);
+ assert.equal(r.first_party_matches[0].original_published_at,"2026-10-30T08:00:00.000Z");
+ assert.equal(r.first_party_matches[0].first_party_content_api_metadata_verified,true);
+});

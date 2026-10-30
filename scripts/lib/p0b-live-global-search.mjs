@@ -7,6 +7,7 @@ import {phase2hCountry,phase2hHeadlineCountryCandidate} from
  "./phase2h-country-originals-195.mjs";
 import {p0bProjectEvidenceBounded} from "./p0b-event-grounded-projection.mjs";
 import {p0bFirstPartyFeedNews} from "./p0b-first-party-rss.mjs";
+import {officialItemNativePublicationMs} from "./official-native-item-publication-date.mjs";
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const SKIP=new Set(["what","why","when","which","does","did","will","latest",
  "update","news","happened","matter","matters","important","market","markets",
@@ -14,8 +15,10 @@ const SKIP=new Set(["what","why","when","which","does","did","will","latest",
  "are","was","were","have","impact","today","country","please","explain"]);
 const limitText=(s,n)=>typeof s==="string"&&s.length<=n&&!/[<>]|\b(?:system prompt|ignore previous instructions)\b/iu.test(s);
 const dateNative=(value,now)=>{
- if(typeof value!=="string"||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/u.test(value))return null;
- const ms=Date.parse(value);
+ // First-publication metadata may carry an explicit timezone offset. Use
+ // the existing strict issuer-native clock parser instead of Date.parse.
+ // Updated clocks, date-only data and timezone-free strings never qualify.
+ const ms=officialItemNativePublicationMs(value);
  return Number.isFinite(ms)&&ms<=now+60_000&&now-ms<=72*3600_000?
   new Date(ms).toISOString():null;
 };
