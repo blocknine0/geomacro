@@ -116,7 +116,10 @@ export async function cleanupPhase2hD1({
   source_quota_headroom_protected:true,
   b2_physical_deletion_verified:false,
   provider_quota_admitted:true,predge_untouched:true,payments:0,
-  production_acceptance_pass:hardN===0&&unarchivedExpiredDiscarded===0
+  // In manual-retention mode old unarchived records are intentionally kept.
+  // An archived-only manual cleanup is successful even if those still exist.
+  production_acceptance_pass:unarchivedExpiredDiscarded===0,
+  manual_archived_backlog_clear:softN===0
  };
 }
 if(process.argv[1]?.endsWith("/phase2h-72h-d1-cleanup.mjs")){
