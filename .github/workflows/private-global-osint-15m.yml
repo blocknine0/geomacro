@@ -370,6 +370,8 @@ jobs:
     needs: [verify, quota-admission]
     if: >-
       needs.quota-admission.outputs.critical == 'true' &&
+      needs.quota-admission.outputs.research == 'true' &&
+      needs.quota-admission.outputs.source_intake == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&
@@ -406,7 +408,7 @@ jobs:
     needs: [verify, quota-admission]
     if: >-
       needs.quota-admission.result == 'success' &&
-      needs.quota-admission.outputs.critical != 'true' &&
+      needs.quota-admission.outputs.research != 'true' &&
       needs.quota-admission.outputs.source_intake == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
@@ -432,6 +434,7 @@ jobs:
           GEOMACRO_SOURCE_INTAKE_ONLY: "1"
           PHASE2I_PROVIDER_SOURCE_INTAKE: ${{ needs.quota-admission.outputs.source_intake }}
           PHASE2I_PROVIDER_CRITICAL: ${{ needs.quota-admission.outputs.critical }}
+          PHASE2I_PROVIDER_RESEARCH: ${{ needs.quota-admission.outputs.research }}
           PHASE2I_PROVIDER_MAX_NEW_ROWS: ${{ needs.quota-admission.outputs.source_intake_max_new_rows }}
         run: |
           set -euo pipefail
@@ -444,7 +447,6 @@ jobs:
       cancel-in-progress: false
     needs: [verify, quota-admission]
     if: >-
-      needs.quota-admission.outputs.critical != 'true' &&
       needs.quota-admission.outputs.source_intake != 'true' &&
       needs.quota-admission.result == 'success' &&
       github.repository == 'blocknine0/geomacro' &&
@@ -503,6 +505,8 @@ jobs:
     if: >-
       needs.collect-private.result == 'success' &&
       needs.quota-admission.outputs.critical == 'true' &&
+      needs.quota-admission.outputs.research == 'true' &&
+      needs.quota-admission.outputs.source_intake == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request'
