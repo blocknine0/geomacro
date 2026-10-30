@@ -141,10 +141,10 @@ customer revenue are three separate observations. Record each independently.
 
 The owner approved Base, Polygon PoS and Arc mainnet with a single NEW receiving
 address. The owner supplied `0xF98c18231ceFBD6d11154DEc14b3Aec6D74dC4B0`
-for all three networks; its EIP-55 checksum is valid. The approved public address
-is recorded in `config/mainnet-usdc-recipient.json` and all three receiver settings
-in `config/mainnet-three-chain-launch.env.example`. Production rejects conflicting
-aliases or an address different from this owner-approved recipient. Applying
+for all three networks; its EIP-55 checksum is valid. This was the owner-approved
+address as of 21 October; it has since been replaced on 30 October 2026.
+The current approved target is defined by `config/mainnet-usdc-recipient.json`,
+not by this historical section. Production rejects conflicting receiver aliases. Applying
 the values to the authenticated production runtime is still required; a source
 configuration change is not wallet-control proof or a settled payment.
 
@@ -164,6 +164,35 @@ helper is not a complete Arc/Polygon settlement/status-to-delivery integration.
 The three-chain merchant settlement acceptance remains OPEN. The owner approval
 permits implementation and launch but does not fabricate missing credentials,
 wallet control, signed products, or paid customer readback.
+
+## Verified wallet rotation (30 October 2026) — receiving address only
+
+The founder supplied the new public receiving address
+`0x95ba71d21C41bDa8bBA9533f96D25f793E4137b5` for GeoMacro USDC.
+EIP-55 checksum PASS. The Etherscan screenshot labels signature record **#340876**
+verified; independent EIP-191 `personal_sign` public-key recovery of the
+full purpose-limited message and supplied signature reproduced exactly the same
+address. The proof is reproducible in
+`src/lib/merchant-receiver-ownership-proof.test.ts`. On its own, the proof
+only demonstrates control of the address used to sign that message — no USDC
+payment, allowance, settlement, transfer authorization or merchant activation.
+
+The repository's pinned approved recipient and three server configuration examples
+have been migrated to the verified address. **Existing runtime environment variables
+are not changed by GitHub commits**: set
+`GEOMACRO_USDC_RECEIVER`, `COINBASE_X402_PAY_TO`, and
+`CIRCLE_X402_SELLER_ADDRESS` to this *same* recipient in the
+authenticated runtime configuration only after the existing receipt/ledger
+audit. The old address must not be silently charged or reused for new sales.
+Keep previous payment receipts/quotes immutable and replayable against their
+original stored address; do not rewrite settled transactions or auto-retry an
+ambiguous transfer. Separate merchant activation, rights, signed-output, B2/D1
+and live-chain proof gates remain independent.
+
+Current task authorizes Base and Polygon future sales only; the repository's
+existing Arc identity/metadata remains configured but does not make Arc
+commercially enabled. This code/configuration change does not enable a
+mainnet facilitator or take funds.
 
 ## The three acceptance requirements
 
