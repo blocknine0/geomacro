@@ -61,10 +61,14 @@ const safeInt=x=>Number.isSafeInteger(x)&&x>=0;
 // a 2/2/1 fair share without opening a parallel expensive research pipeline.
 // This is a DAILY worst-case reserve, not an atomic Cloudflare reservation:
 // no source intake is allowed when actual provider headroom is insufficient.
-// The five-minute fastlane already uses the authenticated intake clock and
+// Reserve two possible independent news producers per 15-minute slot:
+// the five-minute fastlane and this private/global source-only writer.
+// This avoids treating a GitHub concurrency mutex as a total daily
+// call-count guarantee. The five-minute fastlane uses the intake clock and
 // must honor the interval returned here, not run an extra D1 write every 5m.
 export const MINIMUM_DAILY_BUNDLED_SOURCE=Object.freeze({
- interval_minutes:15,max_new_rows:5,rows_read_per_slot:3200,
+ interval_minutes:15,max_new_rows:5,producers_per_slot:2,
+ rows_read_per_slot:3200,
  rows_written_per_new_row:16,rows_written_overhead_per_slot:40,
  rows_read_fixed:100000,rows_written_fixed:2000,
  expected_categories:3,maximum_original_records_per_slot:5,
@@ -79,9 +83,11 @@ export function planSourceIntake(snapshot,now){
  const remainingMs=DAY_MS-
   (now.getTime()-Date.parse(now.toISOString().slice(0,10)+"T00:00:00.000Z"));
  const slots=Math.ceil(remainingMs/(c.interval_minutes*60000));
- const rows_read=c.rows_read_per_slot*slots+c.rows_read_fixed;
+ const rows_read=c.rows_read_per_slot*slots*c.producers_per_slot+
+   c.rows_read_fixed;
  const rows_written=(c.rows_written_per_new_row*c.max_new_rows+
-   c.rows_written_overhead_per_slot)*slots+c.rows_written_fixed;
+   c.rows_written_overhead_per_slot)*slots*c.producers_per_slot+
+   c.rows_written_fixed;
  // No borrowing from PREDGE's 500k read / 8k write reserve, critical
  // emergency operations, or a future source tick. Strict '>' absorbs
  // non-atomic provider counter lag; unknown quota is a hard HOLD upstream.
@@ -90,6 +96,7 @@ export function planSourceIntake(snapshot,now){
   return null;
  return Object.freeze({
   interval_minutes:c.interval_minutes,max_new_rows:c.max_new_rows,
+  producers_per_slot:c.producers_per_slot,
   rows_read,rows_written,remaining_source_slots:slots,
   remaining_five_minute_slots:Math.ceil(remainingMs/300000),
   plan:"MINIMUM_FREE_15M_THREE_CATEGORY_BUNDLED_SOURCE",
