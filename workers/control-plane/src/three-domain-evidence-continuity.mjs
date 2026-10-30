@@ -8,7 +8,7 @@
  * third-party data. An old valid context may be exposed ONLY as explicitly
  * historical last-known evidence. Does not create a new store or poll upstream.
  */
-import {readDerivedStories} from "./website-derived-intelligence.mjs";
+import {readDerivedStoriesBundle} from "./website-derived-intelligence.mjs";
 import {projectPublic30mPulse} from "./source-pulse-public.mjs";
 import {validOpenDataContext} from "../../../src/lib/category-open-data-contract.ts";
 
@@ -62,31 +62,25 @@ function openDataFromCheckpoint(row,d,now){
   return {value,checked,current:now-checked<=CURRENT_SOURCE_MAX_AGE};
 }
 async function readJournal(env,now){
-  const signals=[];let complete=false;
+  const signals=[];
   try{
-    for(const offset of [0,250,500]){
-      const response=await readDerivedStories(env,now,offset);
-      if(response.status!==200)throw Error("JOURNAL_UNAVAILABLE");
-      const page=await response.json();
-      if(page.ok!==true||page.page_offset!==offset||page.page_size!==250||
-        typeof page.has_more!=="boolean"||!Array.isArray(page.signals)||
-        page.signals.length>250)throw Error("JOURNAL_CONTRACT_INVALID");
-      // Only already-derived, non-credited, native-dated free news;
-      // the journal reader independently checks the future-clock rejection and 72h.
-      for(const row of page.signals){
-        if(row.sources_credited?.length!==0)continue;
-        if(!FIXED_FIELDS.every(k=>Object.hasOwn(row,k)))continue;
-        signals.push(Object.fromEntries(FIXED_FIELDS.map(k=>[k,row[k]])));
-      }
-      if(!page.has_more){
-        if(page.next_offset!==null)throw Error("JOURNAL_NEXT_INVALID");
-        complete=true;break;
-      }
-      if(page.next_offset!==offset+250||offset===500)
-        throw Error("JOURNAL_CURSOR_INVALID");
+    // One canonical bounded scan replaces three overlapping OFFSET scans.
+    // Keep this independent of public materialization/cache and all signatures.
+    const response=await readDerivedStoriesBundle(env,now,false);
+    if(response.status!==200)throw Error("JOURNAL_UNAVAILABLE");
+    const bundle=await response.json();
+    if(bundle.ok!==true||bundle.complete!==true||bundle.item_cap!==600||
+      bundle.schema!=="geomacro.website-derived-news-bundle.v1"||
+      !Array.isArray(bundle.signals)||bundle.signals.length>600)
+      throw Error("JOURNAL_CONTRACT_INVALID");
+    // Retain source-neutral fields only; the canonical reader checks native
+    // clocks and the 72h window before any category projection.
+    for(const row of bundle.signals){
+      if(row.sources_credited?.length!==0)continue;
+      if(!FIXED_FIELDS.every(k=>Object.hasOwn(row,k)))continue;
+      signals.push(Object.fromEntries(FIXED_FIELDS.map(k=>[k,row[k]])));
     }
   }catch{return {complete:false,signals:[]}}
-  if(!complete)return {complete:false,signals:[]};
   const seen=new Set();
   return {complete:true,signals:signals.filter(s=>{
     if(seen.has(s.id))return false;seen.add(s.id);return true;
