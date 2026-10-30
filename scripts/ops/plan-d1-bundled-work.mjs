@@ -173,13 +173,21 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // reserve; a source-only grant is not permission for arbitrary cleanup.
   // GraphQL account usage is non-atomic, never a physical erase guarantee.
   const remainingHourSlots=Math.ceil((DAY_MS-(now.getTime()%DAY_MS))/3_600_000);
-  const retentionCleanup=sourceIntake&&
+  // One quota-admitted Phase2H cleanup run can use 25..1000 row deletes;
+  // reserve the *entire* remaining hourly cadence at the granted maximum.
+  // Do not admit a 1000-row writer behind the old 25-row/hour budget.
+  const hourlyDeleteWriteRoom=sourceIntake?
+    snapshot.remaining_rows_written-
+      D1_BUNDLE_LANES.critical.write_reserve-intakeBudget.rows_written-150:0;
+  const safeRowsPerHour=hourlyDeleteWriteRoom>0?
+    Math.floor((hourlyDeleteWriteRoom-1)/remainingHourSlots):0;
+  const retentionReadHeadroom=sourceIntake&&
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
-      remainingHourSlots*2500+10000&&
-    snapshot.remaining_rows_written>
-      D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
-      remainingHourSlots*25+150;
+      remainingHourSlots*2500+10000;
+  const retentionCleanupMaxRows=retentionReadHeadroom&&safeRowsPerHour>=25?
+    Math.min(1000,safeRowsPerHour):0;
+  const retentionCleanup=retentionCleanupMaxRows>0;
   // Dedicated Phase 2H original-news B2 corridor. General discretionary
   // maintenance can be pacing-held even when the full remaining-day
   // source-intake budget and protected PREDGE headroom have been reserved.
@@ -195,7 +203,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
       remainingArchiveSlots*20_000+remainingHourSlots*2500+10_000&&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
-      remainingArchiveSlots*350+remainingHourSlots*25+150;
+      remainingArchiveSlots*350+remainingHourSlots*retentionCleanupMaxRows+150;
   // Dedicated, once-per-run optional EIA/NOAA measurement import. These two
   // source-native statistics are NOT current news or commercial signals.
   // Preserve the ENTIRE day-to-reset source-intake allocation, plus critical
@@ -243,7 +251,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     phase2h_raw_archive_requires_atomic_b2_quota:true,
     phase2h_raw_archive_max_rows_per_slot:300,
     retention_cleanup:retentionCleanup,
-    retention_cleanup_max_rows:retentionCleanup?25:0,
+    retention_cleanup_max_rows:retentionCleanupMaxRows,
     retention_cleanup_only_phase2h_original_news:true,
     retention_cleanup_source_budget_to_utc_reset_reserved:true,
     retention_cleanup_does_not_admit_research_or_signing:true,
@@ -388,6 +396,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
     for(const key of ["source_intake_interval_minutes","source_intake_max_new_rows"])
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key]??0)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"state="+result.state+"\n");
+    appendFileSync(process.env.GITHUB_OUTPUT,"retention_cleanup_max_rows="+String(result.retention_cleanup_max_rows??0)+"\n");
   }
   if(result.source_intake&&result.critical!==true)
     console.log("::notice::SOURCE_INTAKE_ONLY — bounded original news and static archive may continue; signing/review/audits stay held.");
