@@ -72,6 +72,27 @@ export type QueryBoundNewsDesk = Readonly<{
       confirmed_followup_scheduled: false;
       next_verified_event_at: null;
     }>;
+    five_part: Readonly<{
+      what_happened: Readonly<{text:string;observation_id:string}>;
+      why_it_matters: Readonly<{text:string;independent_causality_verified:false}>;
+      market_relevance: Readonly<{
+        status:"POTENTIAL_CHANNELS_ONLY";
+        potential_watch_channels:readonly string[];
+        observed_market_reaction_verified:false;
+        price_direction:null;
+      }>;
+      what_to_watch: Readonly<{
+        focus_topic:string;verified_next_development_at:null;
+        followup_trigger:"NEW_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION";
+      }>;
+      evidence_and_confidence: Readonly<{
+        observation_id:string;category:NewsDeskCategory;
+        original_published_at:string|null;original_publication_day:string;
+        date_precision:"exact"|"day";original_page_date_verified:true;
+        independent_event_verified:false;market_impact_verified:false;
+        commercial_rights_verified:false;confidence_tier:"SOURCE_DATE_VERIFIED_IMPACT_UNVERIFIED";
+      }>;
+    }>;
     evidence_confidence: Readonly<{
       tier: "ORIGINAL_DATE_VERIFIED_CLAIMS_UNCORROBORATED";
       original_page_date_verified: true;
@@ -179,6 +200,42 @@ export function buildQueryBoundNewsDesk(input: Readonly<{
       followup_trigger: "NEW_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION" as const,
       confirmed_followup_scheduled: false as const,
       next_verified_event_at: null,
+    },
+    // Every selected native-dated observation automatically receives the
+    // exact five requested keys. No fresh source request, new store, paid
+    // approval, fabricated causal/market event or native clock rewrite.
+    five_part: {
+      what_happened: {text:signal.what_changed.trim(),observation_id:signal.id},
+      why_it_matters: {
+        text:signal.why_it_matters.trim(),
+        independent_causality_verified:false as const,
+      },
+      market_relevance: {
+        status:"POTENTIAL_CHANNELS_ONLY" as const,
+        potential_watch_channels:watchChannels(signal.topic),
+        observed_market_reaction_verified:false as const,
+        price_direction:null,
+      },
+      what_to_watch: {
+        focus_topic:signal.topic,
+        verified_next_development_at:null,
+        followup_trigger:"NEW_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION" as const,
+      },
+      evidence_and_confidence: {
+        observation_id:signal.id,category:signal.category,
+        original_published_at:signal.date_precision==="day" ||
+          /^20\\d{2}-\\d{2}-\\d{2}$/u.test(signal.published_at)
+          ? null:signal.published_at,
+        original_publication_day:signal.published_at.slice(0,10),
+        date_precision:signal.date_precision==="day"||
+          /^20\\d{2}-\\d{2}-\\d{2}$/u.test(signal.published_at)
+          ?"day" as const:"exact" as const,
+        original_page_date_verified:true as const,
+        independent_event_verified:false as const,
+        market_impact_verified:false as const,
+        commercial_rights_verified:false as const,
+        confidence_tier:"SOURCE_DATE_VERIFIED_IMPACT_UNVERIFIED" as const,
+      },
     },
     evidence_confidence: {
       tier: "ORIGINAL_DATE_VERIFIED_CLAIMS_UNCORROBORATED" as const,
