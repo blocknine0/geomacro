@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {PHASE2H_COUNTRIES_195,phase2hHeadlineCountryCandidate}
  from "../lib/phase2h-country-originals-195.mjs";
-import {planPhase2iOsintCountryFairRaw,stagePhase2iOsintFairRaw}
+import {planPhase2iOsintCountryFairRaw,stagePhase2iOsintFairRaw,phase2iSourceOnlyCategoryRelevant}
  from "../lib/phase2i-osint-country-fair-raw-staging.mjs";
 const now=new Date("2026-10-30T12:00:00.000Z");
 const cats=["geopolitics","macro","rare_earth"];
@@ -93,4 +93,34 @@ test("all conflicts cannot fabricate a positive D1 receipt; unrelated failure st
  await assert.rejects(stagePhase2iOsintFairRaw({candidates:[c],derive,now,
   post:async()=>{throw Error("PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE")}}),
   /PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE/u);
+});
+
+test("shared general news feeds do not mislabel one article as all three categories",()=>{
+ const pinned=new Map([
+  ["https://general.example.org/feed",["geopolitics","macro","rare_earth"]],
+  ["https://bank.example.org/feed",["macro"]]
+ ]);
+ const topics={geopolitics:/sanctions/iu,macro:/inflation/iu,
+  rare_earth:/lithium/iu};
+ const sample={source_url:"https://general.example.org/feed",
+  category:"macro",title:"Central bank reports inflation"};
+ assert.equal(phase2iSourceOnlyCategoryRelevant(sample,pinned,topics),true);
+ assert.equal(phase2iSourceOnlyCategoryRelevant({...sample,category:"rare_earth"},pinned,topics),false);
+ assert.equal(phase2iSourceOnlyCategoryRelevant({...sample,source_url:"https://unknown.example.org/feed"},pinned,topics),false);
+ assert.equal(phase2iSourceOnlyCategoryRelevant({
+  ...sample,source_url:"https://bank.example.org/feed",title:"New economic release"
+ },pinned,topics),true,"pinned single-domain publisher is not forced through broad keyword matching");
+});
+test("repeated admitted slots rotate original articles inside each country/category rather than reselect first D1 row",()=>{
+ const india=PHASE2H_COUNTRIES_195.find(c=>c.iso3==="IND");
+ const candidates=cats.flatMap(category=>Array.from({length:8},(_,i)=>
+  mk(india,category,100+i)));
+ const visited=new Set();
+ for(let offset=0;offset<8;offset++){
+  const plan=planPhase2iOsintCountryFairRaw(candidates,{
+   now:new Date(now.getTime()+offset*900000),derive,maxRows:5});
+  assert.equal(plan.selected_count,5);
+  for(const row of plan.records)visited.add(row.record_id);
+ }
+ assert.equal(visited.size,24,"all distinct original articles eventually receive a slot in finite deterministic rotation");
 });
