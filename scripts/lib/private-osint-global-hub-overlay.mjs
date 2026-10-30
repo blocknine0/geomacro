@@ -50,7 +50,7 @@ export function privateOsintGlobalHubSources(){
    throw Error("PRIVATE_MULTILATERAL_HUB_OVERLAY_INVALID");
   ids.add(row.id);urls.add(row.url);
   return Object.freeze({...row,categories:Object.freeze([...row.categories]),
-   supported:true,activation_state:"RUNTIME_PROBE_REQUIRED",
+   supported:true,private_hub_overlay:true,activation_state:"RUNTIME_PROBE_REQUIRED",
    publisher_native_dates_required:true,transport_verified_at_registration:false,
    provider_rights_verified:false,commercial_eligible:false,
    publicly_deliverable:false,private_only:true});
