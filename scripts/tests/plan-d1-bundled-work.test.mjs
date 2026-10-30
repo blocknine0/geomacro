@@ -32,7 +32,8 @@ test("paced bundles preserve critical work while research/maintenance yield firs
 });
 test("Phase2H has isolated free-tier archive admission without opening general maintenance",()=>{
  const at=new Date("2026-10-30T14:10:33.000Z");
- const observed={...quota(2_441_367,50_171),day_utc:"2026-10-30"};
+ // More write headroom is needed when reserving three five-hour slots.
+ const observed={...quota(2_441_367,43_000),day_utc:"2026-10-30"};
  const p=planD1BundledWork(observed,{now:at});
  assert.equal(p.state,"HELD");
  assert.equal(p.maintenance,false);
