@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T14:11:03.349Z",
+  "checked_at": "2026-10-30T14:44:07.043Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 408,
+  "item_count": 407,
   "counts": {
-    "geopolitics": 185,
-    "macro": 180,
-    "rare_earth": 43
+    "geopolitics": 184,
+    "macro": 179,
+    "rare_earth": 44
   },
-  "source_native_ids_sha256": "479b3fb5cfb0e993d33966dfebd08c80cf9af1446e4fa9475bf311bf9bc40494",
+  "source_native_ids_sha256": "d34bca66e7963d372ad2ea787c6767ede77e4c51ed4ee50337a35bd642a81e3b",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -58,6 +58,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T11:27:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-e27ed0c5",
+      "category": "rare_earth",
+      "title": "Geomacro finds LS Cable signed MOU to build Korea’s largest $262 mn rare earth magnet plant in Gumi - KED Global",
+      "what_changed": "A monitored source feed reports: LS Cable signed MOU to build Korea’s largest $262 mn rare earth magnet plant in Gumi - KED Global. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T11:21:02.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -7736,44 +7755,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.kyivpost.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-b06a27b4",
-      "category": "macro",
-      "title": "Geomacro finds Iran said It Will Take Action Against Sinokor Ships in Hormuz",
-      "what_changed": "A monitored source feed reports: Iran said It Will Take Action Against Sinokor Ships in Hormuz. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T14:12:36.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: gcaptain.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-510dec68",
-      "category": "geopolitics",
-      "title": "Geomacro finds EU Commission unveiled Reforms to Beef Up Border Agency",
-      "what_changed": "A monitored source feed reports: EU Commission unveiled Reforms to Beef Up Border Agency. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T14:11:41.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: balkaninsight.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
