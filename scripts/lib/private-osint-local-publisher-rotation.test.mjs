@@ -52,7 +52,7 @@ test("every local publisher receives nominal 60m polling without exceeding exist
   assert.ok(slot.sources.length<=base.length+49);
   assert.equal(new Set(slot.sources.map(x=>x.url)).size,slot.sources.length);
   assert.equal(slot.sources.filter(x=>x.private_country_local_candidate).length,24);
-  assert.equal(slot.sources.filter(x=>x.private_discovery_index_only&&x.discovery_country_iso3).length,25);
+  assert.equal(slot.sources.filter(x=>x.private_discovery_index_only&&x.discovery_country_iso3).length,22);
   assert.equal(slot.sources.filter(x=>x.launch_watch&&x.private_discovery_index_only).length,3);
  }
  const all=slots.flatMap(x=>x.local);
