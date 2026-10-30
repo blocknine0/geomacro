@@ -28,7 +28,7 @@ const exact=x=>x&&typeof x==="object"&&!Array.isArray(x);
 const allowed=(x,keys)=>exact(x)&&Object.keys(x).length===keys.length&&
  keys.every(k=>Object.hasOwn(x,k));
 const fail=x=>{throw Error("PHASE2H_PRIVATE_RAW_"+x)};
-export async function validPrivateRawNews(row,now=Date.now()){
+export async function validPrivateRawNews(row,now=Date.now(),requireRecent=true){
  const root=["schema","record_id","category","original","analysis",
    "commercial_rights_verified","commercial_delivery_authorized",
    "raw_sha256","ingested_at"];
@@ -36,7 +36,8 @@ export async function validPrivateRawNews(row,now=Date.now()){
     !HEX.test(row.record_id)||!HEX.test(row.raw_sha256)||
     !CATEGORIES.has(row.category)||row.commercial_rights_verified!==false||
     row.commercial_delivery_authorized!==false||
-    !validDate(row.ingested_at)||Math.abs(Date.parse(row.ingested_at)-now)>15*60_000)
+    !validDate(row.ingested_at)||Date.parse(row.ingested_at)>now+60_000||
+    requireRecent&&now-Date.parse(row.ingested_at)>15*60_000)
   fail("ROOT_INVALID");
  const o=row.original,a=row.analysis;
  if(!allowed(o,["original_source_id","original_url","original_published_at","date_precision",
@@ -135,6 +136,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    params.getAll("archived").length>1||params.getAll("limit").length>1||
    params.getAll("question").length>1)return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  const question=params.get("question");
+ if(params.has("archived"))return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  if(question!==null&&(question.length<3||question.length>180||/[<>]/u.test(question)))
   return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  const limit=Number(params.get("limit")??"40");
@@ -150,8 +152,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    if(items[i].record_id!==results.results[i].record_id||
       items[i].raw_sha256!==results.results[i].raw_sha256)
     throw Error();
-   await validPrivateRawNews({...items[i],ingested_at:new Date(now).toISOString()},now)
-    .catch(e=>{if(String(e.message)!=="PHASE2H_PRIVATE_RAW_RAW_SHA256_MISMATCH")throw e});
+   await validPrivateRawNews(items[i],now,false);
   }
   if(question===null)return safeReply({ok:true,schema:"geomacro.phase2h.private-pending-archive.v1",
    rows:items,complete:items.length<limit,paid_eligible:false,raw_public_delivery:false});
@@ -162,6 +163,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    return terms.some(t=>scope.includes(t));
   }).slice(0,3);
   return safeReply({ok:true,schema:"geomacro.phase2h.private-question-fivepart.v1",
+   bounded_most_recent_scan:100,global_search_complete:false,
    question_matches:matched.map(item=>({record_id:item.record_id,
     category:item.category,original_published_at:item.original.original_published_at,
     five_part:item.analysis})),private_research_only:true,chargeable:false,
