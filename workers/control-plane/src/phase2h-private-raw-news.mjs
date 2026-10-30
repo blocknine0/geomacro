@@ -244,14 +244,17 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
   if(countryScoped){
    const hints=phase2hCountrySqlHints(countryIso3);
    if(!hints.length)return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
-   const predicate=hints.map(()=>
-    "lower(json_extract(raw_json,'$.original.original_title')) LIKE ? ESCAPE '!'")
-     .join(" OR ");
+   // Keep the entire SQL static: only bounded, reviewed country hints are
+   // passed as JSON parameters. No dynamic SQL fragments from any question,
+   // country name, source title or JSON field.
    countryQuery=env.DB.prepare(
-    "SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 "+
-    "FROM phase2h_private_raw_news WHERE category=? AND ("+predicate+") "+
-    "ORDER BY original_published_at DESC,record_id LIMIT 100"
-   ).bind(category,...hints.map(x=>"%"+x+"%"));
+    "SELECT r.record_id,r.category,r.raw_sha256,r.raw_json,r.b2_object_sha256 "+
+    "FROM phase2h_private_raw_news AS r WHERE r.category=? "+
+    "AND EXISTS (SELECT 1 FROM json_each(?) AS h WHERE "+
+    "lower(json_extract(r.raw_json,'$.original.original_title')) "+
+    "LIKE '%' || h.value || '%' ESCAPE '!') "+
+    "ORDER BY r.original_published_at DESC,r.record_id LIMIT 100"
+   ).bind(category,JSON.stringify(hints));
   }
   const results=countryQuery?
     await countryQuery.all():
