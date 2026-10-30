@@ -95,6 +95,7 @@ test("protected archived news returns only same-country, same-category, question
  assert.equal(statements.length,1);
  assert.doesNotMatch(statements[0].sql,/b2_object_sha256 IS NOT NULL/u);
  assert.equal(body.d1_staged_unarchived_research_allowed,true);
+ assert.match(statements[0].sql,/INDEXED BY idx_phase2h_retention_first_ingested/u);
  assert.match(statements[0].sql,/category=\?/u);
  assert.match(statements[0].sql,/ESCAPE '!'/u);
  assert.equal(statements[0].binds[0],"macro");
