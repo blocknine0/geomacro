@@ -70,6 +70,9 @@ test("fixed 18-per-slot probe never follows user URLs, no retries or concurrent 
  const options=sources.filter(s=>["rss","rdf","atom","xml"].includes(s.format));
  const proof=await probeRotation(options,fixed,async()=>{requests++;return new Response("denied",{status:403});},18);
  assert.equal(requests,18);assert.equal(proof.length,18);
+ const byId=new Map(options.map(x=>[x.source_id,x]));
+ assert.equal(proof.filter(x=>byId.get(x.source_id)?.publisher_country_iso3).length,12);
+ assert.equal(proof.filter(x=>!byId.get(x.source_id)?.publisher_country_iso3).length,6);
  assert.ok(proof.every(x=>x.status==="SOURCE_UNAVAILABLE"));
  await assert.rejects(probeRotation(options,fixed,fetch,25),/PHASE2I_BOUNDED_REQUEST_CAP/u);
 });
