@@ -66,6 +66,7 @@ test("actual three-domain D1 stories are B2 PUT+GET restored exact, no paid sign
  assert.equal(archive.readCount,1);
  assert.equal(result.b2_exact_readback_verified,true);
  assert.equal(result.independent_second_get_verified,true);
+ assert.equal(result.independent_post_archive_d1_get_verified,true);
  assert.equal(result.second_get_sha256,result.compressed_sha256);
  assert.equal(result.source_d1_readback_verified,true);
  assert.equal(result.same_news_as_intelligence_d1,true);
@@ -203,6 +204,7 @@ test("independent B2 job receipt is green ONLY after actual PUT plus full GET an
   status:"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED",
   b2_put_verified:true,b2_exact_readback_verified:true,
   independent_second_get_verified:true,
+  independent_post_archive_d1_get_verified:true,
   second_get_sha256:"a".repeat(64),
   source_d1_readback_verified:true,
   archived_rows:3,category_counts:{geopolitics:1,macro:1,rare_earth:1},
@@ -212,6 +214,7 @@ test("independent B2 job receipt is green ONLY after actual PUT plus full GET an
  assert.equal(good.status,"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED");
  assert.equal(good.storage_confirmed,true);
  assert.equal(good.independent_second_b2_get_sha_verified,true);
+ assert.equal(good.independent_post_archive_d1_get_verified,true);
  assert.equal(good.derived_rows_archived,3);
  assert.equal(good.source_news_d1_website_delivery_not_modified,true);
  assert.equal(good.signed_hot_gri_verified,false);
@@ -244,4 +247,16 @@ test("second independent B2 GET must be byte-identical, SHA-matched and restored
  await assert.rejects(()=>archiveDerivedJournalToB2({
   fetchImpl:fetchDoc(),b2:missing,now
  }),/DERIVED_NEWS_B2_SECOND_INDEPENDENT_GET_REQUIRED/);
+});
+
+test("canonical D1 changing between initial and post-archive readback is NOT B2 consistency PASS",async()=>{
+ let calls=0;
+ const fetchImpl=async(url,init)=>{
+  calls++;
+  return fetchDoc(calls===1?bundle(rows):bundle(rows.slice(0,2)))(url,init);
+ };
+ await assert.rejects(()=>archiveDerivedJournalToB2({
+  fetchImpl,b2:b2(),now
+ }),/DERIVED_NEWS_B2_D1_SOURCE_CHANGED_DURING_ARCHIVE/u);
+ assert.equal(calls,2);
 });
