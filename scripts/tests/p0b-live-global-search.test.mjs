@@ -71,3 +71,22 @@ test("real upstream failures expose bounded statuses, not publisher URLs or resp
  assert.equal(result.status,"GLOBAL_PROVIDER_UNAVAILABLE");
  assert.doesNotMatch(JSON.stringify(result),/untrusted upstream content|https?:\/\//u);
 });
+
+
+test("Workers-compatible manual redirects preserve fail-closed 3xx source policy",async()=>{
+ const seen=[];
+ const fetchImpl=async (_url,opts)=>{
+  seen.push(opts?.redirect);
+  return {status:302,redirected:false,headers:{get:()=> "text/html"},
+   text:async()=> "redirect body must never become evidence"};
+ };
+ const r=await p0bGlobalNewsFallback({
+  question:"Ukraine sanctions update",countryIso3:"UKR",
+  category:"geopolitics",now,fetchImpl
+ });
+ assert.deepEqual(seen,["manual","manual"]);
+ assert.deepEqual(r.provider_diagnostics,{govuk:"REDIRECT_DENIED",gdelt:"REDIRECT_DENIED"});
+ assert.equal(r.status,"GLOBAL_PROVIDER_UNAVAILABLE");
+ assert.equal(r.first_party_matches.length,0);
+ assert.doesNotMatch(JSON.stringify(r),/redirect body must never become evidence/u);
+});
