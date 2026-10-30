@@ -76,7 +76,7 @@ export function planSourceIntake(snapshot,now){
 const held=(reason,now)=>Object.freeze({
   schema:"geomacro.d1-free-bundled-work-admission.v1",
   day_utc:now.toISOString().slice(0,10),state:"HELD",
-  reason,critical:false,research:false,maintenance:false,source_intake:false,
+  reason,critical:false,research:false,maintenance:false,phase2h_raw_archive:false,source_intake:false,
   retention_cleanup:false,retention_cleanup_max_rows:0,
   governed_measurement:false,
   predge_account_headroom_guard_enabled:true,
@@ -127,7 +127,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
       reason:admitted?"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET":
         "WORKERS_PAID_CONSERVATIVE_SOFT_BUDGET_REACHED",
       critical:admitted,research:false,maintenance:false,
-      retention_cleanup:false,retention_cleanup_max_rows:0,
+      phase2h_raw_archive:false,retention_cleanup:false,retention_cleanup_max_rows:0,
       source_intake:false,governed_measurement:false,source_intake_interval_minutes:null,
       source_intake_max_new_rows:0,snapshot_refresh:false,
       structural_snapshot:false,
@@ -180,6 +180,22 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
       remainingHourSlots*25+150;
+  // Dedicated Phase 2H original-news B2 corridor. General discretionary
+  // maintenance can be pacing-held even when the full remaining-day
+  // source-intake budget and protected PREDGE headroom have been reserved.
+  // Reserve every possible remaining 6h archive slot (<=300 D1 row ACKs,
+  // quota-ledger writes and bounded census), as well as hourly raw TTL
+  // cleanup, before allowing this *archive-only* grant. The B2 atomic
+  // governor and per-prefix 1+1d lifecycle check remain mandatory.
+  // This does NOT grant general maintenance, signing or paid operations.
+  const remainingArchiveSlots=Math.ceil((DAY_MS-(now.getTime()%DAY_MS))/(6*3_600_000));
+  const phase2hRawArchive=sourceIntake&&
+    snapshot.remaining_rows_read>
+      D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
+      remainingArchiveSlots*20_000+remainingHourSlots*2500+10_000&&
+    snapshot.remaining_rows_written>
+      D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
+      remainingArchiveSlots*350+remainingHourSlots*25+150;
   // Dedicated, once-per-run optional EIA/NOAA measurement import. These two
   // source-native statistics are NOT current news or commercial signals.
   // Preserve the ENTIRE day-to-reset source-intake allocation, plus critical
@@ -222,6 +238,10 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     day_utc:snapshot.day_utc,state,
     reason:state==="HELD"?(sourceIntake?"DISCRETIONARY_PACING_HELD_SOURCE_ADMITTED":"D1_FREE_RESERVE_REACHED"):"ACCOUNT_WIDE_HEADROOM_OBSERVED",
     ...grants,source_intake:sourceIntake,
+    phase2h_raw_archive:phase2hRawArchive,
+    phase2h_raw_archive_does_not_admit_general_maintenance:true,
+    phase2h_raw_archive_requires_atomic_b2_quota:true,
+    phase2h_raw_archive_max_rows_per_slot:300,
     retention_cleanup:retentionCleanup,
     retention_cleanup_max_rows:retentionCleanup?25:0,
     retention_cleanup_only_phase2h_original_news:true,
@@ -362,7 +382,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   console.log(JSON.stringify(receipt));
   console.log(JSON.stringify(phase2fQuotaDiagnostic(result)));
   if(process.env.GITHUB_OUTPUT){
-    for(const key of ["critical","research","maintenance","source_intake","retention_cleanup","governed_measurement","snapshot_refresh","structural_snapshot"]){
+    for(const key of ["critical","research","maintenance","phase2h_raw_archive","source_intake","retention_cleanup","governed_measurement","snapshot_refresh","structural_snapshot"]){
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key])+"\n");
     }
     for(const key of ["source_intake_interval_minutes","source_intake_max_new_rows"])

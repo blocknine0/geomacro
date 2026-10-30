@@ -40,10 +40,10 @@ test("malformed D1 census fails closed without invented counts",()=>{
  assert.throws(()=>buildPhase2hCensusReceipt({...rows,staged_total:11}),
   /PHASE2H_CENSUS_CANONICAL_TOTALS_DIVERGED/u);
 });
-test("workflow keeps original gate, preserves quota receipt and census before B2",()=>{
+test("workflow keeps bounded isolated archive gate, preserves quota receipt and census before B2",()=>{
  const workflow=readFileSync(".github/workflows/phase2h-private-raw-archive.yml","utf8");
  assert.match(workflow,/cron: "3 0,6,12,18 \* \* \*"/u);
- assert.match(workflow,/needs\.quota-admission\.outputs\.maintenance == 'true'/u);
+ assert.match(workflow,/needs\.quota-admission\.outputs\.raw_archive == 'true'/u);
  assert.match(workflow,/B2_REQUEST_BUDGET: "12"/u);
  assert.match(workflow,/phase2h-provider-admission\.log/u);
  const census=workflow.indexOf("run: node scripts/ops/phase2h-canonical-census-receipt.mjs");
