@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {phase2hNewsCutoff,phase2hRawWithinRetention,planPhase2hD1RetentionDelete,
- PHASE2H_NEWS_MAX_AGE_MS} from "../lib/phase2h-retention-72h.mjs";
+ PHASE2H_NEWS_MAX_AGE_MS,PHASE2H_NEWS_CLEANUP_LIMIT,
+ PHASE2H_NEWS_CLEANUP_RUN_LIMIT} from "../lib/phase2h-retention-72h.mjs";
 import {assertPhase2hB2Lifecycle,PHASE2H_B2_PREFIX}
  from "../ops/phase2h-verify-b2-72h-lifecycle.mjs";
 import {cleanupPhase2hD1} from "../ops/phase2h-72h-d1-cleanup.mjs";
@@ -20,6 +21,8 @@ test("72h immutable first ingestion cutoff, 60h proactive cleanup and no late re
  assert.throws(()=>phase2hNewsCutoff(now,73*3600_000),/CLOCK_INVALID/u);
 });
 test("D1 cleanup only accepts unique expired Phase2H row IDs in bounded batch",()=>{
+ assert.equal(PHASE2H_NEWS_CLEANUP_LIMIT,100);
+ assert.equal(PHASE2H_NEWS_CLEANUP_RUN_LIMIT,1000);
  const rows=[{record_id:"a".repeat(64),first_ingested_at:clock(61)}];
  const plan=planPhase2hD1RetentionDelete(rows,{now});
  assert.equal(plan.delete_count,1);
@@ -29,7 +32,7 @@ test("D1 cleanup only accepts unique expired Phase2H row IDs in bounded batch",(
  assert.throws(()=>planPhase2hD1RetentionDelete([rows[0],rows[0]],{now}),
   /DUPLICATE/u);
  assert.throws(()=>planPhase2hD1RetentionDelete(
-  Array.from({length:26},()=>rows[0]),{now}),/INPUT_INVALID/u);
+  Array.from({length:101},()=>rows[0]),{now}),/INPUT_INVALID/u);
 });
 test("B2 lifecycle 1 day hide + 1 day delete must cover ONLY private Phase2H archive prefix",()=>{
  assert.ok(PHASE2H_B2_PREFIX.endsWith("/phase2h-raw-news/"));
@@ -48,6 +51,10 @@ test("B2 lifecycle 1 day hide + 1 day delete must cover ONLY private Phase2H arc
     daysFromHidingToDeleting:1}],
   [{fileNamePrefix:"geomacro-evidence/v1/private/",
     daysFromUploadingToHiding:1,daysFromHidingToDeleting:1}],
+  [{fileNamePrefix:PHASE2H_B2_PREFIX,daysFromUploadingToHiding:1,
+    daysFromHidingToDeleting:9},
+   {fileNamePrefix:PHASE2H_B2_PREFIX,daysFromUploadingToHiding:9,
+    daysFromHidingToDeleting:1}],
  ])assert.throws(()=>assertPhase2hB2Lifecycle(rules),
    /PHASE2H_B2_72H_THREE_DAY_EXPIRY_NOT_PROVEN/u);
 });
@@ -68,52 +75,92 @@ test("deletion run fails closed without provider admission and never changes PRE
  assert.match(getter,/phase2hNewsCutoff\(now\)/u);
  assert.match(getter,/phase2hRawWithinRetention/u);
 });
-test("bounded provider D1 60h cleanup deletes exact IDs, independently rereads and retains no source bytes",async()=>{
- const row={record_id:"a".repeat(64),first_ingested_at:clock(61)};
- const calls=[];
+const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+ GITHUB_REF:"refs/heads/main",PHASE2H_PROVIDER_RETENTION_CLEANUP:"true",
+ CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+ D1_DATABASE_ID:"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+ CLOUDFLARE_API_TOKEN:"mock-test-token-"+("t".repeat(30))};
+function mockD1(rows){
+ const items=[...rows],calls=[];
  const fetchImpl=async(_url,init)=>{
   const {sql,params}=JSON.parse(init.body);
-  calls.push(sql);
+  calls.push({sql,params});
   let results=[],meta={changes:0};
-  if(sql.startsWith("SELECT record_id,first_ingested_at"))results=[row];
-  else if(sql.startsWith("DELETE FROM phase2h_private_raw_news")){meta={changes:1};
-   assert.equal(params[0],clock(60));}
-  else if(sql.startsWith("SELECT COUNT(*)"))results=[{n:0}];
-  else if(!sql.startsWith("SELECT record_id FROM"))throw Error("BAD_SQL");
+  if(sql.startsWith("SELECT record_id,first_ingested_at")){
+   const hard=!sql.includes("b2_object_sha256 IS NOT NULL");
+   const cutoff=params[0];
+   results=items.filter(x=>x.first_ingested_at<=cutoff&&
+    (hard||x.b2_object_sha256!==null)).slice(0,params[1]);
+  }else if(sql.startsWith("DELETE FROM phase2h_private_raw_news")){
+   const archivedOnly=sql.includes("b2_object_sha256 IS NOT NULL");
+   const ids=new Set(params.slice(1));
+   const before=items.length;
+   for(let i=items.length-1;i>=0;i--)if(ids.has(items[i].record_id)&&
+       items[i].first_ingested_at<=params[0]&&
+       (!archivedOnly||items[i].b2_object_sha256!==null))items.splice(i,1);
+   meta={changes:before-items.length};
+  }else if(sql.startsWith("SELECT COUNT(*) AS n")){
+   const cutoff=params[0];
+   results=[{n:items.filter(x=>x.first_ingested_at<=cutoff&&
+     (!sql.includes("b2_object_sha256 IS NOT NULL")||
+       x.b2_object_sha256!==null)).length}];
+  }else if(sql.startsWith("SELECT record_id FROM")){
+   const ids=new Set(params);
+   results=items.filter(x=>ids.has(x.record_id)).map(x=>({record_id:x.record_id}));
+  }else throw Error("UNEXPECTED_SQL");
   return Response.json({success:true,result:[{success:true,results,meta}]});
  };
- const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
-  GITHUB_REF:"refs/heads/main",PHASE2H_PROVIDER_CRITICAL:"true",
-  CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
-  D1_DATABASE_ID:"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-  CLOUDFLARE_API_TOKEN:"mock-test-token-"+("t".repeat(30))};
- const receipt=await cleanupPhase2hD1({env,now,fetchImpl});
+ return {fetchImpl,calls,items};
+}
+test("60h proactive D1 cleanup requires B2 archive ack and independently reads back",async()=>{
+ const archived={record_id:"a".repeat(64),first_ingested_at:clock(61),
+  b2_object_sha256:"f".repeat(64)};
+ const unarchived={record_id:"b".repeat(64),first_ingested_at:clock(61),
+  b2_object_sha256:null};
+ const db=mockD1([archived,unarchived]);
+ const receipt=await cleanupPhase2hD1({env,now,fetchImpl:db.fetchImpl});
  assert.equal(receipt.deleted_records,1);
+ assert.equal(receipt.deleted_proactively_archived,1);
+ assert.equal(receipt.unarchived_expired_discarded,0);
+ assert.equal(receipt.remaining_older_than_72h,0);
+ assert.equal(receipt.production_acceptance_pass,true);
+ assert.deepEqual(db.items,[unarchived]);
+ assert.equal(db.calls.filter(x=>x.sql.startsWith("DELETE")).length,1);
  assert.equal(receipt.post_delete_d1_readback_verified,true);
- assert.equal(receipt.proactive_d1_cleanup_complete,true);
- assert.equal(receipt.b2_physical_deletion_verified,false);
- assert.equal(calls.length,4);
- assert.ok(calls.every(x=>x.includes("phase2h_private_raw_news")));
 });
-
-test("separate provider-retention admission permits only protected Phase2H cleanup during critical pacing hold",async()=>{
- const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
-  GITHUB_REF:"refs/heads/main",PHASE2H_PROVIDER_CRITICAL:"false",
-  PHASE2H_PROVIDER_RETENTION_CLEANUP:"true",
-  CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
-  D1_DATABASE_ID:"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-  CLOUDFLARE_API_TOKEN:"mock-test-token-"+("t".repeat(30))};
- const sql=[];
- const fetchImpl=async(_url,opts)=>{
-  const query=JSON.parse(opts.body);
-  sql.push(query.sql);
-  return Response.json({success:true,result:[{success:true,results:[]}]});
- };
- const r=await cleanupPhase2hD1({env,now,fetchImpl});
- assert.equal(r.deleted_records,0);
- assert.equal(sql.length,1);
- assert.ok(sql[0].includes("phase2h_private_raw_news"));
+test("72h hard deadline purges and explicitly flags unarchived evidence loss",async()=>{
+ const db=mockD1([{record_id:"c".repeat(64),first_ingested_at:clock(73),
+  b2_object_sha256:null}]);
+ const receipt=await cleanupPhase2hD1({env,now,fetchImpl:db.fetchImpl});
+ assert.equal(receipt.deleted_hard_expired,1);
+ assert.equal(receipt.unarchived_expired_discarded,1);
+ assert.equal(receipt.remaining_older_than_72h,0);
+ assert.equal(receipt.production_acceptance_pass,false);
+ assert.equal(db.items.length,0);
+});
+test("bounded batch drain processes 240 IDs in 100-ID batches",async()=>{
+ const rows=Array.from({length:240},(_,i)=>({
+  record_id:i.toString(16).padStart(64,"0"),first_ingested_at:clock(61),
+  b2_object_sha256:"f".repeat(64)
+ }));
+ const db=mockD1(rows);
+ const receipt=await cleanupPhase2hD1({env,now,fetchImpl:db.fetchImpl});
+ assert.equal(receipt.deleted_records,240);
+ assert.equal(receipt.deleted_proactively_archived,240);
+ assert.equal(receipt.remaining_eligible_proactive,0);
+ assert.equal(receipt.production_acceptance_pass,true);
+ assert.equal(db.calls.filter(x=>x.sql.startsWith("DELETE")).length,3);
+ assert.ok(db.calls.filter(x=>x.sql.startsWith("SELECT record_id,first_ingested_at"))
+  .every(x=>x.params[1]<=100));
+});
+test("quota admission is mandatory even when cleanup is required",async()=>{
+ const db=mockD1([]);
+ const receipt=await cleanupPhase2hD1({env,now,fetchImpl:db.fetchImpl});
+ assert.equal(receipt.deleted_records,0);
+ assert.equal(receipt.remaining_older_than_72h,0);
+ assert.equal(receipt.production_acceptance_pass,true);
+ assert.equal(db.calls.length,4);
  await assert.rejects(()=>cleanupPhase2hD1({env:{...env,
-  PHASE2H_PROVIDER_RETENTION_CLEANUP:"false"},now,fetchImpl}),
+  PHASE2H_PROVIDER_RETENTION_CLEANUP:"false"},now,fetchImpl:db.fetchImpl}),
   /PROTECTED_PROVIDER_ADMISSION_REQUIRED/u);
 });

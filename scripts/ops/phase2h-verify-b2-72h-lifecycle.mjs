@@ -13,11 +13,11 @@ export function assertPhase2hB2Lifecycle(rules){
  // A broad bucket-wide rule is NOT sufficient: it could expire PREDGE or
  // unrelated private/historical evidence. Require explicit raw-only scope.
  const covered=rules.filter(rule=>rule?.fileNamePrefix===PHASE2H_B2_PREFIX);
- const hide=Math.min(...covered.map(r=>r.daysFromUploadingToHiding)
-  .filter(Number.isSafeInteger));
- const erase=Math.min(...covered.map(r=>r.daysFromHidingToDeleting)
-  .filter(Number.isSafeInteger));
- if(hide!==1||erase!==1)fail("THREE_DAY_EXPIRY_NOT_PROVEN");
+ // The hide/delete pair must be from ONE exact-prefix rule. Taking
+ // independent minima across unrelated rules can falsely report compliance.
+ const valid=covered.some(r=>r.daysFromUploadingToHiding===1&&
+  r.daysFromHidingToDeleting===1);
+ if(!valid)fail("THREE_DAY_EXPIRY_NOT_PROVEN");
  return Object.freeze({schema:"geomacro.phase2h.b2-72h-lifecycle.v1",
   phase2h_raw_prefix_verified:true,max_days_to_hide:1,max_days_after_hide:1,
   deletion_within_three_days_provider_rule:true,
