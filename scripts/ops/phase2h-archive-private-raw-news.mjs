@@ -3,7 +3,7 @@
  * public raw redistribution, never review/signing/payment. Each provider
  * request uses the shared atomic B2 D1 governor.
  */
-import {createHash,createHmac} from "node:crypto";
+import {createHash} from "node:crypto";
 import {gzipSync,gunzipSync} from "node:zlib";
 import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
@@ -54,9 +54,64 @@ export function verifyPhase2hRawB2Restore(bytes,plan){
    fail("RESTORED_ORIGINAL_DIVERGED");
  return true;
 }
+/** B2 maintenance job already has provider-scoped D1 credentials.
+ * Use those instead of expanding the root commerce/control-plane secret to
+ * another production job. SQL is fixed and params bound, never caller SQL.
+ */
+export function createPhase2hCanonicalD1({
+ env=process.env,fetchImpl=fetch
+}={}){
+ const account=String(env.CLOUDFLARE_ACCOUNT_ID??"");
+ const database=String(env.D1_DATABASE_ID??"");
+ const token=String(env.CLOUDFLARE_API_TOKEN??"");
+ if(!/^[0-9a-f]{32}$/u.test(account)||!/^[0-9a-f-]{36}$/iu.test(database)||
+    token.length<20)fail("PROVIDER_D1_CREDENTIALS_REQUIRED");
+ const endpoint="https://api.cloudflare.com/client/v4/accounts/"+account+
+  "/d1/database/"+database+"/query";
+ const sql=async(query,params=[])=>{
+  const response=await fetchImpl(endpoint,{method:"POST",redirect:"error",
+   headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+   body:JSON.stringify({sql:query,params}),signal:AbortSignal.timeout(15000)});
+  const doc=await response.json();
+  if(!response.ok||doc.success!==true||!Array.isArray(doc.result)||
+     doc.result.length!==1||doc.result[0]?.success===false||
+     !Array.isArray(doc.result[0]?.results))fail("CANONICAL_D1_PROVIDER_REQUEST_FAILED");
+  return doc.result[0];
+ };
+ return {
+  async readPending(){
+   const r=await sql("SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL ORDER BY first_ingested_at,record_id LIMIT 100");
+   return r.results.map(x=>{
+    if(typeof x.raw_json!=="string"||x.raw_json.length>12000)fail("D1_ROW_INVALID");
+    return JSON.parse(x.raw_json);
+   });
+  },
+  async markArchived(items,objectSha,now){
+   const ids=items.map(x=>x.record_id);
+   const holders=ids.map(()=>"?").join(",");
+   const check=await sql("SELECT record_id,raw_sha256,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id IN ("+holders+")",ids);
+   const before=new Map(check.results.map(x=>[x.record_id,x]));
+   if(before.size!==ids.length||items.some(x=>
+      before.get(x.record_id)?.raw_sha256!==x.raw_sha256||
+      before.get(x.record_id)?.b2_object_sha256!==null))
+    fail("D1_PRE_ARCHIVE_RECORD_DIVERGED");
+   const updated=await sql("UPDATE phase2h_private_raw_news SET b2_object_sha256=?,b2_archived_at=? WHERE b2_object_sha256 IS NULL AND record_id IN ("+holders+")",
+     [objectSha,now.toISOString(),...ids]);
+   if(updated.meta?.changes!==ids.length)
+    fail("D1_ARCHIVE_METADATA_WRITE_NOT_EXACT");
+   const verified=await sql("SELECT record_id,raw_sha256,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id IN ("+holders+")",ids);
+   if(verified.results.length!==ids.length||verified.results.some(x=>
+    before.get(x.record_id)?.raw_sha256!==x.raw_sha256||
+    x.b2_object_sha256!==objectSha))
+    fail("D1_POST_ARCHIVE_METADATA_READBACK_MISMATCH");
+   return {archived:ids.length,independent_d1_archive_ack_verified:true};
+  },
+ };
+}
 export async function runPhase2hGovernedRawB2({
  env=process.env,now=new Date(),fetchImpl=fetch,
- b2Factory=createB2Client,governorFactory=createB2D1AccountGovernor
+ b2Factory=createB2Client,governorFactory=createB2D1AccountGovernor,
+ d1Factory=createPhase2hCanonicalD1
 }={}){
  if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
   env.GITHUB_REF!=="refs/heads/main"||
@@ -68,20 +123,7 @@ export async function runPhase2hGovernedRawB2({
  if(now.getUTCHours()%6!==0||now.getUTCMinutes()>59)
   return {status:"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT",storage_confirmed:false,
    rows_archived:0,object_sha256:null};
- const root=String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"");
- if(root.length<32)fail("PRIVATE_D1_AUTH_UNAVAILABLE");
- const token=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
- const origin="https://geomacro-control-plane.daspallab202391.workers.dev";
- const call=async(method,path,body)=>{
-  const res=await fetchImpl(origin+path,{method,redirect:"error",cache:"no-store",
-   headers:{Authorization:"Bearer "+token,"Cache-Control":"no-cache",
-    "Content-Type":"application/json"},
-   ...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});
-  if(res.status!==200)fail("CANONICAL_D1_REQUEST_UNAVAILABLE");
-  const data=await res.json();
-  if(data.ok!==true)fail("CANONICAL_D1_RECEIPT_INVALID");
-  return data;
- };
+ const d1=d1Factory({env,fetchImpl});
  const governor=governorFactory({env,fetchImpl});
  const q=await governor.status(),u=q?.used,l=q?.limits;
  if(q?.ok!==true||!u||!l)fail("PROVIDER_GOVERNOR_UNAVAILABLE");
@@ -89,14 +131,13 @@ export async function runPhase2hGovernedRawB2({
     u.NATIVE_AUTH>l.NATIVE_AUTH-2)
    return {status:"B2_ACCOUNT_HEADROOM_HELD",storage_confirmed:false,
     rows_archived:0,object_sha256:null};
- const initial=await call("GET","/v1/internal/phase2h-raw-news?limit=100");
- if(initial.schema!=="geomacro.phase2h.private-pending-archive.v1"||
-   !Array.isArray(initial.rows)||initial.rows.length>100)
+ const initialRows=await d1.readPending();
+ if(!Array.isArray(initialRows)||initialRows.length>100)
    fail("PRIVATE_SOURCE_CONTRACT_INVALID");
- if(!initial.rows.length)
+ if(!initialRows.length)
   return {status:"NO_PENDING_PRIVATE_RAW_ROWS",storage_confirmed:true,
    rows_archived:0,object_sha256:null,all_backlog_cleared:true};
- const plan=buildPhase2hRawB2Plan(initial.rows,now);
+ const plan=buildPhase2hRawB2Plan(initialRows,now);
  const b2=b2Factory({endpointUrl:"https://s3.us-east-005.backblazeb2.com",
   bucket:"geomacro-private-archive",accessKey:env.B2_KEY_ID,
   secretKey:env.B2_APPLICATION_KEY,
@@ -110,16 +151,12 @@ export async function runPhase2hGovernedRawB2({
    fail("FIRST_GET_OR_PUT_UNVERIFIED");
  const independentSecond=await b2.get(plan.key);
  verifyPhase2hRawB2Restore(Buffer.from(independentSecond),plan);
- const d1Again=await call("GET","/v1/internal/phase2h-raw-news?limit=100");
- if(d1Again.rows?.length<plan.rows.length||
-   JSON.stringify(d1Again.rows.slice(0,plan.rows.length))!==
-   JSON.stringify(initial.rows.slice(0,plan.rows.length)))
+ const d1Again=await d1.readPending();
+ if(d1Again?.length<plan.rows.length||
+   JSON.stringify(d1Again.slice(0,plan.rows.length))!==
+   JSON.stringify(initialRows.slice(0,plan.rows.length)))
   fail("INDEPENDENT_POST_B2_D1_READBACK_MISMATCH");
- const ack=await call("PUT","/v1/internal/phase2h-raw-news",{
-  schema:"geomacro.phase2h.b2-archive-ack.v1",
-  object_sha256:plan.compressed_sha256,
-  items:plan.rows.map(x=>({record_id:x.record_id,raw_sha256:x.raw_sha256}))
- });
+ const ack=await d1.markArchived(plan.rows,plan.compressed_sha256,now);
  if(ack.archived!==plan.record_count||
     ack.independent_d1_archive_ack_verified!==true)
   fail("ARCHIVE_ACK_NOT_CANONICAL");
@@ -128,7 +165,7 @@ export async function runPhase2hGovernedRawB2({
   storage_confirmed:true,rows_archived:plan.record_count,
   category_counts:plan.counts,object_sha256:plan.compressed_sha256,
   object_key:plan.key,private_raw_includes_original_full_article:false,
-  backlog_may_remain:initial.rows.length===100,
+  backlog_may_remain:initialRows.length===100,
   b2_first_get_verified:true,b2_second_independent_get_verified:true,
   post_archive_d1_verified:true,original_clocks_unchanged:true,
   rights_verified:false,paid_eligible:false,payments:0};
