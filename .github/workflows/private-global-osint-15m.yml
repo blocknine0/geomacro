@@ -543,9 +543,12 @@ jobs:
           node scripts/ops/private-osint-replay-held.mjs
 
   collect-unverified-private:
+    # The optional unbounded unverified research D1 producer is never
+    # automatic on the minimum Free ingestion plan; operator-only dispatch.
     needs: [verify, quota-admission]
     if: >-
       needs.quota-admission.outputs.research == 'true' &&
+      github.event_name == 'workflow_dispatch' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&
