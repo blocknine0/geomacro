@@ -74,6 +74,12 @@ test("original US BLS employment-cost feed grounds a USA macro release, never a 
  assert.match(item.five_part.why_it_matters.text,/no reported value/u);
  assert.equal(item.five_part.market_relevance.price_change,null);
  assert.equal(item.paid_eligible,false);
+ const generic=await p0bFirstPartyFeedNews({
+  countryIso3:"USA",countryName:"United States",
+  category:"macro",question:"Latest United States macro news",
+  now,fetchImpl});
+ assert.equal(generic.items.length,1);
+ assert.equal(generic.items[0].record_id,item.record_id);
  const wrong=await p0bFirstPartyFeedNews({
   countryIso3:"CAN",countryName:"Canada",
   category:"macro",question:"Canada employment cost index",
