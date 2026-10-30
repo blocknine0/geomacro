@@ -42,7 +42,7 @@ test("retired old feeds replaced by three hub candidates without increasing requ
   assert.ok(sources.length<=512);
   assert.equal(new Set(sources.map(x=>x.url)).size,sources.length);
   assert.equal(sources.filter(x=>x.private_country_local_candidate).length,24);
-  assert.equal(sources.filter(x=>x.private_discovery_index_only&&x.discovery_country_iso3).length,25);
+  assert.equal(sources.filter(x=>x.private_discovery_index_only&&x.discovery_country_iso3).length,Math.min(25,195-n*25));
   for(const hub of hubs)assert.equal(sources.filter(s=>s.url===hub.url).length,1);
   for(const row of sources.filter(s=>s.private_discovery_index_only&&s.discovery_country_iso3))union.add(row.discovery_country_iso3);
  }
