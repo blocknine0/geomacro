@@ -2,11 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords}
  from "../lib/phase2h-raw-original-records.mjs";
-import {validPrivateRawNews,phase2hPrivateRawPut}
+import {validPrivateRawNews,phase2hPrivateRawPut,phase2hPrivateRawGet,
+ phase2hQuestionMatchesArchived,phase2hQuestionDirectAnswer}
  from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
 import {buildPhase2hRawB2Plan,verifyPhase2hRawB2Restore,
  runPhase2hGovernedRawB2}
  from "../ops/phase2h-archive-private-raw-news.mjs";
+import {verifyPhase2hProductionQuestionChain} from "../ops/phase2h-verify-private-question-delivery.mjs";
 const now=new Date("2026-10-30T06:07:00.000Z");
 const candidates=[
  {category:"geopolitics",sourceId:"un_press",title:"UN security council discusses ceasefire proposal",
@@ -159,4 +161,111 @@ test("raw D1 intake HTTP readback cannot be faked with an empty payload",async()
   fetchImpl:async()=>Response.json({
     ok:true,accepted:0,unchanged:0,d1_exact_readback_verified:true}),
  }),/PHASE2H_PRIVATE_D1_READBACK_MISMATCH/u);
+});
+
+test("question matching is event-specific rather than one incidental word",()=>{
+ const rows=data().records;
+ const macro=rows.find(r=>r.category==="macro");
+ const mineral=rows.find(r=>r.category==="rare_earth");
+ assert.equal(phase2hQuestionMatchesArchived(macro,
+  "Why does monetary policy rates matter?"),true);
+ assert.equal(phase2hQuestionMatchesArchived(macro,
+  "Why does lithium policy matter?"),false);
+ assert.equal(phase2hQuestionMatchesArchived(mineral,
+  "Why does lithium policy matter?"),false);
+ assert.equal(phase2hQuestionMatchesArchived(macro,
+  "what happened?"),false);
+ const focused=phase2hQuestionDirectAnswer(
+  "Why does monetary policy matter?",macro.analysis);
+ assert.equal(focused.focus,"why_it_matters");
+ assert.equal(focused.direct_answer,macro.analysis.why_it_matters.text);
+});
+test("only B2-acknowledged records enter the protected exact-question JSON",async()=>{
+ const macro=data().records.find(r=>r.category==="macro");
+ const statement=[];
+ const db={prepare(sql){
+  statement.push(sql);
+  const rows=sql.includes("b2_object_sha256 IS NOT NULL")?
+   [{record_id:macro.record_id,category:macro.category,
+     raw_sha256:macro.raw_sha256,raw_json:JSON.stringify(macro),
+     b2_object_sha256:"a".repeat(64)}]:[];
+  return {
+   all:async()=>({results:rows}),
+   bind(){return {all:async()=>({results:rows})};},
+  };
+ }};
+ const q=new URLSearchParams({record_id:macro.record_id,
+  question:"Why does monetary policy matter?"});
+ const r=await phase2hPrivateRawGet({DB:db},q,now.getTime());
+ assert.equal(r.status,200);
+ const body=await r.json();
+ assert.equal(body.question_matches.length,1);
+ assert.equal(body.question_matches[0].record_id,macro.record_id);
+ assert.equal(body.question_matches[0].focus,"why_it_matters");
+ assert.equal(body.question_matches[0].five_part.why_it_matters.text,
+  macro.analysis.why_it_matters.text);
+ assert.equal(body.question_matches[0].archive_d1_ack_present,true);
+ assert.equal(body.chargeable,false);
+ assert.equal(body.raw_original_not_delivered,true);
+ assert.equal(JSON.stringify(body).includes(macro.original.original_url),false);
+ assert.equal(statement.length,1);
+ assert.match(statement[0],/b2_object_sha256 IS NOT NULL/u);
+ const miss=await phase2hPrivateRawGet({DB:{prepare:()=>({
+   bind:()=>({all:async()=>({results:[]})})
+ })}},q,now.getTime());
+ assert.equal((await miss.json()).question_matches.length,0);
+});
+
+test("production acceptance links verified B2 hash, canonical ID and HTTP five-part JSON",async()=>{
+ const row=buildPhase2hPrivateRawRecords([candidates[1]],{now,
+  derive:items=>items.map(item=>({
+   category:item.category,published_at:item.publishedAt,
+   topic:"monetary policy rates",
+   what_changed:"A monetary policy statement was issued on the reported native publication date.",
+   why_it_matters:"The monetary policy release is relevant to rate expectations; an actual market response remains unverified.",
+  })),
+ }).records[0];
+ const digest="c".repeat(64);
+ let providerReads=0,httpReads=0;
+ const receipt={schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
+  status:"B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED",
+  storage_confirmed:true,rows_archived:1,category_counts:{geopolitics:0,macro:1,rare_earth:0},
+  b2_first_get_verified:true,
+  b2_second_independent_get_verified:true,post_archive_d1_verified:true,
+  object_sha256:digest};
+ const env={GITHUB_REPOSITORY:"blocknine0/geomacro",GITHUB_REF:"refs/heads/main",
+  GITHUB_ACTIONS:"true",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"d".repeat(36),CLOUDFLARE_API_TOKEN:"token".repeat(10),
+  GEOMACRO_COMMERCE_LEDGER_TOKEN:"root".repeat(12)};
+ const fetchImpl=async(url,init)=>{
+  const parsedUrl=new URL(url);
+  if(parsedUrl.origin==="https://api.cloudflare.com"){
+   providerReads++;
+   const sql=JSON.parse(init.body).sql;
+   const results=sql.startsWith("SELECT record_id")?
+    [{record_id:row.record_id,category:row.category,raw_sha256:row.raw_sha256,
+     raw_json:JSON.stringify(row),b2_object_sha256:digest,
+     b2_archived_at:now.toISOString()}]:[{has_pending:0}];
+   return Response.json({success:true,result:[{success:true,results}]});
+  }
+  httpReads++;
+  assert.match(String(url),/\/v1\/internal\/phase2h-raw-news\?/u);
+  assert.ok(String(url).includes(row.record_id));
+  assert.ok(init.headers.Authorization.startsWith("Bearer "));
+  return Response.json({ok:true,schema:"geomacro.phase2h.private-question-fivepart.v1",
+   source:"B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1",
+   chargeable:false,paid_eligible:false,raw_original_not_delivered:true,
+   question_matches:[{record_id:row.record_id,category:row.category,
+    original_published_at:row.original.original_published_at,
+    archive_d1_ack_present:true,focus:"why_it_matters",
+    direct_answer:row.analysis.why_it_matters.text,five_part:row.analysis}]});
+ };
+ const proof=await verifyPhase2hProductionQuestionChain({
+  now:now.getTime(),env,receipt,fetchImpl});
+ assert.equal(proof.entire_admitted_raw_backlog_verified,true);
+ assert.equal(proof.per_record_five_part_exact,true);
+ assert.equal(providerReads,2);assert.equal(httpReads,1);
+ await assert.rejects(verifyPhase2hProductionQuestionChain({
+  now:now.getTime(),env,receipt:{...receipt,b2_second_independent_get_verified:false},
+  fetchImpl}),/PHASE2H_QUESTION_CHAIN_B2_POSITIVE_EXACT_READBACK_RECEIPT_REQUIRED/u);
 });

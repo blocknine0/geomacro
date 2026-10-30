@@ -15,6 +15,7 @@ on:
       - "scripts/lib/phase2g-per-id-d1-reconciliation.mjs"
       - "scripts/lib/phase2h-raw-original-records.mjs"
       - "scripts/ops/phase2h-archive-private-raw-news.mjs"
+      - "scripts/ops/phase2h-verify-private-question-delivery.mjs"
       - "scripts/tests/phase2h-raw-news.test.mjs"
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "workers/control-plane/migrations/0035_phase2h_private_raw_news.sql"
@@ -156,6 +157,7 @@ jobs:
           node --test scripts/tests/derived-news-b2-readwrite-backup.test.mjs
           node --test scripts/tests/phase2g-per-id-d1-reconciliation.test.mjs
           node --test scripts/tests/phase2h-raw-news.test.mjs
+          node --check scripts/ops/phase2h-verify-private-question-delivery.mjs
 
   # Push-only quota counter evidence for this scoped recovery repair.
   # Existing production ingestion still refuses push-triggered publication.
@@ -657,16 +659,30 @@ jobs:
             throw Error('B2_NEWS_D1_QUOTA_LEDGER_UNAVAILABLE');
           appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+id+'\n');
           NODE
-      - name: Archive real website Intelligence records to private B2 with exact full GET
-        shell: bash
-        run: |
-          set -euo pipefail
-          node scripts/ops/archive-live-derived-news-to-b2.mjs
+      # Preserve the raw-news archive quota before the optional derived D1
+      # snapshot. Both still use the unchanged account-wide governor.
       - name: Archive admitted canonical private original-news queue (B2 two GET/D1 exact)
         shell: bash
         run: |
           set -euo pipefail
           node scripts/ops/phase2h-archive-private-raw-news.mjs
+      - name: Archive real website Intelligence records to private B2 with exact full GET
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/archive-live-derived-news-to-b2.mjs
+      - name: Verify SAME B2 original ID through deployed exact-question private JSON
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          receipt=artifacts/derived-news/phase2h-private-raw-b2-verified.json
+          if jq -e '.storage_confirmed == true and .rows_archived > 0' "$receipt" >/dev/null; then
+            node scripts/ops/phase2h-verify-private-question-delivery.mjs
+          else
+            echo "::notice::PHASE2H_NO_NEW_B2_RAW_ARCHIVE_TO_VERIFY"
+          fi
       - name: Keep private 3-day actual B2 storage acceptance receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

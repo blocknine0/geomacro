@@ -155,13 +155,47 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
  }catch{return safeReply({ok:false,error:"PRIVATE_RAW_D1_WRITE_OR_READBACK_UNVERIFIED",
   rights_verified:false,payments:0},503)}
 }
+// Only a B2-acknowledged original can enter question-bound delivery. D1 staging
+// alone is not durable archive proof. This is an authenticated internal path;
+// unlicensed originals and source identity never become a customer response.
+const QUESTION_STOP=new Set(["what","why","when","where","which","who","how",
+ "does","did","do","is","are","the","a","an","to","of","for","with","in",
+ "on","this","that","about","matter","matters","affect","impact","impacts",
+ "happened","happen","news","latest","update","market","markets","trader",
+ "trading","please","tell","explain","next"]);
+export function phase2hQuestionMatchesArchived(item,question){
+ if(typeof question!=="string"||!item?.analysis||!item?.original)return false;
+ const terms=[...new Set((question.normalize("NFKC").toLowerCase()
+   .match(/[\p{L}\p{N}]{3,}/gu)??[]).filter(x=>!QUESTION_STOP.has(x)))].slice(0,12);
+ if(!terms.length)return false;
+ const scope=[item.category,item.original.original_title,
+   item.analysis.what_happened?.text,item.analysis.why_it_matters?.text,
+   item.analysis.what_to_watch?.event_topic].filter(x=>typeof x==="string")
+   .join(" ").normalize("NFKC").toLowerCase();
+ return terms.every(t=>scope.includes(t));
+}
+export function phase2hQuestionDirectAnswer(question,analysis){
+ const q=String(question??"").toLowerCase();
+ const focus=/\b(?:what next|follow.?up|watch next|upcoming)\b|পরবর্তী|আগামী|अगला/u.test(q)
+  ?"what_to_watch":
+  /\b(?:market|trading|trader|fx|commodity|commodities|bonds?)\b|বাজার|मार्केट/u.test(q)
+  ?"market_relevance":
+  /\b(?:why|impact|matter|affect|consequence)\b|কেন|প্রভাব|क्यों/u.test(q)
+  ?"why_it_matters":"what_happened";
+ const selected=analysis?.[focus];
+ return {focus,direct_answer:typeof selected?.text==="string"?selected.text:
+   focus==="what_to_watch"?selected?.trigger??null:null};
+}
 export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=Date.now()){
- if(!env?.DB||[...params.keys()].some(k=>k!=="archived"&&k!=="limit"&&k!=="question")||
+ if(!env?.DB||[...params.keys()].some(k=>!["archived","limit","question","record_id"].includes(k))||
    params.getAll("archived").length>1||params.getAll("limit").length>1||
-   params.getAll("question").length>1)return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
+   params.getAll("question").length>1||params.getAll("record_id").length>1)
+  return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  const question=params.get("question");
- if(params.has("archived"))return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
- if(question!==null&&(question.length<3||question.length>180||/[<>]/u.test(question)))
+ const requestedId=params.get("record_id");
+ if(params.has("archived")||
+   requestedId!==null&&(!HEX.test(requestedId)||question===null)||
+   question!==null&&(question.length<3||question.length>180||/[<>]/u.test(question)))
   return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  const limit=Number(params.get("limit")??"40");
  if(!Number.isSafeInteger(limit)||limit<1||limit>100||question!==null&&params.has("archived"))
@@ -169,7 +203,9 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
  try{
   const results=question===null?
     await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL ORDER BY first_ingested_at,record_id LIMIT ?").bind(limit).all():
-    await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json FROM phase2h_private_raw_news ORDER BY original_published_at DESC,record_id LIMIT 100").all();
+    requestedId!==null?
+      await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id=? AND b2_object_sha256 IS NOT NULL LIMIT 1").bind(requestedId).all():
+      await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL ORDER BY original_published_at DESC,record_id LIMIT 100").all();
   if(!Array.isArray(results.results))throw Error();
   const items=results.results.map(r=>JSON.parse(r.raw_json));
   for(let i=0;i<items.length;i++){
@@ -180,17 +216,16 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
   }
   if(question===null)return safeReply({ok:true,schema:"geomacro.phase2h.private-pending-archive.v1",
    rows:items,complete:items.length<limit,paid_eligible:false,raw_public_delivery:false});
-  const terms=question.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu)?.slice(0,12)??[];
-  const matched=items.filter(item=>{
-   const scope=(item.original.original_title+" "+(item.analysis.what_to_watch.event_topic??"")+" "+
-     (item.analysis.what_happened.text??"")).toLowerCase();
-   return terms.some(t=>scope.includes(t));
-  }).slice(0,3);
+  const matched=items.filter(item=>requestedId!==null?
+    item.record_id===requestedId:phase2hQuestionMatchesArchived(item,question)).slice(0,3);
   return safeReply({ok:true,schema:"geomacro.phase2h.private-question-fivepart.v1",
-   bounded_most_recent_scan:100,global_search_complete:false,
+   source:"B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1",
+   bounded_most_recent_scan:requestedId!==null?1:100,
+   global_search_complete:false,
    question_matches:matched.map(item=>({record_id:item.record_id,
     category:item.category,original_published_at:item.original.original_published_at,
-    five_part:item.analysis})),private_research_only:true,chargeable:false,
+    five_part:item.analysis,...phase2hQuestionDirectAnswer(question,item.analysis),
+    archive_d1_ack_present:true})),private_research_only:true,chargeable:false,
    paid_eligible:false,raw_original_not_delivered:true});
  }catch{return safeReply({ok:false,error:"PRIVATE_RAW_CANONICAL_READ_UNAVAILABLE"},503)}
 }

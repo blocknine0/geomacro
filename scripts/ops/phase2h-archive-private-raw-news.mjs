@@ -9,11 +9,12 @@ import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
+import {mkdirSync,writeFileSync} from "node:fs";
 const hex=x=>createHash("sha256").update(x).digest("hex");
 const fail=x=>{throw Error("PHASE2H_RAW_B2_"+x)};
 const categories=["geopolitics","macro","rare_earth"];
 export function buildPhase2hRawB2Plan(rows,now=new Date()){
- if(!Array.isArray(rows)||rows.length<1||rows.length>100||!Number.isFinite(now.getTime()))
+ if(!Array.isArray(rows)||rows.length<1||rows.length>300||!Number.isFinite(now.getTime()))
   fail("SOURCE_BATCH_INVALID");
  const seen=new Set(),counts=Object.fromEntries(categories.map(x=>[x,0]));
  for(const r of rows){
@@ -31,7 +32,7 @@ export function buildPhase2hRawB2Plan(rows,now=new Date()){
   original_full_article_guaranteed:false,commercial_rights_verified:false,
   paid_eligible:false,source_original_clocks_preserved:true};
  const raw=Buffer.from(JSON.stringify(document),"utf8");
- if(raw.length>1_500_000)fail("RAW_SIZE_LIMIT");
+ if(raw.length>4_000_000)fail("RAW_SIZE_LIMIT");
  const compressed=gzipSync(raw,{level:6,mtime:0});
  const digest=hex(compressed),rawHash=hex(raw);
  const date=now.toISOString().slice(0,10).replaceAll("-","/");
@@ -43,7 +44,7 @@ export function verifyPhase2hRawB2Restore(bytes,plan){
  if(!Buffer.isBuffer(bytes)||!bytes.equals(plan.compressed)||
    hex(bytes)!==plan.compressed_sha256)fail("COMPRESSED_SHA_MISMATCH");
  let doc,raw;
- try{raw=gunzipSync(bytes,{maxOutputLength:1_500_000});doc=JSON.parse(raw.toString("utf8"))}
+ try{raw=gunzipSync(bytes,{maxOutputLength:4_000_000});doc=JSON.parse(raw.toString("utf8"))}
  catch{fail("GZIP_RESTORE_INVALID")}
  if(hex(raw)!==plan.uncompressed_sha256||
    doc.schema!=="geomacro.phase2h.private-raw-b2-object.v1"||
@@ -80,7 +81,7 @@ export function createPhase2hCanonicalD1({
  };
  return {
   async readPending(){
-   const r=await sql("SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL ORDER BY first_ingested_at,record_id LIMIT 100");
+   const r=await sql("SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL ORDER BY first_ingested_at,record_id LIMIT 300");
    return r.results.map(x=>{
     if(typeof x.raw_json!=="string"||x.raw_json.length>12000)fail("D1_ROW_INVALID");
     return JSON.parse(x.raw_json);
@@ -132,7 +133,7 @@ export async function runPhase2hGovernedRawB2({
     rows_archived:0,object_sha256:null};
  const d1=d1Factory({env,fetchImpl});
  const initialRows=await d1.readPending();
- if(!Array.isArray(initialRows)||initialRows.length>100)
+ if(!Array.isArray(initialRows)||initialRows.length>300)
    fail("PRIVATE_SOURCE_CONTRACT_INVALID");
  if(!initialRows.length)
   return {status:"NO_PENDING_PRIVATE_RAW_ROWS",storage_confirmed:true,
@@ -165,7 +166,7 @@ export async function runPhase2hGovernedRawB2({
   storage_confirmed:true,rows_archived:plan.record_count,
   category_counts:plan.counts,object_sha256:plan.compressed_sha256,
   object_key:plan.key,private_raw_includes_original_full_article:false,
-  backlog_may_remain:initialRows.length===100,
+  backlog_may_remain:initialRows.length===300,
   b2_first_get_verified:true,b2_second_independent_get_verified:true,
   post_archive_d1_verified:true,original_clocks_unchanged:true,
   rights_verified:false,paid_eligible:false,payments:0};
@@ -175,6 +176,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   const r=await runPhase2hGovernedRawB2();
   // This receipt is intentionally metadata-only; no source URLs/headlines.
   const {object_key,...safe}=r;
+  // Counts and object SHA only; no raw article, ID, URL or title.
+  mkdirSync("artifacts/derived-news",{recursive:true,mode:0o700});
+  writeFileSync("artifacts/derived-news/phase2h-private-raw-b2-verified.json",
+   JSON.stringify(safe)+"\n",{mode:0o600});
   console.log(JSON.stringify(safe));
   if(!r.storage_confirmed)process.exitCode=3;
  }catch(e){
