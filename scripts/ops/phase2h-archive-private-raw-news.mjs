@@ -9,6 +9,7 @@ import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
+import {mkdirSync,writeFileSync} from "node:fs";
 const hex=x=>createHash("sha256").update(x).digest("hex");
 const fail=x=>{throw Error("PHASE2H_RAW_B2_"+x)};
 const categories=["geopolitics","macro","rare_earth"];
@@ -175,6 +176,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   const r=await runPhase2hGovernedRawB2();
   // This receipt is intentionally metadata-only; no source URLs/headlines.
   const {object_key,...safe}=r;
+  // Counts and object SHA only; no raw article, ID, URL or title.
+  mkdirSync("artifacts/derived-news",{recursive:true,mode:0o700});
+  writeFileSync("artifacts/derived-news/phase2h-private-raw-b2-verified.json",
+   JSON.stringify(safe)+"\n",{mode:0o600});
   console.log(JSON.stringify(safe));
   if(!r.storage_confirmed)process.exitCode=3;
  }catch(e){
