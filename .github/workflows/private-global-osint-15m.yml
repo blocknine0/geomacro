@@ -48,6 +48,8 @@ on:
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/ops/phase2i-source-only-raw-tick.ts"
       - "scripts/tests/phase2i-source-only-governor.test.mjs"
+      - "scripts/lib/phase2i-single-sweep-original-index.mjs"
+      - "scripts/tests/phase2i-single-sweep-original-index.test.mjs"
       - "scripts/lib/phase2i-osint-country-fair-raw-staging.mjs"
       - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
       - "scripts/ops/private-osint-stage-held.ts"
@@ -131,6 +133,8 @@ on:
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/ops/phase2i-source-only-raw-tick.ts"
       - "scripts/tests/phase2i-source-only-governor.test.mjs"
+      - "scripts/lib/phase2i-single-sweep-original-index.mjs"
+      - "scripts/tests/phase2i-single-sweep-original-index.test.mjs"
       - "scripts/lib/phase2i-osint-country-fair-raw-staging.mjs"
       - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
       - "scripts/ops/private-osint-stage-held.ts"
@@ -183,6 +187,8 @@ jobs:
         run: |
           set -euo pipefail
           node --test scripts/tests/phase2i-source-only-governor.test.mjs
+          node --check scripts/lib/phase2i-single-sweep-original-index.mjs
+          node --test scripts/tests/phase2i-single-sweep-original-index.test.mjs
           node --check scripts/lib/phase2i-osint-country-fair-raw-staging.mjs
           node --test scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs
           node --check scripts/lib/private-osint-15m-collector.mjs

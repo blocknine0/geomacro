@@ -39,6 +39,10 @@ test("source-only job strictly uses the existing provider budget and D1 intake w
  assert.match(sourceOnly,/admittedRows=Math.min\(providerRows,5\)/u);
  assert.match(sourceOnly,/\[3,5,10,25,50\]\.includes\(Number\(env\.PHASE2I_PROVIDER_MAX_NEW_ROWS\)\)/u);
  assert.match(sourceOnly,/stagePhase2iOsintFairRaw/u);
+ assert.match(sourceOnly,/createPhase2iSingleSweepOriginalIndex/u);
+ assert.match(sourceOnly,/onOriginalCandidate:singleSweep\.observe/u);
+ assert.match(sourceOnly,/candidates:indexed\.candidates/u);
+ assert.match(sourceOnly,/\.\.\.indexed\.summary/u);
  assert.match(sourceOnly,/collectPrivateOsint15m/u);
  assert.match(sourceOnly,/includeLocalGapLane:true/u);
  assert.match(sourceOnly,/configured_country_category_routes!==585/u);
