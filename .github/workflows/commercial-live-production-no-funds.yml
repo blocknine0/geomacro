@@ -15,12 +15,16 @@ on:
       - 'scripts/lib/commercial-live-preflight.mjs'
       - 'scripts/ops/run-live-commercial-preflight-no-funds.mjs'
       - 'scripts/tests/commercial-live-preflight.test.mjs'
+      - 'scripts/ops/phase2h-first-intelligence-query-no-funds.mjs'
+      - 'scripts/tests/phase2h-first-intelligence-query-no-funds.test.mjs'
   pull_request:
     paths:
       - '.github/workflows/commercial-live-production-no-funds.yml'
       - 'scripts/lib/commercial-live-preflight.mjs'
       - 'scripts/ops/run-live-commercial-preflight-no-funds.mjs'
       - 'scripts/tests/commercial-live-preflight.test.mjs'
+      - 'scripts/ops/phase2h-first-intelligence-query-no-funds.mjs'
+      - 'scripts/tests/phase2h-first-intelligence-query-no-funds.test.mjs'
 permissions:
   contents: read
 concurrency:
@@ -41,6 +45,7 @@ jobs:
         run: |
           node --check scripts/ops/run-live-commercial-preflight-no-funds.mjs
           node --test scripts/tests/commercial-live-preflight.test.mjs
+          node --test scripts/tests/phase2h-first-intelligence-query-no-funds.test.mjs
   live-no-funds:
     needs: offline-contract
     if: >-
@@ -73,6 +78,19 @@ jobs:
           GEOMACRO_COMMERCIAL_LAUNCH_ACK: ''
           COINBASE_X402_MAINNET_ACK: ''
         run: node scripts/ops/run-live-commercial-preflight-no-funds.mjs
+      - name: One live customer-style macro question without payment or source approval
+        if: always() && steps.current.outputs.sha != ''
+        env:
+          EXPECTED_CANONICAL_SHA: ${{ steps.current.outputs.sha }}
+        run: node scripts/ops/phase2h-first-intelligence-query-no-funds.mjs
+      - name: Keep separate actual exact-question HTTP evidence even when unqualified
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: phase2h-first-query-no-funds-${{ github.run_id }}
+          path: artifacts/commercial/phase2h-first-intelligence-query-no-funds.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Retain safe blocked production receipt even on RED
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
