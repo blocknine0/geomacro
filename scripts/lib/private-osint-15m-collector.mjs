@@ -9,7 +9,7 @@
  * article bodies persisted. Never promote OSINT to verified/paid news.
  */
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
-import {privateOsintRuntimeSources,COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,COUNTRY_DISCOVERY_LOCAL_LANE_CYCLE_MINUTES} from "./private-osint-country-rotation.mjs";
+import {privateOsintRuntimeSources,COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,COUNTRY_DISCOVERY_LOCAL_LANE_CYCLE_MINUTES,COUNTRY_DISCOVERY_HUB_LOCAL_CYCLE_MINUTES,COUNTRY_DISCOVERY_HUB_NOMINAL_CYCLE_MINUTES} from "./private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources,PRIVATE_OSINT_TOPICS,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,privateOsintCorridorSourceCoverage,privateOsintCategoryLiveCoverage} from "./private-osint-global-sources.mjs";
 export const PRIVATE_OSINT_TARGET_MINUTES=15;
 export const PRIVATE_OSINT_POLL_MINUTES=5;
@@ -180,8 +180,14 @@ export async function collectPrivateOsint15m({
       registered_source_endpoints:registry.length,source_endpoints_attempted:registry.length,
       rotating_country_index_sources_this_tick:registry.filter(s=>s.private_discovery_index_only===true).length,
       rotating_country_index_nominal_full_cycle_minutes:
+        registry.some(s=>s.private_hub_overlay===true)?
+          (registry.some(s=>s.private_country_local_candidate===true)?
+            COUNTRY_DISCOVERY_HUB_LOCAL_CYCLE_MINUTES:COUNTRY_DISCOVERY_HUB_NOMINAL_CYCLE_MINUTES):
         registry.some(s=>s.private_country_local_candidate===true)?
           COUNTRY_DISCOVERY_LOCAL_LANE_CYCLE_MINUTES:COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,
+      global_multilateral_hub_candidates_this_tick:
+        registry.filter(s=>s.private_hub_overlay===true).length,
+      global_multilateral_hubs_live_verified_by_registration:false,
       local_publisher_candidate_endpoints_this_tick:
         registry.filter(s=>s.private_country_local_candidate===true).length,
       local_publisher_country_candidates_this_tick:new Set(registry
