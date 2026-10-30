@@ -162,6 +162,10 @@ export async function authenticateCommercialApiRequest(
 const TIER_PRIORITY: Record<CommercialTierId, number> = {
   free: 0,
   testnet_tester: 1,
+  prepaid_credits: 2,
+  starter_dev: 3,
+  pro_analyst: 4,
+  business_pilot: 5,
   analyst_pilot: 2,
   api_pilot: 3,
   institutional: 4,

@@ -1,3 +1,4 @@
+import {GEOMACRO_LAUNCH_SUBSCRIPTIONS,GEOMACRO_LAUNCH_CREDIT_PACKS,GEOMACRO_LAUNCH_X402,GEOMACRO_LAUNCH_PRICING_VERSION} from "./launch-pricing";
 import {
  publicCapabilityPricingCatalog,
  GEOMACRO_CAPABILITY_PRICING_VERSION,
@@ -35,6 +36,10 @@ export function geomacroKeylessX402BuyerCatalog(){
     current_payability_unverified:true}
   },
   pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
+  launch_pricing_version:GEOMACRO_LAUNCH_PRICING_VERSION,
+  subscriptions:GEOMACRO_LAUNCH_SUBSCRIPTIONS,
+  one_time_credit_packs:GEOMACRO_LAUNCH_CREDIT_PACKS,
+  base_x402_micropayments:GEOMACRO_LAUNCH_X402,
   capabilities:publicCapabilityPricingCatalog().map(row=>({
    ...row,
    pilot:["signed_risk_object","risk_gate_bundle"].includes(row.capability),

@@ -4,7 +4,7 @@
   "production_funds_authorized": false,
   "official_launch_announced": false,
   "global_launch_ack_env": "GEOMACRO_COMMERCIAL_LAUNCH_ACK",
-  "policy": "Initial commercial pricing is the fixed founder-approved eight-capability Geomacro USDC price schedule. Availability and full verified/signed immutable delivery are prerequisites to any exact-price x402 quote. No mandatory subscription, no automatic tier changes or hidden price increases.",
+  "policy": "New-sale pricing: $9/1000, $29/5000, $99/25000 monthly credits; $5/100, $15/500, $30/1500 one-time prepaid; Base x402 USDC $0.02-$0.05 per eligible call. Existing signed receipts remain immutable; old offers are not available for new marketing. Verified checkout and credit fulfillment remain separate launch conditions.",
   "providers": {
     "coinbase_x402": {
       "status": "prelaunch_acceptance",
@@ -107,9 +107,9 @@
     "distributed_40k_observability_closure"
   ],
   "commercial_milestone": {
-    "pricing_contract_version": "geomacro.capability-usdc.v1",
-    "pricing_model": "EIGHT_CAPABILITIES_EXACT_VARIANTS_NO_FLAT_PRICE",
-    "founder_separately_authorized_first_live_canary_usdc": "0.05",
+    "pricing_contract_version": "geomacro.capability-usdc.v2",
+    "pricing_model": "LOW_BARRIER_SUBSCRIPTION_PREPAID_BASE_X402",
+    "founder_separately_authorized_first_live_canary_usdc": "0.02",
     "pre_funding_required": false,
     "milestone_is_post_launch_adoption_target": true,
     "credit_units_separate_from_usdc": true,

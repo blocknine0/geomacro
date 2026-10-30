@@ -17,14 +17,14 @@ const ACCESS = [
   {
     key: "call",
     title: "Pay per call",
-    subtitle: "Exact USDC price by capability",
+    subtitle: "$0.02–$0.05 USDC per eligible delivery",
     features: ["Structured intelligence for APIs and AI agents", "Pay only when a verified delivery succeeds"],
   },
   {
     key: "monthly",
-    title: "Monthly access",
-    subtitle: "Request a plan",
-    features: ["Recurring intelligence for teams and workflows", "Usage and commercial terms agreed directly"],
+    title: "Monthly plans + prepaid credits",
+    subtitle: "Starter $9 · Pro $29 · Business $99 per month",
+    features: ["1,000 / 5,000 / 25,000 monthly credits", "Or $5 / $15 / $30 non-recurring credit packs"],
   },
 ] as const;
 

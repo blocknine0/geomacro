@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {verifyFirstSalePriceManifest} from "../agentic/first-sale-price-proof.mjs";
 const valid={
- schema:"geomacro.public-capability-price-catalog.v1",
- pricing_version:"geomacro.capability-usdc.v1",
- pricing_status:"FOUNDER_LOCKED_APPROVED_SCHEDULE",
+ schema:"geomacro.public-launch-pricing-catalog.v2",
+ pricing_version:"geomacro.capability-usdc.v2",
+ pricing_status:"FOUNDER_APPROVED_LOW_BARRIER_PRECHECKOUT",
  payment_authorized:false,money_transferred:false,
  x402_payment_requirement_issued:false,source_and_rights_required:true,
  capabilities:[{capability:"structural_country_digest",variants:[{

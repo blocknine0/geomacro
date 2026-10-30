@@ -4815,13 +4815,13 @@
       }
     ],
     "branding_does_not_change_http_method": true,
-    "pricing_version": "geomacro.capability-usdc.v1",
+    "pricing_version": "geomacro.capability-usdc.v2",
     "pricing": [
       {
         "capability": "structural_country_digest",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "structural_country_digest",
             "variant": "standard",
             "amount_usdc": "0.02",
@@ -4837,11 +4837,11 @@
         "capability": "structural_corridor_digest",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "structural_corridor_digest",
             "variant": "standard",
-            "amount_usdc": "0.05",
-            "amount_atomic": "50000",
+            "amount_usdc": "0.03",
+            "amount_atomic": "30000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
@@ -4853,7 +4853,7 @@
         "capability": "structural_country_profile",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "structural_country_profile",
             "variant": "standard",
             "amount_usdc": "0.03",
@@ -4869,11 +4869,11 @@
         "capability": "structural_corridor_profile",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "structural_corridor_profile",
             "variant": "standard",
-            "amount_usdc": "0.08",
-            "amount_atomic": "80000",
+            "amount_usdc": "0.05",
+            "amount_atomic": "50000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
@@ -4885,31 +4885,31 @@
         "capability": "intelligence_query",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "intelligence_query",
             "variant": "focused",
-            "amount_usdc": "0.05",
-            "amount_atomic": "50000",
+            "amount_usdc": "0.02",
+            "amount_atomic": "20000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
           },
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "intelligence_query",
             "variant": "standard",
-            "amount_usdc": "0.10",
-            "amount_atomic": "100000",
+            "amount_usdc": "0.03",
+            "amount_atomic": "30000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
           },
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "intelligence_query",
             "variant": "complex_multi_source",
-            "amount_usdc": "0.15",
-            "amount_atomic": "150000",
+            "amount_usdc": "0.05",
+            "amount_atomic": "50000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
@@ -4921,21 +4921,21 @@
         "capability": "signed_risk_object",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "signed_risk_object",
             "variant": "existing_valid_signed",
-            "amount_usdc": "0.05",
-            "amount_atomic": "50000",
+            "amount_usdc": "0.03",
+            "amount_atomic": "30000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
           },
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "signed_risk_object",
             "variant": "newly_qualified_signed",
-            "amount_usdc": "0.10",
-            "amount_atomic": "100000",
+            "amount_usdc": "0.05",
+            "amount_atomic": "50000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "NOT_APPLICABLE"
@@ -4947,31 +4947,31 @@
         "capability": "risk_gate_bundle",
         "variants": [
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "risk_gate_bundle",
             "variant": "existing_proof_preflight",
-            "amount_usdc": "0.10",
-            "amount_atomic": "100000",
+            "amount_usdc": "0.03",
+            "amount_atomic": "30000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "INCLUDED_NO_DOUBLE_CHARGE"
           },
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "risk_gate_bundle",
             "variant": "standard",
-            "amount_usdc": "0.15",
-            "amount_atomic": "150000",
+            "amount_usdc": "0.05",
+            "amount_atomic": "50000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "INCLUDED_NO_DOUBLE_CHARGE"
           },
           {
-            "version": "geomacro.capability-usdc.v1",
+            "version": "geomacro.capability-usdc.v2",
             "capability": "risk_gate_bundle",
             "variant": "complex_multi_source",
-            "amount_usdc": "0.25",
-            "amount_atomic": "250000",
+            "amount_usdc": "0.05",
+            "amount_atomic": "50000",
             "currency": "USDC",
             "output_contract": "GEOMACRO_DERIVED_STRUCTURED_ONLY",
             "included_signed_object_charge": "INCLUDED_NO_DOUBLE_CHARGE"
@@ -4989,7 +4989,48 @@
     "usdc_quote_preflight": "/api/v1/payments/preflight",
     "evidence_and_rights_required": true,
     "execution_authorized": false,
-    "payment_authorized_by_discovery": false
+    "payment_authorized_by_discovery": false,
+    "launch_pricing_version": "geomacro.low-barrier-pricing.v2",
+    "subscription_plans": [
+      {
+        "id": "starter_dev",
+        "usd_monthly": 9,
+        "credits": 1000
+      },
+      {
+        "id": "pro_analyst",
+        "usd_monthly": 29,
+        "credits": 5000
+      },
+      {
+        "id": "business_pilot",
+        "usd_monthly": 99,
+        "credits": 25000
+      }
+    ],
+    "prepaid_packs": [
+      {
+        "id": "pack_starter",
+        "usd": 5,
+        "credits": 100
+      },
+      {
+        "id": "pack_standard",
+        "usd": 15,
+        "credits": 500
+      },
+      {
+        "id": "pack_growth",
+        "usd": 30,
+        "credits": 1500
+      }
+    ],
+    "base_x402": {
+      "network": "eip155:8453",
+      "min_usdc": "0.02",
+      "max_usdc": "0.05",
+      "settlement_verified": false
+    }
   },
   "components": {
     "schemas": {

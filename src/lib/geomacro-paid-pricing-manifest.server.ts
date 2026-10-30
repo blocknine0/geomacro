@@ -1,3 +1,4 @@
+import {GEOMACRO_LAUNCH_PRICING_VERSION,GEOMACRO_LAUNCH_SUBSCRIPTIONS,GEOMACRO_LAUNCH_CREDIT_PACKS,GEOMACRO_LAUNCH_X402,GEOMACRO_LAUNCH_CHECKOUT} from "./launch-pricing";
 import {
   GEOMACRO_CAPABILITY_PRICING_VERSION,
   publicCapabilityPricingCatalog,
@@ -15,7 +16,7 @@ import {GEOMACRO_OFFICIAL_API_CATALOG,GEOMACRO_OFFICIAL_API_DISPLAY_NAMES}
  * Pricing discovery is NOT a payment requirement / wallet authorization.
  */
 export const GEOMACRO_PAID_PRICING_PATH="/api/v1/pricing" as const;
-export const GEOMACRO_PAID_PRICING_SCHEMA="geomacro.public-capability-price-catalog.v1" as const;
+export const GEOMACRO_PAID_PRICING_SCHEMA="geomacro.public-launch-pricing-catalog.v2" as const;
 
 export function publicGeomacroPaidPricingManifest(){
   const rails=Object.values(GEOMACRO_USDC_NETWORKS);
@@ -48,10 +49,15 @@ export function publicGeomacroPaidPricingManifest(){
   return Object.freeze({
     schema:GEOMACRO_PAID_PRICING_SCHEMA,
     pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,
-    pricing_status:"FOUNDER_LOCKED_APPROVED_SCHEDULE" as const,
+    pricing_status:"FOUNDER_APPROVED_LOW_BARRIER_PRECHECKOUT" as const,
+    launch_pricing_version:GEOMACRO_LAUNCH_PRICING_VERSION,
+    subscriptions:GEOMACRO_LAUNCH_SUBSCRIPTIONS,
+    one_time_credit_packs:GEOMACRO_LAUNCH_CREDIT_PACKS,
+    x402_base_micropricing:GEOMACRO_LAUNCH_X402,
+    checkout_readiness:GEOMACRO_LAUNCH_CHECKOUT,
     currency:"USDC" as const,
     usdc_decimals:6 as const,
-    pricing_model:"EXACT_CAPABILITY_VARIANT_PER_SUCCESSFUL_DELIVERY" as const,
+    pricing_model:"SUBSCRIPTION_PLUS_PREPAID_CREDITS_PLUS_BASE_X402" as const,
     capability_count:capabilities.length,
     price_variant_count:capabilities.reduce((n,cap)=>n+cap.variants.length,0),
     structured_output_contract_version:GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,

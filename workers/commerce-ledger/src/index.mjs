@@ -237,7 +237,7 @@ export class CommerceLedger {
         !PAYMENT_HASH_RE.test(quote.request_fingerprint_sha256) ||
         typeof quote.prepared_answer_sha256!=="string" ||
         !PAYMENT_HASH_RE.test(quote.prepared_answer_sha256) ||
-        quote.version!=="geomacro.capability-usdc.v1" ||
+        quote.version!=="geomacro.capability-usdc.v2" ||
         quote.availability!=="VERIFIED_DELIVERABLE" ||
         quote.execution_authorized!==false ||
         !["coinbase_x402","circle_gateway_x402","xpay_x402","dexter_x402"].includes(quote.payment_rail) ||

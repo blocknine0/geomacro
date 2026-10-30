@@ -69,20 +69,20 @@ jobs:
           const frozen={
             gri_read:["0.005","0.01"],
             structural_country_digest:["0.02"],
-            structural_corridor_digest:["0.05"],
+            structural_corridor_digest:["0.03"],
             structural_country_profile:["0.03"],
-            structural_corridor_profile:["0.08"],
-            intelligence_query:["0.05","0.10","0.15"],
-            signed_risk_object:["0.05","0.10"],
-            risk_gate_bundle:["0.10","0.15","0.25"],
+            structural_corridor_profile:["0.05"],
+            intelligence_query:["0.02","0.03","0.05"],
+            signed_risk_object:["0.03","0.05"],
+            risk_gate_bundle:["0.03","0.05","0.05"],
           };
           for(const [cap,values]of Object.entries(frozen)){
             if(!prices.includes(cap))throw Error("FOUNDER_CAPABILITY_MISSING:"+cap);
             for(const v of values){if(!prices.includes('"'+v+'"'))throw Error("FOUNDER_PRICE_MISSING:"+cap+":"+v);}
           }
-          if(manifest.commercial_milestone?.pricing_contract_version!=="geomacro.capability-usdc.v1")
+          if(manifest.commercial_milestone?.pricing_contract_version!=="geomacro.capability-usdc.v2")
             throw Error("FOUNDER_CAPABILITY_PRICE_VERSION_MISMATCH");
-          if(manifest.commercial_milestone?.pricing_model!=="EIGHT_CAPABILITIES_EXACT_VARIANTS_NO_FLAT_PRICE")
+          if(manifest.commercial_milestone?.pricing_model!=="LOW_BARRIER_SUBSCRIPTION_PREPAID_BASE_X402")
             throw Error("OLD_FLAT_PRICE_CONTRACT_NOT_REPLACED");
           if(manifest.commercial_milestone?.credit_units_separate_from_usdc!==true)
             throw Error("CREDITS_MUST_REMAIN_SEPARATE_FROM_PAYMENT");
@@ -103,7 +103,7 @@ jobs:
           if (!env.includes("COINBASE_X402_MAINNET_ACK=")) throw new Error("Coinbase mainnet ack must remain present and blank by default");
           if (/^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$/m.test(env)) throw new Error("global production launch ack is active in .env.example");
           if (/^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$/m.test(env)) throw new Error("Coinbase real-funds ack is active in .env.example");
-          console.log("PASS: founder-locked 8-capability exact prices are canonical; no funds or mandatory subscription.");
+          console.log("PASS: low-barrier new-sale prices are canonical; no funds or mandatory subscription.");
           NODE
 
       - name: Build exact candidate
@@ -158,7 +158,7 @@ jobs:
             marketplace_promotion: "post_launch_evidence_only",
             status: "PASS_NO_FUNDS_REQUIRED",
             notes: [
-              "Approved eight-capability price schedule supersedes the flat testnet historical price.",
+              "Low-barrier subscriptions, prepaid credits and two-to-five-cent Base x402 pricing supersede the old new-sale schedule.",
               "40k distributed capacity proof is retained as optional future scalability certification.",
               "This evidence does not authorize production funds or real-money settlement."
             ]
@@ -174,7 +174,7 @@ jobs:
           {
             echo "## Initial Commercial Pay-Per-Call Acceptance"
             echo
-            echo "- Founder pricing: **geomacro.capability-usdc.v1 (eight capabilities; six display groups)**"
+            echo "- Founder pricing: **geomacro.capability-usdc.v2 (eight capabilities; six display groups)**"
             echo "- Customer price: **exact USDC variant only after verified deliverability**"
             echo "- No flat 0.05 pricing or automatically funded 20,000 delivery milestone"
             echo "- Founder pre-funding required for the milestone: **NO**"

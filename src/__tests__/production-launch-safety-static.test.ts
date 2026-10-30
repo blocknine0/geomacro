@@ -32,9 +32,9 @@ describe("production launch safety contract", () => {
       "strict_p0_capacity_closure",
       "distributed_40k_observability_closure",
     ]);
-    expect(manifest.commercial_milestone.pricing_contract_version).toBe("geomacro.capability-usdc.v1");
-    expect(manifest.commercial_milestone.pricing_model).toBe("EIGHT_CAPABILITIES_EXACT_VARIANTS_NO_FLAT_PRICE");
-    expect(manifest.commercial_milestone.founder_separately_authorized_first_live_canary_usdc).toBe("0.05");
+    expect(manifest.commercial_milestone.pricing_contract_version).toBe("geomacro.capability-usdc.v2");
+    expect(manifest.commercial_milestone.pricing_model).toBe("LOW_BARRIER_SUBSCRIPTION_PREPAID_BASE_X402");
+    expect(manifest.commercial_milestone.founder_separately_authorized_first_live_canary_usdc).toBe("0.02");
     expect(manifest.commercial_milestone.credit_units_separate_from_usdc).toBe(true);
     expect(manifest.commercial_milestone.pre_funding_required).toBe(false);
     expect(manifest.launch_rule.scale_certification_required_before_initial_launch).toBe(false);
@@ -47,8 +47,8 @@ describe("production launch safety contract", () => {
     const workflow = read(".github/workflows/initial-commercial-pay-per-call-acceptance.yml");
     expect(workflow).toContain("ACCEPT_GEOMACRO_CAPABILITY_PRICES_NO_FUNDS");
     expect(workflow).not.toContain("ACCEPT_GEOMACRO_INITIAL_0_05_USDC_PAY_PER_CALL");
-    expect(workflow).toContain("geomacro.capability-usdc.v1");
-    expect(workflow).toContain("EIGHT_CAPABILITIES_EXACT_VARIANTS_NO_FLAT_PRICE");
+    expect(workflow).toContain("geomacro.capability-usdc.v2");
+    expect(workflow).toContain("LOW_BARRIER_SUBSCRIPTION_PREPAID_BASE_X402");
   });
 
   it("ships global freeze and provider quarantine controls disabled by default", () => {

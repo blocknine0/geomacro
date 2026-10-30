@@ -22,6 +22,7 @@ export type CanonicalGrantPolicy = {
   entitlement_kind:
     | "legacy_tier"
     | "subscription"
+    | "prepaid"
     | "contract"
     | "one_shot"
     | "public_web"
