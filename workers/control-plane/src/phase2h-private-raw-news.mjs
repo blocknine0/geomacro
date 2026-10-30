@@ -200,6 +200,49 @@ export function phase2hQuestionMatchesArchived(item,question){
    .join(" ").normalize("NFKC").toLowerCase();
  return terms.every(t=>scope.includes(t));
 }
+/** Do not mutate the immutable source record or its B2/D1 SHA.
+ * A single native-dated publisher headline may produce a *private, unverified*
+ * five-part research draft when the original stateless event parser emitted
+ * null what/why. Never claim page verification, market reaction or paid rights.
+ */
+export function phase2hOneOriginalResearchFivePart(item){
+ if(typeof item?.original?.original_title!=="string"||
+    item.original.original_title.length<1||
+    typeof item?.original?.original_published_at!=="string"||
+    !CATEGORIES.has(item.category)||!item.analysis)return null;
+ const original=item.original,analysis=item.analysis;
+ const observedTitle=original.original_title;
+ const titleOnlyWhat="A publisher-native report dated "+
+  original.original_published_at+" is titled \""+observedTitle+
+  "\". The headline is an observation, not an independently verified event outcome.";
+ const categoryName=item.category==="macro"?"macro/FX":
+  item.category==="rare_earth"?"critical minerals":"geopolitics";
+ const titleOnlyWhy="The specific reported development — "+
+  observedTitle+" — is relevant to "+categoryName+
+  " monitoring; the headline alone does not establish a resulting policy, "+
+  "supply-chain or market change.";
+ const missingWhat=typeof analysis.what_happened?.text!=="string"||
+  !analysis.what_happened.text.trim();
+ const missingWhy=typeof analysis.why_it_matters?.text!=="string"||
+  !analysis.why_it_matters.text.trim();
+ return Object.freeze({...analysis,
+  what_happened:{...analysis.what_happened,
+    text:missingWhat?titleOnlyWhat:analysis.what_happened.text},
+  why_it_matters:{...analysis.why_it_matters,
+    text:missingWhy?titleOnlyWhy:analysis.why_it_matters.text},
+ });
+}
+export function phase2hPrivateResearchDirectAnswer(question,fivePart){
+ const answer=phase2hQuestionDirectAnswer(question,fivePart);
+ if(answer.focus!=="market_relevance"||answer.direct_answer!==null)
+  return answer;
+ const channels=fivePart.market_relevance?.potential_watch_channels??[];
+ return {...answer,direct_answer:channels.length?
+  "Potential monitoring channels: "+channels.join(", ")+
+   ". No market price move, direction or instrument response is independently verified.":
+  "No market-reaction channel or price response is independently verified from this original headline."};
+}
+
 export function phase2hQuestionDirectAnswer(question,analysis){
  const q=String(question??"").toLowerCase();
  const focus=/\b(?:what next|follow.?up|watch next|upcoming)\b|পরবর্তী|আগামী|अगला/u.test(q)
@@ -289,12 +332,25 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
     d1_staged_unarchived_research_allowed:true,
     staged_row_never_paid_eligible:true}:{}),
    global_search_complete:false,
-   question_matches:matched.map(item=>({record_id:item.record_id,
-    category:item.category,
-    ...(countryScoped?{country_iso3:countryIso3}:{}),
-    original_published_at:item.original.original_published_at,
-    five_part:item.analysis,...phase2hQuestionDirectAnswer(question,item.analysis),
-    archive_d1_ack_present:results.results.find(x=>x.record_id===item.record_id)?.b2_object_sha256!=null})),private_research_only:true,chargeable:false,
+   question_matches:matched.map(item=>{
+    const missing=typeof item.analysis.what_happened?.text!=="string"||
+      !item.analysis.what_happened.text.trim()||
+      typeof item.analysis.why_it_matters?.text!=="string"||
+      !item.analysis.why_it_matters.text.trim();
+    const five=countryScoped?
+      phase2hOneOriginalResearchFivePart(item):item.analysis;
+    return {record_id:item.record_id,category:item.category,
+     ...(countryScoped?{country_iso3:countryIso3,
+       source_title_only_research_fallback_used:missing,
+       original_page_independently_verified:false,
+       commercial_rights_verified:false}:{}),
+     original_published_at:item.original.original_published_at,
+     five_part:five,...(countryScoped?
+       phase2hPrivateResearchDirectAnswer(question,five):
+       phase2hQuestionDirectAnswer(question,five)),
+     archive_d1_ack_present:results.results.find(
+       x=>x.record_id===item.record_id)?.b2_object_sha256!=null};
+   }),private_research_only:true,chargeable:false,
    paid_eligible:false,raw_original_not_delivered:true});
  }catch{return safeReply({ok:false,error:"PRIVATE_RAW_CANONICAL_READ_UNAVAILABLE"},503)}
 }
