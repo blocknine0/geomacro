@@ -48,6 +48,30 @@ export function p0bHeadlineEvent(title,category){
  if(typeof title!=="string"||title.length<18||title.length>260||unsafe(title)||
   conditional(title)||!/^[\p{Lu}\p{N}]/u.test(title))return null;
  const clean=tidy(title).replace(/^(?:Breaking|Update):\s+/iu,"");
+ // Public-government release titles often describe a *speech act* as a
+ // noun ("Minister's call with...") rather than actor + finite verb.
+ // Such wording can support the fact that a call/statement occurred, but
+ // NEVER prove that an agreement, sanction or outcome took effect.
+ const noDaySuffix=clean.replace(/:\s*\d{1,2}\s+[A-Za-z]+\s+20\d{2}$/u,"");
+ if(category==="geopolitics"){
+  const call=/^(.{5,95}?)(?:['’]s)?\s+call with (.{5,130})$/iu.exec(noDaySuffix);
+  const statement=/^(.{5,95}?)(?:['’]s)?\s+statement (?:on|about|regarding) (.{5,130})$/iu.exec(noDaySuffix);
+  const speech=call??statement;
+  if(speech){
+   const actor=tidy(speech[1]),object=tidy(speech[2]);
+   if(!unsafe(actor)&&!unsafe(object)&&!conditional(actor)&&
+      !conditional(object)&&actor.length>=5&&object.length>=5){
+    const what=call?actor+" held a call with "+object+".":
+     actor+" issued a statement about "+object+".";
+    const why=call?"The reported call with "+object+
+     " is a diplomatic engagement to monitor; any resulting agreement or policy change remains unverified.":
+     "The reported statement about "+object+
+     " establishes a declared diplomatic position, not proof of implemented action or market consequences.";
+    if(what.length<=1200&&why.length<=1200)
+     return Object.freeze({what,why,actor,object});
+   }
+  }
+ }
  for(const {re,past} of actionRules){
   const match=re.exec(clean);
   if(!match)continue;
