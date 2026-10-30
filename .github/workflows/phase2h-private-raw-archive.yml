@@ -2,6 +2,12 @@ name: Phase 2H Permanent Private Raw B2 and Exact-Question Acceptance
 # Exactly four UTC archive windows. No out-of-slot B2 bootstrap.
 # Existing provider-approved maintenance=true admission and atomic B2 reserve are mandatory.
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/phase2h-private-raw-archive.yml"
+      - "scripts/ops/phase2h-canonical-census-receipt.mjs"
+      - "scripts/tests/phase2h-canonical-census-receipt.test.mjs"
+      - "scripts/ops/phase2h-permanent-production-acceptance.mjs"
   workflow_dispatch: {}
   schedule:
     - cron: "17 0,6,12,18 * * *"
@@ -14,6 +20,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  offline-census-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Verify scoped metadata-only census and strict B2 admission (offline)
+        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs
   quota-admission:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -36,7 +55,19 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: node scripts/ops/plan-d1-bundled-work.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/derived-news
+          node scripts/ops/plan-d1-bundled-work.mjs | tee artifacts/derived-news/phase2h-provider-admission.log
+      - name: Keep actual provider admission receipt even when maintenance is held
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: phase2h-provider-maintenance-admission-${{ github.run_id }}
+          path: artifacts/derived-news/phase2h-provider-admission.log
+          retention-days: 90
+          if-no-files-found: warn
 
   raw-b2-to-production-question:
     needs: quota-admission
@@ -72,7 +103,7 @@ jobs:
           node-version: "22"
       - name: Verify Phase 2H regression and strict immutable formats
         run: |
-          node --test scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs
+          node --test scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-canonical-census-receipt.test.mjs
           node --check scripts/ops/phase2h-permanent-production-acceptance.mjs
       - name: Resolve existing canonical D1 database for archive read and quota governor
         shell: bash
@@ -95,6 +126,8 @@ jobs:
             throw Error("PHASE2H_CANONICAL_D1_NOT_VERIFIED");
           appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+id+"\n");
           NODE
+      - name: Preserve independently read canonical D1 category census before B2 attempt
+        run: node scripts/ops/phase2h-canonical-census-receipt.mjs
       - name: Actual private B2 PUT, two GETs, D1 same-ID and deployed question JSON
         run: node scripts/ops/phase2h-permanent-production-acceptance.mjs
       - name: Preserve redacted permanent acceptance receipt (never original content)
@@ -102,6 +135,8 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: phase2h-real-b2-question-production-proof-${{ github.run_id }}
-          path: artifacts/derived-news/phase2h-permanent-production-acceptance.json
+          path: |
+            artifacts/derived-news/phase2h-permanent-production-acceptance.json
+            artifacts/derived-news/phase2h-canonical-census-receipt.json
           retention-days: 90
           if-no-files-found: warn
