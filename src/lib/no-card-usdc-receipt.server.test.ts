@@ -133,6 +133,39 @@ describe("bounded Base/Polygon RPC alternatives for independent receipt verifica
     expect(calls.filter(x=>x.startsWith(backup))).toHaveLength(4);
   });
 
+  it("uses directly saved raw Ankr _ALTERNATES URL after Alchemy 429",async()=>{
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES",backup);
+    const urls:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      const url=String(input);urls.push(url);
+      if(url===primary)return new Response(null,{status:429});
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(result(method));
+    }) as typeof fetch;
+    const proof=await confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,payer:PAYER,fetcher,
+    });
+    expect(proof.confirmed).toBe(true);
+    expect(urls).toEqual([primary,backup,backup,backup,backup]);
+  });
+  it("preserves legacy JSON arrays as well as JSON-string single URLs",async()=>{
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_POLYGON_ALTERNATES",JSON.stringify(backup));
+    const q={...quote(),network:"eip155:137",
+      asset_contract:"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+    } as PreparedCapabilityQuote;
+    const calls:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      const url=String(input);calls.push(url);
+      if(url===primary)return new Response(null,{status:503});
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(result(method,"eip155:137"));
+    }) as typeof fetch;
+    expect((await confirmNoCardNativeUsdcChainSettlement({
+      quote:q,transaction:TX,payer:PAYER,fetcher,
+    })).confirmed).toBe(true);
+    expect(calls).toEqual([primary,backup,backup,backup,backup]);
+  });
+
   it("does not fallback on wrong-chain replies even if a backup could pass",async()=>{
     const origins:string[]=[];
     const fetcher=(async(input:unknown,init?:RequestInit)=>{
