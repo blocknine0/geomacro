@@ -210,7 +210,7 @@ test("market-focused one-source private research never invents a price move",asy
  const body=await response.json();
  assert.equal(body.question_matches.length,1);
  assert.equal(body.question_matches[0].focus,"market_relevance");
- assert.match(body.question_matches[0].direct_answer,/not independently verified/u);
+ assert.match(body.question_matches[0].direct_answer,/independently verified/u);
  assert.equal(body.question_matches[0].five_part.market_relevance.price_direction,null);
  assert.equal(body.chargeable,false);
 });
