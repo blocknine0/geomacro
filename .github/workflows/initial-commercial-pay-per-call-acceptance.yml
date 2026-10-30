@@ -69,20 +69,20 @@ jobs:
           const frozen={
             gri_read:["0.005","0.01"],
             structural_country_digest:["0.02"],
-            structural_corridor_digest:["0.05"],
+            structural_corridor_digest:["0.03"],
             structural_country_profile:["0.03"],
-            structural_corridor_profile:["0.08"],
-            intelligence_query:["0.05","0.10","0.15"],
-            signed_risk_object:["0.05","0.10"],
-            risk_gate_bundle:["0.10","0.15","0.25"],
+            structural_corridor_profile:["0.05"],
+            intelligence_query:["0.02","0.03","0.05"],
+            signed_risk_object:["0.03","0.05"],
+            risk_gate_bundle:["0.03","0.05","0.05"],
           };
           for(const [cap,values]of Object.entries(frozen)){
             if(!prices.includes(cap))throw Error("FOUNDER_CAPABILITY_MISSING:"+cap);
             for(const v of values){if(!prices.includes('"'+v+'"'))throw Error("FOUNDER_PRICE_MISSING:"+cap+":"+v);}
           }
-          if(manifest.commercial_milestone?.pricing_contract_version!=="geomacro.capability-usdc.v1")
+          if(manifest.commercial_milestone?.pricing_contract_version!=="geomacro.capability-usdc.v2")
             throw Error("FOUNDER_CAPABILITY_PRICE_VERSION_MISMATCH");
-          if(manifest.commercial_milestone?.pricing_model!=="EIGHT_CAPABILITIES_EXACT_VARIANTS_NO_FLAT_PRICE")
+          if(manifest.commercial_milestone?.pricing_model!=="MONTHLY_CREDITS_ONE_TIME_PACKS_AND_CAPABILITY_X402")
             throw Error("OLD_FLAT_PRICE_CONTRACT_NOT_REPLACED");
           if(manifest.commercial_milestone?.credit_units_separate_from_usdc!==true)
             throw Error("CREDITS_MUST_REMAIN_SEPARATE_FROM_PAYMENT");
@@ -174,7 +174,7 @@ jobs:
           {
             echo "## Initial Commercial Pay-Per-Call Acceptance"
             echo
-            echo "- Founder pricing: **geomacro.capability-usdc.v1 (eight capabilities; six display groups)**"
+            echo "- Founder pricing: **geomacro.capability-usdc.v2 (eight capabilities; six display groups)**"
             echo "- Customer price: **exact USDC variant only after verified deliverability**"
             echo "- No flat 0.05 pricing or automatically funded 20,000 delivery milestone"
             echo "- Founder pre-funding required for the milestone: **NO**"

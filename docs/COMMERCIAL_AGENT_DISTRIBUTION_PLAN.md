@@ -6,7 +6,7 @@ Status: PRE-LAUNCH BUILD. **ALL MAINNET / REAL-MONEY ACTIVATION IS LOCKED UNTIL 
 
 Turn the existing Geomacro Risk Object / Risk Gate and x402 technical proof into a measurable commercial service that autonomous agents can discover, purchase, receive, verify, and reuse without weakening Geomacro's source-rights, proof, or execution boundaries.
 
-The immediate milestone is one genuinely verified, signed, rights-eligible, reconciled paid delivery at the canonical `geomacro.capability-usdc.v1` per-capability price. There is no flat-price public launch offer or automatic 10k/20k cohort repricing. Production rails remain disabled until independently accepted delivery/payment proofs and separate founder real-money approval. Marketplace promotion and optional 40k capacity certification are separate evidence stages.
+The immediate milestone is one genuinely verified, signed, rights-eligible, reconciled paid delivery at the canonical `geomacro.capability-usdc.v2` per-capability price. There is no flat-price public launch offer or automatic 10k/20k cohort repricing. Production rails remain disabled until independently accepted delivery/payment proofs and separate founder real-money approval. Marketplace promotion and optional 40k capacity certification are separate evidence stages.
 
 ## Global launch lock
 
@@ -68,7 +68,7 @@ One intelligence core serves every rail. Marketplace-specific code must stay at 
 
 ## Launch products
 
-**The only approved prices** are defined by `geomacro.capability-usdc.v1` in `src/lib/capability-pricing-catalog.ts`:
+**The only approved prices** are defined by `geomacro.capability-usdc.v2` in `src/lib/capability-pricing-catalog.ts`:
 
 | Capability | Variant → USDC |
 | --- | --- |

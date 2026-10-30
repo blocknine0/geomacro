@@ -1,6 +1,6 @@
 # Coinbase CDP x402 + Bazaar production runbook
 
-Status: **historical/testnet implementation and Coinbase Bazaar acceptance track**. This is not current production pricing or real-earning authorization. For any present or future production launch, the only price authority is `geomacro.capability-usdc.v1` in `src/lib/capability-pricing-catalog.ts` (eight capabilities, 14 variants); see `docs/PAY_PER_CALL_PRODUCTION_ACTIVATION.md`. This legacy rail is isolated from the Circle Gateway x402 proof on Arc Testnet.
+Status: **historical/testnet implementation and Coinbase Bazaar acceptance track**. This is not current production pricing or real-earning authorization. For any present or future production launch, the only price authority is `geomacro.capability-usdc.v2` in `src/lib/capability-pricing-catalog.ts` (eight capabilities, 14 variants); see `docs/PAY_PER_CALL_PRODUCTION_ACTIVATION.md`. This legacy rail is isolated from the Circle Gateway x402 proof on Arc Testnet.
 
 ## Product boundary
 

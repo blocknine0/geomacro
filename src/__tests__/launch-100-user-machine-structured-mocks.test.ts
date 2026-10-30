@@ -20,13 +20,13 @@ import {assertLockedCapabilityDataBoundary} from "../lib/capability-priced-data-
 const SKUS=[
   {capability:"structural_country_digest",variant:"standard",price:"0.02",count:12},
   {capability:"structural_country_profile",variant:"standard",price:"0.03",count:11},
-  {capability:"structural_corridor_digest",variant:"standard",price:"0.05",count:12},
-  {capability:"structural_corridor_profile",variant:"standard",price:"0.08",count:11},
-  {capability:"intelligence_query",variant:"focused",price:"0.05",count:12},
-  {capability:"intelligence_query",variant:"standard",price:"0.10",count:12},
-  {capability:"intelligence_query",variant:"complex_multi_source",price:"0.15",count:12},
-  {capability:"signed_risk_object",variant:"existing_valid_signed",price:"0.05",count:9},
-  {capability:"signed_risk_object",variant:"newly_qualified_signed",price:"0.10",count:9},
+  {capability:"structural_corridor_digest",variant:"standard",price:"0.03",count:12},
+  {capability:"structural_corridor_profile",variant:"standard",price:"0.05",count:11},
+  {capability:"intelligence_query",variant:"focused",price:"0.02",count:12},
+  {capability:"intelligence_query",variant:"standard",price:"0.03",count:12},
+  {capability:"intelligence_query",variant:"complex_multi_source",price:"0.05",count:12},
+  {capability:"signed_risk_object",variant:"existing_valid_signed",price:"0.03",count:9},
+  {capability:"signed_risk_object",variant:"newly_qualified_signed",price:"0.05",count:9},
 ] as const;
 const data=inflateSync(Buffer.from(
   readFileSync("scripts/tests/data/launch-100-original-questions.zlib.b64","utf8").trim(),
