@@ -12,7 +12,7 @@ GeoMacro already has a canonical 195-country / three-category discovery grid, so
 |---|---|---|
 | BIS speeches | `private_hub_bis_central_bank_speeches` | New pinned private candidate; original speeches remain independent-issuer unverified |
 | ReliefWeb | Existing `scripts/ingest-reliefweb-live.mjs` V2 adapter and approval-gated source paths | Appname approval mandatory; v1 URL in guide not used; not a guaranteed D1 producer |
-| OFAC sanctions | `private_hub_us_ofac_sanctions_actions` | New pinned private RSS candidate; actual HTTP and pubDate determine observation |
+| OFAC sanctions | `private_hub_ofac_federal_register_notices` | OFAC itself officially retired its RSS in February 2025. Use agency-filtered Federal Register RSS only for notices; it is NOT a live OFAC Recent Actions mirror. [Official retirement](https://ofac.treasury.gov/recent-actions/20250206) |
 | UN News | `private_hub_un_global_news` | New pinned private aggregator candidate; UN-reported story not treated as official source action without proof |
 | Mining.com | `private_expansion_mining_dot_com` | **Retired** from active polling: DENIED in four read-only public-feed probes |
 | USGS minerals | Existing `usgs_minerals_original_news_rss_review` | Already observed as healthy/empty, not evidence of a new original story |
@@ -33,7 +33,7 @@ A temporary transport block does not prove a publisher ceased to exist. This is 
 
 ## Bounded runtime acceptance
 
-- Three new pinned feed candidates, with all source rights false until independently checked.
+- Three new pinned feed candidates (including Federal Register OFAC *notices*, not the retired OFAC recent-action RSS), with all source rights false until independently checked.
 - 76 retired IDs excluded from the active runtime; seven of these are local gaplane endpoints, automatically replaced from the surviving local-source catalogue without extra fetch slots.
 - The exact same per-tick **25 canonical country discovery index queries** are retained. The 195 country index routes remain covered in eight nominal delivered 15-minute slots (120 minutes, not an arrival SLA).
 - Total HTTP feed GET ceiling remains **512** and all production D1 writes remain subject to the existing provider quota gate. No new database, paid provider, payment rail, B2 or separate cron schedule.
