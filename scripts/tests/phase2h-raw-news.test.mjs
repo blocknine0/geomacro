@@ -123,7 +123,7 @@ test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exac
  const items=data().records;
  let put=0,first=0,second=0,postRead=0,marked=0;
  const r=await runPhase2hGovernedRawB2({
-  now,env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  now,windowAuthorizer:()=>true,env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
    GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
    B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
    B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true",GEOMACRO_COMMERCE_LEDGER_TOKEN:"x".repeat(42),
@@ -159,14 +159,14 @@ test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exac
  assert.equal(r.b2_second_independent_get_verified,true);
  assert.equal(r.post_archive_d1_verified,true);
  assert.equal(put,1);assert.equal(first,1);assert.equal(second,1);
- assert.equal(postRead,2);assert.equal(marked,1);
+ assert.equal(postRead,1);assert.equal(marked,1);
  assert.equal(r.payments,0);
 });
 test("no B2 PUT, GET or D1 archive mutation if provider's exact 72h rule cannot be independently proven",async()=>{
  const items=data().records;
  let writes=0;
  await assert.rejects(()=>runPhase2hGovernedRawB2({
-  now,env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  now,windowAuthorizer:()=>true,env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
    GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
    B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
    B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true"},
@@ -180,7 +180,7 @@ test("no B2 PUT, GET or D1 archive mutation if provider's exact 72h rule cannot 
  }),/PHASE2H_RAW_B2_LIFECYCLE_NOT_VERIFIED/u);
  assert.equal(writes,0);
 });
-test("maintenance archive does not start out of existing 00/06/12/18 slots",async()=>{
+test("maintenance archive never starts from an unscheduled credentialed job",async()=>{
  const r=await runPhase2hGovernedRawB2({
   now:new Date("2026-10-30T07:07:00.000Z"),
   env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
@@ -193,7 +193,7 @@ test("maintenance archive does not start out of existing 00/06/12/18 slots",asyn
  assert.equal(r.storage_confirmed,false);
  assert.equal(r.object_sha256,null);
 });
-test("delayed GitHub cron archive retains the original four slots without ungoverned manual work",async()=>{
+test("delayed daily GitHub cron archive retains one authorized schedule without ungoverned manual work",async()=>{
  const when=new Date("2026-10-30T19:08:00Z");
  const base={
   GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
@@ -204,7 +204,7 @@ test("delayed GitHub cron archive retains the original four slots without ungove
   GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main",
   GITHUB_EVENT_PATH:"/home/runner/work/_temp/_github_workflow/event.json"
  };
- const reader=()=>JSON.stringify({schedule:"3 0,6,12,18 * * *"});
+ const reader=()=>JSON.stringify({schedule:"29 0 * * *"});
  assert.equal(phase2hAuthorizedArchiveWindow({env:base,now:when,eventReader:reader}),true);
  for(const different of [
   {GITHUB_EVENT_NAME:"workflow_dispatch"},
@@ -242,7 +242,7 @@ test("delayed GitHub cron archive retains the original four slots without ungove
 
 test("governor headroom hold never calls B2 or protected D1",async()=>{
  const r=await runPhase2hGovernedRawB2({
-  now,env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  now,windowAuthorizer:()=>true,env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
    GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
    B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
    B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true",GEOMACRO_COMMERCE_LEDGER_TOKEN:"x".repeat(42)},
@@ -435,7 +435,7 @@ test("governor-held archive never receives a false full-chain PASS",async()=>{
   verify:()=>{throw Error("SHOULD_NOT_VERIFY")}}),
   /PHASE2H_PERMANENT_B2_ARCHIVE_HELD_OR_FAILED/u);
 });
-test("even trusted main-push B2 bootstrap cannot bypass six-hour maintenance slot",async()=>{
+test("even trusted main-push B2 bootstrap cannot bypass the daily schedule",async()=>{
  const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
   GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
   B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
@@ -626,7 +626,7 @@ test("maintenance=false blocks B2 even when structural snapshot would allow it",
   CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
   D1_DATABASE_ID:"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
   CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40)};
- await assert.rejects(runPhase2hGovernedRawB2({env,now:new Date("2026-10-30T12:17:00Z"),
+ await assert.rejects(runPhase2hGovernedRawB2({env,now:new Date("2026-10-30T11:17:00Z"),
   governorFactory:()=>{throw Error("UNSAFE_GOVERNOR_CALLED")}}),
   /PHASE2H_RAW_B2_PROTECTED_MAIN_GOVERNOR_REQUIRED/u);
  await assert.rejects(runPhase2hPermanentAcceptance({env,now:new Date("2026-10-30T12:17:00Z"),

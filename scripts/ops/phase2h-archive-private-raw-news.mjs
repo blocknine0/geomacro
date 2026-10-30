@@ -113,16 +113,14 @@ export function createPhase2hCanonicalD1({
   },
  };
 }
-/** Accept exactly the original four six-hour scheduled triggers even if
- * GitHub queues the run until a later UTC hour. Never use untrusted manual
- * inputs to infer a scheduled trigger; verify the Actions event JSON and
- * immutable workflow ref. All D1/B2 provider quota gates still apply.
+/** One daily scheduled archive, admitted only with authenticated canonical
+ * main GitHub schedule event. Delayed execution remains valid. No manual,
+ * push, or unit-test credentials alone may open the production B2 writer.
  */
 export function phase2hAuthorizedArchiveWindow({
  env=process.env,now=new Date(),eventReader=readFileSync,
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))return false;
- if(now.getUTCHours()%6===0)return true;
  if(env.GITHUB_EVENT_NAME!=="schedule"||
     env.GITHUB_WORKFLOW_REF!==
       "blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main")
@@ -132,7 +130,7 @@ export function phase2hAuthorizedArchiveWindow({
    return false;
  try{
   const event=JSON.parse(eventReader(path,"utf8"));
-  return event?.schedule==="3 0,6,12,18 * * *";
+  return event?.schedule==="29 0 * * *";
  }catch{return false}
 }
 export async function runPhase2hGovernedRawB2({
@@ -140,7 +138,7 @@ export async function runPhase2hGovernedRawB2({
  b2Factory=createB2Client,governorFactory=createB2D1AccountGovernor,
  d1Factory=createPhase2hCanonicalD1,
  lifecycleVerifier=verifyPhase2hB2Lifecycle,
- eventReader=readFileSync,
+ eventReader=readFileSync,windowAuthorizer=phase2hAuthorizedArchiveWindow,
 }={}){
  if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
   env.GITHUB_REF!=="refs/heads/main"||
@@ -150,10 +148,9 @@ export async function runPhase2hGovernedRawB2({
   env.PHASE2H_PROVIDER_MAINTENANCE!=="true"||
   !/^\d{1,20}$/u.test(env.GITHUB_RUN_ID??""))
   fail("PROTECTED_MAIN_GOVERNOR_REQUIRED");
- // Four authorized GitHub scheduled windows only. GitHub may start a run
- // late; event identity permits that delayed schedule, never manual/push
- // jobs outside the original 00/06/12/18 UTC hours.
- if(!phase2hAuthorizedArchiveWindow({env,now,eventReader}))
+ // Exactly one canonical daily GitHub scheduled event; queued execution
+ // can be late, but never grant D1/B2 to manual or push runs.
+ if(!windowAuthorizer({env,now,eventReader}))
   return {status:"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT",storage_confirmed:false,
    rows_archived:0,object_sha256:null};
  const governor=governorFactory({env,fetchImpl});
@@ -194,11 +191,9 @@ export async function runPhase2hGovernedRawB2({
    fail("FIRST_GET_OR_PUT_UNVERIFIED");
  const independentSecond=await b2.get(plan.key);
  verifyPhase2hRawB2Restore(Buffer.from(independentSecond),plan);
- const d1Again=await d1.readPending();
- if(d1Again?.length<plan.rows.length||
-   JSON.stringify(d1Again.slice(0,plan.rows.length))!==
-   JSON.stringify(initialRows.slice(0,plan.rows.length)))
-  fail("INDEPENDENT_POST_B2_D1_READBACK_MISMATCH");
+ // Read original raw_json exactly once per batch. The following D1
+ // acknowledgement checks record_id/raw_sha256 before and after the
+ // metadata write, without loading the source payload again.
  const ack=await d1.markArchived(plan.rows,plan.compressed_sha256,now);
  if(ack.archived!==plan.record_count||
     ack.independent_d1_archive_ack_verified!==true)
