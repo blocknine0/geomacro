@@ -28,6 +28,7 @@ function protectedEnv(env){
     env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
     env.B2_ACCOUNT_QUOTA_WORKFLOW_ID!=="derived_news_backup"||
     env.B2_REQUEST_BUDGET!=="12"||
+    env.PHASE2H_PROVIDER_MAINTENANCE!=="true"||
     !/^\d{1,20}$/u.test(env.GITHUB_RUN_ID??"")||
     !/^[a-f0-9]{32}$/u.test(env.CLOUDFLARE_ACCOUNT_ID??"")||
     !/^[a-f0-9-]{36}$/iu.test(env.D1_DATABASE_ID??"")||
