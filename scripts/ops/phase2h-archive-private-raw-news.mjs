@@ -119,6 +119,7 @@ export async function runPhase2hGovernedRawB2({
   env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
   env.B2_ACCOUNT_QUOTA_WORKFLOW_ID!=="derived_news_backup"||
   env.B2_REQUEST_BUDGET!=="12"||
+  env.PHASE2H_PROVIDER_MAINTENANCE!=="true"||
   !/^\d{1,20}$/u.test(env.GITHUB_RUN_ID??""))
   fail("PROTECTED_MAIN_GOVERNOR_REQUIRED");
  // Existing four six-hour maintenance windows only. Main pushes and manual

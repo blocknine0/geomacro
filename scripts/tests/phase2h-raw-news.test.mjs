@@ -125,7 +125,7 @@ test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exac
   now,env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
    GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
    B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
-   B2_REQUEST_BUDGET:"12",GEOMACRO_COMMERCE_LEDGER_TOKEN:"x".repeat(42),
+   B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true",GEOMACRO_COMMERCE_LEDGER_TOKEN:"x".repeat(42),
    B2_KEY_ID:"fake",B2_APPLICATION_KEY:"fake"},
   governorFactory:()=>({status:async()=>({ok:true,
     used:{total:3,GET:2,PUT:1,NATIVE_AUTH:0},
@@ -164,7 +164,7 @@ test("maintenance archive does not start out of existing 00/06/12/18 slots",asyn
   env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
    GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
    B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
-   B2_REQUEST_BUDGET:"12"},
+   B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true"},
   b2Factory:()=>{throw Error("B2_MUST_NOT_OPEN")},
   fetchImpl:()=>{throw Error("NETWORK_MUST_NOT_RUN")},
  });
@@ -176,7 +176,7 @@ test("governor headroom hold never calls B2 or protected D1",async()=>{
   now,env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
    GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
    B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
-   B2_REQUEST_BUDGET:"12",GEOMACRO_COMMERCE_LEDGER_TOKEN:"x".repeat(42)},
+   B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true",GEOMACRO_COMMERCE_LEDGER_TOKEN:"x".repeat(42)},
   governorFactory:()=>({status:async()=>({ok:true,
    used:{total:99,GET:90,PUT:90,NATIVE_AUTH:90},
    limits:{total:100,GET:100,PUT:100,NATIVE_AUTH:100}})}),
@@ -312,7 +312,7 @@ test("bounded two-batch real-shaped archive drains and verifies exact production
  const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
   GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",
   B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
-  B2_REQUEST_BUDGET:"12",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
   D1_DATABASE_ID:"a".repeat(8)+"-"+"a".repeat(4)+"-"+"a".repeat(4)+
    "-"+"a".repeat(4)+"-"+"a".repeat(12),
   CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40),
@@ -353,7 +353,7 @@ test("governor-held archive never receives a false full-chain PASS",async()=>{
  const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
   GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",
   B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
-  B2_REQUEST_BUDGET:"12",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
   D1_DATABASE_ID:"a".repeat(8)+"-"+"a".repeat(4)+"-"+"a".repeat(4)+
    "-"+"a".repeat(4)+"-"+"a".repeat(12),
   CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40)};
@@ -366,7 +366,7 @@ test("even trusted main-push B2 bootstrap cannot bypass six-hour maintenance slo
  const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
   GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
   B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
-  B2_REQUEST_BUDGET:"12",PHASE2H_BOOTSTRAP_ON_MAIN_PUSH:"1",
+  B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true",PHASE2H_BOOTSTRAP_ON_MAIN_PUSH:"1",
   GITHUB_EVENT_NAME:"push",
   GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main"};
  const r=await runPhase2hGovernedRawB2({env,now:new Date("2026-10-30T08:25:00Z"),
@@ -380,7 +380,7 @@ test("earlier archived objects remain valid when no-new-data slot verifies lates
  const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
   GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",
   B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
-  B2_REQUEST_BUDGET:"12",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
   D1_DATABASE_ID:"a".repeat(8)+"-"+"a".repeat(4)+"-"+"a".repeat(4)+
    "-"+"a".repeat(4)+"-"+"a".repeat(12),
   CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40)};
@@ -458,4 +458,21 @@ test("re-observed immutable original survives deployed event-analysis wording up
   schema:"geomacro.phase2h.private-raw-batch.v1",items:[changed]},now.getTime());
  assert.equal(collision.status,503);
  assert.equal((await collision.json()).reason_code,"PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION");
+});
+
+
+test("maintenance=false blocks B2 even when structural snapshot would allow it",async()=>{
+ const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"false",
+  CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40)};
+ await assert.rejects(runPhase2hGovernedRawB2({env,now:new Date("2026-10-30T12:17:00Z"),
+  governorFactory:()=>{throw Error("UNSAFE_GOVERNOR_CALLED")}}),
+  /PHASE2H_RAW_B2_PROTECTED_MAIN_GOVERNOR_REQUIRED/u);
+ await assert.rejects(runPhase2hPermanentAcceptance({env,now:new Date("2026-10-30T12:17:00Z"),
+  archive:()=>{throw Error("UNSAFE_ARCHIVE_CALLED")}}),
+  /PHASE2H_PERMANENT_PROTECTED_MAIN_GOVERNED_CONFIG_REQUIRED/u);
 });
