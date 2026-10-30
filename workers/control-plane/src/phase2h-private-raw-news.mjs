@@ -1,3 +1,4 @@
+import {p0aAuditOriginal} from "../../../scripts/lib/p0a-evidence-quality.mjs";
 /** Canonical D1-only private raw-news staging and archived-proof ledger.
  * No public route and no paid/signed eligibility. Records are immutable once
  * accepted. Existing PREDGE, historical and x402 paths are not consulted.
@@ -270,26 +271,23 @@ export function phase2hOneOriginalResearchFivePart(item){
     item.original.original_title.length<1||
     typeof item?.original?.original_published_at!=="string"||
     !CATEGORIES.has(item.category)||!item.analysis)return null;
- const original=item.original,analysis=item.analysis;
- const observedTitle=original.original_title;
- const titleOnlyWhat="A publisher-native report dated "+
-  original.original_published_at+" is titled \""+observedTitle+
-  "\". The headline is an observation, not an independently verified event outcome.";
- const categoryName=item.category==="macro"?"macro/FX":
-  item.category==="rare_earth"?"critical minerals":"geopolitics";
- const titleOnlyWhy="The specific reported development — "+
-  observedTitle+" — is relevant to "+categoryName+
-  " monitoring; the headline alone does not establish a resulting policy, "+
-  "supply-chain or market change.";
- const missingWhat=typeof analysis.what_happened?.text!=="string"||
-  !analysis.what_happened.text.trim();
- const missingWhy=typeof analysis.why_it_matters?.text!=="string"||
-  !analysis.why_it_matters.text.trim();
- return Object.freeze({...analysis,
-  what_happened:{...analysis.what_happened,
-    text:missingWhat?titleOnlyWhat:analysis.what_happened.text},
-  why_it_matters:{...analysis.why_it_matters,
-    text:missingWhy?titleOnlyWhy:analysis.why_it_matters.text},
+ const audit=p0aAuditOriginal(item);
+ const reasons=new Set(audit.reasons);
+ const assertedUnsupported=["UNSOURCED_QUANTITATIVE_CLAIM","UNSUPPORTED_CERTAINTY",
+  "UNVERIFIED_MARKET_CLAIM","EVIDENCE_PROVENANCE_MISMATCH"];
+ const unsafe=assertedUnsupported.some(reason=>reasons.has(reason));
+ const whatOK=!unsafe&&!(reasons.has("WHAT_MISSING")||reasons.has("WHAT_BOILERPLATE"))&&
+  !reasons.has("WHAT_LACKS_SOURCE_FACT_ANCHORS");
+ const whyOK=!unsafe&&!(reasons.has("WHY_MISSING")||reasons.has("WHY_BOILERPLATE"))&&
+  !reasons.has("WHY_LACKS_EVENT_ANCHORS")&&
+  !reasons.has("WHAT_WHY_IDENTICAL");
+ // No publisher headline copy as a substitute for factual extraction.
+ // Missing proof must remain null, and no immutable D1/B2 byte is rewritten.
+ return Object.freeze({...item.analysis,
+  what_happened:{...item.analysis.what_happened,
+    text:whatOK?item.analysis.what_happened.text:null},
+  why_it_matters:{...item.analysis.why_it_matters,
+    text:whyOK&&whatOK?item.analysis.why_it_matters.text:null},
  });
 }
 export function phase2hPrivateResearchDirectAnswer(question,fivePart){
@@ -316,19 +314,22 @@ export function phase2hQuestionDirectAnswer(question,analysis){
    focus==="what_to_watch"?selected?.trigger??null:null};
 }
 export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=Date.now()){
- if(!env?.DB||[...params.keys()].some(k=>!["archived","limit","question","record_id","country_iso3","category"].includes(k))||
+ if(!env?.DB||[...params.keys()].some(k=>!["archived","limit","question","record_id","country_iso3","category","p0a_probe"].includes(k))||
    params.getAll("archived").length>1||params.getAll("limit").length>1||
    params.getAll("question").length>1||params.getAll("record_id").length>1||
-   params.getAll("country_iso3").length>1||params.getAll("category").length>1)
+   params.getAll("country_iso3").length>1||params.getAll("category").length>1||
+   params.getAll("p0a_probe").length>1)
   return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  const question=params.get("question");
  const requestedId=params.get("record_id");
+ const qualityProbe=params.get("p0a_probe")==="1";
  const countryIso3=params.get("country_iso3"),category=params.get("category");
  const countryScoped=countryIso3!==null||category!==null;
  if(countryScoped&&(question===null||requestedId!==null||
    !phase2hCountry(countryIso3)||!CATEGORIES.has(category)))
   return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  if(params.has("archived")||
+   params.has("p0a_probe")&&(!qualityProbe||requestedId===null||countryScoped)||
    requestedId!==null&&(!HEX.test(requestedId)||question===null)||
    question!==null&&(question.length<3||question.length>180||/[<>]/u.test(question)))
   return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
@@ -376,7 +377,8 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
     question===null?
     await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL AND first_ingested_at>? ORDER BY first_ingested_at,record_id LIMIT ?").bind(cutoff,limit).all():
     requestedId!==null?
-      await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id=? AND b2_object_sha256 IS NOT NULL AND first_ingested_at>? LIMIT 1").bind(requestedId,cutoff).all():
+      await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id=? AND "+
+         (qualityProbe?"1=1":"b2_object_sha256 IS NOT NULL")+" AND first_ingested_at>? LIMIT 1").bind(requestedId,cutoff).all():
       await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL AND first_ingested_at>? ORDER BY original_published_at DESC,record_id LIMIT 100").bind(cutoff).all();
   if(!Array.isArray(results.results))throw Error();
   // Read-path TTL is enforced independently of scheduled deletion failures:
@@ -401,7 +403,8 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
       phase2hHeadlineCountryCandidate(item.original.original_title)===countryIso3)&&
       phase2hQuestionMatchesArchived(item,question)).slice(0,3);
   return safeReply({ok:true,schema:"geomacro.phase2h.private-question-fivepart.v1",
-   source:countryScoped?"CANONICAL_D1_PRIVATE_ORIGINAL_RESEARCH":
+   source:qualityProbe?"CANONICAL_D1_PRIVATE_P0A_QUALITY_READBACK":
+    countryScoped?"CANONICAL_D1_PRIVATE_ORIGINAL_RESEARCH":
     "B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1",
    bounded_most_recent_scan:requestedId!==null?1:100,
    ...(countryScoped?{requested_country_iso3:countryIso3,
@@ -416,15 +419,17 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
       !item.analysis.what_happened.text.trim()||
       typeof item.analysis.why_it_matters?.text!=="string"||
       !item.analysis.why_it_matters.text.trim();
-    const five=countryScoped?
+    const five=countryScoped||qualityProbe?
       phase2hOneOriginalResearchFivePart(item):item.analysis;
     return {record_id:item.record_id,category:item.category,
-     ...(countryScoped?{country_iso3:countryIso3,
-       source_title_only_research_fallback_used:missing,
+     ...(countryScoped?{country_iso3:countryIso3}:{}),
+     ...(countryScoped||qualityProbe?{
+       source_title_only_research_fallback_used:false,
+        p0a_evidence_limited:missing||p0aAuditOriginal(item).status!=="PASS",
        original_page_independently_verified:false,
        commercial_rights_verified:false}:{}),
      original_published_at:item.original.original_published_at,
-     five_part:five,...(countryScoped?
+     five_part:five,...(countryScoped||qualityProbe?
        phase2hPrivateResearchDirectAnswer(question,five):
        phase2hQuestionDirectAnswer(question,five)),
      archive_d1_ack_present:active.find(

@@ -155,7 +155,7 @@ test("one canonical D1-staged source original yields research-only five-part bef
  assert.doesNotMatch(statements[0].sql,/b2_object_sha256 IS NOT NULL/u);
 });
 
-test("one genuine native-dated country original gives five populated private research parts even without a derived signal",async()=>{
+test("one native-dated original without event facts returns null rather than title-only speculation",async()=>{
  const original=buildPhase2hPrivateRawRecords([{
   category:"rare_earth",sourceId:"ind_official",
   title:"India announces lithium recycling policy",
@@ -172,9 +172,10 @@ test("one genuine native-dated country original gives five populated private res
  const reply=await resp.json();
  assert.equal(reply.question_matches.length,1);
  const one=reply.question_matches[0];
- assert.equal(one.source_title_only_research_fallback_used,true);
- assert.match(one.five_part.what_happened.text,/India announces lithium recycling policy/u);
- assert.match(one.five_part.why_it_matters.text,/India announces lithium recycling policy/u);
+ assert.equal(one.source_title_only_research_fallback_used,false);
+ assert.equal(one.p0a_evidence_limited,true);
+ assert.equal(one.five_part.what_happened.text,null);
+ assert.equal(one.five_part.why_it_matters.text,null);
  assert.ok(one.five_part.market_relevance);
  assert.ok(one.five_part.what_to_watch);
  assert.ok(one.five_part.evidence_and_confidence);
@@ -220,6 +221,40 @@ test("market-focused one-source private research never invents a price move",asy
  assert.match(body.question_matches[0].direct_answer,/independently verified/u);
  assert.equal(body.question_matches[0].five_part.market_relevance.price_direction,null);
  assert.equal(body.chargeable,false);
+});
+
+test("P0-A authentic internal quality probe reads staged D1 without fabricating B2 archive",async()=>{
+ const original=rawRows[0];
+ const {DB}=workerDb([original],{archived:false});
+ const q=new URLSearchParams({
+  record_id:original.record_id,p0a_probe:"1",
+  question:"Why does this particular development matter?"
+ });
+ const r=await phase2hPrivateRawGet({DB},q,now.getTime());
+ assert.equal(r.status,200);
+ const body=await r.json();
+ assert.equal(body.source,"CANONICAL_D1_PRIVATE_P0A_QUALITY_READBACK");
+ assert.equal(body.question_matches.length,1);
+ const x=body.question_matches[0];
+ assert.equal(x.record_id,original.record_id);
+ assert.equal(x.focus,"why_it_matters");
+ assert.equal(x.archive_d1_ack_present,false);
+ assert.equal(x.source_title_only_research_fallback_used,false);
+ assert.equal(x.p0a_evidence_limited,false);
+ assert.equal(x.direct_answer,original.analysis.why_it_matters.text);
+ assert.deepEqual(x.five_part,original.analysis);
+ assert.equal(body.paid_eligible,false);
+ assert.equal(body.chargeable,false);
+ assert.equal(body.raw_original_not_delivered,true);
+ for(const params of [
+  {p0a_probe:"1",question:"Why does this matter?"},
+  {record_id:original.record_id,p0a_probe:"2",question:"Why does this matter?"},
+  {record_id:original.record_id,p0a_probe:"1",country_iso3:"IND",
+   category:"macro",question:"India monetary policy"}
+ ]){
+  const invalid=await phase2hPrivateRawGet({DB},new URLSearchParams(params),now.getTime());
+  assert.equal(invalid.status,400);
+ }
 });
 
 test("195-country topic prefilter removes country aliases and question boilerplate, keeps named event and year",()=>{
