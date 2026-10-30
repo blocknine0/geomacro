@@ -319,7 +319,7 @@ export function phase2hQuestionDirectAnswer(question,analysis){
  return {focus,direct_answer:typeof selected?.text==="string"?selected.text:
    focus==="what_to_watch"?selected?.trigger??null:null};
 }
-export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=Date.now()){
+export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=Date.now(),globalFallback=p0bGlobalNewsFallback){
  if(!env?.DB||[...params.keys()].some(k=>!["archived","limit","question","record_id","country_iso3","category","p0a_probe"].includes(k))||
    params.getAll("archived").length>1||params.getAll("limit").length>1||
    params.getAll("question").length>1||params.getAll("record_id").length>1||
@@ -342,6 +342,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
  const limit=Number(params.get("limit")??"40");
  if(!Number.isSafeInteger(limit)||limit<1||limit>100||question!==null&&params.has("archived"))
   return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
+ let dbReadStarted=false,dbReadSucceeded=false;
  try{
   // Query a country/category using original headline hints, not publisher
   // location. This is a SQL prefilter only: the 195-state unambiguous country
@@ -378,6 +379,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
     "r.original_published_at DESC,r.record_id LIMIT 100"
    ).bind(category,cutoff,JSON.stringify(hints),topicJson,topicJson,topicJson);
   }
+  dbReadStarted=true;
   const results=countryQuery?
     await countryQuery.all():
     question===null?
@@ -386,6 +388,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
       await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id=? AND "+
          (qualityProbe?"1=1":"b2_object_sha256 IS NOT NULL")+" AND first_ingested_at>? LIMIT 1").bind(requestedId,cutoff).all():
       await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL AND first_ingested_at>? ORDER BY original_published_at DESC,record_id LIMIT 100").bind(cutoff).all();
+  dbReadSucceeded=true;
   if(!Array.isArray(results.results))throw Error();
   // Read-path TTL is enforced independently of scheduled deletion failures:
   // no older-than-72h original is exposed to private research or B2 ingestion.
@@ -415,7 +418,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
   });
   let globalResult=null;
   if(countryScoped&&p0bEnabled&&!qualityProbe&&!hasGrounded){
-   try{globalResult=await p0bGlobalNewsFallback({
+   try{globalResult=await globalFallback({
     question,countryIso3,category,now});}
    catch{globalResult={status:"GLOBAL_PROVIDER_UNAVAILABLE",attempted:true,
     first_party_matches:[],gdelt_discovery_count:0,provider_errors:1,
@@ -471,7 +474,39 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
        x=>x.record_id===item.record_id)?.b2_object_sha256!=null};
    })],private_research_only:true,chargeable:false,
    paid_eligible:false,raw_original_not_delivered:true});
- }catch{return safeReply({ok:false,error:"PRIVATE_RAW_CANONICAL_READ_UNAVAILABLE"},503)}
+ }catch{
+  // Only a thrown D1 query may initiate live publisher fallback. Completed
+  // but corrupt D1 readback cannot be bypassed or silently reclassified.
+  if(dbReadStarted&&!dbReadSucceeded&&countryScoped&&
+     env.GEOMACRO_P0B_SOURCE_FIRST_ENABLED==="1"&&
+     requestedId===null&&!qualityProbe){
+   try{
+    const live=await globalFallback({question,countryIso3,category,now});
+    const proof=live.first_party_matches??[];
+    return safeReply({ok:true,
+     schema:"geomacro.phase2h.private-question-fivepart.v1",
+     source:"FIRST_PARTY_LIVE_RESEARCH_D1_QUERY_UNAVAILABLE",
+     canonical_d1_query_verified:false,canonical_d1_unavailable:true,
+     requested_country_iso3:countryIso3,requested_category:category,
+     country_event_independently_verified:false,
+     global_search_complete:false,global_search_attempted:live.attempted===true,
+     global_fallback_status:live.status,
+     global_discovery_only_count:live.gdelt_discovery_count??0,
+     global_provider_error_count:live.provider_errors??0,
+     global_provider_diagnostics:live.provider_diagnostics??null,
+     global_first_party_verified_count:proof.length,
+     global_official_rss_verified_count:live.first_party_rss_verified_count??0,
+     question_matches:proof.map(item=>({
+      ...item,country_iso3:countryIso3,
+      source:item.first_party_feed_metadata_verified===true?
+       "FIRST_PARTY_OFFICIAL_RSS":"GOV_UK_FIRST_PARTY_CONTENT_API",
+      ...phase2hPrivateResearchDirectAnswer(question,item.five_part)})),
+     private_research_only:true,chargeable:false,paid_eligible:false,
+     raw_original_not_delivered:true});
+   }catch{/* never substitute a synthetic story for missing evidence */}
+  }
+  return safeReply({ok:false,error:"PRIVATE_RAW_CANONICAL_READ_UNAVAILABLE"},503);
+ }
 }
 export async function phase2hPrivateRawMarkArchived(env,body,now=Date.now()){
  if(!env?.DB||body?.schema!=="geomacro.phase2h.b2-archive-ack.v1"||
