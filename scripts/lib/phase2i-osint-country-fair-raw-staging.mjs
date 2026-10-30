@@ -38,12 +38,17 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
 }={}){
  if(!Array.isArray(candidates)||!(now instanceof Date)||
     !Number.isFinite(now.getTime())||typeof derive!=="function"||
-    !Number.isInteger(maxRows)||maxRows<1||maxRows>MAX)
+    !Number.isInteger(maxRows)||maxRows<3||maxRows>MAX)
   throw Error("PHASE2I_OSINT_RAW_PLAN_INVALID");
  const dedup=withoutAmbiguousSameOriginal(candidates);
  const originals=buildPhase2hPrivateRawRecords(dedup.candidates,{now,derive});
  const tick=Math.floor(now.getTime()/900_000);
- const lanes=CATS.map(category=>{
+ // Stable category budgets: at 5 rows the observed lanes receive 2/2/1;
+ // at provider-approved 3 rows each category receives one. Do not use
+ // "tick % number_of_countries" as the only cursor: that repeatedly picks
+ // depth-zero news and permanently starves the second original in a country.
+ const baseQuota=Math.floor(maxRows/CATS.length);
+ const lanes=CATS.map((category,index)=>{
   const eligible=originals.records.filter(r=>r.category===category);
   const cells=new Map();
   for(const row of eligible){
@@ -55,19 +60,24 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
   const keys=[...cells.keys()].sort((a,b)=>
    (a==="UNATTRIBUTED")-(b==="UNATTRIBUTED")||a.localeCompare(b));
   if(!keys.length)return [];
-  // One original per country first; subsequent rows are revisit rounds.
-  // Distinct countries remain represented even when one has many articles.
-  const rotated=[...keys.slice(tick%keys.length),
-    ...keys.slice(0,tick%keys.length)];
+  for(const key of keys)cells.get(key).sort((a,b)=>
+   b.original.original_published_at.localeCompare(
+     a.original.original_published_at)||a.record_id.localeCompare(b.record_id));
+  // Country-interleaved stable ring: first visit every observed country,
+  // then the second/third/... genuine dated event of each country. Advancing
+  // by the number of records consumed in this category guarantees traversal
+  // of ALL depths, not just the most recent item per country.
   const arranged=[];
-  const maxDepth=Math.max(...rotated.map(key=>cells.get(key).length));
+  const maxDepth=Math.max(...keys.map(key=>cells.get(key).length));
   for(let depth=0;depth<maxDepth;depth++){
-   for(const key of rotated){
+   for(const key of keys){
     const source=cells.get(key);
     if(source[depth])arranged.push(source[depth]);
    }
   }
-  return arranged;
+  const plannedQuota=baseQuota+(index<maxRows%CATS.length?1:0);
+  const offset=(tick*plannedQuota)%arranged.length;
+  return [...arranged.slice(offset),...arranged.slice(0,offset)];
  });
  const selected=[],index=[0,0,0];
  while(selected.length<maxRows&&index.some((n,i)=>n<lanes[i].length)){
