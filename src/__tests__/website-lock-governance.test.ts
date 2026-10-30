@@ -64,7 +64,18 @@ describe("website lock governance", () => {
     expect(typeRepairApproval.previous_baseline_sha).toBe(config.approved_geomacro_self_certified_news_severity_20261028.approved_source_commit);
     const dashboardApproval=config.approved_risk_indices_72h_dashboard_20261029;
     expect(dashboardApproval.previous_baseline_sha).toBe(typeRepairApproval.approved_ui_commit);
-    expect(config.baseline_sha).toBe(dashboardApproval.approved_ui_commit);
+    const newPricingApproval = config.approved_low_barrier_pricing_20261031;
+    expect(newPricingApproval.previous_baseline_sha).toBe(dashboardApproval.approved_ui_commit);
+    expect(newPricingApproval.approved_pr).toBe(3250);
+    expect(newPricingApproval.scope).toEqual([
+      "src/components/commercial-access-guide.tsx",
+      "src/routes/pricing.tsx",
+    ]);
+    expect(newPricingApproval.global_risk_final_lock_unmodified).toBe(true);
+    expect(newPricingApproval.predge_unchanged).toBe(true);
+    expect(newPricingApproval.funds_authorized).toBe(false);
+    expect(newPricingApproval.website_lock_remains_active).toBe(true);
+    expect(config.baseline_sha).toBe(newPricingApproval.approved_ui_commit);
     expect(dashboardApproval.scope).toEqual(["src/components/risk-indices/risk-indices-workspace.tsx"]);
     expect(dashboardApproval.website_lock_remains_active).toBe(true);
     expect(dashboardApproval.global_risk_final_lock_unmodified).toBe(true);
