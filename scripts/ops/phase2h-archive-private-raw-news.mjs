@@ -121,7 +121,9 @@ export async function runPhase2hGovernedRawB2({
   env.B2_REQUEST_BUDGET!=="12"||
   !/^\d{1,20}$/u.test(env.GITHUB_RUN_ID??""))
   fail("PROTECTED_MAIN_GOVERNOR_REQUIRED");
- if(now.getUTCHours()%6!==0||now.getUTCMinutes()>59)
+ // Existing four six-hour maintenance windows only. Main pushes and manual
+ // dispatches outside these UTC slots must not contact D1 or B2.
+ if(now.getUTCHours()%6!==0)
   return {status:"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT",storage_confirmed:false,
    rows_archived:0,object_sha256:null};
  const governor=governorFactory({env,fetchImpl});

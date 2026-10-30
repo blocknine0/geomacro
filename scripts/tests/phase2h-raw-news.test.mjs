@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
 import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords}
  from "../lib/phase2h-raw-original-records.mjs";
 import {validPrivateRawNews,phase2hPrivateRawPut,phase2hPrivateRawGet,
@@ -9,6 +10,7 @@ import {buildPhase2hRawB2Plan,verifyPhase2hRawB2Restore,
  runPhase2hGovernedRawB2}
  from "../ops/phase2h-archive-private-raw-news.mjs";
 import {verifyPhase2hProductionQuestionChain} from "../ops/phase2h-verify-private-question-delivery.mjs";
+import {runPhase2hPermanentAcceptance} from "../ops/phase2h-permanent-production-acceptance.mjs";
 const now=new Date("2026-10-30T06:07:00.000Z");
 const candidates=[
  {category:"geopolitics",sourceId:"un_press",title:"UN security council discusses ceasefire proposal",
@@ -53,6 +55,29 @@ test("three distinct collected original categories, exact native date, one ID pe
  assert.match(mineral.original.original_content,/processing grant/);
  assert.equal(x.records.find(r=>r.category==="macro").original.original_content,null);
  assert.equal(data().records[0].raw_sha256,x.records[0].raw_sha256);
+});
+test("topic-wide boilerplate becomes event-specific only with observed event facts",async()=>{
+ const one=candidates[0],two={...candidates[0],sourceId:"trade_notice",
+  articleUrl:"https://example.gov.test/news/other",title:"Agency issues a new customs notice"};
+ const result=buildPhase2hPrivateRawRecords([one,two],{now,derive:items=>
+  items.map(item=>({category:item.category,published_at:item.publishedAt,
+   topic:"trade and security",
+   what_changed:item.sourceId==="trade_notice"?
+    "A customs notice was issued.":"A ceasefire proposal was presented.",
+   why_it_matters:"Changes in policy can affect trade expectations; effects remain unverified."}))});
+ assert.equal(result.records.length,2);
+ const first=result.records[0].analysis.why_it_matters.text;
+ const second=result.records[1].analysis.why_it_matters.text;
+ assert.ok(first?.includes("ceasefire proposal"));
+ assert.ok(second?.includes("customs notice"));
+ assert.notEqual(first,second);
+ for(const item of result.records)
+  assert.equal(await validPrivateRawNews(item,now.getTime()),JSON.stringify(item));
+ const uncertain=buildPhase2hPrivateRawRecords([one],{now,derive:items=>items.map(item=>({
+  category:item.category,published_at:item.publishedAt,topic:"trade and security",
+  what_changed:"A dated first-party source item was observed; category relevance has not yet been established.",
+  why_it_matters:"Policy may matter."}))});
+ assert.equal(uncertain.records[0].analysis.why_it_matters.text,null);
 });
 test("a date-only publisher keeps its native calendar day, never a fabricated midnight",async()=>{
  const single={...candidates[2],datePrecision:"day",publishedAt:"2026-10-29T00:00:00.000Z"};
@@ -260,20 +285,177 @@ test("production acceptance links verified B2 hash, canonical ID and HTTP five-p
   assert.match(String(url),/\/v1\/internal\/phase2h-raw-news\?/u);
   assert.ok(String(url).includes(row.record_id));
   assert.ok(init.headers.Authorization.startsWith("Bearer "));
+  const question=parsedUrl.searchParams.get("question");
+  const focus=question.startsWith("Why")?"why_it_matters":"what_happened";
   return Response.json({ok:true,schema:"geomacro.phase2h.private-question-fivepart.v1",
    source:"B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1",
    chargeable:false,paid_eligible:false,raw_original_not_delivered:true,
    question_matches:[{record_id:row.record_id,category:row.category,
     original_published_at:row.original.original_published_at,
-    archive_d1_ack_present:true,focus:"why_it_matters",
-    direct_answer:row.analysis.why_it_matters.text,five_part:row.analysis}]});
+    archive_d1_ack_present:true,focus,
+    direct_answer:row.analysis[focus].text,five_part:row.analysis}]});
  };
  const proof=await verifyPhase2hProductionQuestionChain({
   now:now.getTime(),env,receipt,fetchImpl});
  assert.equal(proof.entire_admitted_raw_backlog_verified,true);
+
  assert.equal(proof.per_record_five_part_exact,true);
- assert.equal(providerReads,2);assert.equal(httpReads,1);
+ assert.equal(providerReads,2);assert.equal(httpReads,2);
+ assert.equal(proof.question_variants_verified,2);
+ assert.equal(proof.what_and_why_change_with_question,true);
  await assert.rejects(verifyPhase2hProductionQuestionChain({
   now:now.getTime(),env,receipt:{...receipt,b2_second_independent_get_verified:false},
   fetchImpl}),/PHASE2H_QUESTION_CHAIN_B2_POSITIVE_EXACT_READBACK_RECEIPT_REQUIRED/u);
+});
+
+test("bounded two-batch real-shaped archive drains and verifies exact production JSON",async()=>{
+ const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"a".repeat(8)+"-"+"a".repeat(4)+"-"+"a".repeat(4)+
+   "-"+"a".repeat(4)+"-"+"a".repeat(12),
+  CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40),
+  GITHUB_SHA:"1".repeat(40)};
+ let archived=0,checked=0;
+ const proof=await runPhase2hPermanentAcceptance({env,now,
+  archive:async()=>{archived++;return {
+   schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
+   status:"B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED",
+   storage_confirmed:true,rows_archived:archived===1?300:15,
+   category_counts:{geopolitics:1,macro:1,rare_earth:archived===1?298:13},
+   object_sha256:(archived===1?"a":"b").repeat(64),
+   b2_first_get_verified:true,b2_second_independent_get_verified:true,
+   post_archive_d1_verified:true};},
+  verify:async()=>{checked++;return {
+   same_b2_object_and_d1_original:true,per_record_five_part_exact:true,
+   deployed_authenticated_http_200:true,
+   b2_two_get_verified_in_preceding_step:true,
+   production_question_readback_categories:3,
+   unarchived_backlog_present:checked===1,
+   entire_admitted_raw_backlog_verified:checked===2};},
+  readCensus:async()=>({staged_total:315,archived_total:315,pending_total:0,
+   category_counts:{geopolitics:{staged:2,archived:2,pending:0},
+    macro:{staged:2,archived:2,pending:0},
+    rare_earth:{staged:311,archived:311,pending:0}}}),
+  verifyExisting:()=>{throw Error("NO_FALLBACK_FOR_NEW_ARCHIVE")}})
+ assert.equal(archived,2);assert.equal(checked,2);
+ assert.equal(proof.status,"PASS_REAL_B2_TO_EXACT_QUESTION");
+ assert.equal(proof.archived_records_this_run,315);
+ assert.equal(proof.canonical_d1_staged_total,315);
+ assert.equal(proof.canonical_d1_pending_total,0);
+ assert.equal(proof.three_categories_have_archived_originals,true);
+ assert.deepEqual(proof.verified_b2_object_sha256,["a".repeat(64),"b".repeat(64)]);
+ assert.equal(proof.entire_admitted_raw_backlog_verified,true);
+ assert.equal(proof.payments,0);
+});
+test("governor-held archive never receives a false full-chain PASS",async()=>{
+ const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"a".repeat(8)+"-"+"a".repeat(4)+"-"+"a".repeat(4)+
+   "-"+"a".repeat(4)+"-"+"a".repeat(12),
+  CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40)};
+ await assert.rejects(runPhase2hPermanentAcceptance({env,now,
+  archive:async()=>({storage_confirmed:false,status:"B2_ACCOUNT_HEADROOM_HELD"}),
+  verify:()=>{throw Error("SHOULD_NOT_VERIFY")}}),
+  /PHASE2H_PERMANENT_B2_ARCHIVE_HELD_OR_FAILED/u);
+});
+test("even trusted main-push B2 bootstrap cannot bypass six-hour maintenance slot",async()=>{
+ const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",PHASE2H_BOOTSTRAP_ON_MAIN_PUSH:"1",
+  GITHUB_EVENT_NAME:"push",
+  GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main"};
+ const r=await runPhase2hGovernedRawB2({env,now:new Date("2026-10-30T08:25:00Z"),
+  b2Factory:()=>{throw Error("UNSAFE_B2")},
+  governorFactory:()=>{throw Error("UNSAFE_GOVERNOR")}});
+ assert.equal(r.storage_confirmed,false);
+ assert.equal(r.status,"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT");
+});
+
+test("earlier archived objects remain valid when no-new-data slot verifies latest object",async()=>{
+ const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"a".repeat(8)+"-"+"a".repeat(4)+"-"+"a".repeat(4)+
+   "-"+"a".repeat(4)+"-"+"a".repeat(12),
+  CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40)};
+ const result=await runPhase2hPermanentAcceptance({env,now,
+  archive:async()=>({storage_confirmed:true,rows_archived:0,
+   status:"NO_PENDING_PRIVATE_RAW_ROWS"}),
+  verifyExisting:async()=>({
+   same_b2_object_and_d1_original:true,per_record_five_part_exact:true,
+   deployed_authenticated_http_200:true,
+   b2_two_get_verified_in_preceding_step:true,
+   existing_archived_object_two_get_restored:true,
+   existing_object_sha256:"d".repeat(64),
+   verified_category_counts:{geopolitics:20,macro:70,rare_earth:210},
+   verified_b2_batch_rows:300,
+   production_question_readback_categories:3,
+   unarchived_backlog_present:false,
+   entire_admitted_raw_backlog_verified:true}),
+  readCensus:async()=>({staged_total:315,archived_total:315,pending_total:0,
+   category_counts:{geopolitics:{staged:20,archived:20,pending:0},
+    macro:{staged:75,archived:75,pending:0},
+    rare_earth:{staged:220,archived:220,pending:0}}})});
+ assert.equal(result.status,"PASS_REAL_B2_TO_EXACT_QUESTION");
+ assert.equal(result.all_current_staged_rows_have_b2_archive_ack,true);
+ assert.equal(result.entire_staged_set_independently_verified,false);
+ assert.equal(result.all_historical_b2_objects_independently_refetched_this_run,false);
+ assert.equal(result.existing_archived_object_verified,true);
+ assert.equal(result.archived_records_this_run,0);
+});
+
+test("re-observed immutable original survives deployed event-analysis wording upgrades",async()=>{
+ const existing=data().records.find(x=>x.category==="macro");
+ const hashRow=row=>{
+  const {schema,record_id,category,original,analysis,
+   commercial_rights_verified,commercial_delivery_authorized}=row;
+  const immutable={schema,record_id,category,original,analysis,
+   commercial_rights_verified,commercial_delivery_authorized};
+  return createHash("sha256").update(JSON.stringify(immutable)).digest("hex");
+ };
+ const updated=structuredClone(existing);
+ updated.analysis.why_it_matters.text=
+  "An updated evidence-bound explanation whose source original has not changed.";
+ updated.raw_sha256=hashRow(updated);
+ assert.equal(await validPrivateRawNews(updated,now.getTime()),JSON.stringify(updated));
+ let insertCalls=0,afterReads=0;
+ const db={prepare(sql){
+  if(sql.startsWith("SELECT record_id,raw_sha256,first_ingested_at,raw_json")){
+   return {bind:()=>({all:async()=>({results:[{
+    record_id:existing.record_id,raw_sha256:existing.raw_sha256,
+    first_ingested_at:existing.ingested_at,raw_json:JSON.stringify(existing),
+   }]})})};
+  }
+  if(sql.startsWith("INSERT INTO phase2h_private_raw_news")){
+   return {bind:()=>({run:async()=>{insertCalls++;return {success:true}}})};
+  }
+  if(sql.startsWith("SELECT record_id,raw_sha256,first_ingested_at FROM")){
+   return {bind:()=>({all:async()=>{afterReads++;return {results:[{
+    record_id:existing.record_id,raw_sha256:existing.raw_sha256,
+    first_ingested_at:existing.ingested_at,
+   }]}}})};
+  }
+  throw Error("UNEXPECTED_PRIVATE_QUERY");
+ }};
+ const response=await phase2hPrivateRawPut({DB:db},{
+  schema:"geomacro.phase2h.private-raw-batch.v1",items:[updated]},now.getTime());
+ assert.equal(response.status,200);
+ const receipt=await response.json();
+ assert.equal(receipt.accepted,0);
+ assert.equal(receipt.unchanged,1);
+ assert.equal(receipt.d1_exact_readback_verified,true);
+ assert.equal(insertCalls,1);assert.equal(afterReads,1);
+ const changed=structuredClone(updated);
+ changed.original.original_title="A publisher revision of the same original URL and date";
+ changed.raw_sha256=hashRow(changed);
+ const collision=await phase2hPrivateRawPut({DB:db},{
+  schema:"geomacro.phase2h.private-raw-batch.v1",items:[changed]},now.getTime());
+ assert.equal(collision.status,503);
+ assert.equal((await collision.json()).reason_code,"PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION");
 });

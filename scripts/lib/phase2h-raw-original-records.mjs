@@ -26,6 +26,23 @@ const channels=topic=>{
  if(/\b(mineral|rare earth|lithium|cobalt|nickel|copper|mining|processing)\b/u.test(t))out.push("mineral_supply_chain");
  return out;
 };
+// A topic-wide implication alone is boilerplate, not event-specific impact.
+// Use only a factual change already emitted by the deterministic original-news
+// parser; otherwise keep the evidence gap explicit instead of inventing cause.
+export function phase2hEventSpecificWhy(signal){
+ const change=typeof signal?.what_changed==="string"?signal.what_changed.trim():"";
+ const relevance=typeof signal?.why_it_matters==="string"?signal.why_it_matters.trim():"";
+ if(!change||!relevance||
+   /a dated first-party source item was observed|has not yet been established|does not establish a named actor/iu.test(change))
+  return null;
+ const event=change.endsWith(".")?change.slice(0,-1):change;
+ const result="The observed development — "+event+
+  " — matters to the stated topic because "+relevance+
+  " Any realized market response or subsequent outcome remains unverified.";
+ return result.length<=1200&&!result.includes("https://")&&
+  !result.includes("http://")&&!result.includes("<")&&!result.includes(">")?
+  result:null;
+}
 export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}={}){
  if(!Array.isArray(candidates)||!(now instanceof Date)||!Number.isFinite(now.getTime())||
     typeof derive!=="function")throw Error("PHASE2H_RAW_COLLECTOR_INVALID");
@@ -69,7 +86,7 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
   const analysis={
    schema:"geomacro.phase2h.private-five-part.v1",
    what_happened:{text:s?.what_changed??null,original_observation_id:observationId},
-   why_it_matters:{text:s?.why_it_matters??null,independently_verified:false},
+   why_it_matters:{text:phase2hEventSpecificWhy(s),independently_verified:false},
    market_relevance:{potential_watch_channels:channels(topic),observed_market_reaction_verified:false,
      confirmed_instruments:[],price_direction:null,price_change:null},
    what_to_watch:{event_topic:topic,trigger:"NEXT_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION",

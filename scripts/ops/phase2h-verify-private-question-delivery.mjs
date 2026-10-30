@@ -76,40 +76,59 @@ export async function verifyPhase2hProductionQuestionChain({
   fail("B2_BATCH_CATEGORY_COUNTS_DIVERGED");
  // Three bounded authenticated requests, one from each actually present
  // domain. Every archived record was already validated above against B2/D1.
- const question="Why does this specific news matter?";
+ const questions={
+  geopolitics:["Why does this geopolitical development matter?","What happened in this geopolitical development?"],
+  macro:["Why does this macro release matter?","What happened in this macro release?"],
+  rare_earth:["Why does this critical minerals event matter?","What happened in this critical minerals event?"]
+ };
+ // Distinct event topics cannot reuse an identical category boilerplate.
+ for(const category of categories){
+  const group=originals.filter(row=>row.category===category);
+  const differentEventFacts=new Set(group.map(row=>row.analysis.what_happened.text).filter(Boolean));
+  if(differentEventFacts.size>1){
+   if(new Set(group.map(row=>row.analysis.why_it_matters.text)).size<2||
+      new Set(group.map(row=>row.analysis.what_happened.text)).size<2)
+    fail("REPEATED_GENERIC_EVENT_ANALYSIS");
+  }
+ }
  const controlToken=createHmac("sha256",env.GEOMACRO_COMMERCE_LEDGER_TOKEN)
   .update("geomacro-control-plane-v1").digest("hex");
- let questionReadbacks=0;
+ let questionReadbacks=0,questionVariantsVerified=0;
  for(const category of categories){
   const row=originals.find(x=>x.category===category);
   if(!row)continue;
-  const url=ORIGIN+"/v1/internal/phase2h-raw-news?"+
-   new URLSearchParams({record_id:row.record_id,question}).toString();
-  const response=await fetchImpl(url,{method:"GET",redirect:"error",
-   cache:"no-store",headers:{Authorization:"Bearer "+controlToken,
-    Accept:"application/json","Cache-Control":"no-store"},
-   signal:AbortSignal.timeout(15000)});
-  if(response.status!==200||response.redirected)fail("DEPLOYED_PRIVATE_HTTP_UNAVAILABLE");
-  const reply=await response.json();
-  if(reply?.ok!==true||reply.schema!=="geomacro.phase2h.private-question-fivepart.v1"||
-    reply.source!=="B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1"||
-    reply.chargeable!==false||reply.paid_eligible!==false||
-    reply.raw_original_not_delivered!==true||
-    !Array.isArray(reply.question_matches)||reply.question_matches.length!==1)
-   fail("EXACT_QUESTION_CONTRACT_INVALID");
-  const answer=reply.question_matches[0];
-  if(answer.record_id!==row.record_id||answer.category!==row.category||
-    answer.original_published_at!==row.original.original_published_at||
-    answer.archive_d1_ack_present!==true||
-    answer.focus!=="why_it_matters"||
-    answer.direct_answer!==row.analysis.why_it_matters.text||
-    JSON.stringify(answer.five_part)!==JSON.stringify(row.analysis))
-   fail("EXACT_QUESTION_FIVE_PART_NOT_MATCHED");
-  const publicShape=JSON.stringify(reply);
-  if(publicShape.includes(row.original.original_url)||
-     publicShape.includes(row.original.original_title)||
-     publicShape.includes(row.original.original_source_id))
-   fail("PRIVATE_ORIGINAL_EXPOSED_IN_QUESTION_JSON");
+  if(row.analysis.what_happened.text===row.analysis.why_it_matters.text)
+   fail("GENERIC_SAME_EVENT_WHAT_WHY_ANALYSIS");
+  for(const [index,question] of questions[category].entries()){
+   const url=ORIGIN+"/v1/internal/phase2h-raw-news?"+
+    new URLSearchParams({record_id:row.record_id,question}).toString();
+   const response=await fetchImpl(url,{method:"GET",redirect:"error",
+    cache:"no-store",headers:{Authorization:"Bearer "+controlToken,
+     Accept:"application/json","Cache-Control":"no-store"},
+    signal:AbortSignal.timeout(15000)});
+   if(response.status!==200||response.redirected)fail("DEPLOYED_PRIVATE_HTTP_UNAVAILABLE");
+   const reply=await response.json();
+   if(reply?.ok!==true||reply.schema!=="geomacro.phase2h.private-question-fivepart.v1"||
+     reply.source!=="B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1"||
+     reply.chargeable!==false||reply.paid_eligible!==false||
+     reply.raw_original_not_delivered!==true||
+     !Array.isArray(reply.question_matches)||reply.question_matches.length!==1)
+    fail("EXACT_QUESTION_CONTRACT_INVALID");
+   const answer=reply.question_matches[0];
+   const focus=index===0?"why_it_matters":"what_happened";
+   if(answer.record_id!==row.record_id||answer.category!==row.category||
+     answer.original_published_at!==row.original.original_published_at||
+     answer.archive_d1_ack_present!==true||answer.focus!==focus||
+     answer.direct_answer!==row.analysis[focus].text||
+     JSON.stringify(answer.five_part)!==JSON.stringify(row.analysis))
+    fail("EXACT_QUESTION_FIVE_PART_NOT_MATCHED");
+   const publicShape=JSON.stringify(reply);
+   if(publicShape.includes(row.original.original_url)||
+      publicShape.includes(row.original.original_title)||
+      publicShape.includes(row.original.original_source_id))
+    fail("PRIVATE_ORIGINAL_EXPOSED_IN_QUESTION_JSON");
+   questionVariantsVerified++;
+  }
   questionReadbacks++;
  }
  if(questionReadbacks!==categories.filter(c=>counts[c]>0).length)
@@ -126,6 +145,8 @@ export async function verifyPhase2hProductionQuestionChain({
   verified_b2_batch_rows:originals.length,
   verified_category_counts:counts,
   production_question_readback_categories:questionReadbacks,
+  question_variants_verified:questionVariantsVerified,
+  what_and_why_change_with_question:true,
   deployed_authenticated_http_200:true,
   raw_source_not_delivered:true,
   unarchived_backlog_present:Boolean(Number(pending[0].has_pending)),
