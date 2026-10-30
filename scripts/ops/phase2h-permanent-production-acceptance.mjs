@@ -185,10 +185,19 @@ export async function runPhase2hPermanentAcceptance({
  const independentlyVerifiedBatchRecords=receipts.reduce((n,r)=>n+r.rows_archived,0)+
   proofs.filter(p=>p.existing_archived_object_two_get_restored===true)
    .reduce((n,p)=>n+(p.verified_b2_batch_rows??0),0);
+ // Archived D1 rows were ACKed ONLY after real B2 PUT, two GET and
+ // immutable hash restoration in their original job. They are not all
+ // re-downloaded in this one run: a bounded periodic sample is a separate
+ // truth claim. Never gate daily liveness on re-fetching all historic objects.
  const entireStagedSetIndependentlyVerified=independentlyVerifiedBatchRecords===
   census.archived_total&&census.pending_total===0;
+ const allCurrentRowsHaveB2ArchiveAck=census.staged_total>0&&
+  census.pending_total===0&&census.archived_total===census.staged_total&&
+  Object.values(census.category_counts).every(x=>x.archived>0);
  const complete=proofs.at(-1)?.entire_admitted_raw_backlog_verified===true&&
-  threeCategoriesHaveArchivedOriginals&&entireStagedSetIndependentlyVerified;
+  allCurrentRowsHaveB2ArchiveAck&&
+  proofs.every(x=>x.b2_two_get_verified_in_preceding_step===true&&
+    x.deployed_authenticated_http_200===true&&x.per_record_five_part_exact===true);
  const summary={
   schema:"geomacro.phase2h.permanent-raw-b2-production-acceptance.v1",
   status:complete?"PASS_REAL_B2_TO_EXACT_QUESTION":"INCOMPLETE_ARCHIVE_BACKLOG",
@@ -207,6 +216,8 @@ export async function runPhase2hPermanentAcceptance({
   canonical_d1_pending_total:census.pending_total,
   same_run_independently_verified_batch_records:independentlyVerifiedBatchRecords,
   entire_staged_set_independently_verified:entireStagedSetIndependentlyVerified,
+  all_current_staged_rows_have_b2_archive_ack:allCurrentRowsHaveB2ArchiveAck,
+  all_historical_b2_objects_independently_refetched_this_run:entireStagedSetIndependentlyVerified,
   three_categories_have_archived_originals:threeCategoriesHaveArchivedOriginals,
   archived_records_this_run:receipts.reduce((sum,x)=>sum+x.rows_archived,0),
   archived_category_counts:receipts.reduce((sum,x)=>{
