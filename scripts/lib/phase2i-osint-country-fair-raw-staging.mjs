@@ -12,6 +12,20 @@ const counts=rows=>Object.fromEntries(CATS.map(category=>[
  category,rows.filter(row=>row.category===category).length,
 ]));
 
+/** Scope shared multi-category feed items by the EXISTING reviewed topic map.
+ * A pinned single-domain official publisher may publish a relevant release
+ * without using our exact headline keywords. A cross-domain feed cannot
+ * manufacture three private originals from one unrelated item.
+ */
+export function phase2iSourceOnlyCategoryRelevant(raw,pinnedCategories,topics){
+ if(!raw||!CATS.includes(raw.category)||typeof raw.title!=="string"||
+    typeof raw.source_url!=="string"||!(pinnedCategories instanceof Map)||
+    !(topics?.[raw.category] instanceof RegExp))return false;
+ const allowed=pinnedCategories.get(raw.source_url);
+ return Array.isArray(allowed)&&allowed.includes(raw.category)&&
+   (allowed.length===1||topics[raw.category].test(raw.title));
+}
+
 function withoutAmbiguousSameOriginal(candidates){
  const rows=new Map(),conflict=new Set();
  for(const raw of candidates){
@@ -60,11 +74,18 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
   const rotated=[...keys.slice(tick%keys.length),
     ...keys.slice(0,tick%keys.length)];
   const arranged=[];
+  // Rotate article depth as well as country. Without this, repeated
+  // admission slots re-select each country's first already-stored article
+  // forever, wasting the five permitted new D1 row opportunities.
+  const pass=Math.floor(tick/keys.length);
+  for(const key of rotated)cells.get(key).sort((a,b)=>
+    b.original.original_published_at.localeCompare(a.original.original_published_at)||
+    a.record_id.localeCompare(b.record_id));
   const maxDepth=Math.max(...rotated.map(key=>cells.get(key).length));
   for(let depth=0;depth<maxDepth;depth++){
    for(const key of rotated){
     const source=cells.get(key);
-    if(source[depth])arranged.push(source[depth]);
+    if(source.length)arranged.push(source[(depth+pass%source.length)%source.length]);
    }
   }
   return arranged;
