@@ -53,3 +53,20 @@ test("latest world discovery is not substituted for original publisher proof",as
  assert.equal(r.exhaustive_global_search,false);
  assert.ok(calls.includes("www.gov.uk/api/content/government/news/india-lithium-recycling"));
 });
+
+
+test("real upstream failures expose bounded statuses, not publisher URLs or response data",async()=>{
+ const fetchImpl=async url=>({
+  status:new URL(url).hostname==="www.gov.uk"?403:429,
+  redirected:false,headers:{get:()=> "application/json"},
+  text:async()=> "untrusted upstream content"
+ });
+ const result=await p0bGlobalNewsFallback({
+  question:"Ukraine sanctions update",countryIso3:"UKR",
+  category:"geopolitics",now,fetchImpl
+ });
+ assert.equal(result.first_party_matches.length,0);
+ assert.deepEqual(result.provider_diagnostics,{govuk:"HTTP_403",gdelt:"HTTP_429"});
+ assert.equal(result.provider_errors,2);
+ assert.doesNotMatch(JSON.stringify(result),/untrusted upstream content|https?:\/\//u);
+});

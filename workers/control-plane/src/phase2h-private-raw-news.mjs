@@ -419,7 +419,8 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
     question,countryIso3,category,now});}
    catch{globalResult={status:"GLOBAL_PROVIDER_UNAVAILABLE",attempted:true,
     first_party_matches:[],gdelt_discovery_count:0,provider_errors:1,
-    exhaustive_global_search:false};}
+    exhaustive_global_search:false,
+    provider_diagnostics:{govuk:"NETWORK_TIMEOUT_OR_EGRESS",gdelt:"NETWORK_TIMEOUT_OR_EGRESS"}};}
   }
   return safeReply({ok:true,schema:"geomacro.phase2h.private-question-fivepart.v1",
    source:globalResult?.first_party_matches?.length?
@@ -439,6 +440,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    global_fallback_status:globalResult?.status??"NOT_REQUIRED_OR_DISABLED",
    global_discovery_only_count:globalResult?.gdelt_discovery_count??0,
    global_provider_error_count:globalResult?.provider_errors??0,
+   global_provider_diagnostics:globalResult?.provider_diagnostics??null,
    global_first_party_verified_count:globalResult?.first_party_matches?.length??0,
    // Prefer a verified publisher-metadata fallback over an incomplete
    // canonical original; never force clients to select a null first result.
