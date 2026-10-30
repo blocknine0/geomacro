@@ -1,0 +1,36 @@
+{
+  "schema": "geomacro.phase2ib.governed-raw-archive-cycle.v1",
+  "production_main_sha": "b6c06b33c5b8c68a5db42177b0ca627095b5b8d5",
+  "github_run_id": "41102709212",
+  "checked_at": "2026-10-30T17:57:49.494Z",
+  "provider_maintenance_admitted": false,
+  "existing_archive_windows_unmodified": [
+    "00",
+    "06",
+    "12",
+    "18"
+  ],
+  "batch_maximum_unmodified": 300,
+  "account_governor_unchanged": true,
+  "status": "QUOTA_HELD_MAINTENANCE_NOT_ADMITTED",
+  "archive_job_result": "skipped",
+  "latest_verified_receipt": null,
+  "last_positive_receipt": null,
+  "category_census_from_canonical_d1": null,
+  "collected_by_category": {
+    "geopolitics": null,
+    "macro": null,
+    "rare_earth": null
+  },
+  "deduplicated_by_category": {
+    "geopolitics": null,
+    "macro": null,
+    "rare_earth": null
+  },
+  "original_event_country_evidence_from_raw_schema": false,
+  "country_event_coverage_585_verified": false,
+  "source_rights_verified": false,
+  "commercial_rights_verified": false,
+  "eligible_news_archive_corpus_claim": false,
+  "payments": 0
+}
