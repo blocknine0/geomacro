@@ -367,6 +367,8 @@ jobs:
           retention-days: 7
 
   collect-private:
+    # Only a human dispatch may run the legacy full 768-item research
+    # pipeline; daily scheduled ingestion uses five-row micro-bundles.
     # Serialize D1 source writes with the five-minute fastlane; never
     # oversubscribe the same non-atomic Cloudflare Free budget in parallel.
     concurrency:
@@ -374,8 +376,6 @@ jobs:
       cancel-in-progress: false
     needs: [verify, quota-admission]
     if: >-
-      # Full 768-item collector is explicitly operator-dispatched ONLY;
-      # never spend the 96-slot daily minimum Free D1 write envelope on it.
       github.event_name == 'workflow_dispatch' &&
       needs.quota-admission.outputs.critical == 'true' &&
       needs.quota-admission.outputs.research == 'true' &&
