@@ -17,7 +17,7 @@ const ACCESS = [
   {
     key: "call",
     title: "Pay per call",
-    subtitle: "Exact USDC price by capability",
+    subtitle: "$0.02–$0.05 USDC per eligible delivery",
     features: ["Structured intelligence for APIs and AI agents", "Pay only when a verified delivery succeeds"],
   },
   {
