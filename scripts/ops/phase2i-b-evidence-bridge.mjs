@@ -21,7 +21,8 @@ const validCounts=x=>x&&CATEGORIES.every(k=>nonnegative(x[k]))&&
 
 export function validateExistingPhase2hReceipt(report,mainSha){
  if(report?.schema!=="geomacro.phase2h.permanent-raw-b2-production-acceptance.v1"||
-    !["PASS_REAL_B2_TO_EXACT_QUESTION","INCOMPLETE_ARCHIVE_BACKLOG"].includes(report.status)||
+    !["PASS_REAL_B2_TO_EXACT_QUESTION","INCOMPLETE_ARCHIVE_BACKLOG",
+       "INCOMPLETE_ARCHIVED_OBJECT_RECHECK"].includes(report.status)||
     report.production_main_sha!==mainSha||
     report.actual_b2_readback_verified!==true||
     report.canonical_d1_and_deployed_question_exact!==true||
