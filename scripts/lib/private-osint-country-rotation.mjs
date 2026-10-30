@@ -112,7 +112,7 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  }
  if(base.length+fresh.length>512||
     (includeLocalGapLane&&fresh.length>
-      PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK))
+      PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK+hubs.length))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
  return launchPriorityWatchSources([...base,...fresh]);
 }
