@@ -37,6 +37,8 @@ test("source-only job strictly uses the existing provider budget and D1 intake w
   assert.ok(sourceOnly.includes(marker),marker);
  assert.match(sourceOnly,/maxRows:5/u);
  assert.match(sourceOnly,/stagePhase2iOsintFairRaw/u);
+ assert.match(sourceOnly,/phase2iSourceOnlyCategoryRelevant\(raw,pinnedCategories,PRIVATE_OSINT_TOPICS\)/u);
+ assert.match(sourceOnly,/cross_category_offtopic_candidates_filtered:offCategoryFiltered/u);
  assert.match(sourceOnly,/collectPrivateOsint15m/u);
  assert.match(sourceOnly,/includeLocalGapLane:true/u);
  assert.match(sourceOnly,/configured_country_category_routes!==585/u);
