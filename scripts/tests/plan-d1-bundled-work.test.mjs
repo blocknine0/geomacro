@@ -50,7 +50,7 @@ test("Phase2H has isolated free-tier archive admission without opening general m
    slots*20_000+hours*2500+10_000);
  assert.ok(p.remaining_rows_written>
    23_000+p.source_intake_budget_to_utc_reset.rows_written+
-   slots*350+hours*25+150);
+   slots*350+hours*p.retention_cleanup_max_rows+150);
 });
 test("Phase2H archive stays closed on denied or insufficient provider headroom",()=>{
  const at=new Date("2026-10-30T14:10:33.000Z");
@@ -291,7 +291,12 @@ test("actual 30 Oct provider-paced source-only snapshot can reserve 25 Phase2H d
  assert.equal(p.critical,false);
  assert.equal(p.source_intake,true);
  assert.equal(p.retention_cleanup,true);
- assert.equal(p.retention_cleanup_max_rows,25);
+ assert.ok(p.retention_cleanup_max_rows>=25);
+ assert.ok(p.retention_cleanup_max_rows<=1000);
+ assert.ok(p.retention_cleanup_max_rows*11+150+
+   p.source_intake_budget_to_utc_reset.rows_written+23000<
+   live.remaining_rows_written);
+ assert.equal(p.retention_cleanup, p.retention_cleanup_max_rows>0);
  assert.equal(p.retention_cleanup_only_phase2h_original_news,true);
  assert.equal(p.retention_cleanup_does_not_admit_research_or_signing,true);
  assert.equal(p.research,false);
@@ -306,5 +311,22 @@ test("actual 30 Oct provider-paced source-only snapshot can reserve 25 Phase2H d
  for(const bad of [null,{...live,provider_graphql_usage_observed:false}]){
   const x=planD1BundledWork(bad,{now:at});
   assert.equal(x.retention_cleanup,false);
+ }
+});
+
+test("Phase2H cleanup grant always spends only provider-budgeted hourly rows",()=>{
+ const at=new Date("2026-10-30T13:43:32.000Z");
+ for(const written of [49_693,50_000,55_000,70_000,95_000]){
+  const snap={...quota(2_311_316,written),day_utc:"2026-10-30"};
+  const p=planD1BundledWork(snap,{now:at});
+  const cap=p.retention_cleanup_max_rows;
+  assert.ok(Number.isSafeInteger(cap)&&cap>=0&&cap<=1000);
+  if(p.retention_cleanup){
+   assert.ok(cap>=25);
+   const slots=Math.ceil((86_400_000-(at.getTime()%86_400_000))/3600000);
+   const reserved=23000+(p.source_intake_budget_to_utc_reset?.rows_written??0)+150+
+     cap*slots;
+   assert.ok(snap.remaining_rows_written>reserved);
+  }else assert.equal(cap,0);
  }
 });
