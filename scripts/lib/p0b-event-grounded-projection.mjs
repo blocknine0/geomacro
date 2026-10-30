@@ -27,7 +27,7 @@ const conditional=s=>/\b(?:if|could|might|may|rumou?r|alleged|unconfirmed|claims
 const tidy=s=>String(s).replace(/\s+/gu," ").replace(/[.?!]+$/gu,"").trim();
 const mechanism=(category,object)=>{
  if(category==="geopolitics"){
-  if(/\b(?:sanction|export|tariff|ban|embargo|trade restriction|border)\b/iu.test(object))
+  if(/\b(?:sanctions?|exports?|tariffs?|bans?|embargoes?|trade restrictions?|borders?)\b/iu.test(object))
    return "could change compliance and cross-border trade conditions if implemented; actual enforcement and shipment outcomes require separate evidence";
   if(/\b(?:ceasefire|peace|security|conflict|attack|military|evacuat|humanitarian|refugee)\b/iu.test(object))
    return "makes subsequent on-the-ground compliance, access or security updates relevant; a stated action does not independently confirm the eventual outcome";
