@@ -7,6 +7,7 @@
 import {mkdirSync,writeFileSync} from "node:fs";
 import {createHmac} from "node:crypto";
 import {p0aAuditBatch,p0aAuditOriginal} from "../lib/p0a-evidence-quality.mjs";
+import {phase2hOneOriginalResearchFivePart} from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
 const ORIGIN="https://geomacro-control-plane.daspallab202391.workers.dev";
 const PATH="artifacts/derived-news/p0a-production-intelligence-completeness.json";
 const CATEGORIES=["geopolitics","macro","rare_earth"];
@@ -71,8 +72,13 @@ export async function runP0AProductionAcceptance({
    try{parsed=JSON.parse(dbRow.raw_json)}catch{fail("CANONICAL_JSON_INVALID")}
    if(parsed.record_id!==dbRow.record_id||parsed.category!==dbRow.category||
       !HEX.test(parsed.raw_sha256))fail("CANONICAL_IDENTITY_DIVERGED");
-   records.push(parsed);
-   samples.push({row:parsed,archived:HEX.test(dbRow.b2_object_sha256??"")});
+   const projected=phase2hOneOriginalResearchFivePart(parsed);
+   if(!projected)fail("LIVE_QUALITY_PROJECTION_UNAVAILABLE");
+   // Immutable D1/B2 originals are never rewritten. Audit the exact
+   // read-time derived representation customers/machines would receive.
+   const effective={...parsed,analysis:projected};
+   records.push(effective);
+   samples.push({row:effective,archived:HEX.test(dbRow.b2_object_sha256??"")});
   }
   const quality=p0aAuditBatch(records);
   perCategory[cat]={...quality.counts[cat],
@@ -120,7 +126,7 @@ export async function runP0AProductionAcceptance({
   checked_at:now.toISOString(),audited_main_sha:env.GITHUB_SHA??null,
   source:"CANONICAL_CLOUDFLARE_D1_AND_DEPLOYED_AUTHENTICATED_WORKER",
   category_audit:perCategory,quality_issue_counts:aggregate.issue_counts,
-  all_sampled_originals_source_grounded:allSampledGrounded,
+  all_sampled_live_projections_evidence_bounded:allSampledGrounded,
   independent_deployed_canonical_d1_five_part_readback:httpSamples,
   all_three_deployed_readbacks_verified:allLiveReadbacks,
   no_unsupported_quantitative_market_or_followup_claims:
