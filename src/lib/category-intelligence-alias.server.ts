@@ -1,5 +1,6 @@
 import { buildAgentQueryPlan, inferAgentQueryTopics, type AgentQueryTopic } from "./agent-query-plan";
 import { mainnetIntelligenceHandlers } from "./mainnet-intelligence-endpoint.server";
+import {canonicalCheckoutUrl} from "./x402-checkout-network-selection";
 import { publicIntelligenceSourceCoverage, type CommercialIntelligenceCategory } from "./public-intelligence-source-coverage";
 import { categoryOriginalSourcePulse } from "./current-30min-original-source-pulse.server";
 import { readCategoryLiveObservation } from "./category-live-observation.server";
@@ -248,6 +249,11 @@ export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
       }, { status: response.status, headers: response.headers });
     },
     POST: async ({ request }: { request: Request }) => {
+      // Do not drop a buyer's Polygon choice when remapping any of the three
+      // category aliases to the canonical x402 resource.
+      let checkoutUrl:URL;
+      try{checkoutUrl=canonicalCheckoutUrl(request,CANONICAL_PATH);}
+      catch{return errorResponse("CATEGORY_NETWORK_QUERY_UNSUPPORTED");}
       const contentType = request.headers.get("content-type") ?? "";
       if (!contentType.toLowerCase().includes("application/json")) {
         return errorResponse("INVALID_CATEGORY_CONTENT_TYPE", 415);
@@ -280,8 +286,7 @@ export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
       const headers = new Headers(request.headers);
       headers.delete("content-length");
       headers.set("content-type", "application/json");
-      const url = new URL(CANONICAL_PATH, request.url);
-      const canonicalRequest = new Request(url, {
+      const canonicalRequest = new Request(checkoutUrl, {
         method: "POST",
         headers,
         body: JSON.stringify(bound.payload),
