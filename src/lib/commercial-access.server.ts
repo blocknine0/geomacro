@@ -163,6 +163,9 @@ const TIER_PRIORITY: Record<CommercialTierId, number> = {
   free: 0,
   testnet_tester: 1,
   analyst_pilot: 2,
+  starter_dev: 2,
+  pro_analyst: 3,
+  business_pilot: 4,
   api_pilot: 3,
   institutional: 4,
 };

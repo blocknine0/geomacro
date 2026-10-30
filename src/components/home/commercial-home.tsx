@@ -150,7 +150,7 @@ export function CommercialHome({ initialFindCards = [] }: { initialFindCards?: F
             The same intelligence. Structured for your workflow.
           </h2>
           <p className="mt-3 text-sm text-muted-foreground">
-            Country and corridor products, priced per eligible delivery. API keys and self-service checkout coming soon.
+            Monthly plans from $9, one-time credit packs from $5, and Base USDC x402 at $0.02–$0.05 per eligible call. Checkout availability is verified separately.
           </p>
         </div>
         <Link to="/pricing" className="gm-text-link">

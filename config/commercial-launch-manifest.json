@@ -4,7 +4,7 @@
   "production_funds_authorized": false,
   "official_launch_announced": false,
   "global_launch_ack_env": "GEOMACRO_COMMERCIAL_LAUNCH_ACK",
-  "policy": "Initial commercial pricing is the fixed founder-approved eight-capability Geomacro USDC price schedule. Availability and full verified/signed immutable delivery are prerequisites to any exact-price x402 quote. No mandatory subscription, no automatic tier changes or hidden price increases.",
+  "policy": "NEW SALES ONLY: Starter / Dev $9/1000 credits, Pro Analyst $29/5000 credits, Business Pilot $99/25000 credits per 30 days; one-time packs $5/100, $15/500, $30/1500 credits; Base USDC x402 0.02-0.05 per eligible verified delivery. Retire all older public pricing. No automatic activation or unverified charge.",
   "providers": {
     "coinbase_x402": {
       "status": "prelaunch_acceptance",
@@ -107,12 +107,15 @@
     "distributed_40k_observability_closure"
   ],
   "commercial_milestone": {
-    "pricing_contract_version": "geomacro.capability-usdc.v1",
-    "pricing_model": "EIGHT_CAPABILITIES_EXACT_VARIANTS_NO_FLAT_PRICE",
+    "pricing_contract_version": "geomacro.capability-usdc.v2",
+    "pricing_model": "MONTHLY_CREDITS_ONE_TIME_PACKS_AND_CAPABILITY_X402",
     "founder_separately_authorized_first_live_canary_usdc": "0.05",
     "pre_funding_required": false,
     "milestone_is_post_launch_adoption_target": true,
     "credit_units_separate_from_usdc": true,
-    "production_funds_authorized": false
+    "production_funds_authorized": false,
+    "launch_pricing_version": "geomacro.low-barrier.v1",
+    "subscription_checkout_enabled": false,
+    "credit_pack_checkout_enabled": false
   }
 }
