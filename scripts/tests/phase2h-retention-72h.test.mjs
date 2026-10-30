@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import {phase2hNewsCutoff,phase2hRawWithinRetention,planPhase2hD1RetentionDelete,
  PHASE2H_NEWS_MAX_AGE_MS,PHASE2H_NEWS_CLEANUP_LIMIT,
  PHASE2H_NEWS_CLEANUP_RUN_LIMIT} from "../lib/phase2h-retention-72h.mjs";
-import {assertPhase2hB2Lifecycle,PHASE2H_B2_PREFIX}
+import {assertPhase2hB2Lifecycle,assertPhase2hB2ManualRetention,PHASE2H_B2_PREFIX}
  from "../ops/phase2h-verify-b2-72h-lifecycle.mjs";
 import {cleanupPhase2hD1} from "../ops/phase2h-72h-d1-cleanup.mjs";
 const now=Date.parse("2026-10-30T15:00:00.000Z");
@@ -57,6 +57,18 @@ test("B2 lifecycle 1 day hide + 1 day delete must cover ONLY private Phase2H arc
     daysFromHidingToDeleting:1}],
  ])assert.throws(()=>assertPhase2hB2Lifecycle(rules),
    /PHASE2H_B2_72H_THREE_DAY_EXPIRY_NOT_PROVEN/u);
+});
+test("manual B2 pause forbids overlapping provider hide or delete policies",()=>{
+ assert.equal(assertPhase2hB2ManualRetention([]).auto_deletion_paused,true);
+ assert.equal(assertPhase2hB2ManualRetention([
+  {fileNamePrefix:"unrelated/",daysFromUploadingToHiding:1}
+ ]).auto_deletion_paused,true);
+ for(const prefix of [PHASE2H_B2_PREFIX,"geomacro-evidence/v1/private/",""]){
+  assert.throws(()=>assertPhase2hB2ManualRetention([
+   {fileNamePrefix:prefix,daysFromUploadingToHiding:1,
+    daysFromHidingToDeleting:1}
+  ]),/PHASE2H_B2_72H_AUTOMATIC_DELETION_STILL_ENABLED/u);
+ }
 });
 test("deletion run fails closed without provider admission and never changes PREDGE",async()=>{
  await assert.rejects(()=>cleanupPhase2hD1({now,env:{},fetchImpl:()=>{
