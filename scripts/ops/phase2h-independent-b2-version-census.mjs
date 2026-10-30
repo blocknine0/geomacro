@@ -66,10 +66,15 @@ export async function verifyPhase2hB2VersionInventory({
   "NATIVE_AUTH",{Authorization:"Basic "+Buffer.from(
    selectedId+":"+selectedSecret).toString("base64")});
  const storage=auth?.apiInfo?.storageApi,allowed=storage?.allowed;
- if(!Array.isArray(allowed?.capabilities)||
-    typeof auth.authorizationToken!=="string"||!auth.authorizationToken.length||
-    !/^[a-f0-9]{16,64}$/iu.test(auth.accountId??""))
-  FAIL("PROVIDER_AUTHORIZATION_INVALID");
+ // Native v4 account IDs are opaque provider-issued strings, not
+ // guaranteed hexadecimal. Use a safe bounded token for URLSearchParams
+ // rather than incorrectly rejecting a real authorized account.
+ if(!Array.isArray(allowed?.capabilities))
+  FAIL("PROVIDER_CAPABILITIES_UNVERIFIED");
+ if(typeof auth.authorizationToken!=="string"||!auth.authorizationToken.length)
+  FAIL("PROVIDER_TOKEN_UNVERIFIED");
+ if(typeof auth.accountId!=="string"||!/^[a-zA-Z0-9_-]{6,128}$/u.test(auth.accountId))
+  FAIL("PROVIDER_ACCOUNT_ID_UNVERIFIED");
  if(!allowed.capabilities.includes("listBuckets"))
   FAIL("PROVIDER_LIST_BUCKETS_CAPABILITY_MISSING");
  if(!allowed.capabilities.includes("listFiles"))
