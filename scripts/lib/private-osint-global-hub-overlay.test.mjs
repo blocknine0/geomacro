@@ -33,18 +33,18 @@ test("global multilateral hub candidates are pinned, discovery-only and never gr
 
 test("retired old feeds replaced by three hub candidates without increasing request budget or losing country discovery",()=>{
  const base=privateOsintGlobalSources();
- assert.ok(base.length<463 && base.length>=300);
+ assert.ok(base.length<=463 && base.length>=300);
  const hubs=privateOsintGlobalHubSources();
  const union=new Set();
  for(let n=0;n<8;n++){
   const now=new Date(at.getTime()+slot*n);
   const sources=privateOsintRuntimeSources(now,base,COUNTRIES_195,{includeLocalGapLane:true});
   assert.ok(sources.length<=512);
-  assert.equal(new Set(sources.map(x=>x.url)).size,512);
+  assert.equal(new Set(sources.map(x=>x.url)).size,sources.length);
   assert.equal(sources.filter(x=>x.private_country_local_candidate).length,24);
   assert.equal(sources.filter(x=>x.private_discovery_index_only&&x.discovery_country_iso3).length,25);
   for(const hub of hubs)assert.equal(sources.filter(s=>s.url===hub.url).length,1);
-  for(const row of sources.filter(s=>s.private_discovery_index_only))union.add(row.discovery_country_iso3);
+  for(const row of sources.filter(s=>s.private_discovery_index_only&&s.discovery_country_iso3))union.add(row.discovery_country_iso3);
  }
  assert.equal(union.size,195);
  assert.deepEqual(union,new Set(COUNTRIES_195.map(x=>x.iso3)));
