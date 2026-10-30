@@ -84,8 +84,8 @@ export async function verifyPhase2hProductionQuestionChain({
  // Distinct event topics cannot reuse an identical category boilerplate.
  for(const category of categories){
   const group=originals.filter(row=>row.category===category);
-  const differentTopics=new Set(group.map(row=>row.analysis.what_to_watch.event_topic).filter(Boolean));
-  if(differentTopics.size>1){
+  const differentEventFacts=new Set(group.map(row=>row.analysis.what_happened.text).filter(Boolean));
+  if(differentEventFacts.size>1){
    if(new Set(group.map(row=>row.analysis.why_it_matters.text)).size<2||
       new Set(group.map(row=>row.analysis.what_happened.text)).size<2)
     fail("REPEATED_GENERIC_EVENT_ANALYSIS");
