@@ -61,7 +61,8 @@ export async function verifyPhase2hB2Lifecycle({
    credentialId+":"+credentialSecret).toString("base64")});
  const storage=auth?.apiInfo?.storageApi;
  if(typeof auth.authorizationToken!=="string"||
-    !/^[a-f0-9]{16,64}$/u.test(auth.accountId??"")||
+    typeof auth.accountId!=="string"||
+    !/^[a-zA-Z0-9_-]{6,128}$/u.test(auth.accountId)||
     !Array.isArray(storage?.allowed?.capabilities)||
     !storage.allowed.capabilities.includes("listBuckets"))
   fail("READ_BUCKET_LIFECYCLE_CAPABILITY_MISSING");

@@ -49,6 +49,15 @@ test("source names outside the exact private prefix are never silently counted",
  assert.throws(()=>checkB2VersionsPage({files:[row(Date.now()+9999999999999)]},now),
   /VERSION_CLOCK_INVALID/u);
 });
+test("native v4 accepts safe provider-issued non-hex account IDs, rejects malformed IDs",async()=>{
+ const providerAuth={...auth,accountId:"account_key-2026"};
+ const m=make([providerAuth,bucket,{files:[],nextFileName:null,nextFileId:null}]);
+ const good=await verifyPhase2hB2VersionInventory({env,now,fetchImpl:m.fetchImpl,governor:m.governor});
+ assert.equal(good.provider_lifecycle_exact_prefix_verified,true);
+ const malformed=make([{...auth,accountId:"bad?request=1"}]);
+ await assert.rejects(verifyPhase2hB2VersionInventory({env,now,fetchImpl:malformed.fetchImpl,
+  governor:malformed.governor}),/PROVIDER_ACCOUNT_ID_UNVERIFIED/u);
+});
 test("missing lifecycle or listFiles capability refuses positive proof",async()=>{
  const m=make([{...auth,apiInfo:{storageApi:{...auth.apiInfo.storageApi,
   allowed:{capabilities:["listBuckets"]}}}},bucket]);
