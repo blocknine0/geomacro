@@ -6,6 +6,7 @@
 import {phase2hCountry,phase2hHeadlineCountryCandidate} from
  "./phase2h-country-originals-195.mjs";
 import {p0bProjectEvidenceBounded} from "./p0b-event-grounded-projection.mjs";
+import {p0bFirstPartyFeedNews} from "./p0b-first-party-rss.mjs";
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const SKIP=new Set(["what","why","when","which","does","did","will","latest",
  "update","news","happened","matter","matters","important","market","markets",
@@ -104,10 +105,8 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
    question.length<3||!Number.isFinite(now))
   throw Error("P0B_QUERY_INVALID");
  const topical=terms(question,country.name);
- if(topical.length===0)return Object.freeze({
-  status:"NO_TOPICAL_SEARCH_TERMS",attempted:false,
-  first_party_matches:[],gdelt_discovery_count:0,provider_errors:0,
-  exhaustive_global_search:false});
+ // A generic latest-news question still merits a country + category search.
+ // No invented topic is inserted as a substitute for user intent.
  const govQ=country.name+" "+topical.slice(0,3).join(" ");
  const govUrl=new URL("https://www.gov.uk/api/search.json");
  for(const [k,v] of Object.entries({q:govQ,count:"8",
@@ -118,12 +117,15 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
   format:"json",maxrecords:"10",sort:"datedesc",timespan:"72h"}))
   gdeltUrl.searchParams.set(k,v);
  const settled=await Promise.allSettled([
-  getJson(govUrl.href,fetchImpl),getJson(gdeltUrl.href,fetchImpl)
+  getJson(govUrl.href,fetchImpl),getJson(gdeltUrl.href,fetchImpl),
+  p0bFirstPartyFeedNews({category,countryIso3,countryName:country.name,
+   question,fetchImpl,now})
  ]);
  let providerErrors=settled.filter(x=>x.status==="rejected").length;
  const providerDiagnostics={
   govuk: settled[0].status==="fulfilled"?"OK":providerCode(settled[0].reason),
   gdelt: settled[1].status==="fulfilled"?"OK":providerCode(settled[1].reason),
+  rss: settled[2].status==="fulfilled"?settled[2].value.status:"FEED_UNAVAILABLE",
  };
  let discovery=0;
  if(settled[1].status==="fulfilled"){
@@ -134,7 +136,7 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
    typeof x?.url==="string"&&x.url.startsWith("https://")&&
    typeof x?.title==="string").length):0;
  }
- const official=[];
+ const official=settled[2].status==="fulfilled"?[...settled[2].value.items]:[];
  if(settled[0].status==="fulfilled"){
   const hits=settled[0].value?.results;
   if(!Array.isArray(hits))providerErrors++;
@@ -158,5 +160,6 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
     "GLOBAL_PROVIDER_UNAVAILABLE":"NO_VERIFIED_NEWS",
   attempted:true,first_party_matches:official,gdelt_discovery_count:discovery,
   provider_errors:providerErrors,provider_diagnostics:providerDiagnostics,
+  first_party_rss_verified_count:official.filter(x=>x.first_party_feed_metadata_verified===true).length,
   exhaustive_global_search:false});
 }
