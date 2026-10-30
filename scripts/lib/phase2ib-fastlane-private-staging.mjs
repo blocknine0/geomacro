@@ -82,6 +82,8 @@ export async function postPhase2iCollisionIsolated({
   try{
    const reply=await post({records:group,controlPlaneRoot,token,fetchImpl});
    if(reply?.readback_verified!==true||
+      reply?.per_original_readback_verified!==true||
+      reply?.verified_originals!==group.length||
       !Number.isSafeInteger(reply.stored)||!Number.isSafeInteger(reply.duplicate)||
       reply.stored<0||reply.duplicate<0||
       reply.stored+reply.duplicate!==group.length)
@@ -104,6 +106,7 @@ export async function postPhase2iCollisionIsolated({
  return Object.freeze({stored,duplicate,rejected_conflicts:rejected,
   rejected_conflicts_by_category:rejectedByCategory,
   d1_successful_readback_records:stored+duplicate,
+  per_original_authenticated_d1_verified:stored+duplicate>0,
   readback_verified:stored+duplicate>0,
   attempts:requests});
 }
@@ -146,6 +149,7 @@ export async function stagePhase2iFastlanePrivateOriginals({
   d1_rejected_conflicts:receipt.rejected_conflicts,
   rejected_conflicts_by_category:receipt.rejected_conflicts_by_category,
   d1_successful_readback_records:receipt.d1_successful_readback_records,
+  per_original_authenticated_d1_verified:receipt.per_original_authenticated_d1_verified,
   d1_readback_verified:receipt.readback_verified,b2_verified:false,
   event_country_verified:false,commercial_rights_verified:false,
   original_body_collected:false,payments:0,
