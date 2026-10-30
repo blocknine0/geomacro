@@ -61,13 +61,14 @@ const safeInt=x=>Number.isSafeInteger(x)&&x>=0;
 // a 2/2/1 fair share without opening a parallel expensive research pipeline.
 // This is a DAILY worst-case reserve, not an atomic Cloudflare reservation:
 // no source intake is allowed when actual provider headroom is insufficient.
-// Reserve two possible independent news producers per 15-minute slot:
-// the five-minute fastlane and this private/global source-only writer.
+// Reserve up to three independent capped D1 producers per 15-minute slot:
+// the five-minute fastlane, private source-only writer and optionally
+// five-item AES-GCM replay when research headroom is separately admitted.
 // This avoids treating a GitHub concurrency mutex as a total daily
 // call-count guarantee. The five-minute fastlane uses the intake clock and
 // must honor the interval returned here, not run an extra D1 write every 5m.
 export const MINIMUM_DAILY_BUNDLED_SOURCE=Object.freeze({
- interval_minutes:15,max_new_rows:5,producers_per_slot:2,
+ interval_minutes:15,max_new_rows:5,producers_per_slot:3,
  rows_read_per_slot:3200,
  rows_written_per_new_row:16,rows_written_overhead_per_slot:40,
  rows_read_fixed:100000,rows_written_fixed:2000,
