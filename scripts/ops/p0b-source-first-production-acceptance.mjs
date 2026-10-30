@@ -35,8 +35,11 @@ const verify=async({env=process.env,fetchImpl=fetch,now=new Date()}={})=>{
      "Cache-Control":"no-store"}:{Accept:"application/json"},
     signal:AbortSignal.timeout(28000)});
    const data=await r.json().catch(()=>null);
-   if(r.status!==200||r.redirected||!data||data.ok!==true)
-    throw Error("LIVE_WORKER_READBACK_UNAVAILABLE");
+   if(r.status!==200||r.redirected)
+    throw Error("LIVE_WORKER_HTTP_"+r.status);
+   if(!data||data.ok!==true)
+    throw Error(/^PRIVATE_RAW_[A-Z_]{3,75}$/u.test(data?.error??"")?
+     data.error:"LIVE_WORKER_READBACK_UNAVAILABLE");
    return data;
   };
   const health=await get("/health");
@@ -44,6 +47,7 @@ const verify=async({env=process.env,fetchImpl=fetch,now=new Date()}={})=>{
   if(result.deployed_sha!==result.expected_sha)
    throw Error("DEPLOYED_WORKER_MAIN_SHA_NOT_MATCHED");
   for(const [cat,country,question] of CATS){
+   try{
    const q=new URLSearchParams({country_iso3:country,category:cat,question});
    const body=await get("/v1/internal/phase2h-raw-news?"+q,true);
    const firstParty=body.global_first_party_verified_count??0;
@@ -80,7 +84,16 @@ const verify=async({env=process.env,fetchImpl=fetch,now=new Date()}={})=>{
     provider_errors:body.global_provider_error_count??null,
     provider_diagnostics:body.global_provider_diagnostics??null,
     fallback_status:body.global_fallback_status??null,
-    source_or_fallback_contract_verified:good});
+    source_or_fallback_contract_verified:good,
+    canonical_d1_unavailable:body.canonical_d1_unavailable===true});
+   }catch(error){
+    const reason=String(error?.message??"");
+    result.source_first_readbacks.push({
+     category:cat,country_iso3:country,attempted:false,
+     grounded_five_part_available:false,source_or_fallback_contract_verified:false,
+     failure_code:/^[A-Z0-9_]{6,90}$/u.test(reason)?
+      reason:"LIVE_WORKER_PROBE_FAILED"});
+   }
   }
   result.fallback_contract_verified=result.source_first_readbacks.length===3&&
    result.source_first_readbacks.every(x=>x.source_or_fallback_contract_verified);
@@ -92,7 +105,7 @@ const verify=async({env=process.env,fetchImpl=fetch,now=new Date()}={})=>{
   result.accepted=result.fallback_contract_verified&&
    result.three_category_grounded_five_part_verified;
  }catch(e){
-  result.failure_code=/^[A-Z_]+$/u.test(String(e?.message))?
+  result.failure_code=/^[A-Z0-9_]+$/u.test(String(e?.message))?
    e.message:"UNEXPECTED_P0B_PROVIDER_FAILURE";
  }
  write(result);
