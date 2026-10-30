@@ -95,7 +95,7 @@ export async function verifyPhase2hExistingArchive({
    b2_first_get_verified:true,b2_second_independent_get_verified:true,
    post_archive_d1_verified:true};
  const proof=await questionVerifier({env,fetchImpl,now:now.getTime(),receipt});
- return {...proof,existing_archived_object_two_get_restored:true};
+ return {...proof,existing_archived_object_two_get_restored:true,existing_object_sha256:last.b2_object_sha256};
 }
 export async function runPhase2hPermanentAcceptance({
  env=process.env,now=new Date(),
@@ -130,7 +130,18 @@ export async function runPhase2hPermanentAcceptance({
   if(proof.unarchived_backlog_present===false)break;
  }
  if(!proofs.length)fail("NO_TRUE_POSITIVE_EVIDENCE");
- const complete=proofs.at(-1)?.entire_admitted_raw_backlog_verified===true;
+ // Full Phase2H requires positive archived originals in all three domains;
+ // a single-domain B2 object cannot certify the three-category contract.
+ const verifiedCategoryCounts={geopolitics:0,macro:0,rare_earth:0};
+ for(const receipt of receipts)
+  for(const c of Object.keys(verifiedCategoryCounts))
+   verifiedCategoryCounts[c]+=receipt.category_counts?.[c]??0;
+ for(const proof of proofs)
+  if(proof.existing_archived_object_two_get_restored===true)
+   for(const c of Object.keys(verifiedCategoryCounts))
+    verifiedCategoryCounts[c]+=proof.verified_category_counts?.[c]??0;
+ const threeCategoriesHaveArchivedOriginals=Object.values(verifiedCategoryCounts).every(n=>Number.isSafeInteger(n)&&n>0);
+ const complete=proofs.at(-1)?.entire_admitted_raw_backlog_verified===true&&threeCategoriesHaveArchivedOriginals;
  const summary={
   schema:"geomacro.phase2h.permanent-raw-b2-production-acceptance.v1",
   status:complete?"PASS_REAL_B2_TO_EXACT_QUESTION":"INCOMPLETE_ARCHIVE_BACKLOG",
@@ -138,6 +149,12 @@ export async function runPhase2hPermanentAcceptance({
   actual_b2_readback_verified:proofs.every(x=>x.b2_two_get_verified_in_preceding_step===true),
   category_question_readbacks:Math.max(...proofs.map(x=>x.production_question_readback_categories??0)),
   archived_batches_this_run:receipts.length,
+  verified_b2_object_sha256:receipts.map(x=>x.object_sha256),
+  independently_restored_existing_b2_sha256:proofs
+   .filter(x=>x.existing_archived_object_two_get_restored===true)
+   .map(x=>x.existing_object_sha256),
+  verified_category_counts:verifiedCategoryCounts,
+  three_categories_have_archived_originals:threeCategoriesHaveArchivedOriginals,
   archived_records_this_run:receipts.reduce((sum,x)=>sum+x.rows_archived,0),
   archived_category_counts:receipts.reduce((sum,x)=>{
    for(const key of ["geopolitics","macro","rare_earth"])sum[key]+=(x.category_counts?.[key]??0);
