@@ -31,9 +31,13 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: "One-time LIVE smoke: type RUN_ONCE_PHASE2H_2026_10_31; expires 2026-11-02 00:00 UTC"
+        description: "One-time LIVE smoke; select authorized token (valid until 2026-11-02 00:00 UTC)"
         required: true
-        type: string
+        type: choice
+        default: NOT_AUTHORIZED
+        options:
+          - NOT_AUTHORIZED
+          - RUN_ONCE_PHASE2H_2026_10_31
 
 permissions:
   contents: read
