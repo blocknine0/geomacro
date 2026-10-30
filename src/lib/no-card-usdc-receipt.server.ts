@@ -114,7 +114,8 @@ function rpcConfig(network:string) {
   const individuallyConfigured=Array.from({length:MAX_RPC_ALTERNATES},(_,i)=>
     process.env["GEOMACRO_NO_CARD_RPC_"+suffix+"_BACKUP_"+(i+1)]?.trim()??""
   ).filter(Boolean);
-  const configuredAlternates=[...individuallyConfigured,...(alternates as string[])];
+  // Preserve the owner's existing JSON-array backups (e.g. Ankr) before newly added individual secrets.
+  const configuredAlternates=[...(alternates as string[]),...individuallyConfigured];
   if(configuredAlternates.length>MAX_RPC_ALTERNATES)
     throw Error("NO_CARD_RPC_ALTERNATES_INVALID");
   const endpoints=[...new Set([primary,...configuredAlternates].map(approvedRpcUrl))];
