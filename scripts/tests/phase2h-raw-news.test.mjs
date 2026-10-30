@@ -9,6 +9,7 @@ import {buildPhase2hRawB2Plan,verifyPhase2hRawB2Restore,
  runPhase2hGovernedRawB2}
  from "../ops/phase2h-archive-private-raw-news.mjs";
 import {verifyPhase2hProductionQuestionChain} from "../ops/phase2h-verify-private-question-delivery.mjs";
+import {runPhase2hPermanentAcceptance} from "../ops/phase2h-permanent-production-acceptance.mjs";
 const now=new Date("2026-10-30T06:07:00.000Z");
 const candidates=[
  {category:"geopolitics",sourceId:"un_press",title:"UN security council discusses ceasefire proposal",
@@ -276,4 +277,64 @@ test("production acceptance links verified B2 hash, canonical ID and HTTP five-p
  await assert.rejects(verifyPhase2hProductionQuestionChain({
   now:now.getTime(),env,receipt:{...receipt,b2_second_independent_get_verified:false},
   fetchImpl}),/PHASE2H_QUESTION_CHAIN_B2_POSITIVE_EXACT_READBACK_RECEIPT_REQUIRED/u);
+});
+
+test("bounded two-batch real-shaped archive drains and verifies exact production JSON",async()=>{
+ const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"a".repeat(8)+"-"+"a".repeat(4)+"-"+"a".repeat(4)+
+   "-"+"a".repeat(4)+"-"+"a".repeat(12),
+  CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40),
+  GITHUB_SHA:"1".repeat(40)};
+ let archived=0,checked=0;
+ const proof=await runPhase2hPermanentAcceptance({env,now,
+  archive:async()=>{archived++;return {
+   schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
+   status:"B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED",
+   storage_confirmed:true,rows_archived:archived===1?300:15,
+   category_counts:{geopolitics:1,macro:1,rare_earth:archived===1?298:13},
+   object_sha256:(archived===1?"a":"b").repeat(64),
+   b2_first_get_verified:true,b2_second_independent_get_verified:true,
+   post_archive_d1_verified:true};},
+  verify:async()=>{checked++;return {
+   same_b2_object_and_d1_original:true,per_record_five_part_exact:true,
+   deployed_authenticated_http_200:true,
+   b2_two_get_verified_in_preceding_step:true,
+   production_question_readback_categories:3,
+   unarchived_backlog_present:checked===1,
+   entire_admitted_raw_backlog_verified:checked===2};},
+  verifyExisting:()=>{throw Error("NO_FALLBACK_FOR_NEW_ARCHIVE")}})
+ assert.equal(archived,2);assert.equal(checked,2);
+ assert.equal(proof.status,"PASS_REAL_B2_TO_EXACT_QUESTION");
+ assert.equal(proof.archived_records_this_run,315);
+ assert.equal(proof.entire_admitted_raw_backlog_verified,true);
+ assert.equal(proof.payments,0);
+});
+test("governor-held archive never receives a false full-chain PASS",async()=>{
+ const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"a".repeat(8)+"-"+"a".repeat(4)+"-"+"a".repeat(4)+
+   "-"+"a".repeat(4)+"-"+"a".repeat(12),
+  CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40)};
+ await assert.rejects(runPhase2hPermanentAcceptance({env,now,
+  archive:async()=>({storage_confirmed:false,status:"B2_ACCOUNT_HEADROOM_HELD"}),
+  verify:()=>{throw Error("SHOULD_NOT_VERIFY")}}),
+  /PHASE2H_PERMANENT_B2_ARCHIVE_HELD_OR_FAILED/u);
+});
+test("unguarded push cannot use B2 slot bootstrap",async()=>{
+ const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"123",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",PHASE2H_BOOTSTRAP_ON_MAIN_PUSH:"1",
+  GITHUB_EVENT_NAME:"push",
+  GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/other.yml@refs/heads/main"};
+ const r=await runPhase2hGovernedRawB2({env,now:new Date("2026-10-30T08:25:00Z"),
+  b2Factory:()=>{throw Error("UNSAFE_B2")},
+  governorFactory:()=>{throw Error("UNSAFE_GOVERNOR")}});
+ assert.equal(r.storage_confirmed,false);
+ assert.equal(r.status,"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT");
 });
