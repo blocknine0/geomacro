@@ -7,6 +7,10 @@ on:
       - ".github/workflows/phase2h-private-raw-archive.yml"
       - "scripts/ops/phase2h-canonical-census-receipt.mjs"
       - "scripts/tests/phase2h-canonical-census-receipt.test.mjs"
+      - "scripts/tests/phase2h-country-archived-question.test.mjs"
+      - "scripts/lib/phase2h-country-originals-195.mjs"
+      - "scripts/lib/country-news-mentions-195.mjs"
+      - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "scripts/ops/phase2h-permanent-production-acceptance.mjs"
   workflow_dispatch: {}
   schedule:
@@ -32,7 +36,7 @@ jobs:
         with:
           node-version: "22"
       - name: Verify scoped metadata-only census and strict B2 admission (offline)
-        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs
+        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs
   quota-admission:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -103,7 +107,7 @@ jobs:
           node-version: "22"
       - name: Verify Phase 2H regression and strict immutable formats
         run: |
-          node --test scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-canonical-census-receipt.test.mjs
+          node --test scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs
           node --check scripts/ops/phase2h-permanent-production-acceptance.mjs
       - name: Resolve existing canonical D1 database for archive read and quota governor
         shell: bash

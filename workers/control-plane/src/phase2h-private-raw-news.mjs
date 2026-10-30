@@ -2,6 +2,8 @@
  * No public route and no paid/signed eligibility. Records are immutable once
  * accepted. Existing PREDGE, historical and x402 paths are not consulted.
  */
+import {phase2hCountry,phase2hCountrySqlHints,phase2hHeadlineCountryCandidate}
+ from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const HEX=/^[a-f0-9]{64}$/u;
 const DATE=/^20\d{2}-\d\d-\d\d(?:T\d\d:\d\d:\d\d(?:\.\d{3})?Z)?$/u;
@@ -178,9 +180,10 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
    reason_code:reason,rights_verified:false,payments:0},503);
  }
 }
-// Only a B2-acknowledged original can enter question-bound delivery. D1 staging
-// alone is not durable archive proof. This is an authenticated internal path;
-// unlicensed originals and source identity never become a customer response.
+// B2-acknowledged originals remain mandatory for legacy archived-only lookup.
+// An explicit canonical country/category can additionally project D1-staged
+// originals for authenticated PRIVATE RESEARCH ONLY, never paid/archive proof.
+// Unlicensed originals and source identity never become a customer response.
 const QUESTION_STOP=new Set(["what","why","when","where","which","who","how",
  "does","did","do","is","are","the","a","an","to","of","for","with","in",
  "on","this","that","about","matter","matters","affect","impact","impacts",
@@ -210,12 +213,18 @@ export function phase2hQuestionDirectAnswer(question,analysis){
    focus==="what_to_watch"?selected?.trigger??null:null};
 }
 export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=Date.now()){
- if(!env?.DB||[...params.keys()].some(k=>!["archived","limit","question","record_id"].includes(k))||
+ if(!env?.DB||[...params.keys()].some(k=>!["archived","limit","question","record_id","country_iso3","category"].includes(k))||
    params.getAll("archived").length>1||params.getAll("limit").length>1||
-   params.getAll("question").length>1||params.getAll("record_id").length>1)
+   params.getAll("question").length>1||params.getAll("record_id").length>1||
+   params.getAll("country_iso3").length>1||params.getAll("category").length>1)
   return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  const question=params.get("question");
  const requestedId=params.get("record_id");
+ const countryIso3=params.get("country_iso3"),category=params.get("category");
+ const countryScoped=countryIso3!==null||category!==null;
+ if(countryScoped&&(question===null||requestedId!==null||
+   !phase2hCountry(countryIso3)||!CATEGORIES.has(category)))
+  return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  if(params.has("archived")||
    requestedId!==null&&(!HEX.test(requestedId)||question===null)||
    question!==null&&(question.length<3||question.length>180||/[<>]/u.test(question)))
@@ -224,7 +233,32 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
  if(!Number.isSafeInteger(limit)||limit<1||limit>100||question!==null&&params.has("archived"))
   return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  try{
-  const results=question===null?
+  // Query a country/category using original headline hints, not publisher
+  // location. This is a SQL prefilter only: the 195-state unambiguous country
+  // resolver validates every result. A positive LIKE is NEVER attribution.
+  // A first canonical D1-staged original can support internal research even
+  // while B2 archive is pending. It NEVER qualifies for paid delivery.
+  // Index-friendly category/time ordering remains bounded; no full-table
+  // row download or 585-query fanout per customer request.
+  let countryQuery=null;
+  if(countryScoped){
+   const hints=phase2hCountrySqlHints(countryIso3);
+   if(!hints.length)return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
+   // Keep the entire SQL static: only bounded, reviewed country hints are
+   // passed as JSON parameters. No dynamic SQL fragments from any question,
+   // country name, source title or JSON field.
+   countryQuery=env.DB.prepare(
+    "SELECT r.record_id,r.category,r.raw_sha256,r.raw_json,r.b2_object_sha256 "+
+    "FROM phase2h_private_raw_news AS r WHERE r.category=? "+
+    "AND EXISTS (SELECT 1 FROM json_each(?) AS h WHERE "+
+    "lower(json_extract(r.raw_json,'$.original.original_title')) "+
+    "LIKE '%' || h.value || '%' ESCAPE '!') "+
+    "ORDER BY r.original_published_at DESC,r.record_id LIMIT 100"
+   ).bind(category,JSON.stringify(hints));
+  }
+  const results=countryQuery?
+    await countryQuery.all():
+    question===null?
     await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL ORDER BY first_ingested_at,record_id LIMIT ?").bind(limit).all():
     requestedId!==null?
       await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id=? AND b2_object_sha256 IS NOT NULL LIMIT 1").bind(requestedId).all():
@@ -240,15 +274,27 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
   if(question===null)return safeReply({ok:true,schema:"geomacro.phase2h.private-pending-archive.v1",
    rows:items,complete:items.length<limit,paid_eligible:false,raw_public_delivery:false});
   const matched=items.filter(item=>requestedId!==null?
-    item.record_id===requestedId:phase2hQuestionMatchesArchived(item,question)).slice(0,3);
+    item.record_id===requestedId:
+    (!countryScoped||item.category===category&&
+      phase2hHeadlineCountryCandidate(item.original.original_title)===countryIso3)&&
+      phase2hQuestionMatchesArchived(item,question)).slice(0,3);
   return safeReply({ok:true,schema:"geomacro.phase2h.private-question-fivepart.v1",
-   source:"B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1",
+   source:countryScoped?"CANONICAL_D1_PRIVATE_ORIGINAL_RESEARCH":
+    "B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1",
    bounded_most_recent_scan:requestedId!==null?1:100,
+   ...(countryScoped?{requested_country_iso3:countryIso3,
+    requested_category:category,
+    country_attribution_basis:"UNAMBIGUOUS_ORIGINAL_HEADLINE_CANDIDATE",
+    country_event_independently_verified:false,
+    d1_staged_unarchived_research_allowed:true,
+    staged_row_never_paid_eligible:true}:{}),
    global_search_complete:false,
    question_matches:matched.map(item=>({record_id:item.record_id,
-    category:item.category,original_published_at:item.original.original_published_at,
+    category:item.category,
+    ...(countryScoped?{country_iso3:countryIso3}:{}),
+    original_published_at:item.original.original_published_at,
     five_part:item.analysis,...phase2hQuestionDirectAnswer(question,item.analysis),
-    archive_d1_ack_present:true})),private_research_only:true,chargeable:false,
+    archive_d1_ack_present:results.results.find(x=>x.record_id===item.record_id)?.b2_object_sha256!=null})),private_research_only:true,chargeable:false,
    paid_eligible:false,raw_original_not_delivered:true});
  }catch{return safeReply({ok:false,error:"PRIVATE_RAW_CANONICAL_READ_UNAVAILABLE"},503)}
 }
