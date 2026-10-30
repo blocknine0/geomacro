@@ -23,7 +23,7 @@ describe("canonical capability pricing parity on the public website",()=>{
     expect(categoryApiPricing).toContain("GEOMACRO_OFFICIAL_API_CATALOG");
     expect(pricing).toContain("<CategoryApiPricing />");
     expect(dataApi).not.toContain("CategoryApiPricing");
-    expect(pricing).toContain("<CapabilityPriceSchedule />");
+    expect(pricing).toContain("<CapabilityPriceSchedule compact />");
     expect(dataApi).toContain("<CapabilityPriceSchedule compact />");
     for(const source of [pricing,dataApi]){
       expect(source).not.toContain("Launch price for the first 20,000");
@@ -33,7 +33,7 @@ describe("canonical capability pricing parity on the public website",()=>{
     expect(read("src/components/agent-commerce-status.tsx")).not.toContain("USDC/call");
   });
   it("exposes exactly eight founder-approved capabilities and 14 variants",()=>{
-    expect(GEOMACRO_CAPABILITY_PRICING_VERSION).toBe("geomacro.capability-usdc.v1");
+    expect(GEOMACRO_CAPABILITY_PRICING_VERSION).toBe("geomacro.capability-usdc.v2");
     expect(Object.keys(GEOMACRO_CAPABILITY_PRICES)).toHaveLength(8);
     const catalog=publicCapabilityPricingCatalog();
     expect(catalog).toHaveLength(7);
