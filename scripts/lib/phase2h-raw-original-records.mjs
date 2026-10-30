@@ -3,7 +3,24 @@
  */
 import {createHash} from "node:crypto";
 export const RAW2H_SCHEMA="geomacro.phase2h.private-raw-observation.v1";
-const CAT=new Set(["geopolitics","macro","rare_earth"]);
+/** Founder-locked three-domain contract: transform every admitted raw original
+ * into GeoMacro-authored five-part analysis without a manual commerce review.
+ * This does not change the existing independent paid-delivery rights gate.
+ */
+export const PHASE2H_RAW_TO_STRUCTURED_LOCK=Object.freeze({
+ schema:"geomacro.phase2h.raw-to-derived-five-part-lock.v1",
+ categories:Object.freeze(["geopolitics","macro","rare_earth"]),
+ five_part_fields:Object.freeze([
+  "what_happened","why_it_matters","market_relevance",
+  "what_to_watch","evidence_and_confidence",
+ ]),
+ raw_original_storage:"EXISTING_PRIVATE_D1_B2",
+ derived_output_only:true,
+ requires_manual_commercial_approval_to_generate:false,
+ third_party_raw_redistribution:false,
+ existing_paid_delivery_rights_unchanged:true,
+});
+const CAT=new Set(PHASE2H_RAW_TO_STRUCTURED_LOCK.categories);
 const sha=x=>createHash("sha256").update(x).digest("hex");
 const date=x=>typeof x==="string"&&/^20\d{2}-\d\d-\d\d(?:T\d\d:\d\d:\d\d(?:\.\d{3})?Z)?$/u.test(x)&&
  Number.isFinite(Date.parse(x))&&
@@ -97,6 +114,13 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
      independent_event_verified:false,commercial_rights_verified:false,
      paid_eligible:false,source_content_identity_sha256:sha(c.title+"\n"+nativePublished)},
   };
+  // Regression-enforced immutable shape; neither source licensing state nor
+  // paid availability is consulted during the five-part derivation.
+  if(analysis.schema!=="geomacro.phase2h.private-five-part.v1"||
+     Object.keys(analysis).length!==PHASE2H_RAW_TO_STRUCTURED_LOCK.five_part_fields.length+1||
+     !PHASE2H_RAW_TO_STRUCTURED_LOCK.five_part_fields.every(
+       field=>Object.hasOwn(analysis,field)))
+    throw Error("PHASE2H_FIVE_PART_CONTRACT_CHANGED");
   const immutable={schema:RAW2H_SCHEMA,record_id:observationId,
     category:c.category,original,analysis,
     commercial_rights_verified:false,commercial_delivery_authorized:false};
