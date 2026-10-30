@@ -73,6 +73,20 @@ describe("#1827 signed GRO backend vs public website one-country no-charge bridg
     expect(result.outcome).toBe("LIVE_TESTNET_NO_CHARGE_AVAILABLE");
     expect(result.action).toBe("MAINNET_AND_GLOBAL_COVERAGE_STILL_UNVERIFIED");
   });
+  it("uses any existing verified country without incorrectly claiming a different country", () => {
+    const selected = classifySignedGroLiveBridge({
+      backendCanary:{...backend,country_iso3:"IND"},
+      expectedCountryIso3:"IND",status:422,body:site(),
+    });
+    expect(selected.country_iso3).toBe("IND");
+    expect(selected.site_deliverable).toBe(false);
+    expect(() => classifySignedGroLiveBridge({
+      backendCanary:backend, expectedCountryIso3:"IND",status:422,body:site(),
+    })).toThrow("SIGNED_GRO_BACKEND_CANARY_NOT_VERIFIED");
+    expect(() => classifySignedGroLiveBridge({
+      backendCanary:backend, expectedCountryIso3:"USA;DROP",status:422,body:site(),
+    })).toThrow("SIGNED_GRO_BACKEND_COUNTRY_INVALID");
+  });
   it("keeps the canary single-shot, no secret or raw object uploads, and no payment calls", () => {
     const workflow = readFileSync(".github/workflows/live-signed-gro-bridge-proof.yml","utf8");
     const script = readFileSync("scripts/ops/verify-signed-gro-live-bridge.mjs","utf8");
@@ -85,6 +99,13 @@ describe("#1827 signed GRO backend vs public website one-country no-charge bridg
     expect(workflow).not.toContain("B2_KEY_ID:");
     expect(workflow).not.toContain("SUPABASE_DB_URL:");
     expect(script).toContain("/api/x402/risk/availability");
+    expect(script).toContain("country_iso3:countryIso3");
+    expect(script).toContain("expectedCountryIso3:countryIso3");
+    expect(workflow).toContain("audit-country-gro-d1-hot-readonly.ts --read-only");
+    expect(workflow).toContain("SIGNED_GRO_NO_EXISTING_CURRENT_VERIFIED_D1_HOT");
+    expect(workflow).not.toContain("GRO_CONTINUITY_COUNTRY_ISO3: USA");
+    expect(workflow).toContain('GRO_CONTINUITY_COUNTRY_ISO3=$iso3');
+
     expect(script).toContain("topics: [\"risk_object\"]");
     expect(script).toContain("process.exitCode = 3");
     expect(script).not.toContain("/api/x402/risk/purchase");
