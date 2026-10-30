@@ -61,17 +61,25 @@ try{
   if(body?.schema!=="geomacro.no-funds-six-rpc-readiness.v1"||
     !Array.isArray(body.checks)||body.checks.length!==6)
     throw Error("PRODUCTION_DIAGNOSTIC_UNAVAILABLE");
+  result.egress_check=/^EGRESS_[A-Z_]{2,40}$/u.test(String(body.egress_check??""))?
+    body.egress_check:"EGRESS_UNKNOWN";
   // Explicitly whitelist any log-bound fields to prevent credential leaks.
   result.checks=body.checks.map(c=>({
     network:["base","polygon"].includes(c.network)?c.network:"invalid",
     slot:["primary","backup_1","backup_2"].includes(c.slot)?c.slot:"invalid",
     status:/^[A-Z_]{2,40}$/u.test(String(c.status??""))?c.status:"UNKNOWN",
+    provider_family:["ALCHEMY","ANKR","DRPC","OTHER"].includes(c.provider_family)?
+      c.provider_family:"UNKNOWN",
   }));
   const actual=result.checks.map(c=>c.network+":"+c.slot);
   result.all_six_rpc_checked=slots.every(s=>actual.filter(a=>a===s).length===1);
   result.authenticated_production_ssr_rpc_readback=result.all_six_rpc_checked;
+  const expectedFamilies=["ALCHEMY","ANKR","DRPC","ALCHEMY","ANKR","DRPC"];
+  result.expected_provider_families_verified=result.all_six_rpc_checked &&
+    result.checks.every((c,i)=>c.provider_family===expectedFamilies[i]);
   if(body.ok===true && response.status===200 &&
     result.all_six_rpc_checked && result.deployed_exact_main &&
+    result.expected_provider_families_verified &&
     result.checks.every(c=>c.status==="PASS"))
     result.status="SIX_PRIVATE_RPC_PROVIDERS_VERIFIED_NO_FUNDS";
 }catch(e){
