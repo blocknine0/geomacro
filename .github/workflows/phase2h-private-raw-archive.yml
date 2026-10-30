@@ -1,10 +1,12 @@
 name: Phase 2H Permanent Private Raw B2 and Exact-Question Acceptance
-# Exactly four UTC archive windows. No out-of-slot B2 bootstrap.
+# Four UTC archive windows, before the existing hourly minute-7 derived job.
+# Preserve the same 4/day frequency and atomic B2 account quota cap.
+# No out-of-slot B2 bootstrap.
 # Existing provider-approved structural snapshot admission and atomic B2 reserve are mandatory.
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "17 0,6,12,18 * * *"
+    - cron: "3 0,6,12,18 * * *"
 
 permissions:
   contents: read
