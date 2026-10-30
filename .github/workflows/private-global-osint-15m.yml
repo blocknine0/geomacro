@@ -46,6 +46,8 @@ on:
       - "workers/control-plane/src/private-osint-15m.mjs"
       - "workers/control-plane/migrations/0028_private_osint_15m_durable.sql"
       - "scripts/ops/private-osint-15m-tick.ts"
+      - "scripts/lib/phase2i-osint-country-fair-raw-staging.mjs"
+      - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
@@ -125,6 +127,8 @@ on:
       - "scripts/ops/build-revenue-source-demand-195x3.mjs"
       - "scripts/tests/revenue-source-demand-195x3.test.mjs"
       - "scripts/ops/private-osint-15m-tick.ts"
+      - "scripts/lib/phase2i-osint-country-fair-raw-staging.mjs"
+      - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
@@ -174,6 +178,8 @@ jobs:
       - name: Offline source and privacy tests
         run: |
           set -euo pipefail
+          node --check scripts/lib/phase2i-osint-country-fair-raw-staging.mjs
+          node --test scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs
           node --check scripts/lib/private-osint-15m-collector.mjs
           node --check scripts/lib/private-osint-15m-durable-publisher.mjs
           node --check scripts/lib/private-osint-website-bridge.mjs
