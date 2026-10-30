@@ -316,3 +316,47 @@ test("old country-specific matching original ranks above 120 unrelated new same-
  assert.deepEqual(JSON.parse(statements[0].binds[3]),
   ["lithium","exports","2024"]);
 });
+
+
+test("D1 query error uses verified first-party only fallback without a paid or raw leak",async()=>{
+ const DB={prepare:()=>({bind:()=>({all:async()=>{throw Error("CANONICAL_D1_UNAVAILABLE")}})})};
+ const row=rawRows[0];
+ let invoked=0;
+ const external=async()=>{invoked++;return {
+  status:"FIRST_PARTY_METADATA_GROUNDED",attempted:true,
+  first_party_matches:[{record_id:row.record_id,category:row.category,
+    original_published_at:row.original.original_published_at,five_part:row.analysis,
+    first_party_feed_metadata_verified:true,paid_eligible:false}],
+  gdelt_discovery_count:0,provider_errors:0,
+  first_party_rss_verified_count:1,provider_diagnostics:{rss:"OK",govuk:"OK",gdelt:"UPSTREAM_TIMEOUT"}
+ }};
+ const params=new URLSearchParams({country_iso3:"IND",category:"macro",
+  question:"India monetary policy rates"});
+ const response=await phase2hPrivateRawGet({DB,GEOMACRO_P0B_SOURCE_FIRST_ENABLED:"1"},
+  params,now.getTime(),external);
+ assert.equal(response.status,200);
+ const r=await response.json();
+ assert.equal(invoked,1);
+ assert.equal(r.source,"FIRST_PARTY_LIVE_RESEARCH_D1_QUERY_UNAVAILABLE");
+ assert.equal(r.canonical_d1_unavailable,true);
+ assert.equal(r.question_matches.length,1);
+ assert.equal(r.question_matches[0].source,"FIRST_PARTY_OFFICIAL_RSS");
+ assert.equal(r.question_matches[0].country_iso3,"IND");
+ assert.equal(r.chargeable,false);
+ assert.equal(r.paid_eligible,false);
+ assert.equal(r.raw_original_not_delivered,true);
+ assert.equal(Object.hasOwn(r.question_matches[0],"original"),false);
+});
+test("corrupt successful D1 read never falls through to global source",async()=>{
+ const row=rawRows[0];let invoked=0;
+ const DB={prepare:()=>({bind:()=>({all:async()=>({results:[{
+  record_id:row.record_id,category:row.category,
+  raw_sha256:"a".repeat(64),raw_json:JSON.stringify(row),
+  b2_object_sha256:null}]})})})};
+ const params=new URLSearchParams({country_iso3:"IND",category:"macro",
+  question:"India monetary policy rates"});
+ const resp=await phase2hPrivateRawGet({DB,GEOMACRO_P0B_SOURCE_FIRST_ENABLED:"1"},
+  params,now.getTime(),async()=>{invoked++;throw Error()});
+ assert.equal(resp.status,503);
+ assert.equal(invoked,0);
+});
