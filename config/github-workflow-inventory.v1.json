@@ -239,6 +239,7 @@
     "p0-security-resilience-evidence.yml",
     "p0-strict-prepublic-closure.yml",
     "p0a-intelligence-completeness-production.yml",
+    "p0b-source-first-production-acceptance.yml",
     "pallab-suman-independent-gri-authorities.yml",
     "partner-commercial-readiness.yml",
     "permanent-runtime-health.yml",
