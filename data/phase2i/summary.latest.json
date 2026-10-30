@@ -38,5 +38,8 @@
       "verified_country_events": 0,
       "commercially_eligible_country_events": 0
     }
-  }
+  },
+  "phase2ib_archive_cycle_status": "NOT_YET_VERIFIED",
+  "phase2ib_per_country_original_events_verified": 0,
+  "phase2ib_d1_census": null
 }
