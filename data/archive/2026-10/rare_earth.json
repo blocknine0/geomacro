@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-30T10:25:23.424Z",
+  "updated_at": "2026-10-30T11:34:31.292Z",
   "signals": [
+    {
+      "id": "rare_earth-58a93bfb",
+      "category": "rare_earth",
+      "title": "Geomacro finds Jupiter reported solid first-quarter performance despite challenging manganese market",
+      "what_changed": "A monitored source feed reports: Jupiter reported solid first-quarter performance despite challenging manganese market. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T10:31:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-012c4fbc",
       "category": "rare_earth",

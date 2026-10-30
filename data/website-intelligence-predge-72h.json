@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T10:25:23.424Z",
+  "checked_at": "2026-10-30T11:34:31.292Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 422,
+  "item_count": 418,
   "counts": {
-    "geopolitics": 197,
-    "macro": 184,
-    "rare_earth": 41
+    "geopolitics": 196,
+    "macro": 180,
+    "rare_earth": 42
   },
-  "source_native_ids_sha256": "759287b0244ad68e39ecb5f9138c9e420e3c87e896d27b7ee3bebdaec3610adc",
+  "source_native_ids_sha256": "4de876dfc43c2b3c480fc6b662857fe5cb23835c327a5ba709b86424458cddf0",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-58a93bfb",
+      "category": "rare_earth",
+      "title": "Geomacro finds Jupiter reported solid first-quarter performance despite challenging manganese market",
+      "what_changed": "A monitored source feed reports: Jupiter reported solid first-quarter performance despite challenging manganese market. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T10:31:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-e1e06b4c",
       "category": "macro",
@@ -7937,101 +7956,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-27T11:50:32.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-c20571d5",
-      "category": "geopolitics",
-      "title": "Geomacro finds DR Congo reported over 10,000 Ebola cases as the outbreak spreads abroad, with no approved vaccine or specific treatment for the Bundibugyo virus",
-      "what_changed": "A monitored source feed reports: DR Congo reported over 10,000 Ebola cases as the outbreak spreads abroad, with no approved vaccine or specific treatment for the Bundibugyo virus. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T11:15:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: rss.dw.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-6d9d7737",
-      "category": "macro",
-      "title": "Geomacro finds Oman Crude Oil Price increased by USD 0.10 - وكالة الأنباء العمانية (العمانية)",
-      "what_changed": "A monitored source feed reports: Oman Crude Oil Price increased by USD 0.10 - وكالة الأنباء العمانية (العمانية). This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T11:12:59.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-305398fe",
-      "category": "macro",
-      "title": "Geomacro finds Gold held above $4,000 as silver struggles ahead of Fed decision - Economies.com",
-      "what_changed": "A monitored source feed reports: Gold held above $4,000 as silver struggles ahead of Fed decision - Economies.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "silver industrial demand and supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T10:51:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-c1b4212b",
-      "category": "macro",
-      "title": "Geomacro finds Ministry cut police and ISS access to bank data register over tracker",
-      "what_changed": "A monitored source feed reports: Ministry cut police and ISS access to bank data register over tracker. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T10:31:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.err.ee"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-f5389b44",
-      "category": "macro",
-      "title": "Geomacro finds India rejected Claims of U.S. Pressure Over Russian Oil Purchases - Crude Oil Prices Today | OilPrice.com",
-      "what_changed": "A monitored source feed reports: India rejected Claims of U.S. Pressure Over Russian Oil Purchases - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T10:30:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
