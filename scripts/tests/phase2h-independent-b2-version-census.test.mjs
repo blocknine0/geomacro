@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {checkB2VersionsPage,verifyPhase2hB2VersionInventory} from "../ops/phase2h-independent-b2-version-census.mjs";
+import {checkB2VersionsPage,verifyPhase2hB2VersionInventory,safeB2RetentionError} from "../ops/phase2h-independent-b2-version-census.mjs";
 import {PHASE2H_B2_PREFIX} from "../ops/phase2h-verify-b2-72h-lifecycle.mjs";
 const now=new Date("2026-10-30T14:00:00Z");
 const name=PHASE2H_B2_PREFIX+"2026/10/30/"+ "a".repeat(64)+".json.gz";
@@ -23,6 +23,16 @@ const make=(docs)=>{
   json:async()=>docs[calls++]});
  return {governor,fetchImpl,tickets,get calls(){return calls}};
 };
+test("redacted provider failures disclose exact lifecycle or atomic-quota blocker, not secrets",()=>{
+ for(const v of ["PHASE2H_B2_72H_THREE_DAY_EXPIRY_NOT_PROVEN",
+                 "PHASE2H_B2_72H_READ_BUCKET_LIFECYCLE_CAPABILITY_MISSING",
+                 "B2_GLOBAL_DAILY_QUOTA_EXHAUSTED",
+                 "B2_ACCOUNT_GLOBAL_QUOTA_D1_NETWORK_FAILED"]){
+  assert.equal(safeB2RetentionError(Error(v)),v);
+ }
+ assert.equal(safeB2RetentionError(Error("token=VERY_PRIVATE_KEY")),
+  "PHASE2H_B2_VERSION_INDEPENDENT_PROVIDER_PROOF_UNAVAILABLE");
+});
 test("current B2 scoped version inventory proves no overdue versions, not historical deletion",async()=>{
  const m=make([auth,bucket,{files:[row(now.getTime()-3600000)],nextFileName:null,nextFileId:null}]);
  const r=await verifyPhase2hB2VersionInventory({env,now,fetchImpl:m.fetchImpl,governor:m.governor});
