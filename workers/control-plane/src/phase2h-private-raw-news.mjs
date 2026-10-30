@@ -242,7 +242,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    const hints=phase2hCountrySqlHints(countryIso3);
    if(!hints.length)return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
    const predicate=hints.map(()=>
-    "lower(json_extract(raw_json,'$.original.original_title')) LIKE ? ESCAPE '\\\\'")
+    "lower(json_extract(raw_json,'$.original.original_title')) LIKE ? ESCAPE '!'")
      .join(" OR ");
    countryQuery=env.DB.prepare(
     "SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 "+
