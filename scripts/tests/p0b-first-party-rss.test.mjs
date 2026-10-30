@@ -80,3 +80,22 @@ test("original US BLS employment-cost feed grounds a USA macro release, never a 
   now,fetchImpl});
  assert.equal(wrong.items.length,0);
 });
+
+
+test("BC provincial source can establish CAN mineral release jurisdiction without claiming nationwide effects",async()=>{
+ const rss='<?xml version="1.0"?><rss><channel><item>'+
+  '<title>BC Ministry announces critical minerals investment</title>'+
+  '<link>https://news.gov.bc.ca/releases/2026EMLI0059-000999</link>'+
+  '<pubDate>Fri, 30 Oct 2026 08:00:00 GMT</pubDate></item></channel></rss>';
+ const fetchImpl=async()=>({status:200,redirected:false,
+  headers:{get:()=>"application/rss+xml"},text:async()=>rss});
+ const r=await p0bFirstPartyFeedNews({countryIso3:"CAN",countryName:"Canada",
+  category:"rare_earth",question:"Canada critical minerals",
+  now,fetchImpl});
+ assert.equal(r.items.length,1);
+ const one=r.items[0];
+ assert.equal(one.issuer_country_verified,"CAN");
+ assert.equal(one.country_attribution_basis,"FIRST_PARTY_PROVINCIAL_MINERAL_ISSUER");
+ assert.match(one.five_part.what_happened.text,/critical minerals investment/u);
+ assert.equal(one.five_part.evidence_and_confidence.paid_eligible,false);
+});
