@@ -127,12 +127,26 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
     row.ingested_at,row.raw_sha256,json]);
   }
   const placeholders=items.map(()=>"?").join(",");
-  const before=await env.DB.prepare("SELECT record_id,raw_sha256,first_ingested_at FROM phase2h_private_raw_news WHERE record_id IN ("+placeholders+")").bind(...ids).all();
+  const before=await env.DB.prepare("SELECT record_id,raw_sha256,first_ingested_at,raw_json FROM phase2h_private_raw_news WHERE record_id IN ("+placeholders+")").bind(...ids).all();
   if(!Array.isArray(before.results))fail("BEFORE_READ_UNAVAILABLE");
   const prior=new Map(before.results.map(x=>[x.record_id,x]));
   if(prior.size!==before.results.length)fail("BEFORE_DUPLICATE");
-  for(const x of items)if(prior.has(x[0])&&prior.get(x[0]).raw_sha256!==x[4])
+  for(const x of items){
+   const existing=prior.get(x[0]);
+   if(!existing||existing.raw_sha256===x[4])continue;
+   // The immutable original can be re-observed after a new five-part
+   // projector version ships. Never overwrite a B2-backed old row merely
+   // because its derived editorial wording changed. Genuine publisher
+   // revisions with the same native ID still fail closed.
+   let saved,incoming;
+   try{saved=JSON.parse(existing.raw_json);incoming=JSON.parse(x[5])}
+   catch{fail("CANONICAL_PRIOR_ROW_CORRUPT")}
+   if(saved?.record_id!==x[0]||saved?.raw_sha256!==existing.raw_sha256||
+      saved?.category!==incoming.category||
+      JSON.stringify(saved.original)!==JSON.stringify(incoming.original)||
+      saved?.original?.original_published_at!==x[2])
     fail("IDENTITY_COLLISION");
+  }
   const insert=await env.DB.prepare(
    "INSERT INTO phase2h_private_raw_news(record_id,category,original_published_at,first_ingested_at,raw_sha256,raw_json) "+
    "SELECT json_extract(value,'$[0]'),json_extract(value,'$[1]'),json_extract(value,'$[2]'),"+
@@ -145,7 +159,9 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
   if(found.size!==items.length)fail("AFTER_READ_MISSING");
   for(const x of items){
    const r=found.get(x[0]);
-   if(r.raw_sha256!==x[4]||(prior.has(x[0])&&r.first_ingested_at!==prior.get(x[0]).first_ingested_at))
+   const previous=prior.get(x[0]);
+   if(r.raw_sha256!==(previous?.raw_sha256??x[4])||
+      previous&&r.first_ingested_at!==previous.first_ingested_at)
     fail("AFTER_READ_DIVERGED");
   }
   return safeReply({ok:true,schema:"geomacro.phase2h.private-d1-receipt.v1",
