@@ -98,13 +98,13 @@ test("protected archived news returns only same-country, same-category, question
  assert.match(statements[0].sql,/category=\?/u);
  assert.match(statements[0].sql,/ESCAPE '!'/u);
  assert.equal(statements[0].binds[0],"macro");
- assert.ok(JSON.parse(statements[0].binds[1]).includes("india"));
+ assert.ok(JSON.parse(statements[0].binds[2]).includes("india"));
  assert.match(statements[0].sql,/json_each\(\?\)/u);
- assert.equal(statements[0].binds.length,5);
- assert.deepEqual(JSON.parse(statements[0].binds[2]),
+ assert.equal(statements[0].binds.length,6);
+ assert.deepEqual(JSON.parse(statements[0].binds[3]),
   ["announce","monetary","policy","rates"]);
- assert.equal(statements[0].binds[2],statements[0].binds[3]);
- assert.equal(statements[0].binds[2],statements[0].binds[4]);
+ assert.equal(statements[0].binds[3],statements[0].binds[4]);
+ assert.equal(statements[0].binds[3],statements[0].binds[5]);
  assert.match(statements[0].sql,/json_array_length\(\?\)=0/u);
  assert.match(statements[0].sql,/COUNT\(\*\) FROM json_each\(\?\)/u);
  assert.match(statements[0].sql,/ORDER BY.*original_published_at/u);
@@ -248,7 +248,7 @@ test("old country-specific matching original ranks above 120 unrelated new same-
   return {bind(...args){
    call.binds=args;
    return {all:async()=>{
-    const terms=JSON.parse(args[2]);
+    const terms=JSON.parse(args[3]);
     const scoped=originals.filter(row=>terms.length===0||
      terms.some(term=>row.original.original_title.toLowerCase().includes(term)));
     scoped.sort((a,b)=>{
@@ -278,6 +278,6 @@ test("old country-specific matching original ranks above 120 unrelated new same-
  assert.equal(body.global_search_complete,false);
  assert.equal(statements.length,1);
  assert.match(statements[0].sql,/LIMIT 100/u);
- assert.deepEqual(JSON.parse(statements[0].binds[2]),
+ assert.deepEqual(JSON.parse(statements[0].binds[3]),
   ["lithium","exports","2024"]);
 });

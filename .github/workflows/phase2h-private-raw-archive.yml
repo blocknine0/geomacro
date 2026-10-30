@@ -14,6 +14,9 @@ on:
       - "scripts/lib/country-news-mentions-195.mjs"
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "scripts/ops/phase2h-permanent-production-acceptance.mjs"
+      - "scripts/ops/phase2h-verify-b2-72h-lifecycle.mjs"
+      - "scripts/lib/phase2h-retention-72h.mjs"
+      - "scripts/tests/phase2h-retention-72h.test.mjs"
   workflow_dispatch: {}
   schedule:
     - cron: "3 0,6,12,18 * * *"
@@ -38,7 +41,7 @@ jobs:
         with:
           node-version: "22"
       - name: Verify scoped metadata-only census and strict B2 admission (offline)
-        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs
+        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs
   quota-admission:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -134,6 +137,8 @@ jobs:
           NODE
       - name: Preserve independently read canonical D1 category census before B2 attempt
         run: node scripts/ops/phase2h-canonical-census-receipt.mjs
+      - name: Verify Backblaze provider 1+1 day lifecycle on Phase 2H raw objects
+        run: node scripts/ops/phase2h-verify-b2-72h-lifecycle.mjs
       - name: Actual private B2 PUT, two GETs, D1 same-ID and deployed question JSON
         run: node scripts/ops/phase2h-permanent-production-acceptance.mjs
       - name: Preserve redacted permanent acceptance receipt (never original content)

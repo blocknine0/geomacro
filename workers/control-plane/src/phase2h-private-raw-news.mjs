@@ -4,6 +4,8 @@
  */
 import {phase2hCountry,phase2hCountrySqlHints,phase2hHeadlineCountryCandidate}
  from "../../../scripts/lib/phase2h-country-originals-195.mjs";
+import {phase2hNewsCutoff,phase2hRawWithinRetention}
+ from "../../../scripts/lib/phase2h-retention-72h.mjs";
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const HEX=/^[a-f0-9]{64}$/u;
 const DATE=/^20\d{2}-\d\d-\d\d(?:T\d\d:\d\d:\d\d(?:\.\d{3})?Z)?$/u;
@@ -123,6 +125,7 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
   const ids=new Set(),items=[];
   for(const row of body.items){
    const json=await validPrivateRawNews(row,now);
+   if(!phase2hRawWithinRetention(row,now))fail("ORIGINAL_72H_EXPIRED");
    if(ids.has(row.record_id))fail("DUPLICATE_BATCH_ID");
    ids.add(row.record_id);
    items.push([row.record_id,row.category,row.original.original_published_at,
@@ -302,6 +305,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
   // old relevant event-specific originals are not automatically displaced by
   // the newest 100 unrelated releases. No 585-query fanout per request.
   let countryQuery=null;
+  const cutoff=phase2hNewsCutoff(now);
   if(countryScoped){
    const hints=phase2hCountrySqlHints(countryIso3);
    if(!hints.length)return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
@@ -313,6 +317,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    countryQuery=env.DB.prepare(
     "SELECT r.record_id,r.category,r.raw_sha256,r.raw_json,r.b2_object_sha256 "+
     "FROM phase2h_private_raw_news AS r WHERE r.category=? "+
+    "AND r.first_ingested_at>? "+
     "AND EXISTS (SELECT 1 FROM json_each(?) AS h WHERE "+
     "lower(json_extract(r.raw_json,'$.original.original_title')) "+
     "LIKE '%' || h.value || '%' ESCAPE '!') "+
@@ -324,20 +329,27 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
     "WHERE lower(json_extract(r.raw_json,'$.original.original_title')) "+
     "LIKE '%' || score.value || '%' ESCAPE '!') DESC,"+
     "r.original_published_at DESC,r.record_id LIMIT 100"
-   ).bind(category,JSON.stringify(hints),topicJson,topicJson,topicJson);
+   ).bind(category,cutoff,JSON.stringify(hints),topicJson,topicJson,topicJson);
   }
   const results=countryQuery?
     await countryQuery.all():
     question===null?
-    await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL ORDER BY first_ingested_at,record_id LIMIT ?").bind(limit).all():
+    await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL AND first_ingested_at>? ORDER BY first_ingested_at,record_id LIMIT ?").bind(cutoff,limit).all():
     requestedId!==null?
-      await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id=? AND b2_object_sha256 IS NOT NULL LIMIT 1").bind(requestedId).all():
-      await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL ORDER BY original_published_at DESC,record_id LIMIT 100").all();
+      await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id=? AND b2_object_sha256 IS NOT NULL AND first_ingested_at>? LIMIT 1").bind(requestedId,cutoff).all():
+      await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL AND first_ingested_at>? ORDER BY original_published_at DESC,record_id LIMIT 100").bind(cutoff).all();
   if(!Array.isArray(results.results))throw Error();
-  const items=results.results.map(r=>JSON.parse(r.raw_json));
+  // Read-path TTL is enforced independently of scheduled deletion failures:
+  // no older-than-72h original is exposed to private research or B2 ingestion.
+  const active=results.results.filter(r=>{
+   if(typeof r.raw_json!=="string")return false;
+   try{return phase2hRawWithinRetention(JSON.parse(r.raw_json),now)}
+   catch{return false}
+  });
+  const items=active.map(r=>JSON.parse(r.raw_json));
   for(let i=0;i<items.length;i++){
-   if(items[i].record_id!==results.results[i].record_id||
-      items[i].raw_sha256!==results.results[i].raw_sha256)
+   if(items[i].record_id!==active[i].record_id||
+      items[i].raw_sha256!==active[i].raw_sha256)
     throw Error();
    await validPrivateRawNews(items[i],now,false);
   }
@@ -375,7 +387,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
      five_part:five,...(countryScoped?
        phase2hPrivateResearchDirectAnswer(question,five):
        phase2hQuestionDirectAnswer(question,five)),
-     archive_d1_ack_present:results.results.find(
+     archive_d1_ack_present:active.find(
        x=>x.record_id===item.record_id)?.b2_object_sha256!=null};
    }),private_research_only:true,chargeable:false,
    paid_eligible:false,raw_original_not_delivered:true});

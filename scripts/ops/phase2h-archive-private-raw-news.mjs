@@ -4,6 +4,8 @@
  * request uses the shared atomic B2 D1 governor.
  */
 import {createHash} from "node:crypto";
+import {phase2hNewsCutoff,phase2hRawWithinRetention}
+ from "../lib/phase2h-retention-72h.mjs";
 import {gzipSync,gunzipSync} from "node:zlib";
 import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
@@ -21,6 +23,7 @@ export function buildPhase2hRawB2Plan(rows,now=new Date()){
   if(!r||!/^[a-f0-9]{64}$/u.test(r.record_id)||seen.has(r.record_id)||
    !categories.includes(r.category)||!/^[a-f0-9]{64}$/u.test(r.raw_sha256)||
    r.schema!=="geomacro.phase2h.private-raw-observation.v1"||
+   !phase2hRawWithinRetention(r,now.getTime())||
    r.commercial_rights_verified!==false||
    r.commercial_delivery_authorized!==false)
    fail("SOURCE_CONTENT_INVALID");
@@ -81,7 +84,7 @@ export function createPhase2hCanonicalD1({
  };
  return {
   async readPending(){
-   const r=await sql("SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL ORDER BY first_ingested_at,record_id LIMIT 300");
+   const r=await sql("SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL AND first_ingested_at>? ORDER BY first_ingested_at,record_id LIMIT 300",[phase2hNewsCutoff(Date.now())]);
    return r.results.map(x=>{
     if(typeof x.raw_json!=="string"||x.raw_json.length>12000)fail("D1_ROW_INVALID");
     return JSON.parse(x.raw_json);
