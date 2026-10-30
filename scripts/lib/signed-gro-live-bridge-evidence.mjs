@@ -7,14 +7,19 @@ const SAFE_CODES = new Set([
 const SAFE_MODULES = new Set(["signed_risk_object","risk_gate","gri_context",
   "hot_topics","sovereign_fiscal","political_governance","macro_monetary",
   "external_fx","critical_minerals","geopolitical_security","trade_corridor"]);
-export function classifySignedGroLiveBridge({ backendCanary, status, body }) {
+export function classifySignedGroLiveBridge({
+  backendCanary, status, body, expectedCountryIso3 = "USA",
+}) {
+  if (!/^[A-Z]{3}$/u.test(expectedCountryIso3)) {
+    throw new Error("SIGNED_GRO_BACKEND_COUNTRY_INVALID");
+  }
   if (backendCanary?.ok !== true ||
       backendCanary?.serving_store !== "cloudflare-d1" ||
       backendCanary?.signature_valid !== true ||
       backendCanary?.commercial_eligibility_verified !== true ||
       backendCanary?.external_payment_performed !== false ||
       backendCanary?.execution_authorized !== false ||
-      backendCanary?.country_iso3 !== "USA") {
+      backendCanary?.country_iso3 !== expectedCountryIso3) {
     throw new Error("SIGNED_GRO_BACKEND_CANARY_NOT_VERIFIED");
   }
   if (body?.payment_required_now !== false ||
@@ -28,7 +33,7 @@ export function classifySignedGroLiveBridge({ backendCanary, status, body }) {
     : [];
   const summary = {
     schema: "geomacro.signed-gro-live-bridge.v1",
-    country_iso3: "USA",
+    country_iso3: expectedCountryIso3,
     backend_d1_signed_gro_verified: true,
     production_funds_authorized: false,
     payment_performed: false,
