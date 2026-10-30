@@ -90,6 +90,46 @@ describe("signed private live six-RPC no-funds readiness",()=>{
     const body=await response.json() as {checks:{status:string}[]};
     expect(body.checks[1].status).toBe("RPC_WRONG_CHAIN");
   });
+  it.each([
+    [401,"RPC_AUTH_REJECTED"],
+    [403,"RPC_ACCESS_DENIED"],
+    [404,"RPC_ENDPOINT_NOT_FOUND"],
+    [429,"RPC_RATE_LIMITED"],
+    [503,"RPC_PROVIDER_5XX"],
+  ] as const)("reports sanitized provider HTTP %i error as %s",async(status,expected)=>{
+    const fetcher=(async(u:unknown,options?:RequestInit)=>{
+      if(String(u).includes("base-primary"))return new Response(null,{status});
+      return rpcFetch(u,options);
+    }) as typeof fetch;
+    const response=await runSignedRpcReadiness(request(),env,fetcher,now);
+    expect(response.status).toBe(503);
+    const body=await response.json() as {checks:{status:string}[]};
+    expect(body.checks[0].status).toBe(expected);
+    expect(JSON.stringify(body)).not.toContain("opaque-base");
+  });
+  it("distinguishes blocked runtime egress from provider rejection without leaking URL",async()=>{
+    const fetcher=(async(u:unknown,options?:RequestInit)=>{
+      if(String(u).includes("base-primary"))throw new TypeError("secret-in-fetch-error");
+      return rpcFetch(u,options);
+    }) as typeof fetch;
+    const response=await runSignedRpcReadiness(request(),env,fetcher,now);
+    expect(response.status).toBe(503);
+    const body=await response.json() as {checks:{status:string}[]};
+    expect(body.checks[0].status).toBe("RPC_FETCH_FAILED");
+    expect(JSON.stringify(body)).not.toContain("secret-in-fetch-error");
+  });
+  it("reports a bounded provider timeout separately",async()=>{
+    const fetcher=(async(u:unknown,options?:RequestInit)=>{
+      if(String(u).includes("base-primary")){
+        const error=new Error("private error body");error.name="TimeoutError";throw error;
+      }
+      return rpcFetch(u,options);
+    }) as typeof fetch;
+    const response=await runSignedRpcReadiness(request(),env,fetcher,now);
+    const body=await response.json() as {checks:{status:string}[]};
+    expect(body.checks[0].status).toBe("RPC_TIMEOUT");
+    expect(JSON.stringify(body)).not.toContain("private error body");
+  });
   it("does not expose endpoint URLs on missing/unsafe backup configuration",async()=>{
     const bad={...env,GEOMACRO_NO_CARD_RPC_POLYGON_BACKUP_2:"http://localhost:8545"};
     const response=await runSignedRpcReadiness(request(),bad,rpcFetch,now);
