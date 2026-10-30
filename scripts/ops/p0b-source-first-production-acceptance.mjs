@@ -8,9 +8,11 @@ import {mkdirSync,writeFileSync} from "node:fs";
 import {createHmac} from "node:crypto";
 // Real-country probes are evidence admission tests, not a forced example.
 const CATS=[
- ["geopolitics","UKR","Ukraine sanctions"],
- ["macro","USA","United States inflation"],
- ["rare_earth","CAN","Canada critical minerals"]
+ // Stable, generic user questions: publisher-native latest item rotates.
+ // Do not hardcode one date/event as proof of permanent source coverage.
+ ["geopolitics","UKR","Latest Ukraine geopolitics news"],
+ ["macro","USA","Latest United States macro news"],
+ ["rare_earth","CAN","Latest Canada critical minerals news"]
 ];
 const ORIGIN="https://geomacro-control-plane.daspallab202391.workers.dev";
 const FILE="artifacts/derived-news/p0b-source-first-live-acceptance.json";
