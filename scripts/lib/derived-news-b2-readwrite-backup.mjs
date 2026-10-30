@@ -153,6 +153,13 @@ export async function archiveDerivedJournalToB2({
  if(typeof b2.get!=="function")fail("SECOND_INDEPENDENT_GET_REQUIRED");
  const secondBytes=await b2.get(plan.key);
  verifyDerivedJournalB2Restore(secondBytes,plan);
+ // Independent post-archive canonical D1 GET. Never infer source equality
+ // from the initial snapshot or first/second B2 bytes alone. One additional
+ // bounded 600-row query is allowed ONLY after protected maintenance admission.
+ const current=await readExactCurrentDerivedJournal({fetchImpl,now:new Date()});
+ const exact=rows=>JSON.stringify([...rows].sort((a,b)=>a.id.localeCompare(b.id)));
+ if(exact(current)!==exact(rows))
+   fail("D1_SOURCE_CHANGED_DURING_ARCHIVE");
  return {schema:"geomacro.private-derived-news-b2-backup-receipt.v1",
   status:"B2_PUT_FULL_GET_RESTORED_SHA_VERIFIED",
   archived_rows:plan.record_count,category_counts:plan.category_counts,
@@ -161,6 +168,7 @@ export async function archiveDerivedJournalToB2({
   b2_put_verified:true,b2_exact_readback_verified:true,
   independent_second_get_verified:true,
   second_get_sha256:plan.compressed_sha256,
+  independent_post_archive_d1_get_verified:true,
   restored_json_verified:true,source_d1_readback_verified:true,
   same_news_as_intelligence_d1:true,
   public_website_unchanged:true,raw_original_content_stored:false,
