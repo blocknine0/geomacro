@@ -43,6 +43,9 @@ on:
       - "scripts/ops/evaluate-d1-launch-72h.mjs"
       - "scripts/ops/capture-d1-launch-insights.mjs"
       - "scripts/tests/capture-d1-launch-insights.test.mjs"
+      # Phase 2G final: fresh provider Insights on merged reconciliation code.
+      # Metadata-only: no D1 SQL, no source fetch, no reserve/rights mutation.
+      - "scripts/lib/phase2g-per-id-d1-reconciliation.mjs"
 
 permissions:
   contents: read
