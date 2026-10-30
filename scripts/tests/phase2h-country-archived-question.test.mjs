@@ -110,6 +110,32 @@ test("protected archived news returns only same-country, same-category, question
  assert.match(statements[0].sql,/COUNT\(\*\) FROM json_each\(\?\)/u);
  assert.match(statements[0].sql,/ORDER BY.*original_published_at/u);
 });
+test("only archived exact record ID may return old five-part research after 72h",async()=>{
+ const historical={...rawRows[0],ingested_at:"2026-10-01T07:00:00.000Z"};
+ const q=new URLSearchParams({
+  record_id:historical.record_id,question:"Why does this monetary policy news matter?"
+ });
+ const {DB,statements}=workerDb([historical]);
+ const response=await phase2hPrivateRawGet({DB},q,now.getTime());
+ assert.equal(response.status,200);
+ const body=await response.json();
+ assert.equal(body.source,"B2_ACKNOWLEDGED_PRIVATE_ORIGINAL_D1");
+ assert.equal(body.question_matches.length,1);
+ assert.equal(body.question_matches[0].record_id,historical.record_id);
+ assert.equal(body.question_matches[0].archive_d1_ack_present,true);
+ assert.equal(body.paid_eligible,false);
+ assert.equal(body.raw_original_not_delivered,true);
+ assert.match(statements[0].sql,/record_id=\\?/u);
+ assert.match(statements[0].sql,/b2_object_sha256 IS NOT NULL/u);
+ assert.doesNotMatch(statements[0].sql,/first_ingested_at>/u);
+ const unarchived=workerDb([historical],{archived:false});
+ const denied=await (await phase2hPrivateRawGet({DB:unarchived.DB},q,now.getTime())).json();
+ assert.equal(denied.question_matches.length,0);
+ const generic=await (await phase2hPrivateRawGet({DB},new URLSearchParams({
+  question:"Why does this monetary policy news matter?"
+ }),now.getTime())).json();
+ assert.equal(generic.question_matches.length,0);
+});
 test("no candidate matching the exact country/topic is an honest empty no-charge answer",async()=>{
  const {DB}=workerDb(rawRows);
  const params=new URLSearchParams({country_iso3:"IND",category:"macro",
