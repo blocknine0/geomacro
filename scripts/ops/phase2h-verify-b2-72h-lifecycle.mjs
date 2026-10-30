@@ -10,8 +10,9 @@ export function assertPhase2hB2Lifecycle(rules){
  if(!Array.isArray(rules))fail("LIFECYCLE_UNVERIFIED");
  // Backblaze applies the shortest matching lifecycle rule; 1+1 days
  // ensures deletion within the documented maximum 72h after upload.
- const covered=rules.filter(rule=>rule&&typeof rule.fileNamePrefix==="string"&&
-  PHASE2H_B2_PREFIX.startsWith(rule.fileNamePrefix));
+ // A broad bucket-wide rule is NOT sufficient: it could expire PREDGE or
+ // unrelated private/historical evidence. Require explicit raw-only scope.
+ const covered=rules.filter(rule=>rule?.fileNamePrefix===PHASE2H_B2_PREFIX);
  const hide=Math.min(...covered.map(r=>r.daysFromUploadingToHiding)
   .filter(Number.isSafeInteger));
  const erase=Math.min(...covered.map(r=>r.daysFromHidingToDeleting)
