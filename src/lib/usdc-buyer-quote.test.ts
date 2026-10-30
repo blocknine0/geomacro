@@ -6,17 +6,17 @@ const recipient="0x1111111111111111111111111111111111111111";
 const make=(id:keyof typeof GEOMACRO_USDC_NATIVE_RAILS)=>{
  const rail=GEOMACRO_USDC_NATIVE_RAILS[id];
  return {x402Version:2,resource:{url:origin+"/api/v1/intelligence/query",mimeType:"application/json"},
-  accepts:[{scheme:"exact",network:rail.caip2,asset:rail.asset,amount:"100000",payTo:recipient,
+  accepts:[{scheme:"exact",network:rail.caip2,asset:rail.asset,amount:"30000",payTo:recipient,
    maxTimeoutSeconds:60,extra:{name:"USDC",version:"2"}}],extensions:{geomacro:{info:{execution_authorized:false,
    capability_quote:{quote_id:"a".repeat(64),prepared_answer_sha256:"b".repeat(64),
-    version:"geomacro.capability-usdc.v1",
+    version:"geomacro.capability-usdc.v2",
     recipient,network:rail.caip2,asset_contract:rail.asset.toLowerCase(),capability:"intelligence_query",
-    variant:"standard",amount_usdc:"0.10",amount_atomic:"100000",expires_at:"2026-10-21T12:04:00Z"}}}}};
+    variant:"standard",amount_usdc:"0.03",amount_atomic:"30000",expires_at:"2026-10-21T12:04:00Z"}}}}};
 };
 describe("browser exact USDC offer and response verification",()=>{
  it("supports each native rail without ever treating supported software as an active merchant",()=>{
   for(const id of ["base","polygon","arc"] as const)
-   expect(validateBuyerUsdcOffer(make(id),id,origin,now).amount_usdc).toBe("0.10");
+   expect(validateBuyerUsdcOffer(make(id),id,origin,now).amount_usdc).toBe("0.03");
  });
  it("rejects chain substitution, amount drift, zero recipient and expired offers",()=>{
   expect(()=>validateBuyerUsdcOffer(make("base"),"polygon",origin,now)).toThrow();
