@@ -49,7 +49,7 @@ test("every local publisher receives nominal 60m polling without exceeding exist
  for(const slot of slots){
   assert.equal(slot.local.length,24);
   assert.ok(slot.sources.length<=512);
-  assert.ok(slot.sources.length<=base.length+49);
+  assert.ok(slot.sources.length<=base.length+49+3); // 3 nonduplicate official hub candidates
   assert.equal(new Set(slot.sources.map(x=>x.url)).size,slot.sources.length);
   assert.equal(slot.sources.filter(x=>x.private_country_local_candidate).length,24);
   assert.equal(slot.sources.filter(x=>x.private_discovery_index_only&&x.discovery_country_iso3).length,25);
