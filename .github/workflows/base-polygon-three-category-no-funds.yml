@@ -1,0 +1,51 @@
+name: Base Polygon Three-Category Zero-Funds Merchant Acceptance
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/base-polygon-three-category-no-funds.yml'
+      - 'scripts/ops/verify-base-polygon-three-category-no-funds.mjs'
+      - 'scripts/tests/verify-base-polygon-three-category-no-funds.test.mjs'
+      - 'config/mainnet-usdc-recipient.json'
+      - 'src/lib/geomacro-multichain-usdc.server.ts'
+      - 'src/lib/geomacro-multichain-usdc.server.test.ts'
+      - 'src/lib/no-card-x402-adaptive-route.server.ts'
+      - 'src/lib/mainnet-intelligence-endpoint.server.ts'
+      - 'src/lib/category-intelligence-alias.server.ts'
+      - 'src/lib/paid-structured-answer.server.ts'
+  schedule:
+    - cron: '41 0,6,12,18 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-base-polygon-three-domain-no-funds
+  cancel-in-progress: true
+
+jobs:
+  read-only:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Prove six public no-funds cases cannot certify the wrong wallet
+        run: node --test scripts/tests/verify-base-polygon-three-category-no-funds.test.mjs
+      - name: Check exact deployed main, merchant proof, and 3x2 public x402 quotes without funds
+        run: node scripts/ops/verify-base-polygon-three-category-no-funds.mjs
+      - name: Retain source-free no-funds acceptance or blocker receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: base-polygon-three-category-no-funds-${{ github.sha }}
+          path: artifacts/base-polygon-no-funds/proof.json
+          if-no-files-found: warn
+          retention-days: 7
