@@ -447,20 +447,13 @@ test("re-observed immutable original survives deployed event-analysis wording up
  let insertCalls=0,afterReads=0;
  const db={prepare(sql){
   if(sql.startsWith("SELECT record_id,raw_sha256,first_ingested_at,raw_json")){
-   return {bind:()=>({all:async()=>({results:[{
-    record_id:existing.record_id,raw_sha256:existing.raw_sha256,
-    first_ingested_at:existing.ingested_at,raw_json:JSON.stringify(existing),
-   }]})})};
-  }
-  if(sql.startsWith("INSERT INTO phase2h_private_raw_news")){
-   return {bind:()=>({run:async()=>{insertCalls++;return {success:true}}})};
-  }
-  if(sql.startsWith("SELECT record_id,raw_sha256,first_ingested_at,raw_json FROM")&&
-     sql.includes("record_id IN (")){
    return {bind:()=>({all:async()=>{afterReads++;return {results:[{
     record_id:existing.record_id,raw_sha256:existing.raw_sha256,
     first_ingested_at:existing.ingested_at,raw_json:JSON.stringify(existing),
    }]}}})};
+  }
+  if(sql.startsWith("INSERT INTO phase2h_private_raw_news")){
+   return {bind:()=>({run:async()=>{insertCalls++;return {success:true}}})};
   }
   throw Error("UNEXPECTED_PRIVATE_QUERY");
  }};
@@ -476,7 +469,7 @@ test("re-observed immutable original survives deployed event-analysis wording up
  assert.equal(receipt.all_submitted_five_parts_exact,false);
  assert.equal(receipt.per_original_evidence[0].authenticated_d1_original_and_five_part_verified,true);
  assert.equal(receipt.per_original_evidence[0].submitted_five_part_exact_readback,false);
- assert.equal(insertCalls,1);assert.equal(afterReads,1);
+ assert.equal(insertCalls,1);assert.equal(afterReads,2);
  const changed=structuredClone(updated);
  changed.original.original_title="A publisher revision of the same original URL and date";
  changed.raw_sha256=hashRow(changed);
