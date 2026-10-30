@@ -15,11 +15,11 @@ describe("capability prices selected only from verified canonical plans (NO FUND
     expect(resolveVerifiedPublishedPlanPrice(plan({}),proof)).toMatchObject({
       capability:"intelligence_query",variant:"focused",amount_atomic:"50000"});
     expect(resolveVerifiedPublishedPlanPrice(plan({detail:"standard"}),proof)).toMatchObject({
-      variant:"standard",amount_atomic:"100000"});
+      variant:"standard",amount_atomic:"30000"});
     expect(resolveVerifiedPublishedPlanPrice(plan({detail:"full"}),proof)).toMatchObject({
-      variant:"complex_multi_source",amount_atomic:"150000"});
+      variant:"complex_multi_source",amount_atomic:"50000"});
     const multi=plan({topics:["macro_risk","fx_external_risk","conflict_geopolitics","critical_minerals"]});
-    expect(resolveVerifiedPublishedPlanPrice(multi,proof).amount_usdc).toBe("0.15");
+    expect(resolveVerifiedPublishedPlanPrice(multi,proof).amount_usdc).toBe("0.05");
     expect(resolveVerifiedPublishedPlanPrice(plan({}),proof)).toEqual(resolveVerifiedPublishedPlanPrice(plan({}),proof));
   });
   it("routes signed objects and bundles without adding a second object fee",()=>{
@@ -27,17 +27,17 @@ describe("capability prices selected only from verified canonical plans (NO FUND
     expect(resolveVerifiedPublishedPlanPrice(gro,proof)).toMatchObject({
       capability:"signed_risk_object",variant:"existing_valid_signed",amount_atomic:"50000"});
     expect(resolveVerifiedPublishedPlanPrice(gro,{...proof,signed_object_lifecycle:"new"})).toMatchObject({
-      variant:"newly_qualified_signed",amount_atomic:"100000"});
+      variant:"newly_qualified_signed",amount_atomic:"50000"});
     const gate=plan({topics:["risk_gate"],intent:"risk_gate",
       risk_gate_context:{action_type:"agent_payment",policy_preset:"balanced"}});
     expect(resolveVerifiedPublishedPlanPrice(gate,proof)).toMatchObject({
-      capability:"risk_gate_bundle",variant:"existing_proof_preflight",amount_atomic:"100000",
+      capability:"risk_gate_bundle",variant:"existing_proof_preflight",amount_atomic:"30000",
       included_signed_object_charge:"INCLUDED_NO_DOUBLE_CHARGE"});
     expect(resolveVerifiedPublishedPlanPrice(gate,{...proof,signed_object_lifecycle:"new"})).toMatchObject({
-      variant:"standard",amount_atomic:"150000"});
+      variant:"standard",amount_atomic:"50000"});
     expect(resolveVerifiedPublishedPlanPrice(plan({topics:["risk_gate","macro_risk","conflict_geopolitics","critical_minerals"],
       intent:"risk_gate", risk_gate_context:{action_type:"agent_payment",policy_preset:"balanced"},
-      detail:"full"}),proof)).toMatchObject({capability:"risk_gate_bundle",variant:"complex_multi_source",amount_atomic:"250000"});
+      detail:"full"}),proof)).toMatchObject({capability:"risk_gate_bundle",variant:"complex_multi_source",amount_atomic:"50000"});
   });
   it("cannot pretend GRI change attribution or structural rights",()=>{
     const gri=plan({topics:["gri_context"]});
