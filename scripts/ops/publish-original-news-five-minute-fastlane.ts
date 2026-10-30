@@ -102,10 +102,11 @@ let rawStageNeedsRetry=false;
 try{
  const privateStage=await stagePhase2iFastlanePrivateOriginals({
   candidates:privateOriginals,now:new Date(runAt),derive:deriveStatelessSignals,
-  maxRows:intakeMaxRows,intervalMinutes:intakeInterval,
+  maxRows:Math.min(intakeMaxRows,5),intervalMinutes:intakeInterval,
   controlPlaneRoot:controlPlaneOrigin,token,fetchImpl:globalThis.fetch,
  });
- rawStageNeedsRetry=(privateStage.deferred_count??0)>0;
+ rawStageNeedsRetry=(privateStage.deferred_count??0)>0||
+  (privateStage.d1_rejected_conflicts??0)>0;
  console.log(JSON.stringify(privateStage));
 }catch(error){
  // The existing derived-news/partner flow remains independent. Never assert
