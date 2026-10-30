@@ -65,7 +65,7 @@ test("deletion run fails closed without provider admission and never changes PRE
  assert.doesNotMatch(wf,/cron:|workflow_dispatch:|quota-admission:/u);
  const cycle=readFileSync(".github/workflows/phase2h-private-raw-archive.yml","utf8");
  assert.match(cycle,/archive-then-retention:/u);
- assert.match(cycle,/needs\\.quota-admission\\.outputs\\.retention_cleanup == 'true'/u);
+ assert.ok(cycle.includes("needs.quota-admission.outputs.retention_cleanup == 'true'"));
  assert.match(cycle,/PHASE2H_PROVIDER_RETENTION_CLEANUP/u);
  assert.doesNotMatch(wf,/PREDGE_RESEARCH|APP_SUPABASE_SERVICE_ROLE_KEY/u);
  const archive=readFileSync(".github/workflows/phase2h-private-raw-archive.yml","utf8");
