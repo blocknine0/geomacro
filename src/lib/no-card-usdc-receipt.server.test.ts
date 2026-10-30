@@ -215,4 +215,87 @@ describe("bounded Base/Polygon RPC alternatives for independent receipt verifica
     })).confirmed).toBe(true);
     expect(origins).toHaveLength(4);
   });
+  it("accepts individually saved BASE BACKUP_1 and BACKUP_2 without a JSON array",async()=>{
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES","");
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_BACKUP_1",backup);
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_BACKUP_2","https://third-rpc.example/rpc");
+    const calls:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      const endpoint=String(input);
+      calls.push(endpoint);
+      if(endpoint===primary||endpoint===backup)return new Response(null,{status:429});
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(result(method));
+    }) as typeof fetch;
+    expect((await confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,payer:PAYER,fetcher,
+    })).confirmed).toBe(true);
+    expect(calls).toEqual([
+      primary,backup,"https://third-rpc.example/rpc",
+      "https://third-rpc.example/rpc","https://third-rpc.example/rpc",
+      "https://third-rpc.example/rpc",
+    ]);
+  });
+
+  it("supports a separately saved Polygon BACKUP_1 without changing Base",async()=>{
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_POLYGON_ALTERNATES","");
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_POLYGON_BACKUP_1",backup);
+    const polygonQuote={...quote(),network:"eip155:137",
+      asset_contract:"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+    } as PreparedCapabilityQuote;
+    const calls:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      const endpoint=String(input);calls.push(endpoint);
+      if(endpoint===primary)return new Response(null,{status:503});
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(result(method,"eip155:137"));
+    }) as typeof fetch;
+    expect((await confirmNoCardNativeUsdcChainSettlement({
+      quote:polygonQuote,transaction:TX,payer:PAYER,fetcher,
+    })).confirmed).toBe(true);
+    expect(calls).toEqual([primary,backup,backup,backup,backup]);
+  });
+
+  it("preserves an existing Ankr JSON backup before a separate dRPC secret",async()=>{
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES",JSON.stringify([backup]));
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_BACKUP_2","https://drpc-backup.example/rpc");
+    const calls:string[]=[];
+    const fetcher=(async(input:unknown,init?:RequestInit)=>{
+      const endpoint=String(input);calls.push(endpoint);
+      if(endpoint===primary || endpoint===backup)return new Response(null,{status:429});
+      const method=JSON.parse(String(init?.body)).method as string;
+      return jsonResult(result(method));
+    }) as typeof fetch;
+    const confirmed=await confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,payer:PAYER,fetcher,
+    });
+    expect(confirmed.confirmed).toBe(true);
+    expect(calls).toEqual([primary,backup,
+      "https://drpc-backup.example/rpc","https://drpc-backup.example/rpc",
+      "https://drpc-backup.example/rpc","https://drpc-backup.example/rpc"]);
+  });
+
+  it("rejects unsafe individually saved RPC endpoints before making any chain calls",async()=>{
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES","");
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_BACKUP_1","http://localhost:8545");
+    const fetcher=vi.fn(async()=>new Response(null,{status:200})) as typeof fetch;
+    await expect(confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,fetcher,
+    })).rejects.toThrow("NO_CARD_RPC_OR_FINALITY_NOT_APPROVED");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("rejects more than ten total backup secrets and legacy array entries",async()=>{
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_BACKUP_1",backup);
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES",JSON.stringify(
+      Array.from({length:10},(_,i)=>"https://rpc"+i+".example/rpc")
+    ));
+    const fetcher=vi.fn(async()=>new Response(null,{status:200})) as typeof fetch;
+    await expect(confirmNoCardNativeUsdcChainSettlement({
+      quote:quote(),transaction:TX,fetcher,
+    })).rejects.toThrow("NO_CARD_RPC_ALTERNATES_INVALID");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+
 });

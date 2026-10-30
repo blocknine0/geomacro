@@ -51,7 +51,22 @@ GEOMACRO_NO_CARD_CONFIRMATIONS_BASE=<owner-approved-positive-integer>
 GEOMACRO_NO_CARD_CONFIRMATIONS_POLYGON=<owner-approved-positive-integer>
 ```
 
-The two `_ALTERNATES` values are **one JSON array of HTTPS URL strings per secret**, not multiple secrets named `_2`, `_3`, etc. Example domains above are placeholders; do not put them into production. Use distinct providers (for example Alchemy, Ankr, Infura, QuickNode or dRPC) with your own actual rate-limited free endpoints as permitted by current provider terms. Do **not** use the old Polygon-operated `polygon-rpc.com` or `rpc-mainnet.polygon.technology` as reliable backups: the official operators retired those free endpoints in July 2026. Base's `mainnet.base.org` is rate-limited and not intended for production loads.
+**Preferred Lovable UI: one secret per provider (no comma or JSON required).**
+
+```dotenv
+GEOMACRO_NO_CARD_RPC_BASE=https://your-alchemy-base-https-endpoint
+GEOMACRO_NO_CARD_RPC_BASE_BACKUP_1=https://your-ankr-base-https-endpoint
+GEOMACRO_NO_CARD_RPC_BASE_BACKUP_2=https://your-drpc-base-https-endpoint
+GEOMACRO_NO_CARD_RPC_POLYGON=https://your-alchemy-polygon-https-endpoint
+GEOMACRO_NO_CARD_RPC_POLYGON_BACKUP_1=https://your-ankr-polygon-https-endpoint
+GEOMACRO_NO_CARD_RPC_POLYGON_BACKUP_2=https://your-drpc-polygon-https-endpoint
+```
+
+**Existing-owner migration-free option (Ankr already saved as JSON):** Do not edit or delete `GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES` or `GEOMACRO_NO_CARD_RPC_POLYGON_ALTERNATES` if they already contain the correct network-specific Ankr URL. Add *only* `GEOMACRO_NO_CARD_RPC_BASE_BACKUP_2` and `GEOMACRO_NO_CARD_RPC_POLYGON_BACKUP_2` as two new secrets, each containing one full network-specific dRPC HTTPS URL. Runtime preference then is Alchemy primary → existing Ankr JSON array → separately configured dRPC. Different Base/Polygon networks require different RPC URLs and correct chain IDs. The array and individually named backups are combined into ten allowed backup entries per chain.
+
+Save each name/value as a **separate Lovable production server secret**. The optional suffix `_BACKUP_1` to `_BACKUP_10` is supported independently on both networks. Existing `_ALTERNATES` JSON arrays remain backward compatible; avoid setting the same provider URL in both configurations, and keep at most ten total backup entries per network across both forms. Each URL must be a real owner-controlled full HTTPS RPC endpoint. These example URLs are placeholders, not working providers. After saving, explicitly publish the synced canonical GitHub revision and independently verify deployment.
+
+The two `_ALTERNATES` values are **one JSON array of HTTPS URL strings per secret**, or, alternatively, use the separate `_BACKUP_1` ... `_BACKUP_10` secrets documented above. Example domains above are placeholders; do not put them into production. Use distinct providers (for example Alchemy, Ankr, Infura, QuickNode or dRPC) with your own actual rate-limited free endpoints as permitted by current provider terms. Do **not** use the old Polygon-operated `polygon-rpc.com` or `rpc-mainnet.polygon.technology` as reliable backups: the official operators retired those free endpoints in July 2026. Base's `mainnet.base.org` is rate-limited and not intended for production loads.
 
 Each full chain proof stays on one endpoint: `eth_chainId`, receipt, receipt block and latest block. Only transport failure, HTTP rate limit/service unavailable or invalid/missing JSON-RPC response can trigger alternate selection. Wrong chain, bad transaction status, missing/invalid Transfer, incorrect payee/asset/amount, wrong block hash, and insufficient confirmations immediately **fail closed**; do not use another node to conceal such evidence failures. There is a bounded 25-second total verification window; exhausted endpoints/time budget fail to the pre-existing manual-reconciliation path, with no automatic payment resettlement. Single-RPC configuration is still supported.
 
