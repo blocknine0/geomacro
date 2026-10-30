@@ -47,8 +47,8 @@ describe("production launch safety contract", () => {
     const workflow = read(".github/workflows/initial-commercial-pay-per-call-acceptance.yml");
     expect(workflow).toContain("ACCEPT_GEOMACRO_CAPABILITY_PRICES_NO_FUNDS");
     expect(workflow).not.toContain("ACCEPT_GEOMACRO_INITIAL_0_05_USDC_PAY_PER_CALL");
-    expect(workflow).toContain("geomacro.capability-usdc.v1");
-    expect(workflow).toContain("EIGHT_CAPABILITIES_EXACT_VARIANTS_NO_FLAT_PRICE");
+    expect(workflow).toContain("geomacro.capability-usdc.v2");
+    expect(workflow).toContain("LOW_BARRIER_SUBSCRIPTION_PREPAID_BASE_X402");
   });
 
   it("ships global freeze and provider quarantine controls disabled by default", () => {
