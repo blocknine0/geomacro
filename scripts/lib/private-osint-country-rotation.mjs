@@ -87,8 +87,9 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  if(!Array.isArray(base)||base.length===0||base.length>512||
    typeof includeLocalGapLane!=="boolean")
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_BASE_INVALID");
- const urls=new Set(base.map(s=>s.url));
- if(urls.size!==base.length)throw Error("PRIVATE_OSINT_COUNTRY_INDEX_BASE_DUPLICATE");
+ const activeBase=base.filter(s=>!isRetiredPrivateOsintSource(s));
+ const urls=new Set(activeBase.map(s=>s.url));
+ if(urls.size!==activeBase.length)throw Error("PRIVATE_OSINT_COUNTRY_INDEX_BASE_DUPLICATE");
  // Preserve all 463 native/index publisher endpoints and 24 local candidates.
  // Overlay exact, pinned multilateral hubs by reallocating only rotating
  // Google index slots, never by increasing the existing 512 network GET cap.
@@ -96,13 +97,13 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  const local=includeLocalGapLane?rotatingPrivateLocalPublisherSources(now).filter(s=>!isRetiredPrivateOsintSource(s)):[];
  const normalIndex=includeLocalGapLane?
   COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK:COUNTRY_DISCOVERY_PER_TICK;
- if(base.length+local.length+normalIndex>512)
+ if(activeBase.length+local.length+normalIndex>512)
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
- const hubs=base.length>=300?
+ const hubs=activeBase.length>=300?
   privateOsintGlobalHubSources().filter(source=>!urls.has(source.url)):[];
  // A missed index query is discovery-only, not a missing registered publisher.
  // Retiring repeatedly failed sources restores the full 25/49 index budget.
- const indexPerTick=Math.min(normalIndex,512-base.length-local.length-hubs.length);
+ const indexPerTick=Math.min(normalIndex,512-activeBase.length-local.length-hubs.length);
  if(indexPerTick<1)
   throw Error("PRIVATE_OSINT_GLOBAL_HUB_SOURCE_CEILING");
  const countryIndex=rotatingPrivateCountryDiscoverySources(now,countries,indexPerTick);
@@ -111,9 +112,9 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
   if(urls.has(source.url))continue;
   urls.add(source.url);fresh.push(source);
  }
- if(base.length+fresh.length>512||
+ if(activeBase.length+fresh.length>512||
     (includeLocalGapLane&&fresh.length>
       PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK+hubs.length))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
- return launchPriorityWatchSources([...base,...fresh]);
+ return launchPriorityWatchSources([...activeBase,...fresh]);
 }
