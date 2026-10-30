@@ -153,7 +153,30 @@ export async function acceptEarningPilotLive({
   steps.push({check:"three_domain_offer_catalog",status:"PASS"});
   // Read one extra PUBLIC catalog; never call the paid POST or accept payment.
   // A merchant's exact-price receipt MUST still come from the canonical 402.
-  const firstSalePrice=verifyFirstSalePriceManifest(await get("/api/v1/pricing"));
+  const publishedPriceCatalog=await get("/api/v1/pricing");
+  let firstSalePrice;
+  try {
+    firstSalePrice=verifyFirstSalePriceManifest(publishedPriceCatalog);
+  } catch(error) {
+    // During a founder-approved price migration, the published *old*
+    // canonical main legitimately still serves v1. PR diagnostics must not
+    // misreport a failed comparison as a new product/payable success.
+    // Exact-live main acceptance remains STRICT and never enters this path.
+    if(diagnosticOnly && !exactMainPublished &&
+       error instanceof Error && error.message==="FIRST_SALE_PRICING_MANIFEST_INVALID" &&
+       publishedPriceCatalog?.pricing_version==="geomacro.capability-usdc.v1") {
+      return {
+        schema_version:SCHEMA, checked_at:now.toISOString(),
+        status:"PREDEPLOY_V1_CATALOG_V2_MIGRATION_PENDING",
+        first_earning_ready:false, exact_main_published:false,
+        diagnostic_only:true, no_funds_preflight_complete:false,
+        real_funds_touched:false, checkout_or_settlement_attempted:false,
+        payment_header_submitted:false, price_advertised_as_authoritative:false,
+        checks:[...steps,{check:"pricing_migration",status:"WAITING_FOR_NEW_MAIN_DEPLOYMENT"}],
+      };
+    }
+    throw error;
+  }
 
   let eligibleCount=0,lockedCount=0,quoteReadyCount=0;
   let firstSaleExplicitEligible=0,firstSaleExplicitQuoteReady=0;
