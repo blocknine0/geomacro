@@ -30,6 +30,38 @@ test("paced bundles preserve critical work while research/maintenance yield firs
  assert.equal(q.state,"HELD");
  assert.equal(q.critical,false);
 });
+test("Phase2H has isolated free-tier archive admission without opening general maintenance",()=>{
+ const at=new Date("2026-10-30T14:10:33.000Z");
+ const observed={...quota(2_441_367,50_171),day_utc:"2026-10-30"};
+ const p=planD1BundledWork(observed,{now:at});
+ assert.equal(p.state,"HELD");
+ assert.equal(p.maintenance,false);
+ assert.equal(p.source_intake,true);
+ assert.equal(p.phase2h_raw_archive,true);
+ assert.equal(p.phase2h_raw_archive_does_not_admit_general_maintenance,true);
+ assert.equal(p.phase2h_raw_archive_requires_atomic_b2_quota,true);
+ assert.equal(p.phase2h_raw_archive_max_rows_per_slot,300);
+ assert.equal(p.research,false);
+ assert.equal(p.paid_calls,0);
+ const hours=Math.ceil((86_400_000-(at.getTime()%86_400_000))/3_600_000);
+ const slots=Math.ceil((86_400_000-(at.getTime()%86_400_000))/(6*3_600_000));
+ assert.ok(p.remaining_rows_read>
+   1_250_000+p.source_intake_budget_to_utc_reset.rows_read+
+   slots*20_000+hours*2500+10_000);
+ assert.ok(p.remaining_rows_written>
+   23_000+p.source_intake_budget_to_utc_reset.rows_written+
+   slots*350+hours*25+150);
+});
+test("Phase2H archive stays closed on denied or insufficient provider headroom",()=>{
+ const at=new Date("2026-10-30T14:10:33.000Z");
+ for(const [read,written] of [[4_000_000,50_171],[2_441_367,51_000],
+                               [2_441_367,90_000],[5_000_000,100_000]]) {
+  const q=planD1BundledWork({...quota(read,written),day_utc:"2026-10-30"},{now:at});
+  assert.equal(q.phase2h_raw_archive,false);
+ }
+ assert.equal(planD1BundledWork(null,{now:at}).phase2h_raw_archive,false);
+ assert.equal(planD1BundledWork({...quota(100,100),day_utc:"2026-10-29"},{now:at}).phase2h_raw_archive,false);
+});
 test("write reserve stops discretionary lanes before daily write cap",()=>{
  const q=planD1BundledWork(quota(1_000,40_000),{now});
  assert.equal(q.state,"CRITICAL_ONLY");
