@@ -108,7 +108,7 @@ jobs:
             if(body.success!==true || ids.length!==1 ||
                !/^[0-9a-f-]{36}$/i.test(ids[0]?.uuid??""))
               throw Error("GRO_CANONICAL_D1_DATABASE_NOT_UNIQUE");
-            appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+ids[0].uuid+"\\n");
+            appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+ids[0].uuid+String.fromCharCode(10));
           '
 
       - name: Score, Ed25519 sign and independently verify B2 then D1 hot with existing data
