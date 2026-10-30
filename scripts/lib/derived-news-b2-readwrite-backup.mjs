@@ -8,57 +8,62 @@ import {verifyDerivedStory} from "../../workers/control-plane/src/website-derive
 import {isSafeDerivedNewsReadbackSignal} from "./derived-news-readback-policy.mjs";
 
 const ORIGIN="https://geomacro-control-plane.daspallab202391.workers.dev";
-const BASE=ORIGIN+"/v1/public/website-derived-news";
+const BASE=ORIGIN+"/v1/public/website-derived-news-bundle";
 const PREFIX="geomacro-evidence/v1/private/derived-news-journal/";
 const CATEGORIES=["geopolitics","macro","rare_earth"];
-const MAX_PAGE_BYTES=512_000,MAX_RAW_BYTES=1_800_000,MAX_GZIP_BYTES=350_000;
+const MAX_BUNDLE_BYTES=1_800_000,MAX_RAW_BYTES=1_800_000,MAX_GZIP_BYTES=350_000;
 const sha=b=>createHash("sha256").update(b).digest("hex");
 const fail=code=>{throw Error("DERIVED_NEWS_B2_"+code)};
 
-async function strictPage(response,offset){
+// One canonical D1 read replaces three overlapping, non-atomic OFFSET pages.
+// Cache-Control:no-cache is essential: the public route then bypasses
+// both per-POP cache and optional R2 snapshots, preserving independent
+// canonical D1 readback rather than mistaking a stale offload for a backup.
+async function strictBundle(response){
  if(response?.status!==200||response.redirected||
-    Number(response.headers?.get("content-length")??0)>MAX_PAGE_BYTES)
-  fail("D1_PUBLIC_READBACK_UNAVAILABLE");
+    Number(response.headers?.get("content-length")??0)>MAX_BUNDLE_BYTES||
+    response.headers?.has("X-GeoMacro-Public-Offload")||
+    response.headers?.has("X-GeoMacro-Canonical-Status"))
+  fail("D1_CANONICAL_BUNDLE_UNAVAILABLE");
  let text;
  try{text=await response.text();}catch{fail("D1_PUBLIC_BODY_UNAVAILABLE");}
- if(text.length>MAX_PAGE_BYTES)fail("D1_PUBLIC_PAGE_OVERSIZE");
+ if(text.length>MAX_BUNDLE_BYTES)fail("D1_PUBLIC_BUNDLE_OVERSIZE");
  let doc;try{doc=JSON.parse(text);}catch{fail("D1_PUBLIC_JSON_INVALID");}
- if(doc?.ok!==true||doc.schema!=="geomacro.website-derived-news-feed.v1"||
+ if(doc?.ok!==true||doc.schema!=="geomacro.website-derived-news-bundle.v1"||
     doc.delivery_scope!=="free_website_only"||doc.retention_hours!==72||
-    (doc.original_release_delay_minutes!==0&&doc.original_release_delay_minutes!==15)||doc.page_offset!==offset||
-    doc.page_size!==250||typeof doc.has_more!=="boolean"||
-    !Array.isArray(doc.signals)||doc.signals.length>250)
-  fail("D1_PUBLIC_CONTRACT_INVALID");
+    doc.original_release_delay_minutes!==0||doc.complete!==true||
+    doc.item_cap!==600||!Number.isSafeInteger(doc.returned_rows)||
+    !Array.isArray(doc.signals)||doc.signals.length>600||
+    doc.returned_rows!==doc.signals.length||
+    !Array.isArray(doc.first_ingest)||
+    doc.first_ingest.length!==doc.signals.length)
+  fail("D1_CANONICAL_BUNDLE_CONTRACT_INVALID");
  return doc;
 }
 export async function readExactCurrentDerivedJournal({fetchImpl=fetch,now=new Date()}={}){
  const epoch=now.getTime();if(!Number.isFinite(epoch))fail("CLOCK_INVALID");
+ let response;
+ try{
+  response=await fetchImpl(BASE,{
+    method:"GET",redirect:"error",cache:"no-store",
+    headers:{Accept:"application/json","Cache-Control":"no-cache",Pragma:"no-cache"},
+    signal:AbortSignal.timeout(12_000)
+  });
+ }catch{fail("D1_PUBLIC_READBACK_UNAVAILABLE");}
+ const bundle=await strictBundle(response);
+ const checked=Date.parse(bundle.checked_at);
+ if(!Number.isFinite(checked)||Math.abs(checked-epoch)>5*60_000)
+  fail("D1_CANONICAL_BUNDLE_CLOCK_INVALID");
  const rows=[],seen=new Set();
- for(const offset of [0,250,500]){
-  let response;
-  try{
-   response=await fetchImpl(BASE+(offset?"?offset="+offset:""),{
-     method:"GET",redirect:"error",cache:"no-store",
-     headers:{Accept:"application/json"},signal:AbortSignal.timeout(12_000)
-   });
-  }catch{fail("D1_PUBLIC_READBACK_UNAVAILABLE");}
-  const page=await strictPage(response,offset);
-  for(const row of page.signals){
-   if(!verifyDerivedStory(row,epoch)||!isSafeDerivedNewsReadbackSignal(row)||seen.has(row.id)||
-      Date.parse(row.published_at)<epoch-72*3_600_000||
-      (row.status==="official_feed_candidate_unscored"&&
-       !row.topic.endsWith(" publisher candidate")))
-    fail("D1_SIGNAL_SCOPE_INVALID");
-   seen.add(row.id);rows.push(row);
-  }
-  if(!page.has_more){
-   if(page.next_offset!==null)fail("D1_PAGINATION_CURSOR_INVALID");
-   return rows;
-  }
-  if(page.next_offset!==offset+250||offset===500||page.signals.length!==250)
-   fail("D1_PAGINATION_INCOMPLETE");
+ for(const row of bundle.signals){
+  if(!verifyDerivedStory(row,epoch)||!isSafeDerivedNewsReadbackSignal(row)||
+     seen.has(row.id)||Date.parse(row.published_at)<epoch-72*3_600_000||
+     (row.status==="official_feed_candidate_unscored"&&
+      !row.topic.endsWith(" publisher candidate")))
+   fail("D1_SIGNAL_SCOPE_INVALID");
+  seen.add(row.id);rows.push(row);
  }
- fail("D1_PAGINATION_INCOMPLETE");
+ return rows;
 }
 export function buildDerivedJournalB2Plan(rows,now=new Date()){
  if(!Number.isFinite(now.getTime())||!Array.isArray(rows)||
