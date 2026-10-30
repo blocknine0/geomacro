@@ -20,7 +20,8 @@ const dateNative=(value,now)=>{
 };
 const SAFE_PROVIDER_FAILURES=new Set(["NETWORK_TIMEOUT_OR_EGRESS","HTTP_401",
  "HTTP_403","HTTP_404","HTTP_429","HTTP_500","HTTP_502","HTTP_503",
- "HTTP_OTHER","REDIRECT_DENIED","NOT_JSON","OVERSIZE","INVALID_JSON"]);
+ "HTTP_OTHER","REDIRECT_DENIED","NOT_JSON","OVERSIZE","INVALID_JSON",
+ "UPSTREAM_TIMEOUT","NETWORK_FETCH_FAILED"]);
 const providerFail=x=>{throw Error("P0B_UPSTREAM_"+x)};
 const providerCode=error=>{
  const code=String(error?.message??"").replace(/^P0B_UPSTREAM_/u,"");
@@ -29,8 +30,9 @@ const providerCode=error=>{
 const getJson=async(url,fetchImpl)=>{
  let res;
  try{res=await fetchImpl(url,{method:"GET",redirect:"error",
-  headers:{"Accept":"application/json"},signal:AbortSignal.timeout(5500)})}
- catch{providerFail("NETWORK_TIMEOUT_OR_EGRESS")}
+  headers:{"Accept":"application/json"},signal:AbortSignal.timeout(9000)})}
+ catch(error){providerFail(error?.name==="TimeoutError"||error?.name==="AbortError"?
+  "UPSTREAM_TIMEOUT":"NETWORK_FETCH_FAILED")}
  if(res.redirected)providerFail("REDIRECT_DENIED");
  if(res.status!==200){
   providerFail([401,403,404,429,500,502,503].includes(res.status)?
@@ -133,12 +135,18 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
  if(settled[0].status==="fulfilled"){
   const hits=settled[0].value?.results;
   if(!Array.isArray(hits))providerErrors++;
-  else for(const hit of hits.slice(0,8)){
-   if(official.length>=2)break;
-   try{
-    const x=await officialItem(hit,category,countryIso3,fetchImpl,now);
-    if(x&&!official.some(y=>y.record_id===x.record_id))official.push(x);
-   }catch{providerErrors++}
+  else{
+   // A serial chain of 8 publisher HTTP calls exceeded the live query's
+   // 20s independent acceptance window. Parallel proofs are bounded,
+   // preserve each native publication clock and do not widen access policy.
+   const verified=await Promise.allSettled(hits.slice(0,3).map(hit=>
+    officialItem(hit,category,countryIso3,fetchImpl,now)));
+   for(const result of verified){
+    if(result.status==="rejected"){providerErrors++;continue;}
+    const x=result.value;
+    if(x&&!official.some(y=>y.record_id===x.record_id)&&official.length<2)
+     official.push(x);
+   }
   }
  }
  return Object.freeze({status:official.length?"FIRST_PARTY_METADATA_GROUNDED":
