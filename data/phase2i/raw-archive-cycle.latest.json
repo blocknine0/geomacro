@@ -1,15 +1,12 @@
 {
   "schema": "geomacro.phase2ib.governed-raw-archive-cycle.v1",
-  "production_main_sha": "b6c06b33c5b8c68a5db42177b0ca627095b5b8d5",
-  "github_run_id": "41102709212",
-  "checked_at": "2026-10-30T17:57:49.494Z",
+  "production_main_sha": "e4e09665e0a91e561f592c60ad75404d838b3fb5",
+  "github_run_id": "41116645106",
+  "checked_at": "2026-10-30T19:37:07.581Z",
   "provider_maintenance_admitted": false,
-  "existing_archive_windows_unmodified": [
-    "00",
-    "06",
-    "12",
-    "18"
-  ],
+  "archive_schedule": "ONCE_DAILY_00_29_UTC",
+  "archive_cycle_hours": 24,
+  "archive_admitted_only_once_per_slot": true,
   "batch_maximum_unmodified": 300,
   "account_governor_unchanged": true,
   "status": "QUOTA_HELD_MAINTENANCE_NOT_ADMITTED",
