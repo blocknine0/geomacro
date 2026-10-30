@@ -17,7 +17,8 @@ const SOURCES=Object.freeze({
    path:/^\/news\.release\/(?:[a-z]{2,20}\.nr\d|archives\/[a-z]{2,20}_\d{8})\.htm$/u,
    issuer_country:"USA",issuer:"US Bureau of Labor Statistics"}],
  rare_earth:[{url:"https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed",
-  host:"news.gov.bc.ca",path:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u}],
+  host:"news.gov.bc.ca",path:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,
+  issuer_country:"CAN",issuer_level:"PROVINCIAL",issuer:"Province of British Columbia"}],
 });
 const resultError=x=>({status:x,items:[],checked:1});
 const capped=async(url,fetchImpl)=>{
@@ -123,7 +124,9 @@ export async function p0bFirstPartyFeedNews({
     original_page_independently_verified:false,
     first_party_feed_metadata_verified:true,
     ...(source.issuer_country?{issuer_country_verified:source.issuer_country,
-      country_attribution_basis:"FIRST_PARTY_NATIONAL_STATISTICAL_ISSUER"}:{}),
+      country_attribution_basis:source.issuer_level==="PROVINCIAL"?
+       "FIRST_PARTY_PROVINCIAL_MINERAL_ISSUER":
+       "FIRST_PARTY_NATIONAL_STATISTICAL_ISSUER"}:{}),
     archive_d1_ack_present:false,p0a_evidence_limited:false,
     paid_eligible:false,commercial_rights_verified:false,
     source_title_only_research_fallback_used:false});
