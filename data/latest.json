@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-30T15:50:24.638Z",
+  "checked_at": "2026-10-30T15:58:40.269Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,44 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "rare_earth-83fda8bd",
+      "category": "rare_earth",
+      "title": "Geomacro finds Benchmark launched gallium and germanium metal price assessments - Benchmark Mineral Intelligence",
+      "what_changed": "A monitored source feed reports: Benchmark launched gallium and germanium metal price assessments - Benchmark Mineral Intelligence. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T15:50:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-7ea1c49a",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning The Peace Agreement remains central to tackling the factors that sustain conflict in Colombia · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning The Peace Agreement remains central to tackling the factors that sustain conflict in Colombia. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "agreement",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-30T15:45:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-9eca48d3",
       "category": "rare_earth",
@@ -4286,25 +4324,6 @@
       "severity": null
     },
     {
-      "id": "macro-aefaa056",
-      "category": "macro",
-      "title": "Geomacro finds Federal Reserve held interest rates steady despite inflation",
-      "what_changed": "A monitored source feed reports: Federal Reserve held interest rates steady despite inflation. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T00:07:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.cbsnews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-ce834940",
       "category": "rare_earth",
       "title": "Geomacro finds Study confirmed FireFly on track to be a significant copper producer - Taiwan News",
@@ -4504,25 +4523,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T19:21:29.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-2e056dad",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran said New Proposal to Reopen Strait of Hormuz Under Review - Haaretz",
-      "what_changed": "A monitored source feed reports: Iran said New Proposal to Reopen Strait of Hormuz Under Review - Haaretz. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T19:01:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

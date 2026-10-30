@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T15:50:24.638Z",
+  "checked_at": "2026-10-30T15:58:40.269Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -14,11 +14,11 @@
   "max_items": 600,
   "item_count": 404,
   "counts": {
-    "geopolitics": 180,
+    "geopolitics": 179,
     "macro": 179,
-    "rare_earth": 45
+    "rare_earth": 46
   },
-  "source_native_ids_sha256": "6d81f1f4fc951fdc37c60e3037f2bdf02f51aa69466dd5413df114b68ab7ade2",
+  "source_native_ids_sha256": "c833f020b8f0d5bfc78b7c59d5aca9bd120d7ded92c82076aa76d64b294639a0",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,44 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-83fda8bd",
+      "category": "rare_earth",
+      "title": "Geomacro finds Benchmark launched gallium and germanium metal price assessments - Benchmark Mineral Intelligence",
+      "what_changed": "A monitored source feed reports: Benchmark launched gallium and germanium metal price assessments - Benchmark Mineral Intelligence. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T15:50:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-7ea1c49a",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning The Peace Agreement remains central to tackling the factors that sustain conflict in Colombia · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning The Peace Agreement remains central to tackling the factors that sustain conflict in Colombia. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "agreement",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-30T15:45:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-9eca48d3",
       "category": "rare_earth",
@@ -7662,44 +7700,6 @@
         "Monitored feed: www.newsday.co.zw"
       ],
       "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-06b19dd1",
-      "category": "geopolitics",
-      "title": "Geomacro finds Netanyahu warned about Arab voter surge in Israel’s election; Arab leaders call tactic racist - Al Arabiya English",
-      "what_changed": "A monitored source feed reports: Netanyahu warned about Arab voter surge in Israel’s election; Arab leaders call tactic racist - Al Arabiya English. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T15:56:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-9c3a2a75",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning Iran must allow the return of IAEA inspectors to all nuclear sites · United Kingdom",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Iran must allow the return of IAEA inspectors to all nuclear sites. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-10-27T15:51:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
-      ],
-      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     }
