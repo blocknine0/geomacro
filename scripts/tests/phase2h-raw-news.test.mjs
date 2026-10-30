@@ -447,19 +447,13 @@ test("re-observed immutable original survives deployed event-analysis wording up
  let insertCalls=0,afterReads=0;
  const db={prepare(sql){
   if(sql.startsWith("SELECT record_id,raw_sha256,first_ingested_at,raw_json")){
-   return {bind:()=>({all:async()=>({results:[{
+   return {bind:()=>({all:async()=>{afterReads++;return {results:[{
     record_id:existing.record_id,raw_sha256:existing.raw_sha256,
     first_ingested_at:existing.ingested_at,raw_json:JSON.stringify(existing),
-   }]})})};
+   }]}}})};
   }
   if(sql.startsWith("INSERT INTO phase2h_private_raw_news")){
    return {bind:()=>({run:async()=>{insertCalls++;return {success:true}}})};
-  }
-  if(sql.startsWith("SELECT record_id,raw_sha256,first_ingested_at FROM")){
-   return {bind:()=>({all:async()=>{afterReads++;return {results:[{
-    record_id:existing.record_id,raw_sha256:existing.raw_sha256,
-    first_ingested_at:existing.ingested_at,
-   }]}}})};
   }
   throw Error("UNEXPECTED_PRIVATE_QUERY");
  }};
@@ -470,7 +464,12 @@ test("re-observed immutable original survives deployed event-analysis wording up
  assert.equal(receipt.accepted,0);
  assert.equal(receipt.unchanged,1);
  assert.equal(receipt.d1_exact_readback_verified,true);
- assert.equal(insertCalls,1);assert.equal(afterReads,1);
+ assert.equal(receipt.per_original_readback_verified,true);
+ assert.equal(receipt.per_original_verified_count,1);
+ assert.equal(receipt.all_submitted_five_parts_exact,false);
+ assert.equal(receipt.per_original_evidence[0].authenticated_d1_original_and_five_part_verified,true);
+ assert.equal(receipt.per_original_evidence[0].submitted_five_part_exact_readback,false);
+ assert.equal(insertCalls,1);assert.equal(afterReads,2);
  const changed=structuredClone(updated);
  changed.original.original_title="A publisher revision of the same original URL and date";
  changed.raw_sha256=hashRow(changed);
@@ -480,6 +479,97 @@ test("re-observed immutable original survives deployed event-analysis wording up
  assert.equal((await collision.json()).reason_code,"PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION");
 });
 
+
+
+test("authenticated per-original readback hashes persisted native source and five-part after a fresh D1 insert",async()=>{
+ const first=data().records[0];
+ let insert=0,reads=0;
+ const db={prepare(sql){
+  if(sql.startsWith("SELECT record_id,raw_sha256,first_ingested_at,raw_json FROM")){
+   return {bind:()=>({all:async()=>({results:++reads===1?[]:[{
+    record_id:first.record_id,raw_sha256:first.raw_sha256,
+    first_ingested_at:first.ingested_at,raw_json:JSON.stringify(first),
+   }]})})};
+  }
+  if(sql.startsWith("INSERT INTO phase2h_private_raw_news")){
+   return {bind:()=>({run:async()=>{insert++;return {success:true}}})};
+  }
+  throw Error("UNEXPECTED_QUERY");
+ }};
+ const r=await phase2hPrivateRawPut({DB:db},{
+  schema:"geomacro.phase2h.private-raw-batch.v1",items:[first]},now.getTime());
+ assert.equal(r.status,200);
+ const b=await r.json();
+ assert.equal(b.accepted,1);assert.equal(b.unchanged,0);
+ assert.equal(b.per_original_verified_count,1);
+ assert.equal(b.all_submitted_five_parts_exact,true);
+ assert.equal(b.per_original_evidence[0].record_id,first.record_id);
+ assert.equal(b.per_original_evidence[0].persisted_raw_sha256,first.raw_sha256);
+ assert.equal(b.per_original_evidence[0].original_identity_sha256,
+  createHash("sha256").update(JSON.stringify(first.original)).digest("hex"));
+ assert.equal(b.per_original_evidence[0].persisted_five_part_sha256,
+  createHash("sha256").update(JSON.stringify(first.analysis)).digest("hex"));
+ assert.equal(b.per_original_evidence[0].b2_archived_verified,false);
+ assert.equal(insert,1);assert.equal(reads,2);
+});
+test("D1 readback rejects swapped same-ID analysis even if metadata hash columns look plausible",async()=>{
+ const original=data().records[0];
+ const tampered=structuredClone(original);
+ tampered.analysis.why_it_matters.text="Unverified replacement impact.";
+ // The after-read stored raw JSON and claimed SHA disagree; no positive proof.
+ const db={prepare(sql){
+  if(sql.startsWith("SELECT record_id,raw_sha256,first_ingested_at,raw_json FROM")){
+   return {bind:()=>({all:async()=>({results:sql.includes("record_id IN (")?[]:[{
+    record_id:original.record_id,raw_sha256:original.raw_sha256,
+    first_ingested_at:original.ingested_at,raw_json:JSON.stringify(tampered),
+   }]})})};
+  }
+  if(sql.startsWith("INSERT INTO phase2h_private_raw_news"))
+    return {bind:()=>({run:async()=>({success:true})})};
+  throw Error("UNEXPECTED_QUERY");
+ }};
+ // Explicit SELECT counting prevents accidental duplicate-query result aliasing.
+ let calls=0;
+ db.prepare=(sql)=>{
+  if(sql.startsWith("SELECT record_id,raw_sha256,first_ingested_at,raw_json FROM"))
+   return {bind:()=>({all:async()=>({results:++calls===1?[]:[{
+    record_id:original.record_id,raw_sha256:original.raw_sha256,
+    first_ingested_at:original.ingested_at,raw_json:JSON.stringify(tampered),
+   }]})})};
+  if(sql.startsWith("INSERT INTO phase2h_private_raw_news"))
+    return {bind:()=>({run:async()=>({success:true})})};
+  throw Error("UNEXPECTED_QUERY");
+ };
+ const r=await phase2hPrivateRawPut({DB:db},{
+  schema:"geomacro.phase2h.private-raw-batch.v1",items:[original]},now.getTime());
+ assert.equal(r.status,503);
+ assert.equal((await r.json()).error,"PRIVATE_RAW_D1_WRITE_OR_READBACK_UNVERIFIED");
+});
+test("client rejects unauthenticated per-news D1 receipts despite aggregate success counts",async()=>{
+ const records=data().records;
+ const legacy={ok:true,schema:"geomacro.phase2h.private-d1-receipt.v1",
+  accepted:3,unchanged:0,d1_exact_readback_verified:true};
+ await assert.rejects(postPhase2hPrivateRawRecords({
+  records,controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  token:"x".repeat(40),fetchImpl:async()=>Response.json(legacy),
+ }),/PHASE2H_PRIVATE_D1_READBACK_MISMATCH/u);
+ const bad={...legacy,per_original_readback_verified:true,per_original_verified_count:3,
+  per_original_evidence:records.map(r=>({
+   record_id:r.record_id,category:r.category,
+   source_published_at:r.original.original_published_at,
+   date_precision:r.original.date_precision,
+   original_identity_sha256:"0".repeat(64),
+   persisted_raw_sha256:r.raw_sha256,
+   persisted_five_part_sha256:createHash("sha256").update(JSON.stringify(r.analysis)).digest("hex"),
+   submitted_five_part_exact_readback:true,
+   authenticated_d1_original_and_five_part_verified:true,
+   b2_archived_verified:false,commercial_rights_verified:false,paid_eligible:false,
+  })),all_submitted_five_parts_exact:true};
+ await assert.rejects(postPhase2hPrivateRawRecords({
+  records,controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  token:"x".repeat(40),fetchImpl:async()=>Response.json(bad),
+ }),/PHASE2H_PRIVATE_PER_ORIGINAL_EVIDENCE_MISMATCH/u);
+});
 
 test("maintenance=false blocks B2 even when structural snapshot would allow it",async()=>{
  const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",

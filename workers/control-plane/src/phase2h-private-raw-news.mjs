@@ -159,19 +159,59 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
    "FROM json_each(?) WHERE 1 ON CONFLICT(record_id) DO NOTHING"
   ).bind(JSON.stringify(items)).run();
   if(insert?.success===false)fail("INSERT_FAILED");
-  const after=await env.DB.prepare("SELECT record_id,raw_sha256,first_ingested_at FROM phase2h_private_raw_news WHERE record_id IN ("+placeholders+")").bind(...ids).all();
-  const found=new Map((after.results??[]).map(x=>[x.record_id,x]));
-  if(found.size!==items.length)fail("AFTER_READ_MISSING");
+  // Per-original authenticated live evidence: read *the persisted original
+  // and all five structured fields*, not only record_id/hash columns. This
+  // uses the SAME existing D1 SELECT, no added provider/B2 GET or new table.
+  // Older immutable projector versions remain intact and are disclosed as
+  // already-stored, never reported as the newly submitted five-part wording.
+  const after=await env.DB.prepare("SELECT record_id,raw_sha256,first_ingested_at,raw_json FROM phase2h_private_raw_news WHERE record_id IN ("+placeholders+")").bind(...ids).all();
+  if(!Array.isArray(after?.results)||after.results.length!==items.length)
+    fail("AFTER_READ_MISSING");
+  const found=new Map(after.results.map(x=>[x.record_id,x]));
+  if(found.size!==items.length)fail("AFTER_READ_DUPLICATE");
+  const perOriginal=[];
   for(const x of items){
    const r=found.get(x[0]);
    const previous=prior.get(x[0]);
-   if(r.raw_sha256!==(previous?.raw_sha256??x[4])||
-      previous&&r.first_ingested_at!==previous.first_ingested_at)
+   if(!r||r.raw_sha256!==(previous?.raw_sha256??x[4])||
+      r.first_ingested_at!==(previous?.first_ingested_at??x[3]))
     fail("AFTER_READ_DIVERGED");
+   let persisted,incoming;
+   try{persisted=JSON.parse(r.raw_json);incoming=JSON.parse(x[5])}
+   catch{fail("AFTER_JSON_UNAVAILABLE")}
+   // Full immutable record/hash, original native date and full five-part
+   // structural contract are independently recomputed from D1 readback.
+   if(await validPrivateRawNews(persisted,now,false)!==r.raw_json||
+      persisted.raw_sha256!==r.raw_sha256||
+      persisted.record_id!==x[0]||
+      persisted.category!==x[1]||
+      persisted.original.original_published_at!==x[2]||
+      persisted.ingested_at!==r.first_ingested_at||
+      JSON.stringify(persisted.original)!==JSON.stringify(incoming.original))
+    fail("AFTER_ORIGINAL_OR_ANALYSIS_DIVERGED");
+   const exactCurrentFivePart=JSON.stringify(persisted.analysis)===
+     JSON.stringify(incoming.analysis);
+   perOriginal.push({
+    record_id:x[0],category:x[1],
+    source_published_at:x[2],date_precision:persisted.original.date_precision,
+    persisted_raw_sha256:r.raw_sha256,
+    original_identity_sha256:await sha(JSON.stringify(persisted.original)),
+    persisted_five_part_sha256:await sha(JSON.stringify(persisted.analysis)),
+    submitted_five_part_exact_readback:exactCurrentFivePart,
+    authenticated_d1_original_and_five_part_verified:true,
+    b2_archived_verified:false,commercial_rights_verified:false,
+    paid_eligible:false,
+   });
   }
+  perOriginal.sort((a,b)=>a.record_id.localeCompare(b.record_id));
   return safeReply({ok:true,schema:"geomacro.phase2h.private-d1-receipt.v1",
    accepted:items.length-prior.size,unchanged:prior.size,
-   d1_exact_readback_verified:true,duplicate_new_records:0,rights_verified:false,
+   d1_exact_readback_verified:true,
+   per_original_readback_verified:true,
+   per_original_verified_count:perOriginal.length,
+   all_submitted_five_parts_exact:perOriginal.every(x=>x.submitted_five_part_exact_readback),
+   per_original_evidence:perOriginal,
+   duplicate_new_records:0,rights_verified:false,
    payments:0,original_clocks_preserved:true});
  }catch(error){
   // Protected caller receives only a finite diagnostic enum; never the

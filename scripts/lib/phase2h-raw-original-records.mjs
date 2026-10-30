@@ -140,11 +140,15 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
 export async function postPhase2hPrivateRawRecords({
  records,controlPlaneRoot,token,fetchImpl=fetch
 }={}){
- if(!Array.isArray(records)||records.length===0)return {stored:0,duplicate:0,readback_verified:true};
+ if(!Array.isArray(records)||records.length===0)return {
+  stored:0,duplicate:0,readback_verified:true,
+  per_original_readback_verified:true,verified_originals:0,
+  submitted_five_part_exact_count:0,retained_immutable_five_part_count:0,
+ };
  if(typeof token!=="string"||token.length<32||
    controlPlaneRoot!=="https://geomacro-control-plane.daspallab202391.workers.dev")
   throw Error("PHASE2H_PRIVATE_INTAKE_AUTH_REQUIRED");
- let stored=0,duplicates=0;
+ let stored=0,duplicates=0,exactFivePart=0,retainedFivePart=0;
  for(let i=0;i<records.length;i+=20){
   const group=records.slice(i,i+20);
   const response=await fetchImpl(controlPlaneRoot+"/v1/internal/phase2h-raw-news",{
@@ -162,9 +166,46 @@ export async function postPhase2hPrivateRawRecords({
   }
   const receipt=await response.json();
   if(receipt.ok!==true||receipt.d1_exact_readback_verified!==true||
+     receipt.per_original_readback_verified!==true||
+     receipt.per_original_verified_count!==group.length||
+     !Array.isArray(receipt.per_original_evidence)||
+     receipt.per_original_evidence.length!==group.length||
      receipt.accepted+receipt.unchanged!==group.length)
     throw Error("PHASE2H_PRIVATE_D1_READBACK_MISMATCH");
+  const expected=new Map(group.map(row=>[row.record_id,row]));
+  if(expected.size!==group.length)throw Error("PHASE2H_PRIVATE_DUPLICATE_LOCAL_ID");
+  const seen=new Set();
+  let groupRetained=0;
+  for(const proof of receipt.per_original_evidence){
+   const row=expected.get(proof?.record_id);
+   if(!row||seen.has(row.record_id)||
+      proof.category!==row.category||
+      proof.source_published_at!==row.original.original_published_at||
+      proof.date_precision!==row.original.date_precision||
+      proof.original_identity_sha256!==sha(JSON.stringify(row.original))||
+      !/^[a-f0-9]{64}$/u.test(String(proof.persisted_raw_sha256??""))||
+      !/^[a-f0-9]{64}$/u.test(String(proof.persisted_five_part_sha256??""))||
+      proof.authenticated_d1_original_and_five_part_verified!==true||
+      proof.b2_archived_verified!==false||
+      proof.commercial_rights_verified!==false||proof.paid_eligible!==false)
+     throw Error("PHASE2H_PRIVATE_PER_ORIGINAL_EVIDENCE_MISMATCH");
+   const current=proof.persisted_five_part_sha256===sha(JSON.stringify(row.analysis));
+   // If an immutable earlier version is already stored, it still yields an
+   // authenticated five-part but must NEVER be claimed byte-identical to
+   // a newer projection.
+   if(proof.submitted_five_part_exact_readback!==current||
+      (current&&proof.persisted_raw_sha256!==row.raw_sha256))
+     throw Error("PHASE2H_PRIVATE_FIVE_PART_VERSION_RECEIPT_MISMATCH");
+   if(current)exactFivePart++;else {retainedFivePart++;groupRetained++;}
+   seen.add(row.record_id);
+  }
+  if(seen.size!==group.length||
+     receipt.all_submitted_five_parts_exact!==(groupRetained===0))
+    throw Error("PHASE2H_PRIVATE_BATCH_EVIDENCE_INCOMPLETE");
   stored+=receipt.accepted;duplicates+=receipt.unchanged;
  }
- return {stored,duplicate:duplicates,readback_verified:true};
+ return {stored,duplicate:duplicates,readback_verified:true,
+  per_original_readback_verified:true,verified_originals:stored+duplicates,
+  submitted_five_part_exact_count:exactFivePart,
+  retained_immutable_five_part_count:retainedFivePart};
 }

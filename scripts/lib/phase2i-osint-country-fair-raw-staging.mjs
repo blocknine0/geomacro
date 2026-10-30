@@ -136,6 +136,7 @@ export async function stagePhase2iOsintFairRaw({
   d1_inserted:receipt.stored,d1_unchanged:receipt.duplicate,
   d1_rejected_conflicts:receipt.rejected_conflicts,
   rejected_conflicts_by_category:receipt.rejected_conflicts_by_category,
+  per_original_authenticated_d1_verified:receipt.per_original_authenticated_d1_verified,
   d1_readback_verified:receipt.readback_verified,
   b2_verified:false,payments:0,
  });

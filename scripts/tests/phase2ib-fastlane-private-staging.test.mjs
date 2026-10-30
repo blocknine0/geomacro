@@ -71,12 +71,14 @@ test("real-shaped D1 same-ID receipt is independently checked and never implies 
   token:"a".repeat(64),
   controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
   post:async({records})=>{observed=records;return {
-    stored:2,duplicate:1,readback_verified:true};},
+    stored:2,duplicate:1,readback_verified:true,
+    per_original_readback_verified:true,verified_originals:records.length};},
  });
  assert.equal(observed.length,3);
  assert.equal(r.status,"CANONICAL_D1_EXACT_READBACK_VERIFIED");
  assert.equal(r.d1_inserted,2);
  assert.equal(r.d1_unchanged,1);
+ assert.equal(r.per_original_authenticated_d1_verified,true);
  assert.equal(r.b2_verified,false);
  assert.equal(r.event_country_verified,false);
  assert.equal(JSON.stringify(r).includes(base.articleUrl),false);
@@ -85,6 +87,13 @@ test("real-shaped D1 same-ID receipt is independently checked and never implies 
   post:async()=>({stored:0,duplicate:0,readback_verified:true}),
  }),/PHASE2IB_FASTLANE_RAW_D1_RECEIPT_INVALID/);
 });
+test("aggregate counts alone never impersonate per-original authenticated readback",async()=>{
+ await assert.rejects(stagePhase2iFastlanePrivateOriginals({
+  candidates:[base],now,maxRows:5,intervalMinutes:5,derive,env,
+  post:async({records})=>({stored:records.length,duplicate:0,readback_verified:true}),
+ }),/PHASE2IB_FASTLANE_RAW_D1_RECEIPT_INVALID/);
+});
+
 test("invalid native dates and missing metadata never become invented records",()=>{
  const plan=planPhase2iFastlanePrivateStage([
   {...base,publishedAt:"unverified"},
@@ -105,7 +114,8 @@ test("one immutable original collision never discards other source originals",as
   if(records.some(r=>r.category==="macro"))
    throw Error("PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION");
   accepted+=records.length;
-  return {stored:records.length,duplicate:0,readback_verified:true};
+  return {stored:records.length,duplicate:0,readback_verified:true,
+    per_original_readback_verified:true,verified_originals:records.length};
  };
  const receipt=await postPhase2iCollisionIsolated({
   records:plan.records,post,

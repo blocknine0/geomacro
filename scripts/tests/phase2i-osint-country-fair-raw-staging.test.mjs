@@ -73,13 +73,15 @@ test("one immutable conflict cannot drop clean geopolitical or minerals original
   calls.push(records.length);
   if(records.some(r=>r.category==="macro"))
    throw Error("PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION");
-  return {stored:records.length,duplicate:0,readback_verified:true};
+  return {stored:records.length,duplicate:0,readback_verified:true,
+   per_original_readback_verified:true,verified_originals:records.length};
  };
  const r=await stagePhase2iOsintFairRaw({candidates:c,derive,now,post});
  assert.equal(r.d1_inserted,2);
  assert.equal(r.d1_rejected_conflicts,1);
  assert.equal(r.rejected_conflicts_by_category.macro,1);
  assert.equal(r.d1_readback_verified,true);
+ assert.equal(r.per_original_authenticated_d1_verified,true);
  assert.equal(r.b2_verified,false);
  assert.ok(calls.length<=5);
 });
