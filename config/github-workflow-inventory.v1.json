@@ -248,6 +248,7 @@
     "phase2-signed-gri-readiness-no-funds.yml",
     "phase2h-72h-news-retention.yml",
     "phase2h-b2-independent-retention.yml",
+    "phase2h-manual-d1-storage-cleanup.yml",
     "phase2h-private-raw-archive.yml",
     "phase2i-195x3-source-coverage.yml",
     "post-listing-health.yml",
