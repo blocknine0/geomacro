@@ -16,11 +16,15 @@ describe("single mainnet merchant receiving address",()=>{
    expect(()=>resolveSharedUsdcReceiver({GEOMACRO_USDC_RECEIVER:value})).toThrow();
  });
  it("pins the owner-approved address in production without asserting wallet control",()=>{
-  const approved="0xF98c18231ceFBD6d11154DEc14b3Aec6D74dC4B0";
+  const approved="0x95ba71d21C41bDa8bBA9533f96D25f793E4137b5";
   expect(resolveSharedUsdcReceiver({NODE_ENV:"production",GEOMACRO_USDC_RECEIVER:approved,
    COINBASE_X402_PAY_TO:approved.toLowerCase(),CIRCLE_X402_SELLER_ADDRESS:approved}))
    .toBe(approved.toLowerCase());
   expect(()=>resolveSharedUsdcReceiver({NODE_ENV:"production",GEOMACRO_USDC_RECEIVER:a}))
+   .toThrow("NOT_OWNER_APPROVED");
+  // A stale production alias must fail closed instead of paying a retired wallet.
+  expect(()=>resolveSharedUsdcReceiver({NODE_ENV:"production",
+    GEOMACRO_USDC_RECEIVER:"0xF98c18231ceFBD6d11154DEc14b3Aec6D74dC4B0"}))
    .toThrow("NOT_OWNER_APPROVED");
  });
 });
