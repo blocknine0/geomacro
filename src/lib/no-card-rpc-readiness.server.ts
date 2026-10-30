@@ -94,7 +94,7 @@ function providerFamily(url:string){
 async function outboundHttpsCheck(fetcher:typeof fetch){
   try{
     const r=await fetcher("https://www.cloudflare.com/cdn-cgi/trace",{
-      method:"GET",redirect:"error",cache:"no-store",
+      method:"GET",redirect:"manual",cache:"no-store",
       signal:AbortSignal.timeout(5000),
     });
     return r.status===200?"EGRESS_PASS":"EGRESS_HTTP_FAILURE";
@@ -103,7 +103,7 @@ async function outboundHttpsCheck(fetcher:typeof fetch){
 async function call(url:string,method:string,params:unknown[],fetcher:typeof fetch){
   let response:Response;
   try{
-    response=await fetcher(url,{method:"POST",redirect:"error",cache:"no-store",
+    response=await fetcher(url,{method:"POST",redirect:"manual",cache:"no-store",
       headers:{"Content-Type":"application/json","Accept":"application/json"},
       body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),
       signal:AbortSignal.timeout(TIMEOUT_MS),
@@ -111,6 +111,7 @@ async function call(url:string,method:string,params:unknown[],fetcher:typeof fet
   }catch(e){throw Error(errorClass(e));}
   if(!response.ok){
     const status=response.status;
+    if(status>=300&&status<400)throw Error("RPC_REDIRECT_REJECTED");
     if(status===401)throw Error("RPC_AUTH_REJECTED");
     if(status===403)throw Error("RPC_ACCESS_DENIED");
     if(status===404)throw Error("RPC_ENDPOINT_NOT_FOUND");
@@ -150,6 +151,7 @@ const STATUSES=new Set([
   "PASS","RPC_FETCH_FAILED","RPC_TIMEOUT","RPC_INVALID_REPLY",
   "RPC_AUTH_REJECTED","RPC_ACCESS_DENIED","RPC_ENDPOINT_NOT_FOUND",
   "RPC_RATE_LIMITED","RPC_PROVIDER_5XX","RPC_HTTP_ERROR",
+  "RPC_REDIRECT_REJECTED",
   "RPC_RESPONSE_TOO_LARGE","RPC_WRONG_CHAIN","RPC_UNAVAILABLE",
   "RPC_DNS_UNRESOLVED","RPC_CONNECT_TIMEOUT",
   "RPC_NETWORK_UNREACHABLE","RPC_TLS_ERROR",
