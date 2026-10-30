@@ -1,4 +1,5 @@
 import {resolveEligiblePublishedCapabilityPrice} from "./verified-capability-coinbase-binding.server";
+import {selectedCheckoutNetwork} from "./x402-checkout-network-selection";
 import {explicitlyConfiguredNoCardCheckout,isNoCardSignedPayload,
   handleNoCardAdaptiveCheckout} from "./no-card-x402-adaptive-route.server";
 import { randomUUID } from "node:crypto";
@@ -349,6 +350,10 @@ export const mainnetIntelligenceHandlers = {
         });
       },
       POST: async ({ request }: { request: Request }) => {
+        let explicitlySelectedNetwork:"base"|"polygon"|null;
+        try{explicitlySelectedNetwork=selectedCheckoutNetwork(request);}
+        catch{return json({ok:false,chargeable:false,payment_required_now:false,
+          error:{code:"MAINNET_NETWORK_QUERY_UNSUPPORTED"},execution_authorized:false},400);}
         let raw: unknown;
         try { raw = await parseJsonBody(request); } catch (error) {
           if (error instanceof Response) return json({ ok: false, error: { code: "INVALID_AGENT_REQUEST", message: await error.text() }, execution_authorized: false }, error.status);
@@ -687,6 +692,19 @@ export const mainnetIntelligenceHandlers = {
         // immutable delivery even if new low-fee sales are subsequently frozen.
         const existingPaymentSignature=request.headers.get("payment-signature");
         const noCardProof=isNoCardSignedPayload(existingPaymentSignature);
+        // Explicit buyer-selected Base/Polygon must never fall through to
+        // Coinbase's default Base quote if that network's no-card rail is
+        // disabled. Existing Coinbase payments without a network selector
+        // retain their original byte-exact payment and replay path.
+        if(explicitlySelectedNetwork!==null && existingPaymentSignature && !noCardProof)
+          return json({ok:false,chargeable:false,payment_required_now:false,
+            error:{code:"MAINNET_SELECTED_NETWORK_PAYMENT_RAIL_MISMATCH"},
+            execution_authorized:false},400);
+        if(explicitlySelectedNetwork!==null && !existingPaymentSignature &&
+           !explicitlyConfiguredNoCardCheckout())
+          return json({ok:false,chargeable:false,payment_required_now:false,
+            error:{code:"MAINNET_SELECTED_NETWORK_NOT_LIVE"},
+            execution_authorized:false},503);
         if(noCardProof || (!existingPaymentSignature && explicitlyConfiguredNoCardCheckout())){
           return handleNoCardAdaptiveCheckout({
             request,plan,requestBody:parsed,

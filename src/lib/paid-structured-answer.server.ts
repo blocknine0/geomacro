@@ -4,6 +4,7 @@ import { mainnetIntelligenceHandlers } from "./mainnet-intelligence-endpoint.ser
 import { publicCapabilityNewSalesAllowed } from "./capability-pricing-catalog";
 import { allowPublicDemoRequest } from "./public-demo-rate-limit.server";
 import {publicQueryResolution} from "./universal-query-resolution";
+import {canonicalCheckoutUrl,selectedCheckoutNetwork} from "./x402-checkout-network-selection";
 
 export const GEOMACRO_PAID_STRUCTURED_TOOL = "geomacro.paid-structured-answer.v1" as const;
 const TARGET = "/api/v1/intelligence/query";
@@ -88,8 +89,10 @@ export async function paidStructuredAnswer(
     rateLimit?:(request:Request)=>boolean;
   }>={},
 ):Promise<Response>{
-  const url=new URL(request.url);
-  if(url.search || url.hash) return noCharge("PAID_STRUCTURED_QUERY_PARAMS_FORBIDDEN",400);
+  // Select Base or Polygon on the same canonical payment resource. Unknown
+  // parameters never silently fall back to a different chargeable network.
+  try{selectedCheckoutNetwork(request);}
+  catch{return noCharge("PAID_STRUCTURED_QUERY_PARAMS_FORBIDDEN",400);}
   if(request.headers.has("authorization") || request.headers.has("x-payment"))
     return noCharge("PAID_STRUCTURED_UNSUPPORTED_PAYMENT_HEADER",400);
   if(!/^application\/json(?:\s*;|\s*$)/iu.test(request.headers.get("content-type")??""))
@@ -118,7 +121,7 @@ export async function paidStructuredAnswer(
   }
   if(!publicCapabilityNewSalesAllowed(interpreted.selected_product.capability))
     return noCharge("PAID_STRUCTURED_PRODUCT_COMING_SOON",422);
-  const targetUrl=new URL(TARGET,request.url);
+  const targetUrl=canonicalCheckoutUrl(request,TARGET);
   // x402 payment challenge MUST bind to /api/v1/intelligence/query, even if
   // the caller came from this convenience endpoint.
   const forwardedHeaders=new Headers({"Content-Type":"application/json"});
@@ -155,6 +158,7 @@ export const paidStructuredAnswerHandlers={
     response:"Canonical x402 challenge or frozen paid JSON when qualified; otherwise bounded zero-charge live-research JSON with explicit evidence status",
     machine_tool:"paid_structured_answer",
     canonical_payment_resource:TARGET,
+    native_usdc_network_selection:"?network=base or ?network=polygon; currently gated by individual live payment-rail readiness",
     prices:"/api/v1/pricing",
     risk_gate:"COMING_SOON",
     no_auto_charge:true, no_unverified_data_charge:true,

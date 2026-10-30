@@ -117,6 +117,34 @@ describe("single-pass paid user and machine structured answer",()=>{
    }
    expect(post).not.toHaveBeenCalled();
  });
+ it.each(["base","polygon"])("preserves %s mainnet selection and canonical signed x402 resource",async(network)=>{
+   let received:Request|null=null;
+   const post=vi.fn(async({request:canonical}:{request:Request})=>{
+     received=canonical;
+     return Response.json({ok:false,chargeable:false,payment_required_now:false,
+       execution_authorized:false,error:{code:"NOT_AVAILABLE"}},{status:422});
+   });
+   const paymentSignature="synthetic-untrusted-do-not-settle";
+   const res=await paidStructuredAnswer(request({question},{"payment-signature":paymentSignature},
+     endpoint+"?network="+network),{rateLimit:()=>true,post});
+   expect(res.status).toBe(422);
+   expect(post).toHaveBeenCalledTimes(1);
+   expect(received).not.toBeNull();
+   expect((received as unknown as Request).url)
+     .toBe("https://geomacro.live/api/v1/intelligence/query?network="+network);
+   expect((received as unknown as Request).headers.get("payment-signature")).toBe(paymentSignature);
+ });
+ it("refuses unsupported or ambiguous chain selectors before canonical payment",async()=>{
+   const post=vi.fn(async()=>Response.json({ok:true}));
+   for(const suffix of ["?network=arc","?network=base-sepolia",
+     "?network=polygon&network=base","?network=polygon&price=0.001"]){
+     const res=await paidStructuredAnswer(request({question},{},endpoint+suffix),
+       {rateLimit:()=>true,post});
+     expect(res.status).toBe(400);
+     expect((await res.json()).payment_required_now).toBe(false);
+   }
+   expect(post).not.toHaveBeenCalled();
+ });
  it("advertises canonical rather than alternative payment authority",async()=>{
    const res=await paidStructuredAnswerHandlers.GET();
    const json=await res.json();
