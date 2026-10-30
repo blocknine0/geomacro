@@ -1,10 +1,24 @@
 {
   "schema": "geomacro.owner-approved-mainnet-recipient.v1",
-  "receiver": "0xF98c18231ceFBD6d11154DEc14b3Aec6D74dC4B0",
-  "networks": ["eip155:8453", "eip155:137", "eip155:5042"],
+  "receiver": "0x95ba71d21C41bDa8bBA9533f96D25f793E4137b5",
+  "networks": [
+    "eip155:8453",
+    "eip155:137",
+    "eip155:5042"
+  ],
   "same_address_on_all_networks": true,
-  "owner_instruction_date": "2026-10-21",
+  "owner_instruction_date": "2026-10-30",
   "address_checksum_verified": true,
-  "wallet_control_verified": false,
-  "merchant_settlement_verified": false
+  "wallet_control_verified": true,
+  "merchant_settlement_verified": false,
+  "ownership_proof": {
+    "scheme": "EIP191_PERSONAL_SIGN",
+    "etherscan_verified_signature_record": 340876,
+    "original_message_keccak256": "0x3e2c7657487ab3bee8f602a7c20a8254a016aeeae37e3bb1b29ca030e4e8389b",
+    "signature_sha256": "63e11be08f8309762ba9595752f23c879977ac0a64c01780db4bdefb6acae83c",
+    "recovered_address": "0x95ba71d21C41bDa8bBA9533f96D25f793E4137b5",
+    "verified_on": "2026-10-30",
+    "authorization_scope": "WALLET_OWNERSHIP_PROOF_ONLY",
+    "payment_or_transfer_authorized": false
+  }
 }
