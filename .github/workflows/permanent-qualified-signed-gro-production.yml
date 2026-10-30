@@ -1,0 +1,101 @@
+name: Permanent Qualified Signed GRO Production
+
+# Durable event-driven workflow. Only immutable issuer-qualified existing B2
+# inputs are processed. NO daily polling, no payment, no synthetic readiness.
+on:
+  repository_dispatch:
+    types: [qualified_machine_gro_ready]
+  workflow_dispatch:
+    inputs:
+      machine_b2_key:
+        description: "Immutable qualified GRO input key (private B2); exact SHA256 path"
+        required: true
+        type: string
+      machine_b2_sha256:
+        description: "SHA256 of the existing independently dual-attested private input bytes"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-qualified-machine-gro-production
+  cancel-in-progress: false
+
+jobs:
+  qualified-sign-archive-hot:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'repository_dispatch' &&
+         github.event.action == 'qualified_machine_gro_ready' &&
+         github.event.client_payload.schema == 'geomacro.qualified-machine-gro-ready.v1')
+      )
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: production
+    env:
+      GEOMACRO_MACHINE_GRO_INPUT_B2_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.machine_b2_key || github.event.client_payload.machine_b2_key }}
+      GEOMACRO_MACHINE_GRO_INPUT_SHA256: ${{ github.event_name == 'workflow_dispatch' && inputs.machine_b2_sha256 || github.event.client_payload.machine_b2_sha256 }}
+      # Existing production credentials, never stored in repository code.
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: qualified_machine_gro_production
+      B2_REQUEST_BUDGET: "4"
+      GEOMACRO_DIRECT_GRO_PUBLISH_ACK: "YES"
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
+      RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
+      RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
+    steps:
+      - name: Checkout exact canonical main with no persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Assert immutable source input pin and protected authority before requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun --eval '
+            import {parsePinnedMachineGroInput} from "./scripts/ops/publish-qualified-machine-gro-production.ts";
+            parsePinnedMachineGroInput(
+              process.env.GEOMACRO_MACHINE_GRO_INPUT_B2_KEY,
+              process.env.GEOMACRO_MACHINE_GRO_INPUT_SHA256,
+            );
+          '
+
+      - name: Score, Ed25519 sign and independently verify B2 then D1 hot with existing data
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          bun scripts/ops/publish-qualified-machine-gro-production.ts
+
+      - name: Assert no accidental secret or paid data artifact upload
+        if: always()
+        run: |
+          set -euo pipefail
+          echo "Protected GRO run completed; no private files uploaded or customer funds used."
