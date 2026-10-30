@@ -388,17 +388,28 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
     question===null?
     await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL AND first_ingested_at>? ORDER BY first_ingested_at,record_id LIMIT ?").bind(cutoff,limit).all():
     requestedId!==null?
-      await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id=? AND "+
-         (qualityProbe?"1=1":"b2_object_sha256 IS NOT NULL")+" AND first_ingested_at>? LIMIT 1").bind(requestedId,cutoff).all():
+      // Authorized exact-ID archived news can be retrieved from retained D1
+      // beyond 72h. Never widen unarchived probes or broad category search.
+      await (qualityProbe?
+        env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id=? AND first_ingested_at>? LIMIT 1").bind(requestedId,cutoff):
+        env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id=? AND b2_object_sha256 IS NOT NULL LIMIT 1").bind(requestedId)
+      ).all():
       await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256 FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL AND first_ingested_at>? ORDER BY original_published_at DESC,record_id LIMIT 100").bind(cutoff).all();
   dbReadSucceeded=true;
   if(!Array.isArray(results.results))throw Error();
-  // Read-path TTL is enforced independently of scheduled deletion failures:
-  // no older-than-72h original is exposed to private research or B2 ingestion.
+  // General read-path TTL remains 72h; authenticated exact-ID historical
+  // B2-ACKed lookup only may address an older saved original. No raw text
+  // redistributed to clients, and no unarchived old records exposed.
   const active=results.results.filter(r=>{
    if(typeof r.raw_json!=="string")return false;
-   try{return phase2hRawWithinRetention(JSON.parse(r.raw_json),now)}
-   catch{return false}
+   try{
+    const rec=JSON.parse(r.raw_json);
+    // Only authenticated exact-ID B2-ACKed records use retained history.
+    // Recent-only generic/quality/country queries remain unchanged.
+    return requestedId!==null&&!qualityProbe&&
+      r.record_id===requestedId&&r.b2_object_sha256!==null||
+      phase2hRawWithinRetention(rec,now);
+   }catch{return false}
   });
   const items=active.map(r=>JSON.parse(r.raw_json));
   for(let i=0;i<items.length;i++){
