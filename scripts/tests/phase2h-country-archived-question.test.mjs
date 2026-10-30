@@ -155,7 +155,7 @@ test("one canonical D1-staged source original yields research-only five-part bef
  assert.doesNotMatch(statements[0].sql,/b2_object_sha256 IS NOT NULL/u);
 });
 
-test("one genuine native-dated country original gives five populated private research parts even without a derived signal",async()=>{
+test("one native-dated original without event facts returns null rather than title-only speculation",async()=>{
  const original=buildPhase2hPrivateRawRecords([{
   category:"rare_earth",sourceId:"ind_official",
   title:"India announces lithium recycling policy",
@@ -172,9 +172,10 @@ test("one genuine native-dated country original gives five populated private res
  const reply=await resp.json();
  assert.equal(reply.question_matches.length,1);
  const one=reply.question_matches[0];
- assert.equal(one.source_title_only_research_fallback_used,true);
- assert.match(one.five_part.what_happened.text,/India announces lithium recycling policy/u);
- assert.match(one.five_part.why_it_matters.text,/India announces lithium recycling policy/u);
+ assert.equal(one.source_title_only_research_fallback_used,false);
+ assert.equal(one.p0a_evidence_limited,true);
+ assert.equal(one.five_part.what_happened.text,null);
+ assert.equal(one.five_part.why_it_matters.text,null);
  assert.ok(one.five_part.market_relevance);
  assert.ok(one.five_part.what_to_watch);
  assert.ok(one.five_part.evidence_and_confidence);
