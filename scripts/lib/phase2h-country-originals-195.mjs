@@ -248,5 +248,5 @@ export function phase2hCountrySqlHints(iso3){
  }
  return [...new Set(phrases.map(x=>x.normalize("NFKC").toLocaleLowerCase("en").trim())
   .filter(x=>x.length>=4||x.length>=2&&/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(x))
-  .map(x=>x.replace(/[\\%_]/gu,"\\$&")))].slice(0,32);
+  .map(x=>x.replace(/[!%_]/gu,"!.map(x=>x.replace(/[\\%_]/gu,"\\$&")))")))].slice(0,32);
 }
