@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords}
+import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords,
+ PHASE2H_RAW_TO_STRUCTURED_LOCK}
  from "../lib/phase2h-raw-original-records.mjs";
 import {validPrivateRawNews,phase2hPrivateRawPut,phase2hPrivateRawGet,
  phase2hQuestionMatchesArchived,phase2hQuestionDirectAnswer}
@@ -473,4 +474,35 @@ test("maintenance=false blocks B2 even when structural snapshot would allow it",
  await assert.rejects(runPhase2hPermanentAcceptance({env,now:new Date("2026-10-30T12:17:00Z"),
   archive:()=>{throw Error("UNSAFE_ARCHIVE_CALLED")}}),
   /PHASE2H_PERMANENT_PROTECTED_MAIN_GOVERNED_CONFIG_REQUIRED/u);
+});
+
+test("PERMANENT FOUNDER LOCK: every admitted raw original yields five-part private analysis without commercial review",async()=>{
+ const lock=PHASE2H_RAW_TO_STRUCTURED_LOCK;
+ assert.equal(lock.schema,"geomacro.phase2h.raw-to-derived-five-part-lock.v1");
+ assert.deepEqual(lock.categories,["geopolitics","macro","rare_earth"]);
+ assert.deepEqual(lock.five_part_fields,[
+  "what_happened","why_it_matters","market_relevance",
+  "what_to_watch","evidence_and_confidence",
+ ]);
+ assert.equal(lock.raw_original_storage,"EXISTING_PRIVATE_D1_B2");
+ assert.equal(lock.derived_output_only,true);
+ assert.equal(lock.requires_manual_commercial_approval_to_generate,false);
+ assert.equal(lock.third_party_raw_redistribution,false);
+ assert.equal(lock.existing_paid_delivery_rights_unchanged,true);
+ const allWithoutApproval=candidates.map(c=>({...c,credit:null}));
+ const rows=buildPhase2hPrivateRawRecords(allWithoutApproval,{now,derive}).records;
+ assert.equal(rows.length,3);
+ assert.deepEqual([...new Set(rows.map(r=>r.category))].sort(),[...lock.categories].sort());
+ for(const r of rows){
+  assert.equal(r.commercial_rights_verified,false);
+  assert.equal(r.commercial_delivery_authorized,false);
+  assert.equal(r.original.original_content,null);
+  assert.deepEqual(Object.keys(r.analysis).filter(k=>k!=="schema"),[...lock.five_part_fields]);
+  assert.equal(r.analysis.what_happened.original_observation_id,r.record_id);
+  assert.equal(r.analysis.evidence_and_confidence.original_observation_id,r.record_id);
+  assert.equal(r.analysis.evidence_and_confidence.source_published_at,r.original.original_published_at);
+  assert.equal(r.analysis.evidence_and_confidence.paid_eligible,false);
+  assert.equal(JSON.stringify(r.analysis).includes(r.original.original_url),false);
+  assert.equal(await validPrivateRawNews(r,now.getTime()),JSON.stringify(r));
+ }
 });
