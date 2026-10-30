@@ -61,6 +61,7 @@ describe("#1827 zero-Supabase/B2 D1 GRO current signed hot observer",()=>{
       ok:true,audit_only:true,
       d1_hot_row_count:3,
       cryptographically_verified_current_d1_hot_count:1,
+      first_verified_current_country_iso3:"IND",
       expired_count:1,invalid_or_ineligible_count:1,
       d1_hot_195_count_threshold_met:false,
       global_195_country_coverage_claimed:false,
@@ -72,6 +73,13 @@ describe("#1827 zero-Supabase/B2 D1 GRO current signed hot observer",()=>{
       signing_operations:0,external_payment_performed:false,
     });
     expect(seen).toEqual(["IND","USA"]);
+    expect(evaluateD1HotCountryGroRows([rowFor("USA"),rowFor("IND")],{
+      at:AT, verifyArtifact:()=>true,
+    }).first_verified_current_country_iso3).toBe("USA");
+    expect(evaluateD1HotCountryGroRows([rowFor("USA")],{
+      at:AT, verifyArtifact:()=>false,
+    }).first_verified_current_country_iso3).toBeNull();
+
     expect(JSON.stringify(r)).not.toContain("archive_key");
     expect(JSON.stringify(r)).not.toContain("object_json");
     expect(JSON.stringify(r)).not.toContain("untrusted-placeholder");
