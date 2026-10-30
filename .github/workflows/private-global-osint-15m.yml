@@ -54,6 +54,8 @@ on:
       - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
+      - "scripts/lib/private-osint-bounded-replay.mjs"
+      - "scripts/tests/private-osint-bounded-replay.test.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.mjs"
       - "scripts/lib/private-osint-free-r2-guard.mjs"
@@ -146,6 +148,8 @@ on:
       - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/ops/private-osint-replay-held.mjs"
+      - "scripts/lib/private-osint-bounded-replay.mjs"
+      - "scripts/tests/private-osint-bounded-replay.test.mjs"
       - "scripts/lib/private-osint-encrypted-spool.mjs"
       - "scripts/lib/private-osint-r2-encrypted-escrow.mjs"
       - "scripts/lib/private-osint-free-r2-guard.mjs"
@@ -224,6 +228,7 @@ jobs:
           node --check scripts/ops/private-osint-mirror-held-to-r2.mjs
           node --test scripts/lib/private-osint-r2-encrypted-escrow.test.mjs
           node --check scripts/ops/private-osint-replay-held.mjs
+          node --test scripts/tests/private-osint-bounded-replay.test.mjs
           node --test scripts/lib/private-osint-local-publisher-rotation.test.mjs
           node --test scripts/lib/private-osint-15m-collector.test.mjs
           node --test scripts/lib/private-osint-15m-durable-publisher.test.mjs
@@ -501,6 +506,9 @@ jobs:
 
   replay-quota-held-encrypted-spool:
     name: Recover one encrypted held-source batch into verified canonical D1
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
     needs: [verify, quota-admission, collect-private]
     if: >-
       needs.collect-private.result == 'success' &&
