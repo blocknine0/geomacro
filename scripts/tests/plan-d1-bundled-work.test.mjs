@@ -250,3 +250,29 @@ test("Phase 2F unverified provider counters fail closed without inventing usage"
   assert.equal(output.publication_verified,false);
  }
 });
+
+
+test("actual 30 Oct provider-paced source-only snapshot can reserve 25 Phase2H deletes/hour independently",()=>{
+ const at=new Date("2026-10-30T13:43:32.000Z");
+ const live={...quota(2_311_316,49_693),day_utc:"2026-10-30"};
+ const p=planD1BundledWork(live,{now:at});
+ assert.equal(p.critical,false);
+ assert.equal(p.source_intake,true);
+ assert.equal(p.retention_cleanup,true);
+ assert.equal(p.retention_cleanup_max_rows,25);
+ assert.equal(p.retention_cleanup_only_phase2h_original_news,true);
+ assert.equal(p.retention_cleanup_does_not_admit_research_or_signing,true);
+ assert.equal(p.research,false);
+ assert.equal(p.maintenance,false);
+ assert.equal(p.d1_queries,0);
+ assert.equal(p.d1_rows_written,0);
+ const marginal={...quota(2_311_316,50_000),day_utc:"2026-10-30"};
+ const held=planD1BundledWork(marginal,{now:at});
+ assert.equal(held.source_intake,true);
+ assert.equal(held.retention_cleanup,false);
+ assert.equal(held.retention_cleanup_max_rows,0);
+ for(const bad of [null,{...live,provider_graphql_usage_observed:false}]){
+  const x=planD1BundledWork(bad,{now:at});
+  assert.equal(x.retention_cleanup,false);
+ }
+});
