@@ -115,6 +115,18 @@ describe("signed private live six-RPC no-funds readiness",()=>{
     expect(body.egress_check).toBe("EGRESS_PASS");
     expect(body.checks.every(c=>c.provider_family==="OTHER")).toBe(true);
   });
+  it("recognizes current dRPC lb.drpc.live endpoints on both networks",async()=>{
+    const current={...env,
+      GEOMACRO_NO_CARD_RPC_BASE_BACKUP_2:"https://lb.drpc.live/base/TEST_SECRET_NEVER_LOG",
+      GEOMACRO_NO_CARD_RPC_POLYGON_BACKUP_2:"https://lb.drpc.live/polygon/TEST_SECRET_NEVER_LOG",
+    };
+    const response=await runSignedRpcReadiness(request(),current,rpcFetch,now);
+    const body=await response.json() as {checks:{status:string;provider_family:string}[]};
+    expect(response.status).toBe(200);
+    expect(body.checks[2].provider_family).toBe("DRPC");
+    expect(body.checks[5].provider_family).toBe("DRPC");
+    expect(JSON.stringify(body)).not.toContain("TEST_SECRET_NEVER_LOG");
+  });
   it("reports all-provider DNS failures without outputting the failed URLs",async()=>{
     const fetcher=(async(u:unknown,options?:RequestInit)=>{
       if(String(u)==="https://www.cloudflare.com/cdn-cgi/trace")
