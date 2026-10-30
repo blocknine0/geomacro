@@ -6,6 +6,8 @@ import {createHmac,createHash} from "node:crypto";
 import {mkdirSync,writeFileSync} from "node:fs";
 import {collectRegisteredReusableNews} from "../lib/registered-reusable-news-source-collector.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
+import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
+import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {countryMentionFromTitle} from "../lib/country-news-mentions-195.mjs";
 import {prepareReusableNewsBatches} from "../lib/prepare-reusable-news-batches.mjs";
@@ -15,10 +17,38 @@ const root=(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 if(root.length<32)throw Error("REUSABLE_SOURCE_NEWS_PROTECTED_TOKEN_MISSING");
 const token=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
 const endpoint="https://geomacro-control-plane.daspallab202391.workers.dev";
+const phase2hOriginals=[];
+const phase2hKnown=new Set();
 const collected=await collectRegisteredReusableNews({
   normalize:normalizeReusableNewsJson,
   resolveCountry:title=>countryMentionFromTitle(title,COUNTRIES_195),
+  onOriginalCandidate:raw=>{
+    if(!raw||typeof raw.article_url!=="string"||
+       typeof raw.title!=="string"||typeof raw.published_at!=="string"||
+       !["geopolitics","macro","rare_earth"].includes(raw.category))return;
+    const key=raw.category+"|"+raw.article_url+"|"+raw.published_at;
+    if(phase2hKnown.has(key))return;
+    phase2hKnown.add(key);
+    let sourceId="";
+    try{sourceId=new URL(raw.source_url).hostname}catch{}
+    phase2hOriginals.push({category:raw.category,title:raw.title,
+      articleUrl:raw.article_url,publishedAt:raw.published_at,
+      sourceId,credit:null});
+  },
 });
+// The existing registered-source batch now also preserves private original
+// feed observations before its public source-neutral factual projection.
+const phase2h=buildPhase2hPrivateRawRecords(phase2hOriginals,{
+ now:new Date(),derive:deriveStatelessSignals,
+});
+const phase2hD1=await postPhase2hPrivateRawRecords({
+ records:phase2h.records,controlPlaneRoot:endpoint,token,
+});
+console.log(JSON.stringify({schema:"geomacro.phase2h.registered-source-originals.v1",
+ by_category:phase2h.counts,stored:phase2hD1.stored,
+ duplicate:phase2hD1.duplicate,excluded_invalid:phase2h.discarded_invalid,
+ canonical_d1_readback_verified:phase2hD1.readback_verified,
+ b2_verified:false,rights_verified:false,payments:0}));
 const info=collected.summary;
 if(collected.checks.length===0)throw Error("REUSABLE_SOURCE_NEWS_NO_ATTEMPTS");
 const packing=prepareReusableNewsBatches({
