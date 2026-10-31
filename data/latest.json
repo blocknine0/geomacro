@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-31T08:30:04.347Z",
+  "checked_at": "2026-10-31T10:16:24.786Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -77,6 +77,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T20:41:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-b454461b",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cochilco cut Chile Copper Output Forecast, Lifts Price to US$6.18/lb - Discovery Alert",
+      "what_changed": "A monitored source feed reports: Cochilco cut Chile Copper Output Forecast, Lifts Price to US$6.18/lb - Discovery Alert. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T20:24:34.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4451,25 +4470,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.channelnewsasia.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-6951a92c",
-      "category": "macro",
-      "title": "Geomacro finds Gold cut losses as Fed pauses and stays silent on future hikes - The Business Times",
-      "what_changed": "A monitored source feed reports: Gold cut losses as Fed pauses and stays silent on future hikes - The Business Times. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T00:23:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

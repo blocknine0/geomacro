@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-31T08:30:04.347Z",
+  "checked_at": "2026-10-31T10:16:24.786Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 346,
+  "item_count": 332,
   "counts": {
-    "geopolitics": 147,
-    "macro": 157,
-    "rare_earth": 42
+    "geopolitics": 139,
+    "macro": 150,
+    "rare_earth": 43
   },
-  "source_native_ids_sha256": "dc1baf791563f61d17cb70c2e2333be4be12cd19bb7e5ddef152343c0e43c996",
+  "source_native_ids_sha256": "c4d5839d6e1fc23d41a765d8382a1f27b1ab921f56243b26b29cd77ba962322d",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -115,6 +115,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T20:41:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-b454461b",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cochilco cut Chile Copper Output Forecast, Lifts Price to US$6.18/lb - Discovery Alert",
+      "what_changed": "A monitored source feed reports: Cochilco cut Chile Copper Output Forecast, Lifts Price to US$6.18/lb - Discovery Alert. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T20:24:34.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -6311,291 +6330,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: seekingalpha.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-416a66cc",
-      "category": "geopolitics",
-      "title": "Geomacro finds Netherlands confirmed $1.3 billion in non-military aid for Ukraine through 2029",
-      "what_changed": "A monitored source feed reports: Netherlands confirmed $1.3 billion in non-military aid for Ukraine through 2029. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T10:03:42.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: kyivindependent.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-3279141f",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran said ready to help draft global treaty on plastic pollution",
-      "what_changed": "A monitored source feed reports: Iran said ready to help draft global treaty on plastic pollution. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T10:02:28.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.irna.ir"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-af14b4ac",
-      "category": "geopolitics",
-      "title": "Geomacro finds Serbia raised Terror Alert After Attack on Israeli Embassy",
-      "what_changed": "A monitored source feed reports: Serbia raised Terror Alert After Attack on Israeli Embassy. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T09:58:01.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: balkaninsight.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-12fa7fe3",
-      "category": "geopolitics",
-      "title": "Geomacro finds Netanyahu held on as Israel election ends in deadlock",
-      "what_changed": "A monitored source feed reports: Netanyahu held on as Israel election ends in deadlock. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T09:50:47.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: cyprus-mail.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-8ef28d81",
-      "category": "geopolitics",
-      "title": "Geomacro finds Zelenskyy urged Hegseth to Speed Up Release of Patriot Missiles - Bloomberg.com",
-      "what_changed": "A monitored source feed reports: Zelenskyy urged Hegseth to Speed Up Release of Patriot Missiles - Bloomberg.com. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T09:40:13.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-acc6a79f",
-      "category": "macro",
-      "title": "Geomacro finds Stifel raised OrthoPediatrics stock price target on revenue beat - Investing.com",
-      "what_changed": "A monitored source feed reports: Stifel raised OrthoPediatrics stock price target on revenue beat - Investing.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T09:39:19.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-08dcdbae",
-      "category": "geopolitics",
-      "title": "Geomacro finds China denied Taiwan’s claim it orchestrated attack on comedian who mocked Xi Jinping - NBC News",
-      "what_changed": "A monitored source feed reports: China denied Taiwan’s claim it orchestrated attack on comedian who mocked Xi Jinping - NBC News. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T09:36:41.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-f4155d6b",
-      "category": "macro",
-      "title": "Geomacro finds Baird raised Seagate stock price target on storage growth outlook - Investing.com",
-      "what_changed": "A monitored source feed reports: Baird raised Seagate stock price target on storage growth outlook - Investing.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T09:33:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-99dd4363",
-      "category": "geopolitics",
-      "title": "Geomacro finds Rights Groups said UAE Diplomat Too Dangerous to Lead UN - Fars",
-      "what_changed": "A monitored source feed reports: Rights Groups said UAE Diplomat Too Dangerous to Lead UN - Fars. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T09:18:57.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-ff949e2b",
-      "category": "macro",
-      "title": "Geomacro finds Tokayev called for AI-Driven Digital Economy, Technology Push Across Industry",
-      "what_changed": "A monitored source feed reports: Tokayev called for AI-Driven Digital Economy, Technology Push Across Industry. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T09:10:29.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: astanatimes.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-d6c4832d",
-      "category": "macro",
-      "title": "Geomacro finds Federal Reserve Will released Its Interest Rate Decision Today. Here’s What to Watch. - The New York Times",
-      "what_changed": "A monitored source feed reports: Federal Reserve Will released Its Interest Rate Decision Today. Here’s What to Watch. - The New York Times. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T09:05:48.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-f14f91f0",
-      "category": "macro",
-      "title": "Geomacro finds Canada signed trade deal with UAE in push for non-US markets",
-      "what_changed": "A monitored source feed reports: Canada signed trade deal with UAE in push for non-US markets. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T08:50:55.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.aljazeera.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-3adb46a7",
-      "category": "macro",
-      "title": "Geomacro finds Tokayev called for coordinated action to curb inflation and boost investment - Qazinform",
-      "what_changed": "A monitored source feed reports: Tokayev called for coordinated action to curb inflation and boost investment - Qazinform. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "inflation and prices",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T08:44:36.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-189cea6d",
-      "category": "geopolitics",
-      "title": "Geomacro finds Zelenskyy said he has no alternative to peace negotiating group, but is open to proposals",
-      "what_changed": "A monitored source feed reports: Zelenskyy said he has no alternative to peace negotiating group, but is open to proposals. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T08:44:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.pravda.com.ua"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-504f3267",
-      "category": "macro",
-      "title": "Geomacro finds Sheikh Khaled held talks with Canadian Prime Minister Mark Carney as economic partnership confirmed",
-      "what_changed": "A monitored source feed reports: Sheikh Khaled held talks with Canadian Prime Minister Mark Carney as economic partnership confirmed. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T08:36:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thenationalnews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
