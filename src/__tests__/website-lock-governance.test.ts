@@ -443,11 +443,12 @@ describe("website lock governance", () => {
     expect(askApproval?.published_source_sha_unchanged).toBe(true);
     expect(askApproval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
     const siteApi = config.approved_sitewide_api_endpoint_domain_labels_20261031;
-    expect(siteApi?.approved_source_commit).toBe("994e1e626322fe43aea3514554e0128aee2248f9");
+    expect(siteApi?.approved_source_commit).toBe("c7b0ffb0e234521a367252f915bf4aec9a8d3133");
     expect(siteApi?.approved_paths).toEqual([
       "src/components/category-api-pricing.tsx",
       "src/components/category-api-pricing.test.tsx",
       "src/components/api-endpoint-directory.tsx",
+      "public/llms.txt",
     ]);
     expect(siteApi?.display_prefix).toBe("geomacro.live /api/");
     expect(siteApi?.internal_catalog_consistent).toBe(true);
