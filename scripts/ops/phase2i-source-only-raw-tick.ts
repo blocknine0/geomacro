@@ -14,6 +14,7 @@ import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.
 import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
 import {stagePhase2iOsintFairRaw} from "../lib/phase2i-osint-country-fair-raw-staging.mjs";
+import {persistPrivateOsintHeartbeats} from "../lib/phase2i-osint-source-heartbeat.mjs";
 import {createPhase2iSingleSweepOriginalIndex} from "../lib/phase2i-single-sweep-original-index.mjs";
 import {PRIVATE_OSINT_TOPICS} from "../lib/private-osint-global-sources.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
@@ -64,6 +65,11 @@ const stage=await stagePhase2iOsintFairRaw({
 });
 if(stage.selected_count>0&&stage.d1_readback_verified!==true)
  throw Error("PHASE2I_SOURCE_ONLY_RAW_D1_RECEIPT_UNVERIFIED");
+// A healthy, genuinely checked feed is a check heartbeat even with zero
+// new native-dated stories. Persist three sanitized category checks in D1
+// and independently read them back; never create an article or renew clocks
+// when actual sources were denied/unavailable.
+const heartbeat=await persistPrivateOsintHeartbeats({summary:result.summary,now});
 const {schema,status,selected_count,available_originals,deferred_count,
  selected_by_category,d1_inserted,d1_unchanged,d1_rejected_conflicts,
  d1_readback_verified,b2_verified}=stage;
@@ -78,4 +84,5 @@ console.log(JSON.stringify({
  b2_verified,rights_verified:false,paid_eligible:false,payments:0,
  predge_modified:false,publication_attempted:false,
  no_extra_provider_news_gets:true,
+ heartbeat,
 }));
