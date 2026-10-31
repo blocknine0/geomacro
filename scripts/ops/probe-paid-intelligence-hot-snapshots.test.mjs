@@ -42,7 +42,7 @@ test("one unavailable or stale hot product fails the complete no-funds probe",as
       product==="risk-indices"?61:30))};
   };
   const r=await probePaidIntelligenceHotSnapshots({fetchImpl,now});
-  assert.equal(count,3);assert.equal(r.ok,false);
+  assert.equal(count,4); // three control-plane products + canonical website deep-health acceptanceassert.equal(r.ok,false);
   assert.equal(r.products.filter(p=>p.ready).length,2);
   assert.equal(r.publisher_dispatched,false);assert.equal(r.b2_requests,0);
 });
