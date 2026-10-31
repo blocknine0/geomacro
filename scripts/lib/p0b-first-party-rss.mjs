@@ -38,8 +38,16 @@ const capped=async(url,fetchImpl)=>{
  try{const body=await r.text();return body.length<=330000&&!/<!DOCTYPE\b/iu.test(body)?body:null}
  catch{return null}
 };
+// An exact three-tag parser avoids escaping regex fragments through a
+// dynamic RegExp constructor. Only bounded RSS metadata tags are admitted.
+const RSS_ITEM_TAGS=Object.freeze({
+ title:/<title(?:\s[^>]*)?>([\s\S]*?)<\/title\s*>/iu,
+ link:/<link(?:\s[^>]*)?>([\s\S]*?)<\/link\s*>/iu,
+ pubDate:/<pubDate(?:\s[^>]*)?>([\s\S]*?)<\/pubDate\s*>/iu,
+});
 const xmlValue=(xml,tag)=>{
- const re=new RegExp("<"+tag+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/"+tag+"\\s*>","iu");
+ const re=RSS_ITEM_TAGS[tag];
+ if(!re)return null;
  let text=re.exec(xml)?.[1]?.trim()??null;
  if(!text)return null;
  const cdata=/^<!\[CDATA\[([\s\S]*?)\]\]>$/u.exec(text);
