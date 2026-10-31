@@ -12,9 +12,13 @@ import {evaluateProductionSourceContinuity} from "../lib/production-source-conti
 const ENDPOINT="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/three-domain-continuity";
 const OUTPUT="artifacts/d1-launch-hourly/source-continuity.json";
 const LIMIT=750000;
-export async function observeProductionSourceContinuity({fetchImpl=fetch,now=new Date()}={}){
+export async function observeProductionSourceContinuity({fetchImpl=fetch,now=null}={}){
+ // Do not compare a response generated AFTER the request began against the
+ // request-start clock: the Worker then looks falsely future-dated/stale.
+ // Explicit now remains a deterministic injection for offline regression.
+ const startedAt=now??new Date();
  const basic={schema:"geomacro.production-source-continuity-observation.v1",
-   observed_at:now.toISOString(), endpoint:"FIRST_PARTY_CANONICAL_D1_CONTINUITY",
+   observed_at:startedAt.toISOString(), endpoint:"FIRST_PARTY_CANONICAL_D1_CONTINUITY",
    health:"NOT_VERIFIED",upstream_sla_guaranteed:false,
    all_three_paid_signed_categories_verified:false,
    predge_changed:false,paid_delivery_activated:false,source_content_logged:false,
@@ -32,7 +36,10 @@ export async function observeProductionSourceContinuity({fetchImpl=fetch,now=new
     throw Error("SOURCE_CONTINUITY_BODY_TOO_LARGE");
   const body=await response.text();
   if(body.length>LIMIT)throw Error("SOURCE_CONTINUITY_BODY_TOO_LARGE");
-  const checked=evaluateProductionSourceContinuity(JSON.parse(body),{now});
+  // Worker checked_at is stamped at Worker request time, not caller start.
+  // Capture local reception time only AFTER receiving the complete response.
+  const receivedAt=now??new Date();
+  const checked=evaluateProductionSourceContinuity(JSON.parse(body),{now:receivedAt});
   return {...basic,...checked,
     health:checked.all_three_source_checks_current?"THREE_DOMAIN_SOURCE_CHECKS_CURRENT":
       "DEGRADED_SOME_SOURCE_CHECKS_STALE",
