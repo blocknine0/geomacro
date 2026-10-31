@@ -205,4 +205,37 @@ describe("signed private live six-RPC no-funds readiness",()=>{
     expect(body.checks.slice(-3).every(c=>c.status==="INVALID_URL")).toBe(true);
     expect(JSON.stringify(body)).not.toContain("localhost");
   });
+  it("HMAC-protected SSR readback reports exact effective settlement finality without exposing secrets",async()=>{
+    const approved={...env,
+      GEOMACRO_NO_CARD_CONFIRMATIONS_BASE:"3",
+      GEOMACRO_NO_CARD_CONFIRMATIONS_POLYGON:"128",
+    };
+    const response=await runSignedRpcReadiness(request(),approved,rpcFetch,now);
+    expect(response.status).toBe(200);
+    const body=await response.json() as {
+      finality_config_verified:boolean;
+      finality_checks:{network:string;required_confirmations:number;status:string}[];
+    };
+    expect(body.finality_config_verified).toBe(true);
+    expect(body.finality_checks).toEqual([
+      {network:"base",required_confirmations:3,status:"MATCH"},
+      {network:"polygon",required_confirmations:128,status:"MATCH"},
+    ]);
+    expect(JSON.stringify(body)).not.toContain(token);
+    expect(JSON.stringify(body)).not.toContain("opaque-base");
+  });
+  it("rejects missing, malformed and under-strength configured confirmation policy in private readback",async()=>{
+    const bad={...env,
+      GEOMACRO_NO_CARD_CONFIRMATIONS_BASE:"2",
+      GEOMACRO_NO_CARD_CONFIRMATIONS_POLYGON:"1e2",
+    };
+    const response=await runSignedRpcReadiness(request(),bad,rpcFetch,now);
+    expect(response.status).toBe(200); // independent six-RPC connectivity remains valid
+    const body=await response.json() as {
+      finality_config_verified:boolean;finality_checks:{status:string}[];
+    };
+    expect(body.finality_config_verified).toBe(false);
+    expect(body.finality_checks.map(x=>x.status)).toEqual(["MISMATCH","INVALID"]);
+  });
+
 });
