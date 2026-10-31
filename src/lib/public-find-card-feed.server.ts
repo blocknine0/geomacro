@@ -1,4 +1,4 @@
-import {fetchDirectDerivedNews} from "./public-derived-news-client";
+import {fetchHomeDerivedNews} from "./home-derived-news-client";
 import {assertFindCardV1,findCardFromObservedRelease,type FindCardV1} from "./find-card-v1";
 
 const NO_STORE={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
@@ -19,7 +19,7 @@ export async function publicFindCardsResponse(
  try{
   // This reader enforces existing D1 native-original publication embargo
   // BEFORE conversion to the public schema. No synthetic recency or source.
-  const signals=await fetchDirectDerivedNews(fetchImpl,now);
+  const signals=await fetchHomeDerivedNews(fetchImpl,now);
   const cards=signals.map(s=>findCardFromObservedRelease(s,now))
     .filter((v):v is FindCardV1=>v!==null)
     .filter(card=>domain===null||card.domain===domain)

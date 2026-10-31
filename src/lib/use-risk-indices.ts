@@ -31,6 +31,21 @@ type RiskIndicesReadTarget =
   | { kind: "app"; url: string };
 
 const REQUEST_TIMEOUT_MS = 8_000;
+const CERTIFIED_RETRY_DELAYS_MS = [350, 900] as const;
+const VERIFIED_READ_CACHE_MS = 60_000;
+let lastCertifiedRead: { loadedAt: number; data: PublicRiskIndices } | null = null;
+
+/** Cache only a fully validated, issuer-pinned document. Never cache a failed or
+ * unverified reading, and never substitute a legacy GRI for news severity. */
+async function readCachedCertifiedNewsRisk(forceRefresh: boolean): Promise<PublicRiskIndices> {
+  if (!forceRefresh && lastCertifiedRead &&
+      Date.now() - lastCertifiedRead.loadedAt < VERIFIED_READ_CACHE_MS) {
+    return lastCertifiedRead.data;
+  }
+  const data = await readGeoMacroCertifiedNewsRisk();
+  lastCertifiedRead = { loadedAt: Date.now(), data };
+  return data;
+}
 const EDGE_AUTHORITY = "backblaze-b2-risk-indices-edge";
 const EDGE_SCHEMA = "geomacro.public-risk-indices-live.v1";
 const EDGE_PROJECT = "ldpwajisioljyjtojvfx";
@@ -231,30 +246,40 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    async function load(forceRefresh = false) {
       setStatus(hasData.current ? "updating" : "loading");
-      try {
-        const response=await readGeoMacroCertifiedNewsRisk();
+      let lastFailure: unknown = new Error("GEOMACRO_NEWS_GRI_UNAVAILABLE");
+      for (let attempt = 0; attempt <= CERTIFIED_RETRY_DELAYS_MS.length; attempt++) {
         if (cancelled) return;
-
-        hasData.current = true;
-        setData(response);
-        setError(null);
-        setStatus("ready");
-      } catch (caught) {
-        if (cancelled) return;
-        const userError = reportError(
-          "useRiskIndices",
-          caught,
-          "refreshing the verified public risk indices",
-        );
-        setError(userError);
-        setStatus(hasData.current ? "ready" : "error");
+        try {
+          const response = await readCachedCertifiedNewsRisk(forceRefresh || attempt > 0);
+          if (cancelled) return;
+          hasData.current = true;
+          setData(response);
+          setError(null);
+          setStatus("ready");
+          return;
+        } catch (caught) {
+          lastFailure = caught;
+          if (attempt < CERTIFIED_RETRY_DELAYS_MS.length) {
+            await new Promise(resolve => window.setTimeout(resolve, CERTIFIED_RETRY_DELAYS_MS[attempt]));
+          }
+        }
       }
+      if (cancelled) return;
+      const userError = reportError(
+        "useRiskIndices",
+        lastFailure,
+        "refreshing the verified public risk indices",
+      );
+      setError(userError);
+      setStatus(hasData.current ? "ready" : "error");
     }
 
-    void load();
-    const timer = window.setInterval(() => void load(), refreshMs);
+    // Always fetch on first client mount. Follow-up retries are automatic and
+    // bounded; refresh/retry requests bypass the minute-long positive cache.
+    void load(reloadKey > 0);
+    const timer = window.setInterval(() => void load(true), refreshMs);
     return () => {
       cancelled = true;
       window.clearInterval(timer);

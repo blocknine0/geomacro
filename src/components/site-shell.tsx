@@ -331,9 +331,13 @@ export function SiteShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="border-t border-border/50">
-            <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-              <span>Intelligence findings have no added publication delay · Risk Indices retain their 60-minute delay · API keys coming soon</span>
-              <Link to="/about" hash="privacy" className="hover:text-foreground">Privacy · Product use · Trust</Link>
+            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6">
+              <span className="min-w-0 max-w-full leading-relaxed">Intelligence findings have no added publication delay · Risk Indices retain their 60-minute delay · API keys coming soon</span>
+              <nav aria-label="Legal and trust information" className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+                <Link to="/about" hash="privacy" className="whitespace-nowrap hover:text-foreground">Privacy</Link>
+                <Link to="/about" hash="product-use" className="whitespace-nowrap hover:text-foreground">Product use</Link>
+                <Link to="/about" className="whitespace-nowrap hover:text-foreground">Trust</Link>
+              </nav>
             </div>
           </div>
         </footer>
