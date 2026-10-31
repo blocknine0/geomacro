@@ -13,7 +13,7 @@ describe("structural data commercial surface", () => {
     expect(page).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(page).toContain("<ApiKeysNotice />");
     expect(page).not.toContain("NewsJsonWorkbench");
-    expect(page).toContain("<CapabilityPriceSchedule />");
+    expect(page).not.toContain("<CapabilityPriceSchedule />");
     expect(page).not.toContain("bounded public structured-data digest");
   });
 
