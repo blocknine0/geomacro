@@ -1035,5 +1035,19 @@
     "global_risk_presentation_unchanged": true,
     "exact_blob_lock": true,
     "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_customer_portal_20261101": {
+    "approval": "Founder explicitly requested customer login/dashboard and personal API keys on 2026-11-01.",
+    "approved_source_commit": "3a8e1ba460ca03e40c99052aeafaf3ef496beaaa",
+    "approved_paths": [
+      "src/routes/auth.tsx",
+      "src/routes/dashboard.tsx"
+    ],
+    "exact_blob_lock": true,
+    "purpose": "Optional OTP customer portal and paid verified-balance and API credentials.",
+    "global_risk_final_lock_unmodified": true,
+    "predge_unmodified": true,
+    "payment_capture_authorized": false,
+    "production_publish_acceptance_required": true
   }
 }
