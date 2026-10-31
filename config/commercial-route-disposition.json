@@ -129,6 +129,14 @@
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"
     },
+    "/api/v1/payments/crypto/quote": {
+      "classification": "PRODUCTION",
+      "status": "NO_FUNDS_PRELAUNCH_LOCKED"
+    },
+    "/api/v1/payments/crypto/verify": {
+      "classification": "PRODUCTION",
+      "status": "NO_FUNDS_PRELAUNCH_LOCKED"
+    },
     "/api/v1/payments/networks": {
       "classification": "PRODUCTION",
       "status": "LIVE_NO_FUNDS_DISCOVERY"
@@ -136,6 +144,14 @@
     "/api/v1/payments/paypal": {
       "classification": "PRODUCTION",
       "status": "LIVE_NO_FUNDS_DISCOVERY"
+    },
+    "/api/v1/payments/paypal/capture-order": {
+      "classification": "PRODUCTION",
+      "status": "NO_FUNDS_PRELAUNCH_LOCKED"
+    },
+    "/api/v1/payments/paypal/create-order": {
+      "classification": "PRODUCTION",
+      "status": "NO_FUNDS_PRELAUNCH_LOCKED"
     },
     "/api/v1/payments/preflight": {
       "classification": "PRODUCTION",
