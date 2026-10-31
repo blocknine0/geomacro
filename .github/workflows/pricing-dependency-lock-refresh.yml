@@ -43,6 +43,7 @@ jobs:
           if(bad.length)throw Error('UNPATCHED_SEROVAL_LOCKED:'+bad.map(x=>x[0]).join(','));
           NODE
       - name: Commit regenerated lockfile only
+        if: always()
         run: |
           set -euo pipefail
           if git diff --quiet -- bun.lock; then echo "Lock already correct"; exit 0; fi

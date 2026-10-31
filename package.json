@@ -144,7 +144,8 @@
     "launch-editor": "2.14.2",
     "zod": "4.6.6",
     "undici": "6.29.1",
-    "seroval": "1.6.12"
+    "seroval": "1.6.12",
+    "minimatch": "11.0.1"
   },
   "resolutions": {
     "@tanstack/start-server-core": "1.169.39",
@@ -156,6 +157,7 @@
     "toml": "4.2.0",
     "zod": "4.6.6",
     "undici": "6.29.1",
-    "seroval": "1.6.12"
+    "seroval": "1.6.12",
+    "minimatch": "11.0.1"
   }
 }
