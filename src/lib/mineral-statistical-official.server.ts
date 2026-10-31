@@ -16,6 +16,13 @@ const COMMODITY=new Map([
 ]);
 const ORES:Readonly<Record<string,string>>={cobalt:"260500",copper:"260300",nickel:"260400"};
 type Fetcher=typeof fetch;
+// Cache only verified *reference* lookups, not customer questions or current
+// news. A single-flight TTL prevents concurrent users exhausting free quota.
+const CACHE_TTL_MS=10*60_000;
+const EMPTY_TTL_MS=60_000;
+const MAX_CACHE_KEYS=240;
+const observationCache=new Map<string,{until:number;rows:readonly MineralStatisticalObservation[]}>();
+const inFlight=new Map<string,Promise<readonly MineralStatisticalObservation[]>>();
 const validCountry=(iso3:string)=>COUNTRIES_195.some(c=>c.iso3===iso3);
 function validateResponse(res:Response,max:number) {
  if(res.status!==200||res.redirected||res.headers.get("content-length")&&
@@ -101,7 +108,7 @@ async function comtrade(iso3:string,commodity:string,fetchImpl:Fetcher,year:numb
  }
  return rows;
 }
-export async function fetchOfficialMineralStatisticalObservations(input:{
+async function fetchUncachedOfficialMineralStatisticalObservations(input:{
  country_iso3:string;mineral:string;now?:Date;fetchImpl?:Fetcher;
 }):Promise<readonly MineralStatisticalObservation[]> {
  const commodity=COMMODITY.get(input.mineral),iso3=input.country_iso3;
@@ -116,4 +123,31 @@ export async function fetchOfficialMineralStatisticalObservations(input:{
  ]);
  return [...(a.status==="fulfilled"?a.value:[]),
    ...(b.status==="fulfilled"?b.value:[])];
+}
+
+/** Iso3+fixed-commodity+reference-year, single-flight and quota-bounded.
+ * Tests with injected fetch and clocks deliberately bypass this live cache. */
+export async function fetchOfficialMineralStatisticalObservations(input:{
+ country_iso3:string;mineral:string;now?:Date;fetchImpl?:Fetcher;
+}):Promise<readonly MineralStatisticalObservation[]> {
+ if(input.fetchImpl||input.now)return fetchUncachedOfficialMineralStatisticalObservations(input);
+ const commodity=COMMODITY.get(input.mineral);
+ if(!commodity||!validCountry(input.country_iso3))return [];
+ const now=Date.now();
+ const key=[input.country_iso3,commodity,new Date(now).getUTCFullYear()-1].join(":");
+ const cached=observationCache.get(key);
+ if(cached&&cached.until>now)return cached.rows;
+ if(inFlight.has(key))return inFlight.get(key)!;
+ const promise=fetchUncachedOfficialMineralStatisticalObservations(input);
+ inFlight.set(key,promise);
+ try{
+  const rows=await promise;
+  if(observationCache.size>=MAX_CACHE_KEYS){
+   for(const [k,v]of observationCache)if(v.until<=now)observationCache.delete(k);
+   if(observationCache.size>=MAX_CACHE_KEYS)
+    observationCache.delete(observationCache.keys().next().value!);
+  }
+  observationCache.set(key,{rows,until:now+(rows.length?CACHE_TTL_MS:EMPTY_TTL_MS)});
+  return rows;
+ }finally{inFlight.delete(key);}
 }
