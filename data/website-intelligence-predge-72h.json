@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-31T15:20:35.567Z",
+  "checked_at": "2026-10-31T17:47:01.014Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 305,
+  "item_count": 291,
   "counts": {
-    "geopolitics": 121,
-    "macro": 142,
-    "rare_earth": 42
+    "geopolitics": 113,
+    "macro": 135,
+    "rare_earth": 43
   },
-  "source_native_ids_sha256": "0ca734f99a7c7d425285b4927d3fa9f7bbf9961ad35d27f8be113d7870bff155",
+  "source_native_ids_sha256": "97833756407dec43936dfcf0d0521d4d9022bd8f3c854cf7e0dc8ee861a12916",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-3db221eb",
+      "category": "rare_earth",
+      "title": "Geomacro finds Quad announced $85 million in AI assistance for Indo-Pacific, US pledges $10 million for critical minerals ... - Firstpost",
+      "what_changed": "A monitored source feed reports: Quad announced $85 million in AI assistance for Indo-Pacific, US pledges $10 million for critical minerals ... - Firstpost. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T16:34:40.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-17d0125c",
       "category": "macro",
@@ -5536,291 +5555,6 @@
         "Federal Reserve Board"
       ],
       "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-7aa26930",
-      "category": "geopolitics",
-      "title": "Geomacro finds Netherlands announced 500 million euro military aid package for Ukraine",
-      "what_changed": "A monitored source feed reports: Netherlands announced 500 million euro military aid package for Ukraine. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T17:35:10.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: kyivindependent.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-84dec92e",
-      "category": "geopolitics",
-      "title": "Geomacro finds Netherlands announced 500 million euro military aid package for Ukraine - The Kyiv Independent",
-      "what_changed": "A monitored source feed reports: Netherlands announced 500 million euro military aid package for Ukraine - The Kyiv Independent. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T17:35:10.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-646586ab",
-      "category": "macro",
-      "title": "Geomacro finds MARAD approved $8.2 Billion Texas LNG Export Port in Record-Time Review",
-      "what_changed": "A monitored source feed reports: MARAD approved $8.2 Billion Texas LNG Export Port in Record-Time Review. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T17:24:40.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: gcaptain.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-5946961b",
-      "category": "geopolitics",
-      "title": "Geomacro finds United States imposed sanctions on Rwanda's defense ministry over Congo conflict",
-      "what_changed": "A monitored source feed reports: United States imposed sanctions on Rwanda's defense ministry over Congo conflict. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "sanctions and trade restrictions",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T17:03:02.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: nation.africa"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-baf19ba0",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia said Japanese diplomats get access to spy journalist according to regulations - TASS",
-      "what_changed": "A monitored source feed reports: Russia said Japanese diplomats get access to spy journalist according to regulations - TASS. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T17:01:28.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-ce7c1e80",
-      "category": "macro",
-      "title": "Geomacro finds Equinor raised Oil and Gas Output Forecast as Operating Profit Doubles - Crude Oil Prices Today | OilPrice.com",
-      "what_changed": "A monitored source feed reports: Equinor raised Oil and Gas Output Forecast as Operating Profit Doubles - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T16:30:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-de92fb4d",
-      "category": "macro",
-      "title": "Geomacro finds Equinor raised Oil and Gas Output Forecast as Operating Profit Doubles",
-      "what_changed": "A monitored source feed reports: Equinor raised Oil and Gas Output Forecast as Operating Profit Doubles. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T16:30:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: oilprice.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-4ff55331",
-      "category": "macro",
-      "title": "Geomacro finds Russia issued Permits for First Grain Vessels to Leave Sea of Azov Since July",
-      "what_changed": "A monitored source feed reports: Russia issued Permits for First Grain Vessels to Leave Sea of Azov Since July. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T16:26:54.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.themoscowtimes.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-ac3d3a45",
-      "category": "geopolitics",
-      "title": "Geomacro finds U.S. imposed new North Korea sanctions amid stalled diplomatic talks - NBC News",
-      "what_changed": "A monitored source feed reports: U.S. imposed new North Korea sanctions amid stalled diplomatic talks - NBC News. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "sanctions and trade restrictions",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T16:23:29.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-65974e6e",
-      "category": "geopolitics",
-      "title": "Geomacro finds Yemen said Houthi ballistic missile attack on Aden airport wounds civilians - Al Arabiya English",
-      "what_changed": "A monitored source feed reports: Yemen said Houthi ballistic missile attack on Aden airport wounds civilians - Al Arabiya English. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T16:14:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-c58a879c",
-      "category": "geopolitics",
-      "title": "Geomacro finds Yemen said Houthi ballistic missile attack on Aden airport wounds civilians - Al Arabiya English",
-      "what_changed": "A monitored source feed reports: Yemen said Houthi ballistic missile attack on Aden airport wounds civilians - Al Arabiya English. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T16:14:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-6c03c2c2",
-      "category": "macro",
-      "title": "Geomacro finds Scorpio Tankers reported $181,000-a-Day LR2 Rates as Middle East War Upends Oil Trade",
-      "what_changed": "A monitored source feed reports: Scorpio Tankers reported $181,000-a-Day LR2 Rates as Middle East War Upends Oil Trade. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T16:05:59.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: gcaptain.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-b02154c6",
-      "category": "geopolitics",
-      "title": "Geomacro finds Zelenskyy said Ukraine will find way to involve Europe in peace talks",
-      "what_changed": "A monitored source feed reports: Zelenskyy said Ukraine will find way to involve Europe in peace talks. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T15:49:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.pravda.com.ua"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-712760ad",
-      "category": "macro",
-      "title": "Geomacro finds World Bank warned about worsening food insecurity as commodity prices soar - Bangkok Post",
-      "what_changed": "A monitored source feed reports: World Bank warned about worsening food insecurity as commodity prices soar - Bangkok Post. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T15:45:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-d0336b68",
-      "category": "macro",
-      "title": "Geomacro finds Saudi projected seek to boost water storage and cut energy use in Riyadh - Arab News",
-      "what_changed": "A monitored source feed reports: Saudi projected seek to boost water storage and cut energy use in Riyadh - Arab News. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T15:33:38.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     }
