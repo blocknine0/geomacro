@@ -1,7 +1,9 @@
 import {readFileSync} from "node:fs";
 const PINNED=Object.freeze(new Map([
  ["private_mineral_chl_cochilco_news",["https://www.cochilco.cl/web/noticias/feed/","CHL"]],
- ["private_mineral_aus_industry_news",["https://www.industry.gov.au/news.xml","AUS"]],
+ ["private_mineral_aus_industry_minister_media",["https://www.minister.industry.gov.au/feed/all-media/rss.xml","AUS"]],
+ ["private_mineral_zaf_dmpr_media",["https://www.dmpr.gov.za/Media-Centre/News/ctl/rss/mid/2215","ZAF"]],
+ ["private_mineral_idn_antara_business",["https://en.antaranews.com/rss/business-investment.xml","IDN"]],
 ]));
 export function privateMineralNationalRssSources(){
  const manifest=JSON.parse(readFileSync(new URL("../../config/private-osint-mineral-first-party-rss-expansion.v1.json",import.meta.url),"utf8"));
@@ -11,7 +13,9 @@ export function privateMineralNationalRssSources(){
  return Object.freeze(manifest.sources.map(s=>{
   const pinned=PINNED.get(s.id);
   if(!pinned||seen.has(s.id)||s.url!==pinned[0]||s.publisher_country_iso3!==pinned[1]||
-     s.scope!=="national_primary"||s.type!=="rss"||
+     !["national_primary","publisher_newsroom"].includes(s.scope)||
+     (s.scope==="publisher_newsroom"&&s.id!=="private_mineral_idn_antara_business")||
+     (s.scope==="national_primary"&&s.id==="private_mineral_idn_antara_business")||s.type!=="rss"||
      !Array.isArray(s.categories)||!s.categories.includes("rare_earth")||
      s.categories.some(c=>!["rare_earth","macro"].includes(c))||
      s.activation_state!=="RUNTIME_PROBE_REQUIRED"||s.publisher_native_dates_required!==true||
