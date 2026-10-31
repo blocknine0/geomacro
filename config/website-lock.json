@@ -880,5 +880,26 @@
     "payment_activation_unchanged": true,
     "exact_blob_lock": true,
     "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_geomacro_api_branding_20261031": {
+    "approval": "Founder explicitly directed GeoMacro-branded public API names instead of displaying POST as a public-facing product label on the unified Store & API page. Actual HTTP methods and API paths stay unchanged.",
+    "approved_source_commit": "a91aaba335f0c6ca94057238aa41afdb2da2dbe2",
+    "approved_paths": [
+      "src/components/category-api-pricing.tsx"
+    ],
+    "official_api_catalog": "src/lib/geomacro-official-api-branding.ts",
+    "rendered_labels": [
+      "GEOMACRO Geopolitics API",
+      "GEOMACRO Macro/FX API",
+      "GEOMACRO Critical Minerals API",
+      "GEOMACRO Intelligence API"
+    ],
+    "transport_methods_unchanged": true,
+    "canonical_store": "/pricing",
+    "legacy_data_api_redirect_preserved": true,
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "payment_activation_unchanged": true,
+    "exact_blob_lock": true
   }
 }

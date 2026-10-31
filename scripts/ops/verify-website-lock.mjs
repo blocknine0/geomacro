@@ -131,6 +131,7 @@ const changed = new Set([
 const approvedPricing = [
   config.approved_low_barrier_pricing_20261031,
   config.approved_unified_store_api_20261031,
+  config.approved_geomacro_api_branding_20261031,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
