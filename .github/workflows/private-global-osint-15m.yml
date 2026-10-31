@@ -77,6 +77,7 @@ on:
       - "scripts/lib/private-osint-national-primary-scope.test.mjs"
       - "scripts/lib/private-osint-mineral-first-party-sources.mjs"
       - "scripts/lib/private-osint-mineral-first-party-sources.test.mjs"
+      - "scripts/tests/private-osint-scheduled-isolation.test.mjs"
       - "config/private-osint-mineral-first-party-rss-expansion.v1.json"
       - "src/lib/mineral-statistical-official.server.ts"
       - "src/lib/mineral-statistical-official.server.test.ts"
@@ -183,6 +184,7 @@ on:
       - "scripts/lib/private-osint-national-primary-scope.test.mjs"
       - "scripts/lib/private-osint-mineral-first-party-sources.mjs"
       - "scripts/lib/private-osint-mineral-first-party-sources.test.mjs"
+      - "scripts/tests/private-osint-scheduled-isolation.test.mjs"
       - "config/private-osint-mineral-first-party-rss-expansion.v1.json"
       - "src/lib/mineral-statistical-official.server.ts"
       - "src/lib/mineral-statistical-official.server.test.ts"
@@ -274,6 +276,7 @@ jobs:
           node --test scripts/lib/private-osint-global-hub-overlay.test.mjs scripts/lib/private-osint-official-priority-sources.test.mjs
           node --test scripts/lib/private-osint-national-primary-scope.test.mjs
           node --test scripts/lib/private-osint-mineral-first-party-sources.test.mjs
+          node --test scripts/tests/private-osint-scheduled-isolation.test.mjs
           node --test scripts/lib/private-osint-global-sources.test.mjs
           node --test scripts/lib/private-osint-national-gap-feeds.test.mjs
           node scripts/ops/audit-private-osint-publisher-coverage.mjs > /tmp/geomacro-osint-publisher-coverage.json
