@@ -132,6 +132,7 @@ const approvedPricing = [
   config.approved_low_barrier_pricing_20261031,
   config.approved_unified_store_api_20261031,
   config.approved_geomacro_api_branding_20261031,
+  config.approved_sitewide_api_endpoint_domain_labels_20261031,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
