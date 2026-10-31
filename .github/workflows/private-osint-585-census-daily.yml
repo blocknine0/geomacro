@@ -15,6 +15,9 @@ on:
       - "scripts/tests/native-country-repair-worklist.test.mjs"
       - "scripts/tests/revenue-source-demand-195x3.test.mjs"
       - "config/private-osint-mineral-national-portals.v1.json"
+      - "config/private-osint-mineral-first-party-rss-expansion.v1.json"
+      - "scripts/lib/private-osint-mineral-first-party-sources.mjs"
+      - "scripts/lib/private-osint-mineral-first-party-sources.test.mjs"
       - "scripts/ops/build-mineral-national-portal-repair.mjs"
       - "scripts/tests/mineral-national-portal-repair.test.mjs"
 
@@ -39,7 +42,7 @@ jobs:
       - name: Verify 585-cell report has no fabricated country, event or storage truth
         run: |
           node --check scripts/ops/probe-private-osint-live-category-coverage.mjs
-          node --test scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/revenue-source-demand-195x3.test.mjs scripts/tests/mineral-national-portal-repair.test.mjs
+          node --test scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/revenue-source-demand-195x3.test.mjs scripts/tests/mineral-national-portal-repair.test.mjs scripts/lib/private-osint-mineral-first-party-sources.test.mjs
           node --check scripts/ops/build-native-country-repair-worklist.mjs
           node --check scripts/ops/build-revenue-source-demand-195x3.mjs
           node --check scripts/ops/build-mineral-national-portal-repair.mjs
