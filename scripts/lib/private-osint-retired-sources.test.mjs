@@ -8,11 +8,12 @@ import {privateLocalPublisherCandidates,rotatingPrivateLocalPublisherSources}
 import {privateOsintRuntimeSources} from "./private-osint-country-rotation.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 
-test("78 repeatedly failing sources are retired from private production ingestion, not published or deleted from source history",()=>{
- assert.equal(PRIVATE_OSINT_RETIRED_SOURCE_IDS.length,78);
+test("79 repeatedly failing sources are retired from private production ingestion, not published or deleted from source history",()=>{
+ assert.equal(PRIVATE_OSINT_RETIRED_SOURCE_IDS.length,79);
  const oldLocal=privateLocalPublisherCandidates();
  const retainedLocal=oldLocal.filter(s=>isRetiredPrivateOsintSource(s));
  assert.equal(retainedLocal.length,7);
+ assert.equal(isRetiredPrivateOsintSource({id:"private_mineral_aus_industry_news"}),true);
  const catalogueIds=new Set(privateOsintGlobalSources().map(s=>s.id));
  // Audit metadata is immutable; active poll source IDs are pruned instead.
  assert.ok(PRIVATE_OSINT_RETIRED_SOURCE_IDS.some(id=>catalogueIds.has(id)));
