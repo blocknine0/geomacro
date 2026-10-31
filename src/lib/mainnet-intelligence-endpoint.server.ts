@@ -9,6 +9,8 @@ import {
   buildPrivateVerifiedFedMinutesFinding,
   type QualifiedPrivateEvidence,
 } from "./on-demand-evidence-qualification.server";
+import {pairOnDemandOriginalsForIndependentReview,publicOnDemandReviewPairCount}
+  from "./on-demand-official-source-pairs.server";
 import { ZodError } from "zod";
 import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } from "./agent-query-plan";
 import {bindPrivateFedMinutesToExactCustomerQuery}
@@ -475,6 +477,7 @@ export const mainnetIntelligenceHandlers = {
           let privatePeerMacroStatus:PrivatePeerMacroResult["status"]="NO_CERTIFIED_MACRO_RIGHTS";
           let privatePeerScoredDimensions=0;
           let privateEvidenceQualification:ReturnType<typeof publicOnDemandQualificationStatus>|null=null;
+          let privateOfficialPairReview=publicOnDemandReviewPairCount([]);
           let sourceGroundedResearchAnswer:SourceGroundedResearchAnswer|null=null;
           let historicalMineralAnswer:BgsMineralHistory|null=null;
           try {
@@ -563,6 +566,10 @@ export const mainnetIntelligenceHandlers = {
               // The unsigned private JSON and article SHA NEVER leave memory.
               // A matching question is NOT rights, reviewer or payment admission.
             }
+            // Two independent official publications may be queued for
+            // claim-by-claim review, never automatically certified or charged.
+            privateOfficialPairReview=publicOnDemandReviewPairCount(
+              pairOnDemandOriginalsForIndependentReview(qualification));
             privateEvidenceQualification=publicOnDemandQualificationStatus(qualification);
           } catch(error) {
             console.error("[x402-live] bounded discovery failed",error);
@@ -629,11 +636,23 @@ export const mainnetIntelligenceHandlers = {
                mineral_statistical_observations:mineralBaselineObservations}:{}),
             ...(mineralScopeAmbiguous?{gap_reason:"MULTIPLE_MINERALS_REQUIRE_SEPARATE_SCOPED_QUERY" as const}:{}),
           });
+          // A truly empty, successfully reached bounded original-search
+          // yields a free, explicit evidence-status 200 rather than a generic
+          // payable-looking 422. A failed provider, missing original-page
+          // verification, or discovered-but-unqualified evidence remains 422/503.
+          const emptyResearchStatus=discovery.reached_source_families>0 &&
+            articleDatesVerified===0 &&
+            privatelyQualifiedOriginalCandidateCount===0 &&
+            privateOriginalReviewCandidateCount===0 &&
+            privateOfficialPairReview.independent_official_pair_candidates_for_review===0;
           // No raw upstream records, publisher IDs or original links cross
           // this boundary. No x402 payment quote is issued for discoveries.
           return json({
-            ok:false,chargeable:false,payment_required_now:false,
+            ok:emptyResearchStatus,chargeable:false,payment_required_now:false,
             product:PRODUCT_ID,query_plan_hash:plan.query_plan_hash,
+            ...(emptyResearchStatus?{response_kind:"NO_CHARGE_RESEARCH_EVIDENCE_STATUS",
+              message:"No current corroborated event was verified in this bounded search. Historical verified baseline may be available as a separate product.",
+              historical_baseline_verified_in_this_response:false}:{}),
             structured_answer:structuredAnswer,
             ...(sourceGroundedResearchAnswer ? {research_answer:sourceGroundedResearchAnswer} : {}),
             ...(historicalMineralAnswer ? {historical_mineral_answer:historicalMineralAnswer} : {}),
@@ -669,6 +688,7 @@ export const mainnetIntelligenceHandlers = {
               private_exact_query_bound_fed_drafts:privateExactQueryBoundFedDraftCount,
               structured_candidate_commercially_admitted:false,
               private_evidence_qualification:privateEvidenceQualification,
+              official_pair_review:privateOfficialPairReview,
               private_originals_article_page_verified:
                 privateOriginalReviewCandidateCount>0 &&
                 articleDatesVerified===privateOriginalReviewCandidateCount,
@@ -692,12 +712,12 @@ export const mainnetIntelligenceHandlers = {
               telegram_fallback:telegramFallback,
               raw_upstream_delivered:false,
             },
-            error:{
+            ...(emptyResearchStatus?{}:{error:{
               code:"ON_DEMAND_VERIFICATION_PENDING",
               message:"Live search ran, but independent corroboration, commercial rights and signed derived intelligence are not yet proven. No payment is offered.",
-            },
+            }}),
             execution_authorized:false,
-          },422);
+          },emptyResearchStatus?200:422);
         }
 
         // A separately approved low-fee x402 checkout is strictly opt-in.
