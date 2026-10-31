@@ -40,7 +40,7 @@ export async function buildSignedQueryBoundFiveFieldBatch(
   const qualified=await qualifyMachineIntelligenceBatch(input,deps);
   if(qualified.receipt.commercial_event_admission!==true ||
     qualified.receipt.qualified_event_count!==input.eventPackages.length ||
-    Date.parse(qualified.qualified_until)<=input.now?.getTime()!)
+    Date.parse(qualified.qualified_until)<=(input.now?.getTime()??Date.now()))
     throw Error("QUERY_BOUND_SIGNED_EVIDENCE_NOT_VERIFIED");
 
   const fields:QualifiedFiveFieldEvent[]=[];
