@@ -7,10 +7,10 @@ This change stages a real pricing-page selection flow and stable payment API pat
 ### User-facing Store UI
 
 - All six canonical products: $9/1,000, $29/5,000, $99/25,000 credits per 30-day prepaid plan; $5/100, $15/500, $30/1,500 one-time credit packs.
-- Each product opens a two-tab preview: PayPal/card for eligible international fiat checkout, or native USDC on Base / Polygon.
+- The payment selector is permanently visible as a separate section directly on /pricing, not in a modal. Choosing any plan or credit pack updates the inline two-tab preview (PayPal/card for eligible international fiat checkout, or native USDC on Base / Polygon) and scrolls to that section.
 - QR code, address transfer instructions, wallet execution, PayPal SDK approval and instant-balance success are **absent until live authorization and exact settlement validation**.
 - Monthly access requires manual renewal; no PayPal subscription recurring billing is offered.
-- The old card-to-USDC promise has been removed. PayPal India pays to the linked Indian bank in fiat, not to a crypto wallet.
+- The old card-to-USDC conversion banner and product-card marketing have been removed from the pricing page; legacy machine readiness, if retained for historical safety, never becomes a purchasable offer. PayPal India pays to the linked Indian bank in fiat, not to a crypto wallet.
 - PayPal merchant verification, KYC, international-buyer/card eligibility and domestic-PayPal restrictions are disclosed.
 
 ### Public API staging contract
