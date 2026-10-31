@@ -20,7 +20,7 @@ describe("real official mineral reference fetch and source validation",()=>{
   const r=await fetchOfficialMineralStatisticalObservations({country_iso3:"CHL",mineral:"copper",now:when,fetchImpl:f});
   expect(r).toMatchObject([{source:"UN_COMTRADE",country_iso3:"CHL",commodity:"copper",
    reference_year:2025,metric:"EXPORT_VALUE",value:7500,unit:"usd"}]);
-  expect(f.mock.calls.length).toBe(4);
+  expect(f.mock.calls.length).toBe(5);
   expect(f.mock.calls.every(([u])=>new URL(String(u)).protocol==="https:")).toBe(true);
  });
  it("never fills missing preview rows with zero or fabricated import reliance",async()=>{
