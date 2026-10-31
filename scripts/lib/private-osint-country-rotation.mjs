@@ -2,6 +2,7 @@ import {launchPriorityWatchSources} from "./launch-priority-watch-sources.mjs";
 import {privateOsintGlobalHubSources} from "./private-osint-global-hub-overlay.mjs";
 import {qualifyPrivateNationalPrimaryScope} from "./private-osint-national-primary-scope.mjs";
 import {privateOsintOfficialPrioritySources} from "./private-osint-official-priority-sources.mjs";
+import {privateMineralNationalRssSources} from "./private-osint-mineral-first-party-sources.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 /**
  * Private-only 195-country topical discovery over one pinned public news-index
@@ -108,18 +109,22 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  const priority=activeBase.length>=300?
   privateOsintOfficialPrioritySources().filter(source=>!urls.has(source.url)&&
     !isRetiredPrivateOsintSource(source)&&!hubs.some(hub=>hub.url===source.url)):[];
- const indexPerTick=Math.min(normalIndex,512-activeBase.length-local.length-hubs.length-priority.length);
+ const newMineral=activeBase.length>=300?
+  privateMineralNationalRssSources().filter(source=>!urls.has(source.url)&&
+    !isRetiredPrivateOsintSource(source)&&!priority.some(p=>p.url===source.url)&&
+    !hubs.some(hub=>hub.url===source.url)):[];
+ const indexPerTick=Math.min(normalIndex,512-activeBase.length-local.length-hubs.length-priority.length-newMineral.length);
  if(indexPerTick<1)
   throw Error("PRIVATE_OSINT_GLOBAL_HUB_SOURCE_CEILING");
  const countryIndex=rotatingPrivateCountryDiscoverySources(now,countries,indexPerTick);
  const fresh=[];
- for(const source of [...hubs,...priority,...local,...countryIndex]){
+ for(const source of [...hubs,...priority,...newMineral,...local,...countryIndex]){
   if(urls.has(source.url))continue;
   urls.add(source.url);fresh.push(source);
  }
  if(activeBase.length+fresh.length>512||
     (includeLocalGapLane&&fresh.length>
-      PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK+hubs.length+priority.length))
+      PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK+hubs.length+priority.length+newMineral.length))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
  return launchPriorityWatchSources([...activeBase,...fresh]).map(qualifyPrivateNationalPrimaryScope);
 }

@@ -73,6 +73,7 @@ import {
 import { buildSourceGroundedResearchAnswer, buildStructuredEvidenceGap,
   type SourceGroundedResearchAnswer } from "./on-demand-research-answer.server";
 import type { BgsMineralHistory } from "./bgs-world-mineral-statistics.server";
+import {fetchOfficialMineralStatisticalObservations} from "./mineral-statistical-official.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const PRODUCT_ID = "geomacro_adaptive_risk_intelligence_v1";
@@ -583,6 +584,16 @@ export const mainnetIntelligenceHandlers = {
             // this request has a genuine intelligence evidence gap.
             originalArticleEvidenceSufficient: false,
           });
+          // Official annual country/commodity observations are a completely
+          // separate research fallback, not new news, D1 attribution or paid
+          // settlement permission. At most five pinned first-party GETs.
+          const mineralBaselineObservations=
+            !sourceGroundedResearchAnswer&&!historicalMineralAnswer&&
+            !mineralScopeAmbiguous&&mineral&&categories.length===1&&
+            categories[0]==="rare_earth"
+              ?await fetchOfficialMineralStatisticalObservations({
+                country_iso3:subject.country_iso3,mineral})
+              :[];
           const structuredAnswer=sourceGroundedResearchAnswer?{
             schema:"geomacro.structured-answer.v1" as const,
             status:"RESEARCH_ONLY_WITH_ORIGINAL_DATED_OBSERVATIONS" as const,
@@ -613,6 +624,9 @@ export const mainnetIntelligenceHandlers = {
             question:plan.question_key,query_plan_hash:plan.query_plan_hash,
             checked_at:discovery.checked_at,
             source_families_reached:discovery.reached_source_families,
+            ...(mineralBaselineObservations.length&&mineral?
+              {mineral_commodity:mineral==="rare earth"?"rare_earths":mineral,
+               mineral_statistical_observations:mineralBaselineObservations}:{}),
             ...(mineralScopeAmbiguous?{gap_reason:"MULTIPLE_MINERALS_REQUIRE_SEPARATE_SCOPED_QUERY" as const}:{}),
           });
           // No raw upstream records, publisher IDs or original links cross
