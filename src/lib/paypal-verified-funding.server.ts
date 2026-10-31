@@ -81,16 +81,16 @@ export async function createPayPalCheckout(input:{principalId:string;sku:string}
         description:"GeoMacro "+input.sku,
         amount:{currency_code:"USD",value:(amount/100).toFixed(2)},
       }],
-      application_context:{
+      payment_source:{paypal:{experience_context:{
         return_url:"https://geomacro.live/pricing?payment=approved",
         cancel_url:"https://geomacro.live/pricing?payment=cancelled",
         user_action:"PAY_NOW",
-      },
+      }}},
     }),
   },fetcher);
   const id=String(order.id??"");
   const approval=Array.isArray(order.links)?order.links
-    .map(record).find(link=>link.rel==="approve")?.href:null;
+    .map(record).find(link=>link.rel==="approve"||link.rel==="payer-action")?.href:null;
   if(!ORDER_ID.test(id)||typeof approval!=="string"||
       !/^https:\/\/(?:www\.)?paypal\.com\//.test(approval))
     throw Error("PAYPAL_ORDER_RESPONSE_INVALID");
