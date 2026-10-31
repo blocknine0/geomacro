@@ -5,6 +5,7 @@ import {
 import { isApprovedWdiAttribution } from "./world-bank-derived-attribution";
 import {isApprovedFedBoardMinutesAttribution}
   from "./federal-reserve-board-derived-attribution";
+import {HIGH_AUTHORITY_PAID_INTELLIGENCE_UNIVERSE} from "./high-authority-paid-intelligence";
 
 const INTERNAL_KEY = /(^|_)(source|provider|licen[cs]e|provenance|retrieval)(_|$)/i;
 // Source IDs are not the only raw data leak. These *payload-bearing* keys
@@ -52,6 +53,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+/** A scoped explicit authority disclosure only on independently qualified
+ * new paid event output. This does not disclose upstream article URLs or IDs.
+ */
+const QUALIFIED_OFFICIAL_LABELS=new Set<string>(
+  Object.values(HIGH_AUTHORITY_PAID_INTELLIGENCE_UNIVERSE));
+function allowedQualifiedEventAuthority(path:string[], key:string, value:unknown){
+  return key==="source_authority" &&
+    path.at(-1)==="qualified_five_field_event" &&
+    typeof value==="string" && QUALIFIED_OFFICIAL_LABELS.has(value);
+}
 function allowedProviderKey(path: string[], key: string) {
   return key === "provider" && path.at(-1) === "payment";
 }
@@ -103,6 +114,13 @@ function sanitize(
           !isApprovedFedBoardMinutesAttribution(child))
         throw Error("PAID_OUTPUT_UNQUALIFIED_DATA_ATTRIBUTION");
       output[key] = child;
+      continue;
+    }
+    // Do not strip the one issuer label expressly verified as part of a
+    // licensed five-field event. All other publisher/source metadata remain
+    // private under the existing sanitizer.
+    if(allowedQualifiedEventAuthority(path,key,child)){
+      output[key]=child;
       continue;
     }
     if (forbiddenRawField(key,child)) {
@@ -181,6 +199,7 @@ export function assertPublicPaidOutputBoundary(payload: unknown): void {
           throw Error("PAID_OUTPUT_UNQUALIFIED_DATA_ATTRIBUTION");
         continue;
       }
+      if(allowedQualifiedEventAuthority(path,key,child))continue;
       if(forbiddenRawField(key,child)) {
         throw new Error(`PAID_OUTPUT_RAW_MATERIAL_FIELD:${[...path,key].join(".")}`);
       }
