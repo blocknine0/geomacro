@@ -37,10 +37,16 @@ export function createPhase2iSingleSweepOriginalIndex({pinnedCategories,topics}=
   if(previous){
    // A reused immutable permalink/clock claiming different original titles
    // is ambiguous: quarantine all its category projections, never overwrite.
-   if(previous.title!==raw.title||
-      previous.sourceUrl!==raw.source_url||
-      previous.issuerContextCountryIso3!==(raw.issuer_context_country_iso3??null)){
+   if(previous.title!==raw.title){
     originals.delete(key);conflicted.add(key);quarantined++;return;
+   }
+   // Two exact same original links/clocks may arrive from two independent
+   // feeds. Preserve the native original (existing contract) but DISABLE the
+   // issuer hint unless the same pinned source and hint agree.
+   if(previous.sourceUrl!==raw.source_url||
+      previous.issuerContextCountryIso3!==(raw.issuer_context_country_iso3??null)){
+    previous.sourceUrl=null;
+    previous.issuerContextCountryIso3=null;
    }
    if(previous.categories.has(raw.category))repeated++;
    else{previous.categories.add(raw.category);crossCategory++;}
