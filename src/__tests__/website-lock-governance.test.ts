@@ -442,6 +442,14 @@ describe("website lock governance", () => {
     expect(askApproval?.funds_authorized).toBe(false);
     expect(askApproval?.published_source_sha_unchanged).toBe(true);
     expect(askApproval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    const apiBranding = config.approved_geomacro_api_branding_20261031;
+    expect(apiBranding?.approved_source_commit).toBe("a91aaba335f0c6ca94057238aa41afdb2da2dbe2");
+    expect(apiBranding?.approved_paths).toEqual(["src/components/category-api-pricing.tsx", "src/components/category-api-pricing.test.tsx"]);
+    expect(apiBranding?.exact_blob_lock).toBe(true);
+    expect(apiBranding?.transport_methods_unchanged).toBe(true);
+    expect(apiBranding?.payment_activation_unchanged).toBe(true);
+    expect(apiBranding?.predge_unchanged).toBe(true);
+    expect(apiBranding?.global_risk_presentation_unchanged).toBe(true);
     const unified = config.approved_unified_store_api_20261031;
     expect(unified?.approved_source_commit).toBe("cba23f57f06f7952a7b39eab751d44d316cb8200");
     expect(unified?.approved_paths).toEqual([
