@@ -5,6 +5,7 @@ import {
   type PrivatePageDateResult,
 } from "./on-demand-global-discovery.server";
 import { country195ByIso3 } from "./canonical-country-registry-195";
+import { buildMineralStatisticalFivePart, type MineralStatisticalObservation } from "./mineral-statistical-baseline";
 import { buildQueryBoundNewsDesk, type QueryBoundNewsDesk } from "./query-bound-news-desk";
 import {
   deriveStatelessSignals,
@@ -290,6 +291,8 @@ export function buildStructuredEvidenceGap(input: Readonly<{
   checked_at: string;
   source_families_reached: number;
   gap_reason?: "MULTIPLE_MINERALS_REQUIRE_SEPARATE_SCOPED_QUERY";
+  mineral_commodity?: string;
+  mineral_statistical_observations?: readonly MineralStatisticalObservation[];
 }>){
   const country=country195ByIso3(input.country_iso3);
   const checked=Date.parse(input.checked_at);
@@ -301,6 +304,38 @@ export function buildStructuredEvidenceGap(input: Readonly<{
     !Array.isArray(input.topics)||input.topics.length<1)return null;
   const queryType=supportsSourceGroundedResearchQuestion(input.question)
     ?"CURRENT_EVENT_OR_RELEASE":"STATISTICAL_HISTORICAL_OR_FORECAST_SERIES";
+  // Optional official annual bridge: usable only when a caller supplies an
+  // actually parsed country/commodity/year observation. Empty annual evidence
+  // remains an honest no-evidence gap; no production=0 or import dependency.
+  const statistical=input.categories.length===1&&input.categories[0]==="rare_earth"&&
+    typeof input.mineral_commodity==="string"&&
+    Array.isArray(input.mineral_statistical_observations)&&
+    !input.gap_reason
+    ?buildMineralStatisticalFivePart({
+      country_iso3:input.country_iso3,commodity:input.mineral_commodity,
+      observations:input.mineral_statistical_observations})
+    :null;
+  if(statistical)return {
+    schema:"geomacro.structured-answer.v1" as const,
+    status:"OFFICIAL_STATISTICAL_REFERENCE_ONLY" as const,
+    query_plan_hash:input.query_plan_hash,
+    query_scope:{country_iso3:input.country_iso3,country_name:country.name,
+      categories:[...input.categories],requested_topics:[...input.topics],
+      query_type:"STRUCTURAL_MINERAL_BASELINE_NOT_CURRENT_NEWS" as const},
+    answer:statistical,
+    evidence_summary:{verified_observation_count:1,latest_original_published_at:null,
+      country_attribution_verified:statistical.five_part.evidence_and_confidence.country_mapping_verified,
+      independent_corroboration_verified:false,current_event_verified:false},
+    source_check:{checked_at:input.checked_at,source_families_reached:input.source_families_reached,
+      bounded_search_exhaustive:false},
+    gaps:["NO_COUNTRY_MATCHED_CURRENT_ORIGINAL_DATED_NEWS_VERIFIED",
+      "STATISTICAL_BASELINE_IS_NOT_A_CURRENT_EVENT"],
+    delivery:{chargeable:false as const,payment_required_now:false as const,
+      payment_authorized:false as const,raw_upstream_delivered:false as const,
+      source_identity_exposed:false as const,signed:false as const,
+      execution_authorized:false as const},
+  };
+
   return {
     schema:"geomacro.structured-answer.v1" as const,
     status:"INSUFFICIENT_VERIFIED_EVIDENCE" as const,

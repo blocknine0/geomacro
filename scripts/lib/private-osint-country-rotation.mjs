@@ -1,5 +1,6 @@
 import {launchPriorityWatchSources} from "./launch-priority-watch-sources.mjs";
 import {privateOsintGlobalHubSources} from "./private-osint-global-hub-overlay.mjs";
+import {qualifyPrivateNationalPrimaryScope} from "./private-osint-national-primary-scope.mjs";
 import {privateOsintOfficialPrioritySources} from "./private-osint-official-priority-sources.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 /**
@@ -120,5 +121,5 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
     (includeLocalGapLane&&fresh.length>
       PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK+hubs.length+priority.length))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
- return launchPriorityWatchSources([...activeBase,...fresh]);
+ return launchPriorityWatchSources([...activeBase,...fresh]).map(qualifyPrivateNationalPrimaryScope);
 }

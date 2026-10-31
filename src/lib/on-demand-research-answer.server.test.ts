@@ -86,6 +86,32 @@ describe("source-grounded on-demand research answer", () => {
     })?.query_scope.query_type).toBe("STATISTICAL_HISTORICAL_OR_FORECAST_SERIES");
   });
 
+  it("accepts explicitly supplied verified USGS baseline as dated non-news five-part research",()=>{
+    const result=buildStructuredEvidenceGap({
+      country_iso3:"CHL",categories:["rare_earth"],topics:["critical_minerals"],
+      question:"What do official copper production records say about Chile?",
+      query_plan_hash:PLAN_HASH,checked_at:NOW.toISOString(),source_families_reached:1,
+      mineral_commodity:"copper",
+      mineral_statistical_observations:[{
+        source:"USGS_MCS_2026",country_iso3:"CHL",commodity:"copper",
+        reference_year:2025,metric:"MINE_PRODUCTION",value:125,unit:"metric_tonnes",
+        dataset_url:"https://www.usgs.gov/data/mineral-commodity-summaries-2026-data-release",
+        period_verified:true,country_mapping_verified:true,commodity_mapping_verified:true,
+      }],
+    });
+    expect(result?.status).toBe("OFFICIAL_STATISTICAL_REFERENCE_ONLY");
+    expect(result?.answer?.news_event_count).toBe(0);
+    expect(result?.delivery.chargeable).toBe(false);
+    expect(result?.answer?.five_part.evidence_and_confidence.current_event_verified).toBe(false);
+    const gap=buildStructuredEvidenceGap({
+      country_iso3:"LUX",categories:["rare_earth"],topics:["critical_minerals"],
+      query_plan_hash:PLAN_HASH,checked_at:NOW.toISOString(),source_families_reached:1,
+      mineral_commodity:"copper",mineral_statistical_observations:[],
+    });
+    expect(gap?.status).toBe("INSUFFICIENT_VERIFIED_EVIDENCE");
+    expect(gap?.answer).toBeNull();
+  });
+
   it("returns a machine-readable gap when a multi-mineral request cannot be narrowed safely",()=>{
     const result=buildStructuredEvidenceGap({
       country_iso3:"CHL",categories:["rare_earth"],topics:["critical_minerals"],
