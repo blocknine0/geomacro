@@ -2,7 +2,7 @@
 
 **CONTROLLED PRELAUNCH — REAL FUNDS DISABLED until separate founder ACK and independent production evidence.**
 
-This is a release *acceptance policy*, not a checkout or live readiness certificate. The authoritative pricing is `geomacro.capability-usdc.v1` in `src/lib/capability-pricing-catalog.ts`, with **8 approved capabilities and 14 USDC variants**. The exact amounts range from 0.005 to 0.25 USDC; an `intelligence_query/focused` purchase is 0.05 USDC. No universal flat fee, 10k/20k price cohort, auto-increase, or double-charge for Risk Gate's included Signed Risk Object. Details: [Intelligence Contract v1](./GEOMACRO_INTELLIGENCE_CONTRACT_V1.md).
+This is a release *acceptance policy*, not a checkout or live readiness certificate. The authoritative pricing is `geomacro.capability-usdc.v2` in `src/lib/capability-pricing-catalog.ts`, with **8 approved capabilities and 14 USDC variants**. The exact amounts range from 0.02 to 0.05 USDC; an `intelligence_query/focused` purchase is 0.05 USDC. No universal flat fee, 10k/20k price cohort, auto-increase, or double-charge for Risk Gate's included Signed Risk Object. Details: [Intelligence Contract v1](./GEOMACRO_INTELLIGENCE_CONTRACT_V1.md).
 
 ## Mandatory production sequence
 

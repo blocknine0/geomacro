@@ -5,7 +5,7 @@ This document is a runbook, **not** proof of a current deployment, licensed inte
 
 ## Sole authoritative USDC schedule
 
-Version: `geomacro.capability-usdc.v1`. Code: `src/lib/capability-pricing-catalog.ts`. Contract: `docs/GEOMACRO_INTELLIGENCE_CONTRACT_V1.md`. The website and both x402 rails must use this schedule after actual runtime acceptance.
+Version: `geomacro.capability-usdc.v2`. Code: `src/lib/capability-pricing-catalog.ts`. Contract: `docs/GEOMACRO_INTELLIGENCE_CONTRACT_V1.md`. The website and both x402 rails must use this schedule after actual runtime acceptance.
 
 | Capability | Approved variant → USDC |
 | --- | --- |

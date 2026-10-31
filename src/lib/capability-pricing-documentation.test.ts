@@ -12,7 +12,7 @@ const docs = [
 
 describe("commercial runbooks cannot contradict founder-locked capability pricing", () => {
   it("anchors all revenue instructions to the one versioned catalog", () => {
-    expect(GEOMACRO_CAPABILITY_PRICING_VERSION).toBe("geomacro.capability-usdc.v1");
+    expect(GEOMACRO_CAPABILITY_PRICING_VERSION).toBe("geomacro.capability-usdc.v2");
     expect(Object.keys(GEOMACRO_CAPABILITY_PRICES)).toHaveLength(8);
     for (const path of docs) {
       const content = readFileSync(path, "utf8");
@@ -27,7 +27,7 @@ describe("commercial runbooks cannot contradict founder-locked capability pricin
     expect(activation).toContain("source_as_of");
     expect(activation).toContain("NO FUNDS");
     expect(acceptance).toContain("REAL FUNDS DISABLED");
-    expect(acceptance).toContain("0.005 to 0.25 USDC");
+    expect(acceptance).toContain("0.02 to 0.05 USDC");
     expect(activation).not.toContain("production Supabase migration");
     expect(activation).not.toContain("COINBASE_X402_PRICE_USDC=0.05\n");
   });

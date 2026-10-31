@@ -66,7 +66,7 @@ describe("founder locked three-chain native USDC x402 v2 discovery",()=>{
       network,capability:"intelligence_query",variant:"focused",
     });
     const a=make("base"),b=make("arc"),c=make("polygon");
-    expect(a.amount_atomic).toBe("50000");
+    expect(a.amount_atomic).toBe("20000");
     expect(new Set([a.quote_binding_sha256,b.quote_binding_sha256,
       c.quote_binding_sha256]).size).toBe(3);
     expect(new Set([a.asset,b.asset,c.asset]).size).toBe(3);

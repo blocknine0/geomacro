@@ -8,17 +8,17 @@ const FIXED=[
  ["gri_read","verified_cached","0.005","5000"],
  ["gri_read","verified_change_attribution","0.01","10000"],
  ["structural_country_digest","standard","0.02","20000"],
- ["structural_corridor_digest","standard","0.05","50000"],
+ ["structural_corridor_digest","standard","0.03","30000"],
  ["structural_country_profile","standard","0.03","30000"],
- ["structural_corridor_profile","standard","0.08","80000"],
- ["intelligence_query","focused","0.05","50000"],
- ["intelligence_query","standard","0.10","100000"],
- ["intelligence_query","complex_multi_source","0.15","150000"],
- ["signed_risk_object","existing_valid_signed","0.05","50000"],
- ["signed_risk_object","newly_qualified_signed","0.10","100000"],
- ["risk_gate_bundle","existing_proof_preflight","0.10","100000"],
- ["risk_gate_bundle","standard","0.15","150000"],
- ["risk_gate_bundle","complex_multi_source","0.25","250000"],
+ ["structural_corridor_profile","standard","0.05","50000"],
+ ["intelligence_query","focused","0.02","20000"],
+ ["intelligence_query","standard","0.03","30000"],
+ ["intelligence_query","complex_multi_source","0.05","50000"],
+ ["signed_risk_object","existing_valid_signed","0.03","30000"],
+ ["signed_risk_object","newly_qualified_signed","0.05","50000"],
+ ["risk_gate_bundle","existing_proof_preflight","0.03","30000"],
+ ["risk_gate_bundle","standard","0.05","50000"],
+ ["risk_gate_bundle","complex_multi_source","0.05","50000"],
 ] as const;
 const now=new Date("2026-10-15T00:02:00.000Z");
 const opts={capability:"risk_gate_bundle",variant:"complex_multi_source",
@@ -49,7 +49,7 @@ describe("founder-approved deterministic capability pricing — NO FUNDS",()=>{
     expect(resolveGeomacroCapabilityPrice("gri_read","verified_cached").amount_atomic).toBe("5000");
   });
  it("does not float-convert money, invent variants or charge outside bounds",()=>{
-   for(const value of ["0","0.0000001","0.0010e2","-0.01","00.01",
+   for(const value of ["0","0.06","0.0000001","0.0010e2","-0.01","00.01",
      "0.250001","0.50","1","Infinity","","0.05 USDC"]){
      expect(()=>usdcDecimalToAtomic(value)).toThrow();
    }
@@ -60,14 +60,14 @@ describe("founder-approved deterministic capability pricing — NO FUNDS",()=>{
  });
  it("risk gate is ONE bundled quote without extra signed-object charge",()=>{
    const risk=resolveGeomacroCapabilityPrice("risk_gate_bundle","standard");
-   expect(risk.amount_atomic).toBe("150000");
+   expect(risk.amount_atomic).toBe("50000");
    expect(risk.included_signed_object_charge).toBe("INCLUDED_NO_DOUBLE_CHARGE");
    const one=resolveGeomacroCapabilityPrice("signed_risk_object","existing_valid_signed");
    expect(one.included_signed_object_charge).toBe("NOT_APPLICABLE");
  });
  it("binds exact capability/variant, query fingerprint, chain, USDC, recipient, rail and quote expiry",()=>{
    const first=quoteGeomacroCapability(opts);
-   expect(first).toMatchObject({amount_atomic:"250000",amount_usdc:"0.25",
+   expect(first).toMatchObject({amount_atomic:"50000",amount_usdc:"0.05",
      issued_at:"2026-10-15T00:00:00.000Z",expires_at:"2026-10-15T00:05:00.000Z",
      execution_authorized:false});
    expect(quoteGeomacroCapability({...opts,now:new Date("2026-10-15T00:04:59.999Z")}))
@@ -92,7 +92,7 @@ describe("founder-approved deterministic capability pricing — NO FUNDS",()=>{
    }
    expect(()=>quoteGeomacroCapability({...opts,availabilityVerified:false}))
      .toThrow("CAPABILITY_NOT_DELIVERABLE_NO_CHARGE");
-   expect(()=>verifyGeomacroCapabilityQuote({...first,amount_atomic:"50000"},first,now)).toThrow();
+   expect(()=>verifyGeomacroCapabilityQuote({...first,amount_atomic:"49999"},first,now)).toThrow();
    expect(()=>verifyGeomacroCapabilityQuote({...first,price_version:"testnet"},first,now)).toThrow();
  });
 });

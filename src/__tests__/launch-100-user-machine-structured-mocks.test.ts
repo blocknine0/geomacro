@@ -20,13 +20,13 @@ import {assertLockedCapabilityDataBoundary} from "../lib/capability-priced-data-
 const SKUS=[
   {capability:"structural_country_digest",variant:"standard",price:"0.02",count:12},
   {capability:"structural_country_profile",variant:"standard",price:"0.03",count:11},
-  {capability:"structural_corridor_digest",variant:"standard",price:"0.05",count:12},
-  {capability:"structural_corridor_profile",variant:"standard",price:"0.08",count:11},
-  {capability:"intelligence_query",variant:"focused",price:"0.05",count:12},
-  {capability:"intelligence_query",variant:"standard",price:"0.10",count:12},
-  {capability:"intelligence_query",variant:"complex_multi_source",price:"0.15",count:12},
-  {capability:"signed_risk_object",variant:"existing_valid_signed",price:"0.05",count:9},
-  {capability:"signed_risk_object",variant:"newly_qualified_signed",price:"0.10",count:9},
+  {capability:"structural_corridor_digest",variant:"standard",price:"0.03",count:12},
+  {capability:"structural_corridor_profile",variant:"standard",price:"0.05",count:11},
+  {capability:"intelligence_query",variant:"focused",price:"0.02",count:12},
+  {capability:"intelligence_query",variant:"standard",price:"0.03",count:12},
+  {capability:"intelligence_query",variant:"complex_multi_source",price:"0.05",count:12},
+  {capability:"signed_risk_object",variant:"existing_valid_signed",price:"0.03",count:9},
+  {capability:"signed_risk_object",variant:"newly_qualified_signed",price:"0.05",count:9},
 ] as const;
 const data=inflateSync(Buffer.from(
   readFileSync("scripts/tests/data/launch-100-original-questions.zlib.b64","utf8").trim(),
@@ -50,12 +50,24 @@ const CASE_DIMENSIONS:Record<string,string>={
   fx_external_risk:"external_fx",sovereign_risk:"sovereign_fiscal",
   critical_minerals:"critical_minerals",energy_commodities:"energy_commodities",
 };
+// Preserve immutable ORIGINAL 100-case quote receipts as historical test data.
+const historicPrices:Record<string,string>={
+ "structural_country_digest/standard":"0.02",
+ "structural_country_profile/standard":"0.03",
+ "structural_corridor_digest/standard":"0.05",
+ "structural_corridor_profile/standard":"0.08",
+ "intelligence_query/focused":"0.05",
+ "intelligence_query/standard":"0.10",
+ "intelligence_query/complex_multi_source":"0.15",
+ "signed_risk_object/existing_valid_signed":"0.05",
+ "signed_risk_object/newly_qualified_signed":"0.10",
+};
 const cases:Case[]=source.map((row,index)=>{
   const [id,question,actor,categoryLabel,product,subjects,topics,,,
     ,price]=row;
   const sku=SKUS.find(s=>s.capability===product.capability &&
-    s.variant===product.variant && s.price===price);
-  if(!sku||id!=="GM-"+String(index+1).padStart(3,"0")||
+    s.variant===product.variant);
+  if(!sku||historicPrices[product.capability+"/"+product.variant]!==price||id!=="GM-"+String(index+1).padStart(3,"0")||
     !(categoryLabel in categories)||subjects.length!==1||topics.length<1||topics.length>3)
     throw Error("REAL_100_ORIGINAL_CASES_MISMATCH");
   const n=(index+1)%10;
@@ -76,7 +88,7 @@ describe("100 global three-category, nine-price, human-and-machine MOCK contract
     expect(cases.filter(c=>c.actor==="machine")).toHaveLength(50);
     expect([0,1,2].map(n=>cases.filter(c=>c.category===n).length)).toEqual([34,33,33]);
     expect(SKUS.reduce((sum,sku)=>sum+sku.count,0)).toBe(100);
-    expect(SKUS.reduce((n,sku)=>n+Number(sku.price)*sku.count,0)).toBeCloseTo(7);
+    expect(SKUS.reduce((n,sku)=>n+Number(sku.price)*sku.count,0)).toBeCloseTo(3.4);
     expect(publicCapabilityLaunchStatus("gri_read")).toBe("RETIRED");
     expect(publicCapabilityLaunchStatus("risk_gate_bundle")).toBe("COMING_SOON");
     expect(publicCapabilityNewSalesAllowed("risk_gate_bundle")).toBe(false);

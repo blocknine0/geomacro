@@ -46,14 +46,14 @@ const expires_at=new Date(issuedMs+300000).toISOString();
 const requestFingerprint=digest("synthetic-request:"+nonce);
 const answerHash=digest(bytes);
 const terms=[
-  "geomacro.capability-usdc.v1","gri_read","verified_cached","5000",
+  "geomacro.capability-usdc.v2","intelligence_query","focused","20000",
   requestFingerprint,"eip155:8453",asset,addr,"coinbase_x402",
   issued_at,expires_at,"VERIFIED_DELIVERABLE",answerHash,
 ];
 const quote={
-  version:"geomacro.capability-usdc.v1",
-  capability:"gri_read",variant:"verified_cached",
-  amount_usdc:"0.005",amount_atomic:"5000",currency:"USDC",
+  version:"geomacro.capability-usdc.v2",
+  capability:"intelligence_query",variant:"focused",
+  amount_usdc:"0.02",amount_atomic:"20000",currency:"USDC",
   output_contract:"GEOMACRO_DERIVED_STRUCTURED_ONLY",
   included_signed_object_charge:"NOT_APPLICABLE",
   quote_id:digest(JSON.stringify(terms)),

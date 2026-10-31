@@ -14,7 +14,7 @@ test('one news produces twelve priced drafts without inventing proof, prices or 
   const packet=await newsToProductPacket(input,{now});
   assert.equal(packet.variant_count,12);assert.equal(packet.unique_input_count,1);
   assert.equal(new Set(packet.products.map(p=>p.capability+'/'+p.variant)).size,12);
-  assert.deepEqual(packet.products.map(p=>p.price_usdc),['0.02','0.05','0.03','0.08','0.05','0.10','0.15','0.05','0.10','0.10','0.15','0.25']);
+  assert.deepEqual(packet.products.map(p=>p.price_usdc),['0.02','0.03','0.03','0.05','0.02','0.03','0.05','0.03','0.05','0.03','0.05','0.05']);
   assert.equal(packet.facts.numeric_mentions[0].relationship,'UNBOUND_SOURCE_MENTION');
   assert.equal(packet.facts.verified_delta,null);assert.equal(packet.execution_authorized,false);
   assert.equal(packet.products.every(p=>p.ready_for_paid_delivery===false),true);

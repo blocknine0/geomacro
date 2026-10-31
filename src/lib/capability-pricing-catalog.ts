@@ -1,24 +1,24 @@
 import type {GeomacroCreditCapability} from "./commercial-access-contract";
 
 export const GEOMACRO_CAPABILITY_PRICING_VERSION =
-  "geomacro.capability-usdc.v1" as const;
+  "geomacro.capability-usdc.v2" as const;
 export const GEOMACRO_USDC_DECIMALS=6 as const;
 export const GEOMACRO_CAPABILITY_PRICES={
   gri_read:{
     verified_cached:"0.005",verified_change_attribution:"0.01",
   },
   structural_country_digest:{standard:"0.02"},
-  structural_corridor_digest:{standard:"0.05"},
+  structural_corridor_digest:{standard:"0.03"},
   structural_country_profile:{standard:"0.03"},
-  structural_corridor_profile:{standard:"0.08"},
+  structural_corridor_profile:{standard:"0.05"},
   intelligence_query:{
-    focused:"0.05",standard:"0.10",complex_multi_source:"0.15",
+    focused:"0.02",standard:"0.03",complex_multi_source:"0.05",
   },
   signed_risk_object:{
-    existing_valid_signed:"0.05",newly_qualified_signed:"0.10",
+    existing_valid_signed:"0.03",newly_qualified_signed:"0.05",
   },
   risk_gate_bundle:{
-    existing_proof_preflight:"0.10",standard:"0.15",complex_multi_source:"0.25",
+    existing_proof_preflight:"0.03",standard:"0.05",complex_multi_source:"0.05",
   },
 } as const satisfies Record<GeomacroCreditCapability,Record<string,string>>;
 
@@ -55,7 +55,7 @@ export function usdcDecimalToAtomic(value:string):string{
     throw Error("USDC_DECIMAL_PRECISION_INVALID");
   const [whole,fraction=""]=value.split(".");
   const amount=BigInt(whole)*1_000_000n+BigInt(fraction.padEnd(6,"0"));
-  if(amount<=0n||amount>250_000n)throw Error("USDC_FOUNDER_MAX_PRICE_EXCEEDED");
+  if(amount<=0n||amount>50_000n)throw Error("USDC_FOUNDER_MAX_PRICE_EXCEEDED");
   return amount.toString();
 }
 export type CapabilityPrice=Readonly<{

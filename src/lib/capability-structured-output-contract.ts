@@ -6,7 +6,7 @@ import {
 
 /**
  * Founder-approved commercial deliverables: exactly the 8 capabilities and
- * 14 variants in geomacro.capability-usdc.v1. The paths below describe the
+ * 14 variants in geomacro.capability-usdc.v2. The paths below describe the
  * module shape of a PREPARED, PROOF-QUALIFIED customer response, not a promise
  * that a module is available, a separate product engine, or raw-source access.
  *

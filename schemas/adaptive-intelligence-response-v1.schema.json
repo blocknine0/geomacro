@@ -629,7 +629,8 @@
         "pricing_phase": {
           "enum": [
             "EARLY_ADOPTION_10K",
-            "CAPABILITY_USDC_V1"
+            "CAPABILITY_USDC_V1",
+            "CAPABILITY_USDC_V2"
           ]
         },
         "price_usdc": {

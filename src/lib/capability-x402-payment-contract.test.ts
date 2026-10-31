@@ -64,7 +64,7 @@ describe("approved capability x402 exact payments, NO FUNDS",()=>{
  it("rejects undercharge, overcharge, altered buyer quote and provider swap",()=>{
   const q=offer("risk_gate_bundle","complex_multi_source","coinbase_x402");
   const r=coinbaseRequirementsForCapabilityQuote(coinbase,q,now);
-  for(const amount of ["50000","249999","250001","300000"]){
+  for(const amount of ["49999","50001","249999","300000"]){
    const p=payload(q,{...r,amount});
    expect(()=>assertCapabilityPaymentBinding(p,q,r,now)).toThrow();
   }

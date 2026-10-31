@@ -1,3 +1,4 @@
+import { LowBarrierPricing } from "@/components/low-barrier-pricing";
 import {StructuredProductSetup} from "../components/structured-product-setup";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
@@ -7,7 +8,7 @@ import { CategoryApiPricing } from "@/components/category-api-pricing";
 
 const TITLE = "Store & Pricing | Geomacro";
 const DESCRIPTION =
-  "See canonical per-call USDC prices for Geopolitics, Macro/FX and Critical Minerals APIs, plus approved structural intelligence products.";
+  "Starter $9, Pro Analyst $29, Business Pilot $99, one-time credit packs and Base USDC x402 intelligence.";
 const URL = "https://geomacro.live/pricing";
 
 export const Route = createFileRoute("/pricing")({
@@ -34,10 +35,11 @@ function PricingPage() {
         <p className="gm-eyebrow">Geomacro Store</p>
         <h1 className="gm-page-title">Intelligence for your next move.</h1>
         <p className="gm-intro">
-          Choose a product. See what you receive and the exact price per delivery.
+          Choose a monthly plan, top up with one-time credits, or use Base USDC x402 for eligible AI-agent deliveries.
         </p>
       </header>
-      <ApiKeysNotice />
+      <LowBarrierPricing />
+      <div className="mt-10"><ApiKeysNotice /></div>
       <div className="mt-10">
         <CategoryApiPricing />
       </div>

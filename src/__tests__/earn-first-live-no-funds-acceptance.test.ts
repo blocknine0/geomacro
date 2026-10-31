@@ -9,8 +9,8 @@ const catalog={schema_version:"geomacro.earn-first-offers.v1",
   chargeable:false,payment_required_now:false,signed_current_risk_object:false,
   offers:[{category:"Macro/FX",topics:["macro_risk"]}]};
 const pricingCatalog={schema:"geomacro.public-capability-price-catalog.v1",
-  pricing_version:"geomacro.capability-usdc.v1",
-  pricing_status:"FOUNDER_LOCKED_APPROVED_SCHEDULE",
+  pricing_version:"geomacro.capability-usdc.v2",
+  pricing_status:"FOUNDER_APPROVED_LOW_BARRIER_SCHEDULE",
   payment_authorized:false,money_transferred:false,
   x402_payment_requirement_issued:false,source_and_rights_required:true,
   capabilities:[{capability:"structural_country_digest",variants:[{
@@ -46,6 +46,30 @@ function calls(outcomes: unknown[]= [unavailable,eligible,unavailable],
   return {fetchImpl,received};
 }
 describe("first revenue no-funds exact deployment acceptance",()=>{
+  it("PR diagnostics fail closed but do not block the rollout solely for an existing v1 published catalog",async()=>{
+    const base=calls();
+    const legacy={...pricingCatalog,pricing_version:"geomacro.capability-usdc.v1",
+      pricing_status:"FOUNDER_LOCKED_APPROVED_SCHEDULE"};
+    const fetchImpl=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+      const path=new URL(String(input)).pathname;
+      if(path==="/api/v1/pricing")return Response.json(legacy);
+      return base.fetchImpl(input,init);
+    });
+    const diagnostic=await acceptEarningPilotLive({
+      expectedSha:sha,fetchImpl,diagnosticOnly:true,
+      pilotCases:EARNING_PILOT_ALTERNATE_CASES
+    });
+    expect(diagnostic).toMatchObject({ok:false,diagnostic_only:true,
+      failure_code:"LEGACY_DEPLOYED_PRICING_DIAGNOSTIC_ONLY",
+      first_earning_ready:false,real_funds_touched:false,
+      payment_authorized:false,no_funds_preflight_complete:false
+    });
+    expect(diagnostic.checks.at(-1)?.status).toBe("PUBLISHED_LEGACY_VERSION_NOT_ELIGIBLE");
+    expect(fetchImpl.mock.calls.filter(([_,init])=>init?.method==="POST")).toHaveLength(0);
+    await expect(acceptEarningPilotLive({expectedSha:sha,fetchImpl}))
+      .rejects.toThrow("FIRST_SALE_PRICING_MANIFEST_INVALID");
+  });
+
   it("tests 3 literal buyer categories and reports only genuine quote-ready eligibility",async()=>{
     const {fetchImpl,received}=calls();
     const report=await acceptEarningPilotLive({expectedSha:sha,fetchImpl,

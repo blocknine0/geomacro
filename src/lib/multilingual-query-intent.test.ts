@@ -51,14 +51,14 @@ describe("multilingual no-funds query interpreter", () => {
     expect(a.canonical_request).toEqual(b.canonical_request);
     expect(a.query_plan_hash).toBe(b.query_plan_hash);
     expect(a.selected_product).toEqual({capability:"intelligence_query",variant:"standard"});
-    expect(a.indicative_catalog_price.amount_usdc).toBe("0.10");
+    expect(a.indicative_catalog_price.amount_usdc).toBe("0.03");
   });
 
   it("infers directed Bengali corridors without confusing them with country comparisons", () => {
     const result = interpret({question:"ভারত থেকে বাংলাদেশে লিথিয়াম ও মুদ্রাস্ফীতির করিডোর প্রোফাইল"});
     expect(result.subjects).toEqual([{type:"corridor",origin_country_iso3:"IND",destination_country_iso3:"BGD"}]);
     expect(result.selected_product).toEqual({capability:"structural_corridor_profile",variant:"standard"});
-    expect(result.indicative_catalog_price.amount_usdc).toBe("0.08");
+    expect(result.indicative_catalog_price.amount_usdc).toBe("0.05");
   });
 
   it("routes an English comparison to complex intelligence without swapping entities", () => {
@@ -69,7 +69,7 @@ describe("multilingual no-funds query interpreter", () => {
       {type:"country",country_iso3:"IND"},
     ]);
     expect(actual.selected_product).toEqual({capability:"intelligence_query",variant:"complex_multi_source"});
-    expect(actual.indicative_catalog_price.amount_usdc).toBe("0.15");
+    expect(actual.indicative_catalog_price.amount_usdc).toBe("0.05");
   });
 
   it("selects an exact structural digest product for a bounded qualified dimension", () => {

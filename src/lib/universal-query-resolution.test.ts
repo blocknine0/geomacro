@@ -15,7 +15,7 @@ describe("Universal GeoMacro scope review for all human and machine buyers",()=>
     expect(r.schema_version).toBe(QUERY_RESOLUTION_SCHEMA);
     expect(r.status).toBe("REQUIRES_BUYER_REVIEW");
     expect(r.suggested_product).toEqual({capability:"intelligence_query",variant:"focused"});
-    expect(r.indicative_price_usdc).toBe("0.05");
+    expect(r.indicative_price_usdc).toBe("0.02");
     expect(r.suggested_canonical_request).toMatchObject({
       topics:["critical_minerals"],subjects:[{type:"country",country_iso3:"IND"}],
       product:{capability:"intelligence_query",variant:"focused"},

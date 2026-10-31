@@ -1,3 +1,4 @@
+import {GEOMACRO_SUBSCRIPTIONS,GEOMACRO_ONE_TIME_PACKS,GEOMACRO_AGENT_MICROPAYMENT} from "./low-barrier-pricing";
 import {publicCapabilityPricingCatalog} from "./capability-pricing-catalog";
 import type {HybridAskAnswer} from "./hybrid-ask-intelligence.server";
 import type {GeomacroPublicLink} from "./geomacro-public-links";
@@ -31,7 +32,9 @@ export function geomacroPublicAnswer(question:string):HybridAskAnswer|null {
   return publicAnswer("Public Intelligence browsing and Ask Geomacro are free. Structured API products have separate published pay-per-use USDC prices. The public website lists API keys and self-service checkout as coming soon.",["intelligence","pricing","data_api"]);
  if(/\b(?:pric(?:e|es|ing)|cost|fees?|usdc|pay|payment|paid)\b/i.test(q)){
   const rows=publicCapabilityPricingCatalog();
-  return publicAnswer("Public Intelligence browsing and Ask Geomacro are free. Published pay-per-use structured API prices, in USDC per eligible delivery:\n\n"+
+  const plans=GEOMACRO_SUBSCRIPTIONS.map(p=>`${p.name}: ${p.price_usd}/month, ${p.credits_per_30_days.toLocaleString("en-US")} credits`).join("\n");
+  const packs=GEOMACRO_ONE_TIME_PACKS.map(p=>`${p.name}: ${p.price_usd} one time, ${p.credits} credits`).join("\n");
+  return publicAnswer("Public Intelligence browsing and Ask Geomacro are free.\n\nMonthly plans:\n"+plans+"\n\nOne-time credit packs:\n"+packs+"\n\nBase USDC x402: $"+GEOMACRO_AGENT_MICROPAYMENT.minimum_usdc+"–$"+GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc+" per eligible delivery.\n\nPublished pay-per-use structured API prices in USDC per eligible delivery:\n\n"+
     rows.map(row=>PRODUCT_NAMES[row.capability]+": "+row.variants.map(v=>"$"+v.amount_usdc).join(" / ")).join("\n")+
     "\n\nA published price does not confirm live product availability or payment acceptance. The public website lists API keys and self-service checkout as coming soon; check the product page or contact Geomacro for access.",["pricing","data_api","contact"]);
  }
