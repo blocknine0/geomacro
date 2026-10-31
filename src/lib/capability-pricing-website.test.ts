@@ -11,7 +11,7 @@ import {
 const read=(path:string)=>readFileSync(path,"utf8");
 
 describe("canonical capability pricing parity on the public website",()=>{
-  it("displays the one approved catalog on both commercial pages",()=>{
+  it("keeps canonical future capability pricing internal while removing it from public Store",()=>{
     const schedule=read("src/components/capability-price-schedule.tsx");
     const categoryApiPricing=read("src/components/category-api-pricing.tsx");
     const pricing=read("src/routes/pricing.tsx");
@@ -23,7 +23,7 @@ describe("canonical capability pricing parity on the public website",()=>{
     expect(categoryApiPricing).toContain("GEOMACRO_OFFICIAL_API_CATALOG");
     expect(pricing).toContain("<CategoryApiPricing />");
     expect(dataApi).not.toContain("CategoryApiPricing");
-    expect(pricing).toContain("<CapabilityPriceSchedule />");
+    expect(pricing).not.toContain("<CapabilityPriceSchedule />");
     expect(dataApi).toContain('redirect({ to: "/pricing", replace: true })');
     for(const source of [pricing,dataApi]){
       expect(source).not.toContain("Launch price for the first 20,000");
