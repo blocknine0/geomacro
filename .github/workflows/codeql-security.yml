@@ -42,19 +42,3 @@ jobs:
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
           category: "/language:javascript-typescript"
-      - name: Print safe mineral-source CodeQL rule/line diagnostics
-        if: github.event_name == 'pull_request'
-        run: |
-          node --input-type=module <<'NODE'
-          import {readFileSync,existsSync} from 'node:fs';
-          const path='../results/javascript.sarif';
-          if(!existsSync(path)){console.log('CODEQL_SARIF_NOT_PRESENT');process.exit(0);}
-          const doc=JSON.parse(readFileSync(path,'utf8'));
-          for(const run of doc.runs??[])for(const result of run.results??[]){
-            const where=result.locations?.[0]?.physicalLocation;
-            const filename=where?.artifactLocation?.uri??'';
-            if(!filename.includes('private-osint-mineral')&&!filename.includes('private-osint-national-primary')&&
-               !filename.includes('private-global-osint-15m')&&!filename.includes('private-osint-retired'))continue;
-            console.log(JSON.stringify({rule_id:result.ruleId,file:filename,line:where?.region?.startLine??null}));
-          }
-          NODE
