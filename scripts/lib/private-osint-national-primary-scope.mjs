@@ -12,6 +12,13 @@ const PINNED=new Map([
  ["https://www.rbi.org.in/pressreleases_rss.xml","IND"],
  ["https://www.cochilco.cl/web/noticias/feed/","CHL"],
  ["https://www.industry.gov.au/news.xml","AUS"],
+ ["https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1","IND"],
+ ["https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3","IND"],
+ ["https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=5","IND"],
+ ["https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=6","IND"],
+ ["https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=17","IND"],
+ ["https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=20","IND"],
+ ["https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=22","IND"],
 ]);
 export const NATIONAL_PRIMARY_PINNED_COUNT=PINNED.size;
 export function qualifyPrivateNationalPrimaryScope(source){
