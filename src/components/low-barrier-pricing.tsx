@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { GEOMACRO_SUBSCRIPTIONS, GEOMACRO_ONE_TIME_PACKS, GEOMACRO_AGENT_MICROPAYMENT, GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
 import { LockedDualRailCheckout, type CheckoutSelection } from "@/components/dual-rail-checkout";
-import { GEOMACRO_CARD_TO_USDC_READINESS } from "@/lib/card-to-usdc-readiness";
 
 /** Read-only catalog plus selectable dual-rail checkout preview; no money is accepted. */
 export function LowBarrierPricing() {
@@ -80,14 +79,6 @@ export function LowBarrierPricing() {
       </div>
 
       <LockedDualRailCheckout selection={selection} />
-
-      <p className="rounded-xl border border-border p-4 text-xs leading-5 text-muted-foreground" data-checkout-readiness="merchant-approval-required">
-        Card checkout not yet verified live; credit pack checkout is not yet live.
-        Awaiting merchant approval. Legacy card-to-USDC onramp remains unavailable
-        ({GEOMACRO_CARD_TO_USDC_READINESS.checkout_status}); the supported planned fiat
-        rail is direct PayPal, with separate native USDC wallet checkout. No card-to-crypto
-        conversion is promised.
-      </p>
 
       <div className="rounded-2xl border border-border p-5 sm:p-6">
         <p className="gm-eyebrow">AI agents · USDC x402</p>
