@@ -27,7 +27,7 @@ export function evaluateProductionSourceContinuity(response,{now=new Date()}={})
  if(iso(response.checked_at,now.getTime())===null||
     now.getTime()-Date.parse(response.checked_at)>10*60*1000)
    throw Error("SOURCE_CONTINUITY_RESPONSE_CLOCK_STALE");
- const categories={},failures=[];
+ const categories={},failures=[],publisherPairWarnings=[];
  for(const category of CONTINUITY_CATEGORIES){
    const s=response.categories[category];
    if(!s || s.category!==category || typeof s.source_check_current!=="boolean" ||
@@ -50,14 +50,29 @@ export function evaluateProductionSourceContinuity(response,{now=new Date()}={})
    const lastPulse=iso(pulse.last_checked_at,now.getTime());
    const publisherCurrent=lastPulse!==null && now.getTime()-lastPulse<=75*60*1000 &&
      pulse.status==="SOURCE_NATIVE_OBSERVED";
+   const osint=s.private_osint_source_check;
+   const osintAt=iso(osint?.last_checked_at,now.getTime());
+   const osintCurrent=osint?.status==="HEALTHY_FEED_OBSERVED" &&
+     Number.isSafeInteger(osint?.healthy_distinct_feeds) &&
+     osint.healthy_distinct_feeds>0 && osint.healthy_distinct_feeds<=512 &&
+     osintAt!==null && now.getTime()-osintAt<=MAX_SOURCE_CHECK_AGE_MS &&
+     osintAt<=at;
+   // A true private OSINT transport check and a true two-publisher origin
+   // pulse are alternative SOURCE monitor proofs, never interchangeable
+   // original-publisher corroboration or verified events.
+   const monitorCurrent=publisherCurrent||osintCurrent;
    const state=!current?"SOURCE_CHECK_STALE_OR_MISSING":
-     !publisherCurrent?"ORIGINAL_PUBLISHER_PULSE_STALE_OR_DEGRADED":
+     !monitorCurrent?"SOURCE_MONITOR_STALE_OR_DEGRADED":
+     !publisherCurrent?"PRIVATE_OSINT_FEED_CURRENT_ORIGINAL_PUBLISHER_PULSE_STALE":
      s.native_news_event_count_72h>0?"SOURCE_AND_ORIGINAL_PUBLISHER_CURRENT_NEWS_UNSCORED":
        "SOURCE_AND_ORIGINAL_PUBLISHER_CURRENT_NO_VERIFIED_NEW_EVENT";
    if(!current)failures.push(category+":SOURCE_CHECK_STALE_OR_MISSING");
-   if(!publisherCurrent)failures.push(category+":ORIGINAL_PUBLISHER_PULSE_STALE_OR_DEGRADED");
+   if(!monitorCurrent)failures.push(category+":ORIGINAL_PUBLISHER_PULSE_STALE_OR_DEGRADED");
+   if(!publisherCurrent)publisherPairWarnings.push(category);
    categories[category]={
      status:state,source_check_age_minutes:age,
+     private_osint_feed_current:osintCurrent,
+     independent_publisher_pair_current:publisherCurrent,
      last_source_check_at:at===null?null:new Date(at).toISOString(),
      original_publisher_pulse_status:pulse.status.slice(0,80),
      original_publisher_last_checked_at:lastPulse===null?null:new Date(lastPulse).toISOString(),
@@ -72,6 +87,7 @@ export function evaluateProductionSourceContinuity(response,{now=new Date()}={})
    observed_at:now.toISOString(),readback_verified:true,
    categories,all_three_source_checks_current:failures.length===0,
    stale_or_missing_source_categories:failures,
+   original_publisher_pair_stale_or_unavailable_categories:publisherPairWarnings,
    current_verified_original_events_in_all_195_countries:false,
    all_three_paid_signed_categories_verified:false,
    upstream_sla_guaranteed:false,source_content_logged:false,

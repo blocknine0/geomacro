@@ -43,6 +43,8 @@ function emptyDomain(d){
     native_news_event_count_72h:0,
     latest_native_news_published_at:null,
     source_neutral_news:[],
+    private_osint_source_check:{status:"NOT_VERIFIED",last_checked_at:null,
+      healthy_distinct_feeds:0,zero_new_native_items_observed:false},
     original_news_window_verified:false,
     current_news_guaranteed:false,
     commercial_rights_verified:false,signed_intelligence_available:false,
@@ -86,6 +88,49 @@ async function readJournal(env,now){
     if(seen.has(s.id))return false;seen.add(s.id);return true;
   })};
 }
+// The source-only micro-intake independently checks public feed transport.
+// Persisted three-category checkpoints are verified against the real D1
+// attempt/success clocks. This does not renew any dated article, original
+// publisher-pair pulse, open-data reference period, or paid evidence.
+function osintHeartbeatFromCheckpoint(row,d,now){
+ if(!row||typeof row.metadata_json!=="string"||
+    row.metadata_json.length>4000)return null;
+ let payload;
+ try{payload=JSON.parse(row.metadata_json)}catch{return null}
+ const checked=realClock(payload?.checked_at,now);
+ if(checked===null||checked!==realClock(row.last_attempt_at,now)||
+    now-checked>LAST_KNOWN_MAX_AGE||
+    payload.schema!=="geomacro.private-osint-source-heartbeat.v1"||
+    payload.category!==d.domain||
+    payload.new_events_verified!==false||
+    payload.commercial_rights_verified!==false||
+    payload.signed_intelligence_available!==false||
+    payload.chargeable!==false||
+    !Number.isSafeInteger(payload.healthy_distinct_feed_endpoints)||
+    payload.healthy_distinct_feed_endpoints<0||
+    payload.healthy_distinct_feed_endpoints>512||
+    !Number.isSafeInteger(payload.native_dated_items_in_collector_batch)||
+    payload.native_dated_items_in_collector_batch<0||
+    payload.native_dated_items_in_collector_batch>768)return null;
+ const healthy=row.status==="OBSERVED"&&payload.healthy===true&&
+    payload.healthy_distinct_feed_endpoints>0&&
+    row.last_success_at===payload.checked_at;
+ const degraded=row.status==="DEGRADED"&&payload.healthy===false&&
+    payload.healthy_distinct_feed_endpoints===0&&row.last_success_at===null;
+ if(!healthy&&!degraded)return null;
+ return {checked,healthy,current:healthy&&now-checked<=CURRENT_SOURCE_MAX_AGE,
+   healthyDistinctFeeds:payload.healthy_distinct_feed_endpoints,
+   zeroNativeItemsObserved:healthy&&payload.native_dated_items_in_collector_batch===0};
+}
+async function readOsintHeartbeats(env,now){
+ try{
+  const r=await env.DB.prepare(
+    "SELECT scope,status,last_attempt_at,last_success_at,metadata_json FROM pipeline_checkpoint WHERE pipeline=? AND scope IN ('geopolitics','macro','rare_earth') LIMIT 4"
+  ).bind("private_osint_source_15m_heartbeat").all();
+  return DOMAIN_SCOPES.map(d=>osintHeartbeatFromCheckpoint(
+    (r.results??[]).find(x=>x.scope===d.domain),d,now));
+ }catch{return DOMAIN_SCOPES.map(()=>null)}
+}
 async function readPulse(env,now){
   try{
     const r=await env.DB.prepare(
@@ -101,7 +146,7 @@ export async function threeDomainEvidenceContinuity(env,now=Date.now()){
     return json({ok:false,error:"CONTINUITY_D1_UNAVAILABLE",chargeable:false},503);
   // A category's checkpoint being inaccessible must never hide another
   // category's already verified data. All reads are bounded and independent.
-  const [journal,pulse,contexts]=await Promise.all([
+  const [journal,pulse,contexts,osintHeartbeats]=await Promise.all([
     readJournal(env,now),readPulse(env,now),
     Promise.all(DOMAIN_SCOPES.map(async d=>{
       try{
@@ -111,17 +156,20 @@ export async function threeDomainEvidenceContinuity(env,now=Date.now()){
         return openDataFromCheckpoint(row,d,now);
       }catch{return null}
     })),
+    readOsintHeartbeats(env,now),
   ]);
   // If the journal, historical contexts AND pulse readback all fail, don't
   // disguise a D1 outage as a healthy empty data day.
   const anyPulseVerified=DOMAIN_SCOPES.some(d=>
     pulse.categories[d.domain]?.status==="SOURCE_NATIVE_OBSERVED");
-  if(!journal.complete&&!contexts.some(Boolean)&&!anyPulseVerified)
+  if(!journal.complete&&!contexts.some(Boolean)&&!anyPulseVerified&&
+     !osintHeartbeats.some(x=>x?.healthy===true))
     return json({ok:false,error:"CONTINUITY_ALL_READBACKS_UNAVAILABLE",
       chargeable:false,three_domains_returned:false},503);
   const categories={};
   for(let i=0;i<DOMAIN_SCOPES.length;i++){
-    const d=DOMAIN_SCOPES[i],result=emptyDomain(d),snapshot=contexts[i];
+    const d=DOMAIN_SCOPES[i],result=emptyDomain(d),snapshot=contexts[i],
+      heartbeat=osintHeartbeats[i];
     const matching=journal.complete?journal.signals.filter(s=>s.category===d.domain):[];
     result.original_news_window_verified=journal.complete;
     result.native_news_event_count_72h=matching.length;
@@ -144,6 +192,24 @@ export async function threeDomainEvidenceContinuity(env,now=Date.now()){
       result.data_clock_semantics=current?
         "SOURCE_CHECK_CLOCK_DISTINCT_FROM_REFERENCE_PERIOD":
         "HISTORICAL_REFERENCE_ONLY_SOURCE_CHECK_STALE";
+    }
+    if(heartbeat){
+      result.private_osint_source_check={
+        status:heartbeat.healthy?"HEALTHY_FEED_OBSERVED":"SOURCE_TRANSPORT_DEGRADED",
+        last_checked_at:new Date(heartbeat.checked).toISOString(),
+        healthy_distinct_feeds:heartbeat.healthyDistinctFeeds,
+        zero_new_native_items_observed:heartbeat.zeroNativeItemsObserved,
+      };
+      // The latest independently healthy transport check may be newer than
+      // a stale official context. Never relabel that historical context as
+      // freshly retrieved open data or a publisher-pair corroboration.
+      if(heartbeat.current){
+        const previous=realClock(result.latest_source_check_at,now);
+        if(previous===null||heartbeat.checked>previous)
+          result.latest_source_check_at=new Date(heartbeat.checked).toISOString();
+        result.source_check_current=true;
+        result.data_clock_semantics="SOURCE_CHECK_CLOCK_DISTINCT_FROM_REFERENCE_PERIOD";
+      }
     }
     const pulseRow=pulse.categories[d.domain];
     result.original_publisher_pulse={

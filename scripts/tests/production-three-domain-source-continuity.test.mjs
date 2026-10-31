@@ -36,6 +36,36 @@ test("Healthy context with stale primary publisher pulse must remain DEGRADED",(
  assert.equal(r.all_three_source_checks_current,false);
  assert.ok(r.stale_or_missing_source_categories.includes("macro:ORIGINAL_PUBLISHER_PULSE_STALE_OR_DEGRADED"));
 });
+test("actual three-domain OSINT zero-news heartbeat keeps source clock current even if publisher-pair pulse lags",()=>{
+ const doc=sample();
+ doc.categories.macro.original_publisher_pulse.status="STALE_OR_UNAVAILABLE";
+ doc.categories.macro.private_osint_source_check={
+   status:"HEALTHY_FEED_OBSERVED",
+   last_checked_at:"2026-10-29T14:57:00Z",
+   healthy_distinct_feeds:2,zero_new_native_items_observed:true
+ };
+ const r=evaluateProductionSourceContinuity(doc,{now});
+ assert.equal(r.all_three_source_checks_current,true);
+ assert.equal(r.categories.macro.private_osint_feed_current,true);
+ assert.equal(r.categories.macro.independent_publisher_pair_current,false);
+ assert.deepEqual(r.original_publisher_pair_stale_or_unavailable_categories,["macro"]);
+ assert.equal(r.categories.macro.status,
+   "PRIVATE_OSINT_FEED_CURRENT_ORIGINAL_PUBLISHER_PULSE_STALE");
+ assert.equal(r.categories.macro.derived_native_dated_items_72h,0);
+ assert.equal(r.all_three_paid_signed_categories_verified,false);
+});
+test("degraded or forged OSINT heartbeat never bypasses stale original monitor",()=>{
+ const doc=sample();
+ doc.categories.macro.original_publisher_pulse.status="STALE_OR_UNAVAILABLE";
+ doc.categories.macro.private_osint_source_check={
+   status:"HEALTHY_FEED_OBSERVED",
+   last_checked_at:"2026-10-29T11:00:00Z",
+   healthy_distinct_feeds:0,zero_new_native_items_observed:true
+ };
+ const r=evaluateProductionSourceContinuity(doc,{now});
+ assert.equal(r.all_three_source_checks_current,false);
+ assert.ok(r.stale_or_missing_source_categories.includes("macro:ORIGINAL_PUBLISHER_PULSE_STALE_OR_DEGRADED"));
+});
 test("Reject contradictory freshness or forged rights flags",()=>{
  const doc=sample();
  doc.categories.macro.source_check_current=false;

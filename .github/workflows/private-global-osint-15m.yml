@@ -47,6 +47,8 @@ on:
       - "workers/control-plane/migrations/0028_private_osint_15m_durable.sql"
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/ops/phase2i-source-only-raw-tick.ts"
+      - "scripts/lib/phase2i-osint-source-heartbeat.mjs"
+      - "scripts/tests/phase2i-osint-source-heartbeat.test.mjs"
       - "scripts/tests/phase2i-source-only-governor.test.mjs"
       - "scripts/lib/phase2i-single-sweep-original-index.mjs"
       - "scripts/tests/phase2i-single-sweep-original-index.test.mjs"
@@ -204,6 +206,7 @@ jobs:
         run: |
           set -euo pipefail
           node --test scripts/tests/phase2i-source-only-governor.test.mjs
+          node --test scripts/tests/phase2i-osint-source-heartbeat.test.mjs
           node --check scripts/lib/phase2i-single-sweep-original-index.mjs
           node --test scripts/tests/phase2i-single-sweep-original-index.test.mjs
           node --check scripts/lib/phase2i-osint-country-fair-raw-staging.mjs
@@ -408,8 +411,9 @@ jobs:
 
   collect-source-intake-only:
     name: Governed source-only original news to canonical D1 when full publication is paced
-    # One private micro-bundle per scheduled 15-minute slot only.
-    # Push/dispatch/wakeups do not create extra Free D1 write slots.
+    # One quota-admitted private micro-bundle on schedule OR a verified
+    # successful same-repo main control-plane deployment. Never from a push
+    # or arbitrary workflow wakeup; preserve existing Free D1 admission.
     # Serialize D1 source writes with the five-minute fastlane; never
     # oversubscribe the same non-atomic Cloudflare Free budget in parallel.
     concurrency:
@@ -421,7 +425,13 @@ jobs:
       needs.quota-admission.outputs.source_intake == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'schedule'
+      (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.name == 'Deploy D1 Control Plane' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
+        github.event.workflow_run.head_sha == github.sha))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: production
@@ -441,6 +451,8 @@ jobs:
           PHASE2I_PROVIDER_CRITICAL: ${{ needs.quota-admission.outputs.critical }}
           PHASE2I_PROVIDER_RESEARCH: ${{ needs.quota-admission.outputs.research }}
           PHASE2I_PROVIDER_MAX_NEW_ROWS: ${{ needs.quota-admission.outputs.source_intake_max_new_rows }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           bun scripts/ops/phase2i-source-only-raw-tick.ts
