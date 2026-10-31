@@ -92,6 +92,13 @@ describe("Phase2H daily archived original grading",()=>{
   const one=compilePhase2hDailyCountryDigest({now,rows:[makeRow()],fullScan:true});
   expect(one.country_grid_size).toBe(585);
   expect(one.counts.archived_rows_valid).toBe(1);
+  expect(one.category_qualification_census.macro.archived).toBe(1);
+  expect(one.category_qualification_census.macro.unqualified).toBe(1);
+  expect(one.category_qualification_census.macro.failed_by_reason.ORIGINAL_PAGE_NOT_VERIFIED).toBe(1);
+  expect(one.category_qualification_census.macro.failed_by_reason.INDEPENDENT_SAME_EVENT_NOT_VERIFIED).toBe(1);
+  expect(one.category_qualification_census.macro.failed_by_reason.ITEM_RIGHTS_NOT_VERIFIED).toBe(1);
+  expect(one.category_qualification_census.geopolitics.archived).toBe(0);
+  expect(one.category_qualification_census.rare_earth.archived).toBe(0);
   expect(one.counts.country_cells_with_archived_observations).toBe(1);
   const usa=one.cells.find(x=>x.country_iso3==="USA"&&x.domain_category==="macro")!;
   expect(usa.status).toBe("NO_PAYABLE_EVIDENCE");
