@@ -83,11 +83,14 @@ describe("unscored three-domain homepage from existing public D1 journal",()=>{
  it("uses read-only bounded public D1 SSR and a client fallback, not paid/B2/Supabase",()=>{
   const home=readFileSync("src/components/home/live-intelligence-showcase.tsx","utf8");
   const route=readFileSync("src/routes/index.tsx","utf8");
-  expect(route).toContain("fetchDirectDerivedNews()");
+  expect(route).toContain("fetchHomeDerivedNews()");
   expect(route).toContain("withPublicRuntimeTimeout");
   expect(route).toContain("initialFindCards");
   expect(home).toContain('fetch("/api/v1/finds"');
-  expect(home).toContain("fetchDirectDerivedNews()");
+  expect(home).toContain("fetchHomeDerivedNews()");
+   const fallback=readFileSync("src/lib/home-derived-news-client.ts","utf8");
+   expect(fallback).toContain("fetchDirectDerivedNews(fetchImpl, now)");
+   expect(fallback).toContain("checkedDerivedNews(JSON.parse(raw), now)");
   expect(home).toContain("selectHomepageFreeFind(visibleCards)");
   expect(home).not.toContain("independent same-event review not established");
   expect(home).toContain("isConcreteHomeFind");
