@@ -125,7 +125,15 @@
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"
     },
+    "/api/v1/intelligence/structured-answer": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
     "/api/v1/payments/networks": {
+      "classification": "PRODUCTION",
+      "status": "LIVE_NO_FUNDS_DISCOVERY"
+    },
+    "/api/v1/payments/paypal": {
       "classification": "PRODUCTION",
       "status": "LIVE_NO_FUNDS_DISCOVERY"
     },
@@ -268,10 +276,6 @@
     "/testnet-console": {
       "classification": "REMOVE",
       "status": "REMOVED"
-    },
-    "/api/v1/intelligence/structured-answer": {
-      "classification": "PRODUCTION",
-      "status": "CONTROLLED_PRELAUNCH"
     }
   }
 }
