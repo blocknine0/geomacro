@@ -10,7 +10,7 @@ import { GEOMACRO_CAPABILITY_PRICING_VERSION } from "@/lib/capability-pricing-ca
 
 const TITLE = "Store & API | Geomacro";
 const DESCRIPTION =
-  "One Geomacro Store & API: $9/$29/$99 monthly credit plans, $5/$15/$30 credit packs, and evidence-gated Base USDC x402 from $0.02 to $0.05.";
+  "GeoMacro Store: $9/$29/$99 prepaid 30-day plans, $5/$15/$30 credit packs, locked PayPal/card and Base/Polygon USDC checkout previews, and evidence-gated x402.";
 const URL = "https://geomacro.live/pricing";
 const highlights = [
   { label: "Geopolitics", icon: Globe2 },
@@ -94,8 +94,8 @@ function PricingPage() {
               ))}
             </div>
             <p className="mt-6 rounded-lg bg-muted/60 p-3 text-xs leading-5 text-muted-foreground">
-              Pricing catalog only. Self-service checkout and production settlement
-              require separate verified activation.
+              Two payment methods are available to preview: PayPal/card (international fiat)
+              and native USDC (Base / Polygon). External payments remain locked.
             </p>
           </div>
         </div>
@@ -122,9 +122,9 @@ function PricingPage() {
             Start small. Grow on your terms.
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Choose a monthly plan, top up credits when needed or use Base USDC x402
-            for eligible agent calls. Credits and exact API delivery prices are different
-            billing methods; never charged twice for the same request.
+            Compare prepaid 30-day plans and one-time credit packs, then preview PayPal/card
+            or native Base/Polygon USDC checkout. Production transactions remain locked.
+            Credits and x402 per-delivery prices use separate billing methods.
           </p>
         </div>
         <LowBarrierPricing />
@@ -176,9 +176,9 @@ function PricingPage() {
         </div>
         <ApiKeysNotice />
         <p className="mt-4 max-w-3xl text-xs leading-6 text-muted-foreground">
-          Paid API requests become available only when the live payment and delivery service confirms activation.
+          Paid API requests become available only after live payment, ledger and delivery service acceptance.
           Availability is checked for each request. Signed risk products are private pilots;
-          customers retain control of every action. This page does not request payment.
+          customers retain control of every action. This page shows a locked checkout preview and never requests a payment.
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           <Link to="/docs" className="group flex items-start justify-between gap-5 rounded-2xl border border-border p-6 transition hover:border-primary/40 hover:bg-primary/5">
