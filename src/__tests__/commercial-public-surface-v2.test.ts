@@ -13,7 +13,7 @@ describe("commercial public surface v2", () => {
       read("src/routes/ask-geomacro.tsx"),
       read("src/routes/research.tsx"),
       read("src/routes/docs.tsx"),
-      read("src/routes/data-api.tsx"),
+      read("src/routes/pricing.tsx"),
       read("src/routes/roadmap.tsx"),
       read("src/components/home/commercial-home.tsx"),
       read("src/components/ask/ask-workspace.tsx"),
@@ -29,7 +29,7 @@ describe("commercial public surface v2", () => {
     }
 
     expect(read("src/routes/about.tsx")).toContain("Geopolitics, Macro / FX and Critical Minerals");
-    expect(read("src/routes/data-api.tsx")).toContain("Geopolitics, Macro / FX and Critical Minerals");
+    expect(read("src/routes/pricing.tsx")).toContain("Geopolitics, Macro / FX and Critical Minerals");
     expect(read("src/routes/research.tsx")).toContain("See how a risk reading is built.");
   });
 
@@ -94,7 +94,7 @@ describe("commercial public surface v2", () => {
   it("keeps runtime agent-commerce status truthful without promoting paid x402 as homepage content", () => {
     const status = read("src/components/agent-commerce-status.tsx");
     const home = read("src/components/home/commercial-home.tsx");
-    const dataApi = read("src/routes/data-api.tsx");
+    const dataApi = read("src/routes/pricing.tsx");
 
     expect(status).toContain('fetch("/api/health"');
     expect(status).toContain('environment === "production"');

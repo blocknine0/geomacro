@@ -82,7 +82,7 @@ jobs:
           grep -Fq 'CapabilityPriceSchedule' src/routes/pricing.tsx
           grep -Fq 'ApiKeysNotice' src/routes/pricing.tsx
           grep -Fq 'CategoryApiPricing' src/routes/pricing.tsx
-          grep -Fq 'CategoryApiPricing' src/routes/data-api.tsx
+          grep -Fq 'redirect({ to: "/pricing", replace: true })' src/routes/data-api.tsx
           grep -Fq 'GEOMACRO_CAPABILITY_PRICES.intelligence_query' src/components/category-api-pricing.tsx
           grep -Fq 'There is no category surcharge.' src/components/category-api-pricing.tsx
           grep -Fq 'Self-service access and checkout are not open yet.' src/components/api-keys-notice.tsx
@@ -112,7 +112,7 @@ jobs:
           grep -Fq 'CapabilityPriceSchedule' src/routes/pricing.tsx
           grep -Fq 'GEOMACRO_CAPABILITY_PRICES' src/components/capability-price-schedule.tsx
           grep -Fq 'GEOMACRO_PUBLIC_PRICING_GROUPS' src/components/capability-price-schedule.tsx
-          grep -Fq 'CapabilityPriceSchedule' src/routes/data-api.tsx
+          grep -Fq 'redirect({ to: "/pricing", replace: true })' src/routes/data-api.tsx
           grep -Fq 'Unavailable, stale or unqualified results are not chargeable.' src/components/capability-price-schedule.tsx
           grep -Fq 'A displayed price is not an available payment quote.' src/components/capability-price-schedule.tsx
 
@@ -637,7 +637,7 @@ jobs:
           /global-risk|Geomacro Global Risk
           /risk-indices|Geomacro Risk Indices
           /ask-geomacro|Ask Geomacro
-          /data-api|API &amp; Agents
+          /data-api|Geomacro Store
           /pricing|Geomacro Store
           /institutional|For teams
           /risk-gate|Risk Gate

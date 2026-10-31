@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const page = readFileSync("src/routes/data-api.tsx", "utf8");
+const page = readFileSync("src/routes/pricing.tsx", "utf8");
 const packageDoc = readFileSync(
   "docs/STRUCTURAL_DATA_COMMERCIAL_PACKAGE.md",
   "utf8",
@@ -13,7 +13,7 @@ describe("structural data commercial surface", () => {
     expect(page).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(page).toContain("<ApiKeysNotice />");
     expect(page).not.toContain("NewsJsonWorkbench");
-    expect(page).toContain("<CapabilityPriceSchedule compact />");
+    expect(page).toContain("<CapabilityPriceSchedule />");
     expect(page).not.toContain("bounded public structured-data digest");
   });
 

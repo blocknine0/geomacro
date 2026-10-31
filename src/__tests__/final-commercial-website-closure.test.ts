@@ -12,7 +12,6 @@ const PRIMARY_ROUTES = [
   "src/routes/ask-geomacro.tsx",
   "src/routes/institutional.tsx",
   "src/routes/risk-gate.tsx",
-  "src/routes/data-api.tsx",
   "src/routes/pricing.tsx",
   "src/routes/ecosystem.tsx",
   "src/routes/research.tsx",
@@ -37,7 +36,7 @@ describe("final commercial website closure", () => {
     for (const marker of ["Testnet", "Prediction Markets", "Bridge & Swap", "Arc / Onchain"]) {
       expect(shell).not.toContain(marker);
     }
-    for (const route of ["/intelligence", "/risk-indices", "/data-api", "/institutional", "/pricing", "/contact"]) {
+    for (const route of ["/intelligence", "/risk-indices", "/institutional", "/pricing", "/contact"]) {
       expect(shell).toContain(route);
     }
     expect(shell).not.toContain('to: "/global-risk"');
@@ -45,7 +44,7 @@ describe("final commercial website closure", () => {
 
   it("keeps Risk Gate controlled and x402 fail-closed until production activation", () => {
     const riskGate = read("src/routes/risk-gate.tsx");
-    const dataApi = read("src/routes/data-api.tsx");
+    const dataApi = read("src/routes/pricing.tsx");
     const status = read("src/components/agent-commerce-status.tsx");
     expect(riskGate).toContain("PRIVATE PILOT");
     expect(riskGate).toContain("execution_authorized = false");

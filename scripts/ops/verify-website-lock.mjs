@@ -128,19 +128,28 @@ const changed = new Set([
 
 // Founder-approved low-barrier presentation is allowed ONLY at immutable blob
 // identities from its explicit authorizing commit; subsequent edits fail closed.
-const approvedPricing = config.approved_low_barrier_pricing_20261031;
-const approvedPricingPaths = new Set(approvedPricing?.approved_paths || []);
+const approvedPricing = [
+  config.approved_low_barrier_pricing_20261031,
+  config.approved_unified_store_api_20261031,
+];
+// Each explicit founder approval is limited to EXACT committed blob content,
+// not a wildcard route or a mutable baseline. Future UI changes require a
+// separate approval pinned to their own authorizing source commit.
 function matchesApprovedPricingBlob(path) {
-  if (!approvedPricingPaths.has(path)) return false;
-  const sha = String(approvedPricing?.approved_source_commit || "");
-  if (!/^[0-9a-f]{40}$/.test(sha)) return false;
-  try {
-    const approvedBlob = git(["rev-parse", sha + ":" + path]);
-    const currentBlob = git(["rev-parse", "HEAD:" + path]);
-    const workingChanges = git(["diff", "--name-only", "HEAD", "--", path]);
-    const stagedChanges = git(["diff", "--cached", "--name-only", "--", path]);
-    return approvedBlob === currentBlob && !workingChanges && !stagedChanges;
-  } catch { return false; }
+  const workingChanges = git(["diff", "--name-only", "HEAD", "--", path]);
+  const stagedChanges = git(["diff", "--cached", "--name-only", "--", path]);
+  if (workingChanges || stagedChanges) return false;
+  for (const approval of approvedPricing) {
+    if (!(approval?.approved_paths || []).includes(path) || approval?.exact_blob_lock !== true) continue;
+    const sha = String(approval?.approved_source_commit || "");
+    if (!/^[0-9a-f]{40}$/.test(sha)) continue;
+    try {
+      const approvedBlob = git(["rev-parse", sha + ":" + path]);
+      const currentBlob = git(["rev-parse", "HEAD:" + path]);
+      if (approvedBlob === currentBlob) return true;
+    } catch { /* Missing approval commits are never a substitute for immutable proof. */ }
+  }
+  return false;
 }
 const violations = [...changed].filter(path => isProtectedWebsitePath(path) && !matchesApprovedPricingBlob(path));
 

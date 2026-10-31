@@ -6,7 +6,7 @@ const read = (path: string): string => readFileSync(path, "utf8");
 describe("Geomacro post-launch commercial website presentation", () => {
   const shell = read("src/components/site-shell.tsx");
   const pricing = read("src/routes/pricing.tsx");
-  const api = read("src/routes/data-api.tsx");
+  const api = read("src/routes/pricing.tsx");
   const riskGate = read("src/routes/risk-gate.tsx");
   const about = read("src/routes/about.tsx");
   const institutional = read("src/routes/institutional.tsx");
@@ -14,7 +14,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
   const retired = read("server/middleware/05-retire-noncommercial-surfaces.ts");
 
   it("uses navigable buyer-ready intelligence, indices, ask, API, institutions and pricing", () => {
-    for (const route of ["/intelligence", "/risk-indices", "/ask-geomacro", "/data-api", "/institutional", "/pricing"]) {
+    for (const route of ["/intelligence", "/risk-indices", "/ask-geomacro", "/institutional", "/pricing"]) {
       expect(shell).toContain(`to: "${route}"`);
     }
     expect(shell).not.toContain('to: "/global-risk"');
@@ -30,9 +30,9 @@ describe("Geomacro post-launch commercial website presentation", () => {
     const catalog = read("src/components/capability-price-schedule.tsx");
     expect(pricing).toContain("Geomacro Store");
     expect(pricing).toContain("<CapabilityPriceSchedule />");
-    expect(api).toContain("<CapabilityPriceSchedule compact />");
+    expect(read("src/routes/data-api.tsx")).toContain('redirect({ to: "/pricing", replace: true })');
     expect(pricing).toContain("<CategoryApiPricing />");
-    expect(api).not.toContain("CategoryApiPricing");
+    expect(api).toContain("CategoryApiPricing");
     expect(read("src/components/category-api-pricing.tsx")).toContain("There is no category surcharge.");
     expect(notice).toContain("API keys");
     expect(notice).toContain("Coming soon");

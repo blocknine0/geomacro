@@ -56,7 +56,7 @@ describe("canonical product architecture alignment", () => {
   });
 
   it("labels Data & API as governed commercial access", () => {
-    const dataApi = read("src/routes/data-api.tsx");
+    const dataApi = read("src/routes/pricing.tsx");
     expect(dataApi).toContain("API & Agents");
     expect(dataApi).toContain("<ApiKeysNotice />");
     expect(dataApi).toContain("customers retain control of every action");

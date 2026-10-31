@@ -14,7 +14,7 @@ describe("commercial access is explained sitewide", () => {
 
   it("shares one commercial access guide with every route except pricing, where the comparison is already complete", () => {
     expect(shell).not.toContain('import { CommercialAccessGuide }');
-    expect(shell).toContain('{ to: "/pricing", label: "Store" }');
+    expect(shell).toContain('{ to: "/pricing", label: "Store & API" }');
     expect(guide).toContain('aria-label="Choose how to access Geomacro"');
     expect(guide).toContain('to="/pricing"');
   });
@@ -26,13 +26,13 @@ describe("commercial access is explained sitewide", () => {
     expect(guide).toContain("Pay per call");
     expect(guide).toContain("Exact USDC price by capability");
     const schedule=read("src/components/capability-price-schedule.tsx");
-    const dataApi=read("src/routes/data-api.tsx");
+    const dataApi=read("src/routes/pricing.tsx");
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICES");
     expect(schedule).toContain("GEOMACRO_PUBLIC_PRICING_GROUPS");
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
     expect(schedule).toContain("without a second object charge");
     expect(pricing).toContain("<CapabilityPriceSchedule />");
-    expect(dataApi).toContain("<CapabilityPriceSchedule compact />");
+    expect(read("src/routes/data-api.tsx")).toContain('redirect({ to: "/pricing", replace: true })');
     expect(pricing).not.toContain("Launch price for the first 20,000");
     expect(dataApi).not.toContain("Launch price for the first 20,000");
     expect(guide).toContain("Structured intelligence for APIs and AI agents");

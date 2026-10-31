@@ -9,9 +9,9 @@ describe("production-first public identity", () => {
     for (const marker of ["Technical Proof", "Testnet API", "/testnet-access", "/onchain", "/bridge-swap", "/arena", "Connect wallet"]) {
       expect(shell).not.toContain(marker);
     }
-    expect(shell).toContain('label: "API & Agents"');
+    expect(shell).toContain('label: "Store & API"');
     expect(shell).toContain('label: "For teams"');
-    expect(shell).toContain('label: "Store"');
+    expect(shell).toContain('label: "Store & API"');
   });
 
   it("publishes only production or production-gated commerce status", () => {

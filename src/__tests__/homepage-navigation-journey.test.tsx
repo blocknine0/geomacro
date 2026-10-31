@@ -30,12 +30,12 @@ describe("homepage reader and buyer journeys", () => {
   });
 
   it("keeps all primary destinations in the desktop navigation and marks the current page", async () => {
-    const html = await page("/data-api");
+    const html = await page("/pricing");
     const nav = html.match(/<nav aria-label="Primary"[^>]*>([\s\S]*?)<\/nav>/)?.[1] ?? "";
-    for (const target of ["/", "/intelligence", "/risk-indices", "/ask-geomacro", "/data-api", "/pricing"]) {
+    for (const target of ["/", "/intelligence", "/risk-indices", "/ask-geomacro", "/pricing"]) {
       expect(nav).toContain(`href="${target}"`);
     }
-    const active = nav.match(/<a\b[^>]*href="\/data-api"[^>]*>/)?.[0] ?? "";
+    const active = nav.match(/<a\b[^>]*href="\/pricing"[^>]*>/)?.[0] ?? "";
     expect(active).toContain('aria-current="page"');
     expect(html).toContain('id="main-content"');
     expect(html).toContain('tabindex="-1"');

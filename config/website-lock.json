@@ -859,5 +859,26 @@
     "global_risk_presentation_unchanged": true,
     "payment_activation_unchanged": true,
     "exact_blob_lock": true
+  },
+  "approved_unified_store_api_20261031": {
+    "approval": "Founder explicitly requested on 31 October 2026 to combine /data-api and Store into ONE polished responsive commercial storefront at /pricing; preserve the original /data-api URL through a no-payment redirect.",
+    "approved_source_commit": "cba23f57f06f7952a7b39eab751d44d316cb8200",
+    "approved_paths": [
+      "src/routes/pricing.tsx",
+      "src/routes/data-api.tsx",
+      "src/components/site-shell.tsx"
+    ],
+    "canonical_route": "/pricing",
+    "legacy_alias": "/data-api",
+    "redirect_only": true,
+    "shared_pricing_catalogs": [
+      "geomacro.low-barrier.v1",
+      "geomacro.capability-usdc.v2"
+    ],
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "payment_activation_unchanged": true,
+    "exact_blob_lock": true,
+    "pending_exact_sha_live_deployment_acceptance": true
   }
 }
