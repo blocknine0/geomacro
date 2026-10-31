@@ -29,7 +29,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     const notice = read("src/components/api-keys-notice.tsx");
     const catalog = read("src/components/capability-price-schedule.tsx");
     expect(pricing).toContain("Geomacro Store");
-    expect(pricing).toContain("<CapabilityPriceSchedule />");
+    expect(pricing).not.toContain("<CapabilityPriceSchedule />");
     expect(read("src/routes/data-api.tsx")).toContain('redirect({ to: "/pricing", replace: true })');
     expect(pricing).toContain("<CategoryApiPricing />");
     expect(api).toContain("CategoryApiPricing");
@@ -48,7 +48,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     }
     expect(shell).not.toContain("AgentCommerceStatus compact");
     expect(api).toContain("API & Agents");
-    expect(api).toContain("All products deliver structured Geomacro JSON.");
+    expect(api).toContain("One engine. Three categories.");
     expect(api).not.toContain("Runtime truth, not marketing copy");
     expect((riskGate.match(/>PRIVATE PILOT<\/Badge>/gu) ?? []).length).toBe(1);
     expect(about).toContain("The customer remains responsible for any decision or action");

@@ -79,7 +79,11 @@ jobs:
           fi
           grep -Fq 'Earlier assessments retain their original dates.' src/routes/intelligence.tsx
           grep -Fq 'Geomacro Store' src/routes/pricing.tsx
-          grep -Fq 'CapabilityPriceSchedule' src/routes/pricing.tsx
+          grep -Fq 'LowBarrierPricing' src/routes/pricing.tsx
+          if grep -Fq '<CapabilityPriceSchedule />' src/routes/pricing.tsx; then
+            echo '::error::Deferred structured product catalog must not appear on the public pricing page'
+            exit 1
+          fi
           grep -Fq 'ApiKeysNotice' src/routes/pricing.tsx
           grep -Fq 'CategoryApiPricing' src/routes/pricing.tsx
           grep -Fq 'redirect({ to: "/pricing", replace: true })' src/routes/data-api.tsx
@@ -109,7 +113,7 @@ jobs:
           grep -Fq 'Ask Geomacro' src/components/ask/ask-workspace.tsx
           grep -Fq 'Follow what matters to you' src/components/home/commercial-home.tsx
 
-          grep -Fq 'CapabilityPriceSchedule' src/routes/pricing.tsx
+          grep -Fq 'LowBarrierPricing' src/routes/pricing.tsx
           grep -Fq 'GEOMACRO_CAPABILITY_PRICES' src/components/capability-price-schedule.tsx
           grep -Fq 'GEOMACRO_PUBLIC_PRICING_GROUPS' src/components/capability-price-schedule.tsx
           grep -Fq 'redirect({ to: "/pricing", replace: true })' src/routes/data-api.tsx

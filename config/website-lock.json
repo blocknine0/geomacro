@@ -983,5 +983,28 @@
     "exact_blob_lock": true,
     "pending_exact_sha_live_deployment_acceptance": true,
     "obsolete_card_to_usdc_offer_removed": true
+  },
+  "approved_deferred_catalog_removal_20261101": {
+    "approval": "Founder on 2026-11-01 explicitly instructed completely removing the Structured Product Catalog / What every delivery includes / Find your intelligence, all seven per-delivery USDC product cards, filters, variants and Delivery & pricing details from /pricing because these services will not start yet.",
+    "approved_source_commit": "db271d6eb817b73096dbadcb95f695eb57b838ea",
+    "approved_paths": [
+      "src/routes/pricing.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/components/category-api-pricing.tsx",
+      "src/components/capability-price-schedule.tsx",
+      "src/components/capability-price-schedule.test.tsx",
+      "src/components/category-api-pricing.test.tsx"
+    ],
+    "scope": "Public pricing presentation only. Remove the deferred capability catalog section, x402 per-delivery promotional copy and dead #product-catalog anchor. Preserve six approved prepaid plan/credit pack prices, inline locked PayPal and native Base/Polygon USDC choices, published API endpoint descriptions and existing backend pricing contracts.",
+    "backend_capability_pricing_unmodified": true,
+    "payment_activation_unchanged": true,
+    "production_funds_authorized": false,
+    "website_lock_remains_active": true,
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "historical_data_unchanged": true,
+    "exact_blob_lock": true,
+    "pending_exact_sha_live_deployment_acceptance": true,
+    "test_changes_scope": "Update exact storefront component presentation checks for absent catalog links; no price catalog logic changed."
   }
 }

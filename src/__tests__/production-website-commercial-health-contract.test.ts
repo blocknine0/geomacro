@@ -21,10 +21,11 @@ describe("production website health validates real commercial promises", () => {
   it("verifies store and coming-soon promises against checked-out source", () => {
     const notice = read("src/components/api-keys-notice.tsx");
     const schedule = read("src/components/capability-price-schedule.tsx");
-    for (const phrase of ["Geomacro Store", "CapabilityPriceSchedule", "ApiKeysNotice"]) {
+    for (const phrase of ["Geomacro Store", "LowBarrierPricing", "ApiKeysNotice", "CategoryApiPricing"]) {
       expect(job).toContain(phrase);
       expect(pricing).toContain(phrase);
     }
+    expect(pricing).not.toContain("<CapabilityPriceSchedule />");
     expect(job).toContain("CategoryApiPricing");
     expect(job).toContain("GEOMACRO_CAPABILITY_PRICES.intelligence_query");
     expect(job).toContain("Self-service access and checkout are not open yet.");

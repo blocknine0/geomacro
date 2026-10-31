@@ -2,11 +2,9 @@ import { LowBarrierPricing } from "@/components/low-barrier-pricing";
 import { StructuredProductSetup } from "../components/structured-product-setup";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ArrowUpRight, Braces, CheckCircle2, Code2, Database, Globe2, ShieldCheck } from "lucide-react";
-import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
 import { ApiKeysNotice } from "@/components/api-keys-notice";
 import { CategoryApiPricing } from "@/components/category-api-pricing";
-import { GEOMACRO_AGENT_MICROPAYMENT, GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
-import { GEOMACRO_CAPABILITY_PRICING_VERSION } from "@/lib/capability-pricing-catalog";
+import { GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
 
 const TITLE = "Store & API | Geomacro";
 const DESCRIPTION =
@@ -49,9 +47,8 @@ function PricingPage() {
               <span className="block text-primary">Built for machines.</span>
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              One place for monthly access, one-time credits and pay-per-delivery
-              structured intelligence. Explore the products, compare real catalog
-              prices and prepare API requests without a charge.
+              One place for 30-day prepaid plans and one-time credits. Choose how to pay,
+              explore Geomacro's three API categories and prepare requests without a charge.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a href="#plans" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
@@ -59,9 +56,6 @@ function PricingPage() {
               </a>
               <a href="#payment-checkout" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-primary/50 bg-background/80 px-5 py-3 text-sm font-semibold text-primary transition hover:bg-primary/5">
                 Payment methods <ShieldCheck className="h-4 w-4" />
-              </a>
-              <a href="#api-products" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-background/70 px-5 py-3 text-sm font-medium transition hover:border-primary/50">
-                Explore API products <Code2 className="h-4 w-4" />
               </a>
             </div>
             <div className="mt-8 flex flex-wrap gap-x-5 gap-y-3 text-xs font-medium text-muted-foreground">
@@ -78,11 +72,8 @@ function PricingPage() {
               <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Machine intelligence</span>
               <Braces className="h-5 w-5 text-primary" aria-hidden />
             </div>
-            <p className="mt-6 text-3xl font-semibold tracking-tight">
-              {GEOMACRO_AGENT_MICROPAYMENT.minimum_usdc}–{GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc}
-              <span className="ml-2 text-sm font-medium text-muted-foreground">USDC</span>
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">Per eligible successful x402 delivery · Base</p>
+            <p className="mt-6 text-3xl font-semibold tracking-tight">Three categories</p>
+            <p className="mt-2 text-sm text-muted-foreground">Geopolitics · Macro / FX · Critical Minerals</p>
             <div className="my-6 h-px bg-border" />
             <div className="space-y-3 text-sm">
               {[
@@ -109,7 +100,6 @@ function PricingPage() {
           {[
             ["#plans", "Plans & credits"],
             ["#payment-checkout", "Payment methods"],
-            ["#api-products", "API products"],
             ["#api-endpoints", "Endpoints"],
             ["#prepare", "Try a request"],
             ["#developer-access", "Get access"],
@@ -128,29 +118,9 @@ function PricingPage() {
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Compare prepaid 30-day plans and one-time credit packs, then select PayPal/card
             or native Base/Polygon USDC directly on this page. Production transactions remain locked.
-            Credits and x402 per-delivery prices use separate billing methods.
           </p>
         </div>
         <LowBarrierPricing />
-      </section>
-
-      <section id="api-products" className="scroll-mt-40 pt-14 sm:pt-20">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="gm-eyebrow">Structured product catalog</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-              What every delivery includes.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Compare capabilities and exact approved USDC variants.
-              All products deliver structured Geomacro JSON. Evidence and limitations are included.
-            </p>
-          </div>
-          <span className="font-mono text-[11px] text-muted-foreground">{GEOMACRO_CAPABILITY_PRICING_VERSION}</span>
-        </div>
-        <div id="product-catalog" className="mt-8 scroll-mt-40">
-          <CapabilityPriceSchedule />
-        </div>
       </section>
 
       <section id="api-endpoints" className="scroll-mt-40 pt-14 sm:pt-20">
@@ -158,8 +128,8 @@ function PricingPage() {
           <p className="gm-eyebrow">Developer integration</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">One engine. Three categories.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Geopolitics, Macro / FX and Critical Minerals share one catalog.
-            The same governed pricing and exact-question contract applies to every API.
+            Geopolitics, Macro / FX and Critical Minerals share one intelligence engine.
+            Production paid API delivery is not yet active. This section lists endpoints, not purchasable per-delivery products.
           </p>
         </div>
         <CategoryApiPricing />

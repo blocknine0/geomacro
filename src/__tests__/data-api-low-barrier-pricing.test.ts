@@ -34,10 +34,10 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
       network: "eip155:8453", asset: "USDC",
       minimum_usdc: "0.02", maximum_usdc: "0.05",
     });
-    expect(page).toContain("GEOMACRO_AGENT_MICROPAYMENT.minimum_usdc");
-    expect(page).toContain("GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc");
-    expect(page).toContain("<CapabilityPriceSchedule />");
-    expect(page).toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
+    expect(page).not.toContain("GEOMACRO_AGENT_MICROPAYMENT.minimum_usdc");
+    expect(page).not.toContain("GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc");
+    expect(page).not.toContain("<CapabilityPriceSchedule />");
+    expect(page).not.toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
     expect(GEOMACRO_CAPABILITY_PRICING_VERSION).toBe("geomacro.capability-usdc.v2");
     const rows = publicCapabilityPricingCatalog();
     expect(rows.every((row) => row.capability !== "gri_read")).toBe(true);
@@ -58,7 +58,10 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
     expect(inline).not.toContain("createOrder(");
     expect(inline).not.toContain("sendTransaction(");
     expect(page).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
-    expect(page).toContain("<CapabilityPriceSchedule />");
+    expect(page).not.toContain("<CapabilityPriceSchedule />");
+    expect(page).not.toContain('id="api-products"');
+    expect(page).not.toContain('id="product-catalog"');
+    expect(page).not.toContain("What every delivery includes.");
     expect(page).not.toMatch(/checkout\.stripe\.com|buy\.stripe\.com|payment_authorized:\s*true/);
   });
 });

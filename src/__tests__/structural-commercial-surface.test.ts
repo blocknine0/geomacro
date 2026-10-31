@@ -13,7 +13,7 @@ describe("structural data commercial surface", () => {
     expect(page).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(page).toContain("<ApiKeysNotice />");
     expect(page).not.toContain("NewsJsonWorkbench");
-    expect(page).toContain("<CapabilityPriceSchedule />");
+    expect(page).not.toContain("<CapabilityPriceSchedule />");
     expect(page).not.toContain("bounded public structured-data digest");
   });
 
@@ -32,7 +32,8 @@ describe("structural data commercial surface", () => {
 
   it("preserves the methodology and source-rights boundary", () => {
     expect(page).toContain("Availability is checked for each request.");
-    expect(page).toContain("All products deliver structured Geomacro JSON.");
+    expect(page).not.toContain("All products deliver structured Geomacro JSON.");
+    expect(page).not.toContain("What every delivery includes.");
     expect(packageDoc).toContain("EVIDENCE_ONLY_NOT_IN_GRO_V02");
     expect(packageDoc).toContain("Unknown or review-required source rights fail closed");
   });

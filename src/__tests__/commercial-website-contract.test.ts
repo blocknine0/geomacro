@@ -39,7 +39,7 @@ describe("commercial website source-of-truth contract", () => {
 
   it("keeps commercial delivery bounded and production-gated", () => {
     expect(read("src/routes/pricing.tsx")).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
-    expect(read("src/routes/pricing.tsx")).toContain("<CapabilityPriceSchedule />");
+    expect(read("src/routes/pricing.tsx")).not.toContain("<CapabilityPriceSchedule />");
     expect(read("src/routes/data-api.tsx")).toContain('redirect({ to: "/pricing", replace: true })');
     expect(read("src/components/home/live-intelligence-showcase.tsx")).not.toContain("From 0.05 USDC");
     expect(read("src/components/agent-commerce-status.tsx")).not.toContain("USDC/call");

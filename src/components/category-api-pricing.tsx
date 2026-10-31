@@ -33,13 +33,12 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
     >
       <p className="gm-eyebrow">Three category APIs</p>
       <h2 id="category-api-pricing-title" className="mt-2 text-2xl font-semibold tracking-tight">
-        One price schedule across all three APIs.
+        Three category APIs. One intelligence engine.
       </h2>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-        Each category uses the same canonical intelligence engine. Pricing follows the verified
-        query complexity, not the category. There is no category surcharge.
+        Each category uses the same canonical intelligence engine. Self-service per-delivery
+        purchases are not offered yet. There is no category surcharge.
       </p>
-      {!showPrices && <a href="#product-catalog" className="gm-text-link mt-4">See the single price schedule below</a>}
       <div className="mt-5 overflow-x-auto rounded-xl border border-border">
         <table className="w-full min-w-[300px] text-left text-sm">
           <caption className="sr-only">
@@ -91,7 +90,7 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
           merchant resources or separate charges.
         </p>
         <p>
-          These are published catalog prices, not payment offers. An exact request must pass live
+          Per-delivery pricing is not available for public checkout yet. An exact request must pass
           evidence, commercial-rights, signing and delivery checks before it can become chargeable.
           Production USDC payments remain locked pending separate approval.
         </p>

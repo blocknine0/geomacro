@@ -19,7 +19,8 @@ describe("store catalog and launch availability", () => {
     const html=renderToStaticMarkup(createElement(CapabilityPriceSchedule,{compact:true}));
     expect((html.match(/<article /g)??[])).toHaveLength(7);
     expect(html).not.toContain("data-price-usdc=");
-    expect(html).toContain('/pricing#product-catalog');
+    expect(html).not.toContain('/pricing#product-catalog');
+    expect(html).toContain('Individual-delivery purchases are not available yet.');
     expect(html).toContain("What you receive");
   });
   it("renders every approved capability and exact variant price from the canonical schedule", () => {
