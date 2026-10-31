@@ -35,11 +35,12 @@ describe("Ask Geomacro realtime search fallback", () => {
     expect(verifier).toContain("s.same_event_corrob_verified!==false");
     expect(verifier).toContain("s.severity!==null");
     expect(orchestrator).toContain("selectOfficialNewsCategories(question)");
-    expect(orchestrator).toContain("what (?:has )?changed today");
+    expect(orchestrator).toContain("what\\s+(?:has\\s+)?changed\\s+today");
+    expect(orchestrator).toContain("askDomains(q)");
     expect(orchestrator).toContain("signals.map(signal => signal.category)");
     expect(orchestrator).toContain("latest_original_published_at: latestOriginal");
     expect(type).toContain("latest_original_published_at?: string");
-    expect(orchestrator).toContain("rest.split(/\\s+/).some");
+    expect(orchestrator).toContain("rest.split(/\\s+/u).some");
     expect(orchestrator).toContain("insufficient_evidence: false");
     expect(orchestrator).toContain("low_confidence: true");
     expect(orchestrator).toContain("mean_relevance: null");
@@ -47,7 +48,7 @@ describe("Ask Geomacro realtime search fallback", () => {
     expect(orchestrator).toContain('intelligence_tier: "official_observation_unscored"');
     expect(orchestrator).toContain("signed_gro_generated: false");
     expect(orchestrator).toContain("independent_same_event_verification: false");
-    expect(orchestrator).toContain("rest.split(/\\s+/).some");
+    expect(orchestrator).toContain("rest.split(/\\s+/u).some");
     expect(orchestrator).not.toContain("signRiskObject");
     expect(orchestrator).not.toContain("settlePayment");
     expect(type).toContain('intelligence_tier?: "official_observation_unscored"');

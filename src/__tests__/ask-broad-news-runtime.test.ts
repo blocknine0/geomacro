@@ -48,6 +48,30 @@ describe('free broad news request avoids unavailable scored storage and model ca
   expect(deps.original).not.toHaveBeenCalled();
   expect(deps.shared).toHaveBeenCalledWith(['macro']);
  });
+ it.each([
+  ['Can you summarize recent geopolitical developments?', ['geopolitics']],
+  ['Please give me the latest macroeconomic news', ['macro']],
+  ['Show recent critical minerals updates', ['rare_earth']],
+  ['Latest geopolitics and macro news', ['geopolitics','macro']],
+ ])('routes broad natural-language news through the matching journal: %s', async (question, categories) => {
+   const response={summary:'An issuer observation',insufficient_evidence:false};
+   deps.shared.mockResolvedValueOnce({signals:[{
+     id:'broad-news-proof',category:categories[0],title:'Original publication',
+     what_changed:'An official update was observed.',why_it_matters:'Context only.',
+     published_at:new Date().toISOString(),
+   }],journal_categories_reused:categories,live_categories_queried:[]});
+   const result=await answerAskQuestion(question);
+   expect(result.insufficient_evidence).toBe(false);
+   expect(deps.shared).toHaveBeenCalledWith(categories);
+   expect(deps.hybrid).not.toHaveBeenCalled();
+ });
+ it.each(['Latest macro news in India','Latest lithium news','Current copper mining plans in Chile','What is the latest sanctions status in Iran?'])(
+  'avoids substituting unrelated broad journal releases for a scoped question: %s', async question => {
+   deps.hybrid.mockResolvedValueOnce({summary:'Governed path',insufficient_evidence:false});
+   const answer=await answerAskQuestion(question);
+   expect(answer.summary).toBe('Governed path');
+   expect(deps.shared).not.toHaveBeenCalled();
+ });
  it.each(['Latest macro news in India','What is the current GRI?','Explain lithium risk for China'])(
   'keeps country and scored questions on the governed path: %s',async question=>{
    const prior={summary:'Governed assessment',insufficient_evidence:false};

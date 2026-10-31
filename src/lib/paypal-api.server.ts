@@ -78,7 +78,7 @@ export async function paypalAccessToken(config: PayPalServerConfiguration, fetch
       "Accept": "application/json",
     },
     body: "grant_type=client_credentials",
-    redirect: "error",
+    redirect: "manual",
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   const json = await paypalJson(response);
@@ -135,7 +135,7 @@ export async function verifyPayPalWebhook(input: {
   const accessToken = await paypalAccessToken(config, fetcher);
   const verification = await fetcher(config.baseUrl + "/v1/notifications/verify-webhook-signature", {
     method: "POST",
-    redirect: "error",
+    redirect: "manual",
     signal: AbortSignal.timeout(TIMEOUT_MS),
     headers: {
       "Authorization": "Bearer " + accessToken,

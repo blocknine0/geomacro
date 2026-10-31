@@ -35,6 +35,15 @@ begin
     raise exception 'invalid commercial credit account input';
   end if;
 
+  -- In fresh-schema replays, this migration is ordered after 20261031
+  -- guard migrations. New paid tiers must not auto-provision credits.
+  if p_tier in ('starter_dev','pro_analyst','business_pilot') then
+    raise exception 'PAID_CREDITS_REQUIRE_VERIFIED_SETTLEMENT';
+  end if;
+  perform pg_advisory_xact_lock(
+    hashtextextended(p_principal_type || ':' || p_principal_id, 0)
+  );
+
   select * into v_account
   from public.commercial_credit_accounts
   where principal_type = p_principal_type
