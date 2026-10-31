@@ -32,7 +32,8 @@ describe("structural data commercial surface", () => {
 
   it("preserves the methodology and source-rights boundary", () => {
     expect(page).toContain("Availability is checked for each request.");
-    expect(page).toContain("All products deliver structured Geomacro JSON.");
+    expect(page).not.toContain("All products deliver structured Geomacro JSON.");
+    expect(page).not.toContain("What every delivery includes.");
     expect(packageDoc).toContain("EVIDENCE_ONLY_NOT_IN_GRO_V02");
     expect(packageDoc).toContain("Unknown or review-required source rights fail closed");
   });
