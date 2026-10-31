@@ -442,6 +442,15 @@ describe("website lock governance", () => {
     expect(askApproval?.funds_authorized).toBe(false);
     expect(askApproval?.published_source_sha_unchanged).toBe(true);
     expect(askApproval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    const cardReadiness = config.approved_card_to_usdc_no_funds_readiness_20261031;
+    expect(cardReadiness?.approved_source_commit).toBe("2bbaeeb2aba85459b60e96bc322659fd141c6f8c");
+    expect(cardReadiness?.approved_paths).toEqual(["src/components/low-barrier-pricing.tsx"]);
+    expect(cardReadiness?.checkout_enabled).toBe(false);
+    expect(cardReadiness?.provider_verified).toBe(false);
+    expect(cardReadiness?.customer_funds_collected).toBe(false);
+    expect(cardReadiness?.exact_blob_lock).toBe(true);
+    expect(cardReadiness?.predge_unchanged).toBe(true);
+    expect(cardReadiness?.global_risk_presentation_unchanged).toBe(true);
     const siteApi = config.approved_sitewide_api_endpoint_domain_labels_20261031;
     expect(siteApi?.approved_source_commit).toBe("c7b0ffb0e234521a367252f915bf4aec9a8d3133");
     expect(siteApi?.approved_paths).toEqual([
