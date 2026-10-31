@@ -37,7 +37,9 @@ export function createPhase2iSingleSweepOriginalIndex({pinnedCategories,topics}=
   if(previous){
    // A reused immutable permalink/clock claiming different original titles
    // is ambiguous: quarantine all its category projections, never overwrite.
-   if(previous.title!==raw.title){
+   if(previous.title!==raw.title||
+      previous.sourceUrl!==raw.source_url||
+      previous.issuerContextCountryIso3!==(raw.issuer_context_country_iso3??null)){
     originals.delete(key);conflicted.add(key);quarantined++;return;
    }
    if(previous.categories.has(raw.category))repeated++;
@@ -45,7 +47,9 @@ export function createPhase2iSingleSweepOriginalIndex({pinnedCategories,topics}=
    return;
   }
   originals.set(key,{articleUrl:article.href,publishedAt:raw.published_at,
-   sourceId:source.hostname,title:raw.title,categories:new Set([raw.category])});
+   sourceId:source.hostname,sourceUrl:raw.source_url,
+   issuerContextCountryIso3:raw.issuer_context_country_iso3??null,
+   title:raw.title,categories:new Set([raw.category])});
  };
  const finish=()=>{
   const candidates=[];
@@ -53,7 +57,8 @@ export function createPhase2iSingleSweepOriginalIndex({pinnedCategories,topics}=
    for(const category of CATEGORIES)if(original.categories.has(category))
     candidates.push({category,articleUrl:original.articleUrl,
      publishedAt:original.publishedAt,title:original.title,
-     sourceId:original.sourceId,credit:null});
+     sourceId:original.sourceId,sourceUrl:original.sourceUrl,
+     issuerContextCountryIso3:original.issuerContextCountryIso3,credit:null});
   return Object.freeze({
    candidates,
    summary:Object.freeze({
