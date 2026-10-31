@@ -75,6 +75,12 @@ on:
       - "scripts/lib/private-osint-official-priority-sources.test.mjs"
       - "scripts/lib/private-osint-national-primary-scope.mjs"
       - "scripts/lib/private-osint-national-primary-scope.test.mjs"
+      - "scripts/lib/private-osint-mineral-first-party-sources.mjs"
+      - "scripts/lib/private-osint-mineral-first-party-sources.test.mjs"
+      - "config/private-osint-mineral-first-party-rss-expansion.v1.json"
+      - "src/lib/mineral-statistical-official.server.ts"
+      - "src/lib/mineral-statistical-official.server.test.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
       - "src/lib/mineral-statistical-baseline.ts"
       - "src/lib/mineral-statistical-baseline.test.ts"
       - "src/lib/on-demand-research-answer.server.ts"
@@ -175,6 +181,12 @@ on:
       - "scripts/lib/private-osint-official-priority-sources.test.mjs"
       - "scripts/lib/private-osint-national-primary-scope.mjs"
       - "scripts/lib/private-osint-national-primary-scope.test.mjs"
+      - "scripts/lib/private-osint-mineral-first-party-sources.mjs"
+      - "scripts/lib/private-osint-mineral-first-party-sources.test.mjs"
+      - "config/private-osint-mineral-first-party-rss-expansion.v1.json"
+      - "src/lib/mineral-statistical-official.server.ts"
+      - "src/lib/mineral-statistical-official.server.test.ts"
+      - "src/lib/mainnet-intelligence-endpoint.server.ts"
       - "src/lib/mineral-statistical-baseline.ts"
       - "src/lib/mineral-statistical-baseline.test.ts"
       - "src/lib/on-demand-research-answer.server.ts"
@@ -257,6 +269,7 @@ jobs:
           node --test scripts/lib/private-osint-retired-sources.test.mjs
           node --test scripts/lib/private-osint-global-hub-overlay.test.mjs scripts/lib/private-osint-official-priority-sources.test.mjs
           node --test scripts/lib/private-osint-national-primary-scope.test.mjs
+          node --test scripts/lib/private-osint-mineral-first-party-sources.test.mjs
           node --test scripts/lib/private-osint-global-sources.test.mjs
           node --test scripts/lib/private-osint-national-gap-feeds.test.mjs
           node scripts/ops/audit-private-osint-publisher-coverage.mjs > /tmp/geomacro-osint-publisher-coverage.json
