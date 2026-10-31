@@ -16,13 +16,13 @@ describe("three-category API pricing presentation", () => {
     expect((html.match(/data-api-id=/g) ?? [])).toHaveLength(3);
     expect(html).toContain('data-api-id="geopolitics"');
     expect(html).toContain("GEOMACRO Geopolitics API");
-    expect(html).toContain("/api/v1/intelligence/geopolitics");
+    expect(html).toContain("geomacro.live /api/v1/intelligence/geopolitics");
     expect(html).toContain('data-api-id="macro_fx"');
     expect(html).toContain("GEOMACRO Macro/FX API");
-    expect(html).toContain("/api/v1/intelligence/macro-fx");
+    expect(html).toContain("geomacro.live /api/v1/intelligence/macro-fx");
     expect(html).toContain('data-api-id="critical_minerals"');
     expect(html).toContain("GEOMACRO Critical Minerals API");
-    expect(html).toContain("/api/v1/intelligence/critical-minerals");
+    expect(html).toContain("geomacro.live /api/v1/intelligence/critical-minerals");
     for (const [variant, amount] of Object.entries(GEOMACRO_CAPABILITY_PRICES.intelligence_query)) {
       expect((html.match(new RegExp(`data-variant="${variant}" data-price-usdc="${amount}"`, "g")) ?? []))
         .toHaveLength(3);
@@ -34,6 +34,7 @@ describe("three-category API pricing presentation", () => {
     expect(html).toContain("no category surcharge");
     expect(html).toContain("not three separate merchant resources or separate charges");
     expect(html).toContain("GEOMACRO Intelligence API");
+    expect(html).toContain("geomacro.live /api/v1/intelligence/query");
     expect(html).not.toContain("POST ");
     expect(html).toContain("Production USDC payments remain locked pending separate approval.");
   });

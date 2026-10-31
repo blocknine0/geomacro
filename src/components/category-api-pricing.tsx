@@ -63,8 +63,8 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
                   <span className="mt-1 block text-xs font-normal text-muted-foreground">
                     Official Geomacro intelligence endpoint
                   </span>
-                  <code className="mt-2 block break-all text-xs font-normal text-muted-foreground">
-                    {api.path}
+                  <code className="mt-2 block break-all text-xs font-medium text-primary">
+                    geomacro.live {api.path}
                   </code>
                 </th>
                 {showPrices && VARIANTS.map((variant) => (
@@ -87,7 +87,7 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
         <p>
           All three branded category APIs use the canonical
           <span className="mx-1 font-semibold">GEOMACRO Intelligence API</span>
-          at <code>/api/v1/intelligence/query</code>; they are not three separate
+          at <code>geomacro.live /api/v1/intelligence/query</code>; they are not three separate
           merchant resources or separate charges.
         </p>
         <p>
