@@ -133,7 +133,7 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
         ))}
       </div>
       )}
-      {!showPrices && <a href="/pricing#product-catalog" className="gm-text-link mt-4">Compare prices in the Store <ArrowUpRight className="h-4 w-4" /></a>}
+      {!showPrices && <p className="mt-3 text-xs text-muted-foreground">Individual-delivery purchases are not available yet.</p>}
       <div
         className={
           compact
