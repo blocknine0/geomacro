@@ -5,6 +5,7 @@ import { readQualifiedStructuralEvidence } from "./agent-query-qualified-evidenc
 import { isStructuralStoreProduct } from "./store-product-selection";
 import { assertStoreStructuralEvidence, storeSignedObjectLifecycle } from "./store-product-evidence.server";
 import {exactGeomacroUsdcRail} from "./usdc-native-rail-identities";
+import {assertHighAuthorityPaidIntelligenceScope} from "./high-authority-paid-intelligence";
 import {
   resolveVerifiedPublishedPlanPrice,
   type VerifiedCapabilityPriceProof,
@@ -36,6 +37,12 @@ export function resolveEligiblePublishedCapabilityPrice(
       availability.ineligible_source_ids.length !== 0) {
     throw Error("CAPABILITY_PRICE_ELIGIBILITY_UNVERIFIED_NO_CHARGE");
   }
+
+  // New, explicitly selected Intelligence Query offers are restricted to the
+  // first-launch official, pre-qualified dataset universe. Existing immutable
+  // settled replays never call this new-offer price eligibility function.
+  if (plan.product?.capability === "intelligence_query")
+    assertHighAuthorityPaidIntelligenceScope(availability);
 
   const structural = plan.delivery_tier === "structural_baseline";
   const signed = plan.required_modules.includes("signed_risk_object");
