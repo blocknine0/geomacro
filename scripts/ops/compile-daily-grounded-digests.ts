@@ -115,25 +115,50 @@ export async function readDailyArchiveFromCanonicalD1({
  const endpoint="https://api.cloudflare.com/client/v4/accounts/"+
   env.CLOUDFLARE_ACCOUNT_ID+"/d1/database/"+env.D1_DATABASE_ID+"/query";
  const start=new Date(now.getTime()-72*3600_000).toISOString();
- const sql="SELECT record_id,category,raw_sha256,raw_json,"+
-  "b2_object_sha256,b2_archived_at,original_published_at,first_ingested_at "+
-  "FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL "+
-  "AND b2_archived_at IS NOT NULL AND original_published_at >= ? "+
-  "ORDER BY original_published_at DESC,record_id LIMIT ?";
- const res=await fetchImpl(endpoint,{method:"POST",redirect:"error",
-  headers:{"Authorization":"Bearer "+env.CLOUDFLARE_API_TOKEN,
-   "Content-Type":"application/json"},
-  body:JSON.stringify({sql,params:[start,MAX_ROWS+1]}),
-  signal:AbortSignal.timeout(15000)});
- const doc=await res.json().catch(()=>null);
- const result=doc?.result?.[0];
- if(!res.ok||doc?.success!==true||result?.success===false||
-   !Array.isArray(result?.results)||result.results.length>MAX_ROWS+1)
-  fail("CANONICAL_D1_READ_FAILED");
- // A saturated page is not a complete corpus; do not claim complete
- // country coverage or sell incomplete digests. Cap read costs safely.
- return {rows:result.results as Phase2hArchivedRow[],
-   fullScan:result.results.length<=MAX_ROWS};
+ // A 241-row raw_json response can exceed Cloudflare's D1 provider API
+ // response-size limit (the same failure repaired in Phase2H PR #3267).
+ // Eight original rows per request is <=96 KiB; keyset pagination avoids
+ // OFFSET instability and never re-reads a raw row. Once capped, say so.
+ const pageSize=8;
+ const rows:Phase2hArchivedRow[]=[];
+ let cursor:{published:string;id:string}|null=null;
+ const seen=new Set<string>();
+ while(rows.length<=MAX_ROWS){
+  const paging=cursor!==null;
+  const sql="SELECT record_id,category,raw_sha256,raw_json,"+
+   "b2_object_sha256,b2_archived_at,original_published_at,first_ingested_at "+
+   "FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL "+
+   "AND b2_archived_at IS NOT NULL AND b2_archived_at <= ? "+
+   "AND original_published_at >= ? "+
+   (paging?"AND (original_published_at < ? OR (original_published_at = ? AND record_id > ?)) ":"")+
+   "ORDER BY original_published_at DESC,record_id LIMIT ?";
+  const params=paging
+    ?[now.toISOString(),start,cursor!.published,cursor!.published,cursor!.id,pageSize]
+    :[now.toISOString(),start,pageSize];
+  const res=await fetchImpl(endpoint,{method:"POST",redirect:"error",
+   headers:{"Authorization":"Bearer "+env.CLOUDFLARE_API_TOKEN,
+    "Content-Type":"application/json"},
+   body:JSON.stringify({sql,params}),
+   signal:AbortSignal.timeout(15000)});
+  const doc=await res.json().catch(()=>null);
+  const result=doc?.result?.[0];
+  if(!res.ok||doc?.success!==true||result?.success===false||
+    !Array.isArray(result?.results)||result.results.length>pageSize)
+   fail("CANONICAL_D1_PAGE_UNAVAILABLE");
+  for(const item of result.results as Phase2hArchivedRow[]){
+   if(typeof item.record_id!=="string"||!SHA.test(item.record_id)||
+      typeof item.raw_json!=="string"||item.raw_json.length>12000||
+      typeof item.original_published_at!=="string"||
+      seen.has(item.record_id))
+    fail("CANONICAL_D1_PAGE_INVALID");
+   seen.add(item.record_id);rows.push(item);
+  }
+  if(result.results.length<pageSize)break;
+  const last=result.results[result.results.length-1] as Phase2hArchivedRow;
+  cursor={published:last.original_published_at,id:last.record_id};
+  if(rows.length>MAX_ROWS)break;
+ }
+ return {rows,fullScan:rows.length<=MAX_ROWS};
 }
 export async function runDailyEvidenceDigest({
  env=process.env,now=new Date(),read=readDailyArchiveFromCanonicalD1,
