@@ -42,20 +42,3 @@ jobs:
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
           category: "/language:javascript-typescript"
-      - name: CodeQL safe finding-location receipt
-        if: github.event_name == 'pull_request'
-        run: |
-          node --input-type=module <<'NODE'
-          import {readFileSync,existsSync} from 'node:fs';
-          const path='../results/javascript.sarif';
-          if(!existsSync(path)){console.log('CODEQL_SARIF_NOT_PRESENT');process.exit(0);}
-          const doc=JSON.parse(readFileSync(path,'utf8'));
-          for(const run of doc.runs??[])for(const finding of run.results??[]){
-            const where=finding.locations?.[0]?.physicalLocation;
-            const path=where?.artifactLocation?.uri??'';
-            if(!path.includes('mineral-statistical-official')&&!path.includes('private-osint-mineral'))continue;
-            console.log(JSON.stringify({schema:'geomacro.codeql-safe-rule-location.v1',rule_id:finding.ruleId,
-              file:path,line:where?.region?.startLine??null,
-              severity:finding.level??null}));
-          }
-          NODE
