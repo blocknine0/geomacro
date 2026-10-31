@@ -443,7 +443,7 @@ describe("website lock governance", () => {
     expect(askApproval?.published_source_sha_unchanged).toBe(true);
     expect(askApproval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
     const unified = config.approved_unified_store_api_20261031;
-    expect(unified?.approved_source_commit).toBe("e7f60c60e33ef094abf91b9809f0e9956a61a7a1");
+    expect(unified?.approved_source_commit).toBe("cba23f57f06f7952a7b39eab751d44d316cb8200");
     expect(unified?.approved_paths).toEqual([
       "src/routes/pricing.tsx", "src/routes/data-api.tsx", "src/components/site-shell.tsx",
     ]);

@@ -862,7 +862,7 @@
   },
   "approved_unified_store_api_20261031": {
     "approval": "Founder explicitly requested on 31 October 2026 to combine /data-api and Store into ONE polished responsive commercial storefront at /pricing; preserve the original /data-api URL through a no-payment redirect.",
-    "approved_source_commit": "e7f60c60e33ef094abf91b9809f0e9956a61a7a1",
+    "approved_source_commit": "cba23f57f06f7952a7b39eab751d44d316cb8200",
     "approved_paths": [
       "src/routes/pricing.tsx",
       "src/routes/data-api.tsx",
