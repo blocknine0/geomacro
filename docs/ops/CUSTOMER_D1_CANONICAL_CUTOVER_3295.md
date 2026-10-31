@@ -5,7 +5,7 @@ This document records the actual production contract as of 2026-11-01. The sourc
 ## Confirmed architecture and naming
 
 - Existing production D1: `geomacro-control-plane`; Wrangler binding `DB`.
-- Existing protected GitHub production environment: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `D1_DATABASE_ID`. There is **no** proof that `CLOUDFLARE_D1_TOKEN` or `DATABASE_ID` are configured aliases.
+- Existing protected GitHub production environment uses `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. `D1_DATABASE_ID` was observed **missing** from the dedicated acceptance job, so acceptance now discovers the uniquely named existing `geomacro-control-plane` D1 using Wrangler; it does not create a database. There is **no** proof that `CLOUDFLARE_D1_TOKEN` or `DATABASE_ID` are configured aliases.
 - The existing `GEOMACRO_SUPABASE_RUNTIME_MODE` governs legacy application Supabase access; it does **not** select the customer D1 datastore. There is no safe `CUSTOMER_DB_MODE=canonical` cutover in the current customer runtime.
 - `src/lib/customer-auth.server.ts` still invokes the pinned Supabase Auth API; `src/lib/customer-commercial.server.ts` still invokes Supabase/PostgREST and PostgreSQL RPCs. Neither understands D1 SQLite.
 - `legacy_customer_private_shadow` is preservation-only. It is not an independent customer principal, payment balance, or credential authority. Keep that shadow intact.
@@ -15,7 +15,7 @@ This document records the actual production contract as of 2026-11-01. The sourc
 
 `workers/control-plane/migrations/0090_customer_canonical_d1.sql` adds `users`, `sessions`, `credit_ledger`, `api_keys`, immutable payment receipts and grants, and a separated no-funds probe table. `0091_customer_canonical_integrity_triggers.sql` guards paid-only funding/debits, API-key creation, revocation, and append-only ledger integrity. The migration contains **no initial customers, funds, or fake entitlements**.
 
-On main, `customer-canonical-d1-schema-acceptance.yml` runs pinned Wrangler migrations on the exact existing production database after checking the Cloudflare account and D1 ID; it proves read access with `SELECT COUNT(*)` and write/read/delete through `customer_d1_integrity_probe`, without using customer data or sending payments. CI on PRs checks migration syntax and basic invariants with SQLite only.
+On main, `customer-canonical-d1-schema-acceptance.yml` runs pinned Wrangler migrations on the uniquely named existing production database under the configured Cloudflare account; it proves read access with `SELECT COUNT(*)` and write/read/delete through `customer_d1_integrity_probe`, without using customer data or sending payments. CI on PRs checks migration syntax and basic invariants with SQLite only.
 
 ### Owner-independent canonical D1 checks
 
