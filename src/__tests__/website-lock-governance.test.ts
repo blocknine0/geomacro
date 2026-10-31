@@ -442,6 +442,21 @@ describe("website lock governance", () => {
     expect(askApproval?.funds_authorized).toBe(false);
     expect(askApproval?.published_source_sha_unchanged).toBe(true);
     expect(askApproval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    const siteApi = config.approved_sitewide_api_endpoint_domain_labels_20261031;
+    expect(siteApi?.approved_source_commit).toBe("c7b0ffb0e234521a367252f915bf4aec9a8d3133");
+    expect(siteApi?.approved_paths).toEqual([
+      "src/components/category-api-pricing.tsx",
+      "src/components/category-api-pricing.test.tsx",
+      "src/components/api-endpoint-directory.tsx",
+      "public/llms.txt",
+    ]);
+    expect(siteApi?.display_prefix).toBe("geomacro.live /api/");
+    expect(siteApi?.internal_catalog_consistent).toBe(true);
+    expect(siteApi?.backend_http_methods_unchanged).toBe(true);
+    expect(siteApi?.payment_activation_unchanged).toBe(true);
+    expect(siteApi?.global_risk_presentation_unchanged).toBe(true);
+    expect(siteApi?.predge_unchanged).toBe(true);
+    expect(siteApi?.exact_blob_lock).toBe(true);
     const apiBranding = config.approved_geomacro_api_branding_20261031;
     expect(apiBranding?.approved_source_commit).toBe("a91aaba335f0c6ca94057238aa41afdb2da2dbe2");
     expect(apiBranding?.approved_paths).toEqual(["src/components/category-api-pricing.tsx", "src/components/category-api-pricing.test.tsx"]);

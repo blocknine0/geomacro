@@ -20,7 +20,7 @@ import {GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION}
  from "./capability-structured-output-contract";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
  from "./geomacro-structured-commercial-license";
-import {GEOMACRO_OFFICIAL_API_CATALOG,GEOMACRO_OFFICIAL_API_DISPLAY_NAMES}
+import {GEOMACRO_OFFICIAL_API_CATALOG,GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,GEOMACRO_OFFICIAL_API_DISPLAY_URLS,formatGeomacroApiDisplayPath}
  from "./geomacro-official-api-branding";
 import {GEOMACRO_USDC_NETWORKS_PATH,GEOMACRO_USDC_QUOTE_PREFLIGHT_PATH,
   publicGeomacroUsdcRailDiscovery} from "./geomacro-multichain-usdc.server";
@@ -75,9 +75,11 @@ export function officialGeomacroAgentDiscovery(){
   store_request_boundary:"Product selection requests a contract; actual evidence, original clocks, source rights and prepared immutable bytes are required before any quote.",
   official_api_display_names:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,
   official_api_catalog:GEOMACRO_OFFICIAL_API_CATALOG,
+  official_api_display_urls:GEOMACRO_OFFICIAL_API_DISPLAY_URLS,
   category_agents:GEOMACRO_CATEGORY_AGENT_PROFILES.map(profile=>({
    ...profile,
    display_name:GEOMACRO_OFFICIAL_API_CATALOG.find(api=>api.path===profile.api)?.name ?? profile.name,
+   display_url:formatGeomacroApiDisplayPath(profile.api),
    agent_endpoint:OFFICIAL_AGENT_PATH,
    agent_request:{tool:profile.tool,arguments:{country_iso3:"IND",
     question:profile.id==="geopolitics"?"What are the geopolitical risks for India?":
@@ -100,15 +102,15 @@ export function officialGeomacroAgentDiscovery(){
   discovery_does_not_prove_delivery:true,
   current_paid_availability:"REQUIRES_PER_REQUEST_LIVE_NO_FUNDS_PREFLIGHT",
   buyer_integration:{
-   discover:"GET /api/v1/agent?view=openapi",
-   prices:"GET /api/v1/pricing",
-   baseline_only_discovery:"GET /api/v1/intelligence/availability",
-   baseline_only_preflight:"POST /api/v1/intelligence/availability",
-   all_store_products_data_preflight:"POST /api/v1/intelligence/products-availability",
+   discover:formatGeomacroApiDisplayPath("/api/v1/agent") + "?view=openapi",
+   prices:formatGeomacroApiDisplayPath("/api/v1/pricing"),
+   baseline_only_discovery:formatGeomacroApiDisplayPath("/api/v1/intelligence/availability"),
+   baseline_only_preflight:formatGeomacroApiDisplayPath("/api/v1/intelligence/availability"),
+   all_store_products_data_preflight:formatGeomacroApiDisplayPath("/api/v1/intelligence/products-availability"),
    store_preflight_scope:"exact approved product variant, current governed data only; no funds or buyer payload",
    baseline_preflight_scope:"structural_baseline_only",
-   payable_resource:"POST /api/v1/intelligence/query",
-   free_explorer:"GET /api/v1/finds",
+   payable_resource:formatGeomacroApiDisplayPath("/api/v1/intelligence/query"),
+   free_explorer:formatGeomacroApiDisplayPath("/api/v1/finds"),
    safe_order:["discover","prices","all_store_products_data_preflight","payable_resource"],
    preflight_does_not_charge:true,
    no_automatic_payment_retry:true,
@@ -246,6 +248,7 @@ export function officialGeomacroAgentOpenApi(){
   "x-geomacro":{
    official_api_display_names:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,
    official_api_catalog:GEOMACRO_OFFICIAL_API_CATALOG,
+  official_api_display_urls:GEOMACRO_OFFICIAL_API_DISPLAY_URLS,
    public_endpoint_catalog:GEOMACRO_PUBLIC_API_ENDPOINTS,
    branding_does_not_change_http_method:true,
    pricing_version:GEOMACRO_CAPABILITY_PRICING_VERSION,

@@ -16,7 +16,7 @@ import {publicCapabilityPricingCatalog,GEOMACRO_CAPABILITY_PRICING_VERSION}
   from "./capability-pricing-catalog";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY}
   from "./geomacro-structured-commercial-license";
-import {GEOMACRO_OFFICIAL_API_CATALOG,GEOMACRO_OFFICIAL_API_DISPLAY_NAMES}
+import {GEOMACRO_OFFICIAL_API_CATALOG,GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,GEOMACRO_OFFICIAL_API_DISPLAY_URLS}
   from "./geomacro-official-api-branding";
 
 const CANONICAL_PRODUCT = "geomacro_adaptive_risk_intelligence_v1" as const;
@@ -137,6 +137,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
     categories: ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
     officialApiDisplayNames:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,
     officialApiCatalog:GEOMACRO_OFFICIAL_API_CATALOG,
+    officialApiDisplayUrls:GEOMACRO_OFFICIAL_API_DISPLAY_URLS,
     officialApis: {
       canonical: `${origin}/api/v1/intelligence/query`,
       geopolitics: `${origin}/api/v1/intelligence/geopolitics`,

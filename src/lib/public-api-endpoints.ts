@@ -1,8 +1,8 @@
-import { GEOMACRO_OFFICIAL_API_CATALOG } from "./geomacro-official-api-branding";
+import { GEOMACRO_OFFICIAL_API_CATALOG, formatGeomacroApiDisplayPath } from "./geomacro-official-api-branding";
 import { GEOMACRO_STORE_REQUEST_EXAMPLES } from "./store-product-examples";
 
 /** Shared developer/agent catalog. A listed route does not establish readiness. */
-export const GEOMACRO_PUBLIC_API_ENDPOINTS = [
+const TRANSPORT_ENDPOINTS = [
   ...GEOMACRO_OFFICIAL_API_CATALOG.map(api => ({
     ...api, methods: ["GET", "POST"],
     purpose: api.id === "agent" ? "Discover tools; POST a tool and arguments envelope."
@@ -36,6 +36,11 @@ export const GEOMACRO_PUBLIC_API_ENDPOINTS = [
   { id: "a2a", name: "A2A discovery", methods: ["GET"],
     path: "/api/a2a", purpose: "Agent card and protocol routes.", access: "Discovery; tasks follow their own authentication." },
 ] as const;
+
+export const GEOMACRO_PUBLIC_API_ENDPOINTS = TRANSPORT_ENDPOINTS.map(endpoint => ({
+  ...endpoint,
+  display_url: formatGeomacroApiDisplayPath(endpoint.path),
+}));
 
 export const GEOMACRO_API_EXAMPLES = {
   ...GEOMACRO_STORE_REQUEST_EXAMPLES,

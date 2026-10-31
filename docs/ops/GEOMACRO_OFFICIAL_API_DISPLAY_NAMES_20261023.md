@@ -15,3 +15,21 @@ The display catalog is defined once in `src/lib/geomacro-official-api-branding.t
 **Do not replace an HTTP verb with GEOMACRO on the wire.** HTTP clients must still send a POST request; `GEOMACRO` is a product brand, not an HTTP method. Existing `official_api` method/path strings are retained for backward compatibility, and integrations should use the separate official brand-name field for human presentation.
 
 No new API engine, no price changes, no x402 payment authorization, no real-funds activation, no seller wallet change, no Supabase, and no edits to founder-locked public website files. The three category routes still dispatch into the shared canonical governed engine. Actual current signed commercial eligibility and production health remain independently verified and cannot be inferred from names.
+
+
+## 31 October 2026 — universal internal & website display label
+
+**Every internal or customer-facing display of a GeoMacro API address** uses
+`geomacro.live /api/...` (hostname, one space, canonical endpoint path). This
+includes the Store, developer directory, agent discovery, pricing manifest,
+machine marketplace descriptions, and internal operations dashboards.
+
+Do not render `POST /api/...` or `GET /api/...` as an API **name**.
+Transport methods remain `POST`/`GET` in actual HTTP requests,
+OpenAPI operations, curl invocations, signature validation and x402 rules.
+The pricing catalog exposes `official_api_transport_legacy` for clients
+requiring the old transport-labeled strings.
+
+Use `formatGeomacroApiDisplayPath(path)` from
+`src/lib/geomacro-official-api-branding.ts` for any new display.
+Do not duplicate literal hostname or derive API payment authority from a label.

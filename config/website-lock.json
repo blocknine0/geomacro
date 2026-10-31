@@ -902,5 +902,28 @@
     "global_risk_presentation_unchanged": true,
     "payment_activation_unchanged": true,
     "exact_blob_lock": true
+  },
+  "approved_sitewide_api_endpoint_domain_labels_20261031": {
+    "approval": "Founder explicitly requires ALL website and internal human-facing API labels, agent discovery URLs, pricing manifest names, developer directory, and structured product descriptions to render geomacro.live /api/... instead of HTTP method plus endpoint.",
+    "approved_source_commit": "c7b0ffb0e234521a367252f915bf4aec9a8d3133",
+    "approved_paths": [
+      "src/components/category-api-pricing.tsx",
+      "src/components/category-api-pricing.test.tsx",
+      "src/components/api-endpoint-directory.tsx",
+      "public/llms.txt"
+    ],
+    "display_host": "geomacro.live",
+    "display_prefix": "geomacro.live /api/",
+    "canonical_query": "geomacro.live /api/v1/intelligence/query",
+    "internal_catalog_source": "src/lib/geomacro-official-api-branding.ts",
+    "internal_catalog_consistent": true,
+    "backend_http_methods_unchanged": true,
+    "machine_api_transport_fields_preserved": true,
+    "legacy_transport_contract_preserved": true,
+    "payment_activation_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "predge_unchanged": true,
+    "exact_blob_lock": true,
+    "live_acceptance_pending": true
   }
 }
