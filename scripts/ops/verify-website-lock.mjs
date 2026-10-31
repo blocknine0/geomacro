@@ -137,6 +137,7 @@ const approvedPricing = [
   config.approved_locked_dual_rail_checkout_20261101,
   config.approved_inline_dual_rail_pricing_20261101,
   config.approved_deferred_catalog_removal_20261101,
+  config.approved_ecb_official_fx_reference_20261101,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
