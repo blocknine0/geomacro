@@ -1,0 +1,171 @@
+{
+  "schema": "geomacro.private-osint-mineral-national-portals.v1",
+  "scope": "PRIVATE_SOURCE_DISCOVERY_ONLY",
+  "purpose": "Target 20 priority national mining jurisdictions; portal homepages are NOT RSS feeds and may not be polled by private news collector until exact native-dated feed is separately accepted.",
+  "citations": [
+    "https://www.usgs.gov/data/mineral-commodity-summaries-2026-data-release",
+    "https://natural-resources.canada.ca/corporate/rss-feeds"
+  ],
+  "targets": [
+    {
+      "country_iso3": "AUS",
+      "authority_homepage": "https://www.ga.gov.au/news",
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "CHL",
+      "authority_homepage": "https://www.cochilco.cl/",
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "IDN",
+      "authority_homepage": "https://www.esdm.go.id/",
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "CAN",
+      "authority_homepage": "https://natural-resources.canada.ca/corporate/rss-feeds",
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "ZAF",
+      "authority_homepage": "https://www.dmre.gov.za/",
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "IND",
+      "authority_homepage": "https://mines.gov.in/",
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "USA",
+      "authority_homepage": "https://www.usgs.gov/mineral-resources-program/news",
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "CHN",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "COD",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "PER",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "BRA",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "ARG",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "BOL",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "MEX",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "ZMB",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "ZWE",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "KAZ",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "PHL",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "GIN",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    },
+    {
+      "country_iso3": "MOZ",
+      "authority_homepage": null,
+      "verified_native_feed_url": null,
+      "source_promotion_state": "EXACT_NATIVE_RSS_OR_ATOM_REQUIRED",
+      "publisher_rights_verified": false,
+      "live_event_coverage_verified": false
+    }
+  ]
+}
