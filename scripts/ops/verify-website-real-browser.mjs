@@ -111,11 +111,14 @@ const testBrowser=async({chromium,expected=EXPECTED,githubToken=process.env.GITH
     assert(failures.length===0,"BROWSER_ASK_JS_EXCEPTION");
     // Full public storefront and editorial navigation surface. These are
     // presentation checks only, NOT proof of paid execution or signed data.
+    // The founder-approved /data-api route is a backward-compatible alias,
+    // not a second storefront. Validate its real redirect to the canonical
+    // Store & API while retaining a strict title, status and DOM check.
     const publicPages=[
-      {path:"/pricing",title:/store|pricing/i},
-      {path:"/data-api",title:/api.*agents/i},
-      {path:"/docs",title:/documentation/i},
-      {path:"/risk-indices",title:/risk indices/i},
+      {path:"/pricing",canonical:"/pricing",title:/store.*api/i},
+      {path:"/data-api",canonical:"/pricing",title:/store.*api/i},
+      {path:"/docs",canonical:"/docs",title:/documentation/i},
+      {path:"/risk-indices",canonical:"/risk-indices",title:/risk indices/i},
     ];
     for(const item of publicPages){
       const response=await page.goto(ROOT+item.path,
@@ -128,7 +131,7 @@ const testBrowser=async({chromium,expected=EXPECTED,githubToken=process.env.GITH
         path:location.pathname,
         bodyLength:document.body?.innerText?.length??0,
       }));
-      assert(state.path===item.path&&item.title.test(state.title)&&state.bodyLength>90,
+      assert(state.path===item.canonical&&item.title.test(state.title)&&state.bodyLength>90,
         "BROWSER_PUBLIC_PAGE_NOT_RENDERED");
       assert(failures.length===0,"BROWSER_PUBLIC_PAGE_JS_EXCEPTION");
     }
