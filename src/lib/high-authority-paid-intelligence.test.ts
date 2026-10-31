@@ -3,6 +3,7 @@ import {
   assertHighAuthorityPaidIntelligenceScope,
   extractQualifiedFiveFieldEvent,
   HIGH_AUTHORITY_FIVE_EVENT_FIELDS,
+  assertPaidIntelligenceEventFieldCompleteness,
 } from "./high-authority-paid-intelligence";
 
 const qualified=()=>({
@@ -56,5 +57,34 @@ describe("High-authority first paid launch (no payment)",()=>{
     expect(extractQualifiedFiveFieldEvent({...event,why_it_matters:""})).toBeNull();
     expect(extractQualifiedFiveFieldEvent({...event,event_timestamp:"2027-10-30T12:00:00Z"},
       Date.parse("2026-10-31T00:00:00Z"))).toBeNull();
+  });
+});
+
+describe("prequote five-field completeness",()=>{
+  const event={
+    headline:"Verified official event",
+    source_authority:"Official primary issuer",
+    event_timestamp:"2026-10-23T12:00:00Z",
+    what_happened:"An independently verified event occurred.",
+    why_it_matters:"This event has a verified economic relevance.",
+  };
+  it("admits structural-only states and exact complete events",()=>{
+    expect(()=>assertPaidIntelligenceEventFieldCompleteness({
+      current_state:[{developments:[]}]
+    })).not.toThrow();
+    expect(()=>assertPaidIntelligenceEventFieldCompleteness({
+      current_state:[{developments:[{qualified_five_field_event:event}]}]
+    })).not.toThrow();
+  });
+  it("rejects a claimed event with any missing field or future clock",()=>{
+    expect(()=>assertPaidIntelligenceEventFieldCompleteness({
+      current_state:[{developments:[{event_id:"a"}]}]
+    })).toThrow("PAID_EVENT_FIVE_FIELDS_REQUIRED");
+    expect(()=>assertPaidIntelligenceEventFieldCompleteness({
+      current_state:[{developments:[{qualified_five_field_event:{...event,why_it_matters:""}}]}]
+    })).toThrow("PAID_EVENT_FIVE_FIELDS_INVALID");
+    expect(()=>assertPaidIntelligenceEventFieldCompleteness({
+      current_state:[{developments:[{qualified_five_field_event:{...event,event_timestamp:"2099-01-01T00:00:00Z"}}]}]
+    })).toThrow("PAID_EVENT_ORIGINAL_TIMESTAMP_UNVERIFIED");
   });
 });
