@@ -1,7 +1,7 @@
 import {describe,it,expect} from "vitest";
 import {createHash} from "node:crypto";
 import {gradeArchivedPhase2hEvidence} from "../pipelines/evidence-grader";
-import {compilePhase2hDailyCountryDigest} from "../../scripts/ops/compile-daily-grounded-digests";
+import {compilePhase2hDailyCountryDigest,readDailyArchiveFromCanonicalD1} from "../../scripts/ops/compile-daily-grounded-digests";
 const now=new Date("2026-11-01T00:00:00.000Z");
 const sha=(x:string)=>createHash("sha256").update(x).digest("hex");
 function makeRow({
@@ -112,5 +112,39 @@ describe("Phase2H daily archived original grading",()=>{
    .toThrow("DUPLICATE_OR_INVALID_ORIGINAL_ID");
   expect(compilePhase2hDailyCountryDigest({now,rows:[makeRow()],fullScan:false})
    .canonical_d1_scan_complete).toBe(false);
+ });
+});
+
+describe("Canonical D1 archived raw extraction",()=>{
+ it("uses eight-row keyset pages, exact B2 acknowledgement cutoff and no oversized raw response",async()=>{
+  const records=Array.from({length:18},(_,i)=>{
+   const row=makeRow();
+   return {...row,record_id:sha("page-row-"+String(i)),
+    original_published_at:"2026-10-31T20:00:00.000Z"};
+  }).sort((a,b)=>a.record_id.localeCompare(b.record_id));
+  let reads=0;
+  const result=await readDailyArchiveFromCanonicalD1({
+   now,env:{
+    CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+    D1_DATABASE_ID:"12345678-1234-1234-1234-123456789abc",
+    CLOUDFLARE_API_TOKEN:"secret-example-but-never-real",
+   },
+   fetchImpl:(async (_url:unknown,init:unknown)=>{
+    const payload=JSON.parse(String((init as {body:string}).body));
+    expect(payload.sql).toContain("b2_object_sha256 IS NOT NULL");
+    expect(payload.sql).toContain("b2_archived_at <= ?");
+    expect(payload.sql).toContain("ORDER BY original_published_at DESC,record_id");
+    expect(payload.params.at(-1)).toBe(8);
+    const lastId=payload.params.length===6?payload.params[4]:null;
+    const start=lastId===null?0:records.findIndex(x=>x.record_id===lastId)+1;
+    reads++;
+    return Response.json({success:true,result:[{
+     success:true,results:records.slice(start,start+8),
+    }]});
+   }) as typeof fetch,
+  });
+  expect(result.fullScan).toBe(true);
+  expect(result.rows).toHaveLength(18);
+  expect(reads).toBe(3);
  });
 });
