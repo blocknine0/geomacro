@@ -43,7 +43,7 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
       <div className="mt-5 overflow-x-auto rounded-xl border border-border">
         <table className="w-full min-w-[300px] text-left text-sm">
           <caption className="sr-only">
-            Canonical endpoints for Geopolitics, Macro / FX and Critical Minerals APIs
+            Official GEOMACRO Geopolitics, Macro/FX and Critical Minerals APIs
           </caption>
           <thead className="bg-muted/40">
             <tr>
@@ -59,9 +59,12 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
             {CATEGORY_APIS.map((api) => (
               <tr key={api.id} data-api-id={api.id} className="border-t border-border align-top">
                 <th scope="row" className="p-4 font-medium">
-                  <span className="block">{api.label}</span>
+                  <span className="block text-sm font-semibold">{api.name}</span>
+                  <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                    Official Geomacro intelligence endpoint
+                  </span>
                   <code className="mt-2 block break-all text-xs font-normal text-muted-foreground">
-                    {api.method} {api.path}
+                    {api.path}
                   </code>
                 </th>
                 {showPrices && VARIANTS.map((variant) => (
@@ -82,8 +85,9 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
       </div>
       <div className="mt-4 space-y-2 text-xs leading-5 text-muted-foreground">
         <p>
-          All three category endpoints are aliases of the canonical payment resource
-          <code className="mx-1">POST /api/v1/intelligence/query</code>; they are not three separate
+          All three branded category APIs use the canonical
+          <span className="mx-1 font-semibold">GEOMACRO Intelligence API</span>
+          at <code>/api/v1/intelligence/query</code>; they are not three separate
           merchant resources or separate charges.
         </p>
         <p>
