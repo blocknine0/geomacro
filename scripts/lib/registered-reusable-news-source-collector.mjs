@@ -246,9 +246,17 @@ export async function collectRegisteredReusableNews({
       // private topic/capacity rules; it never enters the private D1 journal.
       const websiteClock=onOriginalCandidate&&item.articleUrl
         ?originalClock(item.native,now.getTime(),72*3600000):null;
-      if(websiteClock)for(const category of activeCategories)
-        onOriginalCandidate({news_id:null,source_url:s.url,category,
-          title:item.title,article_url:item.articleUrl,published_at:websiteClock});
+      if(websiteClock){
+        // Strict issuer-only hint for private D1 fair-selection. It cannot
+        // override an explicitly named foreign or multi-country headline.
+        const primary=sourceIsPinnedNationalPrimary(s);
+        const mentions=primary?privateOsintCountryMentions(item.title,COUNTRIES_195):[];
+        const issuerHint=primary&&mentions.length===0?s.publisher_country_iso3:null;
+        for(const category of activeCategories)
+          onOriginalCandidate({news_id:null,source_url:s.url,category,
+            title:item.title,article_url:item.articleUrl,published_at:websiteClock,
+            ...(issuerHint?{issuer_context_country_iso3:issuerHint}:{})});
+      }
       const at=originalClock(item.native,now.getTime());
       if(!at)continue;
       for(const category of activeCategories){
