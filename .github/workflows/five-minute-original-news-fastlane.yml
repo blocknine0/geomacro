@@ -291,6 +291,7 @@ jobs:
           bun run vitest run src/__tests__/five-minute-original-news-fastlane.test.ts src/__tests__/automated-intelligence-input.test.ts src/__tests__/low-authority-source-review.test.ts
           bun test scripts/tests/private-source-handoff-sqlite.test.ts
           bun test scripts/tests/macro-fastlane.test.mjs
+          node --test scripts/tests/verify-public-macro-d1-readback.test.mjs
           node --test scripts/tests/minimum-daily-bundled-source.test.mjs && node --test scripts/tests/plan-d1-bundled-work.test.mjs scripts/tests/bounded-news-intake-publication.test.mjs scripts/tests/fastlane-source-checkpoints.test.mjs scripts/tests/budgeted-news-intake.test.mjs
           node --test scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2h-raw-news.test.mjs
           bun build scripts/ops/publish-original-news-five-minute-fastlane.ts --target=bun --outfile=/tmp/geomacro-bundled-news-fastlane.js
@@ -461,6 +462,13 @@ jobs:
           name: actual-website-latency-${{ github.run_id }}
           path: artifacts/website-latency/served-samples.json
           retention-days: 7
+      - name: Record source-dated ECB and XAU/XAG public D1 readback without funds
+        # One cacheable public GET on the existing admitted intake runner.
+        # False/stale data stays negative evidence, not a fabricated live quote.
+        # Missing/upstream market-closed quotes do not stop ingestion.
+        if: always() && steps.budget.outputs.source_intake == 'true' && steps.intake-clock.outputs.due == 'true'
+        continue-on-error: true
+        run: node scripts/ops/verify-public-macro-d1-readback.mjs
       - name: Independently observe true original-to-website HTML visibility
         # The zero added release delay and 5-minute Actions clock are not a
         # guaranteed SLA. This public readback checks genuine original clocks
