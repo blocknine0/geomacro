@@ -22,6 +22,14 @@ def get(url, limit=2000000):
             raise ValueError("response exceeds size limit")
         return body, response.status, response.headers.get("Content-Type", ""), response.url
 
+def allowed_final_host(requested_site, final_url):
+    parsed = urlparse(final_url)
+    requested = urlparse(requested_site).hostname
+    # Lovable custom domains intentionally redirect the lovable.app alias to geomacro.live.
+    # This is a single published deployment, not two independent deployment attestations.
+    allowed = {requested} if requested == "geomacro.live" else {requested, "geomacro.live"}
+    return parsed.scheme == "https" and parsed.hostname in allowed
+
 if not SHA.fullmatch(EXPECTED):
     failures.append("GITHUB_SHA is missing or not an exact 40-character commit SHA")
 
@@ -40,7 +48,7 @@ for site in SITES:
         elif marker != EXPECTED:
             failures.append(f"{site}: deployed SHA {marker} does not match exact main SHA {EXPECTED}")
         record["build_sha"] = marker
-        if urlparse(final_url).hostname != urlparse(site).hostname:
+        if not allowed_final_host(site, final_url):
             failures.append(f"{site}: build marker redirected to another host")
     except Exception as exc:
         failures.append(f"{site}: build marker unavailable/invalid: {type(exc).__name__}: {exc}")
@@ -52,7 +60,7 @@ for site in SITES:
             html = body.decode("utf-8", "replace")
             if status != 200 or "html" not in mime.lower() or not re.search(r"<html|<!doctype html", html, re.I):
                 failures.append(f"{site}{path}: invalid HTML response status={status}")
-            if urlparse(final_url).hostname != urlparse(site).hostname:
+            if not allowed_final_host(site, final_url):
                 failures.append(f"{site}{path}: unexpected cross-domain redirect")
             if path == "/pricing":
                 # Check server-rendered public copy without assuming payment is live.
@@ -87,9 +95,9 @@ print(json.dumps(result, indent=2))
 summary = os.environ.get("GITHUB_STEP_SUMMARY", "/tmp/geomacro-frontend-acceptance.md")
 with open(summary, "a", encoding="utf-8") as output:
     output.write("## Production frontend exact-SHA acceptance\n\n")
-    output.write(f"**Result: {result['status']}** · Expected main: \`{EXPECTED}\`\n\n")
+    output.write(f"**Result: {result['status']}** · Expected main: `{EXPECTED}`\n\n")
     for entry in observations:
-        output.write(f"- {entry['site']}: marker \`{entry['build_sha']}\`; home {entry['root_status']}; pricing {entry['pricing_status']}\n")
+        output.write(f"- {entry['site']}: marker `{entry['build_sha']}`; home {entry['root_status']}; pricing {entry['pricing_status']}\n")
     for issue in failures:
         output.write(f"- FAIL: {issue}\n")
 sys.exit(1 if failures else 0)
