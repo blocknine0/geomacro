@@ -46,30 +46,32 @@ Risk Gate is a controlled Private Pilot capability for country and directional-c
 
 ## Data, API and agent access
 
+API labels throughout GeoMacro use `geomacro.live /api/...`. Parenthetical HTTP methods below are required transport metadata, not part of the display name.
+
 Free Explorer is the public website/dashboard experience, not a free structured API.
 
 Commercial machine access is entitlement-controlled. The canonical x402 intelligence endpoint is:
 
-- `POST https://geomacro.live/api/v1/intelligence/query`
+- `geomacro.live /api/v1/intelligence/query` (HTTP POST)
 
 Country category aliases use the same engine:
 
-- `POST https://geomacro.live/api/v1/intelligence/geopolitics`
-- `POST https://geomacro.live/api/v1/intelligence/macro-fx`
-- `POST https://geomacro.live/api/v1/intelligence/critical-minerals`
+- `geomacro.live /api/v1/intelligence/geopolitics` (HTTP POST)
+- `geomacro.live /api/v1/intelligence/macro-fx` (HTTP POST)
+- `geomacro.live /api/v1/intelligence/critical-minerals` (HTTP POST)
 
 Category aliases bind topics and accept country subjects. Use the canonical query for corridors and multiple categories. `GET` on the category paths provides discovery or explicit research views (`view=finds`, `latest`, `open-data`, `combined`). Research observations are not signed risk intelligence.
 
-- Endpoint directory and valid JSON/cURL examples: https://geomacro.live/data-api#endpoints
+- Endpoint directory and valid JSON/cURL examples: https://geomacro.live/pricing#api-endpoints
 - Official agent discovery: https://geomacro.live/api/v1/agent
 - Live OpenAPI 3.1: https://geomacro.live/api/v1/agent?view=openapi
 - Exact approved USDC prices: https://geomacro.live/api/v1/pricing
 - Network discovery: https://geomacro.live/api/v1/payments/networks
-- Non-payable price preview: `POST https://geomacro.live/api/v1/payments/preflight`
-- Structural baseline availability only: `GET/POST https://geomacro.live/api/v1/intelligence/availability`
+- Non-payable price preview: `geomacro.live /api/v1/payments/preflight` (HTTP POST)
+- Structural baseline availability only: `geomacro.live /api/v1/intelligence/availability` (HTTP GET/POST)
 - Public unscored Finds: https://geomacro.live/api/v1/finds
-- No-funds structured research: `GET/POST https://geomacro.live/api/v1/intelligence/live-structured`
-- MCP JSON-RPC tools: `POST https://geomacro.live/api/mcp`
+- No-funds structured research: `geomacro.live /api/v1/intelligence/live-structured` (HTTP GET/POST)
+- MCP JSON-RPC tools: `geomacro.live /api/mcp` (HTTP POST)
 
 Legacy baseline availability requires one country, one eligible topic and explicit `delivery_tier=structural_baseline`. Explicit Store selection adds `product: {capability, variant}` to the same canonical query: four structural products, three intelligence-query variants, two signed-object variants and three Risk Gate bundle variants. All twelve request examples are included in official agent discovery and the API endpoint directory; MCP `store_product_query` maps to this same engine.
 
